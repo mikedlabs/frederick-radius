@@ -1105,8 +1105,7 @@ function Stop({
         {stop.order}
       </span>
       <article className={styles.stopCard}>
-        <PlanStopPhoto stop={stop} />
-        <div className={styles.stopBody}>
+        <div className={styles.stopBody} style={{ paddingBottom: 12 }}>
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold">
@@ -1130,8 +1129,10 @@ function Stop({
           </div>
           <PlaceMedallion place={fallbackPlace} size={48} className="rounded-[var(--app-radius-sm)]" />
         </div>
-
-        <p className="mt-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{stop.why}</p>
+        </div>
+        <PlanStopPhoto stop={stop} />
+        <div className={styles.stopBody} style={{ paddingTop: 12 }}>
+        <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{stop.why}</p>
 
         {stop.tip && (
           <details className="mt-2 rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] px-3">

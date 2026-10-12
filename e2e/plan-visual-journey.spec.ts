@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 
 async function expectFirstStopClearOfNavigation(page: Page) {
@@ -12,6 +13,7 @@ async function expectFirstStopClearOfNavigation(page: Page) {
     const rect = element.getBoundingClientRect();
     return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
   })).toBe(true);
+  return { firstStop, fixedNav };
 }
 
 for (const width of [320, 390, 430, 1440]) {
@@ -35,9 +37,7 @@ test("a visual outing keeps choices through a pre-trip check and map fallback", 
   const stops = page.getByRole("list", { name: "Plan stops, in order" });
   await expect(stops.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "Carroll Creek in Frederick." })).toBeVisible();
-  const firstStop = (await stops.getByRole("heading", { name: "Beans in the Belfry", exact: true }).boundingBox())!;
-  expect(firstStop.y).toBeGreaterThanOrEqual(0);
-  expect(firstStop.y).toBeLessThan(844);
+  await expectFirstStopClearOfNavigation(page);
   const before = new URL(page.url()).searchParams.get("p");
   await page.getByRole("button", { name: "Check this plan", exact: true }).click();
   await expect(page.getByText("These records do not confirm live venue availability.", { exact: false })).toBeVisible();
@@ -172,3 +172,100 @@ test("confirmed-hours opt-in stays strict and Adjust can recover a real-catalog 
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: "output/playwright/plan-adjusted-draft-mobile.png", fullPage: true });
 });
+
+for (const outcome of ["loaded", "unavailable"] as const) {
+  test(`Controlled local photo transport keeps the first stop reachable with delayed metadata and a ${outcome} source`, async ({ page, baseURL }, info) => {
+    test.setTimeout(60_000);
+    if (!baseURL || !["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname)) {
+      throw new Error("Controlled photo transport requires a loopback-only test app.");
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    const ownedPhoto = await readFile("public/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+    const failureSignal = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=", "base64");
+    type Metadata = { place: { slug: string; google_photo_url: string; google_photo_attribution: {
+      photo_name: string; google_maps_uri: string; authors: Array<{ display_name: string }>;
+    } } };
+    let metadata: Metadata | undefined;
+    let requestedPhotoName: string | null = null;
+    let releaseMetadata!: () => void;
+    let markMetadataRequested!: () => void;
+    let releaseImage!: () => void;
+    let markImageRequested!: () => void;
+    const metadataGate = new Promise<void>((resolve) => { releaseMetadata = resolve; });
+    const metadataRequested = new Promise<void>((resolve) => { markMetadataRequested = resolve; });
+    const imageGate = new Promise<void>((resolve) => { releaseImage = resolve; });
+    const imageRequested = new Promise<void>((resolve) => { markImageRequested = resolve; });
+    await page.route("**/api/places/map-card/beans-in-the-belfry-brunswick", async (route) => {
+      // Retain the real reviewed snapshot's exact photo reference and credit.
+      // Delay only this bounded local read, never fabricate public attribution.
+      const response = await route.fetch();
+      metadata = await response.json() as Metadata;
+      markMetadataRequested();
+      await metadataGate;
+      await route.fulfill({ response, json: metadata });
+    });
+    await page.route("**/api/place-photo?**", async (route) => {
+      // Controlled transport evidence: use Radius-owned image bytes or the
+      // existing one-pixel failure signal. No paid photo provider is called.
+      requestedPhotoName = new URL(route.request().url()).searchParams.get("name");
+      markImageRequested();
+      await imageGate;
+      await route.fulfill({ status: 200,
+        contentType: outcome === "loaded" ? "image/jpeg" : "image/png",
+        body: outcome === "loaded" ? ownedPhoto : failureSignal,
+        headers: { "Cache-Control": "no-store", ...(outcome === "unavailable" ? { "X-Photo-Fallback": "controlled-upstream-unavailable" } : {}) },
+      });
+    });
+    try {
+      await page.goto("/plan?place=beans-in-the-belfry-brunswick&in=brunswick", { waitUntil: "domcontentloaded" });
+      const stop = page.locator("[data-plan-stop]").first();
+      const heading = stop.getByRole("heading", { name: "Beans in the Belfry", exact: true });
+      await expect(heading).toBeVisible();
+      await metadataRequested;
+      await page.evaluate(() => document.fonts.ready);
+      await expect.poll(() => stop.evaluate((element) => element.getAnimations().every((animation) => animation.playState === "finished"))).toBe(true);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      expect(metadata?.place.slug).toBe("beans-in-the-belfry-brunswick");
+      const credit = metadata!.place.google_photo_attribution;
+      expect(new URL(metadata!.place.google_photo_url, page.url()).searchParams.get("name")).toBe(credit.photo_name);
+      expect(credit.authors.length).toBeGreaterThan(0);
+      expect(new URL(credit.google_maps_uri).hostname).toMatch(/(^|\.)google\.com$/);
+      await expect(stop.locator("[data-plan-stop-photo]")).toHaveCount(0);
+      const beforeMetadata = await expectFirstStopClearOfNavigation(page);
+      releaseMetadata();
+      await imageRequested;
+      const photo = stop.locator("[data-plan-stop-photo] img");
+      await expect(photo).toBeVisible();
+      expect(requestedPhotoName).toBe(credit.photo_name);
+      expect(await photo.evaluate((image: HTMLImageElement) => image.complete)).toBe(false);
+      await expect(stop.getByRole("link", { name: "Google Maps", exact: true })).toHaveAttribute("href", credit.google_maps_uri);
+      const duringImage = await expectFirstStopClearOfNavigation(page);
+      expect(await heading.evaluate((element, image) => Boolean(element.compareDocumentPosition(image!) & Node.DOCUMENT_POSITION_FOLLOWING), await photo.elementHandle())).toBe(true);
+      releaseImage();
+      if (outcome === "loaded") {
+        await expect.poll(() => photo.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 1 && image.naturalHeight > 1)).toBe(true);
+        const photoRect = await photo.boundingBox();
+        expect(photoRect!.width).toBeGreaterThan(150);
+        expect(photoRect!.height).toBeGreaterThan(80);
+        await expect(stop.getByRole("link", { name: "Google Maps", exact: true })).toHaveAttribute("href", credit.google_maps_uri);
+        const sourceCredit = stop.locator("[data-inline-prose]").filter({ has: page.getByRole("link", { name: "Google Maps", exact: true }) });
+        await expect(sourceCredit).toContainText("Photo by");
+        await expect(sourceCredit).toContainText(credit.authors[0]!.display_name);
+      } else {
+        await expect(stop.locator("[data-plan-stop-photo]")).toHaveCount(0);
+        await expect(stop.getByRole("link", { name: "Google Maps", exact: true })).toHaveCount(0);
+      }
+      const afterImage = await expectFirstStopClearOfNavigation(page);
+      expect(await page.evaluate(() => scrollY)).toBe(0);
+      await info.attach("first-stop-photo-lifecycle", { contentType: "application/json", body: JSON.stringify({
+        evidence: "controlled-local-photo-transport-with-real-reviewed-metadata", outcome, providerRequests: 0,
+        loadedImageSource: outcome === "loaded" ? "Radius-owned Carroll Creek test image" : "Existing transparent source-failure signal",
+        upstreamPhotoIdentityNotVerified: true, requestedPhotoName, beforeMetadata, duringImage, afterImage,
+      }, null, 2) });
+      await page.screenshot({ path: info.outputPath(`first-stop-photo-${outcome}.png`), fullPage: true });
+    } finally {
+      releaseMetadata();
+      releaseImage();
+    }
+  });
+}
