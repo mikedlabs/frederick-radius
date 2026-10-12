@@ -726,6 +726,38 @@ export function nearTown(
 }
 
 /**
+ * One town's upcoming events from an already assembled set, plus the same
+ * neighbor fallback `nearTown` gives the curated seeds. The town page passes
+ * the public archive set the Events board shows, so "Upcoming in Brunswick"
+ * can no longer read empty while /towns and /events list Brunswick events
+ * (they did when this page read only the curated seeds). Neighbors need a
+ * known location: an "unknown" placement has no honest distance to a town.
+ */
+export function townEventsFrom(
+  pool: readonly EventWithMeta[],
+  slug: string,
+  now: Date = new Date(),
+  nearbyLimit = 4,
+): { events: EventWithMeta[]; nearby: EventWithMeta[] } {
+  const m = MUNICIPALITY_BY_SLUG[slug];
+  if (!m) return { events: [], nearby: [] };
+  const upcoming = pool
+    .filter((e) => isUpcomingEvent(e, now))
+    .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
+  const nearby = upcoming
+    .filter((e) => e.municipality !== slug && e.geom && e.geo_confidence !== "unknown")
+    .map((e) => ({ e, near_m: haversineMeters(m.centroid, e.geom) }))
+    .filter((x) => x.near_m <= NEAR_TOWN_RADIUS_M)
+    .sort((a, b) => a.near_m - b.near_m)
+    .slice(0, nearbyLimit)
+    .map((x) => x.e);
+  return {
+    events: upcoming.filter((e) => e.municipality === slug),
+    nearby,
+  };
+}
+
+/**
  * Every municipality, in declared order, with its own upcoming events
  * and a centroid-radius fallback. The caller renders all twelve at equal
  * weight, so a town with one event is featured as deliberately as the
