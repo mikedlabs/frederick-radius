@@ -1,3 +1,5 @@
+> Superseded. Current: the CLAUDE.md "Data pipeline" section, which says the Postgres places and events tables are not the catalog. History, not instructions.
+
 # Frederick Radius — Data Sourcing and Cleaning Strategy
 
 **Written:** 2026-05-30 · companion to `REVIEW-2026-05-30.md`.

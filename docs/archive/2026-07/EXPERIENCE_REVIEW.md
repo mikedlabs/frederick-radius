@@ -1,3 +1,5 @@
+> Superseded. Brand, type and photo-fallback decisions live in docs/brand/BRAND_GUIDE.md and docs/VISUAL_FIRST.md. Any approval gate here is void. History, not instructions.
+
 # Experience Review — July 2026
 
 A ten-dimension expert review of the whole app: every major surface's UX, performance
@@ -6,8 +8,9 @@ differentiators, and launch-readiness blind spots. Ten specialist reviewers read
 code AND measured the live site behind the beta wall; every finding below is anchored
 to a file, route, or live measurement — none of it is generic advice.
 
-Read this like MAP_AUDIT.md: a sequenced working document, not a wishlist. Findings are
-sorted high → low impact within each dimension, each tagged [IMPACT · EFFORT S/M/L].
+Findings are sorted high → low impact within each dimension, each tagged
+[IMPACT · EFFORT S/M/L]. Items still open on 2026-10-08 were carried to
+docs/BACKLOG.md with a status.
 
 ## The headline (what the whole review adds up to)
 
@@ -181,6 +184,8 @@ At 7:55 PM, 'On now · 3 happy hours · 6 specials' rendered below the masthead,
 Files: `src/components/today/NowIntel.tsx` · `src/lib/daypart.ts` · `src/app/(app)/today/page.tsx`
 
 ### [MEDIUM · M] Design the after-9 PM state: 'open late' lead and a first look at tomorrow
+
+**Status 2026-10-08:** FIXED. From 9 PM Today's day program leads with what is still on and then the coming day (`isTomorrowPreviewTime` in `src/app/(app)/today/page.tsx`), and the daypart rows include a "Bars open late" answer.
 
 Late at night the page hollows out: the hero teaser is gone (tonight's event ended), WhatsOn falls to 'Nothing on the calendar today. Browse all events.', markets/pools/deals self-hide, and happy hours wind down — yet defaultWant() (CravingStrip) already knows it's a 'drink' hour. Two additions for the 'late' daypart: (1) an open-late answer row (bars/late kitchens open now, from the same places-client open-hours data the craving tiles use); (2) after ~9 PM, replace the empty WhatsOn state with a quiet 'Tomorrow, first look' — 2-3 lead-ranked cards for tomorrow via the same eventsPromise (eventWhenLabel already produces honest 'Tomorrow' labels). The page's own doc calls /today 'the next 24 hours'; right now the last 3 of those hours get a shrug.
 
@@ -524,6 +529,8 @@ Files: `src/components/map/categoryMarkers.ts` · `src/data/categories.ts`
 
 ### [HIGH · M] Adopt the shipped type scale — 1,620 text-[Npx] vs 40 uses of the canonical classes, with 100+ off-scale strays
 
+**Status 2026-10-08:** PARTIAL. `npm run lint:type-scale` now blocks growth file by file, but the baseline still holds the old debt. Carried to docs/BACKLOG.md.
+
 globals.css defines the 8-step Brand Book scale (.text-caption/.text-meta/.text-body/.text-title...) precisely to replace ad-hoc sizes, but adoption is 40 instances against 1,620 text-[Npx] (410 x 11px, 259 x 12px, 211 x 13px...). Worse, 100+ are OFF the scale entirely: 33 x 12.5px, 25 x 10.5px, plus 32 instances at 8-9.5px mono uppercase (TodaysDealsStack.tsx:77 meta line at 9.5px, SavedList.tsx:539, TownAlmanac.tsx:24) that fall below the 10px caption floor and get genuinely hard to read on non-retina screens. Two-phase move: (1) mechanical sweep rounding every half-pixel and sub-10px stray to the nearest scale step — pure find/replace, immediately raises the floor; (2) migrate the 5 worst files (SavedList 40, EventCard 34, pulse/page 34, PlanBuilder 50, PlaceCard 25) to the semantic classes so line-heights stop varying per call site.
 
 Files: `src/app/globals.css` · `src/components/saved/SavedList.tsx` · `src/components/event/EventCard.tsx` · `src/app/(app)/pulse/page.tsx` · `src/components/place/PlaceCard.tsx`
@@ -548,11 +555,15 @@ Files: `src/app/globals.css` · `src/components/ui/SectionHeading.tsx` · `src/c
 
 ### [MEDIUM · M] Enforce the documented weight rule — semibold grew from the audited 624 to 841 uses
 
+**Status 2026-10-08:** OPEN, and worse. Carried to docs/BACKLOG.md with the command that counts it.
+
 globals.css's own WEIGHT RULE comment calls 624 font-semibold uses 'monotony' and prescribes 400 quiet / 500 labels / 600 titles / 700 numerics-only. Today the count is 841 font-semibold + 187 font-bold vs only 204 font-medium — the drift got worse after being diagnosed. In practice chips, meta lines, CTAs and titles all sit at 600 (StatusChip 11px semibold, Rave 12px semibold, distance labels, 'See all' links), so nothing is quiet and titles lose their contrast advantage. A targeted sweep — chips/meta/links to 500, keep 600 for card titles, demote the 187 bolds that aren't numerals — restores the typographic hierarchy the field-guide bar depends on ('typography carries hierarchy before boxes').
 
 Files: `src/components/place/PlaceCard.tsx` · `src/components/event/EventCard.tsx` · `src/components/ui/SectionHeading.tsx` · `src/app/globals.css`
 
 ### [MEDIUM · M] Route hand-rolled empty states through the EmptyState primitive
+
+**Status 2026-10-08:** OPEN. Carried to docs/BACKLOG.md.
 
 EmptyState.tsx is a genuinely designed moment (icon halo, serif statement title, tone system) but only 4 files use it, while 16+ surfaces render bare one-line empties: DealsBrowser.tsx:144 ('No verified deals on {day} yet.'), TodaysDealsStack.tsx:131 (a lone serif p), MonthGrid.tsx:234, HappyHourBrowser.tsx:202, TodayTabs.tsx:111-146, search/page.tsx:147, m/[municipality]/page.tsx:323. These are exactly the moments the CLAUDE.md 'honest empty states' bar is about, and the current bare text reads as a rendering gap rather than a calm absence. Most conversions are a 5-line swap since the copy already exists; the payoff is that the app's quietest screens stop looking unfinished.
 
@@ -588,6 +599,8 @@ planner.ts has no reference to nws/forecast/weather despite getNwsForecast (hour
 Files: `src/lib/integrations/planner.ts` · `src/lib/integrations/nws.ts` · `src/lib/almanac.ts` · `src/app/(app)/plan/page.tsx`
 
 ### [HIGH · M] Event pages: a 'getting there' block from parking garages, field-notes parking, and MARC/TransIT
+
+**Status 2026-10-08:** FIXED. `src/components/event/GettingThere.tsx` shows the venue's field-note parking line or the nearest garage, plus a nearby MARC station, on the event page.
 
 src/app/(app)/events/[slug]/page.tsx has no transit or parking content (grep confirms), yet the repo holds parking-garages.ts, field-notes parking for 85 venues, getMarcBoard + marc-stations.ts coords, and TransIT stop predictions (transitNextStop/transitRealtime). For events with venue coords, render one quiet stanza: nearest garage with distance for downtown venues, the venue's verified field-note parking line when it exists, and 'Brunswick MARC is a 6 minute walk' when a station is within ~800m. This is the visitor acquisition moment from NORTH_STAR.md answered in one move, built entirely from existing loaders.
 

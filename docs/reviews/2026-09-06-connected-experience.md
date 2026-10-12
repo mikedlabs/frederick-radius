@@ -1,6 +1,6 @@
 # Frederick Radius: connected local tasks
 
-Local implementation review, September 6, 2026. Release status: **not deployed**.
+Snapshot 2026-09-06. Local implementation review, September 6, 2026. Release status at the time: not deployed. Outcome (checked 2026-10-08): this work merged to main in #1681 (commit bb70c7e8) on 2026-09-09, together with the finishing pass in `2026-09-09-finishing-pass.md`.
 
 ## Product direction
 

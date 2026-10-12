@@ -7,9 +7,11 @@ import { primaryAnswerFor } from "@/lib/search/answer";
  * Phrased as the answer, not a search ("What's open right now"). North
  * Star: answer the question, ≤2 taps. Each entry's href IS the answer.
  *
- * Extracted from SearchOverlay so the overlay AND the /today AnswerCards
- * read from one source (UX_REDO Build 1). Icons are string names so this
- * stays server-safe; client renderers map them to glyphs.
+ * Extracted from SearchOverlay so every quick-answer surface reads from one
+ * source (planned in the June 2026 UX redo, now
+ * docs/archive/2026-06/UX_REDO.md; the /today AnswerCards it fed were later
+ * cut). Icons are string names so this stays server-safe; client renderers
+ * map them to glyphs.
  */
 export const QUICK_INTENTS: QuickIntent[] = [
   {

@@ -1,11 +1,14 @@
 /**
- * Answer-first types — the shared shape behind the AnswerCard primitive
- * and the /today front door (UX_REDO Build 0/1).
+ * Answer-first types, planned in the June 2026 UX redo (now
+ * docs/archive/2026-06/UX_REDO.md) as the shared shape behind an AnswerCard
+ * primitive and the /today front door. The AnswerCard section was later cut
+ * from /today; QuickIntent and IntentIcon below still serve the quick-answer
+ * intents and SearchOverlay. The source and freshness rules an answer must
+ * meet live in docs/DATA_CONFIDENCE_GATE.md.
  *
  * A Frederick Radius "answer" is the North Star unit: it states the
  * answer, why it's shown, its source + freshness, and one or two
- * actions. The same shape powers Today now, and Search / Map drawer /
- * Events / Place later.
+ * actions.
  */
 
 /** Status chip kinds. Each maps to a tone in AnswerCard. */
@@ -28,7 +31,8 @@ export type Answer = {
   status?: AnswerStatus;
   /** Override the chip's default label. */
   statusLabel?: string;
-  /** The headline answer, e.g. "7 places open near you". */
+  /** The headline answer, e.g. "Gravel & Grind is open until 9 PM". A
+   *  count is supporting detail, never the headline. */
   title: string;
   /** The short supporting answer, e.g. "Closest is Gravel & Grind." */
   answer?: string;

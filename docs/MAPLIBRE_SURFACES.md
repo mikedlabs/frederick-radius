@@ -104,3 +104,19 @@ hash of the opaque UUID and closes it after retrieve, 180 seconds, or 50
 suggestions. The UI rotates after retrieve and can reopen the same temporary
 result only from a five-minute, twelve-item tab-memory cache. Search text,
 coordinates, suggestions, and retrieved features are never persisted.
+
+## Verified non-issues on /map (do not re-fix)
+
+These two findings come from the July 2026 map audit, now archived at
+`docs/archive/2026-07/MAP_AUDIT.md`, and were re-checked against the code on
+2026-10-08. They concern the Mapbox `/map` surface, not MapLibre, and are kept
+here so the list survives the archive.
+
+- The OpenStreetMap cache expires on time. `loadCachedOsm()` in
+  `src/components/map/constants.ts` drops a sessionStorage entry older than
+  `OSM_CACHE_TTL_MS`, which is 24 hours.
+- Active civic, transit, trail and aerial-photo layers do appear in the map's
+  active-layer readout. The old active-filters chip strip moved into the map
+  dock, and the `layerBits` list in `src/components/map/MapDock.tsx` names
+  each one. Civic road alerts show there as "Roads now", because `AppMap.tsx`
+  sets `roadsNowActive` when traffic, civic or incident layers are on.

@@ -1,4 +1,22 @@
+> Superseded. Brand, type and photo-fallback decisions live in docs/brand/BRAND_GUIDE.md and docs/VISUAL_FIRST.md. Any approval gate here is void. History, not instructions.
+
 # Mobile UX audit — July 2026 (partial harvest)
+
+**Status of each finding, checked against the code on 2026-10-08:**
+
+- /events peek-card overflow: OPEN, not re-measured since July. Carried to docs/BACKLOG.md.
+- P0 live strip led with a utility meeting: FIXED. `pickLiveEvent` in `src/lib/today/on-now.ts` keeps only lead-tier events and ranks them with `compareForLead`.
+- P0 raw feed titles and a cross-source duplicate: NOT RE-CHECKED.
+- P0 specials wallet truncation: SUPERSEDED. `DealsWallet.tsx` no longer exists.
+- P1 live-dot smudge: FIXED. `.live-dot::before` and `::after` in `src/app/globals.css` now use `background: inherit` with margin clearance.
+- P1 unbounded What's On rail: SUPERSEDED. Today's day program shows a capped list with a "+N more" link.
+- P1 one live fact rendered three times: FIXED. `OnNowStrip.tsx` is gone, and `OnNowBand` skips its market line when a teaser above already carries it.
+- P1 bottom-nav prefetch of /map and /events: FIXED. `BottomNav.tsx` gates prefetch through `shouldPrefetchGlobalNavigation`.
+- P1 skeleton shaped like an old page: FIXED. `src/app/(app)/today/loading.tsx` now matches the 160 px photo band, the Find launcher and the shortcut rows.
+- P1 craving-grid papercuts: SUPERSEDED. The craving labels changed, and section links use `.tap-44-y`.
+- P1 wallet fan-in: SUPERSEDED with the wallet.
+
+The brand quote below ("KEEP the current palette/style as-is") refers to the July vermilion palette, which the current Brick palette (brand version 1.2 in `src/lib/brand.ts`) replaced. It is not a lock on the current brand.
 
 Owner engagement: "massive UI/UX improvements across the whole site... super fast, clever, attention to detail, one of a kind on mobile." Brand decision (owner, 2026-07-10): KEEP the current palette/style as-is; spend everything on craft/speed/UX/detail.
 

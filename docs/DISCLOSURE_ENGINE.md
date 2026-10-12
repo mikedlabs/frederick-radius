@@ -3,11 +3,12 @@
 > Today every `/today` section is hand-written TSX with its open/closed
 > logic, data source, and trust treatment inline. That doesn't scale —
 > not to the civic moat (dozens of sources), not to per-user adaptation,
-> and not to the "any county" platform thesis in `VISION.md`. This is the
+> and not to the "any county" platform thesis in
+> `docs/archive/2026-06/VISION.md`. This is the
 > plan to make disclosure **config, not code**: one engine that reads a
 > *manifest* + a *context* and decides what opens, in what order, with
-> what reason and what trust treatment. The gate from `UX_REDO.md` is
-> enforced in exactly one place.
+> what reason and what trust treatment. The gate in
+> `docs/DATA_CONFIDENCE_GATE.md` is enforced in exactly one place.
 >
 > Working prototype: `docs/disclosure-engine-demo.html` (swap counties to
 > see the same engine render a different place from config alone).
@@ -30,7 +31,7 @@ Three forces all point at the same refactor:
    are currently hardcoded (`defaultOpen`). They should reflect the
    moment — daypart, weather, location — which means the decision has to
    be *computed*, not authored.
-3. **The platform is the idea.** `VISION.md`: "config + ingest agents mean
+3. **The platform is the idea.** `docs/archive/2026-06/VISION.md`: "config + ingest agents mean
    the same engine could become the intelligence layer for any county."
    A declarative disclosure layer is the front-end half of that promise.
 

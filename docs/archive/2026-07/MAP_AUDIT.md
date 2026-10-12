@@ -1,3 +1,5 @@
+> Superseded. Current: CLAUDE.md and docs/MAPLIBRE_SURFACES.md, which carries this file's "do not re-fix" list at its end. History, not instructions.
+
 # Map overhaul — audit, plan, and sequencing
 
 _Fresh multi-agent audit (July 2026): 5 parallel readers across rendering/style,
@@ -94,6 +96,9 @@ weaken the hazard-photo/spam gate without owner sign-off.
    ship the Mark sheet with the location line hidden until this exists.
 
 ## Verified non-issues (do NOT re-fix)
+
+This list was re-checked and carried to the end of docs/MAPLIBRE_SURFACES.md on 2026-10-08.
+
 - OSM cache TTL is honored (`constants.ts` `OSM_CACHE_TTL_MS`).
 - civic/transit/trails/aerial DO render in the active-filters strip (audit
   self-retracted).
