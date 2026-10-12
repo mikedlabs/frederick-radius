@@ -22,6 +22,7 @@ type MapEventInput = Pick<
   | "last_verified_at"
   | "is_verified"
   | "organizer"
+  | "municipality"
 >;
 
 /**
@@ -42,6 +43,7 @@ export function eventPinFromEvent(
 
   const pin: EventPin = {
     slug: event.slug,
+    municipality: event.municipality,
     title: event.title,
     starts_at: event.starts_at,
     ends_at: event.ends_at,

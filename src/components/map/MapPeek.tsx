@@ -2,6 +2,9 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { placePhotoFailureSignalSrc } from "@/components/place/PlaceHeroMedia";
 import {
   ArrowRight,
   Bookmark,
@@ -20,7 +23,6 @@ import { toast } from "sonner";
 import { haptic } from "@/lib/haptics";
 import { logActivity, track } from "@/lib/track";
 import { trackDecision } from "@/lib/decision/telemetry";
-import PlacePhoto from "@/components/place/PlacePhoto";
 import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import type { EventPin, MapPinPlace } from "./types";
@@ -47,6 +49,92 @@ type MapCardDetails = {
   open_status?: OpenStatus;
   hours_updated_at?: string;
 };
+
+/** Only the selected-place identity is keyed. Source changes reset image and
+ * credit readiness while retaining the heading/actions and keyboard focus.
+ * Credits follow the heading row without overlapping its details hit target. */
+export function MapPeekPhoto({
+  src, placeName, glyph, color, googlePhoto, attribution, googleMapsUri,
+  slug, photoPending = false, onOpenDetails, children,
+}: {
+  src?: string;
+  placeName: string;
+  glyph: string;
+  color: string;
+  googlePhoto: boolean;
+  attribution?: GooglePhotoAttribution;
+  googleMapsUri?: string;
+  slug?: string;
+  photoPending?: boolean;
+  onOpenDetails: () => void;
+  children?: React.ReactNode;
+}) {
+  const [photo, setPhoto] = useState<{ source: string | null; state: "loading" | "ready" | "failed"; generation: number }>(() => ({ source: src ?? null, state: "loading", generation: 0 }));
+  const identity = src ?? null;
+  if (photo.source !== identity) {
+    // React retries this component before committing its changed source.
+    // The action row stays mounted; even an A→B→A switch receives a fresh
+    // generation instead of borrowing A's earlier successful image state.
+    setPhoto({ source: identity, state: "loading", generation: photo.generation + 1 });
+  }
+  const state = photo.source === identity ? photo.state : "loading";
+  const ready = state === "ready" && Boolean(src);
+  const source = src ? placePhotoFailureSignalSrc(src) : null;
+  const reportState = (state: "ready" | "failed") => setPhoto(current =>
+    current.source === identity && current.generation === photo.generation
+      ? { ...current, state }
+      : current,
+  );
+  return (
+    <>
+      <div className="map-peek-body" data-map-place-slug={slug}>
+        <button
+          type="button"
+          className="map-peek-visual"
+          data-loading={photoPending || undefined}
+          onClick={onOpenDetails}
+          aria-label={`Open details for ${placeName}`}
+        >
+          {source && state !== "failed" ? (
+            <Image
+              key={photo.generation}
+              src={source}
+              alt={ready ? `Photo of ${placeName}` : ""}
+              aria-hidden={!ready || undefined}
+              data-map-peek-photo-state={state}
+              fill
+              unoptimized={source.startsWith("/api/place-photo")}
+              sizes="78px"
+              placeholder="blur"
+              blurDataURL={PAPER_CREAM_BLUR}
+              className="absolute inset-0 h-full w-full object-cover"
+              onLoad={(event) => reportState(event.currentTarget.naturalWidth > 1 && event.currentTarget.naturalHeight > 1 ? "ready" : "failed")}
+              onError={() => reportState("failed")}
+            />
+          ) : (
+            <span
+              aria-hidden
+              data-map-peek-photo-state={state === "failed" ? "failed" : undefined}
+              className="map-peek-category-mark"
+              style={{ "--map-peek-color": color } as React.CSSProperties}
+            >
+              {glyph}
+            </span>
+          )}
+        </button>
+        {children}
+      </div>
+      {ready && googlePhoto && (
+        <div
+          className="map-peek-source-credit mt-2 border-t text-xs leading-relaxed [&_a]:min-h-11 [&_a]:min-w-11 [&_a]:justify-center"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+        >
+          <GooglePhotoAttributionLine attribution={attribution} placeGoogleMapsUri={googleMapsUri} compact showAvatar={false} touchTarget />
+        </div>
+      )}
+    </>
+  );
+}
 
 function statusTone(status: OpenStatus): string {
   switch (status.state) {
@@ -293,46 +381,19 @@ export default function MapPeek({
       closeLabel={`Close ${place.name}`}
       onClose={onClose}
     >
-      <div className="map-peek-body" data-map-place-slug={place.slug}>
-        <button
-          type="button"
-          className="map-peek-visual"
-          data-loading={photoPending || undefined}
-          onClick={openDetails}
-          aria-label={`Open details for ${place.name}`}
-        >
-          {photoUrl ? (
-            <>
-              <PlacePhoto
-                src={photoUrl}
-                alt={`Photo of ${place.name}`}
-                glyph={place.name.slice(0, 1)}
-                color={catColor}
-                sizes="78px"
-                className="absolute inset-0 h-full w-full"
-              />
-              {activeDetails?.google_photo_url && (
-                <span className="map-peek-photo-credit">
-                  <GooglePhotoAttributionLine
-                    attribution={activeDetails.google_photo_attribution}
-                    placeGoogleMapsUri={activeDetails.google_maps_uri}
-                    compact
-                    showAvatar={false}
-                  />
-                </span>
-              )}
-            </>
-          ) : (
-            <span
-              aria-hidden
-              className="map-peek-category-mark"
-              style={{ "--map-peek-color": catColor } as React.CSSProperties}
-            >
-              {place.name.slice(0, 1)}
-            </span>
-          )}
-        </button>
-
+      <MapPeekPhoto
+        key={place.slug}
+        src={photoUrl}
+        placeName={place.name}
+        glyph={place.name.slice(0, 1)}
+        color={catColor}
+        googlePhoto={Boolean(activeDetails?.google_photo_url && activeDetails.google_photo_url === photoUrl)}
+        attribution={activeDetails?.google_photo_attribution}
+        googleMapsUri={activeDetails?.google_maps_uri}
+        slug={place.slug}
+        photoPending={photoPending}
+        onOpenDetails={openDetails}
+      >
         <div className="map-peek-text">
           <span className="map-peek-cat" style={{ color: "var(--app-ink-3)" }}>
             {cat?.name ?? place.category}
@@ -355,7 +416,7 @@ export default function MapPeek({
             <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
           </button>
         </div>
-      </div>
+      </MapPeekPhoto>
 
       {aroundCount > 0 && (
         <details className="map-peek-around">

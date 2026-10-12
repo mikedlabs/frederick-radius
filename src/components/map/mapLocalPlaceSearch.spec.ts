@@ -154,3 +154,17 @@ describe("immediateMapPlaceResults", () => {
     expect(merged?.distance_m).not.toBe(174);
   });
 });
+
+
+it("preserves canonical mixed search order without appending unqualified immediate matches", () => {
+  const immediate = [{ type: "place" as const, id: "place:coffee", title: "Coffee", subtitle: "Immediate name match", href: "/places/coffee" }];
+  const server = [{ type: "event" as const, id: "event:coffee-show", title: "Coffee show", subtitle: "Actual event", href: "/events/coffee-show" }, immediate[0]];
+  expect(reconcileMapSearchResults(immediate, server, "Coffee", 20, true).map(result => result.id)).toEqual(["event:coffee-show", "place:coffee"]);
+  expect(reconcileMapSearchResults(immediate, [], "Coffee open now", 20, true)).toEqual([]);
+});
+
+
+it("keeps distinct canonical event occurrences even when their titles repeat", () => {
+  const results = ["first-occurrence", "second-occurrence"].map(slug => ({ type: "event" as const, id: `event:${slug}`, title: "Recurring performance", subtitle: slug, href: `/events/${slug}` }));
+  expect(reconcileMapSearchResults([], results, "performance", 20, true).map(result => result.id)).toEqual(results.map(result => result.id));
+});

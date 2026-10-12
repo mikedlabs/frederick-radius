@@ -25,6 +25,7 @@ import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { browseSafePhotoUrl } from "@/lib/google-photo-policy";
 import { findDepartments, jurisdictionLabel } from "@/data/departments";
+import { eventSourceLabel } from "@/lib/events/source-label";
 import { isHighConfidenceCivicIntent, searchCivicActions, shouldShowDepartmentAnswers } from "@/lib/search/civic";
 import { negatedSearchFeatures, parseSearchQualifiers, searchFeatureCaveat, type SearchPlaceFeature } from "@/lib/search/qualifiers";
 
@@ -41,6 +42,12 @@ export type SearchResult = {
   title: string;
   subtitle: string;
   href: string;
+  /** Canonical event evidence for ranked map links outside its loaded pin window.
+   * This is listing data, not a new map pin or live availability check. */
+  event?: Pick<Event, "starts_at" | "ends_at" | "is_all_day" | "venue_name" | "municipality"> & {
+    source_label: string;
+    point?: { lng: number; lat: number };
+  };
   /** Compact category/municipality hint for badges. */
   badge?: string;
   /**
@@ -734,6 +741,16 @@ function hitToResult(h: SearchHit): SearchResult {
       subtitle: `${e.venue_name} · ${new Date(e.starts_at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" })}`,
       href: `/events/${e.slug}`,
       badge: e.category,
+      event: {
+        starts_at: e.starts_at,
+        ends_at: e.ends_at,
+        is_all_day: e.is_all_day,
+        venue_name: e.venue_name,
+        municipality: e.municipality,
+        source_label: eventSourceLabel(e.source, e.organizer),
+        ...(e.placement !== "needs_review" && Number.isFinite(e.geom?.lng) && Number.isFinite(e.geom?.lat)
+          ? { point: { lng: e.geom.lng, lat: e.geom.lat } } : {}),
+      },
       trust: eventTrust(e),
       thumbnail: browseSafePhotoUrl(e.hero_image),
     };

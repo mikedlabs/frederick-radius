@@ -27,6 +27,7 @@ import { garagePlanFor } from "@/lib/parking-forecast";
 import { type ParkingPin } from "@/lib/map/parking";
 import { mapPopupSource } from "./mapPopupSource";
 import MapResultSurface from "./MapResultSurface";
+import { withMapReturnTo } from "@/lib/map-return";
 
 function eventWhen(startsAt: string): string {
   const date = new Date(startsAt);
@@ -95,7 +96,7 @@ export function MapEventPeek({
           </span>
           <span className="map-peek-name font-serif">{event.title}</span>
           <span className="map-peek-detail">{event.venue_name}</span>
-          <span className="map-peek-source">Radius event listing</span>
+          <span className="map-peek-source">Listing from {event.source_label ?? "Frederick Radius"}. Confirm with the organizer before you go.</span>
           {plan && (
             <span className="map-peek-detail" style={{ marginTop: '8px', padding: '6px 8px', background: 'var(--app-bg-sunken)', borderRadius: '6px' }}>
               <strong>Parking near here:</strong> {plan.primaryGarage.name}.
@@ -113,7 +114,7 @@ export function MapEventPeek({
           <CornerUpRight className="h-4 w-4" strokeWidth={2} aria-hidden />
           Directions
         </a>
-        <Link href={`/events/${event.slug}`} className="map-peek-act">
+        <Link href={withMapReturnTo(`/events/${event.slug}`, typeof window === "undefined" ? null : `${window.location.pathname}${window.location.search}${window.location.hash}`)} className="map-peek-act">
           Event details
         </Link>
       </div>

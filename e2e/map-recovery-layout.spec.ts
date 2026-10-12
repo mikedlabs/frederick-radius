@@ -32,11 +32,12 @@ async function installRecoveryBoundary(page: Page, photosAvailable = false) {
       await route.abort("blockedbyclient");
     } else if (url.pathname === "/api/map/places") {
       await route.fulfill({ json: { generatedAt: new Date().toISOString(), places: localPins } });
-    } else if (photosAvailable && url.pathname === "/api/places/by-slugs") {
-      const requested = new Set((url.searchParams.get("slugs") ?? "").split(","));
-      await route.fulfill({ json: { places: coffeePlaces
-        .filter((place) => requested.has(place.slug))
-        .map((place) => ({ slug: place.slug, google_photo_url: place.google_photo_url })) } });
+    } else if (photosAvailable && url.pathname.startsWith("/api/places/map-card/")) {
+      const slug = decodeURIComponent(url.pathname.split("/").at(-1)!);
+      const place = coffeePlaces.find((place) => place.slug === slug);
+      await route.fulfill({ json: { place: place
+        ? { slug: place.slug, google_photo_url: place.google_photo_url }
+        : null } });
     } else if (photosAvailable && url.pathname === "/api/place-photo") {
       // Real catalog photo metadata exercises the ready-media layout. These
       // clearly labelled fixture bytes never fetch or depict a provider photo.
@@ -88,23 +89,26 @@ async function recoveryGeometry(page: Page) {
     const dock = host.querySelector<HTMLElement>("[data-map-dock]")!;
     const heading = host.querySelector<HTMLElement>("#map-error-title")!;
     const list = host.querySelector<HTMLElement>(".map-error-fallback .map-list")!;
-    const last = list.querySelectorAll<HTMLElement>(".map-list-row");
+    const last = list.querySelectorAll<HTMLElement>("[data-map-list-place]");
     const bounds = (element: Element) => {
       const box = element.getBoundingClientRect();
       return { x: box.x, y: box.y, width: box.width, height: box.height, bottom: box.bottom, right: box.right };
     };
-    const headingBox = heading.getBoundingClientRect();
-    const headingPoints = [
-      [headingBox.left + 1, headingBox.top + 1],
-      [headingBox.right - 1, headingBox.top + 1],
-      [headingBox.left + 1, headingBox.bottom - 1],
-      [headingBox.right - 1, headingBox.bottom - 1],
-      [headingBox.left + headingBox.width / 2, headingBox.top + headingBox.height / 2],
-    ];
+    const unobscured = (element: HTMLElement) => {
+      const box = element.getBoundingClientRect();
+      const points = [
+        [box.left + 1, box.top + 1],
+        [box.right - 1, box.top + 1],
+        [box.left + 1, box.bottom - 1],
+        [box.right - 1, box.bottom - 1],
+        [box.left + box.width / 2, box.top + box.height / 2],
+      ];
+      return points.every(([x, y]) => element.contains(document.elementFromPoint(x, y)));
+    };
     return {
       host: bounds(host), dock: bounds(dock), heading: bounds(heading), list: bounds(list),
       lastResult: last.length ? bounds(last[last.length - 1]) : null,
-      headingUnobscured: headingPoints.every(([x, y]) => heading.contains(document.elementFromPoint(x, y))),
+      headingUnobscured: unobscured(heading),
       measuredDockHeight: parseFloat((host as HTMLElement).style.getPropertyValue("--map-dock-height")),
       bottomPadding: parseFloat(getComputedStyle(list).paddingBottom),
       scrollTop: list.scrollTop, scrollHeight: list.scrollHeight, clientHeight: list.clientHeight,
@@ -115,7 +119,7 @@ async function recoveryGeometry(page: Page) {
 
 for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 }]) {
  for (const photosAvailable of [false, true]) {
-  test.describe(`Map recovery layout at ${viewport.width}px${photosAvailable ? " with ready photos" : ""}`, () => {
+  test.describe(`Map recovery layout at ${viewport.width}px${photosAvailable ? " with ready selected photos" : ""}`, () => {
     test.use({ viewport });
     test("a closed return/search dock leaves the scoped recovery heading and final result clear", async ({ page }, testInfo) => {
       test.setTimeout(60_000);
@@ -132,13 +136,41 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
       await expect(back).toBeVisible();
       const list = page.getByRole("region", { name: "Available results without the map" });
       await expect(list.getByRole("button", { name: /Beans in the Belfry/ })).toBeVisible();
-      await expect(list.locator(".map-list-row")).toHaveCount(coffeePlaces.filter((place) => place.municipality === "brunswick").length);
+      const scopedPlaces = coffeePlaces.filter((place) => place.municipality === "brunswick");
+      await expect(list.locator("[data-map-list-place]")).toHaveCount(scopedPlaces.length);
       await expect(list).not.toContainText("Market Street Boba Beans");
-      if (photosAvailable) {
-        await expect(list.locator('[data-photo-state="ready"]')).toHaveCount(
-          coffeePlaces.filter((place) => place.municipality === "brunswick" && place.google_photo_url).length,
-        );
+      // Ranked rows use category marks. Eligible photos belong to the selected
+      // rich card, so verify the same scoped catalog photo count there rather
+      // than requiring the initial list to bulk-load provider imagery.
+      await expect(list.locator("img")).toHaveCount(0);
+      const scopedPhotoPlaces = scopedPlaces.filter((place) => place.google_photo_url);
+      const origin = page.url();
+      let readyPhotos = 0;
+      for (const place of scopedPhotoPlaces) {
+        await list.locator(`[data-map-list-place="${place.slug}"]`).click();
+        const card = page.locator(`.map-peek-body[data-map-place-slug="${place.slug}"]`);
+        await expect(card).toBeVisible();
+        await expect(card.locator('[data-loading="true"]')).toHaveCount(0);
+        if (photosAvailable) {
+          const image = card.getByRole("img", { name: `Photo of ${place.name}`, exact: true });
+          await expect(image).toHaveAttribute("data-map-peek-photo-state", "ready");
+          expect(await image.evaluate((element) => {
+            const image = element as HTMLImageElement;
+            return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1;
+          })).toBe(true);
+          readyPhotos += 1;
+        } else {
+          await expect(card.locator("img")).toHaveCount(0);
+          await expect(page.locator(".map-peek-source-credit")).toHaveCount(0);
+        }
+        await page.goBack();
+        await expect(page).toHaveURL(origin);
+        await expect(list.locator("[data-map-list-place]")).toHaveCount(scopedPlaces.length);
+        await expect(list).not.toContainText("Market Street Boba Beans");
+        await expect(search).toHaveValue("coffee");
+        await expect(back).toHaveAttribute("href", returnTo);
       }
+      expect(readyPhotos).toBe(photosAvailable ? scopedPhotoPlaces.length : 0);
       await page.evaluate(() => document.fonts.ready);
       await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
 
@@ -170,7 +202,23 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
         const geometry = await recoveryGeometry(page);
         return Math.abs(geometry.measuredDockHeight - geometry.dock.height);
       }).toBeLessThan(1);
-      await list.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+      // Ranked rows have an inner scrolling viewport. First reveal the final
+      // row through its actual ancestors, then clear the still-useful dock in
+      // the outer region. Maximizing both scroll areas would overshoot it.
+      const lastResult = list.locator("[data-map-list-place]").last();
+      await lastResult.evaluate((element) => {
+        element.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+      });
+      await list.evaluate((region) => {
+        const rows = region.querySelectorAll<HTMLElement>("[data-map-list-place]");
+        const row = rows[rows.length - 1];
+        const dock = region.closest(".dock-host")!.querySelector<HTMLElement>("[data-map-dock]")!;
+        const regionBox = region.getBoundingClientRect();
+        const dockBox = dock.getBoundingClientRect();
+        if (dockBox.top > regionBox.top && dockBox.top < regionBox.bottom) {
+          region.scrollTop += Math.max(0, row.getBoundingClientRect().bottom - dockBox.top);
+        }
+      });
       const final = await recoveryGeometry(page);
       await testInfo.attach("final-recovery-geometry", { body: JSON.stringify(final, null, 2), contentType: "application/json" });
       await testInfo.attach("final-recovery-layout", { body: await page.screenshot({ fullPage: false }), contentType: "image/png" });
@@ -178,7 +226,11 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
       expect(final.horizontalOverflow).toBe(false);
       await expect(search).toHaveValue("coffee");
       await expect(back).toHaveAttribute("href", returnTo);
-      const finalTargets = { back: await assert44HitTarget(back), search: await assert44HitTarget(search) };
+      const finalTargets = {
+        back: await assert44HitTarget(back),
+        search: await assert44HitTarget(search),
+        lastResult: await assert44HitTarget(lastResult),
+      };
       await testInfo.attach("final-recovery-hit-targets", { body: JSON.stringify(finalTargets, null, 2), contentType: "application/json" });
       if (viewport.width < 1024) {
         expect(finalTargets.back.width).toBe(44);

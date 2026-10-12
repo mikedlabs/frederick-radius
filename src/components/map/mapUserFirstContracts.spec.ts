@@ -45,7 +45,6 @@ describe("user-first map contracts", () => {
     expect(end).toBeGreaterThan(start);
     for (const label of [
       "Public essentials",
-      "Nearby",
       "Happening",
       "Get around",
       "Conditions",
@@ -54,11 +53,14 @@ describe("user-first map contracts", () => {
     }
     expect(contents).not.toContain("<strong>Area</strong>");
     expect(contents).toContain("whatChangedScene && !whatChangedUnavailable");
-    expect(contents).toContain("onClick={applyNearbyOutcome}");
+    expect(contents).toContain("MAP_TASK_TILES.map");
+    expect(contents).toContain("props.onTask?.");
+    expect(contents).not.toContain("onClick={applyNearbyOutcome}");
+    expect(contents).not.toContain("<strong>Nearby</strong>");
     expect(contents).toContain('openContentsPane("when")');
     expect(contents).toContain('openContentsPane("layers")');
     expect(contents).toContain('openContentsPane("conditions")');
-    expect(dock).toContain('setPane("what")');
+    expect(dock).toContain('openContentsPane("what")');
   });
 
   it("restores focus for explicit closes but hands a map gesture back to the canvas", () => {
