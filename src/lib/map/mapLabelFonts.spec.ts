@@ -7,20 +7,32 @@ import {
 } from "@/lib/map/frederickFlavorStyle";
 
 /**
- * The map's label fonts have to agree with the glyphs we actually vendor,
- * and nothing at runtime enforces that.
+ * Map label fonts have to agree with the glyphs each engine can serve, and
+ * nothing at runtime enforces that.
  *
  * MapLibre answers a missing glyph range with a console warning and a local
  * browser font, so a wrong `text-font` produces labels that are subtly off in
- * weight and spacing rather than labels that are absent. The MapLibre swap hit
- * exactly that: layers carried Mapbox's "DIN Pro Medium", and several carried
- * nothing at all and inherited the spec default of "Open Sans Regular", so
- * every app label on /map fell back to local rendering while the map otherwise
- * looked fine.
+ * weight and spacing rather than labels that are absent. The August 2026
+ * MapLibre swap hit exactly that on /map: layers carried Mapbox's
+ * "DIN Pro Medium", and several carried nothing at all and inherited the spec
+ * default of "Open Sans Regular".
  *
- * Two halves, because either one alone still lets the bug back in:
- *   1. Every stack the code names is one scripts/fetch-basemap.mjs downloads.
- *   2. Every symbol layer names a stack, since silence means Open Sans.
+ * #1552 then put /map, radius and transit back on Mapbox GL, so the files in
+ * SYMBOL_LAYER_SOURCES (AppMap, MapDiscoveryOverlay, RadiusMap, TransitMap)
+ * are Mapbox surfaces today, not MapLibre ones. They name the Mapbox-hosted
+ * MAPBOX_LABEL_FONT_* stacks from src/components/map/mapboxFieldGuideStyle.ts
+ * through those constants, which is why the "no Mapbox-hosted stack" test
+ * still passes: it reads these files, not mapboxFieldGuideStyle.ts.
+ * MapLibre surfaces (docs/MAPLIBRE_SURFACES.md) must use MAP_LABEL_FONT_* from
+ * src/lib/map/frederickFlavorStyle.ts, and no MapLibre file is in
+ * SYMBOL_LAYER_SOURCES yet.
+ *
+ * What runs here:
+ *   1. Every MapLibre stack in MAP_LABEL_FONT_* is one
+ *      scripts/fetch-basemap.mjs downloads.
+ *   2. Every symbol layer in SYMBOL_LAYER_SOURCES names a stack, since
+ *      silence means Open Sans.
+ *   3. Those files never spell out a Mapbox-hosted stack name themselves.
  */
 
 const ROOT = join(__dirname, "..", "..", "..");
