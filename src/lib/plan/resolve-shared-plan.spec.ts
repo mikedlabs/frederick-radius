@@ -136,6 +136,12 @@ describe("current event outing resolution", () => {
     expect(Date.parse(rebuilt.i.start_at!)).toBe(Date.parse(starts_at));
     expect(rebuilt.s).toEqual(original.s);
   });
+  it("keeps stricter distance and hours constraints in the event chooser", async () => {
+    const original = { ...spec(), i: { ...spec().i, max_distance_m: 100, require_verified_hours: true } };
+    const context = await resolvePlanChoiceContext(original, { now, sources: sources(event()) });
+    expect(context.spec.i.max_distance_m).toBe(100);
+    expect(context.spec.i.require_verified_hours).toBe(true);
+  });
   it("uses the explicit event anchor for choices even when another event reference comes first", async () => {
     const selected = event({ slug: "selected-concert", geom: { lng: -77.445, lat: 39.4142 } });
     const other = event({ slug: "first-concert", starts_at: "2026-10-06T16:00:00-04:00", ends_at: "2026-10-06T18:00:00-04:00" });

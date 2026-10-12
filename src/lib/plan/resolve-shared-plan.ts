@@ -112,5 +112,5 @@ export async function resolvePlanChoiceContext(spec: PlanSpec, options: Paramete
   const events = await resolvePlanEventEvidence(spec, options);
   const event = planAnchorEvent(spec, events);
   if (!event) return { spec, events, eventAvailable: false };
-  return { events, eventAvailable: true, spec: { ...spec, i: { ...spec.i, event_anchor_slug: event.slug, start_near: event.geom, start_at: event.ends_at, max_distance_m: 1_600, require_verified_hours: false } } };
+  return { events, eventAvailable: true, spec: { ...spec, i: { ...spec.i, event_anchor_slug: event.slug, start_near: event.geom, start_at: event.ends_at, max_distance_m: Math.min(spec.i.max_distance_m ?? 1_600, 1_600), require_verified_hours: spec.i.require_verified_hours ?? false } } };
 }

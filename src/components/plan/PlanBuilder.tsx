@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type CSSProperties } from "react";
 import {
   AlertCircle,
   CalendarDays,
@@ -31,7 +31,6 @@ import BottomDrawer from "@/components/ui/BottomDrawer";
 import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { formatDistance } from "@/lib/geo";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type {
@@ -41,7 +40,13 @@ import type {
   PlanSlotCategory,
 } from "@/lib/integrations/planner";
 import { useFollowedSlugs } from "@/hooks/useFollows";
-import EventImageAttribution from "@/components/event/EventImageAttribution";
+import PlanStopPhoto from "./PlanStopPhoto";
+import PlanStopsMap from "./PlanStopsMap";
+import { revealPlan } from "./plan-motion";
+import { rebuildPlanInputs, planConstraintLabels, planDistanceForArea } from "./plan-inputs";
+import { checkPlanBeforeVisit } from "./visit-check-action";
+import type { PlanVisitCheck } from "@/lib/plan/visit-check";
+import styles from "./PlanBuilder.module.css";
 import { decodeSpec } from "@/lib/integrations/planner";
 import { updatedPlanHref } from "@/lib/plan-journey";
 import { isDestinationCategory, isRecommendable } from "@/lib/relevance";
@@ -50,6 +55,7 @@ import {
   addStop,
   planFromToken,
   generatePlan,
+  regeneratePinnedPlan,
   removeStop,
   setStop,
   stopAlternatives,
@@ -108,12 +114,18 @@ export default function PlanBuilder({
   const [audience, setAudience] = useState<PlanInputs["audience"]>(initialInputs?.audience ?? "date");
   const [vibe, setVibe] = useState<PlanInputs["vibe"]>(initialInputs?.vibe ?? "easy");
   const [hours, setHours] = useState<PlanInputs["duration_hours"]>(initialInputs?.duration_hours ?? 3);
+  const [verifiedHoursOnly, setVerifiedHoursOnly] = useState(() => {
+    const sharedInputs = initialPlan ? decodeSpec(initialPlan.share)?.i : null;
+    if (sharedInputs) return sharedInputs.require_verified_hours ?? Boolean(sharedInputs.start_at);
+    return initialInputs?.require_verified_hours ?? false;
+  });
   const [startMode, setStartMode] = useState<StartMode>(initialInputs?.start_at ? "custom" : "now");
   const [customStart, setCustomStart] = useState(() => toLocalInput(initialInputs?.start_at));
   const [area, setArea] = useState(() => {
-    if (!initialInputs) return "frederick";
+    if (!initialInputs) return "county";
     return initialInputs.municipality ?? "county";
   });
+  const [planArea, setPlanArea] = useState(initialInputs?.municipality ?? "county");
   const [near, setNear] = useState<{ lng: number; lat: number } | null>(null);
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [plan, setPlan] = useState<Plan | null>(initialPlan ?? null);
@@ -125,8 +137,13 @@ export default function PlanBuilder({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [busy, setBusy] = useState<number | null>(null);
+  const [visitCheck, setVisitCheck] = useState<PlanVisitCheck | null>(null);
+  const [checkClock, setCheckClock] = useState(0);
+  const [startedNew, setStartedNew] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const resultRef = useRef<HTMLElement>(null);
+  const locationRequest = useRef(0);
+  useEffect(() => () => { locationRequest.current += 1; }, []);
 
   const [pinned, setPinned] = useState<Set<string>>(() => new Set(initialInputs?.anchor_slug ? [initialInputs.anchor_slug] : []));
   const [swapIdx, setSwapIdx] = useState<number | null>(null);
@@ -174,14 +191,17 @@ export default function PlanBuilder({
       setGeoMsg("Location is not available in this browser.");
       return;
     }
+    const request = ++locationRequest.current;
     setGeoMsg("Finding your location…");
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        if (request !== locationRequest.current) return;
         setNear({ lng: position.coords.longitude, lat: position.coords.latitude });
         setArea("near");
         setGeoMsg("The route will start near your current location. Your coordinates will not be added to the share link.");
       },
       (error) => {
+        if (request !== locationRequest.current) return;
         setGeoMsg(error?.code === 1
           ? "Location is off. Choose an area or allow location access."
           : "Radius could not get your location. Choose an area instead.");
@@ -196,12 +216,16 @@ export default function PlanBuilder({
       else requestMyLocation();
       return;
     }
+    locationRequest.current += 1;
     setArea(nextArea);
     setNear(null);
     setGeoMsg(null);
   };
 
-  const activeEventAnchor = plan ? decodeSpec(plan.share)?.i.event_anchor_slug : undefined;
+  const currentSpec = plan ? decodeSpec(plan.share) : null;
+  const inputContext = { currentSpec, initialInputs: startedNew ? { ...initialInputs, anchor_slug: undefined, event_anchor_slug: undefined } : initialInputs };
+  const constraintLabels = planConstraintLabels(inputContext);
+  const activeEventAnchor = currentSpec?.i.event_anchor_slug;
   const scheduledEventStop = plan?.stops.find((stop) => stop.event);
 
   const buildInputs = (): PlanInputs | null => {
@@ -210,22 +234,12 @@ export default function PlanBuilder({
       setErrorMsg("Choose a valid date and time before building the plan.");
       return null;
     }
-    return {
-      audience,
-      vibe,
-      duration_hours: hours,
-      start_at: startAt,
-      ...(activeEventAnchor ? { event_anchor_slug: activeEventAnchor } : {}),
-      ...(initialInputs?.anchor_slug && plan?.stops.some((stop) => stop.place?.slug === initialInputs.anchor_slug)
-        ? { anchor_slug: initialInputs.anchor_slug }
-        : {}),
-      ...(selectedTown ? {
-        municipality: selectedTown.slug,
-        start_near: selectedTown.centroid,
-      } : {}),
-      ...(area === "county" ? { max_distance_m: 60_000 } : {}),
-      ...(area === "near" && near ? { start_near: near, max_distance_m: 16_000 } : {}),
-    };
+    return { ...rebuildPlanInputs({
+      audience, vibe, duration_hours: hours, start_at: startAt,
+      ...(selectedTown ? { municipality: selectedTown.slug, start_near: selectedTown.centroid } : {}),
+      max_distance_m: planDistanceForArea(area, planArea, inputContext),
+      ...(area === "near" && near ? { start_near: near } : {}),
+    }, inputContext), require_verified_hours: verifiedHoursOnly };
   };
 
   const onBuild = () => {
@@ -235,20 +249,30 @@ export default function PlanBuilder({
     setStatusMsg("Building a route that fits those choices…");
     startTransition(async () => {
       try {
-        const result = await generatePlan(inputs);
+        const selectedPins = [...pinned].filter((slug) => currentSpec?.s.some((ref) => "p" in ref && ref.p === slug));
+        const result = plan && selectedPins.length > 0
+          ? await regeneratePinnedPlan(plan.share, inputs, selectedPins)
+          : await generatePlan(inputs);
         if (!result) throw new Error("No plan returned");
-        setPlan(result);
-        if (inputs.event_anchor_slug) {
-          const resolved = decodeSpec(result.share)?.i;
-          if (resolved) { setHours(resolved.duration_hours); setCustomStart(toLocalInput(resolved.start_at)); setStartMode("custom"); }
-        }
-        setPlanMunicipality(inputs.municipality);
-        setPlanAreaLabel(areaLabel);
-        setDrawerOpen(false);
-        setStatusMsg(result.stops.length > 0
-          ? `Built a ${result.stops.length}-stop plan for ${areaLabel}.`
-          : "Radius could not confirm an open route for those choices.");
-        replacePlanUrl(result.share);
+        await revealPlan(() => {
+          setPlan(result);
+          setPinned((previous) => pinsInPlan(previous, result));
+          setVisitCheck(null);
+          if (inputs.event_anchor_slug) {
+            const resolved = decodeSpec(result.share)?.i;
+            if (resolved) { setHours(resolved.duration_hours); setCustomStart(toLocalInput(resolved.start_at)); setStartMode("custom"); }
+          }
+          setPlanArea(area);
+          setPlanMunicipality(inputs.municipality);
+          setPlanAreaLabel(areaLabel);
+          setDrawerOpen(false);
+          setStatusMsg(result.stops.length > 0
+            ? `Built a ${result.stops.length}-stop plan for ${areaLabel}.`
+            : inputs.require_verified_hours
+              ? "Radius could not confirm venue hours for this outing."
+              : "No stops fit those choices yet.");
+          replacePlanUrl(result.share);
+        });
         window.setTimeout(() => resultRef.current?.focus(), 50);
       } catch {
         setErrorMsg("Radius could not build this plan. Please try again.");
@@ -257,7 +281,7 @@ export default function PlanBuilder({
     });
   };
 
-  const mutate = (work: () => Promise<Plan | null>, index: number | null, success: string) => {
+  const mutate = (work: () => Promise<Plan | null>, index: number | null, success: string, onSuccess?: () => void) => {
     setBusy(index);
     setErrorMsg(null);
     startTransition(async () => {
@@ -265,6 +289,9 @@ export default function PlanBuilder({
         const result = await work();
         if (!result) throw new Error("No updated plan returned");
         setPlan(result);
+        setPinned((previous) => pinsInPlan(previous, result));
+        setVisitCheck(null);
+        onSuccess?.();
         setStatusMsg(success);
         replacePlanUrl(result.share);
       } catch {
@@ -311,16 +338,12 @@ export default function PlanBuilder({
   const chooseStop = (index: number, slug: string) => {
     if (!plan) return;
     const oldSlug = plan.stops.find((stop, displayIndex) => (stop.spec_index ?? displayIndex) === index)?.place?.slug;
-    if (oldSlug && pinned.has(oldSlug)) {
-      setPinned((current) => {
-        const next = new Set(current);
-        next.delete(oldSlug);
-        next.add(slug);
-        return next;
-      });
-    }
     setSwapIdx(null);
-    mutate(() => setStop(plan.share, index, slug), index, "That stop has been changed.");
+    mutate(() => setStop(plan.share, index, slug), index, "That stop has been changed.", () => {
+      if (oldSlug && pinned.has(oldSlug)) setPinned((current) => {
+        const next = new Set(current); next.delete(oldSlug); next.add(slug); return next;
+      });
+    });
   };
 
   const togglePin = (slug: string) => {
@@ -347,8 +370,7 @@ export default function PlanBuilder({
   const addFromSaved = (slug: string) => {
     if (!plan) return;
     setAddOpen(false);
-    setPinned((current) => new Set(current).add(slug));
-    mutate(() => addStop(plan.share, slug), null, "Your saved place has been added.");
+    mutate(() => addStop(plan.share, slug), null, "Your saved place has been added.", () => setPinned((current) => new Set(current).add(slug)));
   };
 
   const onShare = async () => {
@@ -369,14 +391,48 @@ export default function PlanBuilder({
   };
 
   const startOver = () => {
+    if (pending) return;
     setPlan(null);
+    setVisitCheck(null);
+    setPinned(new Set());
+    setStartedNew(true);
+    locationRequest.current += 1;
+    setGeoMsg(null);
+    setStartMode("now");
+    setCustomStart("");
     setStatusMsg(null);
     setErrorMsg(null);
     window.history.replaceState(null, "", updatedPlanHref(new URL(window.location.href)));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const checkBeforeVisit = () => {
+    if (!plan || pending) return;
+    setErrorMsg(null);
+    startTransition(async () => {
+      try {
+        const result = await checkPlanBeforeVisit(plan.share);
+        if (!result) throw new Error("Plan check unavailable");
+        setPlan(result.plan);
+        setPinned((previous) => pinsInPlan(previous, result.plan));
+        setVisitCheck(result.briefing);
+        setCheckClock(Date.now());
+        setStatusMsg("The plan check is ready. Review the sources before setting out.");
+      } catch {
+        setErrorMsg("Radius could not check this plan. Your choices are still here. Please try again.");
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (!visitCheck) return;
+    const timer = window.setInterval(() => setCheckClock(Date.now()), 15_000);
+    return () => window.clearInterval(timer);
+  }, [visitCheck]);
+  const checkExpired = Boolean(visitCheck?.validUntil && Date.parse(visitCheck.validUntil) <= checkClock);
+
   const controls = (
+    <fieldset disabled={pending}>
     <PlannerFields
       eventStart={activeEventAnchor ? scheduledEventStop?.at ?? initialInputs?.start_at ?? "" : undefined}
       area={area}
@@ -393,35 +449,44 @@ export default function PlanBuilder({
       onVibeChange={setVibe}
       hours={hours}
       onHoursChange={setHours}
+      verifiedHoursOnly={verifiedHoursOnly}
+      onVerifiedHoursOnlyChange={setVerifiedHoursOnly}
     />
+    </fieldset>
   );
 
   return (
-    <div className="mx-auto max-w-3xl pb-8">
+    <div className={styles.builder}>
       {!plan && (
+        <div className={styles.startLayout}>
+        <PlanScene />
         <section
           className="tactile rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 sm:p-5"
           style={{ borderColor: "var(--app-border)" }}
         >
+          <p className="mb-4 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>Choose an area and a start time. Your outing can include places you have saved.</p>
           {controls}
           <button
             type="button"
             onClick={onBuild}
             disabled={pending}
-            className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[15px] font-semibold text-white transition sm:mt-6 active:scale-[0.99] disabled:opacity-65"
+            className={`${styles.buildAction} mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[15px] font-semibold text-white transition sm:mt-6 active:scale-[0.99] disabled:opacity-65`}
             style={{ background: "var(--app-brand-press)", boxShadow: "var(--app-brand-glow)" }}
           >
-            <Route className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+            <Route className={`h-4 w-4 ${pending ? styles.routeWorking : ""}`} strokeWidth={2.25} aria-hidden />
             {pending ? "Building your route…" : "Build my plan"}
           </button>
           <Message status={statusMsg} error={errorMsg} />
         </section>
+        </div>
       )}
 
       {plan && (
-        <section ref={resultRef} tabIndex={-1} className="space-y-4 outline-none" style={{ outline: "none" }}>
+        <section ref={resultRef} tabIndex={-1} className={`${styles.results} outline-none`} style={{ outline: "none" }}>
+          <div className={styles.resultHeader}>
+          <PlanScene compact />
           <article
-            className="tactile rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 sm:p-5"
+            className={styles.overview}
             style={{ borderColor: "var(--app-border)" }}
           >
             <div className="flex items-start justify-between gap-3">
@@ -429,19 +494,12 @@ export default function PlanBuilder({
                 <p className="eyebrow" style={{ color: "var(--app-brand)" }}>
                   {shared ? "Shared plan · " : ""}{planDateLabel(plan)} · {planAreaLabel}
                 </p>
-                {initialPlan ? (
-                  <h1 className="mt-1 font-serif text-[28px] font-semibold leading-[1.08] tracking-tight" style={{ color: "var(--app-ink)" }}>
-                    {plan.title}
-                  </h1>
-                ) : (
-                  <h2 className="mt-1 font-serif text-[28px] font-semibold leading-[1.08] tracking-tight" style={{ color: "var(--app-ink)" }}>
-                    {plan.title}
-                  </h2>
-                )}
+                <h1 className="mt-1 font-semibold" style={{ color: "var(--app-ink)" }}>{plan.title}</h1>
               </div>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(true)}
+                disabled={pending || !eventControlsReady}
                 className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
               >
@@ -467,6 +525,7 @@ export default function PlanBuilder({
                 {plan.summary}
               </p>
             )}
+            {constraintLabels.length > 0 && <ul className={styles.preferences} aria-label="Plan requirements">{constraintLabels.map((label) => <li key={label}>{label}</li>)}</ul>}
             {plan.weather_note && (
               <p className="mt-3 flex items-start gap-2 rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] p-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 <CloudRain className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
@@ -474,13 +533,16 @@ export default function PlanBuilder({
               </p>
             )}
 
+            {plan.stops.some((stop) => stop.place && stop.open !== "open") && (
+              <p className="mt-3 rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] p-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                Draft outing. These times are suggestions. Confirm each venue’s hours before setting out.
+              </p>
+            )}
+
             {plan.stops.length > 0 && (
               <ul className="mt-4 flex flex-wrap gap-2" aria-label="Plan summary">
                 <Meta><Clock className="h-3.5 w-3.5" aria-hidden />{planWindowLabel(plan)}</Meta>
                 <Meta><MapPin className="h-3.5 w-3.5" aria-hidden />{plan.stops.length} {plan.stops.length === 1 ? "stop" : "stops"}</Meta>
-                {totalRouteDistance(plan) > 0 && (
-                  <Meta><Route className="h-3.5 w-3.5" aria-hidden />{formatDistance(totalRouteDistance(plan))} between stops</Meta>
-                )}
               </ul>
             )}
 
@@ -506,10 +568,12 @@ export default function PlanBuilder({
                 </button>
               </div>
           </article>
+          </div>
+
 
           {Boolean(plan.notices?.length) && (
-            <section data-event-plan-controls-ready={eventControlsReady ? "true" : "false"} aria-busy={!eventControlsReady || pending} className="space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4" aria-label="Event updates" style={{ borderColor: "var(--app-border)" }}>
-              <h2 className="text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>Review your event</h2>
+            <section data-event-plan-controls-ready={eventControlsReady ? "true" : "false"} aria-busy={!eventControlsReady || pending} className="space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4" aria-label="Plan updates" style={{ borderColor: "var(--app-border)" }}>
+              <h2 className="text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>Review your saved choices</h2>
               {plan.notices!.map((notice) => (
                 <div key={`${notice.spec_index}-${notice.code}`} className="space-y-2">
                   <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{notice.message}</p>
@@ -519,20 +583,20 @@ export default function PlanBuilder({
                   </div>
                 </div>
               ))}
-              {plan.notices!.some((notice) => notice.code === "unavailable") && <button type="button" disabled={!eventControlsReady || pending} onClick={() => mutate(() => planFromToken(plan.share), null, "The event listing has been checked again.")} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-brand-press)" }}><RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} aria-hidden />Check event again</button>}
+              {plan.notices!.some((notice) => notice.code === "unavailable") && <button type="button" disabled={!eventControlsReady || pending} onClick={() => mutate(() => planFromToken(plan.share), null, "Your saved choices have been checked again.")} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-brand-press)" }}><RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} aria-hidden />Check saved choices again</button>}
             </section>
           )}
 
           {Boolean(plan.unscheduled?.length) && (
-            <section className="space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4" aria-label="Unscheduled nearby option" style={{ borderColor: "var(--app-border)" }}>
-              <h2 className="text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>A nearby option</h2>
+            <section className="space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4" aria-label="Choices to review" style={{ borderColor: "var(--app-border)" }}>
+              <h2 className="text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>Choices to review</h2>
               {plan.unscheduled!.map((option) => <article key={option.place.slug}>
                 <Link href={withBrowseReturnTo(`/places/${option.place.slug}`, planReturnTo)} className="text-[16px] font-semibold underline decoration-[var(--app-border-strong)] underline-offset-4" style={{ color: "var(--app-ink)" }}>{option.place.name}</Link>
-                <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--app-ink-3)" }}>Hours unconfirmed. Not included in the timed route.</p>
+                <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--app-ink-3)" }}>This choice is outside the timed route.</p>
                 <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{option.why}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <button type="button" disabled={!eventControlsReady || pending} onClick={() => openSwap(option.spec_index)} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-ink-2)" }}>Change nearby option</button>
-                  <button type="button" disabled={!eventControlsReady || pending} onClick={() => mutate(() => removeStop(plan.share, option.spec_index), option.spec_index, "The nearby option has been removed.")} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-ink-2)" }}>Remove nearby option</button>
+                  <button type="button" disabled={!eventControlsReady || pending} onClick={() => openSwap(option.spec_index)} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-ink-2)" }}>Change this choice</button>
+                  <button type="button" disabled={!eventControlsReady || pending} onClick={() => mutate(() => removeStop(plan.share, option.spec_index), option.spec_index, "The nearby option has been removed.")} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-ink-2)" }}>Remove this choice</button>
                 </div>
               </article>)}
             </section>
@@ -542,14 +606,19 @@ export default function PlanBuilder({
             <div className="rounded-[var(--app-radius-lg)] border border-dashed p-6 text-center" style={{ borderColor: "var(--app-border)" }}>
               <AlertCircle className="mx-auto h-6 w-6" style={{ color: "var(--app-brand)" }} aria-hidden />
               <h3 className="mt-2 font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                {plan.notices?.length ? "No event is scheduled in this plan yet." : "Nothing reliable fits yet."}
+                {plan.notices?.length ? "No stops are scheduled in this plan yet." : "Nothing reliable fits yet."}
               </h3>
               <p className="mx-auto mt-1 max-w-sm text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-                {plan.notices?.length ? "Review the update above or check the event again. Your shared link still keeps the choices you made." : "Radius did not find enough places with confirmed hours for that area and time. Try an earlier start, a longer drive, or another kind of outing."}
+                {plan.notices?.length
+                  ? "Review the updates above or check the saved choices again. Your shared link still keeps the choices you made."
+                  : (currentSpec?.i.require_verified_hours ?? Boolean(currentSpec?.i.start_at))
+                    ? "Radius could not confirm venue hours for this outing. Choose Adjust, open Fine-tune the outing, and turn off confirmed hours only to build a draft. Check venue hours before setting out."
+                    : "No stops fit this outing yet. Try another area, start time, or focus."}
               </p>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(true)}
+                disabled={pending || !eventControlsReady}
                 className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
               >
@@ -559,12 +628,7 @@ export default function PlanBuilder({
             </div>
           ) : (
             <div className="relative">
-              <span
-                aria-hidden
-                className="pointer-events-none absolute bottom-6 left-[15px] top-6 w-px"
-                style={{ background: "var(--app-border-strong)" }}
-              />
-              <ol className="space-y-3 pl-10" aria-label="Plan stops, in order">
+              <ol className={`${styles.stopList} pl-10`} style={plan.stops.length === 1 ? { gridTemplateColumns: "minmax(0, 1fr)" } : undefined} aria-label="Plan stops, in order">
                 {plan.stops.map((stop, index) => (
                   <Stop
                     key={`${stop.order}-${stop.place?.slug ?? stop.event?.slug ?? index}`}
@@ -597,11 +661,29 @@ export default function PlanBuilder({
             </div>
           )}
 
+          <section className={styles.visitCheck} aria-label="Check before you go">
+            <div className={styles.visitHeader}>
+              <div><h2>Check before you go</h2><p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>Review saved times, posted hours, and the forecast for this outing.</p></div>
+              <button type="button" onClick={checkBeforeVisit} disabled={pending || !eventControlsReady} className="inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold disabled:opacity-50" style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}><RefreshCw className="h-4 w-4" aria-hidden />{pending ? "Checking…" : "Check this plan"}</button>
+            </div>
+            {visitCheck && <div aria-live="polite">
+              <p className="mt-4 text-[14px] font-semibold">{checkExpired ? "This check is out of date. Check the plan again before setting out." : visitCheck.message}</p>
+              <p className={styles.visitSource}>Checked <time dateTime={visitCheck.checkedAt}>{new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }).format(new Date(visitCheck.checkedAt))}</time>. Source dates are listed below. These records do not confirm live venue availability.</p>
+              <ul className={styles.visitItems}>
+                {visitCheck.stops.map((stop) => <li key={stop.spec_index}><strong>{stop.name ?? `Choice ${stop.spec_index + 1}`}</strong><p>{stop.message}</p><VisitSource label={stop.sourceLabel} asOf={stop.sourceAsOf} href={stop.sourceHref} /></li>)}
+                <li><strong>Weather for this outing</strong><p>{visitCheck.weather.message}</p>{visitCheck.weather.periods.length > 0 && <ul className={styles.forecast} aria-label="Hourly forecast for this outing">{visitCheck.weather.periods.map((period) => <li key={period.startTime}><time dateTime={period.startTime}>{new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric" }).format(new Date(period.startTime))}</time><strong>{period.temperature}°{period.temperatureUnit}</strong><span>{period.shortForecast}</span>{period.probabilityOfPrecipitation != null && <span>{period.probabilityOfPrecipitation}% chance of precipitation</span>}</li>)}</ul>}<VisitSource label={visitCheck.weather.sourceLabel} asOf={visitCheck.weather.sourceAsOf} href={visitCheck.weather.sourceHref} /></li>
+              </ul>
+            </div>}
+          </section>
+
+          <PlanStopsMap plan={plan} returnTo={planReturnTo} />
+
           <div className={`grid gap-2 ${plan.stops.length > 0 ? "grid-cols-2" : "grid-cols-1"}`}>
             {plan.stops.length > 0 && (
               <button
                 type="button"
                 onClick={() => setDrawerOpen(true)}
+                disabled={pending || !eventControlsReady}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[13px] font-semibold"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
               >
@@ -612,6 +694,7 @@ export default function PlanBuilder({
             <button
               type="button"
               onClick={startOver}
+              disabled={pending || !eventControlsReady}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[13px] font-semibold"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
             >
@@ -779,6 +862,8 @@ function PlannerFields({
   onVibeChange,
   hours,
   onHoursChange,
+  verifiedHoursOnly,
+  onVerifiedHoursOnlyChange,
 }: {
   eventStart?: string;
   area: string;
@@ -795,6 +880,8 @@ function PlannerFields({
   onVibeChange: (value: PlanInputs["vibe"]) => void;
   hours: PlanInputs["duration_hours"];
   onHoursChange: (value: PlanInputs["duration_hours"]) => void;
+  verifiedHoursOnly: boolean;
+  onVerifiedHoursOnlyChange: (value: boolean) => void;
 }) {
   const audienceLabel = AUDIENCES.find((option) => option.value === audience)?.label ?? "A date";
   const vibeLabel = VIBES.find((option) => option.value === vibe)?.label ?? "Keep it easy";
@@ -912,8 +999,17 @@ function PlannerFields({
               {DURATIONS.map((duration) => <option key={duration} value={duration}>{duration} hours</option>)}
             </select>
           } />
+          <label className="flex min-h-14 cursor-pointer items-center gap-3 px-3 py-3 text-[13px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+            <input type="checkbox" checked={verifiedHoursOnly} onChange={(event) => onVerifiedHoursOnlyChange(event.target.checked)} className="h-5 w-5 shrink-0 accent-[var(--app-brand)]" />
+            Only include stops with confirmed hours
+          </label>
         </div>
       </details>
+      <p className="text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+        {verifiedHoursOnly
+          ? "Only stops with confirmed hours will be included."
+          : "Draft outing. Times are suggestions; confirm venue hours before setting out."}
+      </p>
     </div>
   );
 }
@@ -985,7 +1081,7 @@ function Stop({
   const name = stop.place?.name ?? stop.event?.title ?? "Stop";
   const where = stop.place ? placeLocationLabel(stop.place.address, stop.place.city) : stop.event?.venue_name;
   const geom = stop.place?.geom ?? stop.event?.geom;
-  const status = stop.event ? { text: "Event time reserved", color: "var(--app-positive)" } : OPEN_LABEL[stop.open];
+  const status = stop.event ? { text: "Published event time", color: "var(--app-positive)" } : OPEN_LABEL[stop.open];
   const fallbackPlace = {
     slug: stop.place?.slug ?? stop.event?.slug ?? `plan-stop-${stop.order}`,
     name,
@@ -993,9 +1089,9 @@ function Stop({
   };
 
   return (
-    <li className="relative">
+    <li className={`${styles.stopEntry} relative`} data-plan-stop style={{ "--plan-stop-delay": `${Math.min(stop.order - 1, 5) * 55}ms` } as CSSProperties}>
       {stop.travel_from_previous_min && (
-        <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+        <p className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
           {stop.travel_mode === "walk" ? <Footprints className="h-3.5 w-3.5" aria-hidden /> : <Navigation className="h-3.5 w-3.5" aria-hidden />}
           About {stop.travel_from_previous_min} min {stop.travel_mode === "walk" ? "on foot" : "by car"}
           {stop.travel_from_previous_m ? ` · ${formatDistance(stop.travel_from_previous_m)}` : ""}
@@ -1008,10 +1104,12 @@ function Stop({
       >
         {stop.order}
       </span>
-      <article className="tactile rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4" style={{ borderColor: "var(--app-border)" }}>
+      <article className={styles.stopCard}>
+        <PlanStopPhoto stop={stop} />
+        <div className={styles.stopBody}>
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold">
               <span className="tabular-nums" style={{ color: "var(--app-cool)" }}>{clock(stop.at)} · {stop.duration_min} min</span>
               <span className="inline-flex items-center gap-1" style={{ color: "var(--app-ink-2)" }}>
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: status.color }} aria-hidden />
@@ -1030,30 +1128,9 @@ function Stop({
               )}
             </Link>
           </div>
-          {stop.photo_url && (
-            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)]">
-              <Image
-                src={stop.photo_url}
-                alt=""
-                fill
-                unoptimized={stop.photo_url.startsWith("/api/place-photo")}
-                sizes="80px"
-                placeholder="blur"
-                blurDataURL={PAPER_CREAM_BLUR}
-                className="object-cover"
-              />
-            </div>
-          )}
-          {!stop.photo_url && (
-            <PlaceMedallion
-              place={fallbackPlace}
-              size={80}
-              className="rounded-[var(--app-radius-sm)]"
-            />
-          )}
+          <PlaceMedallion place={fallbackPlace} size={48} className="rounded-[var(--app-radius-sm)]" />
         </div>
 
-        {stop.event?.hero_image_attribution && stop.photo_url && <EventImageAttribution attribution={stop.event.hero_image_attribution} compact className="mt-2" />}
         <p className="mt-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{stop.why}</p>
 
         {stop.tip && (
@@ -1121,9 +1198,28 @@ function Stop({
             Remove
           </button>
         </div>
+        </div>
       </article>
     </li>
   );
+}
+
+function PlanScene({ compact = false }: { compact?: boolean }) {
+  return <div className={styles.scene} data-plan-scene>
+    <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" alt="Carroll Creek in Frederick." fill priority={!compact} sizes="(min-width: 800px) 1080px, calc(100vw - 32px)" />
+    <div className={styles.sceneText}>
+      <p className="mb-2 text-[12px] font-semibold uppercase tracking-[.12em]">Frederick County</p>
+      {!compact && <><h1>Plan an outing.</h1><p>Choose where and when. Keep the places that matter to you.</p></>}
+    </div>
+  </div>;
+}
+
+function VisitSource({ label, asOf, href }: { label: string; asOf?: string; href?: string }) {
+  return <p className={styles.visitSource}>
+    {href ? <a href={href} target={href.startsWith("https:") ? "_blank" : undefined} rel="noopener noreferrer" className="underline underline-offset-2">{label}</a> : label}
+    {asOf && <> · Source updated <time dateTime={asOf}>{new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(asOf))}</time></>}
+    {!asOf && " · Source update time unavailable"}
+  </p>;
 }
 
 function Message({ status, error }: { status: string | null; error: string | null }) {
@@ -1143,7 +1239,7 @@ function Message({ status, error }: { status: string | null; error: string | nul
 
 function Meta({ children }: { children: React.ReactNode }) {
   return (
-    <li className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-[var(--app-bg-sunken)] px-2.5 text-[11px] font-semibold tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+    <li className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-[var(--app-bg-sunken)] px-2.5 text-[12px] font-semibold tabular-nums" style={{ color: "var(--app-ink-2)" }}>
       {children}
     </li>
   );
@@ -1251,10 +1347,6 @@ function planWindowLabel(plan: Plan): string {
   return `${clock(first.at)}–${clock(end)}`;
 }
 
-function totalRouteDistance(plan: Plan): number {
-  return plan.stops.reduce((sum, stop) => sum + (stop.travel_from_previous_m ?? 0), 0);
-}
-
 function routeUrlForPlan(plan: Plan): string {
   const points = plan.stops
     .map((stop) => stop.place?.geom ?? stop.event?.geom)
@@ -1283,4 +1375,9 @@ function placeLocationLabel(address?: string, city?: string): string {
   if (!cleanAddress) return cleanCity ?? "";
   if (!cleanCity || cleanAddress.toLowerCase() === cleanCity.toLowerCase()) return cleanAddress;
   return `${cleanAddress}, ${cleanCity}`;
+}
+
+function pinsInPlan(pins: Set<string>, plan: Plan): Set<string> {
+  const selected = new Set(decodeSpec(plan.share)?.s.flatMap((ref) => "p" in ref ? [ref.p] : []) ?? []);
+  return new Set([...pins].filter((slug) => selected.has(slug)));
 }

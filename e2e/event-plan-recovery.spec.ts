@@ -12,24 +12,24 @@ for (const width of [390, 1366]) {
     });
     const eventOrigin = "/events/unresolved-outing-fixture-2035-10-06?returnTo=%2Fevents%3Fin%3Dfrederick";
     await page.goto(`/plan?p=${token}&returnTo=${encodeURIComponent(eventOrigin)}`, { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: "Review your event", exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: "Review your saved choices", exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText("Its place in your plan is saved.", { exact: false })).toBeVisible();
     await expect(page.getByRole("link", { name: "Back to the event", exact: true })).toHaveAttribute("href", eventOrigin);
     await expect(page.getByRole("link", { name: "Open full route", exact: true })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Directions", exact: true })).toHaveCount(0);
-    await page.getByRole("button", { name: "Check event again", exact: true }).click();
-    await expect(page.getByText("The event listing has been checked again.", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Check saved choices again", exact: true }).click();
+    await expect(page.getByText("Your saved choices have been checked again.", { exact: true })).toBeVisible();
     expect(new URL(page.url()).searchParams.get("p")).toBe(token);
     await page.getByRole("button", { name: "Share this plan", exact: true }).click();
     const shared = await page.evaluate(() => JSON.parse(sessionStorage.getItem("test:event-plan-share")!));
     const sharedUrl = new URL(shared.url); expect([...sharedUrl.searchParams.keys()]).toEqual(["p"]); expect(sharedUrl.searchParams.get("p")).toBe(token);
     await page.goto(`/plan?p=${token}`, { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: "Review your event", exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: "Review your saved choices", exact: true })).toBeVisible({ timeout: 30_000 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    const retry = await page.getByRole("button", { name: "Check event again", exact: true }).boundingBox(); expect(retry!.height).toBeGreaterThanOrEqual(44);
+    const retry = await page.getByRole("button", { name: "Check saved choices again", exact: true }).boundingBox(); expect(retry!.height).toBeGreaterThanOrEqual(44);
     await page.screenshot({ path: `output/playwright/event-plan-recovery-${width}.png`, fullPage: true });
     await page.getByRole("button", { name: "Remove saved reference", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Review your event", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Review your saved choices", exact: true })).toHaveCount(0);
     const edited = new URL(page.url()).searchParams.get("p")!; expect(JSON.parse(Buffer.from(edited, "base64url").toString()).s).toEqual([]);
   });
 }
@@ -48,8 +48,8 @@ test("event recovery controls wait for hydration before accepting a tap", async 
   });
   try {
     await page.goto(`/plan?p=${token}`, { waitUntil: "commit" });
-    const updates = page.getByRole("region", { name: "Event updates", exact: true });
-    const retry = updates.getByRole("button", { name: "Check event again", exact: true });
+    const updates = page.getByRole("region", { name: "Plan updates", exact: true });
+    const retry = updates.getByRole("button", { name: "Check saved choices again", exact: true });
     await expect(retry).toBeDisabled();
     await expect(updates.getByRole("button", { name: "Remove saved reference", exact: true })).toBeDisabled();
     await expect(updates).toHaveAttribute("data-event-plan-controls-ready", "false");
@@ -65,7 +65,7 @@ test("event recovery controls wait for hydration before accepting a tap", async 
     await Promise.all(pending.map((route) => route.continue()));
     await expect(updates).toHaveAttribute("data-event-plan-controls-ready", "true");
     await retry.click();
-    await expect(page.getByText("The event listing has been checked again.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Your saved choices have been checked again.", { exact: true })).toBeVisible();
     expect(actions).toBe(1);
     expect(new URL(page.url()).searchParams.get("p")).toBe(token);
   } finally {

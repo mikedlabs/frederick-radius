@@ -28,6 +28,9 @@ export type NwsForecast = {
   /** When the National Weather Service ISSUED this forecast, or null when the
    *  payload does not carry an issuance time. NEVER the time we rendered. */
   asOf: string | null;
+  /** Issuance of the hourly payload only. A separate daily update never
+   * makes old hourly values current for a time-specific outing. */
+  hourlyAsOf?: string | null;
   hourly: NwsHourly[];
   daily: NwsHourly[];
 };
@@ -143,6 +146,7 @@ async function loadNwsForecast(latValue: number, lngValue: number): Promise<NwsF
       hourly?.properties.updated ??
       daily?.properties.updated ??
       null,
+    hourlyAsOf: hourly?.properties.updateTime ?? hourly?.properties.updated ?? null,
     hourly: hourlyCurrent.slice(0, 12).map(mapPeriod),
     // 14 periods = ~7 days of day/night pairs, grouped into days by the UI.
     daily: (daily?.properties.periods ?? []).slice(0, 14).map(mapPeriod),

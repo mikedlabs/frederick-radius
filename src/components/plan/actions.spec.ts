@@ -6,7 +6,7 @@ vi.mock("@/lib/events/event-identity", () => ({ archivedEventsBySlugs: mocks.arc
 vi.mock("@/lib/loaders/places-client", () => ({ clientPlaces: () => mocks.places, clientPlaceBySlug: (slug: string) => mocks.places.find((p) => p.slug === slug) }));
 vi.mock("@/lib/integrations/nws", () => ({ getNwsForecast: mocks.weather }));
 import { decodeSpec, encodeSpec, type PlanSpec } from "@/lib/integrations/planner";
-import { addStop, generatePlan, planFromToken, removeStop, reshufflePlan, setStop, stopAlternatives, stopSwapOptions, swapStop } from "./actions";
+import { addStop, generatePlan, planFromToken, removeStop, regeneratePinnedPlan, reshufflePlan, setStop, stopAlternatives, stopSwapOptions, swapStop } from "./actions";
 const now = new Date("2026-10-06T12:00:00-04:00");
 const current = { slug: "runtime-concert", title: "Evening concert", description: "A public show.", starts_at: "2026-10-06T19:00:00-04:00", ends_at: "2026-10-06T22:00:00-04:00", timezone: "America/New_York", venue_name: "Weinberg Center", address: "20 W Patrick Street", geom: { lng: -77.4126, lat: 39.4142 }, municipality: "frederick", category: "music", audience: [], is_free: false, source: "manual", source_id: "42", source_url: "https://example.org/concert", license: "Publisher", confidence: "partner", first_seen_at: now.toISOString(), last_verified_at: now.toISOString(), category_name: "Music", municipality_name: "Frederick", is_verified: true, placement: "venue", geo_confidence: "venue_match" } as EventWithMeta;
 const spec = (): PlanSpec => ({ v: 1, i: { audience: "friends", vibe: "easy", duration_hours: 6, start_at: current.starts_at, event_anchor_slug: current.slug }, s: [{ e: current.slug }] });
@@ -83,5 +83,53 @@ describe("event plan action identity", () => {
   });
   it("rejects invalid remove indexes and malformed tokens without network work", async () => {
     expect(await removeStop(encodeSpec(spec()), -1)).toBeNull(); expect(await removeStop(encodeSpec(spec()), 0.5)).toBeNull(); expect(await planFromToken("malformed")).toBeNull(); expect(mocks.archive).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("pinned plan rebuild", () => {
+  const place = (slug: string, lng: number, verified = true): PlaceCardData => ({
+    slug, name: slug, category: "restaurant", address: "1 Main Street", city: "Frederick", municipality: "frederick",
+    geom: { lng, lat: 39.4142 }, feature_score: 5, is_verified: true, hours_verified: verified,
+    hours_updated_at: now.toISOString(), hours: { tue: [{ open: "10:00", close: "24:00" }] },
+    short_blurb: "A local restaurant.", open_status: { state: "open" },
+  } as PlaceCardData);
+  it("keeps every pinned reference and the stricter event requirements", async () => {
+    mocks.places = [place("pinned", -77.413), place("too-far", -77.425), place("unknown-hours", -77.4131, false)];
+    const original = { ...spec(), i: { ...spec().i, max_distance_m: 100, require_verified_hours: true }, s: [{ e: current.slug }, { p: "pinned" }] };
+    const result = await regeneratePinnedPlan(encodeSpec(original), original.i, ["pinned"]);
+    const saved = decodeSpec(result!.share)!;
+    expect(saved.s).toEqual(original.s);
+    expect(saved.i.max_distance_m).toBe(100);
+    expect(saved.i.require_verified_hours).toBe(true);
+    expect(result!.stops.some((stop) => stop.place?.slug === "pinned")).toBe(true);
+    expect(saved.i.start_near).toBeUndefined();
+  });
+  it("uses the current authorized origin for Near me without putting it in the share URL", async () => {
+    mocks.places = [place("pinned-near", -77.57), { ...place("fresh-near", -77.5701), category: "coffee" }, place("downtown", -77.413)];
+    const original: PlanSpec = { v: 1, i: { audience: "friends", vibe: "food", duration_hours: 3, start_at: now.toISOString(), max_distance_m: 200 }, s: [{ p: "pinned-near" }, { p: "downtown" }] };
+    const result = await regeneratePinnedPlan(encodeSpec(original), { ...original.i, start_near: { lng: -77.57, lat: 39.4142 } }, ["pinned-near"]);
+    const saved = decodeSpec(result!.share)!;
+    expect(saved.s).toContainEqual({ p: "pinned-near" });
+    expect(saved.s).toContainEqual({ p: "fresh-near" });
+    expect(saved.s).not.toContainEqual({ p: "downtown" });
+    expect(saved.i.start_near).toBeUndefined();
+  });
+  it("holds a pinned choice outside the new town instead of silently replacing it", async () => {
+    mocks.places = [place("pinned", -77.413)];
+    const original: PlanSpec = { v: 1, i: { audience: "friends", vibe: "food", duration_hours: 3, start_at: now.toISOString() }, s: [{ p: "pinned" }] };
+    const result = await regeneratePinnedPlan(encodeSpec(original), { ...original.i, municipality: "brunswick" }, ["pinned"]);
+    expect(decodeSpec(result!.share)?.s).toContainEqual({ p: "pinned" });
+    expect(result?.stops).toEqual([]);
+    expect(result?.unscheduled?.[0].why).toContain("outside");
+  });
+  it("rejects malformed controls and ignores pins absent from the original plan", async () => {
+    const token = encodeSpec(spec());
+    expect(await regeneratePinnedPlan(token, { ...spec().i, start_near: { lng: Infinity, lat: 39 } }, [])).toBeNull();
+    expect(await regeneratePinnedPlan(token, { ...spec().i, max_distance_m: -1 }, [])).toBeNull();
+    expect(await regeneratePinnedPlan(token, { ...spec().i, max_stops: 2.5 }, [])).toBeNull();
+    expect(mocks.archive).not.toHaveBeenCalled();
+    const result = await regeneratePinnedPlan(token, spec().i, ["not-selected"]);
+    expect(decodeSpec(result!.share)?.s).not.toContainEqual({ p: "not-selected" });
   });
 });
