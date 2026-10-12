@@ -27,6 +27,7 @@ import { searchCivicActions, shouldShowDepartmentAnswers } from "@/lib/search/ci
 import type { IntentIcon } from "@/lib/answers/types";
 import { commandDestination } from "@/lib/command-routing";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
+import { settleFindReturnScroll } from "./find-return-scroll";
 
 /**
  * Quick-answer intents now live in `@/lib/answers/intents` so /today's
@@ -304,15 +305,6 @@ function storedFindReturnScrollY(): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function settleFindReturnScroll(scrollY: number | null) {
-  if (scrollY === null) return;
-  // Today can finish hydrating a live rail while Find is open. Reassert the
-  // saved coordinate after that layout settles so the dismissed surface does
-  // not return the reader to a different chapter of the page.
-  window.setTimeout(() => {
-    window.scrollTo({ top: scrollY, behavior: "auto" });
-  }, 220);
-}
 
 export default function SearchOverlay({
   open,
@@ -366,8 +358,8 @@ export default function SearchOverlay({
     const returnScrollY = returnScrollYRef.current;
     const shouldRestore = !leavingFindRef.current;
     onClose();
-    if (shouldRestore) settleFindReturnScroll(returnScrollY);
-  }, [onClose]);
+    if (shouldRestore) settleFindReturnScroll(returnScrollY, historyLayerId);
+  }, [onClose, historyLayerId]);
   const historyLayer = useReversibleHistoryLayer({
     active: open,
     id: historyLayerId,

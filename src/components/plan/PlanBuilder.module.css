@@ -33,6 +33,9 @@
  .resultHeader .scene { min-height: 260px; }
  .stopList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+@media (max-width: 400px) {
+ .resultHeader .scene { min-height: 120px; }
+}
 @media (max-width: 374px) {
  .scene { min-height: 200px; }
  .sceneText { left: 18px; right: 18px; bottom: 18px; }

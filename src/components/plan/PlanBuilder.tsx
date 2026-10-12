@@ -47,7 +47,8 @@ import { rebuildPlanInputs, planConstraintLabels, planDistanceForArea } from "./
 import { checkPlanBeforeVisit } from "./visit-check-action";
 import type { PlanVisitCheck } from "@/lib/plan/visit-check";
 import styles from "./PlanBuilder.module.css";
-import { decodeSpec } from "@/lib/integrations/planner";
+import { decodeSpec } from "@/lib/plan/plan-token";
+import SaveOutingButton from "@/components/saved/SaveOutingButton";
 import { updatedPlanHref } from "@/lib/plan-journey";
 import { isDestinationCategory, isRecommendable } from "@/lib/relevance";
 import { withBrowseReturnTo } from "@/lib/browse-return";
@@ -546,16 +547,19 @@ export default function PlanBuilder({
               </ul>
             )}
 
-            <div className={`mt-4 grid gap-2 ${plan.stops.length > 0 ? "grid-cols-[1fr_auto]" : "grid-cols-1"}`}>
+            <div className={`mt-4 grid items-start gap-2 ${plan.stops.length > 0 ? "grid-cols-[1fr_auto_auto]" : "grid-cols-[1fr_auto]"}`}>
+                <SaveOutingButton key={plan.share} token={plan.share} title={plan.title} disabled={pending || !controlsReady} />
                 {plan.stops.length > 0 && <a
                   href={routeUrlForPlan(plan)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[14px] font-semibold text-white"
-                  style={{ background: "var(--app-brand-press)" }}
+                  className="inline-flex min-h-12 min-w-12 flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-md)] border px-2"
+                  style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
+                  aria-label="Open full route"
+                  title="Open full route"
                 >
                   <Navigation className="h-4 w-4" aria-hidden />
-                  Open full route
+                  <span className="text-[12px] font-semibold leading-tight">Route</span>
                 </a>}
                 <button
                   type="button"
