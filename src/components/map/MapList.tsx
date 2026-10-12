@@ -142,6 +142,7 @@ export default function MapList({
   sortOrigin,
   failureMode = false,
   searchState = "ready",
+  searchFeedbackInDock = false,
   onRetrySearch,
   onPick,
   onPickEvent,
@@ -157,6 +158,10 @@ export default function MapList({
   failureMode?: boolean;
   /** An unfinished request is not evidence of zero matches. */
   searchState?: "pending" | "unavailable" | "ready";
+  /** The dock's open search panel already says the search is pending or
+   * failed and offers its retry, so the list stays quiet instead of giving
+   * the same status and a second "Try again". */
+  searchFeedbackInDock?: boolean;
   onRetrySearch?: () => void;
   onPick: (place: MapPinPlace) => void;
   onPickEvent: (event: EventPin) => void;
@@ -201,7 +206,7 @@ export default function MapList({
               : "Nearest map center"}
         </span>
       </div>}
-      {searchIncomplete ? (
+      {searchIncomplete && searchFeedbackInDock ? null : searchIncomplete ? (
         <div className="map-list-empty">
           <p role="status" className="font-sans map-list-empty-title">
             {searchState === "pending" ? "Searching Radius…" : "Search is temporarily unavailable"}

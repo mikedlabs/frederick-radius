@@ -133,6 +133,7 @@
     "test:storybook": "RADIUS_STORYBOOK_TEST=1 STORYBOOK_DISABLE_TELEMETRY=1 vitest --project=storybook --run",
     "test:visual:capture": "PW_VISUAL_MODE=capture playwright test e2e/visual-contract.spec.ts --project=chromium --workers=1",
     "test:visual:compare": "PW_VISUAL_MODE=compare playwright test e2e/visual-contract.spec.ts --project=chromium --workers=1",
+    "check:visual-floor": "node scripts/check-visual-floor.mjs",
     "build:food-truck-marks": "tsx --tsconfig tsconfig.json scripts/build-food-truck-marks.ts",
     "optimize:images": "tsx --tsconfig tsconfig.json scripts/optimize-images.ts",
     "optimize:seasons": "tsx --tsconfig tsconfig.json scripts/optimize-seasonal-photos.ts",
