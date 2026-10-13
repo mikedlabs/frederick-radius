@@ -4740,7 +4740,7 @@ export default function AppMap({
                   style={{ color: "var(--app-ink)" }}
                 >
                   {!MAP_RENDERER_CONFIGURED
-                    ? "Map view is not enabled right now"
+                    ? "Map view unavailable"
                     : mapUnsupported
                     ? "This browser cannot draw the map"
                     : "The map is temporarily unavailable"}
@@ -4750,10 +4750,10 @@ export default function AppMap({
                   style={{ color: "var(--app-ink-3)" }}
                 >
                   {!MAP_RENDERER_CONFIGURED
-                    ? "Search and the current Frederick County results still work below."
+                    ? "Search the available results below."
                     : mapUnsupported
-                    ? "The same places and events are available below in a readable list."
-                    : "Your current results are still available below. Reload the map when you are ready."}
+                    ? "Find the same results in the list below."
+                    : "Use the list below, or reload the map."}
                 </p>
               </div>
               <div className="map-error-fallback-actions">

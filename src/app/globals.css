@@ -6248,6 +6248,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .map-peek-details-link {
   width: fit-content;
+  min-width: 44px;
   min-height: 44px;
   display: inline-flex;
   align-items: center;
@@ -6800,6 +6801,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     max(18px, env(safe-area-inset-bottom, 0px))
     max(var(--app-space-4), env(safe-area-inset-left, 0px));
 }
+/* Recovery has one scroll owner. Its ranked body follows the available lane
+   instead of introducing a second viewport behind the fixed search dock. */
+.map-error-fallback [data-map-list-body] {
+  max-height: none;
+  overflow-y: visible;
+  overscroll-behavior: auto;
+}
 .map-error-fallback .map-list > [aria-live="polite"] {
   padding-inline: 0;
 }
@@ -6813,7 +6821,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 @media (max-width: 1023.98px) {
   .dock-host[data-map-error] .map-error-fallback .map-list {
-    padding-bottom: calc(var(--map-dock-height, 0px) + var(--app-space-4) + env(safe-area-inset-bottom, 0px));
+    margin-bottom: calc(var(--map-dock-height, 0px) + max(8px, env(safe-area-inset-bottom, 0px)) + 8px);
+    overscroll-behavior-y: contain;
   }
 }
 @media (max-width: 600px) {

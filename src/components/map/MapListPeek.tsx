@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useId, useState, type CSSProperties } from "react";
-import { CalendarDays, ChevronDown, LoaderCircle } from "lucide-react";
+import { CalendarDays, ChevronDown, CornerUpRight, LoaderCircle } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
+import { formatDistance, haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
 import { withMapReturnTo } from "@/lib/map-return";
+import { directionsHref } from "@/lib/map/directionsHref";
 import { haptic } from "@/lib/haptics";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import {
@@ -17,6 +18,7 @@ import {
 } from "./mapListTask";
 import type { SearchResult } from "@/lib/search/index";
 import type { EventPin, MapPinPlace } from "./types";
+import styles from "./MapListPeek.module.css";
 
 /**
  * The ranked list peek that answers a map task. A search, a "What to see"
@@ -81,62 +83,88 @@ function PlaceRow({
   const status = placeStatus(place);
   // Distance is a promise about where the reader is. Without a real device
   // fix there is no honest origin, so the row says nothing about distance.
-  const distance = userLoc ? formatDistance(haversineMeters(userLoc, place.geom)) : null;
+  const hasDestination = isValidCoord(place.geom);
+  const distance = userLoc && hasDestination ? formatDistance(haversineMeters(userLoc, place.geom)) : null;
   const blurb = place.short_blurb?.trim();
 
   return (
-    <button
-      type="button"
-      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--app-brand)] motion-reduce:transition-none"
-      data-map-list-place={place.slug}
-      data-leading={leading || undefined}
-      aria-pressed={selected}
-      style={{ minHeight: 64, background: selected ? "var(--app-bg-sunken)" : undefined, borderLeft: leading ? "3px solid var(--app-brand)" : "3px solid transparent" }}
-      data-decision-impression="true"
-      data-decision-surface="map"
-      data-decision-entity="place"
-      data-decision-id={place.slug}
-      data-decision-position="result"
-      data-decision-action="open"
-      onClick={() => {
-        haptic("light");
-        onPick(place);
-      }}
+    <div
+      className={styles.placeRow}
+      data-map-list-place-row={place.slug}
+      data-has-directions={hasDestination || undefined}
+      style={{ background: selected ? "var(--app-bg-sunken)" : undefined, borderLeftColor: leading ? "var(--app-brand)" : "transparent" }}
     >
-      <span
-        aria-hidden
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
-        style={
-          {
-            color,
-            background: `color-mix(in srgb, ${color} 14%, var(--app-bg-elevated-solid))`,
-          } as CSSProperties
-        }
+      <button
+        type="button"
+        className={styles.placeDetails}
+        data-map-list-place={place.slug}
+        data-leading={leading || undefined}
+        aria-pressed={selected}
+        data-decision-impression="true"
+        data-decision-surface="map"
+        data-decision-entity="place"
+        data-decision-id={place.slug}
+        data-decision-position="result"
+        data-decision-action="open"
+        onClick={() => {
+          haptic("light");
+          onPick(place);
+        }}
       >
-        <CategoryIcon slug={place.category} className="h-5 w-5" strokeWidth={1.9} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15px] font-semibold leading-snug text-[var(--app-ink)]">
-          {place.name}
+        <span
+          aria-hidden
+          className={styles.categoryMark}
+          style={
+            {
+              color,
+              background: `color-mix(in srgb, ${color} 14%, var(--app-bg-elevated-solid))`,
+            } as CSSProperties
+          }
+        >
+          <CategoryIcon slug={place.category} className="h-5 w-5" strokeWidth={1.9} />
         </span>
-        <span className="mt-0.5 block truncate text-[13px] leading-snug text-[var(--app-ink-2)]">
-          {[category?.name ?? place.category, town].filter(Boolean).join(" · ")}
-          {distance && (
-            <>
-              <span aria-hidden> · </span>
-              <span className="tabular-nums">{distance} from you</span>
-            </>
+        <span className="min-w-0 flex-1">
+          <span data-map-list-place-name className="block break-words text-[15px] font-semibold leading-snug text-[var(--app-ink)]">
+            {place.name}
+          </span>
+          <span className="mt-0.5 block text-[13px] leading-snug text-[var(--app-ink-2)]">
+            {[category?.name ?? place.category, town].filter(Boolean).join(" · ")}
+            {distance && (
+              <>
+                <span aria-hidden> · </span>
+                <span className="tabular-nums">{distance} from you</span>
+              </>
+            )}
+          </span>
+          {status && <span className="mt-0.5 block text-[12px] font-semibold leading-snug" style={{ color: status.tone }}>{status.text}</span>}
+          {searchSubtitle && <span className="mt-0.5 block text-[12px] leading-snug text-[var(--app-ink-2)]">{searchSubtitle}</span>}
+          {!searchSubtitle && blurb && (
+            <span className="mt-0.5 block truncate text-[13px] leading-snug text-[var(--app-ink-2)]">
+              {blurb}
+            </span>
           )}
         </span>
-        {status && <span className="mt-0.5 block text-[12px] font-semibold leading-snug" style={{ color: status.tone }}>{status.text}</span>}
-        {searchSubtitle && <span className="mt-0.5 block text-[12px] leading-snug text-[var(--app-ink-2)]">{searchSubtitle}</span>}
-        {!searchSubtitle && blurb && (
-          <span className="mt-0.5 block truncate text-[13px] leading-snug text-[var(--app-ink-2)]">
-            {blurb}
-          </span>
-        )}
-      </span>
-    </button>
+      </button>
+      {hasDestination && (
+        <a
+          href={directionsHref(place.geom.lat, place.geom.lng)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.placeDirections}
+          aria-label={`Directions to ${place.name}`}
+          data-map-list-directions={place.slug}
+          data-decision-surface="map"
+          data-decision-entity="place"
+          data-decision-id={place.slug}
+          data-decision-position="result"
+          data-decision-action="directions"
+          onClick={() => haptic("light")}
+        >
+          <CornerUpRight className="h-4 w-4" aria-hidden strokeWidth={2} />
+          <span>Directions</span>
+        </a>
+      )}
+    </div>
   );
 }
 
@@ -319,6 +347,7 @@ export default function MapListPeek({
 
       <div
         id={listId}
+        data-map-list-body
         hidden={!expanded}
         className="max-h-[min(46dvh,380px)] overflow-y-auto overscroll-contain border-t border-[var(--app-border)]"
       >

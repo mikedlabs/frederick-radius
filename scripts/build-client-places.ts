@@ -24,6 +24,10 @@ import { businessInfoCommerceLinks } from "@/lib/loaders/businessInfo";
 import { hoursFreshnessEnforced } from "@/lib/hours-freshness";
 import { findGooglePlaceIdCollisions } from "@/lib/quality/enrichmentBinding";
 import { mergeClientCommerceLinks } from "./lib/client-commerce-links";
+import {
+  compactGooglePhotoCredit,
+  type CompactGooglePhotoCredit,
+} from "@/lib/selected-place-photo-credit";
 
 const OUT = fileURLToPath(new URL("../src/data/places-client.json", import.meta.url));
 const HOURS_OUT = fileURLToPath(new URL("../src/data/places-client-hours.json", import.meta.url));
@@ -31,68 +35,9 @@ const EVENT_VENUE_PHOTO_CREDITS_OUT = fileURLToPath(
   new URL("../src/data/event-venue-photo-credits.json", import.meta.url),
 );
 
-type CompactPhotoCredit = {
-  google_maps_uri: string;
-  flag_content_uri?: string;
-  authors: Array<{
-    display_name?: string;
-    uri?: string;
-    photo_uri?: string;
-  }>;
-};
-
-function compactPhotoCredit(value: unknown): CompactPhotoCredit | null {
-  if (!value || typeof value !== "object") return null;
-  const row = value as {
-    google_maps_uri?: unknown;
-    flag_content_uri?: unknown;
-    authors?: unknown;
-  };
-  if (
-    typeof row.google_maps_uri !== "string" ||
-    !row.google_maps_uri.startsWith("https://")
-  ) {
-    return null;
-  }
-  const authors = Array.isArray(row.authors)
-    ? row.authors.flatMap((author) => {
-        if (!author || typeof author !== "object") return [];
-        const candidate = author as {
-          display_name?: unknown;
-          uri?: unknown;
-          photo_uri?: unknown;
-        };
-        const display_name =
-          typeof candidate.display_name === "string"
-            ? candidate.display_name.trim()
-            : "";
-        const uri =
-          typeof candidate.uri === "string" &&
-          candidate.uri.startsWith("https://")
-            ? candidate.uri
-            : undefined;
-        const photo_uri =
-          typeof candidate.photo_uri === "string" &&
-          candidate.photo_uri.startsWith("https://")
-            ? candidate.photo_uri
-            : undefined;
-        if (!display_name && !uri && !photo_uri) return [];
-        return [{ display_name: display_name || undefined, uri, photo_uri }];
-      })
-    : [];
-
-  return {
-    google_maps_uri: row.google_maps_uri,
-    flag_content_uri:
-      typeof row.flag_content_uri === "string" &&
-      row.flag_content_uri.startsWith("https://")
-        ? row.flag_content_uri
-        : undefined,
-    authors,
-  };
-}
-
-const eventVenuePhotoCredits: Record<string, CompactPhotoCredit> = {};
+// This additive server artifact retains a digest of the original resource identity;
+// the client catalog still carries only its existing policy verdict.
+const eventVenuePhotoCredits: Record<string, CompactGooglePhotoCredit> = {};
 
 const slim = publicPlaces().map((p) => {
   const d = decoratePlace(p) as PlaceCardData & {
@@ -119,7 +64,7 @@ const slim = publicPlaces().map((p) => {
     d.commerce_links,
     businessInfoCommerceLinks(d.slug),
   );
-  const eventVenuePhotoCredit = compactPhotoCredit(
+  const eventVenuePhotoCredit = compactGooglePhotoCredit(
     d.google_photo_attribution,
   );
   if (d.google_photo_url && eventVenuePhotoCredit) {

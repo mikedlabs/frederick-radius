@@ -33,8 +33,9 @@ export type WikimediaPhoto = {
 // county landmarks that have NO Google photo (so the detail hero would
 // otherwise fall back to the designed gradient plate). A real Google photo of
 // the business still wins over these in PlaceHero — they only fill the gap.
-// Every File:... below was fetched from the Commons API for its license/author
-// and its Special:FilePath URL confirmed HTTP 200 image/jpeg (2026-06-20).
+// Initial entries were checked against Commons metadata and their
+// Special:FilePath URL confirmed HTTP 200 image/jpeg (2026-06-20).
+// Later additions record their verification date where added.
 export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
   "carroll-creek-linear-park-frederick": {
     file: "Carroll Creek Park Frederick MD1.jpg",
@@ -67,6 +68,34 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
     license: "Public domain",
     source_url:
       "https://commons.wikimedia.org/wiki/File:Roddy_Road_covered_bridge_near_Thurmont_in_Frederick_County,_Maryland,_built_about_1850.jpg",
+    verified: true,
+  },
+
+  // Added 2026-10-13 UTC: Commons subject/author/license metadata checked,
+  // Special:FilePath width=1200 confirmed 200 image/jpeg, and thumbnails
+  // reviewed by eye. These fill gaps without overriding eligible Google photos.
+  "baker-park-frederick": {
+    file: "Baker Park Swinging Bridge Frederick MD2.jpg",
+    alt: "The swinging bridge and park grounds in Baker Park, Frederick.",
+    author: "Acroterion",
+    license: "CC BY-SA 4.0",
+    source_url: "https://commons.wikimedia.org/wiki/File:Baker_Park_Swinging_Bridge_Frederick_MD2.jpg",
+    verified: true,
+  },
+  "rose-hill-manor-park-museums-frederick": {
+    file: "Rose Hill Manor - Front of Mansion.jpg",
+    alt: "The front of Rose Hill Manor in Frederick.",
+    author: "LittleLuckyMd",
+    license: "CC BY-SA 4.0",
+    source_url: "https://commons.wikimedia.org/wiki/File:Rose_Hill_Manor_-_Front_of_Mansion.jpg",
+    verified: true,
+  },
+  "historic-utica-covered-bridge-thurmont": {
+    file: "Utica covered bridge MD1.jpg",
+    alt: "The red Utica Covered Bridge in Frederick County.",
+    author: "Acroterion",
+    license: "CC BY-SA 4.0",
+    source_url: "https://commons.wikimedia.org/wiki/File:Utica_covered_bridge_MD1.jpg",
     verified: true,
   },
 

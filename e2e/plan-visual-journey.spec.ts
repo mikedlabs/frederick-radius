@@ -149,7 +149,7 @@ test("a visual outing keeps choices through a pre-trip check and map fallback", 
   await expect(page.getByText("Loading your stops map…", { exact: true })).toHaveCount(0, { timeout: 30_000 });
   const mapView = page.getByRole("region", { name: "Map of planned stop locations", exact: true });
   await expect.poll(async () => await mapView.locator("canvas").first().isVisible()
-    || await mapView.getByRole("heading", { name: /^(Map view is not enabled right now|This browser cannot draw the map|The map is temporarily unavailable)$/ }).isVisible()
+    || await mapView.getByRole("heading", { name: /^(Map view unavailable|This browser cannot draw the map|The map is temporarily unavailable)$/ }).isVisible()
     || await mapView.getByText("The map could not load. Your stops and their detail links are still here.", { exact: true }).isVisible(), { timeout: 30_000 }).toBe(true);
   await expect(page.getByRole("list", { name: "Stops shown on the map", exact: true }).getByRole("link", { name: /Beans in the Belfry/ })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
