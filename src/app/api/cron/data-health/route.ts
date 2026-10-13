@@ -78,6 +78,7 @@ const PHASE_HEARTBEAT_DEADLINE_MS = 8_000;
 const FOOD_TRUCK_DEADLINE_MS = 8_000;
 const TRIPWIRE_OUTER_DEADLINE_MS = 25_000;
 const SEARCH_INDEX_DEADLINE_MS = 8_000;
+const ALERT_DELIVERY_DEADLINE_MS = 6_000;
 const DELIVERY_DEADLINE_MS = 32_000;
 const REPORT_HEARTBEAT_DEADLINE_MS = 8_000;
 
@@ -314,8 +315,9 @@ async function runDataHealthReport(requestSignal?: AbortSignal) {
   const foodTruckScheduleHealth =
     evaluateFoodTruckScheduleHealth(storedFoodTruckSchedule);
 
-  // Slack post is fire-and-forget — it should never block the
-  // cron's reply. The helper itself no-ops without a webhook URL.
+  // Slack remains fail-soft, but the bounded attempt is awaited. Returning
+  // with its fetch in flight lets a serverless invocation end before the
+  // request leaves the process.
   const allAnomalies = [
     ...anomalies,
     ...dbAnomalies,
@@ -326,9 +328,16 @@ async function runDataHealthReport(requestSignal?: AbortSignal) {
     ...(searchIndexAnomaly ? [searchIndexAnomaly] : []),
     ...phaseAnomalies,
   ];
-  if (allAnomalies.length > 0) {
-    void sendAnomalyAlert(allAnomalies);
-  }
+  const slackAlertOutcomePromise =
+    allAnomalies.length > 0
+      ? withDeadlineOutcome(
+          sendAnomalyAlert(allAnomalies),
+          ALERT_DELIVERY_DEADLINE_MS,
+        )
+      : Promise.resolve({
+          status: "fulfilled" as const,
+          value: "not_needed" as const,
+        });
 
   // THE ONE NUMBER. Every applicable gate above collapses to "N of M green" —
   // the owner-readable answer to "is the app quietly broken?" Intentionally
@@ -402,28 +411,34 @@ async function runDataHealthReport(requestSignal?: AbortSignal) {
     REPORT_HEARTBEAT_DEADLINE_MS,
     requestSignal,
   );
-  const [deliveryOutcome, reporterHeartbeatOutcome] = await Promise.all([
-    directGitHubDeliveryEnabled
-      ? withDeadlineOutcome(
-          deliverDataHealthReport({ headline, gates, anomalies: allAnomalies }),
-          DELIVERY_DEADLINE_MS,
-        )
-      : Promise.resolve({
-          status: "fulfilled" as const,
-          value: "delegated_to_actions" as const,
-        }),
-    withDeadlineOutcome(
-      recordCompletedIngestRunStrict("tripwires", reportStartedAt, {
-        status:
-          red.length > 0 ? "error" : held.length > 0 ? "partial" : "ok",
-        records_in: gates.length,
-        records_upserted: gates.length - red.length,
-        records_failed: red.length,
-        error: red.length > 0 || held.length > 0 ? headline : null,
-      }, { signal: reporterHeartbeatDeadline.signal }),
-      REPORT_HEARTBEAT_DEADLINE_MS + 500,
-    ).finally(() => reporterHeartbeatDeadline.dispose()),
-  ]);
+  const [slackAlertOutcome, deliveryOutcome, reporterHeartbeatOutcome] =
+    await Promise.all([
+      slackAlertOutcomePromise,
+      directGitHubDeliveryEnabled
+        ? withDeadlineOutcome(
+            deliverDataHealthReport({ headline, gates, anomalies: allAnomalies }),
+            DELIVERY_DEADLINE_MS,
+          )
+        : Promise.resolve({
+            status: "fulfilled" as const,
+            value: "delegated_to_actions" as const,
+          }),
+      withDeadlineOutcome(
+        recordCompletedIngestRunStrict("tripwires", reportStartedAt, {
+          status:
+            red.length > 0 ? "error" : held.length > 0 ? "partial" : "ok",
+          records_in: gates.length,
+          records_upserted: gates.length - red.length,
+          records_failed: red.length,
+          error: red.length > 0 || held.length > 0 ? headline : null,
+        }, { signal: reporterHeartbeatDeadline.signal }),
+        REPORT_HEARTBEAT_DEADLINE_MS + 500,
+      ).finally(() => reporterHeartbeatDeadline.dispose()),
+    ]);
+  const slackAlertDelivery =
+    slackAlertOutcome.status === "fulfilled"
+      ? slackAlertOutcome.value
+      : slackAlertOutcome.status;
   const githubDelivery =
     deliveryOutcome.status === "fulfilled"
       ? deliveryOutcome.value
@@ -447,6 +462,7 @@ async function runDataHealthReport(requestSignal?: AbortSignal) {
       degraded: red.length > 0,
       required_phase_unavailable: requiredPhaseUnavailable,
       github_delivery: githubDelivery,
+      slack_alert_delivery: slackAlertDelivery,
       reporter_heartbeat_recorded: reporterHeartbeatRecorded,
       reporter_heartbeat_outcome: reporterHeartbeatOutcome.status,
     },
@@ -464,6 +480,7 @@ async function runDataHealthReport(requestSignal?: AbortSignal) {
         food_truck_schedule: FOOD_TRUCK_DEADLINE_MS,
         tripwires: TRIPWIRE_OUTER_DEADLINE_MS,
         search_index: SEARCH_INDEX_DEADLINE_MS,
+        slack_alert: ALERT_DELIVERY_DEADLINE_MS,
         github_delivery: DELIVERY_DEADLINE_MS,
         reporter_heartbeat: REPORT_HEARTBEAT_DEADLINE_MS,
       },
@@ -525,10 +542,12 @@ async function runDataHealthReport(requestSignal?: AbortSignal) {
       anomalies,
       anomaly_count: anomalies.length,
       snapshot_hydration: hydrateOutcome.status,
-      // The Slack helper is deliberately fail-soft and is not awaited. This is
-      // a request signal, not proof of delivery.
+      // Both fields are bounded and fail-soft. The delivery field distinguishes
+      // provider acceptance from suppression, missing setup, and failure.
       slack_alert_requested:
-        allAnomalies.length > 0 && Boolean(process.env.SLACK_WEBHOOK_URL),
+        allAnomalies.length > 0 &&
+        Boolean(process.env.SLACK_WEBHOOK_URL?.trim()),
+      slack_alert_delivery: slackAlertDelivery,
     },
     curated_freshness: {
       anomalies: freshnessAnomalies,

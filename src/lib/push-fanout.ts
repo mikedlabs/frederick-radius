@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { asc, eq, inArray, lt, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { push_subscriptions, push_log } from "@/lib/db/schema";
@@ -7,19 +8,138 @@ import { sendPush, configurePush } from "@/lib/push";
 import { pushDeliveryFinalUpdate } from "@/lib/push-open-attribution";
 import { shouldDeliver } from "./push-delivery";
 import type { PushPayload } from "./push";
+import { OWNER_ALERTS_TOPIC } from "./push-topics";
+
+type FanoutResult = {
+  claimed: boolean;
+  attempted: number;
+  sent: number;
+  gone: number;
+  held: number;
+};
+
+type FanoutSubscription = {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  quiet_start: number | null;
+  quiet_end: number | null;
+};
+
+function ownerDeliveryKey(dedupeKey: string, endpoint: string): string {
+  const endpointHash = createHash("sha256")
+    .update(endpoint)
+    .digest("hex")
+    .slice(0, 24);
+  return `${dedupeKey}:device:${endpointHash}`;
+}
+
+async function fanoutOwnerAlert(
+  db: NonNullable<ReturnType<typeof getDb>>,
+  dedupeKey: string,
+  payload: PushPayload,
+  rows: FanoutSubscription[],
+): Promise<FanoutResult> {
+  let claimed = false;
+  let attempted = 0;
+  let sent = 0;
+  let gone = 0;
+  const sentEndpoints: string[] = [];
+
+  // Owner alerts are immediate and use one claim per device. A provider
+  // failure releases only that device's claim, so retrying the same durable
+  // submission cannot duplicate devices that already accepted the push.
+  for (const row of rows) {
+    const claim = await db
+      .insert(push_log)
+      .values({
+        topic: OWNER_ALERTS_TOPIC,
+        dedupe_key: ownerDeliveryKey(dedupeKey, row.endpoint),
+        title: payload.title,
+        body: payload.body,
+        url: payload.url,
+      })
+      .onConflictDoNothing({ target: [push_log.topic, push_log.dedupe_key] })
+      .returning({ id: push_log.id });
+    const logId = claim[0]?.id;
+    if (!logId) continue;
+
+    claimed = true;
+    attempted += 1;
+    let accepted = false;
+    try {
+      const result = await sendPush(
+        { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+        { ...payload, n: logId },
+      );
+      if (!result) {
+        try {
+          await db.delete(push_log).where(eq(push_log.id, logId));
+        } catch {
+          console.error("[fanout] owner alert retry claim could not be released");
+        }
+        continue;
+      }
+      accepted = true;
+      sent += 1;
+      sentEndpoints.push(row.endpoint);
+    } catch (err) {
+      const terminal =
+        err instanceof Error &&
+        (err.message === "subscription_gone" ||
+          err.message === "invalid_subscription");
+      if (terminal) {
+        gone += 1;
+        try {
+          await db
+            .delete(push_subscriptions)
+            .where(eq(push_subscriptions.endpoint, row.endpoint));
+        } catch {}
+      } else {
+        console.error(
+          `[fanout] owner alert send failed for ${row.endpoint.slice(0, 40)}…`,
+        );
+        try {
+          await db.delete(push_log).where(eq(push_log.id, logId));
+        } catch {
+          console.error("[fanout] owner alert retry claim could not be released");
+        }
+      }
+    }
+    if (accepted) {
+      try {
+        await db
+          .update(push_log)
+          .set(pushDeliveryFinalUpdate(1))
+          .where(eq(push_log.id, logId));
+      } catch {
+        // The retained claim still prevents a duplicate provider delivery.
+        console.error("[fanout] owner alert delivery count could not be recorded");
+      }
+    }
+  }
+
+  if (sentEndpoints.length > 0) {
+    try {
+      await db
+        .update(push_subscriptions)
+        .set({ last_seen_at: new Date() })
+        .where(inArray(push_subscriptions.endpoint, sentEndpoints));
+    } catch {}
+  }
+
+  return { claimed, attempted, sent, gone, held: 0 };
+}
 
 /**
  * Fan one payload out to every subscription opted into `topic`.
  *
- *   1. Claim the (topic, dedupe_key) pair via INSERT … ON CONFLICT
- *      DO NOTHING. If the insert created no row, this payload was
- *      already sent and we exit silently — that's how the same cron
- *      can run safely from multiple workers and across deploys.
- *   2. Pull every subscription whose `topics` jsonb contains the
- *      topic string.
- *   3. Send the push to each, in serial (~ms per call; the volume is
- *      tiny). On a 404/410, delete the dead subscription so we never
- *      try that endpoint again.
+ *   1. Pull every subscription whose `topics` jsonb contains the topic.
+ *   2. Public topics claim one aggregate (topic, dedupe_key) send. Private
+ *      owner alerts claim per device so a transient failure can be retried
+ *      without duplicating delivery to devices that already accepted it.
+ *   3. Send serially (the volume is tiny). On a 404/410, delete the dead
+ *      subscription so we never try that endpoint again.
  *
  * Returns { claimed, attempted, sent, gone } so the caller can log
  * what happened.
@@ -29,14 +149,30 @@ export async function fanoutToTopic(
   dedupeKey: string,
   payload: PushPayload,
   opts: { urgent?: boolean } = {},
-): Promise<{ claimed: boolean; attempted: number; sent: number; gone: number; held: number }> {
+): Promise<FanoutResult> {
   const db = getDb();
   if (!db) return { claimed: false, attempted: 0, sent: 0, gone: 0, held: 0 };
   if (!configurePush()) return { claimed: false, attempted: 0, sent: 0, gone: 0, held: 0 };
 
-  // Step 1 — claim the dedupe key. The unique index on (topic,
-  // dedupe_key) plus ON CONFLICT DO NOTHING means at most one row
-  // is inserted across the whole fleet for this payload.
+  // Resolve the audience before claiming. Private owner alerts use a
+  // per-device claim; public topics retain their one aggregate send claim.
+  const rows = await db
+    .select({
+      endpoint: push_subscriptions.endpoint,
+      p256dh: push_subscriptions.p256dh,
+      auth: push_subscriptions.auth,
+      quiet_start: push_subscriptions.quiet_start,
+      quiet_end: push_subscriptions.quiet_end,
+    })
+    .from(push_subscriptions)
+    .where(sql`${push_subscriptions.topics} ? ${topic}`);
+
+  if (topic === OWNER_ALERTS_TOPIC) {
+    return fanoutOwnerAlert(db, dedupeKey, payload, rows);
+  }
+
+  // Claim the public-topic send. The unique index plus ON CONFLICT DO NOTHING
+  // keeps overlapping cron invocations from broadcasting twice.
   const claim = await db
     .insert(push_log)
     .values({
@@ -53,19 +189,7 @@ export async function fanoutToTopic(
     return { claimed: false, attempted: 0, sent: 0, gone: 0, held: 0 };
   }
 
-  // Step 2 — subscribers in this topic, with their quiet-hours prefs.
-  const rows = await db
-    .select({
-      endpoint: push_subscriptions.endpoint,
-      p256dh: push_subscriptions.p256dh,
-      auth: push_subscriptions.auth,
-      quiet_start: push_subscriptions.quiet_start,
-      quiet_end: push_subscriptions.quiet_end,
-    })
-    .from(push_subscriptions)
-    .where(sql`${push_subscriptions.topics} ? ${topic}`);
-
-  // Step 3 — send each, holding non-urgent pushes for devices inside their
+  // Send each, holding non-urgent pushes for devices inside their
   // quiet hours (urgent civic alerts bypass). Gone subs get pruned.
   const now = new Date();
   // Tag every send with this send's log id so the SW can attribute opens.
@@ -80,10 +204,11 @@ export async function fanoutToTopic(
       continue;
     }
     try {
-      await sendPush(
+      const result = await sendPush(
         { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
         tagged,
       );
+      if (!result) continue;
       sent += 1;
       sentEndpoints.push(row.endpoint);
     } catch (err) {
