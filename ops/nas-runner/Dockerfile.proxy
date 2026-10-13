@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1
+
+FROM ubuntu:24.04
+
+LABEL org.opencontainers.image.source="https://github.com/mikedlabs/frederick-radius"
+LABEL org.opencontainers.image.description="Destination-restricted egress proxy for the Frederick Radius NAS runner"
+LABEL org.opencontainers.image.version="24.04-r1"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      ca-certificates \
+      iproute2 \
+      squid \
+      tini \
+      util-linux \
+    && rm -rf /var/lib/apt/lists/* \
+    && test "$(id -u proxy)" = "13" \
+    && test "$(id -g proxy)" = "13"
+
+COPY runner-egress.conf /etc/squid/runner-egress.conf
+COPY proxy-entrypoint.sh /usr/local/bin/proxy-entrypoint
+
+RUN chmod 0444 /etc/squid/runner-egress.conf \
+    && chmod 0755 /usr/local/bin/proxy-entrypoint \
+    && /usr/sbin/squid -k parse -f /etc/squid/runner-egress.conf
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/bin/bash", "/usr/local/bin/proxy-entrypoint"]

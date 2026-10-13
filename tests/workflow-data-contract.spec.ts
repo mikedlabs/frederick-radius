@@ -75,24 +75,10 @@ describe("scheduled data workflow contracts", () => {
     expect(checkedActions).toBeGreaterThan(0);
   });
 
-  it("routes only reviewed trusted-main generators to the repository NAS runner", () => {
+  it("inventories every runner-targeting job and reserves the NAS label for trusted-main generators", () => {
     const workflowNames = readdirSync(WORKFLOW_DIR).filter((name) =>
       /\.ya?ml$/.test(name),
     );
-    const radiusDataJobs: string[] = [];
-
-    for (const name of workflowNames) {
-      const workflow = parse(workflowText(name)) as WorkflowDocument;
-      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
-        const labels = Array.isArray(job["runs-on"])
-          ? job["runs-on"]
-          : [job["runs-on"]];
-        if (labels.includes("radius-data")) {
-          radiusDataJobs.push(`${name}:${jobName}`);
-        }
-      }
-    }
-
     const trustedGenerators = [
       [
         "build-marc-schedule.yml",
@@ -115,11 +101,63 @@ describe("scheduled data workflow contracts", () => {
         "${{ github.ref == 'refs/heads/main' }}",
       ],
     ] as const;
-    expect(radiusDataJobs.sort()).toEqual(
-      trustedGenerators
-        .map(([name, jobName]) => `${name}:${jobName}`)
-        .sort(),
-    );
+
+    const hostedJobs = [
+      ["apify-source-change-radar.yml", "inspect"],
+      ["automated-pr-checks.yml", "dispatch"],
+      ["automated-pr-status-bridge.yml", "attach"],
+      ["automated-pr-status-bridge.yml", "reconcile-stale"],
+      ["ci.yml", "attach-automated-pr-checks"],
+      ["ci.yml", "verify"],
+      ["data-refresh.yml", "refresh"],
+      ["data-refresh.yml", "report"],
+      ["discovery.yml", "discover"],
+      ["enrich-places.yml", "enrich"],
+      ["enrich-places.yml", "review-gate"],
+      ["feed-health.yml", "health"],
+      ["freshness-check.yml", "check"],
+      ["freshness-check.yml", "report"],
+      ["ingest-business-info.yml", "ingest"],
+      ["ingest-business-info.yml", "review-gate"],
+      ["ingest-civic.yml", "ingest"],
+      ["ingest-civic.yml", "review-gate"],
+      ["ingest-venues.yml", "ingest"],
+      ["ingest-venues.yml", "review-gate"],
+      ["performance-budget.yml", "lighthouse"],
+      ["photo-attribution-backfill.yml", "backfill"],
+      ["production-canary.yml", "alert"],
+      ["production-canary.yml", "apex"],
+      ["production-health-alert.yml", "check"],
+      ["publish-automated-pr.yml", "publish"],
+      ["publish-data-snapshot.yml", "publish"],
+      ["refresh-commerce-links.yml", "refresh"],
+      ["source-intelligence.yml", "inspect"],
+      ["style.yml", "style-lint"],
+      ["ux-audit.yml", "mobile-ux"],
+      ["visual-contract.yml", "chromium"],
+    ] as const;
+
+    const runnerTargets = new Map<string, string | string[]>();
+    for (const name of workflowNames) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
+        if (job["runs-on"] === undefined) continue;
+        runnerTargets.set(`${name}:${jobName}`, job["runs-on"]);
+      }
+    }
+
+    const expectedRunnerJobs = [
+      ...hostedJobs.map(([name, jobName]) => `${name}:${jobName}`),
+      ...trustedGenerators.map(([name, jobName]) => `${name}:${jobName}`),
+    ].sort();
+    expect([...runnerTargets.keys()].sort()).toEqual(expectedRunnerJobs);
+
+    for (const [name, jobName] of hostedJobs) {
+      expect(
+        runnerTargets.get(`${name}:${jobName}`),
+        `${name}:${jobName} must stay on an isolated hosted runner`,
+      ).toBe("ubuntu-latest");
+    }
 
     for (const [name, jobName, expectedCondition] of trustedGenerators) {
       const workflowTextValue = workflowText(name);
@@ -128,28 +166,17 @@ describe("scheduled data workflow contracts", () => {
       expect(workflowTextValue).toContain("schedule:");
       expect(workflowTextValue).not.toContain("pull_request:");
       expect(workflowTextValue).not.toContain("\n  push:");
-      expect(workflow.jobs?.[jobName]?.["runs-on"]).toEqual([
-        "self-hosted",
-        "radius-data",
-      ]);
+      expect(workflow.jobs?.[jobName]?.["runs-on"]).toBe("radius-data");
       expect(workflow.jobs?.[jobName]?.if).toBe(expectedCondition);
       expect(workflow.jobs?.[jobName]?.permissions).toEqual({ contents: "read" });
     }
 
-    const hostedJobs = [
-      ["publish-automated-pr.yml", "publish"],
-      ["automated-pr-checks.yml", "dispatch"],
-      ["ci.yml", "verify"],
-      ["ci.yml", "attach-automated-pr-checks"],
-      ["style.yml", "style-lint"],
-    ] as const;
-    for (const [name, jobName] of hostedJobs) {
-      const workflow = parse(workflowText(name)) as WorkflowDocument;
-      expect(
-        workflow.jobs?.[jobName]?.["runs-on"],
-        `${name}:${jobName} must stay on an isolated hosted runner`,
-      ).toBe("ubuntu-latest");
-    }
+    const everyRequestedLabel = [...runnerTargets.values()].flatMap((target) =>
+      Array.isArray(target) ? target : [target],
+    );
+    expect(everyRequestedLabel).not.toContain("self-hosted");
+    expect(everyRequestedLabel).not.toContain("Linux");
+    expect(everyRequestedLabel).not.toContain("X64");
   });
 
   it("caps the persistent NAS data runner so it cannot take over the appliance", () => {
@@ -166,6 +193,208 @@ describe("scheduled data workflow contracts", () => {
 
     expect(dataRunner?.mem_limit).toBe("4g");
     expect(dataRunner?.cpuset).toBe("0,1");
+  });
+
+  it("keeps runner identity and executable state immutable across one-job cycles", () => {
+    type VolumeMount = {
+      source?: string;
+      target?: string;
+      read_only?: boolean;
+      type?: string;
+    };
+    type RunnerService = {
+      cap_add?: string[];
+      cap_drop?: string[];
+      command?: string[];
+      environment?: Record<string, string>;
+      networks?: Record<string, unknown>;
+      read_only?: boolean;
+      restart?: string;
+      volumes?: VolumeMount[];
+    };
+    const compose = parse(nasRunnerText("compose.yaml")) as {
+      services?: Record<string, RunnerService>;
+      networks?: Record<string, { internal?: boolean; enable_ipv6?: boolean }>;
+    };
+    const listener = compose.services?.["radius-data-runner"];
+    const register = compose.services?.["radius-data-register"];
+    const listenerIdentity = listener?.volumes?.find(
+      (mount) => mount.target === "/runner/identity",
+    );
+    const registerIdentity = register?.volumes?.find(
+      (mount) => mount.target === "/runner/identity",
+    );
+
+    expect(listener?.read_only).toBe(true);
+    expect(listenerIdentity).toMatchObject({
+      source: "runner-identity-v2",
+      type: "volume",
+      read_only: true,
+    });
+    expect(registerIdentity).toMatchObject({
+      source: "runner-identity-v2",
+      type: "volume",
+    });
+    expect(registerIdentity?.read_only).not.toBe(true);
+    expect(register?.volumes).not.toContainEqual(
+      expect.objectContaining({
+        source: "runner-scratch-v2",
+      }),
+    );
+    expect(listener?.volumes).toContainEqual(
+      expect.objectContaining({
+        source: "runner-scratch-v2",
+        target: "/runner/scratch",
+      }),
+    );
+    expect(listener?.environment).not.toHaveProperty("RUNNER_TOKEN");
+    expect(listener?.restart).toBe("unless-stopped");
+    expect(listener?.command).toEqual(["listen"]);
+    expect(register?.command).toEqual(["register"]);
+    expect(listener?.cap_drop).toEqual(["ALL"]);
+    expect(listener?.cap_add).toContain("KILL");
+    expect(listener?.cap_add).toContain("NET_ADMIN");
+    expect(listener?.cap_add).toContain("SETPCAP");
+
+    const dockerfile = nasRunnerText("Dockerfile");
+    const entrypoint = nasRunnerText("runner-entrypoint.sh");
+    expect(entrypoint).toContain("export XTABLES_LOCKFILE=/tmp/xtables.lock");
+    expect(dockerfile).toContain("FROM runner-common AS registration");
+    expect(dockerfile).toContain("FROM runner-common AS runtime");
+    expect(dockerfile).toContain("ln -s /runner/scratch/work _work");
+    expect(dockerfile).toContain(
+      "ln -s /runner/identity/.credentials .credentials",
+    );
+    expect(entrypoint).not.toContain("cp -a /opt/actions-runner");
+    expect(entrypoint).not.toContain("exec ./run.sh");
+    expect(entrypoint).toContain(
+      '"$runner_install/bin/Runner.Listener" run --once',
+    );
+    expect(entrypoint).toContain(
+      'find "$scratch_dir" -xdev -depth -mindepth 1 -delete',
+    );
+    expect(entrypoint.indexOf("reset_scratch")).toBeLessThan(
+      entrypoint.indexOf("listen_once"),
+    );
+    expect(entrypoint).toContain("--disableupdate");
+    expect(entrypoint).toContain("--no-default-labels");
+    expect(entrypoint).toContain("--bounding-set=-all");
+    expect(entrypoint).toContain(
+      '"$runner_install/$required_file" "$identity_dir/$required_file"',
+    );
+  });
+
+  it("forces NAS job traffic through a TLS-only public-destination allowlist", () => {
+    type NetworkAttachment = Record<string, { ipv4_address?: string }>;
+    type NetworkService = {
+      environment?: Record<string, string>;
+      networks?: NetworkAttachment;
+      ports?: unknown[];
+      read_only?: boolean;
+    };
+    const compose = parse(nasRunnerText("compose.yaml")) as {
+      services?: Record<string, NetworkService>;
+      networks?: Record<
+        string,
+        {
+          internal?: boolean;
+          enable_ipv6?: boolean;
+          ipam?: {
+            config?: Array<{ subnet?: string; gateway?: string }>;
+          };
+        }
+      >;
+    };
+    const proxy = compose.services?.["runner-egress-proxy"];
+    const listener = compose.services?.["radius-data-runner"];
+    const register = compose.services?.["radius-data-register"];
+
+    expect(compose.networks?.["runner-private"]).toMatchObject({
+      internal: true,
+      enable_ipv6: false,
+    });
+    expect(compose.networks?.["runner-uplink"]).toMatchObject({
+      enable_ipv6: false,
+      ipam: {
+        config: [
+          { subnet: "172.31.254.0/29", gateway: "172.31.254.1" },
+        ],
+      },
+    });
+    expect(Object.keys(listener?.networks ?? {})).toEqual(["runner-private"]);
+    expect(Object.keys(register?.networks ?? {})).toEqual(["runner-private"]);
+    expect(Object.keys(proxy?.networks ?? {}).sort()).toEqual([
+      "runner-private",
+      "runner-uplink",
+    ]);
+    expect(proxy?.ports).toBeUndefined();
+    expect(proxy?.read_only).toBe(true);
+    expect((proxy as NetworkService & { cap_add?: string[] }).cap_add).toEqual(
+      expect.arrayContaining([
+        "KILL",
+        "NET_ADMIN",
+        "SETGID",
+        "SETPCAP",
+        "SETUID",
+      ]),
+    );
+    expect(listener?.environment?.HTTPS_PROXY).toBe(
+      "http://172.31.255.2:3128",
+    );
+    expect(listener?.environment?.NO_PROXY).toBe("");
+    expect(listener?.environment?.NODE_USE_ENV_PROXY).toBe("1");
+
+    const entrypoint = nasRunnerText("runner-entrypoint.sh");
+    expect(entrypoint).toContain("iptables -w 5 -P OUTPUT DROP");
+    expect(entrypoint).toContain(
+      "iptables -w 5 -A OUTPUT -d 127.0.0.11 -j DROP",
+    );
+    expect(entrypoint).toContain(
+      '-p tcp -d "$proxy_ip" --dport "$proxy_port" -j ACCEPT',
+    );
+
+    const policy = nasRunnerText("runner-egress.conf");
+    for (const domain of [
+      "github.com",
+      ".actions.githubusercontent.com",
+      "codeload.github.com",
+      ".blob.core.windows.net",
+      "registry.npmjs.org",
+      "feeds.mta.maryland.gov",
+      "mdotmta-gtfs.s3.amazonaws.com",
+      "passio3.com",
+      "calendar.google.com",
+      ".thegreatfrederickfair.com",
+      "mobile.map-dynamics.com",
+      ".supabase.co",
+    ]) {
+      expect(policy).toContain(domain);
+    }
+    expect(policy).toContain("acl CONNECT method CONNECT");
+    expect(policy).toContain("acl TLS_port port 443");
+    expect(policy).toContain("acl approved_destination dstdomain -n");
+    expect(policy.indexOf("http_access deny !approved_destination")).toBeLessThan(
+      policy.indexOf("http_access deny forbidden_destination"),
+    );
+    expect(policy.indexOf("http_access deny forbidden_destination")).toBeLessThan(
+      policy.indexOf("http_access allow approved_destination"),
+    );
+    expect(policy.trimEnd().endsWith("shutdown_lifetime 3 seconds")).toBe(true);
+    expect(policy).toContain("http_access deny all");
+    expect(policy).toContain("pinger_enable off");
+    expect(nasRunnerText("Dockerfile.proxy")).toContain("squid -k parse");
+    expect(nasRunnerText("proxy-entrypoint.sh")).toContain(
+      'ip -4 route replace default via "$uplink_gateway"',
+    );
+    expect(nasRunnerText("proxy-entrypoint.sh")).toContain(
+      "--bounding-set=-all",
+    );
+    expect(nasRunnerText("Dockerfile")).toContain(
+      "pgrep -u 1001 -x Runner.Listener",
+    );
+    expect(nasRunnerText("Dockerfile")).not.toContain(
+      "pgrep -f 'Runner.Listener run --once'",
+    );
   });
 
   it("uses the read-only Supabase Data API handoff for the hours snapshot", () => {

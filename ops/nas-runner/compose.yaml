@@ -1,34 +1,152 @@
 name: frederick-radius-runner
 
 services:
+  runner-egress-proxy:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+    image: frederick-radius/runner-egress-proxy:24.04-r1
+    pull_policy: build
+    container_name: radius-data-egress
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.5
+    networks:
+      runner-private:
+        ipv4_address: 172.31.255.2
+      runner-uplink:
+        ipv4_address: 172.31.254.2
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=64m,uid=13,gid=13,mode=0700
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - KILL
+      - NET_ADMIN
+      - SETGID
+      - SETPCAP
+      - SETUID
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /tmp/squid.pid && kill -0 \"$(cat /tmp/squid.pid)\""]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  # This one-shot initializer is the only service with a writable identity
+  # mount. On later starts it validates the completed identity and exits.
+  radius-data-register:
+    platform: linux/amd64
+    build:
+      context: .
+      target: registration
+      args:
+        RUNNER_VERSION: "2.337.0"
+        RUNNER_SHA256: "70920811a4f8ad4328818682bca5c6469c1c942fab52448868071d0063816613"
+    image: frederick-radius/actions-runner-register:2.337.0-r5
+    pull_policy: build
+    restart: "no"
+    environment:
+      HOME: /runner/scratch/home
+      XDG_CACHE_HOME: /runner/scratch/cache
+      npm_config_cache: /runner/scratch/cache/npm
+      RUNNER_TOOL_CACHE: /runner/scratch/tool-cache
+      ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE: /runner/scratch/action-cache
+      ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT: "1"
+      NODE_USE_ENV_PROXY: "1"
+      HTTPS_PROXY: http://172.31.255.2:3128
+      HTTP_PROXY: http://172.31.255.2:3128
+      https_proxy: http://172.31.255.2:3128
+      http_proxy: http://172.31.255.2:3128
+      NO_PROXY: ""
+      no_proxy: ""
+      RUNNER_URL: https://github.com/mikedlabs/frederick-radius
+      RUNNER_NAME: radius-data-nas-v2
+      RUNNER_LABELS: radius-data
+      RUNNER_WORKDIR: _work
+      RUNNER_TOKEN: "${RUNNER_TOKEN:-}"
+    volumes:
+      - type: volume
+        source: runner-identity-v2
+        target: /runner/identity
+    networks:
+      runner-private:
+        ipv4_address: 172.31.255.4
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=256m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - KILL
+      - NET_ADMIN
+      - SETGID
+      - SETPCAP
+      - SETUID
+    pids_limit: 128
+    depends_on:
+      runner-egress-proxy:
+        condition: service_healthy
+    command: ["register"]
+
   radius-data-runner:
     platform: linux/amd64
     build:
       context: .
+      target: runtime
       args:
         RUNNER_VERSION: "2.337.0"
         RUNNER_SHA256: "70920811a4f8ad4328818682bca5c6469c1c942fab52448868071d0063816613"
-    image: frederick-radius/actions-runner:2.337.0-r4
+    image: frederick-radius/actions-runner:2.337.0-r5
     pull_policy: build
-    container_name: radius-data-nas
-    hostname: radius-data-nas
+    container_name: radius-data-nas-v2
+    hostname: radius-data-nas-v2
     restart: unless-stopped
     stop_grace_period: 2m
     mem_limit: 4g
     cpuset: "0,1"
     environment:
-      HOME: /runner/home
-      XDG_CACHE_HOME: /runner/cache
-      npm_config_cache: /runner/cache/npm
+      HOME: /runner/scratch/home
+      XDG_CACHE_HOME: /runner/scratch/cache
+      npm_config_cache: /runner/scratch/cache/npm
+      RUNNER_TOOL_CACHE: /runner/scratch/tool-cache
+      ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE: /runner/scratch/action-cache
+      ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT: "1"
+      NODE_USE_ENV_PROXY: "1"
+      HTTPS_PROXY: http://172.31.255.2:3128
+      HTTP_PROXY: http://172.31.255.2:3128
+      https_proxy: http://172.31.255.2:3128
+      http_proxy: http://172.31.255.2:3128
+      NO_PROXY: ""
+      no_proxy: ""
       RUNNER_URL: https://github.com/mikedlabs/frederick-radius
-      RUNNER_NAME: radius-data-nas
+      RUNNER_NAME: radius-data-nas-v2
       RUNNER_LABELS: radius-data
       RUNNER_WORKDIR: _work
-      RUNNER_TOKEN: "${RUNNER_TOKEN:-}"
     volumes:
-      - runner-state:/runner
+      - type: volume
+        source: runner-identity-v2
+        target: /runner/identity
+        read_only: true
+      - type: volume
+        source: runner-scratch-v2
+        target: /runner/scratch
     networks:
-      - runner-egress
+      runner-private:
+        ipv4_address: 172.31.255.3
     read_only: true
     tmpfs:
       - /tmp:rw,nosuid,nodev,size=2g
@@ -39,13 +157,22 @@ services:
     cap_add:
       - CHOWN
       - DAC_OVERRIDE
+      - KILL
+      - NET_ADMIN
       - SETGID
+      - SETPCAP
       - SETUID
     pids_limit: 512
     ulimits:
       nofile:
         soft: 65536
         hard: 65536
+    depends_on:
+      runner-egress-proxy:
+        condition: service_healthy
+      radius-data-register:
+        condition: service_completed_successfully
+    command: ["listen"]
     logging:
       driver: json-file
       options:
@@ -53,9 +180,23 @@ services:
         max-file: "3"
 
 networks:
-  runner-egress:
+  runner-private:
     driver: bridge
+    internal: true
+    enable_ipv6: false
+    ipam:
+      config:
+        - subnet: 172.31.255.0/29
+  runner-uplink:
+    driver: bridge
+    enable_ipv6: false
+    ipam:
+      config:
+        - subnet: 172.31.254.0/29
+          gateway: 172.31.254.1
 
 volumes:
-  runner-state:
-    name: frederick-radius-runner-state
+  runner-identity-v2:
+    name: frederick-radius-runner-identity-v2
+  runner-scratch-v2:
+    name: frederick-radius-runner-scratch-v2

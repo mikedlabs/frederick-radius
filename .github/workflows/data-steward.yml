@@ -39,7 +39,7 @@ jobs:
     # Supabase variables only. Keep publication and PR mutation on the hosted
     # reusable workflow below so the persistent NAS never receives write
     # credentials.
-    runs-on: [self-hosted, radius-data]
+    runs-on: radius-data
     timeout-minutes: 60
     permissions:
       contents: read
