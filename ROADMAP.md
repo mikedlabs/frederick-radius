@@ -1,5 +1,10 @@
 # Frederick Radius — Roadmap
 
+> **HISTORICAL (superseded 2026-09-21).** The live roadmap now lives in
+> [`STATE.md`](./STATE.md). This file captured the mid-2026 phase plan and
+> the differentiation "moat" thinking, which remains useful reading, but
+> its status columns are stale. Plan from `STATE.md`, not here.
+
 **Last updated:** 2026-06-04 — added the differentiation roadmap (the moat + the love).
 **Cadence:** updated when a phase ships or scope shifts. Companion to [`AUDIT.md`](./AUDIT.md).
 
