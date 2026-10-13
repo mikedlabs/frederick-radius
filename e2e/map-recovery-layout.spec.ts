@@ -132,6 +132,7 @@ async function recoveryGeometry(page: Page) {
       headingUnobscured: unobscured(heading),
       measuredDockHeight: parseFloat((host as HTMLElement).style.getPropertyValue("--map-dock-height")),
       bottomPadding: parseFloat(getComputedStyle(list).paddingBottom),
+      bottomMargin: parseFloat(getComputedStyle(list).marginBottom),
       scrollTop: list.scrollTop, scrollHeight: list.scrollHeight, clientHeight: list.clientHeight,
       horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth || list.scrollWidth > list.clientWidth,
     };
@@ -220,7 +221,8 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
       if (viewport.width >= 1024) {
         expect.soft(initial.heading.y).toBeGreaterThanOrEqual(initial.dock.bottom);
       } else {
-        expect.soft(initial.bottomPadding).toBeGreaterThan(initial.dock.height);
+        expect.soft(initial.bottomMargin).toBeGreaterThan(initial.dock.height);
+        expect.soft(initial.list.bottom).toBeLessThanOrEqual(initial.dock.y);
       }
 
       // A shorter phone makes the real fallback list scroll; the host observer
@@ -236,28 +238,21 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
         const geometry = await recoveryGeometry(page);
         return Math.abs(geometry.measuredDockHeight - geometry.dock.height);
       }).toBeLessThan(1);
-      // Ranked rows have an inner scrolling viewport. First reveal the final
-      // row through its actual ancestors, then clear the still-useful dock in
-      // the outer region. Maximizing both scroll areas would overshoot it.
+      // Recovery owns one scrolling lane above the measured dock. Reveal the
+      // final row through its real scroll ancestor without an overlap repair.
       const lastResult = list.locator("[data-map-list-place]").last();
       await lastResult.evaluate((element) => {
         element.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
-      });
-      await list.evaluate((region) => {
-        const rows = region.querySelectorAll<HTMLElement>("[data-map-list-place]");
-        const row = rows[rows.length - 1];
-        const dock = region.closest(".dock-host")!.querySelector<HTMLElement>("[data-map-dock]")!;
-        const regionBox = region.getBoundingClientRect();
-        const dockBox = dock.getBoundingClientRect();
-        if (dockBox.top > regionBox.top && dockBox.top < regionBox.bottom) {
-          region.scrollTop += Math.max(0, row.getBoundingClientRect().bottom - dockBox.top);
-        }
       });
       const final = await recoveryGeometry(page);
       await testInfo.attach("final-recovery-geometry", { body: JSON.stringify(final, null, 2), contentType: "application/json" });
       await testInfo.attach("final-recovery-layout", { body: await page.screenshot({ fullPage: false }), contentType: "image/png" });
       expect(final.lastResult).not.toBeNull();
       expect(final.horizontalOverflow).toBe(false);
+      if (viewport.width < 1024) {
+        expect(final.list.bottom).toBeLessThanOrEqual(final.dock.y);
+        expect(final.bottomMargin).toBeGreaterThan(final.dock.height);
+      }
       await expect(search).toHaveValue("coffee");
       await expect(back).toHaveAttribute("href", returnTo);
       const finalTargets = {
@@ -270,7 +265,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
         expect(finalTargets.back.width).toBe(44);
         expect(final.scrollHeight).toBeGreaterThan(final.clientHeight);
         expect(final.scrollTop).toBeGreaterThan(0);
-        expect(final.bottomPadding).toBeGreaterThan(final.dock.height);
+        expect(final.bottomMargin).toBeGreaterThan(final.dock.height);
         expect(final.lastResult!.bottom).toBeLessThanOrEqual(final.dock.y);
         expect(final.lastResult!.y).toBeGreaterThanOrEqual(final.list.y);
       } else {
@@ -285,7 +280,8 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
 }
 
 
-test.describe("Native shortlist directions in the map fallback", () => {
+for (const typography of ["platform", "Arial"] as const) {
+test.describe(`Native shortlist directions (${typography} typography)`, () => {
   test.use({ viewport: { width: 320, height: 568 } });
   test("directions opens the exact destination without selecting a place or losing the scoped query", async ({ page, context }, testInfo) => {
     test.setTimeout(60_000);
@@ -303,6 +299,10 @@ test.describe("Native shortlist directions in the map fallback", () => {
       await route.fulfill({ contentType: "text/html", body: "<!doctype html><title>Native directions transport fixture</title><main>External handoff observed. No external map is loaded.</main>" });
     });
     await page.goto(mapUrl, { waitUntil: "domcontentloaded" });
+    if (typography === "Arial") {
+      // Common system-font metrics also exercise long names on narrow phones.
+      await page.addStyleTag({ content: ":root { --font-sans-base: Arial, sans-serif; }" });
+    }
     await expect(page.locator(".dock-host")).toHaveAttribute("data-map-error", "true", { timeout: 30_000 });
     const list = page.getByRole("region", { name: "Available results without the map" });
     const scopedPlaces = coffeePlaces.filter((place) => place.municipality === "brunswick");
@@ -325,6 +325,9 @@ test.describe("Native shortlist directions in the map fallback", () => {
       .toBe(`${place.geom.lat},${place.geom.lng}`);
     expect(destination.searchParams.has("origin")).toBe(false);
     await page.evaluate(() => document.fonts.ready);
+    const lane = await recoveryGeometry(page);
+    expect(lane.list.bottom).toBeLessThanOrEqual(lane.dock.y);
+    expect(lane.bottomMargin).toBeGreaterThan(lane.dock.height);
     const targets = { details: await assert44HitTarget(details), directions: await assert44HitTarget(directions) };
     expect(targets.details.x + targets.details.width).toBeLessThanOrEqual(targets.directions.x);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
@@ -351,3 +354,4 @@ test.describe("Native shortlist directions in the map fallback", () => {
     await testInfo.attach("shortlist-directions-320", { body: await page.screenshot({ fullPage: false }), contentType: "image/png" });
   });
 });
+}

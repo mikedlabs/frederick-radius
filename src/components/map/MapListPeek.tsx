@@ -347,6 +347,7 @@ export default function MapListPeek({
 
       <div
         id={listId}
+        data-map-list-body
         hidden={!expanded}
         className="max-h-[min(46dvh,380px)] overflow-y-auto overscroll-contain border-t border-[var(--app-border)]"
       >

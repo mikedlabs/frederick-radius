@@ -4740,7 +4740,7 @@ export default function AppMap({
                   style={{ color: "var(--app-ink)" }}
                 >
                   {!MAP_RENDERER_CONFIGURED
-                    ? "Map view is not enabled right now"
+                    ? "Map view unavailable"
                     : mapUnsupported
                     ? "This browser cannot draw the map"
                     : "The map is temporarily unavailable"}

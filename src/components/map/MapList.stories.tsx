@@ -39,14 +39,14 @@ export const RecoveryGuttersAt390: Story = {
   decorators: [(Story) => (
     <div className="map-error-fallback">
       <div className="map-error-fallback-head">
-        <h2 className="text-[16px] font-semibold">Map view is not enabled right now</h2>
+        <h2 className="text-[16px] font-semibold">Map view unavailable</h2>
       </div>
       <Story />
     </div>
   )],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const heading = canvas.getByRole("heading", { name: "Map view is not enabled right now" });
+    const heading = canvas.getByRole("heading", { name: "Map view unavailable" });
     const row = canvas.getByRole("button", { name: /Sample Frederick place/ });
     const count = canvas.getByText("1 place available");
     await expect(Math.abs(heading.getBoundingClientRect().left - row.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
