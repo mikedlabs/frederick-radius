@@ -49,6 +49,8 @@ export type BottomDrawerProps = {
    *  so content can render flush under the drag handle — e.g. a
    *  full-bleed photo cover. Default false. */
   bareHeader?: boolean;
+  /** Delegate Escape within an explicitly owned inline panel, if supplied. */
+  onEscapeKeyDown?: (event: KeyboardEvent) => void;
   /** Use an opaque surface for dense content above a busy map or photograph. */
   surface?: "default" | "solid";
 };
@@ -61,6 +63,7 @@ export default function BottomDrawer({
   open,
   onOpenChange,
   bareHeader = false,
+  onEscapeKeyDown,
   surface = "default",
 }: BottomDrawerProps) {
   // Most controlled drawers are opened by a button outside Drawer.Root, so
@@ -179,6 +182,7 @@ export default function BottomDrawer({
           style={{ background: "rgba(10, 8, 4, 0.45)" }}
         />
         <Drawer.Content
+          onEscapeKeyDown={onEscapeKeyDown}
           aria-modal="true"
           data-drawer-surface={surface}
           {...(subtitle ? {} : { "aria-describedby": undefined })}

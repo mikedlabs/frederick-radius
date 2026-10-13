@@ -10,6 +10,7 @@ import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance } from "@/lib/geo";
 import { getScope, parseScope, setScope, scopeTownSlug, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
 import { locationScopeHref } from "./locationScopeNavigation";
+import { replaceNativeWorkspaceScope } from "@/components/search/native-request-return";
 
 /**
  * TopBar location chip — the browsing-scope selector (UX-02).
@@ -67,7 +68,10 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
     closePicker();
     const href = locationScopeHref(window.location.href, next);
     if (href) {
-      if (window.location.pathname === "/map") {
+      if (window.location.pathname === "/compass") {
+        // Refining the current Tools workspace must not intercept itself.
+        replaceNativeWorkspaceScope(href);
+      } else if (window.location.pathname === "/map") {
         // Native history keeps the live map mounted while synchronizing its
         // URL-owned query and scope. The scope event above moves the camera.
         window.history.replaceState(null, "", href);

@@ -203,6 +203,74 @@ describe("reopened and edited plan constraints", () => {
   });
   afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
+  it("keeps a 16:59 date plan identical on reopening when later arrivals cross 17:00", () => {
+    const start = "2026-10-12T20:59:48.501Z";
+    places = [
+      savedPlace("culture-start"),
+      savedPlace("daytime-coffee", { category: "coffee" }),
+      savedPlace("daytime-park", { category: "park" }),
+      savedPlace("evening-dinner", { category: "restaurant" }),
+    ];
+    const inputs: PlanInputs = {
+      audience: "date", vibe: "easy", duration_hours: 3,
+      start_at: start, municipality: "frederick", anchor_slug: "culture-start",
+      require_verified_hours: false,
+    };
+    const generated = buildPlan(inputs);
+    expect(generated.stops.map((stop) => stop.place?.slug)).toEqual([
+      "culture-start", "evening-dinner",
+    ]);
+    expect(generated.stops.map((stop) => stop.place?.category)).not.toContain("coffee");
+    expect(generated.stops.map((stop) => stop.place?.category)).not.toContain("park");
+    expect(generated.stops[0].at).toBe(start);
+    expect(generated.stops[1].at).toBe("2026-10-12T22:17:48.501Z");
+    const last = generated.stops[generated.stops.length - 1];
+    expect(Date.parse(last.at) + last.duration_min * 60_000)
+      .toBeLessThanOrEqual(Date.parse(start) + 3 * 3_600_000);
+    const spec = decodeSpec(generated.share)!;
+    expect(spec.i).toEqual(inputs);
+    expect(spec.s).toEqual([{ p: "culture-start" }, { p: "evening-dinner" }]);
+
+    // Crossing the wall-clock boundary must not reinterpret the saved start.
+    vi.setSystemTime(new Date("2026-10-12T21:05:00.000Z"));
+    const reopened = reconstructPlan(spec)!;
+    const visitFacts = (plan: ReturnType<typeof buildPlan>) => plan.stops.map((stop) => ({
+      slug: stop.place?.slug, name: stop.place?.name, category: stop.place?.category,
+      at: stop.at, duration_min: stop.duration_min, open: stop.open, why: stop.why,
+      transfer: stop.travel_from_previous_min,
+    }));
+    expect(visitFacts(reopened)).toEqual(visitFacts(generated));
+    expect(reopened.title).toBe(generated.title);
+    expect(reopened.share).toBe(generated.share);
+    expect(decodeSpec(reopened.share)).toEqual(spec);
+    expect(reopened.unscheduled).toBeUndefined();
+    expect(reopened.notices).toBeUndefined();
+  });
+
+  it("still allows a date-plan coffee stop whose actual arrival precedes 17:00", () => {
+    places = [
+      savedPlace("early-coffee", { category: "coffee", feature_score: 20 }),
+      savedPlace("evening-culture"),
+    ];
+    const generated = buildPlan({
+      audience: "date", vibe: "easy", duration_hours: 3,
+      start_at: "2026-10-12T20:59:48.501Z", municipality: "frederick",
+      require_verified_hours: false,
+    });
+    expect(generated.stops.map((stop) => stop.place?.slug)).toEqual([
+      "early-coffee", "evening-culture",
+    ]);
+    expect(generated.stops.map((stop) => stop.at)).toEqual([
+      "2026-10-12T20:59:48.501Z", "2026-10-12T21:42:48.501Z",
+    ]);
+    const reopened = reconstructPlan(decodeSpec(generated.share)!)!;
+    expect(reopened.stops.map((stop) => stop.place?.slug)).toEqual([
+      "early-coffee", "evening-culture",
+    ]);
+    expect(reopened.share).toBe(generated.share);
+    expect(reopened.unscheduled).toBeUndefined();
+  });
+
   it.each([
     ["free budget", { budget: "free" }, {}, "not recorded as free"],
     ["value budget", { budget: "value" }, { price_band: 4 }, "price range"],

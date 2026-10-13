@@ -1499,21 +1499,23 @@ export default function AppMap({
     activeAmenityGroupCount: visibleAmenityGroups.size,
   });
   const visibleTransit = showTransit || Boolean(selectedDiscovery?.layers.transit);
-  // Live vehicle positions are ambient map intelligence, not the complete
-  // Transit layer. Start the small feed alongside the base map so its single
-  // county signal is ready as the canvas settles; route lines, stops, MARC,
-  // URL state, and saved preferences remain behind a deliberate Transit task.
-  const ambientLiveBuses = isBrowseMap && !compactSubjectMap;
-  const liveBusesVisible = visibleTransit || ambientLiveBuses;
-  // When someone chooses a live conditions layer, that task owns the canvas.
-  // The full business catalog stays available as soon as the layer is off,
-  // but it should not compete with buses, routes, weather, or road signals.
+  // A selected place task owns the canvas. Keep this same predicate for the
+  // business catalog and for suppressing an unrelated ambient bus preview.
   const explicitPlaceTaskActive =
     q.trim().length >= 2 ||
     Boolean(clientTask || dock?.intentKey || dock?.subKey) ||
     amenityLayerActive ||
     Boolean(selectedSlug || peekPlace || selectedDiscovery) ||
     Boolean(activeSlugs);
+  // The cold map can offer its existing ambient bus preview. Once someone
+  // searches or selects a task/scene, only deliberately enabled Transit (or a
+  // transit discovery's support layer) keeps live vehicles in that view.
+  const ambientLiveBuses =
+    isBrowseMap && !compactSubjectMap && !explicitPlaceTaskActive && !activeSceneId;
+  const liveBusesVisible = visibleTransit || ambientLiveBuses;
+  // When someone chooses a live conditions layer, that task owns the canvas.
+  // The full business catalog stays available as soon as the layer is off,
+  // but it should not compete with buses, routes, weather, or road signals.
   const operationalLayerRequested =
     visibleTransit ||
     showRadar ||
@@ -4985,7 +4987,7 @@ export default function AppMap({
 
         <p id="frederick-map-help" className="sr-only">
           Interactive map of Frederick County. Use arrow keys to pan and plus
-          or minus to zoom when the map has focus. Open What to see to find
+          or minus to zoom when the map has focus. Open Filters to find
           nearby places, current events, travel details, or local conditions.
         </p>
 

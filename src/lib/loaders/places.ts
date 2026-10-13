@@ -1221,23 +1221,21 @@ function fieldNoteTip(slug: string): string | undefined {
  * decorated places to a client component. Shrinks the per-page RSC payload +
  * client hydration cost (e.g. ~1.4MB off /category/food). The place-detail
  * surface uses the full loader, so this never starves it. Keeps the single
- * hero (google_photo_url), review_snippet/author, known_for, customers_loved.
+ * hero and its exact single attribution (google_photo_url and
+ * google_photo_attribution), review_snippet/author, known_for, customers_loved.
  */
 export function slimForList(p: PlaceCardData): PlaceCardData {
   const {
     google_photos: _gp,
-    google_photo_attribution: _gpaOne,
     google_photo_attributions: _gpa,
     google_hours: _gh,
     ...rest
   } = p as PlaceCardData & {
     google_photos?: unknown;
-    google_photo_attribution?: unknown;
     google_photo_attributions?: unknown;
     google_hours?: unknown;
   };
   void _gp;
-  void _gpaOne;
   void _gpa;
   void _gh;
   return rest as PlaceCardData;
@@ -1260,6 +1258,7 @@ export function slimForNearby(p: PlaceCardData): PlaceCardData {
     // usePlacePhoto -> /api/places/by-slugs, which re-applies the
     // photo-suppression verdicts server-side.
     google_photo_url: _googlePhotoUrl,
+    google_photo_attribution: _googlePhotoAttribution,
     description: _description,
     review_snippet: _reviewSnippet,
     review_author: _reviewAuthor,
@@ -1271,6 +1270,7 @@ export function slimForNearby(p: PlaceCardData): PlaceCardData {
     ...rest
   } = listPlace;
   void _googlePhotoUrl;
+  void _googlePhotoAttribution;
   void _description;
   void _reviewSnippet;
   void _reviewAuthor;

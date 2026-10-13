@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Droplets, MapPin, Navigation, Toilet } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import BottomDrawer from "./BottomDrawer";
 import { Button } from "./Button";
@@ -152,4 +153,109 @@ export const SolidSurface: Story = {
     docs: { description: { story: "An opaque detail layer for vendor information or dense text over a busy map. Existing drawers retain their default surface." } },
   },
   render: () => <DrawerFixture initiallyOpen surface="solid" />,
+};
+
+
+function EscapeDelegationFixture() {
+  const [open, setOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [innerCloses, setInnerCloses] = useState(0);
+  const [outerCloses, setOuterCloses] = useState(0);
+  const panelOpener = useRef<HTMLButtonElement>(null);
+  const closePanel = () => {
+    setPanelOpen(false);
+    setInnerCloses((count) => count + 1);
+    window.requestAnimationFrame(() => panelOpener.current?.focus());
+  };
+  return (
+    <main className="min-h-screen space-y-3 p-4" style={{ background: "var(--app-bg)" }}>
+      <Button onClick={() => setOpen(true)}>Open delegated drawer</Button>
+      <p role="status" className="text-sm" style={{ color: "var(--app-ink-2)" }}>
+        Inner closes: {innerCloses}. Outer closes: {outerCloses}.
+      </p>
+      <BottomDrawer
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (!nextOpen) setOuterCloses((count) => count + 1);
+        }}
+        title="Escape delegation"
+        subtitle="The inner panel owns its first Escape; the drawer owns the next."
+        onEscapeKeyDown={(event) => {
+          if (event.target instanceof Element && event.target.closest("[data-owned-drawer-panel]")) event.preventDefault();
+        }}
+      >
+        <div className="space-y-3 p-4">
+          <div hidden={panelOpen}>
+            <button
+              ref={panelOpener}
+              type="button"
+              className="min-h-11 rounded-full px-3 text-sm font-semibold"
+              style={{ color: "var(--app-link)" }}
+              onClick={() => setPanelOpen(true)}
+            >
+              Open owned panel
+            </button>
+          </div>
+          {panelOpen ? (
+            <section
+              aria-label="Owned panel"
+              data-owned-drawer-panel
+              onKeyDownCapture={(event) => {
+                if (event.key !== "Escape") return;
+                event.preventDefault();
+                event.stopPropagation();
+                closePanel();
+              }}
+              className="space-y-3"
+            >
+              <button
+                type="button"
+                autoFocus
+                className="min-h-11 rounded-full px-3 text-sm font-semibold"
+                style={{ color: "var(--app-link)" }}
+                onClick={closePanel}
+              >
+                Back to drawer
+              </button>
+              <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>
+                This is a workshop panel within the existing drawer.
+              </p>
+            </section>
+          ) : null}
+        </div>
+      </BottomDrawer>
+    </main>
+  );
+}
+
+export const EscapeDelegation: Story = {
+  globals: {
+    viewport: { value: "radiusMobileCompact", isRotated: false },
+  },
+  render: () => <EscapeDelegationFixture />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(document.body);
+    const launcher = canvas.getByRole("button", { name: "Open delegated drawer" });
+    const outcomes = canvas.getByRole("status");
+    await userEvent.click(launcher);
+    const drawer = await body.findByRole("dialog", { name: "Escape delegation" });
+    const contents = within(drawer);
+    const panelOpener = contents.getByRole("button", { name: "Open owned panel" });
+    await userEvent.click(panelOpener);
+    const panel = await contents.findByRole("region", { name: "Owned panel" });
+    await waitFor(() => expect(within(panel).getByRole("button", { name: "Back to drawer" })).toHaveFocus());
+    await expect(body.getAllByRole("dialog")).toHaveLength(1);
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(contents.queryByRole("region", { name: "Owned panel" })).not.toBeInTheDocument());
+    await expect(body.getByRole("dialog", { name: "Escape delegation" })).toBe(drawer);
+    await expect(body.getAllByRole("dialog")).toHaveLength(1);
+    await expect(outcomes).toHaveTextContent("Inner closes: 1. Outer closes: 0.");
+    await waitFor(() => expect(panelOpener).toHaveFocus());
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(body.queryByRole("dialog", { name: "Escape delegation" })).not.toBeInTheDocument());
+    await expect(outcomes).toHaveTextContent("Inner closes: 1. Outer closes: 1.");
+    await waitFor(() => expect(launcher).toHaveFocus());
+  },
 };

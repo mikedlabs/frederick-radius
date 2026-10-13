@@ -516,6 +516,8 @@ export function buildPlan(input: PlanInputs): Plan {
         const travel = picks.length > 0 ? estimateTravel(previous, candidate.d.geom) : null;
         const arrival = new Date(cursor + (travel?.minutes ?? 0) * 60_000);
         const duration = durationFor(candidate.d.category);
+        // Reopening checks this same eligibility at the actual visit time.
+        if (placeConstraintReason(candidate.d, resolvedInput, arrival) !== null) return false;
         if (arrival.getTime() + duration * 60_000 > windowEnd) return false;
         return availableForStop(
           candidate.d as Place,

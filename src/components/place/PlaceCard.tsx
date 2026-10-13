@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "./PlaceCardPhoto";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
@@ -21,6 +21,7 @@ import SourceBadge from "./SourceBadge";
 import FieldNoteTag, { DealHookTag } from "./FieldNoteTag";
 import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
 import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
+import { placeCardPhotoPlan, recordPlaceCardPhotoResult, selectedPlaceCardPhoto, type PlaceCardPhotoResult, type PlaceCardPhotoState } from "@/lib/place-card-photo";
 
 /**
  * PlaceCard — the shared business card across browse and recommendation
@@ -78,7 +79,8 @@ function StatusChip({ label, tone = "neutral" }: { label: string; tone?: ReasonT
     <span
       className="inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] font-semibold leading-none tracking-tight"
       style={{
-        color: t.color,
+        // The label follows the current surface; the tone stays in its tint, ring, and dot.
+        color: "var(--app-ink)",
         background: t.tint,
         boxShadow: `inset 0 0 0 1px ${t.edge}, inset 0 1px 0 rgba(255,255,255,0.45)`,
       }}
@@ -248,6 +250,18 @@ export default function PlaceCard({
    *  the canonical hero only; kept in the type so existing callers compile. */
   galleryPhotos?: string[];
 }) {
+  const photoWidth = variant === "grid" ? 180 : variant === "tile" ? 244 : 360;
+  const photoPlan = placeCardPhotoPlan(place, photoWidth);
+  const mountedPhotoPlanKey = useRef(photoPlan.key);
+  useLayoutEffect(() => { mountedPhotoPlanKey.current = photoPlan.key; }, [photoPlan.key]);
+  const [photoState, setPhotoState] = useState<PlaceCardPhotoState | null>(null);
+  const photo = selectedPlaceCardPhoto(photoPlan, photoState);
+  const photoLoaded = photoState?.planKey === photoPlan.key && photoState.loadedSrc === photo?.src;
+  const onPhotoResult = (src: string, result: PlaceCardPhotoResult) => {
+    setPhotoState((state) => mountedPhotoPlanKey.current === photoPlan.key
+      ? recordPlaceCardPhotoResult(photoPlan, state, src, result)
+      : state);
+  };
   const cat = CATEGORY_BY_SLUG[place.category];
   const color = cat?.color ?? "var(--app-brand)";
   const { openSheet } = usePlaceSheet();
@@ -277,9 +291,8 @@ export default function PlaceCard({
   );
 
   // ── FEATURE — the prominent promoted lead (Today "Worth a look", a
-  // category page lead). Text-led: a larger category mark, a serif title,
-  // the why-chips, open status, and distance when we have it. A category
-  // accent rail ties it to its type without a photo banner.
+  // category page lead). An exact place photo leads when available; the
+  // category mark keeps its real facts usable when every source fails.
   if (variant === "feature") {
     return (
       <article
@@ -293,9 +306,9 @@ export default function PlaceCard({
           aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
-          <PlaceCardPhoto place={place} />
+          <PlaceCardPhoto source={photo} onResult={onPhotoResult} />
           <div className="flex items-start gap-3 p-4 pl-5">
-            {!place.google_photo_url && <Thumb place={place} category={place.category} color={color} size={52} lazyPhoto={lazyPhoto} />}
+            {!photo && <CategoryMark category={place.category} color={color} size={46} />}
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
                 <h3 className="min-w-0 flex-1 truncate font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -331,7 +344,7 @@ export default function PlaceCard({
             </div>
           </div>
         </button>
-        <PlaceCardPhotoCredit place={place} />
+        <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} />
         <div className="absolute right-2.5 top-2.5 z-10">
           <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
         </div>
@@ -341,8 +354,7 @@ export default function PlaceCard({
 
   // ── ANSWER — the funnel's lead pick. Keeps the full honest signal block
   // (open + closing time, why-chips, rating, price, the attributed review
-  // snippet) — the richest text card we have — now headed by a category
-  // mark instead of a photo banner. No imported imagery.
+  // snippet), headed by an exact place photo or the category mark.
   if (variant === "answer") {
     const loved = (place.customers_loved ?? []).slice(0, 3);
     return (
@@ -360,10 +372,10 @@ export default function PlaceCard({
           aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
-          <PlaceCardPhoto place={place} />
+          <PlaceCardPhoto source={photo} onResult={onPhotoResult} />
           <div className="space-y-2.5 p-4">
             <div className="flex items-start gap-3">
-              {!place.google_photo_url && <Thumb place={place} category={place.category} color={color} size={48} lazyPhoto={lazyPhoto} />}
+              {!photo && <CategoryMark category={place.category} color={color} size={46} />}
               <div className="min-w-0 flex-1">
                 {/* pr-9 clears the absolutely-positioned SaveButton (36px at
                     right-2.5) so the ml-auto distance never renders under it. */}
@@ -415,7 +427,7 @@ export default function PlaceCard({
             ) : null}
           </div>
         </button>
-        <PlaceCardPhotoCredit place={place} />
+        <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} />
         <div className="absolute right-2.5 top-2.5 z-10">
           <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
         </div>
@@ -423,10 +435,8 @@ export default function PlaceCard({
     );
   }
 
-  // ── TILE — fixed-width card for horizontal shelves. Text-led: a category
-  // mark + open dot header, the name, type/known-for/distance, and chips. A
-  // category color band along the bottom is the through-line that ties cards
-  // to their type (a line, not a photo).
+  // ── TILE — fixed-width card for horizontal shelves. The photo and its
+  // sibling credit keep the source links separate from opening and saving.
   if (variant === "tile") {
     return (
       <article
@@ -442,11 +452,11 @@ export default function PlaceCard({
           aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
-          <PlaceCardPhoto place={place} width={244} />
+          <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={244} />
           <div className="space-y-2 p-3.5 pb-4">
-            <div className="flex items-center gap-2.5">
-              {!place.google_photo_url && <Thumb place={place} category={place.category} color={color} size={40} lazyPhoto={lazyPhoto} />}
-              <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
+            <div className={`flex items-center gap-2.5${!photo ? " pr-9" : ""}`}>
+              {!photo && <CategoryMark category={place.category} color={color} size={40} />}
+              <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink)" }}>
                 {cat?.name ?? place.category}
               </span>
               <span className="ml-auto">
@@ -479,13 +489,13 @@ export default function PlaceCard({
           </div>
           <div aria-hidden className="h-[3px] w-full" style={{ background: color }} />
         </button>
-        <PlaceCardPhotoCredit place={place} />
+        <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} />
         {showSource && (
-          <div className="absolute right-2 top-2 z-10">
+          <div className="absolute left-2 top-2 z-10">
             <SourceBadge place={place} size="sm" />
           </div>
         )}
-        <div className="absolute bottom-2 right-2 z-10">
+        <div className="absolute right-2 top-2 z-10">
           <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
         </div>
       </article>
@@ -503,9 +513,9 @@ export default function PlaceCard({
           aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
-          <PlaceCardPhoto place={place} width={180} />
+          <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={180} />
           <div className="flex items-start gap-2.5 p-2.5">
-            {!place.google_photo_url && <Thumb place={place} category={place.category} color={color} size={40} lazyPhoto={lazyPhoto} />}
+            {!photo && <CategoryMark category={place.category} color={color} size={40} />}
             <div className="min-w-0 flex-1 space-y-0.5">
               <h3 className="line-clamp-2 text-[15px] font-semibold leading-[1.2] tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {place.name}
@@ -527,7 +537,7 @@ export default function PlaceCard({
           </div>
           <div aria-hidden className="h-[2px] w-full" style={{ background: color }} />
         </button>
-        <PlaceCardPhotoCredit place={place} />
+        <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} />
       </article>
     );
   }

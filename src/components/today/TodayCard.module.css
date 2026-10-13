@@ -102,6 +102,60 @@
   font-weight: 600;
 }
 
+/* Masthead facts stay visible; density removes repeated framing and padding. */
+.masthead .reading {
+  flex-wrap: wrap;
+  gap: var(--app-space-2);
+}
+
+.masthead .details {
+  order: 2;
+  flex: 1 1 min-content;
+}
+
+.masthead .glyph {
+  order: 1;
+  margin-inline-start: auto;
+}
+
+.masthead .condition {
+  overflow-wrap: break-word;
+}
+
+.masthead .temperature {
+  font-size: 32px;
+}
+
+.masthead .condition,
+.masthead .headline {
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.masthead .headline {
+  margin-bottom: var(--app-space-2);
+}
+
+.masthead .source,
+.masthead .issuance {
+  margin-top: var(--spacing);
+}
+
+.masthead .stats {
+  gap: 0 var(--app-space-2);
+  margin-top: var(--app-space-2);
+}
+
+.masthead .safetyNote {
+  margin-top: var(--app-space-2);
+}
+
+.unavailable.masthead {
+  flex-wrap: wrap;
+  gap: var(--spacing);
+  padding: 0;
+}
+
 @media (max-width: 359px) {
   .reading {
     column-gap: var(--app-space-2);

@@ -1,36 +1,21 @@
-.arrival {
-  display: grid;
-  align-items: stretch;
-  gap: var(--app-space-4);
-  margin-block: var(--app-space-2) var(--app-space-4);
-}
-
 .masthead {
   display: grid;
-  gap: var(--app-space-2);
-  margin: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--app-space-4);
+  margin-block: var(--app-space-2) var(--app-space-3);
   /* Keep the useful arrival stable while the page scrolls. */
   animation: none;
-}
-
-.mastheadLead {
-  position: relative;
-  isolation: isolate;
-  min-height: 120px;
-  overflow: hidden;
-  border-radius: var(--app-radius-lg);
-  background: var(--app-media-ink);
-  box-shadow: var(--app-shadow-1);
 }
 
 .title {
   margin: 0;
   max-width: 24ch;
   color: var(--app-ink);
-  font-size: clamp(28px, 4vw, 36px);
-  font-weight: 650;
-  line-height: 1.08;
-  letter-spacing: -0.035em;
+  font-size: clamp(24px, 3vw, 36px);
+  font-weight: 750;
+  line-height: 1.12;
+  letter-spacing: -0.04em;
   text-wrap: balance;
 }
 
@@ -48,33 +33,9 @@
   box-shadow: var(--app-shadow-1);
 }
 
-.portrait {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-}
-
-.portrait img {
-  object-fit: cover;
-  object-position: 54% 52%;
-}
-
-.photoCredit {
-  position: absolute;
-  z-index: 1;
-  inset: auto 8px 8px auto;
-  max-width: calc(100% - 16px);
-  padding: 4px 6px;
-  border-radius: var(--app-radius-sm);
-  color: var(--app-on-brand);
-  background: var(--app-media-ink);
-  font-size: 11px;
-  line-height: 1.25;
-}
-
 .briefing {
   display: grid;
-  gap: var(--app-space-6);
+  gap: var(--app-space-3);
 }
 
 .context {
@@ -86,35 +47,11 @@
 .weather {
   min-width: 0;
   color: var(--app-ink);
-  border: 1px solid var(--app-border);
-  border-top: 3px solid var(--app-brand);
-  border-radius: var(--app-radius-lg);
-  overflow: hidden;
-  background: var(--app-bg-elevated-solid);
-  box-shadow: var(--app-shadow-1);
-}
-
-.contextHeading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0 12px;
-  margin-bottom: var(--app-space-3);
-  color: var(--app-ink-2);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.contextHeading > a {
-  margin-top: 0;
 }
 
 .forecastLink {
   display: block;
-  height: 100%;
   min-height: 44px;
-  padding: var(--app-space-4);
   color: inherit;
   outline-offset: 4px;
   transition: background-color var(--app-dur-fast) var(--app-ease-out);
@@ -135,6 +72,8 @@
   color: var(--app-link);
   font-size: 12px;
   font-weight: 600;
+  min-height: 24px;
+  margin-bottom: var(--spacing);
 }
 
 .planLink {
@@ -152,12 +91,134 @@
   min-width: 0;
 }
 
-.places,
+.places {
+  display: grid;
+  align-content: start;
+  gap: var(--app-space-4);
+  margin: 0;
+  padding: 0;
+}
+
+.quickNeeds {
+  min-width: 0;
+}
+
 .events {
   margin: 0;
   padding: 0;
   border-top: 1px solid var(--app-border);
   padding-top: var(--app-space-4);
+}
+
+.geographicDoorway {
+  display: grid;
+  min-width: 0;
+  min-height: 44px;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-xl);
+  /* A pending photograph still has a readable, fixed media ground. */
+  background: var(--app-media-ink);
+  color: var(--app-on-brand);
+  outline-offset: 4px;
+  transition: border-color var(--app-dur-fast) var(--app-ease-out);
+}
+
+.geographicDoorway:hover {
+  border-color: var(--app-link);
+}
+
+.geographicDoorway:focus-visible {
+  outline: 2px solid var(--app-link);
+}
+
+.geographicPhoto {
+  grid-area: 1 / 1;
+  align-self: stretch;
+  position: relative;
+  aspect-ratio: 16 / 9;
+  margin: 0;
+  background: var(--app-media-ink);
+}
+
+.geographicPhoto img {
+  object-fit: cover;
+  object-position: 54% 52%;
+}
+
+.geographicCaption {
+  grid-area: 1 / 1;
+  position: relative;
+  align-self: end;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--app-space-2) var(--app-space-3);
+  min-height: 96px;
+  padding: 28px var(--app-space-4) var(--app-space-4);
+  /* In the shared grid row, large caption text grows the image area rather
+     than being clipped by an absolutely positioned overlay. */
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--app-media-ink) 88%, transparent) 20px, var(--app-media-ink));
+}
+
+.geographicCaption > div {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.geographicCaption h2 {
+  margin: 0;
+  color: inherit;
+  font-size: 1.5rem;
+  font-weight: 750;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  overflow-wrap: break-word;
+}
+
+.geographicCaption p {
+  margin: var(--spacing) 0 0;
+  color: inherit;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.geographicAction {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-2);
+  min-height: 44px;
+  flex-shrink: 0;
+  color: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.geographicDoorway[data-photo-state="failed"] {
+  background: var(--app-bg-elevated-solid);
+  color: var(--app-ink);
+}
+
+.geographicDoorway[data-photo-state="failed"] .geographicCaption {
+  min-height: 76px;
+  padding: var(--app-space-3) var(--app-space-4);
+  background: none;
+}
+
+.geographicDoorway[data-photo-state="failed"] .geographicCaption p {
+  color: var(--app-ink-2);
+}
+
+.geographicDoorway[data-photo-state="failed"] .geographicAction {
+  color: var(--app-link);
+}
+
+/* The unresolved URL lens is neutral and makes no photographic place claim. */
+.geographicDoorway[data-today-geographic-pending],
+.geographicDoorway[data-today-geographic-pending] .geographicPhoto {
+  background: var(--app-bg-sunken);
 }
 
 .places > section {
@@ -256,10 +317,6 @@
 }
 
 @media (min-width: 640px) {
-  .mastheadLead {
-    min-height: 180px;
-  }
-
   .context {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: var(--app-space-5);
@@ -274,34 +331,40 @@
     height: 100%;
   }
 
-  .currentContent {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: var(--app-space-6);
+  .places:has(.geographicDoorway) {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    column-gap: var(--app-space-6);
+  }
+
+  .places:has(.geographicDoorway) > .geographicDoorway {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+  }
+
+  .places:has(.geographicDoorway) > section {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .places:has(.geographicDoorway) > .quickNeeds {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 }
 
 @media (min-width: 960px) {
-  .arrival {
+  .masthead {
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
     gap: var(--app-space-6);
   }
 
-  .mastheadLead {
-    min-height: 244px;
-  }
-
-  .weather {
-    align-self: start;
-  }
-
-  .forecastLink {
-    padding: var(--app-space-5);
-  }
 }
 
 @media (max-width: 359px) {
-  .mastheadLead {
-    min-height: 72px;
+  .masthead {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--app-space-2);
   }
 
   .title {
@@ -321,7 +384,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .eventRow,
-  .forecastLink {
+  .forecastLink,
+  .geographicDoorway {
     transition: none;
   }
 }
@@ -331,12 +395,4 @@
   font-size: 18px;
   font-weight: 650;
   line-height: 1.3;
-}
-
-/* A real advisory keeps its place at the top without burying the weather or
-   Find controls. Quiet days keep the larger owned photographic scene. */
-@media (max-width: 639px) {
-  :global(main:has([aria-label="Heads up"])) .mastheadLead {
-    min-height: 80px;
-  }
 }

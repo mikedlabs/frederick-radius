@@ -4,10 +4,10 @@ import { act, type AnchorHTMLAttributes } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const navigation = vi.hoisted(() => ({ pathname: "/events", push: vi.fn(), back: vi.fn(), leaveTo: vi.fn() }));
+const navigation = vi.hoisted(() => ({ pathname: "/events", prefetch: vi.fn(), push: vi.fn(), back: vi.fn(), leaveTo: vi.fn() }));
 vi.mock("next/navigation", () => ({
   usePathname: () => navigation.pathname,
-  useRouter: () => ({ push: navigation.push, back: navigation.back }),
+  useRouter: () => ({ push: navigation.push, back: navigation.back, prefetch: navigation.prefetch }),
 }));
 vi.mock("next/link", () => ({
   default: ({ prefetch, ...props }: AnchorHTMLAttributes<HTMLAnchorElement> & { prefetch?: boolean }) => {
@@ -34,6 +34,7 @@ vi.mock("@/lib/track", () => ({ track: vi.fn() }));
 
 import TopBar from "./TopBar";
 import { track } from "@/lib/track";
+import { NATIVE_REQUEST_ENTRY_KEY, rememberNativeRequest } from "@/components/search/native-request-return";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -41,6 +42,7 @@ const DRAFT_KEY = "fr:find-draft:v1";
 const fetchMock = vi.fn<typeof fetch>();
 let container: HTMLDivElement;
 let root: Root;
+let nativeReplace: History["replaceState"];
 
 function payload(title: string, area = "Whole county") {
   return {
@@ -98,6 +100,7 @@ async function remount() {
 }
 
 beforeEach(async () => {
+  nativeReplace = window.history.replaceState;
   navigation.pathname = "/events";
   vi.clearAllMocks();
   fetchMock.mockReset().mockResolvedValue(response("Fresh fixture result"));
@@ -123,6 +126,33 @@ afterEach(async () => {
 });
 
 describe("Find continuity through the real lazy header and overlay", () => {
+  it("returns focus to the actual Tools origin only on its owned popped entry", async () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
+    navigation.pathname = "/today"; window.history.replaceState({ __NA: true, marker: "kept" }, "", "/today?in=brunswick"); await mount();
+    const tools = container.querySelector<HTMLAnchorElement>('a[aria-label="Open tools"]')!;
+    const preventNavigation = (event: Event) => event.preventDefault();
+    document.addEventListener("click", preventNavigation);
+    try { await act(async () => tools.click()); } finally { document.removeEventListener("click", preventNavigation); }
+    const origin = window.history.state;
+    expect(origin[NATIVE_REQUEST_ENTRY_KEY].target).toBe("tools-opener");
+    window.history.pushState({ ...origin }, "", "/search"); navigation.pathname = "/search"; await mount();
+    expect(document.activeElement).not.toBe(tools);
+    await act(async () => {
+      nativeReplace.call(window.history, origin, "", "/today?in=brunswick");
+      window.dispatchEvent(new PopStateEvent("popstate", { state: origin }));
+    });
+    await settle(50); expect(document.activeElement).not.toBe(tools); // old router render is not ready
+    navigation.pathname = "/today"; await mount(); await settle(50);
+    expect(document.activeElement).toBe(tools);
+    expect(window.history.state).toMatchObject({ marker: "kept", __NA: true });
+    expect(window.history.state[NATIVE_REQUEST_ENTRY_KEY].target).toBeUndefined();
+  });
+  it("keeps existing Find Back focus with a stale native Tools target on the same entry", async () => {
+    rememberNativeRequest({ target: "tools-opener" });
+    const opener = await open(); await close(); await settle(60);
+    expect(document.activeElement).toBe(opener);
+    expect(document.activeElement).not.toBe(container.querySelector('a[aria-label="Open tools"]'));
+  });
   it.each(["header", "bridge", "shortcut"])("keeps an active non-inert modal in charge of the %s Find entry", async (entry) => {
     const modal = document.createElement("div");
     modal.setAttribute("role", "dialog");

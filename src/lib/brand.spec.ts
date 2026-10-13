@@ -29,7 +29,7 @@ describe("Frederick Radius brand contract", () => {
     expect(BRAND.system).toBe("Frederick Radius Brand System");
   });
 
-  it("keeps brand text colors readable on Cream", () => {
+  it("keeps brand text colors readable on Cloud", () => {
     expect(contrast(BRAND.colors.ink, BRAND.colors.cream)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(BRAND.colors.brick, BRAND.colors.cream)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(BRAND.colors.forest, BRAND.colors.cream)).toBeGreaterThanOrEqual(4.5);
@@ -43,6 +43,35 @@ describe("Frederick Radius brand contract", () => {
     expect(contrast(BRAND.colors.cream, BRAND.colors.forest)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(BRAND.colors.ink, BRAND.colors.amber)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(BRAND.colors.functionalAmber, BRAND.colors.cream)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("keeps light text and filled primary actions readable on actual surfaces", () => {
+    for (const background of [BRAND.colors.cream, BRAND.colors.surface, BRAND.colors.paperDeep]) {
+      for (const foreground of [BRAND.colors.ink, BRAND.colors.mutedInk, BRAND.colors.brick]) {
+        expect(contrast(foreground, background), `${foreground} on ${background}`).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(contrast(BRAND.colors.controlBorder, background)).toBeGreaterThanOrEqual(3);
+    }
+    expect(contrast(BRAND.colors.surface, BRAND.colors.brick)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(BRAND.colors.cream, BRAND.colors.brick)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("keeps dark body text, secondary text, links, and controls readable on both grounds", () => {
+    for (const background of [BRAND.colors.darkCanvas, BRAND.colors.darkSurface]) {
+      for (const foreground of [BRAND.colors.darkInk, BRAND.colors.darkMutedInk, BRAND.colors.darkLink]) {
+        expect(contrast(foreground, background), `${foreground} on ${background}`).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(contrast(BRAND.colors.darkControlBorder, background)).toBeGreaterThanOrEqual(3);
+    }
+    expect(contrast(BRAND.colors.darkCanvas, BRAND.colors.darkLink)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("distinguishes device product typography from installed export typography", () => {
+    expect(BRAND.type.product).toBe("System sans");
+    expect(BRAND.type.productStack).toContain("-apple-system");
+    expect(BRAND.type.productStack).not.toContain(BRAND.type.text);
+    expect(BRAND.type.text).toBe("Public Sans");
+    expect(BRAND.type.display).toBe("Libre Caslon Display");
   });
 
   it("selects the correct optical Ripple detail", () => {

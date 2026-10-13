@@ -245,6 +245,7 @@ describe("primary tab palette contrast", () => {
         [".dock-scene[data-on] .dock-scene-icon", declaration(stylesheet, ".dock-scene-icon", "background")],
         ['.dock-scene[data-status="caution"] .dock-scene-copy small', declaration(stylesheet, ".dock-scene[data-on]", "background")],
         [".dock-discovery-eyebrow", "var(--app-bg-elevated-solid)"],
+        [".dock-search-more", declaration(stylesheet, ".dock-search-more", "background")],
         [".dock-essentials-more:hover", declaration(stylesheet, ".dock-essentials-more", "background")],
         [".dock-contents[data-on]", "var(--app-bg-elevated-solid)"],
       ]) {

@@ -1883,7 +1883,7 @@ export default function MapDock(props: MapDockProps) {
                     );
                   })}
                 </ul>
-                {props.submitSearch && <div className="dock-search-more-item"><button type="button" className="dock-search-more" onClick={(event) => { event.stopPropagation(); submitTypedSearch(); }}>Show ranked choices<ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden /></button></div>}
+                {props.submitSearch && <div className="dock-search-more-item"><button type="button" className="dock-search-more" onClick={(event) => { event.stopPropagation(); submitTypedSearch(); }}>See matching results<ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden /></button></div>}
                 {props.searchMatches.length > searchResultLimit && (
                   <div className="dock-search-more-item">
                     <button
@@ -2036,7 +2036,7 @@ export default function MapDock(props: MapDockProps) {
             data-on={activeOptionCount > 0 || undefined}
             aria-expanded={pane !== null}
             aria-controls="dock-pane"
-            aria-label="Choose what to see on this map"
+            aria-label="Filters: choose what to see on this map"
             title={`Choose what to see on this map. ${contentsSummary}`}
             onClick={() => {
               // What to see is another valid first move. The location offer is
@@ -2047,7 +2047,7 @@ export default function MapDock(props: MapDockProps) {
           >
             <Layers3 className="h-[18px] w-[18px]" strokeWidth={2.15} aria-hidden />
             <span className="dock-contents-label">
-              What to see
+              Filters
             </span>
             {/* No numeral badge: data-on already tints the button and the
                 context rail states the same state IN WORDS ("Downtown ·
@@ -2209,6 +2209,7 @@ export default function MapDock(props: MapDockProps) {
                   Start a map view
                 </div>
                 <div className="dock-content-primary">
+                <div className="dock-task-grid" role="group" aria-label="Map tasks">
                 {props.onTask && MAP_TASK_TILES.map((tile) => {
                   const Icon = tile.id === "coffee" ? Coffee : tile.id === "eat" ? Utensils : tile.id === "drinks" ? Wine : tile.id === "parks-trails" ? Trees : tile.id === "events-tonight" ? CalendarDays : Clock;
                   return <button
@@ -2220,10 +2221,11 @@ export default function MapDock(props: MapDockProps) {
                     onClick={() => { dismissLocationIntro(); props.onTask?.(props.activeTask === tile.id ? null : tile.id); closePane(); }}
                   >
                     <span className="dock-content-icon" aria-hidden><Icon className="h-[18px] w-[18px]" strokeWidth={2.1} /></span>
-                    <span className="dock-content-copy"><strong>{tile.label}</strong><small>{tile.id === "likely-open" ? "Posted schedules, check before you go" : "A short list to choose from"}</small></span>
+                    <span className="dock-content-copy"><strong>{tile.label}</strong>{tile.id === "likely-open" && <small>Posted schedules, check before you go</small>}</span>
                     <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                   </button>;
                 })}
+                </div>
                 <button
                   type="button"
                   className="dock-content-row dock-content-row-primary"

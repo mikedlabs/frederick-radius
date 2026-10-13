@@ -243,7 +243,7 @@ test("Controlled local basemap leaves first-use consent with the one header loca
   await choice.getByRole("button", { name: "Browse county", exact: true }).click();
   await expect(choice).toHaveCount(0);
   expect(await page.locator("[data-location-chip]").count()).toBe(1);
-  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+  await page.getByRole("button", { name: "Filters: choose what to see on this map" }).click();
   const chooser = page.getByRole("region", { name: "Choose what to see" });
   await expect(chooser.getByRole("button", { name: "Nearby", exact: true })).toHaveCount(0);
   await expect(chooser.getByRole("button", { name: /^Categories/ })).toBeVisible();
@@ -412,7 +412,7 @@ test("Controlled local basemap restores a real committed area's rows through sel
   await expect(first).toBeFocused();
   expect(new URL(page.url()).searchParams.get("area")).toBe(area);
   await expect.poll(async () => (await rowIds(page)).sort()).toEqual(expected);
-  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+  await page.getByRole("button", { name: "Filters: choose what to see on this map" }).click();
   await page.getByRole("region", { name: "Choose what to see", exact: true }).getByRole("button", { name: "Reset", exact: true }).click();
   await expect.poll(() => new URL(page.url()).searchParams.get("area")).toBeNull();
   expect(new URL(page.url()).searchParams.get("intent")).toBeNull();

@@ -1,6 +1,6 @@
 # Frederick Radius brand guide
 
-Version 1.2 - Frederick Radius Brand System - July 22, 2026
+Version 1.3 - Frederick Radius Brand System - October 12, 2026
 
 This is the source of truth for Frederick Radius. It applies to the product, social posts, presentations, printed material, app icons, and partner handoffs.
 
@@ -43,10 +43,12 @@ Clear space around the mark should be at least the radius of its inner arc. Neve
 
 - The product header uses the two-arc mark followed by a one-line `Frederick Radius` wordmark.
 - The tagline lockup adds `FREDERICK COUNTY STARTS WHERE YOU ARE` below the wordmark.
-- Use the Brick mark with the Ink wordmark on light surfaces. Use the Cream reverse lockup on Brick, Catoctin Forest, Ink, or photography with enough contrast.
+- Use the Cobalt mark with the Navy wordmark on light surfaces. Use the Cloud reverse lockup on Cobalt, Catoctin Forest, Navy, or photography with enough contrast.
 - The app-icon tile is for launchers, avatars, and app-store use. Do not put the tile inside the normal product header.
 
 Editable marks and lockups are in [`public/brand`](../../public/brand). Each source SVG has a matching PNG export.
+
+The color keys `brick`, `cream`, and `ink`, and existing `*-brick` / `*-cream` asset filenames remain compatible aliases for Cobalt, Cloud, and Navy. They do not retain the former palette. Regenerate and review assets before using version 1.3 artwork; changing this guide alone does not update or publish exports.
 
 ## Color
 
@@ -54,13 +56,13 @@ Editable marks and lockups are in [`public/brand`](../../public/brand). Each sou
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| Brick | `#B5462B` | Logo, links, primary actions, selected states |
-| Cream | `#F4EEE2` | Main page ground and reverse artwork |
-| Ink | `#221C15` | Text, deliberate dark frames, high-contrast controls |
+| Cobalt | `#2459D9` | Logo, links, primary actions, selected states |
+| Cloud | `#F6F8FC` | Main page ground and reverse artwork |
+| Navy | `#13253E` | Primary text, high-contrast controls, and export frames |
 
-Brick, Cream, Ink, the Ripple, and owned Frederick photography are what make a
-surface recognizably Frederick Radius. Brick and Ink pass WCAG AA for normal
-text on Cream. Keep this recognition system stable across Today, Ask Radius,
+Cobalt, Cloud, Navy, the Ripple, and owned Frederick photography are what make a
+surface recognizably Frederick Radius. Cobalt and Navy pass WCAG AA for normal
+text on Cloud. Keep this recognition system stable across Today, Ask Radius,
 the map, All tools, Live conditions, Beer, campaigns, and platform surfaces.
 
 ### Functional data colors
@@ -70,11 +72,11 @@ the map, All tools, Live conditions, Beer, campaigns, and platform surfaces.
 | Catoctin Forest | `#315A43` | Parks, trails, terrain, and small positive or open signals |
 | Creek | `#285D73` | Civic, map, transit, and data information |
 | Plum | `#7E2C6F` | Limited arts, culture, and editorial accent |
-| Ochre Amber | `#C58A32` | Live, caution, sunlight, or a Beer selection and flagship fill with Ink on top |
+| Ochre Amber | `#C58A32` | Live, caution, sunlight, or a Beer selection and flagship fill with Navy on top |
 | Ridge | `#3F5E8F` | A limited supporting data accent |
 
 Functional colors organize a real topic or state. They do not create separate
-sub-brand palettes and must not replace the Cream, Ink, Brick, and Ripple
+sub-brand palettes and must not replace the Cloud, Navy, Cobalt, and Ripple
 shell. Catoctin Forest belongs to outdoor content and small positive or open
 signals. Creek is a utility color rather than another page identity. Ochre
 appears when it means live, caution, or sunlight. Beer is the deliberate
@@ -86,41 +88,54 @@ decorative yellow theme.
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| Surface | `#FBF8F0` | Elevated cards and sheets |
-| Paper deep | `#EAE1D1` | Inset or selected paper surfaces |
-| Border | `#D8CDBA` | Decorative rules and card edges |
-| Control border | `#927F63` | Form boundaries that must meet 3:1 contrast |
-| Muted Ink | `#6C6357` | Secondary copy on Cream |
-| Amber text | `#925E16` | Text-safe Amber on Cream and in Beer controls |
+| Surface | `#FFFFFF` | White cards and sheets |
+| Inset | `#EAF0F7` | Quiet inset surfaces |
+| Border | `#DCE4EF` | Decorative rules and card edges |
+| Control border | `#6B7F9D` | Form boundaries that must meet 3:1 contrast |
+| Muted Navy | `#4D6078` | Secondary copy on Cloud |
+| Amber text | `#925E16` | Text-safe Amber on Cloud and in Beer controls |
+
+### Dark appearance
+
+| Token | Hex | Use |
+| --- | --- | --- |
+| Dark canvas | `#0D1725` | Product page ground |
+| Dark surface | `#152338` | Cards, sheets, and controls |
+| Dark ink | `#F0F5FF` | Primary text |
+| Dark muted ink | `#B1C2D9` | Secondary text |
+| Dark border | `#30415B` | Decorative separators |
+| Dark control border | `#91A4C0` | Essential control boundaries |
+| Dark link | `#91B6FF` | Links, selected actions, and focus cues |
+
+Dark ink, secondary text, and links meet normal-text AA on both dark grounds.
+Dark control borders meet 3:1 on both. Use Dark canvas text on a filled Dark
+link action; white text on that light blue is not approved. Decorative borders
+are not sufficient as the sole visible boundary of a control. Keep semantic
+status words and icons; the light semantic colors are not approved as small
+text directly on dark grounds. Use theme-readable text with the appropriate
+status tint or marker.
 
 ## Typography
 
-Frederick Radius uses two typefaces.
+The product uses System sans: `-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`.
+It uses fonts already present on the device; it does not download a new family.
+Product titles, text, controls, source notes, and tabular data use this stack.
 
-### Libre Caslon Display
+### Print and exported brand assets
 
-Use Libre Caslon Display Regular for the wordmark and rare editorial or hero
-moments. It is a signature, not the normal product-heading face. Product page
-titles, section headings, card titles, controls, labels, and data use Public
-Sans.
+Public Sans remains the installed print/export text family. The kit includes
+its variable upright and real italic files, weights 100 through 900. Keep most
+text between 400 and 700. Its presence in a brand asset does not mean the
+product runtime is using Public Sans.
 
-The family has one upright Regular cut. Do not fake bold or italic. Hierarchy
-should come from size, spacing, and position. Keep Caslon at 18 px or larger
-when it is used outside the wordmark.
+Libre Caslon Display Regular remains the wordmark and rare editorial signature.
+It has one upright Regular cut; do not synthesize bold or italic. Keep it out
+of ordinary product headings, controls, and dense data. Use it at 18 px or
+larger outside the wordmark.
 
-### Public Sans
-
-Use Public Sans for product page titles, section headings, card titles, body
-copy, navigation, buttons, labels, forms, times, distances, and data. The kit
-ships both variable upright and variable italic files. The CSS family name is
-`Public Sans`; available weights run from 100 through 900, although most
-product work should stay between 400 and 700. Use real italic when emphasis or
-attribution needs it instead of mechanically slanting the upright file.
-
-On phones, normal reading copy should be 15 to 16 px. Eleven to 13 px is
-reserved for short captions, metadata, freshness, and attribution.
-
-Times and counts use Public Sans with tabular numerals. A third monospace face is not part of the brand.
+On phones, normal reading copy stays 15 to 16 px. Eleven to 13 px is reserved
+for brief captions, metadata, freshness, and attribution. Times and counts use
+tabular numerals. No new monospace or display family is introduced.
 
 The handoff includes installable desktop fonts and matching browser files:
 
@@ -145,25 +160,25 @@ copies and upstream source details ship beside the fonts in
 
 | Role | Size and line height | Typeface and normal weight |
 | --- | --- | --- |
-| Caption | 11 px / 1.4 | Public Sans 400-600 |
-| Prominent metadata | 13 px / 1.5 | Public Sans 400-600 |
-| Compact body | 15 px / 1.55 | Public Sans 400 |
-| Reading body | 16 px / 1.6 | Public Sans 400 |
-| Item or card title | 20 px / 1.15 | Public Sans 600 |
-| Product page title | 32 px / 1.05 | Public Sans 600-700 |
+| Caption | 11 px / 1.4 | System sans 400-600 |
+| Prominent metadata | 13 px / 1.5 | System sans 400-600 |
+| Compact body | 15 px / 1.55 | System sans 400 |
+| Reading body | 16 px / 1.6 | System sans 400 |
+| Item or card title | 20 px / 1.15 | System sans 600 |
+| Product page title | 32 px / 1.05 | System sans 600-700 |
 
-Use Public Sans 500 for compact controls and 600 for titles or primary labels.
+Use weight 500 for compact controls and 600 for titles or primary labels.
 Reserve 700 for numerics or rare emphasis rather than normal prose. On touch
 devices, inputs, textareas, and selects stay at 16 px so iOS does not zoom the
 page when a field receives focus.
 
 Mapbox supplies the cartographic type used for labels drawn inside the map
 canvas. Treat that as a functional map exception, not a third Radius typeface.
-Map controls, popups, sheets, and lists remain Public Sans.
+Map controls, popups, sheets, and lists remain System sans.
 
 ## Product design
 
-The product should feel like a well-edited local field guide with live information inside it.
+The product should make a useful local decision clear quickly, with recognizable county photography and source-qualified information.
 
 ### Hierarchy
 
@@ -194,13 +209,13 @@ facts, not a feed trying to fill space.
 
 ### Surfaces
 
-- Cream is the default page ground. Surface is for cards, sheets, and menus.
+- Cloud is the default page ground. Surface is for cards, sheets, and menus.
 - Use thin rules and restrained shadows. A card should not look inflated or glossy.
 - Use rounded corners because they improve grouping and touch comfort, not as decoration on every element.
-- Dark Ink frames are reserved for live-status artwork, important contrast moments, or media. They should not become the default appearance of Beer, Live conditions, All tools, or other product pages.
-- Beer keeps the same Cream, Ink, Brick, and ruled-paper foundation as the rest of the app. Real beer colors and taproom photography may carry the subject; Ochre Amber is limited to active taste choices, flagship markers, and beer-specific metadata.
+- Light appearance uses Cloud and white surfaces. Dark appearance uses the separate Dark canvas and Dark surface tokens, not an inversion of the light palette. Every route honors the same chosen appearance.
+- Beer keeps the same Cloud, Navy, Cobalt, and clean surface foundation as the rest of the app. Real beer colors and taproom photography may carry the subject; Ochre Amber is limited to active taste choices, flagship markers, and beer-specific metadata.
 - Oversized Ripple arcs may run off an edge on a hero, onboarding screen, empty state, or social image. Do not place them behind every section.
-- The normal product shell is plain Cream, rules, typography, real local
+- The normal product shell is clean Cloud, rules, typography, real local
   material, and useful data. A Ripple bloom is an opt-in editorial moment,
   never a default page background. Use one visual idea at a time.
 
@@ -240,8 +255,8 @@ Real Frederick photography is one of the strongest advantages of the product. Us
 
 - Show recognizable streets, businesses, towns, landscapes, and people using Frederick County.
 - Keep color natural. A small warm adjustment is fine; heavy presets are not.
-- Do not put a Brick, Plum, or warm color wash over a photograph. When text
-  needs contrast, give it a separate neutral Ink panel or a local neutral
+- Do not put a Cobalt, Plum, or warm color wash over a photograph. When text
+  needs contrast, give it a separate neutral Navy panel or a local neutral
   gradient that does not recolor the image.
 - Avoid generic hands-with-coffee, empty storefront glamour shots, and images that could represent any town.
 - Favor a clear subject and enough negative space for interface text when a photo is used as a hero.
@@ -252,12 +267,12 @@ Recommended master crops are 3:2 for photography, 4:3 for product cards, 1:1 for
 
 ## System in use
 
-The current product is the working example of the brand system. The reference
+The current product must be checked separately before a release. The historical reference
 captures in [`public/brand/examples`](../../public/brand/examples) use a 390 px
 mobile viewport and were made on July 22, 2026. They contain no development
 indicator, private account data, or degraded local API state. Time-sensitive
 facts shown in a capture document that interface state; they are not evergreen
-claims for future campaign use.
+claims for future campaign use. These July captures retain the earlier warm palette and Public Sans runtime; they are not version 1.3 screenshots.
 
 Every product task should make three behaviors clear:
 
@@ -270,21 +285,21 @@ Every product task should make three behaviors clear:
 
 ### Shared interface hierarchy
 
-- Cream is the normal ground. Surface holds a card, sheet, form, or grouped
+- Cloud is the normal ground. Surface holds a card, sheet, form, or grouped
   row only when the boundary helps someone understand the task.
-- Public Sans carries product page titles, section and card titles, labels,
+- System sans carries product page titles, section and card titles, labels,
   body copy, source, freshness, time, place, distance, controls, and data.
   Libre Caslon Display is reserved for the wordmark and a rare editorial or
   hero moment.
-- Brick identifies the Radius shell and primary action. A chevron only appears
+- Cobalt identifies the Radius shell and primary action. A chevron only appears
   when a row or card opens more information.
 - The top bar and primary navigation remain stable. Specialty pages change the
   subject and may use a functional data color, but they do not invent a new
   shell, type hierarchy, or card language.
 
-### Current reference surfaces
+### Historical reference surfaces (July 22, 2026)
 
-| Surface | What the current UI demonstrates | Reference capture |
+| Surface | What the historical UI demonstrates | Reference capture |
 | --- | --- | --- |
 | Today | The next useful item leads; time, place, status, action, and disclosure remain in one reading order. | [`ui-today-mobile.webp`](../../public/brand/examples/ui-today-mobile.webp) |
 | Ask Radius | Area scope appears before the question; example prompts stay quiet; Brick identifies the primary submit action. | [`ui-ask-radius-mobile.webp`](../../public/brand/examples/ui-ask-radius-mobile.webp) |
@@ -301,7 +316,7 @@ constraints. Keep that boundary clear in labels, descriptions, and handoffs.
 
 The map is part of the identity because Radius is about place.
 
-- Keep the base map warm and quiet so markers and live layers remain legible.
+- Keep the base map quiet so markers and live layers remain legible. A shell palette update does not silently replace the map style.
 - Use category colors to organize data, but keep the product shell in the core palette.
 - A selected marker must show a name and useful context. A bare pin is not an answer.
 - Live layers need a timestamp and source. Stale or unavailable data must say so.
@@ -325,7 +340,7 @@ Avoid generic slogans, repeated rhetorical patterns, groups of three used for rh
 The source kit includes:
 
 - A 1024 px avatar.
-- A 1640 by 624 Brick Facebook cover and a coordinated natural-photography cover, both composed for the shared safe area.
+- A 1640 by 624 Cobalt Facebook cover and a coordinated natural-photography cover, both composed for the shared safe area.
 - A 1080 px square brand post.
 - A 1080 by 1350 portrait brand post.
 - Editable square event and open-now templates.
@@ -339,13 +354,13 @@ NFC cards follow [`NFC_CARD_GUIDE.md`](NFC_CARD_GUIDE.md). Never ship a
 decorative or untested QR code, and test both the tap target and printed
 fallback before production.
 
-Use the Brick frame for brand messages. Use the Cream frame for events and
+Use the Cobalt frame for brand messages. Use the Cloud frame for events and
 useful information. Use Catoctin Forest for an open-state label. Use an Amber
 label when the subject is live, time-sensitive, sun-related, or specifically
 about beer.
 
 Keep Catoctin Forest as a small landscape or outdoor cue in campaign work. It
-should not replace Brick as the brand frame. Ochre Amber should describe a real
+should not replace Cobalt as the brand frame. Ochre Amber should describe a real
 condition or a specific beer subject; it is not a decorative yellow accent.
 
 Do not publish placeholder copy. Confirm names, dates, times, and source information before export.
@@ -357,19 +372,19 @@ product. They are generated by `scripts/build-push-icons.ts`.
 
 | Surface | Current asset or route | Rule |
 | --- | --- | --- |
-| Browser icon | `src/app/icon.png` | 32 px Brick tile with the one-arc favicon Ripple |
+| Browser icon | `src/app/icon.png` | 32 px Cobalt tile with the one-arc favicon Ripple |
 | Multi-size favicon | `src/app/favicon.ico` | One-arc Ripple at 16, 32, and 48 px |
-| PWA launcher | `public/icons/icon.svg`, `icon-192.png`, `icon-512.png` | Three-arc Ripple on a Brick squircle with transparent corners |
-| Maskable launcher | `public/icons/icon-maskable.svg`, `icon-maskable-512.png` | Full-bleed Brick with the Ripple inside the mask-safe center |
-| Apple touch icon | `src/app/apple-icon.png` | Opaque 180 px Brick tile; iOS supplies the corner mask |
+| PWA launcher | `public/icons/icon.svg`, `icon-192.png`, `icon-512.png` | Three-arc Ripple on a Cobalt squircle with transparent corners |
+| Maskable launcher | `public/icons/icon-maskable.svg`, `icon-maskable-512.png` | Full-bleed Cobalt with the Ripple inside the mask-safe center |
+| Apple touch icon | `src/app/apple-icon.png` | Opaque 180 px Cobalt tile; iOS supplies the corner mask |
 | Push notification icon | `public/icons/icon-192.png` | Same branded launcher icon used by the service worker |
 | Android status badge | `public/icons/badge-72.png` | Monochrome one-arc silhouette; Android applies the color |
-| Installed-app splash | `/apple-splash` and the PWA manifest | Cream ground with the Brick tile and display wordmark |
+| Installed-app splash | `/apple-splash` and the PWA manifest | Cloud ground with the Cobalt tile and display wordmark |
 | Link preview | `/api/og` | 1200 by 630 by default; `format=story` creates 1080 by 1920 |
 
 The manifest name is `Frederick Radius`; the operating-system short name is
-`Radius`. Installed-app chrome, launch backgrounds, and theme color use Cream.
-The default site and beta share cards use a Brick frame. Place, event,
+`Radius`. Light installed-app chrome and launch backgrounds use Cloud. Dark browser chrome uses Dark canvas through the platform brand contract; do not substitute Navy text ink for the dark canvas.
+The default site and beta share cards use a Cobalt frame. Place, event,
 municipality, category, collection, and daily cards use the lighter information
 frame and may apply a semantic accent.
 

@@ -1,18 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { createPortal } from "react-dom";
 import { haptic } from "@/lib/haptics";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import {
   GoogleContentReportLink,
-  GooglePhotoAttributionLine,
   safeGoogleReportUrl,
 } from "@/components/place/GoogleAttribution";
-import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
+import { isPlacePhotoFailureSignal, type PlaceCardPhotoSource } from "@/lib/place-card-photo";
+import { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
 
 /**
  * PhotoLightbox — full-screen tap-to-enlarge photo viewer.
@@ -20,50 +21,71 @@ import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
  * Opens over everything (z above the sheet), shows one photo at a time
  * fit to the screen (object-contain, never cropped). Navigate by arrows,
  * keyboard (←/→), or horizontal swipe; dismiss by the X, Esc, a tap on
- * the backdrop, or a swipe-down. Body scroll is locked while open.
+ * the backdrop, a swipe-down, or browser Back. The viewer owns one temporary
+ * history layer above any place sheet. Body scroll is locked while open.
  *
  * Reusable: any surface with a photo (place sheet hero + gallery today;
- * result cards later) can hand it an ordered `photos` array + a start
+ * result cards later) can hand it an ordered, source-typed photograph array + a start
  * index. It self-hides when handed an empty set.
  */
 export default function PhotoLightbox({
-  photos,
-  attributions,
+  sources,
   startIndex = 0,
   alt = "Photo",
   onClose,
 }: {
-  photos: string[];
-  attributions?: Array<{
-    attribution?: GooglePhotoAttribution;
-    placeGoogleMapsUri?: string;
-  }>;
+  sources: readonly PlaceCardPhotoSource[];
   startIndex?: number;
   alt?: string;
   onClose: () => void;
 }) {
-  const count = photos.length;
+  const [failedSources, setFailedSources] = useState<Set<string>>(() => new Set());
+  const [loadedSources, setLoadedSources] = useState<Set<string>>(() => new Set());
+  const available = sources.filter((source) => !failedSources.has(source.src));
+  const count = available.length;
   const reduceMotion = useReducedMotion();
-  const [i, setI] = useState(startIndex);
-  const go = useCallback(
-    (d: number) => { setI((p) => (p + d + count) % count); haptic("light"); },
-    [count],
-  );
+  const [selectedSrc, setSelectedSrc] = useState(sources[startIndex]?.src ?? sources[0]?.src);
+  const i = Math.max(0, available.findIndex((source) => source.src === selectedSrc));
+  const source = available[i];
+  const go = useCallback((direction: number) => {
+    if (count < 2) return;
+    setSelectedSrc((current) => {
+      const index = Math.max(0, available.findIndex((item) => item.src === current));
+      return available[(index + direction + count) % count].src;
+    });
+    haptic("light");
+  }, [available, count, setSelectedSrc]);
+  const markFailed = (src: string) => setFailedSources((current) => new Set([...current, src]));
+
+  const viewerId = useId();
+  const historyLayer = useReversibleHistoryLayer({
+    active: sources.length > 0,
+    id: `photo:${viewerId}`,
+    onDismiss: onClose,
+  });
+  const dismiss = historyLayer.dismiss;
+
+  // Capture before React portal bubbling or the underlying sheet's window
+  // listener. Escape dismisses only this top layer; Tab stays with the trap.
+  useLayoutEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.isComposing) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        dismiss();
+      } else if (event.key === "ArrowRight") go(1);
+      else if (event.key === "ArrowLeft") go(-1);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [dismiss, go]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      else if (e.key === "ArrowRight") go(1);
-      else if (e.key === "ArrowLeft") go(-1);
-    };
-    window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [go, onClose]);
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   // Focus management (2026-07 shell-hardening P7): move focus INTO the viewer
   // on open — before, focus stayed on the page behind it and Tab walked through
@@ -80,7 +102,7 @@ export default function PhotoLightbox({
 
   // Portal to <body> so the overlay escapes the draggable sheet's
   // transform (a transformed ancestor would otherwise re-anchor `fixed`).
-  if (count === 0 || typeof document === "undefined") return null;
+  if (sources.length === 0 || typeof document === "undefined") return null;
   const chrome = {
     background: "rgba(255,255,255,0.13)",
     color: "white",
@@ -98,15 +120,16 @@ export default function PhotoLightbox({
         initial={reduceMotion ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={onClose}
+        onClick={dismiss}
         role="dialog"
         aria-modal="true"
         aria-label="Photo viewer"
+        data-lightbox-photo-source={source?.kind ?? "none"}
       >
         {/* The image. A tap (no movement) bubbles to the backdrop → close;
             a drag navigates (horizontal) or dismisses (downward). */}
-        <motion.div
-          key={i}
+        {source ? <motion.div
+          key={source.src}
           className="absolute inset-0"
           initial={reduceMotion ? false : { opacity: 0, scale: 0.985 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -118,24 +141,29 @@ export default function PhotoLightbox({
             if (count > 1 && Math.abs(info.offset.x) > Math.abs(info.offset.y) && Math.abs(info.offset.x) > 80) {
               go(info.offset.x < 0 ? 1 : -1);
             } else if (info.offset.y > 120) {
-              onClose();
+              dismiss();
             }
           }}
         >
           <Image
-            src={photos[i]}
-            alt={alt}
+            src={source.src}
+            alt={source.alt || alt}
             fill
-            unoptimized={photos[i].startsWith("/api/place-photo")}
+            unoptimized={source.kind === "google"}
             sizes="100vw"
             className="object-contain"
             priority
+            onLoad={(event) => {
+              if (isPlacePhotoFailureSignal(event.currentTarget)) markFailed(source.src);
+              else setLoadedSources((current) => new Set([...current, source.src]));
+            }}
+            onError={() => markFailed(source.src)}
           />
-        </motion.div>
+        </motion.div> : <p className="px-6 text-center text-white">These photos are unavailable.</p>}
 
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          onClick={(e) => { e.stopPropagation(); dismiss(); }}
           aria-label="Close photo"
           className="absolute top-[max(env(safe-area-inset-top,0px)+12px,12px)] z-10 inline-flex h-11 w-11 items-center justify-center rounded-full active:scale-95"
           style={{ ...chrome, right: "max(12px, env(safe-area-inset-right, 0px))" }}
@@ -164,30 +192,21 @@ export default function PhotoLightbox({
               <ChevronRight className="h-6 w-6" strokeWidth={2.25} aria-hidden />
             </button>
             <div
-              className="absolute bottom-[max(env(safe-area-inset-bottom,0px)+16px,16px)] left-1/2 z-10 -translate-x-1/2 rounded-full px-3 py-1 text-[12px] font-semibold tabular-nums"
+              className="absolute top-[max(env(safe-area-inset-top,0px)+16px,16px)] left-1/2 z-10 -translate-x-1/2 rounded-full px-3 py-1 text-[12px] font-semibold tabular-nums"
               style={chrome}
             >
               {i + 1} / {count}
             </div>
           </>
         )}
-        {attributions?.[i] && (
-          <div
-            className="absolute bottom-[max(env(safe-area-inset-bottom,0px)+16px,16px)] left-[max(12px,env(safe-area-inset-left,0px))] z-10 rounded bg-black/70 px-2 py-1 text-xs font-normal"
-            style={{ color: "white" }}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <GooglePhotoAttributionLine
-              attribution={attributions[i].attribution}
-              placeGoogleMapsUri={attributions[i].placeGoogleMapsUri}
-              showAvatar
-            />
-            {safeGoogleReportUrl(attributions[i].attribution?.flag_content_uri) ? (
-              <span className="mt-1 block text-right">
-                <GoogleContentReportLink
-                  href={attributions[i].attribution?.flag_content_uri}
-                  label="Report photo"
-                />
+        {source && source.kind !== "owned" && loadedSources.has(source.src) && (
+          <div data-lightbox-photo-credit
+            className="absolute bottom-[max(env(safe-area-inset-bottom,0px)+16px,16px)] left-3 right-3 z-10 max-h-[35vh] overflow-y-auto rounded bg-[var(--app-bg-elevated-solid)]"
+            onClick={(event) => event.stopPropagation()}>
+            <PlaceCardPhotoCredit source={source} loaded />
+            {source.kind === "google" && safeGoogleReportUrl(source.attribution.flag_content_uri) ? (
+              <span className="block px-3 text-right" style={{ color: "var(--app-ink-3)" }}>
+                <GoogleContentReportLink href={source.attribution.flag_content_uri} label="Report photo" touchTarget />
               </span>
             ) : null}
           </div>
