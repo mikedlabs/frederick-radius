@@ -18,7 +18,7 @@ export const CompactDoorway: Story = {
     const canvas = within(canvasElement);
     const find = canvas.getByRole("link", { name: "Find a place, service, event, or answer" });
     await expect(find).toHaveAttribute("href", "/search");
-    await expect(canvas.getByText("Find places and events")).toBeVisible();
+    await expect(within(find).getByText("Find what you need")).toBeVisible();
     await expect(find.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     await expect(canvas.queryByRole("textbox")).not.toBeInTheDocument();
     for (const name of ["Open now", "Public essentials", "Plan a few hours", "Local services"]) {

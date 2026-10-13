@@ -11,7 +11,7 @@ describe("Today universal Find launcher", () => {
     expect(html).toContain('href="/search"');
     expect(html).toContain('aria-label="Find a place, service, event, or answer"');
     expect(html).toContain('data-find-density="arrival"');
-    expect(html).toContain("Find places and events");
+    expect(html).toContain("Find what you need");
     expect(html).not.toContain("Search a name, a need, or a question.");
     expect(html).not.toContain('aria-label="Quick needs"');
     expect(html).not.toContain("<input");
@@ -24,7 +24,7 @@ describe("Today universal Find launcher", () => {
 
     expect(html).toContain('aria-label="Find a place, service, event, or answer"');
     expect(html).toContain('href="/search"');
-    expect(html).toContain("Find places and events");
+    expect(html).toContain("Find what you need");
     expect(html).toContain(
       "Search a name, a need, or a question.",
     );

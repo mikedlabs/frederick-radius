@@ -162,14 +162,14 @@ export function FairArrivalStatusView({
         aria-labelledby="fair-arrival-status-heading"
         aria-live="polite"
       >
-        <div className="flex min-h-16 items-center gap-2 py-1">
+        <div className="flex min-h-16 items-center gap-2 py-0.5">
           <Radio
             className="h-5 w-5 shrink-0 max-[360px]:hidden"
             style={{ color: "var(--app-cool)" }}
             aria-hidden
           />
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center justify-between gap-x-2 text-[11px] font-bold uppercase tracking-[0.09em]">
+            <div className="flex flex-wrap items-center justify-between gap-x-2 text-[11px] font-bold uppercase leading-tight tracking-[0.09em]">
               <span style={{ color: "var(--app-cool)" }}>
                 Official check
               </span>

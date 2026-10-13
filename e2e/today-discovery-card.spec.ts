@@ -73,7 +73,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
       expect(probe.insideCard && probe.center && probe.bottomEdge && probe.topEdge).toBe(true);
       probes.push(probe);
     }
-    await expect(page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true })).toContainText("Find places and events");
+    await expect(page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true })).toContainText("Find what you need");
     const order = await page.locator("[data-today-weather]").evaluate((weather) => Boolean(weather.compareDocumentPosition(document.querySelector('[data-surface-row="find"]')!) & Node.DOCUMENT_POSITION_FOLLOWING));
     expect(order).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
