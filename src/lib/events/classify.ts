@@ -92,3 +92,76 @@ export function isPublicEvent(
 ): boolean {
   return classifyEvent(e) === "public" && hasActionableAttendance(e);
 }
+
+/**
+ * A topical category for an event whose feed did not supply one.
+ *
+ * 156 of 1,082 live events (14.4%) arrive with `category: ""`, all from the
+ * `county` source: Frederick County Senior Services programming, plus Sky
+ * Stage. `EventCard` looks the category up in CATEGORY_BY_SLUG, so an empty
+ * one costs the card its artwork and costs the event any category filter it
+ * should have appeared in.
+ *
+ * This is deliberately CONSERVATIVE and returns null far more often than a
+ * keyword matcher could. A wrong category is worse than none: it files Tai
+ * Chi under sports and sends someone browsing wellness past it. So every rule
+ * below matches a phrase that means one thing in this corpus, and the large
+ * ambiguous middle - "Game Time", "Otago", "Tech 101", "Simple Wills",
+ * "Birthday Celebrations" - is left alone on purpose.
+ *
+ * Order matters: the first match wins, and the narrower rules come first.
+ */
+const EVENT_CATEGORY_RULES: ReadonlyArray<readonly [RegExp, string]> = [
+  // Movement classes. "chair yoga", "tai chi with paul: level 2", "zumba
+  // gold", "strength & stretch tuesdays (hybrid)".
+  [
+    /\b(?:yoga|tai\s*chi|zumba|pilates|meditation|stretch|qigong|chair\s+dance|line\s+dance|square\s+danc)/i,
+    "wellness",
+  ],
+  // Health and fitness framed as a programme rather than a class.
+  [
+    /\b(?:fitness|exercise|blood\s+pressure|caregiver\s+support|memory\s+cafe|support\s+group|take\s+off\s+pounds)/i,
+    "wellness",
+  ],
+  // Played, not watched.
+  [/\b(?:pickleball|bowling|billiards|shuffleboard|cornhole)\b/i, "sports"],
+  // On foot, outside.
+  [/\b(?:walking\s+group|hike|hiking|trail\s+walk|gentle\s+walk|nature\s+walk)\b/i, "outdoors"],
+  // Made with hands. "open studio: scrapbooking", "needle felting",
+  // "stained-glass", "yarn arts".
+  // Stems, not whole words: these inflect ("felting", "scrapbooking") and a
+  // trailing \b would refuse the inflected form, which is how "Needle
+  // Felting" went uncategorised in the first draft.
+  [
+    /\b(?:quilt|knitt?|crochet|yarn\s+arts|needle\s+felt|stained[-\s]glass|scrapbook|collage|watercolo|calligraph|potter|ceramic|floral\s+workshop|ink\s*&?\s*brushwork)/i,
+    "gallery",
+  ],
+  // NOT "drawing". In this corpus a drawing is usually a raffle: "Walkersville
+  // Vol Fire Co-Sportsman Drawing", "Jefferson Vol Fire Co 20/20 Dinner &
+  // Drawing". Both were filed under art by the first draft. The genuine art
+  // titles reach this rule by another word anyway ("Drawing/Illustration" via
+  // illustration, "Open Studio: Painting/Drawing/Coloring" via open studio).
+  [/\b(?:open\s+studio|craft(?:s|ing)?\b|illustration|painting)\b/i, "gallery"],
+  // Performed for an audience.
+  [/\b(?:concert|karaoke|open\s+mic|radio\s+play|improv|theatre|theater)\b/i, "music"],
+  // Eaten together.
+  [
+    /\b(?:lunch\s+bunch|crab\s+feed|ice\s+cream|mixology|coffee\s+hour|coffee\s*&|potluck|pancake\s+breakfast|corn\s+fest)\b/i,
+    "food",
+  ],
+  // Sold at a stall.
+  [/\b(?:farmers?\s+market|flea\s+market|craft\s+fair|book\s+fair)\b/i, "market"],
+];
+
+/**
+ * Returns a category slug, or null when the title does not clearly say one.
+ * Never overwrites a category the feed already supplied.
+ */
+export function inferEventCategoryFromTitle(title: string): string | null {
+  const t = title ?? "";
+  if (!t.trim()) return null;
+  for (const [pattern, category] of EVENT_CATEGORY_RULES) {
+    if (pattern.test(t)) return category;
+  }
+  return null;
+}
