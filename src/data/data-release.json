@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:3038ee24234979ae2c1ac1105709e29a20f6c3d8dcc2b56a191e0c1ddb89c69c",
+  "data_version": "sha256:e63acbc9f13805ca981e67c17413b701e96440eef7af1304e366693a48dff07a",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-12T10:35:36.669Z",
+      "promoted_at": "2026-10-13T04:28:11.412Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -168,9 +168,9 @@
         },
         {
           "path": "src/lib/integrations/wikimedia.ts",
-          "sha256": "d3f3a3fad2cb76d10b631c55203063ffd37a0334c05f8df7001b0227a26a5562",
+          "sha256": "f38df9395745bf1152d97ce36625c806e0bd937339a44636e2873ec3dc0c6a66",
           "records": null,
-          "bytes": 8185
+          "bytes": 9456
         },
         {
           "path": "src/data/place-visit-details.json",
@@ -234,9 +234,9 @@
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
-          "sha256": "adb22e498465e6c21e1efafee6ec37f3a3e92ab44f4e6f0eec910d33ad9db4a7",
+          "sha256": "1685cb116333e160af32dfc25652988c19c326bb2ee676ec924dc3f25c1dbbf0",
           "records": 1328,
-          "bytes": 778650
+          "bytes": 894186
         }
       ]
     },

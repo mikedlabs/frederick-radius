@@ -56,6 +56,7 @@ export function PlaceCardPhotoCredit({ source, loaded }: { source: PlaceCardPhot
       ) : (
         <>
           <span className="block pt-1">Photo by {source.photo.author}.</span>
+          <span className="block">The image is resized for display; previews may be cropped.</span>
           <span className="flex flex-wrap gap-x-3">
             <a href={source.photo.source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Wikimedia Commons</a>
             <a href={licenseHref!} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{source.photo.license}</a>

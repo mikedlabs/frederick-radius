@@ -64,6 +64,39 @@ describe("place card photo source contract", () => {
 });
 
 
+describe("new exact destination fallback continuity", () => {
+  it.each([
+    ["baker-park-frederick", "Acroterion"],
+    ["rose-hill-manor-park-museums-frederick", "LittleLuckyMd"],
+    ["historic-utica-covered-bridge-thurmont", "Acroterion"],
+  ])("retains Google priority and credited bounded fallback for %s", (slug, author) => {
+    const photoName = `places/${slug}/photos/approved`;
+    const plan = placeCardPhotoPlan({
+      slug,
+      google_photo_url: `/api/place-photo?slug=${slug}&name=${encodeURIComponent(photoName)}`,
+      google_photo_attribution: {
+        photo_name: photoName,
+        google_maps_uri: `https://www.google.com/maps/place/${slug}/data=!3m1!1e3`,
+        authors: [],
+      },
+    }, 180);
+    const google = selectedPlaceCardPhoto(plan, null)!;
+    expect(google.kind).toBe("google");
+    const state = recordPlaceCardPhotoResult(plan, null, google.src, "failed");
+    const fallback = selectedPlaceCardPhoto(plan, state)!;
+    expect(fallback.kind).toBe("curated");
+    if (fallback.kind !== "curated") throw new Error("Expected exact destination fallback");
+    expect(fallback.photo.author).toBe(author);
+    expect(fallback.photo.license).toBe("CC BY-SA 4.0");
+    expect(fallback.photo.source_url).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
+    expect(new URL(fallback.src).searchParams.get("width")).toBe("360");
+    const exhausted = recordPlaceCardPhotoResult(plan, state, fallback.src, "failed");
+    expect(selectedPlaceCardPhoto(plan, exhausted)).toBeNull();
+    expect(recordPlaceCardPhotoResult(plan, exhausted, google.src, "loaded")).toEqual(exhausted);
+  });
+});
+
+
 describe("exact owned place photo continuity", () => {
   const slug = "carroll-creek-linear-park-frederick";
   const src = "/images/seasons/summer/SUMMER CARROL CREEK.jpg";

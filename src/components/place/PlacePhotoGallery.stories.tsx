@@ -168,6 +168,7 @@ export const ResolvedCreditVisibilityOutsideCardButton: Story = {
     await expect(credit).not.toHaveAttribute("aria-hidden");
     await expect(credit).not.toHaveAttribute("inert");
     await expect(within(credit).getByText("Photo by " + commons.author + ".")).toBeVisible();
+    await expect(within(credit).getByText("The image is resized for display; previews may be cropped.")).toBeVisible();
     const source = within(credit).getByRole("link", { name: "Wikimedia Commons" });
     const license = within(credit).getByRole("link", { name: commons.license });
     await expect(source).toHaveAttribute("href", commons.source_url);

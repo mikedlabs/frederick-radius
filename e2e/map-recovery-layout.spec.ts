@@ -249,3 +249,71 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
   });
  }
 }
+
+
+test.describe("Native shortlist directions in the map fallback", () => {
+  test.use({ viewport: { width: 320, height: 568 } });
+  test("directions opens the exact destination without selecting a place or losing the scoped query", async ({ page, context }, testInfo) => {
+    test.setTimeout(60_000);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await installRecoveryBoundary(page);
+    const metadataRequests: string[] = [];
+    page.on("request", (request) => {
+      const path = new URL(request.url()).pathname;
+      if (path.startsWith("/api/places/map-card/") || path === "/api/place-photo") metadataRequests.push(path);
+    });
+    // Native navigation is real. Only the external destination document is a
+    // transport fixture, so this proof makes no third-party map/provider call.
+    await context.route(/^https:\/\/(?:www\.google\.com\/maps\/dir\/|maps\.apple\.com\/)/, async (route) => {
+      expect(route.request().method()).toBe("GET");
+      await route.fulfill({ contentType: "text/html", body: "<!doctype html><title>Native directions transport fixture</title><main>External handoff observed. No external map is loaded.</main>" });
+    });
+    await page.goto(mapUrl, { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".dock-host")).toHaveAttribute("data-map-error", "true", { timeout: 30_000 });
+    const list = page.getByRole("region", { name: "Available results without the map" });
+    const scopedPlaces = coffeePlaces.filter((place) => place.municipality === "brunswick");
+    await expect(list.locator("[data-map-list-place]")).toHaveCount(scopedPlaces.length);
+    const before = await list.locator("[data-map-list-place]").evaluateAll((rows) => rows.map((row) => row.getAttribute("data-map-list-place")));
+    const slug = before[0];
+    const place = scopedPlaces.find((candidate) => candidate.slug === slug)!;
+    expect(place).toBeDefined();
+    const row = list.locator(`[data-map-list-place-row="${slug}"]`);
+    const details = row.locator(`[data-map-list-place="${slug}"]`);
+    const directions = row.getByRole("link", { name: `Directions to ${place.name}`, exact: true });
+    await expect(details).toContainText(place.name);
+    await expect(details).toContainText("Hours not confirmed");
+    await expect(directions).toHaveText("Directions");
+    await expect(directions).toHaveAttribute("target", "_blank");
+    await expect(row.locator("button a, a button")).toHaveCount(0);
+    const href = (await directions.getAttribute("href"))!;
+    const destination = new URL(href);
+    expect(destination.searchParams.get("destination") ?? destination.searchParams.get("daddr"))
+      .toBe(`${place.geom.lat},${place.geom.lng}`);
+    expect(destination.searchParams.has("origin")).toBe(false);
+    await page.evaluate(() => document.fonts.ready);
+    const targets = { details: await assert44HitTarget(details), directions: await assert44HitTarget(directions) };
+    expect(targets.details.x + targets.details.width).toBeLessThanOrEqual(targets.directions.x);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+    await expect(page.locator("[data-map-place-slug]")).toHaveCount(0);
+    expect(metadataRequests).toEqual([]);
+    const origin = page.url();
+    const popupPromise = page.waitForEvent("popup");
+    if (testInfo.project.use.hasTouch) await directions.tap();
+    else await directions.click();
+    const popup = await popupPromise;
+    await popup.waitForLoadState("domcontentloaded");
+    expect(popup.url()).toBe(href);
+    await expect(popup.getByRole("main")).toHaveText("External handoff observed. No external map is loaded.");
+    await popup.close();
+    await expect(page).toHaveURL(origin);
+    await expect(page.locator("[data-map-place-slug]")).toHaveCount(0);
+    expect(metadataRequests).toEqual([]);
+    expect(await list.locator("[data-map-list-place]").evaluateAll((rows) => rows.map((element) => element.getAttribute("data-map-list-place"))))
+      .toEqual(before);
+    await expect(page.locator("[data-map-dock]").getByRole("combobox", { name: "Search Frederick Radius", exact: true })).toHaveValue("coffee");
+    await expect(page.locator("[data-map-dock]").getByRole("link", { name: "Back to search results", exact: true })).toHaveAttribute("href", returnTo);
+    await expect(details).toContainText("Hours not confirmed");
+    await testInfo.attach("shortlist-native-directions", { body: JSON.stringify({ before, href, metadataRequests, targets, retainedUrl: page.url(), fixture: "Map renderer unavailable; external directions document is controlled transport." }, null, 2), contentType: "application/json" });
+    await testInfo.attach("shortlist-directions-320", { body: await page.screenshot({ fullPage: false }), contentType: "image/png" });
+  });
+});
