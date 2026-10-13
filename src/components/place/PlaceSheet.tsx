@@ -33,10 +33,8 @@ import { formatDistance } from "@/lib/geo";
 import type { LngLat } from "@/lib/geo";
 import { nearestAerial, currentSeason } from "@/lib/aerial";
 import PhotoLightbox from "@/components/ui/PhotoLightbox";
-import {
-  GooglePhotoAttributionLine,
-  googlePhotoAttributionForUrl,
-} from "@/components/place/GoogleAttribution";
+import { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
+import { isPlacePhotoFailureSignal, placeCardPhotoPlan, placePhotoGallerySources, type PlaceCardPhotoSource } from "@/lib/place-card-photo";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import LiveGooglePlaceContext, { type LiveGooglePlaceData } from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
@@ -148,7 +146,9 @@ function PlaceSheetContent({
   const [travelStatus, setTravelStatus] = useState<
     "idle" | "loading" | "unavailable"
   >("idle");
-  const [lightboxAt, setLightboxAt] = useState<number | null>(null);
+  const [lightbox, setLightbox] = useState<{ sources: PlaceCardPhotoSource[]; startIndex: number; name: string } | null>(null);
+  const [failedPhotos, setFailedPhotos] = useState<Set<string>>(() => new Set());
+  const [loadedPhotos, setLoadedPhotos] = useState<Set<string>>(() => new Set());
   const [venueEvents, setVenueEvents] = useState<
     { slug: string; title: string; weekday: string; day: string; month: string; time: string }[]
   >([]);
@@ -270,7 +270,7 @@ function PlaceSheetContent({
   const photos = place.google_photos?.length
     ? place.google_photos
     : (extra?.photos ?? []);
-  const heroUrl = place.google_photo_url ?? photos[0];
+  const suppliedHeroUrl = place.google_photo_url ?? photos[0];
   const photoAttributions = place.google_photo_attributions ?? extra?.photo_attributions ?? [];
   const activePhotoContext =
     photoContext?.slug === place.slug ? photoContext : null;
@@ -278,19 +278,29 @@ function PlaceSheetContent({
     place.google_photo_attribution ??
     activePhotoContext?.google_photo_attribution ??
     photoAttributions[0];
-  const googleMapsUri =
-    place.google_maps_uri ??
-    activePhotoContext?.google_maps_uri ??
-    extra?.google_maps_uri;
-  // Every unique photo (hero first), for the tap-to-enlarge lightbox.
-  const allPhotos = Array.from(new Set([heroUrl, ...photos].filter(Boolean))) as string[];
-  const lightboxAttributions = allPhotos.map((url) => {
-    const attribution = googlePhotoAttributionForUrl(url, photoAttributions) ??
-      (url === heroUrl ? heroAttribution : undefined);
-    return {
-      attribution,
-      placeGoogleMapsUri: googleMapsUri,
-    };
+  const photoInput = {
+    slug: place.slug,
+    google_photo_url: suppliedHeroUrl,
+    google_photo_attribution: heroAttribution,
+    google_photos: photos,
+    google_photo_attributions: photoAttributions,
+  };
+  const photoPlan = placeCardPhotoPlan(photoInput, 360);
+  const heroPhoto = photoPlan.sources.find((source) => !failedPhotos.has(source.src)) ?? null;
+  const allPhotoSources = placePhotoGallerySources(photoInput, 360).filter((source) => !failedPhotos.has(source.src));
+  // Keep the same source identity in the image button, strip, and viewer.
+  const allPhotos = [heroPhoto, ...allPhotoSources].filter((source) => source !== null)
+    .filter((source, index, all) => all.findIndex((item) => item.src === source.src) === index);
+  const openPhoto = (src: string) => {
+    const startIndex = allPhotos.findIndex((source) => source.src === src);
+    if (startIndex < 0) return;
+    // The viewer owns this exact snapshot until explicit dismissal. A later
+    // thumbnail/hero failure must not strand its temporary history entry.
+    setLightbox({ sources: allPhotos, startIndex, name: place.name });
+  };
+  const markPhotoFailed = (src: string) => setFailedPhotos((current) => {
+    if (current.has(src)) return current;
+    return new Set([...current, src]);
   });
   const hoursLines = place.hours_source === "first_party" ? [] : place.google_hours?.length
     ? place.google_hours
@@ -328,118 +338,51 @@ function PlaceSheetContent({
        *  so content past the cap just got clipped — users couldn't
        *  reach the bottom details. */}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-6">
-        {/* Cinematic hero — full-bleed, 4:3 aspect, with a bottom
-         *  gradient that fades the photo into the sheet. The category
-         *  eyebrow + place name overlay the gradient so the first
-         *  thing the eye reads is "Brewery · Olde Mother Brewing"
-         *  on the actual place's photo, not a generic header below it.
-         *  When there is no photo, we fall back to a category-tinted
-         *  panel with the icon — still cinematic, still on-brand. */}
-        {heroUrl ? (
+        {/* Exact-place media only. Save and identity are separate from the
+            image button, so there are no nested actions or repeated titles. */}
+        {heroPhoto && (
           <>
-            <div
-              className="relative aspect-[4/3] w-full cursor-zoom-in overflow-hidden"
-              role="button"
-              tabIndex={0}
-              aria-label={`View ${place.name} photos`}
-              onClick={() => { haptic("light"); setLightboxAt(0); }}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); haptic("light"); setLightboxAt(0); } }}
-            >
-            <Image
-              src={heroUrl}
-              alt={place.name}
-              fill
-              unoptimized={heroUrl.startsWith("/api/place-photo")}
-              priority
-              sizes="(max-width: 720px) 100vw, 720px"
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover"
-            />
-            <span
-              aria-hidden
-              className="pointer-events-none absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full"
-              style={{ background: "rgba(0,0,0,0.42)", color: "white", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
-            >
-              <Expand className="h-4 w-4" strokeWidth={2.25} />
-            </span>
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(180deg, transparent 35%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.78) 100%)",
-              }}
-            />
-            <div className="absolute inset-x-0 bottom-0 p-5 pb-4">
-              <p
-                className="text-[11px] font-bold uppercase tracking-[0.14em]"
-                style={{
-                  color: `color-mix(in srgb, ${color} 35%, white)`,
-                  textShadow: "0 1px 2px rgba(0,0,0,0.55)",
-                }}
-              >
-                {cat?.name ?? place.category}
-              </p>
-              <h2
-                className="mt-1 font-serif text-[24px] font-semibold leading-tight tracking-tight text-white"
-                style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
-              >
-                {place.name}
-              </h2>
+            <div data-place-sheet-photo data-place-sheet-photo-source={heroPhoto.kind}
+              className="relative aspect-[4/3] w-full overflow-hidden">
+              <button type="button" aria-label={`View ${place.name} photos`}
+                className="absolute inset-0 h-full w-full cursor-zoom-in"
+                onClick={() => { haptic("light"); openPhoto(heroPhoto.src); }}>
+                <Image key={heroPhoto.src} src={heroPhoto.src} alt={heroPhoto.alt || place.name}
+                  fill unoptimized={heroPhoto.kind === "google"} priority
+                  sizes="(max-width: 720px) 100vw, 720px" placeholder="blur"
+                  blurDataURL={PAPER_CREAM_BLUR} className="object-cover"
+                  onLoad={(event) => {
+                    if (isPlacePhotoFailureSignal(event.currentTarget)) markPhotoFailed(heroPhoto.src);
+                    else setLoadedPhotos((current) => new Set([...current, heroPhoto.src]));
+                  }}
+                  onError={() => markPhotoFailed(heroPhoto.src)} />
+                <span aria-hidden className="pointer-events-none absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full"
+                  style={{ background: "rgba(0,0,0,0.42)", color: "white" }}>
+                  <Expand className="h-4 w-4" strokeWidth={2.25} />
+                </span>
+              </button>
             </div>
-            {/* Save button anchored to the upper-LEFT so it can't collide
-             *  with the decorative Expand glyph in the top-right corner
-             *  (both were at right-3 top-3 and overlapped). */}
-            <div className="absolute left-3 top-3 z-10">
-              <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
-            </div>
-            </div>
-            <div className="px-5 pt-1 text-right" style={{ color: "var(--app-ink-3)" }}>
-              <GooglePhotoAttributionLine
-                attribution={heroAttribution}
-                placeGoogleMapsUri={googleMapsUri}
-                touchTarget
-              />
-            </div>
+            <PlaceCardPhotoCredit source={heroPhoto} loaded={loadedPhotos.has(heroPhoto.src)} />
           </>
-        ) : (
-          <div className="px-5 pt-2">
-            <div
-              aria-hidden
-              className="flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-[var(--app-radius-lg)]"
-              style={{
-                background: `radial-gradient(140% 120% at 25% 20%, ${color}55, ${color}15 70%)`,
-                color,
-              }}
-            >
-              <MapPin className="h-16 w-16 opacity-70" strokeWidth={1.25} />
-            </div>
-          </div>
         )}
 
         {/* Below-hero content lives inside the standard padding. */}
         {/* reveal-up: same settle-in cascade as the event sheet. */}
         <div className="reveal-up px-5 pt-4">
-          {/* Title row only appears when there is NO photo — when a
-           *  photo exists the name is overlaid above. We still surface
-           *  the category eyebrow + name here for the photoless case
-           *  so the sheet always has a clear identity. */}
-          {!heroUrl && (
-            <header className="flex items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color }}>
-                  {cat?.name ?? place.category}
-                </p>
-                <h2 className="font-serif text-[22px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-                  {place.name}
-                </h2>
-              </div>
-              <div className="shrink-0">
-                <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
-              </div>
-            </header>
-          )}
+          {/* The name and Save stay readable before loading and after exhaustion. */}
+          <header className="mb-3 flex items-start gap-3" data-place-sheet-identity>
+            <div className="min-w-0 flex-1">
+              <p data-place-sheet-category className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink)" }}>
+                {cat?.name ?? place.category}
+              </p>
+              <h2 className="font-serif text-[22px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+                {place.name}
+              </h2>
+            </div>
+            <div className="shrink-0">
+              <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
+            </div>
+          </header>
 
           {/* Address + source provenance + "known for" — three quiet
            *  lines that establish what this place is before the data
@@ -637,31 +580,24 @@ function PlaceSheetContent({
           </div>
         ) : null}
 
-        {/* Photo strip — more of what the place actually looks like */}
-        {photos.length > 1 && (
+        {/* Each additional photograph keeps its own source and load state. */}
+        {allPhotos.length > 1 && (
           <div className="shelf-rail -mx-1 mt-4 gap-2 px-1 pb-1">
-            {photos.slice(1, 8).map((u, i) => (
-              <div
-                key={i}
-                role="button"
-                tabIndex={0}
-                aria-label={`View ${place.name} photo ${i + 2}`}
-                onClick={() => { haptic("light"); setLightboxAt(allPhotos.indexOf(u)); }}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); haptic("light"); setLightboxAt(allPhotos.indexOf(u)); } }}
-                className="relative h-24 w-32 shrink-0 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] border"
-                style={{ borderColor: "var(--app-border)" }}
-              >
-                <Image
-                  src={u}
-                  alt=""
-                  fill
-                  unoptimized={u.startsWith("/api/place-photo")}
-                  loading="lazy"
-                  sizes="128px"
-                  placeholder="blur"
-                  blurDataURL={PAPER_CREAM_BLUR}
-                  className="object-cover"
-                />
+            {allPhotos.slice(1, 8).map((source, index) => (
+              <div key={source.src} className="w-32 shrink-0">
+                <button type="button" aria-label={`View ${place.name} photo ${index + 2}`}
+                  onClick={() => { haptic("light"); openPhoto(source.src); }}
+                  className="relative h-24 w-32 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] border"
+                  style={{ borderColor: "var(--app-border)" }}>
+                  <Image src={source.src} alt="" fill unoptimized={source.kind === "google"}
+                    loading="lazy" sizes="128px" placeholder="blur" blurDataURL={PAPER_CREAM_BLUR} className="object-cover"
+                    onLoad={(event) => {
+                      if (isPlacePhotoFailureSignal(event.currentTarget)) markPhotoFailed(source.src);
+                      else setLoadedPhotos((current) => new Set([...current, source.src]));
+                    }}
+                    onError={() => markPhotoFailed(source.src)} />
+                </button>
+                <PlaceCardPhotoCredit source={source} loaded={loadedPhotos.has(source.src)} />
               </div>
             ))}
           </div>
@@ -689,7 +625,7 @@ function PlaceSheetContent({
                 <div className="relative aspect-[16/10] w-full bg-[var(--app-bg-sunken)]">
                   <Image
                     src={aerial.src}
-                    alt={`${place.name} from above`}
+                    alt={`Aerial view near ${place.name}.`}
                     fill
                     loading="lazy"
                     sizes="(max-width: 720px) 100vw, 720px"
@@ -826,13 +762,13 @@ function PlaceSheetContent({
         </div>
       </div>
 
-      {lightboxAt !== null && (
+      {lightbox && (
         <PhotoLightbox
-          photos={allPhotos}
-          attributions={lightboxAttributions}
-          startIndex={lightboxAt}
-          alt={place.name}
-          onClose={() => setLightboxAt(null)}
+          key={lightbox.sources[lightbox.startIndex].src}
+          sources={lightbox.sources}
+          startIndex={lightbox.startIndex}
+          alt={lightbox.name}
+          onClose={() => setLightbox(null)}
         />
       )}
     </>

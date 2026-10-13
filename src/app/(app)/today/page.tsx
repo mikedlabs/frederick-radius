@@ -11,7 +11,6 @@ import LocalSportsScoreboard from "@/components/today/LocalSportsScoreboard";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
 import TodayFairFeature from "@/components/today/TodayFairFeature";
-import Image from "next/image";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import DismissibleSection from "@/components/today/DismissibleSection";
@@ -62,7 +61,8 @@ import {
 import { eventTown } from "@/lib/events/eventTown";
 import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
-import AppTransitionLink from "@/components/nav/AppTransitionLink";
+import TodayMasthead from "@/components/today/TodayMasthead";
+import TodayGeographicDoorway, { TodayGeographicDoorwayPending } from "@/components/today/TodayGeographicDoorway";
 import PageChapter from "@/components/ui/PageChapter";
 import styles from "@/components/today/TodayLayout.module.css";
 import {
@@ -272,53 +272,38 @@ export default async function HomePage() {
           clock; the page ISRs every 300s so a boundary rolls within minutes.
           This is the real document h1. Sits below an active civic alert (alerts
           still lead) and above the weather. */}
-      <div className={styles.arrival}>
-      {(() => {
-        const frame = todayFrame(easternStartHour(now.toISOString()));
-        return (
-          <header className={`scroll-masthead ${styles.masthead}`}>
-            <h1 className={styles.title}>{frame.title}</h1>
-            <div className={styles.mastheadLead} data-today-photo-lead>
-              <figure className={styles.portrait}>
-                <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" priority fill sizes="(min-width: 960px) 520px, (min-width: 768px) 720px, calc(100vw - 32px)" alt="Carroll Creek in Frederick." />
-              </figure>
-            </div>
-            <div className={styles.scope}>
-              <Suspense fallback={null}><TodayScopeStatus dateline={formatEasternDateline(now)} /></Suspense>
-            </div>
-          </header>
-        );
-      })()}
-
-      {/* Conditions precede every browsing decision. This is the existing
-          bounded weather read, kept outside the Find and event stream. */}
-      <section data-today-weather className={styles.weather}>
-        <AppTransitionLink
-          href="/pulse?open=weather"
-          prefetch={false}
-          className={styles.forecastLink}
-        >
-        <div className={styles.contextHeading}>
-          <span>Weather in Frederick</span>
-          <span className={styles.forecastLabel}>Full forecast <ChevronRight aria-hidden className="h-4 w-4" /></span>
-        </div>
-          <Suspense fallback={<Skeleton.Block height={110} round="var(--app-radius-md)" />}>
-            <TodayCard />
+      <TodayMasthead
+        title={todayFrame(easternStartHour(now.toISOString())).title}
+        weather={
+          <Suspense fallback={<Skeleton.Block height={148} round="var(--app-radius-md)" />}>
+            <TodayCard density="masthead" />
           </Suspense>
-          <span className="sr-only">Open the full forecast.</span>
-        </AppTransitionLink>
-      </section>
-      </div>
+        }
+      />
 
       <div data-today-briefing className={styles.briefing}>
         {/* Find follows the conditions glance as the sole primary action.
             Seasonal campaigns and the event stream cannot bury either. */}
         <div className="today-arrival today-arrival--find">
-          <TodayAsk embedded showQuickNeeds={false} />
+          <TodayAsk embedded showQuickNeeds={false} density="arrival" />
         </div>
+
+      <div className={styles.scope}>
+        <Suspense fallback={null}><TodayScopeStatus dateline={formatEasternDateline(now)} /></Suspense>
+      </div>
 
       <div data-today-current-content className={styles.currentContent}>
         <div aria-label="Places for your area" className={styles.places}>
+          {/* This owned Frederick scene is a place doorway, not a verdict
+              about current conditions. Other town and Near me lenses suppress
+              it. Before the client knows the URL lens, the neutral fallback
+              reserves geometry without naming or fetching a place image. */}
+          <Suspense fallback={<TodayGeographicDoorwayPending />}>
+            <TodayGeographicDoorway />
+          </Suspense>
+          <div className={styles.quickNeeds}>
+            <TodayQuickNeeds />
+          </div>
           {decisionLead}
         </div>
 
@@ -350,7 +335,7 @@ export default async function HomePage() {
 
       <section aria-labelledby="today-explore-heading">
         <h2 id="today-explore-heading" className={styles.utilityHeading}>More ways to explore</h2>
-        <TodayQuickNeeds><CravingStrip /></TodayQuickNeeds>
+        <TodayQuickNeeds showShortcuts={false}><CravingStrip /></TodayQuickNeeds>
         <div className={styles.planLink}>
           <Suspense fallback={null}><TodayPlanTonightLink /></Suspense>
         </div>

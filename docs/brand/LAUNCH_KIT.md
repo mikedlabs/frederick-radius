@@ -1,12 +1,14 @@
 # Frederick Radius launch kit
 
-Frederick Radius Brand System 1.2 - July 22, 2026
+Frederick Radius Brand System 1.3 - October 12, 2026
 
 This kit is for the public beta. The public name is Frederick Radius. Its
 tagline is `Frederick County starts where you are.` Its plain-language
 description is `Current local information for Frederick County, organized
 around where you are.` Keep the writing specific. Do not describe Radius as an
 official service, and do not imply that a source or municipality endorses it.
+
+The color keys `brick`, `cream`, and `ink`, and existing `*-brick` / `*-cream` asset filenames remain compatible aliases for Cobalt, Cloud, and Navy. They do not retain the former palette. Regenerate and review assets before using version 1.3 artwork; changing this guide alone does not update or publish exports.
 
 ## Ready-to-use visual assets
 
@@ -17,11 +19,11 @@ official service, and do not imply that a source or municipality endorses it.
   `output/brand/posters/whole-county.png`: the countywide launch
   message.
 - `public/brand/posters/product-today.svg` and `.png`: a product poster built
-  around the current Today interface.
+  around a captured Today interface. Recapture it before presenting the current product.
 - `public/brand/posters/ask-radius.svg` and `.png`: an Ask Radius poster with a
   tested-QR placeholder and readable URL fallback.
 - `public/brand/social/facebook-cover.svg` and `facebook-cover-photo.svg`:
-  coordinated Brick and owned summer-photography Facebook covers.
+  coordinated Cobalt and owned summer-photography Facebook covers.
 - `public/brand/social/avatar.svg`: the circle-safe account avatar.
 - `public/brand/social/facebook-page-launch-photo.svg`: the photo-led public
   beta launch post using the same owned summer Frederick photograph.
@@ -42,6 +44,8 @@ official service, and do not imply that a source or municipality endorses it.
 - `public/brand/nfc/partner-front.svg` and `partner-back.svg`: blank partner or
   venue CR80 NFC card masters.
 
+The embedded product screenshots are historical July 22, 2026 captures, not version 1.3 product proof. Rebuilding a frame does not refresh their pixels.
+
 The SVG is the editable master. Use the PNG for posting or a print proof.
 `npm run build:brand` writes the two photography poster PNGs to the ignored
 `output/brand/posters/` folder for local handoff. They are not public app assets.
@@ -54,11 +58,12 @@ programming, and proofing.
 
 ## Brand consistency before export
 
-- Use Public Sans for product and campaign titles, captions, details, dates,
+- Product UI uses System sans from the device. Use Public Sans for exported
+  campaign titles, captions, details, dates,
   and calls to action. The package includes variable upright and real italic
   files. Use Libre Caslon Display Regular only for the wordmark or a rare large
   editorial or campaign headline; never synthesize a bold or italic Caslon.
-- Keep Brick, Cream, Ink, the Ripple, and owned Frederick photography as the
+- Keep Cobalt, Cloud, Navy, the Ripple, and owned Frederick photography as the
   recognition system. Catoctin Forest is a restrained outdoor or landscape
   data cue, not an alternate campaign theme.
 - Use Catoctin Forest for an open-state label. Use Ochre Amber only when the

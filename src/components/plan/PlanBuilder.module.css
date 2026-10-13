@@ -52,6 +52,17 @@
  .scene { min-height: 200px; }
  .sceneText { left: 18px; right: 18px; bottom: 18px; }
  .overview, .stopBody, .visitCheck { padding: 16px; }
+ /* Time and stop count are readouts, so trim their internal spacing before
+    allowing a second row to push the first destination behind the tabs. */
+ .planSummary { gap: 4px; margin-top: 8px; }
+ .planSummary > li { gap: 4px; padding-inline: 8px; }
+}
+
+/* Native system fonts can add a line to an outing title or its context.
+   Keep the first real stop reachable without compressing text or controls. */
+@media (max-width: 799px) {
+ .results, .resultHeader { gap: 12px; }
+ .resultHeader .scene { min-height: 104px; }
 }
 
 .forecast { display: flex; gap: 10px; overflow-x: auto; padding-block: 10px; list-style: none; }

@@ -541,7 +541,7 @@ export default function PlanBuilder({
             )}
 
             {plan.stops.length > 0 && (
-              <ul className="mt-4 flex flex-wrap gap-2" aria-label="Plan summary">
+              <ul className={`${styles.planSummary} mt-4 flex flex-wrap gap-2`} aria-label="Plan summary">
                 <Meta><Clock className="h-3.5 w-3.5" aria-hidden />{planWindowLabel(plan)}</Meta>
                 <Meta><MapPin className="h-3.5 w-3.5" aria-hidden />{plan.stops.length} {plan.stops.length === 1 ? "stop" : "stops"}</Meta>
               </ul>

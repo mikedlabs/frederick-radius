@@ -3,6 +3,8 @@ import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import styles from "./TodayCard.module.css";
 
 export type TodayWeatherViewProps = {
+  /** Presentation only. Both densities retain the same visible factual read. */
+  density?: "standard" | "masthead";
   headline: string;
   condition: string;
   temperatureF: number | null;
@@ -36,12 +38,13 @@ function forecastIssuance(value: string | null) {
   };
 }
 
-export function WeatherUnavailable() {
+export function WeatherUnavailable({ density = "standard" }: { density?: TodayWeatherViewProps["density"] } = {}) {
   return (
     <section
       aria-label="Weather unavailable"
       data-weather-state="unavailable"
-      className={styles.unavailable}
+      data-weather-density={density}
+      className={`${styles.unavailable} ${density === "masthead" ? styles.masthead : ""}`}
     >
       <span>The NWS forecast is briefly unavailable.</span>
       <span className={styles.handoff}>County status</span>
@@ -53,17 +56,26 @@ export function WeatherUnavailable() {
  * live daylight, and offline capture remain owned by the server composition. */
 export default function TodayWeatherView({
   headline, condition, temperatureF, highF, sun, variant,
-  forecastAvailable, issuedAt, safetyNote, daylight, children,
+  forecastAvailable, issuedAt, safetyNote, daylight, children, density = "standard",
 }: TodayWeatherViewProps) {
   const issuance = forecastIssuance(issuedAt);
   const hasDistinctRead = Boolean(headline && headline !== condition);
   const Condition = hasDistinctRead ? "p" : "h2";
+  const provenance = (
+    <>
+      <p className={styles.source}>NWS forecast · Frederick</p>
+      <p className={styles.issuance}>
+        {issuance ? <>Issued <time dateTime={issuance.dateTime}>{issuance.label}</time></> : "Issue time unavailable"}
+      </p>
+    </>
+  );
 
   return (
     <section
       aria-label="Today in Frederick"
       data-weather-state={forecastAvailable ? "available" : "safety-only"}
-      className={styles.card}
+      data-weather-density={density}
+      className={`${styles.card} ${density === "masthead" ? styles.masthead : ""}`}
     >
       {children}
       {hasDistinctRead && <h2 className={styles.headline}>{headline}</h2>}
@@ -78,13 +90,11 @@ export default function TodayWeatherView({
             )}
             <div className={styles.details}>
               {condition && <Condition className={styles.condition}>{condition}</Condition>}
-              <p className={styles.source}>NWS forecast · Frederick</p>
-              <p className={styles.issuance}>
-                {issuance ? <>Issued <time dateTime={issuance.dateTime}>{issuance.label}</time></> : "Issue time unavailable"}
-              </p>
+              {density === "standard" ? provenance : null}
             </div>
-            {variant && <AnimatedSkyGlyph variant={variant} size={44} className={styles.glyph} />}
+            {variant && <AnimatedSkyGlyph variant={variant} size={density === "masthead" ? 24 : 44} className={styles.glyph} />}
           </div>
+          {density === "masthead" ? <div>{provenance}</div> : null}
           {(highF !== null || sun) && (
             <p className={styles.stats}>
               {highF !== null && <span>{`High ${highF}°`}</span>}

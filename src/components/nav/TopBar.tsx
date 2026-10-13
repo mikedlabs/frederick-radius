@@ -24,6 +24,8 @@ import {
 } from "@/lib/findBridge";
 import { haptic } from "@/lib/haptics";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { installNativeReturnOwner, rememberNativeRequest } from "@/components/search/native-request-return";
+import { useNativeRequestReturn } from "@/components/search/useNativeRequestReturn";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 
 const SearchOverlay = lazy(() => import("@/components/search/SearchOverlay"));
@@ -75,6 +77,9 @@ export default function TopBar() {
   const scrollTrailRef = useRef({ previous: 0, current: 0, changedAt: 0 });
   const pathname = usePathname();
   const router = useRouter();
+  const toolsOpenerRef = useRef<HTMLAnchorElement>(null);
+  useEffect(installNativeReturnOwner, []);
+  useNativeRequestReturn({ target: "tools-opener", inputRef: toolsOpenerRef, pathname, ready: findInteractionReady });
   const closeSearch = useCallback(() => setSearchOpen(false), []);
 
   // The overlay stays lazy and unmounts on close. Only its query survives in
@@ -455,7 +460,13 @@ export default function TopBar() {
               its own page so the top navigation does not change shape. */}
           <div className="contents">
             <AppTransitionLink
+              ref={toolsOpenerRef}
               href="/compass"
+              onClick={(event) => {
+                if (event.button === 0 && !event.defaultPrevented && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+                  rememberNativeRequest({ target: "tools-opener" });
+                }
+              }}
               prefetch={false}
               onMouseEnter={() => router.prefetch("/compass")}
               onFocus={() => router.prefetch("/compass")}

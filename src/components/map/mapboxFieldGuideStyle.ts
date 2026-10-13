@@ -44,13 +44,13 @@ export const MAPBOX_FIELD_GUIDE_CONFIG = {
     colorLand: BRAND.colors.cream,
     colorWater: "#7FA6BA",
     colorGreenspace: "#C6D2C0",
-    colorBuildings: "#E4DBCB",
-    colorRoads: "#E0D6C4",
-    colorTrunks: "#D2C7B2",
-    colorMotorways: "#B5A68C",
+    colorBuildings: BRAND.colors.border,
+    colorRoads: BRAND.colors.paperDeep,
+    colorTrunks: "#CBD7E6",
+    colorMotorways: "#A8B9D0",
     colorPlaceLabels: BRAND.colors.ink,
     colorRoadLabels: BRAND.colors.mutedInk,
-    colorAdminBoundaries: "#A89272",
+    colorAdminBoundaries: BRAND.colors.controlBorder,
   },
 } as unknown as NonNullable<MapOptions["config"]>;
 
@@ -72,6 +72,11 @@ export function applyMapboxFieldGuideConfig(map: GLMap): void {
  * intentional aerial/detail scene pitches the camera.
  */
 export function installMapboxFieldGuideTerrain(map: GLMap): void {
+  const hillshadeColors = {
+    "hillshade-shadow-color": "#9AAAC0",
+    "hillshade-highlight-color": BRAND.colors.cream,
+    "hillshade-accent-color": "#CBD7E6",
+  };
   try {
     if (!map.getSource("fr-dem")) {
       map.addSource("fr-dem", {
@@ -88,13 +93,17 @@ export function installMapboxFieldGuideTerrain(map: GLMap): void {
         source: "fr-dem",
         slot: "bottom",
         paint: {
-          "hillshade-shadow-color": "#AFA18D",
-          "hillshade-highlight-color": "#FFF8EA",
-          "hillshade-accent-color": "#D8C8AA",
+          ...hillshadeColors,
           "hillshade-exaggeration": 0.28,
           "hillshade-illumination-direction": 315,
         },
       });
+    } else {
+      // A recycled map may already own the terrain layer. Refresh its colors
+      // without recreating the DEM source, layer, or geographic depth.
+      for (const property of Object.keys(hillshadeColors) as Array<keyof typeof hillshadeColors>) {
+        map.setPaintProperty("fr-hillshade", property, hillshadeColors[property]);
+      }
     }
   } catch {
     // Terrain is progressive enhancement. Search, pins, and routes still work

@@ -323,8 +323,9 @@ for (const viewport of VIEWPORTS) {
         compass.getByRole("heading", { name: "Choose a direction" }),
       ).toBeVisible();
       await expect(
-        compass.getByRole("searchbox", { name: "Search Radius tools and local guides" }),
-      ).toBeVisible();
+        compass.getByRole("link", { name: "Find a place, service, event, or answer" }),
+      ).toHaveAttribute("href", "/search");
+      await expect(compass.getByRole("searchbox")).toHaveCount(0);
 
       await visualContract({
         page,
@@ -364,7 +365,7 @@ for (const viewport of VIEWPORTS) {
         { timeout: 25_000 },
       );
       await page
-        .getByRole("button", { name: "Choose what to see on this map" })
+        .getByRole("button", { name: "Filters: choose what to see on this map" })
         .click();
       const chooser = page.getByRole("region", { name: "Choose what to see" });
       await expect(chooser).toBeVisible();

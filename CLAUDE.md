@@ -15,34 +15,37 @@ changes, keeping its palette, names, and version line matching
 truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
 `src/app/globals.css`.
 
-- **Type:** Libre Caslon Display Regular carries the wordmark and rare
-  editorial or campaign moments. Public Sans carries product page titles,
-  section titles, body copy, navigation, controls, labels, times, distances,
-  and tabular numerals. Public Sans may use its real variable italic. There is
-  no third technical typeface and no faux bold or italic Caslon face. Legacy
-  `.font-serif` maps to Public Sans. Use `.font-brand` for the wordmark and
-  `.font-editorial` only for a deliberate editorial hero.
-- **Palette tokens (always use `var(--app-*)`, never raw hex in app UI):**
-  Cream `--app-bg #F4EEE2`, Ink `--app-ink #221C15`, Brick
-  `--app-brand #B5462B`, and Catoctin Forest `--app-brand-2 #315A43`.
-  Catoctin Forest is for terrain, parks, trails, and small positive/open
-  signals, not generic selected states, headers, or page washes. Creek
-  `--app-cool #285D73` is reserved for civic, map, transit, and data use. Plum
-  `--app-accent #7E2C6F` is a limited arts/editorial accent. Ochre Amber
-  `--app-amber #C58A32` communicates a real live, caution, or sunlight state
-  with Ink on top. Beer is the deliberate product exception: Amber marks an
-  active taste control, flagship beer, or beer/brewery metadata without
-  turning the page into an Amber theme. Tints and radii use the existing
-  named token scales.
+- **Type:** Product UI uses System sans from the device:
+  `-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`. This includes
+  page titles, text, controls, source notes, and tabular data. Public Sans
+  remains the installed print/export text family, with its real variable
+  italic. Libre Caslon Display Regular remains the wordmark and rare
+  editorial signature. Do not synthesize bold or italic Caslon, rename
+  packaged Public Sans as a system font, or download a new family.
+- **Palette (Brand System 1.3, October 12, 2026):** Always use `var(--app-*)`
+  in app UI. Cloud `--app-bg #F6F8FC`, Navy `--app-ink #13253E`, Cobalt
+  `--app-brand #2459D9`, and white Surface `#FFFFFF` form the light shell.
+  Existing `BRAND.colors.cream`, `.ink`, and `.brick` are compatible keys for
+  Cloud, Navy, and Cobalt. They do not preserve the former warm palette.
+  Dark appearance uses `darkCanvas #0D1725`, `darkSurface #152338`,
+  `darkInk #F0F5FF`, `darkMutedInk #B1C2D9`, `darkBorder #30415B`,
+  `darkControlBorder #91A4C0`, and `darkLink #91B6FF` from the contract.
+  Use the matching theme-readable text and control tokens; dark link fills
+  need dark text. Catoctin Forest `#315A43` stays a terrain/outdoor/positive
+  cue; Creek `#285D73` stays civic/map/transit/data; Plum `#7E2C6F` stays a
+  limited cultural accent. Ochre Amber `#C58A32` retains live/caution/sunlight
+  and the established Beer-specific meaning, with readable text. Semantic
+  colors do not replace the shell or become unsupported dark-mode text.
 - **Mark:** use `RippleMark` or an exported asset from `public/brand`. The full
   three-arc mark is for 48 px and larger, the compact two-arc mark is for
   24–47 px, and the one-arc favicon is for smaller sizes. Do not redraw it,
   wrap it in the retired circle, or invent a page-specific logo.
-- **Surface:** Cream is the normal product canvas. Ink is a rare contrast
-  moment, not a default page theme. Beer, Live conditions, All tools, and every other
-  product surface keep the same identity rather than inventing a palette.
-  `/pitch` is an isolated internal presentation; if it becomes public-facing,
-  bring it into the Frederick Radius Brand System before release.
+- **Surface:** Cloud and white are the normal light surfaces. Dark appearance
+  uses the separate dark canvas and surface tokens throughout the same app.
+  Favor clean surfaces, clear type, and accurate local photography over paper
+  grain or palette washes. Specialty pages share this identity and preserve
+  their semantic signals. `/pitch` stays an isolated internal presentation;
+  bring it into the current brand system before public use.
 - **Voice:** calm local expert. No em dashes in user-facing copy
   (`cleanFeedText` converts them). Verb-first chip labels ("Eat & drink",
   "Open now"). Counts are supporting detail, never the headline. Full rules

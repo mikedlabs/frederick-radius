@@ -6,9 +6,10 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { prefersReducedMotion } from "@/lib/motion";
 
@@ -18,6 +19,9 @@ export type ToolDeckDialogProps = {
   description?: string;
   onClose: () => void;
   children: ReactNode;
+  /** Reuse an existing route drawer rather than opening a second modal. */
+  presentation?: "modal" | "inline";
+  openerRef?: RefObject<HTMLElement | null>;
 };
 
 /**
@@ -26,6 +30,8 @@ export type ToolDeckDialogProps = {
  * One portal-backed dialog changes shape at the same `lg` breakpoint as the
  * app navigation: a bottom sheet below it and a right-side panel above it.
  * Keeping one DOM tree prevents duplicate focus targets and accessible IDs.
+ * Inside an existing Tools drawer, inline presentation reuses its containment
+ * and handles Escape at the content boundary without a second modal listener.
  */
 export default function ToolDeckDialog({
   open,
@@ -33,6 +39,8 @@ export default function ToolDeckDialog({
   description,
   onClose,
   children,
+  presentation = "modal",
+  openerRef,
 }: ToolDeckDialogProps) {
   const [mounted, setMounted] = useState(open);
   const [entered, setEntered] = useState(false);
@@ -42,9 +50,10 @@ export default function ToolDeckDialog({
   const titleId = useId();
   const descriptionId = useId();
 
-  useFocusTrap(panelRef, open && mounted);
+  useFocusTrap(panelRef, presentation === "modal" && open && mounted);
 
   useEffect(() => {
+    if (presentation === "inline") return;
     let frame = 0;
     let timer = 0;
 
@@ -64,19 +73,19 @@ export default function ToolDeckDialog({
       window.cancelAnimationFrame(frame);
       window.clearTimeout(timer);
     };
-  }, [open]);
+  }, [open, presentation]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || presentation === "inline") return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [open]);
+  }, [open, presentation]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || presentation === "inline") return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
@@ -84,14 +93,14 @@ export default function ToolDeckDialog({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose, open]);
+  }, [onClose, open, presentation]);
 
   useEffect(() => {
     if (!open) return;
     returnFocusRef.current =
-      document.activeElement instanceof HTMLElement
+      openerRef?.current ?? (document.activeElement instanceof HTMLElement
         ? document.activeElement
-        : null;
+        : null);
 
     return () => {
       const target = returnFocusRef.current;
@@ -99,15 +108,52 @@ export default function ToolDeckDialog({
       if (!target?.isConnected) return;
       window.requestAnimationFrame(() => target.focus?.());
     };
-  }, [open]);
+  }, [open, openerRef]);
 
   useEffect(() => {
-    if (!open || !mounted) return;
+    if (!open || (presentation === "modal" && !mounted)) return;
     const frame = window.requestAnimationFrame(() => {
       (closeRef.current ?? panelRef.current)?.focus();
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [mounted, open]);
+  }, [mounted, open, presentation]);
+
+  if (presentation === "inline") {
+    if (!open) return null;
+    return (
+      <div
+        role="region"
+        ref={panelRef}
+        tabIndex={-1}
+        aria-labelledby={titleId}
+        {...(description ? { "aria-describedby": descriptionId } : {})}
+        data-tool-deck-inline
+        onKeyDownCapture={(event) => {
+          if (event.key !== "Escape") return;
+          event.preventDefault();
+          event.stopPropagation();
+          onClose();
+        }}
+        className="outline-none"
+      >
+        <header className="space-y-2 border-b pb-3" style={{ borderColor: "var(--app-border)" }}>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full px-2 text-[13px] font-semibold"
+            style={{ color: "var(--app-link)" }}
+          >
+            <ArrowLeft className="h-4 w-4" strokeWidth={2} aria-hidden />
+            Back to Tools
+          </button>
+          <h2 id={titleId} className="text-[21px] font-semibold leading-tight">{title}</h2>
+          {description ? <p id={descriptionId} className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{description}</p> : null}
+        </header>
+        {children}
+      </div>
+    );
+  }
 
   if (!mounted || typeof document === "undefined") return null;
 

@@ -71,7 +71,8 @@ export default function ReasonChip({
       className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-tight ${className}`}
       style={{
         background: t.bg,
-        color: t.color,
+        // Keep tone colors in the ring and dot while the label remains readable in either theme.
+        color: "var(--app-ink)",
         // Hairline ring in the tone's own hue so the chip reads as a made
         // token on the cream card, not washed-out tinted text.
         boxShadow:

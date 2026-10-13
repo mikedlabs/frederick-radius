@@ -62,3 +62,10 @@ export const ExplicitBrunswick: Story = {
   parameters: { nextjs: { navigation: { pathname: "/map", query: { in: "brunswick", q: "coffee" } } } },
   globals: { viewport: { value: "radiusMobile", isRotated: false } },
 };
+
+/** The real native URL/Back contract is covered by the compiled Tools journey. */
+export const CompassWorkspace: Story = {
+  args: { compact: true },
+  parameters: { nextjs: { navigation: { pathname: "/compass", query: { in: "thurmont", chapter: "go-out" } } } },
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+};

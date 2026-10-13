@@ -55,7 +55,9 @@ async function buildOuting(page: Page, audience: PlanSpec["i"]["audience"] = "da
   const started = Date.now();
   await activate(page.getByRole("button", { name: "Build my plan", exact: true }), touch);
   const stops = page.getByRole("list", { name: "Plan stops, in order", exact: true });
-  if (audience === "date") await expect(stops.getByRole("heading")).toHaveCount(chosenStart?.dateStops ?? 3);
+  // Custom dayparts keep their exact fixture counts. A live start may have fewer
+  // eligible stops; the token and Saved replay below must retain every actual choice.
+  if (audience === "date" && chosenStart) await expect(stops.getByRole("heading")).toHaveCount(chosenStart.dateStops);
   else await expect(stops.getByRole("heading").first()).toBeVisible();
   await expect.poll(() => new URL(page.url()).searchParams.get("p")).toBeTruthy();
   const token = new URL(page.url()).searchParams.get("p")!;

@@ -141,27 +141,29 @@ for (const colorScheme of ["light", "dark"] as const) {
               const next = document.querySelector(selector);
               return next !== null && Boolean(element.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING);
             };
-            const masthead = document.querySelector("main .scroll-masthead");
+            const heading = document.querySelector("main .scroll-masthead h1");
             return {
-              afterMasthead: masthead !== null && Boolean(masthead.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
+              afterHeading: heading !== null && Boolean(heading.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
+              inMasthead: element.closest("[data-today-masthead]") !== null,
               beforeFind: before('[data-surface-row="find"]'),
               beforePlaces: before('[data-today-current-content] > [aria-label="Places for your area"]'),
               beforeEvents: before("#whats-on"),
             };
           });
-          expect(order).toEqual({ afterMasthead: true, beforeFind: true, beforePlaces: true, beforeEvents: true });
+          expect(order).toEqual({ afterHeading: true, inMasthead: true, beforeFind: true, beforePlaces: true, beforeEvents: true });
 
           const weatherBox = (await weather.boundingBox())!;
-          const mastheadBox = (await page.locator("main .scroll-masthead").boundingBox())!;
+          const headingBox = (await page.locator("main .scroll-masthead h1").boundingBox())!;
           const findBox = (await find.boundingBox())!;
           expect(await page.evaluate(() => window.scrollY)).toBe(0);
           expect(weatherBox.height).toBeGreaterThan(0);
-          if (viewport.width < 960) {
-            expect(weatherBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height);
+          if (viewport.width < 360) {
+            expect(weatherBox.y).toBeGreaterThanOrEqual(headingBox.y + headingBox.height);
           } else {
-            expect(Math.abs(weatherBox.y - mastheadBox.y)).toBeLessThanOrEqual(1);
-            expect(weatherBox.x).toBeGreaterThanOrEqual(mastheadBox.x + mastheadBox.width);
+            expect(Math.abs(weatherBox.y - headingBox.y)).toBeLessThanOrEqual(1);
+            expect(weatherBox.x).toBeGreaterThanOrEqual(headingBox.x + headingBox.width);
           }
+          await expect(renderedWeather).toHaveAttribute("data-weather-density", "masthead");
           expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(viewport.height);
           expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(findBox.y);
           expect(weatherBox.x).toBeGreaterThanOrEqual(0);

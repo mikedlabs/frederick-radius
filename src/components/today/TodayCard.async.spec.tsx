@@ -104,6 +104,31 @@ describe("TodayCard provider composition", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("keeps every useful fact and the original issuance in the masthead density with no extra reads", async () => {
+    providers.air.mockResolvedValue(null);
+    const html = renderToStaticMarkup(await TodayCard({ density: "masthead" }));
+    expect(html).toContain('data-weather-density="masthead"');
+    for (const fact of ["72°", "Mostly sunny", "NWS forecast · Frederick", "Oct 8, 2026, 7:35 AM EDT", "High 76°", "Sunset", "data-live-daylight", "The air-quality reading is unavailable."]) {
+      expect(html).toContain(fact);
+    }
+    expect(html).toMatch(/datetime="2026-10-08T11:35:00.000Z"/i);
+    expect(html).not.toContain("10:00 AM EDT");
+    expect(providers.forecast).toHaveBeenCalledTimes(1);
+    expect(providers.alerts).toHaveBeenCalledTimes(1);
+    expect(providers.air).toHaveBeenCalledTimes(1);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps the masthead unavailable state honest instead of supplying a default temperature", async () => {
+    providers.forecast.mockResolvedValue(null);
+    const html = renderToStaticMarkup(await TodayCard({ density: "masthead" }));
+    expect(html).toContain('data-weather-density="masthead"');
+    expect(html).toContain('data-weather-state="unavailable"');
+    expect(html).toContain("The NWS forecast is briefly unavailable.");
+    expect(html).not.toContain("70°");
+    expect(providers.capture).not.toHaveBeenCalled();
+  });
+
   it.each([null, "", "not-a-date"])("does not fabricate an issuance for %s", async (asOf) => {
     providers.forecast.mockResolvedValue({ ...FORECAST, asOf });
     const html = await renderCard();

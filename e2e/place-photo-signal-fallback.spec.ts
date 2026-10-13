@@ -18,7 +18,7 @@ test("a failed photo signal collapses its place face and keeps the real listing 
   await page.addInitScript(() => {
     document.addEventListener("load", (event) => {
       const img = event.target;
-      if (!(img instanceof HTMLImageElement) || !img.closest("[data-place-card-photo]")) return;
+      if (!(img instanceof HTMLImageElement) || !img.closest('[data-place-card-photo-source="google"]')) return;
       const rect = img.getBoundingClientRect();
       void (window as unknown as { recordPhotoSignalLoad: (value: SignalLoad) => Promise<void> }).recordPhotoSignalLoad({
         naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight,
@@ -31,7 +31,12 @@ test("a failed photo signal collapses its place face and keeps the real listing 
   await page.route("**/*", async (route) => {
     const request = route.request();
     if (!["GET", "HEAD"].includes(request.method())) return route.abort("blockedbyclient");
-    if (new URL(request.url()).pathname === "/api/place-photo") {
+    const url = new URL(request.url());
+    const optimizedSource = url.searchParams.get("url") ?? "";
+    if (/wikimedia\.org$/.test(url.hostname) || optimizedSource.startsWith("https://commons.wikimedia.org/")) {
+      return route.abort("blockedbyclient");
+    }
+    if (url.pathname === "/api/place-photo") {
       interceptedPhotos += 1;
       return route.fulfill({ status: 200, contentType: "image/png", body: TRANSPARENT_PIXEL,
         headers: { "X-Photo-Fallback": "upstream-400", "Cache-Control": "public, max-age=300, s-maxage=300" } });
@@ -62,4 +67,105 @@ test("a failed photo signal collapses its place face and keeps the real listing 
       preservedListing: "Dancing Bear Toys and Games", removedBlankPhotoFace: true }),
   });
   await page.screenshot({ path: testInfo.outputPath("place-photo-factual-fallback.png") });
+});
+
+// Opaque 128x128 PNG stays above the failure signal after responsive density correction.
+// This is a decoded transport fixture, not a claim about venue imagery.
+// The six actual Commons files are verified separately in the source receipt.
+const DECODED_IMAGE = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+klEQVR4nO3RQQ0AIAzAwFlCAy7wLwQZe/SSCmhyc97VYrN+EA8AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2n3CYoL+9wOv8gAAAABJRU5ErkJggg==", "base64");
+
+test("a known landmark tries its exact curated file once and credits only the loaded image", async ({ page, context, baseURL }, testInfo) => {
+  await context.addCookies([
+    { name: "fr_onboarded", value: "1", url: baseURL! },
+    { name: "fr_scope", value: "town:frederick", url: baseURL! },
+  ]);
+  const exactFile = "Francis Scott Key Monument (March 2024).jpg";
+  const exactSource = "https://commons.wikimedia.org/wiki/File:Francis_Scott_Key_Monument_(March_2024).jpg";
+  let curatedRequests = 0;
+  let providerRequests = 0;
+  let releaseCurated: () => void = () => {};
+  const ready = new Promise<void>((resolve) => { releaseCurated = resolve; });
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    if (!["GET", "HEAD"].includes(request.method())) return route.abort("blockedbyclient");
+    const url = new URL(request.url());
+    if (/(^|\.)(places\.googleapis\.com|googleusercontent\.com)$/.test(url.hostname)) {
+      providerRequests += 1;
+      return route.abort("blockedbyclient");
+    }
+    if (url.pathname === "/api/place-photo") {
+      return route.fulfill({ status: 200, contentType: "image/png", body: TRANSPARENT_PIXEL,
+        headers: { "X-Photo-Fallback": "upstream-400", "Cache-Control": "no-store" } });
+    }
+    const imageSource = url.pathname === "/_next/image" ? url.searchParams.get("url") ?? "" : request.url();
+    if (decodeURIComponent(imageSource).includes(`Special:FilePath/${exactFile}`)) {
+      curatedRequests += 1;
+      await ready;
+      return route.fulfill({ status: 200, contentType: "image/png", body: DECODED_IMAGE });
+    }
+    if (/wikimedia\.org$/.test(url.hostname) || imageSource.startsWith("https://commons.wikimedia.org/")) {
+      return route.abort("blockedbyclient");
+    }
+    return route.continue();
+  });
+  const response = await page.goto("/category/outdoors", { waitUntil: "domcontentloaded" });
+  expect(response?.status()).toBe(200);
+  await page.getByRole("button", { name: /^All parks & trails/i }).click();
+  await page.getByRole("radio", { name: "Grid", exact: true }).click();
+  const heading = page.getByRole("heading", { name: "Francis Scott Key Grave and Monument", exact: true });
+  const card = page.locator("article").filter({ has: heading });
+  const open = card.getByRole("button", { name: /^View Francis Scott Key Grave and Monument .*details$/ });
+  await open.scrollIntoViewIfNeeded();
+  await expect.poll(() => curatedRequests).toBe(1);
+  await expect(card.locator(".place-card-photo-credit")).toBeHidden();
+  await expect(card.locator(".place-card-photo-credit")).toHaveAttribute("aria-hidden", "true");
+  const captionBefore = await card.locator(".place-card-photo-credit").evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  });
+  expect(captionBefore.height).toBeGreaterThan(0);
+  expect(await card.locator(".place-card-photo-credit a").first().evaluate((node) => {
+    (node as HTMLAnchorElement).focus();
+    return document.activeElement === node;
+  })).toBe(false);
+  releaseCurated();
+  const image = card.locator('[data-place-card-photo-source="curated"] img');
+  await expect(image).toBeVisible();
+  await expect.poll(() => image.evaluate((node) => (node as HTMLImageElement).complete)).toBe(true);
+  await expect.poll(() => image.evaluate((node) => Math.min(
+    (node as HTMLImageElement).naturalWidth,
+    (node as HTMLImageElement).naturalHeight,
+  ))).toBeGreaterThan(1);
+  const decodedImage = await image.evaluate((node) => ({
+    complete: (node as HTMLImageElement).complete,
+    width: (node as HTMLImageElement).naturalWidth,
+    height: (node as HTMLImageElement).naturalHeight,
+    currentSrc: (node as HTMLImageElement).currentSrc,
+  }));
+  const credit = card.locator(".place-card-photo-credit");
+  await expect(credit).toContainText("Engineerchange");
+  await expect(credit).toContainText("CC BY-SA 4.0");
+  const captionAfter = await credit.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  });
+  expect(captionAfter).toEqual(captionBefore);
+  await expect(credit.getByRole("link", { name: "Wikimedia Commons" })).toHaveAttribute("href", exactSource);
+  expect(await credit.evaluate((node) => node.closest("button"))).toBeNull();
+  for (const link of await credit.getByRole("link").all()) {
+    const bounds = await link.boundingBox();
+    expect(bounds?.width).toBeGreaterThanOrEqual(44);
+    expect(bounds?.height).toBeGreaterThanOrEqual(44);
+  }
+  await image.evaluate((node) => node.dispatchEvent(new Event("error")));
+  await expect(card.locator("[data-place-card-photo]")).toHaveCount(0);
+  await expect(card.locator(".place-card-photo-credit")).toHaveCount(0);
+  await expect(heading).toBeVisible();
+  await expect(open).toBeVisible();
+  expect(curatedRequests).toBe(1);
+  expect(providerRequests).toBe(0);
+  await testInfo.attach("curated-photo-source-and-credit", { contentType: "application/json",
+    body: JSON.stringify({ exactFile, exactSource, curatedRequests, providerRequests, captionBefore, captionAfter, decodedImage,
+      transportFixture: "Opaque decoded 128x128 PNG; actual source identity/license verified separately.",
+      preservedListing: "Francis Scott Key Grave and Monument", exhaustedCreditRemoved: true }) });
 });

@@ -8,8 +8,9 @@ import { expect, test } from "@playwright/test";
 test.describe("mobile discovery shell", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("Find opens as a focused full-screen task surface", async ({ page }) => {
-    await page.goto("/today", { waitUntil: "domcontentloaded" });
+  test("header Find opens as a focused full-screen task surface", async ({ page }) => {
+    // Today owns its primary launcher; Pulse retains the global header button.
+    await page.goto("/pulse", { waitUntil: "domcontentloaded" });
     // DOMContentLoaded can precede React hydration on a cold dev compile.
     // Wait for the shell to be interactive before exercising its client-only
     // dialog; otherwise the first synthetic tap can land on inert SSR markup.
@@ -43,6 +44,41 @@ test.describe("mobile discovery shell", () => {
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
     await expect(openFind).toBeFocused();
+  });
+
+  test("Today opens the same focused Find dialog from one primary link and returns to it", async ({ page }) => {
+    await page.goto("/today", { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle");
+
+    await expect(page.locator("header").getByRole("button", {
+      name: "Ask or find across Frederick County",
+    })).toHaveCount(0);
+    const openFind = page.getByRole("link", {
+      name: "Find a place, service, event, or answer", exact: true,
+    });
+    await expect(openFind).toHaveCount(1);
+    await expect(openFind).toBeVisible();
+    await expect(openFind).toHaveAttribute("href", "/search");
+    const box = await openFind.boundingBox();
+    expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    await openFind.click();
+
+    const dialog = page.getByRole("dialog", { name: "What do you need?" });
+    await expect(dialog).toHaveCount(1);
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAttribute("id", "radius-find-dialog");
+    await expect(dialog).toHaveAttribute("aria-modal", "true");
+    await expect(page.getByRole("searchbox", {
+      name: "Ask or find across Frederick County",
+    })).toBeFocused();
+    await expect(page.getByRole("button", { name: "Close Find" })).toBeVisible();
+    await expect(page).toHaveURL(/\/today(?:[?#]|$)/);
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(openFind).toBeFocused();
+    await expect(page).toHaveURL(/\/today(?:[?#]|$)/);
   });
 
   test("the map opens calm and reveals choices through one options door", async ({ page }) => {
@@ -97,7 +133,7 @@ test.describe("mobile discovery shell", () => {
     await expect(mapFind).toBeFocused();
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
-    const contentsButton = page.getByRole("button", { name: "Choose what to see on this map" });
+    const contentsButton = page.getByRole("button", { name: "Filters: choose what to see on this map" });
     await expect(contentsButton).toBeVisible();
     await expect(page.locator(".map-edge-tool-locate")).toBeHidden();
     // Starting Search retires first-use guidance instead of replacing the
@@ -183,7 +219,7 @@ test.describe("mobile discovery shell", () => {
     await expect(layersPane).toBeVisible();
     await layersPane.getByRole("button", { name: "Done" }).click();
     await expect(contentsButton).toBeFocused();
-    await expect(contentsButton).toContainText("What to see");
+    await expect(contentsButton).toContainText("Filters");
     // Active state is explained in words by the context rail. The old
     // unitless count badge was deliberately removed from the Browse control.
     await expect(contentsButton.locator(".dock-layer-count")).toHaveCount(0);
@@ -206,7 +242,7 @@ test.describe("mobile discovery shell", () => {
     expect(activeDockBox?.y ?? 0).toBeGreaterThan(contextBox?.y ?? 9999);
     const contextActions = contextRail.getByRole("button");
     // The rail is a status readout with one Reset action. Editing stays behind
-    // the consistent What to see control instead of making the readout itself
+    // the consistent Filters control instead of making the readout itself
     // behave like a second unlabeled door.
     await expect(contextActions).toHaveCount(1);
     for (const action of await contextActions.all()) {
@@ -297,7 +333,7 @@ test.describe("mobile discovery shell", () => {
     await expect(page.getByRole("combobox", { name: "Search this map" })).toBeVisible();
   });
 
-  test("focused search surfaces keep one route-owned query instead of duplicating global Find", async ({ page }) => {
+  test("focused request surfaces keep one shared Find doorway instead of duplicating controls", async ({ page }) => {
     await page.goto("/search", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("searchbox", { name: "Search Frederick County" })).toBeVisible();
     await expect(
@@ -308,8 +344,9 @@ test.describe("mobile discovery shell", () => {
 
     await page.goto("/compass", { waitUntil: "domcontentloaded" });
     await expect(
-      page.getByRole("searchbox", { name: /Search Radius tools/ }),
-    ).toBeVisible();
+      page.getByRole("link", { name: "Find a place, service, event, or answer" }),
+    ).toHaveAttribute("href", "/search");
+    await expect(page.getByRole("searchbox")).toHaveCount(0);
     await expect(
       page.getByRole("button", {
         name: "Ask or find across Frederick County",
@@ -417,7 +454,7 @@ test.describe("mobile discovery shell", () => {
     await page.setViewportSize({ width: 320, height: 568 });
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
-    const contentsButton = page.getByRole("button", { name: "Choose what to see on this map" });
+    const contentsButton = page.getByRole("button", { name: "Filters: choose what to see on this map" });
     await expect(contentsButton).toBeVisible();
     const dockBox = await page.locator("[data-map-dock] .dock-head").boundingBox();
     expect(dockBox?.height ?? 999).toBeLessThanOrEqual(60);
@@ -456,7 +493,7 @@ test.describe("mobile discovery shell", () => {
     await page.keyboard.press("Escape");
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload({ waitUntil: "domcontentloaded" });
-    const regularContents = page.getByRole("button", { name: "Choose what to see on this map" });
+    const regularContents = page.getByRole("button", { name: "Filters: choose what to see on this map" });
     await regularContents.click();
     const regularMapBox = await page.locator(".dock-host").boundingBox();
     const regularContentsBox = await page
@@ -485,7 +522,7 @@ test.describe("mobile discovery shell", () => {
     await page.keyboard.press("Escape");
     await page.setViewportSize({ width: 844, height: 390 });
     await page.reload({ waitUntil: "domcontentloaded" });
-    const landscapeContents = page.getByRole("button", { name: "Choose what to see on this map" });
+    const landscapeContents = page.getByRole("button", { name: "Filters: choose what to see on this map" });
     await expect(landscapeContents).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Search this map" })).toBeVisible();
     await landscapeContents.click();
@@ -541,7 +578,7 @@ test.describe("mobile discovery shell", () => {
       "ready",
       { timeout: 20_000 },
     );
-    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+    await page.getByRole("button", { name: "Filters: choose what to see on this map" }).click();
     await page
       .getByRole("button", { name: /^Get around/ })
       .click();
@@ -558,7 +595,7 @@ test.describe("mobile discovery shell", () => {
     );
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page).not.toHaveURL(/amenity=|show=|layers=/);
-    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+    await page.getByRole("button", { name: "Filters: choose what to see on this map" }).click();
     await page
       .getByRole("button", { name: /^Get around/ })
       .click();
@@ -578,7 +615,7 @@ test.describe("mobile discovery shell", () => {
     await page.goto("/map?at=39.4142,-77.4105&show=transit", {
       waitUntil: "domcontentloaded",
     });
-    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+    await page.getByRole("button", { name: "Filters: choose what to see on this map" }).click();
     await page
       .getByRole("button", { name: /^Get around/ })
       .click();
@@ -592,7 +629,7 @@ test.describe("mobile discovery shell", () => {
       waitUntil: "domcontentloaded",
     });
     await expect(page).toHaveURL(/layers=art/);
-    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+    await page.getByRole("button", { name: "Filters: choose what to see on this map" }).click();
     await page.getByRole("button", { name: /^More/ }).click();
     await expect(
       page.getByRole("region", { name: "More map details" }).getByRole("button", {
@@ -627,7 +664,7 @@ test.describe("mobile discovery shell", () => {
     await page.goto("/map?music=tonight&t=weekend", {
       waitUntil: "domcontentloaded",
     });
-    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+    await page.getByRole("button", { name: "Filters: choose what to see on this map" }).click();
     await page.getByRole("button", { name: /^Happening/ }).click();
 
     // The active music lens keeps Tonight reachable even when the event count
@@ -651,17 +688,15 @@ test.describe("mobile discovery shell", () => {
     }
   });
 
-  test("Compass search stays useful without creating horizontal overflow", async ({ page }) => {
+  test("Compass keeps its deliberate full index useful without horizontal overflow", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 568 });
     await page.goto("/compass", { waitUntil: "domcontentloaded" });
 
     await expect(
       page.getByRole("heading", { level: 1, name: "What do you need?" }),
     ).toBeVisible();
-    const toolSearch = page.getByRole("searchbox", {
-      name: /Search Radius tools/,
-    });
-    await expect(toolSearch).toBeVisible();
+    await expect(page.getByRole("link", { name: "Find a place, service, event, or answer" })).toHaveAttribute("href", "/search");
+    await expect(page.getByRole("searchbox")).toHaveCount(0);
     await expect(page.locator("[data-compass-ready]")).toHaveAttribute(
       "data-compass-ready",
       "true",
@@ -685,17 +720,24 @@ test.describe("mobile discovery shell", () => {
       expect((box?.x ?? 999) + (box?.width ?? 999)).toBeLessThanOrEqual(320);
     }
 
+    const indexLauncher = page.getByRole("button", { name: "Browse the full tool index", exact: true });
+    await indexLauncher.click();
+    const index = page.getByRole("dialog", { name: "All tools", exact: true });
+    const toolSearch = index.getByRole("searchbox", { name: "Search tools in this section" });
     await toolSearch.fill("coffee");
     await expect(toolSearch).toHaveAttribute("type", "text");
     await expect(toolSearch).toHaveAttribute("inputmode", "search");
-    await expect(page.getByRole("button", { name: "Clear tool search" })).toHaveCount(1);
-    await expect(page.getByRole("link", { name: /Search Frederick for “coffee”/ })).toHaveAttribute("href", "/search?q=coffee");
-    await expect(page.getByRole("link", { name: /Search Frederick for “coffee”/ })).toHaveCount(1);
+    await expect(index.getByRole("button", { name: "Clear section search" })).toHaveCount(1);
+    await expect(index.getByRole("link", { name: /^Search everything/ })).toHaveAttribute("href", "/search?q=coffee");
     await toolSearch.fill("ask");
-    await expect(page.getByRole("link", { name: /^Ask Radius\b/ })).toHaveCount(1);
+    await expect(index.getByRole("link", { name: /^Ask Radius\b/ })).toHaveCount(1);
+    await expect(index.getByRole("link", { name: /^Ask Radius\b/ })).toHaveAttribute("href", "/ask?q=ask");
     await toolSearch.fill("weather");
-    await expect(page.getByRole("link", { name: /Live conditions/ })).toHaveAttribute("href", "/pulse");
+    await expect(index.getByRole("link", { name: /Live conditions/ })).toHaveAttribute("href", "/pulse");
     await toolSearch.fill("");
+    await page.goBack();
+    await expect(index).toBeHidden();
+    await expect(indexLauncher).toBeFocused();
 
     expect(
       await page.evaluate(
@@ -710,6 +752,23 @@ test.describe("mobile discovery shell", () => {
     expect(
       await dialog.evaluate((element) => element.scrollWidth - element.clientWidth),
     ).toBeLessThanOrEqual(1);
+  });
+
+  test("Compass opens shared Find and retains the request when it closes", async ({ page }) => {
+    await page.goto("/compass", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-compass-ready]")).toHaveAttribute("data-compass-ready", "true");
+    const findLauncher = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
+    await findLauncher.click();
+    const find = page.getByRole("dialog", { name: "What do you need?" });
+    const request = find.getByRole("searchbox", { name: "Ask or find across Frederick County" });
+    await expect(request).toBeFocused();
+    await request.fill("trash can");
+    await find.getByRole("button", { name: "Close Find", exact: true }).click();
+    await expect(find).toBeHidden();
+    await expect(findLauncher).toBeFocused();
+    await findLauncher.click();
+    await expect(request).toHaveValue("trash can");
+    await expect(page.getByRole("dialog")).toHaveCount(1);
   });
 
   test("search does not turn unrelated typo fragments into a local match", async ({ page }) => {

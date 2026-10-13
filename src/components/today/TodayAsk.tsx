@@ -14,24 +14,27 @@ import styles from "./TodayAsk.module.css";
  * The global Find surface decides whether the request belongs in deterministic
  * search or the reasoning workspace. People never have to choose the tool.
  *
- * The full category index and practical shortcuts can be composed below the
- * first local answer without creating a second request doorway.
+ * The full category index and practical shortcuts can be composed separately
+ * without creating a second request doorway.
  */
 export default function TodayAsk({
   children,
   embedded = false,
   showQuickNeeds = true,
+  density = "standard",
 }: {
   children?: ReactNode;
   embedded?: boolean;
   showQuickNeeds?: boolean;
+  density?: "standard" | "arrival";
 }) {
   return (
     <section
       id="find-radius"
       aria-labelledby="today-find-heading"
       data-surface-row={embedded ? "find" : undefined}
-      className={`${styles.find} ${embedded ? "" : styles.standalone}`}
+      data-find-density={density}
+      className={`${styles.find} ${embedded ? "" : styles.standalone} ${density === "arrival" ? styles.arrival : ""}`}
     >
       <h2 id="today-find-heading" className="sr-only">
         Find what you need
@@ -63,11 +66,11 @@ export default function TodayAsk({
         </span>
         <span className="min-w-0 flex-1">
           <span className={styles.prompt}>
-            Find places and events
+            Find what you need
           </span>
-          <span className={styles.hint}>
+          {density === "standard" && <span className={styles.hint}>
             Search a name, a need, or a question.
-          </span>
+          </span>}
         </span>
         <ArrowRight
           className={`h-4 w-4 shrink-0 ${styles.launcherArrow}`}
@@ -81,14 +84,21 @@ export default function TodayAsk({
   );
 }
 
-/** Existing utility doors remain separate from the first local decision. */
-export function TodayQuickNeeds({ children }: { children?: ReactNode }) {
+/** The same utility doors can lead discovery without repeating below it. */
+export function TodayQuickNeeds({
+  children,
+  showShortcuts = true,
+}: {
+  children?: ReactNode;
+  showShortcuts?: boolean;
+}) {
   const scope = useSyncExternalStore(subscribeScopeChange, getScope, () => null);
   const planHref = `/ask?q=${encodeURIComponent("Plan the next two hours")}${scope ? `&in=${scopeToParam(scope)}` : ""}`;
   return (
     <div data-today-quick-needs className={styles.find}>
-      <div
+      {showShortcuts ? <div
         className={styles.shortcuts}
+        role="group"
         aria-label="Quick needs"
       >
         <Link
@@ -113,13 +123,13 @@ export function TodayQuickNeeds({ children }: { children?: ReactNode }) {
         </Link>
         <Link href={planHref} prefetch={false} className={styles.shortcut}>
           <Route strokeWidth={1.8} aria-hidden />
-          Plan a few hours
+          <span>Plan a few hours</span>
         </Link>
         <Link href="/contacts" prefetch={false} className={styles.shortcut}>
           <Building2 strokeWidth={1.8} aria-hidden />
-          Local services
+          <span>Local services</span>
         </Link>
-      </div>
+      </div> : null}
 
       {children ? (
         <BrowsePlacesDisclosure embedded>{children}</BrowsePlacesDisclosure>

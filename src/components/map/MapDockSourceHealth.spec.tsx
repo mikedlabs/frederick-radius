@@ -35,7 +35,7 @@ beforeEach(()=>{
 afterEach(async()=>{await act(async()=>root.unmount());host.remove();vi.useRealTimers();vi.unstubAllGlobals();});
 async function openLayers(input:MapDockProps){
  await act(async()=>root.render(createElement(MapDock,input)));
- await act(async()=> (host.querySelector('button[aria-label="Choose what to see on this map"]') as HTMLButtonElement).click());
+ await act(async()=> (host.querySelector('button[aria-label="Filters: choose what to see on this map"]') as HTMLButtonElement).click());
  const around=Array.from(host.querySelectorAll("button")).find(button=>button.querySelector("strong")?.textContent==="Get around")!;
  await act(async()=>around.click());
  return host.querySelector('[role="status"].dock-source-health')!;

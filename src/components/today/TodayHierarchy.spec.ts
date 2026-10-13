@@ -2,6 +2,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const todayPage = readFileSync("src/app/(app)/today/page.tsx", "utf8");
+const todayAsk = readFileSync("src/components/today/TodayAsk.tsx", "utf8");
+const todayMasthead = readFileSync("src/components/today/TodayMasthead.tsx", "utf8");
+const geographicDoorway = readFileSync("src/components/today/TodayGeographicDoorway.tsx", "utf8");
 const globalCss = readFileSync("src/app/globals.css", "utf8");
 
 describe("Today decision hierarchy", () => {
@@ -23,14 +26,15 @@ describe("Today decision hierarchy", () => {
   });
 
   it("puts the single weather glance before Find and the place and event answers", () => {
-    const weather = renderedPage.indexOf("<section data-today-weather");
+    const weather = renderedPage.indexOf("<TodayMasthead");
     const lead = renderedPage.indexOf("{decisionLead}");
     const find = renderedPage.indexOf("<TodayAsk embedded");
     const events = renderedPage.indexOf("{whatsOn}");
 
     expect(weather).toBeGreaterThan(-1);
-    expect(renderedPage.match(/<section data-today-weather/g)).toHaveLength(1);
-    expect(renderedPage.match(/<TodayCard\s*\//g)).toHaveLength(1);
+    expect(renderedPage.match(/<TodayMasthead\b/g)).toHaveLength(1);
+    expect(todayMasthead.match(/<section data-today-weather/g)).toHaveLength(1);
+    expect(renderedPage.match(/<TodayCard density="masthead"\s*\//g)).toHaveLength(1);
     expect(find).toBeGreaterThan(-1);
     expect(find).toBeGreaterThan(weather);
     expect(lead).toBeGreaterThan(find);
@@ -39,41 +43,70 @@ describe("Today decision hierarchy", () => {
     expect(events).toBeGreaterThan(weather);
   });
 
-  it("puts the first local answers before news and secondary exploration doors", () => {
+  it("puts one set of four quick needs after the photo before the answer, with categories after news", () => {
     const find = renderedPage.indexOf("<TodayAsk embedded showQuickNeeds={false}");
+    const doorway = renderedPage.indexOf("<TodayGeographicDoorway />");
+    const shortcuts = renderedPage.indexOf("<TodayQuickNeeds />");
     const lead = renderedPage.indexOf("{decisionLead}");
     const events = renderedPage.indexOf("{whatsOn}");
     const news = renderedPage.indexOf("<LocalNewsBrief");
-    const shortcuts = renderedPage.indexOf("<TodayQuickNeeds>");
+    const categories = renderedPage.indexOf("<TodayQuickNeeds showShortcuts={false}><CravingStrip /></TodayQuickNeeds>");
+
     expect(find).toBeGreaterThan(-1);
-    expect(lead).toBeGreaterThan(find);
+    expect(doorway).toBeGreaterThan(find);
+    expect(shortcuts).toBeGreaterThan(doorway);
+    expect(lead).toBeGreaterThan(shortcuts);
     expect(events).toBeGreaterThan(lead);
     expect(news).toBeGreaterThan(events);
-    expect(shortcuts).toBeGreaterThan(news);
-    expect(renderedPage.match(/<TodayQuickNeeds>/g)).toHaveLength(1);
+    expect(categories).toBeGreaterThan(news);
+    expect(renderedPage.match(/<TodayQuickNeeds\s*\/>/g)).toHaveLength(1);
+    expect(renderedPage.match(/<TodayQuickNeeds showShortcuts=\{false\}/g)).toHaveLength(1);
+    expect(renderedPage.match(/<TodayQuickNeeds\b/g)).toHaveLength(2);
+    expect(renderedPage.match(/<CravingStrip\b/g)).toHaveLength(1);
+
+    const utilityDoors = todayAsk.slice(todayAsk.indexOf("export function TodayQuickNeeds"));
+    expect(utilityDoors).toContain("showShortcuts = true");
+    expect(utilityDoors).toContain("{showShortcuts ? <div");
+    expect(utilityDoors.match(/<Link\b/g)).toHaveLength(4);
+    for (const href of ["/open-now", "/amenities", "/contacts"]) {
+      expect(utilityDoors).toContain(`href="${href}"`);
+    }
+    expect(utilityDoors).toContain("href={planHref}");
+    expect(utilityDoors).toContain('encodeURIComponent("Plan the next two hours")');
+    expect(utilityDoors).toContain("scopeToParam(scope)");
+    for (const label of ["Open now", "Public essentials", "Plan a few hours", "Local services"]) {
+      expect(utilityDoors.split(label)).toHaveLength(2);
+    }
+    expect(utilityDoors).toContain("<BrowsePlacesDisclosure embedded>{children}</BrowsePlacesDisclosure>");
   });
 
-  it("shows an honest live scope readout before weather on narrow screens", () => {
-    const title = renderedPage.indexOf("{frame.title}");
-    // Matched loosely: the component now carries the dateline as a prop, and
-    // this test guards ORDER (title, then scope line, then weather), not the
-    // element's exact attribute list.
+  it("keeps the heading independent of streamed weather and the scope readout before local choices", () => {
+    const title = todayMasthead.indexOf("<h1");
+    const weather = todayMasthead.indexOf("<section data-today-weather");
+    const find = renderedPage.indexOf("<TodayAsk embedded");
     const scope = renderedPage.indexOf("<TodayScopeStatus");
-    const weather = renderedPage.indexOf("<section data-today-weather");
+    const doorway = renderedPage.indexOf("<TodayGeographicDoorway />");
 
     expect(title).toBeGreaterThan(-1);
-    expect(scope).toBeGreaterThan(title);
-    expect(weather).toBeGreaterThan(scope);
+    expect(weather).toBeGreaterThan(title);
+    expect(todayMasthead).not.toContain("<Suspense");
+    expect(renderedPage).toContain("weather={\n          <Suspense");
+    expect(scope).toBeGreaterThan(find);
+    expect(doorway).toBeGreaterThan(scope);
   });
 
-  it("uses the owned photograph without credit or date and preserves Tonight below Find", () => {
-    const mastheadEnd = renderedPage.indexOf("</header>");
-    const masthead = renderedPage.slice(0, mastheadEnd);
-    expect(masthead).toContain('alt="Carroll Creek in Frederick."');
-    expect(masthead).not.toContain("<figcaption");
-    expect(masthead).not.toContain("June 2023");
-    expect(masthead).not.toContain("Mike D");
-    expect(masthead).not.toContain("<TodayPlanTonightLink");
+  it("uses the exact owned scene as a geographic place action beside one unchanged decision lead", () => {
+    expect(geographicDoorway).toContain('src="/images/seasons/summer/SUMMER CARROL CREEK.jpg"');
+    expect(geographicDoorway).toContain('alt="Carroll Creek in Frederick."');
+    expect(geographicDoorway).toContain('href="/places/carroll-creek-linear-park-frederick"');
+    expect(geographicDoorway).toContain("if (!todayShowsFrederickDoorway(scope)) return null");
+    expect(geographicDoorway).not.toContain("June 2023");
+    expect(geographicDoorway).not.toContain("Mike D");
+    expect(todayMasthead).not.toContain("<Image");
+    expect(renderedPage.match(/\{decisionLead\}/g)).toHaveLength(1);
+    expect(renderedPage).toContain("fallback={<TodayGeographicDoorwayPending />}");
+    expect(renderedPage).not.toContain("fallback={<TodayGeographicDoorwayView");
+    expect(renderedPage.indexOf("<TodayGeographicDoorway />")).toBeLessThan(renderedPage.indexOf("{decisionLead}"));
     expect(renderedPage.indexOf("<TodayPlanTonightLink")).toBeGreaterThan(
       renderedPage.indexOf("<TodayAsk embedded"),
     );
@@ -88,9 +121,9 @@ describe("Today decision hierarchy", () => {
   it("keeps alerts first and the request doorway ahead of the one Fair campaign slot", () => {
     const alerts = renderedPage.indexOf("<CivicAlerts compact />");
     const fair = renderedPage.indexOf("<TodayFairFeature");
-    const masthead = renderedPage.indexOf("{frame.title}");
+    const masthead = renderedPage.indexOf("<TodayMasthead");
     const find = renderedPage.indexOf("<TodayAsk embedded");
-    const weather = renderedPage.indexOf("<section data-today-weather");
+    const weather = renderedPage.indexOf('<TodayCard density="masthead"');
 
     expect(masthead).toBeGreaterThan(alerts);
     expect(find).toBeGreaterThan(masthead);
@@ -106,7 +139,7 @@ describe("Today decision hierarchy", () => {
   it("puts In The Streets ahead of the ordinary briefing on its actual day", () => {
     const alerts = renderedPage.indexOf("<CivicAlerts compact />");
     const dayOfLead = renderedPage.indexOf("civicMomentLeadsToday && (");
-    const masthead = renderedPage.indexOf("{frame.title}");
+    const masthead = renderedPage.indexOf("<TodayMasthead");
 
     expect(dayOfLead).toBeGreaterThan(alerts);
     expect(dayOfLead).toBeLessThan(masthead);

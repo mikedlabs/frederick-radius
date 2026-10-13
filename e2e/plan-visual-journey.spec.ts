@@ -473,9 +473,16 @@ for (const view of ["editor", "saved outing"] as const) {
         await expect(pin).toBeDisabled();
         await expect(planner.getByRole("button", { name: "Share this plan", exact: true })).toBeDisabled();
         await expect(planner.getByRole("button", { name: "Show stops on map", exact: true })).toBeDisabled();
-        await pin.scrollIntoViewIfNeeded();
+        // A fixed navigation bar can cover an element that is inside the
+        // viewport. Center the disabled SSR control, then prove this click
+        // tests that control rather than an unrelated navigation tab.
+        await pin.evaluate((element) => element.scrollIntoView({ block: "center", inline: "nearest" }));
         const rect = await pin.boundingBox();
         expect(rect).not.toBeNull();
+        expect(await pin.evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          return element.contains(document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2));
+        }), "the disabled outing button owns the actual click target").toBe(true);
         await page.mouse.click(rect!.x + rect!.width / 2, rect!.y + rect!.height / 2);
         expect(actionRequests).toBe(0);
         await expect(planner.getByRole("link", { name: "Open full route", exact: true })).toHaveAttribute("href", /google.com\/maps/);

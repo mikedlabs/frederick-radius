@@ -40,6 +40,19 @@ export const HealthyForecast: Story = {
   },
 };
 
+export const MastheadReading: Story = {
+  args: { density: "masthead", headline: "Mostly sunny", safetyNote: "The air-quality reading is unavailable." },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    for (const fact of ["Mostly sunny", "NWS forecast · Frederick", "High 76°", "The air-quality reading is unavailable."]) {
+      await expect(canvas.getByText(fact)).toBeVisible();
+    }
+    await expect(canvas.getByText("Oct 8, 2026, 7:35 AM EDT")).toHaveAttribute("datetime", "2026-10-08T11:35:00.000Z");
+    await expect(canvas.getByText("5h 40m of daylight left", { exact: false })).toBeVisible();
+    await expect(canvasElement.querySelector("[data-weather-density]")).toHaveAttribute("data-weather-density", "masthead");
+  },
+};
+
 export const PartialSafetyFeed: Story = {
   args: { headline: "Mostly sunny", safetyNote: "The weather-alert feed is unavailable." },
   play: async ({ canvasElement }) => {
