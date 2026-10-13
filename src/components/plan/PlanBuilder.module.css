@@ -52,6 +52,10 @@
  .scene { min-height: 200px; }
  .sceneText { left: 18px; right: 18px; bottom: 18px; }
  .overview, .stopBody, .visitCheck { padding: 16px; }
+ /* Time and stop count are readouts, so trim their internal spacing before
+    allowing a second row to push the first destination behind the tabs. */
+ .planSummary { gap: 4px; margin-top: 8px; }
+ .planSummary > li { gap: 4px; padding-inline: 8px; }
 }
 
 /* Native system fonts can add a line to an outing title or its context.
