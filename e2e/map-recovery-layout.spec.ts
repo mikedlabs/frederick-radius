@@ -16,6 +16,21 @@ const localPins = coffeePlaces.map((place) => ({
   open_status: { state: "unknown" },
 }));
 
+/** Synthetic source identity for labelled layout bytes only. This metadata
+ * never attributes a catalog/provider photograph or reaches a provider. */
+function layoutPhotoFixture(slug: string) {
+  const photoName = `places/ChIJlayoutFixture/photos/layout-fixture-${slug}`;
+  const authorUri = "https://www.google.com/maps/contrib/000000000000000000000";
+  return {
+    google_photo_url: `/api/place-photo?${new URLSearchParams({ name: photoName, w: "96" })}`,
+    google_photo_attribution: {
+      photo_name: photoName,
+      google_maps_uri: `${authorUri}/photo/layout-fixture-${slug}`,
+      authors: [{ display_name: "LAYOUT FIXTURE author", uri: authorUri }],
+    },
+  };
+}
+
 async function installRecoveryBoundary(page: Page, photosAvailable = false) {
   await page.addInitScript(() => {
     localStorage.setItem("fr_map_location_intro_v1", "dismissed");
@@ -36,11 +51,17 @@ async function installRecoveryBoundary(page: Page, photosAvailable = false) {
       const slug = decodeURIComponent(url.pathname.split("/").at(-1)!);
       const place = coffeePlaces.find((place) => place.slug === slug);
       await route.fulfill({ json: { place: place
-        ? { slug: place.slug, google_photo_url: place.google_photo_url }
+        ? { slug: place.slug, ...layoutPhotoFixture(place.slug) }
         : null } });
     } else if (photosAvailable && url.pathname === "/api/place-photo") {
-      // Real catalog photo metadata exercises the ready-media layout. These
-      // clearly labelled fixture bytes never fetch or depict a provider photo.
+      const photoName = url.searchParams.get("name");
+      const fixture = coffeePlaces.find((place) =>
+        layoutPhotoFixture(place.slug).google_photo_attribution.photo_name === photoName,
+      );
+      expect(fixture, "Only a selected labelled layout resource is eligible").toBeDefined();
+      expect(url.searchParams.get("fallback")).toBe("signal");
+      // Real catalog identities select the card, but source metadata and these
+      // labelled bytes are synthetic. No catalog/provider photo is attributed.
       await route.fulfill({ contentType: "image/svg+xml", body:
         '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#ddd"/><text x="48" y="44" text-anchor="middle" font-size="12">LAYOUT</text><text x="48" y="62" text-anchor="middle" font-size="12">FIXTURE</text></svg>' });
     } else if (url.pathname === "/api/search") {
@@ -154,6 +175,19 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
         if (photosAvailable) {
           const image = card.getByRole("img", { name: `Photo of ${place.name}`, exact: true });
           await expect(image).toHaveAttribute("data-map-peek-photo-state", "ready");
+          await expect(image).toHaveAttribute("data-map-peek-photo-source", "google");
+          await expect(card.locator("img")).toHaveCount(1);
+          const fixture = layoutPhotoFixture(place.slug);
+          const requestedSource = new URL(await image.getAttribute("src") ?? "", page.url());
+          expect(requestedSource.pathname).toBe("/api/place-photo");
+          expect(requestedSource.searchParams.get("name")).toBe(fixture.google_photo_attribution.photo_name);
+          expect(requestedSource.searchParams.get("fallback")).toBe("signal");
+          const credits = page.locator(".map-peek-source-credit");
+          await expect(credits.getByRole("link", { name: "Google Maps", exact: true }))
+            .toHaveAttribute("href", fixture.google_photo_attribution.google_maps_uri);
+          await expect(credits.getByRole("link", { name: "LAYOUT FIXTURE author", exact: true }))
+            .toHaveAttribute("href", fixture.google_photo_attribution.authors[0].uri);
+          await expect(page.locator(".map-peek button a")).toHaveCount(0);
           expect(await image.evaluate((element) => {
             const image = element as HTMLImageElement;
             return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1;

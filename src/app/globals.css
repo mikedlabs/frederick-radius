@@ -6248,6 +6248,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .map-peek-details-link {
   width: fit-content;
+  min-width: 44px;
   min-height: 44px;
   display: inline-flex;
   align-items: center;

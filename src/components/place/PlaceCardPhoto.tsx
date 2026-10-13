@@ -40,7 +40,11 @@ export default function PlaceCardPhoto({ source, onResult, width = 360 }: {
 }
 
 /** Keep source links outside the card's open button, avoiding nested actions. */
-export function PlaceCardPhotoCredit({ source, loaded }: { source: PlaceCardPhotoSource | null; loaded: boolean }) {
+export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false }: {
+  source: PlaceCardPhotoSource | null;
+  loaded: boolean;
+  touchTarget?: boolean;
+}) {
   if (!source || source.kind === "owned") return null;
   const licenseLinks: Record<string, string> = { "CC BY-SA 4.0": "https://creativecommons.org/licenses/by-sa/4.0", "CC BY 2.0": "https://creativecommons.org/licenses/by/2.0" };
   const licenseHref = source.kind === "curated"
@@ -52,7 +56,7 @@ export function PlaceCardPhotoCredit({ source, loaded }: { source: PlaceCardPhot
       className="place-card-photo-credit border-t px-3 py-1 text-xs leading-snug [&_a]:inline-flex [&_a]:min-h-[44px] [&_a]:min-w-[44px] [&_a]:items-center"
       style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)", visibility: loaded ? undefined : "hidden" }}>
       {source.kind === "google" ? (
-        <GooglePhotoAttributionLine attribution={source.attribution} compact />
+        <GooglePhotoAttributionLine attribution={source.attribution} compact touchTarget={touchTarget} />
       ) : (
         <>
           <span className="block pt-1">Photo by {source.photo.author}.</span>
