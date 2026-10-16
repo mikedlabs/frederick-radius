@@ -3,9 +3,9 @@
 
 
   <g transform="translate(0 0) scale(5.12) translate(0 -16)" opacity="1">
-    <g fill="none" stroke="#2459D9" stroke-linecap="round" stroke-width="7">
+    <g fill="none" stroke="#C34335" stroke-linecap="round" stroke-width="7">
       <path d="M27 74 A 23 23 0 0 1 73 74" stroke-opacity="1"/>
     </g>
-    <circle cx="50" cy="74" r="11" fill="#2459D9"/>
+    <circle cx="50" cy="74" r="11" fill="#C34335"/>
   </g>
 </svg>

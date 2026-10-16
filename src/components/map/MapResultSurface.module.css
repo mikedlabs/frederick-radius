@@ -1,0 +1,142 @@
+.surface {
+  gap: 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 24px;
+  padding: 14px;
+  background: var(--app-bg-elevated-solid);
+  box-shadow: var(--app-shadow-3);
+  scroll-padding-block: 8px 80px;
+}
+
+.surface :global(.map-peek-body) {
+  gap: 14px;
+  padding-right: 34px;
+}
+
+.surface :global(.map-peek-visual) {
+  width: 104px;
+  height: 128px;
+  flex-basis: 104px;
+  border: 0;
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+.surface :global(.map-peek-visual):focus-visible {
+  outline: 3px solid var(--app-focus);
+  outline-offset: -4px;
+}
+
+.surface :global(.map-peek-text) {
+  gap: 2px;
+}
+
+.surface :global(.map-peek-name) {
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.surface :global(.map-peek-cat),
+.surface :global(.map-peek-address),
+.surface :global(.map-peek-detail),
+.surface :global(.map-peek-source),
+.surface :global(.map-peek-meta),
+.surface :global(.map-peek-around summary),
+.surface :global(.map-peek-around-body),
+.surface :global(.map-peek-details-link) {
+  font-family: inherit;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.surface :global(.map-peek-cat) {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.surface :global(.map-peek-around) {
+  border: 0;
+  border-radius: 12px;
+}
+
+.surface :global(.map-peek-acts) {
+  position: sticky;
+  z-index: 3;
+  bottom: -14px;
+  gap: 8px;
+  margin-bottom: -14px;
+  border-top: 1px solid var(--app-border);
+  padding: 12px 0 14px;
+  background: var(--app-bg-elevated-solid);
+}
+
+.surface :global(.map-peek-act) {
+  min-height: 48px;
+  justify-content: center;
+  border-color: transparent;
+  border-radius: 14px;
+  padding-inline: 12px;
+  background: var(--app-bg-sunken);
+  color: var(--app-ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.surface :global(.map-peek-act[data-on]) {
+  border-color: var(--app-control-border);
+  background: var(--app-bg-sunken);
+  color: var(--app-ink);
+}
+
+.surface :global(.map-peek-act-go) {
+  border-color: var(--app-brand);
+  background: var(--app-brand);
+  background-image: none;
+  color: var(--app-on-brand);
+  box-shadow: none;
+}
+
+.surface :global(.map-peek-act-go:hover) {
+  border-color: var(--app-brand-press);
+  background: var(--app-brand-press);
+}
+
+.surface :global(.map-peek-act):focus-visible {
+  outline: 3px solid var(--app-focus);
+  outline-offset: -3px;
+}
+
+.surface :global(.map-peek-act-go):focus-visible {
+  outline-color: var(--app-on-brand);
+}
+
+@media (max-width: 359px) {
+  .surface :global(.map-peek-body) {
+    gap: 10px;
+  }
+
+  .surface :global(.map-peek-visual) {
+    width: 88px;
+    height: 112px;
+    flex-basis: 88px;
+  }
+
+  .surface :global(.map-peek-name) {
+    font-size: 18px;
+  }
+
+  .surface :global(.map-peek-act) {
+    gap: 5px;
+    padding-inline: 10px;
+    font-size: 12px;
+  }
+}
+
+@media (max-height: 540px) {
+  .surface :global(.map-peek-visual) {
+    height: 92px;
+  }
+}

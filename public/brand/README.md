@@ -1,24 +1,24 @@
 # Frederick Radius brand assets
 
-Frederick Radius Brand System 1.3 - October 12, 2026
+Frederick Radius Brand System 1.4 - October 16, 2026
 
 These files are generated from `src/lib/brand.ts`. Run `npm run build:brand` after changing the brand contract or asset templates.
 
-The color keys `brick`, `cream`, and `ink`, and existing `*-brick` / `*-cream` asset filenames remain compatible aliases for Cobalt, Cloud, and Navy. They do not retain the former palette. Regenerate and review assets before using version 1.3 artwork; changing this guide alone does not update or publish exports.
+The color keys `brick`, `cream`, and `ink`, and existing `*-brick` / `*-cream` asset filenames remain compatible aliases for Deep Coral, White, and Charcoal. They do not retain the former palette. Regenerate and review assets before using version 1.4 artwork; changing this guide alone does not update or publish exports.
 
 ## Brand contract
 
 - Frederick Radius uses the tagline `Frederick County starts where you are.`
   Its plain-language description is `Current local information for Frederick
   County, organized around where you are.`
-- Cobalt `#2459D9`, Cloud `#F6F8FC`, Navy `#13253E`, the solid Ripple, and owned
+- Deep Coral `#C34335`, White `#FFFFFF`, Charcoal `#22221F`, the solid Ripple, and owned
   Frederick photography form the recognition system.
 - Catoctin Forest `#315A43` is a restrained outdoor, terrain, or small
   positive-state cue. It is not a generic selected color or page theme.
 - Creek `#285D73` organizes civic, map, transit, and data information. Plum
   `#7E2C6F` is a limited culture accent.
 - Catoctin Forest carries the open state. Ochre Amber `#C58A32` is used for a
-  real live, caution, or sunlight state with Navy text. Beer is the product
+  real live, caution, or sunlight state with Charcoal text. Beer is the product
   exception: it also marks active
   taste controls, flagship beers, and beer or brewery metadata. It is not a
   decorative yellow or a page theme.
@@ -62,7 +62,7 @@ files are in `licenses/`.
 ## Lockups
 
 - `horizontal-brick`: Primary lockup on light surfaces.
-- `horizontal-cream`: Reverse lockup on Cobalt, Catoctin Forest, Navy, or a dark photograph.
+- `horizontal-cream`: Reverse lockup on Deep Coral, Catoctin Forest, Charcoal, or a dark photograph.
 - `descriptor-*`: Horizontal lockup with the canonical tagline. The retained
   filename is for backwards-compatible asset paths.
 - `stacked-brick`: Square or narrow placement.
@@ -73,7 +73,7 @@ files are in `licenses/`.
 - `avatar`: Canonical account avatar. Its complete mark stays inside the center
   68 percent so Facebook's circular crop does not remove an arc or the origin
   point.
-- `facebook-cover`: 1640 by 624 Cobalt cover with its complete lockup inside the
+- `facebook-cover`: 1640 by 624 Deep Coral cover with its complete lockup inside the
   shared desktop and mobile safe area.
 - `facebook-cover-photo`: Coordinated natural-photography cover. Keep the
   supplied center crop and do not place new text in the outer 180 px on either
@@ -146,7 +146,7 @@ imagery or transfer its rights with the open-font licenses.
 The `examples/ui-*-mobile.webp` files are optimized 390 px viewport captures of
 the historical product system: Today, Ask Radius, County map, Live conditions,
 All tools, and Beer. They are guide references, not evergreen campaign creative;
-their palette, Public Sans runtime, and live facts reflect the July 22, 2026 capture state. They are not version 1.3 product screenshots. The captures
+their palette, Public Sans runtime, and live facts reflect the July 22, 2026 capture state. They are not version 1.4 product screenshots. The captures
 exclude the Next.js development indicator, private account data, and degraded
 local API states.
 

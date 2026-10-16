@@ -46,8 +46,8 @@ export const MAPBOX_FIELD_GUIDE_CONFIG = {
     colorGreenspace: "#C6D2C0",
     colorBuildings: BRAND.colors.border,
     colorRoads: BRAND.colors.paperDeep,
-    colorTrunks: "#CBD7E6",
-    colorMotorways: "#A8B9D0",
+    colorTrunks: BRAND.colors.border,
+    colorMotorways: BRAND.colors.controlBorder,
     colorPlaceLabels: BRAND.colors.ink,
     colorRoadLabels: BRAND.colors.mutedInk,
     colorAdminBoundaries: BRAND.colors.controlBorder,
@@ -73,9 +73,9 @@ export function applyMapboxFieldGuideConfig(map: GLMap): void {
  */
 export function installMapboxFieldGuideTerrain(map: GLMap): void {
   const hillshadeColors = {
-    "hillshade-shadow-color": "#9AAAC0",
+    "hillshade-shadow-color": BRAND.colors.controlBorder,
     "hillshade-highlight-color": BRAND.colors.cream,
-    "hillshade-accent-color": "#CBD7E6",
+    "hillshade-accent-color": BRAND.colors.border,
   };
   try {
     if (!map.getSource("fr-dem")) {

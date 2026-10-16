@@ -38,9 +38,9 @@ type RGB = [number, number, number];
 
 function palette(dark: boolean): Map<string, string> {
   const values = new Map<string, string>();
-  stylesheet.walkRules(":root", (rule) => {
-    const media = rule.parent?.type === "atrule" ? rule.parent.params : null;
-    if (media !== null && (!dark || media !== "(prefers-color-scheme: dark)")) return;
+  stylesheet.walkRules((rule) => {
+    const matches = rule.selector === ":root" || (dark && rule.selector === ':root[data-appearance="dark"]');
+    if (!matches || rule.parent?.type === "atrule") return;
     rule.walkDecls(/^--/, (declaration) => { values.set(declaration.prop, declaration.value); });
   });
   return values;

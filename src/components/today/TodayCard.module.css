@@ -102,43 +102,86 @@
   font-weight: 600;
 }
 
-/* Masthead facts stay visible; density removes repeated framing and padding. */
+/* The compact read is factual. Only routine provenance and sun detail collapse;
+   urgent verdicts and unavailable safety checks stay in the visible reading. */
 .masthead .reading {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--app-space-2);
+  min-height: 44px;
 }
 
 .masthead .details {
-  order: 2;
-  flex: 1 1 min-content;
-}
-
-.masthead .glyph {
-  order: 1;
-  margin-inline-start: auto;
+  flex: 1 1 auto;
 }
 
 .masthead .condition {
   overflow-wrap: break-word;
-}
-
-.masthead .temperature {
-  font-size: 32px;
-}
-
-.masthead .condition,
-.masthead .headline {
   font-size: 14px;
   line-height: 1.3;
 }
 
+.masthead .temperature {
+  font-size: 36px;
+}
+
 .masthead .headline {
   margin-bottom: var(--app-space-2);
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.forecastType {
+  margin: 3px 0 0;
+  color: var(--app-ink-2);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.forecastDetails {
+  min-width: 0;
+  margin-top: var(--spacing);
+}
+
+.forecastDetails summary {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-2);
+  width: fit-content;
+  min-height: 44px;
+  color: var(--app-link);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.forecastDetails summary::-webkit-details-marker {
+  display: none;
+}
+
+.forecastDetails summary::after {
+  content: "+";
+  font-size: 16px;
+  line-height: 1;
+}
+
+.forecastDetails[open] summary::after {
+  content: "−";
+}
+
+.forecastDetails summary:focus-visible {
+  outline: 2px solid var(--app-link);
+  outline-offset: 3px;
+  border-radius: var(--app-radius-sm);
+}
+
+.forecastEvidence {
+  padding-bottom: var(--app-space-2);
 }
 
 .masthead .source,
 .masthead .issuance {
-  margin-top: var(--spacing);
+  font-size: 12px;
 }
 
 .masthead .stats {

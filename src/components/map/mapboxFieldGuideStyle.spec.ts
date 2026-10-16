@@ -80,9 +80,9 @@ describe("Mapbox field-guide style", () => {
       source: "fr-dem",
       slot: "bottom",
       paint: {
-        "hillshade-shadow-color": "#9AAAC0",
+        "hillshade-shadow-color": BRAND.colors.controlBorder,
         "hillshade-highlight-color": BRAND.colors.cream,
-        "hillshade-accent-color": "#CBD7E6",
+        "hillshade-accent-color": BRAND.colors.border,
         "hillshade-exaggeration": 0.28,
         "hillshade-illumination-direction": 315,
       },
@@ -103,9 +103,9 @@ describe("Mapbox field-guide style", () => {
     expect(calls.addSource).not.toHaveBeenCalled();
     expect(calls.addLayer).not.toHaveBeenCalled();
     expect(calls.setPaintProperty.mock.calls).toEqual([
-      ["fr-hillshade", "hillshade-shadow-color", "#9AAAC0"],
+      ["fr-hillshade", "hillshade-shadow-color", BRAND.colors.controlBorder],
       ["fr-hillshade", "hillshade-highlight-color", BRAND.colors.cream],
-      ["fr-hillshade", "hillshade-accent-color", "#CBD7E6"],
+      ["fr-hillshade", "hillshade-accent-color", BRAND.colors.border],
     ]);
   });
 

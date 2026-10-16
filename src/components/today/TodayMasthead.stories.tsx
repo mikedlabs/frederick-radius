@@ -26,13 +26,22 @@ export const PartialSafetyRead: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("heading", { level: 1, name: "This afternoon in Frederick County" })).toBeVisible();
     await expect(canvas.getByText("The air-quality reading is unavailable.")).toBeVisible();
+    const details = canvas.getByText("Forecast details", { exact: true });
+    const forecast = canvas.getByRole("link", { name: /Full forecast.*Frederick/ });
+    await expect(canvas.getByText("Oct 12, 2026, 10:53 AM EDT")).not.toBeVisible();
+    // Native summary keyboard traversal is verified by Playwright in
+    // today-weather-priority.spec.ts. Storybook's simulated Tab omits summary.
+    await expect(details.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    await expect(details.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
+    await userEvent.click(details);
+    await expect(canvas.getByText("Oct 12, 2026, 10:53 AM EDT")).toBeVisible();
     await expect(canvas.getByText("Oct 12, 2026, 10:53 AM EDT")).toHaveAttribute("datetime", "2026-10-12T14:53:00.000Z");
-    const forecast = canvas.getByRole("link", { name: /Open the full forecast for Frederick/ });
     await expect(forecast).toHaveAttribute("href", "/pulse?open=weather");
     await expect(forecast.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     await expect(forecast.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
-    await userEvent.tab();
-    await expect(forecast).toHaveFocus();
+    await userEvent.click(details);
+    await expect(canvas.getByText("Oct 12, 2026, 10:53 AM EDT")).not.toBeVisible();
+    await expect(canvas.getByText("The air-quality reading is unavailable.")).toBeVisible();
     await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
   },
 };
@@ -54,7 +63,31 @@ export const NarrowLongWarning: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("heading", { name: "Flash Flood Warning is active." })).toBeVisible();
     await expect(canvas.getByText("Weather-alert and air-quality checks are unavailable.")).toBeVisible();
+    await expect(canvas.getByText("High 75°")).not.toBeVisible();
+    await userEvent.click(canvas.getByText("Forecast details", { exact: true }));
     await expect(canvas.getByText("High 75°")).toBeVisible();
     await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
+  },
+};
+
+export const MissingIssuance: Story = {
+  args: { weather: <TodayWeatherView {...read} issuedAt={null} safetyNote={null} /> },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("70 degrees Fahrenheit forecast")).toBeVisible();
+    await userEvent.click(canvas.getByText("Forecast details", { exact: true }));
+    await expect(canvas.getByText("Issue time unavailable")).toBeVisible();
+    await expect(canvasElement.querySelector("time")).toBeNull();
+  },
+};
+
+export const ActiveWarningWithoutForecast: Story = {
+  args: { weather: <TodayWeatherView {...read} headline="Flash Flood Warning is active." condition="" forecastAvailable={false} temperatureF={null} highF={null} sun={null} variant={null} issuedAt={null} safetyNote={null} /> },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "Flash Flood Warning is active." })).toBeVisible();
+    await expect(canvas.getByText("The NWS forecast is briefly unavailable.")).toBeVisible();
+    await expect(canvas.queryByText("Forecast details")).not.toBeInTheDocument();
+    await expect(canvas.getByRole("link", { name: /Full forecast.*Frederick/ })).toHaveAttribute("href", "/pulse?open=weather");
   },
 };

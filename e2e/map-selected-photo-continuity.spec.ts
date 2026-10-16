@@ -12,7 +12,7 @@ const mapUrl = `/map?q=park&in=frederick&returnTo=${encodeURIComponent(returnTo)
 const photoName = "places/ChIJlayoutFixture/photos/layout-fixture-baker-park";
 const authorUri = "https://www.google.com/maps/contrib/000000000000000000000";
 const googleFixture = {
-  google_photo_url: `/api/place-photo?${new URLSearchParams({ name: photoName, w: "156" })}`,
+  google_photo_url: `/api/place-photo?${new URLSearchParams({ name: photoName, w: "208" })}`,
   google_photo_attribution: {
     photo_name: photoName,
     google_maps_uri: `${authorUri}/photo/layout-fixture-baker-park`,
@@ -34,7 +34,7 @@ async function installSelectedBoundary(page: Page, baseURL: string | undefined) 
   const owned = getOwnedPlacePhoto(creekSlug)!;
   expect(curated).not.toBeNull();
   expect(owned).not.toBeNull();
-  const commonsSrc = wikimediaUrl(curated.file, 156);
+  const commonsSrc = wikimediaUrl(curated.file, 208);
   const metadataRequests: string[] = [];
   const googleRequests: string[] = [];
   const commonsRequests: string[] = [];
@@ -85,7 +85,7 @@ async function installSelectedBoundary(page: Page, baseURL: string | undefined) 
       googleRequests.push(url.href);
       expect(url.searchParams.get("name")).toBe(photoName);
       expect(url.searchParams.get("fallback")).toBe("signal");
-      expect(url.searchParams.get("w")).toBe("156");
+      expect(url.searchParams.get("w")).toBe("208");
       await googleReady;
       return route.fulfill({ contentType: "image/gif", body: signal });
     }

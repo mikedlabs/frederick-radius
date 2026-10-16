@@ -9,10 +9,10 @@ export default function TodayMasthead({ title, weather }: { title: string; weath
     <header data-today-masthead className={`scroll-masthead ${styles.masthead}`}>
       <h1 className={styles.title}>{title}</h1>
       <section data-today-weather className={styles.weather}>
+        <div className={styles.weatherReading}>{weather}</div>
         <AppTransitionLink href="/pulse?open=weather" prefetch={false} className={styles.forecastLink}>
-          <span className={styles.forecastLabel}>Full forecast <ChevronRight aria-hidden className="h-4 w-4" /></span>
-          {weather}
-          <span className="sr-only">Open the full forecast for Frederick.</span>
+          <span>Full forecast</span><ChevronRight aria-hidden className="h-4 w-4" />
+          <span className="sr-only"> for Frederick.</span>
         </AppTransitionLink>
       </section>
     </header>

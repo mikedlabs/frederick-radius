@@ -9,9 +9,9 @@
     @font-face{font-family:"Public Sans";src:url("../../public/brand/fonts/public-sans-variable.woff2") format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
     @font-face{font-family:"Public Sans";src:url("../../public/brand/fonts/public-sans-variable-italic.woff2") format("woff2");font-weight:100 900;font-style:italic;font-display:swap}
     :root{
-      --brick:#2459D9;--cream:#F6F8FC;--ink:#13253E;--amber:#C58A32;
-      --surface:#FFFFFF;--paper-deep:#EAF0F7;--border:#DCE4EF;--muted:#4D6078;
-      --control-border:#6B7F9D;--functional-amber:#925E16;
+      --brick:#C34335;--cream:#FFFFFF;--ink:#22221F;--amber:#C58A32;
+      --surface:#FFFFFF;--paper-deep:#F4F4F3;--border:#E1E1DD;--muted:#62625C;
+      --control-border:#818178;--functional-amber:#925E16;
       --creek:#285D73;--plum:#7E2C6F;--forest:#315A43;--ridge:#3F5E8F;
     }
     *{box-sizing:border-box}
@@ -37,7 +37,7 @@
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:46px}
     .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
     .grow{display:flex;flex-direction:column;justify-content:space-between;height:100%}
-    .note{font-size:14px;line-height:1.45;color:var(--muted)}
+    .note{font-size:14px;line-height:1.35;color:var(--muted)}
     .brick .note,.ink .note,.forest .note{color:rgba(246,248,252,.72)}
     .label{font-size:11px;line-height:1;text-transform:uppercase;letter-spacing:.18em;font-weight:750;color:var(--brick)}
     .chip{display:inline-flex;align-items:center;padding:8px 12px;border:1px solid var(--border);border-radius:999px;font-size:12px;font-weight:650}
@@ -87,7 +87,7 @@
     .ui-phone img{display:block;width:100%;height:100%;object-fit:contain;object-position:top center}
     .ui-copy{padding:6px 1px 4px;min-width:0}
     .ui-copy h3{font-size:16px;margin-top:10px}
-    .ui-copy p{font-size:12px;line-height:1.45;margin-top:9px}
+    .ui-copy p{font-size:12px;line-height:1.35;margin-top:9px}
     .ui-copy .note{font-size:11px;line-height:1.4}
     .micro-rule{height:1px;background:var(--border);margin:14px 0 11px}
     .behavior-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:14px;overflow:hidden}
@@ -108,13 +108,13 @@
   <section class="page brick">
     <img class="offedge" src="../../public/brand/marks/ripple-full-cream.svg" alt="" />
     <div class="grow" style="position:relative">
-      <div class="kicker">Brand System · 1.3</div>
+      <div class="kicker">Brand System · 1.4</div>
       <div>
         <img src="../../public/brand/marks/ripple-full-cream.svg" alt="" style="width:96px;margin-bottom:28px" />
         <h1 style="font-size:110px">Frederick Radius</h1>
         <div style="font-size:34px;line-height:1.2;font-weight:500;margin-top:18px;max-width:760px">Frederick County starts where you are.</div>
       </div>
-      <div class="note">Frederick Radius Brand System 1.3 · October 12, 2026</div>
+      <div class="note">Frederick Radius Brand System 1.4 · October 16, 2026</div>
     </div>
   </section>
 
@@ -170,9 +170,9 @@
     <div class="kicker">04 · Color</div>
     <h2 style="margin-top:24px">Recognition stays small. Functional colors explain data.</h2>
     <div class="grid3" style="margin-top:38px;grid-template-columns:repeat(4,1fr);gap:14px">
-      <div class="swatch dark" style="background:var(--brick)"><strong>Cobalt</strong><span>#2459D9</span></div>
-      <div class="swatch light" style="background:var(--cream)"><strong>Cloud</strong><span>#F6F8FC</span></div>
-      <div class="swatch dark" style="background:var(--ink)"><strong>Navy</strong><span>#13253E</span></div>
+      <div class="swatch dark" style="background:var(--brick)"><strong>Deep Coral</strong><span>#C34335</span></div>
+      <div class="swatch light" style="background:var(--cream)"><strong>White</strong><span>#FFFFFF</span></div>
+      <div class="swatch dark" style="background:var(--ink)"><strong>Charcoal</strong><span>#22221F</span></div>
       <div class="swatch light" style="background:var(--surface);justify-content:space-between"><img src="../../public/brand/marks/ripple-compact-brick.svg" alt="Ripple mark" style="width:64px" /><div style="display:flex;flex-direction:column"><strong>Ripple</strong><span>Recognition mark</span></div></div>
     </div>
     <div class="label" style="margin-top:18px">Functional data colors</div>
@@ -183,34 +183,34 @@
       <div class="swatch compact light" style="background:var(--amber)"><strong>Ochre Amber</strong><span>#C58A32 · live, sun, or beer</span></div>
       <div class="swatch compact dark" style="background:var(--ridge)"><strong>Ridge</strong><span>#3F5E8F · limited data</span></div>
     </div>
-    <p class="note" style="margin-top:12px">Cobalt, Cloud, Navy, the Ripple, and owned Frederick photography form the recognition system. Functional colors organize a real topic or state; they never replace the shell or become separate page brands.</p>
+    <p class="note" style="margin-top:12px">Deep Coral, White, Charcoal, the Ripple, and owned Frederick photography form the recognition system. Functional colors organize a real topic or state; they never replace the shell or become separate page brands.</p>
     <div class="label" style="margin-top:11px">Working neutrals and text-safe Amber</div>
     <div class="token-row">
       <div class="token" style="background:var(--surface)">Surface<span>#FFFFFF</span></div>
-      <div class="token" style="background:var(--paper-deep)">Inset<span>#EAF0F7</span></div>
-      <div class="token" style="background:var(--border)">Border<span>#DCE4EF</span></div>
-      <div class="token" style="background:var(--control-border);color:var(--cream)">Control Border<span>#6B7F9D</span></div>
-      <div class="token" style="background:var(--muted);color:var(--cream)">Muted Navy<span>#4D6078</span></div>
+      <div class="token" style="background:var(--paper-deep)">Inset<span>#F4F4F3</span></div>
+      <div class="token" style="background:var(--border)">Border<span>#E1E1DD</span></div>
+      <div class="token" style="background:var(--control-border);color:var(--cream)">Control Border<span>#818178</span></div>
+      <div class="token" style="background:var(--muted);color:var(--cream)">Muted Charcoal<span>#62625C</span></div>
       <div class="token" style="background:var(--functional-amber);color:var(--cream)">Amber Text<span>#925E16</span></div>
     </div>
     <div class="folio">Foundations</div>
   </section>
 
-  <section class="page" style="background:#0D1725;color:#F0F5FF">
-    <div class="kicker" style="color:#91B6FF">04B · Dark appearance</div>
+  <section class="page" style="background:#1C1C19;color:#F7F7F4">
+    <div class="kicker" style="color:#FFAAA0">04B · Dark appearance</div>
     <h2 style="margin-top:24px">The same app, with readable dark pairs.</h2>
-    <p style="margin-top:18px;color:#B1C2D9">Keep source, status, and actions as clear as they are in light appearance.</p>
+    <p style="margin-top:18px;color:#C1C1B8">Keep source, status, and actions as clear as they are in light appearance.</p>
     <div class="grid3" style="margin-top:28px;grid-template-columns:repeat(4,1fr)">
-      <div class="swatch" style="background:#0D1725;border-color:#91A4C0"><strong>Dark canvas</strong><span>#0D1725</span></div>
-      <div class="swatch" style="background:#152338;border-color:#91A4C0"><strong>Dark surface</strong><span>#152338</span></div>
-      <div class="swatch" style="background:#F0F5FF;color:#0D1725"><strong>Dark ink</strong><span>#F0F5FF</span></div>
-      <div class="swatch" style="background:#B1C2D9;color:#0D1725"><strong>Secondary text</strong><span>#B1C2D9</span></div>
-      <div class="swatch" style="background:#30415B"><strong>Decorative border</strong><span>#30415B</span></div>
-      <div class="swatch" style="background:#91A4C0;color:#0D1725"><strong>Control boundary</strong><span>#91A4C0</span></div>
-      <div class="swatch" style="background:#91B6FF;color:#0D1725"><strong>Link and action</strong><span>#91B6FF</span></div>
+      <div class="swatch" style="background:#1C1C19;border-color:#A5A59A"><strong>Dark canvas</strong><span>#1C1C19</span></div>
+      <div class="swatch" style="background:#292925;border-color:#A5A59A"><strong>Dark surface</strong><span>#292925</span></div>
+      <div class="swatch" style="background:#F7F7F4;color:#1C1C19"><strong>Dark ink</strong><span>#F7F7F4</span></div>
+      <div class="swatch" style="background:#C1C1B8;color:#1C1C19"><strong>Secondary text</strong><span>#C1C1B8</span></div>
+      <div class="swatch" style="background:#464640"><strong>Decorative border</strong><span>#464640</span></div>
+      <div class="swatch" style="background:#A5A59A;color:#1C1C19"><strong>Control boundary</strong><span>#A5A59A</span></div>
+      <div class="swatch" style="background:#FFAAA0;color:#1C1C19"><strong>Link and action</strong><span>#FFAAA0</span></div>
     </div>
-    <p class="note" style="margin-top:22px;color:#B1C2D9">Text and links meet normal-text AA on both dark grounds. Essential control boundaries meet 3:1. Use Dark canvas text on a filled Dark link action. Keep status labels theme-readable; decorative border and light semantic colors are not standalone accessible controls or dark text.</p>
-    <div class="folio" style="color:#B1C2D9">Foundations · Dark appearance</div>
+    <p class="note" style="margin-top:22px;color:#C1C1B8">Text and links meet normal-text AA on both dark grounds. Essential control boundaries meet 3:1. Use Dark canvas text on a filled Dark link action. Keep status labels theme-readable; decorative border and light semantic colors are not standalone accessible controls or dark text.</p>
+    <div class="folio" style="color:#C1C1B8">Foundations · Dark appearance</div>
   </section>
 
   <section class="page">
@@ -270,8 +270,8 @@
     <div class="kicker">07 · Surfaces and motion</div>
     <div class="grid2" style="margin-top:32px;align-items:start">
       <div>
-        <h2>Cloud in light. Navy-grounded dark.</h2>
-        <p style="margin-top:18px">Light uses Cloud and white Surface. Dark uses its own canvas and surface pair. Clean surfaces, clear type, and local photography carry hierarchy.</p>
+        <h2>White in light. Charcoal-grounded dark.</h2>
+        <p style="margin-top:18px">Light uses White and soft gray Surface. Dark uses its own canvas and surface pair. Clean surfaces, clear type, and local photography carry hierarchy.</p>
         <div style="display:flex;gap:12px;margin-top:28px"><span class="chip">160 ms response</span><span class="chip">240 ms transition</span><span class="chip">420 ms reveal</span></div>
       </div>
       <div class="card">
@@ -293,7 +293,7 @@
     <div class="kicker">08 · Photography</div>
     <div style="display:flex;justify-content:space-between;gap:40px;align-items:end;margin-top:16px">
       <h2 style="font-family:'Public Sans',Arial,sans-serif;font-size:34px;line-height:1.06;font-weight:650;letter-spacing:-.45px;max-width:690px">Use a recognizable Frederick photograph without recoloring it.</h2>
-      <p class="note" style="width:320px">Photography joins Cobalt, Cloud, Navy, and the Ripple in the recognition system. It should provide local evidence, not a campaign effect.</p>
+      <p class="note" style="width:320px">Photography joins Deep Coral, White, Charcoal, and the Ripple in the recognition system. It should provide local evidence, not a campaign effect.</p>
     </div>
     <div class="photo-system">
       <figure class="photo-frame">
@@ -307,7 +307,7 @@
         <div class="photo-rule-card ink">
           <div class="label" style="color:var(--cream)">Text contrast</div>
           <h3>Keep text off the image when possible.</h3>
-          <p>If copy must sit nearby, use a compact neutral Navy panel. Do not tint the photograph Cobalt, Plum, or Ochre.</p>
+          <p>If copy must sit nearby, use a compact neutral Charcoal panel. Do not tint the photograph Deep Coral, Plum, or Ochre.</p>
         </div>
         <div class="photo-rule-card">
           <div class="label">Subject and crop</div>
@@ -328,7 +328,7 @@
     <div class="kicker">09 · System in use</div>
     <div style="display:flex;justify-content:space-between;gap:42px;align-items:end;margin-top:17px">
       <h2 style="font-family:'Public Sans',Arial,sans-serif;font-size:35px;line-height:1.07;font-weight:650;letter-spacing:-.45px;max-width:670px">The same hierarchy supports a daily view, a question, and a map.</h2>
-      <p class="note" style="width:320px">Historical 390 px captures, July 22, 2026. They retain the earlier warm palette and Public Sans runtime; they are not version 1.3 screens.</p>
+      <p class="note" style="width:320px">Historical 390 px captures, July 22, 2026. They retain the earlier warm palette and Public Sans runtime; they are not version 1.4 screens.</p>
     </div>
     <div class="ui-system-grid" style="margin-top:25px">
       <article class="ui-example">
@@ -453,7 +453,7 @@
       <img src="../../public/brand/social/facebook-page-launch-photo.png" alt="Photo-led Facebook Page launch post" />
       <img src="../../public/brand/social/facebook-season-summer.png" alt="Summer in Frederick seasonal post" />
     </div>
-    <p class="note" style="margin-top:20px">Owned Frederick photography leads public social work. Cobalt and Cloud hold the identity together without covering the place being shown. Catoctin Forest marks open. Ochre Amber is reserved for something live, time-sensitive, sun-related, or specifically about beer.</p>
+    <p class="note" style="margin-top:20px">Owned Frederick photography leads public social work. Deep Coral and White hold the identity together without covering the place being shown. Catoctin Forest marks open. Ochre Amber is reserved for something live, time-sensitive, sun-related, or specifically about beer.</p>
     <div class="folio">Social and campaign</div>
   </section>
 
@@ -484,7 +484,7 @@
       <div class="card">
         <div style="display:flex;gap:20px;align-items:center">
           <img src="../../public/icons/icon.svg" alt="Frederick Radius app icon" style="width:92px;height:92px" />
-          <div><div class="label">Launcher family</div><p class="note" style="margin-top:10px">Standard 192 and 512 px icons use the Cobalt squircle with a centered Ripple and clear breathing room. Maskable artwork is full bleed. Apple uses an opaque 180 px tile.</p></div>
+          <div><div class="label">Launcher family</div><p class="note" style="margin-top:10px">Standard 192 and 512 px icons use the Deep Coral squircle with a centered Ripple and clear breathing room. Maskable artwork is full bleed. Apple uses an opaque 180 px tile.</p></div>
         </div>
         <div class="rule"></div>
         <p class="note">The browser favicon uses one arc at 16, 32, and 48 px. Android notifications use the launcher plus a monochrome 72 px status badge.</p>
@@ -492,8 +492,8 @@
       <div>
         <div class="label">Share and cache rules</div>
         <ul style="margin-top:16px">
-          <li>Light app chrome uses Cloud; dark app chrome uses Dark canvas.</li>
-          <li>The default site and beta cards use Cobalt; information cards use Cloud.</li>
+          <li>Light app chrome uses White; dark app chrome uses Dark canvas.</li>
+          <li>The default site and beta cards use Deep Coral; information cards use White.</li>
           <li>The normal Open Graph image is 1200 by 630; story output is 1080 by 1920.</li>
           <li>Bump the icon version after artwork changes so caches request new files.</li>
           <li>Put the date in any time-specific share URL so yesterday's image cannot be reused.</li>
@@ -520,7 +520,7 @@
         </div>
       </div>
     </div>
-    <div class="folio">Frederick Radius Brand System · 1.3</div>
+    <div class="folio">Frederick Radius Brand System · 1.4</div>
   </section>
 </body>
 </html>

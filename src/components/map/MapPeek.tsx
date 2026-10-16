@@ -110,7 +110,7 @@ export function MapPeekPhoto({
               data-map-peek-photo-source={source.kind}
               fill
               unoptimized={source.kind === "google"}
-              sizes="78px"
+              sizes="(max-width: 359px) 88px, 104px"
               placeholder="blur"
               blurDataURL={PAPER_CREAM_BLUR}
               className="absolute inset-0 h-full w-full object-cover"
@@ -267,7 +267,7 @@ export default function MapPeek({
         slug: place.slug,
         google_photo_url: activeDetails?.google_photo_url ?? activeDetails?.hero_image,
         google_photo_attribution: activeDetails?.google_photo_attribution,
-      }, 78)
+      }, 104)
     : { key: `pending:${place.slug}`, sources: [] };
   const photoPending = !activeDetails && detailsResolvedSlug !== place.slug;
   const dirHref = place.geom ? directionsHref(place.geom.lat, place.geom.lng) : "#";

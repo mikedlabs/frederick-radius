@@ -227,9 +227,9 @@ describe("MapPeek selected photo and source identity", () => {
     } }) }));
     const google = host.querySelector("img")!;
     expect(google.getAttribute("data-map-peek-photo-source")).toBe("google");
-    expect(new URL(google.getAttribute("src")!, "https://frederickradius.app").searchParams.get("w")).toBe("156");
+    expect(new URL(google.getAttribute("src")!, "https://frederickradius.app").searchParams.get("w")).toBe("208");
     await load(1, 1);
-    expect(host.querySelector("img")?.getAttribute("src")).toBe(wikimediaUrl(getLandmarkPhoto(slug)!.file, 156));
+    expect(host.querySelector("img")?.getAttribute("src")).toBe(wikimediaUrl(getLandmarkPhoto(slug)!.file, 208));
     await load(1280, 891);
     expect(host.textContent).toContain("Photo by Acroterion.");
     expect(fetchCard).toHaveBeenCalledOnce();

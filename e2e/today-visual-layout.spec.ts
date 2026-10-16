@@ -49,7 +49,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(captionBox.y).toBeGreaterThanOrEqual(photoBox.y - 1);
     expect(captionBox.y + captionBox.height).toBeLessThanOrEqual(photoBox.y + photoBox.height + 1);
     expect(Math.abs(captionBox.y + captionBox.height - photoBox.y - photoBox.height)).toBeLessThanOrEqual(1);
-    expect(photoBox.width / photoBox.height).toBeCloseTo(16 / 9, 2);
+    expect(photoBox.width / photoBox.height).toBeCloseTo(4 / 3, 2);
     expect(photoBox.width).toBeGreaterThanOrEqual(doorwayBox.width * 0.95);
     expect(photoBox.height).toBeGreaterThan(130);
     await expect(doorway.locator("img")).toHaveAttribute("alt", "Carroll Creek in Frederick.");
@@ -77,14 +77,26 @@ for (const width of [320, 375, 390, 430, 1366]) {
         // The existing In The Streets day-of lead is a deliberate exception.
         // It remains above the ordinary briefing instead of being compressed.
         if (await specialDayLead.count() === 0) {
-          expect(captionBox.y + captionBox.height, "the named physical place action precedes the fixed tabs").toBeLessThanOrEqual(primaryNavBox.y);
           const visiblePhotoHeight = Math.max(0, Math.min(photoBox.y + photoBox.height, primaryNavBox.y) - Math.max(photoBox.y, 0));
           if (await activeAlert.count() === 0) {
-            expect(doorwayBox.y + doorwayBox.height, "the ordinary 375px arrival shows the complete 16:9 place doorway").toBeLessThanOrEqual(primaryNavBox.y);
-            expect(quickNeedsBox.y + quickNeedsBox.height, "all four quick needs fit before the fixed tabs on an ordinary 375px arrival").toBeLessThanOrEqual(primaryNavBox.y);
-          } else {
-            expect(visiblePhotoHeight, "full alerts remain first while most of the actual photo is visible").toBeGreaterThanOrEqual(photoBox.height * 0.75);
+            expect(visiblePhotoHeight, "substantial local photography is visible on ordinary arrival").toBeGreaterThanOrEqual(130);
+            // Large, accurate photography is intentional. The quick actions
+            // follow it within one viewport of scrolling instead of forcing
+            // every element into tiny cards above the fixed navigation.
+            expect(quickNeedsBox.y + quickNeedsBox.height).toBeLessThanOrEqual(primaryNavBox.y + 844);
           }
+          const scrollForActions = Math.max(0, quickNeedsBox.y + quickNeedsBox.height - primaryNavBox.y + 16);
+          expect(scrollForActions).toBeLessThanOrEqual(844);
+          await page.mouse.wheel(0, scrollForActions);
+          await expect.poll(async () => {
+            const actions = (await quickNeeds.boundingBox())!;
+            const tabs = (await primaryNav.boundingBox())!;
+            return actions.y + actions.height <= tabs.y;
+          }).toBe(true);
+          const visibleQuickNeeds = (await quickNeeds.boundingBox())!;
+          const visibleNav = (await primaryNav.boundingBox())!;
+          expect(visibleQuickNeeds.y + visibleQuickNeeds.height, "all four actions clear the fixed tabs after a normal scroll").toBeLessThanOrEqual(visibleNav.y);
+          await page.evaluate(() => window.scrollTo(0, 0));
         }
       }
     }
@@ -118,12 +130,8 @@ for (const width of [320, 375, 390, 430, 1366]) {
       expect(box.x + box.width).toBeLessThanOrEqual(width + 1);
     }
 
-    if (width < 360) {
-      expect(weatherBox.y).toBeGreaterThanOrEqual(headingBox.y + headingBox.height);
-    } else {
-      expect(Math.abs(weatherBox.y - headingBox.y)).toBeLessThanOrEqual(1);
-      expect(weatherBox.x).toBeGreaterThanOrEqual(headingBox.x + headingBox.width);
-    }
+    expect(weatherBox.y).toBeGreaterThanOrEqual(headingBox.y + headingBox.height);
+    if (width < 640) expect(headingBox.width).toBeGreaterThanOrEqual(mastheadBox.width - 1);
     expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(findBox.y);
     const campaign = page.locator("[data-today-fair-feature]");
     if (await campaign.count()) {
@@ -167,7 +175,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await testInfo.attach("today-arrival-geometry", {
       contentType: "application/json",
       body: JSON.stringify({ width, mastheadBox, weatherBox, findBox, captionBox, photoBox, doorwayBox, quickNeedsBox, decisionBox, primaryNavBox,
-        note: "The complete ordinary 375px photo and four quick actions precede the tabs. Mobile decisions follow those actions; desktop pairs the real decision with the photo." }),
+        note: "The full-width heading and compact weather precede Find. Large 4:3 local photography is visible on ordinary arrival, with four actions reachable by scrolling. Desktop pairs the real decision with the photo." }),
     });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}.png`), fullPage: true });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}-viewport.png`), fullPage: false });

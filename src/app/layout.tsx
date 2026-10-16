@@ -12,7 +12,7 @@ import DecisionTelemetryObserver from "@/components/analytics/DecisionTelemetry"
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
 import { PLATFORM_BRAND } from "@/lib/platform-brand";
-import { BRAND } from "@/lib/brand";
+import { APPEARANCE_BOOTSTRAP } from "@/lib/appearance";
 
 /**
  * Product UI follows the native system font. The optional Caslon signature is
@@ -86,7 +86,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    // "default" = dark status-bar text on the themed Cloud bar. "black-translucent"
+    // "default" = dark status-bar text on the themed White bar. "black-translucent"
     // rendered WHITE text over the light paper ground, hiding the clock/battery.
     statusBarStyle: "default",
     title: PLATFORM_BRAND.shortName,
@@ -100,14 +100,9 @@ export const viewport: Viewport = {
   // Keep fixed-bottom UI (BottomNav, sheets, the search overlay) above the
   // on-screen keyboard on Android Chrome instead of being shoved/covered.
   interactiveWidget: "resizes-content",
-  // Match the Cloud ground and the OS-preferred Navy canvas.
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: BRAND.colors.darkCanvas },
-    // Must match the canonical page ground (--app-bg = #F6F8FC) or installed
-    // PWAs show a status-bar/page seam.
-    // Viewport metadata can't read CSS vars, so this literal is kept in sync.
-    { media: "(prefers-color-scheme: light)", color: PLATFORM_BRAND.themeColor },
-  ],
+  // First visits are light; the saved explicit choice updates this meta tag
+  // in the early bootstrap and the shared appearance control.
+  themeColor: PLATFORM_BRAND.themeColor,
 };
 
 export default function RootLayout({
@@ -147,9 +142,11 @@ export default function RootLayout({
       // Only explicit editorial signatures use a bundled font variable.
       className={libreCaslonDisplay.variable}
       data-season={season}
+      data-appearance="light"
       style={{ "--season-accent": seasonAccent, "--season-depth": seasonAccent } as React.CSSProperties}
     >
       <head>
+        <Script id="fr-appearance" strategy="beforeInteractive">{APPEARANCE_BOOTSTRAP}</Script>
         {/* Capture Chromium's one-shot install event before React hydrates.
             The visible prompt still owns when to ask; this only prevents a
             fast browser event from disappearing before the app can use it. */}

@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Explicit app appearance, independent of the device OS preference. */
+@custom-variant dark (&:where([data-appearance="dark"], [data-appearance="dark"] *));
+
 /* The only current Public Sans italic treatment is a revealed field note.
  * Load that specialty face on demand instead of preloading it on every route. */
 @font-face {
@@ -49,37 +52,37 @@
 
   --font-serif: var(--font-sans-base), ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  /* Product identity, October 2026: Cloud surfaces, Navy ink and Cobalt
+  /* Product identity, October 2026: White surfaces, Charcoal ink and Deep Coral
    * actions. Terrain and source-status accents retain their own meanings. */
-  --app-bedrock: #0D1725;
-  --app-paper: #F6F8FC;
-  --app-paper-2: #EAF0F7;
+  --app-bedrock: #1C1C19;
+  --app-paper: #FFFFFF;
+  --app-paper-2: #F4F4F3;
 
-  --app-bg: #F6F8FC;
+  --app-bg: #FFFFFF;
   --app-bg-elevated-solid: #FFFFFF;
   --app-bg-elevated: color-mix(in srgb, #FFFFFF 92%, transparent);
-  --app-bg-sunken: #EAF0F7;
-  --app-border: #DCE4EF;
+  --app-bg-sunken: #F4F4F3;
+  --app-border: #E1E1DD;
   --app-border-strong: color-mix(in srgb, var(--app-media-ink) 18%, transparent);
   /* Interactive boundaries have stronger contrast than decorative seams. */
-  --app-control-border: #6B7F9D;
+  --app-control-border: #818178;
 
-  --app-ink: #13253E;
-  --app-ink-2: #4D6078;
-  --app-ink-3: #4D6078;
-  --app-ink-inverse: #F6F8FC;
-  /* Photo overlays keep a fixed Navy ground in both color schemes. */
-  --app-media-ink: #13253E;
+  --app-ink: #22221F;
+  --app-ink-2: #62625C;
+  --app-ink-3: #62625C;
+  --app-ink-inverse: #FFFFFF;
+  /* Photo overlays keep a fixed Charcoal ground in both color schemes. */
+  --app-media-ink: #22221F;
   --app-control-border-safe: color-mix(in srgb, var(--app-control-border) 95%, var(--app-media-ink));
 
-  --app-brand: #2459D9;
-  --app-brand-press: #1B44AF;
+  --app-brand: #C34335;
+  --app-brand-press: #A8352A;
   --app-link: var(--app-brand-press);
   --app-focus: var(--app-link);
   --app-on-brand: #FFFFFF;
   --app-brand-2: #315A43;         /* Catoctin Forest — terrain/outdoor accent; never a page wash */
   --app-amber: #C58A32;           /* Ochre Amber — live/caution/sunlight or Beer selection/flagship fill */
-  --app-amber-text: #925E16;      /* Text-safe on Cloud and inset Cloud; keep caution separate from actions. */
+  --app-amber-text: #925E16;      /* Text-safe on White and inset White; keep caution separate from actions. */
   --app-accent: #7E2C6F;          /* Plum — limited arts/culture and editorial accent */
   --app-accent-press: #682153;    /* text-safe Plum counterpart */
   --app-cool: #285D73;            /* Creek — supporting data/civic accent */
@@ -87,7 +90,7 @@
   --app-sage: #859076;            /* topo-line sage — light nature accent */
 
   --app-positive: #315A43;
-  --app-warning: #925E16;         /* text-safe Ochre warning or Cream-on-warning fill */
+  --app-warning: #925E16;         /* text-safe Ochre warning or White-on-warning fill */
   --app-warning-press: #7A4D12;   /* darker pressed-state Ochre */
   /* Danger retains its own red and never borrows the action color. */
   --app-danger: #B4231E;
@@ -114,14 +117,14 @@
    * These keep existing components stable while the canonical `--app-*`
    * vocabulary remains the source of truth.
    * ───────────────────────────────────────────────────── */
-  --paper: var(--app-bg);              /* Cloud */
-  --paper-2: var(--app-bg-sunken);     /* Inset Cloud */
-  --paper-3: #DEE7F2;                  /* deeper paper tier (brief) */
-  --ink: var(--app-ink);               /* Navy */
+  --paper: var(--app-bg);              /* White */
+  --paper-2: var(--app-bg-sunken);     /* Soft gray */
+  --paper-3: color-mix(in srgb, var(--app-media-ink) 10%, var(--app-paper));                  /* deeper paper tier (brief) */
+  --ink: var(--app-ink);               /* Charcoal */
   --ink-2: var(--app-ink-2);
   --ink-3: var(--app-ink-3);           /* AA-held, see note above */
   --clay: var(--app-brand);            /* the one sharp accent */
-  --clay-deep: var(--app-brand-press);  /* pressed-state Cobalt */
+  --clay-deep: var(--app-brand-press);  /* pressed-state Deep Coral */
   --clay-soft: var(--app-brand-tint-14);
   --moss: var(--app-positive);         /* civic / open status only */
 
@@ -259,23 +262,22 @@
   }
 }
 
-/* Follow the OS color scheme. Filled actions keep Cobalt and white;
+/* A deliberate dark choice uses Charcoal grounds. Filled actions keep Deep Coral and white;
  * links and supporting text use separately measured dark foregrounds. */
-@media (prefers-color-scheme: dark) {
-  :root {
+:root[data-appearance="dark"] {
     color-scheme: dark;
     --app-native-scheme: dark;
-    --app-bg: #0D1725;
-    --app-bg-elevated-solid: #152338;
+    --app-bg: #1C1C19;
+    --app-bg-elevated-solid: #292925;
     --app-bg-elevated: var(--app-bg-elevated-solid);
-    --app-bg-sunken: #111F32;
-    --app-ink: #F0F5FF;
-    --app-ink-2: #B1C2D9;
-    --app-ink-3: #B1C2D9;
-    --app-border: #30415B;
+    --app-bg-sunken: #242420;
+    --app-ink: #F7F7F4;
+    --app-ink-2: #C1C1B8;
+    --app-ink-3: #C1C1B8;
+    --app-border: #464640;
     --app-border-strong: var(--app-border);
-    --app-control-border: #91A4C0;
-    --app-link: #91B6FF;
+    --app-control-border: #A5A59A;
+    --app-link: #FFAAA0;
     --state-open: color-mix(in srgb, var(--app-positive) 55%, var(--app-paper));
     --state-closing: color-mix(in srgb, var(--app-warning) 50%, var(--app-paper));
     --state-closed: var(--app-ink-3);
@@ -284,7 +286,6 @@
     --app-danger-text: color-mix(in srgb, var(--app-danger) 55%, var(--app-paper));
     --app-live-text: var(--app-amber);
     --app-hi: inset 0 1px 0 color-mix(in srgb, var(--app-paper) 6%, transparent);
-  }
 }
 
 /* Neutral listing grammar belongs only to the four primary destinations.

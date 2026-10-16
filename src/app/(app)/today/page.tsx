@@ -275,7 +275,7 @@ export default async function HomePage() {
       <TodayMasthead
         title={todayFrame(easternStartHour(now.toISOString())).title}
         weather={
-          <Suspense fallback={<Skeleton.Block height={148} round="var(--app-radius-md)" />}>
+          <Suspense fallback={<Skeleton.Block height={100} round="var(--app-radius-lg)" />}>
             <TodayCard density="masthead" />
           </Suspense>
         }
