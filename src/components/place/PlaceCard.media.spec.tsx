@@ -397,10 +397,12 @@ describe("PlaceCard selected media and credit", () => {
     expect(observe).toHaveBeenCalledWith(container.querySelector("article"));
     expect(hydrate).not.toHaveBeenCalled();
     expect(photo()).toBeNull();
+    expect(container.querySelector('article[data-place-card-has-photo="false"]')).not.toBeNull();
     await act(async () => enterViewport!());
     expect(hydrate).toHaveBeenCalledTimes(1);
     expect(hydrate).toHaveBeenCalledWith(slim.slug);
     expect(photo()?.getAttribute("src")).toContain("w=720");
+    expect(container.querySelector('article[data-place-card-has-photo="true"]')).not.toBeNull();
     expect(loadedCredit()).toBeNull();
     await load(photo()!);
     expect(loadedCredit()?.textContent).toContain("Photo contributor");

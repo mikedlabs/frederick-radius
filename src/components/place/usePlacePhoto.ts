@@ -15,11 +15,11 @@ import { mapListPhotoLoader, type PlacePhotoData } from "@/components/map/map-li
  * painted: bare /nearby paints zero photos, /open-now paints ~30 of 770.
  *
  * Why hydration goes through /api/places/by-slugs rather than a slug→photo
- * shortcut: that route runs the full server loader, so the photo-suppression
- * de-twin (PHOTO_SUPPRESS) and OV_PATCH.clearPhoto verdicts keep applying. A
- * suppressed record answers "no photo" here exactly as it does everywhere
- * else — resolving photos any other way would quietly hand those records
- * their wrong photo back.
+ * shortcut: that route restores the primary photo credit from the server
+ * index and applies photo-suppression (PHOTO_SUPPRESS) plus
+ * OV_PATCH.clearPhoto. A suppressed record answers "no photo" here exactly
+ * as it does everywhere else — resolving photos any other way would quietly
+ * hand those records their wrong photo back.
  *
  * Contract: `undefined` = not yet known (caller shows its fallback quietly),
  * string = photo URL, null = asked and there is none (fallback is the honest

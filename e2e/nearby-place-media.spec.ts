@@ -146,3 +146,57 @@ for (const width of [320, 375, 390, 430]) {
     }) });
   });
 }
+
+// Opaque 128x128 PNG stays above the failure signal after density correction.
+const DECODED_IMAGE = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+klEQVR4nO3RQQ0AIAzAwFlCAy7wLwQZe/SSCmhyc97VYrN+EA8AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2n3CYoL+9wOv8gAAAABJRU5ErkJggg==", "base64");
+
+test("Nearby food hydrates a policy-passing Google photo with its required credit", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const cafe = "cafe-nola";
+  const bySlugs: Array<{ slug: string; photo_name?: string; google_maps_uri?: string; authors?: unknown }> = [];
+  await page.route("**/api/place-photo?**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: DECODED_IMAGE,
+      headers: { "Cache-Control": "public, max-age=300" },
+    }),
+  );
+  page.on("response", async (response) => {
+    const url = new URL(response.url());
+    if (url.pathname !== "/api/places/by-slugs" || !response.ok()) return;
+    const body = await response.json().catch(() => null) as {
+      places?: Array<{
+        slug?: string;
+        google_photo_attribution?: { photo_name?: string; google_maps_uri?: string; authors?: unknown };
+      }>;
+    } | null;
+    for (const place of body?.places ?? []) {
+      if (typeof place.slug === "string") {
+        bySlugs.push({
+          slug: place.slug,
+          photo_name: place.google_photo_attribution?.photo_name,
+          google_maps_uri: place.google_photo_attribution?.google_maps_uri,
+          authors: place.google_photo_attribution?.authors,
+        });
+      }
+    }
+  });
+  const response = await page.goto("/nearby?c=food&in=frederick", { waitUntil: "domcontentloaded" });
+  expect(response?.status()).toBe(200);
+  const heading = page.getByRole("heading", { name: "Cafe Nola", exact: true });
+  const card = page.locator("article").filter({ has: heading });
+  await heading.scrollIntoViewIfNeeded();
+  await expect(card).toHaveAttribute("data-place-card-has-photo", "true");
+  const image = card.locator('[data-place-card-photo-source="google"] img');
+  await expect(image).toBeVisible();
+  await expect.poll(() => image.evaluate((node) => (node as HTMLImageElement).naturalWidth)).toBeGreaterThan(1);
+  const credit = card.locator(".place-card-photo-credit");
+  await expect(credit).toBeVisible();
+  await expect(credit).toContainText("Google Maps");
+  const cafeCredit = bySlugs.find((place) => place.slug === cafe);
+  expect(cafeCredit?.photo_name).toMatch(/^places\/.+\/photos\/.+/);
+  expect(cafeCredit?.google_maps_uri).toMatch(/^https:\/\/(?:www\.)?google\.com\/maps\//);
+  expect(Array.isArray(cafeCredit?.authors)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("nearby-food-photo-credit-390.png") });
+});
