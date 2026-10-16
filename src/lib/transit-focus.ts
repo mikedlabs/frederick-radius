@@ -1,12 +1,34 @@
 export const TRANSIT_ROUTE_FOCUS_EVENT = "fr:transit-route-focus";
 export const TRANSIT_VEHICLE_FOCUS_EVENT = "fr:transit-vehicle-focus";
+export const TRANSIT_STOP_FOCUS_EVENT = "fr:transit-stop-focus";
 const TRANSIT_ROUTE_FOCUS_KEY = "fr:transit-route-focus:v1";
 const TRANSIT_VEHICLE_FOCUS_KEY = "fr:transit-vehicle-focus:v1";
+const TRANSIT_STOP_FOCUS_KEY = "fr:transit-stop-focus:v1";
 export const TRANSIT_VEHICLE_POSITION_FRESH_MS = 40_000;
 
 export type TransitRouteFocusDetail = {
   routeId: string;
 };
+
+/** Stop identity is resolved from the current GTFS catalog by each consumer.
+ * External event payloads never supply a stop's coordinates or name. */
+export type TransitStopFocusDetail = {
+  stopId: string;
+  /** Only the explicit map-preview action changes the rider's chosen stop. */
+  selectForRider?: boolean;
+};
+
+export function isTransitStopFocusDetail(
+  value: unknown,
+): value is TransitStopFocusDetail {
+  if (!value || typeof value !== "object") return false;
+  const detail = value as Partial<TransitStopFocusDetail>;
+  return (
+    typeof detail.stopId === "string" &&
+    detail.stopId.trim().length > 0 &&
+    (detail.selectForRider === undefined || typeof detail.selectForRider === "boolean")
+  );
+}
 
 export type TransitFocusPoint = {
   lng: number;
@@ -131,7 +153,9 @@ export function findCurrentTransitVehicle<
  * so a tap made during that gap is not lost.
  */
 export function requestTransitRouteFocus(routeId: string): void {
+  if (typeof routeId !== "string" || routeId.trim().length === 0) return;
   clearPendingTransitVehicleFocus();
+  clearPendingTransitStopFocus();
   try {
     window.sessionStorage.setItem(TRANSIT_ROUTE_FOCUS_KEY, routeId);
   } catch {
@@ -153,6 +177,7 @@ export function requestTransitVehicleFocus(
 ): boolean {
   if (!isTransitVehicleFocusDetail(detail)) return false;
   clearPendingTransitRouteFocus();
+  clearPendingTransitStopFocus();
   try {
     window.sessionStorage.setItem(
       TRANSIT_VEHICLE_FOCUS_KEY,
@@ -203,6 +228,51 @@ export function clearPendingTransitRouteFocus(): void {
 export function clearPendingTransitVehicleFocus(): void {
   try {
     window.sessionStorage.removeItem(TRANSIT_VEHICLE_FOCUS_KEY);
+  } catch {
+    // No action required.
+  }
+}
+
+/** One latest intent survives the deferred map chunk, regardless of its kind. */
+export function requestTransitStopFocus(detail: TransitStopFocusDetail): boolean {
+  if (!isTransitStopFocusDetail(detail)) return false;
+  clearPendingTransitRouteFocus();
+  clearPendingTransitVehicleFocus();
+  // Keep only the typed identity fields, even if an event caller supplied extras.
+  const intent: TransitStopFocusDetail = {
+    stopId: detail.stopId,
+    ...(detail.selectForRider == null
+      ? {}
+      : { selectForRider: detail.selectForRider }),
+  };
+  try {
+    window.sessionStorage.setItem(TRANSIT_STOP_FOCUS_KEY, JSON.stringify(intent));
+  } catch {
+    // The live event still works when storage is unavailable.
+  }
+  window.dispatchEvent(
+    new CustomEvent<TransitStopFocusDetail>(TRANSIT_STOP_FOCUS_EVENT, {
+      detail: intent,
+    }),
+  );
+  return true;
+}
+
+export function takePendingTransitStopFocus(): TransitStopFocusDetail | null {
+  try {
+    const raw = window.sessionStorage.getItem(TRANSIT_STOP_FOCUS_KEY);
+    window.sessionStorage.removeItem(TRANSIT_STOP_FOCUS_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    return isTransitStopFocusDetail(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingTransitStopFocus(): void {
+  try {
+    window.sessionStorage.removeItem(TRANSIT_STOP_FOCUS_KEY);
   } catch {
     // No action required.
   }

@@ -43,7 +43,7 @@ describe("Today decision hierarchy", () => {
     expect(events).toBeGreaterThan(weather);
   });
 
-  it("puts one set of four quick needs after the photo before the answer, with categories after news", () => {
+  it("keeps the exact scene and real answer before the four quick needs, with categories after news", () => {
     const find = renderedPage.indexOf("<TodayAsk embedded showQuickNeeds={false}");
     const doorway = renderedPage.indexOf("<TodayGeographicDoorway />");
     const shortcuts = renderedPage.indexOf("<TodayQuickNeeds />");
@@ -54,8 +54,8 @@ describe("Today decision hierarchy", () => {
 
     expect(find).toBeGreaterThan(-1);
     expect(doorway).toBeGreaterThan(find);
-    expect(shortcuts).toBeGreaterThan(doorway);
-    expect(lead).toBeGreaterThan(shortcuts);
+    expect(lead).toBeGreaterThan(doorway);
+    expect(shortcuts).toBeGreaterThan(lead);
     expect(events).toBeGreaterThan(lead);
     expect(news).toBeGreaterThan(events);
     expect(categories).toBeGreaterThan(news);
@@ -134,6 +134,8 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage).toContain("fairPromotionPhase ? (");
     expect(renderedPage).toContain(": civicMoment ? (");
     expect(renderedPage.match(/<TodayFairFeature\b/g)).toHaveLength(1);
+    expect(todayPage).toContain('from "@/components/today/TodayFairFeatureIsland"');
+    expect(todayPage).not.toContain('from "@/components/today/TodayFairFeature"');
   });
 
   it("puts In The Streets ahead of the ordinary briefing on its actual day", () => {
@@ -241,7 +243,9 @@ describe("Today decision hierarchy", () => {
     expect(disclosureStart).toBeGreaterThan(-1);
     expect(disclosureEnd).toBeGreaterThan(disclosureStart);
     expect(disclosure).toContain("<TodayLocalGuides");
-    expect(disclosure).toContain("fallback={<TodayFoodTruckGuide />}");
+    expect(disclosure).toContain("fallback={<TodayFoodTruckGuide foodTruckCount={FOOD_TRUCKS.length} />}");
+    expect(disclosure).toContain("breweryCount={BREWERIES.length}");
+    expect(disclosure).toContain("foodTruckCount={FOOD_TRUCKS.length}");
     expect(disclosure).toContain("<TodayFoodTruckGuideWithSchedule");
     expect(disclosure).toContain("<FromYourSaved");
     expect(disclosure).toContain("<WeekendPreview");

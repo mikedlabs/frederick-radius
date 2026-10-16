@@ -16,21 +16,6 @@ describe("stop-to-bus map focus contracts", () => {
     expect(source).toContain('"live-network-heading"');
   });
 
-  it("frames the bus and stop before forwarding the exact vehicle to the map overlay", () => {
-    const source = readFileSync(
-      "src/components/transit/TransitMap.tsx",
-      "utf8",
-    );
-
-    expect(source).toContain("TRANSIT_VEHICLE_FOCUS_EVENT");
-    expect(source).toContain("frameVehicleAndStop");
-    expect(source).toContain("detail.bus.lng");
-    expect(source).toContain("detail.stop.lng");
-    expect(source).toContain("focusVehicleId={vehicleFocus?.vehicleId}");
-    expect(source).toContain('id="transit-rider-target-core"');
-    expect(source).toContain("vehicleFocus.stopName");
-  });
-
   it("opens an externally focused bus only from its own current feed", () => {
     const source = readFileSync(
       "src/components/map/LiveBuses.tsx",

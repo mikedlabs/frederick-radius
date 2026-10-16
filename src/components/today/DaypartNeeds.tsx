@@ -322,6 +322,7 @@ function leadDistanceClause(distance: string | null | undefined): string | null 
  * the live answer cannot state either one. */
 export function daypartLeadReason(
   picks: readonly DaypartPick[],
+  { includeEditorialLabels = true }: { includeEditorialLabels?: boolean } = {},
 ): string | null {
   const lead = picks[0];
   if (!lead) return null;
@@ -331,7 +332,10 @@ export function daypartLeadReason(
   if (availability) return `${availability}.`;
   if (distance) return `It is ${distance}.`;
 
-  const reasons = lead.decisionReasons ?? [];
+  // A curation tag alone does not explain a concrete benefit in the brief
+  // answer. Full comparison surfaces retain their existing editorial labels.
+  const reasons = (lead.decisionReasons ?? []).filter((reason) =>
+    includeEditorialLabels || !["local-favorite", "hidden-gem"].includes(reason.id));
   const priority = [
     "availability",
     "proximity",
@@ -794,7 +798,9 @@ export default function DaypartNeeds({
   // When the transition leads visually, a reason about picks[0] would explain
   // the wrong card. The opening-soon card already carries its actionable hours
   // evidence, so reserve "Why it leads" for a current place that truly leads.
-  const leadReason = openingSoonFirst ? null : daypartLeadReason(decisionPicks);
+  const leadReason = openingSoonFirst ? null : daypartLeadReason(decisionPicks, {
+    includeEditorialLabels: variant !== "brief",
+  });
   const hasVisibleRecommendation =
     visiblePicks.length > 0 || Boolean(active.openingSoon);
 
@@ -806,7 +812,7 @@ export default function DaypartNeeds({
     >
       <TodaySectionHeading
         title={shelfHeading.title}
-        meta={contextLabel}
+        meta={variant === "brief" ? undefined : contextLabel}
         href={active.href}
         cta={variant === "brief" ? "Browse places" : "See all"}
       />

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { ArrowRight, FerrisWheel } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { readFairPlan, type FairPlan } from "@/lib/fair/plan";
+import type { FairPlan } from "@/lib/fair/plan";
 import { buildFairPlanStatus } from "@/lib/fair/plan-status";
 import styles from "./TodayLayout.module.css";
 import {
@@ -46,19 +46,28 @@ export default function TodayFairFeature({
   const [savedPlan, setSavedPlan] = useState<FairPlan | null>(null);
 
   useEffect(() => {
+    let active = true;
     const refreshPlan = () => {
-      try {
-        setSavedPlan(readFairPlan(window.localStorage));
-      } catch {
-        // Some privacy modes throw while the storage property itself is read,
-        // before readFairPlan can guard its getItem call.
-        setSavedPlan(null);
-      }
+      // The Zod-backed reader is needed only by this mounted campaign. Keep
+      // its module out of the static feature imports and read current storage
+      // after it resolves, so a saved plan is never an outdated snapshot.
+      void import("@/lib/fair/plan").then(({ readFairPlan }) => {
+        if (!active) return;
+        try {
+          setSavedPlan(readFairPlan(window.localStorage));
+        } catch {
+          // The storage property can itself throw in privacy modes.
+          setSavedPlan(null);
+        }
+      }).catch(() => {
+        if (active) setSavedPlan(null);
+      });
     };
     refreshPlan();
     window.addEventListener("storage", refreshPlan);
     window.addEventListener("pageshow", refreshPlan);
     return () => {
+      active = false;
       window.removeEventListener("storage", refreshPlan);
       window.removeEventListener("pageshow", refreshPlan);
     };
