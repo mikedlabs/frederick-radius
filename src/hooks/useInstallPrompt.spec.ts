@@ -1,9 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  FIRST_VISIT_INSTALL_DELAY_MS,
+  RETURN_REVEAL_DELAY_MS,
+  VALUE_REVEAL_DELAY_MS,
   requestBrowserInstall,
   shouldAutoOfferInstall,
 } from "./useInstallPrompt";
+import {
+  RETURN_BRIDGE_DISMISS_MS,
+  beginReturnBridgeSession,
+  dismissReturnBridge,
+  emptyReturnBridgeState,
+  markReturnBridgeOfferShown,
+  recordReturnBridgeValue,
+  returnBridgeOfferReason,
+} from "@/lib/return-bridge";
 
 describe("requestBrowserInstall", () => {
   it("opens the browser-owned install dialog and returns acceptance", async () => {
@@ -29,29 +39,76 @@ describe("requestBrowserInstall", () => {
 });
 
 describe("automatic Home Screen invitation", () => {
-  const iphone =
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1";
-  const android =
-    "Mozilla/5.0 (Linux; Android 15; Pixel 9 Pro) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36";
+  const NOW = Date.parse("2026-07-31T16:00:00.000Z");
 
-  it("waits ten seconds before the first mobile invitation", () => {
-    expect(FIRST_VISIT_INSTALL_DELAY_MS).toBe(10_000);
+  it("reveals the save banner quickly and the return banner after first paint", () => {
+    expect(VALUE_REVEAL_DELAY_MS).toBe(1_200);
+    expect(RETURN_REVEAL_DELAY_MS).toBe(400);
   });
 
-  it("automatically invites phones but leaves desktop behind the manual door", () => {
-    expect(shouldAutoOfferInstall("visit", iphone)).toBe(true);
-    expect(shouldAutoOfferInstall("visit", android)).toBe(true);
+  it("never auto-opens on a first visit, including social entry", () => {
+    expect(shouldAutoOfferInstall("visit")).toBe(false);
+    expect(shouldAutoOfferInstall("social")).toBe(false);
+    expect(shouldAutoOfferInstall(null)).toBe(false);
+
+    const firstVisit = beginReturnBridgeSession(emptyReturnBridgeState(), NOW);
     expect(
       shouldAutoOfferInstall(
-        "visit",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)",
+        returnBridgeOfferReason(firstVisit, { socialEntry: false, now: NOW }),
+      ),
+    ).toBe(false);
+    expect(
+      shouldAutoOfferInstall(
+        returnBridgeOfferReason(firstVisit, { socialEntry: true, now: NOW }),
       ),
     ).toBe(false);
   });
 
-  it("keeps higher-intent value and return invitations available", () => {
-    expect(shouldAutoOfferInstall("value", "desktop")).toBe(true);
-    expect(shouldAutoOfferInstall("return", "desktop")).toBe(true);
-    expect(shouldAutoOfferInstall(null, iphone)).toBe(false);
+  it("auto-offers after a second visit or a save", () => {
+    expect(shouldAutoOfferInstall("value")).toBe(true);
+    expect(shouldAutoOfferInstall("return")).toBe(true);
+
+    const firstVisit = beginReturnBridgeSession(emptyReturnBridgeState(), NOW);
+    const saved = recordReturnBridgeValue(firstVisit, "place", NOW + 1);
+    expect(
+      shouldAutoOfferInstall(
+        returnBridgeOfferReason(saved, { socialEntry: false, now: NOW + 1 }),
+      ),
+    ).toBe(true);
+
+    const returnVisit = { ...firstVisit, sessions: 2 };
+    expect(
+      shouldAutoOfferInstall(
+        returnBridgeOfferReason(returnVisit, { socialEntry: false, now: NOW }),
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps the banner hidden through a 30-day dismissal", () => {
+    const returnVisit = {
+      ...beginReturnBridgeSession(emptyReturnBridgeState(), NOW),
+      sessions: 2,
+    };
+    const dismissed = dismissReturnBridge(
+      markReturnBridgeOfferShown(returnVisit, NOW),
+      NOW,
+    );
+
+    expect(
+      shouldAutoOfferInstall(
+        returnBridgeOfferReason(dismissed, {
+          socialEntry: false,
+          now: NOW + RETURN_BRIDGE_DISMISS_MS - 1,
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      shouldAutoOfferInstall(
+        returnBridgeOfferReason({ ...dismissed, sessions: 3 }, {
+          socialEntry: false,
+          now: NOW + RETURN_BRIDGE_DISMISS_MS,
+        }),
+      ),
+    ).toBe(true);
   });
 });
