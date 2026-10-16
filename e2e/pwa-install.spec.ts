@@ -134,7 +134,7 @@ test.describe("Home Screen installation", () => {
       await expect(page.locator("main h1")).toBeVisible();
     });
 
-    test("shows a slim banner on a later visit and keeps Safari steps behind How", async ({
+    test("shows a slim banner on a later visit and keeps Safari steps behind Add", async ({
       page,
     }) => {
       await page.addInitScript(() => {
@@ -155,7 +155,7 @@ test.describe("Home Screen installation", () => {
       const panel = page.locator("[data-return-bridge]");
       await expect(panel).toHaveAttribute("data-presentation", "banner");
       await expect(panel).toHaveAttribute("data-surface", "ios-safari");
-      await panel.getByRole("button", { name: "How" }).click();
+      await panel.getByRole("button", { name: "Add", exact: true }).click();
       await expect(panel).toHaveAttribute("data-presentation", "panel");
       await expect(panel).toContainText(
         "In Safari, tap Share, choose Add to Home Screen",

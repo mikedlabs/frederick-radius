@@ -191,7 +191,7 @@ export default function InstallPrompt() {
               size="sm"
               className="shrink-0"
             >
-              How
+              Add
             </Button>
           )}
           <button
