@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "./PlaceCardPhoto";
 import { usePlacePhotoData } from "@/components/place/usePlacePhoto";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -196,7 +196,11 @@ export default function PlaceCard({
   const cat = CATEGORY_BY_SLUG[place.category];
   const color = cat?.color ?? "var(--app-brand)";
   const { openSheet } = usePlaceSheet();
-  const openDetail = () => { haptic("light"); openSheet(place); };
+  const openDetail = (event: MouseEvent<HTMLButtonElement>) => {
+    haptic("light");
+    // Safari pointer taps do not reliably focus buttons before opening a sheet.
+    openSheet(place, { returnFocus: event.currentTarget });
+  };
   // Chain locations often share the same visible name. Give every card action
   // enough location context for voice control and screen readers to distinguish
   // the downtown result from the one across the county.

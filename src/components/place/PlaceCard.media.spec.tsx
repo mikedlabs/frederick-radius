@@ -143,7 +143,7 @@ describe("PlaceCard selected media and credit", () => {
     expect(container.querySelector("h3")?.textContent).toBe(place.name);
     const open = container.querySelector<HTMLButtonElement>('button[aria-label^="View "]')!;
     await act(async () => open.click());
-    expect(actions.openSheet).toHaveBeenCalledWith(place);
+    expect(actions.openSheet).toHaveBeenCalledWith(place, { returnFocus: container.querySelector('button[aria-label^="View "]') });
     const save = container.querySelector<HTMLButtonElement>("[data-save-ref]");
     if (variant !== "grid") {
       expect(save?.getAttribute("data-save-ref")).toBe(`place:${place.slug}`);
@@ -331,7 +331,8 @@ describe("PlaceCard selected media and credit", () => {
     expect(actions.save).toHaveBeenCalledWith("place", owned.slug);
     expect(actions.openSheet).not.toHaveBeenCalled();
     await act(async () => open.click());
-    expect(actions.openSheet).toHaveBeenCalledWith(owned);
+    expect(document.activeElement).not.toBe(open);
+    expect(actions.openSheet).toHaveBeenCalledWith(owned, { returnFocus: open });
   });
 
   it("keeps a missing discovery visual compact with one quiet unknown-hours line", async () => {
