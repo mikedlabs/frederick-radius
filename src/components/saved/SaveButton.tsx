@@ -95,6 +95,8 @@ export default function SaveButton({
       <button
         type="button"
         data-save-ref={`${refType}:${refId}`}
+        disabled
+        aria-busy="true"
         aria-hidden
         tabIndex={-1}
         className={barLabel

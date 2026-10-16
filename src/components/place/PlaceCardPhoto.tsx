@@ -7,11 +7,13 @@ import { GooglePhotoAttributionLine } from "./GoogleAttribution";
 
 /** A photograph of the selected place, supplied by the canonical loader.
  * A missing or failed photo leaves the card's real name and facts intact. */
-export default function PlaceCardPhoto({ source, onResult, width = 360, frame = "hero" }: {
+export default function PlaceCardPhoto({ source, onResult, width = 360, frame = "hero", sizes }: {
   source: PlaceCardPhotoSource | null;
   onResult: (src: string, result: PlaceCardPhotoResult) => void;
   width?: number;
   frame?: "hero" | "row" | "compact-row";
+  /** The actual responsive frame; existing fixed-width surfaces keep their defaults. */
+  sizes?: string;
 }) {
   if (!source) return null;
   return (
@@ -26,7 +28,7 @@ export default function PlaceCardPhoto({ source, onResult, width = 360, frame = 
         src={source.src}
         alt={source.alt}
         fill
-        sizes={width === 180 ? "(max-width: 640px) 50vw, 180px" : `${width}px`}
+        sizes={sizes ?? (width === 180 ? "(max-width: 640px) 50vw, 180px" : `${width}px`)}
         unoptimized={source.kind === "google"}
         placeholder="blur"
         blurDataURL={PAPER_CREAM_BLUR}

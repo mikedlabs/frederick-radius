@@ -11,11 +11,11 @@ const actions = vi.hoisted(() => ({ openSheet: vi.fn(), save: vi.fn() }));
 const imageLoads = vi.hoisted(() => new Map<string, ImgHTMLAttributes<HTMLImageElement>["onLoad"]>());
 vi.mock("next/image", () => ({
   // A native image lets the mounted test deliver load/error without a network request.
-  default: ({ src, alt, onLoad, onError }: ImgHTMLAttributes<HTMLImageElement>) => {
+  default: ({ src, alt, onLoad, onError, sizes }: ImgHTMLAttributes<HTMLImageElement>) => {
     if (typeof src !== "string") throw new Error("The media fixture requires an explicit image URL.");
     imageLoads.set(src, onLoad);
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={alt} onLoad={onLoad} onError={onError} />;
+    return <img src={src} alt={alt} sizes={sizes} onLoad={onLoad} onError={onError} />;
   },
 }));
 vi.mock("./PlaceSheetProvider", () => ({ usePlaceSheet: () => ({ openSheet: actions.openSheet }) }));
@@ -56,7 +56,7 @@ describe("PlaceCard selected media and credit", () => {
     root = createRoot(container);
   });
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-  async function render(cardPlace = place, variant: "answer" | "feature" | "tile" | "grid" | "row" = "answer") {
+  async function render(cardPlace = place, variant: "answer" | "feature" | "tile" | "grid" | "row" | "discovery" = "answer") {
     await act(async () => root.render(<PlaceCard place={cardPlace} variant={variant} showSource={false} />));
   }
   function photo() { return container.querySelector<HTMLImageElement>("[data-place-card-photo] img"); }
@@ -110,7 +110,7 @@ describe("PlaceCard selected media and credit", () => {
     }
   });
 
-  it.each(["feature", "answer", "grid", "tile", "row"] as const)("keeps the %s card's loaded source, credit, and actions together through both failures", async (variant) => {
+  it.each(["feature", "answer", "grid", "tile", "row", "discovery"] as const)("keeps the %s card's loaded source, credit, and actions together through both failures", async (variant) => {
     await render(place, variant);
     const googleImage = photo()!;
     expect(googleImage.getAttribute("src")).toContain("fallback=signal");
@@ -308,6 +308,101 @@ describe("PlaceCard selected media and credit", () => {
     await act(async () => intersections.at(-1)!());
     expect(photo()).toBeNull();
     expect(container.querySelector(".place-card-photo-credit")).toBeNull();
+  });
+
+  it("gives discovery the exact owned full-width photo with independent real actions", async () => {
+    const owned = { ...place, slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park",
+      google_photo_url: undefined, google_photo_attribution: undefined };
+    await render(owned, "discovery");
+    expect(photo()?.getAttribute("src")).toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+    expect(photo()?.getAttribute("sizes")).toBe("(max-width: 640px) calc(100vw - 32px), 600px");
+    expect(container.querySelector('article[data-place-card-has-photo="true"]')).not.toBeNull();
+    await load(photo()!);
+    expect(container.querySelector(".place-card-photo-credit")).toBeNull();
+    const open = container.querySelector<HTMLButtonElement>('button[aria-label^="View "]')!;
+    const save = container.querySelector<HTMLButtonElement>("[data-save-ref]")!;
+    const directions = container.querySelector<HTMLAnchorElement>('a[aria-label^="Directions to "]')!;
+    expect(directions.getAttribute("href")).toBe(`https://www.google.com/maps/dir/?api=1&destination=${owned.geom.lat},${owned.geom.lng}`);
+    expect(directions.target).toBe("_blank");
+    expect(directions.rel).toContain("noopener");
+    expect(save.closest('button[aria-label^="View "]')).toBeNull();
+    expect(directions.closest("button")).toBeNull();
+    await act(async () => save.click());
+    expect(actions.save).toHaveBeenCalledWith("place", owned.slug);
+    expect(actions.openSheet).not.toHaveBeenCalled();
+    await act(async () => open.click());
+    expect(actions.openSheet).toHaveBeenCalledWith(owned);
+  });
+
+  it("keeps a missing discovery visual compact with one quiet unknown-hours line", async () => {
+    await render({ ...place, slug: "unregistered-place", google_photo_url: undefined, google_photo_attribution: undefined,
+      field_note_tip: "A supplied detail that stays off the compact fallback.", known_for: [place.name] }, "discovery");
+    expect(photo()).toBeNull();
+    expect(container.querySelector("[data-place-card-photo]")).toBeNull();
+    expect(container.querySelector('article[data-place-card-has-photo="false"]')).not.toBeNull();
+    expect(container.textContent?.match(/Hours not confirmed/g)).toHaveLength(1);
+    expect(container.querySelector("h3")?.textContent).toBe(place.name);
+    expect(container.textContent).not.toContain("A supplied detail");
+    expect(container.querySelector('[data-save-ref="place:unregistered-place"]')).not.toBeNull();
+    expect(container.querySelector('a[aria-label^="Directions to "]')).not.toBeNull();
+  });
+
+  it("shows the actual confirmed status and only one supplied discovery fact", async () => {
+    const fact = "The entrance is beside the garden on Market Street.";
+    await render({ ...place, slug: "carroll-creek-linear-park-frederick", google_photo_url: undefined, google_photo_attribution: undefined,
+      open_status: { state: "closed" }, field_note_tip: fact,
+      known_for: ["A second fact that should stay on the detail page."] }, "discovery");
+    expect(container.textContent).toContain("Closed");
+    expect(container.textContent).not.toContain("Hours not confirmed");
+    expect(container.textContent).toContain(fact);
+    expect(container.textContent).not.toContain("A second fact");
+    expect(container.querySelector('[aria-label="Reasons this is shown"]')).toBeNull();
+  });
+
+  it("keeps discovery attribution bound to the selected image and outside all actions", async () => {
+    await render(place, "discovery");
+    const first = photo()!;
+    await load(first);
+    expect(loadedCredit()?.textContent).toContain("Photo contributor");
+    for (const link of loadedCredit()!.querySelectorAll("a")) expect(link.closest("button")).toBeNull();
+    await fail(first);
+    expect(loadedCredit()).toBeNull();
+    await load(photo()!);
+    expect(loadedCredit()?.textContent).toContain("Engineerchange");
+    expect(loadedCredit()?.textContent).not.toContain("Photo contributor");
+    await fail(photo()!);
+    expect(container.querySelector("[data-place-card-photo]")).toBeNull();
+    expect(container.querySelector(".place-card-photo-credit")).toBeNull();
+    expect(container.querySelector('[data-save-ref]')).not.toBeNull();
+    expect(container.querySelector('a[aria-label^="Directions to "]')).not.toBeNull();
+  });
+
+  it("observes the whole discovery card before using the existing lazy metadata loader", async () => {
+    const observe = vi.fn();
+    let enterViewport: (() => void) | undefined;
+    vi.stubGlobal("IntersectionObserver", class {
+      constructor(callback: IntersectionObserverCallback) {
+        enterViewport = () => callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+      }
+      observe = observe;
+      disconnect() {}
+    });
+    vi.spyOn(mapListPhotoLoader, "peekData").mockReturnValue(undefined);
+    const hydrate = vi.spyOn(mapListPhotoLoader, "loadData").mockResolvedValue({
+      google_photo_url: place.google_photo_url!, google_photo_attribution: place.google_photo_attribution,
+    });
+    const slim = { ...place, slug: "unregistered-place", google_photo_url: undefined, google_photo_attribution: undefined };
+    await act(async () => root.render(<PlaceCard place={slim} variant="discovery" lazyPhoto />));
+    expect(observe).toHaveBeenCalledWith(container.querySelector("article"));
+    expect(hydrate).not.toHaveBeenCalled();
+    expect(photo()).toBeNull();
+    await act(async () => enterViewport!());
+    expect(hydrate).toHaveBeenCalledTimes(1);
+    expect(hydrate).toHaveBeenCalledWith(slim.slug);
+    expect(photo()?.getAttribute("src")).toContain("w=720");
+    expect(loadedCredit()).toBeNull();
+    await load(photo()!);
+    expect(loadedCredit()?.textContent).toContain("Photo contributor");
   });
 
 });
