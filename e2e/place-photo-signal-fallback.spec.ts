@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
 
 // The route contract independently decodes its actual signal bytes. Here the
 // same transport fixture exercises the mounted card in both browser engines,
@@ -7,7 +8,11 @@ const TRANSPARENT_PIXEL = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=",
   "base64",
 );
-type SignalLoad = { naturalWidth: number; naturalHeight: number; paintedWidth: number; paintedHeight: number };
+type SignalLoad = { naturalWidth: number; naturalHeight: number; paintedWidth: number; paintedHeight: number; placeName: string | null; sourceUrl: string };
+const FALLBACK_PLACE_SLUG = "dancing-bear-toys-and-games";
+const fallbackPhotoRecord = (JSON.parse(readFileSync("src/data/places-enrichment.json", "utf8")) as Record<string, {
+  google_place_id: string; photo_names: string[]; photo_attributions: { photo_name: string }[];
+}>)[FALLBACK_PLACE_SLUG];
 
 test.use({ viewport: { width: 390, height: 844 }, serviceWorkers: "block", ignoreHTTPSErrors: false });
 
@@ -23,21 +28,36 @@ test("a failed photo signal collapses its place face and keeps the real listing 
       void (window as unknown as { recordPhotoSignalLoad: (value: SignalLoad) => Promise<void> }).recordPhotoSignalLoad({
         naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight,
         paintedWidth: rect.width, paintedHeight: rect.height,
+        placeName: img.closest("article")?.querySelector("h3")?.textContent?.trim() ?? null,
+        sourceUrl: img.currentSrc || img.src,
       });
     }, true);
   });
   await context.addCookies([{ name: "fr_onboarded", value: "1", url: baseURL! }]);
   let interceptedPhotos = 0;
+  let blockedGoogleRequests = 0;
+  let blockedEnrichmentRequests = 0;
+  const interceptedPhotoNames = new Set<string>();
   await page.route("**/*", async (route) => {
     const request = route.request();
     if (!["GET", "HEAD"].includes(request.method())) return route.abort("blockedbyclient");
     const url = new URL(request.url());
     const optimizedSource = url.searchParams.get("url") ?? "";
+    if (/(^|\.)(googleapis\.com|googleusercontent\.com)$/.test(url.hostname)) {
+      blockedGoogleRequests += 1;
+      return route.abort("blockedbyclient");
+    }
+    if (url.pathname === `/api/place/${FALLBACK_PLACE_SLUG}/enrich`) {
+      blockedEnrichmentRequests += 1;
+      return route.abort("blockedbyclient");
+    }
     if (/wikimedia\.org$/.test(url.hostname) || optimizedSource.startsWith("https://commons.wikimedia.org/")) {
       return route.abort("blockedbyclient");
     }
     if (url.pathname === "/api/place-photo") {
       interceptedPhotos += 1;
+      const photoName = url.searchParams.get("name");
+      if (photoName) interceptedPhotoNames.add(photoName);
       return route.fulfill({ status: 200, contentType: "image/png", body: TRANSPARENT_PIXEL,
         headers: { "X-Photo-Fallback": "upstream-400", "Cache-Control": "public, max-age=300, s-maxage=300" } });
     }
@@ -51,18 +71,45 @@ test("a failed photo signal collapses its place face and keeps the real listing 
   const open = card.getByRole("button", { name: /^View Dancing Bear Toys and Games .*details$/ });
   await expect(heading).toBeVisible();
   await open.scrollIntoViewIfNeeded();
-  await expect.poll(() => loaded.length).toBeGreaterThan(0);
-  expect(loaded.every((image) => image.naturalWidth === 1 && image.naturalHeight === 1)).toBe(true);
-  expect(loaded.some((image) => image.paintedWidth > 150 && image.paintedHeight > 80)).toBe(true);
+  const targetLoads = () => loaded.filter((image) => image.placeName === "Dancing Bear Toys and Games");
+  await expect.poll(() => targetLoads().length).toBeGreaterThan(0);
+  const expectedPhotoName = fallbackPhotoRecord.photo_names[0];
+  expect(expectedPhotoName.startsWith(`places/${fallbackPhotoRecord.google_place_id}/photos/`)).toBe(true);
+  expect(fallbackPhotoRecord.photo_attributions.some((credit) => credit.photo_name === expectedPhotoName)).toBe(true);
+  for (const image of targetLoads()) {
+    const source = new URL(image.sourceUrl);
+    expect(source.origin).toBe(new URL(baseURL!).origin);
+    expect(source.pathname).toBe("/api/place-photo");
+    expect(source.searchParams.get("name")).toBe(expectedPhotoName);
+    expect(source.searchParams.get("slug")).toBe(FALLBACK_PLACE_SLUG);
+    expect(source.searchParams.get("fallback")).toBe("signal");
+    expect(interceptedPhotoNames.has(expectedPhotoName)).toBe(true);
+    expect(image.naturalWidth).toBe(1);
+    expect(image.naturalHeight).toBe(1);
+  }
+  expect(targetLoads().some((image) => image.paintedWidth > 150 && image.paintedHeight > 80)).toBe(true);
   await expect(card.locator("[data-place-card-photo]")).toHaveCount(0);
-  await expect(card.locator(".place-card-photo-credit")).toBeHidden();
+  await expect(card.locator(".place-card-photo-credit")).toHaveCount(0);
   await expect(heading).toBeVisible();
   await expect(open).toBeVisible();
-  await expect(card).toContainText("Google Maps");
+  // Town rankings can move this place between answer and grid variants.
+  // A grid may show real reason chips instead of a rating. Attribution belongs
+  // to displayed Google content, never to an exhausted photograph.
+  const displayedRatings = card.getByTitle(/from [\d,]+ Google reviews$/);
+  for (const rating of await displayedRatings.all()) {
+    await expect(rating).toContainText("Google Maps");
+  }
+  await open.click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toHaveCount(1);
+  await expect(sheet.getByRole("heading", { name: "Dancing Bear Toys and Games", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
+  await expect(open).toBeFocused();
   expect(interceptedPhotos).toBeGreaterThan(0);
   await testInfo.attach("photo-signal-decoding-and-fallback", {
     contentType: "application/json",
-    body: JSON.stringify({ loaded, interceptedPhotos, providerRequests: 0, cspBypassed: bypassCSP,
+    body: JSON.stringify({ loaded, targetLoads: targetLoads(), expectedPhotoName, interceptedPhotos, blockedGoogleRequests, blockedEnrichmentRequests, forwardedGoogleRequests: 0, cspBypassed: bypassCSP,
       securityProof: "Local HTTP transport regression; public HTTPS acceptance separately keeps CSP enforcement enabled.",
       preservedListing: "Dancing Bear Toys and Games", removedBlankPhotoFace: true }),
   });
