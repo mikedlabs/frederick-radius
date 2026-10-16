@@ -583,12 +583,12 @@ export default function PlanBuilder({
                 <div key={`${notice.spec_index}-${notice.code}`} className="space-y-2">
                   <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{notice.message}</p>
                   <div className="flex flex-wrap gap-2">
-                    {notice.event_href && <Link href={withBrowseReturnTo(notice.event_href, planReturnTo)} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>Review event details</Link>}
+                    {notice.event_href && <Link href={withBrowseReturnTo(notice.event_href, planReturnTo)} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold" style={{ color: "var(--app-link)" }}>Review event details</Link>}
                     <button type="button" disabled={!controlsReady || pending} onClick={() => mutate(() => removeStop(plan.share, notice.spec_index), notice.spec_index, "The saved reference has been removed.")} className="inline-flex min-h-11 items-center rounded-full border px-3 text-[13px] font-semibold disabled:opacity-50" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>Remove saved reference</button>
                   </div>
                 </div>
               ))}
-              {plan.notices!.some((notice) => notice.code === "unavailable") && <button type="button" disabled={!controlsReady || pending} onClick={() => mutate(() => planFromToken(plan.share), null, "Your saved choices have been checked again.")} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-brand-press)" }}><RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} aria-hidden />Check saved choices again</button>}
+              {plan.notices!.some((notice) => notice.code === "unavailable") && <button type="button" disabled={!controlsReady || pending} onClick={() => mutate(() => planFromToken(plan.share), null, "Your saved choices have been checked again.")} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-link)" }}><RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} aria-hidden />Check saved choices again</button>}
             </section>
           )}
 
@@ -655,7 +655,7 @@ export default function PlanBuilder({
                       onClick={() => setAddOpen(true)}
                       disabled={pending || !controlsReady}
                       className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] border border-dashed px-3 text-[13px] font-semibold disabled:opacity-50"
-                      style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
+                      style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
                     >
                       <Plus className="h-4 w-4" aria-hidden />
                       Add a saved place

@@ -1,6 +1,20 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { APPEARANCE_KEY } from "../src/lib/appearance";
+
+async function seedAppearance(page: Page, appearance: "light" | "dark") {
+  // App appearance is an explicit saved choice, independent of OS emulation.
+  await page.addInitScript(({ key, value }) => {
+    localStorage.setItem(key, value);
+  }, { key: APPEARANCE_KEY, value: appearance });
+}
+
+async function expectAppearance(page: Page, appearance: "light" | "dark") {
+  await expect(page.locator("html")).toHaveAttribute("data-appearance", appearance);
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(appearance);
+}
+
 
 async function expectFirstStopClearOfNavigation(page: Page) {
   const heading = page.getByRole("list", { name: "Plan stops, in order", exact: true }).getByRole("heading").first();
@@ -82,6 +96,7 @@ for (const colorScheme of ["light", "dark"] as const) {
   test(`anchored current-date result keeps its first stop above navigation at 320px in ${colorScheme}`, async ({ page }, info) => {
     await page.setViewportSize({ width: 320, height: 844 });
     await page.emulateMedia({ colorScheme, reducedMotion: "no-preference" });
+    await seedAppearance(page, colorScheme);
     const { stops, token } = await rebuildCurrentAnchoredPlan(page);
     const measurements = [];
     for (const phase of ["built", "reloaded"] as const) {
@@ -90,6 +105,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         await expect(stops).toBeVisible();
         expect(new URL(page.url()).searchParams.get("p")).toBe(token);
       }
+      await expectAppearance(page, colorScheme);
       // Measure viewport and document coordinates in one frame. Native result
       // focus may scroll, but the first stop must also fit at document top.
       measurements.push({ phase, ...await expectFirstStopFitsAtDocumentTop(page) });
@@ -107,6 +123,7 @@ for (const colorScheme of ["light", "dark"] as const) {
 test("desktop dark anchored current-date result passes WCAG AA after rebuild and reload", async ({ page }, info) => {
   await page.setViewportSize({ width: 1440, height: 960 });
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "no-preference" });
+  await seedAppearance(page, "dark");
   const { stops, token } = await rebuildCurrentAnchoredPlan(page);
   for (const phase of ["built", "reloaded"] as const) {
     if (phase === "reloaded") {
@@ -114,7 +131,7 @@ test("desktop dark anchored current-date result passes WCAG AA after rebuild and
       await expect(stops).toBeVisible();
       expect(new URL(page.url()).searchParams.get("p")).toBe(token);
     }
-    expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe("dark");
+    await expectAppearance(page, "dark");
     const find = page.getByRole("button", { name: "Ask or find across Frederick County", exact: true });
     await expect(find).toHaveAttribute("data-find-interaction-ready", "true");
     await expect(find).toBeEnabled();
