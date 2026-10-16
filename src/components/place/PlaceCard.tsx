@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "./PlaceCardPhoto";
 import { usePlacePhotoData } from "@/components/place/usePlacePhoto";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -12,13 +12,17 @@ import { usePlaceSheet } from "./PlaceSheetProvider";
 import { haptic } from "@/lib/haptics";
 import PlaceStatus from "./PlaceStatus";
 import { knownFor } from "@/lib/cuisine";
-import { Star, NotebookPen, PawPrint } from "lucide-react";
+import { ArrowUpRight, Star, NotebookPen, PawPrint } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { directionsHref } from "@/lib/map/directionsHref";
 import SourceBadge from "./SourceBadge";
 import FieldNoteTag, { DealHookTag } from "./FieldNoteTag";
 import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
 import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
 import { placeCardPhotoPlan, recordPlaceCardPhotoResult, selectedPlaceCardPhoto, type PlaceCardPhotoResult, type PlaceCardPhotoState } from "@/lib/place-card-photo";
+
+const subscribeReady = () => () => {};
 
 /**
  * PlaceCard — the shared business card across browse and recommendation
@@ -153,7 +157,7 @@ export default function PlaceCard({
 }: {
   place: PlaceCardData;
   compact?: boolean;
-  variant?: "row" | "feature" | "tile" | "grid" | "answer";
+  variant?: "row" | "feature" | "tile" | "grid" | "answer" | "discovery";
   /** Hydrate the photo on scroll; set by surfaces that withhold inline
    *  photo URLs from their payload. */
   lazyPhoto?: boolean;
@@ -175,7 +179,7 @@ export default function PlaceCard({
   // only rows with no eligible inline source, keeping the county payload slim
   // and the existing viewport/batch limits intact.
   const { photoData, anchorRef: photoAnchorRef } = usePlacePhotoData(
-    place.slug, variant === "row" && lazyPhoto && inlinePlan.sources.length === 0,
+    place.slug, (variant === "row" || variant === "discovery") && lazyPhoto && inlinePlan.sources.length === 0,
   );
   const photoPlan = photoData ? placeCardPhotoPlan({ ...place, ...photoData }, photoWidth) : inlinePlan;
   const mountedPhotoPlanKey = useRef(photoPlan.key);
@@ -188,10 +192,15 @@ export default function PlaceCard({
       ? recordPlaceCardPhotoResult(photoPlan, state, src, result)
       : state);
   };
+  const interactionReady = useSyncExternalStore(subscribeReady, () => true, () => false);
   const cat = CATEGORY_BY_SLUG[place.category];
   const color = cat?.color ?? "var(--app-brand)";
   const { openSheet } = usePlaceSheet();
-  const openDetail = () => { haptic("light"); openSheet(place); };
+  const openDetail = (event: MouseEvent<HTMLButtonElement>) => {
+    haptic("light");
+    // Safari pointer taps do not reliably focus buttons before opening a sheet.
+    openSheet(place, { returnFocus: event.currentTarget });
+  };
   // Chain locations often share the same visible name. Give every card action
   // enough location context for voice control and screen readers to distinguish
   // the downtown result from the one across the county.
@@ -215,6 +224,74 @@ export default function PlaceCard({
   const nonOpenReasons = reasons.filter(
     (r) => r.kind !== "open_now" && r.kind !== "verified_open",
   );
+
+  // Nearby discovery gives an exact place photograph enough room to identify
+  // the destination. A missing/exhausted plan keeps a compact, factual card.
+  if (variant === "discovery") {
+    const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? place.city;
+    const repeatedFacts = new Set([place.name, cat?.name, place.category, town, "Hours not confirmed"]
+      .filter((value): value is string => Boolean(value))
+      .map((value) => value.trim().toLocaleLowerCase()));
+    const fact = [place.field_note_tip, place.known_for?.[0], kf]
+      .find((value) => value?.trim() && !repeatedFacts.has(value.trim().toLocaleLowerCase()));
+    const hoursUnknown = place.open_status.state === "unknown" || place.open_status.state === "unverified";
+    // The server and first hydration render use the same functioning directions
+    // URL. Once interactive, the shared helper selects the device's native map.
+    const directions = interactionReady
+      ? directionsHref(place.geom.lat, place.geom.lng)
+      : `https://www.google.com/maps/dir/?api=1&destination=${place.geom.lat},${place.geom.lng}`;
+    return (
+      <article
+        ref={photoAnchorRef}
+        data-place-card-variant="discovery"
+        data-place-card-has-photo={photo ? "true" : "false"}
+        className="relative mx-auto w-full min-w-0 max-w-[600px] overflow-hidden rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated-solid)]"
+        style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1)" }}
+      >
+        <button
+          type="button"
+          onClick={openDetail}
+          aria-label={`View ${actionName} details`}
+          className="group block w-full min-w-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-focus)]"
+        >
+          {photo && <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={360}
+            sizes="(max-width: 640px) calc(100vw - 32px), 600px" />}
+          <div className={photo ? "p-4" : "flex items-start gap-3 p-3"}>
+            {!photo && <CategoryMark category={place.category} color="var(--app-ink-2)" size={44} />}
+            <div className="min-w-0 flex-1">
+              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] leading-normal" style={{ color: "var(--app-ink-2)" }}>
+                <span>{cat?.name ?? place.category}</span>
+                {town && <><span aria-hidden>·</span><span>{town}</span></>}
+                {place.distance_m !== undefined && <><span aria-hidden>·</span><span className="tabular-nums">{formatDistance(place.distance_m)}</span></>}
+              </p>
+              <h3 className={`mt-1 break-words font-semibold leading-[1.15] tracking-[-0.035em] [overflow-wrap:anywhere] ${photo ? "text-[24px]" : "text-[20px]"}`} style={{ color: "var(--app-ink)" }}>
+                {place.name}
+              </h3>
+              <div className="mt-2 text-[13px] leading-normal" style={{ color: "var(--app-ink-2)" }}>
+                {hoursUnknown ? <span>Hours not confirmed</span> : <PlaceStatus status={place.open_status} className="!text-[13px] !text-[var(--app-ink-2)]" />}
+              </div>
+              {photo && fact && <p className="mt-2 line-clamp-2 text-[14px] leading-[1.45]" style={{ color: "var(--app-ink-2)" }}>{fact}</p>}
+            </div>
+          </div>
+        </button>
+        <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} touchTarget compact />
+        <div className="grid grid-cols-2 gap-2 px-4 pb-4 [&_button]:flex-row [&_button]:gap-2 [&_button]:border [&_button]:border-[var(--app-control-border)] [&_button]:text-[13px]">
+          <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} barLabel="Save" />
+          <a
+            href={directions}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Directions to ${actionName}`}
+            className="flex min-h-[52px] min-w-0 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-2 py-2 text-[13px] font-semibold leading-snug outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-focus)]"
+            style={{ borderColor: "var(--app-control-border)", color: "var(--app-link)" }}
+          >
+            Directions
+            <ArrowUpRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} aria-hidden />
+          </a>
+        </div>
+      </article>
+    );
+  }
 
   // ── FEATURE — the prominent promoted lead (Today "Worth a look", a
   // category page lead). An exact place photo leads when available; the

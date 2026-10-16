@@ -58,6 +58,9 @@ type Props = {
    * removed as soon as the real chunk arrives and cannot receive focus later.
    */
   returnFocusRef?: RefObject<HTMLElement | null>;
+  /** Optional synchronous guard while the caller completes one dismissal.
+   * Native Back still owns the history layer and may complete its traversal. */
+  canDismiss?: () => boolean;
   /** Optional height override for compact task surfaces. */
   maxHeight?: string;
   children: (dismiss: () => void) => ReactNode;
@@ -125,6 +128,7 @@ export default function BottomSheet({
   ariaLabel,
   historyLayerId,
   returnFocusRef,
+  canDismiss,
   maxHeight = "85dvh",
   children,
 }: Props) {
@@ -150,9 +154,11 @@ export default function BottomSheet({
     onDismiss: () => setOpen(false),
   });
   const dismiss = useCallback(() => {
+    if (canDismiss?.() === false) return false;
     haptic("light");
     historyLayer.dismiss();
-  }, [historyLayer]);
+    return true;
+  }, [canDismiss, historyLayer]);
   const restoreLastFocus = useCallback(() => {
     const saved = lastFocused.current;
     if (!saved) return;
@@ -281,12 +287,8 @@ export default function BottomSheet({
   };
 
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (info.offset.y > 120 || info.velocity.y > 500) {
-      haptic("light");
-      historyLayer.dismiss();
-    } else {
-      y.set(0);
-    }
+    if ((info.offset.y > 120 || info.velocity.y > 500) && dismiss()) return;
+    y.set(0);
   };
 
   if (typeof document === "undefined") return null;

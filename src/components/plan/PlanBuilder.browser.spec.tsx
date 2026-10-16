@@ -300,6 +300,27 @@ describe("explicit confirmed-hours planning preference", () => {
     expect(decodeSpec(new URL(window.location.href).searchParams.get("p")!)?.i.require_verified_hours).toBe(false);
   });
 
+  it("keeps the forecast warning and draft hours caveat before directions without changing the actual outing", async () => {
+    const inputs = ordinaryInputs({ require_verified_hours: false });
+    const weather = "Rain is likely around 5 PM (68% chance), plan for cover between stops.";
+    const plan = { ...ordinaryPlan(inputs), weather_note: weather };
+    render(inputs, plan);
+    const note = host.querySelector<HTMLElement>("[data-plan-weather-note]");
+    const warning = [...host.querySelectorAll("p")].find((paragraph) => paragraph.textContent === draftResult);
+    const route = host.querySelector<HTMLAnchorElement>('a[aria-label="Open full route"]');
+    expect(note?.textContent).toBe(weather);
+    expect(warning).toBeDefined();
+    expect(route).not.toBeNull();
+    expect(note!.compareDocumentPosition(route!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(warning!.compareDocumentPosition(route!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(button("Save outing").disabled).toBe(false);
+    expect(host.querySelector("[data-plan-stop] h3")?.textContent).toBe("Dinner");
+    expect(route!.href).toContain("destination=39.4142");
+    act(() => root.render(<PlanBuilder key="without-forecast" initialInputs={inputs} initialPlan={ordinaryPlan(inputs)} />));
+    expect(host.querySelector("[data-plan-weather-note]")).toBeNull();
+    expect(host.textContent).toContain(draftResult);
+  });
+
   it("keeps an inherited confirmed-hours requirement checked through Build and Adjust", async () => {
     render(ordinaryInputs({ require_verified_hours: true }));
     await openFineTune();

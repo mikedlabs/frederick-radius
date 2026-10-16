@@ -149,3 +149,86 @@ export const FailedPhotoRow: Story = {
   args: { variant: "row" },
   play: FailedPhotograph.play,
 };
+
+
+async function discoveryActions(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  const open = canvas.getByRole("button", { name: /^View / });
+  const save = canvas.getByRole("button", { name: /^Save / });
+  const directions = canvas.getByRole("link", { name: /^Directions to / });
+  for (const control of [open, save, directions]) {
+    await expect(control).toBeVisible();
+    await expect(control.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
+    await expect(control.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+  }
+  await expect(save.closest('button[aria-label^="View "]')).toBeNull();
+  await expect(directions.closest("button")).toBeNull();
+  const article = canvasElement.querySelector("article")!;
+  await expect(article.scrollWidth).toBeLessThanOrEqual(article.clientWidth);
+}
+
+export const DiscoveryOwnedPhotograph: Story = {
+  args: { variant: "discovery" },
+  play: async ({ canvasElement }) => {
+    await discoveryActions(canvasElement);
+    const image = canvasElement.querySelector<HTMLImageElement>("[data-place-card-photo-source='owned'] img")!;
+    image.scrollIntoView({ block: "center" });
+    await waitFor(async () => {
+      await image.decode();
+      expect(image.naturalWidth).toBeGreaterThan(1);
+      expect(image.naturalHeight).toBeGreaterThan(1);
+    }, { timeout: 5000 });
+    const face = canvasElement.querySelector<HTMLElement>("[data-place-card-photo]")!;
+    await expect(face.getBoundingClientRect().height).toBeGreaterThan(130);
+    await expect(canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
+    await expect(within(canvasElement).getAllByText("Hours not confirmed")).toHaveLength(1);
+  },
+};
+
+export const DiscoveryCuratedLandmark: Story = {
+  args: { variant: "discovery", place: {
+    ...place, slug: "catoctin-furnace-thurmont", name: "Catoctin Furnace", city: "Thurmont",
+    municipality: "thurmont", address: "Catoctin Furnace, Thurmont, MD", google_photo_url: undefined,
+  } },
+  parameters: { docs: { description: { story: "Uses Catoctin Furnace’s exact reviewed Commons source. It retains source credits only if that real image loads; remote availability is verified separately in release browsing." } } },
+  play: async ({ canvasElement }) => {
+    await discoveryActions(canvasElement);
+    const image = canvasElement.querySelector<HTMLImageElement>("[data-place-card-photo] img");
+    if (image) await expect(image.alt).toBe(getLandmarkPhoto("catoctin-furnace-thurmont")!.alt);
+    for (const link of canvasElement.querySelectorAll(".place-card-photo-credit a")) {
+      await expect(link.closest("button")).toBeNull();
+    }
+  },
+};
+
+export const DiscoveryWithoutPhotography: Story = {
+  args: { variant: "discovery", place: { ...place, slug: "place-without-photography", google_photo_url: undefined } },
+  play: async ({ canvasElement }) => {
+    await discoveryActions(canvasElement);
+    await expect(canvasElement.querySelector("[data-place-card-photo]")).toBeNull();
+    await expect(canvasElement.querySelector("article")!.getBoundingClientRect().height).toBeLessThan(300);
+    await expect(within(canvasElement).getAllByText("Hours not confirmed")).toHaveLength(1);
+  },
+};
+
+export const DiscoveryFailedPhotography: Story = {
+  args: { variant: "discovery" },
+  play: async (context) => {
+    await FailedPhotograph.play!(context);
+    await discoveryActions(context.canvasElement);
+    await expect(context.canvasElement.querySelector("article")!.getBoundingClientRect().height).toBeLessThan(300);
+  },
+};
+
+export const DiscoveryNarrowPhone: Story = {
+  args: { variant: "discovery" },
+  decorators: [(Story) => <div style={{ width: 288 }}><Story /></div>],
+  play: async ({ canvasElement }) => {
+    await discoveryActions(canvasElement);
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: place.name })).toBeVisible();
+    const face = canvasElement.querySelector<HTMLElement>("[data-place-card-photo]")!;
+    await expect(face.getBoundingClientRect().width).toBeLessThanOrEqual(288);
+    await expect(face.getBoundingClientRect().height).toBeGreaterThan(130);
+  },
+};

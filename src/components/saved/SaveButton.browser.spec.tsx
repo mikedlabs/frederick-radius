@@ -2,16 +2,18 @@
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   saved: false,
+  mounted: true,
   eventUnavailable: false,
   togglePlace: vi.fn<() => Promise<boolean>>(),
   toggleLocal: vi.fn<() => boolean>(),
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
 }));
-vi.mock("@/hooks/useSaved", () => ({ savedChangeDescription: () => "We could not confirm this change. Please try again.", useMounted: () => true, useIsSaved: () => mocks.saved, useToggleSave: () => mocks.toggleLocal, useSetEventSaved: () => mocks.toggleLocal, useEventSavedState: (id: string | null) => id === null ? false : mocks.eventUnavailable ? null : mocks.saved, useSavedList: () => [] }));
+vi.mock("@/hooks/useSaved", () => ({ savedChangeDescription: () => "We could not confirm this change. Please try again.", useMounted: () => mocks.mounted, useIsSaved: () => mocks.saved, useToggleSave: () => mocks.toggleLocal, useSetEventSaved: () => mocks.toggleLocal, useEventSavedState: (id: string | null) => id === null ? false : mocks.eventUnavailable ? null : mocks.saved, useSavedList: () => [] }));
 vi.mock("@/hooks/useFollows", () => ({ useFollowMutationState: () => "idle", useIsFollowed: () => mocks.saved, useToggleFollow: () => mocks.togglePlace }));
 vi.mock("@/lib/haptics", () => ({ haptic: vi.fn() }));
 vi.mock("@/lib/track", () => ({ track: vi.fn() }));
@@ -30,6 +32,7 @@ describe("SaveButton truthful save feedback", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.saved = false;
+    mocks.mounted = true;
     mocks.eventUnavailable = false;
     container = document.createElement("div");
     document.body.append(container);
@@ -43,6 +46,33 @@ describe("SaveButton truthful save feedback", () => {
     act(() => root.render(<SaveButton refType={refType} refId="test-stop" label="Save Test stop" />));
   }
   function button() { return container.querySelector("button")!; }
+
+  it.each([undefined, "Save"])("keeps the %s hydration placeholder disabled until Save can act", async (barLabel) => {
+    mocks.mounted = false;
+    const control = <SaveButton refType="place" refId="test-stop" label="Save Test stop" barLabel={barLabel} />;
+    const server = document.createElement("div");
+    server.innerHTML = renderToStaticMarkup(control);
+    expect(server.querySelector("button")?.disabled).toBe(true);
+    expect(server.querySelector("button")?.getAttribute("aria-busy")).toBe("true");
+
+    act(() => root.render(control));
+    expect(button().disabled).toBe(true);
+    expect(button().getAttribute("tabindex")).toBe("-1");
+    expect(button().hasAttribute("aria-pressed")).toBe(false);
+    await act(async () => button().click());
+    expect(mocks.togglePlace).not.toHaveBeenCalled();
+
+    mocks.mounted = true;
+    mocks.togglePlace.mockImplementationOnce(async () => { mocks.saved = true; return true; });
+    act(() => root.render(<SaveButton refType="place" refId="test-stop" label="Save Test stop" barLabel={barLabel} />));
+    expect(button().disabled).toBe(false);
+    expect(button().getAttribute("aria-label")).toBe("Save Test stop");
+    expect(button().getAttribute("aria-hidden")).toBeNull();
+    await act(async () => button().click());
+    expect(mocks.togglePlace).toHaveBeenCalledTimes(1);
+    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(mocks.toast.success).toHaveBeenCalledTimes(1);
+  });
 
   it("withholds selected state and action when the event store is unavailable", () => {
     mocks.eventUnavailable = true;

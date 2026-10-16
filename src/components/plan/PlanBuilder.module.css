@@ -63,6 +63,12 @@
 @media (max-width: 799px) {
  .results, .resultHeader { gap: 12px; }
  .resultHeader .scene { min-height: 104px; }
+ /* A real forecast warning takes priority over the repeated scenic banner.
+    Keep the caption in flow so larger text grows rather than getting cropped. */
+ .resultHeader:has([data-plan-weather-note]) .scene { min-height: 56px; }
+ .resultHeader:has([data-plan-weather-note]) .scene::after { inset: 0; background: rgba(0,0,0,.58); }
+ .resultHeader:has([data-plan-weather-note]) .sceneText { position: relative; inset: auto; padding: 14px 18px; }
+ .resultHeader:has([data-plan-weather-note]) .sceneText p { margin: 0; }
 }
 
 .forecast { display: flex; gap: 10px; overflow-x: auto; padding-block: 10px; list-style: none; }

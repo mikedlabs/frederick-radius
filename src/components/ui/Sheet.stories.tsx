@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { usePathname } from "@storybook/nextjs-vite/navigation.mock";
 import { CloudSun, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { expect, waitFor, within } from "storybook/test";
 
 import Sheet from "./Sheet";
+import BottomSheet, { SheetHandle } from "./BottomSheet";
 import { Button } from "./Button";
 
 const meta = {
@@ -169,4 +170,83 @@ export const ReducedMotion: Story = {
     motion: "reduce",
   },
   render: () => <SheetFixture />,
+};
+
+
+function GuardedSheetFixture() {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  return (
+    <main className="min-h-screen p-4" style={{ background: "var(--app-bg)" }}>
+      <button ref={triggerRef} type="button" className="min-h-11 rounded-xl px-4 font-semibold" onClick={() => setOpen(true)}>Open guarded details</button>
+      <BottomSheet
+        present={open}
+        onClose={() => setOpen(false)}
+        ariaLabel="Guarded details"
+        returnFocusRef={triggerRef}
+        canDismiss={() => !pendingRef.current}
+      >
+        {(dismiss) => (
+          <>
+            <SheetHandle onClose={dismiss} closeLabel="Close guarded details" />
+            <div className="space-y-3 p-4">
+              <h2 className="text-lg font-semibold">Guarded details</h2>
+              <p role="status">{pending ? "Operation in progress" : "Ready to close"}</p>
+              <Button onClick={() => {
+                pendingRef.current = true;
+                setPending(true);
+              }}>Start operation</Button>
+              <Button onClick={() => {
+                pendingRef.current = false;
+                setPending(false);
+              }}>Finish operation</Button>
+            </div>
+          </>
+        )}
+      </BottomSheet>
+    </main>
+  );
+}
+
+export const GuardedDismissal: Story = {
+  globals: {
+    viewport: { value: "radiusMobileCompact", isRotated: false },
+    motion: "reduce",
+  },
+  render: () => <GuardedSheetFixture />,
+  play: async ({ canvasElement, userEvent }) => {
+    const page = within(canvasElement.ownerDocument.body);
+    const trigger = page.getByRole("button", { name: "Open guarded details" });
+    await userEvent.click(trigger);
+    const dialog = await page.findByRole("dialog", { name: "Guarded details" });
+    const content = within(dialog);
+    const close = content.getByRole("button", { name: "Close guarded details" });
+    await waitFor(() => {
+      const rect = close.getBoundingClientRect();
+      const hit = close.ownerDocument.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+      expect(hit === close || (hit !== null && close.contains(hit))).toBe(true);
+    });
+    await userEvent.click(content.getByRole("button", { name: "Start operation" }));
+    await expect(content.getByRole("status")).toHaveTextContent("Operation in progress");
+    await userEvent.click(close);
+    await expect(dialog).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+    await expect(dialog).toBeVisible();
+    // Activate the actual backdrop button through the keyboard; its visual
+    // center is covered by the panel and is not a valid pointer target.
+    const backdrop = content.getByRole("button", { name: /^Close$/ });
+    backdrop.focus();
+    await expect(backdrop).toHaveFocus();
+    await userEvent.keyboard(" ");
+    await expect(dialog).toBeVisible();
+    await userEvent.click(content.getByRole("button", { name: "Finish operation" }));
+    await expect(content.getByRole("status")).toHaveTextContent("Ready to close");
+    await userEvent.click(close);
+    await waitFor(() => {
+      expect(page.queryByRole("dialog", { name: "Guarded details" })).toBeNull();
+      expect(trigger).toHaveFocus();
+    });
+  },
 };
