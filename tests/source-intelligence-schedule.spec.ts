@@ -169,4 +169,35 @@ describe("Source Intelligence scheduled selection", () => {
       resolveSourceIntelligenceSelection({ eventName: "push" }),
     ).toThrow(/unsupported/i);
   });
+
+  it("selects explicit manual recovery with no profile, initialization, or live confirmation", () => {
+    expect(resolveSourceIntelligenceSelection({
+      eventName: "workflow_dispatch",
+      tool: "tavily-recover",
+      profile: "arbitrary-ignored-profile",
+      source: "arbitrary-ignored-source",
+      confirmLive: "false",
+      initializeState: "false",
+    })).toEqual({
+      mode: "recovery",
+      tool: "tavily-recover",
+      profile: "",
+      source: "",
+      live: false,
+      initializeState: false,
+    });
+  });
+
+  it.each([
+    { confirmLive: true },
+    { initializeState: true },
+    { confirmLive: "yes" },
+    { initializeState: "1" },
+  ])("rejects unsafe recovery flags %j", (flags) => {
+    expect(() => resolveSourceIntelligenceSelection({
+      eventName: "workflow_dispatch",
+      tool: "tavily-recover",
+      ...flags,
+    })).toThrow(/boolean|recovery/i);
+  });
 });
