@@ -69,6 +69,78 @@ async function expectFirstStopFitsAtDocumentTop(page: Page) {
   return measured;
 }
 
+/** Controlled forecast presentation over the real plan/action response. Only
+ * the optional note is supplied; canonical stops, token, times and actions stay
+ * untouched. This is layout proof, not a claim about the current weather. */
+async function withDeclaredRainNote(page: Page) {
+  const note = "Rain is likely around 5 PM (68% chance), plan for cover between stops.";
+  let injected = 0;
+  await page.route((url) => url.pathname === "/plan", async (route) => {
+    if (route.request().method() !== "POST" || !route.request().headers()["next-action"]) {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    const body = await response.text();
+    // Next's action transport sends JSON model rows among module references.
+    // Require one actual Plan object; a changed protocol fails this fixture.
+    const patch = (value: unknown): unknown => {
+      if (!value || typeof value !== "object") return value;
+      if (Array.isArray(value)) return value.map(patch);
+      const object = value as Record<string, unknown>;
+      if (typeof object.title === "string" && typeof object.summary === "string"
+        && typeof object.share === "string" && Array.isArray(object.stops)) {
+        injected++;
+        return { ...object, weather_note: note };
+      }
+      return Object.fromEntries(Object.entries(object).map(([key, child]) => [key, patch(child)]));
+    };
+    const updated = body.split("\n").map((row) => {
+      const start = row.indexOf(":");
+      if (start < 0) return row;
+      const json = row.slice(start + 1);
+      if (!json.startsWith("{") && !json.startsWith("[")) return row;
+      try { return `${row.slice(0, start + 1)}${JSON.stringify(patch(JSON.parse(json)))}`; }
+      catch { return row; }
+    }).join("\n");
+    await route.fulfill({ response, body: updated });
+  });
+  return { note, injected: () => injected };
+}
+
+for (const [width, appearance, audience] of [[320, "light", "family"], [320, "dark", "date"], [390, "light", "visitor"]] as const) {
+  test(`a declared rain warning preserves the real outing's first stop at ${width}px in ${appearance}`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.emulateMedia({ colorScheme: appearance, reducedMotion: "reduce" });
+    await seedAppearance(page, appearance);
+    const forecast = await withDeclaredRainNote(page);
+    await page.goto("/plan", { waitUntil: "domcontentloaded" });
+    await page.getByRole("combobox", { name: "Planning area", exact: true }).selectOption("brunswick");
+    await page.getByRole("combobox", { name: "Start time", exact: true }).selectOption("now");
+    await page.getByText("Fine-tune the outing", { exact: true }).click();
+    await page.getByRole("combobox", { name: "Who is going", exact: true }).selectOption(audience);
+    await page.getByRole("button", { name: "Build my plan", exact: true }).click();
+    const stops = page.getByRole("list", { name: "Plan stops, in order", exact: true });
+    await expect(stops.getByRole("heading").first()).toBeVisible();
+    await expect(page.getByText(forecast.note, { exact: true })).toBeVisible();
+    expect(forecast.injected()).toBe(1);
+    await expect(page.getByText("Draft outing. These times are suggestions. Confirm each venue’s hours before setting out.", { exact: true })).toBeVisible();
+    const geometry = await expectFirstStopFitsAtDocumentTop(page);
+    const save = page.getByRole("button", { name: "Save outing", exact: true });
+    const route = page.getByRole("link", { name: "Open full route", exact: true });
+    for (const control of [save, route]) {
+      await expect(control).toBeEnabled();
+      const rect = await control.boundingBox();
+      expect(rect!.height).toBeGreaterThanOrEqual(44);
+      expect(rect!.width).toBeGreaterThanOrEqual(44);
+    }
+    await expectAppearance(page, appearance);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await info.attach("declared-forecast-layout-proof", { contentType: "application/json", body: JSON.stringify({ note: forecast.note, suppliedNotes: forecast.injected(), actualFirstStop: await stops.getByRole("heading").first().textContent(), ...geometry, proof: "Real app and deterministic plan with an explicitly supplied rain note; not proof of current weather." }) });
+    await page.screenshot({ path: info.outputPath(`declared-rain-${width}-${appearance}.png`) });
+  });
+}
+
 async function rebuildCurrentAnchoredPlan(page: Page) {
   await page.goto("/plan?place=beans-in-the-belfry-brunswick&in=brunswick", { waitUntil: "domcontentloaded" });
   const stops = page.getByRole("list", { name: "Plan stops, in order", exact: true });

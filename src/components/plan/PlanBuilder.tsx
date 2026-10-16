@@ -528,7 +528,7 @@ export default function PlanBuilder({
             )}
             {constraintLabels.length > 0 && <ul className={styles.preferences} aria-label="Plan requirements">{constraintLabels.map((label) => <li key={label}>{label}</li>)}</ul>}
             {plan.weather_note && (
-              <p className="mt-3 flex items-start gap-2 rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] p-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              <p data-plan-weather-note className="mt-3 flex items-start gap-2 rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] p-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 <CloudRain className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
                 {plan.weather_note}
               </p>
