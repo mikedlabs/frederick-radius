@@ -195,7 +195,7 @@ test("Nearby food hydrates a policy-passing Google photo with its required credi
   await expect(credit).toBeVisible();
   await expect(credit).toContainText("Google Maps");
   const cafeCredit = bySlugs.find((place) => place.slug === cafe);
-  expect(cafeCredit?.photo_name).toMatch(/^places\/.+\/photos\/.+/);
+  expect(cafeCredit?.photo_name).toBeUndefined();
   expect(cafeCredit?.google_maps_uri).toMatch(/^https:\/\/(?:www\.)?google\.com\/maps\//);
   expect(Array.isArray(cafeCredit?.authors)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("nearby-food-photo-credit-390.png") });

@@ -44,12 +44,15 @@ describe("places by slugs", () => {
     for (const place of places) {
       const name = googlePhotoNameFromProxyUrl(place.google_photo_url!);
       expect(name).toBeTruthy();
-      const credit = publishableGooglePhotoAttribution(name!, [place.google_photo_attribution!]);
+      expect(place.google_photo_attribution).not.toHaveProperty("photo_name");
+      expect(place.google_photo_attribution).not.toHaveProperty("flag_content_uri");
+      expect(place.google_photo_attribution).not.toHaveProperty("photo_name_sha256");
+      expect(place).not.toHaveProperty("google_photo_attributions");
+      const credit = publishableGooglePhotoAttribution(name!, [place.google_photo_attribution!], {
+        bindUnnamedToUrl: true,
+      });
       expect(credit?.photo_name).toBe(name);
       expect(credit?.google_maps_uri).toMatch(/^https:\/\/(?:www\.)?google\.com\/maps\//);
-      expect(credit).not.toHaveProperty("photo_name_sha256");
-      expect(credit).not.toHaveProperty("flag_content_uri");
-      expect(place).not.toHaveProperty("google_photo_attributions");
       expect(selectedPlaceCardPhoto(placeCardPhotoPlan(place, 360), null)?.kind).toBe("google");
     }
 
@@ -57,7 +60,7 @@ describe("places by slugs", () => {
     const afterBytes = Buffer.byteLength(JSON.stringify({ places }));
     const delta = afterBytes - beforeBytes;
     expect(delta).toBeGreaterThan(0);
-    expect(delta).toBeLessThan(2_000);
+    expect(delta).toBeLessThan(800);
   });
 
   it("does not invent a credit when the server index cannot bind one", () => {

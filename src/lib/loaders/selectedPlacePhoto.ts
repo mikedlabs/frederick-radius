@@ -48,18 +48,17 @@ export function selectedPlacePhoto(
   );
 }
 
-/** Fields the card's existing attribution check and credit line need. */
+/** Wire fields the card check needs after it binds identity from the proxy URL. */
 export function primaryGooglePhotoAttribution(
   attribution: SelectedPlacePhoto["attribution"],
 ): GooglePhotoAttribution {
   return {
-    photo_name: attribution.photo_name,
     google_maps_uri: attribution.google_maps_uri,
     authors: attribution.authors.map((author) => ({
       display_name: author.display_name,
       uri: author.uri,
     })),
-  };
+  } as GooglePhotoAttribution;
 }
 
 /**

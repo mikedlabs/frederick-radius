@@ -36,10 +36,10 @@ type PlacePhotoInput = Pick<PlaceCardData, "slug" | "google_photo_url" | "google
   Partial<Pick<PlaceCardData, "google_photos" | "google_photo_attributions">>;
 
 function suppliedPhotoSource(rawSrc: string | undefined, width: number,
-  attributions: readonly GooglePhotoAttribution[]): PlaceCardPhotoSource | null {
+  attributions: readonly GooglePhotoAttribution[], bindUnnamedToUrl = false): PlaceCardPhotoSource | null {
   if (rawSrc?.startsWith("/api/place-photo?")) {
     const name = googlePhotoNameFromProxyUrl(rawSrc);
-    const attribution = name && publishableGooglePhotoAttribution(name, attributions);
+    const attribution = name && publishableGooglePhotoAttribution(name, attributions, { bindUnnamedToUrl });
     if (attribution) {
       const url = new URL(proxyPhotoAtWidth(rawSrc, width), "https://frederickradius.local");
       url.searchParams.set("fallback", "signal");
@@ -65,7 +65,7 @@ export function placeCardPhotoPlan(
     : null;
   const suppliedSource = suppliedPhotoSource(place.google_photo_url, width,
     [place.google_photo_attribution, ...(place.google_photo_attributions ?? [])]
-      .filter((item): item is GooglePhotoAttribution => Boolean(item)));
+      .filter((item): item is GooglePhotoAttribution => Boolean(item)), true);
   // Preferred curated files were chosen because the Google hero was unsuitable.
   // If they fail, do not bring that known unsuitable image back.
   const fallbacks = curated?.preferCurated && curatedSource

@@ -30,8 +30,9 @@ type PendingPhoto = {
 function photoAttribution(value: unknown): GooglePhotoAttribution | undefined {
   if (!value || typeof value !== "object") return undefined;
   const credit = value as Record<string, unknown>;
-  if (typeof credit.photo_name !== "string" || !Array.isArray(credit.authors)) return undefined;
-  if (credit.google_maps_uri !== undefined && typeof credit.google_maps_uri !== "string") return undefined;
+  if (credit.photo_name !== undefined && typeof credit.photo_name !== "string") return undefined;
+  if (!Array.isArray(credit.authors)) return undefined;
+  if (typeof credit.google_maps_uri !== "string") return undefined;
   if (credit.flag_content_uri !== undefined && typeof credit.flag_content_uri !== "string") return undefined;
   for (const author of credit.authors) {
     if (!author || typeof author !== "object") return undefined;
@@ -39,8 +40,8 @@ function photoAttribution(value: unknown): GooglePhotoAttribution | undefined {
       if (author[field] !== undefined && typeof author[field] !== "string") return undefined;
     }
   }
-  // Eligibility is still decided by placeCardPhotoPlan, including exact photo
-  // identity and its individual Google Maps source URL. Never infer a credit.
+  // Eligibility is still decided by placeCardPhotoPlan. A slim by-slugs credit
+  // may omit photo_name; the card binds that identity from the proxy URL.
   return value as GooglePhotoAttribution;
 }
 

@@ -198,6 +198,18 @@ describe("map list photos", () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps a slim URL-bound credit that omits the duplicated photo_name", async () => {
+    const credit = { google_maps_uri: "https://www.google.com/maps/place/one/photo", authors: [{ display_name: "Actual contributor" }] };
+    const fetcher = vi.fn(async () => ({ ok: true, json: async () => ({ places: [{ slug: "one", google_photo_url: "/api/place-photo?name=places%2Fone%2Fphotos%2Fhero", google_photo_attribution: credit }] }) }));
+    const loader = createMapListPhotoLoader({ fetcher, batchDelayMs: 60_000 });
+    const photo = loader.loadData("one");
+    await loader.flush();
+    await expect(photo).resolves.toEqual({
+      google_photo_url: "/api/place-photo?name=places%2Fone%2Fphotos%2Fhero",
+      google_photo_attribution: credit,
+    });
+  });
+
   it("drops malformed credit without inventing attribution for the returned photo", async () => {
     const fetcher = vi.fn(async () => ({ ok: true, json: async () => ({ places: [{ slug: "one", google_photo_url: "/api/place-photo?name=one", google_photo_attribution: { photo_name: "one", authors: "wrong shape" } }] }) }));
     const loader = createMapListPhotoLoader({ fetcher, batchDelayMs: 60_000 });
