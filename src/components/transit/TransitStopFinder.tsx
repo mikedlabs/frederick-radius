@@ -17,11 +17,11 @@ import {
   LocateFixed,
   MapPin,
   Navigation,
-  Radio,
   Search,
   X,
 } from "lucide-react";
 import TRANSIT from "@/data/transit.json";
+import styles from "./TransitExperience.module.css";
 import {
   CURRENT_TRANSIT_STOPS,
   isCurrentTransitStop,
@@ -141,7 +141,7 @@ function RouteBadge({ route }: { route?: TransitRoute }) {
   return (
     <span
       aria-label={route ? `Route ${route.short}` : "TransIT bus"}
-      className="grid h-6 min-w-7 shrink-0 place-items-center rounded-full px-2 font-mono text-[11px] font-bold tabular-nums"
+      className={styles.routeBadge}
       style={{
         background,
         color: route ? readableTextOn(route.color) : "#FFFFFF",
@@ -156,13 +156,13 @@ function RouteBadge({ route }: { route?: TransitRoute }) {
 function CatchabilityLabel({ value }: { value: Catchability }) {
   const color =
     value.kind === "likely"
-      ? "var(--app-positive)"
+      ? "var(--state-open)"
       : value.kind === "tight"
-        ? "var(--app-warning)"
-        : "var(--app-danger)";
+        ? "var(--state-closing)"
+        : "var(--app-danger-text)";
   return (
     <span
-      className="mt-0.5 block text-[10.5px] font-semibold leading-tight"
+      className={styles.catchability}
       style={{ color }}
     >
       {value.label}
@@ -185,33 +185,29 @@ function FeedBadge({
       ? {
           label: "Live",
           detail: updated ? `Updated ${updated}` : "Live feed",
-          color: "var(--app-positive)",
+          color: "var(--state-open)",
         }
       : status === "stale"
         ? {
             label: "Feed delayed",
             detail: updated ? `Last update ${updated}` : "Last update is old",
-            color: "var(--app-warning)",
+            color: "var(--state-closing)",
           }
         : status === "unavailable"
           ? {
               label: "Feed unavailable",
               detail: "Use the official schedule",
-              color: "var(--app-warning)",
+              color: "var(--state-closing)",
             }
           : {
               label: "Checking live feed",
               detail: "Getting stop arrivals",
-              color: "var(--app-cool)",
+              color: "var(--app-ink-2)",
             };
 
   return (
     <span
-      className="inline-flex min-h-8 items-center gap-2 rounded-full border px-2.5 py-1"
-      style={{
-        borderColor: `color-mix(in srgb, ${meta.color} 30%, var(--app-border))`,
-        background: `color-mix(in srgb, ${meta.color} 9%, var(--app-bg-elevated))`,
-      }}
+      className={styles.feedBadge}
     >
       <span
         aria-hidden
@@ -223,18 +219,10 @@ function FeedBadge({
         style={{ background: meta.color }}
       />
       <span className="leading-tight">
-        <span
-          className="block text-[10.5px] font-bold"
-          style={{ color: meta.color }}
-        >
+        <strong className="block" style={{ color: meta.color }}>
           {meta.label}
-        </span>
-        <span
-          className="block text-[9.5px]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {meta.detail}
-        </span>
+        </strong>
+        <small>{meta.detail}</small>
       </span>
     </span>
   );
@@ -260,13 +248,12 @@ function ArrivalRow({
 
   return (
     <li
-      className="grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--app-radius-sm)] px-2.5 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
-      style={{ background: "var(--app-bg-sunken)" }}
+      className={styles.arrivalRow}
     >
       <RouteBadge route={row.route} />
-      <span className="min-w-0">
+      <span className={styles.arrivalDestination}>
         <span
-          className="block truncate text-[12.5px] font-semibold"
+          className="block"
           style={{ color: "var(--app-ink)" }}
         >
           {destination
@@ -274,18 +261,18 @@ function ArrivalRow({
             : row.route?.name ?? "TransIT bus"}
         </span>
         <span
-          className="block text-[10.5px]"
+          className="block"
           style={{ color: "var(--app-ink-3)" }}
         >
           {row.route?.name ?? "TransIT bus"} ·{" "}
           {row.fresh ? "Live estimate" : "Estimate delayed"}
         </span>
       </span>
-      <span className="min-w-[5rem] text-right">
+      <span className={styles.arrivalEta}>
         <span
-          className="block font-mono text-[13px] font-bold tabular-nums"
+          className={styles.arrivalTime} data-transit-arrival-time
           style={{
-            color: row.fresh ? "var(--app-cool)" : "var(--app-warning)",
+            color: "var(--app-ink)",
           }}
         >
           {timeLabel}
@@ -293,7 +280,7 @@ function ArrivalRow({
         {row.catchability && <CatchabilityLabel value={row.catchability} />}
       </span>
       {row.focus && row.busRef && (
-        <div className="col-span-2 col-start-2 flex flex-wrap justify-end gap-1.5 sm:col-span-1 sm:col-start-auto sm:flex-nowrap">
+        <div className={styles.arrivalActions}>
           <button
             type="button"
             onClick={() => onTrack(row.focus as TransitVehicleFocusDetail)}
@@ -302,13 +289,7 @@ function ArrivalRow({
                 ? `${row.route?.name ?? "this bus"} to ${destination}`
                 : row.route?.name ?? "this bus"
             } on the live map`}
-            className="tap-44 inline-flex min-h-11 items-center justify-center gap-1 rounded-[var(--app-radius-sm)] border px-2 text-center text-[10px] font-semibold leading-tight transition motion-reduce:transition-none"
-            style={{
-              borderColor:
-                "color-mix(in srgb, var(--app-cool) 36%, var(--app-border))",
-              color: "var(--app-cool)",
-              background: "var(--app-cool-tint-6)",
-            }}
+            className={styles.trackAction}
           >
             <LocateFixed
               className="h-3.5 w-3.5 shrink-0"
@@ -326,16 +307,7 @@ function ArrivalRow({
                 ? `Remove bus ${row.busRef.vehicleId} from Saved`
                 : `Save bus ${row.busRef.vehicleId}`
             }
-            className="tap-44 inline-flex min-h-11 items-center justify-center gap-1 rounded-[var(--app-radius-sm)] border px-2 text-[10px] font-semibold transition motion-reduce:transition-none"
-            style={{
-              borderColor: saved
-                ? "color-mix(in srgb, var(--app-cool) 45%, var(--app-border))"
-                : "var(--app-control-border)",
-              color: saved ? "var(--app-cool)" : "var(--app-ink-2)",
-              background: saved
-                ? "var(--app-cool-tint-6)"
-                : "var(--app-bg-elevated-solid)",
-            }}
+            className={styles.saveAction}
           >
             {saved ? (
               <BookmarkCheck
@@ -500,33 +472,25 @@ function StopCommandPanel({
     (snapshot.status === "live" && arrivals.length === 0);
 
   return (
-    <div
-      className="mx-3 mt-3 overflow-hidden rounded-[var(--app-radius-md)] border"
-      style={{
-        borderColor: "color-mix(in srgb, var(--app-cool) 30%, var(--app-border))",
-        background:
-          "linear-gradient(145deg, color-mix(in srgb, var(--app-cool) 8%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 56%)",
-        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-      }}
-    >
-      <div className="space-y-3 p-3.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+    <div className={styles.boardingCard} data-transit-boarding-card>
+      <div className={`${styles.boardingBody} space-y-3`}>
+        <div className={styles.stopHeading}>
+          <div className={styles.stopIdentity}>
             <p
-              className="font-mono text-[9.5px] font-bold uppercase tracking-[0.09em]"
-              style={{ color: "var(--app-cool)" }}
+              className={styles.stopKicker}
+              style={{ color: "var(--app-ink-2)" }}
             >
               Your stop
             </p>
             <h3
-              className="mt-0.5 text-[17px] font-semibold leading-tight tracking-tight"
+              className="mt-0.5"
               style={{ color: "var(--app-ink)" }}
             >
               {stop.name}
             </h3>
             {walkingMinutes != null && distanceMeters != null ? (
               <p
-                className="mt-1 flex items-center gap-1.5 text-[11.5px]"
+                className="mt-1 flex items-center gap-1.5 text-[13px]"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 <Navigation className="h-3 w-3" strokeWidth={2.2} aria-hidden />
@@ -535,14 +499,14 @@ function StopCommandPanel({
               </p>
             ) : position ? (
               <p
-                className="mt-1 text-[11.5px]"
+                className="mt-1 text-[13px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 Your location is too broad for a useful walk estimate.
               </p>
             ) : (
               <p
-                className="mt-1 text-[11.5px]"
+                className="mt-1 text-[13px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 Use your location below to compare the walk with arrivals.
@@ -550,8 +514,8 @@ function StopCommandPanel({
             )}
             {wheelchairBoarding && (
               <p
-                className="mt-1 text-[10.5px] font-medium"
-                style={{ color: "var(--app-positive)" }}
+                className="mt-1 text-[12.5px] font-medium"
+                style={{ color: "var(--state-open)" }}
               >
                 Wheelchair boarding is listed for this stop.
               </p>
@@ -567,27 +531,23 @@ function StopCommandPanel({
         {routes.length > 0 && (
           <div>
             <p
-              className="mb-1 text-[9.5px] font-semibold"
+              className="mb-1 text-[12px] font-semibold"
               style={{ color: "var(--app-ink-3)" }}
             >
               Routes with live arrivals
             </p>
             <div
               aria-label="Routes with live arrivals"
-              className="flex flex-wrap gap-1.5"
+              className={styles.servedRoutes}
             >
               {routes.map((route) => (
                 <span
                   key={route.id}
-                  className="inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2 py-1"
-                  style={{
-                    borderColor: "var(--app-border)",
-                    background: "var(--app-bg-elevated-solid)",
-                  }}
+                  className={styles.servedRoute}
                 >
                   <RouteBadge route={route} />
                   <span
-                    className="text-[10.5px] font-medium"
+                    className="text-[12.5px] font-medium"
                     style={{ color: "var(--app-ink-2)" }}
                   >
                     {route.name}
@@ -609,7 +569,7 @@ function StopCommandPanel({
             </p>
             {walkingMinutes != null && snapshot.status === "live" && (
               <span
-                className="text-[9.5px]"
+                className="text-[12px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 Walk timing included
@@ -628,7 +588,7 @@ function StopCommandPanel({
               Radius is checking for inbound buses.
             </p>
           ) : arrivals.length > 0 ? (
-            <ul className="space-y-1.5">
+            <ul className={styles.arrivalList}>
               {arrivals.map((row) => (
                 <ArrivalRow
                   key={row.key}
@@ -703,8 +663,8 @@ function StopCommandPanel({
               href={COUNTY_TRANSIT_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="tap-44-y mt-1.5 inline-flex items-center gap-1.5 text-[11.5px] font-semibold"
-              style={{ color: "var(--app-cool)" }}
+              className="tap-44-y mt-1.5 inline-flex items-center gap-1.5 text-[13px] font-semibold"
+              style={{ color: "var(--app-link)" }}
             >
               Check the official schedule
               <ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden />
@@ -714,7 +674,7 @@ function StopCommandPanel({
 
         {walkingMinutes != null && (
           <p
-            className="text-[10.5px] leading-snug"
+            className="text-[12.5px] leading-snug"
             style={{ color: "var(--app-ink-3)" }}
           >
             Rough walk timing uses straight-line distance with extra allowance.
@@ -722,21 +682,26 @@ function StopCommandPanel({
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className={styles.stopActions}>
+          <a
+            href={directionsUrl(stop)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Walking directions to this stop"
+            className={styles.walkAction}
+          >
+            <Navigation
+              className="h-4 w-4 shrink-0"
+              strokeWidth={2.2}
+              aria-hidden
+            />
+            Walk there
+          </a>
           <button
             type="button"
             onClick={() => onToggleSaved(stop)}
             aria-pressed={saved}
-            className="tap-44 tactile-interactive inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-2 text-[11.5px] font-semibold transition motion-reduce:transition-none"
-            style={{
-              borderColor: saved
-                ? "color-mix(in srgb, var(--app-cool) 45%, var(--app-border))"
-                : "var(--app-control-border)",
-              color: saved ? "var(--app-cool)" : "var(--app-ink-2)",
-              background: saved
-                ? "var(--app-cool-tint-6)"
-                : "var(--app-bg-elevated-solid)",
-            }}
+            className={styles.saveAction}
           >
             {saved ? (
               <BookmarkCheck
@@ -753,25 +718,6 @@ function StopCommandPanel({
             )}
             {saved ? "Saved stop" : "Save stop"}
           </button>
-          <a
-            href={directionsUrl(stop)}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Walking directions to this stop"
-            className="tap-44 tactile-interactive inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-2 text-center text-[11.5px] font-semibold transition motion-reduce:transition-none"
-            style={{
-              borderColor: "var(--app-control-border)",
-              color: "var(--app-cool)",
-              background: "var(--app-bg-elevated-solid)",
-            }}
-          >
-            <Navigation
-              className="h-4 w-4 shrink-0"
-              strokeWidth={2.2}
-              aria-hidden
-            />
-            Walk there
-          </a>
         </div>
       </div>
 
@@ -780,7 +726,7 @@ function StopCommandPanel({
         style={{ borderColor: "var(--app-border)" }}
         onToggle={(event) => setShowFullDetail(event.currentTarget.open)}
       >
-        <summary className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2.5 text-[11.5px] font-semibold [&::-webkit-details-marker]:hidden">
+        <summary className={styles.detailSummary}>
           <span style={{ color: "var(--app-ink-2)" }}>
             Full arrival detail
           </span>
@@ -816,16 +762,16 @@ function SavedStopRail({
   if (stops.length === 0) return null;
 
   return (
-    <div className="mt-3">
-      <div className="mb-1.5 flex items-center justify-between gap-2 px-3.5">
+    <div className={styles.savedRail}>
+      <div className={styles.savedRailHeader}>
         <p
-          className="text-[10.5px] font-semibold"
+          className="text-[12.5px] font-semibold"
           style={{ color: "var(--app-ink-2)" }}
         >
           Saved on this phone
         </p>
         <p
-          className="font-mono text-[9.5px] tabular-nums"
+          className="font-mono text-[12px] tabular-nums"
           style={{ color: "var(--app-ink-3)" }}
         >
           {stops.length}/{MAX_SAVED_TRANSIT_STOPS}
@@ -833,7 +779,7 @@ function SavedStopRail({
       </div>
       <div
         aria-label="Saved bus stops"
-        className="flex snap-x gap-2 overflow-x-auto px-3 pb-1 scrollbar-none"
+        className={styles.savedStops}
       >
         {stops.map((stop) => {
           const active = stop.id === activeStopId;
@@ -843,12 +789,12 @@ function SavedStopRail({
               type="button"
               aria-pressed={active}
               onClick={() => onSelect(stop)}
-              className="tap-44 shrink-0 snap-start rounded-full border px-3 text-[11.5px] font-semibold transition motion-reduce:transition-none"
+              className={styles.savedStop}
               style={{
                 borderColor: active
                   ? "var(--app-cool)"
                   : "var(--app-control-border)",
-                color: active ? "var(--app-cool)" : "var(--app-ink-2)",
+                color: active ? "var(--app-link)" : "var(--app-ink-2)",
                 background: active
                   ? "var(--app-cool-tint-6)"
                   : "var(--app-bg-elevated-solid)",
@@ -1030,105 +976,26 @@ export default function TransitStopFinder() {
       data-transit-stop-interaction-ready={
         interactionReady ? "true" : "false"
       }
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated)",
-        boxShadow: "var(--app-elev-2), var(--app-edge), var(--app-hi)",
-      }}
+      className={styles.stopFinder}
     >
-      <header className="flex items-start gap-3 px-3.5 pt-3.5">
-        <span
-          aria-hidden
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-md)]"
-          style={{
-            color: "var(--app-cool)",
-            background: "var(--app-cool-tint-14)",
-          }}
-        >
-          <BusFront className="h-5 w-5" strokeWidth={2.15} />
+      <header className={styles.finderHeader}>
+        <span className={styles.finderIcon} aria-hidden>
+          <BusFront className="h-5 w-5" strokeWidth={2.1} />
         </span>
-        <span className="min-w-0 flex-1">
-          <span
-            className="flex items-center gap-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.1em]"
-            style={{ color: "var(--app-cool)" }}
-          >
-            <Radio className="h-3 w-3" strokeWidth={2.2} aria-hidden />
-            Rider command center
-          </span>
-          <h2
-            id="my-stop-heading"
-            className="mt-0.5 text-[20px] font-semibold tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            My stop
-          </h2>
-          <p
-            className="text-[11.5px] leading-snug"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Keep a stop close, check live arrivals, and decide when to walk.
-          </p>
-        </span>
+        <div className="min-w-0">
+          <h2 id="my-stop-heading">My stop</h2>
+          <p>Search by stop or street. Your location is optional.</p>
+        </div>
       </header>
 
-      <SavedStopRail
-        stops={currentSavedStops}
-        activeStopId={activeStop?.id ?? null}
-        onSelect={chooseStop}
-      />
-
-      {activeStop ? (
-        <StopCommandPanel
-          key={activeStop.id}
-          stop={activeStop}
-          position={position}
-          saved={currentSavedStops.some((stop) => stop.id === activeStop.id)}
-          onToggleSaved={toggleSaved}
-          onTrackVehicle={trackVehicle}
-          onAnnounce={announce}
-        />
-      ) : (
-        <div
-          className="mx-3 mt-3 rounded-[var(--app-radius-md)] border px-3.5 py-4 text-center"
-          style={{
-            borderColor: "var(--app-border)",
-            background: "var(--app-bg-sunken)",
-          }}
-        >
-          <MapPin
-            className="mx-auto h-5 w-5"
-            strokeWidth={2.1}
-            aria-hidden
-            style={{ color: "var(--app-cool)" }}
-          />
-          <p
-            className="mt-1.5 text-[13px] font-semibold"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Choose the stop you use
-          </p>
-          <p
-            className="mx-auto mt-0.5 max-w-[20rem] text-[11px] leading-snug"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Search below or use your location. You can save frequent stops on
-            this phone.
-          </p>
-        </div>
-      )}
-
-      <div
-        className="mt-3 border-t px-3 pb-3.5 pt-3"
-        style={{ borderColor: "var(--app-border)" }}
-      >
+      <div className={styles.searchArea}>
         <p
-          className="mb-2 text-[12px] font-semibold"
+          className={styles.searchLabel}
           style={{ color: "var(--app-ink-2)" }}
         >
           {activeStop ? "Choose another stop" : "Find your stop"}
         </p>
-        <div className="flex gap-2">
+        <div className={styles.searchRow}>
           <label className="relative min-w-0 flex-1">
             <span className="sr-only">Search bus stops by name</span>
             <Search
@@ -1147,7 +1014,7 @@ export default function TransitStopFinder() {
                 if (nextQuery) setShowNearby(false);
               }}
               placeholder="Stop or street name"
-              className="min-h-11 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-2 pl-9 pr-11 text-[14px]"
+              className={styles.searchInput}
               style={{
                 borderColor: "var(--app-control-border)",
                 color: "var(--app-ink)",
@@ -1173,15 +1040,15 @@ export default function TransitStopFinder() {
             onClick={showNearestStops}
             disabled={!interactionReady || geoState.status === "loading"}
             aria-label="Show the nearest bus stops"
-            className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-md)] border transition disabled:opacity-60 motion-reduce:transition-none"
+            className={`${styles.nearest} disabled:opacity-60`}
             style={{
               borderColor:
                 showNearby && position
-                  ? "var(--app-cool)"
+                  ? "var(--app-link)"
                   : "var(--app-control-border)",
               color:
                 showNearby && position
-                  ? "var(--app-cool)"
+                  ? "var(--app-link)"
                   : "var(--app-ink-2)",
               background:
                 showNearby && position
@@ -1199,7 +1066,7 @@ export default function TransitStopFinder() {
 
         {normalized.length === 1 && (
           <p
-            className="mt-2 text-[11.5px]"
+            className="mt-2 text-[13px]"
             style={{ color: "var(--app-ink-3)" }}
           >
             Type one more letter to search.
@@ -1217,13 +1084,13 @@ export default function TransitStopFinder() {
 
         {locationMessage && (
           <p
-            className="mt-2 text-[11.5px] leading-snug"
+            className="mt-2 text-[13px] leading-snug"
             style={{
               color:
                 geoState.status === "denied" ||
                 geoState.status === "unavailable" ||
                 geoState.status === "error"
-                  ? "var(--app-warning)"
+                  ? "var(--state-closing)"
                   : "var(--app-ink-3)",
             }}
           >
@@ -1233,7 +1100,7 @@ export default function TransitStopFinder() {
 
         {!normalized && !showNearby && (
           <p
-            className="mt-2 text-[11.5px] leading-snug"
+            className="mt-2 text-[13px] leading-snug"
             style={{ color: "var(--app-ink-3)" }}
           >
             Frederick Radius asks for location only after you tap the nearby
@@ -1243,7 +1110,7 @@ export default function TransitStopFinder() {
 
         {results.length > 0 && (
           <ul
-            className="mt-2 divide-y"
+            className={styles.resultList}
             style={{ borderColor: "var(--app-border)" }}
           >
             {results.map(({ stop, distance }) => (
@@ -1251,7 +1118,7 @@ export default function TransitStopFinder() {
                 <button
                   type="button"
                   onClick={() => chooseStop(stop)}
-                  className="tap-44-y flex min-h-11 w-full items-center gap-3 py-2 text-left"
+                  className={styles.result}
                 >
                   <MapPin
                     className="h-4 w-4 shrink-0"
@@ -1260,7 +1127,7 @@ export default function TransitStopFinder() {
                     style={{ color: "var(--app-cool)" }}
                   />
                   <span
-                    className="min-w-0 flex-1 truncate text-[13px] font-semibold"
+                    className={`${styles.resultName} font-semibold`}
                     style={{ color: "var(--app-ink)" }}
                   >
                     {stop.name}
@@ -1284,14 +1151,32 @@ export default function TransitStopFinder() {
           aria-live="polite"
           className={
             notice
-              ? "mt-2 min-h-5 text-[11.5px] font-medium"
+              ? "mt-2 min-h-5 text-[13px] font-medium"
               : "sr-only"
           }
-          style={{ color: "var(--app-cool)" }}
+          style={{ color: "var(--app-link)" }}
         >
           {notice}
         </p>
       </div>
+      <SavedStopRail
+        stops={currentSavedStops}
+        activeStopId={activeStop?.id ?? null}
+        onSelect={chooseStop}
+      />
+
+      {activeStop && (
+        <StopCommandPanel
+          key={activeStop.id}
+          stop={activeStop}
+          position={position}
+          saved={currentSavedStops.some((stop) => stop.id === activeStop.id)}
+          onToggleSaved={toggleSaved}
+          onTrackVehicle={trackVehicle}
+          onAnnounce={announce}
+        />
+      )}
+
     </section>
   );
 }

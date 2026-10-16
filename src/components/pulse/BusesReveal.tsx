@@ -1,10 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bus, ChevronDown, ChevronUp, LoaderCircle, RotateCcw } from "lucide-react";
+import { ArrowRight, BusFront, ChevronDown, ChevronUp, LoaderCircle, RotateCcw } from "lucide-react";
 import Sheet from "@/components/ui/Sheet";
 import type { LineFC } from "@/lib/integrations/transitFrederick";
+import styles from "./BusesReveal.module.css";
 
 // The live bus map is heavy (Mapbox), so defer it until the rider opens this
 // part of Pulse. The detailed route + arrival boards moved to /transit; Pulse
@@ -206,7 +208,7 @@ export default function BusesReveal() {
   }
 
   return (
-    <section className="space-y-2.5" aria-label="Live TransIT buses">
+    <section className={styles.reveal} aria-label="Live TransIT buses">
       <button
         type="button"
         onClick={toggleOpen}
@@ -214,55 +216,31 @@ export default function BusesReveal() {
         aria-describedby="pulse-live-buses-summary"
         aria-expanded={open}
         aria-controls="pulse-live-buses"
-        className="tactile-interactive flex min-h-11 w-full items-center justify-between gap-3 rounded-[var(--app-radius-sm)] border px-3 py-2 text-left transition active:scale-[0.99]"
-        style={{
-          borderColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-        }}
+        className={styles.launcher}
       >
-        <span className="flex min-w-0 items-center gap-2.5">
-          <span
-            aria-hidden
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-cool) 12%, transparent)",
-              color: "var(--app-cool)",
-            }}
-          >
-            <Bus className="h-4 w-4" strokeWidth={2.25} />
+        <span className={styles.identity} aria-hidden>
+          <BusFront strokeWidth={1.8} />
+          <span className={styles.routeAccent} />
+        </span>
+        <span className={styles.launcherCopy}>
+          <span className={styles.eyebrow}>Frederick County TransIT</span>
+          <span className={styles.title}>
+            {open ? "Buses right now" : "Live bus map"}
           </span>
-          <span className="min-w-0">
-            <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              {open ? "Buses right now" : "Show current buses"}
-            </span>
-            <span
-              id="pulse-live-buses-summary"
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-              className="block min-h-[1rem] max-w-[min(68vw,28rem)] truncate text-[10.5px]"
-              style={{
-                color:
-                  !open && closedSummary.tone === "attention"
-                    ? "var(--app-warning)"
-                    : "var(--app-ink-3)",
-              }}
-              title={open ? undefined : closedSummary.text}
-            >
-              {open ? "Live locations and route paths" : closedSummary.text}
-            </span>
+          <span
+            id="pulse-live-buses-summary"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className={styles.summary}
+            data-tone={!open ? closedSummary.tone : "current"}
+          >
+            <span className={styles.statusDot} aria-hidden />
+            <span>{open ? "Live locations and route paths" : closedSummary.text}</span>
           </span>
         </span>
-        <span className="flex shrink-0 items-center gap-2.5">
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-            TransIT
-          </span>
-          {open ? (
-            <ChevronUp className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-          ) : (
-            <ChevronDown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-          )}
+        <span className={styles.openIcon} aria-hidden>
+          {open ? <ChevronUp strokeWidth={2} /> : <ChevronDown strokeWidth={2} />}
         </span>
       </button>
 
@@ -270,67 +248,62 @@ export default function BusesReveal() {
         open={open}
         onClose={() => setOpen(false)}
         title="Buses right now"
-        subtitle="Live TransIT vehicle locations"
+        subtitle="Frederick County TransIT"
         maxHeight="78dvh"
+        footer={
+          <Link href="/transit" prefetch={false} className={styles.arrivalsLink}>
+            <span>Find stop arrivals</span>
+            <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+          </Link>
+        }
       >
-        {/* Just the live buses on Pulse: the map with live vehicle positions.
-            Detailed route and arrival boards remain on /transit. */}
-        <div id="pulse-live-buses" className="min-h-[280px] space-y-3">
-          {shapesState.status === "ready" ? (
-            <TransitMap
-              shapes={shapesState.shapes}
-              height={280}
-              center={[-77.4105, 39.4143]}
-              zoom={12.5}
-              liveBuses
-              highlightRoutes
-              hideBadge
-              lockToService
-              showTrains={false}
-            />
-          ) : shapesState.status === "error" ? (
-            <div
-              role="alert"
-              className="flex min-h-[150px] flex-col items-center justify-center gap-3 rounded-[var(--app-radius-lg)] border px-5 py-6 text-center"
-              style={{
-                borderColor: "var(--app-border)",
-                background: "var(--app-bg-sunken)",
-                color: "var(--app-ink-3)",
-              }}
-            >
-              <p className="max-w-[290px] text-[13px] leading-relaxed">
-                The live bus map did not load. Try again in a moment.
-              </p>
-              <button
-                type="button"
-                onClick={() => void loadShapes()}
-                className="tactile-interactive inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition active:scale-[0.98]"
-                style={{
-                  borderColor: "var(--app-border-strong)",
-                  background: "var(--app-bg-elevated)",
-                  color: "var(--app-ink)",
-                }}
-              >
-                <RotateCcw className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                Try map again
-              </button>
-            </div>
-          ) : (
-            <div
-              role="status"
-              className="grid min-h-[150px] place-items-center rounded-[var(--app-radius-lg)] border text-[13px]"
-              style={{
-                borderColor: "var(--app-border)",
-                background: "var(--app-bg-sunken)",
-                color: "var(--app-ink-3)",
-              }}
-            >
-              <span className="inline-flex items-center gap-2">
-                <LoaderCircle className="h-4 w-4 motion-safe:animate-spin" strokeWidth={2.25} aria-hidden />
-                Loading route map…
-              </span>
+        {/* Pulse keeps one live map. Stop arrivals and saved rider tools remain
+            on the dedicated transit page, reached from the sheet footer. */}
+        <div id="pulse-live-buses" className={styles.mapContent}>
+          {shapesState.status === "ready" && (
+            <div className={styles.mapIntro}>
+              <svg className={styles.routeMotif} viewBox="0 0 48 16" fill="none" aria-hidden>
+                <path d="M5 8H43" stroke="currentColor" strokeWidth="2" />
+                <circle cx="5" cy="8" r="3" />
+                <circle cx="24" cy="8" r="3" />
+                <circle cx="43" cy="8" r="3" />
+              </svg>
+              <p>Choose a route to focus the map.</p>
             </div>
           )}
+          <div className={styles.mapFrame}>
+            {shapesState.status === "ready" ? (
+              <TransitMap
+                shapes={shapesState.shapes}
+                height="clamp(17.5rem, 40dvh, 23rem)"
+                center={[-77.4105, 39.4143]}
+                zoom={12.5}
+                liveBuses
+                highlightRoutes
+                hideBadge
+                lockToService
+                showTrains={false}
+              />
+            ) : shapesState.status === "error" ? (
+              <div role="alert" className={styles.mapState}>
+                <BusFront className={styles.stateIcon} strokeWidth={1.8} aria-hidden />
+                <p>The live bus map did not load. Try again in a moment.</p>
+                <button
+                  type="button"
+                  onClick={() => void loadShapes()}
+                  className={styles.retry}
+                >
+                  <RotateCcw className="h-4 w-4" strokeWidth={2} aria-hidden />
+                  Try map again
+                </button>
+              </div>
+            ) : (
+              <div role="status" className={styles.mapState}>
+                <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" strokeWidth={2} aria-hidden />
+                <p>Loading route map…</p>
+              </div>
+            )}
+          </div>
         </div>
       </Sheet>
     </section>
