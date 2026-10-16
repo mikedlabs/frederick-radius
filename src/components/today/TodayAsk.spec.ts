@@ -9,6 +9,7 @@ describe("Today universal Find launcher", () => {
       embedded: true, showQuickNeeds: false, density: "arrival",
     }));
     expect(html).toContain('href="/search"');
+    expect(html).toContain('data-find-interaction-ready="false"');
     expect(html).toContain('aria-label="Find a place, service, event, or answer"');
     expect(html).toContain('data-find-density="arrival"');
     expect(html).toContain("Find what you need");
