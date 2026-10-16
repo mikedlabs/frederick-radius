@@ -13,7 +13,7 @@ const CITY_GIS_BASE =
 export const CITY_MOBILITY_SOURCE_URLS = {
   sidewalks: `${CITY_GIS_BASE}/Sidewalks/MapServer/2`,
   ramps: `${CITY_GIS_BASE}/Sidewalks/MapServer/0`,
-  paths: `${CITY_GIS_BASE}/PathPlan/MapServer/0`,
+  paths: `${CITY_GIS_BASE}/Sidewalks/MapServer/4`,
   bikePaths: `${CITY_GIS_BASE}/BikePaths/MapServer`,
 } as const;
 

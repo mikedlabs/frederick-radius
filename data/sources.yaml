@@ -1996,22 +1996,28 @@ sources:
   - id: cof_path_plan
     name: City of Frederick Path Plan
     owner: City of Frederick GIS
-    url: https://spires.cityoffrederick.com/arcgis/rest/services/PathPlan/MapServer
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/Sidewalks/MapServer/4
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: quarterly
-    license: City-published public GIS service; source link retained; no standalone reuse license found
+    license: Owner confirms written City GIS reuse permission; source attribution retained
     contact: Matt Bowman, mbowman@cityoffrederickmd.gov
     status: active
     collection: runtime
-    last_validated: 2026-08-11
+    last_validated: 2026-10-16
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/frederickCityMobility.ts
     notes: |
-      Viewport-bounded Path Plan layer. Only segments whose official STATUS is
-      EXISTING may inform a route. PLANNED, PROPOSED, DEV, and unknown records
-      remain visible planning context and are never treated as traversable.
+      Viewport-bounded Path Plan layer. The former PathPlan/MapServer endpoint
+      returns an ArcGIS 404; the City publishes the same public field schema
+      as Sidewalks/MapServer/4. Only segments whose official STATUS is EXISTING
+      may inform a route. PLANNED, PROPOSED, DEV, and unknown records remain
+      visible planning context and are never treated as traversable.
+      The owner confirmed that written permission for City GIS reuse exists.
+      The permission document, grant date, and detailed terms were not supplied
+      in this session. This source note does not assert an open license or
+      expand permission to unrelated sources, imagery, or bulk redistribution.
 
   - id: cof_historic_district
     name: City of Frederick Historic District
