@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import MapListPeek from "./MapListPeek";
 import type { MapTaskList } from "./mapListTask";
 
@@ -65,6 +65,41 @@ const narrowList: MapTaskList = {
   } : row),
 };
 
+/** The fallback's uncertainty and Retry precede the rows in a real scroller.
+ * Scroll each independent target into reach, then probe one stable painted
+ * frame. A clipped/covered 44px area still fails with its exact hit geometry. */
+async function expectReachableTarget(target: HTMLElement) {
+  target.scrollIntoView({ block: "nearest", inline: "nearest" });
+  const owner = target.ownerDocument;
+  const view = owner.defaultView!;
+  await waitFor(async () => {
+    const previous = target.getBoundingClientRect();
+    await new Promise<void>((resolve) => view.requestAnimationFrame(() => resolve()));
+    const box = target.getBoundingClientRect();
+    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    const samples = [[0, 0], [-21.5, 0], [21.5, 0], [0, -21.5], [0, 21.5]].map(([dx, dy]) => {
+      const x = point.x + dx;
+      const y = point.y + dy;
+      const hit = owner.elementFromPoint(x, y);
+      return {
+        x, y,
+        reachable: x >= 0 && y >= 0 && x < view.innerWidth && y < view.innerHeight && hit !== null && target.contains(hit),
+        hit: hit ? { tag: hit.tagName, label: hit.getAttribute("aria-label") } : null,
+      };
+    });
+    const geometry = JSON.stringify({
+      target: target.getAttribute("aria-label") ?? target.textContent,
+      box: { x: box.x, y: box.y, width: box.width, height: box.height },
+      viewport: { width: view.innerWidth, height: view.innerHeight }, samples,
+    });
+    await expect(Math.abs(box.x - previous.x), geometry).toBeLessThanOrEqual(0.25);
+    await expect(Math.abs(box.y - previous.y), geometry).toBeLessThanOrEqual(0.25);
+    await expect(box.width, geometry).toBeGreaterThanOrEqual(44);
+    await expect(box.height, geometry).toBeGreaterThanOrEqual(44);
+    await expect(samples.map((sample) => sample.reachable), geometry).toEqual([true, true, true, true, true]);
+  });
+}
+
 export const DirectDirectionsAt320: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   args: { list: narrowList },
@@ -102,16 +137,7 @@ export const DirectDirectionsAt320: Story = {
     await expect(directionsBox.height).toBeGreaterThanOrEqual(44);
     await expect(detailsBox.right).toBeLessThanOrEqual(directionsBox.left);
     await expect(directionsBox.right).toBeLessThanOrEqual(canvasElement.ownerDocument.defaultView!.innerWidth);
-    const owner = canvasElement.ownerDocument;
-    for (const target of [details, directions]) {
-      const box = target.getBoundingClientRect();
-      const x = box.x + box.width / 2;
-      const y = box.y + box.height / 2;
-      for (const [dx, dy] of [[0, 0], [-21.5, 0], [21.5, 0], [0, -21.5], [0, 21.5]]) {
-        const hit = owner.elementFromPoint(x + dx, y + dy);
-        await expect(hit !== null && target.contains(hit)).toBe(true);
-      }
-    }
+    for (const target of [details, directions]) await expectReachableTarget(target);
     await userEvent.click(details);
     const first = narrowList.rows[0];
     if (first.kind !== "place") throw new Error("The first fixture must be a place.");

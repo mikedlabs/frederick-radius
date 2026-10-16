@@ -14,30 +14,30 @@ const ROOT = process.cwd();
 const OUT = path.join(ROOT, "public", "brand");
 const LOCKED_BRAND_CONTRACT = {
   system: "Frederick Radius Brand System",
-  version: "1.3",
-  updated: "2026-10-12",
+  version: "1.4",
+  updated: "2026-10-16",
   colors: {
-    brick: "#2459D9",
-    cream: "#F6F8FC",
-    ink: "#13253E",
+    brick: "#C34335",
+    cream: "#FFFFFF",
+    ink: "#22221F",
     forest: "#315A43",
     creek: "#285D73",
     plum: "#7E2C6F",
     amber: "#C58A32",
     ridge: "#3F5E8F",
     surface: "#FFFFFF",
-    paperDeep: "#EAF0F7",
-    border: "#DCE4EF",
-    mutedInk: "#4D6078",
-    controlBorder: "#6B7F9D",
+    paperDeep: "#F4F4F3",
+    border: "#E1E1DD",
+    mutedInk: "#62625C",
+    controlBorder: "#818178",
     functionalAmber: "#925E16",
-    darkCanvas: "#0D1725",
-    darkSurface: "#152338",
-    darkInk: "#F0F5FF",
-    darkMutedInk: "#B1C2D9",
-    darkBorder: "#30415B",
-    darkControlBorder: "#91A4C0",
-    darkLink: "#91B6FF",
+    darkCanvas: "#1C1C19",
+    darkSurface: "#292925",
+    darkInk: "#F7F7F4",
+    darkMutedInk: "#C1C1B8",
+    darkBorder: "#464640",
+    darkControlBorder: "#A5A59A",
+    darkLink: "#FFAAA0",
   },
   type: {
     product: "System sans",
@@ -146,9 +146,9 @@ function assertUsesOnlyBrandColors(label: string, value: string): void {
 function assertUsesCanonicalBrandNames(label: string, value: string): void {
   const inspectable = inspectableText(value).replace(/\s+/g, " ");
   for (const name of [
-    "Cobalt",
-    "Cloud",
-    "Navy",
+    "Deep Coral",
+    "White",
+    "Charcoal",
     "System sans",
     "Catoctin Forest",
     "Ochre Amber",
@@ -167,7 +167,7 @@ async function assertBrandGuidanceIsCurrent(): Promise<void> {
       const content = await readFile(path.join(ROOT, relativePath), "utf8");
       assertUsesOnlyBrandColors(relativePath, content);
       assertUsesCanonicalBrandNames(relativePath, content);
-      if (!content.includes(LOCKED_BRAND_CONTRACT.version) || !content.includes("October 12, 2026")) {
+      if (!content.includes(LOCKED_BRAND_CONTRACT.version) || !content.includes("October 16, 2026")) {
         throw new Error(`${relativePath} is missing the current brand version or date.`);
       }
     }),
@@ -990,7 +990,7 @@ async function main() {
     markAsset("compact", BRAND.colors.cream, null, "Reverse compact mark from 24px to 47px"),
     markAsset("favicon", BRAND.colors.brick, null, "Single-arc favicon mark below 24px"),
     markAsset("favicon", BRAND.colors.cream, null, "Reverse single-arc favicon mark below 24px"),
-    markAsset("full", BRAND.colors.cream, BRAND.colors.brick, "Cobalt app icon (legacy brick asset filename)"),
+    markAsset("full", BRAND.colors.cream, BRAND.colors.brick, "Deep Coral app icon (legacy brick asset filename)"),
     lockupAsset(false, false),
     lockupAsset(true, false),
     lockupAsset(false, true),

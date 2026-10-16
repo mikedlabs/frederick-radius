@@ -97,8 +97,8 @@ describe("brandHue — AA contrast math", () => {
     expect(creamContrastOnGround(hex)).toBeGreaterThanOrEqual(AA_MIN);
   });
 
-  it("uses canonical Cloud as the reference text color", () => {
-    expect(CREAM).toBe("#F6F8FC");
+  it("uses canonical White as the reference text color", () => {
+    expect(CREAM).toBe("#FFFFFF");
     expect(CREAM).toBe(BRAND.colors.cream);
   });
 });

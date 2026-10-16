@@ -2,6 +2,20 @@ import { resolve } from "node:path";
 import { expect, test, type BrowserContext, type Locator, type Page, type TestInfo } from "@playwright/test";
 import type { PlanSpec } from "../src/lib/plan/plan-token";
 import { SAVED_OUTINGS_KEY } from "../src/lib/saved-outings";
+import { APPEARANCE_KEY } from "../src/lib/appearance";
+
+async function seedAppearance(page: Page, appearance: "light" | "dark") {
+  // App appearance is an explicit saved choice, independent of OS emulation.
+  await page.addInitScript(({ key, value }) => {
+    localStorage.setItem(key, value);
+  }, { key: APPEARANCE_KEY, value: appearance });
+}
+
+async function expectAppearance(page: Page, appearance: "light" | "dark") {
+  await expect(page.locator("html")).toHaveAttribute("data-appearance", appearance);
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(appearance);
+}
+
 
 test.use({ serviceWorkers: "allow" });
 
@@ -152,9 +166,11 @@ for (const { width, colorScheme, audience, daypart } of savedJourneyCases) {
     const page = await context.newPage();
     await page.setViewportSize({ width, height: width >= 800 ? 960 : 844 });
     await page.emulateMedia({ colorScheme, reducedMotion: width >= 800 ? "reduce" : "no-preference" });
+    await seedAppearance(page, colorScheme);
     const touch = Boolean(info.project.use.hasTouch);
     const chosenStart = daypart ? daypartStarts[daypart] : undefined;
     const outing = await buildOuting(page, audience, touch, chosenStart);
+    await expectAppearance(page, colorScheme);
     if (chosenStart) expect(outing.title).toBe(audience === "date" ? chosenStart.dateTitle : chosenStart.familyTitle);
     const before = width < 800 ? await geometry(page) : null;
     await expectTarget(page, "Save outing", "button");
@@ -181,6 +197,7 @@ for (const { width, colorScheme, audience, daypart } of savedJourneyCases) {
     await activate(page.getByRole("link", { name: "Saved", exact: true }).filter({ visible: true }).first(), touch);
     await expect(page).toHaveURL(/\/my-radius/);
     await page.reload({ waitUntil: "domcontentloaded" });
+    await expectAppearance(page, colorScheme);
     const section = page.getByRole("region", { name: "Saved outings", exact: true });
     await expect(section.getByRole("heading", { name: outing.title, exact: true })).toBeVisible();
     await expect(page.locator("[data-saved-empty-state]")).toHaveCount(0);
@@ -203,6 +220,7 @@ for (const { width, colorScheme, audience, daypart } of savedJourneyCases) {
     const stops = page.getByRole("list", { name: "Plan stops, in order", exact: true });
     await expect(stops.getByRole("heading")).toHaveText(outing.names);
     await settleFirstStop(page);
+    await expectAppearance(page, colorScheme);
     const after = width < 800 ? await geometry(page) : null;
     await expect(page.getByRole("link", { name: "Back to saved", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Back to saved", exact: true })).toHaveAttribute("href", "/my-radius");

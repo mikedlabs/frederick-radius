@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { MapPeekPhoto } from "./MapPeek";
+import styles from "./MapResultSurface.module.css";
 import type { PlaceCardPhotoPlan } from "@/lib/place-card-photo";
 
 // Controlled local image transports exercise the actual image/credit/CSS
@@ -17,6 +18,20 @@ function fixtureImagePath(image: HTMLImageElement | null): string | null {
   const source = new URL(url.searchParams.get("url") ?? url.href, image.ownerDocument.baseURI);
   return decodeURIComponent(source.pathname);
 }
+/** A fallback keeps Details focused, which can scroll the photo out of view.
+ * Request and decode the real local image before asserting its ready state. */
+async function expectDecodedImage(image: HTMLImageElement) {
+  image.scrollIntoView({ block: "nearest" });
+  await waitFor(async () => {
+    await image.decode();
+    const transport = JSON.stringify({ src: image.currentSrc || image.src, complete: image.complete, connected: image.isConnected });
+    await expect(image.isConnected, transport).toBe(true);
+    await expect(image.complete, transport).toBe(true);
+    await expect(image.naturalWidth, transport).toBeGreaterThan(1);
+    await expect(image.naturalHeight, transport).toBeGreaterThan(1);
+  }, { timeout: 5000 });
+}
+
 const plan: PlaceCardPhotoPlan = {
   key: "map-peek-source-transition-component-fixture",
   sources: [
@@ -46,7 +61,7 @@ const meta = {
   },
   render: args => (
     <div data-app-primary-tab="/map" style={{ padding: "12px 10px", width: "100%" }}>
-      <section className="map-peek" aria-label="Selected place component fixture"
+      <section className={`map-peek ${styles.surface}`} aria-label="Selected place component fixture"
         style={{ position: "relative", left: "auto", right: "auto", bottom: "auto" }}>
         <MapPeekPhoto {...args}>
           <div className="map-peek-text">
@@ -77,6 +92,8 @@ export const FallbackAndExhaustionAt320: Story = {
     const root = canvasElement.querySelector<HTMLElement>(".map-peek")!;
     const details = canvas.getByRole("button", { name: "Details" });
     const currentImage = () => root.querySelector<HTMLImageElement>("[data-map-peek-photo-source]");
+    await waitFor(() => expect(currentImage()?.dataset.mapPeekPhotoSource).toBe("google"), { timeout: 5000 });
+    await expectDecodedImage(currentImage()!);
     await waitFor(async () => {
       const image = currentImage();
       await expect(image?.dataset.mapPeekPhotoSource).toBe("google");
@@ -91,6 +108,8 @@ export const FallbackAndExhaustionAt320: Story = {
     await expect(root.querySelectorAll("img")).toHaveLength(1);
     details.focus();
     currentImage()!.dispatchEvent(new Event("error"));
+    await waitFor(() => expect(currentImage()?.dataset.mapPeekPhotoSource).toBe("curated"), { timeout: 5000 });
+    await expectDecodedImage(currentImage()!);
     await waitFor(async () => {
       const image = currentImage();
       await expect(image?.dataset.mapPeekPhotoSource).toBe("curated");
@@ -144,6 +163,7 @@ export const OwnedPhotoAt390: Story = {
   ] } },
   play: async ({ canvasElement }) => {
     const root = canvasElement.querySelector<HTMLElement>(".map-peek")!;
+    await expectDecodedImage(root.querySelector<HTMLImageElement>("[data-map-peek-photo-source]")!);
     await waitFor(async () => {
       const image = root.querySelector<HTMLImageElement>("[data-map-peek-photo-source]");
       await expect(image?.dataset.mapPeekPhotoSource).toBe("owned");

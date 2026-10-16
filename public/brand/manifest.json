@@ -5,30 +5,30 @@
     "description": "Current local information for Frederick County, organized around where you are.",
     "domain": "frederickradius.app",
     "system": "Frederick Radius Brand System",
-    "version": "1.3",
-    "updated": "2026-10-12",
+    "version": "1.4",
+    "updated": "2026-10-16",
     "colors": {
-      "brick": "#2459D9",
-      "cream": "#F6F8FC",
-      "ink": "#13253E",
+      "brick": "#C34335",
+      "cream": "#FFFFFF",
+      "ink": "#22221F",
       "forest": "#315A43",
       "creek": "#285D73",
       "plum": "#7E2C6F",
       "amber": "#C58A32",
       "ridge": "#3F5E8F",
       "surface": "#FFFFFF",
-      "paperDeep": "#EAF0F7",
-      "border": "#DCE4EF",
-      "mutedInk": "#4D6078",
-      "controlBorder": "#6B7F9D",
+      "paperDeep": "#F4F4F3",
+      "border": "#E1E1DD",
+      "mutedInk": "#62625C",
+      "controlBorder": "#818178",
       "functionalAmber": "#925E16",
-      "darkCanvas": "#0D1725",
-      "darkSurface": "#152338",
-      "darkInk": "#F0F5FF",
-      "darkMutedInk": "#B1C2D9",
-      "darkBorder": "#30415B",
-      "darkControlBorder": "#91A4C0",
-      "darkLink": "#91B6FF"
+      "darkCanvas": "#1C1C19",
+      "darkSurface": "#292925",
+      "darkInk": "#F7F7F4",
+      "darkMutedInk": "#C1C1B8",
+      "darkBorder": "#464640",
+      "darkControlBorder": "#A5A59A",
+      "darkLink": "#FFAAA0"
     },
     "type": {
       "product": "System sans",
@@ -38,7 +38,7 @@
       "textRuntime": "Public Sans Variable"
     }
   },
-  "generatedAt": "2026-10-12T23:38:45.277Z",
+  "generatedAt": "2026-10-16T07:45:55.787Z",
   "source": "scripts/build-brand-assets.ts",
   "fonts": [
     {
@@ -233,7 +233,7 @@
       "file": "marks/ripple-full-cream-tile.svg",
       "width": 512,
       "height": 512,
-      "role": "Cobalt app icon (legacy brick asset filename)",
+      "role": "Deep Coral app icon (legacy brick asset filename)",
       "exports": [
         "svg",
         "png"
@@ -609,43 +609,43 @@
     }
   ],
   "platform": {
-    "iconVersion": "20261012a",
-    "themeColor": "#F6F8FC",
+    "iconVersion": "20261016a",
+    "themeColor": "#FFFFFF",
     "generatedBy": "scripts/build-push-icons.ts",
     "assets": [
       {
         "file": "public/icons/icon.svg",
-        "url": "/icons/icon.svg?v=20261012a",
+        "url": "/icons/icon.svg?v=20261016a",
         "role": "PWA launcher SVG"
       },
       {
         "file": "public/icons/icon-192.png",
-        "url": "/icons/icon-192.png?v=20261012a",
+        "url": "/icons/icon-192.png?v=20261016a",
         "role": "192 px launcher and push icon"
       },
       {
         "file": "public/icons/icon-512.png",
-        "url": "/icons/icon-512.png?v=20261012a",
+        "url": "/icons/icon-512.png?v=20261016a",
         "role": "512 px launcher"
       },
       {
         "file": "public/icons/icon-maskable.svg",
-        "url": "/icons/icon-maskable.svg?v=20261012a",
+        "url": "/icons/icon-maskable.svg?v=20261016a",
         "role": "Maskable launcher SVG"
       },
       {
         "file": "public/icons/icon-maskable-512.png",
-        "url": "/icons/icon-maskable-512.png?v=20261012a",
+        "url": "/icons/icon-maskable-512.png?v=20261016a",
         "role": "512 px maskable launcher"
       },
       {
         "file": "src/app/apple-icon.png",
-        "url": "/apple-icon.png?v=20261012a",
+        "url": "/apple-icon.png?v=20261016a",
         "role": "180 px Apple touch icon"
       },
       {
         "file": "public/icons/badge-72.png",
-        "url": "/icons/badge-72.png?v=20261012a",
+        "url": "/icons/badge-72.png?v=20261016a",
         "role": "72 px monochrome notification badge"
       },
       {

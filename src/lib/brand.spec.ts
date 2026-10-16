@@ -29,7 +29,15 @@ describe("Frederick Radius brand contract", () => {
     expect(BRAND.system).toBe("Frederick Radius Brand System");
   });
 
-  it("keeps brand text colors readable on Cloud", () => {
+  it("keeps the owner-approved white, charcoal and coral release identity", () => {
+    expect(BRAND.version).toBe("1.4");
+    expect(BRAND.colors.cream).toBe("#FFFFFF");
+    expect(BRAND.colors.ink).toBe("#22221F");
+    expect(BRAND.colors.brick).toBe("#C34335");
+    expect(BRAND.colors.paperDeep).toBe("#F4F4F3");
+  });
+
+  it("keeps brand text colors readable on White", () => {
     expect(contrast(BRAND.colors.ink, BRAND.colors.cream)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(BRAND.colors.brick, BRAND.colors.cream)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(BRAND.colors.forest, BRAND.colors.cream)).toBeGreaterThanOrEqual(4.5);

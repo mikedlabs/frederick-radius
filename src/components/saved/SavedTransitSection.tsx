@@ -214,7 +214,7 @@ function SavedStopTracker({
             style={{
               borderColor:
                 "color-mix(in srgb, var(--app-cool) 38%, var(--app-border))",
-              color: "var(--app-cool)",
+              color: "var(--app-link)",
               background: "var(--app-cool-tint-6)",
             }}
           >
@@ -227,7 +227,7 @@ function SavedStopTracker({
           className="tap-44 inline-flex min-h-11 items-center rounded-full border px-3 text-[11px] font-semibold"
           style={{
             borderColor: "var(--app-control-border)",
-            color: "var(--app-cool)",
+            color: "var(--app-link)",
             background: "var(--app-bg-elevated-solid)",
           }}
         >

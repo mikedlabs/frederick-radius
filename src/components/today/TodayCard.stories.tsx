@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import TodayWeatherView, { WeatherUnavailable } from "./TodayWeatherView";
 
 const meta = {
@@ -44,9 +44,13 @@ export const MastheadReading: Story = {
   args: { density: "masthead", headline: "Mostly sunny", safetyNote: "The air-quality reading is unavailable." },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    for (const fact of ["Mostly sunny", "NWS forecast · Frederick", "High 76°", "The air-quality reading is unavailable."]) {
+    for (const fact of ["Mostly sunny", "Frederick · NWS", "The air-quality reading is unavailable."]) {
       await expect(canvas.getByText(fact)).toBeVisible();
     }
+    await expect(canvas.getByText("High 76°")).not.toBeVisible();
+    await userEvent.click(canvas.getByText("Forecast details", { exact: true }));
+    await expect(canvas.getByText("High 76°")).toBeVisible();
+    await expect(canvas.getByText("NWS forecast · Frederick")).toBeVisible();
     await expect(canvas.getByText("Oct 8, 2026, 7:35 AM EDT")).toHaveAttribute("datetime", "2026-10-08T11:35:00.000Z");
     await expect(canvas.getByText("5h 40m of daylight left", { exact: false })).toBeVisible();
     await expect(canvasElement.querySelector("[data-weather-density]")).toHaveAttribute("data-weather-density", "masthead");

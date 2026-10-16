@@ -31,14 +31,14 @@ export const TileCategoryReadability: Story = {
   args: { variant: "tile" },
   parameters: {
     a11y: { test: "error" },
-    docs: { description: { story: "Checks computed category-label contrast in the runner’s actual native color scheme. The standard component runner uses light mode; the native-OS browser matrix separately exercises dark mode." } },
+    docs: { description: { story: "Checks computed category-label contrast in the runner’s explicit app appearance. The standard component runner uses light mode; the browser matrix separately exercises the saved dark appearance." } },
   },
   play: async ({ canvasElement }) => {
     const label = within(canvasElement).getByText("Parks & trails");
     await expect(label).toBeVisible();
     const owner = canvasElement.ownerDocument;
     const view = owner.defaultView!;
-    const nativeScheme = view.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    const nativeScheme = owner.documentElement.dataset.appearance === "dark" ? "dark" : "light";
     await expect(view.getComputedStyle(owner.documentElement).getPropertyValue("--app-native-scheme").trim()).toBe(nativeScheme);
 
     // Resolve actual browser colors, including the translucent light surface,

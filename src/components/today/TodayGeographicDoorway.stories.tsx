@@ -20,7 +20,7 @@ export const ExactOwnedPlace: Story = {
     await expect(canvas.getByRole("img", { name: "Carroll Creek in Frederick." })).toBeVisible();
     await waitFor(async () => { await expect(link).toHaveAttribute("data-photo-state", "loaded"); });
     const photo = canvasElement.querySelector("figure")!.getBoundingClientRect();
-    await expect(photo.width / photo.height).toBeCloseTo(16 / 9, 2);
+    await expect(photo.width / photo.height).toBeCloseTo(4 / 3, 2);
     await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     await userEvent.tab();
     await expect(link).toHaveFocus();

@@ -9,6 +9,21 @@ import { TodayGeographicDoorwayView } from "@/components/today/TodayGeographicDo
 import PlaceSheet from "./PlaceSheet";
 import PhotoLightbox from "@/components/ui/PhotoLightbox";
 
+/** Bring real bytes into the browser's lazy-load range before checking them.
+ * Cold full-suite runs share asset decoding with the rest of the workshop;
+ * a one-second polling default is not a transport or performance contract. */
+async function expectDecodedImage(image: HTMLImageElement) {
+  image.scrollIntoView({ block: "nearest" });
+  await waitFor(async () => {
+    await image.decode();
+    const transport = JSON.stringify({ src: image.currentSrc || image.src, complete: image.complete, connected: image.isConnected });
+    await expect(image.isConnected, transport).toBe(true);
+    await expect(image.complete, transport).toBe(true);
+    await expect(image.naturalWidth, transport).toBeGreaterThan(1);
+    await expect(image.naturalHeight, transport).toBeGreaterThan(1);
+  }, { timeout: 5000 });
+}
+
 const slug = "carroll-creek-linear-park-frederick";
 const owned = getOwnedPlacePhoto(slug)!;
 const place: PlaceCardData = {
@@ -68,7 +83,7 @@ export const OwnedFullHero: Story = {
     const images = within(canvasElement).getAllByRole("img", { name: owned.alt }) as HTMLImageElement[];
     await expect(images).toHaveLength(2);
     for (const image of images) {
-      await waitFor(() => expect(image.naturalWidth).toBeGreaterThan(1));
+      await expectDecodedImage(image);
       const url = new URL(image.currentSrc, window.location.href);
       await expect(decodeURIComponent(url.searchParams.get("url") ?? url.pathname)).toBe(owned.src);
     }
@@ -82,7 +97,7 @@ export const OwnedFullHero: Story = {
     await waitFor(() => expect(dialog).toHaveFocus());
     const viewerImages = within(dialog).getAllByRole("img", { name: owned.alt }) as HTMLImageElement[];
     await expect(viewerImages).toHaveLength(1);
-    await waitFor(() => expect(viewerImages[0].naturalWidth).toBeGreaterThan(1));
+    await expectDecodedImage(viewerImages[0]);
     const viewerUrl = new URL(viewerImages[0].currentSrc, window.location.href);
     await expect(decodeURIComponent(viewerUrl.searchParams.get("url") ?? viewerUrl.pathname)).toBe(owned.src);
     await expect(dialog).toHaveAttribute("data-lightbox-photo-source", "owned");
@@ -98,7 +113,7 @@ export const OwnedCardRemainsStatic: Story = {
   args: { size: "card" },
   play: async ({ canvasElement }) => {
     const image = within(canvasElement).getByRole("img", { name: owned.alt }) as HTMLImageElement;
-    await waitFor(() => expect(image.naturalWidth).toBeGreaterThan(1));
+    await expectDecodedImage(image);
     await expect(canvasElement.querySelector("[data-place-hero]")).toHaveAttribute("data-place-hero-source", "owned");
     await expect(within(canvasElement).queryByRole("button", { name: `View ${place.name} photo` })).toBeNull();
   },
@@ -136,7 +151,7 @@ export const OwnedSheetKeepsFactsAfterFailure: Story = {
     const dialog = await body.findByRole("dialog", { name: place.name });
     const sheet = within(dialog);
     const image = sheet.getByRole("img", { name: owned.alt }) as HTMLImageElement;
-    await waitFor(() => expect(image.naturalWidth).toBeGreaterThan(1));
+    await expectDecodedImage(image);
     await expect(dialog.querySelector("[data-place-sheet-photo]")).toHaveAttribute("data-place-sheet-photo-source", "owned");
     const save = dialog.querySelector<HTMLButtonElement>(`button[data-save-ref="place:${slug}"]`)!;
     await waitFor(() => expect(save).not.toHaveAttribute("aria-hidden", "true"));
@@ -200,7 +215,7 @@ export const OwnedViewerHasNoProviderCredit: Story = {
     await userEvent.click(opener);
     const dialog = await within(document.body).findByRole("dialog", { name: "Photo viewer" });
     const image = within(dialog).getByRole("img", { name: owned.alt }) as HTMLImageElement;
-    await waitFor(() => expect(image.naturalWidth).toBeGreaterThan(1));
+    await expectDecodedImage(image);
     await expect(dialog.querySelector("[data-lightbox-photo-credit]")).toBeNull();
     await expect(dialog).toHaveAttribute("data-lightbox-photo-source", "owned");
     image.dispatchEvent(new Event("error"));
@@ -243,7 +258,7 @@ export const HeroFailureKeepsViewerUntilBrowserBack: Story = {
     const originalState = window.history.state;
     const canvas = within(canvasElement);
     const heroImage = canvas.getByRole("img", { name: owned.alt }) as HTMLImageElement;
-    await waitFor(() => expect(heroImage.naturalWidth).toBeGreaterThan(1));
+    await expectDecodedImage(heroImage);
     await userEvent.click(canvas.getByRole("button", { name: `View ${place.name} photo` }));
     const body = within(document.body);
     const viewer = await body.findByRole("dialog", { name: "Photo viewer" });

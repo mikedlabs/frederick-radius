@@ -13,19 +13,18 @@
   gap: var(--app-space-3);
   min-height: 72px;
   padding: var(--app-space-4);
-  border: 1px solid var(--app-control-border);
+  border: 0;
   border-radius: var(--app-radius-lg);
-  color: var(--app-ink);
-  background: var(--app-bg-elevated-solid);
-  box-shadow: var(--app-shadow-1);
+  color: var(--app-on-brand);
+  background: var(--app-brand);
+  box-shadow: none;
   outline-offset: 4px;
   transition: border-color var(--app-dur-fast) var(--app-ease-out), box-shadow var(--app-dur-fast) var(--app-ease-out);
 }
 
 .launcher:hover {
-  color: var(--app-ink);
-  background: var(--app-bg-elevated-solid);
-  border-color: var(--app-link);
+  color: var(--app-on-brand);
+  background: var(--app-brand-press);
 }
 
 .launcher:focus-visible {
@@ -38,24 +37,24 @@
   height: 40px;
   flex-shrink: 0;
   place-items: center;
-  color: var(--app-link);
+  color: inherit;
 }
 
 .launcherArrow {
   box-sizing: content-box;
   padding: 8px;
   border-radius: var(--app-radius-sm);
-  color: var(--app-link);
-  background: color-mix(in srgb, var(--app-link) 10%, var(--app-bg-elevated-solid));
+  color: inherit;
+  background: color-mix(in srgb, var(--app-on-brand) 14%, transparent);
 }
 
 .arrival .launcher {
-  min-height: 60px;
-  padding: var(--app-space-3);
+  min-height: 64px;
+  padding: var(--app-space-3) var(--app-space-4);
 }
 
 .arrival .prompt {
-  font-size: 1.0625rem;
+  font-size: 1.125rem;
   line-height: 1.3;
 }
 
@@ -76,7 +75,7 @@
 .hint {
   display: block;
   margin-top: 4px;
-  color: var(--app-ink-2);
+  color: inherit;
   font-size: 0.9375rem;
   line-height: 1.4;
   text-wrap: pretty;
@@ -93,11 +92,11 @@
   align-items: center;
   gap: var(--app-space-2);
   min-width: 0;
-  min-height: 76px;
+  min-height: 72px;
   padding: var(--app-space-3);
-  border: 1px solid var(--app-control-border);
+  border: 0;
   border-radius: var(--app-radius-lg);
-  background: var(--app-bg-elevated-solid);
+  background: var(--app-bg-sunken);
   color: var(--app-ink);
   font-size: 0.9375rem;
   font-weight: 600;
@@ -107,8 +106,7 @@
 
 .shortcut:hover {
   color: var(--app-ink);
-  border-color: var(--app-link);
-  background: color-mix(in srgb, var(--app-link) 5%, var(--app-bg-elevated-solid));
+  background: color-mix(in srgb, var(--app-link) 8%, var(--app-bg-sunken));
 }
 
 .shortcut:focus-visible {
@@ -168,6 +166,12 @@
 
   .prompt {
     font-size: 1.1875rem;
+  }
+
+  /* Keep the full arrival prompt on one line at the default text size even
+     with wider native system fonts. Larger text can still wrap naturally. */
+  .arrival .prompt {
+    font-size: 1rem;
   }
 
   .hint {

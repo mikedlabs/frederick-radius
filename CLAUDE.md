@@ -22,25 +22,23 @@ truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
   italic. Libre Caslon Display Regular remains the wordmark and rare
   editorial signature. Do not synthesize bold or italic Caslon, rename
   packaged Public Sans as a system font, or download a new family.
-- **Palette (Brand System 1.3, October 12, 2026):** Always use `var(--app-*)`
-  in app UI. Cloud `--app-bg #F6F8FC`, Navy `--app-ink #13253E`, Cobalt
-  `--app-brand #2459D9`, and white Surface `#FFFFFF` form the light shell.
-  Existing `BRAND.colors.cream`, `.ink`, and `.brick` are compatible keys for
-  Cloud, Navy, and Cobalt. They do not preserve the former warm palette.
-  Dark appearance uses `darkCanvas #0D1725`, `darkSurface #152338`,
-  `darkInk #F0F5FF`, `darkMutedInk #B1C2D9`, `darkBorder #30415B`,
-  `darkControlBorder #91A4C0`, and `darkLink #91B6FF` from the contract.
-  Use the matching theme-readable text and control tokens; dark link fills
-  need dark text. Catoctin Forest `#315A43` stays a terrain/outdoor/positive
-  cue; Creek `#285D73` stays civic/map/transit/data; Plum `#7E2C6F` stays a
-  limited cultural accent. Ochre Amber `#C58A32` retains live/caution/sunlight
-  and the established Beer-specific meaning, with readable text. Semantic
-  colors do not replace the shell or become unsupported dark-mode text.
+- **Palette (Brand System 1.4, October 16, 2026, owner-approved):** Always use
+  `var(--app-*)` in app UI. White `--app-bg #FFFFFF`, Charcoal `--app-ink #22221F`,
+  Deep Coral `--app-brand #C34335`, and soft gray inset surfaces `#F4F4F3` form
+  the light shell. Existing `BRAND.colors.cream`, `.ink`, and `.brick` are
+  compatible keys for White, Charcoal, and Deep Coral. Dark appearance is an explicit saved choice and uses `darkCanvas #1C1C19`, `darkSurface #292925`,
+  `darkInk #F7F7F4`, `darkMutedInk #C1C1B8`, `darkBorder #464640`,
+  `darkControlBorder #A5A59A`, and `darkLink #FFAAA0` from the contract.
+  Use theme-readable text and control tokens; light coral link fills need
+  dark text. Catoctin Forest `#315A43` stays a terrain/outdoor/positive cue;
+  Creek `#285D73` stays civic/map/transit/data; Plum `#7E2C6F` stays a limited
+  cultural accent. Ochre Amber `#C58A32` retains live/caution/sunlight and
+  Beer-specific meaning. Semantic colors do not become shell themes.
 - **Mark:** use `RippleMark` or an exported asset from `public/brand`. The full
   three-arc mark is for 48 px and larger, the compact two-arc mark is for
   24–47 px, and the one-arc favicon is for smaller sizes. Do not redraw it,
   wrap it in the retired circle, or invent a page-specific logo.
-- **Surface:** Cloud and white are the normal light surfaces. Dark appearance
+- **Surface:** White and soft gray are the normal light surfaces. Dark appearance
   uses the separate dark canvas and surface tokens throughout the same app.
   Favor clean surfaces, clear type, and accurate local photography over paper
   grain or palette washes. Specialty pages share this identity and preserve
