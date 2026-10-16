@@ -100,4 +100,25 @@ describe("Today page rework (2026-10-06)", () => {
     expect(todayPage).not.toMatch(/newsletter|sign-?up|email prompt/i);
     expect(todayPage).toContain("TodayListLink");
   });
+
+  it("keeps Today event cards as one tap with no Save button", () => {
+    const pick = readFileSync("src/components/today/TodayEventPick.tsx", "utf8");
+    expect(todayPage).toContain("TodayEventPick");
+    expect(todayPage).not.toContain("EventCard");
+    expect(todayPage).not.toContain("SaveButton");
+    expect(pick).not.toContain("SaveButton");
+    expect(pick).toContain('href={`/events/${event.slug}`}');
+  });
+
+  it("does not pull Nearby filter-sheet code into /today", () => {
+    const nearbyPage = readFileSync("src/app/(app)/nearby/page.tsx", "utf8");
+    const rightNow = readFileSync("src/components/now/RightNow.tsx", "utf8");
+    expect(todayPage).not.toContain("RightNow");
+    expect(todayPage).not.toContain("NearbyFiltersSheet");
+    expect(todayPage).not.toContain("BottomSheet");
+    expect(nearbyPage).toContain('import("@/components/now/RightNow")');
+    expect(nearbyPage).not.toMatch(/import RightNow from/);
+    expect(rightNow).toContain('dynamic(() => import("./NearbyFiltersSheet")');
+    expect(rightNow).not.toContain('from "@/components/ui/BottomSheet"');
+  });
 });

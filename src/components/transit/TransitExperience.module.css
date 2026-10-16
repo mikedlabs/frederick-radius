@@ -1,0 +1,114 @@
+/* The transit workspace uses the shared Brand 1.4 tokens. Its route line is
+   decorative identity, never a map, a vehicle position, or service progress. */
+.page { min-width: 0; container: transit-page / inline-size; }
+.masthead { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 1rem; padding: .75rem 0 1.5rem; border-bottom: 1px solid var(--app-border); }
+.masthead h1 { margin: .35rem 0 .65rem; font-size: clamp(2.5rem, 7vw, 4.75rem); line-height: .98; letter-spacing: -.065em; font-weight: 750; color: var(--app-ink); overflow-wrap: anywhere; }
+.masthead p { max-width: 35rem; font-size: .9375rem; line-height: 1.55; color: var(--app-ink-2); }
+.masthead .kicker { display: flex; align-items: center; gap: .5rem; font-size: .75rem; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; color: var(--app-ink-2); }
+.mastheadGraphic { width: clamp(7rem, 18vw, 12rem); height: auto; color: var(--app-brand); pointer-events: none; align-self: center; }
+.workspace { display: grid; min-width: 0; gap: 1.5rem; margin-top: 1.5rem; align-items: start; }
+.stopFinder { min-width: 0; padding: 1.25rem; border: 1px solid var(--app-border); border-radius: 1.5rem; background: var(--app-bg-elevated-solid); box-shadow: 0 12px 36px -26px color-mix(in srgb, var(--app-ink) 24%, transparent); }
+.finderHeader { display: flex; align-items: flex-start; gap: .875rem; margin-bottom: 1rem; }
+.finderIcon { display: grid; place-items: center; flex-shrink: 0; width: 2.75rem; height: 2.75rem; border-radius: .875rem; background: var(--app-brand-tint-6); color: var(--app-link); }
+.finderHeader h2 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -.04em; line-height: 1.2; }
+.finderHeader p { margin-top: .375rem; font-size: .875rem; line-height: 1.5; color: var(--app-ink-2); }
+.searchArea { min-width: 0; }
+.searchLabel { margin-bottom: .5rem; font-size: .875rem; font-weight: 650; }
+.searchRow { display: grid; grid-template-columns: minmax(0, 1fr) 52px; gap: .5rem; }
+.searchInput { width: 100%; min-width: 0; min-height: 3.25rem; padding: .75rem 44px .75rem 38px; border: 1px solid var(--app-control-border); border-radius: .875rem; background: var(--app-bg); color: var(--app-ink); font-size: 1rem; line-height: 1.4; }
+.searchInput:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 3px; }
+.nearest { display: grid; place-items: center; width: 52px; min-height: 3.25rem; border: 1px solid var(--app-control-border); border-radius: .875rem; }
+.stopFinder .help { margin-top: .65rem; font-size: .8125rem; line-height: 1.5; }
+.resultList { margin-top: .75rem; border-top: 1px solid var(--app-border); }
+.result { display: flex; min-width: 0; min-height: 3.25rem; width: 100%; align-items: center; gap: .75rem; padding: .75rem .25rem; text-align: left; border-bottom: 1px solid var(--app-border); }
+.resultName { flex: 1; min-width: 0; font-size: .9375rem; line-height: 1.4; overflow-wrap: anywhere; }
+.savedRail { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--app-border); }
+.savedRailHeader { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: .5rem; }
+.savedRailHeader p { font-size: .8125rem; }
+.savedStops { display: flex; gap: .5rem; overflow-x: auto; padding: .25rem 0; }
+.savedStop { flex-shrink: 0; min-height: 2.75rem; max-width: 100%; padding: .6rem .875rem; border: 1px solid var(--app-control-border); border-radius: .75rem; font-size: .875rem; line-height: 1.4; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+.boardingCard { position: relative; min-width: 0; margin-top: 1.25rem; border: 1px solid var(--app-border); border-top: 3px solid var(--app-brand); border-radius: 1.125rem; background: var(--app-bg); }
+.boardingBody { min-width: 0; padding: 1rem; }
+.stopHeading { display: flex; flex-wrap: wrap; gap: .875rem; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+.stopIdentity { flex: 1 1 12rem; min-width: 0; }
+.stopIdentity h3 { margin-top: .375rem; font-size: 1.375rem; font-weight: 700; line-height: 1.2; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.stopKicker { font-size: .75rem; font-weight: 650; color: var(--app-ink-2); }
+.feedBadge { display: flex; align-items: center; gap: .5rem; min-width: 0; padding: .5rem 0; }
+.feedBadge strong { font-size: .8125rem; line-height: 1.4; }
+.feedBadge small { display: block; font-size: .75rem; line-height: 1.5; color: var(--app-ink-2); }
+.routeBadge { display: inline-grid; place-items: center; min-width: 2.25rem; min-height: 2rem; flex-shrink: 0; border-radius: .5rem; padding: .25rem .5rem; font-size: .8125rem; font-weight: 750; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.servedRoutes { display: flex; flex-wrap: wrap; gap: .625rem 1rem; }
+.servedRoute { display: inline-flex; min-width: 0; align-items: center; gap: .5rem; font-size: .8125rem; line-height: 1.4; }
+.arrivalList { margin-top: .5rem; }
+.arrivalRow { position: relative; display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); column-gap: .75rem; row-gap: .75rem; min-width: 0; padding: 1.125rem 0; border-top: 1px solid var(--app-border); }
+.arrivalRow::before { content: ""; position: absolute; z-index: 0; top: 3.25rem; bottom: 1.25rem; left: 1.0625rem; width: 1px; background: var(--app-border); pointer-events: none; }
+.arrivalDestination { min-width: 0; align-self: center; }
+.arrivalDestination > span:first-child { font-size: .9375rem; line-height: 1.4; font-weight: 650; overflow-wrap: anywhere; }
+.arrivalDestination > span:last-child { font-size: .8125rem; line-height: 1.5; }
+.arrivalEta { grid-column: 2; min-width: 0; text-align: left; }
+.arrivalTime { display: block; font-size: 2rem; font-weight: 750; line-height: 1.05; letter-spacing: -.045em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.catchability { display: block; margin-top: .375rem; font-size: .8125rem; font-weight: 600; line-height: 1.4; }
+/* Keep the decorative route line behind actions, including wrapped or enlarged controls. */
+.arrivalActions { position: relative; z-index: 1; background: var(--app-bg); grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.75rem), 1fr)); gap: .5rem; min-width: 0; }
+.trackAction, .saveAction, .walkAction { display: inline-flex; min-width: 0; min-height: 2.75rem; justify-content: center; align-items: center; gap: .4rem; padding: .65rem .75rem; border: 1px solid var(--app-control-border); border-radius: .75rem; font-size: .8125rem; font-weight: 650; line-height: 1.4; text-align: center; overflow-wrap: anywhere; }
+.trackAction { color: var(--app-bg); background: var(--app-ink); border-color: var(--app-ink); }
+.saveAction { color: var(--app-ink-2); background: transparent; }
+.walkAction { color: var(--app-on-brand); background: var(--app-brand); border-color: var(--app-brand); }
+.stopActions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.75rem), 1fr)); gap: .5rem; padding-top: 1rem; border-top: 1px dashed var(--app-control-border); }
+.detailSummary { display: flex; min-height: 2.75rem; padding: .75rem 1rem; align-items: center; justify-content: space-between; gap: .75rem; font-size: .8125rem; font-weight: 600; cursor: pointer; list-style: none; }
+.detailSummary::-webkit-details-marker { display: none; }
+.network { padding: 1.5rem 0; border-top: 1px solid var(--app-border); border-bottom: 1px solid var(--app-border); }
+.network h2 { font-size: 1.375rem; font-weight: 700; line-height: 1.2; letter-spacing: -.035em; }
+.networkIntro { margin-top: .4rem; color: var(--app-ink-2); font-size: .875rem; line-height: 1.5; }
+.networkTabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; padding: .375rem; border: 1px solid var(--app-border); border-radius: 1rem; background: var(--app-bg-sunken); }
+.networkTab { display: flex; min-width: 0; min-height: 3.25rem; align-items: center; gap: .625rem; border-radius: .75rem; padding: .75rem; text-align: left; }
+.networkTab span { overflow-wrap: anywhere; }
+.networkTab span > span:first-child { font-size: .9375rem; line-height: 1.3; }
+.networkTab span > span:last-child { font-size: .75rem; line-height: 1.5; white-space: normal; }
+.networkTab[aria-selected="true"] { outline: 1px solid var(--app-control-border); }
+.networkPanel { min-width: 0; padding: 1.25rem .25rem .25rem; }
+.networkPanel[hidden] { display: none; }
+.networkPanel > p { font-size: .875rem; line-height: 1.5; }
+.networkPanel a, .networkPanel button { min-height: 2.75rem; }
+.networkPanel select { font-size: .875rem; min-height: 2.75rem; }
+.networkEta { font-size: 1.5rem; line-height: 1.2; font-weight: 700; font-variant-numeric: tabular-nums; }
+.liveNetwork { min-width: 0; }
+.mapHeading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .75rem; margin-bottom: .875rem; }
+.mapHeading h2 { font-size: 1.375rem; font-weight: 700; letter-spacing: -.035em; }
+.mapHeading p { max-width: 30rem; font-size: .875rem; line-height: 1.5; }
+.mapShell { min-width: 0; border: 1px solid var(--app-border); border-radius: 1.25rem; background: var(--app-bg-sunken); overflow: hidden; }
+.mapPicker { display: grid; min-width: 0; gap: .625rem; padding: 1rem; }
+.mapPicker p { font-size: .875rem; line-height: 1.4; color: var(--app-ink-2); }
+.mapPicker label { display: block; min-width: 0; }
+.routeSelect { width: 100%; min-width: 0; min-height: 3rem; padding: .625rem .75rem; border: 1px solid var(--app-control-border); border-radius: .75rem; background: var(--app-bg); color: var(--app-ink); font-size: .875rem; font-weight: 600; }
+.mapFrame { position: relative; min-width: 0; overflow: hidden; border-top: 1px solid var(--app-border); background: var(--app-bg-sunken); }
+.mapFallback { display: grid; height: 100%; place-items: center; padding: 1.5rem; text-align: center; }
+.mapFallback p { font-size: .875rem; line-height: 1.5; }
+.mapRetry { display: inline-flex; min-height: 2.75rem; align-items: center; justify-content: center; padding: .625rem 1rem; margin-top: 1rem; border: 1px solid var(--app-control-border); border-radius: .75rem; font-size: .875rem; font-weight: 650; color: var(--app-link); background: var(--app-bg); }
+.page .accessibility { display: flex; min-height: 2.75rem; align-items: center; gap: .75rem; padding: 1rem 0; font-size: .875rem; line-height: 1.5; color: var(--app-ink-2); }
+.referenceTile { display: flex; flex-direction: column; align-items: flex-start; gap: .75rem; min-height: 2.75rem; height: 100%; padding: 1rem; border: 1px solid var(--app-border); border-radius: 1rem; background: var(--app-bg); }
+.referenceTile > span:last-child > span:first-child { font-size: .9375rem; line-height: 1.4; }
+.referenceTile > span:last-child > span:last-child { font-size: .8125rem; line-height: 1.5; }
+.page .sourceNotes { padding: 1rem 0; border-top: 1px solid var(--app-border); color: var(--app-ink-2); font-size: .8125rem; line-height: 1.6; }
+@container transit-page (min-width: 54rem) {
+  .workspace { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 1.5rem; }
+  .liveNetwork { position: sticky; top: calc(var(--app-topbar-offset) + 1rem); }
+  .mapPicker { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); align-items: center; }
+}
+@media (max-width: 36rem) {
+  .masthead { grid-template-columns: minmax(0, 1fr); gap: .875rem; padding-bottom: 1rem; }
+  .mastheadGraphic { width: 8rem; height: 1.5rem; justify-self: end; }
+  .stopFinder { padding: 1rem; border-radius: 1.25rem; }
+  .boardingBody { padding: .875rem; }
+  .finderIcon { width: 2.5rem; height: 2.5rem; }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .result:hover { background: var(--app-brand-tint-6); }
+  .trackAction:hover, .walkAction:hover { filter: brightness(.94); }
+  .saveAction:hover { background: var(--app-bg-sunken); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .masthead, .stopFinder { animation: transitEntrance .28s ease-out both; }
+  .trackAction, .walkAction, .saveAction, .result { transition: background .16s ease, color .16s ease; }
+}
+@keyframes transitEntrance { from { opacity: 0; } to { opacity: 1; } }

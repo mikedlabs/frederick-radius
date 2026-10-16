@@ -26,12 +26,15 @@ type ToolDeckItem = ToolDeckGroups[number]["items"][number];
 const ASK_RADIUS_ID = "ask-radius";
 const TIME_MACHINE_ID = "time-machine";
 
-describe("Compass search control", () => {
-  it("uses one explicit clear control instead of adding the browser's second X", () => {
+describe("Compass request ownership", () => {
+  it("keeps the tool filter in the deliberate index and uses the shared Find bridge", () => {
     const source = readFileSync("src/components/nav/CompassHub.tsx", "utf8");
+    expect(source).toContain("requestFind(\"global\")");
+    expect(source).toContain('href="/search"');
+    const mainSurface = source.slice(source.indexOf("export default function CompassHub"), source.indexOf("function PinnedTools"));
+    expect(mainSurface).not.toContain('role="searchbox"');
     expect(source).toContain('type="text"');
-    expect(source).toContain('role="searchbox"');
-    expect(source).toContain('aria-label="Clear tool search"');
+    expect(source).toContain('aria-label="Clear section search"');
   });
 
   it("leads with resident intents and keeps the complete index behind one explicit action", () => {
@@ -112,6 +115,16 @@ describe("Compass Tool Deck model", () => {
         occurrences(ids, tool.id),
         `${tool.id} should appear exactly once in Compass`,
       ).toBe(1);
+    }
+  });
+
+  it("keeps original destination names searchable after adding selective task labels", () => {
+    const groups = buildToolDeckGroups(null);
+    for (const registered of RADIUS_TOOLS) {
+      const found = flattenTools(searchToolDeckGroups(groups, registered.label));
+      expect(found.map((item) => item.id)).toContain(registered.id);
+      const item = flattenTools(groups).find((candidate) => candidate.id === registered.id)!;
+      if (registered.id !== "settings") expect(item.label).toBe(registered.taskLabel ?? registered.label);
     }
   });
 

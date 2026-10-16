@@ -377,11 +377,13 @@ async function PlacesSection({
 
   // Use existing DaypartNeeds but with "posted hours" note
   return (
-    <DaypartNeeds
-      rows={rows}
-      note="Posted hours may not reflect real-time availability. Check hours before heading out."
-      variant="brief"
-    />
+    <div aria-label="Places for your area">
+      <DaypartNeeds
+        rows={rows}
+        note="Posted hours may not reflect real-time availability. Check hours before heading out."
+        variant="brief"
+      />
+    </div>
   );
 }
 

@@ -53,6 +53,8 @@ export type RadiusJourney = "today" | "map" | "events" | "saved";
 export type RadiusTool = {
   id: string;
   label: string;
+  /** Optional launcher task. The destination name remains a search alias. */
+  taskLabel?: string;
   description: string;
   href: string;
   icon: RadiusToolIcon;
@@ -124,6 +126,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "reserve",
+        taskLabel: "Book a table",
         label: "Book a table",
         description: "Open checked restaurant reservation links.",
         href: "/reserve",
@@ -160,6 +163,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "food-trucks",
+        taskLabel: "Find food trucks",
         label: "Food trucks",
         description: "Find local mobile food vendors and their published feeds.",
         href: "/food-trucks",
@@ -178,6 +182,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "live-music",
+        taskLabel: "Find live music",
         label: "Live music",
         description: "See published venue lineups and ticketed shows.",
         href: "/live-music",
@@ -232,6 +237,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "parking",
+        taskLabel: "Find parking",
         label: "Parking",
         description: "Find downtown garages and event parking guidance.",
         href: "/parking",
@@ -241,6 +247,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "transit",
+        taskLabel: "Check buses & trains",
         label: "Transit and trains",
         description: "Review TransIT routes and MARC information.",
         href: "/transit",
@@ -333,6 +340,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "restrooms",
+        taskLabel: "Find a restroom",
         label: "Restrooms",
         description: "Open the map with known public restrooms visible.",
         href: "/map?amenity=restroom",
@@ -423,6 +431,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "emergency",
+        taskLabel: "Get urgent help",
         label: "Emergency & urgent care",
         description: "Call 911, the county ER, urgent care, poison and crisis lines.",
         href: "/emergency",
@@ -443,6 +452,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "road-cameras",
+        taskLabel: "View road cameras",
         label: "Road camera wall",
         description: "View official CHART cameras across Frederick County.",
         href: "/cameras",
@@ -562,6 +572,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "contacts",
+        taskLabel: "Find public contacts",
         label: "City and county contacts",
         description: "Find the right public office and its phone number.",
         href: "/contacts",
@@ -608,6 +619,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "numbers",
+        taskLabel: "See county numbers",
         label: "County numbers",
         description: "See counts calculated from the current Radius datasets.",
         href: "/numbers",
@@ -681,6 +693,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "history",
+        taskLabel: "Explore local history",
         label: "County history",
         description: "The history guide shows dated local moments tied to real places.",
         href: "/history",
@@ -708,6 +721,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "from-above-preview",
+        taskLabel: "View aerial photos",
         label: "From Above",
         description: "See Frederick County through Mike's drone archive.",
         href: "/from-above/preview",

@@ -50,7 +50,31 @@ import {
   SCOPE_PARAM,
   type Scope,
 } from "@/lib/scope";
+import { normalizeMapReturnTo } from "@/lib/map-return";
 import { mapFallbackResults } from "./mapFallbackResults";
+import { getIntentByKey } from "@/data/intents";
+import { TIME_WINDOW_LABEL } from "./dockCaption";
+import {
+  MAP_SEARCH_RESULT_LIMIT,
+  MAP_TASK_PARAM,
+  MAP_TASK_AREA_PARAM,
+  parseMapTaskArea,
+  mapTaskAreaParam,
+  mapPointInTaskArea,
+  activeMapTask,
+  applyMapTaskToParams,
+  applyMapIntentToParams,
+  buildMapTaskList,
+  isMapCommandResult,
+  mapQueryRoute,
+  mapQueryNeedsDeviceLocation,
+  mapQueryAllowsTemporaryFallback,
+  parseMapClientTask,
+  placesForMapClientTask,
+  placeInMapScope,
+  eventInMapScope,
+  type MapTaskId,
+} from "./mapListTask";
 // TYPE ONLY: importing the loader at runtime drags the ~12MB
 // places-enrichment.json into the client bundle (a 13MB chunk) and
 // the map never loads. Places arrive already decorated from the
@@ -112,6 +136,7 @@ import { mapCameraDuration } from "@/lib/motion";
 // The readable result face is loaded only when WebGL fails. Keeping it out of
 // the healthy-map path preserves the interactive map payload while ensuring a
 // graphics failure never turns the page into a generic dead-end link.
+const MapListPeek = dynamic(() => import("./MapListPeek"), { ssr: false });
 const MapList = dynamic(() => import("./MapList"), { ssr: false });
 
 // Aerial archive + camera/environment helpers were extracted to focused
@@ -226,7 +251,7 @@ import {
   reconcileMapSearchResults,
 } from "./mapLocalPlaceSearch";
 import { mapSearchResultsForRenderer } from "./mapSearchVisibility";
-import { nearbyReachBounds, placesWithinReach } from "./mapNearbyScope";
+import { nearbyReachBounds } from "./mapNearbyScope";
 import {
   AMENITY_GROUPS,
   AMENITY_KIND_TO_CAT,
@@ -305,7 +330,7 @@ import TimeScrubber from "./TimeScrubber";
 import { ArrowRight, ChevronRight, Landmark, Shrink, Truck, X } from "lucide-react";
 import { withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
-import { getOpenStatus, isOpenNow } from "@/lib/hours";
+import { getOpenStatus, shouldDimForHours } from "@/lib/hours";
 import { groupMapEvents, type MapEventGroup } from "./mapContent";
 import { resolveMapLocationSeed } from "./mapLocationSeed";
 import type { LiveIncidentSignal } from "@/lib/live/incidentSnapshot";
@@ -1012,7 +1037,7 @@ export default function AppMap({
     const timeout = window.setTimeout(() => {
       setMapError(true);
       onVisualReady?.();
-    }, 18_000);
+    }, 10_000);
     return () => window.clearTimeout(timeout);
   }, [mapError, mapLoaded, onVisualReady]);
   useEffect(() => {
@@ -1153,6 +1178,13 @@ export default function AppMap({
   // AppMap is mounted with `ssr: false`, so the first client render can safely
   // seed this from the exact URL carried through `returnTo`.
   const routeQuery = (routeSearchParams.get("q") ?? "").slice(0, 160);
+  const clientTask = isBrowseMap ? parseMapClientTask(routeSearchParams.get(MAP_TASK_PARAM)) : null;
+  // The shared URL owns deliberate result bounds. It restores the same pins
+  // and ranked rows through Back without a second in-memory area overriding it.
+  const routeTaskArea = routeSearchParams.get(MAP_TASK_AREA_PARAM);
+  const committedTaskArea = useMemo(() => isBrowseMap ? parseMapTaskArea(routeTaskArea, resultScope) : null, [isBrowseMap, routeTaskArea, resultScope]);
+  const [submittedQuery, setSubmittedQuery] = useState(() => routeQuery.trim());
+  const [dockSearchPanelVisible, setDockSearchPanelVisible] = useState(false);
   const routePlaceSelection = routeSearchParams.get("place");
   const routeEventSelection = routeSearchParams.get("event");
   const routeResultSelection = routeSearchParams.get("result");
@@ -1186,6 +1218,7 @@ export default function AppMap({
           : updater;
       if (next !== searchLiveQueryRef.current) {
         searchLiveQueryRef.current = next;
+        setSubmittedQuery("");
         invalidateTemporaryMapboxRetrieve();
       }
       // MapDock serializes a trimmed query into the URL. Track that exact
@@ -1225,6 +1258,7 @@ export default function AppMap({
       searchLiveQueryRef.current = liveRouteQuery;
       invalidateTemporaryMapboxRetrieve();
       setQ(liveRouteQuery);
+      setSubmittedQuery(liveRouteQuery.trim());
     }
   }, [invalidateTemporaryMapboxRetrieve, routeQuery]);
   // Back and Forward are browser actions, so restore their exact query from
@@ -1237,6 +1271,7 @@ export default function AppMap({
       const next = (
         new URLSearchParams(window.location.search).get("q") ?? ""
       ).slice(0, 160);
+      setSubmittedQuery(next.trim());
       if (next === searchLiveQueryRef.current) return;
       searchLiveQueryRef.current = next;
       invalidateTemporaryMapboxRetrieve();
@@ -1246,10 +1281,7 @@ export default function AppMap({
     return () => window.removeEventListener("popstate", restoreBrowserQuery);
   }, [invalidateTemporaryMapboxRetrieve]);
   const [searchMatches, setSearchMatches] = useState<SearchResult[]>([]);
-  const searchMatchesForSurface = useMemo(
-    () => mapSearchResultsForRenderer(searchMatches, !mapError),
-    [mapError, searchMatches],
-  );
+  const [searchMatchesQuery, setSearchMatchesQuery] = useState("");
   const [searchSettledQuery, setSearchSettledQuery] = useState("");
   const [searchUnavailableQuery, setSearchUnavailableQuery] = useState("");
   const [searchAttempt, setSearchAttempt] = useState(0);
@@ -1366,6 +1398,10 @@ export default function AppMap({
         cameraControlGestureRef.current = false;
       },
     });
+  const searchMatchesForSurface = useMemo(
+    () => mapQueryNeedsDeviceLocation(q) && !userLoc ? [] : mapSearchResultsForRenderer(searchMatches, !mapError),
+    [mapError, q, searchMatches, userLoc],
+  );
   useEffect(() => {
     if (
       !autoFitNearbyScope ||
@@ -1463,21 +1499,23 @@ export default function AppMap({
     activeAmenityGroupCount: visibleAmenityGroups.size,
   });
   const visibleTransit = showTransit || Boolean(selectedDiscovery?.layers.transit);
-  // Live vehicle positions are ambient map intelligence, not the complete
-  // Transit layer. Start the small feed alongside the base map so its single
-  // county signal is ready as the canvas settles; route lines, stops, MARC,
-  // URL state, and saved preferences remain behind a deliberate Transit task.
-  const ambientLiveBuses = isBrowseMap && !compactSubjectMap;
+  // A selected place task owns the canvas. Keep this same predicate for the
+  // business catalog and for suppressing an unrelated ambient bus preview.
+  const explicitPlaceTaskActive =
+    q.trim().length >= 2 ||
+    Boolean(clientTask || dock?.intentKey || dock?.subKey) ||
+    amenityLayerActive ||
+    Boolean(selectedSlug || peekPlace || selectedDiscovery) ||
+    Boolean(activeSlugs);
+  // The cold map can offer its existing ambient bus preview. Once someone
+  // searches or selects a task/scene, only deliberately enabled Transit (or a
+  // transit discovery's support layer) keeps live vehicles in that view.
+  const ambientLiveBuses =
+    isBrowseMap && !compactSubjectMap && !explicitPlaceTaskActive && !activeSceneId;
   const liveBusesVisible = visibleTransit || ambientLiveBuses;
   // When someone chooses a live conditions layer, that task owns the canvas.
   // The full business catalog stays available as soon as the layer is off,
   // but it should not compete with buses, routes, weather, or road signals.
-  const explicitPlaceTaskActive =
-    q.trim().length >= 2 ||
-    Boolean(dock?.intentKey || dock?.subKey) ||
-    amenityLayerActive ||
-    Boolean(selectedSlug || peekPlace || selectedDiscovery) ||
-    Boolean(activeSlugs);
   const operationalLayerRequested =
     visibleTransit ||
     showRadar ||
@@ -2671,19 +2709,30 @@ export default function AppMap({
     return slugs.length > 0 ? new Set(slugs) : null;
   }, [selectedDiscovery]);
   const searchPlaceSet = useMemo(() => {
-    if (q.trim().length < 2) return null;
+    if (!isBrowseMap || submittedQuery.length < 2 || submittedQuery !== q.trim()) return null;
+    if (searchMatchesQuery !== submittedQuery || (mapQueryNeedsDeviceLocation(submittedQuery) && !userLoc)) return new Set<string>();
     const slugs = searchMatches
       .filter((result) => result.type === "place")
       .map((result) => result.id.replace(/^place:/, ""))
       .filter((slug) => places.some((place) => place.slug === slug));
-    return slugs.length > 0 ? new Set(slugs) : null;
-  }, [places, q, searchMatches]);
-  const visualMatchSet = discoveryPlaceSet ?? searchPlaceSet ?? matchSet;
+    return new Set(slugs);
+  }, [isBrowseMap, places, q, searchMatches, searchMatchesQuery, submittedQuery, userLoc]);
+  const clientTaskSet = useMemo(() => clientTask
+    ? new Set(placesForMapClientTask(places, clientTask, new Date(discoveryClockMs)).map((place) => place.slug))
+    : null, [clientTask, discoveryClockMs, places]);
+  const qualifiedSourceMatchSet = searchPlaceSet ?? clientTaskSet ?? matchSet;
+  const sourceMatchSet = useMemo(() => committedTaskArea
+    ? new Set(curatedPlacesForMapSource(filteredPlaces, qualifiedSourceMatchSet).filter((place) => mapPointInTaskArea(place.geom, committedTaskArea)).map((place) => place.slug))
+    : qualifiedSourceMatchSet, [committedTaskArea, filteredPlaces, qualifiedSourceMatchSet]);
+  // A new area action evaluates the current task before the old area cutoff.
+  // Otherwise a second area would incorrectly intersect with the first one.
+  const qualifiedScopedPlacesBeforeArea = useMemo(() => curatedPlacesForMapSource(filteredPlaces, qualifiedSourceMatchSet).filter((place) => !isBrowseMap || placeInMapScope(place, resultScope, userLoc)), [filteredPlaces, isBrowseMap, qualifiedSourceMatchSet, resultScope, userLoc]);
+  const visualMatchSet = discoveryPlaceSet ?? sourceMatchSet;
   // What the dock counts, list, curated pins, and curated clusters all use:
   // the lens-filtered places intersected with the active URL match set.
   const visiblePlaces = useMemo(
-    () => curatedPlacesForMapSource(filteredPlaces, matchSet),
-    [filteredPlaces, matchSet],
+    () => curatedPlacesForMapSource(filteredPlaces, sourceMatchSet),
+    [filteredPlaces, sourceMatchSet],
   );
 
   // The Near me lens is the one-mile Radius drawn around the device fix. It
@@ -2693,10 +2742,10 @@ export default function AppMap({
   // permission flow remains honest about what it can establish.
   const resultScopedPlaces = useMemo(
     () =>
-      resultScope === "nearme" && userLoc
-        ? placesWithinReach(visiblePlaces, userLoc, RADIUS_M)
+      isBrowseMap
+        ? visiblePlaces.filter((place) => placeInMapScope(place, resultScope, userLoc))
         : visiblePlaces,
-    [resultScope, userLoc, visiblePlaces],
+    [isBrowseMap, resultScope, userLoc, visiblePlaces],
   );
 
   // Viewport-scoped counts for the dock's count line. O(n) point-in-box
@@ -2793,7 +2842,7 @@ export default function AppMap({
     manualViewportGestureRef.current = false;
     cameraControlGestureRef.current = false;
 
-    const inside = resultScopedPlaces
+    const inside = qualifiedScopedPlacesBeforeArea
       .filter(
         (place) =>
           place.geom.lng >= viewport.bounds.west &&
@@ -2826,6 +2875,10 @@ export default function AppMap({
     const map = mapRef.current?.getMap();
     if (!map) return;
     const count = commitResultViewport(map, { announce: true, writeUrl: true });
+    const viewport = readResultViewport(map);
+    if (viewport) {
+      replaceMapUrl((params) => params.set(MAP_TASK_AREA_PARAM, mapTaskAreaParam(viewport.bounds, resultScope)));
+    }
     haptic("light");
     track("map_results_area_commit", { place_count: count });
   };
@@ -2840,8 +2893,8 @@ export default function AppMap({
   );
 
   const filteredOsmGeoJson = useMemo(
-    () => buildFilteredOsmGeoJson(osmPlaces, matchSet !== null, osmDupesCurated),
-    [matchSet, osmPlaces, osmDupesCurated],
+    () => buildFilteredOsmGeoJson(osmPlaces, sourceMatchSet !== null, osmDupesCurated),
+    [sourceMatchSet, osmPlaces, osmDupesCurated],
   );
 
   // Which raw amenity category slugs are active, from the selected groups.
@@ -2973,8 +3026,7 @@ export default function AppMap({
         // stale (7-day window) every place lands in this fallback and the
         // loop dims nothing; TimeScrubber detects that zero-coverage state
         // and says so in the control rather than letting it read as a no-op.
-        const open = h?.hours ? isOpenNow(getOpenStatus(h.hours, { verified: h.verified }, at)) : true;
-        const dim = !open;
+        const dim = h?.hours ? shouldDimForHours(getOpenStatus(h.hours, { verified: h.verified }, at)) : false;
         if (scrubDimStateRef.current.get(p.slug) === dim) continue;
         m.setFeatureState({ source: "curated-places", id: p.slug }, { dim });
         scrubDimStateRef.current.set(p.slug, dim);
@@ -3372,16 +3424,19 @@ export default function AppMap({
     if (mapError) resetSearchBoxSession();
     const origin =
       userLoc ?? viewCenterRef.current ?? searchFallbackOriginRef.current;
-    const immediateMatches = immediateMapPlaceResults(
+    // A name-only suggestion cannot establish hours, a time window, or a
+    // typed location constraint. Those answers wait for canonical search.
+    const immediateMatches = mapQueryAllowsTemporaryFallback(term, resultScope) ? immediateMapPlaceResults(
       explicitSearchTown ? places.filter((place) => place.municipality === explicitSearchTown) : places,
       term,
       origin,
-      6,
-    );
+      MAP_SEARCH_RESULT_LIMIT,
+    ) : [];
     // A result from the previous phrase must never remain tappable while this
     // phrase waits for its debounce or network response. Typing only updates
     // this suggestion list; the camera remains entirely still until the
     // person selects a result or presses Enter.
+    setSearchMatchesQuery(term);
     setSearchMatches(immediateMatches);
     setSearchUnavailableQuery("");
     // A retry uses the same phrase, so the prior settled marker would otherwise
@@ -3396,12 +3451,14 @@ export default function AppMap({
     }
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
-      const params = new URLSearchParams({ q: term, limit: "6", origin: "map" });
-      if (explicitSearchScope && explicitSearchScope !== "nearme") params.set(SCOPE_PARAM, scopeToParam(explicitSearchScope));
+      const params = new URLSearchParams({ q: term, limit: String(MAP_SEARCH_RESULT_LIMIT), origin: "map" });
+      params.set(SCOPE_PARAM, scopeToParam(resultScope));
       // About 11m precision is plenty for nearest-first ranking and avoids
       // sending an unnecessarily exact coordinate.
-      params.set("lat", origin.lat.toFixed(4));
-      params.set("lng", origin.lng.toFixed(4));
+      if (userLoc || !mapQueryNeedsDeviceLocation(term)) {
+        params.set("lat", origin.lat.toFixed(4));
+        params.set("lng", origin.lng.toFixed(4));
+      }
       try {
         const response = await fetch(`/api/search?${params.toString()}`, {
           signal: ctrl.signal,
@@ -3409,11 +3466,12 @@ export default function AppMap({
         if (!response.ok) {
           throw new Error(`Radius search returned HTTP ${response.status}`);
         }
-        const body = (await response.json()) as { results?: SearchResult[] };
+        const body = (await response.json()) as { results?: SearchResult[]; meta?: { liveEventsUnavailable?: boolean } };
         if (requestId !== searchRequestRef.current) return;
         if (!Array.isArray(body.results)) {
           throw new Error("Radius search returned an invalid response");
         }
+        if (body.meta?.liveEventsUnavailable) setSearchUnavailableQuery(term);
         const rendererSafeResults = mapSearchResultsForRenderer(
           body.results,
           !mapError,
@@ -3422,11 +3480,12 @@ export default function AppMap({
           immediateMatches,
           rendererSafeResults,
           term,
-          6,
+          MAP_SEARCH_RESULT_LIMIT,
+          true,
         );
 
+        setSearchMatches(local);
         if (local.length > 0) {
-          setSearchMatches(local);
           setSearchSettledQuery(term);
           const routedCandidates = userLoc && !mapError
             ? local
@@ -3502,7 +3561,7 @@ export default function AppMap({
           return;
         }
 
-        if (!isBrowseMap || term.length < 3 || mapError) {
+        if (!isBrowseMap || term.length < 3 || mapError || !mapQueryAllowsTemporaryFallback(term, resultScope)) {
           setSearchSettledQuery(term);
           return;
         }
@@ -3614,7 +3673,7 @@ export default function AppMap({
           // A delayed enrichment failure must not erase the useful known-place
           // result that was already on screen.
           setSearchMatches(immediateMatches);
-          setSearchUnavailableQuery(immediateMatches.length > 0 ? "" : term);
+          setSearchUnavailableQuery(term);
           setSearchSettledQuery(term);
         }
       }
@@ -3626,7 +3685,7 @@ export default function AppMap({
       searchRetrieveAbortRef.current = null;
       searchRetrieveInFlightRef.current = null;
     };
-  }, [explicitSearchScope, explicitSearchTown, isBrowseMap, mapError, places, q, resetSearchBoxSession, searchAttempt, userLoc]);
+  }, [explicitSearchTown, isBrowseMap, mapError, places, q, resetSearchBoxSession, resultScope, searchAttempt, userLoc]);
 
   const placesBySlug = useMemo(() => {
     // globalThis.Map: the bare `Map` is react-map-gl's component here.
@@ -3984,10 +4043,6 @@ export default function AppMap({
     // current filters/layers intact. MapDock subscribes to setScope and owns
     // the full browse-map flight; a dock-less embed receives the same flight
     // directly here.
-    if (mapError && r.type === "municipality") {
-      router.push(r.href);
-      return;
-    }
     if (r.type === "municipality") {
       const slug = r.id.replace(/^municipality:/, "");
       const town = MUNICIPALITIES.find((candidate) => candidate.slug === slug);
@@ -4016,6 +4071,47 @@ export default function AppMap({
       }
     }
     router.push(r.href);
+  };
+
+  const startMapTask = (id: MapTaskId | null) => {
+    exitRadiusScene();
+    clearMapSelection();
+    setMapQuery("");
+    setSubmittedQuery("");
+    replaceMapUrl((params) => {
+      applyMapTaskToParams(params, id);
+      for (const key of ["place", "event", "result", MAP_SELECTION_TOKEN_PARAM]) params.delete(key);
+    });
+  };
+  const submitMapSearch = (query: string) => {
+    const term = query.trim().slice(0, 160);
+    if (term.length < 2) return;
+    const route = mapQueryRoute(term);
+    if (route.kind === "task") { startMapTask(route.task); return; }
+    if (route.kind === "intent") {
+      exitRadiusScene();
+      clearMapSelection();
+      setMapQuery("");
+      setSubmittedQuery("");
+      replaceMapUrl((params) => {
+        applyMapIntentToParams(params, route.intentKey, route.subKey);
+        for (const key of ["place", "event", "result", MAP_SELECTION_TOKEN_PARAM]) params.delete(key);
+      });
+      return;
+    }
+    const matches = searchMatchesQuery === term ? searchMatchesForSurface : [];
+    if (!matches.some((match) => match.type === "place" || match.type === "event") && isMapCommandResult(matches[0])) {
+      void pickSearch(matches[0]);
+      return;
+    }
+    exitRadiusScene();
+    clearMapSelection();
+    setSubmittedQuery(term);
+    replaceMapUrl((params) => {
+      applyMapTaskToParams(params, null);
+      for (const key of ["place", "event", "result", MAP_SELECTION_TOKEN_PARAM]) params.delete(key);
+      params.set("q", term);
+    });
   };
 
   // Near-me reach ring plus the browser's separate accuracy halo. The first
@@ -4128,8 +4224,6 @@ export default function AppMap({
   // mapGeoJsonSources.ts (stable identity, no memo needed).
   const aerialGeoJson = AERIAL_GEOJSON;
 
-  // Events GeoJSON for the active heatmap layer
-  const eventsGeoJson = useMemo(() => buildEventsGeoJson(events), [events]);
 
   // Historic cemeteries GeoJSON. `name` in properties powers the generic
   // hover preview; the click handler reads the full pin back by `id`.
@@ -4145,7 +4239,7 @@ export default function AppMap({
     setResultScope("county");
     if (getScope() !== "county") setScope("county");
     if (isBrowseMap) {
-      replaceMapUrl((params) => params.delete(SCOPE_PARAM));
+      replaceMapUrl((params) => { params.delete(SCOPE_PARAM); params.delete(MAP_TASK_AREA_PARAM); });
     }
     cameraIntentRef.current = false;
     setShowResultsHere(false);
@@ -4286,18 +4380,57 @@ export default function AppMap({
   // a weekend event isn't hidden while scrubbing today.
   const eventScrubTimes = useMemo(() => buildEventScrubTimes(events), [events]);
   const scrubTodayKey = easternDayKey(new Date());
+  const placesBySlugForTasks = useMemo(() => new globalThis.Map(places.map((place) => [place.slug, place])), [places]);
+  const submittedEventIds = isBrowseMap && submittedQuery.length >= 2 && submittedQuery === q.trim()
+    ? new Set((searchMatchesQuery === submittedQuery ? searchMatchesForSurface : []).filter((result) => result.type === "event").map((result) => result.id.replace(/^event:/, "")))
+    : null;
+  const scopeEvents = isBrowseMap
+    ? events.filter((event) => eventInMapScope(event, resultScope, userLoc, placesBySlugForTasks) && mapPointInTaskArea({ lng: event.lng, lat: event.lat }, committedTaskArea) && (submittedEventIds === null || submittedEventIds.has(event.slug)))
+    : events;
   const visibleEvents =
     scrubHour == null
-      ? events
-      : events.filter((_, i) => {
-          const t = eventScrubTimes[i];
+      ? scopeEvents
+      : scopeEvents.filter((event) => {
+          const t = eventScrubTimes[events.indexOf(event)];
           if (!t || t.dayKey !== scrubTodayKey) return true;
           return withinScrubWindow(t.startH, t.endH, scrubHour);
         });
+  const eventsGeoJson = useMemo(() => buildEventsGeoJson(visibleEvents), [visibleEvents]);
   const inViewEvents = useMemo(
     () => visibleEvents.filter((event) => eventSlugsInView.has(event.slug)),
     [eventSlugsInView, visibleEvents],
   );
+
+  const activeIntentForList = getIntentByKey(dock?.intentKey);
+  const activeSubForList = activeIntentForList?.subIntents?.find((sub) => sub.key === dock?.subKey);
+  const placeFilterLabel = activeSubForList?.label ?? activeIntentForList?.label ??
+    (dock?.openNow ? "Confirmed open now" : dock?.dealsOn ? "Deals today" : null);
+  const eventListLabel = dock?.musicTonight ? "Live music tonight" : dock?.timeModeExplicit
+    ? `Events · ${TIME_WINDOW_LABEL[dock.timeMode]}` : null;
+  const taskTile = activeMapTask({ clientTask, ...dock });
+  const taskList = isBrowseMap ? buildMapTaskList({
+    scope: resultScope,
+    userLoc,
+    area: committedTaskArea,
+    now: new Date(discoveryClockMs),
+    query: (submittedQuery === q.trim() || mapError) && q.trim().length >= 2 ? {
+      text: q.trim(),
+      results: searchMatchesQuery === q.trim() ? searchMatchesForSurface : [],
+      pending: searchSettledQuery !== q.trim(),
+      unavailable: searchUnavailableQuery === q.trim(),
+    } : null,
+    clientTask,
+    placeFilterLabel,
+    places: resultScopedPlaces,
+    placesBySlug: placesBySlugForTasks,
+    eventListLabel,
+    events: visibleEvents,
+    eventSourceState: !eventListLabel ? "ready" : !mapLayerSourceHealth?.events && onLayerDemand ? "pending"
+      : mapLayerSourceHealth?.events?.status === "unavailable" ? "unavailable"
+      : mapLayerSourceHealth?.events?.stale || mapLayerSourceHealth?.events?.status === "partial" ? "partial" : "ready",
+  }) : null;
+  const rankedPlaces = taskList?.rows.flatMap((row) => row.kind === "place" ? [row.place] : []) ?? null;
+  const rankedEvents = taskList?.rows.flatMap((row) => row.kind === "event" ? [row.event] : []) ?? null;
 
   // The finding engine reads only the entities already authorized for this
   // map payload. It joins them deterministically around the current viewport
@@ -4607,7 +4740,7 @@ export default function AppMap({
                   style={{ color: "var(--app-ink)" }}
                 >
                   {!MAP_RENDERER_CONFIGURED
-                    ? "Map view is not enabled right now"
+                    ? "Map view unavailable"
                     : mapUnsupported
                     ? "This browser cannot draw the map"
                     : "The map is temporarily unavailable"}
@@ -4617,10 +4750,10 @@ export default function AppMap({
                   style={{ color: "var(--app-ink-3)" }}
                 >
                   {!MAP_RENDERER_CONFIGURED
-                    ? "Search and the current Frederick County results still work below."
+                    ? "Search the available results below."
                     : mapUnsupported
-                    ? "The same places and events are available below in a readable list."
-                    : "Your current results are still available below. Reload the map when you are ready."}
+                    ? "Find the same results in the list below."
+                    : "Use the list below, or reload the map."}
                 </p>
               </div>
               <div className="map-error-fallback-actions">
@@ -4646,17 +4779,37 @@ export default function AppMap({
                 </Link>
               </div>
             </div>
-            <MapList
-              places={mapFallbackResults(inViewPlaces, searchMatchesForSurface, q, explicitSearchTown, "place")}
-              events={mapFallbackResults(visibleEvents, searchMatchesForSurface, q, explicitSearchTown, "event")}
+            {taskList ? <div className="map-list" role="region" aria-label="Available results without the map">
+              <MapListPeek
+                list={taskList}
+                expanded
+                collapsible={false}
+                onExpandedChange={() => {}}
+                userLoc={userLoc}
+                selectedPlaceSlug={selectedSlug}
+                showSearchFeedback={!dockSearchPanelVisible}
+                mapReturnTo={typeof window === "undefined" ? null : normalizeMapReturnTo(`${window.location.pathname}${window.location.search}${window.location.hash}`)}
+                onRetrySearch={() => {
+                  if (taskList.unit === "event" && !q.trim()) onLayerDemand?.(["events"]);
+                  else { setSearchUnavailableQuery(""); setSearchSettledQuery(""); setSearchAttempt((attempt) => attempt + 1); }
+                }}
+                onPickPlace={(place) => void pickSearch({ id: `place:${place.slug}`, type: "place", title: place.name, href: `/places/${place.slug}` } as SearchResult)}
+                onPickEvent={(event) => void pickSearch({ id: `event:${event.slug}`, type: "event", title: event.title, href: `/events/${event.slug}` } as SearchResult)}
+              />
+            </div> : <MapList
+              places={rankedPlaces ?? mapFallbackResults(inViewPlaces, searchMatchesForSurface, q, explicitSearchTown, "place")}
+              events={rankedEvents ?? mapFallbackResults(visibleEvents, searchMatchesForSurface, q, explicitSearchTown, "event")}
               userLoc={userLoc}
               sortOrigin={userLoc}
               failureMode
+              showSearchFeedback={!dockSearchPanelVisible}
               searchState={q.trim().length < 2 ? "ready" : searchUnavailableQuery === q.trim() ? "unavailable" : searchSettledQuery !== q.trim() ? "pending" : "ready"}
-              onRetrySearch={() => setSearchAttempt((attempt) => attempt + 1)}
-              onPick={openPlaceSheet}
-              onPickEvent={(event) => router.push(`/events/${event.slug}`)}
-            />
+              onRetrySearch={() => {
+                setSearchUnavailableQuery(""); setSearchSettledQuery(""); setSearchAttempt((attempt) => attempt + 1);
+              }}
+              onPick={(place) => void pickSearch({ id: `place:${place.slug}`, type: "place", title: place.name, href: `/places/${place.slug}` } as SearchResult)}
+              onPickEvent={(event) => void pickSearch({ id: `event:${event.slug}`, type: "event", title: event.title, href: `/events/${event.slug}` } as SearchResult)}
+            />}
           </section>
         )}
         {/* A geolocation denial or failure has to be visible where the user
@@ -4834,7 +4987,7 @@ export default function AppMap({
 
         <p id="frederick-map-help" className="sr-only">
           Interactive map of Frederick County. Use arrow keys to pan and plus
-          or minus to zoom when the map has focus. Open What to see to find
+          or minus to zoom when the map has focus. Open Filters to find
           nearby places, current events, travel details, or local conditions.
         </p>
 
@@ -7061,7 +7214,7 @@ export default function AppMap({
               onClose={dismissMapSelection}
               maxWidth="280px"
             >
-              <EventPopup e={selectedEvent} />
+              <EventPopup e={selectedEvent} mapReturnTo={isBrowseMap ? `${window.location.pathname}${window.location.search}${window.location.hash}` : null} />
             </Popup>
           )}
 
@@ -7195,13 +7348,23 @@ export default function AppMap({
             }}
             q={q}
             setQ={setMapQuery}
+            submitSearch={submitMapSearch}
+            taskList={taskList}
+            resultOpen={selectionOpen}
+            activeTask={taskTile}
+            onTask={startMapTask}
+            onSearchPanelVisibleChange={setDockSearchPanelVisible}
+            onPickTaskPlace={(place) => void pickSearch({ id: `place:${place.slug}`, type: "place", title: place.name, href: `/places/${place.slug}` } as SearchResult)}
+            onPickTaskEvent={(event) => void pickSearch({ id: `event:${event.slug}`, type: "event", title: event.title, href: `/events/${event.slug}` } as SearchResult)}
             searchMatches={searchMatchesForSurface}
+            searchLocationRequired={mapQueryNeedsDeviceLocation(q) && !userLoc}
             searchPending={
-              q.trim().length >= 2 &&
+              !(mapQueryNeedsDeviceLocation(q) && !userLoc) && q.trim().length >= 2 &&
               searchSettledQuery !== q.trim()
             }
-            searchUnavailable={searchUnavailableQuery === q.trim()}
+            searchUnavailable={!(mapQueryNeedsDeviceLocation(q) && !userLoc) && searchUnavailableQuery === q.trim()}
             retrySearch={() => {
+              if (taskList?.unit === "event" && !q.trim()) { onLayerDemand?.(["events"]); return; }
               // Clear the completed-failure markers in the same interaction
               // that starts the retry. This gives immediate, truthful pending
               // feedback even before the debounced request begins.
@@ -7212,7 +7375,7 @@ export default function AppMap({
             searchOpeningId={searchOpeningId}
             pickSearch={pickSearch}
             searchDistanceOriginLabel={
-              userLoc ? "from you" : mapError ? null : "from map center"
+              userLoc ? "from you" : null
             }
             openNowAvailable={dock.openNowAvailable}
             openNowUnavailableLabel={dock.openNowUnavailableLabel}
@@ -7416,7 +7579,7 @@ export default function AppMap({
 
         <AppMapSelectionSurfaces
           dock={dock}
-          compactMapViewport={compactMapViewport}
+          compactMapViewport={compactMapViewport || mapError}
           selectedDiscovery={selectedDiscovery}
           selectedDiscoveryIndex={selectedDiscoveryIndex}
           discoveryDeckLength={discoveryDeck.length}

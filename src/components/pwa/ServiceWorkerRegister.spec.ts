@@ -4,6 +4,7 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { APP_UPDATE_ACCEPTED_EVENT } from "@/lib/pwa-display";
 import ServiceWorkerRegister, {
   UPDATE_PROMPT_DURATION_MS,
   UPDATE_PROMPT_SNOOZE_MS,
@@ -45,6 +46,35 @@ describe("service-worker update prompt lifecycle", () => {
   let root: Root;
   let element: HTMLDivElement;
   let registration: MockRegistration;
+  let originalWindow: Window & typeof globalThis;
+  let reload: ReturnType<typeof vi.fn>;
+  type WorkerContainer = EventTarget & {
+    controller: MockWorker | null;
+    register: ReturnType<typeof vi.fn>;
+    ready: Promise<MockRegistration>;
+  };
+
+  // Model each document's own controller, tab storage, and reload boundary.
+  const useClient = (container: WorkerContainer, storage: Pick<Storage, "getItem" | "setItem" | "removeItem" | "clear">, refresh: ReturnType<typeof vi.fn>) => {
+    vi.stubGlobal("navigator", { serviceWorker: container });
+    vi.stubGlobal("window", new Proxy(originalWindow, {
+      get(target, key) {
+        if (key === "sessionStorage") return storage;
+        if (key === "location") return {
+          hostname: originalWindow.location.hostname,
+          pathname: originalWindow.location.pathname,
+          search: originalWindow.location.search,
+          reload: refresh,
+        };
+        return Reflect.get(target, key, target);
+      },
+    }));
+  };
+
+  const options = (index = toastMock.mock.calls.length - 1) => toastMock.mock.calls[index][1] as {
+    action: { onClick: () => void };
+    cancel: { onClick: () => void };
+  };
   let workers: EventTarget & {
     controller: MockWorker | null;
     register: ReturnType<typeof vi.fn>;
@@ -55,6 +85,9 @@ describe("service-worker update prompt lifecycle", () => {
     vi.clearAllMocks();
     window.sessionStorage.clear();
     vi.spyOn(document, "readyState", "get").mockReturnValue("complete");
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    originalWindow = window;
+    reload = vi.fn();
     vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false })));
     registration = new MockRegistration();
     workers = Object.assign(new EventTarget(), {
@@ -62,7 +95,7 @@ describe("service-worker update prompt lifecycle", () => {
       register: vi.fn().mockResolvedValue(registration),
       ready: Promise.resolve(registration),
     });
-    vi.stubGlobal("navigator", { serviceWorker: workers });
+    useClient(workers, originalWindow.sessionStorage, reload);
     element = document.createElement("div");
     root = createRoot(element);
   });
@@ -235,6 +268,292 @@ describe("service-worker update prompt lifecycle", () => {
 
     expect(toastMock).not.toHaveBeenCalled();
   });
+
+  it.each(["missed", "Later"])("reoffers the same waiting worker on return after %s", async (choice) => {
+    const now = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    const older = new MockWorker();
+    const newer = new MockWorker("installed");
+    workers.controller = older;
+    registration.active = older;
+    registration.waiting = newer;
+    await mount();
+    if (choice === "Later") options().cancel.onClick();
+
+    clock.mockReturnValue(now + UPDATE_PROMPT_SNOOZE_MS - 1);
+    await act(async () => window.dispatchEvent(new Event("focus")));
+    expect(toastMock).toHaveBeenCalledOnce();
+
+    clock.mockReturnValue(now + UPDATE_PROMPT_SNOOZE_MS);
+    await act(async () => document.dispatchEvent(new Event("visibilitychange")));
+    expect(toastMock).toHaveBeenCalledTimes(2);
+    expect(registration.waiting).toBe(newer);
+    expect(newer.postMessage).not.toHaveBeenCalled();
+    await act(async () => window.dispatchEvent(new Event("focus")));
+    expect(toastMock).toHaveBeenCalledTimes(2);
+    options().action.onClick();
+    expect(newer.postMessage).toHaveBeenCalledExactlyOnceWith({ type: "SKIP_WAITING" });
+  });
+
+  it("does not spend the reminder while hidden and offers it on visible return", async () => {
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    const older = new MockWorker();
+    workers.controller = older;
+    registration.active = older;
+    registration.waiting = new MockWorker("installed");
+    await mount();
+    await act(async () => window.dispatchEvent(new Event("focus")));
+    expect(toastMock).not.toHaveBeenCalled();
+    expect(registration.update).not.toHaveBeenCalled();
+    expect(window.sessionStorage.getItem("fr.update-prompt-presented-at.v1")).toBeNull();
+
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    await act(async () => document.dispatchEvent(new Event("visibilitychange")));
+    expect(toastMock).toHaveBeenCalledOnce();
+    expect(registration.update).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a second document's upgrade explicit after the first document accepts", async () => {
+    const older = new MockWorker();
+    const newer = new MockWorker("installed");
+    workers.controller = older;
+    registration.active = older;
+    registration.waiting = newer;
+    await mount();
+    const firstAction = options().action.onClick;
+
+    const secondRegistration = new MockRegistration();
+    const secondOlder = new MockWorker();
+    const secondNewer = new MockWorker("installed");
+    secondRegistration.active = secondOlder;
+    secondRegistration.waiting = secondNewer;
+    const secondWorkers: WorkerContainer = Object.assign(new EventTarget(), {
+      controller: secondOlder as MockWorker | null,
+      register: vi.fn().mockResolvedValue(secondRegistration),
+      ready: Promise.resolve(secondRegistration),
+    });
+    const values = new Map<string, string>();
+    const secondStorage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value); },
+      removeItem: (key: string) => { values.delete(key); },
+      clear: () => { values.clear(); },
+    };
+    const secondReload = vi.fn();
+    const secondRoot = createRoot(document.createElement("div"));
+    useClient(secondWorkers, secondStorage, secondReload);
+    try {
+      await act(async () => secondRoot.render(createElement(ServiceWorkerRegister)));
+      expect(toastMock).toHaveBeenCalledTimes(2);
+      const secondWaitingAction = options().action.onClick;
+
+      useClient(workers, originalWindow.sessionStorage, reload);
+      firstAction();
+      expect(newer.postMessage).toHaveBeenCalledExactlyOnceWith({ type: "SKIP_WAITING" });
+      registration.active = newer;
+      registration.waiting = null;
+      workers.controller = newer;
+      newer.state = "activated";
+      workers.dispatchEvent(new Event("controllerchange"));
+      expect(reload).toHaveBeenCalledOnce();
+
+      useClient(secondWorkers, secondStorage, secondReload);
+      secondRegistration.active = secondNewer;
+      secondRegistration.waiting = null;
+      secondWorkers.controller = secondNewer;
+      secondNewer.state = "activated";
+      secondWorkers.dispatchEvent(new Event("controllerchange"));
+      expect(secondReload).not.toHaveBeenCalled();
+      expect(toastMock).toHaveBeenCalledTimes(3);
+      // Both the replaced notice and its replacement remain safe to activate.
+      secondWaitingAction();
+      options().action.onClick();
+      secondWorkers.dispatchEvent(new Event("controllerchange"));
+      expect(secondReload).toHaveBeenCalledOnce();
+      expect(secondNewer.postMessage).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => secondRoot.unmount());
+      useClient(workers, originalWindow.sessionStorage, reload);
+    }
+  });
+
+  it("honors Later when another tab activates and offers a document refresh after return", async () => {
+    const now = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    const older = new MockWorker();
+    const newer = new MockWorker("installed");
+    workers.controller = older;
+    registration.active = older;
+    registration.waiting = newer;
+    await mount();
+    options().cancel.onClick();
+    registration.active = newer;
+    registration.waiting = null;
+    workers.controller = newer;
+    newer.state = "activated";
+    workers.dispatchEvent(new Event("controllerchange"));
+    expect(toastMock).toHaveBeenCalledOnce();
+    expect(reload).not.toHaveBeenCalled();
+    clock.mockReturnValue(now + UPDATE_PROMPT_SNOOZE_MS);
+    await act(async () => window.dispatchEvent(new Event("focus")));
+    expect(toastMock).toHaveBeenCalledTimes(2);
+    options().action.onClick();
+    expect(reload).toHaveBeenCalledOnce();
+    expect(newer.postMessage).not.toHaveBeenCalled();
+  });
+
+  it("defers another tab's document-refresh notice until this document is visible", async () => {
+    const older = new MockWorker();
+    workers.controller = older;
+    registration.active = older;
+    await mount();
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    const newer = new MockWorker();
+    workers.controller = newer;
+    registration.active = newer;
+    workers.dispatchEvent(new Event("controllerchange"));
+    expect(toastMock).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    await act(async () => document.dispatchEvent(new Event("visibilitychange")));
+    expect(toastMock).toHaveBeenCalledOnce();
+    options().action.onClick();
+    expect(reload).toHaveBeenCalledOnce();
+    expect(newer.postMessage).not.toHaveBeenCalled();
+  });
+
+  it("does not activate a waiting worker superseded after its notice appeared", async () => {
+    const older = new MockWorker();
+    const stale = new MockWorker("installed");
+    workers.controller = older;
+    registration.active = older;
+    registration.waiting = stale;
+    await mount();
+    registration.waiting = new MockWorker("installed");
+    stale.state = "redundant";
+    options().action.onClick();
+    expect(stale.postMessage).not.toHaveBeenCalled();
+    expect(registration.waiting.postMessage).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("removes registration and in-flight worker listeners when unmounted", async () => {
+    const older = new MockWorker();
+    workers.controller = older;
+    registration.active = older;
+    const removeRegistration = vi.spyOn(registration, "removeEventListener");
+    await mount();
+    const pending = new MockWorker("installing");
+    const removeWorker = vi.spyOn(pending, "removeEventListener");
+    registration.installing = pending;
+    registration.dispatchEvent(new Event("updatefound"));
+    await act(async () => root.unmount());
+    root = createRoot(element);
+    expect(removeRegistration).toHaveBeenCalledWith("updatefound", expect.any(Function));
+    expect(removeWorker).toHaveBeenCalledWith("statechange", expect.any(Function));
+    pending.state = "installed";
+    registration.installing = null;
+    registration.waiting = pending;
+    pending.dispatchEvent(new Event("statechange"));
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      document.dispatchEvent(new Event("visibilitychange"));
+      registration.dispatchEvent(new Event("updatefound"));
+    });
+    expect(toastMock).not.toHaveBeenCalled();
+    expect(registration.update).not.toHaveBeenCalled();
+  });
+
+
+  it("ignores a registration that resolves after the registrar unmounts", async () => {
+    const older = new MockWorker();
+    workers.controller = older;
+    registration.active = older;
+    registration.waiting = new MockWorker("installed");
+    let finish: (registration: MockRegistration) => void = () => {};
+    workers.register.mockReturnValue(new Promise<MockRegistration>((resolve) => { finish = resolve; }));
+    const listen = vi.spyOn(registration, "addEventListener");
+    await mount();
+    await act(async () => root.unmount());
+    root = createRoot(element);
+    await act(async () => finish(registration));
+    expect(toastMock).not.toHaveBeenCalled();
+    expect(listen).not.toHaveBeenCalled();
+  });
+
+
+  it("retains workspace state synchronously before one accepted reload and stays quiet on first install", async () => {
+    const retained = vi.fn(() => window.sessionStorage.setItem("workspace-handoff-proof", "retained words"));
+    originalWindow.addEventListener(APP_UPDATE_ACCEPTED_EVENT, retained);
+    try {
+      await mount();
+      const first = new MockWorker("installing");
+      install(first);
+      registration.waiting = null;
+      registration.active = first;
+      workers.controller = first;
+      first.state = "activated";
+      workers.dispatchEvent(new Event("controllerchange"));
+      expect(toastMock).not.toHaveBeenCalled();
+      expect(reload).not.toHaveBeenCalled();
+      expect(retained).not.toHaveBeenCalled();
+
+      const newer = new MockWorker("installing");
+      install(newer);
+      expect(toastMock).toHaveBeenCalledOnce();
+      options().action.onClick();
+      expect(retained).not.toHaveBeenCalled();
+      reload.mockImplementation(() => {
+        expect(retained).toHaveBeenCalledOnce();
+        expect(window.sessionStorage.getItem("workspace-handoff-proof")).toBe("retained words");
+      });
+      registration.waiting = null;
+      registration.active = newer;
+      workers.controller = newer;
+      newer.state = "activated";
+      workers.dispatchEvent(new Event("controllerchange"));
+      workers.dispatchEvent(new Event("controllerchange"));
+      expect(reload).toHaveBeenCalledOnce();
+      expect(retained).toHaveBeenCalledOnce();
+    } finally {
+      originalWindow.removeEventListener(APP_UPDATE_ACCEPTED_EVENT, retained);
+    }
+  });
+
+
+  it("replaces a previously presented waiting notice on visible return after hidden activation", async () => {
+    const now = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    const older = new MockWorker();
+    const newer = new MockWorker("installed");
+    workers.controller = older;
+    registration.active = older;
+    registration.waiting = newer;
+    await mount();
+    expect(toastMock).toHaveBeenCalledOnce();
+    // The first notice has expired, but the visitor did not choose Later.
+    clock.mockReturnValue(now + UPDATE_PROMPT_DURATION_MS + 1);
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    registration.active = newer;
+    registration.waiting = null;
+    workers.controller = newer;
+    newer.state = "activated";
+    workers.dispatchEvent(new Event("controllerchange"));
+    expect(toastMock).toHaveBeenCalledOnce();
+    expect(reload).not.toHaveBeenCalled();
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    await act(async () => window.dispatchEvent(new Event("focus")));
+    expect(toastMock).toHaveBeenCalledTimes(2);
+    await act(async () => window.dispatchEvent(new Event("focus")));
+    expect(toastMock).toHaveBeenCalledTimes(2);
+    clock.mockReturnValue(now + UPDATE_PROMPT_DURATION_MS + 1 + UPDATE_PROMPT_SNOOZE_MS - 1);
+    await act(async () => window.dispatchEvent(new Event("focus")));
+    expect(toastMock).toHaveBeenCalledTimes(2);
+    options().action.onClick();
+    expect(reload).toHaveBeenCalledOnce();
+    expect(newer.postMessage).not.toHaveBeenCalled();
+  });
+
 });
 
 describe("service-worker update prompt presentation", () => {

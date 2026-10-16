@@ -15,6 +15,7 @@ import Map, {
   type MapRef,
 } from "react-map-gl/mapbox";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
+import styles from "./TransitExperience.module.css";
 import { ACCENTS } from "@/data/categories";
 import {
   applyMapboxFieldGuideConfig,
@@ -404,13 +405,13 @@ export default function TransitMap({
       : "TransIT route data");
 
   return (
-    <div className="space-y-2">
+    <div className={styles.mapShell}>
       {highlightRoutes && (
-        <div className="flex items-center justify-between gap-3">
+        <div className={styles.mapPicker}>
           <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
             Choose a route to frame its path.
           </p>
-          <label className="shrink-0">
+          <label>
             <span className="sr-only">Bus route</span>
             <select
               value={route ?? ""}
@@ -418,8 +419,7 @@ export default function TransitMap({
                 setVehicleFocus(null);
                 setRoute(event.target.value || null);
               }}
-              className="min-h-11 max-w-[13rem] rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[13px] font-semibold"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+              className={styles.routeSelect}
             >
               <option value="">All routes</option>
               {ROUTES.map((item) => (
@@ -432,14 +432,14 @@ export default function TransitMap({
         </div>
       )}
       <div
-        className="transit-map-canvas relative overflow-hidden rounded-[var(--app-radius-lg)] border"
-        style={{ borderColor: "var(--app-border)", height }}
+        className={`transit-map-canvas ${styles.mapFrame}`}
+        style={{ height }}
       >
       {mapFailed ? (
         <div
           role="alert"
           aria-label="Transit map unavailable"
-          className="grid h-full place-items-center bg-[var(--app-bg-sunken)] px-6 text-center"
+          className={styles.mapFallback}
         >
           <div className="max-w-sm">
             <MapIcon
@@ -464,11 +464,7 @@ export default function TransitMap({
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="tactile tactile-interactive mt-3 inline-flex items-center rounded-full px-4 py-1.5 text-[12px] font-semibold"
-              style={{
-                background: "var(--app-bg-elevated)",
-                color: "var(--app-cool)",
-              }}
+              className={styles.mapRetry}
             >
               Try the map again
             </button>

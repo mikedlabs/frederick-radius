@@ -3,6 +3,18 @@ import { buildDaypartRows } from "./daypartPicks";
 import { chainBrandKey } from "@/lib/category-ranking";
 
 describe("buildDaypartRows", () => {
+  it("keeps the exact supplied photo credit with the server's compact recommendations", () => {
+    const photoPicks = buildDaypartRows(new Date("2026-07-26T17:00:00.000Z"))
+      .flatMap((row) => [...row.picks, ...(row.openingSoon ? [row.openingSoon] : [])])
+      .filter((pick) => pick.photo?.startsWith("/api/place-photo?"));
+    expect(photoPicks.length).toBeGreaterThan(0);
+    for (const pick of photoPicks) {
+      const name = new URL(pick.photo!, "https://frederickradius.app").searchParams.get("name");
+      expect(pick.photoAttribution?.photo_name).toBe(name);
+      expect(pick.photoAttribution?.google_maps_uri).toMatch(/^https:\/\/.*google\.com\/maps\//);
+    }
+  });
+
   it("keeps the current meal visible while the category browser is collapsed", () => {
     const lunch = buildDaypartRows(new Date("2026-07-20T17:00:00.000Z"));
     const rainyLunch = buildDaypartRows(

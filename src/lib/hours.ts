@@ -1,3 +1,5 @@
+import { easternWallToUtcISO } from "@/lib/tz";
+import { isHoursFresh } from "@/lib/hours-freshness";
 import type { DayOfWeek, Hours, HoursWindow } from "@/data/places";
 
 const DAYS: DayOfWeek[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -14,6 +16,9 @@ export const DAY_LABEL: Record<DayOfWeek, string> = {
 const FREDERICK_CLOCK = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
   weekday: "short",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
   hour12: false,
   hour: "2-digit",
   minute: "2-digit",
@@ -22,9 +27,9 @@ const FREDERICK_CLOCK = new Intl.DateTimeFormat("en-US", {
 // A same-instant memo on top: the scrubber loop asks about the SAME instant
 // for every place in the pass, so day/minutes resolve once per distinct time.
 let lastClockMs = Number.NaN;
-let lastClockValue: { day: DayOfWeek; minutes: number } | null = null;
+let lastClockValue: { day: DayOfWeek; minutes: number; date: string } | null = null;
 
-function nowInFrederick(d: Date = new Date()): { day: DayOfWeek; minutes: number } {
+function nowInFrederick(d: Date = new Date()): { day: DayOfWeek; minutes: number; date: string } {
   if (d.getTime() === lastClockMs && lastClockValue) return lastClockValue;
   const parts = Object.fromEntries(FREDERICK_CLOCK.formatToParts(d).map((p) => [p.type, p.value]));
   const dayMap: Record<string, DayOfWeek> = {
@@ -34,7 +39,7 @@ function nowInFrederick(d: Date = new Date()): { day: DayOfWeek; minutes: number
   const hh = parseInt(parts.hour ?? "0", 10);
   const mm = parseInt(parts.minute ?? "0", 10);
   lastClockMs = d.getTime();
-  lastClockValue = { day, minutes: hh * 60 + mm };
+  lastClockValue = { day, minutes: (hh % 24) * 60 + mm, date: `${parts.year}-${parts.month}-${parts.day}` };
   return lastClockValue;
 }
 
@@ -77,6 +82,11 @@ export function formatWindows(windows: HoursWindow[]): string {
  * count built on this is always "at least N confirmed open" and never
  * over-asserts.
  */
+/** A time-scrubbed map may dim only a confirmed closed place. */
+export function shouldDimForHours(status: OpenStatus): boolean {
+  return status.state === "closed";
+}
+
 export function isOpenNow(status: OpenStatus): boolean {
   return status.state === "open" || status.state === "closing-soon";
 }
@@ -100,7 +110,94 @@ export function isClosedNow(
   return getOpenStatus(hours, { verified }, now).state === "closed";
 }
 
+/** Calendar arithmetic, independent of the browser zone and 23/25-hour days. */
+function shiftDate(date: string, days: number): string {
+  return new Date(Date.parse(`${date}T12:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+}
+function dayForDate(date: string): DayOfWeek {
+  return DAYS[new Date(`${date}T12:00:00Z`).getUTCDay()];
+}
+
+/** First-party evidence always expires, including during an emergency provider rollback. */
+export function isScheduleEvidenceCurrent(hours: Hours, at: Date): boolean {
+  const evidence = hours._official;
+  if (!evidence) return true;
+  const date = nowInFrederick(at).date;
+  return isHoursFresh(evidence.observed_at, at) &&
+    at.getTime() <= Date.parse(evidence.expires_at) &&
+    date >= evidence.coverage_from && date <= evidence.coverage_through;
+}
+
+type MinuteWindow = { open: number; close: number; allDay: boolean };
+function dateCutoff(hours: Hours, date: string): number {
+  const exception = hours._official?.exceptions.find((item) => item.date === date);
+  return exception?.closed ? 0 : exception?.closes_at ? parseHHMM(exception.closes_at) : 1440;
+}
+function startingWindows(hours: Hours, date: string): MinuteWindow[] {
+  const cutoff = dateCutoff(hours, date);
+  if (!cutoff) return [];
+  return (hours[dayForDate(date)] ?? []).flatMap((window) => {
+    const open = parseHHMM(window.open);
+    let close = parseHHMM(window.close);
+    if (close <= open) close += 1440;
+    // Today's early closure stops even an overnight window. Tomorrow's full
+    // closure takes precedence at midnight, rather than inheriting a spill.
+    close = Math.min(close, cutoff < 1440 ? cutoff : 1440 + dateCutoff(hours, shiftDate(date, 1)));
+    return close > open ? [{ open, close, allDay: isAllDayWindow(window) && close - open === 1440 }] : [];
+  });
+}
+function windowsForDate(hours: Hours, date: string): MinuteWindow[] {
+  const cutoff = dateCutoff(hours, date);
+  if (!cutoff) return [];
+  const spill = startingWindows(hours, shiftDate(date, -1))
+    .filter((window) => window.close > 1440)
+    .map((window) => ({ open: 0, close: Math.min(window.close - 1440, cutoff), allDay: false }));
+  return [...spill, ...startingWindows(hours, date)].sort((a, b) => a.open - b.open);
+}
+function hhmm(minutes: number): string {
+  if (minutes === 1440) return "24:00";
+  return `${String(Math.floor(minutes / 60) % 24).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+/** Today's actual windows, separate from the unchanged ordinary weekly table. */
+export function hoursForDate(hours: Hours, at: Date = new Date()): HoursWindow[] | undefined {
+  if (!isScheduleEvidenceCurrent(hours, at)) return undefined;
+  return windowsForDate(hours, nowInFrederick(at).date).map((window) => ({ open: hhmm(window.open), close: hhmm(window.close) }));
+}
+
 export function getOpenStatus(
+  hours: Hours | undefined,
+  options: { verified?: boolean } = {},
+  now: Date = new Date(),
+): OpenStatus {
+  if (!hours) return { state: "unknown" };
+  if (!hours._official) return getWeeklyOpenStatus(hours, options, now);
+  if (!options.verified) return { state: "unverified" };
+  if (!Number.isFinite(now.getTime()) || !isScheduleEvidenceCurrent(hours, now)) return { state: "unknown" };
+  const { date, minutes } = nowInFrederick(now);
+  for (const window of windowsForDate(hours, date)) {
+    if (minutes < window.open || minutes >= window.close) continue;
+    const closesAt = hhmm(window.close);
+    if (window.allDay) return { state: "open", closesAt, closingSoon: false, allDay: true };
+    if (window.close - minutes <= 60) return { state: "closing-soon", closesAt };
+    return { state: "open", closesAt, closingSoon: false };
+  }
+  for (let i = 0; i < 7; i++) {
+    const candidateDate = shiftDate(date, i);
+    for (const window of startingWindows(hours, candidateDate)) {
+      if (i === 0 && window.open <= minutes) continue;
+      const [year, month, day] = candidateDate.split("-").map(Number);
+      const candidate = new Date(easternWallToUtcISO(year, month, day, Math.floor(window.open / 60), window.open % 60));
+      // Do not promise a next opening beyond the evidence's visit horizon.
+      if (!isScheduleEvidenceCurrent(hours, candidate)) continue;
+      return { state: "closed", opensAt: hhmm(window.open), opensDay: dayForDate(candidateDate), ...(i === 0 ? { opensToday: true } : {}) };
+    }
+  }
+  return { state: "closed" };
+}
+
+// Preserve the small weekly-only hot path for provider schedules.
+function getWeeklyOpenStatus(
   hours: Hours | undefined,
   options: { verified?: boolean } = {},
   now: Date = new Date(),
@@ -155,6 +252,7 @@ export function getOpenStatus(
   }
   return { state: "closed" };
 }
+
 
 export function formatTime(hhmm: string): string {
   const [hStr, m] = hhmm.split(":");

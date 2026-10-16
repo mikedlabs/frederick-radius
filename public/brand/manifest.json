@@ -5,31 +5,40 @@
     "description": "Current local information for Frederick County, organized around where you are.",
     "domain": "frederickradius.app",
     "system": "Frederick Radius Brand System",
-    "version": "1.2",
-    "updated": "2026-07-22",
+    "version": "1.4",
+    "updated": "2026-10-16",
     "colors": {
-      "brick": "#B5462B",
-      "cream": "#F4EEE2",
-      "ink": "#221C15",
+      "brick": "#C34335",
+      "cream": "#FFFFFF",
+      "ink": "#22221F",
       "forest": "#315A43",
       "creek": "#285D73",
       "plum": "#7E2C6F",
       "amber": "#C58A32",
       "ridge": "#3F5E8F",
-      "surface": "#FBF8F0",
-      "paperDeep": "#EAE1D1",
-      "border": "#D8CDBA",
-      "mutedInk": "#6C6357",
-      "controlBorder": "#927F63",
-      "functionalAmber": "#925E16"
+      "surface": "#FFFFFF",
+      "paperDeep": "#F4F4F3",
+      "border": "#E1E1DD",
+      "mutedInk": "#62625C",
+      "controlBorder": "#818178",
+      "functionalAmber": "#925E16",
+      "darkCanvas": "#1C1C19",
+      "darkSurface": "#292925",
+      "darkInk": "#F7F7F4",
+      "darkMutedInk": "#C1C1B8",
+      "darkBorder": "#464640",
+      "darkControlBorder": "#A5A59A",
+      "darkLink": "#FFAAA0"
     },
     "type": {
+      "product": "System sans",
+      "productStack": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, sans-serif",
       "display": "Libre Caslon Display",
       "text": "Public Sans",
       "textRuntime": "Public Sans Variable"
     }
   },
-  "generatedAt": "2026-07-25T22:12:57.075Z",
+  "generatedAt": "2026-10-16T07:45:55.787Z",
   "source": "scripts/build-brand-assets.ts",
   "fonts": [
     {
@@ -47,7 +56,7 @@
       "format": "TrueType variable",
       "style": "normal",
       "weight": "100 900",
-      "role": "Installable desktop font for product titles, interface, text, and data",
+      "role": "Installable desktop font for print and exported brand titles, text, and data",
       "license": "licenses/OFL-Public-Sans.txt"
     },
     {
@@ -224,7 +233,7 @@
       "file": "marks/ripple-full-cream-tile.svg",
       "width": 512,
       "height": 512,
-      "role": "Brick app icon",
+      "role": "Deep Coral app icon (legacy brick asset filename)",
       "exports": [
         "svg",
         "png"
@@ -498,7 +507,7 @@
       "file": "posters/product-today.svg",
       "width": 1800,
       "height": 2400,
-      "role": "18 by 24 product poster using the current Today interface",
+      "role": "18 by 24 product poster using the historical July 22, 2026 Today capture",
       "exports": [
         "svg",
         "png"
@@ -508,7 +517,7 @@
       "file": "posters/ask-radius.svg",
       "width": 1800,
       "height": 2400,
-      "role": "18 by 24 Ask Radius activation poster using the current interface",
+      "role": "18 by 24 Ask Radius activation poster using the historical July 22, 2026 capture",
       "exports": [
         "svg",
         "png"
@@ -600,43 +609,43 @@
     }
   ],
   "platform": {
-    "iconVersion": "20260723a",
-    "themeColor": "#F4EEE2",
+    "iconVersion": "20261016a",
+    "themeColor": "#FFFFFF",
     "generatedBy": "scripts/build-push-icons.ts",
     "assets": [
       {
         "file": "public/icons/icon.svg",
-        "url": "/icons/icon.svg?v=20260723a",
+        "url": "/icons/icon.svg?v=20261016a",
         "role": "PWA launcher SVG"
       },
       {
         "file": "public/icons/icon-192.png",
-        "url": "/icons/icon-192.png?v=20260723a",
+        "url": "/icons/icon-192.png?v=20261016a",
         "role": "192 px launcher and push icon"
       },
       {
         "file": "public/icons/icon-512.png",
-        "url": "/icons/icon-512.png?v=20260723a",
+        "url": "/icons/icon-512.png?v=20261016a",
         "role": "512 px launcher"
       },
       {
         "file": "public/icons/icon-maskable.svg",
-        "url": "/icons/icon-maskable.svg?v=20260723a",
+        "url": "/icons/icon-maskable.svg?v=20261016a",
         "role": "Maskable launcher SVG"
       },
       {
         "file": "public/icons/icon-maskable-512.png",
-        "url": "/icons/icon-maskable-512.png?v=20260723a",
+        "url": "/icons/icon-maskable-512.png?v=20261016a",
         "role": "512 px maskable launcher"
       },
       {
         "file": "src/app/apple-icon.png",
-        "url": "/apple-icon.png?v=20260723a",
+        "url": "/apple-icon.png?v=20261016a",
         "role": "180 px Apple touch icon"
       },
       {
         "file": "public/icons/badge-72.png",
-        "url": "/icons/badge-72.png?v=20260723a",
+        "url": "/icons/badge-72.png?v=20261016a",
         "role": "72 px monochrome notification badge"
       },
       {

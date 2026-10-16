@@ -31,8 +31,8 @@ vi.mock("@/components/search/SearchInput", () => ({
 import SearchPage from "./page";
 
 function paidPlaceHit(index: number): SearchHit {
-  return {
-    type: "place",
+  const hit = {
+    type: "place" as const,
     score: 100 - index,
     place: {
       slug: `paid-place-${index}`,
@@ -41,10 +41,34 @@ function paidPlaceHit(index: number): SearchHit {
       address: `${index} Market Street`,
       city: "Frederick",
       municipality: "frederick",
+      short_blurb: "A deterministic submitted-search fixture.",
+      state: "MD" as const,
+      postal_code: "21701",
+      geom: { lng: -77.41, lat: 39.41 },
+      is_verified: false,
+      feature_score: 0,
+      source: "manual" as const,
+      updated_at: "2026-10-16",
+      source_id: `component-workshop:paid-place-${index}`,
+      source_url: null,
+      license: "Demonstration fixture",
+      confidence: "curated" as const,
+      first_seen_at: "2026-10-16T10:00:00Z",
+      last_verified_at: "2026-10-16T10:00:00Z",
+      open_status: { state: "unknown" as const },
       google_photo_url:
-        `/api/place-photo?name=${encodeURIComponent(`places/test/photos/photo-${index}`)}&w=800`,
+        `/api/place-photo?name=${encodeURIComponent(`places/test/photos/photo-${index}`)}&w=800&slug=paid-place-${index}`,
+      // Every submitted image is bound to its own original provider record.
+      // These are deterministic fixtures, not an exception to publication policy.
+      google_photo_policy_passed: true,
+      google_photo_attribution: {
+        photo_name: `places/test/photos/photo-${index}`,
+        google_maps_uri: `https://www.google.com/maps/place/test/data=!3m1!1e3?photoid=photo-${index}`,
+        authors: [{ display_name: `Fixture contributor ${index}` }],
+      },
     },
-  } as SearchHit;
+  };
+  return hit;
 }
 
 describe("submitted search photo budget", () => {

@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+test.use({ serviceWorkers: "block" });
+
 for (const width of [320, 375, 390, 430, 1366]) {
   test(`Today leads with conditions and an event card at ${width}px`, async ({ page }, testInfo) => {
     test.setTimeout(120_000);

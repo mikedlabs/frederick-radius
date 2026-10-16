@@ -167,6 +167,45 @@ describe("map list photos", () => {
     await loader.flush();
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
+  it("shares a single lazy request between URL-only and source-aware consumers", async () => {
+    const credit = { photo_name: "places/one/photos/hero", google_maps_uri: "https://www.google.com/maps/place/one/photo", authors: [{ display_name: "Actual contributor" }] };
+    const photo = { slug: "one", google_photo_url: "/api/place-photo?name=places%2Fone%2Fphotos%2Fhero", google_photo_attribution: credit };
+    const fetcher = vi.fn(async () => ({ ok: true, json: async () => ({ places: [photo] }) }));
+    const loader = createMapListPhotoLoader({ fetcher, batchDelayMs: 60_000 });
+    const data = loader.loadData("one");
+    const url = loader.load("one");
+    expect(loader.loadData("one")).toBe(data);
+    await loader.flush();
+    await expect(data).resolves.toEqual({ google_photo_url: photo.google_photo_url, google_photo_attribution: credit });
+    await expect(url).resolves.toBe(photo.google_photo_url);
+    expect(loader.peekData("one")?.google_photo_attribution).toEqual(credit);
+    expect(loader.peek("one")).toBe(photo.google_photo_url);
+    await loader.loadData("one");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not cache a failed request as an authoritative missing photo", async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce({ ok: false }).mockResolvedValueOnce({ ok: true, json: async () => ({ places: [] }) });
+    const loader = createMapListPhotoLoader({ fetcher, batchDelayMs: 60_000 });
+    const failed = loader.loadData("one");
+    await loader.flush();
+    await expect(failed).resolves.toBeNull();
+    expect(loader.peekData("one")).toBeUndefined();
+    const retry = loader.loadData("one");
+    await loader.flush();
+    await expect(retry).resolves.toBeNull();
+    expect(loader.peekData("one")).toBeNull();
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("drops malformed credit without inventing attribution for the returned photo", async () => {
+    const fetcher = vi.fn(async () => ({ ok: true, json: async () => ({ places: [{ slug: "one", google_photo_url: "/api/place-photo?name=one", google_photo_attribution: { photo_name: "one", authors: "wrong shape" } }] }) }));
+    const loader = createMapListPhotoLoader({ fetcher, batchDelayMs: 60_000 });
+    const photo = loader.loadData("one");
+    await loader.flush();
+    await expect(photo).resolves.toEqual({ google_photo_url: "/api/place-photo?name=one", google_photo_attribution: undefined });
+  });
+
 });
 
 describe("map list recovery copy", () => {

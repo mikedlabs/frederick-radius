@@ -1,256 +1,247 @@
 /**
- * Civic press releases — the City of Frederick + Frederick County newsrooms.
- *
- * Both governments run on CivicPlus, which publishes their official "News
- * Flash" press releases as RSS at their own .gov domains. This is the most
- * authoritative possible source for the thing residents most want to know
- * fast: a police arrest, a traffic advisory, a road closure, a county notice.
- * The City Police Department posts its releases to the City feed; the County
- * posts to the County feed (the same channel a Sheriff's Office release uses).
- *
- * We never store or republish body content — title + canonical .gov link +
- * publish date + the press graphic the feed already advertises. RSS is built
- * for exactly this; copyright safety comes from doing the minimum and linking
- * out. Per-feed failures are silent (one .gov down still leaves the other).
- *
- * Each item is classified into a lane from its title (the feed has no
- * category tags): `police` (arrests, investigations, the blotter), `advisory`
- * (traffic / road / water / emergency), or `civic` (everything else). The
- * /pulse can promote a genuinely urgent, fresh `police` release; ordinary
- * announcements remain in the local-updates drawer.
+ * Official City and County releases. Only headline, original publication time,
+ * publisher and canonical article link are republished, never bodies or photos.
+ * The dedicated City news feed supplies normal updates. The wider City feed
+ * retains dated civic notices as well as police/advisory coverage; County NewsFlash serves both.
  */
-
-import { newsArticleUrl } from "@/lib/news-article-url";
-import { createSingleFlight } from "@/lib/single-flight";
+import { XMLParser, XMLValidator } from "fast-xml-parser";
 import { unstable_cache } from "next/cache";
+import { CIVIC_PRESS_SOURCES, type CivicPressSource } from "@/data/civic-press-sources";
 import { isPromotedDataBuild } from "@/lib/data-release-mode";
+import { cleanFeedText } from "@/lib/format/text";
+import { newsArticleUrl } from "@/lib/news-article-url";
+import { createAbortDeadline, withDeadlineOutcome } from "@/lib/promise-deadline";
+import { createSingleFlight } from "@/lib/single-flight";
 
 export type CivicPressLane = "police" | "advisory" | "civic";
-
 export type CivicPressItem = {
   title: string;
   url: string;
-  /** Full publisher name, for attribution. */
   source: "City of Frederick" | "Frederick County";
-  /** One-word tag for the source pip ("City" / "County"). */
   sourceShort: "City" | "County";
-  /** ISO timestamp from the feed's pubDate. */
+  /** Exact subscription provenance; absent only in older compatibility rows. */
+  sourceId?: CivicPressSource["id"];
+  /** Original pubDate converted to ISO, or legacy zero for an unknown date. */
   publishedAt: string;
-  /** The press-release graphic the feed enclosed, if any. */
-  imageUrl?: string;
   lane: CivicPressLane;
 };
-
+export type CivicPressSourceCheck = {
+  id: CivicPressSource["id"];
+  source: CivicPressItem["source"];
+  scope: "city" | "county";
+  channel: "news" | "safety";
+  status: "available" | "empty" | "unavailable";
+  /** Actual response/attempt time, never the article publication time. */
+  checkedAt: string | null;
+  latestPublishedAt: string | null;
+  reason?: "request_failed" | "invalid_feed" | "stale";
+};
 export type CivicPressResult = {
   items: CivicPressItem[];
-  sourceHealth: {
-    degraded: boolean;
-    unavailable: CivicPressItem["source"][];
-  };
+  /** Compatibility health for the two broad feeds used by safety consumers. */
+  sourceHealth: { degraded: boolean; unavailable: CivicPressItem["source"][] };
+  /** Absent only in older cached/test compatibility results. */
+  sourceChecks?: CivicPressSourceCheck[];
+};
+export type OfficialCivicNewsResult = {
+  items: CivicPressItem[];
+  status: "available" | "partial" | "unavailable";
+  sources?: CivicPressSourceCheck[];
 };
 
-const FEEDS: ReadonlyArray<{
-  source: CivicPressItem["source"];
-  short: CivicPressItem["sourceShort"];
-  url: string;
-}> = [
-  {
-    source: "City of Frederick",
-    short: "City",
-    url: "https://www.cityoffrederickmd.gov/RSSFeed.aspx?ModID=1&CID=All-0",
-  },
-  {
-    source: "Frederick County",
-    short: "County",
-    url: "https://www.frederickcountymd.gov/RSSFeed.aspx?ModID=1&CID=All-0",
-  },
-];
-
-// ── Lane classifiers (title-based; the feed carries no categories) ────
-// Police blotter: anything a PD / Sheriff would put out. "Frederick Police"
-// is the City PD's standing byline, so it alone qualifies.
 const POLICE_RE =
   /\b(police|sheriff|deput(?:y|ies)|arrest(?:ed|s)?|homicide|shoot(?:ing|s)?|stabb|robber|burglar|suspect|investigat|barrack|fugitive|amber alert|silver alert|standoff|pursuit|fatal|firearm|assault|wanted|in custody|charged|indict|missing (?:person|man|woman|teen|boy|girl|child|juvenile))\b/i;
-// Time-sensitive advisories. Holiday "offices closed for Juneteenth" notices
-// are explicitly NOT advisories — they're routine civic news.
 const ADVISORY_RE =
   /\b(traffic advisory|road closure|road work|lane closure|detour|temporarily closed|to be closed|boil water|water main|shelter in place|evacuat|emergency|power outage|flooding|flood warning|severe weather|hazmat)\b/i;
 const HOLIDAY_CLOSURE_RE = /\boffices?\s+closed\b/i;
 
-/** Lane for a press-release title. Exported for the boundary test. */
 export function classifyCivicPress(title: string): CivicPressLane {
   if (POLICE_RE.test(title)) return "police";
   if (ADVISORY_RE.test(title) && !HOLIDAY_CLOSURE_RE.test(title)) return "advisory";
   return "civic";
 }
 
-// ── Parsing (CivicPlus RSS is plain, entity-escaped text) ─────────────
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&#(\d+);/g, (_, d: string) => String.fromCodePoint(parseInt(d, 10)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, h: string) => String.fromCodePoint(parseInt(h, 16)))
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .trim();
+const parser = new XMLParser({ ignoreAttributes: false, parseTagValue: false });
+const MAX_FEED_BYTES = 512 * 1024;
+const FETCH_TIMEOUT_MS = 2_000;
+const MAX_CHECK_AGE_MS = 60 * 60 * 1_000;
+const FUTURE_TOLERANCE_MS = 5 * 60 * 1_000;
+const UNKNOWN_DATE = "1970-01-01T00:00:00.000Z";
+
+function text(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (value && typeof value === "object" && "#text" in value) return text(value["#text"]);
+  return "";
 }
 
-function tagText(tag: string, block: string): string {
-  const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`));
-  if (!m) return "";
-  return decodeEntities(m[1].replace(/<!\[CDATA\[|\]\]>/g, "").trim());
+/** Keep the supplied timezone. Ambiguous and implausible future dates stay unknown. */
+function publicationTime(value: string, now: number): string {
+  if (!/(?:GMT|UTC|UT|Z|[+-]\d{2}:?\d{2})$/i.test(value)) return UNKNOWN_DATE;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && timestamp > 0 && timestamp <= now + FUTURE_TOLERANCE_MS
+    ? new Date(timestamp).toISOString() : UNKNOWN_DATE;
 }
 
-function parseFeed(
-  xml: string,
-  source: CivicPressItem["source"],
-  short: CivicPressItem["sourceShort"],
-): CivicPressItem[] {
-  const out: CivicPressItem[] = [];
-  const re = /<item>([\s\S]*?)<\/item>/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(xml)) !== null) {
-    const block = m[1];
-    const title = tagText("title", block);
-    const url = newsArticleUrl(tagText("link", block));
-    const pubDate = tagText("pubDate", block);
-    if (!title || !url) continue;
-    const when = pubDate ? new Date(pubDate) : null;
-    const enclosure = block.match(/<enclosure[^>]*url="([^"]+)"/i);
-    out.push({
-      title,
-      url,
-      source,
-      sourceShort: short,
-      publishedAt: when && !Number.isNaN(+when) ? when.toISOString() : new Date(0).toISOString(),
-      imageUrl: enclosure?.[1],
-      lane: classifyCivicPress(title),
-    });
+function canonicalArticle(raw: string, feed: CivicPressSource): string | null {
+  const valid = newsArticleUrl(raw);
+  if (!valid) return null;
+  const url = new URL(valid);
+  const host = url.hostname.toLowerCase().replace(/^www\./, "");
+  if (host !== feed.host || url.port) return null;
+  // CivicPlus article identities are the numeric aid; subscription CID and
+  // tracking parameters do not create another story or change its publisher.
+  if (url.pathname.toLowerCase() === "/civicalerts.aspx") {
+    const aid = [...url.searchParams].find(([name]) => name.toLowerCase() === "aid")?.[1];
+    if (!aid || !/^\d+$/.test(aid)) return null;
+    return `https://www.${feed.host}/CivicAlerts.aspx?aid=${aid}`;
   }
-  return out;
+  url.protocol = "https:";
+  url.hostname = `www.${feed.host}`;
+  url.hash = "";
+  return url.href;
 }
 
-/**
- * Every recent press release from the City + County, newest first, deduped
- * by canonical URL and capped. Returns [] if both feeds fail (callers hide
- * the surface — a blank "press" header lowers trust).
- */
-const FETCH_TIMEOUT_MS = 5_000;
+function parseFeed(xml: string, feed: CivicPressSource, now: number): CivicPressItem[] {
+  if (/<!DOCTYPE|<!ENTITY/i.test(xml) || XMLValidator.validate(xml) !== true) {
+    throw new Error("Invalid official RSS");
+  }
+  const channel: unknown = parser.parse(xml)?.rss?.channel;
+  if (channel !== "" && (!channel || typeof channel !== "object" || Array.isArray(channel))) {
+    throw new Error("Missing official RSS channel");
+  }
+  const entries = channel && typeof channel === "object" ? (channel as { item?: unknown }).item : undefined;
+  const rows = Array.isArray(entries) ? entries : entries === undefined ? [] : [entries];
+  const items: CivicPressItem[] = [];
+  for (const row of rows.slice(0, 100)) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+    const entry = row as Record<string, unknown>;
+    const title = cleanFeedText(text(entry.title));
+    const url = canonicalArticle(text(entry.link), feed);
+    if (!title || title.length > 500 || !url) continue;
+    const lane = classifyCivicPress(title);
+    // The broad City feed also carries useful dated civic/recreation notices.
+    // Their headline wording never turns them into a current incident claim.
+    items.push({ title, url, source: feed.source, sourceShort: feed.short, sourceId: feed.id,
+      publishedAt: publicationTime(text(entry.pubDate), now), lane });
+  }
+  return items;
+}
+
+async function readBoundedFeed(response: Response, signal: AbortSignal): Promise<string> {
+  if (Number(response.headers.get("content-length")) > MAX_FEED_BYTES) {
+    void response.body?.cancel().catch(() => {});
+    throw new Error("Official RSS exceeds byte limit");
+  }
+  if (!response.body) throw new Error("Empty official response");
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let value = "";
+  const abort = () => { void reader.cancel().catch(() => {}); };
+  signal.addEventListener("abort", abort, { once: true });
+  try {
+    while (true) {
+      if (signal.aborted) throw new Error("Official RSS deadline");
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      bytes += chunk.value.byteLength;
+      if (bytes > MAX_FEED_BYTES) {
+        abort();
+        throw new Error("Official RSS exceeds byte limit");
+      }
+      value += decoder.decode(chunk.value, { stream: true });
+    }
+    if (signal.aborted) throw new Error("Official RSS deadline");
+    return value + decoder.decode();
+  } finally {
+    signal.removeEventListener("abort", abort);
+    reader.releaseLock();
+  }
+}
+
+async function loadSource(feed: CivicPressSource): Promise<{ items: CivicPressItem[]; check: CivicPressSourceCheck }> {
+  const deadline = createAbortDeadline(FETCH_TIMEOUT_MS);
+  let reason: CivicPressSourceCheck["reason"] = "request_failed";
+  const operation = (async () => {
+    // The outer result cache owns the check timestamp. A second raw-response
+    // cache could stamp a previously fetched XML response as a new check.
+    const response = await fetch(feed.url, { signal: deadline.signal, cache: "no-store",
+      headers: { "user-agent": "FrederickRadius/1.0 (+https://frederickradius.app)" } });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const xml = await readBoundedFeed(response, deadline.signal);
+    reason = "invalid_feed";
+    return parseFeed(xml, feed, Date.now());
+  })();
+  try {
+    const outcome = await withDeadlineOutcome(operation, FETCH_TIMEOUT_MS);
+    const items = outcome.status === "fulfilled" ? outcome.value : [];
+    const dated = items.filter((item) => item.publishedAt !== UNKNOWN_DATE);
+    const latestPublishedAt = dated.map((item) => item.publishedAt).sort().at(-1) ?? null;
+    return { items, check: { id: feed.id, source: feed.source, scope: feed.scope, channel: feed.channel,
+      status: outcome.status === "fulfilled" ? (items.length ? "available" : "empty") : "unavailable",
+      checkedAt: new Date().toISOString(), latestPublishedAt,
+      ...(outcome.status !== "fulfilled" ? { reason: outcome.status === "timed_out" ? "request_failed" as const : reason } : {}),
+    } };
+  } finally {
+    deadline.dispose();
+  }
+}
 
 async function loadCivicPressReleases(): Promise<CivicPressResult> {
-  const feeds = await Promise.all(
-    FEEDS.map(async (f) => {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-      try {
-        // 15-minute cache: a fresh police release surfaces fast without
-        // hammering the .gov server (releases land a few times a day).
-        const res = await fetch(f.url, {
-          signal: ctrl.signal,
-          next: { revalidate: 900 },
-          headers: { "user-agent": "Mozilla/5.0 (FrederickRadius/1.0)" },
-        });
-        if (!res.ok) {
-          return {
-            items: [] as CivicPressItem[],
-            source: f.source,
-            available: false,
-            detail: `HTTP ${res.status}`,
-          };
-        }
-        return {
-          items: parseFeed(await res.text(), f.source, f.short),
-          source: f.source,
-          available: true,
-          detail: "",
-        };
-      } catch (error) {
-        const timedOut =
-          error instanceof Error &&
-          (error.name === "AbortError" || error.name === "TimeoutError");
-        return {
-          items: [] as CivicPressItem[],
-          source: f.source,
-          available: false,
-          detail: timedOut
-            ? `timed out after ${FETCH_TIMEOUT_MS}ms`
-            : error instanceof Error
-              ? error.message
-              : String(error),
-        };
-      } finally {
-        clearTimeout(timer);
-      }
-    }),
-  );
-
-  const unavailable = feeds
-    .filter((feed) => !feed.available)
-    .map((feed) => feed.source);
-  if (unavailable.length > 0) {
-    const detail = feeds
-      .filter((feed) => !feed.available)
-      .map((feed) => `${feed.source}: ${feed.detail}`)
-      .join("; ");
-    // One summary per cached refresh. A blocked county newsroom is expected
-    // to fail soft; the structured sourceHealth result remains available to
-    // operators without emitting a TypeError for every page render.
-    console.info(`[civic-press] unavailable this refresh (${detail}; fail-soft)`);
-  }
-
+  const feeds = await Promise.all(CIVIC_PRESS_SOURCES.map(loadSource));
+  // Compatibility health deliberately follows the broad safety channels;
+  // a failed City news subscription must not imply its police feed failed.
+  const unavailable = feeds.filter((feed) => feed.check.id !== "city_official_news" && feed.check.status === "unavailable")
+    .map((feed) => feed.check.source);
   const seen = new Set<string>();
-  const merged: CivicPressItem[] = [];
-  for (const item of feeds.flatMap((feed) => feed.items)) {
-    if (seen.has(item.url)) continue;
-    seen.add(item.url);
-    merged.push(item);
+  const items = feeds.flatMap((feed) => feed.items)
+    .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
+    .filter((item) => {
+      if (seen.has(item.url)) return false;
+      seen.add(item.url);
+      return true;
+    });
+  return { items: items.slice(0, 40), sourceChecks: feeds.map((feed) => feed.check),
+    sourceHealth: { degraded: unavailable.length > 0, unavailable } };
+}
+
+/** Same projection powers Today and Pulse; newsroom status is independent of safety. */
+export function officialCivicNews(result: CivicPressResult, now = Date.now()): OfficialCivicNewsResult {
+  const items = result.items.filter((item) => item.lane === "civic");
+  if (!result.sourceChecks) {
+    return { items, status: result.sourceHealth.unavailable.length === 2 ? "unavailable"
+      : result.sourceHealth.degraded ? "partial" : "available" };
   }
-  merged.sort((a, b) => +new Date(b.publishedAt) - +new Date(a.publishedAt));
-  return {
-    items: merged.slice(0, 40),
-    sourceHealth: {
-      degraded: unavailable.length > 0,
-      unavailable,
-    },
-  };
+  const sources = CIVIC_PRESS_SOURCES.map((feed): CivicPressSourceCheck => {
+    const source = result.sourceChecks?.find((check) => check.id === feed.id) ?? {
+      id: feed.id, source: feed.source, scope: feed.scope, channel: feed.channel,
+      status: "unavailable", checkedAt: null, latestPublishedAt: null,
+    };
+    const checked = source.checkedAt ? Date.parse(source.checkedAt) : NaN;
+    if (source.status !== "unavailable" && (!Number.isFinite(checked) || checked > now + FUTURE_TOLERANCE_MS || now - checked > MAX_CHECK_AGE_MS)) {
+      return { ...source, status: "unavailable" as const, reason: "stale" as const };
+    }
+    return source;
+  });
+  const available = sources.filter((source) => source.status !== "unavailable").length;
+  return { items, sources, status: available === CIVIC_PRESS_SOURCES.length ? "available" : available > 0 ? "partial" : "unavailable" };
 }
 
 const loadCivicPressOnce = createSingleFlight<"current", CivicPressResult>();
 const getCivicPressReleasesCached = unstable_cache(
-  () =>
-    loadCivicPressOnce(
-      "current",
-      loadCivicPressReleases,
-    ),
-  [
-    "civic-press-adapter-v2",
-    process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
-  ],
+  () => loadCivicPressOnce("current", loadCivicPressReleases),
+  ["civic-press-adapter-v4", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 900, tags: ["civic-press"] },
 );
 
-/** Health-aware result. A failed source stays cached for the same refresh
- * window, so a refused connection is not retried from every RSC render. */
 export function getCivicPressReleasesResult(): Promise<CivicPressResult> {
   if (isPromotedDataBuild()) {
-    return Promise.resolve({
-      items: [],
-      sourceHealth: {
-        degraded: true,
-        unavailable: ["City of Frederick", "Frederick County"],
-      },
+    return Promise.resolve({ items: [], sourceHealth: { degraded: true, unavailable: ["City of Frederick", "Frederick County"] },
+      sourceChecks: CIVIC_PRESS_SOURCES.map((feed) => ({ id: feed.id, source: feed.source, scope: feed.scope,
+        channel: feed.channel, status: "unavailable", checkedAt: null, latestPublishedAt: null })),
     });
   }
-  if (process.env.NODE_ENV === "test") {
-    return loadCivicPressOnce(
-      "current",
-      loadCivicPressReleases,
-    );
-  }
-  return getCivicPressReleasesCached();
+  return process.env.NODE_ENV === "test" ? loadCivicPressOnce("current", loadCivicPressReleases) : getCivicPressReleasesCached();
 }
 
 /** Compatibility facade for existing user-facing surfaces. */

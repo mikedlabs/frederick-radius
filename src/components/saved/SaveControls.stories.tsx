@@ -119,6 +119,43 @@ export const ConfirmedSave: Story = { beforeEach: () => sample(), play: async ({
   await waitFor(() => expect(canvas.getByLabelText("Confirmed saved places")).toHaveTextContent("Workshop stop"));
   await confirmedControls(canvasElement, true);
 } };
+export const ConfirmedSaveMotion: Story = {
+  // The toolbar's duration clamp must not conceal the native media query.
+  globals: { motion: "full" },
+  beforeEach: () => sample(),
+  play: async ({ canvasElement }) => {
+    const canvas = await beginSave(canvasElement);
+    let feedback: { reduced: boolean; names: string[]; animations: number[] } | undefined;
+    const capture = () => {
+      if (feedback) return;
+      const control = canvasElement.querySelector('[data-save-ref="place:workshop-stop"]');
+      const pop = control?.querySelector(".save-pop");
+      const ring = control?.querySelector(".save-ring");
+      if (control?.getAttribute("aria-pressed") !== "true" || !pop || !ring) return;
+      feedback = {
+        reduced: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+        names: [pop, ring].map((element) => getComputedStyle(element).animationName),
+        animations: [pop, ring].map((element) => element.getAnimations().length),
+      };
+    };
+    // Observe the real confirmed commit before its 520ms celebration ends.
+    const observer = new MutationObserver(capture);
+    observer.observe(canvasElement, { attributes: true, childList: true, subtree: true });
+    try {
+      await finish(true);
+      await waitFor(() => expect(feedback).toBeDefined());
+      const actual = feedback!;
+      await expect(actual.names).toEqual(actual.reduced ? ["none", "none"] : ["save-pop-kf", "save-ring-kf"]);
+      if (actual.reduced) await expect(actual.animations).toEqual([0, 0]);
+      else for (const count of actual.animations) await expect(count).toBeGreaterThan(0);
+      await expect(canvas.getByLabelText("Confirmed saved places")).toHaveTextContent("Workshop stop");
+      await confirmedControls(canvasElement, true);
+      await waitFor(() => expect(within(document.body).getByText("Your saved list starts here", { exact: true })).toBeVisible());
+    } finally {
+      observer.disconnect();
+    }
+  },
+};
 export const FailedSave: Story = { beforeEach: () => sample(), play: async ({ canvasElement }) => {
   const canvas = await beginSave(canvasElement); await finish(false);
   await confirmedControls(canvasElement, false);

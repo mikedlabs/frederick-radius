@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { findErrorBoundaryMarker } from "./error-boundary-markers";
+import { EVENTS } from "../src/data/events";
 import {
   classifyEventDetailResult,
   eventDetailGateSummary,
@@ -24,6 +25,42 @@ type EventsHydrationProof = {
 const HAS_DURABLE_EVENT_ARCHIVE = Boolean(
   process.env.DATABASE_URL || process.env.DIRECT_URL,
 );
+
+// The secret-free local server has a finite, dated seed calendar. Once the
+// season ends, discovery correctly shows an incomplete empty calendar. Keep
+// validating real full detail pages from that same bundled catalog without
+// changing dates, fabricating event HTML, or relaxing the live release canary.
+async function bundledDetailPathsForEmptyLocalCalendar(
+  page: Page,
+  appOrigin: URL,
+): Promise<string[]> {
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(appOrigin.hostname);
+  expect(
+    local && !HAS_DURABLE_EVENT_ARCHIVE,
+    "A live or archive-backed calendar must expose a current event detail link",
+  ).toBe(true);
+  await expect(page.getByRole("heading", {
+    name: "No matches in the events loaded so far", exact: true,
+  })).toBeVisible();
+  await expect(page.getByText(
+    "The calendar is incomplete. Check again before ruling out this time or place.",
+    { exact: true },
+  )).toBeVisible();
+  await expect(page.getByRole("button", {
+    name: "Check the calendar again", exact: true,
+  })).toBeEnabled();
+  const paths = EVENTS.slice(0, 4).map((event) => `/events/${event.slug}`);
+  expect(paths.length, "The bundled catalog must contain real detail records").toBeGreaterThan(0);
+  await test.info().attach("empty-local-calendar-detail-evidence", {
+    contentType: "application/json",
+    body: Buffer.from(JSON.stringify({
+      discovery: "honest-incomplete-empty-state",
+      detailEvidence: "unchanged-bundled-historical-records",
+      paths,
+    }, null, 2)),
+  });
+  return paths;
+}
 
 async function visibleEventLinks(page: Page): Promise<string[]> {
   return page
@@ -227,16 +264,15 @@ test("every event link published by Today and Events opens without a generic ser
     }
   }
 
-  expect(
-    links.size,
-    "Today and Events should expose at least one checkable event detail link",
-  ).toBeGreaterThan(0);
+  const bundledPaths = links.size === 0
+    ? await bundledDetailPathsForEmptyLocalCalendar(page, appOrigin)
+    : [];
 
   const failures: string[] = [];
   const states: EventDetailState[] = [];
   // A small batch keeps the local production server responsive while still
   // checking every displayed link from both discovery surfaces.
-  const paths = [...links].sort();
+  const paths = [...links, ...bundledPaths].sort();
   for (let index = 0; index < paths.length; index += 4) {
     const batch = paths.slice(index, index + 4);
     const results = await Promise.all(
@@ -287,7 +323,7 @@ test("every event link published by Today and Events opens without a generic ser
   ).toEqual([]);
   expect(
     gate.healthy,
-    "At least one published event must render real event-detail content.",
+    "At least one published or bundled event must render real event-detail content.",
   ).toBeGreaterThan(0);
   if (HAS_DURABLE_EVENT_ARCHIVE) {
     expect(
@@ -337,8 +373,11 @@ test("a mobile event detail keeps one reachable save action and a usable image c
   const eventPaths = hrefs
     .map((href) => new URL(href, appOrigin).pathname)
     .filter((path) => EVENT_DETAIL_PATH.test(path) && path !== "/events/calendar");
+  const detailCandidates = eventPaths.length === 0
+    ? await bundledDetailPathsForEmptyLocalCalendar(page, appOrigin)
+    : eventPaths;
   let eventPath: string | undefined;
-  for (const candidate of [...new Set(eventPaths)].slice(0, 16)) {
+  for (const candidate of [...new Set(detailCandidates)].slice(0, 16)) {
     const candidateResponse = await page.request.get(candidate, {
       failOnStatusCode: false,
       timeout: 30_000,
@@ -357,10 +396,22 @@ test("a mobile event detail keeps one reachable save action and a usable image c
       break;
     }
   }
-  expect(eventPath, "Events should expose a current detail page").toBeTruthy();
+  expect(eventPath, "A published or bundled event should render a real detail page").toBeTruthy();
 
   const response = await page.goto(eventPath!, { waitUntil: "domcontentloaded" });
   expect(response?.status()).toBe(200);
+  if (eventPaths.length === 0) {
+    const record = EVENTS.find((event) => eventPath === `/events/${event.slug}`);
+    expect(record, "The historical detail must be an unchanged bundled record").toBeDefined();
+    await expect(page.getByRole("heading", { level: 1, name: record!.title, exact: true })).toBeVisible();
+    await expect(page.getByText("This event has already happened.", { exact: true })).toBeVisible();
+    const structured = await page.locator('script[type="application/ld+json"]').allTextContents();
+    const eventData = structured.map((text) => JSON.parse(text) as {
+      "@type"?: string; startDate?: string; endDate?: string;
+    }).find((data) => data["@type"] === "Event");
+    expect(new Date(eventData!.startDate!).toISOString()).toBe(new Date(record!.starts_at).toISOString());
+    expect(new Date(eventData!.endDate!).toISOString()).toBe(new Date(record!.ends_at).toISOString());
+  }
   await expect(page.locator('button[data-save-ref^="event:"]:visible')).toHaveCount(1);
 
   const creditLink = page.locator("[data-event-photo-credit] a:visible");

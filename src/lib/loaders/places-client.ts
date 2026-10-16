@@ -1,7 +1,7 @@
 import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { haversineMeters, type LngLat } from "@/lib/geo";
-import { getOpenStatus } from "@/lib/hours";
+import { getOpenStatus, isScheduleEvidenceCurrent } from "@/lib/hours";
 import { isHoursFresh } from "@/lib/hours-freshness";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import { publishablePlaceWebsite } from "@/lib/place-website-policy";
@@ -83,7 +83,9 @@ function withLiveStatus(p: ClientPlaceData): PlaceCardData {
     p.hours_verified &&
       p.hours &&
       (!p.hours_policy_strict || isHoursFresh(p.hours_updated_at, now)) &&
-      mayPublishVisitabilityHours(p.slug, p.hours, now),
+      mayPublishVisitabilityHours(p.slug, p.hours, now) &&
+      (!p.hours._official || p.hours._official.slug === p.slug) &&
+      isScheduleEvidenceCurrent(p.hours, now),
   );
   return {
     ...p,

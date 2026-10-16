@@ -16,6 +16,7 @@ import {
   coffeeIntentTier,
   isChainName,
 } from "@/lib/category-ranking";
+import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import type { DecisionReason } from "@/lib/decision/core";
 
 /**
@@ -32,6 +33,7 @@ export type DaypartPick = {
   rating: number | null;
   photo?: string | null;
   photoCredit?: string | null;
+  photoAttribution?: GooglePhotoAttribution | null;
   /** Always identify the town when the server is showing countywide picks. */
   where?: string | null;
   /** Filled by the live, context-aware /api/want refresh in DaypartNeeds. */
@@ -134,6 +136,7 @@ export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRo
       name: place.name,
       rating: place.google_rating ?? null,
       photo: place.google_photo_url ?? null,
+      photoAttribution: place.google_photo_attribution ?? null,
       photoCredit:
         place.google_photo_attribution?.authors[0]?.display_name ?? null,
       where:

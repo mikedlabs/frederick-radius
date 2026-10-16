@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import TRANSIT from "@/data/transit.json";
 import { agoLabel } from "@/lib/format/relativeTime";
+import styles from "./TransitServiceAlerts.module.css";
 
 const POLL_INTERVAL_MS = 60_000;
 const COUNTY_UPDATES_URL =
@@ -176,10 +177,10 @@ function OfficialUpdatesLink() {
       href={COUNTY_UPDATES_URL}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2 text-[12px] font-semibold underline decoration-transparent underline-offset-4 transition hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-      style={{ color: "var(--app-brand-press)" }}
+      aria-label="Official county updates"
+      className={styles.updates}
     >
-      Official county updates
+      Updates
       <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
     </a>
   );
@@ -191,29 +192,23 @@ function AlertDetails({ alert }: { alert: ServiceAlert }) {
 
   return (
     <details
-      className="group overflow-hidden rounded-[var(--app-radius-md)] border"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated-solid)",
-      }}
+      className={`group ${styles.alert}`}
     >
-      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] [&::-webkit-details-marker]:hidden">
+      <summary className={styles.alertSummary}>
         <AlertTriangle
           className="h-4 w-4 shrink-0"
           strokeWidth={2.2}
-          style={{ color: "var(--app-warning)" }}
+          style={{ color: "var(--state-closing)" }}
           aria-hidden
         />
         <span className="min-w-0 flex-1">
           <span
-            className="block text-[13px] font-semibold leading-snug"
-            style={{ color: "var(--app-ink)" }}
+            className={styles.alertTitle}
           >
             {alert.header}
           </span>
           <span
-            className="mt-0.5 block text-[10.5px] leading-snug"
-            style={{ color: "var(--app-ink-3)" }}
+            className={styles.alertMeta}
           >
             Effect: {alert.effect ?? "Not specified"} · Cause:{" "}
             {alert.cause ?? "Not specified"}
@@ -231,7 +226,7 @@ function AlertDetails({ alert }: { alert: ServiceAlert }) {
         className="space-y-3 border-t px-3 pb-3 pt-2.5"
         style={{ borderColor: "var(--app-border)" }}
       >
-        <dl className="grid grid-cols-2 gap-2 text-[11px]">
+        <dl className="grid grid-cols-2 gap-2 text-[13px]">
           <div>
             <dt style={{ color: "var(--app-ink-3)" }}>Effect</dt>
             <dd className="font-semibold" style={{ color: "var(--app-ink)" }}>
@@ -256,7 +251,7 @@ function AlertDetails({ alert }: { alert: ServiceAlert }) {
 
         <div>
           <p
-            className="text-[10.5px] font-semibold uppercase tracking-[0.08em]"
+            className="text-[12px] font-semibold"
             style={{ color: "var(--app-ink-3)" }}
           >
             Affected service
@@ -265,7 +260,7 @@ function AlertDetails({ alert }: { alert: ServiceAlert }) {
             {routes.map((route) => (
               <li
                 key={route}
-                className="rounded-full border px-2 py-1 text-[11px] font-semibold"
+                className="rounded-full border px-2 py-1 text-[12px] font-semibold"
                 style={{
                   borderColor: "var(--app-border-strong)",
                   color: "var(--app-ink-2)",
@@ -276,7 +271,7 @@ function AlertDetails({ alert }: { alert: ServiceAlert }) {
             ))}
             {alert.stopIds.length > 0 ? (
               <li
-                className="rounded-full border px-2 py-1 text-[11px] font-semibold"
+                className="rounded-full border px-2 py-1 text-[12px] font-semibold"
                 style={{
                   borderColor: "var(--app-border-strong)",
                   color: "var(--app-ink-2)",
@@ -290,7 +285,7 @@ function AlertDetails({ alert }: { alert: ServiceAlert }) {
         </div>
 
         <p
-          className="text-[12px] leading-relaxed"
+          className="text-[13px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
           {alert.description ?? "No additional description was provided."}
@@ -384,31 +379,11 @@ export default function TransitServiceAlerts() {
       aria-labelledby="transit-service-alerts-heading"
       aria-live="polite"
       aria-busy={state.kind === "loading"}
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border"
-      style={{
-        borderColor:
-          state.kind === "alerts"
-            ? "color-mix(in srgb, var(--app-warning) 42%, var(--app-border))"
-            : "var(--app-border)",
-        background: "var(--app-bg-elevated)",
-        boxShadow: "var(--app-elev-1), var(--app-edge)",
-      }}
+      data-state={state.kind}
+      className={styles.bulletins}
     >
-      <div className="flex min-h-11 items-center gap-2.5 px-3 py-2">
-        <span
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-          style={{
-            background:
-              state.kind === "alerts"
-                ? "color-mix(in srgb, var(--app-warning) 14%, transparent)"
-                : "color-mix(in srgb, var(--app-cool) 11%, transparent)",
-            color:
-              state.kind === "alerts"
-                ? "var(--app-warning)"
-                : "var(--app-cool)",
-          }}
-          aria-hidden
-        >
+      <div className={styles.header}>
+        <span className={styles.icon} aria-hidden>
           {state.kind === "loading" ? (
             <LoaderCircle
               className="h-4 w-4 animate-spin motion-reduce:animate-none"
@@ -423,18 +398,9 @@ export default function TransitServiceAlerts() {
           )}
         </span>
 
-        <div className="min-w-0 flex-1">
-          <h2
-            id="transit-service-alerts-heading"
-            className="text-[13px] font-semibold leading-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            TransIT service bulletins
-          </h2>
-          <p
-            className="mt-0.5 text-[10.5px] leading-snug"
-            style={{ color: "var(--app-ink-3)" }}
-          >
+        <div className={styles.copy}>
+          <h2 id="transit-service-alerts-heading">TransIT service bulletins</h2>
+          <p>
             {state.kind === "loading"
               ? "Checking provider bulletins…"
               : state.kind === "unavailable"
@@ -448,25 +414,16 @@ export default function TransitServiceAlerts() {
                     } · ${freshness}`}
           </p>
         </div>
+        <OfficialUpdatesLink />
       </div>
 
       {state.kind === "alerts" ? (
-        <div
-          className="space-y-2 border-t px-2.5 py-2.5"
-          style={{ borderColor: "var(--app-border)" }}
-        >
+        <div className={styles.alertList}>
           {state.alerts.map((alert) => (
             <AlertDetails key={alert.id} alert={alert} />
           ))}
         </div>
       ) : null}
-
-      <div
-        className="flex justify-end border-t px-1.5"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <OfficialUpdatesLink />
-      </div>
     </section>
   );
 }

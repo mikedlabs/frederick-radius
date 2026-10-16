@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Explicit app appearance, independent of the device OS preference. */
+@custom-variant dark (&:where([data-appearance="dark"], [data-appearance="dark"] *));
+
 /* The only current Public Sans italic treatment is a revealed field note.
  * Load that specialty face on demand instead of preloading it on every route. */
 @font-face {
@@ -13,24 +16,17 @@
 :root {
   color-scheme: light;
   --app-native-scheme: light;
-  /* Self-hosted Frederick Radius type system. Public Sans carries the
-   * product, including tabular numerals. Caslon is an explicit signature,
-   * never an automatic heading treatment.
-   *
-   * The families come from next/font (src/app/fonts.ts), which declares each
-   * face together with a metric-matched fallback, so the pre-swap paint
-   * occupies the same space as the webfont. The literal names remain as a
-   * second fallback: global-error.tsx renders outside this layout and
-   * declares its own @font-face under those exact names. */
-  --font-sans-base: var(--font-public-sans), "Public Sans Variable";
+  /* Native system type carries product UI. Self-hosted Caslon stays an
+   * explicit editorial signature; exported brand assets retain Public Sans. */
+  --font-sans-base: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-display: var(--font-libre-caslon), "Libre Caslon Display";
   --font-editorial: var(--font-display), ui-serif, Georgia, serif;
-  --font-mono-base: var(--font-public-sans), "Public Sans Variable";
+  --font-mono-base: var(--font-sans-base);
 
   /* ─────────────────────────────────────────────────────
    * INTERNAL PITCH DECK — isolated from the public product.
    * Only `.marketing-shell` under /pitch consumes these legacy tokens.
-   * If that presentation becomes public-facing, migrate it to Warm Civic.
+   * If that presentation becomes public-facing, migrate it to the current product tokens.
    * ───────────────────────────────────────────────────── */
   --background: #030014;
   --background-layer-1: #0a0118;
@@ -56,50 +52,37 @@
 
   --font-serif: var(--font-sans-base), ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  /* ─────────────────────────────────────────────────────
-   * APP (Warm Civic) — canonical identity, July 2026.
-   * Brick + Cream + Ink carry the identity. Catoctin Forest is a place
-   * accent for terrain, parks, trails, and small positive/open signals;
-   * Creek supports civic/data content. Amber communicates a real state,
-   * sunlight, or the restrained beer-workspace selection/flagship cue.
-   * The daily utility palette reads as a local field guide rather
-   * than a generic dashboard.
-   * ───────────────────────────────────────────────────── */
-  --app-bedrock: #0A0A0A;        /* the obsidian ground — dark surfaces */
-  --app-paper: #F4EEE2;           /* Cream — canonical Warm Civic paper */
-  --app-paper-2: #EAE1D1;         /* deeper paper for inset surfaces */
+  /* Product identity, October 2026: White surfaces, Charcoal ink and Deep Coral
+   * actions. Terrain and source-status accents retain their own meanings. */
+  --app-bedrock: #1C1C19;
+  --app-paper: #FFFFFF;
+  --app-paper-2: #F4F4F3;
 
-  --app-bg: #F4EEE2;              /* canonical Cream page ground */
-  /* The elevated token is slightly translucent so the static page wash can
-     soften a dense stack. Sheets and popovers use the solid companion. */
-  --app-bg-elevated-solid: #FBF8F0;  /* warm white — elevated card */
-  --app-bg-elevated: color-mix(in srgb, #FBF8F0 85%, transparent);
-  --app-bg-sunken: #EAE1D1;
-  --app-border: #D8CDBA;
-  --app-border-strong: rgba(34, 28, 21, 0.14);
-  /* Control boundary — a darker warm hairline for INPUTS + buttons, whose
-     edges must read as an interactive boundary, not a decorative card seam
-     (2026-07 shell-hardening P4). Clearly darker than --app-border so form
-     controls have a visible outline on the paper ground; --app-border stays
-     the decorative card edge so the card language is unchanged. */
-  --app-control-border: #927F63;  /* 3.34:1 against Cream for UI boundaries */
+  --app-bg: #FFFFFF;
+  --app-bg-elevated-solid: #FFFFFF;
+  --app-bg-elevated: color-mix(in srgb, #FFFFFF 92%, transparent);
+  --app-bg-sunken: #F4F4F3;
+  --app-border: #E1E1DD;
+  --app-border-strong: color-mix(in srgb, var(--app-media-ink) 18%, transparent);
+  /* Interactive boundaries have stronger contrast than decorative seams. */
+  --app-control-border: #818178;
 
-  /* Body ink is a warm near-black. Supporting color never replaces body text. */
-  --app-ink: #221C15;             /* Ink — canonical Warm Civic text */
-  --app-ink-2: #5A5348;
-  --app-ink-3: #6C6357;           /* muted text that still clears WCAG AA on Cream */
-  --app-ink-inverse: #F4EEE2;     /* Cream on dark */
-  /* Fixed media contrast does not follow the semantic text foreground. */
-  --app-media-ink: #221C15;
+  --app-ink: #22221F;
+  --app-ink-2: #62625C;
+  --app-ink-3: #62625C;
+  --app-ink-inverse: #FFFFFF;
+  /* Photo overlays keep a fixed Charcoal ground in both color schemes. */
+  --app-media-ink: #22221F;
   --app-control-border-safe: color-mix(in srgb, var(--app-control-border) 95%, var(--app-media-ink));
 
-  --app-brand: #B5462B;           /* Brick — logo, links, primary actions */
-  --app-brand-press: #8C301F;     /* darker Brick for pressed/text states */
+  --app-brand: #C34335;
+  --app-brand-press: #A8352A;
   --app-link: var(--app-brand-press);
-  --app-on-brand: #F4EEE2;        /* Cream text/icon on Brick, Catoctin Forest, or Ink */
+  --app-focus: var(--app-link);
+  --app-on-brand: #FFFFFF;
   --app-brand-2: #315A43;         /* Catoctin Forest — terrain/outdoor accent; never a page wash */
   --app-amber: #C58A32;           /* Ochre Amber — live/caution/sunlight or Beer selection/flagship fill */
-  --app-amber-text: #925E16;      /* text-safe on Cream (4.74:1) and Beer controls ONLY. On --app-bg-sunken / --app-paper-2 it is 4.22:1 and FAILS: mix toward --app-ink there (85% = 5.04:1). */
+  --app-amber-text: #925E16;      /* Text-safe on White and inset White; keep caution separate from actions. */
   --app-accent: #7E2C6F;          /* Plum — limited arts/culture and editorial accent */
   --app-accent-press: #682153;    /* text-safe Plum counterpart */
   --app-cool: #285D73;            /* Creek — supporting data/civic accent */
@@ -107,11 +90,9 @@
   --app-sage: #859076;            /* topo-line sage — light nature accent */
 
   --app-positive: #315A43;
-  --app-warning: #925E16;         /* text-safe Ochre warning or Cream-on-warning fill */
+  --app-warning: #925E16;         /* text-safe Ochre warning or White-on-warning fill */
   --app-warning-press: #7A4D12;   /* darker pressed-state Ochre */
-  /* Was #A02929, too close to --app-brand (#A8462C, the brick) at
-     a glance, so a "danger" alert visually read as a brand-colored
-     content card. The new red is unambiguously stop-sign / alarm. */
+  /* Danger retains its own red and never borrows the action color. */
   --app-danger: #B4231E;
   --app-danger-text: var(--app-danger);
   --app-live-text: var(--app-warning-press);
@@ -136,14 +117,14 @@
    * These keep existing components stable while the canonical `--app-*`
    * vocabulary remains the source of truth.
    * ───────────────────────────────────────────────────── */
-  --paper: var(--app-bg);              /* #F4EEE2 */
-  --paper-2: var(--app-bg-sunken);     /* #EAE1D1 */
-  --paper-3: #E3D9C6;                  /* deeper paper tier (brief) */
-  --ink: var(--app-ink);               /* #221C15 */
+  --paper: var(--app-bg);              /* White */
+  --paper-2: var(--app-bg-sunken);     /* Soft gray */
+  --paper-3: color-mix(in srgb, var(--app-media-ink) 10%, var(--app-paper));                  /* deeper paper tier (brief) */
+  --ink: var(--app-ink);               /* Charcoal */
   --ink-2: var(--app-ink-2);
   --ink-3: var(--app-ink-3);           /* AA-held, see note above */
   --clay: var(--app-brand);            /* the one sharp accent */
-  --clay-deep: var(--app-brand-press);  /* pressed-state Brick */
+  --clay-deep: var(--app-brand-press);  /* pressed-state Deep Coral */
   --clay-soft: var(--app-brand-tint-14);
   --moss: var(--app-positive);         /* civic / open status only */
 
@@ -197,10 +178,10 @@
   /* Shape policy: a field guide uses cut paper and ruled panels, not a
      bubble around every object. Full capsules remain reserved for compact
      filters, status, and toggles. */
-  --app-radius-sm: 6px;
-  --app-radius-md: 10px;
-  --app-radius-lg: 14px;
-  --app-radius-xl: 18px;
+  --app-radius-sm: 8px;
+  --app-radius-md: 12px;
+  --app-radius-lg: 18px;
+  --app-radius-xl: 24px;
 
   /* Reuse Tailwind's 4px scale for the four primary tab surfaces. */
   --app-space-2: calc(var(--spacing) * 2);
@@ -236,29 +217,29 @@
   --app-dur-slow: 420ms;
 
   --app-shadow-1:
-    0 1px 2px rgba(20, 20, 18, 0.07),
-    0 2px 6px -1px rgba(20, 20, 18, 0.09);
+    0 1px 2px color-mix(in srgb, var(--app-media-ink) 7%, transparent),
+    0 2px 6px -1px color-mix(in srgb, var(--app-media-ink) 9%, transparent);
   --app-shadow-2:
-    0 1px 3px rgba(20, 20, 18, 0.08),
-    0 8px 18px -4px rgba(20, 20, 18, 0.14);
+    0 1px 3px color-mix(in srgb, var(--app-media-ink) 8%, transparent),
+    0 8px 18px -4px color-mix(in srgb, var(--app-media-ink) 14%, transparent);
   --app-shadow-3:
-    0 2px 6px rgba(20, 20, 18, 0.10),
-    0 18px 36px -8px rgba(20, 20, 18, 0.20);
+    0 2px 6px color-mix(in srgb, var(--app-media-ink) 10%, transparent),
+    0 18px 36px -8px color-mix(in srgb, var(--app-media-ink) 20%, transparent);
 
-  /* Warm Civic depth. Most content stays on the paper plane. Elevation is
+  /* Product depth. Most content stays on the page plane. Elevation is
      intentionally quiet and reserved for floating navigation, sheets, and
      overlays; ordinary rows and sections use borders and spacing. */
   --app-elev-1:
-    0 1px 2px rgba(40, 30, 20, 0.08);
+    0 1px 2px color-mix(in srgb, var(--app-media-ink) 8%, transparent);
   --app-elev-2:
-    0 2px 5px rgba(40, 30, 20, 0.08),
-    0 10px 24px -16px rgba(40, 30, 20, 0.18);
+    0 2px 5px color-mix(in srgb, var(--app-media-ink) 8%, transparent),
+    0 10px 24px -16px color-mix(in srgb, var(--app-media-ink) 18%, transparent);
   --app-elev-3:
-    0 3px 8px rgba(40, 30, 20, 0.10),
-    0 18px 38px -20px rgba(40, 30, 20, 0.24);
+    0 3px 8px color-mix(in srgb, var(--app-media-ink) 10%, transparent),
+    0 18px 38px -20px color-mix(in srgb, var(--app-media-ink) 24%, transparent);
   --app-elev-4:
-    0 4px 10px rgba(40, 30, 20, 0.12),
-    0 24px 52px -24px rgba(40, 30, 20, 0.28);
+    0 4px 10px color-mix(in srgb, var(--app-media-ink) 12%, transparent),
+    0 24px 52px -24px color-mix(in srgb, var(--app-media-ink) 28%, transparent);
   --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.42);
   /* Deck stack — a faint card peeking behind the bottom edge, so a
    * surface reads as the top of a physical stack (the Wallet feel). */
@@ -268,7 +249,7 @@
   --app-lip: inset 0 -1px 0 rgba(0, 0, 0, 0.14);
   --app-gloss: linear-gradient(to bottom, rgba(255,255,255,0.10), rgba(255,255,255,0));
   --app-paper-light: linear-gradient(to bottom, rgba(255,255,255,0.18), rgba(255,255,255,0));
-  --app-brand-glow: 0 2px 4px rgba(40, 30, 20, 0.12);
+  --app-brand-glow: 0 2px 4px color-mix(in srgb, var(--app-media-ink) 12%, transparent);
   /* Overshoot for press/lift physics. Bumped 1.4 -> 1.56 (owner ask,
    * 2026-07-22: "smoother, not as sharp") so a released control visibly
    * springs past rest and settles, instead of snapping straight back. */
@@ -281,25 +262,22 @@
   }
 }
 
-/* Cream remains the default. The OS preference supplies the secondary Ink
- * surface without a setting, provider, media filter, or alternate map style.
- * Brick fills and Cream on-brand text stay fixed; links and status text have
- * their own foregrounds so changing a text color cannot lighten a filled CTA. */
-@media (prefers-color-scheme: dark) {
-  :root {
+/* A deliberate dark choice uses Charcoal grounds. Filled actions keep Deep Coral and white;
+ * links and supporting text use separately measured dark foregrounds. */
+:root[data-appearance="dark"] {
     color-scheme: dark;
     --app-native-scheme: dark;
-    --app-bg: var(--app-media-ink);
-    --app-bg-elevated-solid: color-mix(in srgb, var(--app-media-ink) 92%, var(--app-paper));
+    --app-bg: #1C1C19;
+    --app-bg-elevated-solid: #292925;
     --app-bg-elevated: var(--app-bg-elevated-solid);
-    --app-bg-sunken: color-mix(in srgb, var(--app-media-ink) 96%, var(--app-paper));
-    --app-ink: var(--app-paper);
-    --app-ink-2: color-mix(in srgb, var(--app-paper) 82%, var(--app-media-ink));
-    --app-ink-3: color-mix(in srgb, var(--app-paper) 68%, var(--app-media-ink));
-    --app-border: color-mix(in srgb, var(--app-paper) 22%, var(--app-media-ink));
+    --app-bg-sunken: #242420;
+    --app-ink: #F7F7F4;
+    --app-ink-2: #C1C1B8;
+    --app-ink-3: #C1C1B8;
+    --app-border: #464640;
     --app-border-strong: var(--app-border);
-    --app-control-border: color-mix(in srgb, var(--app-paper) 55%, var(--app-media-ink));
-    --app-link: color-mix(in srgb, var(--app-brand) 55%, var(--app-paper));
+    --app-control-border: #A5A59A;
+    --app-link: #FFAAA0;
     --state-open: color-mix(in srgb, var(--app-positive) 55%, var(--app-paper));
     --state-closing: color-mix(in srgb, var(--app-warning) 50%, var(--app-paper));
     --state-closed: var(--app-ink-3);
@@ -308,7 +286,6 @@
     --app-danger-text: color-mix(in srgb, var(--app-danger) 55%, var(--app-paper));
     --app-live-text: var(--app-amber);
     --app-hi: inset 0 1px 0 color-mix(in srgb, var(--app-paper) 6%, transparent);
-  }
 }
 
 /* Neutral listing grammar belongs only to the four primary destinations.
@@ -381,8 +358,6 @@
   border-radius: var(--app-radius-md);
 }
 
-.place-card-photo-credit { display: none; }
-button:has([data-place-card-photo]) + .place-card-photo-credit { display: block; }
 
 /* The existing wallet still raises and discloses its real saved records.
  * Neutral stock replaces the category paint, gloss, and entrance animation;
@@ -708,14 +683,14 @@ button, [role="button"], .tactile, .tactile-interactive, .tap-44 {
    following each element's own border-radius, so the ring traces the real
    shape. Elements inside overflow-hidden cards can use .focus-ring-inset. */
 :focus-visible {
-  outline: 2px solid var(--app-brand);
+  outline: 2px solid var(--app-focus);
   outline-offset: 2px;
 }
 /* SearchInput's text field lives inside the rounded visual control. Delegate
    the input ring to that shell so keyboard focus follows the pill instead of
    drawing a rectangular outline through its icon and Clear action. */
 .search-field-shell:has(input:focus-visible) {
-  outline: 2px solid var(--app-brand);
+  outline: 2px solid var(--app-focus);
   outline-offset: 2px;
 }
 .search-field-shell input:focus-visible {
@@ -794,10 +769,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(20, 20, 18, 0.15);
+  background: color-mix(in srgb, var(--app-media-ink) 15%, transparent);
   border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(20, 20, 18, 0.25); }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--app-media-ink) 25%, transparent); }
 
 .scrollbar-hide {
   -ms-overflow-style: none;
@@ -1176,7 +1151,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .app-main-reading:has([data-today-section-heading])
     .shelf-rail
     :is(a, button):focus-visible {
-    outline: 2px solid var(--app-brand);
+    outline: 2px solid var(--app-focus);
     outline-offset: -2px;
   }
 }
@@ -1662,15 +1637,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * is shared CSS.
  * ───────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  /* SkyHero gradient drift, save-button celebration pop + ring, and
-     the floating-action breath — all continuous or near-continuous
-     motion that a reduced-motion user has asked us to skip. The
-     elements still render in their default state; only the loop is
-     cut. The save flow still confirms via the Sonner toast, so the
-     user doesn't lose the feedback. */
+  /* SkyHero gradient drift and the floating-action breath keep their
+     default appearance without continuous motion. */
   .sky-hero::before { animation: none; }
-  .save-pop { animation: none; }
-  .save-ring { animation: none; opacity: 0; }
   .fab-breath { animation: none; }
 }
 
@@ -1868,6 +1837,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @keyframes save-ring-kf {
   0%   { transform: scale(0.6); opacity: 0.9; }
   100% { transform: scale(2.2); opacity: 0;    }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Follow the base Save rules so the cascade removes both animations.
+     The confirmed button state and toast still acknowledge the save. */
+  .save-pop { animation: none; }
+  .save-ring { animation: none; opacity: 0; }
 }
 
 /* ─────────────────────────────────────────────────────
@@ -2834,38 +2809,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-bottom-right-radius: 2px;
 }
 
-/* ─────────────────────────────────────────────────────────────────
-   GLOBAL PAPER MATERIALITY — printed-field-guide texture on EVERY page.
-
-   PageBloom (aurora + grain) is per-page; pages without it read flat.
-   This fixed layer rides just above the body cream and below all
-   content (z:-5 > PageBloom's -10), so the paper gets a fine grain +
-   a warm edge vignette in the margins and gaps without ever sitting
-   over — or intercepting — interactive UI. Pure paint, reduced-motion
-   irrelevant (static). The grain is a tiled fractal-noise SVG so it
-   costs no network and stays crisp at any DPR.
-   ───────────────────────────────────────────────────────────────── */
+/* The current product uses clear surfaces. Keep this legacy paint layer
+ * inert so it cannot tint photos or add texture to the new page ground. */
 .app-paper-fx {
-  position: fixed;
-  inset: 0;
-  z-index: -5;
+  display: none;
   pointer-events: none;
-  /* Warm "aged plate" vignette — a whisper of ink at the edges draws
-     the eye to the center of the page. */
-  background: radial-gradient(
-    115% 90% at 50% 8%,
-    transparent 58%,
-    color-mix(in srgb, var(--app-ink) 6%, transparent) 100%
-  );
-}
-.app-paper-fx::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  background-size: 180px 180px;
-  opacity: 0.05;
-  mix-blend-mode: multiply;
 }
 
 /* Invisible 44px tap-zone extender (WCAG 2.5.5 / Apple HIG). Visual size
@@ -3001,7 +2949,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   animation: sw-deal .5s cubic-bezier(.22,1,.36,1) both;
   animation-delay: calc(var(--sw-i, 0) * 55ms);
 }
-.sw-card:focus-visible { outline: 3px solid var(--app-brand); outline-offset: 2px; }
+.sw-card:focus-visible { outline: 3px solid var(--app-focus); outline-offset: 2px; }
 /* Lamination — a diagonal gloss band + top glare + corner vignette + a faint
    pressed edge along the foot, so the face reads as a laminated card. */
 .sw-card::after {
@@ -3665,7 +3613,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   gap: 5px;
   padding-inline: 12px;
   border-top: 1px solid var(--app-border);
-  color: var(--app-brand-press);
+  color: var(--app-link);
   background: color-mix(in srgb, var(--app-brand) 5%, var(--app-bg-elevated));
   font-size: 12px;
   font-weight: 700;
@@ -5955,7 +5903,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   outline: none;
 }
 .fr-park-marker:focus-visible .fr-park-glyph {
-  outline: 3px solid var(--app-brand);
+  outline: 3px solid var(--app-focus);
   outline-offset: 2px;
 }
 
@@ -6026,7 +5974,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   transform: scale(0.94);
 }
 .fr-incident-marker:focus-visible {
-  outline: 3px solid var(--app-brand);
+  outline: 3px solid var(--app-focus);
   outline-offset: 2px;
   border-radius: 999px;
 }
@@ -6090,7 +6038,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   transform: scale(0.94);
 }
 .fr-camera-marker:focus-visible {
-  outline: 3px solid var(--app-brand);
+  outline: 3px solid var(--app-focus);
   outline-offset: 2px;
   border-radius: 999px;
 }
@@ -6301,6 +6249,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .map-peek-details-link {
   width: fit-content;
+  min-width: 44px;
   min-height: 44px;
   display: inline-flex;
   align-items: center;
@@ -6853,6 +6802,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     max(18px, env(safe-area-inset-bottom, 0px))
     max(var(--app-space-4), env(safe-area-inset-left, 0px));
 }
+/* Recovery has one scroll owner. Its ranked body follows the available lane
+   instead of introducing a second viewport behind the fixed search dock. */
+.map-error-fallback [data-map-list-body] {
+  max-height: none;
+  overflow-y: visible;
+  overscroll-behavior: auto;
+}
 .map-error-fallback .map-list > [aria-live="polite"] {
   padding-inline: 0;
 }
@@ -6866,7 +6822,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 @media (max-width: 1023.98px) {
   .dock-host[data-map-error] .map-error-fallback .map-list {
-    padding-bottom: calc(var(--map-dock-height, 0px) + var(--app-space-4) + env(safe-area-inset-bottom, 0px));
+    margin-bottom: calc(var(--map-dock-height, 0px) + max(8px, env(safe-area-inset-bottom, 0px)) + 8px);
+    overscroll-behavior-y: contain;
   }
 }
 @media (max-width: 600px) {
@@ -7632,7 +7589,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-radius: 999px;
   background: var(--app-brand);
   border: 3px solid var(--app-bg-elevated-solid);
-  box-shadow: 0 2px 8px -2px rgba(20, 20, 18, 0.4);
+  box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--app-media-ink) 40%, transparent);
 }
 .rhythm-dial::-moz-range-track {
   height: 6px;
@@ -7645,10 +7602,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-radius: 999px;
   background: var(--app-brand);
   border: 3px solid var(--app-bg-elevated-solid);
-  box-shadow: 0 2px 8px -2px rgba(20, 20, 18, 0.4);
+  box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--app-media-ink) 40%, transparent);
 }
 .rhythm-dial:focus-visible {
-  outline: 2px solid var(--app-brand);
+  outline: 2px solid var(--app-focus);
   outline-offset: 2px;
   border-radius: 999px;
 }
@@ -9217,4 +9174,51 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
 
 .glass-popup .mapboxgl-popup-tip {
   border-top-color: var(--app-bg-elevated-translucent) !important;
+}
+
+/* Map refinement: keep the one thumb-level chooser legible while a query is
+ * active, and let existing tasks occupy compact paired rows in its own pane.
+ * These selectors intentionally do not change category/detail panes. */
+@media (max-width: 430px) {
+  .dock[data-map-dock] .dock-contents {
+    min-width: 52px;
+    min-height: 52px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding-inline: 4px;
+  }
+  .dock[data-map-dock] .dock-contents-label {
+    display: block;
+    font-size: 12px;
+    line-height: 1.15;
+  }
+}
+@media (max-width: 1023.98px) {
+  .dock-pane[data-pane="contents"] .dock-task-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px;
+    border-bottom: 1px solid var(--app-border);
+  }
+  .dock-pane[data-pane="contents"] .dock-task-grid .dock-content-row {
+    min-height: 64px;
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px 8px;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-sm);
+  }
+  .dock-pane[data-pane="contents"] .dock-task-grid .dock-content-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+  }
+  .dock-pane[data-pane="contents"] .dock-task-grid .dock-content-copy small {
+    font-size: 12px;
+  }
+  .dock-pane[data-pane="contents"] .dock-task-grid .dock-content-row > svg {
+    display: none;
+  }
 }

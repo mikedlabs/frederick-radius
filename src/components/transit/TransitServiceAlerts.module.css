@@ -1,0 +1,119 @@
+.bulletins {
+  min-width: 0;
+  border-top: 1px solid var(--app-border);
+  border-bottom: 1px solid var(--app-border);
+  color: var(--app-ink);
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  color: var(--app-ink-2);
+}
+
+.bulletins[data-state="alerts"] .icon,
+.bulletins[data-state="unavailable"] .icon {
+  color: var(--state-closing);
+}
+
+.copy {
+  min-width: 0;
+}
+
+.copy h2 {
+  font-size: .875rem;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -.015em;
+  overflow-wrap: anywhere;
+}
+
+.copy p {
+  margin-top: 3px;
+  color: var(--app-ink-2);
+  font-size: .75rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.updates {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 4px;
+  color: var(--app-link);
+  font-size: .8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.updates:focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: 2px;
+  border-radius: var(--app-radius-sm);
+}
+
+.alertList {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 12px;
+}
+
+.alert {
+  min-width: 0;
+  border: 1px solid var(--app-border);
+  border-left: 3px solid var(--state-closing);
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-elevated-solid);
+}
+
+.alertSummary {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.alertSummary::-webkit-details-marker {
+  display: none;
+}
+
+.alertSummary:focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: -3px;
+  border-radius: var(--app-radius-md);
+}
+
+.alertTitle {
+  display: block;
+  color: var(--app-ink);
+  font-size: .875rem;
+  font-weight: 650;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.alertMeta {
+  display: block;
+  margin-top: 4px;
+  color: var(--app-ink-2);
+  font-size: .75rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}

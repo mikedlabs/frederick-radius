@@ -76,6 +76,9 @@ describe("source registry audit", () => {
   it("contracts every mounted local-information adapter as active runtime data", () => {
     expect(REQUIRED_ACTIVE).toMatchObject({
       google_news_rss: "runtime",
+      city_official_news: "runtime",
+      county_official_news: "runtime",
+      city_official_releases: "runtime",
       reddit_frederick: "runtime",
       mta_marc_rt: "runtime",
       hood_athletics: "runtime",
@@ -153,6 +156,9 @@ describe("source registry audit", () => {
 
   it.each([
     "google_news_rss",
+    "city_official_news",
+    "county_official_news",
+    "city_official_releases",
     "reddit_frederick",
     "mta_marc_rt",
     "hood_athletics",

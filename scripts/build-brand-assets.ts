@@ -14,18 +14,34 @@ const ROOT = process.cwd();
 const OUT = path.join(ROOT, "public", "brand");
 const LOCKED_BRAND_CONTRACT = {
   system: "Frederick Radius Brand System",
-  version: "1.2",
-  updated: "2026-07-22",
+  version: "1.4",
+  updated: "2026-10-16",
   colors: {
-    brick: "#B5462B",
-    cream: "#F4EEE2",
-    ink: "#221C15",
+    brick: "#C34335",
+    cream: "#FFFFFF",
+    ink: "#22221F",
     forest: "#315A43",
     creek: "#285D73",
     plum: "#7E2C6F",
     amber: "#C58A32",
+    ridge: "#3F5E8F",
+    surface: "#FFFFFF",
+    paperDeep: "#F4F4F3",
+    border: "#E1E1DD",
+    mutedInk: "#62625C",
+    controlBorder: "#818178",
+    functionalAmber: "#925E16",
+    darkCanvas: "#1C1C19",
+    darkSurface: "#292925",
+    darkInk: "#F7F7F4",
+    darkMutedInk: "#C1C1B8",
+    darkBorder: "#464640",
+    darkControlBorder: "#A5A59A",
+    darkLink: "#FFAAA0",
   },
   type: {
+    product: "System sans",
+    productStack: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
     display: "Libre Caslon Display",
     text: "Public Sans",
   },
@@ -130,6 +146,10 @@ function assertUsesOnlyBrandColors(label: string, value: string): void {
 function assertUsesCanonicalBrandNames(label: string, value: string): void {
   const inspectable = inspectableText(value).replace(/\s+/g, " ");
   for (const name of [
+    "Deep Coral",
+    "White",
+    "Charcoal",
+    "System sans",
     "Catoctin Forest",
     "Ochre Amber",
     LOCKED_BRAND_CONTRACT.type.display,
@@ -147,7 +167,7 @@ async function assertBrandGuidanceIsCurrent(): Promise<void> {
       const content = await readFile(path.join(ROOT, relativePath), "utf8");
       assertUsesOnlyBrandColors(relativePath, content);
       assertUsesCanonicalBrandNames(relativePath, content);
-      if (!content.includes(`1.2`) || !content.includes("July 22, 2026")) {
+      if (!content.includes(LOCKED_BRAND_CONTRACT.version) || !content.includes("October 16, 2026")) {
         throw new Error(`${relativePath} is missing the current brand version or date.`);
       }
     }),
@@ -970,7 +990,7 @@ async function main() {
     markAsset("compact", BRAND.colors.cream, null, "Reverse compact mark from 24px to 47px"),
     markAsset("favicon", BRAND.colors.brick, null, "Single-arc favicon mark below 24px"),
     markAsset("favicon", BRAND.colors.cream, null, "Reverse single-arc favicon mark below 24px"),
-    markAsset("full", BRAND.colors.cream, BRAND.colors.brick, "Brick app icon"),
+    markAsset("full", BRAND.colors.cream, BRAND.colors.brick, "Deep Coral app icon (legacy brick asset filename)"),
     lockupAsset(false, false),
     lockupAsset(true, false),
     lockupAsset(false, true),
@@ -1155,7 +1175,7 @@ async function main() {
       file: "posters/product-today.svg",
       width: 1800,
       height: 2400,
-      role: "18 by 24 product poster using the current Today interface",
+      role: "18 by 24 product poster using the historical July 22, 2026 Today capture",
       png: true,
       make: (fonts) => posterProduct(fonts, todayUiUrl),
     },
@@ -1163,7 +1183,7 @@ async function main() {
       file: "posters/ask-radius.svg",
       width: 1800,
       height: 2400,
-      role: "18 by 24 Ask Radius activation poster using the current interface",
+      role: "18 by 24 Ask Radius activation poster using the historical July 22, 2026 capture",
       png: true,
       make: (fonts) => posterAskRadius(fonts, askUiUrl),
     },
@@ -1305,7 +1325,7 @@ async function main() {
         format: "TrueType variable",
         style: "normal",
         weight: "100 900",
-        role: "Installable desktop font for product titles, interface, text, and data",
+        role: "Installable desktop font for print and exported brand titles, text, and data",
         license: "licenses/OFL-Public-Sans.txt",
       },
       {
@@ -1387,7 +1407,7 @@ async function main() {
   };
   const tokenCss = `:root {\n${Object.entries(BRAND.colors)
     .map(([name, value]) => `  --radius-${name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}: ${value};`)
-    .join("\n")}\n  --radius-font-display: "${BRAND.type.display}";\n  --radius-font-text: "${BRAND.type.text}";\n}\n`;
+    .join("\n")}\n  --radius-font-display: "${BRAND.type.display}";\n  --radius-font-text: "${BRAND.type.text}";\n  --radius-font-product: ${BRAND.type.productStack};\n}\n`;
   await Promise.all([
     writeFile(path.join(OUT, "tokens.json"), `${JSON.stringify(BRAND, null, 2)}\n`),
     writeFile(path.join(OUT, "tokens.css"), tokenCss),

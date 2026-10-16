@@ -127,7 +127,7 @@ export default function FairGrandstandSpotlight({
         </span>
 
         <span
-          className={`${compact ? "mt-2 text-[26px] sm:text-[30px]" : "mt-16 text-[34px] sm:text-[46px]"} font-extrabold leading-[1.02] tracking-[-0.035em]`}
+          className={`${compact ? "mt-2 text-[22px] sm:text-[30px]" : "mt-16 text-[34px] sm:text-[46px]"} font-extrabold leading-[1.02] tracking-[-0.035em]`}
           style={{ color: "var(--app-on-brand)" }}
         >
           {item.title}

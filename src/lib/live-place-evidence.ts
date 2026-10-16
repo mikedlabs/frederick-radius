@@ -63,7 +63,7 @@ export function applyLivePlaceEvidence(
 
   // Curated corrections intentionally outrank the provider. They exist for
   // cases where a mechanically refreshed schedule is known to be wrong.
-  if (place.hours_source === "manual_override") {
+  if (place.hours_source === "manual_override" || place.hours_source === "first_party" || place.hours?._official) {
     return operationalStatus
       ? { ...place, is_operational: operationalStatus }
       : place;

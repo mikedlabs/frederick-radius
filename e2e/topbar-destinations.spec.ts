@@ -33,8 +33,8 @@ for (const viewport of [
     const toolLabels = compass.getByText("Tools", { exact: true });
     await expect(toolLabels).toHaveCount(2);
     const visibleToolLabels = compass.locator("span:visible").filter({ hasText: /^Tools$/ });
-    await expect(visibleToolLabels).toHaveCount(viewport.width >= 400 ? 1 : 0);
-    if (viewport.width >= 400) {
+    await expect(visibleToolLabels).toHaveCount(viewport.width >= 640 ? 1 : 0);
+    if (viewport.width >= 640) {
       await expect(visibleToolLabels).toBeVisible();
     } else {
       for (const label of await toolLabels.all()) await expect(label).toBeHidden();
@@ -59,24 +59,21 @@ for (const viewport of [
       if (viewport.width === 390) {
         const location = header.locator("[data-location-chip]");
         const compactScope = location.locator('[data-location-scope-label="compact"]');
-        await expect(compactScope).toBeVisible();
-        await expect(compactScope).toHaveText("County");
+        await expect(compactScope).toBeHidden();
+        await expect(location).toHaveAccessibleName(/Change town or location scope\. Current scope: .+/);
         await expect(
           location.locator('[data-location-scope-label="full"]'),
         ).toBeHidden();
         const geometry = await location.evaluate((control) => ({
+          width: control.getBoundingClientRect().width,
           height: control.getBoundingClientRect().height,
-          labelClientWidth: control.querySelector<HTMLElement>(
-            '[data-location-scope-label="compact"]',
-          )?.clientWidth ?? 0,
-          labelScrollWidth: control.querySelector<HTMLElement>(
-            '[data-location-scope-label="compact"]',
-          )?.scrollWidth ?? 1,
         }));
+        expect(geometry.width).toBeGreaterThanOrEqual(44);
         expect(geometry.height).toBeGreaterThanOrEqual(44);
-        expect(geometry.labelScrollWidth).toBeLessThanOrEqual(
-          geometry.labelClientWidth,
-        );
+        await location.click();
+        await expect(page.getByRole("group", { name: "Set what you're browsing" })).toBeVisible();
+        await page.getByRole("button", { name: "Done choosing an area" }).click();
+        await expect(location).toBeFocused();
       }
     }
   });

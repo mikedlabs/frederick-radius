@@ -38,9 +38,9 @@ type RGB = [number, number, number];
 
 function palette(dark: boolean): Map<string, string> {
   const values = new Map<string, string>();
-  stylesheet.walkRules(":root", (rule) => {
-    const media = rule.parent?.type === "atrule" ? rule.parent.params : null;
-    if (media !== null && (!dark || media !== "(prefers-color-scheme: dark)")) return;
+  stylesheet.walkRules((rule) => {
+    const matches = rule.selector === ":root" || (dark && rule.selector === ':root[data-appearance="dark"]');
+    if (!matches || rule.parent?.type === "atrule") return;
     rule.walkDecls(/^--/, (declaration) => { values.set(declaration.prop, declaration.value); });
   });
   return values;
@@ -245,6 +245,7 @@ describe("primary tab palette contrast", () => {
         [".dock-scene[data-on] .dock-scene-icon", declaration(stylesheet, ".dock-scene-icon", "background")],
         ['.dock-scene[data-status="caution"] .dock-scene-copy small', declaration(stylesheet, ".dock-scene[data-on]", "background")],
         [".dock-discovery-eyebrow", "var(--app-bg-elevated-solid)"],
+        [".dock-search-more", declaration(stylesheet, ".dock-search-more", "background")],
         [".dock-essentials-more:hover", declaration(stylesheet, ".dock-essentials-more", "background")],
         [".dock-contents[data-on]", "var(--app-bg-elevated-solid)"],
       ]) {

@@ -1,10 +1,44 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const FAIR_PATH = "/moments/great-frederick-fair-2026";
 const VENDOR_ID = "vendor-white-rabbit-rad-pies";
 const VENDOR_NAME = "White Rabbit x Rad Pies";
 const PLAN_KEY = "fr:fair-plan:great-frederick-fair-2026:v1";
 const MAP_SEARCH_NAME = "Find a place, event, or vendor on the Fair grounds map";
+
+// A visible Vaul drawer may still be translating. Measure the real target
+// after its finite entrance motion and two stable paint frames, without
+// rounding or reducing the44px contract.
+async function settleTarget(target: Locator) {
+  await expect.poll(() => target.evaluate(async (element) => {
+    for (let node: Element | null = element; node; node = node.parentElement) {
+      if (node.getAnimations().some((animation) =>
+        animation.effect?.getComputedTiming().iterations !== Infinity &&
+        animation.playState !== "finished" && animation.playState !== "idle")) return false;
+    }
+    const bounds = () => {
+      const rect = element.getBoundingClientRect();
+      return [rect.x, rect.y, rect.width, rect.height];
+    };
+    const before = bounds();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const first = bounds();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const second = bounds();
+    return before.every((value, index) => value === first[index] && value === second[index]);
+  })).toBe(true);
+}
+
+async function expectTargetReachable(target: Locator) {
+  await expect.poll(() => target.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+    return [[x, y], [x - 21.5, y], [x + 21.5, y], [x, y - 21.5], [x, y + 21.5]].every(([px, py]) => {
+      const hit = document.elementFromPoint(px, py);
+      return hit === element || Boolean(hit && element.contains(hit));
+    });
+  })).toBe(true);
+}
 
 async function openMap(page: Page) {
   await page.goto(`${FAIR_PATH}#fair-map`, { waitUntil: "domcontentloaded" });
@@ -105,9 +139,11 @@ test.describe("Fair vendor discovery and My Day", () => {
     const { drawer, result, search } = await findRadPies(page);
     await expect(drawer).toHaveAttribute("data-drawer-surface", "solid");
     const close = drawer.getByRole("button", { name: "Close Food & vendors", exact: true });
+    await settleTarget(close);
     const closeBox = await close.boundingBox();
     expect(closeBox?.height ?? 0).toBeGreaterThanOrEqual(44);
     expect(closeBox?.width ?? 0).toBeGreaterThanOrEqual(44);
+    await expectTargetReachable(close);
     const detail = drawer.locator("[data-fair-vendor-detail]");
     expect(await detail.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
     const geometry = await drawer.evaluate((element) => {
@@ -119,9 +155,11 @@ test.describe("Fair vendor discovery and My Day", () => {
     expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewport + 1);
     const save = drawer.getByRole("button", { name: `Save ${VENDOR_NAME} to My Day`, exact: true });
     await save.scrollIntoViewIfNeeded();
+    await settleTarget(save);
     const saveBox = await save.boundingBox();
     expect(saveBox?.height ?? 0).toBeGreaterThanOrEqual(44);
     expect(saveBox?.width ?? 0).toBeGreaterThanOrEqual(44);
+    await expectTargetReachable(save);
     await save.focus();
     await page.keyboard.press("Escape");
     await expect(drawer).toBeHidden();

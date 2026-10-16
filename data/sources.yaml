@@ -713,6 +713,78 @@ sources:
       closures + delays during snow events. Override the URL with
       FCPS_FEED_URL when the school district migrates platforms.
 
+  - id: city_official_news
+    name: City of Frederick official newsroom
+    owner: City of Frederick
+    url: https://www.cityoffrederickmd.gov/RSSFeed.aspx?ModID=1&CID=Frederick-News-1
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
+    license: official public RSS subscription; City copyright reserved; headline, publisher, original timestamp and canonical article link only; no article bodies or photos
+    contact: https://www.cityoffrederickmd.gov/Rss.aspx
+    status: active
+    collection: runtime
+    last_validated: 2026-10-12
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/civic-press.ts
+    notes: |
+      Dedicated City Frederick News subscription, directly verified as HTTP 200
+      RSS on October 12. getCivicPressReleasesResult() feeds Today and Pulse,
+      with its own checked and latest-publication timestamps. Results cache for
+      fifteen minutes; publisher updates are irregular, not guaranteed hourly.
+      A healthy empty feed is valid. Normal updates remain separate from the
+      existing broad City civic/recreation and police/advisory release channel. No stored snapshot,
+      full-article text or enclosure/photo reuse.
+
+  - id: county_official_news
+    name: Frederick County official newsroom
+    owner: Frederick County Government
+    url: https://www.frederickcountymd.gov/RSSFeed.aspx?ModID=1&CID=All-newsflash.xml
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
+    license: official public RSS subscription; County copyright reserved; headline, publisher, original timestamp and canonical article link only; no article bodies or photos
+    contact: https://www.frederickcountymd.gov/Rss.aspx
+    status: active
+    collection: runtime
+    last_validated: 2026-10-12
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/civic-press.ts
+    notes: |
+      Official County NewsFlash subscription, directly verified as HTTP 200 RSS
+      on October 12. Reconciles the already mounted broad County civic release
+      adapter with the source ledger. Normal civic headlines feed Today/Pulse;
+      police/advisory notices retain their existing separate consumers. Results
+      cache for fifteen minutes with source-specific check/publication times.
+      Publisher updates are irregular. No article body or photo reuse; no DB
+      import or source snapshot. The older CID=All-0 alias also remains valid.
+
+  - id: city_official_releases
+    name: City of Frederick civic, police and advisory releases
+    owner: City of Frederick
+    url: https://www.cityoffrederickmd.gov/RSSFeed.aspx?ModID=1&CID=All-newsflash.xml
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
+    license: official public RSS subscription; City copyright reserved; headline, publisher, original timestamp and canonical article link only; no article bodies or photos
+    contact: https://www.cityoffrederickmd.gov/Rss.aspx
+    status: active
+    collection: runtime
+    last_validated: 2026-10-12
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/civic-press.ts
+    notes: |
+      Preserves dated City civic/recreation notices in Today/Pulse and existing
+      police/advisory coverage consumed by Pulse and Ask safety/water context. This canonical NewsFlash subscription and the
+      prior CID=All-0 alias both returned valid RSS on October 12. Broad civic
+      notices retain this exact subscription provenance; duplicate articles
+      from the dedicated newsroom are shown once by canonical identity. Releases are dated reports, never proof of
+      a current emergency or an all-clear. Cache fifteen minutes; check and
+      publication clocks remain separate; no article body/photo copying.
+
   - id: google_news_rss
     name: Google News, Frederick
     owner: Google News
@@ -2369,6 +2441,31 @@ sources:
       LibraryCalendar JSON feed is too large and slow for the request path,
       so the workflow parses, time-budgets, upserts, records ingest health,
       and revalidates the shared event cache.
+
+  - id: fcpl_branch_hours
+    name: Frederick County Public Libraries — Official Branch Hours
+    owner: Frederick County Public Libraries
+    url: https://www.fcpl.org/branches-hours
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: county government public information
+    contact: Frederick County Public Libraries
+    status: active
+    collection: workflow
+    evidence_aliases: [fcpl_branch_hours, https://www.fcpl.org/branches-hours, https://www.fcpl.org/holiday-closings]
+    last_validated: 2026-10-12
+    last_success: null
+    schema_file: src/lib/official-hours.ts
+    transform_file: scripts/lib/fcpl-official-hours.ts
+    notes: |
+      Bounded free first-party pilot for nine exact catalog identities. The
+      existing data-steward workflow reads the branches and holiday pages as
+      one atomic unit, then publishes a review PR through the existing isolated
+      publisher. No Google, database, model, browser, or NAS dependency. Seven-day
+      expiry uses the oldest actual observation. Missing/ambiguous closure
+      evidence fails the refresh without extending the last good timestamp.
 
   - id: fc_parks_rec
     name: Frederick County Parks & Recreation — Programs

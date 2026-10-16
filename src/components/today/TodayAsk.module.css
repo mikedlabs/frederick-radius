@@ -28,7 +28,7 @@
 }
 
 .launcher:focus-visible {
-  outline: 2px solid var(--app-brand);
+  outline: 2px solid var(--app-link);
 }
 
 .searchIcon {
@@ -38,6 +38,21 @@
   flex-shrink: 0;
   place-items: center;
   color: var(--app-ink-2);
+}
+
+.arrival .launcher {
+  min-height: 64px;
+  padding: var(--app-space-3) var(--app-space-4);
+}
+
+.arrival .prompt {
+  font-size: 1.125rem;
+  line-height: 1.3;
+}
+
+.arrival .searchIcon {
+  width: 24px;
+  height: 24px;
 }
 
 .prompt {
@@ -59,40 +74,44 @@
 .shortcuts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 var(--app-space-4);
-  padding-block: var(--app-space-2);
+  gap: 10px;
 }
 
 .shortcut {
   display: flex;
   align-items: center;
   gap: var(--app-space-2);
-  min-height: 48px;
-  padding: var(--app-space-2) 0;
-  border-bottom: 1px solid var(--app-border);
-  background: transparent;
-  transition: color var(--app-dur-fast) var(--app-ease-out), border-color var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out);
-  border-radius: 0;
-  color: var(--app-ink-2);
-  font-size: 15px;
-  font-weight: 550;
+  min-width: 0;
+  min-height: 72px;
+  padding: var(--app-space-3);
+  border: 0;
+  border-radius: var(--app-radius-lg);
+  background: var(--app-bg-sunken);
+  color: var(--app-ink);
+  font-size: 0.9375rem;
+  font-weight: 600;
   line-height: 1.35;
+  transition: border-color var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out);
 }
 
 .shortcut:hover {
-  color: var(--app-link);
-  border-color: var(--app-brand);
-  background: var(--app-bg-sunken);
+  color: var(--app-ink);
+  background: color-mix(in srgb, var(--app-link) 8%, var(--app-bg-sunken));
 }
 
 .shortcut:focus-visible {
-  outline: 2px solid var(--app-brand);
+  outline: 2px solid var(--app-link);
   outline-offset: 3px;
 }
 
+.shortcut > span {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
 .shortcut svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
   color: var(--app-link);
 }
@@ -119,7 +138,7 @@
 
   .shortcuts {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--app-space-4);
+    gap: var(--app-space-3);
   }
 }
 
@@ -140,13 +159,17 @@
     font-size: 15px;
   }
 
+  .arrival .prompt {
+    font-size: 1rem;
+  }
+
   .hint {
     font-size: 12px;
   }
 
   .shortcut {
     gap: var(--app-space-2);
-    padding-inline: 0;
-    font-size: 14px;
+    padding-inline: 10px;
+    font-size: 0.875rem;
   }
 }

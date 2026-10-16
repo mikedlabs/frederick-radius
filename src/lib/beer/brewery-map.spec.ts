@@ -27,18 +27,19 @@ describe("brewery map", () => {
     ).toBe(true);
   });
 
-  it("keeps photo attribution details out of list payloads", () => {
+  it("keeps the single hero attribution and strips heavy gallery details from list payloads", () => {
     const full = {
       ...breweryPlaces()[0],
+      google_photo_url: "/api/place-photo?name=places%2Fexample%2Fphotos%2Fone&w=800",
       google_photo_attribution: {
         photo_name: "places/example/photos/one",
-        google_maps_uri: "https://maps.google.com/example",
+        google_maps_uri: "https://www.google.com/maps/place/Example/data=!3m1!1e3",
         authors: [{ display_name: "Photographer" }],
       },
       google_photo_attributions: [
         {
           photo_name: "places/example/photos/one",
-          google_maps_uri: "https://maps.google.com/example",
+          google_maps_uri: "https://www.google.com/maps/place/Example/data=!3m1!1e3",
           authors: [{ display_name: "Photographer" }],
         },
       ],
@@ -49,7 +50,7 @@ describe("brewery map", () => {
     const slim = slimForList(full);
 
     expect(slim.google_photo_url).toBe(full.google_photo_url);
-    expect(slim).not.toHaveProperty("google_photo_attribution");
+    expect(slim.google_photo_attribution).toEqual(full.google_photo_attribution);
     expect(slim).not.toHaveProperty("google_photo_attributions");
     expect(slim).not.toHaveProperty("google_photos");
     expect(slim).not.toHaveProperty("google_hours");

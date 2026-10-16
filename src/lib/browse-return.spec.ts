@@ -17,6 +17,15 @@ describe("connected browsing returns", () => {
     expect(withBrowseReturnTo("/plan", "/events/prototype")).toBe("/plan");
   });
 
+  it("returns to Nearby with its complete filtered answer", () => {
+    const nearby = "/nearby?c=shops&facet=book-store&sort=rated&in=county#results";
+    const detail = withBrowseReturnTo("/places/books", nearby);
+    expect(new URL(detail, "https://example.test").searchParams.get("returnTo")).toBe(nearby);
+    expect(browseReturnFromLocation(new URL(`https://example.test${nearby}`))).toBe(nearby);
+    expect(browseReturnLabel(nearby)).toBe("Back to Nearby");
+    expect(normalizeBrowseReturnTo("/nearby/private")).toBeNull();
+  });
+
   it("keeps Tonight intent and town through a full detail visit", () => {
     const tonight = "/today/tonight?intent=pizza&in=brunswick";
     expect(browseReturnLabel(tonight)).toBe("Back to Tonight");

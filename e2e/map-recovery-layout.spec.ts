@@ -16,6 +16,21 @@ const localPins = coffeePlaces.map((place) => ({
   open_status: { state: "unknown" },
 }));
 
+/** Synthetic source identity for labelled layout bytes only. This metadata
+ * never attributes a catalog/provider photograph or reaches a provider. */
+function layoutPhotoFixture(slug: string) {
+  const photoName = `places/ChIJlayoutFixture/photos/layout-fixture-${slug}`;
+  const authorUri = "https://www.google.com/maps/contrib/000000000000000000000";
+  return {
+    google_photo_url: `/api/place-photo?${new URLSearchParams({ name: photoName, w: "96" })}`,
+    google_photo_attribution: {
+      photo_name: photoName,
+      google_maps_uri: `${authorUri}/photo/layout-fixture-${slug}`,
+      authors: [{ display_name: "LAYOUT FIXTURE author", uri: authorUri }],
+    },
+  };
+}
+
 async function installRecoveryBoundary(page: Page, photosAvailable = false) {
   await page.addInitScript(() => {
     localStorage.setItem("fr_map_location_intro_v1", "dismissed");
@@ -32,14 +47,21 @@ async function installRecoveryBoundary(page: Page, photosAvailable = false) {
       await route.abort("blockedbyclient");
     } else if (url.pathname === "/api/map/places") {
       await route.fulfill({ json: { generatedAt: new Date().toISOString(), places: localPins } });
-    } else if (photosAvailable && url.pathname === "/api/places/by-slugs") {
-      const requested = new Set((url.searchParams.get("slugs") ?? "").split(","));
-      await route.fulfill({ json: { places: coffeePlaces
-        .filter((place) => requested.has(place.slug))
-        .map((place) => ({ slug: place.slug, google_photo_url: place.google_photo_url })) } });
+    } else if (photosAvailable && url.pathname.startsWith("/api/places/map-card/")) {
+      const slug = decodeURIComponent(url.pathname.split("/").at(-1)!);
+      const place = coffeePlaces.find((place) => place.slug === slug);
+      await route.fulfill({ json: { place: place
+        ? { slug: place.slug, ...layoutPhotoFixture(place.slug) }
+        : null } });
     } else if (photosAvailable && url.pathname === "/api/place-photo") {
-      // Real catalog photo metadata exercises the ready-media layout. These
-      // clearly labelled fixture bytes never fetch or depict a provider photo.
+      const photoName = url.searchParams.get("name");
+      const fixture = coffeePlaces.find((place) =>
+        layoutPhotoFixture(place.slug).google_photo_attribution.photo_name === photoName,
+      );
+      expect(fixture, "Only a selected labelled layout resource is eligible").toBeDefined();
+      expect(url.searchParams.get("fallback")).toBe("signal");
+      // Real catalog identities select the card, but source metadata and these
+      // labelled bytes are synthetic. No catalog/provider photo is attributed.
       await route.fulfill({ contentType: "image/svg+xml", body:
         '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#ddd"/><text x="48" y="44" text-anchor="middle" font-size="12">LAYOUT</text><text x="48" y="62" text-anchor="middle" font-size="12">FIXTURE</text></svg>' });
     } else if (url.pathname === "/api/search") {
@@ -88,25 +110,29 @@ async function recoveryGeometry(page: Page) {
     const dock = host.querySelector<HTMLElement>("[data-map-dock]")!;
     const heading = host.querySelector<HTMLElement>("#map-error-title")!;
     const list = host.querySelector<HTMLElement>(".map-error-fallback .map-list")!;
-    const last = list.querySelectorAll<HTMLElement>(".map-list-row");
+    const last = list.querySelectorAll<HTMLElement>("[data-map-list-place]");
     const bounds = (element: Element) => {
       const box = element.getBoundingClientRect();
       return { x: box.x, y: box.y, width: box.width, height: box.height, bottom: box.bottom, right: box.right };
     };
-    const headingBox = heading.getBoundingClientRect();
-    const headingPoints = [
-      [headingBox.left + 1, headingBox.top + 1],
-      [headingBox.right - 1, headingBox.top + 1],
-      [headingBox.left + 1, headingBox.bottom - 1],
-      [headingBox.right - 1, headingBox.bottom - 1],
-      [headingBox.left + headingBox.width / 2, headingBox.top + headingBox.height / 2],
-    ];
+    const unobscured = (element: HTMLElement) => {
+      const box = element.getBoundingClientRect();
+      const points = [
+        [box.left + 1, box.top + 1],
+        [box.right - 1, box.top + 1],
+        [box.left + 1, box.bottom - 1],
+        [box.right - 1, box.bottom - 1],
+        [box.left + box.width / 2, box.top + box.height / 2],
+      ];
+      return points.every(([x, y]) => element.contains(document.elementFromPoint(x, y)));
+    };
     return {
       host: bounds(host), dock: bounds(dock), heading: bounds(heading), list: bounds(list),
       lastResult: last.length ? bounds(last[last.length - 1]) : null,
-      headingUnobscured: headingPoints.every(([x, y]) => heading.contains(document.elementFromPoint(x, y))),
+      headingUnobscured: unobscured(heading),
       measuredDockHeight: parseFloat((host as HTMLElement).style.getPropertyValue("--map-dock-height")),
       bottomPadding: parseFloat(getComputedStyle(list).paddingBottom),
+      bottomMargin: parseFloat(getComputedStyle(list).marginBottom),
       scrollTop: list.scrollTop, scrollHeight: list.scrollHeight, clientHeight: list.clientHeight,
       horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth || list.scrollWidth > list.clientWidth,
     };
@@ -115,7 +141,7 @@ async function recoveryGeometry(page: Page) {
 
 for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 }]) {
  for (const photosAvailable of [false, true]) {
-  test.describe(`Map recovery layout at ${viewport.width}px${photosAvailable ? " with ready photos" : ""}`, () => {
+  test.describe(`Map recovery layout at ${viewport.width}px${photosAvailable ? " with ready selected photos" : ""}`, () => {
     test.use({ viewport });
     test("a closed return/search dock leaves the scoped recovery heading and final result clear", async ({ page }, testInfo) => {
       test.setTimeout(60_000);
@@ -132,13 +158,54 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
       await expect(back).toBeVisible();
       const list = page.getByRole("region", { name: "Available results without the map" });
       await expect(list.getByRole("button", { name: /Beans in the Belfry/ })).toBeVisible();
-      await expect(list.locator(".map-list-row")).toHaveCount(coffeePlaces.filter((place) => place.municipality === "brunswick").length);
+      const scopedPlaces = coffeePlaces.filter((place) => place.municipality === "brunswick");
+      await expect(list.locator("[data-map-list-place]")).toHaveCount(scopedPlaces.length);
       await expect(list).not.toContainText("Market Street Boba Beans");
-      if (photosAvailable) {
-        await expect(list.locator('[data-photo-state="ready"]')).toHaveCount(
-          coffeePlaces.filter((place) => place.municipality === "brunswick" && place.google_photo_url).length,
-        );
+      // Ranked rows use category marks. Eligible photos belong to the selected
+      // rich card, so verify the same scoped catalog photo count there rather
+      // than requiring the initial list to bulk-load provider imagery.
+      await expect(list.locator("img")).toHaveCount(0);
+      const scopedPhotoPlaces = scopedPlaces.filter((place) => place.google_photo_url);
+      const origin = page.url();
+      let readyPhotos = 0;
+      for (const place of scopedPhotoPlaces) {
+        await list.locator(`[data-map-list-place="${place.slug}"]`).click();
+        const card = page.locator(`.map-peek-body[data-map-place-slug="${place.slug}"]`);
+        await expect(card).toBeVisible();
+        await expect(card.locator('[data-loading="true"]')).toHaveCount(0);
+        if (photosAvailable) {
+          const image = card.getByRole("img", { name: `Photo of ${place.name}`, exact: true });
+          await expect(image).toHaveAttribute("data-map-peek-photo-state", "ready");
+          await expect(image).toHaveAttribute("data-map-peek-photo-source", "google");
+          await expect(card.locator("img")).toHaveCount(1);
+          const fixture = layoutPhotoFixture(place.slug);
+          const requestedSource = new URL(await image.getAttribute("src") ?? "", page.url());
+          expect(requestedSource.pathname).toBe("/api/place-photo");
+          expect(requestedSource.searchParams.get("name")).toBe(fixture.google_photo_attribution.photo_name);
+          expect(requestedSource.searchParams.get("fallback")).toBe("signal");
+          const credits = page.locator(".map-peek-source-credit");
+          await expect(credits.getByRole("link", { name: "Google Maps", exact: true }))
+            .toHaveAttribute("href", fixture.google_photo_attribution.google_maps_uri);
+          await expect(credits.getByRole("link", { name: "LAYOUT FIXTURE author", exact: true }))
+            .toHaveAttribute("href", fixture.google_photo_attribution.authors[0].uri);
+          await expect(page.locator(".map-peek button a")).toHaveCount(0);
+          expect(await image.evaluate((element) => {
+            const image = element as HTMLImageElement;
+            return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1;
+          })).toBe(true);
+          readyPhotos += 1;
+        } else {
+          await expect(card.locator("img")).toHaveCount(0);
+          await expect(page.locator(".map-peek-source-credit")).toHaveCount(0);
+        }
+        await page.goBack();
+        await expect(page).toHaveURL(origin);
+        await expect(list.locator("[data-map-list-place]")).toHaveCount(scopedPlaces.length);
+        await expect(list).not.toContainText("Market Street Boba Beans");
+        await expect(search).toHaveValue("coffee");
+        await expect(back).toHaveAttribute("href", returnTo);
       }
+      expect(readyPhotos).toBe(photosAvailable ? scopedPhotoPlaces.length : 0);
       await page.evaluate(() => document.fonts.ready);
       await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
 
@@ -154,7 +221,8 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
       if (viewport.width >= 1024) {
         expect.soft(initial.heading.y).toBeGreaterThanOrEqual(initial.dock.bottom);
       } else {
-        expect.soft(initial.bottomPadding).toBeGreaterThan(initial.dock.height);
+        expect.soft(initial.bottomMargin).toBeGreaterThan(initial.dock.height);
+        expect.soft(initial.list.bottom).toBeLessThanOrEqual(initial.dock.y);
       }
 
       // A shorter phone makes the real fallback list scroll; the host observer
@@ -170,21 +238,34 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
         const geometry = await recoveryGeometry(page);
         return Math.abs(geometry.measuredDockHeight - geometry.dock.height);
       }).toBeLessThan(1);
-      await list.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+      // Recovery owns one scrolling lane above the measured dock. Reveal the
+      // final row through its real scroll ancestor without an overlap repair.
+      const lastResult = list.locator("[data-map-list-place]").last();
+      await lastResult.evaluate((element) => {
+        element.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+      });
       const final = await recoveryGeometry(page);
       await testInfo.attach("final-recovery-geometry", { body: JSON.stringify(final, null, 2), contentType: "application/json" });
       await testInfo.attach("final-recovery-layout", { body: await page.screenshot({ fullPage: false }), contentType: "image/png" });
       expect(final.lastResult).not.toBeNull();
       expect(final.horizontalOverflow).toBe(false);
+      if (viewport.width < 1024) {
+        expect(final.list.bottom).toBeLessThanOrEqual(final.dock.y);
+        expect(final.bottomMargin).toBeGreaterThan(final.dock.height);
+      }
       await expect(search).toHaveValue("coffee");
       await expect(back).toHaveAttribute("href", returnTo);
-      const finalTargets = { back: await assert44HitTarget(back), search: await assert44HitTarget(search) };
+      const finalTargets = {
+        back: await assert44HitTarget(back),
+        search: await assert44HitTarget(search),
+        lastResult: await assert44HitTarget(lastResult),
+      };
       await testInfo.attach("final-recovery-hit-targets", { body: JSON.stringify(finalTargets, null, 2), contentType: "application/json" });
       if (viewport.width < 1024) {
         expect(finalTargets.back.width).toBe(44);
         expect(final.scrollHeight).toBeGreaterThan(final.clientHeight);
         expect(final.scrollTop).toBeGreaterThan(0);
-        expect(final.bottomPadding).toBeGreaterThan(final.dock.height);
+        expect(final.bottomMargin).toBeGreaterThan(final.dock.height);
         expect(final.lastResult!.bottom).toBeLessThanOrEqual(final.dock.y);
         expect(final.lastResult!.y).toBeGreaterThanOrEqual(final.list.y);
       } else {
@@ -196,4 +277,81 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
     });
   });
  }
+}
+
+
+for (const typography of ["platform", "Arial"] as const) {
+test.describe(`Native shortlist directions (${typography} typography)`, () => {
+  test.use({ viewport: { width: 320, height: 568 } });
+  test("directions opens the exact destination without selecting a place or losing the scoped query", async ({ page, context }, testInfo) => {
+    test.setTimeout(60_000);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await installRecoveryBoundary(page);
+    const metadataRequests: string[] = [];
+    page.on("request", (request) => {
+      const path = new URL(request.url()).pathname;
+      if (path.startsWith("/api/places/map-card/") || path === "/api/place-photo") metadataRequests.push(path);
+    });
+    // Native navigation is real. Only the external destination document is a
+    // transport fixture, so this proof makes no third-party map/provider call.
+    await context.route(/^https:\/\/(?:www\.google\.com\/maps\/dir\/|maps\.apple\.com\/)/, async (route) => {
+      expect(route.request().method()).toBe("GET");
+      await route.fulfill({ contentType: "text/html", body: "<!doctype html><title>Native directions transport fixture</title><main>External handoff observed. No external map is loaded.</main>" });
+    });
+    await page.goto(mapUrl, { waitUntil: "domcontentloaded" });
+    if (typography === "Arial") {
+      // Common system-font metrics also exercise long names on narrow phones.
+      await page.addStyleTag({ content: ":root { --font-sans-base: Arial, sans-serif; }" });
+    }
+    await expect(page.locator(".dock-host")).toHaveAttribute("data-map-error", "true", { timeout: 30_000 });
+    const list = page.getByRole("region", { name: "Available results without the map" });
+    const scopedPlaces = coffeePlaces.filter((place) => place.municipality === "brunswick");
+    await expect(list.locator("[data-map-list-place]")).toHaveCount(scopedPlaces.length);
+    const before = await list.locator("[data-map-list-place]").evaluateAll((rows) => rows.map((row) => row.getAttribute("data-map-list-place")));
+    const slug = before[0];
+    const place = scopedPlaces.find((candidate) => candidate.slug === slug)!;
+    expect(place).toBeDefined();
+    const row = list.locator(`[data-map-list-place-row="${slug}"]`);
+    const details = row.locator(`[data-map-list-place="${slug}"]`);
+    const directions = row.getByRole("link", { name: `Directions to ${place.name}`, exact: true });
+    await expect(details).toContainText(place.name);
+    await expect(details).toContainText("Hours not confirmed");
+    await expect(directions).toHaveText("Directions");
+    await expect(directions).toHaveAttribute("target", "_blank");
+    await expect(row.locator("button a, a button")).toHaveCount(0);
+    const href = (await directions.getAttribute("href"))!;
+    const destination = new URL(href);
+    expect(destination.searchParams.get("destination") ?? destination.searchParams.get("daddr"))
+      .toBe(`${place.geom.lat},${place.geom.lng}`);
+    expect(destination.searchParams.has("origin")).toBe(false);
+    await page.evaluate(() => document.fonts.ready);
+    const lane = await recoveryGeometry(page);
+    expect(lane.list.bottom).toBeLessThanOrEqual(lane.dock.y);
+    expect(lane.bottomMargin).toBeGreaterThan(lane.dock.height);
+    const targets = { details: await assert44HitTarget(details), directions: await assert44HitTarget(directions) };
+    expect(targets.details.x + targets.details.width).toBeLessThanOrEqual(targets.directions.x);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+    await expect(page.locator("[data-map-place-slug]")).toHaveCount(0);
+    expect(metadataRequests).toEqual([]);
+    const origin = page.url();
+    const popupPromise = page.waitForEvent("popup");
+    if (testInfo.project.use.hasTouch) await directions.tap();
+    else await directions.click();
+    const popup = await popupPromise;
+    await popup.waitForLoadState("domcontentloaded");
+    expect(popup.url()).toBe(href);
+    await expect(popup.getByRole("main")).toHaveText("External handoff observed. No external map is loaded.");
+    await popup.close();
+    await expect(page).toHaveURL(origin);
+    await expect(page.locator("[data-map-place-slug]")).toHaveCount(0);
+    expect(metadataRequests).toEqual([]);
+    expect(await list.locator("[data-map-list-place]").evaluateAll((rows) => rows.map((element) => element.getAttribute("data-map-list-place"))))
+      .toEqual(before);
+    await expect(page.locator("[data-map-dock]").getByRole("combobox", { name: "Search Frederick Radius", exact: true })).toHaveValue("coffee");
+    await expect(page.locator("[data-map-dock]").getByRole("link", { name: "Back to search results", exact: true })).toHaveAttribute("href", returnTo);
+    await expect(details).toContainText("Hours not confirmed");
+    await testInfo.attach("shortlist-native-directions", { body: JSON.stringify({ before, href, metadataRequests, targets, retainedUrl: page.url(), fixture: "Map renderer unavailable; external directions document is controlled transport." }, null, 2), contentType: "application/json" });
+    await testInfo.attach("shortlist-directions-320", { body: await page.screenshot({ fullPage: false }), contentType: "image/png" });
+  });
+});
 }

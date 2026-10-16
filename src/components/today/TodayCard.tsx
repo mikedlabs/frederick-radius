@@ -6,7 +6,7 @@ import { weatherVerdict } from "@/lib/weather-verdict";
 import { getNwsAlertsResult, type NwsAlertsResult } from "@/lib/integrations/nws-alerts";
 import { getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integrations/airnow";
 import type { SkyVariant } from "./AnimatedSkyGlyph";
-import TodayWeatherView, { WeatherUnavailable } from "./TodayWeatherView";
+import TodayWeatherView, { WeatherUnavailable, type TodayWeatherViewProps } from "./TodayWeatherView";
 
 import OfflineTodayCapture from "@/components/pwa/OfflineTodayCapture";
 import { easternDayKey } from "@/lib/tz";
@@ -88,7 +88,7 @@ export function sentenceCaseForecast(value: string): string {
   return normalized ? normalized[0].toUpperCase() + normalized.slice(1) : "";
 }
 
-export default async function TodayCard() {
+export default async function TodayCard({ density = "standard" }: { density?: TodayWeatherViewProps["density"] } = {}) {
   const now = new Date();
 
   // Weather alone cannot authorize "great time to get out." Fetch the official
@@ -130,7 +130,7 @@ export default async function TodayCard() {
   // unavailable, collapse to the small handoff above instead of manufacturing
   // a weather read from defaults.
   if (!cur && !hasSafetySignal) {
-    return <WeatherUnavailable />;
+    return <WeatherUnavailable density={density} />;
   }
 
   // The NEXT sun event, not both — sunrise if it hasn't happened yet,
@@ -184,6 +184,7 @@ export default async function TodayCard() {
 
   return (
     <TodayWeatherView
+      density={density}
       headline={weatherRead.headline}
       condition={sentenceCaseForecast(condition)}
       temperatureF={tempNow}

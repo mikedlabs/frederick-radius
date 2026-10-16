@@ -27,6 +27,7 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
   "src/data/places-overrides.json",
   "src/data/place-status-overrides.json",
   "src/data/places-hours-refresh.json",
+  "src/data/places-official-hours.json",
   "src/data/business-status.json",
   // Server-loader editorial and policy inputs.
   "src/data/known-for.json",
@@ -145,7 +146,9 @@ export function inspectArtifact(root, relativePath) {
       const detail = error instanceof Error ? error.message : String(error);
       throw new Error(`${relativePath} is not valid JSON: ${detail}`);
     }
-    records = jsonRecordCount(value);
+    records = relativePath === "src/data/places-official-hours.json" && Array.isArray(value?.places)
+      ? value.places.length
+      : jsonRecordCount(value);
   } else if (extension !== ".ts") {
     throw new Error(
       `${relativePath} has unsupported release artifact type ${extension || "(none)"}`,

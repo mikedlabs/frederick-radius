@@ -11,6 +11,9 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    // Storybook static output bundles third-party code; authored stories and
+    // .storybook configuration remain linted.
+    "storybook-static/**",
     "next-env.d.ts",
     // Claude Code worktrees keep their own .next/ build dirs and any
     // stale checkout state. The top-level .next/** pattern doesn't

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
+import { BRAND } from "@/lib/brand";
 
 /**
  * Root error boundary. Unlike (app)/error.tsx (which catches failures INSIDE a
@@ -12,8 +13,8 @@ import * as Sentry from "@sentry/nextjs";
  *
  * Because it REPLACES the root layout, it must render its own <html>/<body>,
  * and globals.css (imported by the root layout) is NOT loaded here — so the
- * brand tokens (var(--app-*)) are unavailable and we fall back to literal brand
- * hex inline. This file is the documented exception to the "tokens only" rule.
+ * app tokens (var(--app-*)) are unavailable. Its small local palette reads
+ * from the same brand contract and honors the OS appearance independently.
  */
 export default function GlobalError({
   error,
@@ -30,19 +31,25 @@ export default function GlobalError({
     <html lang="en">
       <head>
         <style>{`
-          @font-face {
-            font-family: "Public Sans Variable";
-            src: url("/brand/fonts/public-sans-variable.woff2") format("woff2");
-            font-style: normal;
-            font-weight: 100 900;
-            font-display: swap;
+          :root {
+            color-scheme: light;
+            --radius-error-bg: ${BRAND.colors.cream};
+            --radius-error-ink: ${BRAND.colors.ink};
+            --radius-error-muted: ${BRAND.colors.mutedInk};
+            --radius-error-focus: ${BRAND.colors.brick};
           }
-          @font-face {
-            font-family: "Libre Caslon Display";
-            src: url("/brand/fonts/libre-caslon-display-400.woff2") format("woff2");
-            font-style: normal;
-            font-weight: 400;
-            font-display: swap;
+          @media (prefers-color-scheme: dark) {
+            :root {
+              color-scheme: dark;
+              --radius-error-bg: ${BRAND.colors.darkCanvas};
+              --radius-error-ink: ${BRAND.colors.darkInk};
+              --radius-error-muted: ${BRAND.colors.darkMutedInk};
+              --radius-error-focus: ${BRAND.colors.darkLink};
+            }
+          }
+          button:focus-visible {
+            outline: 3px solid var(--radius-error-focus);
+            outline-offset: 4px;
           }
         `}</style>
       </head>
@@ -57,10 +64,9 @@ export default function GlobalError({
           gap: 16,
           padding: 24,
           textAlign: "center",
-          background: "#F4EEE2",
-          color: "#221C15",
-          fontFamily:
-            "'Public Sans Variable', 'Public Sans', ui-sans-serif, system-ui, sans-serif",
+          background: "var(--radius-error-bg)",
+          color: "var(--radius-error-ink)",
+          fontFamily: BRAND.type.productStack,
         }}
       >
         <p
@@ -70,7 +76,7 @@ export default function GlobalError({
             fontWeight: 600,
             letterSpacing: "0.14em",
             textTransform: "uppercase",
-            color: "#6C6357",
+            color: "var(--radius-error-muted)",
           }}
         >
           Application error
@@ -79,15 +85,14 @@ export default function GlobalError({
           style={{
             margin: 0,
             fontSize: 28,
-            fontWeight: 400,
+            fontWeight: 650,
             lineHeight: 1.15,
             letterSpacing: "-0.01em",
-            fontFamily: "'Libre Caslon Display', Georgia, serif",
           }}
         >
           Frederick Radius could not load.
         </h1>
-        <p style={{ margin: 0, maxWidth: 360, fontSize: 14, lineHeight: 1.5, color: "#5A5348" }}>
+        <p style={{ margin: 0, maxWidth: 360, fontSize: 14, lineHeight: 1.5, color: "var(--radius-error-muted)" }}>
           Something failed while loading this page. Try loading it again.
         </p>
         <button
@@ -96,12 +101,13 @@ export default function GlobalError({
           style={{
             marginTop: 4,
             border: "none",
-            borderRadius: 999,
+            borderRadius: 12,
+            minHeight: 44,
             padding: "12px 20px",
             fontSize: 14,
             fontWeight: 600,
-            color: "#F4EEE2",
-            background: "#B5462B",
+            color: BRAND.colors.surface,
+            background: BRAND.colors.brick,
             cursor: "pointer",
           }}
         >

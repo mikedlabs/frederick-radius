@@ -19,6 +19,48 @@ import DaypartNeeds, {
 } from "./DaypartNeeds";
 
 describe("DaypartNeeds", () => {
+  it("retains server photo credit only for the exact live place and unchanged resource", () => {
+    const photo = "/api/place-photo?name=places%2Flocal%2Fphotos%2Ffirst";
+    const photoAttribution = { photo_name: "places/local/photos/first", google_maps_uri: "https://www.google.com/maps/contrib/123/photo/456", authors: [] };
+    const row = { category: "coffee", label: "Coffee", href: "/nearby?c=coffee", picks: [{ slug: "local", name: "Local", rating: null, confidence: "unconfirmed" as const, photo, photoAttribution }] };
+    const candidate = { slug: "local", name: "Local", photo, where: "Brunswick", distance: null, fact: "Hours not confirmed" };
+    const answer = { hero: candidate, also: [], browseHref: row.href, contextLabel: "Brunswick", contextSource: "town" as const };
+    expect(liveShelfFromWantAnswer(answer, row, "town:brunswick").picks[0].photoAttribution).toBe(photoAttribution);
+    for (const changed of [{ ...candidate, slug: "other" }, { ...candidate, photo: "/api/place-photo?name=places%2Flocal%2Fphotos%2Fnew" }]) {
+      expect(liveShelfFromWantAnswer({ ...answer, hero: changed }, row, "town:brunswick").picks[0].photoAttribution).toBeUndefined();
+    }
+  });
+
+  it.each([null, "/test-place.jpg"])("keeps the town and walking estimate together with photo %s", (photo) => {
+    const html = renderToStaticMarkup(createElement(DaypartNeeds, {
+      variant: "brief",
+      rows: [{ category: "coffee", label: "Coffee", href: "/nearby?c=coffee&in=brunswick", picks: [{
+        slug: "local-option", name: "Local option", rating: null, photo,
+        where: "Brunswick", distance: "6 min walk", confidence: "unconfirmed", fact: "Hours not confirmed",
+      }] }],
+    }));
+    expect(html).toContain("Brunswick");
+    expect(html).toContain("6 min walk");
+    expect(html).toContain("Hours not confirmed");
+    expect(html).toContain("Places to try");
+    expect(html).toContain('href="/places/local-option"');
+    expect(html).not.toContain("Open now");
+  });
+
+  it("keeps opening-soon town context when a walking estimate is known", () => {
+    const html = renderToStaticMarkup(createElement(DaypartNeeds, {
+      variant: "brief",
+      rows: [{ category: "coffee", label: "Coffee", href: "/nearby?c=coffee&in=brunswick", picks: [], openingSoon: {
+        slug: "opening-local", name: "Opening local", rating: null,
+        where: "Brunswick", distance: "6 min walk", confidence: "confirmed", fact: "Opens soon · 10am",
+      } }],
+    }));
+    expect(html).toContain("Brunswick");
+    expect(html).toContain("6 min walk");
+    expect(html).toContain("Opens soon · 10am");
+    expect(html).not.toContain("Open now");
+  });
+
   it("shows one open-now shelf while keeping the other categories available as tabs", () => {
     const html = renderToStaticMarkup(
       createElement(DaypartNeeds, {
@@ -698,6 +740,7 @@ describe("DaypartNeeds", () => {
                   name: "Gravel & Grind",
                   rating: 4.8,
                   photo,
+                  photoAttribution: { photo_name: "places/ChIJtest/photos/front", google_maps_uri: "https://www.google.com/maps/contrib/123/photo/456", authors: [] },
                   where: "Frederick",
                   confidence: "confirmed",
                 },
@@ -718,14 +761,14 @@ describe("DaypartNeeds", () => {
     const withoutPhoto = renderPick();
     expect(withoutPhoto).not.toContain("<img");
     expect(withoutPhoto).not.toContain('data-radius-plate="gravel-and-grind"');
-    expect(withoutPhoto).toContain("min-h-[84px]");
+    expect(withoutPhoto).toContain("Open now");
     expect(withoutPhoto).toContain('data-today-place-lead="true"');
     expect(withoutPhoto).toContain("w-[14.5rem]");
     // A place name identifies the place, so it wraps instead of clipping.
     // "National Museum of Civil War Medicine" truncated to "National Museum
     // of Ci…" is not a recommendation the reader can act on.
-    expect(withoutPhoto).toContain("line-clamp-3 text-[14px]");
-    expect(withoutPhoto).toContain('class="h-[18px] w-[18px]"');
+    expect(withoutPhoto).toContain("Gravel &amp; Grind");
+    expect(withoutPhoto).toContain("Frederick");
   });
 
   it("edits Today to one lead and two alternatives", () => {

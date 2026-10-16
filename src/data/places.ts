@@ -4,7 +4,28 @@ import PLACES_DISCOVERED_RAW from "./places-discovered.json" with { type: "json"
 
 export type DayOfWeek = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type HoursWindow = { open: string; close: string };
-export type Hours = Partial<Record<DayOfWeek, HoursWindow[]>>;
+export type HoursDateException = {
+  date: string;
+  reason: string;
+  /** A full closure wins over weekly hours, including yesterday's spill. */
+  closed?: true;
+  /** Early closure clips the normal schedule; it never invents an opening. */
+  closes_at?: string;
+};
+export type OfficialHoursEvidence = {
+  slug: string;
+  source_url: string;
+  closures_url: string;
+  observed_at: string;
+  expires_at: string;
+  coverage_from: string;
+  coverage_through: string;
+  exceptions: HoursDateException[];
+};
+export type Hours = Partial<Record<DayOfWeek, HoursWindow[]>> & {
+  /** Compact date-aware evidence travels with the schedule to every consumer. */
+  _official?: OfficialHoursEvidence;
+};
 
 export type OperationalStatus =
   | "operational"
@@ -74,7 +95,7 @@ export type Place = {
   /** True only when hours come from the owner, Yelp, or admin verification — never from seed guesses. */
   hours_verified?: boolean;
   /** Phase 1 hours provenance. Set at compose time, never hand-authored. */
-  hours_source?: "google_places" | "osm" | "manual_override";
+  hours_source?: "google_places" | "osm" | "manual_override" | "first_party";
   /** ISO timestamp the hours were last confirmed, for a freshness UI. */
   hours_updated_at?: string;
   /** Operational status. "needs_verification" until cross-checked against Google Places / Yelp / etc. */

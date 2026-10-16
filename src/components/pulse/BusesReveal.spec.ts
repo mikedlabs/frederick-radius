@@ -90,8 +90,14 @@ describe("BusesReveal closed summary", () => {
     ]);
     expect(fetchMock.mock.calls.some(([input]) => String(input).includes("shapes")))
       .toBe(false);
-    expect(container.querySelector("#pulse-live-buses-summary")?.className)
-      .toContain("truncate");
+    const summary = container.querySelector("#pulse-live-buses-summary");
+    const trigger = container.querySelector('button[aria-controls="pulse-live-buses"]');
+    expect(summary?.textContent).toBe(
+      "1 bus reporting · 2 service alerts · ETAs limited",
+    );
+    expect(trigger?.getAttribute("aria-describedby")).toBe(summary?.id);
+    expect(summary?.getAttribute("role")).toBe("status");
+    expect(summary?.getAttribute("aria-live")).toBe("polite");
   });
 
   it("shows an honest successful empty response", async () => {

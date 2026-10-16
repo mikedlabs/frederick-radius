@@ -154,3 +154,17 @@
   outline-offset: var(--spacing);
   border-radius: var(--app-radius-sm);
 }
+
+.checks {
+  margin: 0 0 var(--app-space-2);
+  padding: 0;
+  list-style: none;
+  color: var(--app-ink-2);
+  font-size: 11px;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+}
+
+.checks > li + li {
+  margin-top: var(--spacing);
+}

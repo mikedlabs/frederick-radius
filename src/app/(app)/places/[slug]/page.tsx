@@ -30,7 +30,7 @@ import {
   commerceLinksFromBusinessInfo,
 } from "@/lib/loaders/businessInfo";
 import PlaceVisitTracker from "@/components/place/PlaceVisitTracker";
-import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
+import PlaceHero from "@/components/place/PlaceHero";
 import PlaceMiniMap from "@/components/place/PlaceMiniMap";
 import AerialBeat from "@/components/place/AerialBeat";
 import PlacePhotoGallery from "@/components/place/PlacePhotoGallery";
@@ -49,6 +49,7 @@ import {
   breadcrumbJsonLd,
   jsonLdScript,
   openingHoursJsonLd,
+  specialOpeningHoursJsonLd,
 } from "@/lib/seo/jsonld";
 import LiveGooglePlaceContext from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
@@ -113,6 +114,7 @@ function confirmedAgo(iso: string | undefined): string | null {
 
 const HOURS_SOURCE_LABEL: Record<string, string> = {
   google_places: "Google",
+  first_party: "Frederick County Public Libraries",
   osm: "OpenStreetMap",
   manual_override: "the Frederick Radius team",
 };
@@ -268,6 +270,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
     image: absoluteSiteUrl(`/api/og?type=place&slug=${place.slug}`),
     priceRange: place.price_band ? "$".repeat(place.price_band) : undefined,
     openingHoursSpecification: openingHoursJsonLd(place.hours),
+    specialOpeningHoursSpecification: specialOpeningHoursJsonLd(place.hours),
   };
 
   return (
@@ -327,6 +330,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           priority
           photoSrc={place.google_photo_url}
           photoAttribution={place.google_photo_attribution}
+          photoAttributions={place.google_photo_attributions}
           googleMapsUri={place.google_maps_uri}
         />
         <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
@@ -530,10 +534,13 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       ) : null}
 
       <PlacePhotoGallery
+        key={place.slug}
+        slug={place.slug}
+        heroSrc={place.google_photo_url}
+        heroAttribution={place.google_photo_attribution}
         photos={place.google_photos ?? []}
         name={place.name}
         attributions={place.google_photo_attributions}
-        placeGoogleMapsUri={place.google_maps_uri}
       />
 
       <section className="space-y-2">
@@ -631,7 +638,6 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       </Suspense>
 
       <footer className="space-y-2 pt-4">
-        <PhotoCredit slug={place.slug} hasGooglePhoto={Boolean(place.google_photo_url)} />
         <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
           {/* Freshness only. The source already speaks once, as the
               SourceBadge in the header decision zone — restating it here

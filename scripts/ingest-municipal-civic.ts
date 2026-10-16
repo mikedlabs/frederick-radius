@@ -25,6 +25,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { normalizeMunicipalContacts } from "../src/lib/municipal-civic-contact";
 import {
   AnthropicProviderError,
   extractJsonStrict,
@@ -60,7 +61,8 @@ const EXTRACTION_SCHEMA = `{
   "permits":        { "label": "Permits & Zoning", "phone"?: string, "website"?: string },
   "utilities":      { "label": "Water / Utilities", "phone"?: string, "website"?: string },
   "police":         { "label": "Police (non-emergency)", "phone"?: string, "website"?: string }
-}`;
+}
+Field meaning: townHall.hours contains office opening hours only; trashRecycling.schedule contains pickup rules only. Omit unavailable fields.`;
 
 async function extract(
   townName: string,
@@ -71,7 +73,7 @@ async function extract(
     `You are extracting civic contact info for the Town of ${townName}, Maryland ` +
     `from its official government webpage at ${sourceUrl}.\n\n` +
     `Return ONLY a JSON object matching this shape (omit any field you cannot find ON THIS PAGE — do not guess, do not invent phone numbers or hours):\n${EXTRACTION_SCHEMA}\n\n` +
-    `Rules: phone as digits-with-dashes; website as absolute URLs only; "schedule" is a short plain-English trash/recycling pickup rule if present; omit the whole object for any category not present. If nothing civic is found, return {}.`;
+    `Rules: phone as digits-with-dashes; website as absolute URLs only; "hours" means explicitly published office opening hours, never council meetings, hearings, planning sessions, appointment times, or conditional meeting schedules. Omit office hours if they are not posted; missing hours do not mean closed. "schedule" is only a short plain-English trash/recycling pickup rule if present. Do not move meeting times into another office field. Omit the whole object for any category not present. If nothing civic is found, return {}.`;
 
   const extracted = await extractJsonStrict<Record<string, unknown>>(
     instructions,
@@ -91,7 +93,7 @@ async function extract(
       },
     );
   }
-  return extracted;
+  return normalizeMunicipalContacts(extracted);
 }
 
 async function main() {

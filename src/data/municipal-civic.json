@@ -180,9 +180,15 @@
     "townHall": {
       "label": "Town Hall",
       "phone": "301-898-3800",
-      "address": "605 S. Main Street, Woodsboro, MD 21798",
-      "hours": "Council Meetings are held on the second Tuesday of every month at 7:00 pm. Planning & Zoning Meetings are held the first Monday of the month as needed at 6:00 PM."
+      "address": "605 S. Main Street, Woodsboro, MD 21798"
     },
+    "extras": [
+      {
+        "label": "Council & planning meetings",
+        "website": "https://woodsboro.org/",
+        "about": "The town publishes its meeting schedules and any conditions on its official website."
+      }
+    ],
     "source": {
       "url": "https://woodsboro.org/",
       "requestedUrl": "https://woodsboro.org/",

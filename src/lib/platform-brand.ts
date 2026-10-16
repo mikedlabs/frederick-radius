@@ -7,7 +7,7 @@ import { BRAND } from "./brand";
  */
 // Bump whenever the generated icon artwork changes. Launchers cache icon URLs
 // aggressively, so this is the deliberate cache boundary for a corrected mark.
-const ICON_VERSION = "20260723a";
+const ICON_VERSION = "20261016a";
 const versioned = (path: string) => `${path}?v=${ICON_VERSION}`;
 const taglineTitle = BRAND.tagline.replace(/\.$/, "");
 
@@ -18,6 +18,7 @@ export const PLATFORM_BRAND = {
   description:
     "Frederick Radius provides current places, events, live conditions, and practical information across Frederick County, Maryland.",
   themeColor: BRAND.colors.cream,
+  darkThemeColor: BRAND.colors.darkCanvas,
   iconVersion: ICON_VERSION,
   icons: {
     anySvg: versioned("/icons/icon.svg"),

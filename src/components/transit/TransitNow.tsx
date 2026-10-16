@@ -9,6 +9,7 @@ import {
 } from "react";
 import { TrainFront, Bus, Navigation, MapPin } from "lucide-react";
 import TRANSIT from "@/data/transit.json";
+import styles from "./TransitExperience.module.css";
 import { MARC_STATIONS } from "@/data/marc-stations";
 import {
   marcCountdownMins,
@@ -111,21 +112,21 @@ function RouteChip({ route }: { route?: TransitRoute }) {
 function DelayNote({ dep }: { dep: MarcDeparture }) {
   if (!dep.live || dep.delayMin == null) {
     return (
-      <span className="text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+      <span className="text-[12px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
         scheduled
       </span>
     );
   }
   if (Math.abs(dep.delayMin) < 2) {
     return (
-      <span className="text-[11px] font-bold" style={{ color: "var(--app-positive)" }}>
+      <span className="text-[12px] font-bold" style={{ color: "var(--state-open)" }}>
         on time
       </span>
     );
   }
   const late = dep.delayMin > 0;
   return (
-    <span className="font-mono text-[11px] font-bold tabular-nums" style={{ color: late ? "var(--app-warning)" : "var(--app-cool)" }}>
+    <span className="font-mono text-[12px] font-bold tabular-nums" style={{ color: late ? "var(--state-closing)" : "var(--app-ink-2)" }}>
       {late ? `+${dep.delayMin} min` : `${Math.abs(dep.delayMin)} min early`}
     </span>
   );
@@ -241,14 +242,8 @@ export default function TransitNow({
     (nextMode === "bus" ? busTabRef : marcTabRef).current?.focus();
   };
 
-  const cardStyle = {
-    borderColor: "var(--app-border)",
-    background: "var(--app-bg-elevated)",
-    boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-  } as const;
-
   return (
-    <section aria-labelledby="transit-now-heading" className="space-y-2.5">
+    <section aria-labelledby="transit-now-heading" className={`${styles.network} space-y-3`}>
       <div className="px-1">
         <h2
           id="transit-now-heading"
@@ -257,7 +252,7 @@ export default function TransitNow({
         >
           Network status
         </h2>
-        <p className="mt-0.5 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+        <p className={styles.networkIntro} style={{ color: "var(--app-ink-3)" }}>
           Check the wider bus and rail network.
         </p>
       </div>
@@ -266,11 +261,7 @@ export default function TransitNow({
         role="tablist"
         aria-label="Choose bus or MARC status"
         aria-orientation="horizontal"
-        className="grid grid-cols-2 gap-1 rounded-[var(--app-radius-md)] border p-1"
-        style={{
-          borderColor: "var(--app-border)",
-          background: "var(--app-bg-sunken)",
-        }}
+        className={styles.networkTabs}
       >
         <button
           ref={busTabRef}
@@ -282,7 +273,7 @@ export default function TransitNow({
           tabIndex={activeMode === "bus" ? 0 : -1}
           onClick={() => setActiveMode("bus")}
           onKeyDown={(event) => moveTabFocus(event, "bus")}
-          className="flex min-h-11 min-w-0 items-center gap-2 rounded-[calc(var(--app-radius-md)-4px)] px-3 text-left transition-colors motion-reduce:transition-none"
+          className={styles.networkTab}
           style={{
             color: activeMode === "bus" ? "var(--app-ink)" : "var(--app-ink-3)",
             background: activeMode === "bus" ? "var(--app-bg-elevated-solid)" : "transparent",
@@ -297,7 +288,7 @@ export default function TransitNow({
           />
           <span className="min-w-0">
             <span className="block text-[12.5px] font-semibold leading-none">Bus</span>
-            <span className="mt-1 block truncate text-[9.5px] leading-none">{busTabStatus}</span>
+            <span className="mt-1 block">{busTabStatus}</span>
           </span>
         </button>
         <button
@@ -310,7 +301,7 @@ export default function TransitNow({
           tabIndex={activeMode === "marc" ? 0 : -1}
           onClick={() => setActiveMode("marc")}
           onKeyDown={(event) => moveTabFocus(event, "marc")}
-          className="flex min-h-11 min-w-0 items-center gap-2 rounded-[calc(var(--app-radius-md)-4px)] px-3 text-left transition-colors motion-reduce:transition-none"
+          className={styles.networkTab}
           style={{
             color: activeMode === "marc" ? "var(--app-ink)" : "var(--app-ink-3)",
             background: activeMode === "marc" ? "var(--app-bg-elevated-solid)" : "transparent",
@@ -325,7 +316,7 @@ export default function TransitNow({
           />
           <span className="min-w-0">
             <span className="block text-[12.5px] font-semibold leading-none">MARC</span>
-            <span className="mt-1 block truncate text-[9.5px] leading-none">{marcTabStatus}</span>
+            <span className="mt-1 block">{marcTabStatus}</span>
           </span>
         </button>
       </div>
@@ -338,8 +329,7 @@ export default function TransitNow({
         aria-labelledby="transit-bus-tab"
         hidden={activeMode !== "bus"}
         tabIndex={0}
-        className="rounded-[var(--app-radius-md)] border p-4"
-        style={cardStyle}
+        className={styles.networkPanel}
       >
         <div className="flex items-center justify-between">
           <span className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
@@ -348,7 +338,7 @@ export default function TransitNow({
           <Bus className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
         </div>
 
-        <p className="mt-2 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+        <p className="mt-2 text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           Use My stop above for a stop-specific arrival.
         </p>
 
@@ -372,17 +362,17 @@ export default function TransitNow({
               </p>
             ) : soonestBus ? (
               <>
-                <p className="mb-2 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                <p className="mb-2 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
                   This is the soonest reported arrival {nearbyVehicles.length > 0 ? "within about a mile" : "across the network"}.
                 </p>
                 <div className="flex items-center gap-2">
                   <RouteChip route={soonestBus.route} />
-                  <span className="font-mono text-[26px] font-bold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
+                  <span className={styles.networkEta} style={{ color: "var(--app-ink)" }}>
                     {soonestBus.mins === 0 ? "due" : soonestBus.mins}
                     {soonestBus.mins !== 0 && <span className="ml-1 text-[14px] font-semibold" style={{ color: "var(--app-ink-2)" }}>min</span>}
                   </span>
                 </div>
-                <p className="mt-1 truncate text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
+                <p className="mt-1 text-[14px] leading-snug break-words" style={{ color: "var(--app-ink-2)" }}>
                   to {soonestBus.stopName}
                 </p>
               </>
@@ -394,19 +384,19 @@ export default function TransitNow({
           </div>
         )}
 
-        <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+        <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
           {loaded && available && vehicles.length > 0 && (
             staleAgo ? (
-              <span style={{ color: "var(--app-warning)", fontWeight: 600 }}>Live feed delayed, last update {staleAgo}</span>
+              <span style={{ color: "var(--state-closing)", fontWeight: 600 }}>Live feed delayed, last update {staleAgo}</span>
             ) : status === "degraded" ? (
-              <span style={{ color: "var(--app-warning)", fontWeight: 600 }}>
+              <span style={{ color: "var(--state-closing)", fontWeight: 600 }}>
                 Positions are live. Arrival estimates are unavailable.
               </span>
             ) : (
               <span className="font-mono tabular-nums">{vehicles.length} reporting now</span>
             )
           )}
-          {FARE_FREE && <span style={{ color: "var(--app-cool)", fontWeight: 600 }}>free to ride</span>}
+          {FARE_FREE && <span style={{ color: "var(--app-ink-2)", fontWeight: 600 }}>free to ride</span>}
           {available && nearCount != null && vehicles.length > 0 && (
             <span className="font-mono tabular-nums">{nearCount} within about a mile</span>
           )}
@@ -415,7 +405,7 @@ export default function TransitNow({
               type="button"
               onClick={requestGeo}
               className="tap-44-y inline-flex items-center gap-1 font-semibold"
-              style={{ color: "var(--app-cool)" }}
+              style={{ color: "var(--app-link)" }}
             >
               <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
               Use my location
@@ -428,7 +418,7 @@ export default function TransitNow({
           target="_blank"
           rel="noopener noreferrer"
           className="tap-44-y mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold"
-          style={{ color: "var(--app-cool)" }}
+          style={{ color: "var(--app-link)" }}
         >
           <Navigation className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
           Plan a trip with the bus
@@ -442,8 +432,7 @@ export default function TransitNow({
         aria-labelledby="transit-marc-tab"
         hidden={activeMode !== "marc"}
         tabIndex={0}
-        className="rounded-[var(--app-radius-md)] border p-4"
-        style={cardStyle}
+        className={styles.networkPanel}
       >
         <div className="flex items-center justify-between">
           <span className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
@@ -498,7 +487,7 @@ export default function TransitNow({
             </p>
             <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
               The Brunswick Line runs weekday commuter service.{" "}
-              <a href={MARC_SCHEDULE_URL} target="_blank" rel="noopener noreferrer" className="tap-44-y font-semibold" style={{ color: "var(--app-cool)" }}>
+              <a href={MARC_SCHEDULE_URL} target="_blank" rel="noopener noreferrer" className="tap-44-y font-semibold" style={{ color: "var(--app-link)" }}>
                 See the schedule
               </a>
               .

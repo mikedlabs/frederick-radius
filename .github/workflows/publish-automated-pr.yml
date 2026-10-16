@@ -338,6 +338,83 @@ jobs:
             }
             core.warning(`Main moved from ${expected.slice(0, 12)} to ${head.slice(0, 12)} during artifact validation; the delta does not touch the publish surface, so the branch will start one nudge behind main, which the nightly regeneration absorbs.`);
 
+      # A review-required update must not inherit yesterday's queued merge.
+      # Revoke and verify before create-pull-request can push the new facts;
+      # revoking afterward would race a fast required-check completion.
+      - name: Revoke an existing auto-merge before publishing review-required facts
+        if: ${{ !inputs.auto_merge }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          AUTOMATED_PR_BRANCH: ${{ inputs.branch }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const branch = process.env.AUTOMATED_PR_BRANCH;
+            const repositoryName = `${owner}/${repo}`;
+            if (!/^bot\/[A-Za-z0-9._/-]+$/.test(branch || '')) {
+              core.setFailed('Cannot revoke auto-merge for an unexpected data branch.');
+              return;
+            }
+            const result = await github.graphql(`
+              query ExistingQueuedDataPull($owner: String!, $repo: String!, $branch: String!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequests(first: 2, states: OPEN, headRefName: $branch, baseRefName: "main") {
+                    nodes {
+                      id number state headRefName baseRefName
+                      headRepository { nameWithOwner }
+                      autoMergeRequest { enabledAt }
+                    }
+                  }
+                }
+              }
+            `, { owner, repo, branch });
+            const pulls = result.repository?.pullRequests?.nodes;
+            if (!Array.isArray(pulls) || pulls.length > 1) {
+              core.setFailed('Could not identify one existing data PR before publication.');
+              return;
+            }
+            if (pulls.length === 0) return;
+            const isExpectedPull = (pull) => Boolean(
+              pull && typeof pull.id === 'string' && pull.id.length > 0 &&
+              Number.isSafeInteger(pull.number) && pull.number > 0 &&
+              pull.state === 'OPEN' && pull.headRefName === branch &&
+              pull.baseRefName === 'main' &&
+              pull.headRepository?.nameWithOwner === repositoryName
+            );
+            const pull = pulls[0];
+            if (!isExpectedPull(pull)) {
+              core.setFailed('Existing data PR has an unexpected repository, branch or base.');
+              return;
+            }
+            if (pull.autoMergeRequest === null) return;
+            if (typeof pull.autoMergeRequest?.enabledAt !== 'string') {
+              core.setFailed('Could not establish the existing data PR auto-merge state.');
+              return;
+            }
+            await github.graphql(`
+              mutation DisableQueuedDataPull($pullRequestId: ID!) {
+                disablePullRequestAutoMerge(input: { pullRequestId: $pullRequestId }) {
+                  pullRequest { id }
+                }
+              }
+            `, { pullRequestId: pull.id });
+            const verified = await github.graphql(`
+              query VerifyUnqueuedDataPull($pullRequestId: ID!) {
+                node(id: $pullRequestId) {
+                  ... on PullRequest {
+                    id number state headRefName baseRefName
+                    headRepository { nameWithOwner }
+                    autoMergeRequest { enabledAt }
+                  }
+                }
+              }
+            `, { pullRequestId: pull.id });
+            if (!isExpectedPull(verified.node) || verified.node.id !== pull.id || verified.node.autoMergeRequest !== null) {
+              core.setFailed('Auto-merge revocation could not be verified before publishing review-required facts.');
+              return;
+            }
+            core.notice(`Revoked the previous auto-merge queue for PR #${pull.number} before publishing facts that require review.`);
+
       - name: Open or update the review PR
         id: review_pr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1

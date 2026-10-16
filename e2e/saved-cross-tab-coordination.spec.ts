@@ -13,6 +13,13 @@ type Catalog = {
 async function isolate(context: BrowserContext, baseURL: string): Promise<Catalog> {
   const origin = new URL(baseURL);
   const catalog: Catalog = { rows: new Map(), fixtures: new Set() };
+  // Populate the controlled reads before the first navigation. A guarded
+  // build's last archived event may already have ended, so fixture setup must
+  // not depend on finding an initial visible event from a live calendar.
+  for (const [index, slug] of ["coordination-fixture-first", "coordination-fixture-second"].entries()) {
+    catalog.rows.set(slug, fixtureEvent(slug, index + 1));
+    catalog.fixtures.add(slug);
+  }
   await context.addCookies([{ name: "fr_onboarded", value: "1", domain: origin.hostname, path: "/" }]);
   await context.addInitScript(({ key, bridgeKey, bridge }) => {
     if (localStorage.getItem(key) === null) localStorage.setItem(key, "[]");
@@ -49,10 +56,10 @@ async function isolate(context: BrowserContext, baseURL: string): Promise<Catalo
   return catalog;
 }
 
-/** The local archive can advertise rows whose full source is unavailable.
- * In that case a controlled HTTP summary keeps the real board/sheet/save
- * consumers under test. This is explicitly fixture evidence, not proof that
- * an event provider resolved. No rendered control or Web Lock is substituted. */
+/** Two upcoming controlled HTTP rows keep the real board/sheet/save consumers
+ * under test independently of archive expiry or provider availability. This
+ * is fixture evidence, not proof that an event provider resolved. No rendered
+ * control or Web Lock is substituted. */
 function fixtureEvent(slug: string, index: number): EventWithMeta {
   const now = new Date();
   const starts = new Date(now.getTime() + 86_400_000);
@@ -68,7 +75,9 @@ function fixtureEvent(slug: string, index: number): EventWithMeta {
 
 async function openEvent(page: Page, catalog: Catalog, exclude?: string) {
   await page.goto("/events?in=county", { waitUntil: "domcontentloaded" });
-  await expect(page.locator("[data-events-interaction-ready]")).toHaveAttribute("data-events-interaction-ready", "true");
+  const board = page.locator("[data-events-interaction-ready]");
+  await expect(board).toHaveAttribute("data-events-interaction-ready", "true");
+  await expect(board).toHaveAttribute("aria-busy", "false");
   const links = page.locator('main [data-decision-entity="event"] a[data-decision-action="open"]').filter({ visible: true });
   async function refreshFixtures() {
     await page.getByText("Why these results are partial", { exact: true }).click();
@@ -77,22 +86,32 @@ async function openEvent(page: Page, catalog: Catalog, exclude?: string) {
     await refreshed;
     for (const row of catalog.rows.values()) await expect(page.locator(`main [data-decision-entity="event"] a[data-decision-action="open"][href="/events/${row.slug}"]`).filter({ visible: true }).first()).toBeVisible();
   }
-  if (catalog.fixtures.size > 0) await refreshFixtures();
-  await expect(links.first()).toBeVisible();
-  let hrefs = [...new Set(await links.evaluateAll((elements) => elements.map((element) => element.getAttribute("href")!)))];
-  if (hrefs.length < 2 && catalog.fixtures.size === 0) {
-    // The guarded preview currently supplies one curated row. Ask the real
-    // board to refresh a complete, explicitly synthetic two-event response.
-    for (const [index, slug] of ["coordination-fixture-first", "coordination-fixture-second"].entries()) {
-      const event = fixtureEvent(slug, index + 1);
-      catalog.rows.set(slug, event);
-      catalog.fixtures.add(slug);
+  const fixtureLinks = [...catalog.fixtures].map((slug) => page.locator(
+    `main [data-decision-entity="event"] a[data-decision-action="open"][href="/events/${slug}"]`,
+  ).filter({ visible: true }).first());
+  const fixturesVisible = (await Promise.all(fixtureLinks.map((link) => link.isVisible()))).every(Boolean);
+  if (!fixturesVisible) {
+    if (await page.getByText("Why these results are partial", { exact: true }).isVisible()) {
+      await refreshFixtures();
+    } else {
+      // A healthy compact preview requests its complete set through real
+      // browsing intent. Keep this setup independent of a partial warning.
+      await page.getByRole("button", { name: /^Filters/ }).click();
+      const filters = page.getByRole("dialog", { name: "Event filters" });
+      await expect(filters).toBeVisible();
+      await filters.getByRole("tab", { name: "What", exact: true }).click();
+      await filters.getByRole("textbox", { name: "Filter the events shown" }).fill("Save coordination fixture");
+      await filters.getByRole("button", { name: "Done", exact: true }).click();
+      await expect(filters).toBeHidden();
     }
-    await refreshFixtures();
-    hrefs = [...new Set(await links.evaluateAll((elements) => elements.map((element) => element.getAttribute("href")!)))];
   }
-  const candidates = hrefs.map((href) => ({ href, slug: new URL(href, page.url()).pathname.replace("/events/", "") })).filter((candidate) => candidate.slug !== exclude).slice(0, 12);
-  expect(candidates.length, "Two distinct rendered event IDs are needed for this regression").toBeGreaterThan(0);
+  expect(fixtureLinks).toHaveLength(2);
+  for (const link of fixtureLinks) await expect(link).toBeVisible();
+  await expect(links.first()).toBeVisible();
+  const hrefs = [...new Set(await links.evaluateAll((elements) => elements.map((element) => element.getAttribute("href")!)))];
+  const candidates = hrefs.map((href) => ({ href, slug: new URL(href, page.url()).pathname.replace("/events/", "") }))
+    .filter((candidate) => catalog.fixtures.has(candidate.slug) && candidate.slug !== exclude);
+  expect(candidates.length, "Two distinct rendered fixture event IDs are needed for this regression").toBeGreaterThan(0);
   let selected: { href: string; slug: string; event: EventWithMeta } | undefined;
   for (const candidate of candidates) {
     const event = await page.evaluate(async (slug): Promise<EventWithMeta | null> => {
@@ -103,21 +122,16 @@ async function openEvent(page: Page, catalog: Catalog, exclude?: string) {
     }, candidate.slug);
     if (event) { selected = { ...candidate, event }; break; }
   }
-  if (!selected) {
-    const candidate = candidates[0]!;
-    const event = fixtureEvent(candidate.slug, catalog.fixtures.size + 1);
-    catalog.fixtures.add(event.slug);
-    selected = { ...candidate, event };
-  }
-  catalog.rows.set(selected.slug, selected.event);
-  const trigger = page.locator(`main [data-decision-entity="event"] a[data-decision-action="open"][href=${JSON.stringify(selected.href)}]`).filter({ visible: true }).first();
+  expect(selected, "A rendered fixture event must resolve through its controlled HTTP summary").toBeDefined();
+  const resolved = selected!;
+  const trigger = page.locator(`main [data-decision-entity="event"] a[data-decision-action="open"][href=${JSON.stringify(resolved.href)}]`).filter({ visible: true }).first();
   await trigger.click();
-  const dialog = page.getByRole("dialog", { name: selected.event.title, exact: true });
+  const dialog = page.getByRole("dialog", { name: resolved.event.title, exact: true });
   await expect(dialog).toBeVisible();
-  const button = dialog.locator(`[data-save-ref="event:${selected.slug}"]`).filter({ visible: true });
+  const button = dialog.locator(`[data-save-ref="event:${resolved.slug}"]`).filter({ visible: true });
   await expect(button).toBeEnabled();
   await expect(button).toHaveAttribute("aria-pressed", "false");
-  return { slug: selected.slug, title: selected.event.title, dialog, button };
+  return { slug: resolved.slug, title: resolved.event.title, dialog, button };
 }
 
 async function record(info: TestInfo, catalog: Catalog, evidence: object) {

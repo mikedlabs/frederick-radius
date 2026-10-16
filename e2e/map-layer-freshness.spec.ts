@@ -69,7 +69,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1366, height: 900 
       await page.goto("/map?show=parking&at=39.4143,-77.4105", { waitUntil: "domcontentloaded" });
       await expect(page.locator(".dock-host")).toHaveAttribute("data-map-error", "true", { timeout: 30_000 });
       const fallback = page.locator(".map-error-fallback");
-      await expect(fallback.getByRole("heading")).toHaveText(/Map view is not enabled right now|The map is temporarily unavailable|This browser cannot draw the map/);
+      await expect(fallback.getByRole("heading")).toHaveText(/Map view unavailable|The map is temporarily unavailable|This browser cannot draw the map/);
       await expect(page.getByRole("combobox", { name: "Search Frederick Radius", exact: true })).toBeVisible();
       await expect(fallback.getByRole("link", { name: "All places", exact: true })).toBeVisible();
       await expect.poll(() => requests.filter((group) => group === "parking").length).toBe(1);

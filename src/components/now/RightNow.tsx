@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Coffee,
   IceCream,
@@ -31,20 +32,25 @@ import {
   Scissors,
   ArrowLeft,
   Navigation,
+  SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import dynamic from "next/dynamic";
 import PlaceCard from "@/components/place/PlaceCard";
+import { navigateAfterHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
+import NearbyRefinementControls from "./NearbyRefinementControls";
+import styles from "./RightNow.module.css";
 import {
   CRAVINGS,
   CRAVING_BY_KEY,
   matchesCraving,
   matchesCravingFacet,
 } from "@/data/cravings";
-import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { cuisinesOf, cuisineLabel } from "@/lib/cuisine";
-import { mealForKey, matchMeal, isMealKey } from "@/lib/meal";
+import { mealForKey, matchMeal } from "@/lib/meal";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { haversineMeters, isInFrederickCountyArea } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
@@ -60,10 +66,33 @@ import {
   resolveRightNowAvailabilityMode,
   rightNowSortLabel,
   type RightNowAvailabilityMode,
-  type RightNowSort,
 } from "@/lib/right-now-ranking";
 import { useSavedList } from "@/hooks/useSaved";
 import { useBeenList } from "@/hooks/useBeenHere";
+import {
+  changeNearbyQuery,
+  hasNearbyCategoryBackStep,
+  NEARBY_CATEGORY_HISTORY_KEY,
+  nearbyHistoryState,
+  nearbyQueryHref,
+  NEARBY_FOOD_FACET_EXCLUDE,
+  readNearbyQuery,
+  type NearbyQueryState,
+} from "@/lib/nearby-query";
+
+const NearbyFiltersSheet = dynamic(() => import("./NearbyFiltersSheet"), {
+  ssr: false,
+});
+
+const subscribeReady = () => () => {};
+
+function writeNearbyQuery(next: NearbyQueryState, mode: "push" | "replace" = "replace") {
+  const href = nearbyQueryHref(window.location.href, next);
+  if (!href || href === `${window.location.pathname}${window.location.search}${window.location.hash}`) return;
+  const state = nearbyHistoryState(window.history.state);
+  if (mode === "push") window.history.pushState({ ...state, [NEARBY_CATEGORY_HISTORY_KEY]: true }, "", href);
+  else window.history.replaceState(state, "", href);
+}
 
 /**
  * RightNow — the one-tap craving answer.
@@ -138,10 +167,6 @@ const PRIMARY_CRAVING_KEYS = new Set([
   "family",
 ]);
 
-// Cuisine slugs that have their OWN I-want tab (Coffee, Drinks, Sweets), so the
-// Food cuisine chips stay food-focused instead of echoing the other tabs.
-const FOOD_FACET_EXCLUDE = new Set(["coffee", "bar", "brewery", "dessert"]);
-
 function walkLabel(distance_m: number): string {
   const mins = Math.max(1, Math.round(distance_m / WALK_M_PER_MIN));
   if (mins <= 25) return `${mins} min walk`;
@@ -151,9 +176,6 @@ function walkLabel(distance_m: number): string {
 
 export default function RightNow({
   places,
-  initialCraving = null,
-  initialFacet = null,
-  initialTown = null,
   initialScope = null,
   initialOriginSource = "none",
   approxOrigin = null,
@@ -161,15 +183,6 @@ export default function RightNow({
   approxStatus = "missing",
 }: {
   places: PlaceCardData[];
-  /** Preselected craving from a deep link (?c=coffee) — skips the picker
-   *  straight to the answer when arriving from a Today craving chip. */
-  initialCraving?: string | null;
-  /** Preselected sub-facet from a deep link (?c=shops&facet=thrift) — lands on
-   *  the already-narrowed list (e.g. Shop → Thrift & vintage from /today). */
-  initialFacet?: string | null;
-  /** Preselected town scope from a deep link (?c=coffee&town=brunswick) — set
-   *  when the visitor has a home town, so answers default to it. */
-  initialTown?: string | null;
   /** Shared browsing lens. County is a deliberate no-origin mode; near-me
    * may use device/IP; a town remains a hard municipality filter. */
   initialScope?: Scope | null;
@@ -185,52 +198,81 @@ export default function RightNow({
   approxStatus?: "available" | "missing" | "outside-county";
 }) {
   const { state, request } = useGeolocation();
-  const [cravingKey, setCravingKey] = useState<string | null>(
-    initialCraving && (CRAVING_BY_KEY[initialCraving] || isMealKey(initialCraving))
-      ? initialCraving
-      : null,
+  const searchParams = useSearchParams();
+  const [storedScope, setStoredScope] = useState<Scope | null>(initialScope);
+  // The address bar owns every meaningful selection. A same-URL sheet Back
+  // therefore leaves the answer intact; a full-page return/reload reads it anew.
+  const queryKey = searchParams.toString();
+  const preferences = useMemo(
+    () => readNearbyQuery(new URLSearchParams(queryKey), storedScope),
+    [queryKey, storedScope],
   );
-  // Sub-filters on the results page ("find more specific things"): a facet
-  // narrows within the craving (Food → Pizza), and Open now keeps only
-  // confirmed-open matches.
-  const [facetKey, setFacetKey] = useState<string | null>(initialFacet ?? null);
-  // Show EVERYTHING by default (confirmed open first; unknown and closed states
-  // retain their honest labels) so you can see what is available in the data.
-  const [openOnly, setOpenOnly] = useState(false);
-  // "Catch it before it closes" — narrow to places open but closing within the
-  // hour. Off by default; the chip only appears when there ARE any (below).
-  const [closingSoonOnly, setClosingSoonOnly] = useState(false);
-  // Town scope: null = everywhere (ranked by distance), or a municipality slug
-  // to narrow the answer to one town ("coffee in Brunswick"). Seeded from the
-  // visitor's home town via the deep link when present.
-  const [townKey, setTownKey] = useState<string | null>(
-    initialTown && MUNICIPALITY_BY_SLUG[initialTown] ? initialTown : null,
-  );
-  const [scope, setScopeState] = useState<Scope | null>(initialScope);
+  const { cravingKey, facetKey, openOnly, closingSoonOnly, sort, scope } = preferences;
+  const townKey = scopeTownSlug(scope);
   const [showAllCravings, setShowAllCravings] = useState(false);
+  const interactionReady = useSyncExternalStore(subscribeReady, () => true, () => false);
+  const filterId = useId();
+  const filterHistoryId = `nearby-filters:${filterId}`;
+  const filterOpenerRef = useRef<HTMLButtonElement | null>(null);
+  const applyPendingRef = useRef(false);
+  const [filterDraft, setFilterDraft] = useState<NearbyQueryState | null>(null);
+  const [applyingFilters, setApplyingFilters] = useState(false);
 
-  useEffect(() => subscribeScopeChange((nextScope) => {
-    setScopeState(nextScope);
-    setTownKey(scopeTownSlug(nextScope));
-  }), []);
+  function openFilters() {
+    applyPendingRef.current = false;
+    setApplyingFilters(false);
+    setFilterDraft(readNearbyQuery(new URLSearchParams(window.location.search), storedScope));
+  }
+
+  function applyFilters(dismiss: () => void) {
+    if (!filterDraft || applyPendingRef.current) return;
+    const draft = filterDraft;
+    applyPendingRef.current = true;
+    setApplyingFilters(true);
+    // The temporary sheet entry must leave first. Replacing its query would
+    // make Back uncover the old filters underneath it and lose the selection.
+    navigateAfterHistoryLayer(filterHistoryId, () => {
+      const current = readNearbyQuery(new URLSearchParams(window.location.search), storedScope);
+      if (current.cravingKey === draft.cravingKey) {
+        writeNearbyQuery(changeNearbyQuery(current, {
+          facetKey: draft.facetKey,
+          openOnly: draft.openOnly,
+          closingSoonOnly: draft.closingSoonOnly,
+          sort: draft.sort,
+        }));
+      }
+      applyPendingRef.current = false;
+      dismiss();
+    });
+  }
+
+  function updateQuery(patch: Partial<NearbyQueryState>, mode: "push" | "replace" = "replace") {
+    const current = readNearbyQuery(new URLSearchParams(window.location.search), storedScope);
+    writeNearbyQuery(changeNearbyQuery(current, patch), mode);
+  }
+
+  useEffect(() => {
+    // Freeze a cookie-derived scope into the URL and normalize legacy town or
+    // invalid filters before a detail sheet captures its exact return address.
+    writeNearbyQuery(readNearbyQuery(new URLSearchParams(window.location.search), initialScope));
+    return subscribeScopeChange((nextScope) => {
+      setStoredScope(nextScope);
+      const current = readNearbyQuery(new URLSearchParams(window.location.search), nextScope);
+      writeNearbyQuery(changeNearbyQuery(current, { scope: nextScope }));
+    });
+  }, [initialScope]);
 
   function chooseTown(nextTown: string | null) {
     const nextScope: Scope = nextTown ? `town:${nextTown}` : "county";
-    setTownKey(nextTown);
-    setScopeState(nextScope);
+    updateQuery({ scope: nextScope });
     setScope(nextScope);
   }
 
   function activateMyLocation() {
-    setTownKey(null);
-    setScopeState("nearme");
+    updateQuery({ scope: "nearme" });
     setScope("nearme");
     request();
   }
-  // Sort within the availability tier: open places lead unless the Open now
-  // filter has already removed everything else. The result summary names that
-  // ordering instead of promising a literal nearest-first list.
-  const [sort, setSort] = useState<RightNowSort>("smart");
   const saved = useSavedList();
   const been = useBeenList();
   const savedPlaceSlugs = useMemo(
@@ -249,24 +291,32 @@ export default function RightNow({
   // A selected town is a deliberate lens and therefore outranks a device
   // fix. Sorting Thurmont results from a Frederick phone location made the
   // town scope technically filtered but locally wrong.
+  // A server seed belongs to its original lens. In particular, switching
+  // from a town to Near me must not reuse that town's centroid as a device/IP
+  // approximation. A real IP seed remains useful across non-town scopes.
+  const seedMatchesScope = initialOriginSource === "ip" || scope === initialScope;
+  const usableApproxOrigin = seedMatchesScope ? approxOrigin : null;
+  const usableApproxCity = seedMatchesScope && scope !== "county" ? approxCity : null;
   const origin = useMemo(() => {
     if (townKey) return MUNICIPALITY_BY_SLUG[townKey]?.centroid ?? null;
     if (scope === "county") return null;
     return state.status === "granted"
       ? { lng: state.position.lng, lat: state.position.lat }
-      : approxOrigin;
-  }, [state, approxOrigin, townKey, scope]);
+      : usableApproxOrigin;
+  }, [state, usableApproxOrigin, townKey, scope]);
   // A device fix or a town the visitor deliberately chose can support a
   // literal nearest-first sort. The coarse network/IP centroid is useful for
   // regional framing only; treating it as precise recreated the old
   // south-Frederick chain-first bug for people standing downtown.
   const rankingOriginSource: DecisionOriginSource = townKey
     ? "town"
-    : state.status === "granted"
-      ? "device"
-      : scope === "county"
-        ? "county"
-        : initialOriginSource;
+    : scope === "county"
+      ? "county"
+      : state.status === "granted"
+        ? "device"
+        : usableApproxOrigin
+          ? initialOriginSource
+          : "none";
   const hasRankingOrigin = Boolean(origin) && canUseOriginForRanking(rankingOriginSource);
 
   // The selection is either a noun craving or a time-aware meal occasion
@@ -298,16 +348,22 @@ export default function RightNow({
     if (craving?.cuisineFacets) {
       const counts = new Map<string, number>();
       for (const p of cravingMatchedAll) for (const slug of cuisinesOf(p)) counts.set(slug, (counts.get(slug) ?? 0) + 1);
-      return [...counts.entries()]
+      const choices = [...counts.entries()]
         // Skip cuisines that have their OWN I-want tab (Coffee, Drinks, Sweets)
         // so the Food chips stay food-focused, and one-offs so they're meaningful.
-        .filter(([slug, n]) => n >= 2 && !FOOD_FACET_EXCLUDE.has(slug))
+        .filter(([slug, n]) => n >= 2 && !NEARBY_FOOD_FACET_EXCLUDE.has(slug))
         .sort((a, b) => b[1] - a[1])
         .slice(0, 8)
         .map(([slug]) => ({ key: slug, label: cuisineLabel(slug) }));
+      // A valid shared/return facet stays visible even if it is no longer one
+      // of the eight most common cuisines in the current catalog snapshot.
+      if (facetKey && !choices.some((choice) => choice.key === facetKey)) {
+        choices.push({ key: facetKey, label: cuisineLabel(facetKey) });
+      }
+      return choices;
     }
     return (craving?.facets ?? []).map((f) => ({ key: f.key, label: f.label }));
-  }, [craving, cravingMatchedAll]);
+  }, [craving, cravingMatchedAll, facetKey]);
 
   // The narrowest active noun for copy: the chosen facet ("pizza") if set, else
   // the craving/meal label ("food").
@@ -421,13 +477,6 @@ export default function RightNow({
     rankingAvailability,
   ]);
 
-  // Towns that actually have a result for this craving — so the town row only
-  // offers places that lead somewhere, never a dead "0 in Myersville" chip.
-  const townsWithResults = useMemo(() => {
-    const present = new Set(cravingMatchedAll.map((p) => p.municipality));
-    return MUNICIPALITIES.filter((m) => present.has(m.slug));
-  }, [cravingMatchedAll]);
-
   const openCount = useMemo(() => matched.filter((m) => m.open).length, [matched]);
   // Open, but closing within the hour (getOpenStatus → "closing-soon"). Drives
   // the urgency chip + filter; closing-soon places are a subset of "open".
@@ -435,6 +484,17 @@ export default function RightNow({
     () => matched.filter((m) => m.p.open_status.state === "closing-soon").length,
     [matched],
   );
+
+  const draftClosingSoonCount = filterDraft
+    ? cravingMatchedAll.filter((place) => {
+        if (townKey && place.municipality !== townKey) return false;
+        if (place.open_status.state !== "closing-soon") return false;
+        if (!filterDraft.facetKey) return true;
+        if (craving?.cuisineFacets) return cuisinesOf(place).includes(filterDraft.facetKey);
+        const facet = craving?.facets?.find((candidate) => candidate.key === filterDraft.facetKey);
+        return !facet || matchesCravingFacet(facet, place);
+      }).length
+    : closingSoonCount;
 
   const results = useMemo(() => {
     const list = closingSoonOnly
@@ -452,29 +512,10 @@ export default function RightNow({
   }, [matched, openOnly, closingSoonOnly, hasFix]);
 
   function pick(key: string) {
-    haptic("light"); // the tap should feel like a tap
-    setCravingKey(key);
-    setFacetKey(null); // a fresh craving starts unfiltered
-    setClosingSoonOnly(false); // and not stuck on a previous craving's urgency filter
-    // Give the selection a real URL/history entry while preserving the active
-    // location scope. Back returns to the picker; refresh/share keeps the pick.
-    const params = new URLSearchParams(window.location.search);
-    params.set("c", key);
-    params.delete("facet");
-    window.history.pushState(null, "", `/nearby?${params.toString()}`);
+    haptic("light");
+    // Category choices are Back destinations; refinements replace that entry.
+    updateQuery({ cravingKey: key }, "push");
   }
-
-  useEffect(() => {
-    const onPop = () => {
-      const params = new URL(window.location.href).searchParams;
-      const next = params.get("c");
-      setCravingKey(next && (CRAVING_BY_KEY[next] || isMealKey(next)) ? next : null);
-      setFacetKey(params.get("facet"));
-      setClosingSoonOnly(false);
-    };
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
 
   // ── Craving picker (the front door) ──
   if (!active) {
@@ -483,16 +524,16 @@ export default function RightNow({
       : CRAVINGS.filter((candidate) => PRIMARY_CRAVING_KEYS.has(candidate.key));
 
     return (
-      <div className="space-y-5">
+      <div className="space-y-5" data-nearby-interaction-ready={interactionReady ? "true" : "false"}>
         <header className="space-y-1.5" aria-describedby="nearby-intro">
           <h1
-            className="font-serif text-[26px] font-semibold leading-tight tracking-tight"
+            className="font-sans text-[26px] font-semibold leading-tight tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
             Find something nearby
           </h1>
           <p id="nearby-intro" className="text-[14px]" style={{ color: "var(--app-ink-3)" }}>
-            Choose what you need. Nearby places lead unless current hours are essential.
+            Choose what you need to find.
           </p>
         </header>
 
@@ -562,19 +603,22 @@ export default function RightNow({
       ? "open" as const
       : "available" as const;
   const sortLabel = rightNowSortLabel(sort, hasRankingOrigin, availabilityLead);
-  const areaLabel = townName
-    ? `in ${townName}`
+  const activeFilterCount = Number(Boolean(facetKey)) + Number(openOnly) + Number(closingSoonOnly) + Number(sort !== "smart");
+  const areaLabel = scope === "county"
+    ? "across Frederick County"
+    : townName
+      ? `in ${townName}`
     : hasFix
       ? deviceOutsideCounty
         ? "in Frederick County, nearest to you"
         : "near you"
-      : approxOrigin
-        ? approxCity
-          ? `approximately near ${approxCity}`
+      : usableApproxOrigin
+        ? usableApproxCity
+          ? `approximately near ${usableApproxCity}`
           : "approximately within Frederick County"
         : "across Frederick County";
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-nearby-interaction-ready={interactionReady ? "true" : "false"}>
       <header className="space-y-2">
         {/* The cravings live on /today now (the "I want…" grid), so the
             answer's back affordance returns there rather than swapping to a
@@ -589,7 +633,7 @@ export default function RightNow({
             } catch {
               sameOriginReferrer = false;
             }
-            if (sameOriginReferrer && window.history.length > 1) {
+            if (hasNearbyCategoryBackStep(window.history.state) || (sameOriginReferrer && window.history.length > 1)) {
               window.history.back();
             } else {
               // eslint-disable-next-line @next/next/no-location-assign-relative-destination
@@ -612,7 +656,7 @@ export default function RightNow({
           </span>
           <div>
             <h1
-              className="font-serif text-[22px] font-semibold leading-tight tracking-tight"
+              className="font-sans text-[22px] font-semibold leading-tight tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
               {headingNoun} {areaLabel}
@@ -642,129 +686,69 @@ export default function RightNow({
         </div>
       </header>
 
-      {/* Sticky filter bar — town scope, what-kind filters, and sort stay
-          pinned under the top bar as the results scroll, so you can re-filter
-          without scrolling back up. */}
-      <div
-        className="sticky z-30 space-y-1.5 border-b py-2 backdrop-blur-sm"
-        style={{
-          // --app-topbar-offset tracks the auto-hiding TopBar (0px while it's
-          // slid away), so this bar rides up with the chrome instead of
-          // pinning 56px down and letting cards scroll visibly above it.
-          top: "calc(var(--app-topbar-offset) + env(safe-area-inset-top))",
-          transition: "top var(--app-dur-med) var(--app-ease-out)",
-          borderColor: "var(--app-border)",
-          background: "color-mix(in srgb, var(--app-bg) 92%, transparent)",
-        }}
-      >
-        {/* Town scope — "everywhere" or one town ("coffee in Brunswick"). A
-            horizontal rail; only offers towns that actually have a result for
-            this craving, so a chip never dead-ends. Sits above the what-kind
-            filters: pick WHERE, then narrow WHAT. */}
-        {townsWithResults.length > 1 && (
-          <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex w-max items-center gap-1.5">
-              <FacetChip label="All towns" active={townKey === null} color="var(--app-ink-2)" onClick={() => chooseTown(null)} />
-              {townsWithResults.map((m) => (
-                <FacetChip
-                  key={m.slug}
-                  label={m.name}
-                  active={townKey === m.slug}
-                  color="var(--app-ink-2)"
-                  onClick={() => chooseTown(m.slug)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Find more specific things: an Open-now toggle (on by default) plus
-            the craving's sub-facet chips (Food → Pizza / Food trucks, …). The
-            facet row only appears when the craving defines facets, so single-
-            answer cravings (Coffee, Grocery) stay clean. */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-          {/* Open-now toggle — hidden for always-available cravings (lodging),
-              where "open now" is meaningless and every place always passes. */}
-          {!craving?.alwaysOpen && (
-          <button
-            type="button"
-            onClick={() => setOpenOnly((v) => !v)}
-            aria-pressed={openOnly}
-            className="tap-44-y tactile-interactive inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
-            style={
-              openOnly
-                ? {
-                    background: "color-mix(in srgb, var(--app-positive) 16%, transparent)",
-                    color: "var(--app-positive)",
-                    boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-positive) 32%, transparent)",
-                  }
-                : { background: "var(--app-bg-elevated)", color: "var(--app-ink-3)", boxShadow: "inset 0 0 0 1px var(--app-border)" }
-            }
-          >
-            <span
-              aria-hidden
-              className="inline-block h-[6px] w-[6px] rounded-full"
-              style={{ background: openOnly ? "var(--app-positive)" : "var(--app-ink-3)" }}
-            />
-            Open now
-          </button>
+      <div className={styles.mobileFilters}>
+        <p className={styles.filterSummary}>
+          {[
+            facetDefs.find((facet) => facet.key === facetKey)?.label ?? (facetDefs.length > 0 ? "All types" : "All places"),
+            closingSoonOnly ? "Closing soon" : openOnly ? "Confirmed open" : null,
+          ].filter(Boolean).join(" · ")}
+        </p>
+        <button
+          ref={filterOpenerRef}
+          type="button"
+          onClick={openFilters}
+          aria-label="Filters & sort"
+          aria-haspopup="dialog"
+          aria-expanded={filterDraft !== null}
+          className={styles.filterTrigger}
+        >
+          <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden />
+          <span>Filters &amp; sort</span>
+          {activeFilterCount > 0 && (
+            <span className={styles.filterCount} aria-hidden>
+              {activeFilterCount}
+            </span>
           )}
-          {/* Closing soon — only when there's something to catch. Amber urgency;
-              tapping it narrows to the open-but-closing-within-the-hour set. */}
-          {!craving?.alwaysOpen && closingSoonCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setClosingSoonOnly((v) => !v)}
-              aria-pressed={closingSoonOnly}
-              className="tap-44-y tactile-interactive inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
-              style={
-                closingSoonOnly
-                  ? {
-                      background: "color-mix(in srgb, var(--app-warning) 18%, transparent)",
-                      color: "var(--app-ink)",
-                      boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-warning) 38%, transparent)",
-                    }
-                  : { background: "var(--app-bg-elevated)", color: "var(--app-ink-3)", boxShadow: "inset 0 0 0 1px var(--app-border)" }
-              }
-            >
-              <span
-                aria-hidden
-                className="inline-block h-[6px] w-[6px] rounded-full"
-                style={{ background: "var(--app-warning)" }}
-              />
-              Closing soon · {closingSoonCount}
-            </button>
-          )}
-          {craving && facetDefs.length > 0 && (
-            <>
-              <FacetChip label="All" active={facetKey === null} color={craving.color} onClick={() => setFacetKey(null)} />
-              {facetDefs.map((f) => (
-                <FacetChip
-                  key={f.key}
-                  label={f.label}
-                  active={facetKey === f.key}
-                  color={craving.color}
-                  onClick={() => setFacetKey(f.key)}
-                />
-              ))}
-            </>
-          )}
-        </div>
-
-        {/* Sort — the result set's availability policy decides whether open
-            is a hard tier or a soft signal. This row names the actual ordering
-            instead of promising nearest-first when the data cannot support it. */}
-        <div className="flex items-center gap-1.5 pt-0.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
-            Sort
-          </span>
-          <FacetChip label="Smart" active={sort === "smart"} color="var(--app-ink-2)" onClick={() => setSort("smart")} />
-          {hasRankingOrigin && (
-            <FacetChip label="Nearest" active={sort === "nearest"} color="var(--app-ink-2)" onClick={() => setSort("nearest")} />
-          )}
-          <FacetChip label="Top rated" active={sort === "rated"} color="var(--app-ink-2)" onClick={() => setSort("rated")} />
-        </div>
+        </button>
       </div>
+
+      <div className={styles.desktopFilters}>
+        <NearbyRefinementControls
+          value={preferences}
+          facets={craving ? facetDefs : []}
+          supportsHours={!craving?.alwaysOpen}
+          closingSoonCount={closingSoonCount}
+          hasRankingOrigin={hasRankingOrigin}
+          onChange={updateQuery}
+        />
+      </div>
+
+      {filterDraft ? (
+        <NearbyFiltersSheet
+          present
+          draft={filterDraft}
+          facets={craving ? facetDefs : []}
+          supportsHours={!craving?.alwaysOpen}
+          closingSoonCount={draftClosingSoonCount}
+          hasRankingOrigin={hasRankingOrigin}
+          applying={applyingFilters}
+          historyLayerId={filterHistoryId}
+          returnFocusRef={filterOpenerRef}
+          heading={active?.label ?? "Places"}
+          placeLabel={townName ?? (scope === "county" ? "Whole county" : "Nearby")}
+          canDismiss={() => !applyPendingRef.current}
+          onDraftChange={(patch) => setFilterDraft((draft) => draft ? changeNearbyQuery(draft, patch) : draft)}
+          onReset={() => setFilterDraft((draft) => draft ? changeNearbyQuery(draft, {
+            facetKey: null, openOnly: false, closingSoonOnly: false, sort: "smart",
+          }) : draft)}
+          onApply={applyFilters}
+          onClose={() => {
+            setFilterDraft(null);
+            applyPendingRef.current = false;
+            setApplyingFilters(false);
+          }}
+        />
+      ) : null}
 
       {/* Location trust: only when we DON'T have a fix AND aren't scoped to a
           town (a town scope makes "nearest to you" moot). With a fix we silently
@@ -779,10 +763,10 @@ export default function RightNow({
           >
             <Navigation className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
             <span className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-              Location is off. Showing {approxStatus === "outside-county"
+              Location is off. Showing {scope === "county" || approxStatus === "outside-county"
                 ? "county-wide results"
-                : approxCity
-                  ? `results approximately near ${approxCity}`
+                : usableApproxCity
+                  ? `results approximately near ${usableApproxCity}`
                   : "county-wide results"}.
             </span>
           </div>
@@ -800,8 +784,8 @@ export default function RightNow({
                 ? "Getting your location…"
                 : state.status === "error"
                   ? "Location timed out. Try precise location again"
-                : approxCity
-                  ? `You are near ${approxCity}. Use precise location for better results.`
+                : usableApproxCity
+                  ? `You are near ${usableApproxCity}. Use precise location for better results.`
                   : "Use my location for nearest-first results"}
             </span>
           </button>
@@ -845,7 +829,7 @@ export default function RightNow({
                   {MUNICIPALITY_BY_SLUG[place.municipality ?? ""]?.name ?? place.city}
                   {` · ${(distance / 1609).toFixed(distance < 16090 ? 1 : 0)} mi from ${townName}`}
                 </p>
-                <PlaceCard place={place} />
+                <PlaceCard place={place} variant="discovery" lazyPhoto />
               </li>
             ))}
           </ul>
@@ -896,7 +880,7 @@ export default function RightNow({
           ) : closingSoonOnly ? (
             <button
               type="button"
-              onClick={() => setClosingSoonOnly(false)}
+              onClick={() => updateQuery({ closingSoonOnly: false })}
               className="tactile-interactive mt-3 inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
               style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
             >
@@ -906,7 +890,7 @@ export default function RightNow({
             openOnly && matched.length > 0 && (
               <button
                 type="button"
-                onClick={() => setOpenOnly(false)}
+                onClick={() => updateQuery({ openOnly: false })}
                 className="tactile-interactive mt-3 inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
                 style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
               >
@@ -922,7 +906,7 @@ export default function RightNow({
               {/* Business decision card — the place's photo leads (category
                   glyph fallback), then name, open status, walk time, one tap
                   to details + directions. */}
-              <PlaceCard place={p} lazyPhoto />
+              <PlaceCard place={p} variant="discovery" lazyPhoto />
               {p.distance_m !== undefined && (
                 <span className="sr-only">{walkLabel(p.distance_m)}</span>
               )}
@@ -934,36 +918,3 @@ export default function RightNow({
   );
 }
 
-/** A sub-facet pill on the results page. Active = a wash of the craving's own
- *  ink with an ink label; inactive = a quiet outline. Pure + presentational. */
-function FacetChip({
-  label,
-  active,
-  color,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  color: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className="tap-44-y tactile-interactive rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
-      style={
-        active
-          ? {
-              background: `color-mix(in srgb, ${color} 15%, transparent)`,
-              color: "var(--app-ink)",
-              boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 34%, transparent)`,
-            }
-          : { background: "var(--app-bg-elevated)", color: "var(--app-ink-3)", boxShadow: "inset 0 0 0 1px var(--app-border)" }
-      }
-    >
-      {label}
-    </button>
-  );
-}

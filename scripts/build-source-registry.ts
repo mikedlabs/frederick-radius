@@ -8,6 +8,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { parse } from "yaml";
 
 export type SourceRegistryArtifactRow = {
@@ -232,4 +233,4 @@ function main(): void {
   console.log(`Wrote ${artifact.length} source rows to ${outputPath}.`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) main();
