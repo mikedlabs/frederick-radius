@@ -72,7 +72,7 @@ describe("TodayScopeStatus location memory", () => {
 
   const render = async () => {
     await act(async () => {
-      root.render(createElement(TodayScopeStatus));
+      root.render(createElement(TodayScopeStatus, { density: "compact" }));
     });
     // requestIfGranted() resolves the Permissions query in a microtask.
     await act(async () => {
@@ -88,6 +88,7 @@ describe("TodayScopeStatus location memory", () => {
     expect(getScope()).toBe("county");
     expect(container.querySelector("select")?.value).toBe("county");
     expect(container.textContent).toContain("Countywide briefing");
+    expect(container.querySelector('[data-testid="today-scope-status"]')?.className).toBe("sr-only");
 
     await act(async () => {
       const select = container.querySelector("select")!;
@@ -98,6 +99,9 @@ describe("TodayScopeStatus location memory", () => {
     expect(container.querySelector("select")?.value).toBe("town:brunswick");
     expect(window.location.search).toBe("?in=brunswick&intent=dinner");
     expect(window.location.hash).toBe("#find-radius");
+    const status = container.querySelector('[data-testid="today-scope-status"]')!;
+    expect(status.classList.contains("sr-only")).toBe(false);
+    expect(status.textContent).toContain("Brunswick place picks · Countywide weather and events");
   });
 
   it("silently refreshes an already-granted fix when the lens is Near me", async () => {

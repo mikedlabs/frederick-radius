@@ -19,6 +19,7 @@ import {
   type EventCardVisual,
 } from "@/components/event/eventVisuals";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
+import EventArtwork from "@/components/event/EventArtwork";
 import {
   eventHasTrustworthyEnd,
   isEventLiveNow,
@@ -62,6 +63,7 @@ export function posterVisualForEvent(
     (explicit.key !== approved.key ||
       explicit.src !== approved.src ||
       explicit.caption !== approved.caption ||
+      explicit.presentation !== approved.presentation ||
       explicit.attribution?.source_uri !== approved.attribution?.source_uri ||
       explicit.sourceHref !== approved.sourceHref)
   ) {
@@ -86,9 +88,8 @@ export function eventPosterPhotoSrc(src: string): string {
 /**
  * The image-led event card used for a horizon lead.
  *
- * An approved event or venue photograph gets a source caption. Everything
- * else gets a compact date-led card, keeping timing and place visible without
- * reserving an empty photograph-shaped panel.
+ * Publisher art stays intact above the event facts. Verified venue photos may
+ * use an image-led face. Missing or failed media gets a compact date-led card.
  */
 export default function EventPosterCard({
   event,
@@ -104,6 +105,7 @@ export default function EventPosterCard({
   const photoSrc = safeVisual ? eventPosterPhotoSrc(safeVisual.src) : null;
   const [failedPhotoSrc, setFailedPhotoSrc] = useState<string | null>(null);
   const onPhoto = safeVisual !== null && photoSrc !== failedPhotoSrc;
+  const onArtwork = onPhoto && safeVisual?.presentation === "artwork";
   const date = eventDateBlock(event);
   const cat = CATEGORY_BY_SLUG[event.category];
   const accent = cat?.color ?? "#7A7975";
@@ -136,19 +138,30 @@ export default function EventPosterCard({
 
   // Missing photography should yield a compact, date-led decision, not an
   // empty image-sized canvas. The same state handles a failed photo request.
-  if (!onPhoto) {
+  if (!onPhoto || onArtwork) {
     return (
+      <>
       <article
         data-decision-impression="true"
         data-decision-surface="events"
         data-decision-entity="event"
         data-decision-id={event.slug}
         data-decision-position="lead"
-        data-event-poster="category"
-        data-event-fallback="date-category"
-        className="group relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-4 sm:p-5"
+        data-event-poster={onArtwork ? "artwork" : "category"}
+        data-event-fallback={onArtwork ? undefined : "date-category"}
+        className="group relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
         style={{ borderColor: "var(--app-border)", borderTopColor: "var(--app-heading-rule, var(--app-brand))", borderTopWidth: 3 }}
       >
+        {onArtwork && safeVisual && (
+          <EventArtwork
+            visual={safeVisual}
+            priority={priorityImage}
+            credit={false}
+            className="p-2 pb-0"
+            onUnavailable={() => setFailedPhotoSrc(photoSrc)}
+          />
+        )}
+        <div className="p-4 sm:p-5">
         <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold">
           <span style={{ color: "var(--app-ink-3)" }}>{categoryLabel}</span>
           {confirmedLive && <span style={{ color: "var(--app-live-text)" }}>Happening now</span>}
@@ -179,7 +192,12 @@ export default function EventPosterCard({
             )}
           </div>
         </div>
+        </div>
       </article>
+        {onArtwork && safeVisual && (
+          <EventVisualCredit visual={safeVisual} compact className="mt-1.5 px-1.5 text-right" />
+        )}
+      </>
     );
   }
 

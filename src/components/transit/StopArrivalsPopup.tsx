@@ -125,9 +125,11 @@ function RouteChip({ route }: { route?: TransitRoute }) {
 export default function StopArrivalsPopup({
   stop,
   showName = true,
+  onUseStop,
 }: {
   stop: SelectedStop;
   showName?: boolean;
+  onUseStop?: (stop: SelectedStop) => void;
 }) {
   const [preds, setPreds] = useState<StopPrediction[] | null>(null);
   const [feedAvailable, setFeedAvailable] = useState<boolean | null>(null);
@@ -366,6 +368,16 @@ export default function StopArrivalsPopup({
         <p style={{ marginTop: 7, fontSize: 9.5, lineHeight: 1.35, color: "var(--app-ink-3)" }}>
           Feed updated {checkedLabel} · Frederick County TransIT
         </p>
+      )}
+      {onUseStop && (
+        <button
+          type="button"
+          onClick={() => onUseStop(stop)}
+          className="mt-3 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-md)] px-3 py-2 text-[13px] font-semibold"
+          style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}
+        >
+          Use this stop
+        </button>
       )}
     </div>
   );

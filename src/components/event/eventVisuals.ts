@@ -9,6 +9,8 @@ import type { EventHeroImageAttribution } from "@/data/events";
 export type EventCardVisual = {
   src: string;
   caption: string;
+  /** Unclassified publisher art stays intact; only verified photos may crop. */
+  presentation: "artwork" | "photo";
   /** Stable identity used to avoid repeating the same photograph in a group. */
   key: string;
   /** Present when the image is a credited Google Maps photograph of a venue. */
@@ -22,16 +24,19 @@ const VENUE_VISUALS: Readonly<Record<string, EventCardVisual>> = {
     src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
     caption: "Venue · Carroll Creek Linear Park",
     key: "radius-carroll-creek-summer",
+    presentation: "photo",
   },
   "baker-park-frederick": {
     src: "/images/seasons/fall/018.jpg",
     caption: "Venue · Baker Park",
     key: "radius-baker-park-bandshell",
+    presentation: "photo",
   },
   "baker-park-bandshell": {
     src: "/images/seasons/fall/018.jpg",
     caption: "Venue · Baker Park Bandshell",
     key: "radius-baker-park-bandshell",
+    presentation: "photo",
   },
 };
 
@@ -96,6 +101,7 @@ function approvedProviderVisual(event: EventWithMeta): EventCardVisual | null {
     src: event.hero_image,
     caption: policy.caption,
     key: `event:${event.hero_image}`,
+    presentation: "artwork",
     sourceHref:
       typeof event.source_url === "string" &&
       event.source_url.startsWith("https://")
@@ -119,6 +125,7 @@ function approvedVenueVisual(event: EventWithMeta): EventCardVisual | null {
     src: event.hero_image,
     caption: `Venue · ${attribution.venue_name}`,
     key: `venue:${event.hero_image}`,
+    presentation: "photo",
     attribution,
   };
 }

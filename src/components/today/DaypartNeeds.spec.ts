@@ -486,6 +486,25 @@ describe("DaypartNeeds", () => {
     );
   });
 
+  it("omits curation-only brief justifications while keeping factual hours and distance", () => {
+    const pick = {
+      slug: "real-option", name: "Real option", rating: null,
+      confidence: "unconfirmed" as const, fact: "Hours not confirmed",
+      decisionReasons: [{ id: "local-favorite", label: "Radius has this marked as a local favorite.", evidenceIds: ["radius-curation"] }],
+    };
+    expect(daypartLeadReason([pick], { includeEditorialLabels: false })).toBeNull();
+    expect(daypartLeadReason([pick])).toBe("Radius has this marked as a local favorite.");
+    expect(daypartLeadReason([{ ...pick, confidence: "confirmed", fact: "Open until 4pm", distance: "4 min walk" }], { includeEditorialLabels: false }))
+      .toBe("It is open until 4pm and is a 4-minute walk from you.");
+    const html = renderToStaticMarkup(createElement(DaypartNeeds, {
+      variant: "brief", rows: [{ category: "coffee", label: "Coffee", href: "/places?category=coffee", picks: [pick] }],
+    }));
+    expect(html).toContain("Real option");
+    expect(html).toContain("Hours not confirmed");
+    expect(html).not.toContain("Why it leads");
+    expect(html).not.toContain("local favorite");
+  });
+
   it("uses evidence-backed availability before generic popularity evidence", () => {
     expect(daypartLeadReason([{
       slug: "nearby-only",

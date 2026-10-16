@@ -37,6 +37,9 @@ import { readableTextOn } from "@/lib/color/readableText";
 import {
   findCurrentTransitVehicle,
   requestTransitVehicleFocus,
+  requestTransitStopFocus,
+  isTransitStopFocusDetail,
+  TRANSIT_STOP_FOCUS_EVENT,
   type TransitVehicleFocusDetail,
 } from "@/lib/transit-focus";
 import StopArrivalsPopup, { type SelectedStop } from "./StopArrivalsPopup";
@@ -336,6 +339,7 @@ function StopCommandPanel({
   saved,
   onToggleSaved,
   onTrackVehicle,
+  onShowStop,
   onAnnounce,
 }: {
   stop: SelectedStop;
@@ -343,6 +347,7 @@ function StopCommandPanel({
   saved: boolean;
   onToggleSaved: (stop: SelectedStop) => void;
   onTrackVehicle: (detail: TransitVehicleFocusDetail) => void;
+  onShowStop: (stop: SelectedStop) => void;
   onAnnounce: (message: string) => void;
 }) {
   const [showFullDetail, setShowFullDetail] = useState(false);
@@ -683,6 +688,14 @@ function StopCommandPanel({
         )}
 
         <div className={styles.stopActions}>
+          <button
+            type="button"
+            onClick={() => onShowStop(stop)}
+            className={styles.saveAction}
+          >
+            <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden />
+            Show stop on map
+          </button>
           <a
             href={directionsUrl(stop)}
             target="_blank"
@@ -888,7 +901,7 @@ export default function TransitStopFinder() {
       .slice(0, MAX_RESULTS);
   }, [normalized, position, showNearby]);
 
-  const chooseStop = (stop: SelectedStop) => {
+  const chooseStop = useCallback((stop: SelectedStop) => {
     setSelected(stop);
     setQuery("");
     setShowNearby(false);
@@ -901,7 +914,25 @@ export default function TransitStopFinder() {
     );
     haptic("light");
     announce(`${stop.name} selected.`);
-  };
+  }, [announce]);
+
+  useEffect(() => {
+    const useStop = (event: Event) => {
+      const detail: unknown = (event as CustomEvent).detail;
+      if (!isTransitStopFocusDetail(detail) || detail.selectForRider !== true) return;
+      const stop = SELECTABLE_STOP_BY_ID[detail.stopId];
+      if (!stop) return;
+      chooseStop(stop);
+      window.requestAnimationFrame(() => {
+        const heading = document.getElementById("my-stop-heading");
+        const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+        heading?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+        heading?.focus({ preventScroll: true });
+      });
+    };
+    window.addEventListener(TRANSIT_STOP_FOCUS_EVENT, useStop);
+    return () => window.removeEventListener(TRANSIT_STOP_FOCUS_EVENT, useStop);
+  }, [chooseStop]);
 
   const toggleSaved = (stop: SelectedStop) => {
     const result = toggleSavedStop(stop);
@@ -929,6 +960,18 @@ export default function TransitStopFinder() {
     setShowNearby(true);
     haptic("light");
     requestLocation();
+  };
+
+  const showStopOnMap = (stop: SelectedStop) => {
+    if (!requestTransitStopFocus({ stopId: stop.id })) return;
+    const heading = document.getElementById("live-network-heading");
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    (heading?.closest("section") ?? heading)?.scrollIntoView({
+      behavior: reduced ? "auto" : "smooth",
+      block: "start",
+    });
+    haptic("light");
+    announce(`Showing ${stop.name} on the map.`);
   };
 
   const trackVehicle = (detail: TransitVehicleFocusDetail) => {
@@ -983,7 +1026,7 @@ export default function TransitStopFinder() {
           <BusFront className="h-5 w-5" strokeWidth={2.1} />
         </span>
         <div className="min-w-0">
-          <h2 id="my-stop-heading">My stop</h2>
+          <h2 id="my-stop-heading" tabIndex={-1}>My stop</h2>
           <p>Search by stop or street. Your location is optional.</p>
         </div>
       </header>
@@ -1173,6 +1216,7 @@ export default function TransitStopFinder() {
           saved={currentSavedStops.some((stop) => stop.id === activeStop.id)}
           onToggleSaved={toggleSaved}
           onTrackVehicle={trackVehicle}
+          onShowStop={showStopOnMap}
           onAnnounce={announce}
         />
       )}

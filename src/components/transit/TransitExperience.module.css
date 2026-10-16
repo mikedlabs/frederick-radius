@@ -82,6 +82,8 @@
 .mapPicker label { display: block; min-width: 0; }
 .routeSelect { width: 100%; min-width: 0; min-height: 3rem; padding: .625rem .75rem; border: 1px solid var(--app-control-border); border-radius: .75rem; background: var(--app-bg); color: var(--app-ink); font-size: .875rem; font-weight: 600; }
 .mapFrame { position: relative; min-width: 0; overflow: hidden; border-top: 1px solid var(--app-border); background: var(--app-bg-sunken); }
+/* Open arrival actions must remain above the raised stop callout and vehicles. */
+.mapFrame :global(.mapboxgl-popup) { z-index: 4; }
 .mapFallback { display: grid; height: 100%; place-items: center; padding: 1.5rem; text-align: center; }
 .mapFallback p { font-size: .875rem; line-height: 1.5; }
 .mapRetry { display: inline-flex; min-height: 2.75rem; align-items: center; justify-content: center; padding: .625rem 1rem; margin-top: 1rem; border: 1px solid var(--app-control-border); border-radius: .75rem; font-size: .875rem; font-weight: 650; color: var(--app-link); background: var(--app-bg); }
@@ -112,3 +114,10 @@
   .trackAction, .walkAction, .saveAction, .result { transition: background .16s ease, color .16s ease; }
 }
 @keyframes transitEntrance { from { opacity: 0; } to { opacity: 1; } }
+
+.activeStopCallout { display: flex; width: 44px; flex-direction: column; align-items: center; pointer-events: none; }
+.activeStopStem { position: relative; display: block; width: 2px; height: 28px; flex: none; background: var(--app-brand); box-shadow: 0 0 0 1px var(--app-bg); pointer-events: none; }
+.activeStopStem::after { content: ""; position: absolute; left: 50%; bottom: -3px; width: 6px; height: 6px; transform: translateX(-50%); border: 1px solid var(--app-bg); border-radius: 50%; background: var(--app-brand); }
+.activeStopMarker { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border: 3px solid var(--app-bg); border-radius: 50%; color: var(--app-on-brand); background: var(--app-brand); box-shadow: 0 0 0 1px var(--app-brand), 0 4px 14px color-mix(in srgb, var(--app-ink) 20%, transparent); cursor: pointer; pointer-events: auto; }
+.activeStopMarker:focus-visible { outline: 3px solid var(--app-focus); outline-offset: 4px; }
+.activeStopLabel { position: absolute; left: 50%; bottom: calc(100% + .5rem); transform: translateX(-50%); width: max-content; max-width: min(14rem, calc(100vw - 8rem)); padding: .375rem .625rem; border: 1px solid var(--app-border); border-radius: .625rem; background: var(--app-bg-elevated-solid); color: var(--app-ink); box-shadow: 0 4px 12px color-mix(in srgb, var(--app-ink) 13%, transparent); font-size: .8125rem; line-height: 1.35; font-weight: 650; text-align: center; overflow-wrap: anywhere; pointer-events: none; }

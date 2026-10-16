@@ -10,6 +10,7 @@ import CategoryIcon from "@/components/place/CategoryIcon";
 import ItineraryButton from "@/components/saved/ItineraryButton";
 import EventActions from "@/components/event/EventActions";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
+import EventArtwork from "@/components/event/EventArtwork";
 import { eventCardVisual } from "@/components/event/eventVisuals";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -143,6 +144,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
     eventHasPreciseLocation(event);
   const parking = preciseGeo && canAttend ? nearestEventParking(event.geom) : null;
   const eventVisual = eventCardVisual(event);
+  const photoVisual = eventVisual?.presentation === "photo" ? eventVisual : null;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll({ container: scrollRef });
@@ -179,17 +181,17 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
          *  category eyebrow + title overlaid (same cinematic pattern as
          *  the place sheet). Photoless events keep their category and
          *  title on the neutral reading surface. */}
-        {eventVisual ? (
+        {photoVisual ? (
           <div className="relative aspect-[16/9] w-full overflow-hidden">
             <motion.div 
               className="absolute inset-0 origin-bottom"
               style={{ y: heroY, scale: heroScale }}
             >
               <Image
-                src={eventVisual.src}
+                src={photoVisual.src}
                 alt=""
                 fill
-                unoptimized={eventVisual.src.startsWith("/api/place-photo")}
+                unoptimized={photoVisual.src.startsWith("/api/place-photo")}
                 priority
                 sizes="(max-width: 720px) 100vw, 720px"
                 placeholder="blur"
@@ -230,9 +232,9 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
             </div>
           </div>
         ) : null}
-        {eventVisual ? (
+        {photoVisual ? (
           <EventVisualCredit
-            visual={eventVisual}
+            visual={photoVisual}
             className="border-b px-5 py-2"
           />
         ) : null}
@@ -240,7 +242,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
         {/* reveal-up: the sheet's blocks settle top-to-bottom on open —
          *  the one cascade grammar every surface shares. */}
         <div className="reveal-up px-5 pt-4">
-          {!eventVisual && (
+          {!photoVisual && (
             <header className="flex items-start gap-3">
               <span
                 aria-hidden
@@ -424,6 +426,10 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
             {!canAttend && <Link href="/events?lens=today" onClick={onClose} className="flex min-h-11 items-center justify-center rounded-[var(--app-radius-md)] px-4 text-[13px] font-semibold" style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}>Find upcoming events</Link>}
             <EventActions event={{ ...event, ends_at: eventHasTrustworthyEnd(event) ? event.ends_at : event.starts_at }} actions={canAttend && !isDateOnlyEventAnchor(event) ? ["calendar", "share"] : ["share"]} labeled className="pt-1" />
           </div>
+
+          {eventVisual?.presentation === "artwork" && (
+            <EventArtwork visual={eventVisual} className="mt-4" />
+          )}
 
           {/* What — the cleaned description, clamped; the full page
            *  carries the whole text. */}
