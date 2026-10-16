@@ -7,17 +7,19 @@ import { GooglePhotoAttributionLine } from "./GoogleAttribution";
 
 /** A photograph of the selected place, supplied by the canonical loader.
  * A missing or failed photo leaves the card's real name and facts intact. */
-export default function PlaceCardPhoto({ source, onResult, width = 360 }: {
+export default function PlaceCardPhoto({ source, onResult, width = 360, frame = "hero" }: {
   source: PlaceCardPhotoSource | null;
   onResult: (src: string, result: PlaceCardPhotoResult) => void;
   width?: number;
+  frame?: "hero" | "row" | "compact-row";
 }) {
   if (!source) return null;
   return (
     <span
       data-place-card-photo
       data-place-card-photo-source={source.kind}
-      className="relative block aspect-[16/9] w-full overflow-hidden bg-[var(--app-bg-sunken)]"
+      className={`relative block overflow-hidden bg-[var(--app-bg-sunken)] ${frame === "hero" ? "aspect-[16/9] w-full" : "rounded-[var(--app-radius-md)]"}`}
+      style={frame === "hero" ? undefined : { width, height: frame === "row" ? 104 : 64 }}
     >
       <Image
         key={source.src}
@@ -40,10 +42,11 @@ export default function PlaceCardPhoto({ source, onResult, width = 360 }: {
 }
 
 /** Keep source links outside the card's open button, avoiding nested actions. */
-export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false }: {
+export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false, compact = false }: {
   source: PlaceCardPhotoSource | null;
   loaded: boolean;
   touchTarget?: boolean;
+  compact?: boolean;
 }) {
   if (!source || source.kind === "owned") return null;
   const licenseLinks: Record<string, string> = { "CC BY-SA 4.0": "https://creativecommons.org/licenses/by-sa/4.0", "CC BY 2.0": "https://creativecommons.org/licenses/by/2.0" };
@@ -59,8 +62,8 @@ export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false }: {
         <GooglePhotoAttributionLine attribution={source.attribution} compact touchTarget={touchTarget} />
       ) : (
         <>
-          <span className="block pt-1">Photo by {source.photo.author}.</span>
-          <span className="block">The image is resized for display; previews may be cropped.</span>
+          <span className="block pt-1">Photo by {source.photo.author}.{compact ? " Cropped for display." : ""}</span>
+          {!compact && <span className="block">The image is resized for display; previews may be cropped.</span>}
           <span className="flex flex-wrap gap-x-3">
             <a href={source.photo.source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Wikimedia Commons</a>
             <a href={licenseHref!} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{source.photo.license}</a>

@@ -100,3 +100,52 @@ export const FailedPhotograph: Story = {
     await expect(canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
   },
 };
+
+
+/** Actual image decoding and 44px source links are checked in the browser. */
+export const NarrowPhotoRow: Story = {
+  args: { variant: "row", neutral: true },
+  decorators: [(Story) => <div style={{ width: 288 }}><Story /></div>],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "Carroll Creek Linear Park" })).toBeVisible();
+    const image = canvasElement.querySelector<HTMLImageElement>("[data-place-card-photo-source='owned'] img")!;
+    image.scrollIntoView({ block: "nearest" });
+    await waitFor(async () => {
+      await image.decode();
+      expect(image.isConnected).toBe(true);
+      expect(image.naturalWidth).toBeGreaterThan(1);
+      expect(image.naturalHeight).toBeGreaterThan(1);
+    }, { timeout: 5000 });
+    const article = canvasElement.querySelector("article")!;
+    await expect(article.scrollWidth).toBeLessThanOrEqual(article.clientWidth);
+    await expect(canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
+    await expect(canvas.getByRole("button", { name: /Save Carroll Creek/ })).toBeVisible();
+  },
+};
+
+export const NarrowCuratedRow: Story = {
+  args: { variant: "row", neutral: true, place: { ...place, slug: "catoctin-furnace-thurmont", name: "Catoctin Furnace", municipality: "thurmont", city: "Thurmont" } },
+  decorators: [(Story) => <div style={{ width: 288 }}><Story /></div>],
+  play: async ({ canvasElement }) => {
+    // Deliver the real component's success event without depending on a remote
+    // Commons response in component CI. Failure behavior has a separate story.
+    const image = canvasElement.querySelector<HTMLImageElement>("[data-place-card-photo] img")!;
+    Object.defineProperties(image, { naturalWidth: { configurable: true, value: 600 }, naturalHeight: { configurable: true, value: 400 } });
+    image.dispatchEvent(new Event("load"));
+    await waitFor(() => expect(within(canvasElement).getByRole("link", { name: "Wikimedia Commons" })).toBeVisible());
+    const article = canvasElement.querySelector("article")!;
+    await expect(article.scrollWidth).toBeLessThanOrEqual(article.clientWidth);
+    for (const link of canvasElement.querySelectorAll<HTMLAnchorElement>(".place-card-photo-credit a")) {
+      await expect(link.closest("button")).toBeNull();
+      const bounds = link.getBoundingClientRect();
+      await expect(bounds.width).toBeGreaterThanOrEqual(44);
+      await expect(bounds.height).toBeGreaterThanOrEqual(44);
+    }
+  },
+};
+
+export const FailedPhotoRow: Story = {
+  args: { variant: "row" },
+  play: FailedPhotograph.play,
+};

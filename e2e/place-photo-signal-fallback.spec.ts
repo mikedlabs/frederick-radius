@@ -82,6 +82,7 @@ test("a known landmark tries its exact curated file once and credits only the lo
   const exactFile = "Francis Scott Key Monument (March 2024).jpg";
   const exactSource = "https://commons.wikimedia.org/wiki/File:Francis_Scott_Key_Monument_(March_2024).jpg";
   let curatedRequests = 0;
+  const curatedRequestsBySource = new Map<string, number>();
   let providerRequests = 0;
   let releaseCurated: () => void = () => {};
   const ready = new Promise<void>((resolve) => { releaseCurated = resolve; });
@@ -100,6 +101,8 @@ test("a known landmark tries its exact curated file once and credits only the lo
     const imageSource = url.pathname === "/_next/image" ? url.searchParams.get("url") ?? "" : request.url();
     if (decodeURIComponent(imageSource).includes(`Special:FilePath/${exactFile}`)) {
       curatedRequests += 1;
+      const source = new URL(imageSource).href;
+      curatedRequestsBySource.set(source, (curatedRequestsBySource.get(source) ?? 0) + 1);
       await ready;
       return route.fulfill({ status: 200, contentType: "image/png", body: DECODED_IMAGE });
     }
@@ -116,7 +119,15 @@ test("a known landmark tries its exact curated file once and credits only the lo
   const card = page.locator("article").filter({ has: heading });
   const open = card.getByRole("button", { name: /^View Francis Scott Key Grave and Monument .*details$/ });
   await open.scrollIntoViewIfNeeded();
-  await expect.poll(() => curatedRequests).toBe(1);
+  const image = card.locator('[data-place-card-photo-source="curated"] img');
+  await expect(image).toHaveCount(1);
+  const mountedSource = await image.evaluate((node) => {
+    const imageUrl = new URL((node as HTMLImageElement).currentSrc || (node as HTMLImageElement).src);
+    return new URL(imageUrl.pathname === "/_next/image" ? imageUrl.searchParams.get("url")! : imageUrl.href).href;
+  });
+  // Opening All parks can mount rows before Grid mounts a differently
+  // sized source. Each exact responsive source may load once, never retry.
+  await expect.poll(() => curatedRequestsBySource.get(mountedSource)).toBe(1);
   await expect(card.locator(".place-card-photo-credit")).toBeHidden();
   await expect(card.locator(".place-card-photo-credit")).toHaveAttribute("aria-hidden", "true");
   const captionBefore = await card.locator(".place-card-photo-credit").evaluate((node) => {
@@ -129,7 +140,6 @@ test("a known landmark tries its exact curated file once and credits only the lo
     return document.activeElement === node;
   })).toBe(false);
   releaseCurated();
-  const image = card.locator('[data-place-card-photo-source="curated"] img');
   await expect(image).toBeVisible();
   await expect.poll(() => image.evaluate((node) => (node as HTMLImageElement).complete)).toBe(true);
   await expect.poll(() => image.evaluate((node) => Math.min(
@@ -162,10 +172,13 @@ test("a known landmark tries its exact curated file once and credits only the lo
   await expect(card.locator(".place-card-photo-credit")).toHaveCount(0);
   await expect(heading).toBeVisible();
   await expect(open).toBeVisible();
-  expect(curatedRequests).toBe(1);
+  expect(curatedRequestsBySource.get(mountedSource)).toBe(1);
+  for (const [source, count] of curatedRequestsBySource) {
+    expect(count, `Exact curated source retried: ${source}`).toBe(1);
+  }
   expect(providerRequests).toBe(0);
   await testInfo.attach("curated-photo-source-and-credit", { contentType: "application/json",
-    body: JSON.stringify({ exactFile, exactSource, curatedRequests, providerRequests, captionBefore, captionAfter, decodedImage,
+    body: JSON.stringify({ exactFile, exactSource, curatedRequests, curatedRequestsBySource: Object.fromEntries(curatedRequestsBySource), mountedSource, providerRequests, captionBefore, captionAfter, decodedImage,
       transportFixture: "Opaque decoded 128x128 PNG; actual source identity/license verified separately.",
       preservedListing: "Francis Scott Key Grave and Monument", exhaustedCreditRemoved: true }) });
 });

@@ -8,7 +8,10 @@ import { loadEventArchiveSnapshot, TODAY_EVENT_SNAPSHOT_TIMEOUT_MS } from "@/lib
 import { resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 import SearchRefinements from "@/components/search/SearchRefinements";
 import { withBrowseReturnTo } from "@/lib/browse-return";
-import SearchResultImage from "@/components/search/SearchResultImage";
+import SearchPlaceVisual, { SearchPlaceVisualImage, SearchPlaceVisualCredit } from "@/components/search/SearchPlaceVisual";
+import { freeSearchPlaceVisual } from "@/lib/search/place-visual";
+import { submittedSearchPlaceVisuals } from "@/lib/search/submitted-place-visual";
+import type { PlaceCardPhotoSource } from "@/lib/place-card-photo";
 import { contextualSearchResult } from "@/lib/search/index";
 import Link from "next/link";
 import { MapPin, Calendar, Building2, Tag, ArrowLeft, ArrowRight, ChevronDown, DoorOpen, Phone, MessageCircleQuestion } from "lucide-react";
@@ -27,7 +30,6 @@ import CategoryIcon from "@/components/place/CategoryIcon";
 import {
   withMapSearchQuery,
 } from "@/lib/map-return";
-import { browseSafePhotoUrl } from "@/lib/google-photo-policy";
 
 const PAID_SUBMITTED_SEARCH_PHOTO_LIMIT = 4;
 
@@ -149,7 +151,7 @@ function SearchResultRow({
   divided,
   showBranchAddress,
   mapReturnTo,
-  allowPaidPhoto = false,
+  photoSource,
   lead = false,
 }: {
   hit: SearchHit;
@@ -157,23 +159,20 @@ function SearchResultRow({
   divided: boolean;
   showBranchAddress?: boolean;
   mapReturnTo?: string;
-  /** A submitted search is deliberate, but dozens of paid photos are not.
-   * Only the first few ranked rows opt in; typeahead and the long tail keep
-   * owned imagery or their category marks. */
-  allowPaidPhoto?: boolean;
+  /** Bound by the server-only submitted-search budget, with exact credit. */
+  photoSource?: PlaceCardPhotoSource;
   lead?: boolean;
 }) {
   const d = displayFor(hit, showBranchAddress);
   const Icon = d.Icon;
   const href =
     hit.type === "place" || hit.type === "event" ? withBrowseReturnTo(d.href, mapReturnTo) : d.href;
-  const placePhoto =
-    hit.type === "place"
-      ? browseSafePhotoUrl(hit.place.hero_image, hit.place.google_photo_url) ??
-        (allowPaidPhoto ? hit.place.google_photo_url : undefined)
-      : undefined;
+  const placePhoto = hit.type === "place"
+    ? photoSource ?? freeSearchPlaceVisual(hit.place)
+    : null;
   return (
     <li style={divided ? { borderTop: "1px solid var(--app-border)" } : undefined}>
+      <SearchPlaceVisual source={placePhoto}>
       <Link
         href={href}
         data-decision-impression="true"
@@ -185,37 +184,11 @@ function SearchResultRow({
         prefetch={false}
         className="group flex min-h-[88px] items-start gap-3 px-1 py-4 sm:gap-4 transition-[background-color,transform] duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)] active:scale-[0.995]"
       >
-        {placePhoto ? (
-          <span
-            aria-hidden
-            className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)]"
-            style={{ boxShadow: "var(--app-edge)" }}
-          >
-            <SearchResultImage
-              src={placePhoto}
-              alt=""
-              category={d.categorySlug ?? ""}
-              color={d.badge.color}
-            />
-          </span>
-        ) : (
-          <span
-            aria-hidden
-            className="grid h-12 w-12 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
-            style={{ background: `color-mix(in srgb, ${d.badge.color} 14%, transparent)` }}
-          >
-            {d.categorySlug ? (
-              <CategoryIcon
-                slug={d.categorySlug}
-                className="h-4 w-4"
-                strokeWidth={1.8}
-                style={{ color: d.badge.color }}
-              />
-            ) : (
-              <Icon className="h-4 w-4" strokeWidth={2} style={{ color: d.badge.color }} />
-            )}
-          </span>
-        )}
+        <SearchPlaceVisualImage size={56} fallback={
+          d.categorySlug
+            ? <CategoryIcon slug={d.categorySlug} className="h-5 w-5" strokeWidth={1.8} style={{ color: d.badge.color }} />
+            : <Icon className="h-5 w-5" strokeWidth={2} style={{ color: d.badge.color }} />
+        } />
         <span className="min-w-0 flex-1">
           <span className="block text-[18px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
             {d.title}
@@ -243,6 +216,8 @@ function SearchResultRow({
           </span>
         )}
       </Link>
+      <SearchPlaceVisualCredit />
+      </SearchPlaceVisual>
     </li>
   );
 }
@@ -348,6 +323,12 @@ export default async function SearchPage({
   for (const h of rankedHits) typeCounts.set(h.type, (typeCounts.get(h.type) ?? 0) + 1);
   const dominantType = [...typeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
   const primaryHits = rankedHits.slice(0, 12);
+  const primaryPhotos = submittedSearchPlaceVisuals(
+    primaryHits.flatMap((hit) => hit.type === "place" ? [hit.place] : []),
+    PAID_SUBMITTED_SEARCH_PHOTO_LIMIT,
+    new Set(primaryHits.slice(0, PAID_SUBMITTED_SEARCH_PHOTO_LIMIT)
+      .flatMap((hit) => hit.type === "place" ? [hit.place.slug] : [])),
+  );
   const remainingHits = rankedHits.slice(12);
   const answerColor = answer
     ? answer.key === "open-now"
@@ -576,7 +557,7 @@ export default async function SearchPage({
                 hit={hit}
                 dominantType={dominantType}
                 divided={index > 0}
-                allowPaidPhoto={index < PAID_SUBMITTED_SEARCH_PHOTO_LIMIT}
+                photoSource={hit.type === "place" ? primaryPhotos.get(hit.place.slug) : undefined}
                 lead={index === 0}
                 showBranchAddress={hit.type === "place" && duplicateBranches.has(branchKey(hit))}
                 mapReturnTo={browseReturnTo}
@@ -596,7 +577,6 @@ export default async function SearchPage({
                     hit={hit}
                     dominantType={dominantType}
                     divided={index > 0}
-                    allowPaidPhoto={false}
                     showBranchAddress={hit.type === "place" && duplicateBranches.has(branchKey(hit))}
                     mapReturnTo={browseReturnTo}
                   />

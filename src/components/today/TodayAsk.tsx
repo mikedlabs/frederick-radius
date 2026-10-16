@@ -9,6 +9,8 @@ import { useSyncExternalStore, type ReactNode } from "react";
 import { getScope, scopeToParam, subscribeScopeChange } from "@/lib/scope";
 import styles from "./TodayAsk.module.css";
 
+const subscribeReady = () => () => {};
+
 /**
  * Today has one doorway for a named place, a category, or a full question.
  * The global Find surface decides whether the request belongs in deterministic
@@ -28,6 +30,7 @@ export default function TodayAsk({
   showQuickNeeds?: boolean;
   density?: "standard" | "arrival";
 }) {
+  const findInteractionReady = useSyncExternalStore(subscribeReady, () => true, () => false);
   return (
     <section
       id="find-radius"
@@ -43,6 +46,7 @@ export default function TodayAsk({
       <Link
         href="/search"
         prefetch={false}
+        data-find-interaction-ready={findInteractionReady ? "true" : "false"}
         onClick={(event) => {
           if (
             event.button !== 0

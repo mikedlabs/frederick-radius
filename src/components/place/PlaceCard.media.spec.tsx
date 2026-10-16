@@ -4,6 +4,7 @@ import { act, type ImgHTMLAttributes, type SyntheticEvent } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import { mapListPhotoLoader } from "@/components/map/map-list-photo-loader";
 import { LANDMARK_PHOTOS } from "@/lib/integrations/wikimedia";
 
 const actions = vi.hoisted(() => ({ openSheet: vi.fn(), save: vi.fn() }));
@@ -54,7 +55,7 @@ describe("PlaceCard selected media and credit", () => {
     container = document.createElement("div"); document.body.append(container);
     root = createRoot(container);
   });
-  afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
+  afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
   async function render(cardPlace = place, variant: "answer" | "feature" | "tile" | "grid" | "row" = "answer") {
     await act(async () => root.render(<PlaceCard place={cardPlace} variant={variant} showSource={false} />));
   }
@@ -109,7 +110,7 @@ describe("PlaceCard selected media and credit", () => {
     }
   });
 
-  it.each(["feature", "answer", "grid", "tile"] as const)("keeps the %s card's loaded source, credit, and actions together through both failures", async (variant) => {
+  it.each(["feature", "answer", "grid", "tile", "row"] as const)("keeps the %s card's loaded source, credit, and actions together through both failures", async (variant) => {
     await render(place, variant);
     const googleImage = photo()!;
     expect(googleImage.getAttribute("src")).toContain("fallback=signal");
@@ -212,9 +213,101 @@ describe("PlaceCard selected media and credit", () => {
     expect(loadedCredit()?.textContent).not.toContain("Photo contributor");
   });
 
-  it("leaves the dense row projection outside curated card imagery", async () => {
-    await render({ ...place, google_photo_url: undefined, google_photo_attribution: undefined }, "row");
-    expect(container.querySelector("img")).toBeNull();
+  it("gives a row the exact owned photograph without an owner caption", async () => {
+    await render({ ...place, slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park",
+      google_photo_url: undefined, google_photo_attribution: undefined }, "row");
+    expect(photo()?.getAttribute("src")).toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+    expect(photo()?.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("owned");
+    await load(photo()!);
+    expect(container.querySelector(".place-card-photo-credit")).toBeNull();
+    expect(container.querySelector("h3")?.textContent).toBe("Carroll Creek Linear Park");
+  });
+
+  it.each(["barbara-fritchie-house-frederick", "catoctin-furnace-thurmont"])("keeps unsuitable Google photos out of %s rows after curated failure", async (slug) => {
+    await render({ ...place, slug }, "row");
+    expect(photo()?.getAttribute("src")).toContain(encodeURIComponent(LANDMARK_PHOTOS[slug].file));
+    await fail(photo()!);
+    expect(photo()).toBeNull();
     expect(container.querySelector(".place-card-photo-credit")).toBeNull();
   });
+  function lazyObserver() {
+    const intersections: Array<() => void> = [];
+    vi.stubGlobal("IntersectionObserver", class {
+      constructor(callback: IntersectionObserverCallback) {
+        intersections.push(() => callback([{ isIntersecting: true } as IntersectionObserverEntry], this as unknown as IntersectionObserver));
+      }
+      observe() {} disconnect() {} unobserve() {}
+    });
+    return intersections;
+  }
+
+  it("hydrates only a nearby row and keeps the exact photo credit through decoding", async () => {
+    const intersections = lazyObserver();
+    vi.spyOn(mapListPhotoLoader, "peekData").mockReturnValue(undefined);
+    const hydrate = vi.spyOn(mapListPhotoLoader, "loadData").mockResolvedValue({
+      google_photo_url: place.google_photo_url!, google_photo_attribution: place.google_photo_attribution,
+    });
+    const slimPlace = { ...place, slug: "beans-in-the-belfry-brunswick", name: "Beans in the Belfry", google_photo_url: undefined, google_photo_attribution: undefined };
+    await act(async () => root.render(<PlaceCard place={slimPlace} variant="row" lazyPhoto />));
+    expect(photo()).toBeNull();
+    expect(hydrate).not.toHaveBeenCalled();
+    await act(async () => intersections.at(-1)!());
+    expect(hydrate).toHaveBeenCalledExactlyOnceWith(slimPlace.slug);
+    const image = photo()!;
+    expect(image.getAttribute("src")).toContain("w=176");
+    expect(image.getAttribute("src")).toContain("fallback=signal");
+    expect(loadedCredit()).toBeNull();
+    await load(image);
+    expect(loadedCredit()?.textContent).toContain("Photo contributor");
+    expect(loadedCredit()?.querySelector(`a[href="${googleSource}"]`)).not.toBeNull();
+    expect(loadedCredit()?.closest("button")).toBeNull();
+    await load(image, 1, 1);
+    expect(photo()).toBeNull();
+    expect(container.querySelector(".place-card-photo-credit")).toBeNull();
+    expect(hydrate).toHaveBeenCalledTimes(1);
+  });
+
+  it("never shows an old row's delayed hydration for the newly selected place", async () => {
+    const intersections = lazyObserver();
+    vi.spyOn(mapListPhotoLoader, "peekData").mockReturnValue(undefined);
+    let finishOld!: (photo: { google_photo_url: string; google_photo_attribution: typeof place.google_photo_attribution }) => void;
+    const hydrate = vi.spyOn(mapListPhotoLoader, "loadData")
+      .mockImplementationOnce(() => new Promise((resolve) => { finishOld = resolve; }))
+      .mockResolvedValueOnce(null);
+    const slimPlace = { ...place, slug: "first-place", google_photo_url: undefined, google_photo_attribution: undefined };
+    await act(async () => root.render(<PlaceCard place={slimPlace} variant="row" lazyPhoto />));
+    await act(async () => intersections.at(-1)!());
+    await act(async () => root.render(<PlaceCard place={{ ...slimPlace, slug: "next-place", name: "Next place" }} variant="row" lazyPhoto />));
+    expect(photo()).toBeNull();
+    await act(async () => finishOld({ google_photo_url: place.google_photo_url!, google_photo_attribution: place.google_photo_attribution }));
+    expect(photo()).toBeNull();
+    expect(container.querySelector(".place-card-photo-credit")).toBeNull();
+    await act(async () => intersections.at(-1)!());
+    expect(hydrate).toHaveBeenLastCalledWith("next-place");
+    expect(container.querySelector("h3")?.textContent).toBe("Next place");
+  });
+
+  it("uses reviewed lazy-row sources without a metadata request, including after failure", async () => {
+    lazyObserver();
+    const hydrate = vi.spyOn(mapListPhotoLoader, "loadData");
+    await act(async () => root.render(<PlaceCard place={{ ...place, slug: "carroll-creek-linear-park-frederick", google_photo_url: undefined, google_photo_attribution: undefined }} variant="row" lazyPhoto />));
+    expect(photo()?.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("owned");
+    await fail(photo()!);
+    expect(photo()?.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("curated");
+    await fail(photo()!);
+    expect(photo()).toBeNull();
+    expect(hydrate).not.toHaveBeenCalled();
+  });
+
+  it("rejects a hydrated photo whose credit belongs to a different image", async () => {
+    const intersections = lazyObserver();
+    vi.spyOn(mapListPhotoLoader, "peekData").mockReturnValue(undefined);
+    vi.spyOn(mapListPhotoLoader, "loadData").mockResolvedValue({ google_photo_url: place.google_photo_url!,
+      google_photo_attribution: { ...place.google_photo_attribution!, photo_name: "places/other/photos/another" } });
+    await act(async () => root.render(<PlaceCard place={{ ...place, slug: "unregistered-place", google_photo_url: undefined, google_photo_attribution: undefined }} variant="row" lazyPhoto />));
+    await act(async () => intersections.at(-1)!());
+    expect(photo()).toBeNull();
+    expect(container.querySelector(".place-card-photo-credit")).toBeNull();
+  });
+
 });

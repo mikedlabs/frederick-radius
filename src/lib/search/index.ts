@@ -24,6 +24,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { browseSafePhotoUrl } from "@/lib/google-photo-policy";
+import { freeSearchPlaceVisual, type FreeSearchPlaceVisual } from "./place-visual";
 import { findDepartments, jurisdictionLabel } from "@/data/departments";
 import { eventSourceLabel } from "@/lib/events/source-label";
 import { isHighConfidenceCivicIntent, searchCivicActions, shouldShowDepartmentAnswers } from "@/lib/search/civic";
@@ -63,6 +64,8 @@ export type SearchResult = {
    * this live-search path; the overlay falls back to the type's icon.
    */
   thumbnail?: string;
+  /** Exact owned/Commons source carried with a free place thumbnail. */
+  thumbnailSource?: FreeSearchPlaceVisual;
   /** Place coordinates, so SearchOverlay can show distance when the user has
    *  already granted location (no prompt). Set for place results only. */
   lat?: number;
@@ -711,6 +714,7 @@ function hitToResult(h: SearchHit): SearchResult {
     const p = h.place as PlaceCardData;
     const cat = CATEGORY_BY_SLUG[p.category];
     const muni = MUNICIPALITY_BY_SLUG[p.municipality];
+    const photo = freeSearchPlaceVisual(p);
     return {
       type: "place",
       id: `place:${p.slug}`,
@@ -725,7 +729,8 @@ function hitToResult(h: SearchHit): SearchResult {
       trust: p.open_status ? placeHoursTrust(p.open_status) : undefined,
       // Live typeahead runs on each query edit. Keep it on owned/publisher
       // media so typing cannot fan out into paid Google photo requests.
-      thumbnail: browseSafePhotoUrl(p.hero_image, p.google_photo_url),
+      thumbnail: photo?.src,
+      thumbnailSource: photo ?? undefined,
       lat: p.geom?.lat,
       lng: p.geom?.lng,
       distance_m: p.distance_m,
