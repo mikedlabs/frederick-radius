@@ -107,7 +107,7 @@ import RoutePearls from "@/components/transit/RoutePearls";
 import TransitRouteFinder from "@/components/transit/TransitRouteFinder";
 import TransitStopFinder from "@/components/transit/TransitStopFinder";
 import TransitServiceAlerts from "@/components/transit/TransitServiceAlerts";
-import PageBloom from "@/components/ui/PageBloom";
+import styles from "@/components/transit/TransitExperience.module.css";
 import TRANSIT_RAW from "@/data/transit.json" with { type: "json" };
 import { CURRENT_TRANSIT_STOP_COUNT } from "@/lib/transit-static";
 
@@ -128,7 +128,7 @@ export const revalidate = 60;
  *
  * The page answers the rider's stop-level decision before any network-wide
  * reference: where is my stop, what is inbound, and do I have enough time to
- * walk there. Order: rider command center, network status, live map, expandable
+ * walk there. Order: rider command center and live map, network status, expandable
  * system-wide boards, then planning and reference tools.
  *
  * Live data that exists today: TransIT vehicle positions with a resolved next
@@ -174,11 +174,7 @@ function IntentTile({ intent, layout = "rail" }: { intent: TransitIntent; layout
         href={intent.href}
         target={intent.external ? "_blank" : undefined}
         rel={intent.external ? "noopener noreferrer" : undefined}
-        className="hover-lift flex h-full flex-col items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition"
-        style={{
-          borderColor: "var(--app-border)",
-          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-        }}
+        className={styles.referenceTile}
       >
         <span
           aria-hidden
@@ -249,27 +245,73 @@ export default async function TransitPage() {
   const staticStopCount = CURRENT_TRANSIT_STOP_COUNT;
 
   return (
-    <div className="relative space-y-5">
-      <PageBloom variant="warm-cool" />
-
-      <header className="space-y-1.5">
-        <p className="eyebrow inline-flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
-          <Bus className="h-3 w-3" strokeWidth={2.25} style={{ color: "var(--app-cool)" }} aria-hidden />
-          Frederick County
-        </p>
-        <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          Transit
-        </h1>
-        <p className="max-w-[38rem] text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-          Find your stop, see the next buses, and know when to start walking. MARC departures are here too.
-        </p>
+    <div className={`${styles.page} relative space-y-5`}>
+      <header className={styles.masthead}>
+        <div>
+          <p className={styles.kicker}>
+            <Bus className="h-4 w-4" strokeWidth={2.1} aria-hidden />
+            Frederick County
+          </p>
+          <h1>Transit</h1>
+          <p>Find your stop, see the next buses, and know when to start walking. MARC departures are here too.</p>
+        </div>
+        <svg className={styles.mastheadGraphic} viewBox="0 0 200 80" fill="none" aria-hidden="true" focusable="false">
+          <path d="M8 58H57C78 58 78 22 99 22H191" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+          <path d="M8 70H70C91 70 91 34 112 34H191" stroke="var(--app-border)" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="24" cy="58" r="7" fill="var(--app-bg)" stroke="currentColor" strokeWidth="3" />
+          <circle cx="105" cy="22" r="7" fill="var(--app-bg)" stroke="currentColor" strokeWidth="3" />
+          <circle cx="178" cy="22" r="7" fill="var(--app-bg)" stroke="currentColor" strokeWidth="3" />
+        </svg>
       </header>
+
+      <TransitServiceAlerts />
 
       {/* The primary rider decision: choose a stop, compare the walk with live
           arrivals, and keep frequently used stops one tap away. */}
-      <TransitStopFinder />
-
-      <TransitServiceAlerts />
+      <div className={styles.workspace}>
+        <TransitStopFinder />
+        <section aria-labelledby="live-network-heading" className={styles.liveNetwork}>
+          <div className={styles.mapHeading}>
+            <div>
+              <h2
+                id="live-network-heading"
+                className="text-[18px] font-semibold tracking-tight"
+                style={{ color: "var(--app-ink)" }}
+              >
+                Live network
+              </h2>
+              <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                Follow buses on the map, tap another stop, or frame a route.
+              </p>
+            </div>
+            <span className="shrink-0 text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+              Buses + MARC
+            </span>
+          </div>
+          <p
+            className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[11px] font-medium"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            <span>Official TransIT network</span>
+            <span aria-hidden>·</span>
+            <span>{networkPatternCount} published route patterns</span>
+            {staticStopCount > 0 && (
+              <>
+                <span aria-hidden>·</span>
+                <span>{staticStopCount} stops</span>
+              </>
+            )}
+          </p>
+          <TransitMap
+            shapes={shapes}
+            height="clamp(20rem, 44svh, 26rem)"
+            liveBuses
+            highlightRoutes
+            interactiveStops
+            hideBadge
+          />
+        </section>
+      </div>
 
       {/* Network-wide context follows the rider's own stop decision. */}
       <TransitNow board={board} />
@@ -278,12 +320,7 @@ export default async function TransitPage() {
         href="https://frederickcountymd.gov/222/Accessibility-Features"
         target="_blank"
         rel="noopener noreferrer"
-        className="tap-44-y flex items-center gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2.5"
-        style={{
-          borderColor: "var(--app-border)",
-          background: "var(--app-bg-sunken)",
-          color: "var(--app-ink-2)",
-        }}
+        className={styles.accessibility}
       >
         <Accessibility
           className="h-4 w-4 shrink-0"
@@ -302,47 +339,6 @@ export default async function TransitPage() {
         />
       </a>
 
-      <section aria-labelledby="live-network-heading" className="space-y-2.5">
-        <div className="flex items-end justify-between gap-3 px-1">
-          <div>
-            <h2
-              id="live-network-heading"
-              className="text-[18px] font-semibold tracking-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              Live network
-            </h2>
-            <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              Follow buses on the map, tap another stop, or frame a route.
-            </p>
-          </div>
-          <span className="shrink-0 text-[11px] font-semibold" style={{ color: "var(--app-cool)" }}>
-            Buses + MARC
-          </span>
-        </div>
-        <p
-          className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[11px] font-medium"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          <span>Official TransIT network</span>
-          <span aria-hidden>·</span>
-          <span>{networkPatternCount} published route patterns</span>
-          {staticStopCount > 0 && (
-            <>
-              <span aria-hidden>·</span>
-              <span>{staticStopCount} stops</span>
-            </>
-          )}
-        </p>
-        <TransitMap
-          shapes={shapes}
-          height="clamp(20rem, 44svh, 26rem)"
-          liveBuses
-          highlightRoutes
-          interactiveStops
-          hideBadge
-        />
-      </section>
 
       <div className="space-y-2">
         <details
@@ -497,8 +493,7 @@ export default async function TransitPage() {
       )}
 
       <footer
-        className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
-        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+        className={`${styles.sourceNotes} space-y-1`}
       >
         <p>
           Route lines, stop locations, route names, and route colors come from an official TransIT GTFS
@@ -517,7 +512,7 @@ export default async function TransitPage() {
             target="_blank"
             rel="noopener noreferrer"
             className="tap-44-y inline-flex items-center gap-1"
-            style={{ color: "var(--app-cool)" }}
+            style={{ color: "var(--app-link)" }}
           >
             <ExternalLink className="h-3 w-3" strokeWidth={2.25} aria-hidden />
             Official TransIT schedules
@@ -525,7 +520,7 @@ export default async function TransitPage() {
           <Link
             href="/contacts"
             className="tap-44-y inline-flex items-center gap-1"
-            style={{ color: "var(--app-cool)" }}
+            style={{ color: "var(--app-link)" }}
           >
             <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
             Department contact
