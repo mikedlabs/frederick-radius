@@ -18,9 +18,14 @@ export const ExactOwnedPlace: Story = {
     const link = canvas.getByRole("link", { name: "View Carroll Creek Linear Park in Frederick" });
     await expect(link).toHaveAttribute("href", "/places/carroll-creek-linear-park-frederick");
     await expect(canvas.getByRole("img", { name: "Carroll Creek in Frederick." })).toBeVisible();
-    await waitFor(async () => { await expect(link).toHaveAttribute("data-photo-state", "loaded"); });
+    await waitFor(async () => { await expect(link).toHaveAttribute("data-photo-state", "loaded"); }, { timeout: 5_000 });
     const photo = canvasElement.querySelector("figure")!.getBoundingClientRect();
-    await expect(photo.width / photo.height).toBeCloseTo(4 / 3, 2);
+    await expect(photo.width).toBeGreaterThan(photo.height);
+    await expect(photo.height).toBeGreaterThanOrEqual(160);
+    await expect(photo.height).toBeLessThanOrEqual(190);
+    const caption = canvasElement.querySelector("[data-today-geographic-caption]")!.getBoundingClientRect();
+    await expect(caption.bottom).toBeLessThanOrEqual(photo.bottom + 1);
+    await expect(link).toHaveTextContent(/Carroll Creek.*Frederick.*View place/);
     await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     await userEvent.tab();
     await expect(link).toHaveFocus();

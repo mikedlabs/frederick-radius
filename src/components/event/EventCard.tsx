@@ -1,7 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
 import { MapPin, Ticket, Accessibility, Navigation } from "lucide-react";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import type { EventWithMeta } from "@/lib/loaders/events";
 // VALUE import from the DATA-FREE formatter module, never from the loader:
@@ -16,7 +14,6 @@ import { ReasonChipRow } from "@/components/ui/ReasonChip";
 import { eventReasons } from "@/lib/event-reasons";
 import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
-import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { statusLabel } from "@/lib/event-status";
 import DatePlate from "@/components/event/DatePlate";
 import { eventDecisionLocation, eventDecisionTime } from "@/lib/events/decision-facts";
@@ -25,8 +22,8 @@ import {
   eventCardVisual,
   type EventCardVisual,
 } from "@/components/event/eventVisuals";
-import EventVisualCredit from "@/components/event/EventVisualCredit";
 import EventPosterCard from "@/components/event/EventPosterCard";
+import EventGlanceCard from "@/components/event/EventGlanceCard";
 import {
   eventHasTrustworthyEnd,
   isEventLiveNow,
@@ -437,22 +434,7 @@ export default function EventCard({
   // card is a Link to the event, full stop.
   if (variant === "glance") {
     return (
-      <article
-        {...decisionAttributes}
-        className="event-card--glance tactile tactile-interactive group relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-3 transition-transform duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] hover:scale-[1.01] active:scale-[0.98]"
-        style={{
-          borderColor: "var(--app-border)",
-          boxShadow: `var(--app-list-card-shadow, inset 3px 0 0 ${accent}, var(--app-edge), var(--app-hi), var(--app-elev-1))`,
-        }}
-      >
-        <Link
-          href={`/events/${event.slug}`}
-          data-decision-action="open"
-          prefetch={false}
-          className={`block outline-none ${isCancelled ? "line-through opacity-70" : ""}`}
-          style={{ color: "var(--app-ink)" }}
-        >
-          <div className="flex items-stretch gap-3">
+      <EventGlanceCard eventSlug={event.slug} visual={cardVisual} accent={accent} cancelled={isCancelled}>
             <div className="min-w-0 flex-1">
               {/* WHAT leads. A stack of glance cards should read as a column
                   of titles, not a column of identical clock times — the
@@ -538,41 +520,7 @@ export default function EventCard({
                 )}
               </div>
             </div>
-            {/* A fixed-size, lazy thumbnail appears only after the shared
-                source/venue resolver approves it. Credit is rendered below
-                this event link so Google author/source/report links never
-                become invalid nested anchors. */}
-            {cardVisual ? (
-              <figure className="w-[96px] shrink-0 self-stretch sm:w-[132px]">
-                <div className="relative h-full min-h-[96px] w-full overflow-hidden rounded-[var(--app-radius-md)]">
-                  <Image
-                    src={proxyPhotoAtWidth(cardVisual.src, 132)}
-                    alt=""
-                    fill
-                    unoptimized={cardVisual.src.startsWith("/api/place-photo")}
-                    sizes="(min-width: 640px) 132px, 96px"
-                    placeholder="blur"
-                    blurDataURL={PAPER_CREAM_BLUR}
-                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                  />
-                  <span
-                    aria-hidden
-                    className="absolute inset-0 rounded-[10px]"
-                    style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.10)" }}
-                  />
-                </div>
-              </figure>
-            ) : null}
-          </div>
-        </Link>
-        {cardVisual ? (
-          <EventVisualCredit
-            visual={cardVisual}
-            compact
-            className="relative z-10 mt-1.5"
-          />
-        ) : null}
-      </article>
+      </EventGlanceCard>
     );
   }
 

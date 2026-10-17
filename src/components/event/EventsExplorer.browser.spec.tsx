@@ -122,8 +122,8 @@ describe("Events passive empty-snapshot recovery", () => {
     else request.mockResolvedValueOnce(Response.json({ events: null, sourceHealth: healthy }));
     await render();
     expect(host.querySelector('[data-events-complete="false"]')).not.toBeNull();
-    expect(host.textContent).toContain("No matches in the events loaded so far");
-    expect(host.textContent).toContain("Why these results are partial");
+    expect(host.textContent).toContain("Event schedule unavailable");
+    expect(host.textContent).not.toContain("Why these results are partial");
     const retry = [...host.querySelectorAll("button")].find((button) => button.textContent === "Retry")!;
     expect(retry).toBeDefined(); expect(retry.disabled).toBe(false);
     await render(); expect(request).toHaveBeenCalledTimes(1);
@@ -131,6 +131,67 @@ describe("Events passive empty-snapshot recovery", () => {
     expect(request).toHaveBeenCalledTimes(2);
     expect(request.mock.calls[1][0]).toBe("/api/events/browse?refresh=1");
     expect(eventLinks()).toContain("/events/recovered-concert");
+  });
+  it("gives an empty archive timeout truthful recovery and official calendars, then replaces it after an explicit retry", async () => {
+    const archiveTimeout = {
+      degraded: true,
+      unavailable: ["The event schedule is taking longer than expected to load."],
+      issues: [{ code: "event_archive_timeout", message: "The event schedule is taking longer than expected to load." }],
+    };
+    request.mockResolvedValueOnce(payload([], archiveTimeout));
+    await render(props([], archiveTimeout));
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(eventLinks()).toEqual([]);
+    expect(host.textContent).toContain("Event schedule unavailable");
+    expect(host.textContent).not.toContain("No upcoming events are listed");
+    expect(host.textContent).not.toContain("kept the last available events");
+    expect(host.textContent).not.toContain("Some live calendars did not answer");
+    const official = [...host.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]')];
+    expect(official.map((link) => link.href)).toEqual([
+      "https://www.frederickcountymd.gov/calendar.aspx",
+      "https://www.celebratefrederick.com/events/",
+    ]);
+    for (const link of official) {
+      expect(link.relList.contains("noopener")).toBe(true);
+      expect(link.relList.contains("noreferrer")).toBe(true);
+    }
+    const retry = [...host.querySelectorAll("button")].find((button) => button.textContent === "Check the calendar again")!;
+    expect(retry).toBeDefined();
+    await act(async () => retry.click());
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(request.mock.calls[1][0]).toBe("/api/events/browse?refresh=1");
+    expect(eventLinks()).toContain("/events/recovered-concert");
+    expect(host.textContent).not.toContain("Event schedule unavailable");
+    expect(host.querySelector('a[href="https://www.frederickcountymd.gov/calendar.aspx"]')).toBeNull();
+  });
+  it("keeps known events after an empty timeout response without blaming publisher calendars", async () => {
+    const archiveTimeout = {
+      degraded: true,
+      unavailable: ["The event schedule is taking longer than expected to load."],
+      issues: [{ code: "event_archive_timeout", message: "The event schedule is taking longer than expected to load." }],
+    };
+    request.mockResolvedValueOnce(payload([], archiveTimeout));
+    await render(props([listedEvent()], degraded, 100));
+    expect(request).not.toHaveBeenCalled();
+    const retry = [...host.querySelectorAll("button")].find((button) => button.textContent === "Check again")!;
+    await act(async () => retry.click());
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(eventLinks()).toContain("/events/recovered-concert");
+    expect(host.querySelector('[data-events-complete="false"]')).not.toBeNull();
+    expect(host.textContent).toContain("The saved event schedule is incomplete.");
+    expect(host.textContent).not.toContain("Event schedule unavailable");
+    expect(host.textContent).not.toContain("Some live calendars did not answer");
+    expect(host.querySelector('a[href="https://www.frederickcountymd.gov/calendar.aspx"]')).toBeNull();
+  });
+  it("keeps filtered-out partial rows distinct from an unavailable archive", async () => {
+    window.history.replaceState(null, "", "/events?in=frederick");
+    request.mockResolvedValue(payload([listedEvent()], degraded));
+    await render(props([listedEvent()], degraded, 100));
+    expect(host.querySelector("[data-test-dock]")?.getAttribute("data-town")).toBe("frederick");
+    expect(eventLinks()).toEqual([]);
+    expect(host.textContent).toContain("No matches in the events loaded so far");
+    expect(host.textContent).not.toContain("Event schedule unavailable");
+    expect(host.querySelector('a[href="https://www.frederickcountymd.gov/calendar.aspx"]')).toBeNull();
   });
   it("restores deep-link town/time/category before the deduplicated request and preserves them on recovery", async () => {
     window.history.replaceState(null, "", "/events?in=thurmont&lens=today&cats=music&free=1");
@@ -164,7 +225,7 @@ describe("Events passive empty-snapshot recovery", () => {
     await render(); expect(request).toHaveBeenCalledTimes(1);
     await act(async () => { await vi.advanceTimersByTimeAsync(EVENTS_BROWSE_TIMEOUT_MS); });
     expect(request.mock.calls[0][1]!.signal!.aborted).toBe(true);
-    expect(host.textContent).toContain("No matches in the events loaded so far");
+    expect(host.textContent).toContain("Event schedule unavailable");
     expect(host.querySelector('[role="alert"]')).not.toBeNull();
     await render(); expect(request).toHaveBeenCalledTimes(1);
   });

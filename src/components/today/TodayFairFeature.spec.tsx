@@ -3,7 +3,7 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createFairPlan,
@@ -13,6 +13,11 @@ import {
 import { TODAY_FAIR_PROMOTION_HREF } from "@/lib/today/fair-promotion";
 
 import TodayFairFeature from "./TodayFairFeature";
+
+const initialStorage = Object.getOwnPropertyDescriptor(window, "localStorage");
+afterEach(() => {
+  if (initialStorage) Object.defineProperty(window, "localStorage", initialStorage);
+});
 
 describe("TodayFairFeature", () => {
   it("makes the planning workspace the single photographic action", () => {
@@ -113,7 +118,7 @@ describe("TodayFairFeature", () => {
       root.render(createElement(TodayFairFeature, { phase: "planning", briefing }));
     });
 
-    expect(container.textContent).toContain("Your Fair day is taking shape.");
+    await vi.waitFor(() => expect(container.textContent).toContain("Your Fair day is taking shape."));
     if (!briefing) {
       expect(container.textContent).toContain("plan for 4 people has 1 saved stop");
     }

@@ -2,21 +2,53 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: var(--app-space-4);
-  margin-block: var(--app-space-3) var(--app-space-5);
+  gap: var(--app-space-2);
+  margin-block: 0 var(--app-space-2);
   /* Keep the useful arrival stable while the page scrolls. */
   animation: none;
 }
 
+/* The date shares the title's line when it fits; large text may reflow. */
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing) var(--app-space-3);
+  min-width: 0;
+}
+
+.dateline {
+  margin: 0;
+  color: var(--app-ink-2);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .title {
   margin: 0;
-  max-width: 22ch;
   color: var(--app-ink);
-  font-size: clamp(34px, 5vw, 52px);
+  font-size: clamp(32px, 5vw, 44px);
   font-weight: 750;
   line-height: 1.06;
   letter-spacing: -0.045em;
   text-wrap: balance;
+}
+
+/* Alerts keep every fact and action, without a second chapter divider. */
+.alerts:not(:empty) {
+  margin-bottom: var(--app-space-2);
+}
+
+.alerts > section {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.entryControls {
+  display: grid;
+  gap: var(--app-space-2);
+  min-width: 0;
 }
 
 .scope > div {
@@ -25,12 +57,22 @@
 
 .scope label {
   flex: 1 1 130px;
-  max-width: 180px;
+  max-width: none;
 }
 
 .scope select {
   width: 100%;
-  box-shadow: var(--app-shadow-1);
+  padding-inline: var(--app-space-4);
+  border: 1px solid var(--app-control-border);
+  border-radius: 999px;
+  background: var(--app-bg-sunken);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.scope select:focus-visible {
+  outline: 3px solid var(--app-focus);
+  outline-offset: 3px;
 }
 
 .briefing {
@@ -50,9 +92,9 @@
   align-items: start;
   gap: var(--app-space-2);
   min-width: 0;
-  padding: var(--app-space-3) var(--app-space-4);
-  border-radius: var(--app-radius-lg);
-  background: var(--app-bg-sunken);
+  padding: 0 0 var(--spacing);
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-bg);
   color: var(--app-ink);
 }
 
@@ -147,7 +189,9 @@
   grid-area: 1 / 1;
   align-self: stretch;
   position: relative;
-  aspect-ratio: 4 / 3;
+  /* Keep a substantial landscape on ordinary phones. This is a minimum,
+     not a fixed crop box: enlarged caption text can grow the shared grid row. */
+  min-height: clamp(160px, calc(56.25vw - 18px), 190px);
   margin: 0;
   background: var(--app-media-ink);
 }
@@ -167,11 +211,11 @@
   align-items: end;
   justify-content: space-between;
   gap: var(--app-space-2) var(--app-space-3);
-  min-height: 96px;
-  padding: 28px var(--app-space-4) var(--app-space-4);
+  min-height: 68px;
+  padding: var(--app-space-3);
   /* In the shared grid row, large caption text grows the image area rather
      than being clipped by an absolutely positioned overlay. */
-  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--app-media-ink) 88%, transparent) 20px, var(--app-media-ink));
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--app-media-ink) 88%, transparent) 12px, var(--app-media-ink));
 }
 
 .geographicCaption > div {
@@ -182,7 +226,7 @@
 .geographicCaption h2 {
   margin: 0;
   color: inherit;
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
   font-weight: 750;
   line-height: 1.12;
   letter-spacing: -0.035em;
@@ -192,7 +236,7 @@
 .geographicCaption p {
   margin: var(--spacing) 0 0;
   color: inherit;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   line-height: 1.4;
 }
 
@@ -239,6 +283,14 @@
 .places [data-today-section-heading] p {
   font-size: 12px;
   line-height: 1.4;
+}
+
+.places [data-today-decision-density="brief"] :global(.today-section-heading) {
+  margin-bottom: var(--app-space-2);
+}
+
+.places [data-today-decision-density="brief"] :global(.today-section-heading__registration) {
+  display: none;
 }
 
 .places [data-today-decision-density="brief"] :global(.today-answer-shelf) {
@@ -384,10 +436,6 @@
 
   .title {
     font-size: 32px;
-  }
-
-  .weather {
-    padding-inline: var(--app-space-3);
   }
 
   .forecastLink {

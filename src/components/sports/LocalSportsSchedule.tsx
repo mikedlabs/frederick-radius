@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import EmptyState from "@/components/ui/EmptyState";
 import type { SportsGame } from "@/lib/sports/types";
+import { SPORTS_TEAM_IDENTITIES, sportsTeamStyle } from "@/lib/sports/team-identity";
+import styles from "./SportsIdentity.module.css";
 
 const DAY = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
@@ -77,107 +79,53 @@ export default async function LocalSportsSchedule({
   }
 
   return (
-    <div
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated)",
-        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-      }}
-    >
-      <div
-        className="flex items-center justify-between gap-3 border-b px-4 py-3"
-        style={{ borderColor: "var(--app-border)" }}
-      >
+    <div className={styles.board}>
+      <div className={styles.boardHeader}>
         <div>
-          <p
-            className="font-mono text-[9px] font-bold uppercase tracking-[0.14em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Official team feeds
-          </p>
-          <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+          <p className={styles.boardHeading}>Official team feeds</p>
+          <p className={styles.boardHint}>
             Home and away games are labeled before you open them.
           </p>
         </div>
-        <a
-          href="/api/calendar/sports.ics"
-          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-        >
-          <CalendarPlus className="h-3.5 w-3.5" aria-hidden />
+        <a href="/api/calendar/sports.ics" className={styles.calendarAction}>
+          <CalendarPlus className="h-4 w-4" aria-hidden />
           Calendar
         </a>
       </div>
 
-      <div className="divide-y" style={{ borderColor: "var(--app-border)" }}>
+      <div>
         {rows.map((game) => {
           const starts = new Date(game.startsAt);
           const result = resultLine(game);
+          const team = SPORTS_TEAM_IDENTITIES[game.teamId];
           return (
-            <details key={game.id} className="group">
-              <summary className="tap-44 grid cursor-pointer list-none grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 sm:px-4">
-                <span className="text-center">
-                  <span
-                    className="block font-mono text-[9px] font-bold uppercase tracking-[0.08em]"
-                    style={{ color: "var(--app-brand-press)" }}
-                  >
-                    {DAY.format(starts)}
-                  </span>
-                  <span
-                    className="mt-0.5 block text-[12px] font-semibold"
-                    style={{ color: "var(--app-ink)" }}
-                  >
-                    {DATE.format(starts)}
-                  </span>
-                </span>
-
+            <details key={game.id} className={styles.game} style={sportsTeamStyle(game.teamId)} data-sports-team={game.teamId}>
+              <summary className={styles.gameSummary}>
+                <span className={styles.gameMark} aria-hidden>{team.monogram}</span>
                 <span className="min-w-0">
-                  <span
-                    className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] font-bold uppercase tracking-[0.08em]"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    <span>{game.teamNickname}</span>
-                    <span aria-hidden>·</span>
-                    <span>{game.sport}</span>
+                  <span className={styles.gameKicker}>{game.teamName} · {game.sport}</span>
+                  <strong className={styles.gameTeam}>
+                    {game.teamNickname}
                     <span
-                      className="rounded-full px-1.5 py-0.5 text-[8px]"
+                      className={styles.homeAway}
                       style={{
-                        background:
-                          game.homeAway === "home"
-                            ? "var(--app-positive-tint-14)"
-                            : "var(--app-bg-sunken)",
-                        color:
-                          game.homeAway === "home"
-                            ? "var(--app-positive)"
-                            : "var(--app-ink-2)",
+                        background: game.homeAway === "home" ? "var(--app-positive-tint-14)" : "var(--app-bg-sunken)",
+                        color: game.homeAway === "home" ? "var(--state-open)" : "var(--app-ink-2)",
                       }}
                     >
                       {game.homeAway}
                     </span>
-                  </span>
-                  <strong
-                    className="mt-0.5 block truncate text-[13.5px] leading-snug"
-                    style={{ color: "var(--app-ink)" }}
-                  >
-                    {matchup(game)}
                   </strong>
-                  <span
-                    className="mt-0.5 block truncate text-[11px]"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    {result ||
-                      (game.timeTba ? "Time TBA" : TIME.format(starts))}
+                  <span className={styles.gameMatchup}>{matchup(game)}</span>
+                  <span className={styles.gameWhen}>
+                    <time dateTime={game.startsAt}>{DAY.format(starts)} {DATE.format(starts)}</time>
+                    {" · "}
+                    {result || (game.timeTba ? "Time TBA" : TIME.format(starts))}
                     {" · "}
                     {placeLine(game)}
                   </span>
                 </span>
-
-                <ChevronDown
-                  className="h-4 w-4 transition group-open:rotate-180"
-                  style={{ color: "var(--app-ink-3)" }}
-                  aria-hidden
-                />
+                <ChevronDown className={styles.gameChevron} aria-hidden />
               </summary>
 
               <div
@@ -243,7 +191,7 @@ export default async function LocalSportsSchedule({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-[11px] font-semibold"
-                    style={{ color: "var(--app-brand-press)" }}
+                    style={{ color: "var(--app-link)" }}
                   >
                     {game.recapUrl ? "Recap" : "Official listing"}
                     <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />

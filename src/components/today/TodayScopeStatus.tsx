@@ -46,23 +46,24 @@ const subscribe = (onStoreChange: () => void) =>
   subscribeScopeChange(() => onStoreChange());
 
 /**
- * The LocationChip intentionally hides its text below 390px. Keep the active
- * lens visible in the page itself and announce changes without pretending the
- * fixed-center weather or county event program is filtered to one town.
+ * Keep Today's mixed scope explicit. The compact arrival puts its calendar date
+ * in the masthead and leaves county/town selection and location opt-in here.
+ * Town and Near me readouts never imply that fixed-center weather or county
+ * events have been filtered to that place.
  *
- * `dateline` carries the calendar date as this line's first segment. It used
- * to be its own decorated eyebrow ABOVE the h1 (brick dash + uppercase),
- * which meant two supporting rows bracketed the title and the largest thing
- * in the masthead was still smaller than the section headings below it. One
- * quiet line under the title now holds both supporting facts.
+ * `controls` splits the quiet readout from the area picker so Today's briefing
+ * can show status under the title and the picker with Find. `density` keeps
+ * the redundant county line screen-reader-only on compact arrivals.
  */
 export default function TodayScopeStatus({
   dateline,
   controls = "all",
+  density = "standard",
 }: {
   dateline?: string;
   /** status = quiet readout; picker = area controls; all = both. */
   controls?: "status" | "picker" | "all";
+  density?: "standard" | "compact";
 }) {
   const ready = useSyncExternalStore(subscribeReady, () => true, () => false);
   const storedScope = useSyncExternalStore(subscribe, getScope, () => null);
@@ -77,6 +78,10 @@ export default function TodayScopeStatus({
     if (urlScope && getScope() !== urlScope) setScope(urlScope);
   }, [urlScope]);
   const townScoped = Boolean(scopeTownSlug(scope));
+  // The native picker already names Whole county. Keep that redundant live
+  // status accessible without adding a second visible row on ordinary arrival.
+  // A selected town or unresolved Near me still needs its full scope warning.
+  const compactCounty = density === "compact" && !townScoped && scope !== "nearme";
   const {
     state: location,
     request: requestLocation,
@@ -123,14 +128,17 @@ export default function TodayScopeStatus({
   const showPicker = controls !== "status";
 
   return (
-    <div className={`${showStatus ? "mt-2" : ""} flex flex-wrap items-center gap-x-3 gap-y-2`}>
+    <div
+      data-today-scope-density={density}
+      className={`${showStatus ? "mt-2" : ""} flex flex-wrap items-center gap-x-3 gap-y-2`}
+    >
       {showStatus ? (
       <p
         role="status"
         aria-live="polite"
         aria-atomic="true"
         data-testid="today-scope-status"
-        className="flex w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] leading-normal"
+        className={compactCounty ? "sr-only" : "flex w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] leading-normal"}
         style={{ color: "var(--app-ink-3)" }}
       >
         {dateline && (

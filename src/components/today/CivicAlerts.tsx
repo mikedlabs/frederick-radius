@@ -21,6 +21,9 @@ import {
 import { getOfficialCivicAlertsSnapshot } from "@/lib/live/officialSignals";
 import { currentLocalCivicAlerts, type OfficialCivicAlert } from "@/lib/integrations/official-alert-feeds";
 import { withBrowseReturnTo } from "@/lib/browse-return";
+import { withDeadlineFallback } from "@/lib/promise-deadline";
+
+export const CIVIC_ALERTS_SNAPSHOT_DEADLINE_MS = 3_200;
 
 export type UnifiedAlert = {
   /** Provider-stable identity. Alert counts are derived after de-duplicating
@@ -313,27 +316,30 @@ const STYLES = {
  */
 export default async function CivicAlerts({ includeWeather = true, compact = false, returnTo }: { includeWeather?: boolean; compact?: boolean; returnTo?: string } = {}) {
   const now = new Date();
+  // Provider deadlines do not bound a pending outer Next cache read. Give
+  // each original promise its own ceiling so one stalled source cannot hold
+  // this server component open or discard another source's verified alert.
+  // Null means unavailable, never a fresh empty check or an all-clear.
   const [situation, roads, official, nps] = await Promise.all([
-    getCurrentSituationSnapshot(),
-    getRoadIntelligenceSnapshot(),
-    getOfficialCivicAlertsSnapshot(),
-    getNpsAlerts(),
+    withDeadlineFallback(getCurrentSituationSnapshot(), CIVIC_ALERTS_SNAPSHOT_DEADLINE_MS, null),
+    withDeadlineFallback(getRoadIntelligenceSnapshot(), CIVIC_ALERTS_SNAPSHOT_DEADLINE_MS, null),
+    withDeadlineFallback(getOfficialCivicAlertsSnapshot(), CIVIC_ALERTS_SNAPSHOT_DEADLINE_MS, null),
+    withDeadlineFallback(getNpsAlerts(), CIVIC_ALERTS_SNAPSHOT_DEADLINE_MS, []),
   ]);
-  const weatherIsFresh =
-    situation.sources.weather.availability === "available" &&
-    sourceFreshnessAt(situation.sources.weather, now.getTime()) === "fresh";
-  const trafficIsFresh =
-    situation.sources.traffic.availability === "available" &&
-    sourceFreshnessAt(situation.sources.traffic, now.getTime()) === "fresh";
-  const nws =
-    includeWeather && weatherIsFresh ? situation.sources.weather.data : [];
-  const chart = trafficIsFresh ? situation.sources.traffic.data : [];
+  const weather = situation?.sources.weather;
+  const traffic = situation?.sources.traffic;
+  const weatherIsFresh = weather?.availability === "available" &&
+    sourceFreshnessAt(weather, now.getTime()) === "fresh";
+  const trafficIsFresh = traffic?.availability === "available" &&
+    sourceFreshnessAt(traffic, now.getTime()) === "fresh";
+  const nws = includeWeather && weatherIsFresh ? weather.data : [];
+  const chart = trafficIsFresh ? traffic.data : [];
   const alerts = normalize(
     nws,
     nps,
     [
-      ...officialCivicAlerts(official.alerts, now.getTime()),
-      ...roadIntelligenceAlert(selectTodayRoadSignal(roads, now.getTime())),
+      ...officialCivicAlerts(official?.alerts ?? [], now.getTime()),
+      ...roadIntelligenceAlert(roads ? selectTodayRoadSignal(roads, now.getTime()) : null),
       ...trafficAlerts(now, chart),
     ],
     now,

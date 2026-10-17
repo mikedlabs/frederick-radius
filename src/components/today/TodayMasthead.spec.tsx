@@ -10,6 +10,17 @@ vi.mock("@/components/nav/AppTransitionLink", () => ({
 }));
 
 describe("Today masthead composition", () => {
+  it("keeps the full heading accessible while moving date and county into quiet context", () => {
+    const html = renderToStaticMarkup(createElement(TodayMasthead, {
+      title: "This afternoon in Frederick County", shortTitle: "This afternoon",
+      dateline: "Friday, October 16", weather: createElement("p", null, "Weather reading"),
+    }));
+    expect(html).toMatch(/<h1[^>]*aria-label="This afternoon in Frederick County"[^>]*>This afternoon<\/h1>/);
+    expect(html).toContain('<span class="sr-only">Frederick County · </span>Friday, October 16');
+    expect(html.indexOf("data-today-dateline")).toBeLessThan(html.indexOf("data-today-weather"));
+    expect(html.match(/<h1\b/g)).toHaveLength(1);
+  });
+
   it("renders the heading while its weather child is still waiting", () => {
     function WaitingWeather(): never { throw new Promise(() => {}); }
     const html = renderToStaticMarkup(createElement(TodayMasthead, {

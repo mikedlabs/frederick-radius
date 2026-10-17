@@ -2,6 +2,7 @@ import {
   classifyEventDetailResult,
   eventDetailGateSummary,
   eventDetailPathsFromHtml,
+  eventListingTrustViolations,
   mapWithConcurrency,
 } from "./lib/prod-audit-events.mjs";
 import { publicReadinessGate } from "./lib/prod-audit-readiness.mjs";
@@ -195,11 +196,7 @@ const uncontrolledImgs = (html) =>
 
 function trustedHtml(path, result) {
   if (path === "/events") {
-    const eventsHtml = result.body;
-    for (const term of ["Private Corp", "CANCELLED"]) {
-      const count = (
-        eventsHtml.match(new RegExp(term.replace(/ /g, "\\s+"), "gi")) || []
-      ).length;
+    for (const { term, count } of eventListingTrustViolations(result.body)) {
       check(
         count === 0,
         `/events has no "${term}" listing`,

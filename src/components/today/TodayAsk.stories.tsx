@@ -38,7 +38,7 @@ export const FirstDecisionDoorway: Story = {
     await expect(find).toHaveAttribute("href", "/search");
     await expect(find).toHaveAttribute("data-find-interaction-ready", "true");
     await expect(find.getBoundingClientRect().height).toBeGreaterThanOrEqual(56);
-    await expect(find.getBoundingClientRect().height).toBeLessThanOrEqual(64);
+    await expect(find.getBoundingClientRect().height).toBeLessThanOrEqual(56);
     await expect(canvas.queryByText("Search a name, a need, or a question.")).not.toBeInTheDocument();
     await expect(canvas.queryByRole("link", { name: "Open now" })).not.toBeInTheDocument();
   },

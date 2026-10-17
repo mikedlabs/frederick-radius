@@ -18,6 +18,14 @@ describe("todayFrame", () => {
     expect(todayFrame(4).title).toBe("Late in Frederick County");
   });
 
+  it("provides a short visual daypart without changing the full county identity", () => {
+    for (const [hour, shortTitle] of [[8, "This morning"], [14, "This afternoon"], [19, "Tonight"], [23, "Late tonight"]] as const) {
+      const frame = todayFrame(hour);
+      expect(frame.shortTitle).toBe(shortTitle);
+      expect(frame.title).toContain("Frederick County");
+    }
+  });
+
   it("wraps out-of-range hours safely", () => {
     expect(todayFrame(24).title).toBe(todayFrame(0).title);
     expect(todayFrame(-1).title).toBe(todayFrame(23).title);

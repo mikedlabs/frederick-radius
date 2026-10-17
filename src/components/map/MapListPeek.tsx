@@ -385,7 +385,7 @@ export default function MapListPeek({
             {list.askQuery && (
               <Link
                 href={mapRankedSearchHref(list.askQuery, list.scope, mapReturnTo)}
-                className="mt-2 inline-flex min-h-11 items-center text-[14px] font-semibold text-[var(--app-brand-press)] underline-offset-2 hover:underline"
+                className="mt-2 inline-flex min-h-11 items-center text-[14px] font-semibold text-[var(--app-link)] underline-offset-2 hover:underline"
               >
                 Search all of Radius
               </Link>
@@ -410,7 +410,7 @@ export default function MapListPeek({
             {remaining > 0 && (
               <button
                 type="button"
-                className="flex w-full items-center justify-center border-t border-[var(--app-border)] px-3 text-[14px] font-semibold text-[var(--app-brand-press)] transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--app-brand)] motion-reduce:transition-none"
+                className="flex w-full items-center justify-center border-t border-[var(--app-border)] px-3 text-[14px] font-semibold text-[var(--app-link)] transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--app-brand)] motion-reduce:transition-none"
                 style={{ minHeight: 44 }}
                 aria-controls={listId}
                 onClick={() => {

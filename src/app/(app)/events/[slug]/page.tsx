@@ -49,6 +49,7 @@ import PlaceCard from "@/components/place/PlaceCard";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
+import EventArtwork from "@/components/event/EventArtwork";
 import EventSourceLink from "@/components/event/EventSourceLink";
 import { eventCardVisual } from "@/components/event/eventVisuals";
 import GettingThere from "@/components/event/GettingThere";
@@ -361,6 +362,7 @@ export default async function EventPage({
   const hasEnded =
     eventStatus === "scheduled" && isEventListingEnded(event, new Date());
   const eventVisual = eventCardVisual(event);
+  const photoVisual = eventVisual?.presentation === "photo" ? eventVisual : null;
   // Server component: request-time clock is correct here, not impure render.
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
@@ -411,7 +413,7 @@ export default async function EventPage({
 
       {/* Visually small breadcrumbs with invisible 44px hit areas
           (WCAG 2.5.5) — py-3.5/-my-3.5 grows the tap zone only. */}
-      {!eventVisual && (
+      {!photoVisual && (
         <nav aria-label="Breadcrumb" className="text-xs">
           <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
             <li><Link href="/events" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Events</Link></li>
@@ -503,20 +505,20 @@ export default async function EventPage({
         data-decision-entity="event"
         data-decision-id={event.slug}
         data-decision-position="detail"
-        className={`shader-rim overflow-hidden ${eventVisual ? "-mx-4 -mt-4 sm:mx-0 sm:mt-0 rounded-none sm:rounded-[var(--app-radius-xl)] border-y sm:border" : "rounded-[var(--app-radius-xl)] border"}`}
+        className={`shader-rim overflow-hidden ${photoVisual ? "-mx-4 -mt-4 sm:mx-0 sm:mt-0 rounded-none sm:rounded-[var(--app-radius-xl)] border-y sm:border" : "rounded-[var(--app-radius-xl)] border"}`}
         style={{
           borderColor: "var(--app-border)",
           opacity: eventStatus === "cancelled" ? 0.85 : 1,
           viewTransitionName: `event-${event.slug}`,
         }}
       >
-        {eventVisual ? (
+        {photoVisual ? (
           <div className="relative h-64 w-full overflow-hidden sm:h-72">
             <Image
-              src={eventVisual.src}
+              src={photoVisual.src}
               alt=""
               fill
-              unoptimized={eventVisual.src.startsWith("/api/place-photo")}
+              unoptimized={photoVisual.src.startsWith("/api/place-photo")}
               priority
               sizes="(max-width: 720px) 100vw, 720px"
               placeholder="blur"
@@ -566,9 +568,9 @@ export default async function EventPage({
             <h1 className="text-[26px] font-semibold leading-tight tracking-tight sm:text-[32px]" style={{ color: "var(--app-ink)" }}>{event.title}</h1>
           </div>
         )}
-        {eventVisual ? (
+        {photoVisual ? (
           <EventVisualCredit
-            visual={eventVisual}
+            visual={photoVisual}
             className="border-t bg-[var(--app-bg-elevated)] px-5 py-2"
           />
         ) : null}
@@ -630,6 +632,7 @@ export default async function EventPage({
             />
             {event.source_url && <EventSourceLink href={event.source_url} />}
           </div>
+          {eventVisual?.presentation === "artwork" && <EventArtwork visual={eventVisual} />}
           {desc && (
             <div className="max-w-[68ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               <p>{description.preview}</p>

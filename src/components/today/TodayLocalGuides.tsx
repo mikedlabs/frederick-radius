@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { Beer, CalendarDays, Radio, Truck, type LucideIcon } from "lucide-react";
 import { TodayListArrow } from "./TodayListLink";
-import { BREWERIES } from "@/data/beers";
-import { FOOD_TRUCKS } from "@/data/food-trucks";
 import {
   todayFoodTruckStopDetail,
   type TodayFoodTruckStopSummary,
@@ -63,6 +61,7 @@ export function foodTruckGuideCopy(
   liveTruckCount: number,
   nextStop: TodayFoodTruckStopSummary | null,
   asOf?: string,
+  rosterCount = 0,
 ): { href: string; detail: string; state: "live" | "scheduled" | "roster" } {
   if (liveTruckCount > 0) {
     return {
@@ -80,7 +79,9 @@ export function foodTruckGuideCopy(
   }
   return {
     href: "/food-trucks",
-    detail: `See published stops and browse ${FOOD_TRUCKS.length} local vendors.`,
+    detail: rosterCount > 0
+      ? `See published stops and browse ${rosterCount} local vendors.`
+      : "See published stops and browse local vendors.",
     state: "roster",
   };
 }
@@ -128,11 +129,13 @@ function GuideRow({
 export type TodayFoodTruckGuideProps = {
   nextFoodTruckStop?: TodayFoodTruckStopSummary | null;
   asOf?: string;
+  foodTruckCount?: number;
 };
 
 export function TodayFoodTruckGuide({
   nextFoodTruckStop = null,
   asOf,
+  foodTruckCount = 0,
 }: TodayFoodTruckGuideProps = {}) {
   const [liveTruckCount, setLiveTruckCount] = useState(0);
 
@@ -158,7 +161,7 @@ export function TodayFoodTruckGuide({
     };
   }, []);
 
-  const foodTruck = foodTruckGuideCopy(liveTruckCount, nextFoodTruckStop, asOf);
+  const foodTruck = foodTruckGuideCopy(liveTruckCount, nextFoodTruckStop, asOf, foodTruckCount);
   return (
     <GuideRow
       href={foodTruck.href}
@@ -183,22 +186,30 @@ export function TodayFoodTruckGuide({
  * headline of the day. Verified business marks provide recognition without
  * turning the Today page into two more promotional cards.
  */
+export type TodayLocalGuidesProps = {
+  foodTruckGuide?: ReactNode;
+  breweryCount?: number;
+  foodTruckCount?: number;
+};
+
 export default function TodayLocalGuides({
   foodTruckGuide,
-}: {
-  foodTruckGuide?: ReactNode;
-} = {}) {
+  breweryCount = 0,
+  foodTruckCount = 0,
+}: TodayLocalGuidesProps = {}) {
   return (
     <section className="mt-6" aria-label="Local guides">
       <div
         className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
         style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-edge), var(--app-hi)" }}
       >
-        {foodTruckGuide ?? <TodayFoodTruckGuide />}
+        {foodTruckGuide ?? <TodayFoodTruckGuide foodTruckCount={foodTruckCount} />}
         <GuideRow
           href="/beer"
           title="Frederick beer"
-          detail={`Browse ${BREWERIES.length} breweries and current taproom listings.`}
+          detail={breweryCount > 0
+            ? `Browse ${breweryCount} breweries and current taproom listings.`
+            : "Browse local breweries and current taproom listings."}
           marks={BREWERY_PREVIEW}
           Icon={Beer}
           divided
