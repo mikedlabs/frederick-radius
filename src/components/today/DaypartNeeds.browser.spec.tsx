@@ -182,4 +182,54 @@ describe("Today keeps the server-rendered lead through live ranking", () => {
     expect(container.textContent).toContain("Places to try");
     expect(container.textContent).not.toContain("Places likely open");
   });
+
+  it("does not replace a first-paint opening-soon lead with a different live hero", async () => {
+    const serverRows = [{
+      category: "restaurant",
+      label: "Lunch",
+      href: "/nearby?c=lunch",
+      picks: [],
+      openingSoon: {
+        slug: "hootch-and-banter-frederick",
+        name: "Hootch & Banter",
+        rating: 4.5,
+        confidence: "likely" as const,
+        fact: "Opens soon · 4pm",
+        where: "Frederick",
+      },
+    }];
+    state.answer.mockResolvedValue({
+      hero: {
+        slug: "first-local-pick",
+        name: "First local pick",
+        photo: null,
+        where: "Frederick",
+        distance: null,
+        fact: "Open now",
+        confidence: "confirmed",
+      },
+      also: [],
+      soon: {
+        slug: "hootch-and-banter-frederick",
+        name: "Hootch & Banter",
+        photo: null,
+        where: "Frederick",
+        distance: null,
+        fact: "Opens soon · 4pm",
+        confidence: "confirmed",
+      },
+      browseHref: "/nearby?c=lunch&in=county",
+      contextLabel: "Whole county",
+      contextSource: "county",
+    });
+    await act(async () => {
+      root.render(<DaypartNeeds rows={serverRows} variant="brief" />);
+    });
+    expect(container.textContent).toContain("Hootch & Banter");
+    expect(container.querySelector("[data-today-opening-soon]")).not.toBeNull();
+    await act(async () => { await state.answer.mock.results[0]?.value; });
+    expect(container.textContent).toContain("Hootch & Banter");
+    expect(container.textContent).not.toContain("First local pick");
+    expect(container.querySelector("[data-today-opening-soon]")).not.toBeNull();
+  });
 });

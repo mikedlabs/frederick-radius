@@ -337,6 +337,28 @@ export function preserveRenderedLead(
   };
 }
 
+/** Brief Today shows one card. A live confirmed hero must not replace the
+ * already-rendered opening-soon lead unless that same place is now open. */
+export function briefShowsOpeningSoon(
+  variant: DaypartNeedsVariant,
+  pinnedLead: ReturnType<typeof visibleDaypartLead>,
+  openingSoon: DaypartPick | null | undefined,
+  decisionPicks: readonly DaypartPick[],
+  openingSoonFirst: boolean,
+): boolean {
+  if (variant !== "brief" || !openingSoon) return false;
+  const pinnedCurrentLead =
+    pinnedLead?.kind === "place" &&
+    decisionPicks.some((place) => place.slug === pinnedLead.slug);
+  if (pinnedCurrentLead) return false;
+  const pinnedSoonStillClosed =
+    pinnedLead?.kind === "soon" &&
+    !decisionPicks.some(
+      (place) => place.slug === pinnedLead.slug && place.confidence === "confirmed",
+    );
+  return pinnedSoonStillClosed || openingSoonFirst || decisionPicks.length === 0;
+}
+
 export function isDaypartCountywideContext(
   source: NonNullable<WantAnswer["contextSource"]>,
 ): boolean {
@@ -757,14 +779,13 @@ export default function DaypartNeeds({
   // keep one real option and let the unconfirmed heading explain its limit.
   const knownPicks = active.picks.filter((place) => place.confidence !== "unconfirmed");
   const decisionPicks = variant === "brief" && knownPicks.length > 0 ? knownPicks : active.picks;
-  const pinnedCurrentLead =
-    pinnedLead?.kind === "place" &&
-    decisionPicks.some((place) => place.slug === pinnedLead.slug);
-  const briefUsesOpeningSoon =
-    variant === "brief" &&
-    Boolean(active.openingSoon) &&
-    !pinnedCurrentLead &&
-    (openingSoonFirst || decisionPicks.length === 0);
+  const briefUsesOpeningSoon = briefShowsOpeningSoon(
+    variant,
+    pinnedLead,
+    active.openingSoon,
+    decisionPicks,
+    openingSoonFirst,
+  );
   // The heading describes what is actually visible. A brief answer may know
   // about both a current place and an opening-soon transition, but it presents
   // only the stronger of those two rather than promising both in its label.
@@ -793,9 +814,12 @@ export default function DaypartNeeds({
   // When the transition leads visually, a reason about picks[0] would explain
   // the wrong card. The opening-soon card already carries its actionable hours
   // evidence, so reserve "Why it leads" for a current place that truly leads.
-  const leadReason = openingSoonFirst ? null : daypartLeadReason(decisionPicks, {
-    includeEditorialLabels: variant !== "brief",
-  });
+  const leadReason =
+    openingSoonFirst || briefUsesOpeningSoon
+      ? null
+      : daypartLeadReason(decisionPicks, {
+          includeEditorialLabels: variant !== "brief",
+        });
   const hasVisibleRecommendation =
     visiblePicks.length > 0 || Boolean(active.openingSoon);
 

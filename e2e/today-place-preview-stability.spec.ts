@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const pixel = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=",
@@ -7,12 +7,7 @@ const pixel = Buffer.from(
 
 test.use({ serviceWorkers: "block" });
 
-test("Today preview height and lead stay put when photos fall back", async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  const photoRequests: string[] = [];
-  let photosSettled = 0;
-
+async function stubFallbackPhotos(page: Page) {
   await page.route("**/api/want?**", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 1200));
     return route.fulfill({
@@ -36,9 +31,7 @@ test("Today preview height and lead stay put when photos fall back", async ({ pa
     });
   });
   await page.route("**/api/place-photo?**", async (route) => {
-    photoRequests.push(route.request().url());
     await new Promise((resolve) => setTimeout(resolve, 800));
-    photosSettled += 1;
     return route.fulfill({
       status: 200,
       contentType: "image/png",
@@ -46,21 +39,25 @@ test("Today preview height and lead stay put when photos fall back", async ({ pa
       body: pixel,
     });
   });
+}
+
+test("Today preview height and lead stay put when photos fall back", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await stubFallbackPhotos(page);
 
   await page.goto("/today?in=county", { waitUntil: "domcontentloaded" });
   const lead = page.locator("[data-today-place-preview], [data-today-opening-soon]").first();
   await expect(lead).toBeVisible();
   const firstName = (await lead.locator("[data-today-pick-name]").innerText()).trim();
   expect(firstName.length).toBeGreaterThan(0);
+  const firstHeight = (await lead.boundingBox())!.height;
   const preview = page.locator("article[data-today-place-preview]").first();
-  const previewAtFirstPaint = await preview.count();
-  let firstHeight = 0;
-  if (previewAtFirstPaint) {
+  if (await preview.count()) {
     await expect(preview).toHaveAttribute("data-preview-layout", /compact|exact/);
-    firstHeight = (await preview.boundingBox())!.height;
-    await page.screenshot({ path: testInfo.outputPath("today-preview-390-first-paint.png") });
     await preview.screenshot({ path: testInfo.outputPath("today-preview-390-first-paint-card.png") });
   }
+  await page.screenshot({ path: testInfo.outputPath("today-preview-390-first-paint.png") });
 
   await page.waitForTimeout(2_000);
   await page.waitForLoadState("networkidle");
@@ -69,32 +66,52 @@ test("Today preview height and lead stay put when photos fall back", async ({ pa
   await expect(page.locator("[data-today-pick-name]").first()).toHaveText(firstName);
   await expect(page.getByText("Replacement Cafe")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /Places likely open/i })).toHaveCount(0);
-
-  if (previewAtFirstPaint) {
-    await expect(preview).toHaveCount(1);
-    const laterHeight = (await preview.boundingBox())!.height;
-    expect(laterHeight).toBe(firstHeight);
+  const laterHeight = (await lead.boundingBox())!.height;
+  expect(laterHeight).toBe(firstHeight);
+  if (await preview.count()) {
     await expect(preview).toHaveAttribute("data-has-photo", "false");
-    await page.screenshot({ path: testInfo.outputPath("today-preview-390-after-photo.png") });
     await preview.screenshot({ path: testInfo.outputPath("today-preview-390-after-photo-card.png") });
   }
+  await page.screenshot({ path: testInfo.outputPath("today-preview-390-after-photo.png") });
 
   await page.setViewportSize({ width: 320, height: 844 });
   await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
   await expect(lead.locator("[data-today-pick-name]")).toHaveText(firstName);
   await page.screenshot({ path: testInfo.outputPath("today-preview-320-200pct-after-photo.png") });
-  if (await preview.count()) {
-    await preview.screenshot({ path: testInfo.outputPath("today-preview-320-200pct-after-photo-card.png") });
-  }
+  await lead.screenshot({ path: testInfo.outputPath("today-preview-320-200pct-after-photo-card.png") });
 
   await testInfo.attach("today-preview-stability", {
     contentType: "application/json",
     body: JSON.stringify({
       firstName,
-      previewAtFirstPaint: Boolean(previewAtFirstPaint),
       firstHeight,
-      photoRequests,
-      photosSettled,
+      laterHeight,
+      previewAtFirstPaint: Boolean(await preview.count()),
     }),
   });
+});
+
+test("Today large-text first paint matches the settled lead", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await stubFallbackPhotos(page);
+  await page.addInitScript(() => {
+    const style = document.createElement("style");
+    style.textContent = "html { font-size: 200% !important; }";
+    document.documentElement.append(style);
+  });
+
+  await page.goto("/today?in=county", { waitUntil: "domcontentloaded" });
+  const lead = page.locator("[data-today-place-preview], [data-today-opening-soon]").first();
+  await expect(lead).toBeVisible();
+  const firstName = (await lead.locator("[data-today-pick-name]").innerText()).trim();
+  const firstHeight = (await lead.boundingBox())!.height;
+  await page.screenshot({ path: testInfo.outputPath("today-preview-320-200pct-first-paint.png") });
+  await lead.screenshot({ path: testInfo.outputPath("today-preview-320-200pct-first-paint-card.png") });
+
+  await page.waitForTimeout(2_000);
+  await page.waitForLoadState("networkidle");
+  await expect(lead.locator("[data-today-pick-name]")).toHaveText(firstName);
+  expect((await lead.boundingBox())!.height).toBe(firstHeight);
+  await expect(page.getByText("Replacement Cafe")).toHaveCount(0);
 });

@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import DaypartNeeds, {
   DaypartEmptyState,
+  briefShowsOpeningSoon,
   daypartBrowseHref,
   daypartEmptyCopy,
   daypartLeadReason,
@@ -741,6 +742,76 @@ describe("DaypartNeeds", () => {
     const preserved = preserveRenderedLead(server, live, "brief");
     expect(preserved.openingSoon?.slug).toBe("isabellas");
     expect(preserved.picks.map((pick) => pick.slug)).toEqual(["ibiza"]);
+  });
+
+  it("keeps an opening-soon first paint in front of a different live confirmed hero", () => {
+    const soon = {
+      slug: "hootch",
+      name: "Hootch & Banter",
+      rating: 4.5,
+      confidence: "likely" as const,
+      fact: "Opens soon · 4pm",
+    };
+    const server = {
+      category: "restaurant",
+      label: "Lunch",
+      href: "/category/restaurant",
+      picks: [],
+      openingSoon: soon,
+    };
+    const live = liveShelfFromWantAnswer(
+      {
+        hero: {
+          slug: "hinzis",
+          name: "Hinzi's",
+          photo: null,
+          where: "Frederick",
+          distance: null,
+          fact: "Open now",
+          confidence: "confirmed",
+        },
+        also: [],
+        soon: {
+          slug: "hootch",
+          name: "Hootch & Banter",
+          photo: null,
+          where: "Frederick",
+          distance: null,
+          fact: "Opens soon · 4pm",
+          confidence: "confirmed",
+        },
+        browseHref: server.href,
+        contextLabel: "Across Frederick County",
+        contextSource: "county",
+      },
+      server,
+      "county",
+    );
+    expect(visibleDaypartLead(server, "brief")).toEqual({ kind: "soon", slug: "hootch" });
+    expect(live.picks[0].slug).toBe("hinzis");
+    expect(briefShowsOpeningSoon(
+      "brief",
+      visibleDaypartLead(server, "brief"),
+      live.openingSoon,
+      live.picks,
+      Boolean(live.openingSoon) && daypartShelfTier(live.picks) !== "confirmed",
+    )).toBe(true);
+  });
+
+  it("lets the same opening-soon place become the current card once it is open", () => {
+    const soon = {
+      slug: "hootch",
+      name: "Hootch & Banter",
+      rating: 4.5,
+      confidence: "likely" as const,
+    };
+    expect(briefShowsOpeningSoon(
+      "brief",
+      { kind: "soon", slug: "hootch" },
+      soon,
+      [{ slug: "hootch", name: "Hootch & Banter", rating: 4.5, confidence: "confirmed" }],
+      false,
+    )).toBe(false);
   });
 
   it("labels curated fallback cards as likely instead of confirmed open", () => {
