@@ -200,3 +200,50 @@ test("Nearby food hydrates a policy-passing Google photo with its required credi
   expect(Array.isArray(cafeCredit?.authors)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("nearby-food-photo-credit-390.png") });
 });
+
+test("Nearby food requests Google photo bytes only for cards in the first 390px viewport", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const photoRequests: string[] = [];
+  await page.route("**/api/place-photo?**", (route) => {
+    photoRequests.push(new URL(route.request().url()).searchParams.get("name") ?? route.request().url());
+    return route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: DECODED_IMAGE,
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  });
+  const response = await page.goto("/nearby?c=food", { waitUntil: "domcontentloaded" });
+  expect(response?.status()).toBe(200);
+  await expect.poll(() => page.locator("[data-place-card-photo-source='google']").count()).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => {
+    return [...document.querySelectorAll("[data-place-card-photo-source='google']")].filter((frame) => {
+      const box = frame.getBoundingClientRect();
+      const inRange = box.bottom > -48 && box.top < innerHeight + 48;
+      const status = frame.getAttribute("data-place-card-photo-bytes");
+      return inRange && (status === "idle" || status === "loading");
+    }).length;
+  })).toBe(0);
+  const firstLoad = await page.evaluate((requestedNames) => {
+    const cards = [...document.querySelectorAll<HTMLElement>("article[data-place-card-variant='discovery']")];
+    const frames = [...document.querySelectorAll<HTMLElement>("[data-place-card-photo-source='google']")];
+    const inByteRange = frames.filter((frame) => {
+      const box = frame.getBoundingClientRect();
+      return box.bottom > -48 && box.top < innerHeight + 48;
+    });
+    return {
+      cardCount: cards.length,
+      frameCount: frames.length,
+      inByteRange: inByteRange.length,
+      requested: requestedNames.length,
+    };
+  }, photoRequests);
+  expect(firstLoad.cardCount).toBeGreaterThan(firstLoad.inByteRange);
+  expect(firstLoad.requested).toBe(firstLoad.inByteRange);
+  expect(firstLoad.requested).toBeGreaterThan(0);
+  expect(firstLoad.requested).toBeLessThanOrEqual(3);
+  await testInfo.attach("nearby-food-first-load-photo-requests", {
+    contentType: "application/json",
+    body: JSON.stringify({ photoRequests, firstLoad }, null, 2),
+  });
+});

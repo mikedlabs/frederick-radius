@@ -1,44 +1,76 @@
 "use client";
 
+import { useEffect } from "react";
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import type { PlaceCardPhotoResult, PlaceCardPhotoSource } from "@/lib/place-card-photo";
 import { GooglePhotoAttributionLine } from "./GoogleAttribution";
+import { useVisibleGooglePhoto } from "./useVisibleGooglePhoto";
 
 /** A photograph of the selected place, supplied by the canonical loader.
  * A missing or failed photo leaves the card's real name and facts intact. */
-export default function PlaceCardPhoto({ source, onResult, width = 360, frame = "hero", sizes }: {
+export default function PlaceCardPhoto({ source, onResult, width = 360, frame = "hero", sizes, deferGoogleBytes = false }: {
   source: PlaceCardPhotoSource | null;
   onResult: (src: string, result: PlaceCardPhotoResult) => void;
   width?: number;
   frame?: "hero" | "row" | "compact-row";
   /** The actual responsive frame; existing fixed-width surfaces keep their defaults. */
   sizes?: string;
+  /** Nearby/list cards fetch Google bytes only after the frame enters view. */
+  deferGoogleBytes?: boolean;
 }) {
+  const defer = Boolean(deferGoogleBytes && source?.kind === "google");
+  const sourceSrc = source?.src ?? null;
+  const { frameRef, bytes } = useVisibleGooglePhoto(defer ? sourceSrc : null, defer);
+
+  useEffect(() => {
+    if (!defer || !sourceSrc || bytes.status !== "fallback") return;
+    onResult(sourceSrc, "failed");
+  }, [bytes.status, defer, onResult, sourceSrc]);
+
   if (!source) return null;
+  const displaySrc = defer
+    ? (bytes.status === "ready" ? bytes.objectUrl : null)
+    : source.src;
   return (
     <span
+      ref={frameRef}
       data-place-card-photo
       data-place-card-photo-source={source.kind}
+      data-place-card-photo-bytes={defer ? bytes.status : undefined}
       className={`relative block overflow-hidden bg-[var(--app-bg-sunken)] ${frame === "hero" ? "aspect-[16/9] w-full" : "rounded-[var(--app-radius-md)]"}`}
       style={frame === "hero" ? undefined : { width, height: frame === "row" ? 104 : 64 }}
     >
-      <Image
-        key={source.src}
-        src={source.src}
-        alt={source.alt}
-        fill
-        sizes={sizes ?? (width === 180 ? "(max-width: 640px) 50vw, 180px" : `${width}px`)}
-        unoptimized={source.kind === "google"}
-        placeholder="blur"
-        blurDataURL={PAPER_CREAM_BLUR}
-        className="object-cover"
-        onLoad={(event) => {
-          const failed = event.currentTarget.naturalWidth <= 1 || event.currentTarget.naturalHeight <= 1;
-          onResult(source.src, failed ? "failed" : "loaded");
-        }}
-        onError={() => onResult(source.src, "failed")}
-      />
+      {displaySrc && (defer ? (
+        // Object URL from the one same-origin fetch. A second <Image> request
+        // would spend another daily-cap unit on a no-store photo.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={displaySrc}
+          src={displaySrc}
+          alt={source.alt}
+          className="absolute inset-0 h-full w-full object-cover"
+          onLoad={() => onResult(source.src, "loaded")}
+          onError={() => onResult(source.src, "failed")}
+        />
+      ) : (
+        <Image
+          key={source.src}
+          src={displaySrc}
+          alt={source.alt}
+          fill
+          sizes={sizes ?? (width === 180 ? "(max-width: 640px) 50vw, 180px" : `${width}px`)}
+          unoptimized={source.kind === "google"}
+          placeholder="blur"
+          blurDataURL={PAPER_CREAM_BLUR}
+          className="object-cover"
+          onLoad={(event) => {
+            const failed = event.currentTarget.naturalWidth <= 1 || event.currentTarget.naturalHeight <= 1;
+            onResult(source.src, failed ? "failed" : "loaded");
+          }}
+          onError={() => onResult(source.src, "failed")}
+        />
+      ))}
     </span>
   );
 }
@@ -51,7 +83,7 @@ export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false, comp
   compact?: boolean;
 }) {
   if (!source || source.kind === "owned") return null;
-  const licenseLinks: Record<string, string> = { "CC BY-SA 4.0": "https://creativecommons.org/licenses/by-sa/4.0", "CC BY 2.0": "https://creativecommons.org/licenses/by/2.0" };
+  const licenseLinks: Record<string, string> = { "CC BY-SA 4.0": "https://creativecommons.org/licenses/by-sa/4.0", "CC BY 2.0": "https://creativecommons.org/licenses/by-2.0" };
   const licenseHref = source.kind === "curated"
     ? (licenseLinks[source.photo.license]
       ?? `${source.photo.source_url}#Licensing`)
