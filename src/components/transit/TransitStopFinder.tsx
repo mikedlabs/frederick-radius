@@ -879,6 +879,7 @@ export default function TransitStopFinder() {
         return;
       }
       setSelected(requested);
+      requestTransitStopFocus({ stopId: requested.id });
     }, 0);
     return () => window.clearTimeout(timer);
   }, [announce]);
@@ -912,6 +913,7 @@ export default function TransitStopFinder() {
       "",
       `${url.pathname}${url.search}${url.hash}`,
     );
+    requestTransitStopFocus({ stopId: stop.id });
     haptic("light");
     announce(`${stop.name} selected.`);
   }, [announce]);

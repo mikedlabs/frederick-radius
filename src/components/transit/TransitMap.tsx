@@ -555,10 +555,17 @@ export default function TransitMap({
     <div className={styles.mapShell}>
       {highlightRoutes && (
         <div className={styles.mapPicker}>
-          <p id="transit-route-context" className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            {selMeta
-              ? `Route ${selMeta.short} shows published stops. Choose one to check arrivals.`
-              : "Choose a route or select a stop to check arrivals."}
+          <p
+            id="transit-route-context"
+            data-live-network-stop={activeStop?.id}
+            className="text-[12px] leading-snug"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {activeStop
+              ? `${activeStop.name} is selected.`
+              : selMeta
+                ? `Route ${selMeta.short} shows published stops. Choose one to check arrivals.`
+                : "Choose a route or select a stop to check arrivals."}
           </p>
           <label>
             <span className="sr-only">Bus route</span>
