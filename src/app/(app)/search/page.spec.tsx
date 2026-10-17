@@ -87,10 +87,41 @@ describe("submitted search photo budget", () => {
     });
     const html = renderToStaticMarkup(page);
 
-    expect((html.match(/<img\b/g) ?? [])).toHaveLength(4);
+    // Three compact native images plus one selected visible-byte lead are the
+    // same four eligible slots; the offscreen lead has not fetched bytes yet.
+    expect((html.match(/data-search-place-visual="google"/g) ?? [])).toHaveLength(4);
+    expect((html.match(/<img\b/g) ?? [])).toHaveLength(3);
+    expect(html).toContain('data-search-place-photo-bytes="idle"');
     expect(html).toContain("photo-4");
     expect(html).not.toContain("photo-5");
     expect(html).not.toContain("photo-20");
+  });
+
+  it("uses one photo-led exact place with native details/map links retaining the search origin", async () => {
+    const hit = paidPlaceHit(1);
+    if (hit.type !== "place") throw new Error("Expected place fixture");
+    hit.place = { ...hit.place, slug: "schifferstadt-architectural-museum-frederick", name: "Schifferstadt Architectural Museum",
+      google_photo_url: undefined, google_photo_attribution: undefined };
+    mocks.search.mockReturnValue([hit]);
+    const html = renderToStaticMarkup(await SearchPage({ searchParams: Promise.resolve({ q: "Schifferstadt", in: "frederick", kind: "place" }) }));
+    expect((html.match(/data-search-place-lead/g) ?? [])).toHaveLength(1);
+    expect(html).toContain("%2Fhistory-photos%2Fschifferstadt.jpg");
+    expect(html).toContain('aria-label="View place: Schifferstadt Architectural Museum"');
+    expect(html).toContain('aria-label="Map: Schifferstadt Architectural Museum"');
+    expect(html).toContain("returnTo=%2Fsearch%3Fq%3DSchifferstadt%26in%3Dfrederick%26kind%3Dplace");
+    expect(html).toContain("in=frederick");
+    expect(html).toContain("Hours not posted");
+  });
+
+  it("does not promote a photographic place above the actual first ranked tool", async () => {
+    const hit = paidPlaceHit(1);
+    if (hit.type !== "place") throw new Error("Expected place fixture");
+    hit.place = { ...hit.place, slug: "schifferstadt-architectural-museum-frederick", name: "Schifferstadt Architectural Museum",
+      google_photo_url: undefined, google_photo_attribution: undefined };
+    mocks.search.mockReturnValue([{ type: "page", score: 200, page: { title: "Official service first", href: "/contacts", blurb: "Actual first ranked fixture" } }, hit]);
+    const html = renderToStaticMarkup(await SearchPage({ searchParams: Promise.resolve({ q: "Schifferstadt" }) }));
+    expect(html).not.toContain("data-search-place-lead");
+    expect(html.indexOf("Official service first")).toBeLessThan(html.indexOf("Schifferstadt Architectural Museum"));
   });
 
   it("loads the event archive for an exact title without event trigger words", async () => {

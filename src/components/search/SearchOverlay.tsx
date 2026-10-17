@@ -28,7 +28,7 @@ import type { IntentIcon } from "@/lib/answers/types";
 import { commandDestination } from "@/lib/command-routing";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import { settleFindReturnScroll } from "./find-return-scroll";
-import SearchPlaceVisual, { SearchPlaceVisualImage, SearchPlaceVisualCredit } from "./SearchPlaceVisual";
+import SearchPlaceVisual, { SearchPlaceVisualImage, SearchPlaceVisualCredit, SearchPlaceLead } from "./SearchPlaceVisual";
 
 /**
  * Quick-answer intents now live in `@/lib/answers/intents` so /today's
@@ -1028,6 +1028,34 @@ export default function SearchOverlay({
                   const mapHref = r.type === "place" && r.lat != null && r.lng != null
                     ? `/map?at=${r.lat.toFixed(5)},${r.lng.toFixed(5)}&place=${encodeURIComponent(r.id.replace(/^place:/, ""))}`
                     : null;
+                  if (r.type === "place" && r.thumbnailSource) {
+                    return <SearchPlaceVisual key={r.id} source={r.thumbnailSource} lead><li
+                      id="search-opt-0" data-idx={0}
+                      className="mx-3 mb-3 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)]"
+                      style={{ borderColor: "var(--app-border)" }}
+                    >
+                      <SearchPlaceLead fallback={<Icon className="h-5 w-5" aria-hidden />} actions={<>
+                        <Link href={r.href} onClick={pick}
+                          onMouseEnter={() => setHoverIdx(0)} onMouseLeave={() => setHoverIdx(null)}>
+                          View place <ArrowRight aria-hidden />
+                        </Link>
+                        {mapHref && <Link href={mapHref} onClick={(event) => {
+                          if (!isPlainNavigationClick(event)) return;
+                          event.preventDefault();
+                          if (query.trim()) pushRecent(query.trim());
+                          track("search_map");
+                          navigateFromSearch(mapHref);
+                        }}><MapPin aria-hidden />Map</Link>}
+                      </>}>
+                        <p className="text-[0.6875rem] font-semibold leading-normal" style={{ color: "var(--app-ink-2)" }}>Best match · Place</p>
+                        <h3>{highlight(r.title, query)}</h3>
+                        <p className="mt-2 text-[0.875rem] leading-normal" style={{ color: "var(--app-ink-2)" }}>
+                          {r.subtitle}{distance ? ` · ${distance}` : ""}
+                        </p>
+                        {trust && <TrustChip signal={trust} className="mt-2 inline-block" />}
+                      </SearchPlaceLead>
+                    </li></SearchPlaceVisual>;
+                  }
                   return (
                     <SearchPlaceVisual key={r.id} source={r.thumbnailSource ?? null}><li
                       id="search-opt-0"

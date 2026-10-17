@@ -35,7 +35,7 @@ test("submitted vendor search opens its reviewed Fair details and Back preserves
   await expect(drawer.getByRole("button", { name: /Show.*map/i })).toHaveCount(0);
   await page.goBack();
   await expect(page.getByRole("searchbox", { name: "Search Frederick County" })).toHaveValue("Rad Pies");
-  await expect(page.getByRole("button", { name: "Frederick City", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("combobox", { name: "Search area", exact: true })).toHaveValue("frederick");
   expect(new URL(page.url()).searchParams.get("in")).toBe("frederick");
 });
 
