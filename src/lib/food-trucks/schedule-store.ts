@@ -23,29 +23,54 @@ function isString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
+/** Cleanup must never become another unbounded optional read. */
+function cancelBestEffort(stream: Pick<ReadableStream<Uint8Array>, "cancel">, reason: string): void {
+  try {
+    void stream.cancel(reason).catch(() => {});
+  } catch {
+    // A stream may already be closed, locked or detached.
+  }
+}
+
 async function readBoundedJson(
   stream: ReadableStream<Uint8Array>,
   maxBytes: number,
+  signal: AbortSignal,
 ): Promise<unknown> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   const chunks: string[] = [];
   let bytesRead = 0;
+  let cancelled = false;
+  const cancel = (reason: string) => {
+    if (cancelled) return;
+    cancelled = true;
+    cancelBestEffort(reader, reason);
+  };
+  const onAbort = () => cancel("Food-truck schedule read stopped");
+  signal.addEventListener("abort", onAbort, { once: true });
+  if (signal.aborted) onAbort();
 
   try {
+    signal.throwIfAborted();
     while (true) {
       const { done, value } = await reader.read();
+      signal.throwIfAborted();
       if (done) break;
       bytesRead += value.byteLength;
       if (bytesRead > maxBytes) {
-        await reader.cancel("Food-truck schedule exceeded its read limit");
+        cancel("Food-truck schedule exceeded its read limit");
         return null;
       }
       chunks.push(decoder.decode(value, { stream: true }));
     }
     chunks.push(decoder.decode());
     return JSON.parse(chunks.join(""));
+  } catch (error) {
+    cancel("Food-truck schedule read failed");
+    throw error;
   } finally {
+    signal.removeEventListener("abort", onAbort);
     reader.releaseLock();
   }
 }
@@ -91,40 +116,47 @@ export async function readStoredFoodTruckSchedule(
       ? Math.min(Math.floor(timeoutMs), MAX_BLOB_READ_TIMEOUT_MS)
       : DEFAULT_BLOB_READ_TIMEOUT_MS;
   const deadline = createAbortDeadline(boundedTimeoutMs, signal);
-  try {
+  let onStop!: () => void;
+  const stopped = new Promise<null>((resolve) => {
+    onStop = () => resolve(null);
+    deadline.signal.addEventListener("abort", onStop, { once: true });
+    if (deadline.signal.aborted) onStop();
+  });
+  // The SDK can await module/auth initialization before its abort-aware fetch.
+  // Race the entire operation, not just headers, and consume every late result.
+  const operation = (async () => {
+    deadline.signal.throwIfAborted();
     const { get } = await import("@vercel/blob");
+    deadline.signal.throwIfAborted();
     const result = await get(FOOD_TRUCK_SCHEDULE_BLOB, {
       access: "public",
       useCache: cacheMode === "cache-first",
       abortSignal: deadline.signal,
     });
-    if (!result || result.statusCode !== 200 || !result.stream) return null;
+    const stream = result?.stream;
+    if (deadline.signal.aborted) {
+      if (stream) cancelBestEffort(stream, "Food-truck schedule read stopped");
+      return null;
+    }
+    if (!result || result.statusCode !== 200 || !stream) return null;
     if (
       !Number.isFinite(result.blob.size) ||
       result.blob.size < 0 ||
       result.blob.size > MAX_FOOD_TRUCK_SCHEDULE_BYTES
     ) {
-      try {
-        await result.stream.cancel(
-          "Food-truck schedule exceeded its declared read limit",
-        );
-      } catch {
-        // The response is already being discarded. A stream implementation
-        // that refuses cancellation must not turn malformed cache data into a
-        // page failure.
-      }
+      cancelBestEffort(stream, "Food-truck schedule exceeded its declared read limit");
       return null;
     }
     // Do not trust declared Blob metadata alone. Bound the actual stream too,
     // so a stale/malformed Content-Length cannot grow memory before JSON.parse.
-    const value = await readBoundedJson(
-      result.stream,
-      MAX_FOOD_TRUCK_SCHEDULE_BYTES,
-    );
+    const value = await readBoundedJson(stream, MAX_FOOD_TRUCK_SCHEDULE_BYTES, deadline.signal);
+    deadline.signal.throwIfAborted();
     return isFoodTruckScheduleSnapshot(value) ? value : null;
-  } catch {
-    return null;
+  })().catch(() => null);
+  try {
+    return await Promise.race([operation, stopped]);
   } finally {
+    deadline.signal.removeEventListener("abort", onStop);
     deadline.dispose();
   }
 }

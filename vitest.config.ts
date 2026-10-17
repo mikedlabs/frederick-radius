@@ -8,6 +8,7 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
 const storybookMode =
   process.env.RADIUS_STORYBOOK_TEST === "1" ||
   Boolean(process.env.STORYBOOK_CONFIG_DIR);
+const storybookWebKit = process.env.RADIUS_STORYBOOK_WEBKIT === "1";
 
 /**
  * Vitest is the unit runner for new code (P0 remediation onward).
@@ -63,7 +64,7 @@ export default defineConfig({
                   // Keep the component gate usable on hosts that provide a
                   // managed Chromium binary instead of Playwright's cache.
                   // The release E2E config already honors this same variable.
-                  ...(process.env.PW_CHROMIUM_PATH
+                  ...(!storybookWebKit && process.env.PW_CHROMIUM_PATH
                     ? {
                         launchOptions: {
                           executablePath: process.env.PW_CHROMIUM_PATH,
@@ -72,7 +73,7 @@ export default defineConfig({
                       }
                     : {}),
                 }),
-                instances: [{ browser: "chromium" }],
+                instances: [{ browser: storybookWebKit ? "webkit" : "chromium" }],
               },
             },
           },

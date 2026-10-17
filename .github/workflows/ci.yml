@@ -127,13 +127,18 @@ jobs:
           # Next's route/type analysis crosses Node's ~2 GB default heap on a
           # cold Linux runner. Keep enough headroom for the OS and Chromium.
           NODE_OPTIONS: "--max-old-space-size=4096"
-      - name: Install Chromium
+      - name: Install browsers
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         timeout-minutes: 10
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
       - name: Component workshop tests
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run test:storybook
+      - name: WebKit native Today controls
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        run: npm run test:storybook -- src/components/today/TodayEntryControls.stories.tsx --maxWorkers=1 --no-file-parallelism
+        env:
+          RADIUS_STORYBOOK_WEBKIT: "1"
       - name: Transit map interaction geometry
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run test:transit:geometry
