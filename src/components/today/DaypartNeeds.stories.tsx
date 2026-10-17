@@ -35,7 +35,7 @@ async function readablePlace(canvasElement: HTMLElement) {
   // The enhancement briefly replaces the supplied card with its skeleton.
   // Re-query after the rejected fixture request restores the real shelf.
   await waitFor(() => expect(canvasElement.querySelector("[data-today-place-lead], [data-today-opening-soon]")).toBeVisible());
-  const card = canvasElement.querySelector<HTMLElement>("[data-today-place-preview], [data-today-opening-soon]")!;
+  const card = canvasElement.querySelector<HTMLElement>("[data-today-place-preview], [data-today-opening-soon-preview], [data-today-opening-soon]")!;
   await expect(card.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
   const name = card.querySelector<HTMLElement>("[data-today-pick-name]")!;
   const context = card.querySelector<HTMLElement>("[data-today-pick-context]")!;
@@ -48,8 +48,31 @@ async function readablePlace(canvasElement: HTMLElement) {
 export const ConfirmedCurrentPlace: Story = {
   play: async ({ canvasElement }) => readablePlace(canvasElement),
 };
+async function readableOpeningSoon(canvasElement: HTMLElement, name: string, fact: string) {
+  await readablePlace(canvasElement);
+  const canvas = within(canvasElement);
+  const card = canvasElement.querySelector<HTMLElement>("[data-today-opening-soon-preview]")!;
+  await expect(canvas.getAllByRole("heading", { name: "Opening soon" })).toHaveLength(1);
+  await expect(canvas.getByText(fact, { exact: true })).toBeVisible();
+  await expect(within(card).queryByText("Open now", { exact: true })).toBeNull();
+  const view = canvas.getByRole("link", { name: `View place: ${name}` });
+  await expect(view).toHaveAttribute("data-decision-position", "opening-soon");
+  for (const control of [view, canvas.getByRole("link", { name: `Map: ${name}` })]) {
+    const box = control.getBoundingClientRect();
+    await expect(box.width).toBeGreaterThanOrEqual(44);
+    await expect(box.height).toBeGreaterThanOrEqual(48);
+    const range = document.createRange(); range.selectNodeContents(control);
+    for (const line of range.getClientRects()) {
+      await expect(line.left).toBeGreaterThanOrEqual(box.left - 1);
+      await expect(line.right).toBeLessThanOrEqual(box.right + 1);
+      await expect(line.top).toBeGreaterThanOrEqual(box.top - 2);
+      await expect(line.bottom).toBeLessThanOrEqual(box.bottom + 2);
+    }
+  }
+}
+
 export const OpeningSoon: Story = {
-  play: async ({ canvasElement }) => readablePlace(canvasElement),
+  play: async ({ canvasElement }) => readableOpeningSoon(canvasElement, "Sample coffee place", "Opens at 9am."),
   args: {
     rows: [{ ...row, picks: [], openingSoon: { slug: "story-opening-soon", name: "Sample coffee place", rating: null, confidence: "confirmed", fact: "Opens at 9am.", where: "Frederick" } }],
   },
@@ -82,5 +105,40 @@ export const NarrowTownOption: Story = {
     await expect(canvas.getByText("Brunswick · 6 min walk")).toBeVisible();
     await expect(canvas.getByText("Hours are not confirmed.", { exact: true })).toBeVisible();
     await expect(canvas.getByRole("heading", { name: "Places to try" })).toBeVisible();
+  },
+};
+
+
+export const OpeningSoonEnlargedText320: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: {
+    rows: [{ ...row, picks: [], openingSoon: {
+      slug: "story-opening-soon-long", name: "Sample community coffee house near the river",
+      rating: null, confidence: "likely", fact: "Likely opens at 9am · check hours.", where: "Brunswick", distance: "6 min walk",
+    } }],
+  },
+  beforeEach: () => {
+    const previous = document.documentElement.style.fontSize;
+    document.documentElement.style.fontSize = "200%";
+    return () => { document.documentElement.style.fontSize = previous; };
+  },
+  play: async ({ canvasElement }) => {
+    await readableOpeningSoon(canvasElement, "Sample community coffee house near the river", "Likely opens at 9am · check hours.");
+    const card = canvasElement.querySelector<HTMLElement>("[data-today-opening-soon-preview]")!;
+    await expect(within(card).getByText("Brunswick · 6 min walk", { exact: true })).toBeVisible();
+    for (const selector of ["[data-today-pick-name]", "[data-today-pick-fact]", "[data-today-pick-location]"]) {
+      const field = card.querySelector<HTMLElement>(selector)!;
+      const range = document.createRange(); range.selectNodeContents(field);
+      const bounds = field.getBoundingClientRect(), cardBounds = card.getBoundingClientRect();
+      for (const line of range.getClientRects()) {
+        await expect(line.left).toBeGreaterThanOrEqual(cardBounds.left - 1);
+        await expect(line.right).toBeLessThanOrEqual(cardBounds.right + 1);
+        await expect(line.top).toBeGreaterThanOrEqual(bounds.top - 2);
+        await expect(line.bottom).toBeLessThanOrEqual(bounds.bottom + 2);
+      }
+    }
+    await expect(parseFloat(getComputedStyle(document.documentElement).fontSize)).toBe(32);
+    await expect(parseFloat(getComputedStyle(card.querySelector("[data-today-pick-name]")!).fontSize)).toBeGreaterThanOrEqual(44);
+    await expect(parseFloat(getComputedStyle(card.querySelector("[data-today-pick-fact]")!).fontSize)).toBeGreaterThanOrEqual(30);
   },
 };

@@ -1,0 +1,142 @@
+import { createHash } from "node:crypto";
+import { readFileSync, realpathSync, statSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
+import postcss from "postcss";
+
+const LABEL = ".content-chapter--plain .content-chapter__label";
+const RULE = ".content-chapter--plain .content-chapter__rule";
+const CONTRACTS = [
+  [LABEL, "flex-shrink", (value) => Number.isFinite(value) && value > 0],
+  [LABEL, "min-width", zeroLength],
+  [LABEL, "overflow-wrap", (value) => value === "anywhere"],
+  [RULE, "min-width", zeroLength],
+];
+
+function zeroLength(value) {
+  return typeof value === "string" && /^0(?:px|rem|em|%)?$/.test(value);
+}
+
+function flexShrink(value) {
+  if (value === "none") return 0;
+  if (value === "auto" || value === "initial") return 1;
+  const parts = postcss.list.space(value);
+  const number = (part) => /^\+?(?:\d+|\d*\.\d+)$/.test(part ?? "");
+  const basis = (part) => part === "auto" || /^(?:0|\d*\.?\d+(?:px|rem|em|%))$/.test(part ?? "");
+  if (parts.length === 1 && (number(parts[0]) || basis(parts[0]))) return 1;
+  if (parts.length === 2 && number(parts[0])) {
+    if (number(parts[1])) return Number(parts[1]);
+    if (basis(parts[1])) return 1; // Compiled `0 auto` means `0 1 auto`.
+  }
+  if (parts.length === 3 && number(parts[0]) && number(parts[1]) && basis(parts[2])) return Number(parts[1]);
+  return null; // Unknown/global/variable expressions do not establish shrink.
+}
+
+/** A narrow emitted-rule contract, not a CSS computed-cascade engine.
+ * Only exact, unconditional root selectors count; comma-combined selectors
+ * are supported. Resolve their source order/importance and flex shorthand.
+ * Conditional/nested/layer-only rules cannot rescue a missing base rule.
+ * Other selectors, viewport conditions and runtime delivery still need the
+ * production browser proof, even when this build-artifact contract passes.
+ */
+export function chapterCssContractErrors(stylesheets) {
+  const winners = new Map();
+  const errors = [];
+  const apply = (selector, property, value, declaration, href) => {
+    const key = `${selector}|${property}`;
+    const previous = winners.get(key);
+    if (previous?.important && !declaration.important) return;
+    winners.set(key, { value, important: Boolean(declaration.important), href });
+  };
+  for (const { href, css } of stylesheets) {
+    let ast;
+    try { ast = postcss.parse(css, { from: href }); }
+    catch (error) { errors.push(`Cannot parse built stylesheet ${href}: ${error.reason ?? error.message}`); continue; }
+    ast.walkRules((rule) => {
+      if (rule.parent.type !== "root") return;
+      for (const selector of rule.selectors.map((value) => value.trim().replace(/\s+/g, " "))) {
+        if (selector !== LABEL && selector !== RULE) continue;
+        rule.each((declaration) => {
+          if (declaration.type !== "decl") return;
+          const property = declaration.prop.toLowerCase();
+          const value = declaration.value.trim().toLowerCase().replace(/\s+/g, " ");
+          if (property === "all") {
+            for (const [target, affected] of CONTRACTS) if (target === selector) apply(selector, affected, null, declaration, href);
+          } else if (selector === LABEL && property === "flex") {
+            apply(selector, "flex-shrink", flexShrink(value), declaration, href);
+          } else if (selector === LABEL && property === "flex-shrink") {
+            apply(selector, property, /^\+?(?:\d+|\d*\.\d+)$/.test(value) ? Number(value) : null, declaration, href);
+          } else if (property === "min-width" || selector === LABEL && ["overflow-wrap", "word-wrap"].includes(property)) {
+            apply(selector, property === "word-wrap" ? "overflow-wrap" : property, value, declaration, href);
+          }
+        });
+      }
+    });
+  }
+  for (const [selector, property, accepts] of CONTRACTS) {
+    const winner = winners.get(`${selector}|${property}`);
+    if (!winner || !accepts(winner.value)) {
+      const actual = winner ? JSON.stringify(winner.value) : "missing unconditional declaration";
+      errors.push(`${selector}: ${property} must be ${property === "flex-shrink" ? "> 0" : property === "min-width" ? "0" : "anywhere"}; received ${actual}`);
+    }
+  }
+  return errors;
+}
+
+function contained(root, path) {
+  const inside = relative(root, path);
+  return inside !== ".." && !inside.startsWith("../") && !isAbsolute(inside);
+}
+
+function stylesheetHrefs(html) {
+  const hrefs = [];
+  // Next emits quoted rel/href link attributes. Strip script/comment contents
+  // so streamed RSC strings or comments cannot masquerade as linked CSS.
+  const markup = html.replace(/<!--[\s\S]*?-->/g, "").replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "");
+  for (const [tag] of markup.matchAll(/<link\b[^>]*>/gi)) {
+    const attrs = new Map([...tag.matchAll(/\b([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)]
+      .map((match) => [match[1].toLowerCase(), match[2] ?? match[3]]));
+    if (!(attrs.get("rel") ?? "").toLowerCase().split(/\s+/).includes("stylesheet")) continue;
+    const href = attrs.get("href");
+    if (!href) throw new Error("Built Today stylesheet link has no quoted href");
+    if (/\bdisabled(?:\s|=|\/?>)/i.test(tag)) continue;
+    const media = (attrs.get("media") ?? "").trim().toLowerCase();
+    if (media && media !== "all") continue; // Conditional links cannot prove base CSS.
+    if (!hrefs.includes(href)) hrefs.push(href);
+  }
+  return hrefs;
+}
+
+function localStylesheetPath(buildRoot, href) {
+  let decoded;
+  try { decoded = decodeURIComponent(href); }
+  catch { throw new Error(`Invalid encoded built stylesheet path: ${href}`); }
+  if (!decoded.startsWith("/_next/static/") || /[\\?#]/.test(decoded) || decoded.split("/").some((part) => part === "." || part === "..") ||
+      !/^\/_next\/static\/(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.css$/.test(decoded)) {
+    throw new Error(`Built Today stylesheet must be a local /_next/static/*.css asset without traversal, query or hash: ${href}`);
+  }
+  const path = realpathSync(resolve(buildRoot, decoded.slice("/_next/".length)));
+  if (!contained(buildRoot, path) || !statSync(path).isFile()) throw new Error(`Built Today stylesheet escapes current .next output or is not a file: ${href}`);
+  return path;
+}
+
+/** Read only the exact Today HTML and the local CSS it actually links.
+ * No cache scan, source CSS fallback, manifest guess, fetch or regeneration.
+ */
+export function validateBuiltCssContract(root) {
+  const result = { htmlPath: resolve(root, ".next/server/app/today.html"), stylesheets: [], errors: [] };
+  try {
+    const buildRoot = realpathSync(resolve(root, ".next"));
+    const htmlPath = realpathSync(result.htmlPath);
+    if (!contained(buildRoot, htmlPath) || !statSync(htmlPath).isFile()) throw new Error("Built Today HTML escapes current .next output or is not a file");
+    const hrefs = stylesheetHrefs(readFileSync(htmlPath, "utf8"));
+    if (hrefs.length === 0) throw new Error("Built Today HTML has no unconditional stylesheet links");
+    const stylesheets = hrefs.map((href) => {
+      const path = localStylesheetPath(buildRoot, href);
+      const bytes = readFileSync(path);
+      result.stylesheets.push({ href, path, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") });
+      return { href, css: bytes.toString("utf8") };
+    });
+    result.errors.push(...chapterCssContractErrors(stylesheets));
+  } catch (error) { result.errors.push(`Cannot validate built Today CSS: ${error.message}`); }
+  return result;
+}

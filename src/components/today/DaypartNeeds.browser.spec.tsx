@@ -5,7 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DaypartNeeds from "./DaypartNeeds";
 import TodayScopeStatus from "./TodayScopeStatus";
-import { getScope, type Scope } from "@/lib/scope";
+import { getScope, setScope, type Scope } from "@/lib/scope";
 
 const state = vi.hoisted(() => ({
   request: vi.fn(),
@@ -145,5 +145,159 @@ describe("Today place photo preserves the decision and exact source", () => {
     expect(card?.querySelector('[data-today-place-lead]')?.getAttribute("href")).toContain("/places/local-place?returnTo=");
     expect(container.textContent).toContain("Places to try");
     expect(request).toHaveBeenCalledTimes(2);
+  });
+});
+
+
+const exhaustionRows = ["restaurant", "brewery", "bar"].map((category) => ({
+  category, label: category, href: `/category/${category}`, picks: [],
+}));
+const unconfirmedRows = ["smoketown-brewing-brunswick", "big-bellys-brunswick", "boxcar-burgers-brunswick", "bandersons-brunswick", "potomac-street-grill-brunswick"]
+  .map((slug, index) => ({ slug, name: index === 0 ? "Smoketown Brewing Station" : slug,
+    photo: null, where: "Brunswick", distance: null, fact: index === 0 ? "Hours not posted" : "Hours not confirmed" }));
+function scopedAnswer(category: string, scope: Scope) {
+  const picks = scope === "town:brunswick"
+    ? category === "cat:restaurant" ? unconfirmedRows : category === "cat:brewery" ? unconfirmedRows.slice(0, 1) : []
+    : [];
+  return { hero: picks[0] ?? null, also: picks.slice(1), soon: null,
+    browseHref: `/nearby?c=${category.slice(4)}`, contextSource: "town", contextLabel: scope === "town:brunswick" ? "Brunswick" : "Thurmont" };
+}
+async function renderExhaustion(variant: "brief" | "full" = "brief") {
+  await act(async () => root.render(<DaypartNeeds rows={exhaustionRows} variant={variant} />));
+}
+
+describe("Today retains a scoped useful answer after checking every category", () => {
+  it("returns to the first unconfirmed restaurant after brewery and bar settle without a qualified answer", async () => {
+    window.history.replaceState(null, "", "/today?in=brunswick");
+    state.answer.mockImplementation(async (category: string, _facet: null, scope: Scope) => scopedAnswer(category, scope));
+    await renderExhaustion();
+    const card = container.querySelector('[data-today-place-card="lead"]');
+    expect(card?.querySelector("[data-today-pick-name]")?.textContent).toBe("Smoketown Brewing Station");
+    expect(card?.querySelector("[data-today-pick-fact]")?.textContent).toBe("Hours not posted");
+    expect(container.textContent).toContain("Places to try");
+    expect(container.textContent).toContain("Brunswick picks · Hours not confirmed; call ahead");
+    expect(container.textContent).not.toContain("Places open now");
+    expect(state.answer.mock.calls).toEqual(["cat:restaurant", "cat:brewery", "cat:bar"].map((category) => [category, null, "town:brunswick"]));
+    const action = card?.querySelector<HTMLAnchorElement>("[data-today-place-lead]");
+    expect(new URL(action!.href).searchParams.get("returnTo")).toBe("/today?in=brunswick");
+    await renderExhaustion();
+    await act(async () => { await Promise.resolve(); });
+    expect(state.answer).toHaveBeenCalledTimes(3);
+    expect(container.querySelector("[data-today-pick-name]")?.textContent).toBe("Smoketown Brewing Station");
+  });
+
+  it("clears retained Brunswick shelves before an empty Thurmont context can reuse them", async () => {
+    window.history.replaceState(null, "", "/today?in=brunswick");
+    state.answer.mockImplementation(async (category: string, _facet: null, scope: Scope) => scopedAnswer(category, scope));
+    await renderExhaustion();
+    expect(container.textContent).toContain("Smoketown Brewing Station");
+    await act(async () => {
+      window.history.replaceState(null, "", "/today?in=thurmont");
+      setScope("town:thurmont");
+    });
+    expect(state.answer.mock.calls.slice(3)).toEqual(["cat:restaurant", "cat:brewery", "cat:bar"].map((category) => [category, null, "town:thurmont"]));
+    expect(state.answer).toHaveBeenCalledTimes(6);
+    expect(container.querySelector("[data-today-place-preview], [data-today-opening-soon-preview]")).toBeNull();
+    expect(container.textContent).not.toContain("Smoketown Brewing Station");
+    expect(container.textContent).not.toContain("Brunswick");
+    expect(container.textContent).toContain("Thurmont");
+  });
+
+  it("rejects an old context response queued during the scope-change handoff", async () => {
+    let releaseOld!: (value: ReturnType<typeof scopedAnswer>) => void;
+    window.history.replaceState(null, "", "/today?in=county");
+    state.answer.mockImplementation((category: string, _facet: null, scope: Scope) => scope === "county"
+      ? new Promise((resolve) => { releaseOld = resolve; })
+      : Promise.resolve(scopedAnswer(category, scope)));
+    await renderExhaustion();
+    await act(async () => {
+      window.history.replaceState(null, "", "/today?in=thurmont");
+      setScope("town:thurmont");
+      releaseOld({ ...scopedAnswer("cat:restaurant", "town:brunswick"), contextLabel: "Old county response" });
+      await Promise.resolve();
+    });
+    expect(state.answer.mock.calls).toEqual([["cat:restaurant", null, "county"],
+      ...["cat:restaurant", "cat:brewery", "cat:bar"].map((category) => [category, null, "town:thurmont"])]);
+    expect(container.textContent).toContain("Thurmont");
+    expect(container.textContent).not.toContain("Old county response");
+    expect(container.textContent).not.toContain("Smoketown Brewing Station");
+    expect(container.querySelector("[data-today-place-preview]")).toBeNull();
+  });
+
+  it("refetches new server rows in the same instance without painting the previous live shelf", async () => {
+    window.history.replaceState(null, "", "/today?in=brunswick");
+    state.answer.mockImplementation(async (category: string, _facet: null, scope: Scope) => scopedAnswer(category, scope));
+    await renderExhaustion();
+    expect(container.textContent).toContain("Smoketown Brewing Station");
+    expect(state.answer).toHaveBeenCalledTimes(3);
+    let releaseFresh!: (value: ReturnType<typeof scopedAnswer>) => void;
+    state.answer.mockImplementation(() => new Promise((resolve) => { releaseFresh = resolve; }));
+    const freshRows = exhaustionRows.map((row) => ({ ...row, picks: row.category === "restaurant"
+      ? [{ slug: "new-server-place", name: "New server place", rating: null, confidence: "unconfirmed" as const, fact: "Hours not confirmed" }] : [] }));
+    await act(async () => root.render(<DaypartNeeds rows={freshRows} variant="brief" />));
+    expect(state.answer).toHaveBeenCalledTimes(4);
+    expect(state.answer.mock.calls[3]).toEqual(["cat:restaurant", null, "town:brunswick"]);
+    expect(container.textContent).toContain("New server place");
+    expect(container.textContent).not.toContain("Smoketown Brewing Station");
+    await act(async () => releaseFresh({ ...scopedAnswer("cat:restaurant", "town:brunswick"),
+      hero: { ...unconfirmedRows[0], slug: "fresh-confirmed", name: "Fresh confirmed place", fact: "Open until 8pm", confidence: "confirmed" } } as ReturnType<typeof scopedAnswer>));
+    expect(container.textContent).toContain("Fresh confirmed place");
+    expect(container.textContent).not.toContain("New server place");
+    await act(async () => root.render(<DaypartNeeds rows={freshRows} variant="brief" />));
+    expect(state.answer).toHaveBeenCalledTimes(4);
+  });
+
+  it("rejects an old pending response after a new server-rows revision", async () => {
+    window.history.replaceState(null, "", "/today?in=brunswick");
+    let releaseOld!: (value: ReturnType<typeof scopedAnswer>) => void;
+    let releaseFresh!: (value: ReturnType<typeof scopedAnswer>) => void;
+    state.answer.mockImplementationOnce(() => new Promise((resolve) => { releaseOld = resolve; }))
+      .mockImplementationOnce(() => new Promise((resolve) => { releaseFresh = resolve; }));
+    await renderExhaustion();
+    const freshRows = exhaustionRows.map((row) => ({ ...row }));
+    await act(async () => root.render(<DaypartNeeds rows={freshRows} variant="brief" />));
+    expect(state.answer).toHaveBeenCalledTimes(2);
+    await act(async () => releaseFresh({ ...scopedAnswer("cat:restaurant", "town:brunswick"),
+      hero: { ...unconfirmedRows[0], slug: "fresh-revision", name: "Fresh revision place", fact: "Open until 8pm", confidence: "confirmed" } } as ReturnType<typeof scopedAnswer>));
+    expect(container.textContent).toContain("Fresh revision place");
+    await act(async () => releaseOld(scopedAnswer("cat:restaurant", "town:brunswick")));
+    expect(container.textContent).toContain("Fresh revision place");
+    expect(container.textContent).not.toContain("Smoketown Brewing Station");
+    expect(state.answer).toHaveBeenCalledTimes(2);
+  });
+
+  it("invalidates full-mode evidence when the same rows switch to a brief decision", async () => {
+    window.history.replaceState(null, "", "/today?in=brunswick");
+    state.answer.mockImplementation(async (category: string, _facet: null, scope: Scope) => scopedAnswer(category, scope));
+    await renderExhaustion("full");
+    expect(state.answer).toHaveBeenCalledTimes(1);
+    await renderExhaustion("brief");
+    expect(state.answer.mock.calls.map((call) => call[0])).toEqual(["cat:restaurant", "cat:restaurant", "cat:brewery", "cat:bar"]);
+    expect(container.querySelector("[data-today-pick-name]")?.textContent).toBe("Smoketown Brewing Station");
+    await renderExhaustion("brief");
+    expect(state.answer).toHaveBeenCalledTimes(4);
+  });
+
+  it("refetches a valid manually selected full-mode category after server rows refresh", async () => {
+    window.history.replaceState(null, "", "/today?in=brunswick");
+    state.answer.mockImplementation(async (category: string, _facet: null, scope: Scope) => scopedAnswer(category, scope));
+    await renderExhaustion("full");
+    await act(async () => [...container.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((tab) => tab.textContent === "bar")!.click());
+    const freshRows = exhaustionRows.map((row) => ({ ...row }));
+    await act(async () => root.render(<DaypartNeeds rows={freshRows} variant="full" />));
+    expect(state.answer.mock.calls.map((call) => call[0])).toEqual(["cat:restaurant", "cat:bar", "cat:bar"]);
+    expect([...container.querySelectorAll('[role="tab"]')].find((tab) => tab.textContent === "bar")?.getAttribute("aria-selected")).toBe("true");
+    expect(container.querySelector("[data-today-pick-name]")).toBeNull();
+  });
+
+  it("keeps a manually selected empty comparison category authoritative", async () => {
+    window.history.replaceState(null, "", "/today?in=brunswick");
+    state.answer.mockImplementation(async (category: string, _facet: null, scope: Scope) => scopedAnswer(category, scope));
+    await renderExhaustion("full");
+    const bar = [...container.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((tab) => tab.textContent === "bar")!;
+    await act(async () => bar.click());
+    expect(bar.getAttribute("aria-selected")).toBe("true");
+    expect(state.answer.mock.calls.map((call) => call[0])).toEqual(["cat:restaurant", "cat:bar"]);
+    expect(container.querySelector("[data-today-pick-name]")).toBeNull();
   });
 });

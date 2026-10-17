@@ -16,6 +16,8 @@ import DaypartNeeds, {
   isDaypartCountywideContext,
   liveShelfFromWantAnswer,
   nextUnresolvedDaypartCategory,
+  retainedDaypartFallbackCategory,
+  type LiveShelf,
 } from "./DaypartNeeds";
 
 describe("DaypartNeeds", () => {
@@ -59,6 +61,13 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("Brunswick");
     expect(html).toContain("6 min walk");
     expect(html).toContain("Opens soon · 10am");
+    expect(html).toContain('data-today-opening-soon-preview="true"');
+    expect(html).toContain('aria-label="View place: Opening local"');
+    expect(html).toContain('aria-label="Map: Opening local"');
+    expect(html).toContain('data-place-availability="opening-soon"');
+    expect(html).toContain('data-decision-position="opening-soon"');
+    expect(html.match(/>Opening soon</g)).toHaveLength(1);
+    expect(html).not.toContain('data-today-place-lead="true"');
     expect(html).not.toContain("Open now");
   });
 
@@ -222,6 +231,24 @@ describe("DaypartNeeds", () => {
     );
     expect(html).toContain("Confirmed Bakery");
     expect(html).not.toContain("Hours Unknown Coffee");
+  });
+
+  it("recovers only a fully settled unconfirmed shelf in original category order", () => {
+    const rows = ["restaurant", "brewery", "bar"].map((category) => ({ category, label: category, href: `/category/${category}`, picks: [] }));
+    const shelf = (name: string): LiveShelf => ({ picks: [{ slug: name, name, rating: null, confidence: "unconfirmed", fact: "Hours not confirmed" }],
+      openingSoon: null, href: "/nearby", contextLabel: "Brunswick", contextSource: "town", mayAssertNoneOpen: false });
+    // Insertion order is deliberately different from the original categories.
+    const shelves = { brewery: shelf("Brewery"), restaurant: shelf("First restaurant"), bar: { ...shelf("Bar"), picks: [] } };
+    const settled = { restaurant: true, brewery: true, bar: true };
+    expect(retainedDaypartFallbackCategory(rows, shelves, { ...settled, bar: false })).toBeNull();
+    expect(retainedDaypartFallbackCategory(rows, shelves, settled)).toBe("restaurant");
+    for (const confidence of ["confirmed", "likely"] as const) {
+      expect(retainedDaypartFallbackCategory(rows, { ...shelves, brewery: { ...shelves.brewery,
+        picks: [{ ...shelves.brewery.picks[0], confidence }] } }, settled)).toBeNull();
+    }
+    expect(retainedDaypartFallbackCategory(rows, { ...shelves, brewery: { ...shelves.brewery,
+      openingSoon: { slug: "soon", name: "Soon", rating: null, confidence: "likely" } } }, settled)).toBeNull();
+    expect(retainedDaypartFallbackCategory(rows, {}, settled)).toBeNull();
   });
 
   it("checks another category after a live zero instead of treating one zero as global", () => {
@@ -743,6 +770,9 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("Likely opens at 8am · check hours");
     expect(html).not.toContain("Places open now");
     expect(html).not.toContain('data-today-place-lead="true"');
+    expect(html).not.toContain("data-today-opening-soon-preview");
+    expect(html).not.toContain('aria-label="Map: Gravel &amp; Grind"');
+    expect(html).toContain('href="/places/gravel-and-grind-frederick"');
   });
 
   it("defers supplied paid photo bytes and retains a composed no-photo decision", () => {
