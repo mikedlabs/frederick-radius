@@ -77,6 +77,51 @@ test(`Sports identity remains usable at 200% text size on a ${width}px phone`, a
     expect(copyWidth, "Enlarged team text needs a readable column, not one or two characters per line").toBeGreaterThanOrEqual(120);
     await testInfo.attach(`${team.id}-large-text-width`, { contentType: "application/json", body: JSON.stringify({ width, copyWidth }) });
   }
+  const keysTitle = page.locator('[data-sports-team="keys"]')
+    .getByRole("heading", { name: "The Frederick Keys", exact: true });
+  const cowsTitle = page.locator('[data-sports-team="cows"] [data-sports-team-accent]');
+  for (const { id, title } of [{ id: "keys", title: keysTitle }, { id: "cows", title: cowsTitle }]) {
+    await expect(title).toBeVisible();
+    const copy = title.locator("..");
+    await copy.scrollIntoViewIfNeeded();
+    const geometry = await copy.evaluate((element) => {
+      const copyBox = element.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const textRects = [...range.getClientRects()]
+        .filter((rect) => rect.width > 0 && rect.height > 0)
+        .map((rect) => ({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }));
+      const clipping: Array<{ tag: string; horizontal: boolean; vertical: boolean }> = [];
+      for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        const style = getComputedStyle(ancestor);
+        const clipsX = /^(hidden|clip|auto|scroll)$/.test(style.overflowX);
+        const clipsY = /^(hidden|clip|auto|scroll)$/.test(style.overflowY);
+        if (!clipsX && !clipsY) continue;
+        const box = ancestor.getBoundingClientRect();
+        // The document's scrollport stays at viewport origin while its
+        // bounding rect moves with document scroll.
+        const isViewport = ancestor === document.documentElement;
+        const left = isViewport ? 0 : box.left + ancestor.clientLeft;
+        const top = isViewport ? 0 : box.top + ancestor.clientTop;
+        const horizontal = clipsX && textRects.some((rect) => rect.left < left || rect.right > left + ancestor.clientWidth);
+        const vertical = clipsY && textRects.some((rect) => rect.top < top || rect.bottom > top + ancestor.clientHeight);
+        if (horizontal || vertical) clipping.push({ tag: ancestor.tagName, horizontal, vertical });
+      }
+      return {
+        copyWidth: copyBox.width,
+        textRects,
+        clipping,
+        outsideViewportX: textRects.some((rect) => rect.left < 0 || rect.right > innerWidth),
+      };
+    });
+    expect(geometry.copyWidth, `${id} needs a readable full-width column at enlarged text size`).toBeGreaterThanOrEqual(120);
+    expect(geometry.textRects.length, `${id} must render actual text`).toBeGreaterThan(0);
+    // Page overflow can be zero while a rounded card clips its text. Check
+    // real text against actual clipping ancestors, not its own line-height.
+    expect(geometry.clipping, `${id} text must remain inside every clipping ancestor`).toEqual([]);
+    expect(geometry.outsideViewportX, `${id} text must remain inside the phone viewport`).toBe(false);
+    await testInfo.attach(`${id}-large-text-layout`, { contentType: "application/json", body: JSON.stringify({ width, ...geometry }) });
+  }
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
 });
 }
