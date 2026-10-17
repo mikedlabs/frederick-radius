@@ -45,7 +45,12 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const places = page.locator('[aria-label="Places for your area"]');
     const articleBox = (await article.boundingBox())!;
     const placesBox = (await places.boundingBox())!;
-    expect(articleBox.width).toBeGreaterThanOrEqual(placesBox.width - 2);
+    if (width < 640) {
+      expect(articleBox.width).toBeGreaterThanOrEqual(placesBox.width - 2);
+    } else {
+      expect(articleBox.width).toBeGreaterThanOrEqual(220);
+      expect(articleBox.width).toBeLessThan(placesBox.width * 0.6);
+    }
     for (const selector of ["[data-today-pick-fact]", "[data-today-pick-location]"]) {
       expect(await place.locator(selector).evaluate((element) => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(14);
     }
@@ -114,7 +119,7 @@ for (const failure of ["pixel", "error"] as const) {
 }
 
 
-test("Today keeps the owned place visual separate from a real answer without an attributable photo", async ({ page }, testInfo) => {
+test("Today keeps a real answer without an attributable photo and does not load the seasonal creek scene", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   const pickSlug = "ibiza-cafe";
@@ -122,6 +127,7 @@ test("Today keeps the owned place visual separate from a real answer without an 
   const unavailablePhoto = `/api/place-photo?name=${encodeURIComponent(unavailableResource)}&w=800`;
   let metadataRequests = 0;
   let uncreditedPhotoRequests = 0;
+  const creekRequests: string[] = [];
   await page.route("**/api/want?**", (route) => route.fulfill({ json: {
     hero: { slug: pickSlug, name: "Ibiza Cafe", photo: unavailablePhoto, where: "Frederick", fact: "Hours not confirmed", confidence: "unconfirmed" },
     also: [], soon: null, later: [], notable: [], contextSource: "county", contextLabel: "Frederick County",
@@ -134,6 +140,13 @@ test("Today keeps the owned place visual separate from a real answer without an 
     if (new URL(route.request().url()).searchParams.get("name") === unavailableResource) uncreditedPhotoRequests += 1;
     return route.abort("blockedbyclient");
   });
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    const source = url.pathname === "/_next/image" ? url.searchParams.get("url") : url.pathname;
+    if (source && decodeURIComponent(source).includes("SUMMER CARROL CREEK.jpg")) {
+      creekRequests.push(request.url());
+    }
+  });
   await page.goto("/today?in=county", { waitUntil: "domcontentloaded" });
   const place = page.locator(`[data-today-place-lead][data-decision-id="${pickSlug}"]`);
   await expect(place).toHaveAttribute("href", "/places/ibiza-cafe");
@@ -142,17 +155,14 @@ test("Today keeps the owned place visual separate from a real answer without an 
   await expect.poll(() => metadataRequests).toBe(1);
   await expect(place.locator("img")).toHaveCount(0);
   await expect(place).not.toContainText("Carroll Creek");
-  const creek = page.getByRole("link", { name: "View Carroll Creek Linear Park in Frederick", exact: true });
-  await expect(creek).toHaveAttribute("href", "/places/carroll-creek-linear-park-frederick");
-  await expect(creek).toHaveAttribute("data-photo-state", "loaded");
-  await expect.poll(() => creek.locator("img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 1 && image.naturalHeight > 1)).toBe(true);
-  await expect(creek).toContainText("Carroll Creek");
-  await expect(creek).not.toContainText("Ibiza");
+  await expect(page.locator("[data-today-geographic-doorway]")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "View Carroll Creek Linear Park in Frederick", exact: true })).toHaveCount(0);
+  expect(creekRequests).toEqual([]);
   await expect(page.getByRole("combobox", { name: "Choose your area", exact: true })).toHaveValue("county");
   const quickNeeds = page.getByRole("group", { name: "Quick needs", exact: true });
   expect(await place.evaluate((element) => Boolean(element.compareDocumentPosition(document.querySelector('[aria-label="Quick needs"]')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
   await expect(quickNeeds.getByRole("link")).toHaveCount(4);
   expect(uncreditedPhotoRequests).toBe(0);
-  await testInfo.attach("separate-owned-place-and-uncredited-answer", { contentType: "application/json", body: JSON.stringify({ metadataRequests, uncreditedPhotoRequests, proof: "Real Today composition and owned image; a declared answer/failed credit transport tests honest fallback, not live venue hours or current image availability." }) });
+  await testInfo.attach("uncredited-answer-without-seasonal-doorway", { contentType: "application/json", body: JSON.stringify({ metadataRequests, uncreditedPhotoRequests, creekRequests, proof: "A place without an attributable photo stays a text answer. Today does not substitute the Carroll Creek seasonal photograph." }) });
   await page.screenshot({ path: testInfo.outputPath("today-county-no-attributable-photo.png"), fullPage: true });
 });
