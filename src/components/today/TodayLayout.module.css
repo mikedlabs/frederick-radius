@@ -75,6 +75,8 @@
 
 .scope select {
   width: 100%;
+  /* WebKit's native menu ignores min-height; keep its visible target full size. */
+  height: max(44px, 2.75rem);
   /* Keep the native arrow and enlarged system-font label inside the picker. */
   padding-inline: 4px;
   border: 0;
