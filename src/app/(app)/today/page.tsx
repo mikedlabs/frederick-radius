@@ -251,7 +251,7 @@ async function EventsSections({
       <Surface variant="sunken" padding="md" className="mt-6">
         <p className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
           Today&apos;s event picks are briefly unavailable. The full{" "}
-          <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
+          <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-link)" }}>
             events calendar
           </Link>{" "}
           remains available.
