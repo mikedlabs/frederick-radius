@@ -178,12 +178,13 @@ describe("submitted search photo budget", () => {
       [],
       expect.objectContaining({ resultKind }),
     );
-    expect(html).toContain("Events didn't load.");
+    expect(html).toContain("Events didn&#x27;t load.");
     expect(html).toContain("See all events →");
     expect(html).toContain('href="/events"');
     expect(html).not.toContain("may be incomplete");
     expect(html).not.toContain("The current event schedule is unavailable");
     expect(html).not.toContain("There are no matches for");
+    expect(html).not.toContain("Need a recommendation or a plan?");
     expect(html).not.toContain("Catoctin Colorfest");
   });
 
@@ -205,7 +206,7 @@ describe("submitted search photo budget", () => {
       eventPool,
       expect.objectContaining({ resultKind: "all" }),
     );
-    expect(html).not.toContain("Events didn't load.");
+    expect(html).not.toContain("Events didn&#x27;t load.");
     expect(html).not.toContain("may be incomplete");
   });
 });

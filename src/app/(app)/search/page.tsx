@@ -395,7 +395,7 @@ export default async function SearchPage({
       {/* Generic "ask about this" CTA — suppressed when a direct answer lead is
           present below, so the view never stacks two brand-emphasis blocks
           (one primary action per view). */}
-      {query && !answer && rankedHits.length === 0 && !suppressLocalHits && govAnswers.length === 0 ? (
+      {query && !answer && rankedHits.length === 0 && !suppressLocalHits && govAnswers.length === 0 && !eventsUnavailable ? (
         <Link
           href={`/ask?${new URLSearchParams({ q: query, in: town ?? "county" }).toString()}`}
           className="tactile-interactive flex min-h-12 items-center gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2"
