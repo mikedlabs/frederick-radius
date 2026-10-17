@@ -17,6 +17,7 @@ import {
   resetFeedMetrics,
 } from "@/lib/integrations/event-schema";
 import { recordSnapshot } from "@/lib/integrations/feed-snapshot";
+import { countyCategory } from "@/lib/events/county-category";
 import { normalizeTitle, cleanDescription, clampDescription } from "@/lib/events/normalize";
 import { fetchTicketmasterMusicResult } from "@/lib/integrations/ticketmaster";
 import {
@@ -662,33 +663,10 @@ function categoryExists(slug: string, fallback: string): string {
 }
 
 /**
- * County RSS has no category element, and its CivicEngage catIDs are
- * unreliable (P0-5). Keep the generic keyword matcher off: descriptions
- * list invited council members, and civic routes events into the
- * meetings lane. Title-only (plus a Gaver Farm venue match); never read
- * the description. Public bodies stay in the data as civic so
- * classifyEvent can tuck them off Today and the default /events list
- * without painting them Community.
+ * County rows use the shared title-only rule in county-category.ts
+ * (P0-5: no generic keyword matcher, never read the description).
+ * Other feeds keep keyword inference.
  */
-const COUNTY_PUBLIC_BODY =
-  /\b(?:board|commission|committee|council|advisory|authority)(?:\s+meeting)?$/i;
-
-function countyTitleCore(title: string): string {
-  // CivicEngage often appends a broadcast note: "Police Accountability
-  // Board (Webstream on FCG TV 2 Only)". The body word still has to sit
-  // at the end of the real title, or immediately before "Meeting".
-  return title.replace(/\s*[(\[].*$/, "").trim();
-}
-
-function countyCategory(title: string, venue?: string): string {
-  if (COUNTY_PUBLIC_BODY.test(countyTitleCore(title))) return "civic";
-  const farmHaystack = `${title} ${venue ?? ""}`;
-  if (/\bgaver\s+farm\b/i.test(farmHaystack)) return "agritourism";
-  if (/\bthea(?:ter|tre)\b/i.test(title)) return "theater";
-  if (/\bpark\s+walk\b|\bhike\b|\btrail\b/i.test(title)) return "outdoors";
-  return "community";
-}
-
 export function feedCategory(
   feed: FeedSpec,
   title: string,
