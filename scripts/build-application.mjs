@@ -65,4 +65,4 @@ if (builtCss.errors.length > 0) {
   for (const error of builtCss.errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-console.log(`build-application: verified Today chapter CSS in ${builtCss.stylesheets.length} linked stylesheets`);
+console.log(`build-application: verified Today chapter CSS in ${builtCss.stylesheets.length} linked stylesheets (${builtCss.layout}; ${builtCss.owner.sourceRoute})`);
