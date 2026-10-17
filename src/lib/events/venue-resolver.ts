@@ -50,14 +50,104 @@ function venueIndex(places?: readonly PlaceCardData[]): EventVenueIndex {
  *
  * These aliases may move a pin, so additions require a human-confirmed
  * one-to-one identity. Fuzzy containment belongs in the thumbnail layer only.
+ *
+ * FCPL aliases cover only branches that already exist in the places catalog.
+ * A feed branch with no catalog record stays unlinked; do not invent a place.
  */
-export const REVIEWED_EVENT_VENUE_ALIASES: Readonly<Record<string, string>> = {
-  frederickfairgrounds:
-    "frederick-fairgrounds-home-of-the-great-frederick-fair-frederick",
-};
+const FCPL_REVIEWED_BRANCHES = [
+  {
+    slug: "c-burr-artz-public-library-frederick",
+    names: ["C. Burr Artz Public Library"],
+    codes: ["CBA"],
+  },
+  {
+    slug: "thurmont-regional-library-thurmont",
+    names: ["Thurmont Regional Library"],
+    codes: ["THU", "TRL"],
+  },
+  {
+    slug: "urbana-regional-library-new-market",
+    names: ["Urbana Regional Library"],
+    codes: ["URB", "URL", "UR"],
+  },
+  {
+    slug: "emmitsburg-branch-library-emmitsburg",
+    names: ["Emmitsburg Branch Library"],
+    codes: ["EMM", "EM"],
+  },
+  {
+    slug: "brunswick-branch-library-brunswick",
+    names: ["Brunswick Branch Library"],
+    codes: ["BRU", "BR"],
+  },
+  {
+    slug: "middletown-public-library-middletown",
+    names: ["Middletown Public Library", "Middletown Branch Library"],
+    codes: ["MID"],
+  },
+  {
+    slug: "walkersville-public-library-walkersville",
+    names: ["Walkersville Public Library", "Walkersville Branch Library"],
+    codes: ["WAL"],
+  },
+  {
+    slug: "myersville-community-library-myersville",
+    names: ["Myersville Community Library"],
+    codes: ["MYE", "MY"],
+  },
+  {
+    slug: "edward-f-fry-memorial-library-at-point-of-rocks-brunswick",
+    names: ["Edward F. Fry Memorial Library at Point of Rocks"],
+    codes: ["POR"],
+  },
+] as const;
 
 export function normalizeEventVenueIdentity(value: string | null | undefined): string {
   return (value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+const FCPL_BRANCH_ALIASES: Record<string, string> = {};
+for (const branch of FCPL_REVIEWED_BRANCHES) {
+  for (const name of branch.names) {
+    FCPL_BRANCH_ALIASES[normalizeEventVenueIdentity(name)] = branch.slug;
+  }
+  for (const code of branch.codes) {
+    FCPL_BRANCH_ALIASES[normalizeEventVenueIdentity(code)] = branch.slug;
+  }
+}
+
+export const REVIEWED_EVENT_VENUE_ALIASES: Readonly<Record<string, string>> = {
+  frederickfairgrounds:
+    "frederick-fairgrounds-home-of-the-great-frederick-fair-frederick",
+  ...FCPL_BRANCH_ALIASES,
+};
+
+export const FCPL_REVIEWED_BRANCH_SLUGS: readonly string[] = FCPL_REVIEWED_BRANCHES.map(
+  (branch) => branch.slug,
+);
+
+/**
+ * FCPL live venues look like "Branch, Room (CODE)" or "Branch, Room".
+ * Multi-branch lists and offsite suffixes stay intact so they cannot pin
+ * to one library.
+ */
+const FCPL_OFFSITE_SUFFIX =
+  /\b(?:amphitheater|playground|farmers['’]? market|city market)\b/i;
+
+export function reviewedEventVenueName(value: string | null | undefined): string {
+  const raw = (value ?? "").trim();
+  if (!raw || raw.includes(" / ")) return raw;
+  for (const branch of FCPL_REVIEWED_BRANCHES) {
+    for (const name of branch.names) {
+      if (raw === name) return name;
+      const prefix = `${name}, `;
+      if (!raw.startsWith(prefix)) continue;
+      const suffix = raw.slice(prefix.length);
+      if (FCPL_OFFSITE_SUFFIX.test(suffix)) return raw;
+      return name;
+    }
+  }
+  return raw;
 }
 
 const GENERIC_EVENT_VENUE_IDENTITIES = new Set([
@@ -173,8 +263,9 @@ export function resolveReviewedEventVenue(
   if (input.attendance_mode === "online") return null;
 
   const index = venueIndex(places);
-  const identity = normalizeEventVenueIdentity(input.venue_name);
-  const exactIdentityCandidates = isGenericEventVenueName(input.venue_name)
+  const venueName = reviewedEventVenueName(input.venue_name);
+  const identity = normalizeEventVenueIdentity(venueName);
+  const exactIdentityCandidates = isGenericEventVenueName(venueName)
     ? []
     : (index.byIdentity.get(identity) ?? []);
   const uniqueIdentity =

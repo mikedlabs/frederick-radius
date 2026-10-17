@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   decoratePlace,
   publicPlaceBySlug,
+  publicPlaces,
 } from "@/lib/loaders/places";
 
 function decoratedPlaceBySlug(slug: string) {
@@ -52,16 +53,21 @@ describe("reviewed structural place repairs", () => {
       description_source_url: "https://www.silvervox.org/eventspaces/",
       description_reviewed: true,
     });
-    expect(publicPlaceBySlug("north-market-farmers-market")).toMatchObject({
+    const cityMarket = publicPlaceBySlug("frederick-city-market");
+    expect(cityMarket).toMatchObject({
+      slug: "frederick-city-market",
       name: "Frederick City Market",
-      category: "market",
-      address: "622 N Market St",
+      address: "331 N Market St",
       website: "http://frederickcitymarket.com/",
-      geom: {
-        lng: -77.4097129,
-        lat: 39.4222301,
-      },
     });
+    expect(publicPlaceBySlug("north-market-farmers-market")?.slug).toBe(
+      "frederick-city-market",
+    );
+    expect(
+      publicPlaces()
+        .filter((place) => place.name === "Frederick City Market")
+        .map((place) => place.slug),
+    ).toEqual(["frederick-city-market"]);
   });
 
   it("publishes the sourced Swinging Bridge history without claiming current access", () => {

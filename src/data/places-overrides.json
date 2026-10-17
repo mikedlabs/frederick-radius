@@ -33,7 +33,8 @@
     "food-lion-bakery-thurmont": "food-lion-thurmont",
     "safeway-bakery-middletown": "safeway-middletown",
     "enforme-interactive": "celerate",
-    "cvs-thurmont": "cvs-pharmacy-thurmont"
+    "cvs-thurmont": "cvs-pharmacy-thurmont",
+    "north-market-farmers-market": "frederick-city-market"
   },
   "remove": [
     "brunswick-crossing-brunswick",
@@ -278,16 +279,6 @@
         "lat": 39.4259123
       },
       "short_blurb": ""
-    },
-    "north-market-farmers-market": {
-      "name": "Frederick City Market",
-      "category": "market",
-      "address": "622 N Market St",
-      "website": "http://frederickcitymarket.com/",
-      "geom": {
-        "lng": -77.4097129,
-        "lat": 39.4222301
-      }
     },
     "frederick-station": {
       "category": "transit"
