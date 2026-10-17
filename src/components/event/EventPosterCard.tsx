@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import KenBurnsImage from "@/components/media/KenBurnsImage";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { eventReasons } from "@/lib/event-reasons";
@@ -219,7 +219,7 @@ export default function EventPosterCard({
     >
       {safeVisual && onPhoto && photoSrc ? (
         <>
-          <Image
+          <KenBurnsImage
             src={photoSrc}
             alt=""
             fill
@@ -228,16 +228,8 @@ export default function EventPosterCard({
             sizes="(max-width: 640px) 100vw, 720px"
             placeholder="blur"
             blurDataURL={PAPER_CREAM_BLUR}
-            className="ken-burns object-cover"
-            onLoad={(loadEvent) => {
-              if (
-                loadEvent.currentTarget.naturalWidth <= 1 ||
-                loadEvent.currentTarget.naturalHeight <= 1
-              ) {
-                setFailedPhotoSrc(photoSrc);
-              }
-            }}
-            onError={() => setFailedPhotoSrc(photoSrc)}
+            className="object-cover"
+            onUnavailable={() => setFailedPhotoSrc(photoSrc)}
           />
           <span
             aria-hidden

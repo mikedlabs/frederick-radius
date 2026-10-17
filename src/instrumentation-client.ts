@@ -5,18 +5,23 @@
  * Sentry.setUser, sendDefaultPii false: no PII and no user identifier
  * ever leaves the browser. Without NEXT_PUBLIC_SENTRY_DSN this is a
  * no-op.
+ *
+ * The SDK is imported after first paint. A static `@sentry/nextjs`
+ * import was the shared 400KB+ chunk on /today and /events (~5 s of
+ * mobile script time in the Oct 2026 traces).
  */
-import * as Sentry from "@sentry/nextjs";
-
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 if (dsn) {
-  Sentry.init({
-    dsn,
-    tracesSampleRate: 0.1,
-    sendDefaultPii: false,
-    enableLogs: false,
+  void import("@sentry/nextjs").then((Sentry) => {
+    Sentry.init({
+      dsn,
+      tracesSampleRate: 0,
+      sendDefaultPii: false,
+      enableLogs: false,
+    });
   });
 }
 
-// Required by the Sentry Next.js SDK to instrument client navigations.
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+// Tracing is off on purpose. Keep the Next.js hook so the SDK does not
+// inject navigation instrumentation back into the first-load graph.
+export function onRouterTransitionStart() {}

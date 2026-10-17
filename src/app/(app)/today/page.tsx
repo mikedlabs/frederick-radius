@@ -64,7 +64,6 @@ import { eventTown } from "@/lib/events/eventTown";
 import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
 import TodayMasthead from "@/components/today/TodayMasthead";
-import TodayGeographicDoorway, { TodayGeographicDoorwayPending } from "@/components/today/TodayGeographicDoorway";
 import PageChapter from "@/components/ui/PageChapter";
 import styles from "@/components/today/TodayLayout.module.css";
 import {
@@ -300,13 +299,6 @@ export default async function HomePage() {
 
       <div data-today-current-content className={styles.currentContent}>
         <div aria-label="Places for your area" className={styles.places}>
-          {/* This owned Frederick scene is a place doorway, not a verdict
-              about current conditions. Other town and Near me lenses suppress
-              it. Before the client knows the URL lens, the neutral fallback
-              reserves geometry without naming or fetching a place image. */}
-          <Suspense fallback={<TodayGeographicDoorwayPending />}>
-            <TodayGeographicDoorway />
-          </Suspense>
           {decisionLead}
           <div className={styles.quickNeeds}>
             <TodayQuickNeeds />

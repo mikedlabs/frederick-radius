@@ -2,6 +2,18 @@ import { expect, test } from "@playwright/test";
 
 test.use({ serviceWorkers: "block" });
 
+function creekPhotoListener(page: import("@playwright/test").Page) {
+  const creekRequests: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    const source = url.pathname === "/_next/image" ? url.searchParams.get("url") : url.pathname;
+    if (source && decodeURIComponent(source).includes("SUMMER CARROL CREEK.jpg")) {
+      creekRequests.push(request.url());
+    }
+  });
+  return creekRequests;
+}
+
 for (const width of [320, 375, 390, 430, 1366]) {
   test(`Today keeps the editorial layout useful at ${width}px`, async ({ page }, testInfo) => {
     test.setTimeout(120_000);
@@ -11,6 +23,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
       localStorage.setItem("fr:scope:v1", "county");
       document.cookie = "fr_scope=county; path=/";
     });
+    const creekRequests = creekPhotoListener(page);
     await page.goto("/today", { waitUntil: "domcontentloaded" });
     const area = page.getByRole("combobox", { name: "Choose your area" });
     await expect(area).toBeEnabled();
@@ -28,38 +41,14 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const mastheadBox = (await masthead.boundingBox())!;
     const findBox = (await find.boundingBox())!;
     const weatherBox = (await page.locator("[data-today-weather]").boundingBox())!;
-    const doorway = page.locator("[data-today-geographic-doorway]");
-    await expect(doorway).toHaveAttribute("data-photo-state", "loaded");
-    await expect(doorway).toHaveAttribute("href", "/places/carroll-creek-linear-park-frederick");
-    const photoBox = (await doorway.locator("figure").boundingBox())!;
-    const doorwayBox = (await doorway.boundingBox())!;
-    const captionBox = (await doorway.locator("[data-today-geographic-caption]").boundingBox())!;
     const headingBox = (await masthead.locator("h1").boundingBox())!;
     expect(findBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height);
-    // The arrival action now has a deliberate phone density; neither weather
-    // facts nor the photograph are subtracted from an artificial height budget.
     expect(findBox.height).toBeGreaterThanOrEqual(56);
     expect(findBox.height).toBeLessThanOrEqual(56);
     await expect(page.locator('[data-find-density="arrival"]')).toHaveCount(1);
-    expect(doorwayBox.y).toBeGreaterThanOrEqual(findBox.y + findBox.height);
-    // The real named caption shares the photo's grid area; it must fit inside
-    // the image rather than precede it or cover a separate blank rectangle.
-    expect(captionBox.x).toBeGreaterThanOrEqual(photoBox.x - 1);
-    expect(captionBox.x + captionBox.width).toBeLessThanOrEqual(photoBox.x + photoBox.width + 1);
-    expect(captionBox.y).toBeGreaterThanOrEqual(photoBox.y - 1);
-    expect(captionBox.y + captionBox.height).toBeLessThanOrEqual(photoBox.y + photoBox.height + 1);
-    expect(Math.abs(captionBox.y + captionBox.height - photoBox.y - photoBox.height)).toBeLessThanOrEqual(1);
-    expect(photoBox.width).toBeGreaterThan(photoBox.height);
-    expect(photoBox.height).toBeGreaterThanOrEqual(160);
-    expect(photoBox.height).toBeLessThanOrEqual(190);
-    expect(photoBox.width).toBeGreaterThanOrEqual(doorwayBox.width * 0.95);
-    expect(photoBox.height).toBeGreaterThan(130);
-    await expect(doorway.locator("img")).toHaveAttribute("alt", "Carroll Creek in Frederick.");
-    await expect(doorway.getByRole("heading", { name: "Carroll Creek", exact: true })).toBeVisible();
-    await expect(doorway).toContainText("Frederick");
-    await expect(doorway).toContainText("View place");
-    await expect(doorway).not.toContainText(/best|open now|safe now|current conditions|Mike D|June 2023/i);
-    await expect(doorway.locator("a, button, input, select")).toHaveCount(0);
+    await expect(page.locator("[data-today-geographic-doorway]")).toHaveCount(0);
+    await expect(page.locator("[data-today-geographic-pending]")).toHaveCount(0);
+    expect(creekRequests).toEqual([]);
     const quickNeeds = page.getByRole("group", { name: "Quick needs", exact: true });
     await expect(quickNeeds).toHaveCount(1);
     await expect(quickNeeds.getByRole("link")).toHaveCount(4);
@@ -76,15 +65,13 @@ for (const width of [320, 375, 390, 430, 1366]) {
       if (width === 375) {
         const activeAlert = page.getByRole("region", { name: "Heads up", exact: true });
         const specialDayLead = page.locator('[data-moment-spotlight-day-of="true"]');
-        // The existing In The Streets day-of lead is a deliberate exception.
-        // It remains above the ordinary briefing instead of being compressed.
         if (await specialDayLead.count() === 0) {
-          const visiblePhotoHeight = Math.max(0, Math.min(photoBox.y + photoBox.height, primaryNavBox.y) - Math.max(photoBox.y, 0));
+          const dateline = masthead.locator("[data-today-dateline]");
+          await expect(dateline).toBeVisible();
+          const datelineBox = (await dateline.boundingBox())!;
           if (await activeAlert.count() === 0) {
-            expect(visiblePhotoHeight, "substantial local photography is visible on ordinary arrival").toBeGreaterThanOrEqual(130);
-            // Large, accurate photography is intentional. The quick actions
-            // follow it within one viewport of scrolling instead of forcing
-            // every element into tiny cards above the fixed navigation.
+            expect(datelineBox.y + datelineBox.height).toBeLessThanOrEqual(primaryNavBox.y);
+            expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(primaryNavBox.y);
             expect(quickNeedsBox.y + quickNeedsBox.height).toBeLessThanOrEqual(primaryNavBox.y + 844);
           }
           const scrollForActions = Math.max(0, quickNeedsBox.y + quickNeedsBox.height - primaryNavBox.y + 16);
@@ -107,7 +94,6 @@ for (const width of [320, 375, 390, 430, 1366]) {
       shadow: getComputedStyle(element).boxShadow,
     }))).toEqual({ border: "0px", shadow: "none" });
     await expect(masthead.locator("img")).toHaveCount(0);
-    expect(headingBox.y + headingBox.height).toBeLessThanOrEqual(photoBox.y);
 
     for (const name of ["Open now", "Public essentials", "Plan a few hours", "Local services"]) {
       const shortcut = page.getByRole("link", { name, exact: true });
@@ -121,8 +107,6 @@ for (const width of [320, 375, 390, 430, 1366]) {
       } as Record<string, string>)[name];
       await expect(shortcut).toHaveAttribute("href", expectedHref);
       const box = (await shortcut.boundingBox())!;
-      // CSS transforms can report 43.999969px for an exact 44px target.
-      // Check the declared minimum and round only subpixel representation.
       expect(await shortcut.evaluate((element) => parseFloat(getComputedStyle(element).minHeight)))
         .toBeGreaterThanOrEqual(44);
       expect(Math.round(box.height * 100) / 100, `${name} has a phone-sized touch target`)
@@ -133,8 +117,6 @@ for (const width of [320, 375, 390, 430, 1366]) {
     }
 
     expect(weatherBox.y).toBeGreaterThanOrEqual(headingBox.y + headingBox.height);
-    // The date may share the title row or wrap below it. Both facts must stay
-    // visible inside the masthead without colliding or pushing weather upward.
     const dateline = masthead.locator("[data-today-dateline]");
     await expect(dateline).toBeVisible();
     const datelineBox = (await dateline.boundingBox())!;
@@ -157,19 +139,13 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const events = page.getByRole("group", { name: "Follow the day", exact: true });
     const placesBox = (await places.boundingBox())!;
     const eventsBox = (await events.boundingBox())!;
-    // None-open is also a real answer; it deliberately has no pick-card marker.
     const decision = places.locator(":scope > section");
     await expect(decision).toHaveCount(1);
-    // Runtime place facts can hydrate after the first arrival measurements.
-    // Compare adjacent elements in one frame instead of mixing the early
-    // quick-needs position with the later expanded decision card.
     await expect.poll(() => places.evaluate((element) => {
-      const decision = element.querySelector(":scope > section")?.getBoundingClientRect();
+      const decisionBox = element.querySelector(":scope > section")?.getBoundingClientRect();
       const quick = element.querySelector('[role="group"][aria-label="Quick needs"]')?.getBoundingClientRect();
-      const photo = element.querySelector('[data-today-geographic-doorway]')?.getBoundingClientRect();
-      if (!decision || !quick || !photo) return false;
-      const rowBottom = innerWidth >= 640 ? Math.max(photo.bottom, decision.bottom) : decision.bottom;
-      const gap = quick.y - rowBottom;
+      if (!decisionBox || !quick) return false;
+      const gap = quick.y - decisionBox.bottom;
       return gap >= 0 && gap <= 17;
     })).toBe(true);
     const currentLayout = await places.evaluate((element) => {
@@ -183,23 +159,24 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const currentQuickNeedsBox = currentLayout.quick;
     expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(placesBox.y);
     expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(eventsBox.y);
-    if (width >= 640) {
-      expect(Math.abs(doorwayBox.y - decisionBox.y)).toBeLessThanOrEqual(1);
-      expect(decisionBox.x).toBeGreaterThanOrEqual(doorwayBox.x + doorwayBox.width);
-      const firstRowBottom = Math.max(doorwayBox.y + doorwayBox.height, decisionBox.y + decisionBox.height);
-      expect(currentQuickNeedsBox.y).toBeGreaterThanOrEqual(firstRowBottom);
-      expect(currentQuickNeedsBox.y - firstRowBottom).toBeLessThanOrEqual(17);
-      expect(currentQuickNeedsBox.width).toBeGreaterThanOrEqual(placesBox.width - 1);
-    } else {
-      expect(decisionBox.y).toBeGreaterThanOrEqual(doorwayBox.y + doorwayBox.height);
-      expect(decisionBox.y - doorwayBox.y - doorwayBox.height).toBeLessThanOrEqual(17);
-      expect(currentQuickNeedsBox.y).toBeGreaterThanOrEqual(decisionBox.y + decisionBox.height);
-      expect(currentQuickNeedsBox.y - decisionBox.y - decisionBox.height).toBeLessThanOrEqual(17);
+    expect(decisionBox.y).toBeGreaterThanOrEqual(findBox.y + findBox.height);
+    expect(currentQuickNeedsBox.y).toBeGreaterThanOrEqual(decisionBox.y + decisionBox.height);
+    expect(currentQuickNeedsBox.y - decisionBox.y - decisionBox.height).toBeLessThanOrEqual(17);
+    expect(currentQuickNeedsBox.width).toBeGreaterThanOrEqual(placesBox.width - 1);
+    const placeCards = places.locator("[data-today-place-card]");
+    if (await placeCards.count()) {
+      expect(await placeCards.count()).toBeLessThanOrEqual(3);
+      await expect(placeCards.getByRole("button")).toHaveCount(0);
+      for (const card of await placeCards.all()) {
+        await expect(card.locator('a[href^="/places/"]')).toHaveCount(1);
+      }
+    }
+    if (width < 640 && primaryNavBox) {
       const activeAlert = page.getByRole("region", { name: "Heads up", exact: true });
       const specialDay = page.locator('[data-moment-spotlight-day-of="true"]');
       if (width >= 375 && await activeAlert.count() === 0 && await specialDay.count() === 0) {
-        expect(captionBox.y + captionBox.height, "the exact owned place action clears navigation on ordinary arrival").toBeLessThanOrEqual(primaryNavBox!.y);
-        expect(decisionBox.y, "the useful place answer begins before navigation on ordinary arrival").toBeLessThan(primaryNavBox!.y);
+        expect(weatherBox.y + weatherBox.height, "conditions stay on the first screen").toBeLessThanOrEqual(primaryNavBox.y);
+        expect(decisionBox.y, "today's best three begin before navigation").toBeLessThan(primaryNavBox.y);
       }
     }
     expect(eventsBox.y).toBeGreaterThanOrEqual(placesBox.y + placesBox.height);
@@ -207,13 +184,12 @@ for (const width of [320, 375, 390, 430, 1366]) {
       document.documentElement.scrollWidth - document.documentElement.clientWidth,
     )).toBeLessThanOrEqual(1);
 
-    await expect.poll(() => doorway.locator("img").evaluate((element) =>
-      element instanceof HTMLImageElement && element.complete && element.naturalWidth > 1 && element.naturalHeight > 1,
-    )).toBe(true);
     await testInfo.attach("today-arrival-geometry", {
       contentType: "application/json",
-      body: JSON.stringify({ width, mastheadBox, weatherBox, findBox, captionBox, photoBox, doorwayBox, quickNeedsBox, decisionBox, primaryNavBox,
-        note: "A short daypart and dated county context precede unchanged weather and Find. A compact landscape keeps the exact named owned place visible; the real area answer follows before four shortcuts. Desktop pairs the two separate place actions." }),
+      body: JSON.stringify({
+        width, mastheadBox, weatherBox, findBox, datelineBox, quickNeedsBox, decisionBox, primaryNavBox, creekRequests,
+        note: "Date and conditions precede today's best three. The seasonal archive photograph is not on Today.",
+      }),
     });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}.png`), fullPage: true });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}-viewport.png`), fullPage: false });
@@ -249,22 +225,12 @@ for (const town of ["brunswick", "thurmont"]) {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 375, height: 844 });
     await page.emulateMedia({ reducedMotion: "reduce" });
-    const creekRequests: string[] = [];
-    page.on("request", (request) => {
-      const url = new URL(request.url());
-      const source = url.pathname === "/_next/image" ? url.searchParams.get("url") : url.pathname;
-      if (source && decodeURIComponent(source).includes("SUMMER CARROL CREEK.jpg")) creekRequests.push(request.url());
-    });
-    // Freeze the server paint before Next can hydrate useSearchParams. This
-    // deliberately inspects the real initial fallback, not a made-up town UI.
+    const creekRequests = creekPhotoListener(page);
     const holdScripts = (route: import("@playwright/test").Route) =>
       route.request().resourceType() === "script" ? route.abort() : route.continue();
     await page.route("**/*", holdScripts);
     await page.goto(`/today?in=${town}`, { waitUntil: "domcontentloaded" });
-    const pending = page.locator("[data-today-geographic-pending]");
-    await expect(pending).toBeAttached();
-    await expect(pending).toHaveAttribute("aria-hidden", "true");
-    await expect(pending.locator("a, img, h2, button")).toHaveCount(0);
+    await expect(page.locator("[data-today-geographic-pending]")).toHaveCount(0);
     await expect(page.locator("[data-today-geographic-doorway]")).toHaveCount(0);
     expect(creekRequests).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath(`today-${town}-initial-viewport.png`), fullPage: false });
@@ -281,7 +247,7 @@ for (const town of ["brunswick", "thurmont"]) {
     expect(creekRequests).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath(`today-${town}-hydrated-viewport.png`), fullPage: false });
     await testInfo.attach("town-arrival-photo-requests", {
-      contentType: "application/json", body: JSON.stringify({ town, creekRequests, serverPaint: "Scripts held; scope-neutral fallback observed." }),
+      contentType: "application/json", body: JSON.stringify({ town, creekRequests, serverPaint: "No seasonal Frederick doorway on Today." }),
     });
   });
 }

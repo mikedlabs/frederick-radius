@@ -86,6 +86,13 @@ describe("EventsExplorer deferred browse reconciliation", () => {
     });
   });
 
+  it("does not pull framer-motion or the map canvas into the first events paint", () => {
+    const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
+    expect(source).not.toContain("framer-motion");
+    expect(source).toContain('dynamic(() => import("@/components/event/EventAgenda"))');
+    expect(source).toContain('dynamic(() => import("@/components/event/EventsMap")');
+  });
+
   it("does not mistake an unavailable event pool for no matching events", () => {
     expect(eventsEmptyState({ loading: false, dataComplete: false, hasFilters: true, hasLoadedEvents: false })).toEqual({
       title: "Event schedule unavailable",

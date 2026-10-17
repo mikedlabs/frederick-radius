@@ -121,6 +121,9 @@ describe("EventPosterCard visual trust", () => {
 
     expect(html).toContain('data-event-poster="photo"');
     expect(html).toContain("data-event-photo-credit");
+    expect(html).toContain('data-cover-motion="still"');
+    expect(html).toContain("ken-burns object-cover");
+    expect(html).not.toContain("ken-burns-ready");
     expect(html).toContain("fallback=signal");
     expect(html).toContain("Local photographer");
     expect(html).toContain("Google Maps");

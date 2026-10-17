@@ -171,7 +171,13 @@ for (const width of [320, 390]) {
         await expect.poll(() => engine.map?.isStyleLoaded(), { timeout: 10_000 }).toBe(true);
         const map = engine.map!;
         expect(engine.testModeApplied).toBe(true);
-        await expect.poll(() => map.isSourceLoaded("transit-routes"), { timeout: 10_000 }).toBe(true);
+        // isSourceLoaded() emits "no source with ID" when the GeoJSON source
+        // is not registered yet. Wait until getSource succeeds first so a
+        // load race is not recorded as a fixture engine error.
+        await expect.poll(
+          () => Boolean(map.getSource("transit-routes") && map.isSourceLoaded("transit-routes")),
+          { timeout: 10_000 },
+        ).toBe(true);
         expect(map.getLayer("transit-routes-line")?.type).toBe("line");
         // Documented testMode does not paint source tiles. Verify the public
         // registered source/layer contract and original geographic input instead.

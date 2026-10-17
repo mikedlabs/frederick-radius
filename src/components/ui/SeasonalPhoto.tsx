@@ -1,6 +1,7 @@
 import Image from "next/image";
 import path from "node:path";
 import { promises as fs } from "node:fs";
+import KenBurnsImage from "@/components/media/KenBurnsImage";
 
 /**
  * SeasonalPhoto — picks a real Frederick County photograph for the
@@ -148,17 +149,31 @@ export default async function SeasonalPhoto({
 
   return (
     <div className={className}>
-      <Image
-        src={pick.src}
-        alt={alt}
-        width={pick.width}
-        height={pick.height}
-        priority={priority}
-        sizes={sizes}
-        placeholder="blur"
-        blurDataURL={blurDataUrlFor(pick.blur)}
-        className={`h-full w-full object-cover${kenBurns ? " ken-burns" : ""}`}
-      />
+      {kenBurns ? (
+        <KenBurnsImage
+          src={pick.src}
+          alt={alt}
+          width={pick.width}
+          height={pick.height}
+          priority={priority}
+          sizes={sizes}
+          placeholder="blur"
+          blurDataURL={blurDataUrlFor(pick.blur)}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <Image
+          src={pick.src}
+          alt={alt}
+          width={pick.width}
+          height={pick.height}
+          priority={priority}
+          sizes={sizes}
+          placeholder="blur"
+          blurDataURL={blurDataUrlFor(pick.blur)}
+          className="h-full w-full object-cover"
+        />
+      )}
     </div>
   );
 }

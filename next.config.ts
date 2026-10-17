@@ -397,4 +397,11 @@ export default withSentryConfig(nextConfig, {
   silent: true,
   telemetry: false,
   sourcemaps: { disable: true },
+  bundleSizeOptimizations: {
+    excludeDebugStatements: true,
+    excludeTracing: true,
+    excludeReplayIframe: true,
+    excludeReplayShadowDom: true,
+    excludeReplayWorker: true,
+  },
 });

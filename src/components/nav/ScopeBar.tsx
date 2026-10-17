@@ -1,9 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useSyncExternalStore, useTransition } from "react";
 import { MapPin, ChevronDown, Loader2 } from "lucide-react";
-import { setScope } from "@/lib/scope";
+import {
+  getScope,
+  scopeTownSlug,
+  setScope,
+  subscribeScopeChange,
+} from "@/lib/scope";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 /**
@@ -39,8 +44,16 @@ export default function ScopeBar({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const currentName = current ? (MUNICIPALITY_BY_SLUG[current]?.name ?? null) : null;
-  const selectValue = selectedTown ?? (currentName ? "ranking-origin" : "county");
+  const clientScope = useSyncExternalStore(
+    subscribeScopeChange,
+    getScope,
+    () => null,
+  );
+  const clientTown = scopeTownSlug(clientScope);
+  const effectiveSelectedTown = clientTown ?? selectedTown;
+  const effectiveCurrent = clientTown ?? current;
+  const currentName = effectiveCurrent ? (MUNICIPALITY_BY_SLUG[effectiveCurrent]?.name ?? null) : null;
+  const selectValue = effectiveSelectedTown ?? (currentName ? "ranking-origin" : "county");
 
   return (
     <div

@@ -44,7 +44,7 @@ export default function PlaceHeroMedia({
       priority={priority} fetchPriority={priority ? "high" : "auto"}
       sizes={size === "hero" ? "(max-width: 720px) 100vw, 720px" : "(max-width: 720px) 50vw, 360px"}
       placeholder="blur" blurDataURL={PAPER_CREAM_BLUR}
-      className={`absolute inset-0 z-0 h-full w-full object-cover${size === "hero" ? " ken-burns" : ""}`}
+      className={`absolute inset-0 z-0 h-full w-full object-cover${size === "hero" ? ` ken-burns${loaded ? " ken-burns-ready" : ""}` : ""}`}
       onLoad={(event) => {
         const result = isPlacePhotoFailureSignal(event.currentTarget) ? "failed" : "loaded";
         setState((current) => recordPlaceCardPhotoResult(plan, current, source.src, result));

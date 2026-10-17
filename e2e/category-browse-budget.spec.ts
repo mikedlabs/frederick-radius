@@ -25,9 +25,9 @@ test("collapsed category browse mounts one bounded page only after opening", asy
 
   await trigger.click();
   await expect(trigger).toHaveAttribute("aria-expanded", "true");
-  await expect(section.locator("article")).toHaveCount(24);
-  await expect(section.getByRole("button", { name: "Show 24 more" })).toBeVisible();
+  await expect(section.locator("article")).toHaveCount(32);
+  await expect(section.getByRole("button", { name: "Show 32 more" })).toBeVisible();
 
-  await section.getByRole("button", { name: "Show 24 more" }).click();
-  await expect(section.locator("article")).toHaveCount(48);
+  await section.getByRole("button", { name: "Show 32 more" }).click();
+  await expect(section.locator("article")).toHaveCount(64);
 });

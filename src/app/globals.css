@@ -1611,8 +1611,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   100% { transform: scale(1.06) translate3d(0, -1.5%, 0); }
 }
 .ken-burns {
-  animation: ken-burns 28s ease-out both;
   transform-origin: 50% 40%;
+}
+.ken-burns-ready {
+  animation: ken-burns 28s ease-out both;
   will-change: transform;
 }
 
@@ -1622,7 +1624,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .radius-ripple,
   .radius-breathe,
   .radar-sweep,
-  .ken-burns { animation: none; opacity: 1; transform: none; }
+  .ken-burns,
+  .ken-burns-ready { animation: none; opacity: 1; transform: none; }
 }
 
 
