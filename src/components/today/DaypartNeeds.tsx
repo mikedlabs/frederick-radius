@@ -105,6 +105,19 @@ export function nextUnresolvedDaypartCategory(
   );
 }
 
+/** Only successful shelves from this context may recover an exhausted brief.
+ * Keep category order and each shelf's original ranking; unknown hours remain
+ * unknown. A pending category or qualified answer still owns the decision. */
+export function retainedDaypartFallbackCategory(
+  rows: readonly DaypartRow[],
+  shelves: Readonly<Record<string, LiveShelf>>,
+  resolvedCategories: Readonly<Record<string, boolean>>,
+): string | null {
+  if (rows.some((row) => resolvedCategories[row.category] !== true)) return null;
+  if (rows.some((row) => shelves[row.category] && daypartUsablePickCount(shelves[row.category], "brief") > 0)) return null;
+  return rows.find((row) => shelves[row.category]?.picks.length > 0)?.category ?? null;
+}
+
 /** The href mapping lives in lib/today/daypart-needs so the server HTML
  * emits the same availability-ordered destination this client refines.
  * Re-exported here because the client spec and callers reach it through this
@@ -461,12 +474,22 @@ function DaypartAlternativeCard({ place, category }: { place: DaypartPick; categ
   );
 }
 
-/** A closed door remains a distinct near-term transition, never an open claim. */
-function OpeningSoonPick({ place, category, hydratePhoto = false }: {
+type OpeningSoonPickProps = {
   place: DaypartPick;
   category: string;
   hydratePhoto?: boolean;
-}) {
+};
+
+/** The brief shares its preview and scoped actions; full comparison retains
+ * its compact transition. Dispatch before either child owns a photo hook. */
+function OpeningSoonPick({ brief = false, ...props }: OpeningSoonPickProps & { brief?: boolean }) {
+  return brief
+    ? <TodayPlacePreview {...props} availability="opening-soon" />
+    : <OpeningSoonComparisonPick {...props} />;
+}
+
+/** A closed door remains a distinct near-term transition, never an open claim. */
+function OpeningSoonComparisonPick({ place, category, hydratePhoto = false }: OpeningSoonPickProps) {
   const photo = useTodayPlacePhoto(place, 192, hydratePhoto);
   return (
     <article className={styles.openingCard}>
@@ -510,10 +533,18 @@ export default function DaypartNeeds({
   const [selectedCategory, setSelectedCategory] = useState(() =>
     initialDaypartCategory(rows, variant),
   );
-  const [liveShelves, setLiveShelves] = useState<Record<string, LiveShelf>>({});
-  const [resolvedCategories, setResolvedCategories] = useState<Record<string, boolean>>({});
+  const dataRevision = useMemo(() => ({ rows, variant }), [rows, variant]);
+  const [liveSnapshot, setLiveSnapshot] = useState<{ revision: typeof dataRevision; shelves: Record<string, LiveShelf> }>({ revision: dataRevision, shelves: {} });
+  const [resolvedSnapshot, setResolvedSnapshot] = useState<{ revision: typeof dataRevision; categories: Record<string, boolean> }>({ revision: dataRevision, categories: {} });
+  // A router refresh retains this client instance. Old live evidence must not
+  // override its new server rows, even before the new request effect runs.
+  const liveShelves = liveSnapshot.revision === dataRevision ? liveSnapshot.shelves : {};
+  const resolvedCategories = resolvedSnapshot.revision === dataRevision ? resolvedSnapshot.categories : {};
   const [contextRevision, setContextRevision] = useState(0);
+  const cacheRevisionRef = useRef(dataRevision);
   const resolvedCategoriesRef = useRef<Record<string, boolean>>({});
+  const liveShelvesRef = useRef<Record<string, LiveShelf>>({});
+  const contextEpochRef = useRef(0);
   const mayAutoAdvanceRef = useRef(true);
   const shelfRef = useRef<HTMLUListElement>(null);
 
@@ -562,15 +593,26 @@ export default function DaypartNeeds({
   // hours, chain penalties, and category matching cannot drift between the two
   // sections.
   useEffect(() => {
+    if (cacheRevisionRef.current !== dataRevision) {
+      cacheRevisionRef.current = dataRevision;
+      contextEpochRef.current += 1;
+      liveShelvesRef.current = {};
+      resolvedCategoriesRef.current = {};
+    }
     if (!baseActive) return;
+    // Returning to a retained brief shelf is presentation, not another query.
+    // Full comparison keeps its existing deliberate category navigation.
+    if (variant === "brief" && resolvedCategoriesRef.current[baseActive.category]) return;
     let current = true;
+    const epoch = contextEpochRef.current;
+    const belongsToContext = () => current && epoch === contextEpochRef.current;
     const settleCategory = (pickCount: number) => {
       const resolvedAfter = {
         ...resolvedCategoriesRef.current,
         [baseActive.category]: true,
       };
       resolvedCategoriesRef.current = resolvedAfter;
-      setResolvedCategories(resolvedAfter);
+      setResolvedSnapshot({ revision: dataRevision, categories: resolvedAfter });
       if (pickCount !== 0 || !mayAutoAdvanceRef.current) return;
       const next = nextUnresolvedDaypartCategory(
         rows,
@@ -578,7 +620,12 @@ export default function DaypartNeeds({
         resolvedAfter,
         variant,
       );
-      if (next) setSelectedCategory(next);
+      if (next) {
+        setSelectedCategory(next);
+      } else if (variant === "brief") {
+        const retained = retainedDaypartFallbackCategory(rows, liveShelvesRef.current, resolvedAfter);
+        if (retained) setSelectedCategory(retained);
+      }
     };
     // Today labels an unset lens as the whole county. Send that default
     // explicitly so the API cannot substitute a home/IP origin or old cookie.
@@ -587,17 +634,18 @@ export default function DaypartNeeds({
       ?? getScope() ?? "county";
     getWantAnswer(`cat:${baseActive.category}`, null, scope)
       .then((raw) => {
-        if (!current) return;
+        if (!belongsToContext()) return;
         const answer = raw as WantAnswer;
         const shelf = liveShelfFromWantAnswer(answer, baseActive, scope);
-        setLiveShelves((previous) => ({
-          ...previous,
+        liveShelvesRef.current = { ...liveShelvesRef.current, [baseActive.category]: shelf };
+        setLiveSnapshot((previous) => ({ revision: dataRevision, shelves: {
+          ...(previous.revision === dataRevision ? previous.shelves : {}),
           [baseActive.category]: shelf,
-        }));
+        } }));
         settleCategory(daypartUsablePickCount(shelf, variant));
       })
       .catch(() => {
-        if (!current) return;
+        if (!belongsToContext()) return;
         // Keep the already-rendered countywide shelf. A live refresh is an
         // enhancement, never a reason to replace useful content with an error.
         settleCategory(daypartUsablePickCount(baseActive, variant));
@@ -605,15 +653,19 @@ export default function DaypartNeeds({
     return () => {
       current = false;
     };
-  }, [activeCategory, activeHref, baseActive, contextRevision, rows, variant]);
+  }, [activeCategory, activeHref, baseActive, contextRevision, dataRevision, rows, variant]);
 
   // A visitor can grant location from the header after this component mounts.
   // Same-tab storage changes are otherwise invisible, so listen to the
   // explicit location and scope signals and ask the shared ranker again.
   useEffect(() => {
     const refresh = () => {
-      setLiveShelves({});
-      setResolvedCategories({});
+      // Invalidate promises synchronously; React's old effect cleanup may not
+      // run until after an already queued response microtask.
+      contextEpochRef.current += 1;
+      liveShelvesRef.current = {};
+      setLiveSnapshot({ revision: dataRevision, shelves: {} });
+      setResolvedSnapshot({ revision: dataRevision, categories: {} });
       resolvedCategoriesRef.current = {};
       setSelectedCategory(initialDaypartCategory(rows, variant));
       mayAutoAdvanceRef.current = true;
@@ -625,7 +677,7 @@ export default function DaypartNeeds({
       window.removeEventListener(GEOLOCATION_CHANGE_EVENT, refresh);
       window.removeEventListener(SCOPE_CHANGE_EVENT, refresh);
     };
-  }, [rows, variant]);
+  }, [dataRevision, rows, variant]);
 
   // Keep one public, actionable place as the offline Today handoff. This never
   // stores the user's coordinates or distance; the offline page labels the
@@ -842,6 +894,7 @@ export default function DaypartNeeds({
               <OpeningSoonPick
                 place={active.openingSoon}
                 category={active.category}
+                brief={variant === "brief"}
                 hydratePhoto={variant === "brief"}
               />
             ) : null}
@@ -882,6 +935,7 @@ export default function DaypartNeeds({
               <OpeningSoonPick
                 place={active.openingSoon}
                 category={active.category}
+                brief={variant === "brief"}
                 hydratePhoto={variant === "brief"}
               />
             ) : null}

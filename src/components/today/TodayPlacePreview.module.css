@@ -112,9 +112,32 @@
   outline-color: var(--app-on-brand);
 }
 
-/* The facts carry the no-photo state; no empty media plate is reserved. */
+/* A factual lead stays compact while every line can grow with text size. */
 .preview[data-has-photo="false"] .facts {
-  padding-block: clamp(24px, 6cqi, 34px);
+  padding: 16px 18px;
+}
+
+.preview[data-has-photo="false"] .category {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.preview[data-has-photo="false"] .name {
+  font-size: clamp(1.375rem, 6cqi, 1.625rem);
+  line-height: 1.15;
+}
+
+.preview[data-has-photo="false"] .context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-top: 10px;
+}
+
+.preview[data-has-photo="false"] .context > p {
+  min-width: 0;
+  max-width: 100%;
 }
 
 @container (min-width: 600px) {

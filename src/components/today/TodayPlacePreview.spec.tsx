@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DaypartPick } from "@/lib/loaders/daypartPicks";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
-import TodayPlacePreview from "./TodayPlacePreview";
+import TodayPlacePreview, { type TodayPlaceAvailability } from "./TodayPlacePreview";
 
 type PhotoHandlers = Pick<ImgHTMLAttributes<HTMLImageElement>, "onLoad" | "onError">;
 const photoHandlers = vi.hoisted(() => new Map<string, PhotoHandlers>());
@@ -87,8 +87,8 @@ describe("Today place preview exact media and actions", () => {
     vi.unstubAllGlobals();
   });
 
-  async function render(place: DaypartPick, hydratePhoto = false) {
-    await act(async () => root.render(<TodayPlacePreview place={place} category="museum" hydratePhoto={hydratePhoto} />));
+  async function render(place: DaypartPick, hydratePhoto = false, availability: TodayPlaceAvailability = "current") {
+    await act(async () => root.render(<TodayPlacePreview place={place} category="museum" hydratePhoto={hydratePhoto} availability={availability} />));
   }
   const image = () => container.querySelector<HTMLImageElement>("img");
   const credit = () => container.querySelector<HTMLElement>(".place-card-photo-credit");
@@ -138,6 +138,60 @@ describe("Today place preview exact media and actions", () => {
     expect(html).toContain('aria-label="Map: Schifferstadt"');
     expect(html).not.toContain("returnTo=");
     expect(html).not.toContain("in=county");
+  });
+
+  it("keeps a qualified opening transition distinct from a current recommendation and retains scoped native actions", async () => {
+    const place = pick({ name: "Opening local", confidence: "likely", fact: "Likely opens at 4pm · check hours" });
+    await render(place, false, "opening-soon");
+    expect(container.textContent).toContain("Likely opens at 4pm · check hours");
+    expect(container.textContent).toContain("Brunswick · 6 min walk");
+    expect(container.querySelector("[data-today-pick-fact]")?.textContent).toBe("Likely opens at 4pm · check hours");
+    expect(container.querySelector("[data-today-place-preview], [data-today-place-lead]")).toBeNull();
+    expect(container.querySelector('[data-today-place-card="opening-soon"][data-today-opening-soon-preview]')).not.toBeNull();
+    const action = container.querySelector<HTMLAnchorElement>("[data-today-opening-soon]")!;
+    expect(action.getAttribute("aria-label")).toBe(`View place: ${place.name}`);
+    expect(["data-place-availability", "data-decision-surface", "data-decision-entity", "data-decision-id", "data-decision-position", "data-decision-action"]
+      .map((key) => action.getAttribute(key))).toEqual(["opening-soon", "today", "place", place.slug, "opening-soon", "open"]);
+    expectActions(place);
+  });
+
+  it("never turns a missing opening fact into an open-now claim in the cached action fallback", () => {
+    const place = pick({ confidence: "confirmed", fact: null });
+    routing.suspend = true;
+    let html: string;
+    try {
+      html = renderToStaticMarkup(<TodayPlacePreview place={place} category="museum" availability="opening-soon" />);
+    } finally {
+      routing.suspend = false;
+    }
+    expect(html).toContain("Opening time available");
+    expect(html).not.toContain("Open now");
+    expect(html).not.toContain('data-today-place-lead="true"');
+    expect(html).toContain('data-today-opening-soon="true"');
+    expect(html).toContain('data-place-availability="opening-soon"');
+    expect(html).toContain('data-decision-position="opening-soon"');
+    expect(html).toContain(`href="/places/${place.slug}"`);
+    expect(html).toContain(`href="/map?place=${place.slug}"`);
+    expect(html).not.toContain("returnTo=");
+  });
+
+  it("preserves the decoded exact source and credit when availability changes to opening soon", async () => {
+    const request = vi.fn();
+    vi.stubGlobal("fetch", request);
+    const place = pick({ slug: "schifferstadt-architectural-museum-frederick", name: "Schifferstadt" });
+    await render(place, true);
+    await decode(image()!);
+    const decodedImage = image();
+    await render({ ...place, confidence: "likely", fact: "Likely opens at 4pm · check hours" }, true, "opening-soon");
+    expect(image()).toBe(decodedImage);
+    expect(image()?.getAttribute("src")).toBe(schifferstadt.src);
+    expect(credit()?.getAttribute("aria-hidden")).toBeNull();
+    expect(credit()?.hasAttribute("inert")).toBe(false);
+    expect(credit()?.textContent).toContain(schifferstadt.creator);
+    expect(credit()?.querySelector(`a[href="${schifferstadt.source_url}"]`)).not.toBeNull();
+    expect(container.textContent).toContain("Likely opens at 4pm · check hours");
+    expectActions(place);
+    expect(request).not.toHaveBeenCalled();
   });
 
   it("uses the exact owned Creek image without hydrating an unused Google candidate", async () => {
@@ -208,11 +262,11 @@ describe("Today place preview exact media and actions", () => {
     expect(request).not.toHaveBeenCalled();
   });
 
-  it("keeps already-attributed Google eligible without hydration while bytes wait for its frame", async () => {
+  it.each(["current", "opening-soon"] as const)("keeps already-attributed Google eligible for %s without hydration while bytes wait for its frame", async (availability) => {
     const request = vi.fn<(source: string, init?: RequestInit) => Promise<Response>>(async () => byteResponse());
     vi.stubGlobal("fetch", request);
     const place = pick({ photo: rawPhoto, photoAttribution: attribution });
-    await render(place);
+    await render(place, false, availability);
     expect(container.querySelector("[data-place-card-photo]")?.getAttribute("data-place-card-photo-bytes")).toBe("idle");
     expect(image()).toBeNull();
     expect(request).not.toHaveBeenCalled();

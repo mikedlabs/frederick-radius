@@ -27,7 +27,9 @@ function fixtureRoot() {
         absolute,
         path.endsWith(".json")
           ? `${JSON.stringify([{ path }])}\n`
-          : `export const fixture = ${JSON.stringify(path)};\n`,
+          : path.endsWith(".jpg")
+            ? Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x02, 0xff, 0xd9])
+            : `export const fixture = ${JSON.stringify(path)};\n`,
       );
     }
   }
@@ -83,6 +85,7 @@ test("the place release covers canonical server and place-page inputs", () => {
     "src/lib/integrations/closures.ts",
     "src/lib/integrations/wikimedia.ts",
     "src/data/credited-local-place-photos.ts",
+    "public/place-photos/brewers-alley-2004.jpg",
     "src/data/business-info.json",
     "src/data/field-notes.json",
     "src/data/course-info.json",
@@ -206,4 +209,44 @@ test("local licensed image records require promotion even when their adapter is 
     promoted.streams.places.artifacts.filter((artifact) => artifact.path !== recordsPath),
     manifest.streams.places.artifacts.filter((artifact) => artifact.path !== recordsPath),
   );
+});
+
+
+test("changing reviewed local photo bytes invalidates the places promotion without a metadata edit", () => {
+  const root = fixtureRoot();
+  const manifest = fixtureManifest(root);
+  const photoPath = "public/place-photos/brewers-alley-2004.jpg";
+  const metadataPath = "src/data/credited-local-place-photos.ts";
+  const metadata = inspectArtifact(root, metadataPath);
+  const target = resolve(root, photoPath);
+  writeFileSync(target, Buffer.concat([readFileSync(target), Buffer.from([0x01])]));
+
+  const result = validateDataRelease(manifest, root);
+  assert.equal(result.dataVersion, null);
+  assert.ok(result.errors.some((error) => error.includes(photoPath) && error.includes("digest differs")));
+  assert.deepEqual(inspectArtifact(root, metadataPath), metadata);
+  assert.ok(result.errors.every((error) => error.includes(photoPath)));
+
+  const promoted = refreshDataReleaseStream(manifest, "places", root, "2026-08-13T12:00:00Z");
+  assert.deepEqual(validateDataRelease(promoted, root).errors, []);
+  assert.notEqual(promoted.data_version, manifest.data_version);
+  assert.equal(promoted.streams.places.artifacts.find((artifact) => artifact.path === photoPath).records, null);
+  for (const [name, stream] of Object.entries(manifest.streams)) {
+    if (name !== "places") assert.deepEqual(promoted.streams[name], stream);
+  }
+  assert.deepEqual(
+    promoted.streams.places.artifacts.filter((artifact) => artifact.path !== photoPath),
+    manifest.streams.places.artifacts.filter((artifact) => artifact.path !== photoPath),
+  );
+});
+
+
+test("unregistered JPEG paths and unsupported formats are still rejected", () => {
+  const root = fixtureRoot();
+  for (const photoPath of ["public/place-photos/unreviewed.jpg", "public/unreviewed.jpg", "public/place-photos/unreviewed.png"]) {
+    const target = join(root, photoPath);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+    assert.throws(() => inspectArtifact(root, photoPath), /unsupported release artifact type/);
+  }
 });

@@ -285,3 +285,240 @@ for (const town of ["brunswick", "thurmont"]) {
     });
   });
 }
+
+
+test.describe("Today compiled chapter at enlarged phone text", () => {
+  test.use({ viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true, permissions: [] });
+
+  test("Today compiled plain chapter fits at 320px with 200% text", async ({ page, baseURL }, testInfo) => {
+    test.setTimeout(60_000);
+    const origin = new URL(baseURL ?? "http://localhost:3010").origin;
+    const counts = { want: 0, mapCard: 0, pulse: 0 };
+    const limits = { want: 16, mapCard: 8, pulse: 8 };
+    const exceeded: string[] = [];
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.addInitScript(() => {
+      localStorage.setItem("fr:scope:v1", "county");
+      localStorage.setItem("fr:appearance:v1", "light");
+      document.cookie = "fr_scope=county; path=/";
+      document.cookie = "fr_onboarded=1; path=/";
+      document.addEventListener("DOMContentLoaded", () => {
+        document.documentElement.style.fontSize = "200%";
+      }, { once: true });
+    });
+    // Use the actual page, ranker and source states. No response fixtures or
+    // forced place selection: paid images, third parties and writes stay off.
+    await page.route("**/*", (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      if (url.origin !== origin || !["GET", "HEAD"].includes(request.method())) return route.abort();
+      if (url.pathname.startsWith("/api/place-photo")) return route.abort();
+      if (url.pathname === "/_next/image") {
+        const raw = url.searchParams.get("url");
+        const source = raw ? new URL(raw, origin) : null;
+        if (!source || source.origin !== origin || source.pathname.startsWith("/api/")) return route.abort();
+      }
+      if (url.pathname.startsWith("/api/")) {
+        let key: keyof typeof counts;
+        if (url.pathname === "/api/want" && url.searchParams.get("scope") === "county"
+          && !["lat", "lng", "lon", "origin", "latitude", "longitude"].some((name) => url.searchParams.has(name))) {
+          key = "want";
+        } else if (url.pathname === "/api/pulse/status") {
+          key = "pulse";
+        } else if (/^\/api\/places\/map-card\/[a-z0-9-]{1,120}$/.test(url.pathname)) {
+          key = "mapCard";
+        } else return route.abort();
+        if (++counts[key] > limits[key]) {
+          exceeded.push(key);
+          return route.abort();
+        }
+      }
+      return route.continue();
+    });
+
+    const response = await page.goto("/today?in=county", { waitUntil: "domcontentloaded" });
+    expect(response?.status()).toBe(200);
+    const area = page.getByRole("combobox", { name: "Choose your area" });
+    await expect(area).toBeEnabled();
+    await expect(area).toHaveValue("county");
+    const chapter = page.getByRole("group", { name: "Follow the day", exact: true });
+    await expect(chapter).toHaveClass(/content-chapter--plain/);
+    await expect(chapter.locator(".content-chapter__label")).toHaveText("Follow the day");
+    await chapter.scrollIntoViewIfNeeded();
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    });
+    // Read the compiled browser CSS and all geometry in one frame. A root
+    // overflow clip must not conceal body overflow or a divider outside its
+    // register, which happened despite the source and component story passing.
+    const geometry = await chapter.evaluate((element) => {
+      const register = element.querySelector<HTMLElement>(".content-chapter__register")!;
+      const label = register.querySelector<HTMLElement>(".content-chapter__label")!;
+      const rule = register.querySelector<HTMLElement>(".content-chapter__rule")!;
+      const bounds = (node: Element) => {
+        const rect = node.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+      };
+      const range = document.createRange();
+      range.selectNodeContents(label);
+      const labelStyle = getComputedStyle(label);
+      // Keep a bounded account of the rest of the real page before any bounds
+      // assertion fails. A chapter can fit while a different subtree escapes.
+      const diagnosticLimits = { elements: 24, directText: 20, deepestScroll: 16, ancestors: 5, textRects: 6, landmarks: 6, nativeControls: 10 };
+      const nodes = [document.body, ...document.body.querySelectorAll("*")];
+      const depths = new Map<Element, number>();
+      const entries = nodes.map((node) => {
+        const depth = (depths.get(node.parentElement!) ?? -1) + 1;
+        depths.set(node, depth);
+        return { node, depth, rect: node.getBoundingClientRect(), style: getComputedStyle(node) };
+      });
+      const byNode = new Map(entries.map((entry) => [entry.node, entry]));
+      const identify = (node: Element) => `${node.tagName.toLowerCase()}${node.id ? `#${node.id}` : ""}${[...node.classList].slice(0, 3).map((name) => `.${name}`).join("")}`.slice(0, 180);
+      const clipped = (style: CSSStyleDeclaration) =>
+        ["auto", "scroll", "hidden", "clip"].includes(style.overflowX)
+          || style.clipPath !== "none" || (style.clip !== "auto" && style.clip !== "");
+      const ancestors = (node: Element) => {
+        const result = [];
+        for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+          const style = byNode.get(parent)?.style ?? getComputedStyle(parent);
+          if (!clipped(style)) continue;
+          result.push({ element: identify(parent), box: bounds(parent), overflowX: style.overflowX,
+            overflowY: style.overflowY, clip: style.clip, clipPath: style.clipPath,
+            position: style.position, contain: style.contain });
+        }
+        return { count: result.length, entries: result.slice(0, diagnosticLimits.ancestors) };
+      };
+      const pseudoStyles = (node: Element) => ["::before", "::after"].flatMap((pseudo) => {
+        const style = getComputedStyle(node, pseudo);
+        if (style.content === "none" || style.content === "normal" || style.display === "none") return [];
+        // CSS exposes no DOM rectangle for pseudo-elements. Preserve their box
+        // styles explicitly rather than presenting these as measured bounds.
+        return [{ pseudo, content: style.content.slice(0, 100), display: style.display, position: style.position,
+          width: style.width, minWidth: style.minWidth, maxWidth: style.maxWidth, height: style.height,
+          left: style.left, right: style.right, top: style.top, bottom: style.bottom,
+          margin: style.margin, transform: style.transform, overflowX: style.overflowX }];
+      });
+      const describe = (entry: typeof entries[number]) => ({
+        element: identify(entry.node), depth: entry.depth, box: bounds(entry.node),
+        scroll: entry.node.scrollWidth, client: entry.node.clientWidth,
+        style: { display: entry.style.display, position: entry.style.position, width: entry.style.width,
+          minWidth: entry.style.minWidth, maxWidth: entry.style.maxWidth, flex: entry.style.flex,
+          gridTemplateColumns: entry.style.gridTemplateColumns, font: entry.style.fontSize,
+          padding: entry.style.padding, margin: entry.style.margin, transform: entry.style.transform,
+          overflowX: entry.style.overflowX, contentVisibility: entry.style.contentVisibility },
+        pseudoStylesOnly: pseudoStyles(entry.node), clippingAncestors: ancestors(entry.node),
+      });
+      const hasIntermediateClip = (node: Element) => {
+        for (let parent = node.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
+          if (clipped(byNode.get(parent)?.style ?? getComputedStyle(parent))) return true;
+        }
+        return false;
+      };
+      const outliers = entries.filter(({ rect }) => rect.width > 0 && (rect.left < -1 || rect.right > innerWidth + 1))
+        // Root/body clipping must not hide a candidate. Descendants clipped by
+        // their own component remain recorded after the likely escaping nodes.
+        .sort((a, b) => Number(hasIntermediateClip(a.node)) - Number(hasIntermediateClip(b.node)) || b.depth - a.depth);
+      const scrollOffenders = entries.filter(({ node }) => node.clientWidth > 0 && node.scrollWidth > node.clientWidth + 1);
+      const scrollAncestors = new Set<Element>();
+      for (const { node } of scrollOffenders) {
+        for (let parent = node.parentElement; parent; parent = parent.parentElement) scrollAncestors.add(parent);
+      }
+      const deepestScroll = scrollOffenders.filter(({ node }) => !scrollAncestors.has(node)).sort((a, b) => b.depth - a.depth);
+      const directText = [];
+      for (const entry of entries) {
+        for (const text of entry.node.childNodes) {
+          if (text.nodeType !== Node.TEXT_NODE || !text.textContent?.trim()) continue;
+          const textRange = document.createRange();
+          textRange.selectNodeContents(text);
+          const rects = [...textRange.getClientRects()].filter((rect) => rect.width > 0 && (rect.left < -1 || rect.right > innerWidth + 1));
+          if (rects.length === 0) continue;
+          directText.push({ entry, text: text.textContent.trim().slice(0, 120), rectCount: rects.length,
+            rects: rects.slice(0, diagnosticLimits.textRects).map((rect) => ({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom })) });
+        }
+      }
+      directText.sort((a, b) => Number(hasIntermediateClip(a.entry.node)) - Number(hasIntermediateClip(b.entry.node)) || b.entry.depth - a.entry.depth);
+      const textMeasure = document.createElement("canvas").getContext("2d");
+      const nativeControls = entries.filter(({ node }) => node.matches("select, input, textarea"));
+      const controlMetrics = (entry: typeof entries[number]) => {
+        const { node, style } = entry;
+        const options = node instanceof HTMLSelectElement ? [...node.options].map((option) => option.textContent ?? "") : [];
+        const text = node instanceof HTMLSelectElement ? node.selectedOptions[0]?.textContent ?? ""
+          : node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement ? node.value : "";
+        if (textMeasure) textMeasure.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+        return { ...describe(entry), text: text.slice(0, 120),
+          // Font metrics supplement the real control box; they do not claim to
+          // measure the browser's native arrow or intrinsic select width.
+          glyphWidth: textMeasure?.measureText(text).width ?? null,
+          widestOptionGlyphWidth: options.length && textMeasure ? Math.max(...options.map((option) => textMeasure.measureText(option).width)) : null,
+          fontFamily: style.fontFamily, boxSizing: style.boxSizing, appearance: style.appearance,
+          fieldSizing: style.getPropertyValue("field-sizing"), flexBasis: style.flexBasis,
+          whiteSpace: style.whiteSpace, overflowWrap: style.overflowWrap, wordBreak: style.wordBreak,
+          borderLeft: style.borderLeftWidth, borderRight: style.borderRightWidth };
+      };
+      const overflowDiagnostics = {
+        state: { viewport: { width: innerWidth, height: innerHeight }, scroll: { x: scrollX, y: scrollY },
+          documentWidths: { scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth, offset: document.documentElement.offsetWidth },
+          bodyWidths: { scroll: document.body.scrollWidth, client: document.body.clientWidth, offset: document.body.offsetWidth },
+          scrollbarWidth: innerWidth - document.documentElement.clientWidth,
+          deviceScaleFactor: devicePixelRatio, visualViewport: visualViewport ? { width: visualViewport.width, height: visualViewport.height, scale: visualViewport.scale, offsetLeft: visualViewport.offsetLeft } : null,
+          activeElement: document.activeElement ? identify(document.activeElement) : null,
+          bodyBox: bounds(document.body), documentBox: bounds(document.documentElement),
+          fontFamily: getComputedStyle(document.body).fontFamily },
+        limits: diagnosticLimits, inspectedElements: entries.length,
+        landmarks: entries.filter(({ node }) => node.matches("main, header, nav")).slice(0, diagnosticLimits.landmarks).map(describe),
+        nativeControls: { count: nativeControls.length, entries: nativeControls.slice(0, diagnosticLimits.nativeControls).map(controlMetrics) },
+        elementOutliers: { count: outliers.length, entries: outliers.slice(0, diagnosticLimits.elements).map(describe) },
+        directTextOutliers: { count: directText.length, entries: directText.slice(0, diagnosticLimits.directText).map(({ entry, ...text }) => ({ ...describe(entry), ...text })) },
+        scrollOffenders: { count: scrollOffenders.length, deepestCount: deepestScroll.length,
+          entries: deepestScroll.slice(0, diagnosticLimits.deepestScroll).map(describe) },
+      };
+      return {
+        viewport: innerWidth,
+        rootFontSize: getComputedStyle(document.documentElement).fontSize,
+        chapter: bounds(element), register: bounds(register), label: bounds(label), rule: bounds(rule),
+        labelLines: [...range.getClientRects()].map((rect) => ({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom })),
+        labelStyle: { flexShrink: labelStyle.flexShrink, minWidth: labelStyle.minWidth, overflowWrap: labelStyle.overflowWrap, overflowX: labelStyle.overflowX },
+        ruleMinWidth: getComputedStyle(rule).minWidth,
+        widths: [element, register, document.body, document.documentElement].map((node) => ({
+          element: node.className || node.tagName, scroll: node.scrollWidth, client: node.clientWidth,
+        })),
+        documentOverflow: document.documentElement.scrollWidth - innerWidth,
+        bodyOverflow: document.body.scrollWidth - innerWidth,
+        overflowDiagnostics,
+      };
+    });
+    await testInfo.attach("today-compiled-chapter-200pct", {
+      contentType: "application/json", body: JSON.stringify({ geometry, counts, limits, exceeded,
+        source: "Actual Today and compiled CSS; paid/third-party/write transport blocked; no fixtures or image-availability claim." }, null, 2),
+    });
+    expect(geometry.viewport).toBe(320);
+    expect(geometry.rootFontSize).toBe("32px");
+    expect(parseFloat(geometry.labelStyle.flexShrink), "the real plain label can shrink").toBeGreaterThan(0);
+    expect(parseFloat(geometry.labelStyle.minWidth)).toBe(0);
+    expect(geometry.labelStyle.overflowWrap).toBe("anywhere");
+    expect(geometry.labelStyle.overflowX, "readable text must not be hidden to pass bounds").toBe("visible");
+    expect(parseFloat(geometry.ruleMinWidth), "the decorative line can collapse before pushing out of the register").toBe(0);
+    for (const box of [geometry.chapter, geometry.register, geometry.label, geometry.rule]) {
+      expect(box.left).toBeGreaterThanOrEqual(-1);
+      expect(box.right).toBeLessThanOrEqual(geometry.viewport + 1);
+    }
+    expect(geometry.rule.left).toBeGreaterThanOrEqual(geometry.register.left - 1);
+    expect(geometry.rule.right).toBeLessThanOrEqual(geometry.register.right + 1);
+    expect(geometry.rule.top).toBeGreaterThanOrEqual(geometry.register.top - 1);
+    expect(geometry.rule.bottom).toBeLessThanOrEqual(geometry.register.bottom + 1);
+    expect(geometry.labelLines.length).toBeGreaterThan(0);
+    for (const line of geometry.labelLines) {
+      expect(line.left).toBeGreaterThanOrEqual(geometry.register.left - 1);
+      expect(line.right).toBeLessThanOrEqual(geometry.register.right + 1);
+      expect(line.top).toBeGreaterThanOrEqual(geometry.label.top - 2);
+      expect(line.bottom).toBeLessThanOrEqual(geometry.label.bottom + 2);
+    }
+    for (const width of geometry.widths) {
+      expect(width.scroll, `${width.element}: no hidden horizontal overflow`).toBeLessThanOrEqual(width.client + 1);
+    }
+    expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
+    expect(geometry.bodyOverflow).toBeLessThanOrEqual(1);
+    expect(exceeded, "the real page stays inside its free read bounds").toEqual([]);
+  });
+});

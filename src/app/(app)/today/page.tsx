@@ -289,8 +289,8 @@ export default async function HomePage() {
       <div data-today-briefing className={styles.briefing}>
         {/* Find follows the conditions glance as the sole primary action.
             Seasonal campaigns and the event stream cannot bury either. */}
-        <div className={styles.entryControls}>
-          <div className="today-arrival today-arrival--find">
+        <div data-today-entry-controls className={styles.entryControls}>
+          <div>
             <TodayAsk embedded showQuickNeeds={false} density="arrival" />
           </div>
           <div className={styles.scope}>

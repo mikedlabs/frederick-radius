@@ -17,8 +17,9 @@ export const ExactOwnedPlace: Story = {
     const canvas = within(canvasElement);
     const link = canvas.getByRole("link", { name: "View Carroll Creek Linear Park in Frederick" });
     await expect(link).toHaveAttribute("href", "/places/carroll-creek-linear-park-frederick");
-    await expect(canvas.getByRole("img", { name: "Carroll Creek in Frederick." })).toBeVisible();
-    await waitFor(async () => { await expect(link).toHaveAttribute("data-photo-state", "loaded"); }, { timeout: 5_000 });
+    const image = canvas.getByRole("img", { name: "Carroll Creek in Frederick." }) as HTMLImageElement;
+    await waitFor(async () => { await image.decode(); await expect(link).toHaveAttribute("data-photo-state", "loaded"); }, { timeout: 5_000 });
+    await waitFor(async () => { await expect(image).toBeVisible(); });
     const photo = canvasElement.querySelector("figure")!.getBoundingClientRect();
     await expect(photo.width).toBeGreaterThan(photo.height);
     await expect(photo.height).toBeGreaterThanOrEqual(160);
