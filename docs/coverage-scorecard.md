@@ -7,7 +7,7 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-10-12 — 1571 places._
+_Generated 2026-10-17 — 1571 places._
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
