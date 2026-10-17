@@ -39,6 +39,8 @@ export default function SearchInput({
 
   return (
     <form
+      action="/search"
+      method="get"
       role="search"
       onSubmit={(e) => {
         e.preventDefault();
@@ -71,6 +73,11 @@ export default function SearchInput({
         className="w-full bg-transparent py-3 text-[16px] outline-none placeholder:text-[color:var(--app-ink-3)]"
         style={{ color: "var(--app-ink)" }}
       />
+      {/* Native GET replaces the query string, so context must be successful
+          form controls before hydration as well as in the client handler. */}
+      {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
+      {scope && <input type="hidden" name="in" value={scope} />}
+      {kind && <input type="hidden" name="kind" value={kind} />}
       {q && (
         <button
           type="button"

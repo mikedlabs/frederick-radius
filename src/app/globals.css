@@ -970,6 +970,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   padding-inline: 0.125rem;
 }
 .content-chapter--plain .content-chapter__label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-family: var(--font-sans), system-ui, sans-serif;
   font-size: 0.6875rem;
   font-weight: 750;
@@ -977,6 +980,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   text-transform: uppercase;
 }
 .content-chapter--plain .content-chapter__rule {
+  min-width: 0;
   background: var(--app-border);
 }
 

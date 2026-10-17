@@ -9,7 +9,7 @@ import { useVisibleGooglePhoto } from "./useVisibleGooglePhoto";
 
 /** A photograph of the selected place, supplied by the canonical loader.
  * A missing or failed photo leaves the card's real name and facts intact. */
-export default function PlaceCardPhoto({ source, onResult, width = 360, frame = "hero", sizes, deferGoogleBytes = false }: {
+export default function PlaceCardPhoto({ source, onResult, width = 360, frame = "hero", sizes, deferGoogleBytes = false, decodeIdentity }: {
   source: PlaceCardPhotoSource | null;
   onResult: (src: string, result: PlaceCardPhotoResult) => void;
   width?: number;
@@ -18,6 +18,8 @@ export default function PlaceCardPhoto({ source, onResult, width = 360, frame = 
   sizes?: string;
   /** Wait for the visible list frame before requesting Google bytes. */
   deferGoogleBytes?: boolean;
+  /** Re-decode changed source credit without replacing the settled byte owner. */
+  decodeIdentity?: string | null;
 }) {
   const defer = Boolean(deferGoogleBytes && source?.kind === "google");
   const sourceSrc = source?.src ?? null;
@@ -41,7 +43,7 @@ export default function PlaceCardPhoto({ source, onResult, width = 360, frame = 
         // consume another reservation on this no-store transport.
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          key={bytes.objectUrl}
+          key={decodeIdentity == null ? bytes.objectUrl : `${bytes.objectUrl}:${decodeIdentity}`}
           src={bytes.objectUrl}
           alt={source.alt}
           className="absolute inset-0 h-full w-full object-cover"
@@ -51,7 +53,7 @@ export default function PlaceCardPhoto({ source, onResult, width = 360, frame = 
         />
       )) : (
         <Image
-          key={source.src}
+          key={decodeIdentity ?? source.src}
           src={source.src}
           alt={source.alt}
           fill

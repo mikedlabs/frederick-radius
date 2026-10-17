@@ -1,16 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
 import styles from "./DaypartNeeds.module.css";
-import { useTodayPhotoCredit } from "./useTodayPhotoCredit";
-import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
+import PlaceCardPhoto, { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
+import TodayPlacePreview from "./TodayPlacePreview";
+import { useTodayPlacePhoto } from "./useTodayPlacePhoto";
 import Link from "next/link";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import TodaySectionHeading from "@/components/today/TodaySectionHeading";
 import type { DaypartPick, DaypartRow } from "@/lib/loaders/daypartPicks";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
-import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { getWantAnswer } from "@/lib/want-cache";
 import { GEOLOCATION_CHANGE_EVENT } from "@/hooks/useGeolocation";
 import { daypartBrowseHref } from "@/lib/today/daypart-needs";
@@ -428,153 +426,68 @@ function PickContext({ place, fact }: { place: DaypartPick; fact: string }) {
   );
 }
 
-function DaypartPickCard({
-  place,
-  category,
-  eager = false,
-  lead = false,
-  hydratePhoto = false,
-}: {
+function DaypartPickCard({ place, category, lead = false, hydratePhoto = false }: {
   place: DaypartPick;
   category: string;
-  eager?: boolean;
   lead?: boolean;
   hydratePhoto?: boolean;
 }) {
-  // Keep the existing bounded image request and explicit 1x1 failure signal.
-  // A failed photo must never remove the real place or its availability limit.
-  const signaledPhoto = place.photo
-    ? daypartPhotoSrc(proxyPhotoAtWidth(place.photo, lead ? 360 : 172))
-    : null;
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const { credit, isProxy, allowed } = useTodayPhotoCredit(place, hydratePhoto && failedSrc !== signaledPhoto);
-  const showPhoto = Boolean(allowed && signaledPhoto && failedSrc !== signaledPhoto);
-  const fact = place.fact || (place.confidence === "confirmed"
-    ? "Open now" : place.confidence === "likely" ? "Likely open" : "Hours not confirmed");
+  return lead
+    ? <TodayPlacePreview place={place} category={category} hydratePhoto={hydratePhoto} className={styles.leadPreview} />
+    : <DaypartAlternativeCard place={place} category={category} />;
+}
 
+/** Comparison cards retain supplied exact-credit eligibility, without gaining
+ * the brief lead's metadata allowance or a second paid byte transport. */
+function DaypartAlternativeCard({ place, category }: { place: DaypartPick; category: string }) {
+  const photo = useTodayPlacePhoto(place, 172, false);
+  const fact = place.fact || (place.confidence === "confirmed" ? "Open now" : place.confidence === "likely" ? "Likely open" : "Hours not confirmed");
   return (
-    <article data-today-place-card={lead ? "lead" : "alternative"} className={`${showPhoto ? styles.photoCard : styles.textCard} ${lead ? styles.lead : ""} ${
-        lead ? "w-full sm:w-[14.5rem] lg:w-[17.5rem]" : "w-full sm:w-[10.75rem] lg:w-[13.5rem]"
-      }`}>
-      <Link
-        href={`/places/${place.slug}`}
-        prefetch={false}
-        data-today-place-lead={lead ? "true" : undefined}
-        data-decision-impression="true"
-        data-decision-surface="today"
-        data-decision-entity="place"
-        data-decision-id={place.slug}
-        data-decision-position={lead ? "lead" : "alternative"}
-        data-decision-action="open"
-        className={styles.pickLink}
-      >
-        {showPhoto && signaledPhoto ? (
-          <span className={styles.photoFace}>
-          <Image
-            src={signaledPhoto}
-            alt=""
-            fill
-            unoptimized={signaledPhoto.startsWith("/api/place-photo")}
-            priority={eager}
-            fetchPriority={eager ? "high" : "auto"}
-            placeholder="blur"
-            blurDataURL={PAPER_CREAM_BLUR}
-            className="object-cover"
-            onLoad={(event) => {
-              if (isPhotoFailureSignal(event.currentTarget)) {
-                setFailedSrc(signaledPhoto);
-              }
-            }}
-            onError={() => setFailedSrc(signaledPhoto)}
-          />
-          </span>
-        ) : (
-          <span aria-hidden className={styles.categoryIcon}>
-            <CategoryIcon slug={category} className="h-5 w-5" strokeWidth={1.9} />
-          </span>
-        )}
+    <article data-today-place-card="alternative" className={`${photo.source ? styles.photoCard : styles.textCard} w-full sm:w-[10.75rem] lg:w-[13.5rem]`}>
+      <Link href={`/places/${place.slug}`} prefetch={false} className={styles.pickLink}
+        data-decision-impression="true" data-decision-surface="today" data-decision-entity="place"
+        data-decision-id={place.slug} data-decision-position="alternative" data-decision-action="open">
+        {photo.source ? <span className={styles.photoFace}>
+          <PlaceCardPhoto key={photo.source.src} decodeIdentity={photo.sourceKey} source={photo.source} onResult={photo.onResult} width={172} deferGoogleBytes sizes="(max-width: 640px) 50vw, 216px" />
+        </span> : <span aria-hidden className={styles.categoryIcon}><CategoryIcon slug={category} className="h-5 w-5" strokeWidth={1.9} /></span>}
         <span className={styles.photoRead}>
           <span data-today-pick-name className={styles.pickName}>{place.name}</span>
           <PickContext place={place} fact={fact} />
           {!place.fact && place.rating ? <span className={styles.rating}>{place.rating.toFixed(1)}★</span> : null}
         </span>
       </Link>
-      {showPhoto && isProxy && credit ? <div className={styles.credit}><GooglePhotoAttributionLine attribution={credit} compact /></div> : null}
+      <PlaceCardPhotoCredit source={photo.source} loaded={photo.loaded} touchTarget />
     </article>
   );
 }
 
-/** A closed door with a useful near-term transition. It is deliberately not a
- * DaypartPickCard: the separate treatment prevents a confirmed schedule from
- * borrowing the shelf's "open now" grammar before the opening minute. */
-function OpeningSoonPick({
-  place,
-  category,
-  hydratePhoto = false,
-}: {
+/** A closed door remains a distinct near-term transition, never an open claim. */
+function OpeningSoonPick({ place, category, hydratePhoto = false }: {
   place: DaypartPick;
   category: string;
   hydratePhoto?: boolean;
 }) {
-  const signaledPhoto = place.photo
-    ? daypartPhotoSrc(proxyPhotoAtWidth(place.photo, 192))
-    : null;
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const { credit, isProxy, allowed } = useTodayPhotoCredit(place, hydratePhoto && failedSrc !== signaledPhoto);
-  const showPhoto = Boolean(allowed && signaledPhoto && failedSrc !== signaledPhoto);
-
+  const photo = useTodayPlacePhoto(place, 192, hydratePhoto);
   return (
     <article className={styles.openingCard}>
-      <Link
-        href={`/places/${place.slug}`}
-        prefetch={false}
-        data-today-opening-soon="true"
-        data-place-availability="opening-soon"
-        data-decision-impression="true"
-        data-decision-surface="today"
-        data-decision-entity="place"
-        data-decision-id={place.slug}
-        data-decision-position="opening-soon"
-        data-decision-action="open"
-        className={styles.pickLink}
-      >
-        {showPhoto && signaledPhoto ? (
-          <span className="relative min-h-[84px] w-[5.75rem] shrink-0 overflow-hidden">
-            <Image
-              src={signaledPhoto}
-              alt=""
-              fill
-              unoptimized={signaledPhoto.startsWith("/api/place-photo")}
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover"
-              onLoad={(event) => {
-                if (isPhotoFailureSignal(event.currentTarget)) {
-                  setFailedSrc(signaledPhoto);
-                }
-              }}
-              onError={() => setFailedSrc(signaledPhoto)}
-            />
-          </span>
-        ) : (
-          <span
-            aria-hidden
-            className="m-3 grid h-11 w-11 shrink-0 place-items-center self-center rounded-[var(--app-radius-sm)]"
-            style={{
-              color: "var(--state-closing)",
-              background: "var(--app-warning-tint-14)",
-            }}
-          >
-            <CategoryIcon slug={category} className="h-5 w-5" strokeWidth={1.9} />
-          </span>
-        )}
+      <Link href={`/places/${place.slug}`} prefetch={false}
+        data-today-opening-soon="true" data-place-availability="opening-soon"
+        data-decision-impression="true" data-decision-surface="today" data-decision-entity="place"
+        data-decision-id={place.slug} data-decision-position="opening-soon" data-decision-action="open"
+        className={styles.pickLink}>
+        {photo.source ? <span className={styles.openingPhoto}>
+          <PlaceCardPhoto key={photo.source.src} decodeIdentity={photo.sourceKey} source={photo.source} onResult={photo.onResult} width={192} deferGoogleBytes sizes="92px" />
+        </span> : <span aria-hidden className="m-3 grid h-11 w-11 shrink-0 place-items-center self-center rounded-[var(--app-radius-sm)]"
+          style={{ color: "var(--state-closing)", background: "var(--app-warning-tint-14)" }}>
+          <CategoryIcon slug={category} className="h-5 w-5" strokeWidth={1.9} />
+        </span>}
         <span className={styles.openingRead}>
           <span className={styles.openingLabel}>Opening soon</span>
           <span data-today-pick-name className={styles.pickName}>{place.name}</span>
           <PickContext place={place} fact={place.fact || "Opening time available"} />
         </span>
       </Link>
-      {showPhoto && isProxy && credit ? <div className={styles.credit}><GooglePhotoAttributionLine attribution={credit} compact /></div> : null}
+      <PlaceCardPhotoCredit source={photo.source} loaded={photo.loaded} touchTarget />
     </article>
   );
 }
@@ -956,7 +869,6 @@ export default function DaypartNeeds({
                     <DaypartPickCard
                       place={place}
                       category={active.category}
-                      eager={index === 0}
                       lead={index === 0}
                       hydratePhoto={variant === "brief" && index === 0}
                     />

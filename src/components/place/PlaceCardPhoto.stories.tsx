@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, waitFor, within } from "storybook/test";
 import type { PlaceCardPhotoSource } from "@/lib/place-card-photo";
@@ -16,16 +16,24 @@ const source: PlaceCardPhotoSource = {
 };
 let requests: string[] = [];
 
-function Fixture({ fallback = false }: { fallback?: boolean }) {
+function Fixture({ fallback = false, replaceCredit = false }: { fallback?: boolean; replaceCredit?: boolean }) {
   const [result, setResult] = useState("pending");
-  const photo = fallback ? { ...source, src: source.src.replace("photos%2Fhero", "photos%2Fcapped") } : source;
+  const [revision, setRevision] = useState(0);
+  const basePhoto = fallback ? { ...source, src: source.src.replace("photos%2Fhero", "photos%2Fcapped") } : source;
+  const photo = revision && basePhoto.kind === "google" ? { ...basePhoto, attribution: {
+    ...basePhoto.attribution, authors: [{ display_name: "Updated workshop photographer" }],
+  } } : basePhoto;
+  const currentRevision = useRef(revision);
+  useLayoutEffect(() => { currentRevision.current = revision; }, [revision]);
   const shown = result === "failed" ? null : photo;
   return <div style={{ width: "min(280px, calc(100vw - 32px))" }}>
     <h2>Photo transport fixture</h2>
+    {replaceCredit && <button type="button" onClick={() => { setResult("pending"); setRevision((value) => value + 1); }}>Replace source credit</button>}
     <div data-photo-scroll style={{ height: 180, overflow: "auto" }}>
       <div aria-hidden="true" style={{ height: 420 }} />
       <div data-photo-target>
-        <PlaceCardPhoto source={shown} onResult={(_src, status) => setResult(status)} deferGoogleBytes />
+        <PlaceCardPhoto source={shown} decodeIdentity={replaceCredit ? JSON.stringify(photo) : undefined}
+          onResult={(_src, status) => { if (currentRevision.current === revision) setResult(status); }} deferGoogleBytes />
         <PlaceCardPhotoCredit source={shown} loaded={result === "loaded"} />
         <p>Place details</p>
         <p role="status">{result}</p>
@@ -93,6 +101,25 @@ export const CappedResponseCollapsesHonestly: Story = {
     await expect(canvasElement.querySelector("[data-place-card-photo]")).toBeNull();
     await expect(canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
     await expect(within(canvasElement).getByText("Place details")).toBeVisible();
+    await expect(requests).toHaveLength(1);
+  },
+};
+
+export const ReplacementCreditReusesDecodedResponse: Story = {
+  render: () => <Fixture replaceCredit />,
+  play: async ({ canvasElement }) => {
+    await enterFrame(canvasElement);
+    const canvas = within(canvasElement);
+    const oldImage = await canvas.findByRole("img", { name: "Synthetic transport fixture" }) as HTMLImageElement;
+    await oldImage.decode();
+    await waitFor(() => expect(canvas.getByText("Workshop photographer")).toBeVisible());
+    const responseUrl = oldImage.src;
+    await canvas.getByRole("button", { name: "Replace source credit" }).click();
+    await waitFor(() => expect(canvas.getByRole("img", { name: "Synthetic transport fixture" })).not.toBe(oldImage));
+    const newImage = canvas.getByRole("img", { name: "Synthetic transport fixture" }) as HTMLImageElement;
+    await newImage.decode();
+    await waitFor(() => expect(canvas.getByText("Updated workshop photographer")).toBeVisible());
+    await expect(newImage.src).toBe(responseUrl);
     await expect(requests).toHaveLength(1);
   },
 };

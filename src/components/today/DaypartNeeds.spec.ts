@@ -43,7 +43,8 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("6 min walk");
     expect(html).toContain("Hours not confirmed");
     expect(html).toContain("Places to try");
-    expect(html).toContain('href="/places/local-option"');
+    expect(html).toContain('href="/places/local-option?returnTo=%2Ftoday%3Fin%3Dcounty"');
+    expect(html).toContain('aria-label="Map: Local option"');
     expect(html).not.toContain("Open now");
   });
 
@@ -744,7 +745,7 @@ describe("DaypartNeeds", () => {
     expect(html).not.toContain('data-today-place-lead="true"');
   });
 
-  it("renders a supplied business photo and falls back only when it is absent", () => {
+  it("defers supplied paid photo bytes and retains a composed no-photo decision", () => {
     const renderPick = (photo?: string) =>
       renderToStaticMarkup(
         createElement(DaypartNeeds, {
@@ -772,9 +773,10 @@ describe("DaypartNeeds", () => {
     const withPhoto = renderPick(
       "/api/place-photo?name=places%2FChIJtest%2Fphotos%2Ffront&w=800",
     );
-    expect(withPhoto).toContain("<img");
-    expect(withPhoto).toContain("places%2FChIJtest%2Fphotos%2Ffront");
-    expect(withPhoto).toContain("fallback=signal");
+    expect(withPhoto).toContain('data-place-card-photo-source="google"');
+    expect(withPhoto).toContain('data-place-card-photo-bytes="idle"');
+    expect(withPhoto).not.toContain("<img");
+    expect(withPhoto).toContain('visibility:hidden');
     expect(withPhoto).not.toContain('data-radius-plate="gravel-and-grind"');
 
     const withoutPhoto = renderPick();
@@ -782,7 +784,9 @@ describe("DaypartNeeds", () => {
     expect(withoutPhoto).not.toContain('data-radius-plate="gravel-and-grind"');
     expect(withoutPhoto).toContain("Open now");
     expect(withoutPhoto).toContain('data-today-place-lead="true"');
-    expect(withoutPhoto).toContain("w-[14.5rem]");
+    expect(withoutPhoto).toContain('data-has-photo="false"');
+    expect(withoutPhoto).not.toContain("data-place-card-photo=");
+    expect(withoutPhoto).toContain('aria-label="Map: Gravel &amp; Grind"');
     // A place name identifies the place, so it wraps instead of clipping.
     // "National Museum of Civil War Medicine" truncated to "National Museum
     // of Ci…" is not a recommendation the reader can act on.
