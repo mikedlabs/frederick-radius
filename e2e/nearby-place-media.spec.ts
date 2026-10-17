@@ -186,8 +186,11 @@ test("Nearby food hydrates a policy-passing Google photo with its required credi
   expect(response?.status()).toBe(200);
   const heading = page.getByRole("heading", { name: "Cafe Nola", exact: true });
   const card = page.locator("article").filter({ has: heading });
-  await heading.scrollIntoViewIfNeeded();
+  await card.scrollIntoViewIfNeeded();
   await expect(card).toHaveAttribute("data-place-card-has-photo", "true");
+  const photoFrame = card.locator("[data-place-card-photo]");
+  await photoFrame.scrollIntoViewIfNeeded();
+  await expect.poll(() => photoFrame.getAttribute("data-place-card-photo-bytes")).toBe("ready");
   const image = card.locator('[data-place-card-photo-source="google"] img');
   await expect(image).toBeVisible();
   await expect.poll(() => image.evaluate((node) => (node as HTMLImageElement).naturalWidth)).toBeGreaterThan(1);
@@ -240,8 +243,8 @@ test("Nearby food requests Google photo bytes only for cards in the first 390px 
   }, photoRequests);
   expect(firstLoad.cardCount).toBeGreaterThan(firstLoad.inByteRange);
   expect(firstLoad.requested).toBe(firstLoad.inByteRange);
-  expect(firstLoad.requested).toBeGreaterThan(0);
-  expect(firstLoad.requested).toBeLessThanOrEqual(3);
+  expect(firstLoad.requested).toBe(2);
+  console.log("FIRST_LOAD_PHOTO_REQUESTS", JSON.stringify(firstLoad));
   await testInfo.attach("nearby-food-first-load-photo-requests", {
     contentType: "application/json",
     body: JSON.stringify({ photoRequests, firstLoad }, null, 2),
