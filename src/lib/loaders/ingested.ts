@@ -112,6 +112,27 @@ function verifiedTimestamp(value: Row["updated_at"]): string | null {
   return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : null;
 }
 
+/**
+ * Postgres timestamptz often arrives as `'2026-10-22 14:30:00+00'`.
+ * Lexical sort against ISO (`…T…Z`) is wrong (`' ' < 'T'`), and older
+ * WebKit rejects the space form. Normalize at this read boundary so every
+ * downstream consumer sees UTC ISO.
+ */
+export function toIsoUtcTimestamp(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isFinite(parsed.getTime())) return parsed.toISOString();
+  const withT = value.includes("T") ? value : value.replace(" ", "T");
+  const retry = new Date(withT);
+  return Number.isFinite(retry.getTime()) ? retry.toISOString() : value;
+}
+
+function ingestedReadErrorCode(error: unknown): unknown {
+  if (error && typeof error === "object" && "code" in error) {
+    return (error as { code: unknown }).code;
+  }
+  return undefined;
+}
+
 function seriesKeyOf(r: Row): string {
   const title = r.title.trim().toLowerCase().replace(/\s+/g, " ");
   const venue = (r.venue_name ?? r.address ?? "").trim().toLowerCase();
@@ -145,8 +166,12 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
       order by starts_at_utc asc
       limit ${limit}
     `) as unknown as Row[];
-  } catch {
-    return [];
+  } catch (error) {
+    // Rethrow so unstable_cache does not store a failure as a successful
+    // empty list for an hour. Callers (and sourceHealth) must be able to
+    // tell "zero events" from "the ingested read failed".
+    console.error("[events] ingested read failed", ingestedReadErrorCode(error) ?? error);
+    throw error;
   }
 
   // Sanitize the venue at the SOURCE row so BOTH the series key and the
@@ -155,6 +180,8 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   // neither. cleanVenueName nulls a junk venue; the key then falls back to
   // address/empty.
   for (const r of rows) {
+    r.starts_at_utc = toIsoUtcTimestamp(r.starts_at_utc);
+    r.ends_at_utc = r.ends_at_utc == null ? null : toIsoUtcTimestamp(r.ends_at_utc);
     // Producer-first rollout: an exact receipt improves check-date semantics.
     // Legacy/unattested rows retain their previous write date so cancellations
     // still correct archived identities. This does not strictly hold old data.
@@ -262,6 +289,8 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
 /** ISR-cached (1h) — the cron refreshes the data daily, hourly is plenty. */
 export const getIngestedSeries = unstable_cache(
   async (limit = 4000) => loadUpcoming(limit),
+  // v12: Postgres timestamptz text is normalized to UTC ISO at this
+  // read boundary, so cached starts/ends change in place.
   // v11: shared normalization repairs sublocation/locality boundaries and
   // title possessives in cached series copy.
   // v9: retain FCPL occurrence lifecycle from the existing raw source row.
@@ -271,7 +300,7 @@ export const getIngestedSeries = unstable_cache(
   // shape change must invalidate the persisted cache (the #509 lesson). The
   // deploy SHA is a second key segment so a forgotten version bump still
   // auto-busts on deploy.
-  ["ingested-series-v11", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["ingested-series-v12", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 3600, tags: ["ingested-events"] }
 );
 

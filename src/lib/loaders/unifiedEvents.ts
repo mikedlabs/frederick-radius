@@ -291,10 +291,10 @@ export function mergeUnifiedEventCards(
   );
 }
 
-async function decorateUnifiedEvents(
+export async function decorateUnifiedEvents(
   events: EventWithMeta[],
   now: Date,
-  options: { upgradeGeoms: boolean },
+  options: { upgradeGeoms: boolean; unavailable?: Set<string> },
 ): Promise<EventWithMeta[]> {
   // Geocoding is a runtime enrichment. The promoted-data build keeps the
   // reviewed coordinates already present in its artifacts and makes no live
@@ -303,22 +303,27 @@ async function decorateUnifiedEvents(
   if (options.upgradeGeoms) {
     try {
       positioned = await upgradeEventGeoms(events);
-    } catch {
+    } catch (error) {
       // Geocode upgrade failed — pins stay at their pre-upgrade geom.
+      console.error("[events] event map positioning failed", error);
     }
   }
 
   let decorated = positioned;
   try {
     decorated = withVenueThumbs(positioned);
-  } catch {
+  } catch (error) {
     // Photo join failed — cards render without the venue thumb.
+    console.error("[events] venue thumbnails failed", error);
+    options.unavailable?.add("venue thumbs");
   }
 
   try {
     return applyEventNotices(decorated, now);
-  } catch {
+  } catch (error) {
     // Notice stamp failed — cards render without cancel/postpone badges.
+    console.error("[events] event cancellation badges failed", error);
+    options.unavailable?.add("event notices");
     return decorated;
   }
 }
@@ -540,7 +545,7 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
       ingestedCards,
     ),
     now,
-    { upgradeGeoms: true },
+    { upgradeGeoms: true, unavailable },
   );
 
   return {
@@ -650,7 +655,9 @@ const cachedAssemble = unstable_cache(
   // v35: lifecycle bypasses all discovery-only filters and deduplication.
   // v36: shared text normalization repairs facility/locality boundaries and
   // possessive suffixes before cached event copy reaches any surface.
-  ["unified-events-v36"],
+  // v37: ingested timestamps are UTC ISO at the series read, and decorate
+  // failures (thumbs/notices) surface on sourceHealth instead of vanishing.
+  ["unified-events-v37"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.

@@ -16,7 +16,8 @@
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
-import { allUpcoming, civicUpcoming } from "@/lib/loaders/events";
+import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { hasPhysicalAttendance } from "@/lib/events/attendance";
 import { parkingForecasts, type ForecastEvent } from "@/lib/parking-forecast";
 import { PARKING_GARAGES } from "@/data/parking-garages";
 import { fanoutToTopic } from "@/lib/push-fanout";
@@ -35,16 +36,29 @@ export async function GET(request: Request) {
   }
 
   const now = new Date();
-  // The curated + civic upcoming set carries reliable geo/time/category for
-  // downtown events (Alive @ Five, Weinberg shows, festivals) — exactly the
-  // garage-filling draws. Deduped by slug inside parkingForecasts().
-  const events: ForecastEvent[] = [...allUpcoming(now), ...civicUpcoming(now)].map((e) => ({
-    slug: e.slug,
-    title: e.title,
-    starts_at: e.starts_at,
-    geom: e.geom,
-    category: e.category,
-  }));
+  // Same live board the public event surfaces use: unifiedEvents (curated +
+  // feeds + ingested calendars), not the hand-curated seed file. Filter to
+  // physical events with a point so parkingForecasts can test downtown
+  // garage proximity. Deduped by slug inside parkingForecasts().
+  const { publicEvents } = await assembleUnifiedEvents(now);
+  const events: ForecastEvent[] = publicEvents
+    .filter((event) => hasPhysicalAttendance(event) && event.geom)
+    .map((event) => ({
+      slug: event.slug,
+      title: event.title,
+      starts_at: event.starts_at,
+      geom: event.geom,
+      category: event.category,
+    }));
+
+  if (events.length === 0) {
+    console.error(
+      "[events] parking-forecast checked zero events",
+      { public_events: publicEvents.length },
+    );
+  } else {
+    console.info("[events] parking-forecast checked", events.length, "events");
+  }
 
   const forecasts = parkingForecasts(events, PARKING_GARAGES, now);
 
@@ -65,7 +79,9 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ran_at: now.toISOString(),
     events_checked: events.length,
+    public_events: publicEvents.length,
     forecasts: forecasts.length,
     detail: results,
+    ...(events.length === 0 ? { note: "zero events to check" } : {}),
   });
 }
