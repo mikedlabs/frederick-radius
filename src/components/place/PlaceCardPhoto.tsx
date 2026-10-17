@@ -1,44 +1,72 @@
 "use client";
 
+import { useEffect } from "react";
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import type { PlaceCardPhotoResult, PlaceCardPhotoSource } from "@/lib/place-card-photo";
 import { GooglePhotoAttributionLine } from "./GoogleAttribution";
+import { useVisibleGooglePhoto } from "./useVisibleGooglePhoto";
 
 /** A photograph of the selected place, supplied by the canonical loader.
  * A missing or failed photo leaves the card's real name and facts intact. */
-export default function PlaceCardPhoto({ source, onResult, width = 360, frame = "hero", sizes }: {
+export default function PlaceCardPhoto({ source, onResult, width = 360, frame = "hero", sizes, deferGoogleBytes = false }: {
   source: PlaceCardPhotoSource | null;
   onResult: (src: string, result: PlaceCardPhotoResult) => void;
   width?: number;
   frame?: "hero" | "row" | "compact-row";
   /** The actual responsive frame; existing fixed-width surfaces keep their defaults. */
   sizes?: string;
+  /** Wait for the visible list frame before requesting Google bytes. */
+  deferGoogleBytes?: boolean;
 }) {
+  const defer = Boolean(deferGoogleBytes && source?.kind === "google");
+  const sourceSrc = source?.src ?? null;
+  const { frameRef, bytes } = useVisibleGooglePhoto(defer ? sourceSrc : null, defer);
+  useEffect(() => {
+    if (defer && sourceSrc && bytes.status === "fallback") onResult(sourceSrc, "failed");
+  }, [bytes.status, defer, onResult, sourceSrc]);
+
   if (!source) return null;
   return (
     <span
+      ref={frameRef}
       data-place-card-photo
       data-place-card-photo-source={source.kind}
+      data-place-card-photo-bytes={defer ? bytes.status : undefined}
       className={`relative block overflow-hidden bg-[var(--app-bg-sunken)] ${frame === "hero" ? "aspect-[16/9] w-full" : "rounded-[var(--app-radius-md)]"}`}
       style={frame === "hero" ? undefined : { width, height: frame === "row" ? 104 : 64 }}
     >
-      <Image
-        key={source.src}
-        src={source.src}
-        alt={source.alt}
-        fill
-        sizes={sizes ?? (width === 180 ? "(max-width: 640px) 50vw, 180px" : `${width}px`)}
-        unoptimized={source.kind === "google"}
-        placeholder="blur"
-        blurDataURL={PAPER_CREAM_BLUR}
-        className="object-cover"
-        onLoad={(event) => {
-          const failed = event.currentTarget.naturalWidth <= 1 || event.currentTarget.naturalHeight <= 1;
-          onResult(source.src, failed ? "failed" : "loaded");
-        }}
-        onError={() => onResult(source.src, "failed")}
-      />
+      {defer ? (bytes.status === "ready" && (
+        // Reuse the one fetched response. A second network image request would
+        // consume another reservation on this no-store transport.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={bytes.objectUrl}
+          src={bytes.objectUrl}
+          alt={source.alt}
+          className="absolute inset-0 h-full w-full object-cover"
+          onLoad={(event) => onResult(source.src,
+            event.currentTarget.naturalWidth <= 1 || event.currentTarget.naturalHeight <= 1 ? "failed" : "loaded")}
+          onError={() => onResult(source.src, "failed")}
+        />
+      )) : (
+        <Image
+          key={source.src}
+          src={source.src}
+          alt={source.alt}
+          fill
+          sizes={sizes ?? (width === 180 ? "(max-width: 640px) 50vw, 180px" : `${width}px`)}
+          unoptimized={source.kind === "google"}
+          placeholder="blur"
+          blurDataURL={PAPER_CREAM_BLUR}
+          className="object-cover"
+          onLoad={(event) => {
+            const failed = event.currentTarget.naturalWidth <= 1 || event.currentTarget.naturalHeight <= 1;
+            onResult(source.src, failed ? "failed" : "loaded");
+          }}
+          onError={() => onResult(source.src, "failed")}
+        />
+      )}
     </span>
   );
 }

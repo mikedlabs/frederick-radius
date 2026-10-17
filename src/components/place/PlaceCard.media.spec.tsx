@@ -52,6 +52,13 @@ describe("PlaceCard selected media and credit", () => {
   let root: Root;
   beforeEach(() => {
     actions.openSheet.mockReset(); actions.save.mockReset(); imageLoads.clear();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(new Blob(["photo-bytes"], { type: "image/jpeg" }), {
+      headers: { "Content-Type": "image/jpeg" },
+    })));
+    vi.stubGlobal("URL", class extends URL {
+      static createObjectURL = vi.fn(() => "blob:one-visible-photo");
+      static revokeObjectURL = vi.fn();
+    });
     container = document.createElement("div"); document.body.append(container);
     root = createRoot(container);
   });
@@ -100,6 +107,9 @@ describe("PlaceCard selected media and credit", () => {
     expect(credit.querySelectorAll("a")).toHaveLength(pendingLinks);
     expect(credit.textContent).toContain(metadata.author);
     expect(credit.textContent).toContain(metadata.license);
+    if (metadata.license === "CC BY 2.0") {
+      expect(credit.querySelector('a[href="https://creativecommons.org/licenses/by/2.0"]')).not.toBeNull();
+    }
     expect(credit.querySelector(`a[href="${metadata.source_url}"]`)).not.toBeNull();
     if (slug === "carroll-creek-linear-park-frederick") {
       await fail(photo()!);
@@ -253,9 +263,15 @@ describe("PlaceCard selected media and credit", () => {
     expect(hydrate).not.toHaveBeenCalled();
     await act(async () => intersections.at(-1)!());
     expect(hydrate).toHaveBeenCalledExactlyOnceWith(slimPlace.slug);
+    expect(photo()).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    // Metadata proximity is not permission to request paid photo bytes.
+    await act(async () => intersections.at(-1)!());
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain("w=176");
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain("fallback=signal");
     const image = photo()!;
-    expect(image.getAttribute("src")).toContain("w=176");
-    expect(image.getAttribute("src")).toContain("fallback=signal");
+    expect(image.getAttribute("src")).toBe("blob:one-visible-photo");
     expect(loadedCredit()).toBeNull();
     await load(image);
     expect(loadedCredit()?.textContent).toContain("Photo contributor");
@@ -400,10 +416,36 @@ describe("PlaceCard selected media and credit", () => {
     await act(async () => enterViewport!());
     expect(hydrate).toHaveBeenCalledTimes(1);
     expect(hydrate).toHaveBeenCalledWith(slim.slug);
-    expect(photo()?.getAttribute("src")).toContain("w=720");
+    expect(photo()).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    await act(async () => enterViewport!());
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain("w=720");
+    expect(photo()?.getAttribute("src")).toBe("blob:one-visible-photo");
     expect(loadedCredit()).toBeNull();
     await load(photo()!);
     expect(loadedCredit()?.textContent).toContain("Photo contributor");
+  });
+
+  it("removes a capped discovery image and credit while keeping the actual place and actions", async () => {
+    const intersections = lazyObserver();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("fallback-signal", {
+      headers: { "Content-Type": "image/png", "X-Photo-Fallback": "daily-cap" },
+    })));
+    const cardPlace = { ...place, slug: "unregistered-place", name: "Actual venue" };
+    await act(async () => root.render(<PlaceCard place={cardPlace} variant="discovery" lazyPhoto />));
+    expect(fetch).not.toHaveBeenCalled();
+    await act(async () => intersections.at(-1)!());
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(photo()).toBeNull();
+    expect(container.querySelector(".place-card-photo-credit")).toBeNull();
+    expect(container.querySelector('article[data-place-card-has-photo="false"]')).not.toBeNull();
+    expect(container.querySelector("h3")?.textContent).toBe("Actual venue");
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    const opener = container.querySelector<HTMLButtonElement>('button[aria-label^="View "]')!;
+    await act(async () => opener.click());
+    expect(actions.openSheet).toHaveBeenCalledWith(cardPlace, { returnFocus: opener });
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-save-ref]")!.click());
+    expect(actions.save).toHaveBeenCalledWith("place", cardPlace.slug);
   });
 
 });

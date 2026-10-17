@@ -4,6 +4,7 @@ import PHOTO_CREDITS_RAW from "@/data/event-venue-photo-credits.json" with { typ
 import PHOTO_SUPPRESS_RAW from "@/data/photo-suppress.json" with { type: "json" };
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 import type { Overrides } from "@/lib/overrides";
+import { isPaidGooglePhotoUrl } from "@/lib/google-photo-policy";
 import {
   bindSelectedPlacePhotoCredit,
   type SelectedPlacePhoto,
@@ -45,4 +46,31 @@ export function selectedPlacePhoto(
     place,
     PHOTO_CREDITS[place.slug],
   );
+}
+
+/**
+ * Restore only the selected hero's verified URL and complete source record.
+ * Rejected Google metadata must not survive on a stale slim catalog row and
+ * bypass the current suppression or identity checks in a client photo plan.
+ * First-party and other non-Google URLs keep their existing behavior.
+ */
+export function withPrimaryGooglePhotoCredit<T extends SelectedPlacePhotoRecord>(
+  place: T,
+): T {
+  const photo = selectedPlacePhoto(place.slug, place);
+  if (photo) {
+    return {
+      ...place,
+      google_photo_url: photo.url,
+      google_photo_attribution: photo.attribution,
+    };
+  }
+
+  const paidGoogleUrl = isPaidGooglePhotoUrl(place.google_photo_url);
+  if (!paidGoogleUrl && !place.google_photo_attribution) return place;
+  return {
+    ...place,
+    ...(paidGoogleUrl ? { google_photo_url: undefined } : {}),
+    google_photo_attribution: undefined,
+  };
 }

@@ -255,7 +255,7 @@ export default function PlaceCard({
           className="group block w-full min-w-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-focus)]"
         >
           {photo && <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={360}
-            sizes="(max-width: 640px) calc(100vw - 32px), 600px" />}
+            sizes="(max-width: 640px) calc(100vw - 32px), 600px" deferGoogleBytes={lazyPhoto} />}
           <div className={photo ? "p-4" : "flex items-start gap-3 p-3"}>
             {!photo && <CategoryMark category={place.category} color="var(--app-ink-2)" size={44} />}
             <div className="min-w-0 flex-1">
@@ -575,7 +575,7 @@ export default function PlaceCard({
       <div className="flex items-stretch gap-3 p-3 pl-3.5">
         <div ref={photoAnchorRef} className="pointer-events-none relative z-10 shrink-0 self-center">
           {photo ? (
-            <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={photoWidth} frame={compact ? "compact-row" : "row"} />
+            <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={photoWidth} frame={compact ? "compact-row" : "row"} deferGoogleBytes={lazyPhoto} />
           ) : <CategoryMark category={place.category} color={color} size={compact ? 40 : 46} />}
         </div>
         <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col justify-center">
