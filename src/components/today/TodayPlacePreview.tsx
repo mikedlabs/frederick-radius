@@ -12,6 +12,7 @@ import { hasExactPlacePhoto } from "@/lib/place-card-photo";
 import { withBrowseReturnTo } from "@/lib/browse-return";
 import { getScope, parseScope, scopeToParam, subscribeScopeChange } from "@/lib/scope";
 import { useTodayPlacePhoto } from "./useTodayPlacePhoto";
+import { daypartPlaceFact } from "./daypartPlaceFact";
 import styles from "./TodayPlacePreview.module.css";
 
 const subscribe = (listener: () => void) => subscribeScopeChange(() => listener());
@@ -82,7 +83,7 @@ export default function TodayPlacePreview({ place, category, hydratePhoto = fals
 }) {
   const exact = hasExactPlacePhoto(place.slug) || Boolean(place.photo?.startsWith("/images/"));
   const photo = useTodayPlacePhoto(place, exact ? 360 : TODAY_PREVIEW_COMPACT_PHOTO_WIDTH, hydratePhoto);
-  const fact = place.fact || (place.confidence === "confirmed" ? "Open now" : place.confidence === "likely" ? "Likely open" : "Hours not confirmed");
+  const fact = daypartPlaceFact(place);
   const location = [place.where, place.distance].filter(Boolean).join(" · ");
   const confirmedPhoto = Boolean(photo.source && photo.loaded);
 

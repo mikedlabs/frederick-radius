@@ -51,7 +51,7 @@ export const ConfirmedCurrentPlace: Story = {
 export const OpeningSoon: Story = {
   play: async ({ canvasElement }) => readablePlace(canvasElement),
   args: {
-    rows: [{ ...row, picks: [], openingSoon: { slug: "story-opening-soon", name: "Sample coffee place", rating: null, confidence: "confirmed", fact: "Opens at 9am.", where: "Frederick" } }],
+    rows: [{ ...row, picks: [], openingSoon: { slug: "story-opening-soon", name: "Sample coffee place", rating: null, confidence: "confirmed", fact: "Opens soon · 9am", where: "Frederick" } }],
   },
 };
 
@@ -64,7 +64,7 @@ export const PhotographLedPlace: Story = {
       picks: [{
         slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park",
         photo: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
-        rating: null, confidence: "unconfirmed", fact: "Hours are not confirmed.", where: "Frederick",
+        rating: null, confidence: "unconfirmed", fact: "Hours not confirmed", where: "Frederick",
       }],
     }],
   },
@@ -74,13 +74,13 @@ export const PhotographLedPlace: Story = {
 export const NarrowTownOption: Story = {
   render: (args) => <div style={{ width: "min(288px, 100%)" }}><DaypartNeeds {...args} /></div>,
   args: {
-    rows: [{ ...row, picks: [{ slug: "story-town-option", name: "Sample community coffee house near the river", rating: null, confidence: "unconfirmed", fact: "Hours are not confirmed.", where: "Brunswick", distance: "6 min walk" }] }],
+    rows: [{ ...row, picks: [{ slug: "story-town-option", name: "Sample community coffee house near the river", rating: null, confidence: "unconfirmed", fact: "Hours not confirmed", where: "Brunswick", distance: "6 min walk" }] }],
   },
   play: async ({ canvasElement }) => {
     await readablePlace(canvasElement);
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Brunswick · 6 min walk")).toBeVisible();
-    await expect(canvas.getByText("Hours are not confirmed.", { exact: true })).toBeVisible();
+    await expect(canvas.getByText("Hours not confirmed", { exact: true })).toBeVisible();
     await expect(canvas.getByRole("heading", { name: "Places to try" })).toBeVisible();
   },
 };

@@ -344,7 +344,9 @@ describe("Today place preview exact media and actions", () => {
     expect(container.querySelector("[data-today-place-thumb]")).not.toBeNull();
     expect(container.querySelector("[data-today-place-thumb-fallback]")).not.toBeNull();
     expect(container.querySelector("[data-today-place-preview]")?.getAttribute("data-preview-layout")).toBe("compact");
-    expect(container.textContent).toContain("Likely open");
+    expect(container.textContent).toContain("Hours not confirmed");
+    expect(container.textContent).not.toContain("Likely open");
+    expect(container.textContent).not.toContain("check hours");
     expectActions(place);
     expect(request).not.toHaveBeenCalled();
   });

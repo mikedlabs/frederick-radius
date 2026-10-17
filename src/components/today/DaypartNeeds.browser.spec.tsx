@@ -180,7 +180,10 @@ describe("Today keeps the server-rendered lead through live ranking", () => {
     expect(container.textContent).not.toContain("Dublin Roasters");
     expect(container.textContent).not.toContain("Ibiza Cafe");
     expect(container.textContent).toContain("Places to try");
+    expect(container.textContent).toContain("Hours not confirmed");
     expect(container.textContent).not.toContain("Places likely open");
+    expect(container.textContent).not.toContain("Likely open");
+    expect(container.textContent).not.toContain("check hours");
   });
 
   it("does not replace a first-paint opening-soon lead with a different live hero", async () => {
@@ -193,7 +196,7 @@ describe("Today keeps the server-rendered lead through live ranking", () => {
         slug: "hootch-and-banter-frederick",
         name: "Hootch & Banter",
         rating: 4.5,
-        confidence: "likely" as const,
+        confidence: "confirmed" as const,
         fact: "Opens soon · 4pm",
         where: "Frederick",
       },
@@ -226,9 +229,13 @@ describe("Today keeps the server-rendered lead through live ranking", () => {
       root.render(<DaypartNeeds rows={serverRows} variant="brief" />);
     });
     expect(container.textContent).toContain("Hootch & Banter");
+    expect(container.textContent).toContain("Opens 4pm");
+    expect(container.textContent).not.toContain("Likely opens");
+    expect(container.textContent).not.toContain("check hours");
     expect(container.querySelector("[data-today-opening-soon]")).not.toBeNull();
     await act(async () => { await state.answer.mock.results[0]?.value; });
     expect(container.textContent).toContain("Hootch & Banter");
+    expect(container.textContent).toContain("Opens 4pm");
     expect(container.textContent).not.toContain("First local pick");
     expect(container.querySelector("[data-today-opening-soon]")).not.toBeNull();
   });

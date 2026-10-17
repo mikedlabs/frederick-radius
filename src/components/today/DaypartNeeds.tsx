@@ -5,6 +5,7 @@ import styles from "./DaypartNeeds.module.css";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
 import TodayPlacePreview from "./TodayPlacePreview";
 import { useTodayPlacePhoto } from "./useTodayPlacePhoto";
+import { daypartPlaceFact, isConfirmedOpeningSoon } from "./daypartPlaceFact";
 import Link from "next/link";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import TodaySectionHeading from "@/components/today/TodaySectionHeading";
@@ -60,7 +61,7 @@ export function daypartUsablePickCount(
     variant === "brief"
       ? shelf.picks.filter((place) => place.confidence !== "unconfirmed")
       : shelf.picks;
-  return picks.length + (shelf.openingSoon ? 1 : 0);
+  return picks.length + (isConfirmedOpeningSoon(shelf.openingSoon) ? 1 : 0);
 }
 
 /**
@@ -275,17 +276,18 @@ export function visibleDaypartLead(
   variant: DaypartNeedsVariant = "full",
 ): { kind: "place" | "soon"; slug: string } | null {
   if (!row) return null;
+  const openingSoon = isConfirmedOpeningSoon(row.openingSoon) ? row.openingSoon : null;
   const knownPicks = row.picks.filter((place) => place.confidence !== "unconfirmed");
   const decisionPicks = variant === "brief" && knownPicks.length > 0 ? knownPicks : row.picks;
-  const openingSoonFirst = Boolean(row.openingSoon) && daypartShelfTier(decisionPicks) !== "confirmed";
+  const openingSoonFirst = Boolean(openingSoon) && daypartShelfTier(decisionPicks) !== "confirmed";
   const usesOpeningSoon =
-    Boolean(row.openingSoon) &&
+    Boolean(openingSoon) &&
     (variant === "brief"
       ? openingSoonFirst || decisionPicks.length === 0
       : false);
-  if (usesOpeningSoon && row.openingSoon) return { kind: "soon", slug: row.openingSoon.slug };
+  if (usesOpeningSoon && openingSoon) return { kind: "soon", slug: openingSoon.slug };
   if (decisionPicks[0]) return { kind: "place", slug: decisionPicks[0].slug };
-  if (row.openingSoon) return { kind: "soon", slug: row.openingSoon.slug };
+  if (openingSoon) return { kind: "soon", slug: openingSoon.slug };
   return null;
 }
 
@@ -346,7 +348,7 @@ export function briefShowsOpeningSoon(
   decisionPicks: readonly DaypartPick[],
   openingSoonFirst: boolean,
 ): boolean {
-  if (variant !== "brief" || !openingSoon) return false;
+  if (variant !== "brief" || !isConfirmedOpeningSoon(openingSoon)) return false;
   const pinnedCurrentLead =
     pinnedLead?.kind === "place" &&
     decisionPicks.some((place) => place.slug === pinnedLead.slug);
@@ -533,7 +535,7 @@ function DaypartPickCard({ place, category, lead = false, hydratePhoto = false }
  * the brief lead's metadata allowance or a second paid byte transport. */
 function DaypartAlternativeCard({ place, category }: { place: DaypartPick; category: string }) {
   const photo = useTodayPlacePhoto(place, 172, false);
-  const fact = place.fact || (place.confidence === "confirmed" ? "Open now" : place.confidence === "likely" ? "Likely open" : "Hours not confirmed");
+  const fact = daypartPlaceFact(place);
   return (
     <article data-today-place-card="alternative" className={`${photo.source ? styles.photoCard : styles.textCard} w-full sm:w-[10.75rem] lg:w-[13.5rem]`}>
       <Link href={`/places/${place.slug}`} prefetch={false} className={styles.pickLink}
@@ -576,7 +578,7 @@ function OpeningSoonPick({ place, category, hydratePhoto = false }: {
         <span className={styles.openingRead}>
           <span className={styles.openingLabel}>Opening soon</span>
           <span data-today-pick-name className={styles.pickName}>{place.name}</span>
-          <PickContext place={place} fact={place.fact || "Opening time available"} />
+          <PickContext place={place} fact={daypartPlaceFact(place)} />
         </span>
       </Link>
       <PlaceCardPhotoCredit source={photo.source} loaded={photo.loaded} touchTarget />
@@ -752,7 +754,7 @@ export default function DaypartNeeds({
   if (
     !awaitingLive &&
     active.picks.length === 0 &&
-    !active.openingSoon &&
+    !isConfirmedOpeningSoon(active.openingSoon) &&
     rows.length === 1
   ) {
     const countywide = isDaypartCountywideContext(contextSource);
@@ -773,8 +775,11 @@ export default function DaypartNeeds({
   const shelfTier = daypartShelfTier(active.picks);
   const pickScopeLabel = daypartPickScopeLabel(contextSource, contextLabel);
   const pinnedLead = visibleDaypartLead(baseActive, variant);
+  const displayOpeningSoon = isConfirmedOpeningSoon(active.openingSoon)
+    ? active.openingSoon
+    : null;
   const openingSoonFirst =
-    Boolean(active.openingSoon) && shelfTier !== "confirmed";
+    Boolean(displayOpeningSoon) && shelfTier !== "confirmed";
   // Prefer a current-hours answer. When hours are unavailable everywhere,
   // keep one real option and let the unconfirmed heading explain its limit.
   const knownPicks = active.picks.filter((place) => place.confidence !== "unconfirmed");
@@ -782,7 +787,7 @@ export default function DaypartNeeds({
   const briefUsesOpeningSoon = briefShowsOpeningSoon(
     variant,
     pinnedLead,
-    active.openingSoon,
+    displayOpeningSoon,
     decisionPicks,
     openingSoonFirst,
   );
@@ -793,9 +798,9 @@ export default function DaypartNeeds({
     variant === "brief"
       ? daypartShelfHeading(
           briefUsesOpeningSoon ? [] : decisionPicks.slice(0, 1),
-          briefUsesOpeningSoon ? active.openingSoon : null,
+          briefUsesOpeningSoon ? displayOpeningSoon : null,
         )
-      : daypartShelfHeading(active.picks, active.openingSoon);
+      : daypartShelfHeading(active.picks, displayOpeningSoon);
   // The default Today briefing asks this component for one concise answer.
   // Its full mode remains available for contexts that need comparison. When
   // opening soon is the more useful transition, it replaces the current-place
@@ -806,7 +811,7 @@ export default function DaypartNeeds({
       ? briefUsesOpeningSoon
         ? 0
         : 1
-      : active.openingSoon
+      : displayOpeningSoon
         ? 2
         : 3,
   );
@@ -821,7 +826,7 @@ export default function DaypartNeeds({
           includeEditorialLabels: variant !== "brief",
         });
   const hasVisibleRecommendation =
-    visiblePicks.length > 0 || Boolean(active.openingSoon);
+    visiblePicks.length > 0 || Boolean(displayOpeningSoon);
 
   return (
     <section
@@ -944,9 +949,9 @@ export default function DaypartNeeds({
           </div>
         ) : hasVisibleRecommendation ? (
           <div>
-            {openingSoonFirst && active.openingSoon ? (
+            {openingSoonFirst && displayOpeningSoon ? (
               <OpeningSoonPick
-                place={active.openingSoon}
+                place={displayOpeningSoon}
                 category={active.category}
                 hydratePhoto={variant === "brief"}
               />
@@ -960,7 +965,7 @@ export default function DaypartNeeds({
               <ul
                 ref={shelfRef}
                 data-shelf-two={
-                  active.openingSoon && visiblePicks.length === 2
+                  displayOpeningSoon && visiblePicks.length === 2
                     ? "true"
                     : undefined
                 }
@@ -983,10 +988,10 @@ export default function DaypartNeeds({
               </ul>
             ) : null}
             {!openingSoonFirst &&
-            active.openingSoon &&
+            displayOpeningSoon &&
             (variant === "full" || visiblePicks.length === 0) ? (
               <OpeningSoonPick
-                place={active.openingSoon}
+                place={displayOpeningSoon}
                 category={active.category}
                 hydratePhoto={variant === "brief"}
               />
