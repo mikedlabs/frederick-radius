@@ -4050,6 +4050,22 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background: var(--app-bg-sunken);
   color: var(--app-ink);
 }
+/* Recovery has no canvas to float over. Keep the same card, but sit it in
+   the fallback column above the heading so large text cannot cover it. */
+.map-error-fallback > .map-smart-note {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  width: auto;
+  flex: 0 0 auto;
+  margin:
+    max(12px, env(safe-area-inset-top, 0px))
+    max(12px, env(safe-area-inset-right, 0px))
+    0
+    max(12px, env(safe-area-inset-left, 0px));
+  animation: none;
+}
 @keyframes map-context-rail-in {
   from {
     opacity: 0;
@@ -6879,6 +6895,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @media (min-width: 1024px) {
   .dock-host[data-map-error] .map-error-fallback-head {
     padding-top: calc(var(--map-dock-height, 0px) + var(--app-space-2) + var(--app-space-4));
+  }
+  .dock-host[data-map-error] .map-error-fallback > .map-smart-note {
+    margin-top: calc(var(--map-dock-height, 0px) + var(--app-space-2) + var(--app-space-4));
+  }
+  .dock-host[data-map-error] .map-error-fallback:has(> .map-smart-note) .map-error-fallback-head {
+    padding-top: 14px;
   }
 }
 @media (max-width: 1023.98px) {

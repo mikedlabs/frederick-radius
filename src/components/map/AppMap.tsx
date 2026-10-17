@@ -4619,7 +4619,7 @@ export default function AppMap({
 
   const smartDefaultVisible = Boolean(
     dock &&
-      mapLoaded &&
+      (mapLoaded || mapError) &&
       smartDefault &&
       !smartNoteDismissed &&
       !hasExplicitLayerView &&
@@ -4645,6 +4645,66 @@ export default function AppMap({
                 : smartDefaultVisible
                   ? "guidance"
                   : "rest";
+
+  const smartNote = smartDefaultVisible && smartDefault ? (
+          <div
+            className="map-smart-note"
+            data-map-top-surface="guidance"
+          >
+            <div className="map-smart-note-copy">
+              <span
+                role="status"
+                className="map-smart-note-reason"
+                data-map-smart-note-reason
+              >
+                {smartDefault.reason}
+              </span>
+              {smartDefault.action ? " " : null}
+              {smartDefault.action && (
+                "href" in smartDefault.action ? (
+                  <Link
+                    href={smartDefault.action.href}
+                    className="map-smart-note-link tap-44-y"
+                    data-map-smart-note-action
+                  >
+                    {smartDefault.action.label}
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    className="map-smart-note-link tap-44-y"
+                    data-map-smart-note-action
+                    onClick={() => {
+                      haptic("light");
+                      setShowRadar(true);
+                      setSmartNoteDismissed(true);
+                      track("map_smart_default_action", { action: "radar" });
+                    }}
+                  >
+                    {smartDefault.action.label}
+                  </button>
+                )
+              )}
+            </div>
+            <button
+              type="button"
+              className="map-smart-note-dismiss tap-44"
+              onClick={() => {
+                setSmartNoteDismissed(true);
+                // Saying no is a real choice: the seeded layers turn off and
+                // persist off, exactly as if each toggle had been tapped.
+                if (smartLayerSeeds.has("radar")) setShowRadar(false);
+                if (smartLayerSeeds.has("parking")) setShowParking(false);
+                if (smartLayerSeeds.has("civic")) setShowCivic(false);
+                if (smartLayerSeeds.has("traffic")) setShowTraffic(false);
+                if (smartLayerSeeds.has("incidents")) setShowIncidents(false);
+              }}
+              aria-label="Dismiss the suggested view"
+            >
+              <X className="h-4 w-4" strokeWidth={2.3} aria-hidden />
+            </button>
+          </div>
+  ) : null;
 
   return (
     <div
@@ -4732,6 +4792,7 @@ export default function AppMap({
             className="map-error-fallback"
             aria-labelledby="map-error-title"
           >
+            {smartNote}
             <div className="map-error-fallback-head" role="alert">
               <div>
                 <h2
@@ -4841,66 +4902,10 @@ export default function AppMap({
         {dock && !mapError && <div className="map-top-scrim" aria-hidden />}
         {/* The smart default explains itself in one sentence (map program
             phase 1). A suggestion may include a shareable one-tap lens rather
-            than pretending the lens is a layer that was already switched on. */}
-        {smartDefaultVisible && smartDefault && (
-          <div
-            className="map-smart-note"
-            data-map-top-surface="guidance"
-          >
-            <div className="map-smart-note-copy">
-              <span
-                role="status"
-                className="map-smart-note-reason"
-                data-map-smart-note-reason
-              >
-                {smartDefault.reason}
-              </span>
-              {smartDefault.action ? " " : null}
-              {smartDefault.action && (
-                "href" in smartDefault.action ? (
-                  <Link
-                    href={smartDefault.action.href}
-                    className="map-smart-note-link tap-44-y"
-                    data-map-smart-note-action
-                  >
-                    {smartDefault.action.label}
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    className="map-smart-note-link tap-44-y"
-                    data-map-smart-note-action
-                    onClick={() => {
-                      haptic("light");
-                      setShowRadar(true);
-                      setSmartNoteDismissed(true);
-                      track("map_smart_default_action", { action: "radar" });
-                    }}
-                  >
-                    {smartDefault.action.label}
-                  </button>
-                )
-              )}
-            </div>
-            <button
-              type="button"
-              className="map-smart-note-dismiss tap-44"
-              onClick={() => {
-                setSmartNoteDismissed(true);
-                // Saying no is a real choice: the seeded layers turn off and
-                // persist off, exactly as if each toggle had been tapped.
-                if (smartLayerSeeds.has("radar")) setShowRadar(false);
-                if (smartLayerSeeds.has("parking")) setShowParking(false);
-                if (smartLayerSeeds.has("civic")) setShowCivic(false);
-                if (smartLayerSeeds.has("traffic")) setShowTraffic(false);
-                if (smartLayerSeeds.has("incidents")) setShowIncidents(false);
-              }}
-              aria-label="Dismiss the suggested view"
-            >
-              <X className="h-4 w-4" strokeWidth={2.3} aria-hidden />
-            </button>
-          </div>
-        )}
+            than pretending the lens is a layer that was already switched on.
+            Recovery has no canvas, so the same note sits in the fallback
+            column above the heading instead of floating over it. */}
+        {!mapError && smartNote}
         {/* Transient OSM status only — loading + error. The old steady-state
             "{N} verified OSM places" chip was a permanent floating count with
             no tap target (pure top-left noise once everything had loaded), so

@@ -18,6 +18,18 @@ describe("map large-text layout contracts", () => {
     expect(css).toMatch(/\.map-smart-note-dismiss \{[\s\S]*?width: 44px;[\s\S]*?height: 44px/);
   });
 
+  it("places the weather note in the fallback column when the map is not rendering", () => {
+    expect(appMap).toMatch(/\(mapLoaded \|\| mapError\)/);
+    expect(appMap).toMatch(/map-error-fallback[\s\S]*?\{smartNote\}/);
+    expect(appMap).toMatch(/!mapError && smartNote/);
+    expect(css).toMatch(
+      /\.map-error-fallback > \.map-smart-note \{[\s\S]*?position: relative/,
+    );
+    expect(css).toMatch(
+      /\.map-error-fallback > \.map-smart-note \{[\s\S]*?animation: none/,
+    );
+  });
+
   it("caps the /map tab strip and publishes its real height for dock clearance", () => {
     expect(bottomNav).toContain('data-app-tabbar');
     expect(bottomNav).toContain("--app-tabbar-h");

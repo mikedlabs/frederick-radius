@@ -96,8 +96,11 @@ function boxesOverlap(
 async function ensureGuidance(page: Page) {
   const guidance = page.locator(".map-smart-note");
   if (await guidance.count()) return;
+  await guidance.waitFor({ state: "visible", timeout: 8_000 }).catch(() => undefined);
+  if (await guidance.count()) return;
   await page.evaluate(() => {
-    const host = document.querySelector(".dock-host") ?? document.body;
+    const fallback = document.querySelector(".map-error-fallback");
+    const host = fallback ?? document.querySelector(".dock-host") ?? document.body;
     const note = document.createElement("div");
     note.className = "map-smart-note";
     note.dataset.mapTopSurface = "guidance";
@@ -108,7 +111,8 @@ async function ensureGuidance(page: Page) {
       </div>
       <button type="button" class="map-smart-note-dismiss tap-44" aria-label="Dismiss the suggested view">×</button>
     `;
-    host.append(note);
+    if (fallback) fallback.prepend(note);
+    else host.append(note);
   });
 }
 
@@ -184,6 +188,22 @@ test.describe("map large-text layout", () => {
       expect(typeMetrics!.sentenceWidth).toBeGreaterThan(typeMetrics!.ch * 10);
       expect(typeMetrics!.closeWidth).toBeGreaterThanOrEqual(44);
       expect(typeMetrics!.closeHeight).toBeGreaterThanOrEqual(44);
+
+      const fallbackHeading = page.locator("#map-error-title");
+      if (await fallbackHeading.count()) {
+        await expect(fallbackHeading).toBeVisible();
+        const noteBox = await page.locator(".map-smart-note").boundingBox();
+        const headingBox = await fallbackHeading.boundingBox();
+        expect(noteBox).not.toBeNull();
+        expect(headingBox).not.toBeNull();
+        expect(boxesOverlap(noteBox!, headingBox!)).toBe(false);
+        const allPlaces = page.getByRole("link", { name: "All places" });
+        if (await allPlaces.count()) {
+          const placesBox = await allPlaces.boundingBox();
+          expect(placesBox).not.toBeNull();
+          expect(boxesOverlap(noteBox!, placesBox!)).toBe(false);
+        }
+      }
 
       const tabBar = page.locator("[data-app-tabbar]");
       await expect(tabBar).toBeVisible();
