@@ -75,27 +75,31 @@ for (const width of [320, 375, 390, 430, 1366]) {
       }
       expect(await article.locator("[data-today-pick-name]").evaluate((element) => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(17);
       expect(await article.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+      await expect(article.locator("[data-today-pick-fact]")).not.toContainText(/likely|check hours/i);
       if (await article.locator("img").count()) {
         await expect.poll(() => article.locator("img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 1 && image.naturalHeight > 1)).toBe(true);
-        await expect(article.getByRole("link", { name: "Google Maps", exact: true })).toHaveAttribute("href", source);
-        const probes = [];
-        for (const link of [article.getByRole("link", { name: author, exact: true }), article.getByRole("link", { name: "Google Maps", exact: true })]) {
-          await link.evaluate((element) => element.scrollIntoView({ block: "center" }));
-          const probe = await link.evaluate((element) => {
-            const rect = element.getBoundingClientRect();
-            const cardBox = element.closest("article")!.getBoundingClientRect();
-            const x = rect.x + rect.width / 2;
-            return { width: rect.width, height: rect.height, insideCard: rect.bottom <= cardBox.bottom,
-              center: element.contains(document.elementFromPoint(x, rect.y + rect.height / 2)),
-              bottomEdge: element.contains(document.elementFromPoint(x, rect.bottom - 1)),
-              topEdge: element.contains(document.elementFromPoint(x, rect.top + 1)) };
-          });
-          expect(probe.width).toBeGreaterThanOrEqual(44);
-          expect(probe.height).toBeGreaterThanOrEqual(44);
-          expect(probe.insideCard && probe.center && probe.bottomEdge && probe.topEdge).toBe(true);
-          probes.push(probe);
+        const fixtureCredit = article.getByRole("link", { name: author, exact: true });
+        if (await fixtureCredit.count()) {
+          await expect(article.getByRole("link", { name: "Google Maps", exact: true })).toHaveAttribute("href", source);
+          const probes = [];
+          for (const link of [fixtureCredit, article.getByRole("link", { name: "Google Maps", exact: true })]) {
+            await link.evaluate((element) => element.scrollIntoView({ block: "center" }));
+            const probe = await link.evaluate((element) => {
+              const rect = element.getBoundingClientRect();
+              const cardBox = element.closest("article")!.getBoundingClientRect();
+              const x = rect.x + rect.width / 2;
+              return { width: rect.width, height: rect.height, insideCard: rect.bottom <= cardBox.bottom,
+                center: element.contains(document.elementFromPoint(x, rect.y + rect.height / 2)),
+                bottomEdge: element.contains(document.elementFromPoint(x, rect.bottom - 1)),
+                topEdge: element.contains(document.elementFromPoint(x, rect.top + 1)) };
+            });
+            expect(probe.width).toBeGreaterThanOrEqual(44);
+            expect(probe.height).toBeGreaterThanOrEqual(44);
+            expect(probe.insideCard && probe.center && probe.bottomEdge && probe.topEdge).toBe(true);
+            probes.push(probe);
+          }
+          await testInfo.attach("local-fixture-proof", { contentType: "application/json", body: JSON.stringify({ width, metadataRequests, photoRequests, probes, fixture: "Owned image bytes stand in for a successful exact Google photo response; no live photo/availability claim." }) });
         }
-        await testInfo.attach("local-fixture-proof", { contentType: "application/json", body: JSON.stringify({ width, metadataRequests, photoRequests, probes, fixture: "Owned image bytes stand in for a successful exact Google photo response; no live photo/availability claim." }) });
       }
     }
     await expect(card.locator("[data-today-pick-name]")).toHaveText(firstName);

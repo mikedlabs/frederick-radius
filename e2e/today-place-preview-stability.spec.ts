@@ -65,6 +65,7 @@ test("Today preview height and lead stay put when photos fall back", async ({ pa
 
   await expect(lead.locator("[data-today-pick-name]")).toHaveText(firstName);
   await expect(page.locator("[data-today-pick-name]").first()).toHaveText(firstName);
+  await expect(lead).not.toContainText(/likely|check hours/i);
   await expect(page.getByText("Replacement Cafe")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /Places likely open/i })).toHaveCount(0);
   const laterHeight = (await lead.boundingBox())!.height;
