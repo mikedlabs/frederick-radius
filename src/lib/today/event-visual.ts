@@ -31,5 +31,6 @@ export function todayEventVisual(
     src,
     caption: `Venue · ${place.name}`,
     key: `place:${place.slug}:${src}`,
+    presentation: "photo",
   };
 }

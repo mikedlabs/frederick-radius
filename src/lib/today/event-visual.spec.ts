@@ -48,6 +48,7 @@ describe("todayEventVisual", () => {
     ).toMatchObject({
       src: "https://s1.ticketm.net/dam/a/example.jpg",
       caption: "Event image · Ticketmaster",
+      presentation: "artwork",
     });
   });
 
@@ -60,6 +61,7 @@ describe("todayEventVisual", () => {
     expect(visual).toMatchObject({
       src: place!.google_photo_url,
       caption: `Venue · ${place!.name}`,
+      presentation: "photo",
     });
   });
 
