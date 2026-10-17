@@ -268,7 +268,9 @@ export const HeroFailureKeepsViewerUntilBrowserBack: Story = {
     // leave its newly owned history stop without a usable dismissal action.
     heroImage.dispatchEvent(new Event("error"));
     await waitFor(() => expect(canvasElement.querySelector("[data-place-hero]")).not.toHaveAttribute("data-place-hero-source", "owned"));
-    await expect(viewer).toBeVisible();
+    // Focus and the hero error can precede the viewer’s first painted frame.
+    // Keep the entry-time failure, then require the same viewer to be visible.
+    await waitFor(() => expect(viewer).toBeVisible());
     await expect(viewer).toHaveAttribute("data-lightbox-photo-source", "owned");
     const viewerImage = within(viewer).getByRole("img", { name: owned.alt });
     viewerImage.dispatchEvent(new Event("error"));
