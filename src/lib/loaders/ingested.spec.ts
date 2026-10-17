@@ -249,6 +249,132 @@ describe("multi-day all-day ingested visibility", () => {
     expect(sql).not.toHaveBeenCalled();
   });
 
+  it("fills a blank county stored category from the title-only rule", async () => {
+    const rows = [
+      {
+        title: "Gaver Farm-Fall Festival",
+        uid: "gaver-1",
+        venue: "Frederick",
+        expect: "agritourism",
+      },
+      {
+        title: "Fall Festival",
+        uid: "gaver-2",
+        venue: "Gaver Farm",
+        expect: "agritourism",
+      },
+      {
+        title: "Live Theatre Production",
+        uid: "theatre-1",
+        venue: "Frederick",
+        expect: "theater",
+      },
+      {
+        title: "Urbana District Park Walk",
+        uid: "walk-1",
+        venue: "9020 Amelung Street",
+        expect: "outdoors",
+      },
+      {
+        title: "Police Accountability Board (Webstream on FCG TV 2 Only)",
+        uid: "board-1",
+        venue: "Frederick",
+        expect: "civic",
+      },
+      {
+        title: "Agriculture Business Council",
+        uid: "council-1",
+        venue: "118 N Market St. Floor 3, Frederick",
+        expect: "civic",
+      },
+      {
+        title: "Trivia with a Twist",
+        uid: "trivia-1",
+        venue: "Frederick",
+        expect: "community",
+      },
+      {
+        title: "Board Game Afternoon",
+        uid: "games-1",
+        venue: "Frederick Senior Center",
+        expect: "community",
+      },
+      {
+        title: "Mt. Zion AME Church 130th Anniversary Celebration Worship Service",
+        uid: "zion-1",
+        venue: "Frederick",
+        expect: "community",
+      },
+    ] as const;
+
+    mocks.getSql.mockReturnValue(
+      vi.fn(async () =>
+        rows.map((row, i) => ({
+          source_uid: row.uid,
+          source_domain: "www.frederickcountymd.gov",
+          source_url: `https://www.frederickcountymd.gov/calendar.aspx?EID=${14000 + i}`,
+          title: row.title,
+          description: "Council Member Jerry Donald will attend.",
+          starts_at_utc: "2026-08-11T23:00:00.000Z",
+          ends_at_utc: "2026-08-12T01:00:00.000Z",
+          all_day: false,
+          venue_name: row.venue,
+          address: null,
+          lat: null,
+          lng: null,
+          municipality: "Frederick County",
+          category: null,
+          hero_image: null,
+          hero_image_alt: null,
+        })),
+      ) as never,
+    );
+
+    const series = await getIngestedSeries();
+    expect(series.every((s) => s.category === null)).toBe(true);
+
+    for (const [i, row] of rows.entries()) {
+      const s = series[i];
+      const slug = cleanEventSlug({
+        presenter: s.presenter,
+        title: s.title,
+        startsAt: s.occurrences[0].startsAtUtc,
+      });
+      const card = await getIngestedCardBySlug(slug);
+      expect(card?.category, row.title).toBe(row.expect);
+      expect(card?.source, row.title).toBe("county");
+    }
+  });
+
+  it("does not rewrite a stored library category on the lifted path", async () => {
+    mocks.getSql.mockReturnValue(
+      vi.fn(async () => [
+        {
+          source_uid: "fcpl-theatre-1",
+          source_domain: "frederick.librarycalendar.com",
+          source_url:
+            "https://frederick.librarycalendar.com/event/theatre-1",
+          title: "Live Theatre Production",
+          description: "A library program.",
+          starts_at_utc: "2026-07-12T18:00:00.000Z",
+          ends_at_utc: "2026-07-12T19:00:00.000Z",
+          all_day: false,
+          venue_name: "C. Burr Artz Public Library",
+          address: "110 E Patrick St, Frederick, MD 21701",
+          lat: "39.4141",
+          lng: "-77.4089",
+          municipality: "frederick",
+          category: "family",
+          hero_image: null,
+          hero_image_alt: null,
+        },
+      ]) as never,
+    );
+
+    const cards = ingestedSeriesToCards(await getIngestedSeries(), new Date());
+    expect(cards[0]?.category).toBe("family");
+  });
+
   it("keeps an undated cold-scan miss definitive without touching the database", async () => {
     const sql = vi.fn();
     mocks.getSql.mockReturnValue(sql);
