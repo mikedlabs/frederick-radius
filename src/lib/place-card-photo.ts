@@ -53,6 +53,13 @@ function suppliedPhotoSource(rawSrc: string | undefined, width: number,
   return null;
 }
 
+/** True when SSR can paint a real owned or licensed image without waiting on
+ * the Google photo proxy. Proxy URLs are not exact: they may still return the
+ * fallback signal after the card has already reserved a large frame. */
+export function hasExactPlacePhoto(slug: string): boolean {
+  return Boolean(getOwnedPlacePhoto(slug) || getLandmarkPhoto(slug));
+}
+
 /** Exact landmark imagery only. Never substitute a town or category photo. */
 export function placeCardPhotoPlan(
   place: PlacePhotoInput,

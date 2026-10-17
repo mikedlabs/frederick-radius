@@ -35,6 +35,9 @@ const usablePreview: NonNullable<Story["play"]> = async ({ canvasElement, args }
     await waitFor(async () => { await image.decode(); expect(image.naturalWidth).toBeGreaterThan(1); expect(image.naturalHeight).toBeGreaterThan(1); });
     await expect(card.querySelector("[data-today-pick-context]")?.closest("[data-place-card-photo]")).toBeNull();
   } else {
+    await expect(card.getAttribute("data-preview-layout")).toBe("compact");
+    await expect(card.querySelector("[data-today-place-thumb]")).not.toBeNull();
+    await expect(card.querySelector("[data-today-place-thumb-fallback]")).not.toBeNull();
     await expect(card.querySelector("[data-place-card-photo]")).toBeNull();
     await expect(card.querySelector(".place-card-photo-credit")).toBeNull();
   }

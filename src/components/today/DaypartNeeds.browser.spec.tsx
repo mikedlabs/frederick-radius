@@ -127,7 +127,7 @@ describe("Today place photo preserves the decision and exact source", () => {
     const photo = container.querySelector("img")!;
     expect(photo).not.toBeNull();
     expect(photo.getAttribute("src")).toBe("blob:today-visible-photo");
-    expect(request.mock.calls[1][0]).toContain("w=720");
+    expect(request.mock.calls[1][0]).toContain("w=344");
     expect(request.mock.calls[1][0]).toContain("fallback=signal");
     expect(container.querySelector("a a")).toBeNull();
     expect(request).toHaveBeenCalledTimes(2);
@@ -145,5 +145,41 @@ describe("Today place photo preserves the decision and exact source", () => {
     expect(card?.querySelector('[data-today-place-lead]')?.getAttribute("href")).toContain("/places/local-place?returnTo=");
     expect(container.textContent).toContain("Places to try");
     expect(request).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("Today keeps the server-rendered lead through live ranking", () => {
+  it("does not replace the first-paint place with a live hero", async () => {
+    const serverRows = [{
+      category: "restaurant",
+      label: "Lunch",
+      href: "/nearby?c=lunch",
+      picks: [{
+        slug: "isabellas-taverna-tapas-bar-frederick",
+        name: "Isabella's Taverna",
+        rating: 4.6,
+        confidence: "likely" as const,
+        fact: "Likely open · check hours",
+        where: "Frederick",
+      }],
+    }];
+    state.answer.mockResolvedValue({
+      hero: { slug: "dublin-roasters-coffee-frederick", name: "Dublin Roasters Coffee", photo: null, where: "Frederick", distance: null, fact: "Hours not confirmed", confidence: "unconfirmed" },
+      also: [{ slug: "ibiza-cafe", name: "Ibiza Cafe", photo: null, where: "Frederick", distance: null, fact: "Hours not confirmed" }],
+      soon: null,
+      browseHref: "/nearby?c=lunch&in=county",
+      contextLabel: "Whole county",
+      contextSource: "county",
+    });
+    await act(async () => {
+      root.render(<DaypartNeeds rows={serverRows} variant="brief" />);
+    });
+    expect(container.textContent).toContain("Isabella's Taverna");
+    await act(async () => { await state.answer.mock.results[0]?.value; });
+    expect(container.textContent).toContain("Isabella's Taverna");
+    expect(container.textContent).not.toContain("Dublin Roasters");
+    expect(container.textContent).not.toContain("Ibiza Cafe");
+    expect(container.textContent).toContain("Places to try");
+    expect(container.textContent).not.toContain("Places likely open");
   });
 });

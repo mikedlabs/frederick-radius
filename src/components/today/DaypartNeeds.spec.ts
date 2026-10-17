@@ -16,6 +16,8 @@ import DaypartNeeds, {
   isDaypartCountywideContext,
   liveShelfFromWantAnswer,
   nextUnresolvedDaypartCategory,
+  preserveRenderedLead,
+  visibleDaypartLead,
 } from "./DaypartNeeds";
 
 describe("DaypartNeeds", () => {
@@ -681,6 +683,64 @@ describe("DaypartNeeds", () => {
       title: "Opening soon",
       aria: "Place opening soon",
     });
+    expect(
+      daypartShelfHeading(
+        [{ slug: "likely", name: "Likely", rating: null, confidence: "likely" }],
+        null,
+      ),
+    ).toEqual({
+      title: "Places to try",
+      aria: "Places to try, hours not confirmed",
+    });
+  });
+
+  it("keeps the server-rendered current lead when live ranking prefers someone else", () => {
+    const server = {
+      category: "restaurant",
+      label: "Lunch",
+      href: "/category/restaurant",
+      picks: [{ slug: "isabellas", name: "Isabella's", rating: 4.6, confidence: "likely" as const }],
+    };
+    const live = liveShelfFromWantAnswer(
+      {
+        hero: { slug: "dublin", name: "Dublin Roasters", photo: null, where: "Frederick", distance: null, fact: "Hours not confirmed", confidence: "unconfirmed" },
+        also: [
+          { slug: "ibiza", name: "Ibiza Cafe", photo: null, where: "Frederick", distance: null, fact: "Hours not confirmed" },
+        ],
+        browseHref: server.href,
+        contextLabel: "Across Frederick County",
+        contextSource: "county",
+      },
+      server,
+      "county",
+    );
+    expect(live.picks[0].slug).toBe("dublin");
+    expect(preserveRenderedLead(server, live, "brief").picks.map((pick) => pick.slug)[0]).toBe("isabellas");
+    expect(visibleDaypartLead(server, "brief")).toEqual({ kind: "place", slug: "isabellas" });
+  });
+
+  it("lets live ranking replace the lead only when that same place is now closed", () => {
+    const server = {
+      category: "restaurant",
+      label: "Dinner",
+      href: "/category/restaurant",
+      picks: [{ slug: "isabellas", name: "Isabella's", rating: 4.6, confidence: "likely" as const }],
+    };
+    const live = liveShelfFromWantAnswer(
+      {
+        hero: { slug: "ibiza", name: "Ibiza Cafe", photo: null, where: "Frederick", distance: null, fact: "Open until 10pm", confidence: "confirmed" },
+        also: [],
+        soon: { slug: "isabellas", name: "Isabella's", photo: null, where: "Frederick", distance: null, fact: "Opens soon · 4pm", confidence: "confirmed" },
+        browseHref: server.href,
+        contextLabel: "Across Frederick County",
+        contextSource: "county",
+      },
+      server,
+      "county",
+    );
+    const preserved = preserveRenderedLead(server, live, "brief");
+    expect(preserved.openingSoon?.slug).toBe("isabellas");
+    expect(preserved.picks.map((pick) => pick.slug)).toEqual(["ibiza"]);
   });
 
   it("labels curated fallback cards as likely instead of confirmed open", () => {
@@ -706,6 +766,9 @@ describe("DaypartNeeds", () => {
     expect(html).toContain(
       "Countywide picks · Posted hours; check before going",
     );
+    expect(html).toContain("Places to try");
+    expect(html).not.toContain("Places likely open");
+    expect(html).not.toContain("likely open right now");
     expect(html).not.toContain('aria-label="Likely Cup');
     expect(html).toContain("Likely Cup");
     expect(html).toContain("Likely open");
@@ -773,10 +836,13 @@ describe("DaypartNeeds", () => {
     const withPhoto = renderPick(
       "/api/place-photo?name=places%2FChIJtest%2Fphotos%2Ffront&w=800",
     );
+    expect(withPhoto).toContain('data-preview-layout="compact"');
+    expect(withPhoto).toContain("data-today-place-thumb");
+    expect(withPhoto).toContain("data-today-place-thumb-fallback");
     expect(withPhoto).toContain('data-place-card-photo-source="google"');
     expect(withPhoto).toContain('data-place-card-photo-bytes="idle"');
+    expect(withPhoto).toContain('data-photo-ready="false"');
     expect(withPhoto).not.toContain("<img");
-    expect(withPhoto).toContain('visibility:hidden');
     expect(withPhoto).not.toContain('data-radius-plate="gravel-and-grind"');
 
     const withoutPhoto = renderPick();
@@ -785,6 +851,9 @@ describe("DaypartNeeds", () => {
     expect(withoutPhoto).toContain("Open now");
     expect(withoutPhoto).toContain('data-today-place-lead="true"');
     expect(withoutPhoto).toContain('data-has-photo="false"');
+    expect(withoutPhoto).toContain('data-preview-layout="compact"');
+    expect(withoutPhoto).toContain("data-today-place-thumb");
+    expect(withoutPhoto).toContain("data-today-place-thumb-fallback");
     expect(withoutPhoto).not.toContain("data-place-card-photo=");
     expect(withoutPhoto).toContain('aria-label="Map: Gravel &amp; Grind"');
     // A place name identifies the place, so it wraps instead of clipping.
