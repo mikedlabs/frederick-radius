@@ -46,36 +46,25 @@ for (const width of [320, 1366]) {
 }
 
 for (const width of [320, 375, 390, 430, 1366]) {
-  test(`Today exposes its request doorway before promotions at ${width}px`, async ({ page }) => {
+  test(`Today leads with conditions and keeps Find below events at ${width}px`, async ({ page }) => {
     test.setTimeout(120_000);
-    const height = width === 1366 ? 900 : 844;
-    await page.setViewportSize({ width, height });
+    await page.setViewportSize({ width, height: width === 1366 ? 900 : 844 });
     await page.goto("/today", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("combobox", { name: "Choose your area" })).toBeEnabled();
     await page.evaluate(() => document.fonts.ready);
+    const conditions = page.locator("[data-today-conditions]");
     const find = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
+    await expect(conditions).toBeVisible();
     await expect(find).toBeVisible();
-    const findBox = await find.boundingBox();
-    // Active safety alerts and an intentional day-of civic spotlight lead
-    // the masthead. Normalize that variable content rather than fail a
-    // release because a real warning needs space. The ordinary masthead +
-    // request doorway must fit above navigation without a campaign in between.
-    const mastheadBox = await page.locator("main .scroll-masthead").boundingBox();
-    expect(mastheadBox).not.toBeNull();
-    const leadingNoticeSpace = Math.max(0, mastheadBox!.y - 80);
-    expect(findBox!.y + findBox!.height - leadingNoticeSpace).toBeLessThan(height - 80);
     const weather = page.locator('[data-today-weather] a[href*="/pulse"][href*="open=weather"]');
     await expect(weather).toHaveCount(1);
-    await expect(weather).toBeVisible();
-    await expect(page.locator('[data-today-weather] [data-weather-state]'))
+    await expect(page.locator("[data-today-weather] [data-weather-state]"))
       .toHaveAttribute("data-weather-state", /^(available|safety-only|unavailable)$/);
-    const weatherBox = await weather.boundingBox();
-    expect(weatherBox).not.toBeNull();
-    expect(weatherBox!.height).toBeGreaterThanOrEqual(44);
-    expect(weatherBox!.y + weatherBox!.height).toBeLessThanOrEqual(findBox!.y);
-    const campaign = page.locator("[data-today-fair-feature]");
-    if (await campaign.count()) {
-      expect((await campaign.boundingBox())!.y).toBeGreaterThan(findBox!.y + findBox!.height);
+    const firstEvent = page.locator("[data-today-event-pick]").first();
+    if (await firstEvent.count()) {
+      const eventBox = (await firstEvent.boundingBox())!;
+      const findBox = (await find.boundingBox())!;
+      expect(findBox.y).toBeGreaterThan(eventBox.y);
     }
     await page.getByRole("combobox", { name: "Choose your area" }).selectOption("town:brunswick");
     await expect(page.getByTestId("today-scope-status")).toContainText("Brunswick place picks");

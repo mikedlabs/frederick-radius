@@ -149,3 +149,4 @@ scripts/reports/
 # Local dev-server output and one-off audit scratch never belong in history.
 /.dev-server.log
 /scripts/scratch/
+artifacts/

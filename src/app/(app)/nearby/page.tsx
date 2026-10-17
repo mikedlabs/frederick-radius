@@ -6,11 +6,13 @@ import {
   slimForNearby,
 } from "@/lib/loaders/places";
 import { CRAVING_BY_KEY, isCravingPlace } from "@/data/cravings";
-import RightNow from "@/components/now/RightNow";
+import nextDynamic from "next/dynamic";
 import { approxLocation } from "@/lib/ip-geo";
 import { isRecommendable } from "@/lib/relevance";
 import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 import { readNearbyQuery, type NearbyQueryValues } from "@/lib/nearby-query";
+
+const RightNow = nextDynamic(() => import("@/components/now/RightNow"));
 
 export async function generateMetadata({
   searchParams,

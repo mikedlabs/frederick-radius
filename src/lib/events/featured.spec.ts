@@ -59,14 +59,21 @@ describe("featuredEventSlugs", () => {
     expect(
       [...featuredEventSlugs(new Date("2026-08-13T12:00:00-04:00"))].sort(),
     ).toEqual([
+      "catoctin-colorfest-thurmont-2026",
       "snallyfest-2026-festival-day",
       "snallyfest-2026-kickoff",
     ]);
     expect(
-      [...featuredEventSlugs(new Date("2026-08-16T01:00:00-04:00"))],
-    ).toEqual(["snallyfest-2026-festival-day"]);
+      [...featuredEventSlugs(new Date("2026-08-16T01:00:00-04:00"))].sort(),
+    ).toEqual([
+      "catoctin-colorfest-thurmont-2026",
+      "snallyfest-2026-festival-day",
+    ]);
     expect(
-      featuredEventSlugs(new Date("2026-08-16T01:31:00-04:00")).size,
+      [...featuredEventSlugs(new Date("2026-08-16T01:31:00-04:00"))],
+    ).toEqual(["catoctin-colorfest-thurmont-2026"]);
+    expect(
+      featuredEventSlugs(new Date("2026-10-12T12:00:00-04:00")).size,
     ).toBe(0);
   });
 });

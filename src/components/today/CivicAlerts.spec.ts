@@ -6,6 +6,7 @@ import {
   dedupeUnifiedAlerts,
   nwsDisplaySeverity,
   officialCivicAlerts,
+  todayAlertDestinationLabel,
   untilLabel,
   type UnifiedAlert,
 } from "./CivicAlerts";
@@ -102,6 +103,18 @@ describe("untilLabel", () => {
         new Date("2026-07-29T03:50:00.000Z"),
       ),
     ).toBe("Until 12:30 AM Wed");
+  });
+});
+
+describe("todayAlertDestinationLabel", () => {
+  it("names the host an external alert opens", () => {
+    expect(
+      todayAlertDestinationLabel({
+        source: "NWS",
+        url: "https://www.weather.gov/alerts/test",
+        external: true,
+      }),
+    ).toBe("weather.gov");
   });
 });
 

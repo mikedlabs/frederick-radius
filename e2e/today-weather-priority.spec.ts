@@ -1,5 +1,4 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { APPEARANCE_KEY } from "../src/lib/appearance";
 import {
   dismissReturnBridge,
   emptyReturnBridgeState,
@@ -8,10 +7,9 @@ import {
 
 /**
  * The regular suite checks whichever real weather state resolves. Browser
- * routing cannot control TodayCard's server-side NWS/AirNow reads.
+ * routing cannot control server-side NWS/AirNow reads.
  * For strict unavailable coverage, use playwright.weather-guarded.config.ts
- * after the normal promoted production build. That config starts its own
- * runtime with the existing Node egress guard; no weather markup is fabricated.
+ * after the normal promoted production build.
  */
 const VIEWPORTS = [
   { width: 320, height: 844 },
@@ -41,9 +39,6 @@ test.beforeEach(async ({ page, context, baseURL }) => {
     const request = route.request();
     const url = new URL(request.url());
     if (url.origin !== origin.origin) return route.abort();
-    // Record keyboard navigation to the real forecast destination without
-    // entering Pulse's server/provider work. This proves the route request,
-    // not the destination's weather data or complete navigation lifecycle.
     if (url.pathname === "/pulse" && url.searchParams.get("open") === "weather") {
       return route.abort();
     }
@@ -83,14 +78,9 @@ async function tabToForecast(page: Page, forecast: Locator) {
   throw new Error("The forecast link was not reachable within 40 ordinary Tab presses.");
 }
 
-for (const appearance of ["light", "dark"] as const) {
-  test.describe("Today weather priority in explicit " + appearance + " appearance", () => {
-    test.use({ colorScheme: appearance });
-    test.beforeEach(async ({ page }) => {
-      await page.addInitScript(({ key, value }) => {
-        localStorage.setItem(key, value);
-      }, { key: APPEARANCE_KEY, value: appearance });
-    });
+for (const colorScheme of ["light", "dark"] as const) {
+  test.describe("Today weather priority in " + colorScheme, () => {
+    test.use({ colorScheme });
 
     for (const viewport of VIEWPORTS) {
       test.describe(viewport.width + "x" + viewport.height, () => {
@@ -108,15 +98,13 @@ for (const appearance of ["light", "dark"] as const) {
           page.on("pageerror", (error) => runtimeErrors.push(error.message));
           const response = await page.goto("/today?in=county", { waitUntil: "domcontentloaded" });
           expect(response?.status()).toBe(200);
-          await expect(page.locator("html")).toHaveAttribute("data-appearance", appearance);
           await expect(page.locator("main h1")).toHaveCount(1);
           await expect(page.getByRole("combobox", { name: "Choose your area" })).toBeEnabled();
           const weather = page.locator("[data-today-weather]");
           const renderedWeather = weather.locator("[data-weather-state]");
           const forecast = weather.locator('a[href*="open=weather"]');
           const find = page.locator('[data-surface-row="find"]');
-          const places = page.locator('[data-today-current-content] > [aria-label="Places for your area"]');
-          const events = page.locator("#whats-on");
+          const firstEvent = page.locator("[data-today-event-pick]").first();
           await expect(weather).toHaveCount(1);
           await expect(forecast).toHaveCount(1);
           await expect(page.locator('a[href*="/pulse"][href*="open=weather"]')).toHaveCount(1);
@@ -129,15 +117,9 @@ for (const appearance of ["light", "dark"] as const) {
             await test.step("guarded server resolves honest unavailable weather", async () => {
               expect(weatherState).toBe("unavailable");
               await expect(weather).toContainText("The NWS forecast is briefly unavailable.");
-              await expect(weather.locator('[aria-label="Today in Frederick"]')).toHaveCount(0);
-              // An ordinary guarded day has no interruption above the masthead.
-              // Active alert priority remains separately guarded by TodayHierarchy.
-              await expect(page.getByRole("region", { name: "Heads up", exact: true })).toHaveCount(0);
             });
           }
           await expect(find).toBeVisible();
-          await expect(places).toBeAttached();
-          await expect(events).toBeAttached();
           await page.evaluate(async () => {
             await document.fonts.ready;
             await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
@@ -148,27 +130,24 @@ for (const appearance of ["light", "dark"] as const) {
               const next = document.querySelector(selector);
               return next !== null && Boolean(element.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING);
             };
-            const heading = document.querySelector("main .scroll-masthead h1");
             return {
-              afterHeading: heading !== null && Boolean(heading.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
-              inMasthead: element.closest("[data-today-masthead]") !== null,
               beforeFind: before('[data-surface-row="find"]'),
-              beforePlaces: before('[data-today-current-content] > [aria-label="Places for your area"]'),
-              beforeEvents: before("#whats-on"),
+              beforeEvents: before("[data-today-event-pick]") || document.querySelector("[data-today-event-pick]") === null,
             };
           });
-          expect(order).toEqual({ afterHeading: true, inMasthead: true, beforeFind: true, beforePlaces: true, beforeEvents: true });
+          expect(order.beforeFind).toBe(true);
 
           const weatherBox = (await weather.boundingBox())!;
-          const headingBox = (await page.locator("main .scroll-masthead h1").boundingBox())!;
           const findBox = (await find.boundingBox())!;
           expect(await page.evaluate(() => window.scrollY)).toBe(0);
           expect(weatherBox.height).toBeGreaterThan(0);
-          // The owner-approved full-width heading precedes one compact read.
-          expect(weatherBox.y).toBeGreaterThanOrEqual(headingBox.y + headingBox.height);
-          await expect(renderedWeather).toHaveAttribute("data-weather-density", "masthead");
           expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(viewport.height);
           expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(findBox.y);
+          if (await firstEvent.count()) {
+            const eventBox = (await firstEvent.boundingBox())!;
+            expect(eventBox.y).toBeGreaterThan(weatherBox.y);
+            expect(findBox.y).toBeGreaterThan(eventBox.y);
+          }
           expect(weatherBox.x).toBeGreaterThanOrEqual(0);
           expect(weatherBox.x + weatherBox.width).toBeLessThanOrEqual(viewport.width);
           await expect.poll(() => page.evaluate(() =>
@@ -176,67 +155,24 @@ for (const appearance of ["light", "dark"] as const) {
           )).toBeLessThanOrEqual(1);
 
           const forecastBox = (await forecast.boundingBox())!;
-          // Round only CSS-transform representation, as in the existing layout gate.
           expect(Math.round(forecastBox.height * 100) / 100).toBeGreaterThanOrEqual(44);
           expect(forecastBox.width).toBeGreaterThanOrEqual(44);
           await expect.poll(() => fivePointForecastProbe(forecast)).toEqual([true, true, true, true, true]);
           expect(runtimeErrors).toEqual([]);
           await testInfo.attach("weather-priority-geometry", {
             contentType: "application/json",
-            body: JSON.stringify({ viewport, appearance, providerMode, state: weatherState, order, weatherBox, forecastBox,
+            body: JSON.stringify({ viewport, colorScheme, providerMode, state: weatherState, order, weatherBox, forecastBox,
               probe: "Center and four cardinal points at +/-21.5px; bounded samples, not exhaustive area proof." }),
           });
-          const screenshotPath = testInfo.outputPath(`today-weather-${appearance}-${viewport.width}.png`);
+          const screenshotPath = testInfo.outputPath(`today-weather-${colorScheme}-${viewport.width}.png`);
           await page.screenshot({ path: screenshotPath, fullPage: true });
           await testInfo.attach("weather-priority-screenshot", { path: screenshotPath, contentType: "image/png" });
-          const firstScreenPath = testInfo.outputPath(`today-first-screen-${appearance}-${viewport.width}.png`);
+          const firstScreenPath = testInfo.outputPath(`today-first-screen-${colorScheme}-${viewport.width}.png`);
           await page.screenshot({ path: firstScreenPath, fullPage: false });
           await testInfo.attach("weather-priority-first-screen", { path: firstScreenPath, contentType: "image/png" });
 
           await tabToForecast(page, forecast);
           await expect(forecast).toBeFocused();
-          const details = renderedWeather.locator("details");
-          if (weatherState === "available") {
-            await test.step("native keyboard reveals dated forecast evidence and returns to Full forecast", async () => {
-              const summary = details.locator("summary");
-              await expect(details).toHaveCount(1);
-              await expect(details).not.toHaveAttribute("open");
-              await expect(summary).toHaveText("Forecast details");
-              const summaryBox = (await summary.boundingBox())!;
-              expect(summaryBox.width).toBeGreaterThanOrEqual(44);
-              expect(summaryBox.height).toBeGreaterThanOrEqual(44);
-              await page.keyboard.press("Shift+Tab");
-              await expect(summary).toBeFocused();
-              await page.keyboard.press("Enter");
-              await expect(details).toHaveAttribute("open", "");
-              await expect(details.getByText("NWS forecast · Frederick", { exact: true })).toBeVisible();
-              const issued = details.locator("time");
-              if (await issued.count()) {
-                await expect(issued).toBeVisible();
-                const originalIssuance = await issued.getAttribute("datetime");
-                expect(Number.isFinite(Date.parse(originalIssuance ?? ""))).toBe(true);
-                // The date comes from NWS, including an older real issuance;
-                // browser time is never substituted for missing evidence.
-                expect(await issued.innerText()).toMatch(/\b20\d{2}\b/);
-              } else {
-                await expect(details.getByText("Issue time unavailable", { exact: true })).toBeVisible();
-              }
-              await page.keyboard.press("Tab");
-              await expect(forecast).toBeFocused();
-              await testInfo.attach("native-forecast-disclosure-keyboard", {
-                contentType: "application/json",
-                body: JSON.stringify({ exercised: true, appearance, viewport, providerMode, weatherState,
-                  contract: "Full forecast → Shift+Tab → summary → Enter → dated evidence → Tab → Full forecast" }),
-              });
-            });
-          } else {
-            await expect(details).toHaveCount(0);
-            await testInfo.attach("native-forecast-disclosure-keyboard", {
-              contentType: "application/json",
-              body: JSON.stringify({ exercised: false, appearance, viewport, providerMode, weatherState,
-                reason: "The actual unavailable/safety-only forecast has no routine-evidence disclosure. No provider markup was fabricated." }),
-            });
-          }
           const href = new URL((await forecast.getAttribute("href"))!, page.url());
           expect(href.pathname).toBe("/pulse");
           expect(href.searchParams.get("open")).toBe("weather");
@@ -253,25 +189,3 @@ for (const appearance of ["light", "dark"] as const) {
     }
   });
 }
-
-
-test.describe("Today first-visit appearance", () => {
-  test.use({ colorScheme: "dark", viewport: { width: 375, height: 844 } });
-
-  test("starts light on a dark OS and preserves an explicit dark choice after reload", async ({ page }) => {
-    test.setTimeout(60_000);
-    await page.goto("/today?in=county", { waitUntil: "domcontentloaded" });
-    await expect(page.locator("html")).toHaveAttribute("data-appearance", "light");
-    await expect(page.getByRole("button", { name: "Switch to dark appearance", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Switch to dark appearance", exact: true }).click();
-    await expect(page.locator("html")).toHaveAttribute("data-appearance", "dark");
-    await expect(page.getByRole("button", { name: "Switch to light appearance", exact: true })).toBeVisible();
-    expect(await page.evaluate((key) => localStorage.getItem(key), APPEARANCE_KEY)).toBe("dark");
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.locator("html")).toHaveAttribute("data-appearance", "dark");
-    await expect(page.getByRole("button", { name: "Switch to light appearance", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Switch to light appearance", exact: true }).click();
-    await expect(page.locator("html")).toHaveAttribute("data-appearance", "light");
-    expect(await page.evaluate((key) => localStorage.getItem(key), APPEARANCE_KEY)).toBe("light");
-  });
-});

@@ -50,9 +50,19 @@ const subscribe = (onStoreChange: () => void) =>
  * in the masthead and leaves county/town selection and location opt-in here.
  * Town and Near me readouts never imply that fixed-center weather or county
  * events have been filtered to that place.
+ *
+ * `controls` splits the quiet readout from the area picker so Today's briefing
+ * can show status under the title and the picker with Find. `density` keeps
+ * the redundant county line screen-reader-only on compact arrivals.
  */
-export default function TodayScopeStatus({ dateline, density = "standard" }: {
+export default function TodayScopeStatus({
+  dateline,
+  controls = "all",
+  density = "standard",
+}: {
   dateline?: string;
+  /** status = quiet readout; picker = area controls; all = both. */
+  controls?: "status" | "picker" | "all";
   density?: "standard" | "compact";
 }) {
   const ready = useSyncExternalStore(subscribeReady, () => true, () => false);
@@ -114,8 +124,15 @@ export default function TodayScopeStatus({ dateline, density = "standard" }: {
     requestLocation();
   };
 
+  const showStatus = controls !== "picker";
+  const showPicker = controls !== "status";
+
   return (
-    <div data-today-scope-density={density} className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+    <div
+      data-today-scope-density={density}
+      className={`${showStatus ? "mt-2" : ""} flex flex-wrap items-center gap-x-3 gap-y-2`}
+    >
+      {showStatus ? (
       <p
         role="status"
         aria-live="polite"
@@ -139,6 +156,9 @@ export default function TodayScopeStatus({ dateline, density = "standard" }: {
         />
         {todayScopeStatusText(scope, hasDeviceLocation)}
       </p>
+      ) : null}
+      {showPicker ? (
+      <>
       <label className="inline-flex min-h-11 max-w-full items-center gap-2 text-[13px] font-medium">
         <span className="sr-only">Choose your area</span>
         <select
@@ -183,6 +203,8 @@ export default function TodayScopeStatus({ dateline, density = "standard" }: {
             {location.status === "loading" ? "Finding you…" : "Use my location"}
           </button>
         )
+      ) : null}
+      </>
       ) : null}
     </div>
   );

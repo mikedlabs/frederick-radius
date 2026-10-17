@@ -37,9 +37,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import dynamic from "next/dynamic";
 import PlaceCard from "@/components/place/PlaceCard";
-import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 import { navigateAfterHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
+import NearbyRefinementControls from "./NearbyRefinementControls";
 import styles from "./RightNow.module.css";
 import {
   CRAVINGS,
@@ -78,6 +79,10 @@ import {
   readNearbyQuery,
   type NearbyQueryState,
 } from "@/lib/nearby-query";
+
+const NearbyFiltersSheet = dynamic(() => import("./NearbyFiltersSheet"), {
+  ssr: false,
+});
 
 const subscribeReady = () => () => {};
 
@@ -718,60 +723,32 @@ export default function RightNow({
         />
       </div>
 
-      {filterDraft && (
-        <BottomSheet
+      {filterDraft ? (
+        <NearbyFiltersSheet
           present
-          ariaLabel="Filters & sort"
+          draft={filterDraft}
+          facets={craving ? facetDefs : []}
+          supportsHours={!craving?.alwaysOpen}
+          closingSoonCount={draftClosingSoonCount}
+          hasRankingOrigin={hasRankingOrigin}
+          applying={applyingFilters}
           historyLayerId={filterHistoryId}
           returnFocusRef={filterOpenerRef}
+          heading={active?.label ?? "Places"}
+          placeLabel={townName ?? (scope === "county" ? "Whole county" : "Nearby")}
           canDismiss={() => !applyPendingRef.current}
-          maxHeight="90dvh"
+          onDraftChange={(patch) => setFilterDraft((draft) => draft ? changeNearbyQuery(draft, patch) : draft)}
+          onReset={() => setFilterDraft((draft) => draft ? changeNearbyQuery(draft, {
+            facetKey: null, openOnly: false, closingSoonOnly: false, sort: "smart",
+          }) : draft)}
+          onApply={applyFilters}
           onClose={() => {
             setFilterDraft(null);
             applyPendingRef.current = false;
             setApplyingFilters(false);
           }}
-        >
-          {(dismiss) => (
-            <>
-              <SheetHandle onClose={dismiss} closeLabel="Close filters & sort" />
-              <header className={styles.sheetHeader}>
-                <h2>Filters &amp; sort</h2>
-                <p>{active.label} · {townName ?? (scope === "county" ? "Whole county" : "Nearby")}</p>
-              </header>
-              <div className={styles.sheetBody}>
-                <NearbyRefinementControls
-                  value={filterDraft}
-                  facets={craving ? facetDefs : []}
-                  supportsHours={!craving?.alwaysOpen}
-                  closingSoonCount={draftClosingSoonCount}
-                  hasRankingOrigin={hasRankingOrigin}
-                  onChange={(patch) => setFilterDraft((draft) => draft ? changeNearbyQuery(draft, patch) : draft)}
-                />
-              </div>
-              <footer className={styles.sheetFooter}>
-                <button
-                  type="button"
-                  className={styles.resetFilters}
-                  onClick={() => setFilterDraft((draft) => draft ? changeNearbyQuery(draft, {
-                    facetKey: null, openOnly: false, closingSoonOnly: false, sort: "smart",
-                  }) : draft)}
-                >
-                  Reset
-                </button>
-                <button
-                  type="button"
-                  className={styles.applyFilters}
-                  disabled={applyingFilters}
-                  onClick={() => applyFilters(dismiss)}
-                >
-                  Done
-                </button>
-              </footer>
-            </>
-          )}
-        </BottomSheet>
-      )}
+        />
+      ) : null}
 
       {/* Location trust: only when we DON'T have a fix AND aren't scoped to a
           town (a town scope makes "nearest to you" moot). With a fix we silently
@@ -941,91 +918,3 @@ export default function RightNow({
   );
 }
 
-/** One set of refinements serves the desktop panel and the mobile draft. */
-function NearbyRefinementControls({
-  value,
-  facets,
-  supportsHours,
-  closingSoonCount,
-  hasRankingOrigin,
-  onChange,
-}: {
-  value: NearbyQueryState;
-  facets: readonly { key: string; label: string }[];
-  supportsHours: boolean;
-  closingSoonCount: number;
-  hasRankingOrigin: boolean;
-  onChange: (patch: Partial<NearbyQueryState>) => void;
-}) {
-  return (
-    <div className={styles.controlGroups}>
-      {facets.length > 0 && (
-        <fieldset className={styles.controlSection}>
-          <legend className={styles.controlTitle}>Type</legend>
-          <div className={styles.controlChoices}>
-            <FacetChip label="All" active={value.facetKey === null} color="var(--app-brand)" onClick={() => onChange({ facetKey: null })} />
-            {facets.map((facet) => (
-              <FacetChip key={facet.key} label={facet.label} active={value.facetKey === facet.key} color="var(--app-brand)" onClick={() => onChange({ facetKey: facet.key })} />
-            ))}
-          </div>
-        </fieldset>
-      )}
-      {supportsHours && (
-        <fieldset className={styles.controlSection}>
-          <legend className={styles.controlTitle}>Hours</legend>
-          <div className={styles.controlChoices}>
-            <FacetChip label="Open now" active={value.openOnly} color="var(--app-brand)" onClick={() => onChange({ openOnly: !value.openOnly })} />
-            {(value.closingSoonOnly || closingSoonCount > 0) && (
-              <FacetChip label="Closing soon" active={value.closingSoonOnly} color="var(--app-brand)" onClick={() => onChange({ closingSoonOnly: !value.closingSoonOnly })} />
-            )}
-          </div>
-          <p className={styles.controlHelp}>Open now includes places with confirmed current hours.</p>
-        </fieldset>
-      )}
-      <fieldset className={styles.controlSection}>
-        <legend className={styles.controlTitle}>Sort</legend>
-        <div className={styles.controlChoices}>
-          <FacetChip label="Smart" active={value.sort === "smart"} color="var(--app-brand)" onClick={() => onChange({ sort: "smart" })} />
-          {hasRankingOrigin && (
-            <FacetChip label="Nearest" active={value.sort === "nearest"} color="var(--app-brand)" onClick={() => onChange({ sort: "nearest" })} />
-          )}
-          <FacetChip label="Top rated" active={value.sort === "rated"} color="var(--app-brand)" onClick={() => onChange({ sort: "rated" })} />
-        </div>
-      </fieldset>
-    </div>
-  );
-}
-
-/** A sub-facet pill on the results page. Active = a wash of the craving's own
- *  ink with an ink label; inactive = a quiet outline. Pure + presentational. */
-function FacetChip({
-  label,
-  active,
-  color,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  color: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className="tap-44-y tactile-interactive min-h-11 min-w-11 rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
-      style={
-        active
-          ? {
-              background: `color-mix(in srgb, ${color} 15%, transparent)`,
-              color: "var(--app-ink)",
-              boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 34%, transparent)`,
-            }
-          : { background: "var(--app-bg-elevated)", color: "var(--app-ink-3)", boxShadow: "inset 0 0 0 1px var(--app-border)" }
-      }
-    >
-      {label}
-    </button>
-  );
-}

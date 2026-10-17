@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Clock3, MapPin, Search, Route, Building2 } from "lucide-react";
+import { Clock3, MapPin, Search, Route, Building2 } from "lucide-react";
 import { requestFind } from "@/lib/findBridge";
 import { haptic } from "@/lib/haptics";
 import BrowsePlacesDisclosure from "./BrowsePlacesDisclosure";
@@ -40,7 +40,7 @@ export default function TodayAsk({
       className={`${styles.find} ${embedded ? "" : styles.standalone} ${density === "arrival" ? styles.arrival : ""}`}
     >
       <h2 id="today-find-heading" className="sr-only">
-        Find what you need
+        Find a place or listing
       </h2>
 
       <Link
@@ -70,17 +70,14 @@ export default function TodayAsk({
         </span>
         <span className="min-w-0 flex-1">
           <span className={styles.prompt}>
-            Find what you need
+            Search places and events
           </span>
-          {density === "standard" && <span className={styles.hint}>
-            Search a name, a need, or a question.
-          </span>}
+          {density === "standard" ? (
+            <span className={styles.hint}>
+              Look up a listing.
+            </span>
+          ) : null}
         </span>
-        <ArrowRight
-          className={`h-4 w-4 shrink-0 ${styles.launcherArrow}`}
-          strokeWidth={2.25}
-          aria-hidden
-        />
       </Link>
 
       {showQuickNeeds ? <TodayQuickNeeds>{children}</TodayQuickNeeds> : null}

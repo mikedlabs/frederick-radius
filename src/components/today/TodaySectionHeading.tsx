@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import TodayListLink from "./TodayListLink";
 
 /**
  * The shared heading anatomy for Today’s main briefing sections.
@@ -60,22 +59,14 @@ export default function TodaySectionHeading({
           )}
         </div>
         {href && (
-          <Link
+          <TodayListLink
             href={href}
-            aria-label={`${cta}: ${title}`}
-            className="today-section-heading__cta tap-44-y -my-2 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-[var(--app-radius-sm)] px-1.5 text-[12px] font-semibold tracking-tight outline-none"
-            style={{
-              color:
-                "var(--app-heading-action, var(--today-section-ink, var(--app-brand-press)))",
-            }}
+            ariaLabel={`${cta}: ${title}`}
+            className="today-section-heading__cta -my-2 rounded-[var(--app-radius-sm)] px-1.5 outline-none"
+            iconClassName="today-section-heading__cta-icon"
           >
             {cta}
-            <ArrowRight
-              className="today-section-heading__cta-icon h-3.5 w-3.5"
-              strokeWidth={2.1}
-              aria-hidden
-            />
-          </Link>
+          </TodayListLink>
         )}
       </div>
       <div
