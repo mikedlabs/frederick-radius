@@ -364,7 +364,6 @@ function VisibleLiveBuses({
   const [feedStatus, setFeedStatus] = useState<FeedStatus>("loading");
   const [pos, setPos] = useState<Record<string, Pos>>({});
   const [selected, setSelected] = useState<string | null>(null);
-  useLiveLayerGate(gate, () => setSelected(null));
   const [dismissedFocusKey, setDismissedFocusKey] =
     useState<string | null>(null);
   const [watching, setWatching] = useState<string | null>(null);
@@ -398,6 +397,11 @@ function VisibleLiveBuses({
   const focusKey = focusVehicleId
     ? `${focusRequestId ?? "default"}:${focusVehicleId}`
     : null;
+  useLiveLayerGate(gate, () => {
+    setSelected(null);
+    setDismissedFocusKey(focusKey);
+    setSaveNotice(null);
+  });
   const focusedVehicle = findCurrentTransitVehicle({
     vehicles,
     vehicleId: focusVehicleId,

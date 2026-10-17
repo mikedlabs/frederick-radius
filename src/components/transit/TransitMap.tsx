@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Map as MapIcon,
   MapPin,
@@ -17,6 +17,7 @@ import Map, {
 import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
 import styles from "./TransitExperience.module.css";
 import { ACCENTS } from "@/data/categories";
+import { BRAND } from "@/lib/brand";
 import {
   applyMapboxFieldGuideConfig,
   installMapboxFieldGuideTerrain,
@@ -27,19 +28,30 @@ import {
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { hasWebGL } from "@/components/map/mapCameraHelpers";
 import LiveBuses from "@/components/map/LiveBuses";
+import { exposeMarkerChild } from "@/components/map/markerA11y";
+import {
+  createLiveLayerCloserRegistry,
+  type LiveLayerGate,
+} from "@/components/map/liveLayerGate";
 import LiveMarcTrains from "@/components/map/LiveMarcTrains";
 import StopArrivalsPopup, { type SelectedStop } from "./StopArrivalsPopup";
 import { haptic } from "@/lib/haptics";
 import type { LineFC, TransitStop } from "@/lib/integrations/transitFrederick";
 import {
   clearPendingTransitRouteFocus,
+  clearPendingTransitStopFocus,
   clearPendingTransitVehicleFocus,
   isTransitVehicleFocusDetail,
+  isTransitStopFocusDetail,
+  requestTransitStopFocus,
   takePendingTransitRouteFocus,
+  takePendingTransitStopFocus,
   takePendingTransitVehicleFocus,
   TRANSIT_ROUTE_FOCUS_EVENT,
+  TRANSIT_STOP_FOCUS_EVENT,
   TRANSIT_VEHICLE_FOCUS_EVENT,
   type TransitRouteFocusDetail,
+  type TransitStopFocusDetail,
   type TransitVehicleFocusDetail,
 } from "@/lib/transit-focus";
 import { MARC_STATIONS } from "@/data/marc-stations";
@@ -83,6 +95,13 @@ const STOPS_JSON: TransitStop[] = CURRENT_TRANSIT_STOPS.map((stop) => ({
   lat: stop.lat,
 }));
 
+const STOP_BY_ID: Record<string, SelectedStop> = Object.fromEntries(
+  STOPS_JSON.map((stop) => [stop.id, stop]),
+);
+const STOP_ROUTES = (
+  TRANSIT_NETWORK as { stopRoutes?: Record<string, string[]> }
+).stopRoutes ?? {};
+
 const MAP_LOAD_WATCHDOG_MS = 18_000;
 type ActiveVehicleFocus = TransitVehicleFocusDetail & {
   requestId: number;
@@ -93,6 +112,7 @@ type TransitMapInstance = ReturnType<MapRef["getMap"]>;
 function frameVehicleAndStop(
   map: TransitMapInstance,
   detail: TransitVehicleFocusDetail,
+  stopCallout = false,
 ): void {
   let west = Math.min(detail.bus.lng, detail.stop.lng);
   let east = Math.max(detail.bus.lng, detail.stop.lng);
@@ -113,7 +133,7 @@ function frameVehicleAndStop(
   map.fitBounds(
     [[west, south], [east, north]],
     {
-      padding: 54,
+      padding: stopCallout ? { top: 120, right: 54, bottom: 54, left: 54 } : 54,
       maxZoom: 15,
       duration: reduced ? 0 : 500,
     },
@@ -224,7 +244,6 @@ export default function TransitMap({
   const mapLoadedRef = useRef(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
-  const [currentZoom, setCurrentZoom] = useState(zoom ?? 9);
   useEffect(() => {
     if (shapes.features.length === 0) return;
     const check = window.setTimeout(() => {
@@ -256,6 +275,83 @@ export default function TransitMap({
   const focusRequestSeq = useRef(0);
   const [vehicleFocus, setVehicleFocus] =
     useState<ActiveVehicleFocus | null>(null);
+  const [activeStop, setActiveStop] = useState<SelectedStop | null>(() => {
+    if (typeof window === "undefined" || !interactiveStops) return null;
+    const stopId = new URLSearchParams(window.location.search).get("stop");
+    return stopId ? STOP_BY_ID[stopId] ?? null : null;
+  });
+  const [stopPreviewOpen, setStopPreviewOpen] = useState(false);
+  const [foregroundOpen, setForegroundOpen] = useState(false);
+  const [routeFocusRequest, setRouteFocusRequest] = useState<{
+    routeId: string;
+    requestId: number;
+  } | null>(null);
+  const [stopFocusRequest, setStopFocusRequest] = useState<{
+    stop: SelectedStop;
+    requestId: number;
+  } | null>(null);
+  const activeStopButtonRef = useRef<HTMLButtonElement>(null);
+  const previewTriggerRef = useRef<HTMLElement | null>(null);
+  const closerRegistry = useMemo(() => createLiveLayerCloserRegistry(), []);
+  const closeForeground = useCallback((restoreFocus = false) => {
+    closerRegistry.closeAll();
+    setStopPreviewOpen(false);
+    setForegroundOpen(false);
+    setVehicleFocus(null);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => {
+        const trigger = previewTriggerRef.current;
+        (trigger?.isConnected ? trigger : activeStopButtonRef.current)
+          ?.focus({ preventScroll: true });
+      });
+    }
+  }, [closerRegistry]);
+  const liveGate = useMemo<LiveLayerGate>(() => ({
+    register: closerRegistry.register,
+    onWillOpen: () => {
+      previewTriggerRef.current = document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+      closeForeground();
+      setForegroundOpen(true);
+    },
+    onDidClose: () => closeForeground(true),
+  }), [closerRegistry, closeForeground]);
+  const openStopPreview = useCallback((stop: SelectedStop, trigger: HTMLElement | null = null) => {
+    previewTriggerRef.current = trigger;
+    clearPendingTransitRouteFocus();
+    clearPendingTransitVehicleFocus();
+    clearPendingTransitStopFocus();
+    closeForeground();
+    setActiveStop(stop);
+    setRoute((current) => current && STOP_ROUTES[stop.id]?.includes(current) ? current : null);
+    setRouteFocusRequest(null);
+    setStopFocusRequest(null);
+    setStopPreviewOpen(true);
+    setForegroundOpen(true);
+    haptic("light");
+  }, [closeForeground]);
+  useEffect(() => {
+    if (!foregroundOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeForeground(true);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [foregroundOpen, closeForeground]);
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map || !mapLoaded || !stopFocusRequest) return;
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    map.flyTo({
+      center: [stopFocusRequest.stop.lng, stopFocusRequest.stop.lat],
+      zoom: Math.max(map.getZoom(), 14.5),
+      duration: reduced ? 0 : 500,
+    });
+    activeStopButtonRef.current?.focus({ preventScroll: true });
+  }, [mapLoaded, stopFocusRequest]);
   const selMeta = route ? ROUTES.find((r) => r.id === route) : null;
   const selLine = useMemo(() => {
     if (!route) return null;
@@ -276,8 +372,8 @@ export default function TransitMap({
 
   useEffect(() => {
     const map = mapRef.current?.getMap();
-    if (!map || !route || vehicleFocus) return;
-    const routeLines = SHAPE_LINES_BY_ROUTE[route];
+    if (!map || !mapLoaded || !routeFocusRequest) return;
+    const routeLines = SHAPE_LINES_BY_ROUTE[routeFocusRequest.routeId];
     if (!routeLines || routeLines.length === 0) return;
 
     let west = Infinity;
@@ -298,15 +394,15 @@ export default function TransitMap({
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
     map.fitBounds(
       [[west, south], [east, north]],
-      { padding: 54, duration: reduced ? 0 : 500 },
+      { padding: activeStop ? { top: 120, right: 54, bottom: 54, left: 54 } : 54, duration: reduced ? 0 : 500 },
     );
-  }, [route, vehicleFocus]);
+  }, [activeStop, mapLoaded, routeFocusRequest]);
 
   useEffect(() => {
     const map = mapRef.current?.getMap();
     if (!map || !vehicleFocus) return;
-    frameVehicleAndStop(map, vehicleFocus);
-  }, [vehicleFocus]);
+    frameVehicleAndStop(map, vehicleFocus, interactiveStops && Boolean(activeStop));
+  }, [activeStop, interactiveStops, vehicleFocus]);
 
   // The compact route finder below the map uses the same route state instead
   // of acting like a second, disconnected catalog. Selecting a result focuses
@@ -315,8 +411,14 @@ export default function TransitMap({
     const applyRoute = (routeId: string | null | undefined) => {
       if (!routeId || !ROUTES.some((item) => item.id === routeId)) return;
       clearPendingTransitRouteFocus();
-      setVehicleFocus(null);
+      clearPendingTransitStopFocus();
+      clearPendingTransitVehicleFocus();
+      closeForeground();
+      setStopFocusRequest(null);
+      setActiveStop((stop) => stop && STOP_ROUTES[stop.id]?.includes(routeId) ? stop : null);
       setRoute(routeId);
+      focusRequestSeq.current += 1;
+      setRouteFocusRequest({ routeId, requestId: focusRequestSeq.current });
     };
     const applyVehicle = (
       detail: TransitVehicleFocusDetail | null | undefined,
@@ -324,6 +426,15 @@ export default function TransitMap({
       if (!detail || !isTransitVehicleFocusDetail(detail)) return;
       clearPendingTransitVehicleFocus();
       clearPendingTransitRouteFocus();
+      clearPendingTransitStopFocus();
+      previewTriggerRef.current = document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+      closeForeground();
+      setStopFocusRequest(null);
+      setRouteFocusRequest(null);
+      setActiveStop(detail.stopId ? STOP_BY_ID[detail.stopId] ?? null : null);
+      setForegroundOpen(true);
       focusRequestSeq.current += 1;
       setVehicleFocus({
         ...detail,
@@ -336,6 +447,28 @@ export default function TransitMap({
           : null,
       );
     };
+    const applyStop = (detail: TransitStopFocusDetail | null | undefined) => {
+      if (!interactiveStops || !isTransitStopFocusDetail(detail)) return;
+      const stop = STOP_BY_ID[detail.stopId];
+      if (!stop) return;
+      clearPendingTransitStopFocus();
+      clearPendingTransitRouteFocus();
+      clearPendingTransitVehicleFocus();
+      closeForeground();
+      setRouteFocusRequest(null);
+      setActiveStop(stop);
+      setRoute((current) => current && STOP_ROUTES[stop.id]?.includes(current) ? current : null);
+      if (detail.selectForRider) {
+        // The map is already at this preview. The rider returns to My stop.
+        setStopFocusRequest(null);
+      } else {
+        focusRequestSeq.current += 1;
+        setStopFocusRequest({ stop, requestId: focusRequestSeq.current });
+      }
+    };
+    const focusStop = (event: Event) => {
+      applyStop((event as CustomEvent<TransitStopFocusDetail>).detail);
+    };
     const focusRoute = (event: Event) => {
       applyRoute((event as CustomEvent<TransitRouteFocusDetail>).detail?.routeId);
     };
@@ -344,45 +477,59 @@ export default function TransitMap({
         (event as CustomEvent<TransitVehicleFocusDetail>).detail,
       );
     };
+    window.addEventListener(TRANSIT_STOP_FOCUS_EVENT, focusStop);
     window.addEventListener(TRANSIT_ROUTE_FOCUS_EVENT, focusRoute);
     window.addEventListener(TRANSIT_VEHICLE_FOCUS_EVENT, focusVehicle);
     const pendingVehicle = takePendingTransitVehicleFocus();
-    if (pendingVehicle) {
-      applyVehicle(pendingVehicle);
-    } else {
-      applyRoute(takePendingTransitRouteFocus());
-    }
+    const pendingStop = takePendingTransitStopFocus();
+    const pendingRoute = takePendingTransitRouteFocus();
+    if (pendingVehicle) applyVehicle(pendingVehicle);
+    else if (pendingStop) applyStop(pendingStop);
+    else applyRoute(pendingRoute);
     return () => {
+      window.removeEventListener(TRANSIT_STOP_FOCUS_EVENT, focusStop);
       window.removeEventListener(TRANSIT_ROUTE_FOCUS_EVENT, focusRoute);
       window.removeEventListener(
         TRANSIT_VEHICLE_FOCUS_EVENT,
         focusVehicle,
       );
     };
-  }, []);
+  }, [closeForeground, interactiveStops]);
 
-  // Stop-tap detail (interactiveStops only): the tapped stop, resolved to its
-  // arrivals in a Popup. Cleared by a tap on empty map or the Popup close.
-  const [selectedStop, setSelectedStop] = useState<SelectedStop | null>(null);
   const [cursor, setCursor] = useState("");
-  // Render the real GTFS stops when interactive (so a tap can resolve arrivals);
-  // otherwise keep the decorative prop-driven dots the other callers pass.
   const renderStops = interactiveStops ? STOPS_JSON : stops;
+  // Static stop_times membership is map context, never a live-service claim.
+  const stopDots = useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(() => ({
+    type: "FeatureCollection",
+    features: renderStops.map((stop) => ({
+      type: "Feature",
+      properties: {
+        id: stop.id,
+        name: stop.name,
+        onSelectedRoute: route ? STOP_ROUTES[stop.id]?.includes(route) === true : true,
+      },
+      geometry: { type: "Point", coordinates: [stop.lng, stop.lat] },
+    })),
+  }), [renderStops, route]);
 
-  const onMapClick = (e: MapMouseEvent) => {
-    const f = e.features?.find((ft) => ft.layer?.id === "transit-stops-hit");
-    if (!f || f.geometry.type !== "Point") {
-      setSelectedStop(null);
-      return;
-    }
-    const props = (f.properties ?? {}) as { id?: string; name?: string };
-    const [lng, lat] = f.geometry.coordinates as [number, number];
-    if (props.id != null) {
-      setSelectedStop({ id: String(props.id), name: String(props.name ?? "Bus stop"), lng, lat });
-      haptic("light");
-    } else {
-      setSelectedStop(null);
-    }
+  const onMapClick = (event: MapMouseEvent) => {
+    const map = mapRef.current?.getMap();
+    const candidates = event.features?.filter(
+      (feature) => feature.layer?.id === "transit-stops-hit" && feature.geometry.type === "Point",
+    ) ?? [];
+    // Overlapping invisible targets choose the closest actual stop dot.
+    const closest = candidates.sort((a, b) => {
+      if (!map || a.geometry.type !== "Point" || b.geometry.type !== "Point") return 0;
+      const pa = map.project(a.geometry.coordinates as [number, number]);
+      const pb = map.project(b.geometry.coordinates as [number, number]);
+      return Math.hypot(pa.x - event.point.x, pa.y - event.point.y)
+        - Math.hypot(pb.x - event.point.x, pb.y - event.point.y);
+    })[0];
+    const stop = closest?.properties?.id != null
+      ? STOP_BY_ID[String(closest.properties.id)]
+      : undefined;
+    if (stop) openStopPreview(stop);
+    else closeForeground();
   };
 
   // No routes means the upstream feed failed. Render a quiet empty
@@ -408,16 +555,27 @@ export default function TransitMap({
     <div className={styles.mapShell}>
       {highlightRoutes && (
         <div className={styles.mapPicker}>
-          <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            Choose a route to frame its path.
+          <p id="transit-route-context" className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+            {selMeta
+              ? `Route ${selMeta.short} shows published stops. Choose one to check arrivals.`
+              : "Choose a route or select a stop to check arrivals."}
           </p>
           <label>
             <span className="sr-only">Bus route</span>
             <select
               value={route ?? ""}
+              aria-describedby="transit-route-context"
               onChange={(event) => {
-                setVehicleFocus(null);
-                setRoute(event.target.value || null);
+                closeForeground();
+                clearPendingTransitRouteFocus();
+                clearPendingTransitVehicleFocus();
+                clearPendingTransitStopFocus();
+                setStopFocusRequest(null);
+                const nextRoute = event.target.value || null;
+                setRoute(nextRoute);
+                focusRequestSeq.current += 1;
+                setRouteFocusRequest(nextRoute ? { routeId: nextRoute, requestId: focusRequestSeq.current } : null);
+                setActiveStop((stop) => stop && (!nextRoute || STOP_ROUTES[stop.id]?.includes(nextRoute)) ? stop : null);
               }}
               className={styles.routeSelect}
             >
@@ -458,7 +616,7 @@ export default function TransitMap({
               className="mt-1 text-[12px] leading-relaxed"
               style={{ color: "var(--app-ink-3)" }}
             >
-              {selMeta ? `${selMeta.short} · ${selMeta.name} remains selected. ` : ""}
+              {activeStop ? `${activeStop.name} remains selected. ` : selMeta ? `${selMeta.short} · ${selMeta.name} remains selected. ` : ""}
               The route and arrival information on this page is still available.
             </p>
             <button
@@ -488,7 +646,6 @@ export default function TransitMap({
         minZoom={lockToService ? 10.5 : undefined}
         interactiveLayerIds={interactiveStops ? ["transit-stops-hit"] : undefined}
         cursor={cursor}
-        onMove={(e) => setCurrentZoom(e.viewState.zoom)}
         onMouseEnter={interactiveStops ? () => setCursor("pointer") : undefined}
         onMouseLeave={interactiveStops ? () => setCursor("") : undefined}
         onClick={interactiveStops ? onMapClick : undefined}
@@ -509,7 +666,9 @@ export default function TransitMap({
           // frame the whole service area so the map still lands where buses run
           // instead of the empty county.
           if (vehicleFocus) {
-            frameVehicleAndStop(e.target, vehicleFocus);
+            frameVehicleAndStop(e.target, vehicleFocus, interactiveStops && Boolean(activeStop));
+          } else if (activeStop) {
+            e.target.jumpTo({ center: [activeStop.lng, activeStop.lat], zoom: 14.5 });
           } else if (lockToService && !center) {
             e.target.fitBounds(SERVICE_BOUNDS, { padding: 24, duration: 0 });
           }
@@ -533,8 +692,8 @@ export default function TransitMap({
             type="line"
             paint={{
               "line-color": "#ffffff",
-              "line-width": 6,
-              "line-opacity": 0.55,
+              "line-width": route ? 3 : 5,
+              "line-opacity": route ? 0.3 : 0.55,
               "line-blur": 0.5,
             }}
             layout={{
@@ -550,8 +709,8 @@ export default function TransitMap({
               // can't read CSS vars, so the shared ACCENTS constant keeps
               // the map on-token (slate === --app-cool).
               "line-color": ACCENTS.slate,
-              "line-width": 3,
-              "line-opacity": 0.8,
+              "line-width": route ? 1.5 : 2.5,
+              "line-opacity": route ? 0.18 : 0.65,
             }}
             layout={{
               "line-cap": "round",
@@ -560,132 +719,52 @@ export default function TransitMap({
           />
         </Source>
 
-        {/* Route highlighter — the selected route's path, drawn bold with a glowing neon aesthetic on top of the slate network. */}
+        {/* One selected official route stays distinct from the quiet network. */}
         {selLine && selMeta && (
           <Source id="transit-route-highlight" type="geojson" data={selLine}>
-            {/* Outer soft glow */}
             <Layer
-              id="transit-route-highlight-outer-glow"
+              id="transit-route-highlight-halo"
               type="line"
-              paint={{ "line-color": selMeta.color, "line-width": 24, "line-opacity": 0.4, "line-blur": 16 }}
+              paint={{ "line-color": "#ffffff", "line-width": 10, "line-opacity": 0.9 }}
               layout={{ "line-cap": "round", "line-join": "round" }}
             />
-            {/* Inner tight glow */}
             <Layer
-              id="transit-route-highlight-inner-glow"
+              id="transit-route-highlight-contrast"
               type="line"
-              paint={{ "line-color": selMeta.color, "line-width": 8, "line-opacity": 0.7, "line-blur": 4 }}
+              paint={{ "line-color": BRAND.colors.ink, "line-width": 6.5, "line-opacity": 0.85 }}
               layout={{ "line-cap": "round", "line-join": "round" }}
             />
-            {/* Bright white hot core */}
             <Layer
               id="transit-route-highlight-line"
               type="line"
-              paint={{ "line-color": "#ffffff", "line-width": 3, "line-opacity": 1.0 }}
+              paint={{ "line-color": selMeta.color, "line-width": 4.5, "line-opacity": 1 }}
               layout={{ "line-cap": "round", "line-join": "round" }}
             />
           </Source>
         )}
 
-        {/* The rider's chosen stop stays visually distinct after a stop-to-bus
-            handoff. This is a target, not a claim that the straight-line
-            distance is the bus path; the official route variants remain the
-            only painted path. */}
-        {vehicleFocus && (
-          <Source
-            id="transit-rider-target"
-            type="geojson"
-            data={{
-              type: "Feature",
-              properties: {},
-              geometry: {
-                type: "Point",
-                coordinates: [
-                  vehicleFocus.stop.lng,
-                  vehicleFocus.stop.lat,
-                ],
-              },
-            }}
-          >
-            <Layer
-              id="transit-rider-target-halo"
-              type="circle"
-              paint={{
-                "circle-radius": 13,
-                "circle-color": "#ffffff",
-                "circle-opacity": 0.92,
-                "circle-stroke-color": selMeta?.color ?? ACCENTS.slate,
-                "circle-stroke-width": 3,
-              }}
-            />
-            <Layer
-              id="transit-rider-target-core"
-              type="circle"
-              paint={{
-                "circle-radius": 4,
-                "circle-color": selMeta?.color ?? ACCENTS.slate,
-                "circle-stroke-color": "#ffffff",
-                "circle-stroke-width": 1,
-              }}
-            />
-          </Source>
-        )}
-
-        {/* Stops — only rendered when the upstream feed returned a
-            non-empty list. Drawn AFTER the route lines so the dots
-            sit on top, with a thin white halo so they read on any
-            tile background. Tiny radius + zoom-scaled so the network
-            looks clean at county zoom and stops become readable when
-            the user zooms into a single corridor. */}
-        {renderStops.length > 0 && currentZoom <= 13 && (
-          <Source
-            id="transit-stops"
-            type="geojson"
-            data={{
-              type: "FeatureCollection",
-              features: renderStops.map((s) => ({
-                type: "Feature",
-                properties: { name: s.name, id: s.id },
-                geometry: { type: "Point", coordinates: [s.lng, s.lat] },
-              })),
-            }}
-          >
+        {/* All ordinary stops stay in one GPU source at every zoom. Only the
+            active stop gets a DOM control, keeping buses easy to distinguish. */}
+        {renderStops.length > 0 && (
+          <Source id="transit-stops" type="geojson" data={stopDots}>
             <Layer
               id="transit-stops-dots"
               type="circle"
               paint={{
-                // Smaller at county zoom, larger zoomed in. Keeps the
-                // network legible at both scales.
-                "circle-radius": [
-                  "interpolate",
-                  ["linear"],
-                  ["zoom"],
-                  8, 2,
-                  11, 3,
-                  14, 5,
-                ],
+                "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 1.5, 11, 2.5, 14, 4, 17, 5],
                 "circle-color": ACCENTS.slate,
                 "circle-stroke-color": "#ffffff",
                 "circle-stroke-width": 1.2,
-                "circle-opacity": 0.92,
+                "circle-opacity": ["case", ["get", "onSelectedRoute"], 0.85, 0.16],
+                "circle-stroke-opacity": ["case", ["get", "onSelectedRoute"], 0.9, 0.2],
               }}
             />
-            {/* Invisible, zoom-scaled hit target so a small stop dot is easy to
-                tap once the rider has zoomed into their corridor. Kept modest at
-                county zoom so a tap there doesn't grab a far-off stop. */}
             {interactiveStops && (
               <Layer
                 id="transit-stops-hit"
                 type="circle"
                 paint={{
-                  "circle-radius": [
-                    "interpolate",
-                    ["linear"],
-                    ["zoom"],
-                    9, 7,
-                    12, 12,
-                    15, 18,
-                  ],
+                  "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 7, 12, 14, 15, 22],
                   "circle-color": ACCENTS.slate,
                   "circle-opacity": 0,
                 }}
@@ -693,35 +772,36 @@ export default function TransitMap({
             )}
           </Source>
         )}
-
-        {/* Custom HTML markers for stops when zoomed in close.
-            Provides a beautiful, native-feeling map pin with a soft shadow and icon. */}
-        {renderStops.length > 0 && currentZoom > 13 && interactiveStops && (
-          <>
-            {renderStops.map((s) => (
-              <Marker
-                key={`marker-${s.id}`}
-                longitude={s.lng}
-                latitude={s.lat}
-                anchor="bottom"
-                onClick={(e) => {
-                  e.originalEvent.stopPropagation();
-                  setSelectedStop({ id: s.id, name: s.name, lng: s.lng, lat: s.lat });
-                  haptic("light");
-                }}
-              >
-                <div
-                  className="group relative flex cursor-pointer flex-col items-center justify-center transition-transform hover:scale-110"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full border-[2px] border-white bg-[var(--app-cool)] shadow-[0_4px_12px_rgba(0,0,0,0.2)] backdrop-blur-md">
-                    <MapPin className="h-4 w-4 text-white" strokeWidth={2.5} />
-                  </div>
-                  {/* Subtle pulsing indicator below the pin */}
-                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--app-cool)] shadow-sm opacity-50 group-hover:opacity-100 transition-opacity" />
-                </div>
-              </Marker>
-            ))}
-          </>
+        {activeStop && interactiveStops && (
+          <Marker
+            ref={exposeMarkerChild}
+            longitude={activeStop.lng}
+            latitude={activeStop.lat}
+            anchor="bottom"
+            style={{ zIndex: 3, pointerEvents: "none" }}
+          >
+            {/* The callout points to the real stop dot while leaving a bus
+                reporting at the same coordinate independently tappable. */}
+            <span className={styles.activeStopCallout}>
+            <button
+              ref={activeStopButtonRef}
+              type="button"
+              className={styles.activeStopMarker}
+              data-transit-active-stop={activeStop.id}
+              aria-label={`Show arrivals at ${activeStop.name}`}
+              aria-expanded={stopPreviewOpen}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (stopPreviewOpen) closeForeground(true);
+                else openStopPreview(activeStop, event.currentTarget);
+              }}
+            >
+              <MapPin size={20} strokeWidth={2.2} aria-hidden />
+              <span className={styles.activeStopLabel} aria-hidden>{activeStop.name}</span>
+            </button>
+            <span className={styles.activeStopStem} aria-hidden />
+            </span>
+          </Marker>
         )}
 
         {/* MARC Brunswick Line stations — the four county rail stops,
@@ -776,24 +856,29 @@ export default function TransitMap({
           highlightRouteId={route ?? undefined}
           focusVehicleId={vehicleFocus?.vehicleId}
           focusRequestId={vehicleFocus?.requestId}
+          gate={liveGate}
         />
 
         {/* Live MARC trains ride the same live toggle as the buses, so the
             rail corridor moves too instead of sitting as static pins. */}
-        <LiveMarcTrains show={liveBuses && showTrains} />
+        <LiveMarcTrains show={liveBuses && showTrains} gate={liveGate} />
 
         {/* Stop-tap detail — name, routes here, and live inbound arrivals. */}
-        {selectedStop && (
+        {activeStop && stopPreviewOpen && (
           <Popup
-            longitude={selectedStop.lng}
-            latitude={selectedStop.lat}
+            longitude={activeStop.lng}
+            latitude={activeStop.lat}
             anchor="bottom"
             offset={14}
             closeOnClick={false}
-            onClose={() => setSelectedStop(null)}
+            onClose={() => closeForeground(true)}
             maxWidth="250px"
           >
-            <StopArrivalsPopup key={selectedStop.id} stop={selectedStop} />
+            <StopArrivalsPopup
+              key={activeStop.id}
+              stop={activeStop}
+              onUseStop={(stop) => requestTransitStopFocus({ stopId: stop.id, selectForRider: true })}
+            />
           </Popup>
         )}
       </Map>

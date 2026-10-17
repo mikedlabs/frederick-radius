@@ -10,7 +10,7 @@ import KeysScore from "@/components/today/KeysScore";
 import LocalSportsScoreboard from "@/components/today/LocalSportsScoreboard";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
-import TodayFairFeature from "@/components/today/TodayFairFeature";
+import TodayFairFeature from "@/components/today/TodayFairFeatureIsland";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import DismissibleSection from "@/components/today/DismissibleSection";
@@ -33,6 +33,8 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { splitTonightFeature, withoutTodayFeature } from "@/lib/today/tonight";
 import PoolsToday from "@/components/today/PoolsToday";
 import TodayLocalGuides, { TodayFoodTruckGuide } from "@/components/today/TodayLocalGuides";
+import { BREWERIES } from "@/data/beers";
+import { FOOD_TRUCKS } from "@/data/food-trucks";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import TomorrowPreview from "@/components/today/TomorrowPreview";
 import WeatherSafeGoldenHour from "@/components/today/WeatherSafeGoldenHour";
@@ -154,6 +156,7 @@ export const revalidate = 300;
 
 export default async function HomePage() {
   const now = new Date();
+  const frame = todayFrame(easternStartHour(now.toISOString()));
   const fairPromotionPhase = todayFairPromotionPhase(now);
   const civicMoment = activeMoment(now);
   const civicMomentLeadsToday =
@@ -273,7 +276,9 @@ export default async function HomePage() {
           This is the real document h1. Sits below an active civic alert (alerts
           still lead) and above the weather. */}
       <TodayMasthead
-        title={todayFrame(easternStartHour(now.toISOString())).title}
+        title={frame.title}
+        shortTitle={frame.shortTitle}
+        dateline={formatEasternDateline(now)}
         weather={
           <Suspense fallback={<Skeleton.Block height={100} round="var(--app-radius-lg)" />}>
             <TodayCard density="masthead" />
@@ -289,7 +294,7 @@ export default async function HomePage() {
         </div>
 
       <div className={styles.scope}>
-        <Suspense fallback={null}><TodayScopeStatus dateline={formatEasternDateline(now)} /></Suspense>
+        <Suspense fallback={null}><TodayScopeStatus density="compact" /></Suspense>
       </div>
 
       <div data-today-current-content className={styles.currentContent}>
@@ -301,10 +306,10 @@ export default async function HomePage() {
           <Suspense fallback={<TodayGeographicDoorwayPending />}>
             <TodayGeographicDoorway />
           </Suspense>
+          {decisionLead}
           <div className={styles.quickNeeds}>
             <TodayQuickNeeds />
           </div>
-          {decisionLead}
         </div>
 
       <PageChapter
@@ -400,8 +405,10 @@ export default async function HomePage() {
       >
         <div className="space-y-5">
           <TodayLocalGuides
+            breweryCount={BREWERIES.length}
+            foodTruckCount={FOOD_TRUCKS.length}
             foodTruckGuide={
-              <Suspense fallback={<TodayFoodTruckGuide />}>
+              <Suspense fallback={<TodayFoodTruckGuide foodTruckCount={FOOD_TRUCKS.length} />}>
                 <TodayFoodTruckGuideWithSchedule now={now} />
               </Suspense>
             }
@@ -512,6 +519,7 @@ async function TodayFoodTruckGuideWithSchedule({ now }: { now: Date }) {
     <TodayFoodTruckGuide
       nextFoodTruckStop={nextStop}
       asOf={now.toISOString()}
+      foodTruckCount={FOOD_TRUCKS.length}
     />
   );
 }

@@ -16,6 +16,8 @@
 export type TodayFrame = {
   /** The page's daypart-aware h1. */
   title: string;
+  /** Compact visible heading; the full title remains the accessible name. */
+  shortTitle: string;
   /** One honest sentence framing what the page leads with now. */
   sub: string;
 };
@@ -33,23 +35,27 @@ export function todayFrame(easternHour: number): TodayFrame {
   if (h >= 5 && h < 12) {
     return {
       title: "This morning in Frederick County",
+      shortTitle: "This morning",
       sub: "See what is open and what is coming up.",
     };
   }
   if (h >= 12 && h < 17) {
     return {
       title: "This afternoon in Frederick County",
+      shortTitle: "This afternoon",
       sub: "See what is open and what is still ahead.",
     };
   }
   if (h >= 17 && h < 21) {
     return {
       title: "Tonight in Frederick County",
+      shortTitle: "Tonight",
       sub: "See what is happening and what is still open.",
     };
   }
   return {
     title: "Late in Frederick County",
+    shortTitle: "Late tonight",
     sub: "See what is still open before the night winds down.",
   };
 }

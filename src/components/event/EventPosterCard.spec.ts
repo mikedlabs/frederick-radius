@@ -2,7 +2,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import EventPosterCard, { eventPosterPhotoSrc } from "@/components/event/EventPosterCard";
+import EventPosterCard, { eventPosterPhotoSrc, posterVisualForEvent } from "@/components/event/EventPosterCard";
+import { eventCardVisual } from "@/components/event/eventVisuals";
 import EventCard from "@/components/event/EventCard";
 
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
@@ -65,7 +66,7 @@ describe("EventPosterCard visual trust", () => {
     expect(html).not.toContain("/api/place-photo");
   });
 
-  it("renders a source-captioned image approved by eventCardVisual", () => {
+  it("keeps approved publisher artwork intact and the event facts outside the image", () => {
     const html = renderToStaticMarkup(
       createElement(EventPosterCard, {
         event: event({
@@ -75,10 +76,26 @@ describe("EventPosterCard visual trust", () => {
       }),
     );
 
-    expect(html).toContain('data-event-poster="photo"');
+    expect(html).toContain('data-event-poster="artwork"');
+    expect(html).toContain('class="object-contain p-3"');
+    expect(html).not.toContain("ken-burns");
+    expect(html).not.toContain("object-cover");
+    const artworkEnd = html.indexOf("</figure>");
+    const titleStart = html.indexOf('href="/events/summer-concert"');
+    expect(titleStart).toBeGreaterThan(artworkEnd);
+    expect(html.slice(titleStart)).toContain("Summer concert");
+    expect(html.slice(titleStart)).toContain("Baker Park");
+    expect(html.indexOf("data-event-photo-credit")).toBeGreaterThan(html.indexOf("</article>"));
     expect(html).toContain("Event image · Ticketmaster");
     expect(html).toContain('alt=""');
     expect(html).not.toContain("data-event-fallback");
+  });
+
+  it("does not allow an explicit visual to relabel unclassified art as a photograph", () => {
+    const publisher = event({ source: "ticketmaster", hero_image: "https://s1.ticketm.net/dam/a/approved-event.jpg" });
+    const approved = eventCardVisual(publisher)!;
+    expect(posterVisualForEvent(publisher, approved)).toEqual(approved);
+    expect(posterVisualForEvent(publisher, { ...approved, presentation: "photo" })).toBeNull();
   });
 
   it("renders a credited venue image with its author and direct Google Maps source", () => {
@@ -157,6 +174,9 @@ describe("EventPosterCard visual trust", () => {
     expect(html).toContain('loading="lazy"');
     expect(html).toContain('alt=""');
     expect(html).toContain("text-[9px]");
+    expect(html).toContain("object-contain");
+    expect(html).not.toContain("object-cover");
+    expect(html).not.toContain("group-hover:scale-105");
   });
 
   it("renders full Google venue credit outside the glance card event link", () => {

@@ -38,8 +38,8 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(findBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height);
     // The arrival action now has a deliberate phone density; neither weather
     // facts nor the photograph are subtracted from an artificial height budget.
-    expect(findBox.height).toBeGreaterThanOrEqual(60);
-    expect(findBox.height).toBeLessThanOrEqual(64);
+    expect(findBox.height).toBeGreaterThanOrEqual(56);
+    expect(findBox.height).toBeLessThanOrEqual(56);
     await expect(page.locator('[data-find-density="arrival"]')).toHaveCount(1);
     expect(doorwayBox.y).toBeGreaterThanOrEqual(findBox.y + findBox.height);
     // The real named caption shares the photo's grid area; it must fit inside
@@ -49,7 +49,9 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(captionBox.y).toBeGreaterThanOrEqual(photoBox.y - 1);
     expect(captionBox.y + captionBox.height).toBeLessThanOrEqual(photoBox.y + photoBox.height + 1);
     expect(Math.abs(captionBox.y + captionBox.height - photoBox.y - photoBox.height)).toBeLessThanOrEqual(1);
-    expect(photoBox.width / photoBox.height).toBeCloseTo(4 / 3, 2);
+    expect(photoBox.width).toBeGreaterThan(photoBox.height);
+    expect(photoBox.height).toBeGreaterThanOrEqual(160);
+    expect(photoBox.height).toBeLessThanOrEqual(190);
     expect(photoBox.width).toBeGreaterThanOrEqual(doorwayBox.width * 0.95);
     expect(photoBox.height).toBeGreaterThan(130);
     await expect(doorway.locator("img")).toHaveAttribute("alt", "Carroll Creek in Frederick.");
@@ -159,10 +161,16 @@ for (const width of [320, 375, 390, 430, 1366]) {
       expect(quickNeedsBox.y - firstRowBottom).toBeLessThanOrEqual(17);
       expect(quickNeedsBox.width).toBeGreaterThanOrEqual(placesBox.width - 1);
     } else {
-      expect(quickNeedsBox.y).toBeGreaterThanOrEqual(doorwayBox.y + doorwayBox.height);
-      expect(quickNeedsBox.y - doorwayBox.y - doorwayBox.height).toBeLessThanOrEqual(17);
-      expect(decisionBox.y).toBeGreaterThanOrEqual(quickNeedsBox.y + quickNeedsBox.height);
-      expect(decisionBox.y - quickNeedsBox.y - quickNeedsBox.height).toBeLessThanOrEqual(17);
+      expect(decisionBox.y).toBeGreaterThanOrEqual(doorwayBox.y + doorwayBox.height);
+      expect(decisionBox.y - doorwayBox.y - doorwayBox.height).toBeLessThanOrEqual(17);
+      expect(quickNeedsBox.y).toBeGreaterThanOrEqual(decisionBox.y + decisionBox.height);
+      expect(quickNeedsBox.y - decisionBox.y - decisionBox.height).toBeLessThanOrEqual(17);
+      const activeAlert = page.getByRole("region", { name: "Heads up", exact: true });
+      const specialDay = page.locator('[data-moment-spotlight-day-of="true"]');
+      if (width >= 375 && await activeAlert.count() === 0 && await specialDay.count() === 0) {
+        expect(captionBox.y + captionBox.height, "the exact owned place action clears navigation on ordinary arrival").toBeLessThanOrEqual(primaryNavBox!.y);
+        expect(decisionBox.y, "the useful place answer begins before navigation on ordinary arrival").toBeLessThan(primaryNavBox!.y);
+      }
     }
     expect(eventsBox.y).toBeGreaterThanOrEqual(placesBox.y + placesBox.height);
     await expect.poll(() => page.evaluate(() =>
@@ -175,7 +183,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await testInfo.attach("today-arrival-geometry", {
       contentType: "application/json",
       body: JSON.stringify({ width, mastheadBox, weatherBox, findBox, captionBox, photoBox, doorwayBox, quickNeedsBox, decisionBox, primaryNavBox,
-        note: "The full-width heading and compact weather precede Find. Large 4:3 local photography is visible on ordinary arrival, with four actions reachable by scrolling. Desktop pairs the real decision with the photo." }),
+        note: "A short daypart and dated county context precede unchanged weather and Find. A compact landscape keeps the exact named owned place visible; the real area answer follows before four shortcuts. Desktop pairs the two separate place actions." }),
     });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}.png`), fullPage: true });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}-viewport.png`), fullPage: false });

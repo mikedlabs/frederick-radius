@@ -16,7 +16,7 @@ const meta = {
   component: TodayMasthead,
   parameters: { layout: "centered", nextjs: { appDirectory: true } },
   decorators: [(Story) => <div data-app-primary-tab="/today" style={{ width: "min(343px, calc(100vw - 32px))" }}><Story /></div>],
-  args: { title: "This afternoon in Frederick County", weather: <TodayWeatherView {...read} /> },
+  args: { title: "This afternoon in Frederick County", shortTitle: "This afternoon", dateline: "Friday, October 16", weather: <TodayWeatherView {...read} /> },
 } satisfies Meta<typeof TodayMasthead>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -24,7 +24,10 @@ type Story = StoryObj<typeof meta>;
 export const PartialSafetyRead: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("heading", { level: 1, name: "This afternoon in Frederick County" })).toBeVisible();
+    const heading = canvas.getByRole("heading", { level: 1, name: "This afternoon in Frederick County" });
+    await expect(heading).toBeVisible();
+    await expect(heading).toHaveTextContent(/^This afternoon$/);
+    await expect(canvas.getByText(/Frederick County.*Friday, October 16/)).toBeVisible();
     await expect(canvas.getByText("The air-quality reading is unavailable.")).toBeVisible();
     const details = canvas.getByText("Forecast details", { exact: true });
     const forecast = canvas.getByRole("link", { name: /Full forecast.*Frederick/ });
