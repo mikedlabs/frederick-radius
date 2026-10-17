@@ -40,6 +40,21 @@ describe("free exact place photography in Find", () => {
     expect(result?.thumbnailSource).toEqual(photo);
   });
 
+  it("gives Brewer's Alley an exact free local Find photo with dated exterior credit", () => {
+    const photo = freeSearchPlaceVisual(place("brewers-alley-frederick"));
+    expect(photo).toMatchObject({
+      kind: "curated", src: "/place-photos/brewers-alley-2004.jpg",
+      photo: { author: "Stacy (Rambling Traveler)", license: "CC BY-SA 2.0",
+        licenseUrl: "https://creativecommons.org/licenses/by-sa/2.0/" },
+    });
+    if (photo?.kind !== "curated") throw new Error("Expected the reviewed Brewer's Alley photograph.");
+    expect(photo.photo.modifications).toContain("Side alley exterior, October 26, 2004");
+    const result = searchIndex("Brewer's Alley", 20, []).find((row) => row.id === "place:brewers-alley-frederick");
+    expect(result?.thumbnail).toBe(photo.src);
+    expect(result?.thumbnailSource).toEqual(photo);
+    expect(isPaidGooglePhotoUrl(photo.src)).toBe(false);
+  });
+
   it("keeps ordinary coffee typeahead free of Google photos", () => {
     const coffee = place("cugino-forno-frederick");
     expect(coffee.google_photo_url).toContain("/api/place-photo?");
@@ -60,7 +75,7 @@ describe("free exact place photography in Find", () => {
 
   it("never returns paid media or an unrelated town/category image for any current place", () => {
     const photos = clientPlaces().map(freeSearchPlaceVisual).filter(Boolean);
-    expect(photos).toHaveLength(12);
+    expect(photos).toHaveLength(13);
     expect(photos.some((photo) => isPaidGooglePhotoUrl(photo?.src))).toBe(false);
     expect(freeSearchPlaceVisual({ slug: "unreviewed-place", google_photo_url: "https://images.example.com/coffee.jpg", google_photo_attribution: undefined })).toBeNull();
   });

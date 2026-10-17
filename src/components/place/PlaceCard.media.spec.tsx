@@ -124,6 +124,7 @@ describe("PlaceCard selected media and credit", () => {
     ["schifferstadt-architectural-museum-frederick", "Schifferstadt Architectural Museum"],
     ["hessian-barracks-frederick-maryland", "Hessian Barracks Frederick Maryland"],
     ["co-canal-lock-30-brunswick", "C&O Canal Lock 30"],
+    ["brewers-alley-frederick", "Brewer's Alley"],
   ])("keeps the exact local licensed %s photo and credit together through load and failure", async (slug, name) => {
     const metadata = LANDMARK_PHOTOS[slug];
     await render({ ...place, slug, name, google_photo_url: undefined, google_photo_attribution: undefined }, "discovery");

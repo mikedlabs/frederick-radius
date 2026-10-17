@@ -1,4 +1,4 @@
-/** Existing licensed History photographs reviewed for these exact catalog places.
+/** Licensed photographs reviewed for these exact catalog places.
  * Keep their public source, license and change records when reusing local bytes.
  * This small module is client-safe; it does not import the History collection. */
 export const CREDITED_LOCAL_PLACE_PHOTOS = {
@@ -33,6 +33,24 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:C%26O_Canal_Lock_30_West_Side_Brunswick_Maryland.jpg",
       license: { label: "CC BY-SA 3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" },
       modifications: "Resized and converted for display; cards may crop the image responsively.",
+    },
+  },
+  "brewers-alley-frederick": {
+    file: "Downtown_frederick_maryland.jpg",
+    provenance: {
+      title: "Brewer's Alley, Frederick",
+      original_source_url: "https://www.flickr.com/photos/54555810@N00/374477611/",
+      original_file_url: "https://upload.wikimedia.org/wikipedia/commons/5/59/Downtown_frederick_maryland.jpg",
+      captured_on: "2004-10-26",
+      sha256: "c658a191257a37116c83a02aeac5cb41ac1236d8fc9850882774810bcffbd5ec",
+    },
+    image: {
+      src: "/place-photos/brewers-alley-2004.jpg",
+      alt: "Brewer's Alley side entrance, patio and arch sign in Frederick, photographed in 2004",
+      creator: "Stacy (Rambling Traveler)",
+      source_url: "https://commons.wikimedia.org/wiki/File:Downtown_frederick_maryland.jpg",
+      license: { label: "CC BY-SA 2.0", url: "https://creativecommons.org/licenses/by-sa/2.0/" },
+      modifications: '"Brewer\'s Alley, Frederick". Side alley exterior, October 26, 2004. Original file unchanged; display may resize or crop.',
     },
   },
 } as const;

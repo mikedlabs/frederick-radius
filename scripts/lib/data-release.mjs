@@ -48,6 +48,7 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
   "src/lib/integrations/wikimedia.ts",
   // The shared local-image records carry the exact place and license facts.
   "src/data/credited-local-place-photos.ts",
+  "public/place-photos/brewers-alley-2004.jpg",
   // Additional immutable facts rendered by the place detail route.
   "src/data/place-visit-details.json",
   "src/data/business-info.json",
@@ -151,7 +152,7 @@ export function inspectArtifact(root, relativePath) {
     records = relativePath === "src/data/places-official-hours.json" && Array.isArray(value?.places)
       ? value.places.length
       : jsonRecordCount(value);
-  } else if (extension !== ".ts") {
+  } else if (extension !== ".ts" && !(extension === ".jpg" && PLACE_RELEASE_ARTIFACTS.includes(relativePath))) {
     throw new Error(
       `${relativePath} has unsupported release artifact type ${extension || "(none)"}`,
     );
@@ -159,9 +160,8 @@ export function inspectArtifact(root, relativePath) {
   return {
     path: relativePath,
     sha256: sha256(bytes),
-    // TypeScript data modules are hashed as opaque static inputs. Their
-    // application revision owns executable semantics; unlike JSON arrays they
-    // do not have a reliable format-independent record count.
+    // Static TypeScript inputs and reviewed local JPEG bytes are digest-bound
+    // without inventing a JSON-style record count.
     records,
     bytes: bytes.length,
   };

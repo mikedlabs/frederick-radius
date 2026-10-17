@@ -285,3 +285,129 @@ for (const town of ["brunswick", "thurmont"]) {
     });
   });
 }
+
+
+test.describe("Today compiled chapter at enlarged phone text", () => {
+  test.use({ viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true, permissions: [] });
+
+  test("Today compiled plain chapter fits at 320px with 200% text", async ({ page, baseURL }, testInfo) => {
+    test.setTimeout(60_000);
+    const origin = new URL(baseURL ?? "http://localhost:3010").origin;
+    const counts = { want: 0, mapCard: 0, pulse: 0 };
+    const limits = { want: 16, mapCard: 8, pulse: 8 };
+    const exceeded: string[] = [];
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.addInitScript(() => {
+      localStorage.setItem("fr:scope:v1", "county");
+      localStorage.setItem("fr:appearance:v1", "light");
+      document.cookie = "fr_scope=county; path=/";
+      document.cookie = "fr_onboarded=1; path=/";
+      document.addEventListener("DOMContentLoaded", () => {
+        document.documentElement.style.fontSize = "200%";
+      }, { once: true });
+    });
+    // Use the actual page, ranker and source states. No response fixtures or
+    // forced place selection: paid images, third parties and writes stay off.
+    await page.route("**/*", (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      if (url.origin !== origin || !["GET", "HEAD"].includes(request.method())) return route.abort();
+      if (url.pathname.startsWith("/api/place-photo")) return route.abort();
+      if (url.pathname === "/_next/image") {
+        const raw = url.searchParams.get("url");
+        const source = raw ? new URL(raw, origin) : null;
+        if (!source || source.origin !== origin || source.pathname.startsWith("/api/")) return route.abort();
+      }
+      if (url.pathname.startsWith("/api/")) {
+        let key: keyof typeof counts;
+        if (url.pathname === "/api/want" && url.searchParams.get("scope") === "county"
+          && !["lat", "lng", "lon", "origin", "latitude", "longitude"].some((name) => url.searchParams.has(name))) {
+          key = "want";
+        } else if (url.pathname === "/api/pulse/status") {
+          key = "pulse";
+        } else if (/^\/api\/places\/map-card\/[a-z0-9-]{1,120}$/.test(url.pathname)) {
+          key = "mapCard";
+        } else return route.abort();
+        if (++counts[key] > limits[key]) {
+          exceeded.push(key);
+          return route.abort();
+        }
+      }
+      return route.continue();
+    });
+
+    const response = await page.goto("/today?in=county", { waitUntil: "domcontentloaded" });
+    expect(response?.status()).toBe(200);
+    const area = page.getByRole("combobox", { name: "Choose your area" });
+    await expect(area).toBeEnabled();
+    await expect(area).toHaveValue("county");
+    const chapter = page.getByRole("group", { name: "Follow the day", exact: true });
+    await expect(chapter).toHaveClass(/content-chapter--plain/);
+    await expect(chapter.locator(".content-chapter__label")).toHaveText("Follow the day");
+    await chapter.scrollIntoViewIfNeeded();
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    });
+    // Read the compiled browser CSS and all geometry in one frame. A root
+    // overflow clip must not conceal body overflow or a divider outside its
+    // register, which happened despite the source and component story passing.
+    const geometry = await chapter.evaluate((element) => {
+      const register = element.querySelector<HTMLElement>(".content-chapter__register")!;
+      const label = register.querySelector<HTMLElement>(".content-chapter__label")!;
+      const rule = register.querySelector<HTMLElement>(".content-chapter__rule")!;
+      const bounds = (node: Element) => {
+        const rect = node.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+      };
+      const range = document.createRange();
+      range.selectNodeContents(label);
+      const labelStyle = getComputedStyle(label);
+      return {
+        viewport: innerWidth,
+        rootFontSize: getComputedStyle(document.documentElement).fontSize,
+        chapter: bounds(element), register: bounds(register), label: bounds(label), rule: bounds(rule),
+        labelLines: [...range.getClientRects()].map((rect) => ({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom })),
+        labelStyle: { flexShrink: labelStyle.flexShrink, minWidth: labelStyle.minWidth, overflowWrap: labelStyle.overflowWrap, overflowX: labelStyle.overflowX },
+        ruleMinWidth: getComputedStyle(rule).minWidth,
+        widths: [element, register, document.body, document.documentElement].map((node) => ({
+          element: node.className || node.tagName, scroll: node.scrollWidth, client: node.clientWidth,
+        })),
+        documentOverflow: document.documentElement.scrollWidth - innerWidth,
+        bodyOverflow: document.body.scrollWidth - innerWidth,
+      };
+    });
+    await testInfo.attach("today-compiled-chapter-200pct", {
+      contentType: "application/json", body: JSON.stringify({ geometry, counts, limits, exceeded,
+        source: "Actual Today and compiled CSS; paid/third-party/write transport blocked; no fixtures or image-availability claim." }, null, 2),
+    });
+    expect(geometry.viewport).toBe(320);
+    expect(geometry.rootFontSize).toBe("32px");
+    expect(parseFloat(geometry.labelStyle.flexShrink), "the real plain label can shrink").toBeGreaterThan(0);
+    expect(parseFloat(geometry.labelStyle.minWidth)).toBe(0);
+    expect(geometry.labelStyle.overflowWrap).toBe("anywhere");
+    expect(geometry.labelStyle.overflowX, "readable text must not be hidden to pass bounds").toBe("visible");
+    expect(parseFloat(geometry.ruleMinWidth), "the decorative line can collapse before pushing out of the register").toBe(0);
+    for (const box of [geometry.chapter, geometry.register, geometry.label, geometry.rule]) {
+      expect(box.left).toBeGreaterThanOrEqual(-1);
+      expect(box.right).toBeLessThanOrEqual(geometry.viewport + 1);
+    }
+    expect(geometry.rule.left).toBeGreaterThanOrEqual(geometry.register.left - 1);
+    expect(geometry.rule.right).toBeLessThanOrEqual(geometry.register.right + 1);
+    expect(geometry.rule.top).toBeGreaterThanOrEqual(geometry.register.top - 1);
+    expect(geometry.rule.bottom).toBeLessThanOrEqual(geometry.register.bottom + 1);
+    expect(geometry.labelLines.length).toBeGreaterThan(0);
+    for (const line of geometry.labelLines) {
+      expect(line.left).toBeGreaterThanOrEqual(geometry.register.left - 1);
+      expect(line.right).toBeLessThanOrEqual(geometry.register.right + 1);
+      expect(line.top).toBeGreaterThanOrEqual(geometry.label.top - 2);
+      expect(line.bottom).toBeLessThanOrEqual(geometry.label.bottom + 2);
+    }
+    for (const width of geometry.widths) {
+      expect(width.scroll, `${width.element}: no hidden horizontal overflow`).toBeLessThanOrEqual(width.client + 1);
+    }
+    expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
+    expect(geometry.bodyOverflow).toBeLessThanOrEqual(1);
+    expect(exceeded, "the real page stays inside its free read bounds").toEqual([]);
+  });
+});
