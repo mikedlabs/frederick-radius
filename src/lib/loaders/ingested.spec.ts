@@ -258,6 +258,12 @@ describe("multi-day all-day ingested visibility", () => {
         expect: "agritourism",
       },
       {
+        title: "Fall Festival",
+        uid: "gaver-2",
+        venue: "Gaver Farm",
+        expect: "agritourism",
+      },
+      {
         title: "Live Theatre Production",
         uid: "theatre-1",
         venue: "Frederick",
