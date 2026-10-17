@@ -27,7 +27,7 @@ function Fixture({ fallback = false }: { fallback?: boolean }) {
       <div data-photo-target>
         <PlaceCardPhoto source={shown} onResult={(_src, status) => setResult(status)} deferGoogleBytes />
         <PlaceCardPhotoCredit source={shown} loaded={result === "loaded"} />
-        <p>The actual place facts remain available.</p>
+        <p>Place details</p>
         <p role="status">{result}</p>
       </div>
     </div>
@@ -92,7 +92,7 @@ export const CappedResponseCollapsesHonestly: Story = {
     await waitFor(() => expect(within(canvasElement).getByRole("status")).toHaveTextContent("failed"));
     await expect(canvasElement.querySelector("[data-place-card-photo]")).toBeNull();
     await expect(canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
-    await expect(within(canvasElement).getByText("The actual place facts remain available.")).toBeVisible();
+    await expect(within(canvasElement).getByText("Place details")).toBeVisible();
     await expect(requests).toHaveLength(1);
   },
 };
