@@ -28,15 +28,19 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-function geometryStory(pathname: string, enlarged = false, dark = false): Story {
+function geometryStory(pathname: string, enlarged = false, dark = false, fontFamily?: string): Story {
   return {
     parameters: { nextjs: { navigation: { pathname } } },
-    beforeEach: enlarged ? () => {
+    beforeEach: enlarged || fontFamily ? () => {
+      const previousFontFamily = document.documentElement.style.getPropertyValue("--font-sans-base");
       const previousFontSize = document.documentElement.style.fontSize;
       const previousAppearance = getAppearance();
-      document.documentElement.style.fontSize = "200%";
+      if (fontFamily) document.documentElement.style.setProperty("--font-sans-base", fontFamily);
+      if (enlarged) document.documentElement.style.fontSize = "200%";
       applyAppearance(dark ? "dark" : "light", false);
       return () => {
+        if (previousFontFamily) document.documentElement.style.setProperty("--font-sans-base", previousFontFamily);
+        else document.documentElement.style.removeProperty("--font-sans-base");
         document.documentElement.style.fontSize = previousFontSize;
         applyAppearance(previousAppearance, false);
       };
@@ -72,8 +76,24 @@ function geometryStory(pathname: string, enlarged = false, dark = false): Story 
           `${context}: shared chrome offset matches actual row`,
         ).toBe(row.getBoundingClientRect().height));
         await expect(header.scrollWidth, context).toBeLessThanOrEqual(header.clientWidth);
+        if (!enlarged && width === 320 && header.getBoundingClientRect().height !== 57) {
+          const rowStyle = getComputedStyle(row);
+          console.info("Header font-fit diagnostic", JSON.stringify({ pathname, probeFont: fontFamily ?? "app system", rootFont: getComputedStyle(document.documentElement).fontSize,
+            row: { width: row.clientWidth, height: row.getBoundingClientRect().height, font: rowStyle.fontFamily, gap: rowStyle.gap, padding: [rowStyle.paddingLeft, rowStyle.paddingRight] },
+            children: [...row.children].flatMap((child) => {
+              const elements = getComputedStyle(child).display === "contents" ? [...child.children] : [child];
+              return elements.map((element) => {
+                const box = element.getBoundingClientRect(), style = getComputedStyle(element);
+                return { tag: element.tagName, label: element.getAttribute("aria-label") || element.textContent?.trim(), width: box.width, height: box.height,
+                  left: box.left, top: box.top, display: style.display, basis: style.flexBasis, minWidth: style.minWidth,
+                  padding: [style.paddingLeft, style.paddingRight], margin: [style.marginLeft, style.marginRight],
+                  font: style.fontFamily, fontSize: style.fontSize, scrollWidth: element.scrollWidth };
+              });
+            }) }, null, 2));
+        }
         if (!enlarged) {
           // Normal text retains the existing single-row app bar.
+          await expect(getComputedStyle(document.documentElement).fontSize, context).toBe("16px");
           await expect(header.getBoundingClientRect().height, context).toBe(57);
         }
         await expect(document.documentElement.scrollWidth, context).toBeLessThanOrEqual(width);
@@ -171,3 +191,13 @@ export const EnlargedMap: Story = geometryStory("/map", true);
 export const EnlargedEvents: Story = geometryStory("/events", true);
 export const EnlargedSearch: Story = geometryStory("/search", true);
 export const EnlargedDeepPrivacyDark: Story = geometryStory("/privacy", true, true);
+
+// Platform-native alternatives protect the narrow row against font-metric drift.
+// No font asset is acquired or added to the application.
+export const NativeArialMap: Story = geometryStory("/map", false, false, "Arial, sans-serif");
+export const NativeArialEvents: Story = geometryStory("/events", false, false, "Arial, sans-serif");
+export const NativeNotoMap: Story = geometryStory("/map", false, false, "'Noto Sans', sans-serif");
+export const NativeNotoEvents: Story = geometryStory("/events", false, false, "'Noto Sans', sans-serif");
+
+export const NativeWideSansMap: Story = geometryStory("/map", false, false, "Verdana, sans-serif");
+export const NativeWideSansEvents: Story = geometryStory("/events", false, false, "Verdana, sans-serif");

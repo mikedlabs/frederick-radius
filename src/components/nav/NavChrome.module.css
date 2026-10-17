@@ -154,3 +154,9 @@
   .bar[data-dense-mobile-header="true"] :global([data-pulse-indicator]) { padding-inline: 2px; }
   .bar[data-dense-mobile-header="true"] .tool { width: 44px; padding-inline: 0; }
 }
+
+/* Native sans metrics vary by platform. At the 320px support floor the
+   six-action row needs room beyond one font's fractional-pixel fit. */
+@media (max-width: 359.98px) {
+  .bar .row { column-gap: 2px; }
+}
