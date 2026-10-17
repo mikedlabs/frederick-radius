@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createElement, Fragment } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -13,6 +14,7 @@ describe("Today universal Find launcher", () => {
     expect(html).toContain('aria-label="Find a place, service, event, or answer"');
     expect(html).toContain('data-find-density="arrival"');
     expect(html).toContain("Find what you need");
+    expect(html).toContain(">Search</span>");
     expect(html).not.toContain("Search a name, a need, or a question.");
     expect(html).not.toContain('aria-label="Quick needs"');
     expect(html).not.toContain("<input");
@@ -61,5 +63,21 @@ describe("Today universal Find launcher", () => {
     expect(html).toContain('href="/contacts"');
     expect(html).toContain("Plan a few hours");
     expect(html).not.toContain("magic-card");
+  });
+});
+
+describe("Today Find launcher CSS", () => {
+  const css = readFileSync("src/components/today/TodayAsk.module.css", "utf8");
+
+  it("keeps the doorway on one line with a Search fallback and a min-height", () => {
+    expect(css).toMatch(/\.launcher \{[^}]*flex-wrap:\s*nowrap/s);
+    expect(css).toMatch(/\.launcher \{[^}]*min-height:\s*72px/s);
+    expect(css).not.toMatch(/\.launcher \{[^}]*\n\s*height:/s);
+    expect(css).toMatch(/\.arrival \.launcher \{[^}]*min-height:\s*56px/s);
+    expect(css).not.toMatch(/\.arrival \.launcher \{[^}]*\n\s*height:/s);
+    expect(css).toContain("white-space: nowrap");
+    expect(css).toContain("text-overflow: ellipsis");
+    expect(css).toContain("@container today-find (max-width: 17em)");
+    expect(css).toMatch(/\.promptShort \{[^}]*display:\s*none/s);
   });
 });

@@ -38,9 +38,32 @@ export const FirstDecisionDoorway: Story = {
     await expect(find).toHaveAttribute("href", "/search");
     await expect(find).toHaveAttribute("data-find-interaction-ready", "true");
     await expect(find.getBoundingClientRect().height).toBeGreaterThanOrEqual(56);
-    await expect(find.getBoundingClientRect().height).toBeLessThanOrEqual(56);
+    await expect(within(find).getByText("Find what you need")).toBeVisible();
     await expect(canvas.queryByText("Search a name, a need, or a question.")).not.toBeInTheDocument();
     await expect(canvas.queryByRole("link", { name: "Open now" })).not.toBeInTheDocument();
+  },
+};
+
+export const EnlargedTextArrival: Story = {
+  args: { showQuickNeeds: false, density: "arrival" },
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  beforeEach: () => {
+    const previous = document.documentElement.style.fontSize;
+    document.documentElement.style.fontSize = "200%";
+    return () => { document.documentElement.style.fontSize = previous; };
+  },
+  decorators: [(Story) => <div data-app-primary-tab="/today" style={{ width: 288 }}><Story /></div>],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const find = canvas.getByRole("link", { name: "Find a place, service, event, or answer" });
+    const box = find.getBoundingClientRect();
+    await expect(within(find).getByText("Search")).toBeVisible();
+    await expect(getComputedStyle(find.querySelector("[data-find-prompt]")!).whiteSpace).toBe("nowrap");
+    await expect(box.height).toBeGreaterThanOrEqual(56);
+    await expect(box.height).toBeLessThan(120);
+    const arrow = find.querySelector("svg:last-of-type")!.getBoundingClientRect();
+    await expect(arrow.right).toBeLessThanOrEqual(box.right + 1);
+    await expect(arrow.bottom).toBeLessThanOrEqual(box.bottom + 1);
   },
 };
 

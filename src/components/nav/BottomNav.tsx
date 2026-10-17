@@ -78,7 +78,7 @@ export default function BottomNav() {
           aria-busy={pendingIdx !== null}
           className={`${styles.dock} pointer-events-auto relative mx-auto max-w-screen-md overflow-hidden`}
         >
-          <ul className="mx-auto grid max-w-screen-md grid-cols-4 px-1 py-1">
+          <ul className="mx-auto grid max-w-screen-md grid-cols-4 px-1 py-[4px]">
             {TABS.map(({ href, label, icon: Icon, prefetch, fillOnActive }, idx) => {
               const isAtDestination = pathname === href || pathname.startsWith(`${href}/`);
               const isRealActive = realIdx === idx;
@@ -123,7 +123,7 @@ export default function BottomNav() {
                     }}
                     onClick={handleActivate}
                     aria-current={isAtDestination ? "page" : undefined}
-                    className={`${styles.destination} relative flex h-12 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition-[color,transform,background-color] duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)]`}
+                    className={`${styles.destination} relative flex h-[48px] min-h-[48px] w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition-[color,transform,background-color] duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)]`}
                     data-selected={active ? "true" : "false"}
                   >
                     <span

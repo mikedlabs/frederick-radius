@@ -36,10 +36,20 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const captionBox = (await doorway.locator("[data-today-geographic-caption]").boundingBox())!;
     const headingBox = (await masthead.locator("h1").boundingBox())!;
     expect(findBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height);
-    // The arrival action now has a deliberate phone density; neither weather
-    // facts nor the photograph are subtracted from an artificial height budget.
+    // Arrival uses min-height so enlarged text can grow one line, not a
+    // locked 56px that either clips the arrow or wraps into a block.
+    expect(await find.evaluate((element) => getComputedStyle(element).minHeight)).toBe("56px");
     expect(findBox.height).toBeGreaterThanOrEqual(56);
-    expect(findBox.height).toBeLessThanOrEqual(56);
+    expect(findBox.height).toBeLessThan(80);
+    expect(await find.evaluate((element) => {
+      const prompt = element.querySelector("[data-find-prompt]");
+      return prompt ? getComputedStyle(prompt).whiteSpace : "";
+    })).toBe("nowrap");
+    const arrowBox = (await find.locator("svg").last().boundingBox())!;
+    expect(arrowBox.x).toBeGreaterThanOrEqual(findBox.x);
+    expect(arrowBox.x + arrowBox.width).toBeLessThanOrEqual(findBox.x + findBox.width + 1);
+    expect(arrowBox.y).toBeGreaterThanOrEqual(findBox.y - 1);
+    expect(arrowBox.y + arrowBox.height).toBeLessThanOrEqual(findBox.y + findBox.height + 1);
     await expect(page.locator('[data-find-density="arrival"]')).toHaveCount(1);
     expect(doorwayBox.y).toBeGreaterThanOrEqual(findBox.y + findBox.height);
     // The real named caption shares the photo's grid area; it must fit inside

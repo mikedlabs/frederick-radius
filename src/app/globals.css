@@ -193,9 +193,11 @@
   /* Chrome heights — ONE source of truth so the magic numbers (56/48/84) can't
      drift between the map, its loading skeleton, the aerial view, and the
      floating controls (they did, causing a tab-in jump + a nav/toggle overlap).
-     --app-topbar-h = the h-14 TopBar; --app-bottomnav-reserve = clearance for the
-     floating bottom nav on viewport-filled surfaces. --app-browse-map-height is
-     the exact map canvas height, consumed by both the map page and its skeleton. */
+     --app-topbar-h = the h-14 TopBar; --app-tabbar-h = the floating tab bar
+     overlay (reading pages add this plus the safe-area as padding-bottom);
+     --app-bottomnav-reserve = clearance for the floating bottom nav on
+     viewport-filled surfaces. --app-browse-map-height is the exact map canvas
+     height, consumed by both the map page and its skeleton. */
   --app-topbar-h: 56px;
   /* Where the TopBar's bottom edge actually is RIGHT NOW. The TopBar
      auto-hides on scroll-down (translateY(-100%)); while hidden it sets
@@ -205,6 +207,11 @@
      chrome to THIS var, not --app-topbar-h, and transition `top` with
      the TopBar's own 240ms ease so the two move as one piece of chrome. */
   --app-topbar-offset: var(--app-topbar-h);
+  /* Floating tab bar overlay, excluding the device safe-area (added at
+     use sites). 8px shell pad + 2px dock border + 8px list pad + 48px
+     destinations. Keep this in px so 200% text cannot shrink the reading
+     page's clearance while the bar stays put. */
+  --app-tabbar-h: 68px;
   --app-bottomnav-reserve: 68px;
   --app-browse-map-height: calc(
     100dvh - var(--app-topbar-h) - var(--app-bottomnav-reserve) -
@@ -258,6 +265,7 @@
 
 @media (min-width: 64rem) {
   :root {
+    --app-tabbar-h: 0px;
     --app-bottomnav-reserve: 0px;
   }
 }
@@ -473,7 +481,7 @@
 
 @media (max-width: 63.999rem) {
   .app-main-reading[data-bottom-nav-reserve="true"] {
-    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--app-tabbar-h) + env(safe-area-inset-bottom, 0px));
   }
 
   /* A modal sheet owns the full mobile viewport, including the bottom band.

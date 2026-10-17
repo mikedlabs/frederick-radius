@@ -66,18 +66,21 @@ export default function TodayAsk({
           aria-hidden
           className={styles.searchIcon}
         >
-          <Search className="h-6 w-6" strokeWidth={1.8} />
+          <Search width={24} height={24} strokeWidth={1.8} />
         </span>
-        <span className="min-w-0 flex-1">
-          <span className={styles.prompt}>
-            Find what you need
+        <span className={styles.promptWrap}>
+          <span className={styles.prompt} data-find-prompt>
+            <span className={styles.promptFull}>Find what you need</span>
+            <span className={styles.promptShort}>Search</span>
           </span>
           {density === "standard" && <span className={styles.hint}>
             Search a name, a need, or a question.
           </span>}
         </span>
         <ArrowRight
-          className={`h-4 w-4 shrink-0 ${styles.launcherArrow}`}
+          className={styles.launcherArrow}
+          width={16}
+          height={16}
           strokeWidth={2.25}
           aria-hidden
         />
