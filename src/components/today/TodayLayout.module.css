@@ -2,18 +2,24 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: var(--app-space-3);
-  margin-block: var(--app-space-2) var(--app-space-3);
+  gap: var(--app-space-2);
+  margin-block: 0 var(--app-space-2);
   /* Keep the useful arrival stable while the page scrolls. */
   animation: none;
 }
 
+/* The date shares the title's line when it fits; large text may reflow. */
 .heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing) var(--app-space-3);
   min-width: 0;
 }
 
 .dateline {
-  margin: var(--spacing) 0 0;
+  margin: 0;
   color: var(--app-ink-2);
   font-size: 12px;
   line-height: 1.4;
@@ -29,18 +35,44 @@
   text-wrap: balance;
 }
 
+/* Alerts keep every fact and action, without a second chapter divider. */
+.alerts:not(:empty) {
+  margin-bottom: var(--app-space-2);
+}
+
+.alerts > section {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.entryControls {
+  display: grid;
+  gap: var(--app-space-2);
+  min-width: 0;
+}
+
 .scope > div {
   margin-top: 0;
 }
 
 .scope label {
   flex: 1 1 130px;
-  max-width: 180px;
+  max-width: none;
 }
 
 .scope select {
   width: 100%;
-  box-shadow: var(--app-shadow-1);
+  padding-inline: var(--app-space-4);
+  border: 1px solid var(--app-control-border);
+  border-radius: 999px;
+  background: var(--app-bg-sunken);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.scope select:focus-visible {
+  outline: 3px solid var(--app-focus);
+  outline-offset: 3px;
 }
 
 .briefing {
@@ -60,9 +92,9 @@
   align-items: start;
   gap: var(--app-space-2);
   min-width: 0;
-  padding: var(--app-space-2) var(--app-space-3);
-  border-radius: var(--app-radius-lg);
-  background: var(--app-bg-sunken);
+  padding: 0 0 var(--spacing);
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-bg);
   color: var(--app-ink);
 }
 
@@ -404,10 +436,6 @@
 
   .title {
     font-size: 32px;
-  }
-
-  .weather {
-    padding-inline: var(--app-space-3);
   }
 
   .forecastLink {
