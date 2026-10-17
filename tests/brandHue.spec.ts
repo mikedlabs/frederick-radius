@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BRAND } from "@/lib/brand";
 import {
   AA_MIN,
   CREAM,
@@ -96,8 +97,9 @@ describe("brandHue — AA contrast math", () => {
     expect(creamContrastOnGround(hex)).toBeGreaterThanOrEqual(AA_MIN);
   });
 
-  it("cream really is the reference text color", () => {
-    expect(CREAM).toBe("#F4EEE2");
+  it("uses canonical White as the reference text color", () => {
+    expect(CREAM).toBe("#FFFFFF");
+    expect(CREAM).toBe(BRAND.colors.cream);
   });
 });
 

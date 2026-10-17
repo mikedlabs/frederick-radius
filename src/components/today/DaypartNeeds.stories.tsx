@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, waitFor, within } from "storybook/test";
 import type { DaypartRow } from "@/lib/loaders/daypartPicks";
 import DaypartNeeds from "./DaypartNeeds";
 
@@ -30,14 +31,32 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const ConfirmedCurrentPlace: Story = {};
+async function readablePlace(canvasElement: HTMLElement) {
+  // The enhancement briefly replaces the supplied card with its skeleton.
+  // Re-query after the rejected fixture request restores the real shelf.
+  await waitFor(() => expect(canvasElement.querySelector("[data-today-place-lead], [data-today-opening-soon]")).toBeVisible());
+  const card = canvasElement.querySelector<HTMLElement>("[data-today-place-lead], [data-today-opening-soon]")!;
+  await expect(card.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+  const name = card.querySelector<HTMLElement>("[data-today-pick-name]")!;
+  const context = card.querySelector<HTMLElement>("[data-today-pick-context]")!;
+  await expect(parseFloat(getComputedStyle(name).fontSize)).toBeGreaterThanOrEqual(17);
+  await expect(parseFloat(getComputedStyle(context).fontSize)).toBeGreaterThanOrEqual(14);
+  await expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth + 1);
+  await expect(name.scrollHeight).toBeLessThanOrEqual(name.clientHeight + 2);
+}
+
+export const ConfirmedCurrentPlace: Story = {
+  play: async ({ canvasElement }) => readablePlace(canvasElement),
+};
 export const OpeningSoon: Story = {
+  play: async ({ canvasElement }) => readablePlace(canvasElement),
   args: {
     rows: [{ ...row, picks: [], openingSoon: { slug: "story-opening-soon", name: "Sample coffee place", rating: null, confidence: "confirmed", fact: "Opens at 9am.", where: "Frederick" } }],
   },
 };
 
 export const PhotographLedPlace: Story = {
+  play: async ({ canvasElement }) => readablePlace(canvasElement),
   args: {
     variant: "full",
     rows: [{
@@ -48,5 +67,20 @@ export const PhotographLedPlace: Story = {
         rating: null, confidence: "unconfirmed", fact: "Hours are not confirmed.", where: "Frederick",
       }],
     }],
+  },
+};
+
+
+export const NarrowTownOption: Story = {
+  render: (args) => <div style={{ width: "min(288px, 100%)" }}><DaypartNeeds {...args} /></div>,
+  args: {
+    rows: [{ ...row, picks: [{ slug: "story-town-option", name: "Sample community coffee house near the river", rating: null, confidence: "unconfirmed", fact: "Hours are not confirmed.", where: "Brunswick", distance: "6 min walk" }] }],
+  },
+  play: async ({ canvasElement }) => {
+    await readablePlace(canvasElement);
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("Brunswick · 6 min walk")).toBeVisible();
+    await expect(canvas.getByText("Hours are not confirmed.", { exact: true })).toBeVisible();
+    await expect(canvas.getByRole("heading", { name: "Places to try" })).toBeVisible();
   },
 };

@@ -53,6 +53,8 @@ export const AttributedHeadlines: Story = {
     await expect(lead).toHaveAttribute("rel", "noopener noreferrer");
     await expect(canvas.getByRole("link", { name: "All headlines" })).toHaveAttribute("href", "/pulse?open=news");
     const official = canvas.getByText("County announces a community listening session");
+    await expect(official).toBeVisible();
+    await userEvent.click(canvas.getByText("Official updates"));
     await expect(official).not.toBeVisible();
     await userEvent.click(canvas.getByText("Official updates"));
     await expect(official).toBeVisible();
@@ -91,7 +93,6 @@ export const PartialFeeds: Story = {
     await expect(canvas.getByText("Some local headline feeds are unavailable. Available stories are shown below.")).toBeVisible();
     await expect(canvas.getByText(meta.args.news.items[0].title)).toBeVisible();
     await expect(canvas.getByText("Partial")).toBeVisible();
-    await userEvent.click(canvas.getByText("Official updates"));
     await expect(canvas.getByText("Some official newsroom feeds are unavailable. Available updates are shown below.")).toBeVisible();
   },
 };
@@ -139,7 +140,6 @@ export const UnsupportedCachedArticleLinks: Story = {
     await expect(canvas.getByText(meta.args.news.items[0].title)).toBeVisible();
     await expect(canvas.getByText("Published Oct 8, 2026, 10:15 AM EDT")).toBeVisible();
     await expect(canvasElement.querySelector("a[target='_blank']")).toBeNull();
-    await userEvent.click(canvas.getByText("Official updates"));
     await expect(canvas.getAllByText("Article link unavailable")).toHaveLength(2);
     await expect(canvas.getByText(meta.args.official.items[0].title)).toBeVisible();
   },
@@ -169,7 +169,64 @@ export const PartialPulseNews: Story = {
     const drawer = await page.findByRole("dialog", { name: "In the news" });
     await expect(within(drawer).getByText(meta.args.news.items[0].title)).toBeVisible();
     await expect(within(drawer).getByText("Some local headline feeds are unavailable. Available stories are shown below.")).toBeVisible();
-    await userEvent.click(within(drawer).getByText("Official updates", { exact: true }));
     await expect(within(drawer).getByText(meta.args.official.items[0].title)).toBeVisible();
+  },
+};
+
+
+export const SourceCheckTimes: Story = {
+  args: {
+    official: { ...meta.args.official, status: "partial", sources: [
+      { id: "city_official_news", source: "City of Frederick", scope: "city", channel: "news",
+        status: "available", checkedAt: "2026-10-12T12:00:00.000Z", latestPublishedAt: "2026-10-07T15:00:00.000Z" },
+      { id: "county_official_news", source: "Frederick County", scope: "county", channel: "news",
+        status: "unavailable", reason: "request_failed", checkedAt: "2026-10-12T12:00:00.000Z", latestPublishedAt: null },
+    ] },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const checks = canvas.getByRole("list", { name: "Official newsroom source checks" });
+    await expect(checks).toBeVisible();
+    await expect(within(checks).getByText("Checked Oct 12, 2026, 8:00 AM EDT")).toBeVisible();
+    await expect(within(checks).getByText("Latest publication Oct 7, 2026, 11:00 AM EDT")).toBeVisible();
+    await expect(within(checks).getByText("Attempted Oct 12, 2026, 8:00 AM EDT")).toBeVisible();
+    await expect(checks).toHaveTextContent("Unable to verify this feed.");
+    await expect(canvas.getByText(meta.args.official.items[1].title)).toBeVisible();
+  },
+};
+
+export const SubscriptionProvenance: Story = {
+  args: {
+    officialLimit: 6,
+    official: {
+      status: "available",
+      items: [
+        { title: "ALL CITY SPORTS FIELDS ARE CLOSED TODAY 10-11-2026", source: "City of Frederick", sourceShort: "City",
+          sourceId: "city_official_releases", url: "https://www.cityoffrederickmd.gov/CivicAlerts.aspx?aid=fixture-recreation",
+          publishedAt: "2026-10-11T12:29:15.000Z", lane: "civic" },
+        { ...meta.args.official.items[0], sourceId: "county_official_news" },
+        { ...meta.args.official.items[1], sourceId: "city_official_news" },
+      ],
+      sources: [
+        { id: "city_official_news", source: "City of Frederick", scope: "city", channel: "news",
+          status: "available", checkedAt: "2026-10-12T12:00:00.000Z", latestPublishedAt: "2026-10-07T15:00:00.000Z" },
+        { id: "county_official_news", source: "Frederick County", scope: "county", channel: "news",
+          status: "available", checkedAt: "2026-10-12T12:00:00.000Z", latestPublishedAt: "2026-10-08T13:00:00.000Z" },
+        { id: "city_official_releases", source: "City of Frederick", scope: "city", channel: "safety",
+          status: "available", checkedAt: "2026-10-12T12:00:00.000Z", latestPublishedAt: "2026-10-11T12:29:15.000Z" },
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const checks = canvas.getByRole("list", { name: "Official newsroom source checks" });
+    await expect(within(checks).getByText(/City newsroom/)).toBeVisible();
+    await expect(within(checks).getByText(/City releases/)).toBeVisible();
+    await expect(within(checks).getByText(/County newsroom/)).toBeVisible();
+    const dated = canvas.getByRole("link", { name: /ALL CITY SPORTS FIELDS/ });
+    await expect(dated).toHaveAttribute("data-news-source-id", "city_official_releases");
+    await expect(within(dated).getByText("City releases")).toBeVisible();
+    await expect(within(dated).getByText("Published Oct 11, 2026, 8:29 AM EDT")).toBeVisible();
+    await expect(canvas.queryByRole("alert")).toBeNull();
   },
 };

@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, waitFor, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import TopBar from "./TopBar";
 import BottomNav from "./BottomNav";
 import SideRail from "./SideRail";
+import { getRouter } from "@storybook/nextjs-vite/navigation.mock";
 
 const meta = {
   title: "Radius Chrome/Navigation",
@@ -35,6 +36,24 @@ type Story = StoryObj<typeof meta>;
 export const TodayAt320: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   parameters: { nextjs: { navigation: { pathname: "/today" } } },
+  play: async ({ canvasElement }) => {
+    const originalState: unknown = window.history.state;
+    const router = getRouter();
+    router.prefetch.mockClear();
+    try {
+      const tools = within(canvasElement).getByRole("link", { name: "Open tools" });
+      await expect(tools.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+      await expect(tools.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
+      await expect(tools).toHaveAttribute("href", "/compass");
+      await userEvent.click(tools);
+      await expect(tools).toHaveFocus();
+      await expect(router.prefetch).toHaveBeenCalledWith("/compass");
+      // The installed Vite Next link mock prevents default before the consumer
+      // handler. The app must honor that cancellation; native return behavior
+      // is covered by the real browser journeys and the component regression.
+      await expect(window.history.state).toEqual(originalState);
+    } finally { window.history.replaceState(originalState, "", window.location.href); }
+  },
 };
 
 export const SavedAt390: Story = {

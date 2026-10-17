@@ -8,9 +8,9 @@ export const metadata = {
 
 export default function CompassIntercepted() {
   return (
-    <InterceptedDrawer title={PRODUCT_NAMES.allTools.pageTitle} bareHeader>
+    <InterceptedDrawer title={PRODUCT_NAMES.allTools.pageTitle} bareHeader inlineToolsPanels>
       <div className="p-4">
-        <CompassHub />
+        <CompassHub embeddedInToolsDrawer />
       </div>
     </InterceptedDrawer>
   );

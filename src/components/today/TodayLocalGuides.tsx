@@ -164,12 +164,7 @@ export function TodayFoodTruckGuide({
     };
   }, []);
 
-  const foodTruck = foodTruckGuideCopy(
-    liveTruckCount,
-    nextFoodTruckStop,
-    asOf,
-    foodTruckCount,
-  );
+  const foodTruck = foodTruckGuideCopy(liveTruckCount, nextFoodTruckStop, asOf, foodTruckCount);
   return (
     <GuideRow
       href={foodTruck.href}
@@ -194,15 +189,17 @@ export function TodayFoodTruckGuide({
  * headline of the day. Verified business marks provide recognition without
  * turning the Today page into two more promotional cards.
  */
+export type TodayLocalGuidesProps = {
+  foodTruckGuide?: ReactNode;
+  breweryCount?: number;
+  foodTruckCount?: number;
+};
+
 export default function TodayLocalGuides({
   foodTruckGuide,
   breweryCount = 0,
   foodTruckCount = 0,
-}: {
-  foodTruckGuide?: ReactNode;
-  breweryCount?: number;
-  foodTruckCount?: number;
-} = {}) {
+}: TodayLocalGuidesProps = {}) {
   return (
     <section className="mt-6" aria-label="Local guides">
       <div
@@ -213,11 +210,9 @@ export default function TodayLocalGuides({
         <GuideRow
           href="/beer"
           title="Frederick beer"
-          detail={
-            breweryCount > 0
-              ? `Browse ${breweryCount} breweries and current taproom listings.`
-              : "Browse local breweries and current taproom listings."
-          }
+          detail={breweryCount > 0
+            ? `Browse ${breweryCount} breweries and current taproom listings.`
+            : "Browse local breweries and current taproom listings."}
           marks={BREWERY_PREVIEW}
           Icon={Beer}
           divided

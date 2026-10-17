@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
+import { rememberNativeRequest } from "./native-request-return";
+import { useNativeRequestReturn } from "./useNativeRequestReturn";
 
 function searchHref(query: string, returnTo?: string, scope?: string, kind?: string): string {
   const params = new URLSearchParams();
@@ -29,6 +31,8 @@ export default function SearchInput({
   const [q, setQ] = useState(defaultValue);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  useNativeRequestReturn({ target: "search-input", inputKind: "search", inputRef, renderedQuery: defaultValue, onDraft: setQ });
+
   useEffect(() => {
     if (!defaultValue) inputRef.current?.focus();
   }, [defaultValue]);
@@ -38,6 +42,7 @@ export default function SearchInput({
       role="search"
       onSubmit={(e) => {
         e.preventDefault();
+        rememberNativeRequest({ draft: { kind: "search", query: q }, target: "search-input" });
         const next = q.trim();
         router.push(searchHref(next, returnTo, scope, kind));
       }}
@@ -54,7 +59,10 @@ export default function SearchInput({
         type="search"
         name="q"
         value={q}
-        onChange={(e) => setQ(e.target.value)}
+        onChange={(e) => {
+          setQ(e.target.value);
+          rememberNativeRequest({ draft: { kind: "search", query: e.target.value } });
+        }}
         placeholder="Find places, events, towns, tools"
         autoComplete="off"
         autoCorrect="off"
@@ -68,6 +76,7 @@ export default function SearchInput({
           type="button"
           onClick={() => {
             setQ("");
+            rememberNativeRequest({ draft: { kind: "search", query: "" }, target: "search-input" });
             router.push(searchHref("", returnTo, scope, kind));
           }}
           className="tap-44 rounded px-1 text-xs"

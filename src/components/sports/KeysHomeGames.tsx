@@ -3,8 +3,9 @@ import { ArrowUpRight, CalendarDays, ChevronRight } from "lucide-react";
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { getVisibleEvents } from "@/lib/events/visible";
-import { isKeysEvent, keysOpponent, keysTicketUrl } from "@/lib/today/keysEvent";
+import { isKeysHomeGame, keysOpponent, keysTicketUrl } from "@/lib/today/keysEvent";
 import { statusLabel } from "@/lib/event-status";
+import { sportsTeamStyle } from "@/lib/sports/team-identity";
 import EmptyState from "@/components/ui/EmptyState";
 import Skeleton from "@/components/ui/Skeleton";
 
@@ -19,9 +20,6 @@ import Skeleton from "@/components/ui/Skeleton";
  * Tickets go through keysTicketUrl (curated ticket_url, else the row's
  * Ticketmaster event page, else the box office — feed rows never carry
  * ticket_url, so a bare fallback would send every game to the box office).
- *
- * Deliberately app-token dressed: the Keys team palette is licensed to the
- * team CARDS (KeysScore, KeysCard), and this is page furniture, not a card.
  */
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
@@ -53,7 +51,7 @@ export default async function KeysHomeGames({
 }) {
   const assembled = await eventsPromise.catch(() => null);
   const games = getVisibleEvents(
-    (assembled?.unified ?? []).filter((e: EventWithMeta) => isKeysEvent(e)),
+    (assembled?.unified ?? []).filter((e: EventWithMeta) => isKeysHomeGame(e)),
     now,
   ).slice(0, MAX_GAMES);
 
@@ -78,7 +76,7 @@ export default async function KeysHomeGames({
   }
 
   return (
-    <div>
+    <div style={sportsTeamStyle("keys")}>
       <ol
         className="reveal-up mt-4 border-t"
         style={{ borderColor: "var(--app-border)" }}
@@ -101,7 +99,7 @@ export default async function KeysHomeGames({
               <span>
                 <span
                   className="block font-mono text-[9px] font-bold uppercase tracking-[0.12em]"
-                  style={{ color: "var(--app-brand-press)" }}
+                  style={{ color: "var(--app-ink-2)" }}
                 >
                   {GAME_WEEKDAY.format(starts)}
                 </span>
@@ -135,7 +133,11 @@ export default async function KeysHomeGames({
                   rel="noopener noreferrer"
                   aria-label={`Get tickets for the ${GAME_WEEKDAY.format(starts)} ${GAME_DATE.format(starts)} game`}
                   className="tap-44 z-20 inline-flex items-center rounded-[var(--app-radius-sm)] border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
-                  style={{ borderColor: "var(--app-brand-press)", color: "var(--app-brand-press)" }}
+                  style={{
+                    background: "var(--team-secondary)",
+                    borderColor: "var(--team-secondary)",
+                    color: "var(--team-on-secondary)",
+                  }}
                 >
                   Get tickets
                 </a>

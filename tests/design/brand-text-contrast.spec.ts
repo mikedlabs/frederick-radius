@@ -1,30 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import ts from "typescript";
 
 /**
- * Contrast guard (design review P1-1).
- *
- * `--app-brand` (#E14328) on the paper ground measures 3.24:1 — below the
- * WCAG AA 4.5:1 floor for normal-size text. The palette ships
- * `--app-brand-press` (#B5300F, 4.80:1) for exactly this, and the July 2026
- * contrast pass routed every small-text usage to it. This spec keeps the
- * rule from regressing:
- *
- *   --app-brand        → fills, icon strokes, borders, rings, large/bold
- *                        display text ONLY (3:1 graphical threshold)
- *   --app-brand-press  → any small or normal-weight text
- *
- * Mechanism: for each `color: "var(--app-brand)"` in a .tsx file, look at
- * the JSX element it sits in (back to the nearest `<` tag opener). If that
- * same element carries a small text-size class (text-[8–14px] / text-xs /
- * text-sm) or an inline fontSize ≤ 14, it is small brand text — flag it.
- * Icons never carry text-size classes, so they pass untouched.
+ * Keep the filled action color out of small text. Product text uses
+ * --app-link, whose foreground follows the actual light/dark surface.
+ * Palette contrast is measured separately by primary-tabs-palette.spec.ts.
+ * This source guard preserves the established distinction between text and
+ * fill roles; graphical borders and icons remain unaffected.
  */
 
 const SRC = join(__dirname, "..", "..", "src");
 
-// Marketing surfaces use their own (dark) palette where the cream-ground
+// Marketing surfaces use their own (dark) palette where the product-surface
 // ratio doesn't apply, and /admin is owner-only tooling outside the
 // public accessibility bar. Nothing else is exempt.
 const EXEMPT = [/\/pitch\//, /marketing/, /^app\/admin\//, /\/admin\//];
@@ -67,8 +56,36 @@ function findViolations(file: string, source: string): string[] {
   return hits;
 }
 
+
+/** Check only the actionable element's own foreground. A branded fill, border
+ * or a child graphic is a separate role and must not become an exemption for
+ * unreadable navigation text. These two active paths exposed the pressed-token
+ * gap in the broader small-text guard above. */
+function findPressedActionText(file: string, source: string): string[] {
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const hits: string[] = [];
+  function visit(node: ts.Node) {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tag = node.tagName.getText(parsed);
+      if (["Link", "a", "button"].includes(tag)) {
+        const unreadable = node.attributes.properties.some((attribute) => {
+          if (!ts.isJsxAttribute(attribute)) return false;
+          const name = attribute.name.getText(parsed);
+          const value = attribute.initializer?.getText(parsed) ?? "";
+          return (name === "style" && /\bcolor:\s*["']var\(--app-brand-press\)["']/.test(value)) ||
+            (name === "className" && value.includes("text-[var(--app-brand-press)]"));
+        });
+        if (unreadable) hits.push(`${file}:${parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line + 1}`);
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(parsed);
+  return hits;
+}
+
 describe("brand color as small text (WCAG AA guard)", () => {
-  it("no small text uses var(--app-brand) — use var(--app-brand-press)", () => {
+  it("no small text uses var(--app-brand) — use var(--app-link)", () => {
     const violations: string[] = [];
     for (const file of tsxFiles(SRC)) {
       if (EXEMPT.some((re) => re.test(file))) continue;
@@ -76,9 +93,27 @@ describe("brand color as small text (WCAG AA guard)", () => {
     }
     expect(
       violations,
-      `Small text set in --app-brand fails WCAG AA on the cream ground (3.24:1). ` +
-        `Use var(--app-brand-press) (4.80:1) for text; keep --app-brand for ` +
+      `Small text uses the filled-action token. Use var(--app-link), whose ` +
+        `foreground follows the selected color scheme; keep --app-brand for ` +
         `icons, fills, and large display type.\n${violations.join("\n")}`,
     ).toEqual([]);
   });
+
+  it.each(["app/(app)/today/page.tsx", "components/map/MapListPeek.tsx"])(
+    "%s keeps its navigation text readable in the selected appearance",
+    (file) => {
+      expect(findPressedActionText(file, readFileSync(join(SRC, file), "utf8"))).toEqual([]);
+    },
+  );
+
+  it("detects inline and utility pressed-color text while permitting actual filled controls", () => {
+    const source = `const actions = <>
+      <a href="/events" style={{ color: "var(--app-brand-press)" }}>Events</a>
+      <button className="text-[var(--app-brand-press)]">Show more</button>
+      <button style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}>Apply</button>
+      <a href="/events" style={{ color: "var(--app-link)" }}>Events</a>
+    </>;`;
+    expect(findPressedActionText("fixture.tsx", source)).toEqual(["fixture.tsx:2", "fixture.tsx:3"]);
+  });
+
 });

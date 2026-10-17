@@ -9,6 +9,7 @@ function event(over: Record<string, unknown> = {}) {
     title: "Alive @ Five",
     starts_at: "2026-08-13T21:00:00.000Z",
     ends_at: "2026-08-13T23:00:00.000Z",
+    municipality: "frederick",
     venue_name: "Carroll Creek Amphitheater",
     venue_place_slug: "carroll-creek-outdoor-amphitheater",
     geom: { lng: -77.4105, lat: 39.4143 },
@@ -28,6 +29,7 @@ describe("eventPinFromEvent", () => {
     const pin = eventPinFromEvent(event(), NOW);
 
     expect(pin).toMatchObject({
+      municipality: "frederick",
       source_label: "Downtown Frederick Partnership",
       source_url: "https://downtownfrederick.org/aliveatfive/",
       source_confidence: "verified",

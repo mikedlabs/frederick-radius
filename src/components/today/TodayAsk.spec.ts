@@ -4,6 +4,20 @@ import { describe, expect, it } from "vitest";
 import TodayAsk, { TodayQuickNeeds } from "./TodayAsk";
 
 describe("Today universal Find launcher", () => {
+  it("keeps a compact arrival as the real Find route without duplicating its explanation", () => {
+    const html = renderToStaticMarkup(createElement(TodayAsk, {
+      embedded: true, showQuickNeeds: false, density: "arrival",
+    }));
+    expect(html).toContain('href="/search"');
+    expect(html).toContain('data-find-interaction-ready="false"');
+    expect(html).toContain('aria-label="Find a place, service, event, or answer"');
+    expect(html).toContain('data-find-density="arrival"');
+    expect(html).toContain("Find what you need");
+    expect(html).not.toContain("Search a name, a need, or a question.");
+    expect(html).not.toContain('aria-label="Quick needs"');
+    expect(html).not.toContain("<input");
+  });
+
   it("uses the shared Find doorway instead of a second Ask form", () => {
     const html = renderToStaticMarkup(
       createElement(TodayAsk, null, createElement("span", null, "Category choices")),
@@ -11,9 +25,9 @@ describe("Today universal Find launcher", () => {
 
     expect(html).toContain('aria-label="Find a place, service, event, or answer"');
     expect(html).toContain('href="/search"');
-    expect(html).toContain("What do you need?");
+    expect(html).toContain("Find what you need");
     expect(html).toContain(
-      "Find a place, an event, or help with your plans.",
+      "Search a name, a need, or a question.",
     );
     expect(html).toContain('href="/open-now"');
     expect(html).toContain('href="/amenities"');

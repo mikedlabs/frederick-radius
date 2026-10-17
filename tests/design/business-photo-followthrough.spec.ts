@@ -40,8 +40,7 @@ describe("business photo follow-through", () => {
     const source = read("src/components/plan/PlanBuilder.tsx");
 
     expect(source).toContain("const fallbackPlace = {");
-    expect(source).toContain("!stop.photo_url &&");
     expect(source).toContain("place={fallbackPlace}");
-    expect(source).toContain("size={80}");
+    expect(source).toContain("size={48}");
   });
 });

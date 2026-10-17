@@ -1,14 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Hours } from "@/data/places";
-import { formatFullHours, formatWindows, getOpenStatus } from "@/lib/hours";
-import { easternParts } from "@/lib/tz";
+import { formatFullHours, formatWindows, getOpenStatus, hoursForDate } from "@/lib/hours";
+import { easternDayKey } from "@/lib/tz";
 import { placeHoursTrust } from "@/lib/trust";
 import TrustChip from "@/components/ui/TrustChip";
 import { ChevronDown, AlertCircle } from "lucide-react";
 
-const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
 export default function HoursBlock({
   hours,
@@ -23,8 +22,15 @@ export default function HoursBlock({
   provenance?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   if (!hours) return null;
-  const status = getOpenStatus(hours, { verified });
+  const status = getOpenStatus(hours, { verified }, now);
+  const today = hoursForDate(hours, now);
+  const exception = hours._official?.exceptions.find((item) => item.date === easternDayKey(now));
   const week = formatFullHours(hours);
 
   return (
@@ -39,7 +45,7 @@ export default function HoursBlock({
               is the page's one status voice, and this summary used to
               restate it (the duplicate the July 2026 review flagged). */}
           <span className="truncate text-sm font-medium" style={{ color: "var(--app-ink)" }}>
-            Hours today · {formatWindows(hours[DAY_KEYS[easternParts(new Date()).weekday]] ?? [])}
+            Hours today · {today ? formatWindows(today) : "Hours not confirmed"}
           </span>
           <TrustChip signal={placeHoursTrust(status)} className="shrink-0" />
         </span>
@@ -53,15 +59,20 @@ export default function HoursBlock({
         />
       </summary>
       <div className="px-3 pb-3 pt-1">
-        {!verified && (
+        {(!verified || status.state === "unknown") && (
           <p
             className="mb-2 flex items-start gap-1.5 text-[11px] leading-relaxed"
             style={{ color: "var(--app-ink-2)" }}
           >
             <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-warning)" }} />
             <span>
-              Hours below are <strong>typical</strong> but not confirmed by the business. Always call ahead.
+              These stored weekly hours are not current enough to confirm a visit. Check the official source before going.
             </span>
+          </p>
+        )}
+        {hours._official && (
+          <p className="mb-2 text-xs" style={{ color: "var(--app-ink-2)" }}>
+            {exception && today ? `${exception.reason}. ` : ""}The table shows normal weekly hours. Dated closures take priority.
           </p>
         )}
         <ul className="divide-y border-t text-sm" style={{ borderColor: "var(--app-border)" }}>
@@ -74,6 +85,12 @@ export default function HoursBlock({
             </li>
           ))}
         </ul>
+        {hours._official && (
+          <p className="mt-2 flex flex-wrap gap-x-3 text-xs">
+            <a href={hours._official.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline">Official branch hours</a>
+            <a href={hours._official.closures_url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline">FCPL holiday closures</a>
+          </p>
+        )}
         {provenance && (
           <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
             {provenance}

@@ -24,7 +24,9 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { browseSafePhotoUrl } from "@/lib/google-photo-policy";
+import { freeSearchPlaceVisual, type FreeSearchPlaceVisual } from "./place-visual";
 import { findDepartments, jurisdictionLabel } from "@/data/departments";
+import { eventSourceLabel } from "@/lib/events/source-label";
 import { isHighConfidenceCivicIntent, searchCivicActions, shouldShowDepartmentAnswers } from "@/lib/search/civic";
 import { negatedSearchFeatures, parseSearchQualifiers, searchFeatureCaveat, type SearchPlaceFeature } from "@/lib/search/qualifiers";
 
@@ -41,6 +43,12 @@ export type SearchResult = {
   title: string;
   subtitle: string;
   href: string;
+  /** Canonical event evidence for ranked map links outside its loaded pin window.
+   * This is listing data, not a new map pin or live availability check. */
+  event?: Pick<Event, "starts_at" | "ends_at" | "is_all_day" | "venue_name" | "municipality"> & {
+    source_label: string;
+    point?: { lng: number; lat: number };
+  };
   /** Compact category/municipality hint for badges. */
   badge?: string;
   /**
@@ -56,6 +64,8 @@ export type SearchResult = {
    * this live-search path; the overlay falls back to the type's icon.
    */
   thumbnail?: string;
+  /** Exact owned/Commons source carried with a free place thumbnail. */
+  thumbnailSource?: FreeSearchPlaceVisual;
   /** Place coordinates, so SearchOverlay can show distance when the user has
    *  already granted location (no prompt). Set for place results only. */
   lat?: number;
@@ -704,6 +714,7 @@ function hitToResult(h: SearchHit): SearchResult {
     const p = h.place as PlaceCardData;
     const cat = CATEGORY_BY_SLUG[p.category];
     const muni = MUNICIPALITY_BY_SLUG[p.municipality];
+    const photo = freeSearchPlaceVisual(p);
     return {
       type: "place",
       id: `place:${p.slug}`,
@@ -718,7 +729,8 @@ function hitToResult(h: SearchHit): SearchResult {
       trust: p.open_status ? placeHoursTrust(p.open_status) : undefined,
       // Live typeahead runs on each query edit. Keep it on owned/publisher
       // media so typing cannot fan out into paid Google photo requests.
-      thumbnail: browseSafePhotoUrl(p.hero_image, p.google_photo_url),
+      thumbnail: photo?.src,
+      thumbnailSource: photo ?? undefined,
       lat: p.geom?.lat,
       lng: p.geom?.lng,
       distance_m: p.distance_m,
@@ -734,6 +746,16 @@ function hitToResult(h: SearchHit): SearchResult {
       subtitle: `${e.venue_name} · ${new Date(e.starts_at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" })}`,
       href: `/events/${e.slug}`,
       badge: e.category,
+      event: {
+        starts_at: e.starts_at,
+        ends_at: e.ends_at,
+        is_all_day: e.is_all_day,
+        venue_name: e.venue_name,
+        municipality: e.municipality,
+        source_label: eventSourceLabel(e.source, e.organizer),
+        ...(e.placement !== "needs_review" && Number.isFinite(e.geom?.lng) && Number.isFinite(e.geom?.lat)
+          ? { point: { lng: e.geom.lng, lat: e.geom.lat } } : {}),
+      },
       trust: eventTrust(e),
       thumbnail: browseSafePhotoUrl(e.hero_image),
     };

@@ -1,11 +1,17 @@
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// A client guide must consume scalar counts, even through indirect imports.
+// Rejecting these modules makes an accidental catalog import fail this suite.
+vi.mock("@/data/beers", () => { throw new Error("The client guide must not load the beer catalog."); });
+vi.mock("@/data/food-trucks", () => { throw new Error("The client guide must not load the truck catalog."); });
 import TodayLocalGuides, {
   TodayFoodTruckGuide,
   foodTruckGuideCopy,
   type TodayFoodTruckGuideProps,
+  type TodayLocalGuidesProps,
 } from "./TodayLocalGuides";
 
 const NEXT = {
@@ -31,6 +37,18 @@ describe("foodTruckGuideCopy", () => {
       detail: "1 truck is sharing a live location.",
       state: "live",
     });
+  });
+
+  it("uses the supplied roster count only when neither live nor scheduled information is available", () => {
+    expect(foodTruckGuideCopy(0, null, AS_OF, 23)).toEqual({
+      href: "/food-trucks", detail: "See published stops and browse 23 local vendors.", state: "roster",
+    });
+    expect(foodTruckGuideCopy(0, NEXT, AS_OF, 23).detail).toBe("Next: The Alley Wagon at Steinhardt Brewing, today at 4pm.");
+    expect(foodTruckGuideCopy(1, NEXT, AS_OF, 23).detail).toBe("1 truck is sharing a live location.");
+  });
+
+  it("does not describe an omitted count as zero vendors", () => {
+    expect(foodTruckGuideCopy(0, null).detail).toBe("See published stops and browse local vendors.");
   });
 });
 
@@ -61,5 +79,13 @@ describe("TodayLocalGuides hierarchy", () => {
     expect(html).toContain(
       "Next: The Alley Wagon at Steinhardt Brewing, today at 4pm.",
     );
+  });
+
+  it("renders server-supplied guide counts without either catalog", () => {
+    const html = renderToStaticMarkup(createElement<TodayLocalGuidesProps>(TodayLocalGuides, { breweryCount: 19, foodTruckCount: 23 }));
+    expect(html).toContain("Browse 19 breweries and current taproom listings.");
+    expect(html).toContain("See published stops and browse 23 local vendors.");
+    expect(html).toContain('href="/beer"');
+    expect(html).toContain('href="/food-trucks"');
   });
 });

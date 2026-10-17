@@ -3,6 +3,8 @@
 import { townAccent } from "@/lib/townAccent";
 import { useEffect, useMemo, useState } from "react";
 import { useSavedList, useMounted, type SavedRef } from "@/hooks/useSaved";
+import { useSavedOutings } from "@/hooks/useSavedOutings";
+import SavedOutings from "./SavedOutings";
 import { useFollowedSlugs } from "@/hooks/useFollows";
 import { useRecentPlaces, useClearRecentPlaces } from "@/hooks/useRecentPlaces";
 import { useAllNotes, type PlaceNote } from "@/hooks/useNotes";
@@ -354,6 +356,7 @@ export default function SavedList({
 }) {
   const mounted = useMounted();
   const items = useSavedList();
+  const savedOutings = useSavedOutings();
   const {
     stops: savedTransitStops,
     remove: removeSavedTransitStop,
@@ -916,6 +919,7 @@ export default function SavedList({
     return (
       <div aria-busy="true" className="space-y-4">
         <Masthead stand="Loading saved places" />
+        {savedOutings.status !== "loading" && <SavedOutings snapshot={savedOutings} />}
         <div className="space-y-3">
           <Skeleton.Block height={46} round="var(--app-radius-sm)" />
           <Skeleton.Block height={56} round="var(--app-radius-md)" />
@@ -936,11 +940,13 @@ export default function SavedList({
     notedPlaces.length === 0 &&
     visitedPlaces.length === 0 &&
     savedTransitStops.length === 0 &&
-    savedTransitBuses.length === 0
+    savedTransitBuses.length === 0 &&
+    savedOutings.status === "ready" &&
+    savedOutings.outings.length === 0
   ) {
     return (
       <div className="space-y-4">
-        <Masthead stand="Places, events, buses, and stops you want to keep" />
+        <Masthead stand="Outings, places, events, and transit you want to keep" />
         <EmptyState />
         <KeepRadiusCard variant="row" />
       </div>
@@ -977,6 +983,9 @@ export default function SavedList({
   } else if (events.length > 0) {
     standParts.push(<em key="e">{events.length} event{events.length === 1 ? "" : "s"}</em>);
   }
+  if (savedOutings.status === "ready" && savedOutings.outings.length > 0) {
+    standParts.push(<span key="outings">{savedOutings.outings.length} outing{savedOutings.outings.length === 1 ? "" : "s"} on this device</span>);
+  }
   const transitSavedCount =
     savedTransitStops.length + savedTransitBuses.length;
   const hasOrganizerContent =
@@ -1005,10 +1014,12 @@ export default function SavedList({
               ? standParts.map((part, i) => (
                   <span key={i}>{i > 0 ? " · " : ""}{part}</span>
                 ))
-              : "Places and events you want to keep"}
+              : "Outings, places, and events you want to keep"}
           </>
         }
       />
+
+      <SavedOutings snapshot={savedOutings} />
 
       <SavedPlaceRefreshNotice
         unavailableCount={placeRefreshFailed ? placeRefsAll.length : 0}
@@ -1568,6 +1579,7 @@ export default function SavedList({
               ? ` · ${events.length} device-only event${events.length === 1 ? "" : "s"}`
               : ` · ${events.length} event${events.length === 1 ? "" : "s"}`
           )}
+          {savedOutings.status === "ready" && savedOutings.outings.length > 0 && ` · ${savedOutings.outings.length} device-only outing${savedOutings.outings.length === 1 ? "" : "s"}`}
           {savedTransitStops.length > 0 &&
             ` · ${savedTransitStops.length} stop${savedTransitStops.length === 1 ? "" : "s"}`}
           {savedTransitBuses.length > 0 &&
@@ -1592,7 +1604,7 @@ export function EmptyState() {
         className="px-0.5 font-sans text-[18px] font-semibold leading-snug"
         style={{ color: "var(--app-ink)" }}
       >
-        Save a place, event, bus trip, or stop to keep it here for later.
+        Save an outing, place, event, bus trip, or stop to keep it here for later.
       </p>
       <div className="flex flex-wrap gap-2">
         <Link
@@ -1602,6 +1614,14 @@ export function EmptyState() {
         >
           <Search className="h-4 w-4" strokeWidth={2} aria-hidden />
           Find something to save
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+        </Link>
+        <Link
+          href={withBrowseReturnTo("/plan", "/my-radius")}
+          className="tap-44 inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-[12.5px] font-semibold"
+          style={{ borderColor: "var(--app-control-border)", color: "var(--app-link)", background: "var(--app-bg-elevated-solid)" }}
+        >
+          Plan an outing
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
         </Link>
         <Link

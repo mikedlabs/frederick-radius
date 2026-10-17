@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   HIGH_VALUE_SOURCE_ENDPOINTS,
   MARC_SOURCE_ENDPOINTS,
+  RUNTIME_SOURCE_ENDPOINTS,
   aggregateFeedHealthBySource,
   probeFeedEndpoint,
   probeFeedEndpoints,
@@ -16,6 +17,54 @@ describe("scheduled feed-health probes", () => {
     expect(
       new Set(MARC_SOURCE_ENDPOINTS.map((endpoint) => endpoint.sourceId)),
     ).toEqual(new Set(["mta_marc_rt"]));
+  });
+
+  it("checks the exact City Path Plan query schema without fetching feature records", async () => {
+    const endpoint = RUNTIME_SOURCE_ENDPOINTS.find((row) => row.sourceId === "cof_path_plan")!;
+    const fields = [
+      ["OBJECTID", "OID"], ["Id", "Integer"], ["PATH_NAME", "String"],
+      ["STATUS", "String"], ["PATH_WIDTH", "Integer"], ["Length", "Double"],
+    ].map(([name, type]) => ({ name, type: `esriFieldType${type}` }));
+    const body = {
+      displayFieldName: "PATH_NAME",
+      geometryType: "esriGeometryPolyline",
+      fields,
+      features: [],
+    };
+    const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input));
+      expect(url.origin).toBe("https://spires.cityoffrederick.com");
+      expect(url.pathname).toBe("/arcgis/rest/services/Sidewalks/MapServer/4/query");
+      expect(url.searchParams.get("where")).toBe("1=0");
+      expect(url.searchParams.get("outFields")).toBe("OBJECTID,Id,PATH_NAME,STATUS,PATH_WIDTH,Length");
+      expect(url.searchParams.get("outSR")).toBe("4326");
+      expect(url.searchParams.get("f")).toBe("json");
+      return new Response(JSON.stringify(body), {
+        headers: { "content-type": "application/json" },
+      });
+    });
+
+    expect(endpoint.maxBodyBytes).toBe(4_096);
+    expect((await probeFeedEndpoint(endpoint, { fetchImpl })).ok).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+
+    const invalidBodies = [
+      { error: { code: 404, message: "Service PathPlan/MapServer not found" } },
+      { mapName: "Sidewalks", layers: [{ id: 4, name: "Path Plan" }] },
+      { ...body, geometryType: "esriGeometryPoint" },
+      { ...body, fields: fields.filter((field) => field.name !== "STATUS") },
+      { ...body, fields: fields.map((field) => field.name === "STATUS"
+        ? { ...field, type: "esriFieldTypeInteger" } : field) },
+      { ...body, error: { code: 404, message: "Layer unavailable" } },
+    ];
+    for (const invalidBody of invalidBodies) {
+      const result = await probeFeedEndpoint(endpoint, {
+        fetchImpl: async () => new Response(JSON.stringify(invalidBody), {
+          headers: { "content-type": "application/json" },
+        }),
+      });
+      expect(result).toMatchObject({ status: 200, ok: false, skipped: false });
+    }
   });
 
   it("aggregates a multi-endpoint source into one all-or-failed result", () => {

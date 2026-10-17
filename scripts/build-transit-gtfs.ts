@@ -13,6 +13,7 @@
 import { writeFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import {
   assertTransitValidation,
@@ -24,15 +25,15 @@ const GTFS_URL = "https://passio3.com/frederick/passioTransit/gtfs/google_transi
 const OFFICIAL_SCHEDULE_URL =
   "https://www.frederickcountymd.gov/199/Connector-Schedules";
 const TMP = mkdtempSync(join(tmpdir(), "fr-gtfs-"));
-const OUT = new URL("../src/data/transit.json", import.meta.url).pathname;
-const NETWORK_OUT = new URL(
+const OUT = fileURLToPath(new URL("../src/data/transit.json", import.meta.url));
+const NETWORK_OUT = fileURLToPath(new URL(
   "../src/data/transit-network.json",
   import.meta.url,
-).pathname;
-const TRIPS_OUT = new URL(
+));
+const TRIPS_OUT = fileURLToPath(new URL(
   "../src/data/transit-trips.json",
   import.meta.url,
-).pathname;
+));
 
 function splitCsvLine(line: string): string[] {
   const out: string[] = []; let cur = "", q = false;

@@ -1,18 +1,26 @@
 :root {
-  --radius-brick: #B5462B;
-  --radius-cream: #F4EEE2;
-  --radius-ink: #221C15;
+  --radius-brick: #C34335;
+  --radius-cream: #FFFFFF;
+  --radius-ink: #22221F;
   --radius-forest: #315A43;
   --radius-creek: #285D73;
   --radius-plum: #7E2C6F;
   --radius-amber: #C58A32;
   --radius-ridge: #3F5E8F;
-  --radius-surface: #FBF8F0;
-  --radius-paper-deep: #EAE1D1;
-  --radius-border: #D8CDBA;
-  --radius-muted-ink: #6C6357;
-  --radius-control-border: #927F63;
+  --radius-surface: #FFFFFF;
+  --radius-paper-deep: #F4F4F3;
+  --radius-border: #E1E1DD;
+  --radius-muted-ink: #62625C;
+  --radius-control-border: #818178;
   --radius-functional-amber: #925E16;
+  --radius-dark-canvas: #1C1C19;
+  --radius-dark-surface: #292925;
+  --radius-dark-ink: #F7F7F4;
+  --radius-dark-muted-ink: #C1C1B8;
+  --radius-dark-border: #464640;
+  --radius-dark-control-border: #A5A59A;
+  --radius-dark-link: #FFAAA0;
   --radius-font-display: "Libre Caslon Display";
   --radius-font-text: "Public Sans";
+  --radius-font-product: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }

@@ -185,6 +185,7 @@ export const UnavailableRecentSearches: Story = {
 
 export const ClearRecentSearchesFailure: Story = {
   args: { initialQuery: "", sampleRecentQuery: "Sample submitted phrase" },
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   parameters: { docs: { description: { story: "Submitting this labeled sample records its phrase through the real submission hook. Clear is deliberately refused to demonstrate truthful failure feedback." } } },
   beforeEach: () => {
     const restoreFetch = sampleSearch("ready");
@@ -196,10 +197,28 @@ export const ClearRecentSearchesFailure: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Submit sample recent search" }));
     const dialog = within(await canvas.findByRole("dialog", { name: "What do you need?" }));
     const recents = within(dialog.getByRole("region", { name: "Recent searches on this device" }));
-    await userEvent.click(recents.getByRole("button", { name: "Clear recent searches" }));
-    await expect(recents.getByText("Could not clear recent searches. Please try again.")).toBeVisible();
-    await expect(recents.getByRole("button", { name: "Sample submitted phrase" })).toBeVisible();
-    await expect(recents.queryByText("No recent searches on this device.")).not.toBeInTheDocument();
+    const repeatSearch = recents.getByRole("button", { name: "Sample submitted phrase" });
+    repeatSearch.scrollIntoView({ block: "nearest" });
+    const box = repeatSearch.getBoundingClientRect();
+    await expect(box.width).toBeGreaterThanOrEqual(44);
+    await expect(box.height).toBeGreaterThanOrEqual(44);
+    for (const offset of [-21.5, 0, 21.5]) {
+      const hit = repeatSearch.ownerDocument.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2 + offset);
+      await expect(hit !== null && repeatSearch.contains(hit)).toBe(true);
+    }
+    repeatSearch.focus();
+    await userEvent.keyboard("{Enter}");
+    await expect(dialog.getByRole("searchbox")).toHaveValue("Sample submitted phrase");
+    await expect(canvas.getByRole("dialog", { name: "What do you need?" })).toBeVisible();
+    await userEvent.click(dialog.getByRole("button", { name: "Clear search" }));
+    await expect(dialog.getByRole("searchbox")).toHaveValue("");
+    // Choosing a query unmounts the empty-query section. Probe the newly
+    // rendered history region after Clear, not its detached predecessor.
+    const currentRecents = within(dialog.getByRole("region", { name: "Recent searches on this device" }));
+    await userEvent.click(currentRecents.getByRole("button", { name: "Clear recent searches" }));
+    await expect(currentRecents.getByText("Could not clear recent searches. Please try again.")).toBeVisible();
+    await expect(currentRecents.getByRole("button", { name: "Sample submitted phrase" })).toBeVisible();
+    await expect(currentRecents.queryByText("No recent searches on this device.")).not.toBeInTheDocument();
   },
 };
 

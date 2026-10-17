@@ -1,4 +1,5 @@
 import { Phone, Clock, Recycle, ExternalLink, Landmark } from "lucide-react";
+import { municipalOfficeHours } from "@/lib/municipal-civic-contact";
 import {
   civicContacts,
   freshnessLabel,
@@ -41,11 +42,13 @@ function sharedValue(vals: Array<string | undefined>): string | undefined {
 export default function CivicCard({
   rec,
   hideHeading = false,
+  now = new Date(),
 }: {
   rec: MunicipalCivic | null;
   /** When mounted inside the merged "Living here" block, the parent owns
    *  the heading — drop CivicCard's own so there's a single heading style. */
   hideHeading?: boolean;
+  now?: Date;
 }) {
   if (!rec) return null;
   const contacts = civicContacts(rec);
@@ -137,6 +140,8 @@ export default function CivicCard({
               last={i === contacts.length - 1}
               sharedPhone={sharedPhone}
               sharedAddress={sharedAddress}
+              checkedAt={rec.source.fetchedAt}
+              now={now}
             />
           ))}
         </ul>
@@ -156,7 +161,7 @@ export default function CivicCard({
             <ExternalLink className="h-2.5 w-2.5" strokeWidth={2.25} aria-hidden />
           </a>
           <span aria-hidden>·</span>
-          <span>{freshnessLabel(rec.source.fetchedAt)}</span>
+          <span>{freshnessLabel(rec.source.fetchedAt, now)}</span>
         </div>
       </div>
     </section>
@@ -168,11 +173,15 @@ function ContactRow({
   last,
   sharedPhone,
   sharedAddress,
+  checkedAt,
+  now,
 }: {
   c: CivicContact;
   last: boolean;
   sharedPhone?: string;
   sharedAddress?: string;
+  checkedAt: string;
+  now: Date;
 }) {
   // Trash/recycling reads as the highest-value resident answer, so its
   // schedule gets a glyph; the rest stay clean text rows.
@@ -182,6 +191,8 @@ function ContactRow({
   const showPhone = Boolean(c.phone && c.phone !== sharedPhone);
   const showAddress = Boolean(c.address && c.address !== sharedAddress);
   const hasDetailRow = showPhone || Boolean(c.website) || showAddress;
+  const hours = municipalOfficeHours(c, checkedAt, now);
+  const isOffice = /\b(?:town hall|office|public works|permits|utilities|police)\b/i.test(c.label);
   return (
     <li
       className="px-4 py-3"
@@ -194,16 +205,27 @@ function ContactRow({
         >
           {c.label}
         </span>
-        {c.hours && (
+        {hours.state === "current" && (
           <span
             className="inline-flex items-center gap-1 text-[12px]"
             style={{ color: "var(--app-ink-2)" }}
           >
             <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
-            {c.hours}
+            {hours.hours}
           </span>
         )}
       </div>
+
+      {hours.state === "stale" && (
+        <p className="mt-1.5 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+          The town previously posted {hours.hours}, last checked {hours.checkedDate}. Confirm with the town before visiting.
+        </p>
+      )}
+      {isOffice && hours.state === "unknown" && (
+        <p className="mt-1.5 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+          Office hours are unconfirmed. Confirm with the town before visiting.
+        </p>
+      )}
 
       {c.schedule && (
         <p

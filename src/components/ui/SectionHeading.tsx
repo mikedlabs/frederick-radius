@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 /**
  * SectionHeading — the one strong category header, reused by Shelf and
  * the Radius results grid (and available to any future surface). A
- * tick + editorial title + a quiet count, optional trailing action.
+ * tick + system-sans title + a quiet count, optional trailing action.
  *
  * The tick color reads from `--section-accent` if a parent has set it
  * (so a whole route can theme its headings with one declaration on the
@@ -31,16 +31,14 @@ export default function SectionHeading({
   trailing?: React.ReactNode;
   /** Override the route accent for a single heading. */
   accent?: string;
-  /** Heading register. `lg` is the primary section title (Public Sans 22 + full
-   *  tick); `sm` is the one lighter subhead register for secondary sections
-   *  (Public Sans 16 + a shorter tick), so hierarchy reads from type, not per-section
-   *  invention. */
+  /** Heading register. Both use the device's System Sans. `lg` is the bold
+   * 22px primary title with a full tick; `sm` is the semibold 16px subhead
+   * with a shorter tick. */
   size?: "lg" | "sm";
 }) {
   const tickColor = accent ?? "var(--section-accent, var(--app-brand))";
-  // The tick is decorative and keeps the true accent; the CTA is 12px TEXT
-  // and must hold 4.5:1 — the raw brand red (3.7:1 on cream) fails, so the
-  // text color is the accent pulled 40% toward ink (axe-verified, Jul 2026).
+  // The tick keeps the true accent. Small action text blends it toward the
+  // theme's ink unless its context supplies an explicit readable action color.
   const ctaColor = `color-mix(in srgb, ${tickColor} 60%, var(--app-ink))`;
   const small = size === "sm";
   const hasTrailingAction = Boolean(trailing || onCtaClick || href);
@@ -49,7 +47,7 @@ export default function SectionHeading({
       <h2
         className={`${small
             ? "flex min-w-0 items-center gap-2 font-sans text-[16px] font-semibold leading-none tracking-tight"
-            : "flex min-w-0 items-center gap-2 font-serif text-[22px] leading-none tracking-tight"}${hasTrailingAction ? " max-[359px]:basis-full" : ""}`}
+            : "flex min-w-0 items-center gap-2 font-sans text-[22px] font-bold leading-none tracking-tight"}${hasTrailingAction ? " max-[359px]:basis-full" : ""}`}
         style={{ color: "var(--app-ink)" }}
       >
         <span
@@ -59,11 +57,11 @@ export default function SectionHeading({
         />
         <span
           className="truncate"
-          style={!small ? {
-            backgroundImage: `var(--app-heading-image, linear-gradient(110deg, var(--app-ink) 30%, color-mix(in srgb, ${tickColor} 80%, var(--app-ink))))`,
+          style={{
+            backgroundImage: "var(--app-heading-image, none)",
             WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "var(--app-heading-fill, transparent)",
-          } : undefined}
+            WebkitTextFillColor: "var(--app-heading-fill, currentColor)",
+          }}
         >
           {title}
         </span>

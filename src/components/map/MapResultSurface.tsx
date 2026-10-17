@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { X } from "lucide-react";
+import styles from "./MapResultSurface.module.css";
 import { takeMapSelectionOpener } from "./mapSelectionFocus";
 import type {
   DecisionEntityKind,
@@ -163,7 +164,7 @@ export default function MapResultSurface({
   return (
     <section
       ref={surfaceRef}
-      className={`map-result-surface ${className}`}
+      className={`map-result-surface ${styles.surface} ${className}`}
       data-map-result-surface
       data-decision-impression={decision ? "true" : undefined}
       data-decision-surface={decision ? "map" : undefined}

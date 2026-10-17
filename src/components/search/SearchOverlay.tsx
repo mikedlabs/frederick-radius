@@ -27,6 +27,8 @@ import { searchCivicActions, shouldShowDepartmentAnswers } from "@/lib/search/ci
 import type { IntentIcon } from "@/lib/answers/types";
 import { commandDestination } from "@/lib/command-routing";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
+import { settleFindReturnScroll } from "./find-return-scroll";
+import SearchPlaceVisual, { SearchPlaceVisualImage, SearchPlaceVisualCredit } from "./SearchPlaceVisual";
 
 /**
  * Quick-answer intents now live in `@/lib/answers/intents` so /today's
@@ -304,15 +306,6 @@ function storedFindReturnScrollY(): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function settleFindReturnScroll(scrollY: number | null) {
-  if (scrollY === null) return;
-  // Today can finish hydrating a live rail while Find is open. Reassert the
-  // saved coordinate after that layout settles so the dismissed surface does
-  // not return the reader to a different chapter of the page.
-  window.setTimeout(() => {
-    window.scrollTo({ top: scrollY, behavior: "auto" });
-  }, 220);
-}
 
 export default function SearchOverlay({
   open,
@@ -366,8 +359,8 @@ export default function SearchOverlay({
     const returnScrollY = returnScrollYRef.current;
     const shouldRestore = !leavingFindRef.current;
     onClose();
-    if (shouldRestore) settleFindReturnScroll(returnScrollY);
-  }, [onClose]);
+    if (shouldRestore) settleFindReturnScroll(returnScrollY, historyLayerId);
+  }, [onClose, historyLayerId]);
   const historyLayer = useReversibleHistoryLayer({
     active: open,
     id: historyLayerId,
@@ -1004,7 +997,10 @@ export default function SearchOverlay({
                   track("search_pick", { type: r.type });
                   navigateFromSearch(r.href);
                 };
-                const art = r.thumbnail ? (
+                const art = r.thumbnailSource ? (
+                  <SearchPlaceVisualImage size={idx === 0 ? 64 : 40}
+                    fallback={<Icon className={idx === 0 ? "h-6 w-6" : "h-4 w-4"} strokeWidth={1.9} style={{ color: "var(--app-link)" }} aria-hidden />} />
+                ) : r.thumbnail ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={r.thumbnail}
@@ -1033,8 +1029,7 @@ export default function SearchOverlay({
                     ? `/map?at=${r.lat.toFixed(5)},${r.lng.toFixed(5)}&place=${encodeURIComponent(r.id.replace(/^place:/, ""))}`
                     : null;
                   return (
-                    <li
-                      key={r.id}
+                    <SearchPlaceVisual key={r.id} source={r.thumbnailSource ?? null}><li
                       id="search-opt-0"
                       data-idx={0}
                       className="mx-3 mb-2 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] shadow-[var(--app-shadow-1)]"
@@ -1055,6 +1050,7 @@ export default function SearchOverlay({
                           {trust && <TrustChip signal={trust} className="mt-1.5" />}
                         </div>
                       </div>
+                      <SearchPlaceVisualCredit />
                       <div className={`grid border-t ${mapHref ? "grid-cols-2" : "grid-cols-1"}`} style={{ borderColor: "var(--app-border)" }}>
                         <Link
                           href={r.href}
@@ -1085,12 +1081,12 @@ export default function SearchOverlay({
                           </Link>
                         ) : null}
                       </div>
-                    </li>
+                    </li></SearchPlaceVisual>
                   );
                 }
 
                 return (
-                  <li key={r.id} id={`search-opt-${idx}`} data-idx={idx}>
+                  <SearchPlaceVisual key={r.id} source={r.thumbnailSource ?? null}><li id={`search-opt-${idx}`} data-idx={idx}>
                     <Link
                       href={r.href}
                       onClick={pick}
@@ -1117,7 +1113,8 @@ export default function SearchOverlay({
                       </span>
                       <ArrowRight className="mt-4 h-3.5 w-3.5 shrink-0 opacity-35" strokeWidth={2.25} aria-hidden />
                     </Link>
-                  </li>
+                    <SearchPlaceVisualCredit />
+                  </li></SearchPlaceVisual>
                 );
               })}
             </ul>
@@ -1286,7 +1283,7 @@ function EmptyHint({
                 key={`recent-${s}`}
                 type="button"
                 onClick={() => onPick(s)}
-                className="tactile-interactive flex h-9 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[12.5px] font-medium shadow-[var(--app-shadow-1)] transition-transform hover:scale-[1.02] active:scale-95"
+                className="tactile-interactive flex min-h-11 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[12.5px] font-medium shadow-[var(--app-shadow-1)] transition-transform hover:scale-[1.02] active:scale-95"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
               >
                 <Clock className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />

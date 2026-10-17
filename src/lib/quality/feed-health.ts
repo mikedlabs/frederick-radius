@@ -129,12 +129,33 @@ export const RUNTIME_SOURCE_ENDPOINTS: readonly FeedHealthEndpoint[] = [
   {
     group: "City of Frederick Path Plan",
     sourceId: "cof_path_plan",
-    url: "https://spires.cityoffrederick.com/arcgis/rest/services/PathPlan/MapServer?f=json",
+    // Layer metadata exceeds 10 KB. This empty query verifies the actual
+    // six-field runtime schema within the existing 4 KB response budget.
+    url:
+      "https://spires.cityoffrederick.com/arcgis/rest/services/Sidewalks/MapServer/4/query" +
+      "?where=1%3D0&outFields=OBJECTID%2CId%2CPATH_NAME%2CSTATUS%2CPATH_WIDTH%2CLength" +
+      "&returnGeometry=true&outSR=4326&f=json",
     critical: false,
     method: "GET",
     maxBodyBytes: 4_096,
     contentType: /json|text\/plain/i,
-    bodyPattern: /"layers"\s*:|"mapName"\s*:/i,
+    bodyPattern: new RegExp([
+      String.raw`^(?![\s\S]*"error"\s*:)`,
+      String.raw`(?=[\s\S]*"displayFieldName"\s*:\s*"PATH_NAME")`,
+      String.raw`(?=[\s\S]*"geometryType"\s*:\s*"esriGeometryPolyline")`,
+      String.raw`(?=[\s\S]*"fields"\s*:\s*\[)`,
+      ...[
+        ["OBJECTID", "OID"],
+        ["Id", "Integer"],
+        ["PATH_NAME", "String"],
+        ["STATUS", "String"],
+        ["PATH_WIDTH", "Integer"],
+        ["Length", "Double"],
+      ].map(([name, type]) =>
+        String.raw`(?=[\s\S]*\{(?=[^{}]*"name"\s*:\s*"${name}")(?=[^{}]*"type"\s*:\s*"esriFieldType${type}")[^{}]*\})`,
+      ),
+      String.raw`(?=[\s\S]*"features"\s*:\s*\[\s*\])`,
+    ].join("")),
     accept: "application/json, text/plain",
   },
   {

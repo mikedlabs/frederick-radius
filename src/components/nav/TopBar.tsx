@@ -13,6 +13,7 @@ import { Search, Compass, ChevronLeft, X } from "lucide-react";
 import RippleMark from "@/components/brand/RippleMark";
 import styles from "./NavChrome.module.css";
 import LocationChip from "./LocationChip";
+import AppearanceControl from "./AppearanceControl";
 import PulseIndicator from "./PulseIndicator";
 import AppTransitionLink from "./AppTransitionLink";
 import { usePathname, useRouter } from "next/navigation";
@@ -24,6 +25,8 @@ import {
 } from "@/lib/findBridge";
 import { haptic } from "@/lib/haptics";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { installNativeReturnOwner, rememberNativeRequest } from "@/components/search/native-request-return";
+import { useNativeRequestReturn } from "@/components/search/useNativeRequestReturn";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 
 const SearchOverlay = lazy(() => import("@/components/search/SearchOverlay"));
@@ -75,6 +78,9 @@ export default function TopBar() {
   const scrollTrailRef = useRef({ previous: 0, current: 0, changedAt: 0 });
   const pathname = usePathname();
   const router = useRouter();
+  const toolsOpenerRef = useRef<HTMLAnchorElement>(null);
+  useEffect(installNativeReturnOwner, []);
+  useNativeRequestReturn({ target: "tools-opener", inputRef: toolsOpenerRef, pathname, ready: findInteractionReady });
   const closeSearch = useCallback(() => setSearchOpen(false), []);
 
   // The overlay stays lazy and unmounts on close. Only its query survives in
@@ -274,6 +280,7 @@ export default function TopBar() {
     <>
       <header
         data-map-header={pathname === "/map" ? "true" : undefined}
+        data-dense-mobile-header={showMobileSearch || pathname === "/compass" ? "true" : undefined}
         className={`${styles.bar} sticky top-0 border-b border-[var(--app-border)] backdrop-blur-xl pt-[env(safe-area-inset-top)]`}
         style={{
           // Tokenized z-index — see globals.css :root --z-* scale.
@@ -281,15 +288,7 @@ export default function TopBar() {
         }}
       >
         <div
-          className="mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-1.5 sm:gap-2 lg:max-w-screen-lg lg:pl-24"
-          // Horizontal padding is max(1rem base, side-inset): a notched
-          // phone in landscape puts the notch on a side edge, which could
-          // clip the search field / back button. max() keeps the 1rem base
-          // on every non-notched device and in portrait (side insets 0).
-          style={{
-            paddingLeft: "max(1rem, env(safe-area-inset-left, 0px))",
-            paddingRight: "max(1rem, env(safe-area-inset-right, 0px))",
-          }}
+          className={`${styles.row} mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-1.5 sm:gap-2 lg:max-w-screen-lg lg:pl-24`}
         >
           {isDeepPage ? (
             // Deep page: a clear way back, so no screen is a dead-end.
@@ -297,6 +296,7 @@ export default function TopBar() {
               type="button"
               onClick={goBack}
               aria-label="Back"
+              data-header-back
               className="-ml-1.5 inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-1 font-semibold tracking-tight transition active:scale-[0.96] min-[390px]:justify-start min-[390px]:pl-1 min-[390px]:pr-2.5"
               style={{ color: "var(--app-ink)" }}
             >
@@ -310,7 +310,7 @@ export default function TopBar() {
               onMouseEnter={() => router.prefetch("/")}
               onFocus={() => router.prefetch("/")}
               aria-label={pathname === "/map" ? "Frederick Radius, home" : "Frederick Radius beta, home"}
-              className="tap-44 flex items-center gap-2 font-brand text-[18px] tracking-[-0.015em]"
+              className={`${styles.home} tap-44 flex items-center gap-2 font-brand text-[18px] tracking-[-0.015em]`}
               style={{ color: "var(--app-brand)" }}
             >
               {/* Canonical horizontal lockup: the 24px+ two-arc Ripple beside
@@ -321,6 +321,7 @@ export default function TopBar() {
                   controls retain a full touch target. The mark still carries
                   the brand there; the complete lockup returns at sm. */}
               <span
+                data-header-wordmark
                 className="hidden whitespace-nowrap leading-none sm:block"
                 style={{ color: "var(--app-ink)" }}
               >
@@ -450,12 +451,19 @@ export default function TopBar() {
               when active, unavailable, or already open, so safety never gets
               hidden but a quiet feed does not crowd the app bar. */}
           <PulseIndicator />
+          <AppearanceControl />
 
           {/* Compass is the field-guide index. Keep the destination visible on
               its own page so the top navigation does not change shape. */}
           <div className="contents">
             <AppTransitionLink
+              ref={toolsOpenerRef}
               href="/compass"
+              onClick={(event) => {
+                if (event.button === 0 && !event.defaultPrevented && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+                  rememberNativeRequest({ target: "tools-opener" });
+                }
+              }}
               prefetch={false}
               onMouseEnter={() => router.prefetch("/compass")}
               onFocus={() => router.prefetch("/compass")}
@@ -471,19 +479,9 @@ export default function TopBar() {
               }}
             >
               <Compass className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
-              {/* 400, not 390. Three things used to appear at exactly 390px:
-                  this label, the LocationChip's scope text, and its chevron.
-                  Their sum needs 396px, so on a 390px viewport - iPhone
-                  12/13/14/15/16, the single most common width there is - the
-                  header overflowed by 5px and this chip's right border was
-                  sliced off by the clip.
-
-                  Delaying THIS label rather than the location text is the
-                  trade worth making: the complete short location scope tells
-                  you something, and "Tools" only repeats an icon that already
-                  carries both an aria-label and a title. Nothing is lost but a
-                  duplicate. */}
-              <span className="hidden text-[12px] font-semibold leading-none min-[400px]:inline sm:hidden">Tools</span>
+              {/* Keep the name beyond narrow phone widths so location,
+                  appearance and Tools retain separate 44px touch targets. */}
+              <span className="hidden text-[12px] font-semibold leading-none min-[460px]:inline sm:hidden">Tools</span>
               <span className="hidden text-[14px] font-semibold leading-none sm:inline">
                 Tools
               </span>

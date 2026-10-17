@@ -1,5 +1,7 @@
 import RAW from "@/data/municipal-civic.json" with { type: "json" };
 import { MUNICIPALITIES } from "@/data/municipalities";
+import { municipalCheckedDate, normalizeMunicipalContact, normalizeMunicipalContacts, type CivicContact } from "@/lib/municipal-civic-contact";
+export type { CivicContact } from "@/lib/municipal-civic-contact";
 
 /**
  * Per-municipality civic data — the parity layer.
@@ -15,20 +17,6 @@ import { MUNICIPALITIES } from "@/data/municipalities";
  * the /m/[municipality] hubs. The file starts empty ({}) — nothing is
  * fabricated; entries appear as the agent populates them.
  */
-
-export type CivicContact = {
-  /** What a resident would call this ("Town Hall", "Public Works"). */
-  label: string;
-  phone?: string;
-  website?: string;
-  /** Free-text hours as published ("Mon–Fri 8–4:30"). */
-  hours?: string;
-  /** Free-text schedule/rule, e.g. trash "Collection Thursdays; recycling every other Thu." */
-  schedule?: string;
-  address?: string;
-  /** One-line "call us about" in resident voice. */
-  about?: string;
-};
 
 export type MunicipalCivic = {
   slug: string;
@@ -52,7 +40,7 @@ export type MunicipalCivic = {
   };
 };
 
-const DATA = RAW as unknown as Record<string, MunicipalCivic>;
+const DATA = Object.fromEntries(Object.entries(RAW).map(([slug, rec]) => [slug, normalizeMunicipalContacts(rec)])) as unknown as Record<string, MunicipalCivic>;
 
 /** Civic record for a municipality slug, or null if not yet ingested. */
 export function municipalCivicFor(slug: string): MunicipalCivic | null {
@@ -75,7 +63,7 @@ export function civicContacts(rec: MunicipalCivic): CivicContact[] {
     rec.police,
     ...(rec.extras ?? []),
   ];
-  return ordered.filter((c): c is CivicContact => Boolean(c));
+  return ordered.map(normalizeMunicipalContact).filter((c): c is CivicContact => Boolean(c));
 }
 
 /**
@@ -130,14 +118,8 @@ export function findMunicipalCivic(
   return { town: rec.name, rec, contacts: civicContacts(rec).slice(0, 2), matchedIntent: false };
 }
 
-/** Relative-freshness label for an answer's provenance line. */
-export function freshnessLabel(fetchedAt: string): string {
-  const t = Date.parse(fetchedAt);
-  if (!Number.isFinite(t)) return "";
-  const days = Math.floor((Date.now() - t) / 86_400_000);
-  if (days <= 0) return "updated today";
-  if (days === 1) return "updated yesterday";
-  if (days < 30) return `updated ${days}d ago`;
-  const months = Math.floor(days / 30);
-  return `updated ${months}mo ago`;
+/** Dated provenance without treating an invalid future clock as a fresh check. */
+export function freshnessLabel(fetchedAt: string, now = new Date()): string {
+  const checked = municipalCheckedDate(fetchedAt, now);
+  return checked ? `Source checked ${checked}` : "Source check date is unavailable";
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { mapListPhotoLoader } from "@/components/map/map-list-photo-loader";
+import { mapListPhotoLoader, type PlacePhotoData } from "@/components/map/map-list-photo-loader";
 
 /**
  * Lazy place-photo hydration for list surfaces, extracted from MapList's
@@ -26,58 +26,62 @@ import { mapListPhotoLoader } from "@/components/map/map-list-photo-loader";
  * final state). Requests batch through the shared loader and only fire once
  * the row is near the viewport.
  */
-export function usePlacePhoto(
+/** Source-aware version for cards that render individual photo credits. */
+export function usePlacePhotoData(
   slug: string,
-  inline: string | null | undefined,
   enabled: boolean,
-): { photoUrl: string | null | undefined; anchorRef: React.RefObject<HTMLDivElement | null> } {
+): { photoData: PlacePhotoData | null | undefined; anchorRef: React.RefObject<HTMLDivElement | null> } {
   const anchorRef = useRef<HTMLDivElement>(null);
-  const [photoUrl, setPhotoUrl] = useState<string | null | undefined>(() =>
-    inline != null && inline.length > 0
-      ? inline
-      : enabled
-        ? mapListPhotoLoader.peek(slug)
-        : null,
-  );
+  const [hydrated, setHydrated] = useState<{ slug: string; data: PlacePhotoData | null } | null>(null);
+  // A recycled row must never paint the previous place's image or credit,
+  // including the render before its next effect runs.
+  const photoData = !enabled ? null : hydrated?.slug === slug
+    ? hydrated.data
+    : mapListPhotoLoader.peekData(slug);
 
   useEffect(() => {
-    if (!enabled || photoUrl !== undefined) return;
+    if (!enabled || photoData !== undefined) return;
 
     let active = true;
     let started = false;
     const hydrate = () => {
       if (started) return;
       started = true;
-      void mapListPhotoLoader.load(slug).then((photo) => {
-        if (active) setPhotoUrl(photo);
+      void mapListPhotoLoader.loadData(slug).then((data) => {
+        if (active) setHydrated({ slug, data });
       });
     };
 
     const anchor = anchorRef.current;
     if (!anchor || typeof IntersectionObserver === "undefined") {
       hydrate();
-      return () => {
-        active = false;
-      };
+      return () => { active = false; };
     }
-
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
         observer.disconnect();
         hydrate();
       },
-      // Same look-ahead MapList uses: far enough that a normal scroll never
-      // catches an empty box, near enough that a fast fling does not fetch
-      // the whole county.
       { rootMargin: "180px 0px" },
     );
     observer.observe(anchor);
-    return () => {
-      active = false;
-      observer.disconnect();
-    };
-  }, [enabled, photoUrl, slug]);
+    return () => { active = false; observer.disconnect(); };
+  }, [enabled, photoData, slug]);
 
-  return { photoUrl, anchorRef };
+  return { photoData, anchorRef };
+}
+
+/** Compatibility for compact URL-only consumers; shares the same batch. */
+export function usePlacePhoto(
+  slug: string,
+  inline: string | null | undefined,
+  enabled: boolean,
+): { photoUrl: string | null | undefined; anchorRef: React.RefObject<HTMLDivElement | null> } {
+  const inlinePhoto = inline?.trim() || null;
+  const { photoData, anchorRef } = usePlacePhotoData(slug, enabled && !inlinePhoto);
+  return {
+    photoUrl: inlinePhoto ?? (enabled ? (photoData === undefined ? undefined : photoData?.google_photo_url ?? null) : null),
+    anchorRef,
+  };
 }

@@ -2,9 +2,11 @@ import {
   classifyEventDetailResult,
   eventDetailGateSummary,
   eventDetailPathsFromHtml,
+  eventListingTrustViolations,
   mapWithConcurrency,
 } from "./lib/prod-audit-events.mjs";
 import { publicReadinessGate } from "./lib/prod-audit-readiness.mjs";
+import { eventLinkWaitBudget, waitForRenderedEventLinks } from "./lib/prod-audit-event-links.mjs";
 
 /**
  * Production acceptance canary — tests the apex URL after promotion.
@@ -40,6 +42,7 @@ const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const CORE_ROUTES = ["/today", "/events", "/map", "/ask"];
 const STABLE_PLACE_PATH = "/places/brewers-alley-frederick";
 const EVENT_LINK_CONCURRENCY = 4;
+const EVENT_LINK_WAIT_MS = eventLinkWaitBudget(process.env.CANARY_EVENT_LINK_WAIT_MS);
 
 let failures = 0;
 const checkedPages = new Map();
@@ -70,7 +73,7 @@ function isBetaDestination(value) {
 
 async function request(
   path,
-  { follow = true, accept = "*/*", requestHeaders = {} } = {},
+  { follow = true, accept = "*/*", requestHeaders = {}, ordinary = false, timeoutMs = REQUEST_TIMEOUT_MS } = {},
 ) {
   const hops = [];
   let url = new URL(path, BASE);
@@ -79,11 +82,11 @@ async function request(
     const requestStartedAt = Date.now();
     const response = await fetch(url, {
       redirect: "manual",
-      cache: "no-store",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      ...(ordinary ? {} : { cache: "no-store" }),
+      signal: AbortSignal.timeout(timeoutMs),
       headers: {
         Accept: accept,
-        "Cache-Control": "no-cache",
+        ...(ordinary ? {} : { "Cache-Control": "no-cache" }),
         "User-Agent": USER_AGENT,
         ...requestHeaders,
       },
@@ -191,7 +194,27 @@ const uncontrolledImgs = (html) =>
     ) || []
   ).length;
 
+function trustedHtml(path, result) {
+  if (path === "/events") {
+    for (const { term, count } of eventListingTrustViolations(result.body)) {
+      check(
+        count === 0,
+        `/events has no "${term}" listing`,
+        `/events still shows "${term}" (${count}×)`,
+      );
+    }
+  }
+  const count = uncontrolledImgs(result.body);
+  check(
+    count === 0,
+    `${path} renders no uncontrolled images`,
+    `${path} renders ${count} uncontrolled image(s)`,
+  );
+}
+
 async function run() {
+  let recoveryEvidence = null;
+  let deployedSha = null;
   console.log(`\nProduction canary → ${BASE.origin}\n`);
 
   // The root must resolve directly to Today. A beta detour, marketing cover,
@@ -293,6 +316,11 @@ async function run() {
       bad("/api/today/events did not return valid JSON");
     }
     if (payload) {
+      recoveryEvidence = {
+        status: result.status,
+        cacheControl: result.headers.get("cache-control"),
+        payload,
+      };
       const events = Array.isArray(payload.events) ? payload.events : null;
       check(
         events !== null && typeof payload.partial === "boolean",
@@ -357,6 +385,62 @@ async function run() {
     }
   }
 
+  // /sw.js is intentionally versioned by VERCEL_GIT_COMMIT_SHA. Cache-bust
+  // the read so this checks the apex alias now, not a previously cached worker.
+  try {
+    const sw = await request(`/sw.js?canary=${Date.now()}`, {
+      accept: "text/javascript, application/javascript",
+    });
+    assertNoBetaRedirect("/sw.js", sw);
+    const match = sw.body.match(
+      /CACHE_VERSION\s*=\s*["']fr-([a-f0-9]{6,40})/i,
+    );
+    const deployed = match?.[1]?.toLowerCase() || null;
+    deployedSha = deployed;
+    check(
+      sw.status === 200 && Boolean(deployed),
+      `deployed commit is ${deployed}`,
+      `/sw.js did not expose a deployed commit (${sw.status})`,
+    );
+    if (!EXPECTED_SHA) {
+      if (REQUIRE_EXPECTED_SHA) {
+        bad("EXPECTED_SHA is required for the post-deploy alias gate");
+      } else {
+        note("EXPECTED_SHA not supplied; deploy identity was observed but not compared");
+      }
+    } else if (deployed) {
+      check(
+        deployed.startsWith(EXPECTED_SHA) ||
+          EXPECTED_SHA.startsWith(deployed),
+        `apex serves expected commit ${EXPECTED_SHA.slice(0, 12)}`,
+        `ALIAS MISMATCH: apex serves ${deployed}, expected ${EXPECTED_SHA.slice(0, 12)}`,
+      );
+    }
+  } catch (error) {
+    bad(`/sw.js deploy-identity check failed: ${error.message}`);
+  }
+
+  // Fail existing trust checks before spending any ISR wait budget.
+  const mapHtml = checkedPages.get("/map")?.body || "";
+  const mapText = mapHtml
+    .replace(/<!--.*?-->/g, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ");
+  const municipality =
+    "Frederick|Brunswick|Thurmont|Middletown|Walkersville|Urbana|Emmitsburg|Mount Airy|New Market|Myersville|Woodsboro|Burkittsville|Rosemont";
+  const vague = (
+    mapText.match(
+      new RegExp(`\\b(?:${municipality})\\s*·\\s*\\d{1,4}\\s?ft\\b`, "g"),
+    ) || []
+  ).length;
+  check(
+    vague === 0,
+    "/map has no vague municipality-distance claims",
+    `/map shows ${vague} vague municipality-distance claim(s)`,
+  );
+
+  for (const [path, result] of checkedPages) trustedHtml(path, result);
+
   // Follow every actual event anchor published by Today and Events. Extracting
   // href attributes (rather than searching the full Next document for slug-like
   // text) avoids crawling the serialized client payload or tucked inventory.
@@ -364,13 +448,33 @@ async function run() {
   // if the route still fulfills its successful HTML response contract. Every
   // 5xx is a deployment failure, even when its body contains branded recovery
   // copy. Stale 404s and foreign responses fail as well.
-  const eventPaths = new Set();
-  for (const surface of ["/today", "/events"]) {
-    const html = checkedPages.get(surface)?.body || "";
-    for (const path of eventDetailPathsFromHtml(html, BASE)) {
-      eventPaths.add(path);
+  const links = await waitForRenderedEventLinks({
+    baseUrl: BASE,
+    pages: checkedPages,
+    expectedSha: EXPECTED_SHA,
+    deployedSha,
+    earlierChecksHealthy: failures === 0,
+    recovery: recoveryEvidence,
+    waitMs: EVENT_LINK_WAIT_MS,
+    requestTimeoutMs: REQUEST_TIMEOUT_MS,
+    request,
+    validatePage: (path, result) => {
+      const before = failures;
+      healthyHtml(path, result);
+      trustedHtml(path, result);
+      return failures === before;
+    },
+    observe: (receipt) => note(`event-link receipt ${JSON.stringify(receipt)}`),
+  });
+  if (links.category === "recovered") {
+    for (const surface of ["/today", "/events"]) {
+      checkedPages.set(surface, links.pages.get(surface));
     }
+    note(`event links recovered after ${Math.round(links.elapsedMs)} ms (${links.attempts} HTML read round(s))`);
+  } else if (links.paths.length === 0) {
+    note(`event-link failure category: ${links.category}; ${links.reason}`);
   }
+  const eventPaths = new Set(links.paths);
   check(
     eventPaths.size > 0,
     `found ${eventPaths.size} rendered event deep link(s)`,
@@ -419,80 +523,6 @@ async function run() {
       gate.recovery <= gate.allowedRecoveries,
       `event recovery stayed within budget (${gate.recovery}/${gate.total})`,
       `event recovery exceeded budget (${gate.recovery}/${gate.total}; allowed ${gate.allowedRecoveries})`,
-    );
-  }
-
-  // /sw.js is intentionally versioned by VERCEL_GIT_COMMIT_SHA. Cache-bust
-  // the read so this checks the apex alias now, not a previously cached worker.
-  try {
-    const sw = await request(`/sw.js?canary=${Date.now()}`, {
-      accept: "text/javascript, application/javascript",
-    });
-    assertNoBetaRedirect("/sw.js", sw);
-    const match = sw.body.match(
-      /CACHE_VERSION\s*=\s*["']fr-([a-f0-9]{6,40})/i,
-    );
-    const deployed = match?.[1]?.toLowerCase() || null;
-    check(
-      sw.status === 200 && Boolean(deployed),
-      `deployed commit is ${deployed}`,
-      `/sw.js did not expose a deployed commit (${sw.status})`,
-    );
-    if (!EXPECTED_SHA) {
-      if (REQUIRE_EXPECTED_SHA) {
-        bad("EXPECTED_SHA is required for the post-deploy alias gate");
-      } else {
-        note("EXPECTED_SHA not supplied; deploy identity was observed but not compared");
-      }
-    } else if (deployed) {
-      check(
-        deployed.startsWith(EXPECTED_SHA) ||
-          EXPECTED_SHA.startsWith(deployed),
-        `apex serves expected commit ${EXPECTED_SHA.slice(0, 12)}`,
-        `ALIAS MISMATCH: apex serves ${deployed}, expected ${EXPECTED_SHA.slice(0, 12)}`,
-      );
-    }
-  } catch (error) {
-    bad(`/sw.js deploy-identity check failed: ${error.message}`);
-  }
-
-  // Preserve the focused trust checks from the original audit.
-  const eventsHtml = checkedPages.get("/events")?.body || "";
-  for (const term of ["Private Corp", "CANCELLED"]) {
-    const count = (
-      eventsHtml.match(new RegExp(term.replace(/ /g, "\\s+"), "gi")) || []
-    ).length;
-    check(
-      count === 0,
-      `/events has no "${term}" listing`,
-      `/events still shows "${term}" (${count}×)`,
-    );
-  }
-
-  const mapHtml = checkedPages.get("/map")?.body || "";
-  const mapText = mapHtml
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ");
-  const municipality =
-    "Frederick|Brunswick|Thurmont|Middletown|Walkersville|Urbana|Emmitsburg|Mount Airy|New Market|Myersville|Woodsboro|Burkittsville|Rosemont";
-  const vague = (
-    mapText.match(
-      new RegExp(`\\b(?:${municipality})\\s*·\\s*\\d{1,4}\\s?ft\\b`, "g"),
-    ) || []
-  ).length;
-  check(
-    vague === 0,
-    "/map has no vague municipality-distance claims",
-    `/map shows ${vague} vague municipality-distance claim(s)`,
-  );
-
-  for (const [path, result] of checkedPages) {
-    const count = uncontrolledImgs(result.body);
-    check(
-      count === 0,
-      `${path} renders no uncontrolled images`,
-      `${path} renders ${count} uncontrolled image(s)`,
     );
   }
 

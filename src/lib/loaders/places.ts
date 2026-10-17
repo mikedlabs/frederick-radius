@@ -6,6 +6,9 @@
 // prebuild, coverage, audits) import this loader directly, and server-only's
 // default export throws outside a React Server context, which breaks the
 // build. server-only would need a script-side stub before it could return.
+import OFFICIAL_HOURS_RAW from "@/data/places-official-hours.json" with { type: "json" };
+import { officialHoursForPlace } from "@/lib/official-hours";
+import { isScheduleEvidenceCurrent } from "@/lib/hours";
 import { PLACES, type Place } from "@/data/places";
 import { CATEGORY_BY_SLUG, CATEGORIES } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -1132,12 +1135,16 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   const refreshedHours = !hoursPatchOutranksRefresh && refresh?.weekday_hours
     ? parseGoogleHours(refresh.weekday_hours)
     : undefined;
-  const hours = refreshedHours ?? enriched.hours;
-  const hoursVerified = refreshedHours ? true : (enriched.hours_verified ?? false);
-  const hoursVerifiedAt = refreshedHours ? refresh?.refreshed_at : hours_updated_at;
+  const official = officialHoursForPlace(enriched, OFFICIAL_HOURS_RAW, now);
+  // Enrolled first-party identities never fall back to a holiday-blind weekly
+  // provider schedule when their closure evidence is absent, invalid or stale.
+  const hours = official.enrolled ? official.hours : refreshedHours ?? enriched.hours;
+  const hoursVerified = official.enrolled ? Boolean(official.hours) : refreshedHours ? true : (enriched.hours_verified ?? false);
+  const hoursVerifiedAt = official.enrolled ? official.observedAt : refreshedHours ? refresh?.refreshed_at : hours_updated_at;
   const mayAssertHours =
     mayAssertOpenState(hoursVerified, hoursVerifiedAt, now) &&
-    mayPublishVisitabilityHours(p.slug, hours, now);
+    mayPublishVisitabilityHours(p.slug, hours, now) &&
+    (!hours || isScheduleEvidenceCurrent(hours, now));
   const manualStatus = activeManualPlaceStatusOverride(p.slug, now);
   const refreshedStatus = refreshedBusinessStatus(
     p.slug,
@@ -1166,10 +1173,10 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     // canonical boundary so an unreviewed 24/7 or stale schedule cannot leak
     // back onto a place page as seven raw "Open 24 hours" rows.
     google_hours:
-      mayAssertHours && !hoursPatchOutranksRefresh
+      mayAssertHours && !official.enrolled && !hoursPatchOutranksRefresh
         ? enriched.google_hours
         : undefined,
-    hours_source: refreshedHours ? ("google_places" as const) : hours_source,
+    hours_source: official.enrolled ? "first_party" : refreshedHours ? ("google_places" as const) : hours_source,
     hours_updated_at: hoursVerifiedAt,
     // The one decision point of the hours policy: open and closed states render
     // only from recently verified hours.
@@ -1214,23 +1221,21 @@ function fieldNoteTip(slug: string): string | undefined {
  * decorated places to a client component. Shrinks the per-page RSC payload +
  * client hydration cost (e.g. ~1.4MB off /category/food). The place-detail
  * surface uses the full loader, so this never starves it. Keeps the single
- * hero (google_photo_url), review_snippet/author, known_for, customers_loved.
+ * hero and its exact single attribution (google_photo_url and
+ * google_photo_attribution), review_snippet/author, known_for, customers_loved.
  */
 export function slimForList(p: PlaceCardData): PlaceCardData {
   const {
     google_photos: _gp,
-    google_photo_attribution: _gpaOne,
     google_photo_attributions: _gpa,
     google_hours: _gh,
     ...rest
   } = p as PlaceCardData & {
     google_photos?: unknown;
-    google_photo_attribution?: unknown;
     google_photo_attributions?: unknown;
     google_hours?: unknown;
   };
   void _gp;
-  void _gpaOne;
   void _gpa;
   void _gh;
   return rest as PlaceCardData;
@@ -1287,6 +1292,7 @@ export function slimForNearby(p: PlaceCardData): PlaceCardData {
     // usePlacePhoto -> /api/places/by-slugs, which re-applies the
     // photo-suppression verdicts server-side.
     google_photo_url: _googlePhotoUrl,
+    google_photo_attribution: _googlePhotoAttribution,
     description: _description,
     review_snippet: _reviewSnippet,
     review_author: _reviewAuthor,
@@ -1298,6 +1304,7 @@ export function slimForNearby(p: PlaceCardData): PlaceCardData {
     ...rest
   } = listPlace;
   void _googlePhotoUrl;
+  void _googlePhotoAttribution;
   void _description;
   void _reviewSnippet;
   void _reviewAuthor;

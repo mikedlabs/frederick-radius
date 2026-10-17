@@ -8,6 +8,9 @@
 
 import { isFairDayPath } from "@/lib/fair/route-policy";
 
+/** Gives mounted workspaces one synchronous handoff before an accepted reload. */
+export const APP_UPDATE_ACCEPTED_EVENT = "fr:app-update-accepted";
+
 /** Running as an installed PWA (standalone), not in a browser tab. */
 export function isStandalone(): boolean {
   if (typeof window === "undefined") return false;

@@ -9,7 +9,7 @@ const PROXY_PHOTO_SURFACES = [
   "src/components/happy/HappyHourBrowser.tsx",
   "src/components/happy/HappyHourGuide.tsx",
   "src/components/today/PhotoMosaic.tsx",
-  "src/components/plan/PlanBuilder.tsx",
+  "src/components/plan/PlanStopPhoto.tsx",
 ] as const;
 
 describe("place photo proxy rendering", () => {
@@ -31,7 +31,7 @@ describe("place photo proxy rendering", () => {
     // /api/place-photo already performs the upstream fetch and can return a
     // same-origin SVG fallback. Sending it through /_next/image makes Vercel
     // reject that valid fallback with INVALID_IMAGE_OPTIMIZE_REQUEST.
-    expect(source).toMatch(/unoptimized=\{[^}]*startsWith\("\/api\/place-photo"\)[^}]*\}/);
+    expect(source).toMatch(/unoptimized=\{(?:isProxy|[^}]*startsWith\("\/api\/place-photo"\)[^}]*)\}/);
   });
 });
 

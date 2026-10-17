@@ -106,16 +106,25 @@ export function eventsEmptyState({
   loading,
   dataComplete,
   hasFilters,
+  hasLoadedEvents,
 }: {
   loading: boolean;
   dataComplete: boolean;
   hasFilters: boolean;
+  hasLoadedEvents: boolean;
 }): { title: string; description: string; canRetry: boolean } {
   if (loading) {
     return {
       title: "Checking the calendar",
       description: "Your filters are still in place while the rest of the events load.",
       canRetry: false,
+    };
+  }
+  if (!dataComplete && !hasLoadedEvents) {
+    return {
+      title: "Event schedule unavailable",
+      description: "The schedule could not be loaded. Check again or use an official calendar.",
+      canRetry: true,
     };
   }
   if (!dataComplete) {
@@ -168,7 +177,7 @@ const DAYPART_KEYS: Daypart[] = DAYPARTS.map((d) => d.key);
 // are imported from there so both surfaces speak one vocabulary.
 
 type Props = {
-  /** Bounded, server-rendered preview. The full collection loads on intent. */
+  /** Bounded server preview. Empty degraded snapshots may recover once. */
   events: EventWithMeta[];
   liveSlugs: string[];
   categories: { slug: string; name: string }[];
@@ -443,8 +452,8 @@ export default function EventsExplorer({
   weekendStartISO,
   weekendEndISO,
 }: Props) {
-  // The server renders this bounded preview. The full compact corpus is kept
-  // out of React Flight and fetched only after explicit browsing intent.
+  // Keep the full compact corpus out of React Flight. A useful preview waits
+  // for browsing intent; an empty degraded preview gets one bounded recovery.
   const [eventPool, setEventPool] = useState(events);
   const [currentLiveSlugs, setCurrentLiveSlugs] = useState(liveSlugs);
   const [dataComplete, setDataComplete] = useState(
@@ -455,6 +464,7 @@ export default function EventsExplorer({
   const requestRef = useRef<Promise<void> | null>(null);
   const eventPoolRef = useRef(events);
   const liveSlugsRef = useRef(liveSlugs);
+  const passiveRecoveryPendingRef = useRef(events.length === 0 && sourceHealth.degraded);
 
   // Server-safe defaults let this Client Component emit useful static HTML.
   // URL and device preferences are applied after hydration, then mirrored
@@ -634,6 +644,22 @@ export default function EventsExplorer({
     requestRef.current = request;
     return request;
   }, [dataComplete]);
+
+  // A bounded archive failure can leave fresh server HTML with no events even
+  // when the normal runtime read is healthy. Recover that initial gap once,
+  // after the browser's scope and filters have been restored. This shares the
+  // existing in-flight request with deep-link continuation and never bypasses
+  // the API cache; later checks stay deliberate user actions.
+  useEffect(() => {
+    if (!urlReady || !passiveRecoveryPendingRef.current) return;
+    let active = true;
+    queueMicrotask(() => {
+      if (!active || !passiveRecoveryPendingRef.current) return;
+      passiveRecoveryPendingRef.current = false;
+      void ensureAllEvents();
+    });
+    return () => { active = false; };
+  }, [ensureAllEvents, urlReady]);
 
   // Which horizon groups are expanded past their scannable peek.
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
@@ -970,7 +996,9 @@ export default function EventsExplorer({
     loading: loadingAll,
     dataComplete,
     hasFilters: relaxations.length > 0,
+    hasLoadedEvents: eventPool.length > 0,
   });
+  const showOfficialCalendars = !dataComplete && eventPool.length === 0;
 
   const primaryHorizon = horizonGroups[0];
   const primaryLead = primaryHorizon?.events[0] ?? null;
@@ -1164,7 +1192,7 @@ export default function EventsExplorer({
         </div>
       )}
 
-      {currentSourceHealth.degraded && (
+      {currentSourceHealth.degraded && eventPool.length > 0 && (
         <details
           className="group rounded-[var(--app-radius-md)] border px-3 text-[12px] leading-relaxed"
           style={{
@@ -1183,9 +1211,7 @@ export default function EventsExplorer({
           </summary>
           <div className="flex items-start justify-between gap-3 border-t py-3" style={{ borderColor: "var(--app-border)" }}>
             <span>
-              {!dataComplete
-                ? "Some live calendars did not answer. Radius kept the last available events instead of treating missing feeds as empty."
-                : "Some live calendars did not answer. This board only includes events Radius could confirm."}
+              The saved event schedule is incomplete. These are the listings available to Radius; check with each organizer before going.
             </span>
             {!dataComplete && (
               <button
@@ -1301,6 +1327,28 @@ export default function EventsExplorer({
                 Check the calendar again
               </button>
             ) : null}
+            {showOfficialCalendars && (
+              <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
+                <a
+                  href="https://www.frederickcountymd.gov/calendar.aspx"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="tap-44-y inline-flex min-h-11 items-center text-[13px] font-semibold underline"
+                  style={{ color: "var(--app-link)" }}
+                >
+                  County calendar
+                </a>
+                <a
+                  href="https://www.celebratefrederick.com/events/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="tap-44-y inline-flex min-h-11 items-center text-[13px] font-semibold underline"
+                  style={{ color: "var(--app-link)" }}
+                >
+                  Celebrate Frederick
+                </a>
+              </div>
+            )}
           </div>
           
           {/* Honest relaxations — Bento-grid for quick actions */}

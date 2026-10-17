@@ -67,20 +67,20 @@ describe("EventsExplorer deferred browse reconciliation", () => {
   });
 
   it("does not present a loading or incomplete calendar as no matching events", () => {
-    expect(eventsEmptyState({ loading: true, dataComplete: false, hasFilters: true })).toEqual({
+    expect(eventsEmptyState({ loading: true, dataComplete: false, hasFilters: true, hasLoadedEvents: false })).toEqual({
       title: "Checking the calendar",
       description: "Your filters are still in place while the rest of the events load.",
       canRetry: false,
     });
-    expect(eventsEmptyState({ loading: false, dataComplete: false, hasFilters: true })).toMatchObject({
+    expect(eventsEmptyState({ loading: false, dataComplete: false, hasFilters: true, hasLoadedEvents: true })).toMatchObject({
       title: "No matches in the events loaded so far",
       canRetry: true,
     });
-    expect(eventsEmptyState({ loading: false, dataComplete: true, hasFilters: true })).toMatchObject({
+    expect(eventsEmptyState({ loading: false, dataComplete: true, hasFilters: true, hasLoadedEvents: true })).toMatchObject({
       title: "Nothing fits these filters",
       canRetry: false,
     });
-    expect(eventsEmptyState({ loading: false, dataComplete: true, hasFilters: false })).toMatchObject({
+    expect(eventsEmptyState({ loading: false, dataComplete: true, hasFilters: false, hasLoadedEvents: false })).toMatchObject({
       title: "No upcoming events are listed",
       canRetry: true,
     });
@@ -91,6 +91,16 @@ describe("EventsExplorer deferred browse reconciliation", () => {
     expect(source).not.toContain("framer-motion");
     expect(source).toContain('dynamic(() => import("@/components/event/EventAgenda"))');
     expect(source).toContain('dynamic(() => import("@/components/event/EventsMap")');
+  });
+
+  it("does not mistake an unavailable event pool for no matching events", () => {
+    expect(eventsEmptyState({ loading: false, dataComplete: false, hasFilters: true, hasLoadedEvents: false })).toEqual({
+      title: "Event schedule unavailable",
+      description: "The schedule could not be loaded. Check again or use an official calendar.",
+      canRetry: true,
+    });
+    expect(eventsEmptyState({ loading: false, dataComplete: false, hasFilters: true, hasLoadedEvents: true }).title)
+      .toBe("No matches in the events loaded so far");
   });
 
   it("keeps empty Agenda and Map views in the same filter-recovery path as the list", () => {
@@ -124,7 +134,7 @@ describe("EventsExplorer deferred browse reconciliation", () => {
   });
 
   it("allows the empty calendar's explicit retry after a complete snapshot", () => {
-    expect(eventsEmptyState({ loading: false, dataComplete: true, hasFilters: false }).canRetry).toBe(true);
+    expect(eventsEmptyState({ loading: false, dataComplete: true, hasFilters: false, hasLoadedEvents: false }).canRetry).toBe(true);
     const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
     const ensureAllEvents = source.slice(
       source.indexOf("const ensureAllEvents = useCallback"),

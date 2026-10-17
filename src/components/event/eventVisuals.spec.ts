@@ -37,6 +37,7 @@ describe("eventCardVisual", () => {
       src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
       caption: "Venue · Carroll Creek Linear Park",
       key: "radius-carroll-creek-summer",
+      presentation: "photo",
     });
   });
 
@@ -67,7 +68,7 @@ describe("eventCardVisual", () => {
           hero_image: "https://s1.ticketm.net/dam/a/example.jpg",
         }),
       ),
-    ).toMatchObject({ caption: "Event image · Ticketmaster" });
+    ).toMatchObject({ caption: "Event image · Ticketmaster", presentation: "artwork" });
 
     expect(
       eventCardVisual(
@@ -76,7 +77,7 @@ describe("eventCardVisual", () => {
           hero_image: "https://seatgeek.com/images/example.jpg",
         }),
       ),
-    ).toMatchObject({ caption: "Event image · SeatGeek" });
+    ).toMatchObject({ caption: "Event image · SeatGeek", presentation: "artwork" });
   });
 
   it.each([
@@ -114,6 +115,7 @@ describe("eventCardVisual", () => {
       ).toMatchObject({
         caption,
         sourceHref: "https://publisher.example/event",
+        presentation: "artwork",
       });
     },
   );
@@ -180,6 +182,7 @@ describe("eventCardVisual", () => {
       src: "/api/place-photo?name=credited",
       caption: "Venue · Test Venue",
       key: "venue:/api/place-photo?name=credited",
+      presentation: "photo",
       attribution,
     });
   });

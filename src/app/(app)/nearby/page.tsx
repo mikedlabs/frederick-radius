@@ -10,6 +10,7 @@ import RightNow from "@/components/now/RightNow";
 import { approxLocation } from "@/lib/ip-geo";
 import { isRecommendable } from "@/lib/relevance";
 import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
+import { readNearbyQuery, type NearbyQueryValues } from "@/lib/nearby-query";
 
 export async function generateMetadata({
   searchParams,
@@ -55,9 +56,9 @@ export const dynamic = "force-dynamic";
 export default async function NowPage({
   searchParams,
 }: {
-  searchParams: Promise<{ c?: string; facet?: string; town?: string; in?: string }>;
+  searchParams: Promise<NearbyQueryValues>;
 }) {
-  const { c, facet, town, in: scopeParam } = await searchParams;
+  const query = await searchParams;
   // Resolve the exact same origin policy as Today/Ask. The legacy ?town=
   // deep link remains supported, but canonical ?in= and the shared cookie
   // preserve county and near-me semantics instead of reducing everything to
@@ -70,7 +71,7 @@ export default async function NowPage({
   // request headers costs nothing extra. A rejected/outside-county result is
   // labeled in the client and never replaced with a hidden Downtown origin.
   const approx = await approxLocation();
-  const scope = parseScope(scopeParam ?? town ?? store.get(SCOPE_COOKIE)?.value ?? null);
+  const { scope } = readNearbyQuery(query, parseScope(store.get(SCOPE_COOKIE)?.value));
   const context = resolveDecisionContext({
     scopeRaw: scope,
     homeMuniRaw: store.get("fr_home_muni")?.value ?? null,
@@ -94,9 +95,6 @@ export default async function NowPage({
   return (
     <RightNow
       places={places}
-      initialCraving={c ?? null}
-      initialFacet={facet ?? null}
-      initialTown={context.filterMunicipality}
       initialScope={scope}
       initialOriginSource={context.source}
       approxOrigin={context.origin}

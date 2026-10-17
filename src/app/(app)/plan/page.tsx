@@ -50,29 +50,12 @@ export default async function PlanPage({
   const seed = place && isDestinationCategory(place.category) && isRecommendable(place) && place.is_operational !== "closed_permanently"
     ? reconstructPlan({ v: 1, i: seedInputs, s: [{ p: place.slug }] })
     : null;
-  const initialPlan = shared ?? eventSeed ?? seed;
 
   return (
-    <div className="relative mx-auto max-w-3xl">
+    <div className="relative mx-auto max-w-[1080px]">
       <PageBloom variant="warm-cool" />
 
       <Suspense fallback={null}><MapReturnLink /></Suspense>
-
-      {!initialPlan && (
-        <header className="mb-5 max-w-xl space-y-2">
-          <h1
-            className="font-sans text-[34px] font-semibold leading-[1.02] tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Build an outing that fits.
-          </h1>
-          <p className="max-w-lg text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            {placeSlug
-              ? "This place could not be added in the selected area. You can choose another area or start a new outing."
-              : "Choose where and when. Refine the rest only if it matters."}
-          </p>
-        </header>
-      )}
 
       {shared && spec ? (
         <PlanBuilder initialPlan={shared} initialInputs={spec.i} shared={!normalizeBrowseReturnTo(returnTo)} />

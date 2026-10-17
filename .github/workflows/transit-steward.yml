@@ -12,9 +12,8 @@ name: Transit steward
 
 on:
   schedule:
-    # Follow the data steward by about an hour. One persistent NAS runner then
-    # serializes the two trusted generators without a queue spike or competing
-    # with Plex-heavy evening hours.
+    # Keep the existing daily refresh window. Public GTFS generation must not
+    # wait for the separately managed NAS runner to be registered or online.
     - cron: "23 10 * * *"
   workflow_dispatch: {}
 
@@ -27,9 +26,9 @@ concurrency:
 jobs:
   transit:
     if: ${{ github.ref == 'refs/heads/main' }}
-    # Public GTFS generation runs on the NAS. The hosted reusable workflows
-    # below retain every write permission and PR/status mutation.
-    runs-on: [self-hosted, radius-data]
+    # Use the same standard hosted Linux runner as CI for this public,
+    # keyless source job. Isolated reusable jobs retain all write permissions.
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: read

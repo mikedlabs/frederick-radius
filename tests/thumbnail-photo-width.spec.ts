@@ -22,7 +22,7 @@ const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
  */
 
 const THUMBNAIL_COMPONENTS = [
-  "src/components/place/PlaceCard.tsx",
+  "src/lib/place-card-photo.ts",
   "src/components/place/PlaceMedallion.tsx",
 ];
 

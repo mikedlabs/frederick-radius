@@ -18,6 +18,10 @@ export const CompactDoorway: Story = {
     const canvas = within(canvasElement);
     const find = canvas.getByRole("link", { name: "Find a place, service, event, or answer" });
     await expect(find).toHaveAttribute("href", "/search");
+    await expect(find).toHaveAttribute("data-find-interaction-ready", "true");
+    await expect(within(find).getByText("Find what you need")).toBeVisible();
+    await expect(find.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    await expect(canvas.queryByRole("textbox")).not.toBeInTheDocument();
     for (const name of ["Open now", "Public essentials", "Plan a few hours", "Local services"]) {
       const shortcut = canvas.getByRole("link", { name });
       await expect(shortcut).toBeVisible();
@@ -27,10 +31,15 @@ export const CompactDoorway: Story = {
 };
 
 export const FirstDecisionDoorway: Story = {
-  args: { showQuickNeeds: false },
+  args: { showQuickNeeds: false, density: "arrival" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("link", { name: "Find a place, service, event, or answer" })).toHaveAttribute("href", "/search");
+    const find = canvas.getByRole("link", { name: "Find a place, service, event, or answer" });
+    await expect(find).toHaveAttribute("href", "/search");
+    await expect(find).toHaveAttribute("data-find-interaction-ready", "true");
+    await expect(find.getBoundingClientRect().height).toBeGreaterThanOrEqual(56);
+    await expect(find.getBoundingClientRect().height).toBeLessThanOrEqual(56);
+    await expect(canvas.queryByText("Search a name, a need, or a question.")).not.toBeInTheDocument();
     await expect(canvas.queryByRole("link", { name: "Open now" })).not.toBeInTheDocument();
   },
 };

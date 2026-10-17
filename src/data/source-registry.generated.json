@@ -226,6 +226,24 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "city_official_releases",
+    "name": "City of Frederick civic, police and advisory releases",
+    "owner": "City of Frederick",
+    "url": "https://www.cityoffrederickmd.gov/RSSFeed.aspx?ModID=1&CID=All-newsflash.xml",
+    "license": "official public RSS subscription; City copyright reserved; headline, publisher, original timestamp and canonical article link only; no article bodies or photos",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "snapshotCadence": null,
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": null,
+    "transformFile": "src/lib/integrations/civic-press.ts",
+    "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "cof_council_districts",
     "name": "City of Frederick Council Districts",
     "owner": "City of Frederick GIS",
@@ -370,6 +388,24 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "city_official_news",
+    "name": "City of Frederick official newsroom",
+    "owner": "City of Frederick",
+    "url": "https://www.cityoffrederickmd.gov/RSSFeed.aspx?ModID=1&CID=Frederick-News-1",
+    "license": "official public RSS subscription; City copyright reserved; headline, publisher, original timestamp and canonical article link only; no article bodies or photos",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "snapshotCadence": null,
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": null,
+    "transformFile": "src/lib/integrations/civic-press.ts",
+    "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "cof_parking_occupancy",
     "name": "City of Frederick parking deck occupancy",
     "owner": "City of Frederick",
@@ -391,8 +427,8 @@
     "id": "cof_path_plan",
     "name": "City of Frederick Path Plan",
     "owner": "City of Frederick GIS",
-    "url": "https://spires.cityoffrederick.com/arcgis/rest/services/PathPlan/MapServer",
-    "license": "City-published public GIS service; source link retained; no standalone reuse license found",
+    "url": "https://spires.cityoffrederick.com/arcgis/rest/services/Sidewalks/MapServer/4",
+    "license": "Owner confirms written City GIS reuse permission; source attribution retained",
     "status": "active",
     "collection": "runtime",
     "refreshCadence": "quarterly",
@@ -832,6 +868,24 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "county_official_news",
+    "name": "Frederick County official newsroom",
+    "owner": "Frederick County Government",
+    "url": "https://www.frederickcountymd.gov/RSSFeed.aspx?ModID=1&CID=All-newsflash.xml",
+    "license": "official public RSS subscription; County copyright reserved; headline, publisher, original timestamp and canonical article link only; no article bodies or photos",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "snapshotCadence": null,
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": null,
+    "transformFile": "src/lib/integrations/civic-press.ts",
+    "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "fc_open_data_hub",
     "name": "Frederick County Open Data Hub",
     "owner": "Frederick County GIS",
@@ -957,6 +1011,28 @@
     "transformFile": "src/lib/ingest/fcpl.ts",
     "evidenceAliases": [
       "frederick.librarycalendar.com"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "fcpl_branch_hours",
+    "name": "Frederick County Public Libraries — Official Branch Hours",
+    "owner": "Frederick County Public Libraries",
+    "url": "https://www.fcpl.org/branches-hours",
+    "license": "county government public information",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/official-hours.ts",
+    "transformFile": "scripts/lib/fcpl-official-hours.ts",
+    "evidenceAliases": [
+      "fcpl_branch_hours",
+      "https://www.fcpl.org/branches-hours",
+      "https://www.fcpl.org/holiday-closings"
     ],
     "rowsRequired": false,
     "publicationApplicability": "required"

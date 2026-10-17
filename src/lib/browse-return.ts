@@ -6,6 +6,7 @@ const INVALID = "/__invalid-browse-return__";
 const DESTINATIONS: Record<string, string> = {
   "/map": "map",
   "/search": "search results",
+  "/nearby": "Nearby",
   "/events": "events",
   "/my-radius": "saved",
   "/today": "Today",

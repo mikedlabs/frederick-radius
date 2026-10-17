@@ -75,6 +75,7 @@ test("the place release covers canonical server and place-page inputs", () => {
     "src/data/places-overrides.json",
     "src/data/place-status-overrides.json",
     "src/data/place-visit-details.json",
+    "src/data/places-official-hours.json",
     "src/data/categories.ts",
     "src/data/municipalities.ts",
     "src/data/events.ts",
@@ -167,4 +168,12 @@ test("refreshing one stream preserves the other stream promotions", () => {
   assert.equal(updated.streams.places.promoted_at, "2026-08-13T12:00:00Z");
   assert.equal(updated.streams["venue-events"].promoted_at, FIXED_PROMOTION);
   assert.equal(updated.data_version, dataReleaseId(updated));
+});
+
+
+test("official hours count canonical branches rather than metadata fields", () => {
+  const root = fixtureRoot();
+  const path = "src/data/places-official-hours.json";
+  writeFileSync(join(root, path), JSON.stringify({ schema_version: 1, places: [{ slug: "a" }, { slug: "b" }], closures: { exceptions: [] } }));
+  assert.equal(inspectArtifact(root, path).records, 2);
 });

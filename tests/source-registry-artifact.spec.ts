@@ -1,5 +1,7 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { resolve, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import GENERATED from "@/data/source-registry.generated.json" with { type: "json" };
 import {
@@ -9,6 +11,14 @@ import {
 import { buildSourceRegistryArtifact } from "@/../scripts/build-source-registry";
 
 describe("generated source registry", () => {
+  it("executes the real CLI from repository paths containing spaces", () => {
+    const root = mkdtempSync(join(tmpdir(), "radius source registry "));
+    mkdirSync(join(root, "data")); mkdirSync(join(root, "src/data"), { recursive: true });
+    writeFileSync(join(root, "data/sources.yaml"), "sources:\n  - id: fixture\n    name: Official fixture\n    status: active\n    collection: workflow\n    refresh_cadence: daily\n");
+    execFileSync(process.execPath, [resolve("node_modules/tsx/dist/cli.mjs"), resolve("scripts/build-source-registry.ts")], { cwd: root, timeout: 10000 });
+    expect(JSON.parse(readFileSync(join(root, "src/data/source-registry.generated.json"), "utf8"))).toMatchObject([{ id: "fixture" }]);
+  });
+
   it("is an exact projection of data/sources.yaml", () => {
     const manifest = readFileSync(resolve("data/sources.yaml"), "utf8");
     expect(GENERATED).toEqual(buildSourceRegistryArtifact(manifest));

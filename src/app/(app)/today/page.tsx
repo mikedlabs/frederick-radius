@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
 import TodayPlanTonightLink from "@/components/today/TodayPlanTonightLink";
@@ -11,10 +10,7 @@ import KeysScore from "@/components/today/KeysScore";
 import LocalSportsScoreboard from "@/components/today/LocalSportsScoreboard";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
-const TodayFairFeature = dynamic(
-  () => import("@/components/today/TodayFairFeature"),
-);
-import Image from "next/image";
+import TodayFairFeature from "@/components/today/TodayFairFeatureIsland";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import DismissibleSection from "@/components/today/DismissibleSection";
@@ -67,7 +63,8 @@ import {
 import { eventTown } from "@/lib/events/eventTown";
 import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
-import AppTransitionLink from "@/components/nav/AppTransitionLink";
+import TodayMasthead from "@/components/today/TodayMasthead";
+import TodayGeographicDoorway, { TodayGeographicDoorwayPending } from "@/components/today/TodayGeographicDoorway";
 import PageChapter from "@/components/ui/PageChapter";
 import styles from "@/components/today/TodayLayout.module.css";
 import {
@@ -159,6 +156,7 @@ export const revalidate = 300;
 
 export default async function HomePage() {
   const now = new Date();
+  const frame = todayFrame(easternStartHour(now.toISOString()));
   const fairPromotionPhase = todayFairPromotionPhase(now);
   const civicMoment = activeMoment(now);
   const civicMomentLeadsToday =
@@ -251,7 +249,7 @@ export default async function HomePage() {
           :not(:empty) wrapper means it then costs the ordinary day zero space:
           no phantom gap above the sky hero. */}
       <Suspense fallback={null}>
-        <div className="[&:not(:empty)]:mb-4">
+        <div className={styles.alerts}>
           <CivicAlerts compact />
         </div>
       </Suspense>
@@ -277,54 +275,42 @@ export default async function HomePage() {
           clock; the page ISRs every 300s so a boundary rolls within minutes.
           This is the real document h1. Sits below an active civic alert (alerts
           still lead) and above the weather. */}
-      <div className={styles.arrival}>
-      {(() => {
-        const frame = todayFrame(easternStartHour(now.toISOString()));
-        return (
-          <header className={`scroll-masthead ${styles.masthead}`}>
-            <h1 className={styles.title}>{frame.title}</h1>
-            <div className={styles.mastheadLead} data-today-photo-lead>
-              <figure className={styles.portrait}>
-                <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" priority fill sizes="(min-width: 960px) 520px, (min-width: 768px) 720px, calc(100vw - 32px)" alt="Carroll Creek in Frederick." />
-              </figure>
-            </div>
-            <div className={styles.scope}>
-              <Suspense fallback={null}><TodayScopeStatus dateline={formatEasternDateline(now)} /></Suspense>
-            </div>
-          </header>
-        );
-      })()}
-
-      {/* Conditions precede every browsing decision. This is the existing
-          bounded weather read, kept outside the Find and event stream. */}
-      <section data-today-weather className={styles.weather}>
-        <AppTransitionLink
-          href="/pulse?open=weather"
-          prefetch={false}
-          className={styles.forecastLink}
-        >
-        <div className={styles.contextHeading}>
-          <span>Weather in Frederick</span>
-          <span className={styles.forecastLabel}>Full forecast <ChevronRight aria-hidden className="h-4 w-4" /></span>
-        </div>
-          <Suspense fallback={<Skeleton.Block height={110} round="var(--app-radius-md)" />}>
-            <TodayCard />
+      <TodayMasthead
+        title={frame.title}
+        shortTitle={frame.shortTitle}
+        dateline={formatEasternDateline(now)}
+        weather={
+          <Suspense fallback={<Skeleton.Block height={100} round="var(--app-radius-lg)" />}>
+            <TodayCard density="masthead" />
           </Suspense>
-          <span className="sr-only">Open the full forecast.</span>
-        </AppTransitionLink>
-      </section>
-      </div>
+        }
+      />
 
       <div data-today-briefing className={styles.briefing}>
         {/* Find follows the conditions glance as the sole primary action.
             Seasonal campaigns and the event stream cannot bury either. */}
-        <div className="today-arrival today-arrival--find">
-          <TodayAsk embedded showQuickNeeds={false} />
+        <div className={styles.entryControls}>
+          <div className="today-arrival today-arrival--find">
+            <TodayAsk embedded showQuickNeeds={false} density="arrival" />
+          </div>
+          <div className={styles.scope}>
+            <Suspense fallback={null}><TodayScopeStatus density="compact" /></Suspense>
+          </div>
         </div>
 
       <div data-today-current-content className={styles.currentContent}>
         <div aria-label="Places for your area" className={styles.places}>
+          {/* This owned Frederick scene is a place doorway, not a verdict
+              about current conditions. Other town and Near me lenses suppress
+              it. Before the client knows the URL lens, the neutral fallback
+              reserves geometry without naming or fetching a place image. */}
+          <Suspense fallback={<TodayGeographicDoorwayPending />}>
+            <TodayGeographicDoorway />
+          </Suspense>
           {decisionLead}
+          <div className={styles.quickNeeds}>
+            <TodayQuickNeeds />
+          </div>
         </div>
 
       <PageChapter
@@ -355,7 +341,7 @@ export default async function HomePage() {
 
       <section aria-labelledby="today-explore-heading">
         <h2 id="today-explore-heading" className={styles.utilityHeading}>More ways to explore</h2>
-        <TodayQuickNeeds><CravingStrip /></TodayQuickNeeds>
+        <TodayQuickNeeds showShortcuts={false}><CravingStrip /></TodayQuickNeeds>
         <div className={styles.planLink}>
           <Suspense fallback={null}><TodayPlanTonightLink /></Suspense>
         </div>
@@ -775,7 +761,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
               <p className="px-0.5 pt-1 text-[13.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
                 It is a quiet {easternStartHour(now.toISOString()) >= 17 ? "night" : "day"} around here. The
                 week ahead is on the{" "}
-                <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
+                <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-link)" }}>
                   events page
                 </Link>
                 .
@@ -799,7 +785,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                   <Link
                     href="/events"
                     className="tap-44-y flex items-center justify-between px-0.5 py-2.5 text-[13px] font-semibold"
-                    style={{ color: "var(--app-brand-press)" }}
+                    style={{ color: "var(--app-link)" }}
                   >
                     +{programOverflow} more today
                     <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />

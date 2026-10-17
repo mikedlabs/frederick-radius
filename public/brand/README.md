@@ -1,29 +1,31 @@
 # Frederick Radius brand assets
 
-Frederick Radius Brand System 1.2 - July 22, 2026
+Frederick Radius Brand System 1.4 - October 16, 2026
 
 These files are generated from `src/lib/brand.ts`. Run `npm run build:brand` after changing the brand contract or asset templates.
+
+The color keys `brick`, `cream`, and `ink`, and existing `*-brick` / `*-cream` asset filenames remain compatible aliases for Deep Coral, White, and Charcoal. They do not retain the former palette. Regenerate and review assets before using version 1.4 artwork; changing this guide alone does not update or publish exports.
 
 ## Brand contract
 
 - Frederick Radius uses the tagline `Frederick County starts where you are.`
   Its plain-language description is `Current local information for Frederick
   County, organized around where you are.`
-- Brick `#B5462B`, Cream `#F4EEE2`, Ink `#221C15`, the solid Ripple, and owned
+- Deep Coral `#C34335`, White `#FFFFFF`, Charcoal `#22221F`, the solid Ripple, and owned
   Frederick photography form the recognition system.
 - Catoctin Forest `#315A43` is a restrained outdoor, terrain, or small
   positive-state cue. It is not a generic selected color or page theme.
 - Creek `#285D73` organizes civic, map, transit, and data information. Plum
   `#7E2C6F` is a limited culture accent.
 - Catoctin Forest carries the open state. Ochre Amber `#C58A32` is used for a
-  real live, caution, or sunlight state with Ink text. Beer is the product
+  real live, caution, or sunlight state with Charcoal text. Beer is the product
   exception: it also marks active
   taste controls, flagship beers, and beer or brewery metadata. It is not a
   decorative yellow or a page theme.
-- Libre Caslon Display Regular is reserved for the wordmark and rare editorial
-  or hero moments. Public Sans is the product-title, body, interface, and data
-  face. The kit includes Public Sans Variable upright and italic. Do not add a
-  third typeface or synthesize a bold or italic Caslon cut.
+- Product UI uses System sans from the device. Libre Caslon Display Regular
+  remains the wordmark and rare editorial signature. Public Sans remains the
+  print/export text family, with Variable upright and italic in this kit. Do
+  not rename these installed fonts as system fonts or synthesize Caslon cuts.
 
 The current color and type tokens are in `tokens.json` and `tokens.css`. The
 build locks the current core colors and font families, checks the guide names,
@@ -34,7 +36,7 @@ and rejects unapproved colors in authoritative guidance or exported SVGs.
 - `fonts/LibreCaslonDisplay-Regular.ttf`: installable Libre Caslon Display
   Regular 400 for the wordmark and rare editorial or hero moments.
 - `fonts/PublicSans-Variable.ttf`: installable Public Sans upright, weights
-  100-900, for product titles, interface, text, and data.
+  100-900, for print and exported brand titles, text, and data.
 - `fonts/PublicSans-VariableItalic.ttf`: installable Public Sans italic,
   weights 100-900, for real emphasis and attribution.
 - `fonts/static/`: compatibility cuts for Regular 400, Medium 500, SemiBold
@@ -60,7 +62,7 @@ files are in `licenses/`.
 ## Lockups
 
 - `horizontal-brick`: Primary lockup on light surfaces.
-- `horizontal-cream`: Reverse lockup on Brick, Catoctin Forest, Ink, or a dark photograph.
+- `horizontal-cream`: Reverse lockup on Deep Coral, Catoctin Forest, Charcoal, or a dark photograph.
 - `descriptor-*`: Horizontal lockup with the canonical tagline. The retained
   filename is for backwards-compatible asset paths.
 - `stacked-brick`: Square or narrow placement.
@@ -71,7 +73,7 @@ files are in `licenses/`.
 - `avatar`: Canonical account avatar. Its complete mark stays inside the center
   68 percent so Facebook's circular crop does not remove an arc or the origin
   point.
-- `facebook-cover`: 1640 by 624 Brick cover with its complete lockup inside the
+- `facebook-cover`: 1640 by 624 Deep Coral cover with its complete lockup inside the
   shared desktop and mobile safe area.
 - `facebook-cover-photo`: Coordinated natural-photography cover. Keep the
   supplied center crop and do not place new text in the outer 180 px on either
@@ -95,10 +97,10 @@ files are in `licenses/`.
 
 - `you-are-here`: 18 by 24 brand poster using the owned summer skyline photograph.
 - `whole-county`: 18 by 24 countywide poster using the owned fall downtown photograph.
-- `product-today`: 18 by 24 product poster built around the current Today
+- `product-today`: 18 by 24 product poster built around the historical July 22, 2026 Today
   interface. Recapture the screen before a major campaign if the product has
   materially changed.
-- `ask-radius`: 18 by 24 activation poster built around the current Ask Radius
+- `ask-radius`: 18 by 24 activation poster built around the historical July 22, 2026 Ask Radius
   interface. Replace the outlined QR placeholder with a tested production QR
   code before printing.
 - `campaign/poster-field-guide`: 18 by 24 poster for the live field-guide
@@ -137,14 +139,14 @@ Libre Caslon Display Regular plus Public Sans Variable upright and italic,
 with a static compatibility set. License copies are in `licenses/`.
 
 `examples/frederick-skyline-natural.webp` is the natural-color, owned Frederick
-photograph used on page 09 of the guide. `examples/frederick-aerial.webp` is an
+photograph used in the photography section of the guide. `examples/frederick-aerial.webp` is an
 additional owned geographic reference. Do not treat either as generic stock
 imagery or transfer its rights with the open-font licenses.
 
 The `examples/ui-*-mobile.webp` files are optimized 390 px viewport captures of
-the current product system: Today, Ask Radius, County map, Live conditions,
+the historical product system: Today, Ask Radius, County map, Live conditions,
 All tools, and Beer. They are guide references, not evergreen campaign creative;
-live facts in the screens reflect the July 22, 2026 capture state. The captures
+their palette, Public Sans runtime, and live facts reflect the July 22, 2026 capture state. They are not version 1.4 product screenshots. The captures
 exclude the Next.js development indicator, private account data, and degraded
 local API states.
 

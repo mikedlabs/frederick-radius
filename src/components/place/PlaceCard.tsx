@@ -1,11 +1,8 @@
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "./PlaceCardPhoto";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
-import { proxyPhotoAtWidth } from "@/lib/format/img";
-import { usePlacePhoto } from "@/components/place/usePlacePhoto";
+import { usePlacePhotoData } from "@/components/place/usePlacePhoto";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import OpenClosedDot from "./OpenClosedDot";
@@ -15,12 +12,17 @@ import { usePlaceSheet } from "./PlaceSheetProvider";
 import { haptic } from "@/lib/haptics";
 import PlaceStatus from "./PlaceStatus";
 import { knownFor } from "@/lib/cuisine";
-import { Star, NotebookPen, PawPrint } from "lucide-react";
+import { ArrowUpRight, Star, NotebookPen, PawPrint } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { directionsHref } from "@/lib/map/directionsHref";
 import SourceBadge from "./SourceBadge";
 import FieldNoteTag, { DealHookTag } from "./FieldNoteTag";
 import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
 import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
+import { placeCardPhotoPlan, recordPlaceCardPhotoResult, selectedPlaceCardPhoto, type PlaceCardPhotoResult, type PlaceCardPhotoState } from "@/lib/place-card-photo";
+
+const subscribeReady = () => () => {};
 
 /**
  * PlaceCard — the shared business card across browse and recommendation
@@ -78,7 +80,8 @@ function StatusChip({ label, tone = "neutral" }: { label: string; tone?: ReasonT
     <span
       className="inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] font-semibold leading-none tracking-tight"
       style={{
-        color: t.color,
+        // The label follows the current surface; the tone stays in its tint, ring, and dot.
+        color: "var(--app-ink)",
         background: t.tint,
         boxShadow: `inset 0 0 0 1px ${t.edge}, inset 0 1px 0 rgba(255,255,255,0.45)`,
       }}
@@ -104,10 +107,8 @@ function StatusChipRow({ reasons, className = "" }: { reasons: PlaceReasonChip[]
 
 /**
  * The category mark — the leading visual token that replaces the imported
- * photo. A tinted, light-catching rounded square holding the category's
- * own icon. Small and typographic by design: it signals *type* at a glance
- * without pretending to be a photograph of the place. The single source of
- * "place imagery" in browse.
+ * photo when no eligible source is available. The category icon signals
+ * type without pretending to be a photograph of the place.
  */
 function CategoryMark({
   category,
@@ -143,82 +144,6 @@ function CategoryMark({
   );
 }
 
-/**
- * Thumb — the leading visual on a browse card. Shows the place's real
- * Google photo (the same curated, de-twinned source as the detail page;
- * PHOTO_SUPPRESS has already nulled shared/duplicate photos so we never
- * show a wrong one) and falls back to the calm category mark when a place
- * has no photo. "Real photo when we have a good one, type mark when we
- * don't" — visual, but never a fabricated or mismatched image.
- */
-function Thumb({
-  place,
-  category,
-  color,
-  size,
-  lazyPhoto = false,
-}: {
-  place: PlaceCardData;
-  category: string;
-  color: string;
-  size: number;
-  /** Hydrate the photo on scroll when the surface withheld inline URLs
-   *  (slimForNearby strips them — they were ~64% of /nearby's transfer).
-   *  Resolution goes through /api/places/by-slugs, so the suppression
-   *  verdicts keep applying; the glyph carries "not yet" and "none" alike. */
-  lazyPhoto?: boolean;
-}) {
-  const { photoUrl, anchorRef } = usePlacePhoto(
-    place.slug,
-    place.google_photo_url,
-    lazyPhoto,
-  );
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  if (photoUrl && failedSrc !== photoUrl) {
-    // Narrow the proxy URL to the size actually painted. places-client.json
-    // stores one URL per place at w=800, the size a hero needs, and proxy
-    // responses render `unoptimized` because Next cannot resize an opaque
-    // route — which also makes the `sizes` hint below inert for them. So a
-    // 40px thumbnail was downloading the full 800px asset, dozens of times
-    // per scroll across every list surface. PlaceMedallion has done this for
-    // a while; the card thumbs were simply missed.
-    let src = proxyPhotoAtWidth(photoUrl, size);
-    if (src.startsWith("/api/place-photo")) {
-      const url = new URL(src, "https://frederickradius.local");
-      url.searchParams.set("fallback", "signal");
-      src = `${url.pathname}?${url.searchParams.toString()}`;
-    }
-    return (
-      <div
-        ref={anchorRef}
-        className="relative shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
-        style={{ height: size, width: size, boxShadow: "inset 0 0 0 1px var(--app-ink-tint-8)" }}
-      >
-        <Image
-          src={src}
-          alt=""
-          fill
-          unoptimized={src.startsWith("/api/place-photo")}
-          sizes={`${size}px`}
-          placeholder="blur"
-          blurDataURL={PAPER_CREAM_BLUR}
-          className="object-cover"
-          onLoad={(event) => {
-            if (event.currentTarget.naturalWidth <= 1 || event.currentTarget.naturalHeight <= 1) setFailedSrc(photoUrl);
-          }}
-          onError={() => setFailedSrc(photoUrl)}
-        />
-      </div>
-    );
-  }
-  const fallbackSize = Math.min(size, 46);
-  return (
-    <div ref={anchorRef} className="shrink-0" style={{ height: fallbackSize, width: fallbackSize }}>
-      <CategoryMark category={category} color={color} size={fallbackSize} />
-    </div>
-  );
-}
-
 export default function PlaceCard({
   place,
   compact = false,
@@ -232,9 +157,9 @@ export default function PlaceCard({
 }: {
   place: PlaceCardData;
   compact?: boolean;
-  variant?: "row" | "feature" | "tile" | "grid" | "answer";
+  variant?: "row" | "feature" | "tile" | "grid" | "answer" | "discovery";
   /** Hydrate the photo on scroll; set by surfaces that withhold inline
-   *  photo URLs from their payload (see Thumb). */
+   *  photo URLs from their payload. */
   lazyPhoto?: boolean;
   /** Show the source/trust badge. Defaults by variant (off in dense lists,
    *  on for the lead); the full trust tier still lives on the detail sheet. */
@@ -248,10 +173,34 @@ export default function PlaceCard({
    *  the canonical hero only; kept in the type so existing callers compile. */
   galleryPhotos?: string[];
 }) {
+  const photoWidth = variant === "row" ? (compact ? 56 : 88) : variant === "grid" ? 180 : variant === "tile" ? 244 : 360;
+  const inlinePlan = placeCardPhotoPlan(place, photoWidth);
+  // Reviewed owner/landmark images are already available locally. Hydrate
+  // only rows with no eligible inline source, keeping the county payload slim
+  // and the existing viewport/batch limits intact.
+  const { photoData, anchorRef: photoAnchorRef } = usePlacePhotoData(
+    place.slug, (variant === "row" || variant === "discovery") && lazyPhoto && inlinePlan.sources.length === 0,
+  );
+  const photoPlan = photoData ? placeCardPhotoPlan({ ...place, ...photoData }, photoWidth) : inlinePlan;
+  const mountedPhotoPlanKey = useRef(photoPlan.key);
+  useLayoutEffect(() => { mountedPhotoPlanKey.current = photoPlan.key; }, [photoPlan.key]);
+  const [photoState, setPhotoState] = useState<PlaceCardPhotoState | null>(null);
+  const photo = selectedPlaceCardPhoto(photoPlan, photoState);
+  const photoLoaded = photoState?.planKey === photoPlan.key && photoState.loadedSrc === photo?.src;
+  const onPhotoResult = (src: string, result: PlaceCardPhotoResult) => {
+    setPhotoState((state) => mountedPhotoPlanKey.current === photoPlan.key
+      ? recordPlaceCardPhotoResult(photoPlan, state, src, result)
+      : state);
+  };
+  const interactionReady = useSyncExternalStore(subscribeReady, () => true, () => false);
   const cat = CATEGORY_BY_SLUG[place.category];
   const color = cat?.color ?? "var(--app-brand)";
   const { openSheet } = usePlaceSheet();
-  const openDetail = () => { haptic("light"); openSheet(place); };
+  const openDetail = (event: MouseEvent<HTMLButtonElement>) => {
+    haptic("light");
+    // Safari pointer taps do not reliably focus buttons before opening a sheet.
+    openSheet(place, { returnFocus: event.currentTarget });
+  };
   // Chain locations often share the same visible name. Give every card action
   // enough location context for voice control and screen readers to distinguish
   // the downtown result from the one across the county.
@@ -276,10 +225,77 @@ export default function PlaceCard({
     (r) => r.kind !== "open_now" && r.kind !== "verified_open",
   );
 
+  // Nearby discovery gives an exact place photograph enough room to identify
+  // the destination. A missing/exhausted plan keeps a compact, factual card.
+  if (variant === "discovery") {
+    const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? place.city;
+    const repeatedFacts = new Set([place.name, cat?.name, place.category, town, "Hours not confirmed"]
+      .filter((value): value is string => Boolean(value))
+      .map((value) => value.trim().toLocaleLowerCase()));
+    const fact = [place.field_note_tip, place.known_for?.[0], kf]
+      .find((value) => value?.trim() && !repeatedFacts.has(value.trim().toLocaleLowerCase()));
+    const hoursUnknown = place.open_status.state === "unknown" || place.open_status.state === "unverified";
+    // The server and first hydration render use the same functioning directions
+    // URL. Once interactive, the shared helper selects the device's native map.
+    const directions = interactionReady
+      ? directionsHref(place.geom.lat, place.geom.lng)
+      : `https://www.google.com/maps/dir/?api=1&destination=${place.geom.lat},${place.geom.lng}`;
+    return (
+      <article
+        ref={photoAnchorRef}
+        data-place-card-variant="discovery"
+        data-place-card-has-photo={photo ? "true" : "false"}
+        className="relative mx-auto w-full min-w-0 max-w-[600px] overflow-hidden rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated-solid)]"
+        style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1)" }}
+      >
+        <button
+          type="button"
+          onClick={openDetail}
+          aria-label={`View ${actionName} details`}
+          className="group block w-full min-w-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-focus)]"
+        >
+          {photo && <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={360}
+            sizes="(max-width: 640px) calc(100vw - 32px), 600px" />}
+          <div className={photo ? "p-4" : "flex items-start gap-3 p-3"}>
+            {!photo && <CategoryMark category={place.category} color="var(--app-ink-2)" size={44} />}
+            <div className="min-w-0 flex-1">
+              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] leading-normal" style={{ color: "var(--app-ink-2)" }}>
+                <span>{cat?.name ?? place.category}</span>
+                {town && <><span aria-hidden>·</span><span>{town}</span></>}
+                {place.distance_m !== undefined && <><span aria-hidden>·</span><span className="tabular-nums">{formatDistance(place.distance_m)}</span></>}
+              </p>
+              <h3 className={`mt-1 break-words font-semibold leading-[1.15] tracking-[-0.035em] [overflow-wrap:anywhere] ${photo ? "text-[24px]" : "text-[20px]"}`} style={{ color: "var(--app-ink)" }}>
+                {place.name}
+              </h3>
+              <div className="mt-2 text-[13px] leading-normal" style={{ color: "var(--app-ink-2)" }}>
+                {hoursUnknown ? <span>Hours not confirmed</span> : <PlaceStatus status={place.open_status} className="!text-[13px] !text-[var(--app-ink-2)]" />}
+              </div>
+              {photo && fact && <p className="mt-2 line-clamp-2 text-[14px] leading-[1.45]" style={{ color: "var(--app-ink-2)" }}>{fact}</p>}
+            </div>
+          </div>
+        </button>
+        <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} touchTarget compact />
+        <div className="grid grid-cols-2 gap-2 px-4 pb-4 [&_button]:flex-row [&_button]:gap-2 [&_button]:border [&_button]:border-[var(--app-control-border)] [&_button]:text-[13px]">
+          <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} barLabel="Save" />
+          <a
+            href={directions}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Directions to ${actionName}`}
+            className="flex min-h-[52px] min-w-0 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-2 py-2 text-[13px] font-semibold leading-snug outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-focus)]"
+            style={{ borderColor: "var(--app-control-border)", color: "var(--app-link)" }}
+          >
+            Directions
+            <ArrowUpRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} aria-hidden />
+          </a>
+        </div>
+      </article>
+    );
+  }
+
   // ── FEATURE — the prominent promoted lead (Today "Worth a look", a
-  // category page lead). Text-led: a larger category mark, a serif title,
-  // the why-chips, open status, and distance when we have it. A category
-  // accent rail ties it to its type without a photo banner.
+  // category page lead). An exact place photo leads when available; the
+  // category mark keeps its real facts usable when every source fails.
   if (variant === "feature") {
     return (
       <article
@@ -293,9 +309,9 @@ export default function PlaceCard({
           aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
-          <PlaceCardPhoto place={place} />
+          <PlaceCardPhoto source={photo} onResult={onPhotoResult} />
           <div className="flex items-start gap-3 p-4 pl-5">
-            {!place.google_photo_url && <Thumb place={place} category={place.category} color={color} size={52} lazyPhoto={lazyPhoto} />}
+            {!photo && <CategoryMark category={place.category} color={color} size={46} />}
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
                 <h3 className="min-w-0 flex-1 truncate font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -331,7 +347,7 @@ export default function PlaceCard({
             </div>
           </div>
         </button>
-        <PlaceCardPhotoCredit place={place} />
+        <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} />
         <div className="absolute right-2.5 top-2.5 z-10">
           <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
         </div>
@@ -341,8 +357,7 @@ export default function PlaceCard({
 
   // ── ANSWER — the funnel's lead pick. Keeps the full honest signal block
   // (open + closing time, why-chips, rating, price, the attributed review
-  // snippet) — the richest text card we have — now headed by a category
-  // mark instead of a photo banner. No imported imagery.
+  // snippet), headed by an exact place photo or the category mark.
   if (variant === "answer") {
     const loved = (place.customers_loved ?? []).slice(0, 3);
     return (
@@ -360,10 +375,10 @@ export default function PlaceCard({
           aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
-          <PlaceCardPhoto place={place} />
+          <PlaceCardPhoto source={photo} onResult={onPhotoResult} />
           <div className="space-y-2.5 p-4">
             <div className="flex items-start gap-3">
-              {!place.google_photo_url && <Thumb place={place} category={place.category} color={color} size={48} lazyPhoto={lazyPhoto} />}
+              {!photo && <CategoryMark category={place.category} color={color} size={46} />}
               <div className="min-w-0 flex-1">
                 {/* pr-9 clears the absolutely-positioned SaveButton (36px at
                     right-2.5) so the ml-auto distance never renders under it. */}
@@ -415,7 +430,7 @@ export default function PlaceCard({
             ) : null}
           </div>
         </button>
-        <PlaceCardPhotoCredit place={place} />
+        <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} />
         <div className="absolute right-2.5 top-2.5 z-10">
           <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
         </div>
@@ -423,10 +438,8 @@ export default function PlaceCard({
     );
   }
 
-  // ── TILE — fixed-width card for horizontal shelves. Text-led: a category
-  // mark + open dot header, the name, type/known-for/distance, and chips. A
-  // category color band along the bottom is the through-line that ties cards
-  // to their type (a line, not a photo).
+  // ── TILE — fixed-width card for horizontal shelves. The photo and its
+  // sibling credit keep the source links separate from opening and saving.
   if (variant === "tile") {
     return (
       <article
@@ -442,11 +455,11 @@ export default function PlaceCard({
           aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
-          <PlaceCardPhoto place={place} width={244} />
+          <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={244} />
           <div className="space-y-2 p-3.5 pb-4">
-            <div className="flex items-center gap-2.5">
-              {!place.google_photo_url && <Thumb place={place} category={place.category} color={color} size={40} lazyPhoto={lazyPhoto} />}
-              <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
+            <div className={`flex items-center gap-2.5${!photo ? " pr-9" : ""}`}>
+              {!photo && <CategoryMark category={place.category} color={color} size={40} />}
+              <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink)" }}>
                 {cat?.name ?? place.category}
               </span>
               <span className="ml-auto">
@@ -479,13 +492,13 @@ export default function PlaceCard({
           </div>
           <div aria-hidden className="h-[3px] w-full" style={{ background: color }} />
         </button>
-        <PlaceCardPhotoCredit place={place} />
+        <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} />
         {showSource && (
-          <div className="absolute right-2 top-2 z-10">
+          <div className="absolute left-2 top-2 z-10">
             <SourceBadge place={place} size="sm" />
           </div>
         )}
-        <div className="absolute bottom-2 right-2 z-10">
+        <div className="absolute right-2 top-2 z-10">
           <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
         </div>
       </article>
@@ -503,9 +516,9 @@ export default function PlaceCard({
           aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
-          <PlaceCardPhoto place={place} width={180} />
+          <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={180} />
           <div className="flex items-start gap-2.5 p-2.5">
-            {!place.google_photo_url && <Thumb place={place} category={place.category} color={color} size={40} lazyPhoto={lazyPhoto} />}
+            {!photo && <CategoryMark category={place.category} color={color} size={40} />}
             <div className="min-w-0 flex-1 space-y-0.5">
               <h3 className="line-clamp-2 text-[15px] font-semibold leading-[1.2] tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {place.name}
@@ -527,21 +540,13 @@ export default function PlaceCard({
           </div>
           <div aria-hidden className="h-[2px] w-full" style={{ background: color }} />
         </button>
-        <PlaceCardPhotoCredit place={place} />
+        <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} />
       </article>
     );
   }
 
-  // ── ROW (default) — the dense list card. Leading category mark, name,
-  // type/known-for, distance, and chips. The workhorse of every list.
-  // The title leads; a quiet 42px mark anchors the left; chips capped at 2
-  // so a long list scans as names, not a wall of pills. Tighter vertical
-  // rhythm shortens the page without crowding.
-  // One tight signal line: open status, rating, price, and a compact
-  // field-notes / deal marker inline — no full-width badge row, no per-card
-  // commerce button (both lived their own row and made the card tall; the
-  // commerce action lives on the place page's action bar). The card is now
-  // name → type → one meta line, so a list scans as names, not boxes.
+  // ── ROW — exact photography, a readable name, and one useful facts line.
+  // Keep source links outside the detail action and cap reason chips at two.
   const rowReasons = reasons.slice(0, 2);
   const inlineTag = place.deal_hook ? (
     <DealHookTag label={place.deal_hook} compact />
@@ -550,12 +555,8 @@ export default function PlaceCard({
   ) : null;
   return (
     <article
-      className="tactile tactile-interactive tactile-e2 group relative flex items-stretch gap-2.5 overflow-hidden rounded-[var(--app-radius-lg)] py-2 pl-3.5 pr-2.5"
+      className="tactile tactile-interactive tactile-e2 group relative overflow-hidden rounded-[var(--app-radius-lg)]"
       style={{
-        // Field-guide "pass" material: the warm paper texture behind the
-        // existing emboss (--app-hi/--app-edge from .tactile), with a category
-        // color cap down the left edge — the same color-band language the
-        // feature/answer/tile variants already carry, now on the workhorse row.
         backgroundColor: "var(--app-bg-elevated-solid)",
         backgroundImage: "var(--app-paper-light)",
       }}
@@ -571,66 +572,72 @@ export default function PlaceCard({
         aria-label={`View ${actionName} details`}
         className="absolute inset-0 z-0 rounded-[var(--app-radius-lg)] text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-inset"
       />
-      <div className="pointer-events-none relative z-10 self-center">
-        <Thumb place={place} category={place.category} color={color} size={compact ? 46 : 72} lazyPhoto={lazyPhoto} />
-      </div>
-      <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col justify-center">
-        <div className="flex items-start gap-2">
-          <span
-            aria-hidden
-            className="line-clamp-1 min-w-0 flex-1 text-[15px] font-semibold leading-[1.2] tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {place.name}
-          </span>
-          {showSource && <SourceBadge place={place} size="sm" />}
-          {place.distance_m !== undefined && (
-            <span className="ml-auto mt-[1px] shrink-0 whitespace-nowrap text-[12px] font-medium tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-              {formatDistance(place.distance_m)}
+      <div className="flex items-stretch gap-3 p-3 pl-3.5">
+        <div ref={photoAnchorRef} className="pointer-events-none relative z-10 shrink-0 self-center">
+          {photo ? (
+            <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={photoWidth} frame={compact ? "compact-row" : "row"} />
+          ) : <CategoryMark category={place.category} color={color} size={compact ? 40 : 46} />}
+        </div>
+        <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col justify-center">
+          <div className="flex items-start gap-2">
+            <h3
+              className="line-clamp-2 min-w-0 flex-1 text-[15px] font-semibold leading-[1.3] tracking-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {place.name}
+            </h3>
+            {showSource && <SourceBadge place={place} size="sm" />}
+            {place.distance_m !== undefined && (
+              <span className="ml-auto mt-[1px] shrink-0 whitespace-nowrap text-[12px] font-medium tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                {formatDistance(place.distance_m)}
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 flex items-center gap-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+            {(place.tags ?? []).includes("dog-friendly") && (
+              <PawPrint
+                className="h-3 w-3 shrink-0"
+                strokeWidth={2.25}
+                style={{ color: "var(--app-brand-2)" }}
+                aria-label="Dog-friendly"
+              />
+            )}
+            <span className="truncate">
+              {cat?.name ?? place.category}
+              {kf && <> · {kf}</>}
             </span>
+          </p>
+          {place.market_day && (
+            <p className="mt-0.5 truncate text-[12px] font-medium" style={{ color: "var(--app-brand-press)" }}>
+              {place.market_day}{place.market_hours ? ` · ${place.market_hours}` : ""}
+            </p>
+          )}
+          {!compact && (
+            rowReasons.length > 0 ? (
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <StatusChipRow reasons={rowReasons} />
+                {inlineTag}
+              </div>
+            ) : (
+              <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                <PlaceStatus status={place.open_status} />
+                <Rave rating={place.google_rating} count={place.google_rating_count} />
+                {place.price_band && (
+                  <span className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+                    {"$".repeat(place.price_band)}
+                  </span>
+                )}
+                {inlineTag}
+              </div>
+            )
           )}
         </div>
-        <p className="mt-0.5 flex items-center gap-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          {(place.tags ?? []).includes("dog-friendly") && (
-            <PawPrint
-              className="h-3 w-3 shrink-0"
-              strokeWidth={2.25}
-              style={{ color: "var(--app-brand-2)" }}
-              aria-label="Dog-friendly"
-            />
-          )}
-          <span className="truncate">
-            {cat?.name ?? place.category}
-            {kf && <> · {kf}</>}
-          </span>
-        </p>
-        {place.market_day && (
-          <p className="mt-0.5 truncate text-[12px] font-medium" style={{ color: "var(--app-brand-press)" }}>
-            {place.market_day}{place.market_hours ? ` · ${place.market_hours}` : ""}
-          </p>
-        )}
-        {!compact && (
-          rowReasons.length > 0 ? (
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-              <StatusChipRow reasons={rowReasons} />
-              {inlineTag}
-            </div>
-          ) : (
-            <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-              <PlaceStatus status={place.open_status} />
-              <Rave rating={place.google_rating} count={place.google_rating_count} />
-              {place.price_band && (
-                <span className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
-                  {"$".repeat(place.price_band)}
-                </span>
-              )}
-              {inlineTag}
-            </div>
-          )
-        )}
+        <div className="relative z-10 self-start">
+          <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
+        </div>
       </div>
-      <div className="relative z-10 self-start">
-        <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
+      <div className="relative z-10">
+        <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} compact />
       </div>
     </article>
   );

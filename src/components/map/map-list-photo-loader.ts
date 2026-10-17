@@ -1,7 +1,10 @@
+import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
+
 type MapListPhotoResponse = {
   places?: Array<{
     slug?: unknown;
     google_photo_url?: unknown;
+    google_photo_attribution?: unknown;
   }>;
 };
 
@@ -12,15 +15,41 @@ type FetchResult = {
 
 type MapListPhotoFetcher = (input: string) => Promise<FetchResult>;
 
-type PendingPhoto = {
-  promise: Promise<string | null>;
-  resolve: (photoUrl: string | null) => void;
+/** Keep the exact individual-photo credit attached through lazy hydration. */
+export type PlacePhotoData = {
+  google_photo_url: string;
+  google_photo_attribution?: GooglePhotoAttribution;
 };
+
+type PendingPhoto = {
+  promise: Promise<PlacePhotoData | null>;
+  urlPromise: Promise<string | null>;
+  resolve: (photo: PlacePhotoData | null) => void;
+};
+
+function photoAttribution(value: unknown): GooglePhotoAttribution | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const credit = value as Record<string, unknown>;
+  if (typeof credit.photo_name !== "string" || !Array.isArray(credit.authors)) return undefined;
+  if (credit.google_maps_uri !== undefined && typeof credit.google_maps_uri !== "string") return undefined;
+  if (credit.flag_content_uri !== undefined && typeof credit.flag_content_uri !== "string") return undefined;
+  for (const author of credit.authors) {
+    if (!author || typeof author !== "object") return undefined;
+    for (const field of ["display_name", "uri", "photo_uri"]) {
+      if (author[field] !== undefined && typeof author[field] !== "string") return undefined;
+    }
+  }
+  // Eligibility is still decided by placeCardPhotoPlan, including exact photo
+  // identity and its individual Google Maps source URL. Never infer a credit.
+  return value as GooglePhotoAttribution;
+}
 
 export type MapListPhotoLoader = {
   /** Undefined means this slug has not been checked; null is a checked fallback. */
   peek: (slug: string) => string | null | undefined;
   load: (slug: string) => Promise<string | null>;
+  peekData: (slug: string) => PlacePhotoData | null | undefined;
+  loadData: (slug: string) => Promise<PlacePhotoData | null>;
   /** Exposed so the batching contract can be tested without relying on timers. */
   flush: () => Promise<void>;
 };
@@ -42,7 +71,7 @@ export function createMapListPhotoLoader({
   batchDelayMs?: number;
   maxBatchSize?: number;
 } = {}): MapListPhotoLoader {
-  const cache = new Map<string, string | null>();
+  const cache = new Map<string, PlacePhotoData | null>();
   const pending = new Map<string, PendingPhoto>();
   const queued = new Set<string>();
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -55,20 +84,29 @@ export function createMapListPhotoLoader({
     }, batchDelayMs);
   }
 
-  function load(slug: string): Promise<string | null> {
-    if (cache.has(slug)) return Promise.resolve(cache.get(slug) ?? null);
-
+  function enqueue(slug: string): PendingPhoto {
     const existing = pending.get(slug);
-    if (existing) return existing.promise;
+    if (existing) return existing;
 
-    let resolve!: (photoUrl: string | null) => void;
-    const promise = new Promise<string | null>((done) => {
+    let resolve!: (photo: PlacePhotoData | null) => void;
+    const promise = new Promise<PlacePhotoData | null>((done) => {
       resolve = done;
     });
-    pending.set(slug, { promise, resolve });
+    const request = { promise, urlPromise: promise.then((photo) => photo?.google_photo_url ?? null), resolve };
+    pending.set(slug, request);
     queued.add(slug);
     schedule();
-    return promise;
+    return request;
+  }
+
+  function loadData(slug: string): Promise<PlacePhotoData | null> {
+    if (cache.has(slug)) return Promise.resolve(cache.get(slug) ?? null);
+    return enqueue(slug).promise;
+  }
+
+  function load(slug: string): Promise<string | null> {
+    if (cache.has(slug)) return Promise.resolve(cache.get(slug)?.google_photo_url ?? null);
+    return enqueue(slug).urlPromise;
   }
 
   async function flush(): Promise<void> {
@@ -87,21 +125,25 @@ export function createMapListPhotoLoader({
       if (!response.ok) throw new Error("Map list photo hydration failed");
 
       const body = (await response.json()) as MapListPhotoResponse;
-      const photos = new Map<string, string>();
-      for (const place of body.places ?? []) {
+      if (!Array.isArray(body.places)) throw new Error("Invalid place photo response");
+      const photos = new Map<string, PlacePhotoData>();
+      for (const place of body.places) {
         if (
           typeof place.slug === "string" &&
           typeof place.google_photo_url === "string" &&
           place.google_photo_url.length > 0
         ) {
-          photos.set(place.slug, place.google_photo_url);
+          photos.set(place.slug, {
+            google_photo_url: place.google_photo_url,
+            google_photo_attribution: photoAttribution(place.google_photo_attribution),
+          });
         }
       }
 
       for (const slug of slugs) {
-        const photoUrl = photos.get(slug) ?? null;
-        cache.set(slug, photoUrl);
-        pending.get(slug)?.resolve(photoUrl);
+        const photo = photos.get(slug) ?? null;
+        cache.set(slug, photo);
+        pending.get(slug)?.resolve(photo);
         pending.delete(slug);
       }
     } catch {
@@ -118,8 +160,10 @@ export function createMapListPhotoLoader({
   }
 
   return {
-    peek: (slug) => (cache.has(slug) ? cache.get(slug) ?? null : undefined),
+    peek: (slug) => (cache.has(slug) ? cache.get(slug)?.google_photo_url ?? null : undefined),
     load,
+    peekData: (slug) => (cache.has(slug) ? cache.get(slug) ?? null : undefined),
+    loadData,
     flush,
   };
 }

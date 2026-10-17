@@ -41,6 +41,16 @@ jobs:
             const expectedHead = process.env.AUTOMATED_PR_HEAD_SHA;
             const allowedByBranch = {
               'bot/marc-schedule-refresh': ['src/data/marc-schedule.json'],
+              'bot/official-library-hours': [
+                'docs/coverage-scorecard.md',
+                'docs/hours-refresh-review.md',
+                'src/data/data-release.json',
+                'src/data/event-venue-photo-credits.json',
+                'src/data/place-refresh-identities.json',
+                'src/data/places-client-hours.json',
+                'src/data/places-client.json',
+                'src/data/places-official-hours.json',
+              ],
               'bot/data-steward': [
                 'docs/coverage-scorecard.md',
                 'docs/hours-refresh-review.md',

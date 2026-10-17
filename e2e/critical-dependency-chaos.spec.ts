@@ -135,6 +135,11 @@ test.describe("critical surfaces under combined dependency failure", () => {
     });
     await expect(primaryFind).toBeVisible();
     await expect(primaryFind).toHaveAttribute("href", "/search");
+    // Before hydration this link correctly navigates to /search. Exercise
+    // the dialog only after this launcher can honor its enhanced interaction.
+    await expect(primaryFind).toHaveAttribute("data-find-interaction-ready", "true", {
+      timeout: 30_000,
+    });
     await primaryFind.click();
     // The main-content launcher keeps a real /search fallback but enhances
     // normal taps into Find. Verify both the immediate response and the full
@@ -153,6 +158,7 @@ test.describe("critical surfaces under combined dependency failure", () => {
         name: "Ask or find across Frederick County",
       }),
     ).toBeVisible();
+    await expect(page).toHaveURL(/\/today(?:[?#]|$)/);
     await page.getByRole("button", { name: "Close Find" }).click();
     const localGuides = page.getByRole("region", {
       name: "Local guides and saved places",

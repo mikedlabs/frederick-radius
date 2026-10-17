@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { libreCaslonDisplay, publicSans } from "./fonts";
+import { libreCaslonDisplay } from "./fonts";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -12,16 +12,11 @@ import DecisionTelemetryObserver from "@/components/analytics/DecisionTelemetry"
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
 import { PLATFORM_BRAND } from "@/lib/platform-brand";
-import { BRAND } from "@/lib/brand";
+import { APPEARANCE_BOOTSTRAP } from "@/lib/appearance";
 
 /**
- * Brand typography is self-hosted through next/font (see ./fonts.ts) so
- * production never depends on a live Google Fonts request AND the fallback
- * carries the real font's metrics, which is what stops the swap from
- * reflowing the page. Libre Caslon Display is the wordmark and rare
- * editorial moments; Public Sans carries product titles, UI, body copy,
- * labels, and tabular data. Keeping the product to these two faces is part
- * of the Frederick Radius brand contract.
+ * Product UI follows the native system font. The optional Caslon signature is
+ * self-hosted; Public Sans remains available for standalone exported artwork.
  */
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
@@ -91,7 +86,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    // "default" = dark status-bar text on the themed cream bar. "black-translucent"
+    // "default" = dark status-bar text on the themed White bar. "black-translucent"
     // rendered WHITE text over the light paper ground, hiding the clock/battery.
     statusBarStyle: "default",
     title: PLATFORM_BRAND.shortName,
@@ -105,14 +100,9 @@ export const viewport: Viewport = {
   // Keep fixed-bottom UI (BottomNav, sheets, the search overlay) above the
   // on-screen keyboard on Android Chrome instead of being shoved/covered.
   interactiveWidget: "resizes-content",
-  // Match the default Cream ground and the OS-preferred secondary Ink ground.
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: BRAND.colors.ink },
-    // Must match the canonical paper ground (--app-bg = #F4EEE2) or installed
-    // PWAs show a status-bar/page seam.
-    // Viewport metadata can't read CSS vars, so this literal is kept in sync.
-    { media: "(prefers-color-scheme: light)", color: PLATFORM_BRAND.themeColor },
-  ],
+  // First visits are light; the saved explicit choice updates this meta tag
+  // in the early bootstrap and the shared appearance control.
+  themeColor: PLATFORM_BRAND.themeColor,
 };
 
 export default function RootLayout({
@@ -149,13 +139,14 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      // The two font variables are declared on <html> so globals.css can point
-      // its type tokens at them; every surface reads the tokens, not these.
-      className={`${publicSans.variable} ${libreCaslonDisplay.variable}`}
+      // Only explicit editorial signatures use a bundled font variable.
+      className={libreCaslonDisplay.variable}
       data-season={season}
+      data-appearance="light"
       style={{ "--season-accent": seasonAccent, "--season-depth": seasonAccent } as React.CSSProperties}
     >
       <head>
+        <Script id="fr-appearance" strategy="beforeInteractive">{APPEARANCE_BOOTSTRAP}</Script>
         {/* Capture Chromium's one-shot install event before React hydrates.
             The visible prompt still owns when to ask; this only prevents a
             fast browser event from disappearing before the app can use it. */}

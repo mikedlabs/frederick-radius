@@ -24,19 +24,19 @@ test("desktop map dock keeps the complete content-choice label", async ({ page }
           <div class="dock-search-wrap">
             <div class="dock-search">Search this map</div>
           </div>
-          <button type="button" class="dock-contents tap-44" aria-label="Choose what to see on this map">
+          <button type="button" class="dock-contents tap-44" aria-label="Filters: choose what to see on this map">
             <svg aria-hidden="true" width="18" height="18"></svg>
-            <span class="dock-contents-label">What to see</span>
+            <span class="dock-contents-label">Filters</span>
           </button>
         </div>
       </div>`;
     main.appendChild(fixture);
   });
 
-  const browse = page.getByRole("button", { name: "Choose what to see on this map" });
+  const browse = page.getByRole("button", { name: "Filters: choose what to see on this map" });
   const label = browse.locator(".dock-contents-label");
   await expect(label).toBeVisible();
-  await expect(label).toHaveText("What to see");
+  await expect(label).toHaveText("Filters");
   const geometry = await browse.evaluate((control) => {
     const visibleLabel = control.querySelector<HTMLElement>(".dock-contents-label");
     return {
@@ -73,8 +73,8 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
     fullPage: true,
   });
 
-  const browse = page.getByRole("button", { name: "Choose what to see on this map" });
-  await expect(browse).toContainText("What to see");
+  const browse = page.getByRole("button", { name: "Filters: choose what to see on this map" });
+  await expect(browse).toContainText("Filters");
   const browseLabel = browse.locator(".dock-contents-label");
   await expect(browseLabel).toBeVisible();
   expect(
@@ -95,7 +95,7 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
   await conditions.getByRole("button", { name: "Done" }).click();
 
   await browse.click();
-  await expect(chooser.getByRole("button", { name: /^Nearby/ })).toBeVisible();
+  await expect(chooser.getByRole("button", { name: /^Coffee/ })).toBeVisible();
   await expect(
     chooser.getByRole("button", { name: /^Happening/ }),
   ).toBeVisible();
@@ -113,18 +113,13 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
     fullPage: true,
   });
 
-  await chooser.getByRole("button", { name: /^Nearby/ }).click();
+  await chooser.getByRole("button", { name: /^Coffee/ }).click();
   await expect(chooser).toBeHidden();
-  await expect
-    .poll(() => page.evaluate(() => window.sessionStorage.getItem("fr_geo_v1")), {
-      timeout: 10_000,
-    })
-    .not.toBeNull();
-  await expect
-    .poll(() => {
-      return new URL(page.url()).searchParams.get("in");
-    }, { timeout: 5_000 })
-    .toBe("nearme");
+  await expect(page.locator("[data-map-list-peek]")).toBeVisible();
+  await expect(page.locator("[data-map-list-place]")).toHaveCount(5);
+  await expect.poll(() => new URL(page.url()).searchParams.get("intent")).toBe("coffee");
+  expect(new URL(page.url()).searchParams.get("in")).not.toBe("nearme");
+  await expect(page.locator("[data-map-place-slug]")).toHaveCount(0);
   await page.screenshot({
     path: "output/playwright/map-polish-find-390x844.png",
     fullPage: true,
@@ -140,7 +135,7 @@ test("touching the map dismisses Browse without stranding focus in the inert pan
   });
 
   await page
-    .getByRole("button", { name: "Choose what to see on this map" })
+    .getByRole("button", { name: "Filters: choose what to see on this map" })
     .click();
   const chooser = page.locator("#dock-pane");
   await expect(chooser).toBeFocused();
@@ -200,7 +195,7 @@ test("revealed map choices clear the fixed navigation and the area picker keeps 
   });
 
   const nav = page.locator("[data-bottom-nav-shell]");
-  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+  await page.getByRole("button", { name: "Filters: choose what to see on this map" }).click();
   const chooser = page.getByRole("region", { name: "Choose what to see" });
   await expect(chooser).toBeVisible();
 
@@ -369,7 +364,7 @@ test("an active query uses the full mobile command width without stacking overla
     fullPage: true,
   });
 
-  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+  await page.getByRole("button", { name: "Filters: choose what to see on this map" }).click();
   await expect(results).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Choose what to see" })).toBeVisible();
 });
@@ -440,7 +435,7 @@ test("a shared map reproduces its layers without replacing this device's prefere
     timeout: 20_000,
   });
 
-  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+  await page.getByRole("button", { name: "Filters: choose what to see on this map" }).click();
   await page
     .getByRole("region", { name: "Choose what to see" })
     .getByRole("button", { name: /^Get around/ })

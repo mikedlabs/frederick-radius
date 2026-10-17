@@ -9,11 +9,13 @@ export default function InterceptedDrawer({
   title,
   subtitle,
   bareHeader,
+  inlineToolsPanels = false,
 }: {
   children: ReactNode;
   title: string;
   subtitle?: string;
   bareHeader?: boolean;
+  inlineToolsPanels?: boolean;
 }) {
   const router = useRouter();
 
@@ -30,6 +32,11 @@ export default function InterceptedDrawer({
       title={title}
       subtitle={subtitle}
       bareHeader={bareHeader}
+      onEscapeKeyDown={inlineToolsPanels ? (event) => {
+        // Radix checks Escape at document capture, before the child boundary.
+        // Keep this outer drawer open while its inline Tools panel handles it.
+        if (event.target instanceof Element && event.target.closest("[data-tool-deck-inline]")) event.preventDefault();
+      } : undefined}
     >
       {children}
     </BottomDrawer>

@@ -1,3 +1,4 @@
+import type { Event } from "@/data/events";
 import { describe, expect, it, vi } from "vitest";
 import { qualifiedSearchIndex, searchIndex } from "./index";
 import { findDepartments } from "@/data/departments";
@@ -439,4 +440,18 @@ describe("dated result handoffs", () => {
     expect(results.some((result) => result.href.includes("t=weekend") || result.href.includes("when=weekend"))).toBe(false);
     expect(results.find((result) => result.id === "action:events")?.subtitle).toContain("next weekend");
   });
+});
+
+
+it("serializes compact canonical event evidence without a photo or fabricated placement", () => {
+  const now = new Date();
+  const startsAt = new Date(now.getTime() + 3_600_000).toISOString();
+  const endsAt = new Date(now.getTime() + 7_200_000).toISOString();
+  const candidate = { slug: "canonical-evidence-proof", title: "Canonical Evidence Proof", description: "A source fixture.", starts_at: startsAt, ends_at: endsAt, timezone: "America/New_York", venue_name: "Actual venue", address: "Actual address", municipality: "brunswick", geom: { lng: -77.63, lat: 39.31 }, category: "community", audience: [], is_free: true, source: "manual", is_verified: false, organizer: "Actual organizer" } satisfies Event;
+  const actual = searchIndex(candidate.title, 12, [candidate]).find(result => result.id === `event:${candidate.slug}`)!;
+  expect(actual.event).toMatchObject({ starts_at: startsAt, ends_at: endsAt, municipality: "brunswick", venue_name: "Actual venue", point: candidate.geom });
+  expect(actual.event).not.toHaveProperty("description");
+  expect(actual.event).not.toHaveProperty("hero_image");
+  const unresolved = searchIndex(candidate.title, 12, [{ ...candidate, placement: "needs_review" }]).find(result => result.id === `event:${candidate.slug}`);
+  if (unresolved) expect(unresolved.event).not.toHaveProperty("point");
 });

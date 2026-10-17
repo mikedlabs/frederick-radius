@@ -1,0 +1,572 @@
+{
+  "schema_version": 1,
+  "source_id": "fcpl_branch_hours",
+  "weekly": {
+    "url": "https://www.fcpl.org/branches-hours",
+    "observed_at": "2026-10-12T09:13:08.000Z",
+    "sha256": "8d7f005c8f8d7d3533edc81627d0515ff01ee121e040393837c4bfad0b656a0e"
+  },
+  "closures": {
+    "url": "https://www.fcpl.org/holiday-closings",
+    "observed_at": "2026-10-12T09:18:49.000Z",
+    "sha256": "c7e6a3f5c927e79fe4e90624811f8436364c9463fb0ce1e1e8f24446a9af76c4",
+    "coverage_from": "2026-10-12",
+    "coverage_through": "2027-12-31",
+    "exceptions": [
+      {
+        "date": "2026-10-12",
+        "reason": "Libraries Closed - Staff Development Day",
+        "closed": true
+      },
+      {
+        "date": "2026-11-11",
+        "reason": "Veteran's Day",
+        "closed": true
+      },
+      {
+        "date": "2026-11-25",
+        "reason": "Thanksgiving Eve - Libraries Close at 5 pm",
+        "closes_at": "17:00"
+      },
+      {
+        "date": "2026-11-26",
+        "reason": "Thanksgiving",
+        "closed": true
+      },
+      {
+        "date": "2026-11-27",
+        "reason": "Thanksgiving",
+        "closed": true
+      },
+      {
+        "date": "2026-12-24",
+        "reason": "Christmas Holiday",
+        "closed": true
+      },
+      {
+        "date": "2026-12-25",
+        "reason": "Christmas Holiday",
+        "closed": true
+      },
+      {
+        "date": "2026-12-31",
+        "reason": "New Year's Eve - Libraries close at 5pm",
+        "closes_at": "17:00"
+      },
+      {
+        "date": "2027-01-01",
+        "reason": "New Year's Day - Libraries Closed",
+        "closed": true
+      },
+      {
+        "date": "2027-01-17",
+        "reason": "Martin Luther King Day",
+        "closed": true
+      },
+      {
+        "date": "2027-01-18",
+        "reason": "Martin Luther King Day",
+        "closed": true
+      },
+      {
+        "date": "2027-03-28",
+        "reason": "Easter",
+        "closed": true
+      },
+      {
+        "date": "2027-05-30",
+        "reason": "Memorial Day",
+        "closed": true
+      },
+      {
+        "date": "2027-05-31",
+        "reason": "Memorial Day",
+        "closed": true
+      },
+      {
+        "date": "2027-06-18",
+        "reason": "Juneteenth",
+        "closed": true
+      },
+      {
+        "date": "2027-06-19",
+        "reason": "Juneteenth",
+        "closed": true
+      },
+      {
+        "date": "2027-07-04",
+        "reason": "Independence Day",
+        "closed": true
+      },
+      {
+        "date": "2027-07-05",
+        "reason": "Independence Day",
+        "closed": true
+      },
+      {
+        "date": "2027-09-05",
+        "reason": "Labor Day",
+        "closed": true
+      },
+      {
+        "date": "2027-09-06",
+        "reason": "Labor Day",
+        "closed": true
+      },
+      {
+        "date": "2027-10-11",
+        "reason": "Libraries Closed - Staff Development Day",
+        "closed": true
+      },
+      {
+        "date": "2027-11-11",
+        "reason": "Veteran's Day",
+        "closed": true
+      },
+      {
+        "date": "2027-11-24",
+        "reason": "Thanksgiving Eve - Libraries Close at 5 pm",
+        "closes_at": "17:00"
+      },
+      {
+        "date": "2027-11-25",
+        "reason": "Thanksgiving",
+        "closed": true
+      },
+      {
+        "date": "2027-11-26",
+        "reason": "Thanksgiving",
+        "closed": true
+      },
+      {
+        "date": "2027-12-23",
+        "reason": "Christmas Holiday",
+        "closed": true
+      },
+      {
+        "date": "2027-12-24",
+        "reason": "Christmas Holiday",
+        "closed": true
+      },
+      {
+        "date": "2027-12-25",
+        "reason": "Christmas Holiday",
+        "closed": true
+      },
+      {
+        "date": "2027-12-31",
+        "reason": "New Year's Eve - Libraries Closed",
+        "closed": true
+      }
+    ]
+  },
+  "expires_at": "2026-10-19T09:13:08.000Z",
+  "places": [
+    {
+      "slug": "brunswick-branch-library-brunswick",
+      "source_url": "https://www.fcpl.org/branches-hours/brunswick-branch-library",
+      "source_name": "Brunswick Branch Library",
+      "hours": {
+        "mon": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "13:00",
+            "close": "17:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "c-burr-artz-public-library-frederick",
+      "source_url": "https://www.fcpl.org/branches-hours/c-burr-artz-public-library",
+      "source_name": "C. Burr Artz Public Library",
+      "hours": {
+        "mon": [
+          {
+            "open": "10:00",
+            "close": "21:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "10:00",
+            "close": "21:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "10:00",
+            "close": "21:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "10:00",
+            "close": "21:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "13:00",
+            "close": "17:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "edward-f-fry-memorial-library-at-point-of-rocks-brunswick",
+      "source_url": "https://www.fcpl.org/branches-hours/edward-f-fry-memorial-library-point-rocks",
+      "source_name": "Edward F. Fry Memorial Library at Point of Rocks",
+      "hours": {
+        "mon": [
+          {
+            "open": "10:00",
+            "close": "15:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "10:00",
+            "close": "15:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "15:00",
+            "close": "20:00"
+          }
+        ],
+        "thu": [],
+        "fri": [],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "15:00"
+          }
+        ],
+        "sun": []
+      }
+    },
+    {
+      "slug": "emmitsburg-branch-library-emmitsburg",
+      "source_url": "https://www.fcpl.org/branches-hours/emmitsburg-branch-library",
+      "source_name": "Emmitsburg Branch Library",
+      "hours": {
+        "mon": [
+          {
+            "open": "10:00",
+            "close": "18:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "10:00",
+            "close": "18:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "fri": [],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sun": []
+      }
+    },
+    {
+      "slug": "middletown-public-library-middletown",
+      "source_url": "https://www.fcpl.org/branches-hours/middletown-branch-library",
+      "source_name": "Middletown Branch Library",
+      "hours": {
+        "mon": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "13:00",
+            "close": "17:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "myersville-community-library-myersville",
+      "source_url": "https://www.fcpl.org/branches-hours/myersville-community-library",
+      "source_name": "Myersville Community Library",
+      "hours": {
+        "mon": [
+          {
+            "open": "10:00",
+            "close": "18:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "10:00",
+            "close": "18:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "fri": [],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sun": []
+      }
+    },
+    {
+      "slug": "thurmont-regional-library-thurmont",
+      "source_url": "https://www.fcpl.org/branches-hours/thurmont-regional-library",
+      "source_name": "Thurmont Regional Library",
+      "hours": {
+        "mon": [
+          {
+            "open": "10:00",
+            "close": "21:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "10:00",
+            "close": "21:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "10:00",
+            "close": "21:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "10:00",
+            "close": "21:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "13:00",
+            "close": "17:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "urbana-regional-library-new-market",
+      "source_url": "https://www.fcpl.org/branches-hours/urbana-regional-library",
+      "source_name": "Urbana Regional Library",
+      "hours": {
+        "mon": [
+          {
+            "open": "10:00",
+            "close": "21:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "10:00",
+            "close": "21:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "10:00",
+            "close": "21:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "10:00",
+            "close": "21:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "13:00",
+            "close": "17:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "walkersville-public-library-walkersville",
+      "source_url": "https://www.fcpl.org/branches-hours/walkersville-branch-library",
+      "source_name": "Walkersville Branch Library",
+      "hours": {
+        "mon": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "13:00",
+            "close": "17:00"
+          }
+        ]
+      }
+    }
+  ]
+}
