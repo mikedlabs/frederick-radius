@@ -305,7 +305,7 @@ const LIVE_FCPL_VENUES: readonly {
   { venue_name: "Walkersville Branch Library, Study Room 3 (WAL)", count: 1, slug: "walkersville-public-library-walkersville" },
   { venue_name: "Hill Street Park", count: 1, slug: null },
   { venue_name: "Frederick Health Village", count: 1, slug: null },
-  { venue_name: "Chick Fil-A", count: 1, slug: null },
+  { venue_name: "Chick Fil-A", count: 1, slug: "chick-fil-a-frederick" },
   { venue_name: "Middletown 50+ Community Center", count: 1, slug: null },
   { venue_name: "Weinberg Center for the Arts", count: 1, slug: "weinberg-center-for-the-arts-frederick" },
   { venue_name: "Walkersville Branch Library, The Loft", count: 1, slug: "walkersville-public-library-walkersville" },
@@ -351,7 +351,7 @@ describe("live FCPL browse venues", () => {
       if (row.slug) linked += row.count;
     }
 
-    expect(linked).toBe(453);
+    expect(linked).toBe(454);
   });
 
   it("publishes exactly one Frederick City Market for the live market venue", () => {

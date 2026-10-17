@@ -9,7 +9,7 @@ This report is a review aid. It does not approve, reject, or change a place stat
 
 | Metric | Before | After | Change |
 | --- | ---: | ---: | ---: |
-| Public places | 1570 | 1571 | +1 |
+| Public places | 1570 | 1570 | 0 |
 | Public places with publishable verified hours | 0 | 9 | +9 |
 | Hours snapshot rows | 1522 | 1522 | 0 |
 | Fresh schedule rows in snapshot | 1160 | 1160 | 0 |
