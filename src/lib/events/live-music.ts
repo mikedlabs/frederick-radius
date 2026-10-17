@@ -19,32 +19,63 @@ import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 
 /** Titles that are clearly NOT a show, even at a verified music venue.
- *  Breweries/taprooms host yoga, trivia, bingo, paint nights, and run
- *  clubs on the same calendars as their bands; the venue join alone
- *  admitted all of them ("Yoga in the Taproom" listed under "Live music
- *  tonight" in the Jul-8 audit). The chip asserts who is ON STAGE, so a
- *  non-music title is excluded from the venue-join path. The explicit
- *  music/concert category path is untouched — a classified show keeps
- *  its word over this heuristic. */
+ *  Breweries/taprooms host yoga, trivia, bingo, paint nights, workshops,
+ *  swaps, and markets on the same calendars as their bands; the venue
+ *  join alone admitted all of them ("Yoga in the Taproom" listed under
+ *  "Live music tonight" in the Jul-8 audit; Steinhardt's terrarium
+ *  workshop, plant swap, mahjong, and Santa photos in the Oct-17
+ *  review). The chip asserts who is ON STAGE, so a non-music title is
+ *  excluded from the venue-join path. The explicit music/concert
+ *  category path is untouched — a classified show keeps its word over
+ *  this heuristic. Word boundaries keep "classic", "witchcraft", and
+ *  "supermarket" from matching class / craft / market. */
 const NON_MUSIC_TITLE =
-  /\b(yoga|trivia|bingo|paint(?:ing)?|run\s+club|book\s+club|comedy|fitness|zumba|cardio|exercise|pilates|barre|workout|poses|learn\s+to)\b/i;
-const MARKET_TITLE =
-  /\b(?:flea|farmers'?|makers?|artisan|craft|holiday|vintage|night)\s+market\b|\bmarket\s+(?:day|festival|fair)\b/i;
+  /\b(yoga|trivia|bingo|paint(?:ing)?|run\s+club|book\s+club|comedy|fitness|zumba|cardio|exercise|pilates|barre|workout|poses|learn\s+to|workshop|terrarium|swap|mahjong)\b/i;
 
-export type InferredNonMusicCategory = "market" | "community";
+/** A lesson or series, not "classic" (saved by \b) or a class-idiom band name. */
+const CLASS_TITLE = /\bclass(?:es)?\b/i;
+const CLASS_NAME_EXCEPTION =
+  /\b(?:first|world|working|middle|upper|high|second|third|top)\s+class\b|\bclass\s+(?:of|act)\b/i;
+
+/** Santa photos and breakfasts. "Santa Fe" is a place / band name. */
+const SANTA_TITLE = /\bsanta\b/i;
+const SANTA_NAME_EXCEPTION = /\bsanta\s+fe\b/i;
+
+/** Craft nights and fairs. "witchcraft" / "aircraft" are saved by \b. */
+const CRAFT_TITLE = /\bcrafts?\b/i;
+
+/** Vendor fairs belong with markets. */
+const VENDOR_TITLE = /\bvendors?\b/i;
+
+const MARKET_TITLE =
+  /\b(?:flea|farmers'?|makers?|artisan|craft|holiday|vintage|night|fall|spring|summer|winter)\s+markets?\b|\bmarkets?\s+(?:day|festival|fair)\b/i;
+const BARE_MARKET_TITLE = /\bmarkets?\b/i;
+const MARKET_PLACE_NAME =
+  /\b(?:north|south|east|west|n\.?|s\.?|e\.?|w\.?)?\s*market\s+street\b|\bnew\s+market\b/i;
+
+export type InferredNonMusicCategory = "market" | "community" | "family";
 
 /**
  * A narrow title-to-category correction for mixed venue calendars. This is
  * intentionally a veto, not a general event classifier: it only recognizes
  * unmistakable markets and recurring non-show activities that otherwise
- * inherit a music venue's category.
+ * inherit a music venue's category. Callers (squarespace-live, venue
+ * ingest) use the returned slug in place of a blanket "music" stamp.
  */
 export function inferredNonMusicCategory(
   title: string,
 ): InferredNonMusicCategory | null {
-  if (MARKET_TITLE.test(title)) return "market";
+  if (isMarketTitle(title) || VENDOR_TITLE.test(title)) return "market";
+  if (SANTA_TITLE.test(title) && !SANTA_NAME_EXCEPTION.test(title)) return "family";
   if (NON_MUSIC_TITLE.test(title)) return "community";
+  if (CLASS_TITLE.test(title) && !CLASS_NAME_EXCEPTION.test(title)) return "community";
+  if (CRAFT_TITLE.test(title)) return "community";
   return null;
+}
+
+function isMarketTitle(title: string): boolean {
+  if (MARKET_TITLE.test(title)) return true;
+  return BARE_MARKET_TITLE.test(title) && !MARKET_PLACE_NAME.test(title);
 }
 
 /** Shared with the venue-feed INGEST boundaries (squarespace-live,
