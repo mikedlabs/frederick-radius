@@ -752,7 +752,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
         <div className={`eb-pane-scroll ${styles.scroll}`}>
           <div className="dock-pane-head">
             <span className="dock-pane-title font-serif">Filters</span>
-            <button type="button" className="dock-done" onClick={closePane}>
+            <button type="button" className="dock-done tap-44" onClick={closePane}>
               Done
             </button>
           </div>

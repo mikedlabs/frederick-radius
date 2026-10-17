@@ -51,7 +51,7 @@ describe("placeHoursTrust", () => {
   });
   it("never claims verified hours without a confirmed source", () => {
     expect(placeHoursTrust({ state: "unverified" }).basis).toMatch(/not yet confirmed/i);
-    expect(placeHoursTrust({ state: "unknown" }).basis).toMatch(/call ahead/i);
+    expect(placeHoursTrust({ state: "unknown" }).basis).toMatch(/no posted hours/i);
   });
 });
 

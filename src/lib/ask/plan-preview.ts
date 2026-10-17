@@ -224,7 +224,7 @@ export function buildAskPlanPreview(
       href: stop.place ? `/places/${stop.place.slug}` : `/events/${stop.event?.slug ?? ""}`,
       photo_url: stop.photo_url,
       why: stop.why,
-      status: stop.open === "open" ? "Open" : stop.open === "closed" ? "Check hours" : "Hours unconfirmed",
+      status: stop.open === "open" ? "Open" : stop.open === "closed" ? "Closed" : "Hours unconfirmed",
       tip: [
         stop.place ? askFitAccessNote(stop.place, fit) : null,
         stop.tip,

@@ -71,7 +71,7 @@ export default function TrailsMap({
             style={{ background: "color-mix(in srgb, var(--app-bg-elevated) 92%, transparent)", color: "var(--app-ink-2)" }}
           >
             <span className="flex items-center gap-1.5">
-              <span aria-hidden className="h-[3px] w-5 rounded-full" style={{ background: "#315A43" }} />
+              <span aria-hidden className="h-[3px] w-5 rounded-full" style={{ background: "var(--app-brand-2)" }} />
               Paved
             </span>
             <span className="flex items-center gap-1.5">

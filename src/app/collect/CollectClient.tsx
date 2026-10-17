@@ -23,14 +23,14 @@ import RestroomMark from "@/components/icons/RestroomMark";
  *  Icons are lucide, never emoji (DESIGN_TELLS). */
 const TYPES: { kind: string; label: string; Icon: LucideIcon; color: string }[] = [
   { kind: "trash", label: "Trash", Icon: Trash2, color: "#4A4A48" },
-  { kind: "recycling", label: "Recycling", Icon: Recycle, color: "#315A43" },
-  { kind: "water", label: "Water", Icon: Droplet, color: "#285D73" },
+  { kind: "recycling", label: "Recycling", Icon: Recycle, color: "var(--app-brand-2)" },
+  { kind: "water", label: "Water", Icon: Droplet, color: "var(--app-cool)" },
   { kind: "bench", label: "Bench", Icon: Armchair, color: "#7A7975" },
-  { kind: "ev_charging", label: "EV", Icon: Zap, color: "#315A43" },
+  { kind: "ev_charging", label: "EV", Icon: Zap, color: "var(--app-brand-2)" },
   { kind: "outlet", label: "Outlet", Icon: Plug, color: "#4A4A48" },
-  { kind: "dog_water", label: "Dog water", Icon: PawPrint, color: "#285D73" },
-  { kind: "dog_waste", label: "Dog bags", Icon: Dog, color: "#315A43" },
-  { kind: "restroom", label: "Restroom", Icon: RestroomMark, color: "#285D73" },
+  { kind: "dog_water", label: "Dog water", Icon: PawPrint, color: "var(--app-cool)" },
+  { kind: "dog_waste", label: "Dog bags", Icon: Dog, color: "var(--app-brand-2)" },
+  { kind: "restroom", label: "Restroom", Icon: RestroomMark, color: "var(--app-cool)" },
   { kind: "other", label: "Other", Icon: Plus, color: "#B5462B" },
 ];
 const COLOR_FOR = (kind: string) => TYPES.find((t) => t.kind === kind)?.color ?? "#B5462B";

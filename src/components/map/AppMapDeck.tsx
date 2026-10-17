@@ -83,7 +83,7 @@ export default function AppMapDeck({
               onChange={(e) => setQ(e.target.value)}
               placeholder="Find coffee, a trail, a town"
               aria-label="Search this map"
-              className="min-w-0 flex-1 bg-transparent px-2.5 py-3 text-sm outline-none"
+              className="min-w-0 flex-1 bg-transparent px-2.5 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-focus)]"
               style={{ color: "var(--app-ink)" }}
             />
             {goNearMe && (
@@ -93,7 +93,7 @@ export default function AppMapDeck({
                 aria-label="Find places near me"
                 aria-busy={locating || undefined}
                 title={locating ? "Locating…" : "Find places near me"}
-                className="mr-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-[0.92]"
+                className="tap-44 mr-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-[0.92] motion-reduce:active:scale-100 motion-reduce:transition-none"
                 style={{
                   color: userLoc ? "var(--app-brand)" : "var(--app-ink-2)",
                   background: userLoc

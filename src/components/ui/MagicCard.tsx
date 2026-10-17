@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useMotionTemplate, useMotionValue } from "framer-motion";
+import { motion, useMotionTemplate, useMotionValue, useReducedMotion } from "framer-motion";
 import { MouseEvent, ReactNode, ElementType, ComponentPropsWithoutRef } from "react";
 
 type MagicCardProps<T extends ElementType = "div"> = {
@@ -19,8 +19,17 @@ export function MagicCard<T extends ElementType = "div">({
 }: MagicCardProps<T>) {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
+  const reduceMotion = useReducedMotion();
+  const glow = useMotionTemplate`
+    radial-gradient(
+      400px circle at ${mouseX}px ${mouseY}px,
+      ${glowColor},
+      transparent 80%
+    )
+  `;
 
   function handleMouseMove({ currentTarget, clientX, clientY }: MouseEvent<HTMLElement>) {
+    if (reduceMotion) return;
     const { left, top } = currentTarget.getBoundingClientRect();
     mouseX.set(clientX - left);
     mouseY.set(clientY - top);
@@ -31,22 +40,16 @@ export function MagicCard<T extends ElementType = "div">({
   return (
     <Component
       className={`group relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] shadow-sm ${className}`}
-      onMouseMove={handleMouseMove}
+      onMouseMove={reduceMotion ? undefined : handleMouseMove}
       style={{ borderColor: "color-mix(in srgb, var(--app-brand) 20%, var(--app-border-strong))", ...props.style }}
       {...props}
     >
+      {reduceMotion ? null : (
       <motion.div
-        className="pointer-events-none absolute -inset-px rounded-[inherit] opacity-0 transition duration-300 group-hover:opacity-100"
-        style={{
-          background: useMotionTemplate`
-            radial-gradient(
-              400px circle at ${mouseX}px ${mouseY}px,
-              ${glowColor},
-              transparent 80%
-            )
-          `,
-        }}
+        className="pointer-events-none absolute -inset-px rounded-[inherit] opacity-0 transition duration-300 group-hover:opacity-100 motion-reduce:transition-none"
+        style={{ background: glow }}
       />
+      )}
       {children}
     </Component>
   );

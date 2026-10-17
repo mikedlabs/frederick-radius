@@ -425,7 +425,7 @@ export default function WantAnswerPanel({
                     ? "More nearby"
                     : "More matches"
                   : likelyAnswer
-                    ? "Also likely open"
+                    ? "Also nearby"
                     : "Also open now"}
               </p>
               <ul>

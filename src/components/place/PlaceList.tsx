@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { LayoutGrid, List } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import PlaceCard from "./PlaceCard";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import FilterChip from "@/components/ui/FilterChip";
@@ -65,6 +65,10 @@ export default function PlaceList({
   const safePageSize = Math.max(1, Math.min(48, requestedPageSize));
   const [visibleCount, setVisibleCount] = useState(safePageSize);
   const [mounted, setMounted] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const listMotion = reduceMotion
+    ? { duration: 0 }
+    : { type: "spring" as const, bounce: 0, duration: 0.3 };
 
   // Sort the incoming places per the user's choice. "score" is the
   // identity sort (server already provides feature_score order); the
@@ -260,15 +264,15 @@ export default function PlaceList({
           No places match those filters. Tap a filter again to widen the list.
         </p>
       ) : layout === "grid" ? (
-        <motion.div layout className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
+        <motion.div layout={!reduceMotion} className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
           <AnimatePresence>
             {visiblePlaces.map((p) => (
               <motion.div
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
+                layout={!reduceMotion}
+                initial={reduceMotion ? false : { opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+                exit={reduceMotion ? undefined : { opacity: 0, scale: 0.95 }}
+                transition={listMotion}
                 key={p.slug}
               >
                 <PlaceCard place={p} variant="grid" />
@@ -277,15 +281,15 @@ export default function PlaceList({
           </AnimatePresence>
         </motion.div>
       ) : (
-        <motion.ul layout className="space-y-2" aria-busy={!mounted ? "true" : undefined}>
+        <motion.ul layout={!reduceMotion} className="space-y-2" aria-busy={!mounted ? "true" : undefined}>
           <AnimatePresence>
             {visiblePlaces.map((p) => (
               <motion.li
-                layout
-                initial={{ opacity: 0, y: 10 }}
+                layout={!reduceMotion}
+                initial={reduceMotion ? false : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+                exit={reduceMotion ? undefined : { opacity: 0, scale: 0.95 }}
+                transition={listMotion}
                 key={p.slug}
               >
                 {/* compact=true drops the second metadata row (status +

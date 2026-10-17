@@ -273,11 +273,11 @@ export default function ScannerBoard({
                 }}
                 aria-pressed={on}
                 className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold transition"
-                style={on ? { background: toneOf(k), color: "#fff" } : { border: "1px solid var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
+                style={on ? { background: toneOf(k), color: "var(--app-on-brand)" } : { border: "1px solid var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
               >
-                <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: on ? "#fff" : toneOf(k) }} />
+                <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: on ? "var(--app-on-brand)" : toneOf(k) }} />
                 {k}
-                <span className="font-mono tabular-nums" style={{ color: on ? "rgba(255,255,255,0.85)" : "var(--app-ink-3)" }}>
+                <span className="font-mono tabular-nums" style={{ color: on ? "color-mix(in srgb, var(--app-on-brand) 85%, transparent)" : "var(--app-ink-3)" }}>
                   {counts.get(k)}
                 </span>
               </button>

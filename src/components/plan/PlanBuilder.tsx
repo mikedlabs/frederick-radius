@@ -91,7 +91,7 @@ const DURATIONS: PlanInputs["duration_hours"][] = [2, 3, 4, 6];
 
 const OPEN_LABEL: Record<Plan["stops"][number]["open"], { text: string; color: string }> = {
   open: { text: "Open for this stop", color: "var(--app-positive)" },
-  likely: { text: "Likely open", color: "var(--app-warning)" },
+  likely: { text: "Hours not confirmed", color: "var(--app-warning)" },
   unknown: { text: "Hours unconfirmed", color: "var(--app-ink-3)" },
   closed: { text: "Closed at this time", color: "var(--app-negative)" },
 };

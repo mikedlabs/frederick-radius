@@ -52,7 +52,7 @@ type StoredTransitBus = Omit<SavedTransitBus, "watchId"> & {
 export type Catchability =
   | { kind: "likely"; label: "Likely catchable" }
   | { kind: "tight"; label: "Leave now. Timing is tight." }
-  | { kind: "too-tight"; label: "Probably too tight" };
+  | { kind: "too-tight"; label: "Too tight to catch" };
 
 function isStop(value: unknown): value is SavedTransitStop {
   if (!value || typeof value !== "object") return false;
@@ -352,7 +352,7 @@ export function deriveCatchability(
     return null;
   }
   if (arrivalMinutes < walkingMinutes) {
-    return { kind: "too-tight", label: "Probably too tight" };
+    return { kind: "too-tight", label: "Too tight to catch" };
   }
   if (arrivalMinutes < walkingMinutes + CATCH_BUFFER_MINUTES) {
     return { kind: "tight", label: "Leave now. Timing is tight." };

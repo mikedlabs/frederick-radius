@@ -160,13 +160,27 @@ State, don't sell. The place's own facts do the work.
 | It opens Saturdays at 8am and closes when it sells out. | A must-visit local favorite you won't want to miss! |
 | The outdoor event is free. Dogs are welcome. | The perfect spot for the whole family! |
 
+### Hours (confirmed time, or silent)
+
+With confirmed hours, state the time. With unconfirmed hours, show
+"Hours not confirmed" or leave the line out. Never guess.
+
+| Ship this | Not this |
+|---|---|
+| Open until 9 PM | Likely open |
+| Opens 4 PM | Likely opens at 4 PM. Check hours. |
+| Hours not confirmed | Call ahead. May be open. Probably open. |
+
+Banned in hours copy, and in any rendered UI string: "likely open",
+"likely opens", "call ahead", "check hours", "may be open", "probably".
+
 ### Empty states (honest, never dead-ends)
 
 | Ship this | Not this |
 |---|---|
 | You have not saved anything yet. Find a place worth remembering and it lands here. | You haven't saved anything yet. Start exploring! |
 | No events match that. Try a different day, or widen the town. | 0 results. |
-| We don't have hours for this one yet. Call ahead. | Hours unavailable. |
+| Hours not confirmed. | We don't have hours for this one yet. Call ahead. |
 
 ### Onboarding (≤3 taps, plain)
 
@@ -200,6 +214,8 @@ State, don't sell. The place's own facts do the work.
 ## Mechanics (the non-negotiables)
 
 - **No em dashes.** Comma or a full stop instead.
+- **Hours are confirmed or omitted.** State the time when hours are
+  confirmed. Otherwise "Hours not confirmed" or no line. Never guess.
 - **Times are Eastern**, rendered like a person reads them: "6pm," "8am,"
   "till 10," not "18:00" or "10:00 PM" in body copy. (Mono/data surfaces
   keep tabular time; prose does not.)

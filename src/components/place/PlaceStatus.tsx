@@ -11,10 +11,10 @@ import { formatHoursLine } from "@/lib/hours";
  * trustworthy and useful to say. So:
  *   - verified open / closing-soon / closed → say it, with confidence
  *     ("Open until 9pm"). This is positive, actionable, worth the ink.
- *   - curated-but-unconfirmed → a quiet "Likely open", no loud pill.
+ *   - curated-but-unconfirmed → say NOTHING on the card. Never guess.
  *   - no posted hours (the common case) → say NOTHING on the card.
  *     Silence is the honest signal — we make no claim — and the full
- *     "No posted hours · call ahead" basis still lives on the detail
+ *     "Hours not confirmed" basis still lives on the detail
  *     sheet where it is actionable. Printing "we don't know" 900 times
  *     is neither calm nor informative.
  *

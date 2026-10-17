@@ -65,7 +65,7 @@ const GROUPS: Group[] = [
   { key: "eat", label: "Eat", icon: Utensils, color: "#A02929", cats: ["restaurant", "pizza"] },
   { key: "drinks", label: "Drinks", icon: Beer, color: BRAND.colors.functionalAmber, cats: ["bar", "brewery"] },
   { key: "park", label: "Park", icon: Trees, color: "var(--app-brand-2)", cats: ["park", "trail", "playground", "outdoors"] },
-  { key: "art", label: "Art", icon: Palette, color: "#7E2C6F", cats: ["gallery", "museum", "theater"] },
+  { key: "art", label: "Art", icon: Palette, color: "var(--app-accent)", cats: ["gallery", "museum", "theater"] },
   { key: "shops", label: "Shops", icon: ShoppingBag, color: "var(--app-cool)", cats: ["shopping", "market", "book-store"] },
   { key: "restroom", label: "Restroom", icon: RestroomMark, color: "var(--app-cool)", amenity: "restroom" },
   { key: "water", label: "Water", icon: Droplets, color: "var(--app-cool)", amenity: "water", mapGroup: "water" },

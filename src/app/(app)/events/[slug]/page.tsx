@@ -531,10 +531,10 @@ export default async function EventPage({
               {/* Glassmorphic back button */}
               <Link
                 href="/events"
-                className="tactile-interactive flex h-9 items-center justify-center gap-1.5 rounded-full px-3.5 text-xs font-semibold text-white shadow-sm backdrop-blur-md transition-transform active:scale-95"
+                className="tap-44 tactile-interactive flex h-9 items-center justify-center gap-1.5 rounded-full px-3.5 text-xs font-semibold text-white shadow-sm backdrop-blur-md transition-transform active:scale-95 motion-reduce:active:scale-100 motion-reduce:transition-none"
                 style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}
               >
-                <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
+                <ArrowLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
                 Back
               </Link>
               <div className="flex shrink-0 items-center gap-1">

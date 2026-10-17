@@ -68,7 +68,7 @@ export const MAP_TASK_TILES: ReadonlyArray<{ id: MapTaskId; label: string }> = [
   { id: "coffee", label: "Coffee shops and bakeries" },
   { id: "drinks", label: "Drinks" },
   { id: "parks-trails", label: "Parks & trails" },
-  { id: "likely-open", label: "Likely open now" },
+  { id: "likely-open", label: "Posted schedules" },
   { id: "events-tonight", label: "Events tonight" },
 ];
 
@@ -206,8 +206,8 @@ export function mapQueryRoute(query: string): MapQueryRoute {
   const words = normalized.split(" ");
 
   // A current estimate must never erase a verified-hours, later-time, or
-  // proximity request. Only the explicitly qualified task name opts in.
-  if (normalized === "likely open now") return { kind: "task", task: "likely-open" };
+  // proximity request. The posted-schedules task is reached from its tile,
+  // not from a guessed natural-language hours phrase.
   if (
     words.includes("tonight") &&
     words.every((word) => word === "tonight" || TONIGHT_WORDS.has(word))
@@ -437,8 +437,6 @@ export type MapTaskListInput = {
   eventSourceState?: "pending" | "ready" | "unavailable" | "partial";
 };
 
-const LIKELY_OPEN_NOTE =
-  "These places are usually open at this hour based on their posted schedules. Check before you go.";
 const UNCONFIRMED_HOURS_NOTE =
   "Hours for these places are not confirmed, so check before you go.";
 
@@ -542,7 +540,7 @@ export function buildMapTaskList(input: MapTaskListInput): MapTaskList | null {
       title: `${mapTaskLabel(input.clientTask)} · ${where}`,
       note: likely
         ? rows.length > 0
-          ? LIKELY_OPEN_NOTE
+          ? UNCONFIRMED_HOURS_NOTE
           : null
         : input.clientTask === "parks-trails"
           ? null
@@ -555,7 +553,7 @@ export function buildMapTaskList(input: MapTaskListInput): MapTaskList | null {
       empty: areaEmpty(input.area) ??
         (likely
           ? {
-              title: "Unable to confirm likely-open places for this view.",
+              title: "Unable to confirm hours for this view.",
               copy: "No available posted schedule covers this hour in this view. This does not mean every place is closed. Choose another view or check a place directly.",
             }
           : {
