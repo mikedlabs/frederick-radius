@@ -40,21 +40,30 @@ async function bundledDetailPathsForEmptyLocalCalendar(
     "A live or archive-backed calendar must expose a current event detail link",
   ).toBe(true);
   await expect(page.getByRole("heading", {
-    name: "No matches in the events loaded so far", exact: true,
+    name: "Event schedule unavailable", exact: true,
   })).toBeVisible();
   await expect(page.getByText(
-    "The calendar is incomplete. Check again before ruling out this time or place.",
+    "The schedule could not be loaded. Check again or use an official calendar.",
     { exact: true },
   )).toBeVisible();
   await expect(page.getByRole("button", {
     name: "Check the calendar again", exact: true,
   })).toBeEnabled();
+  for (const [name, href] of [
+    ["County calendar", "https://www.frederickcountymd.gov/calendar.aspx"],
+    ["Celebrate Frederick", "https://www.celebratefrederick.com/events/"],
+  ]) {
+    const officialCalendar = page.getByRole("link", { name, exact: true });
+    await expect(officialCalendar).toBeVisible();
+    await expect(officialCalendar).toHaveAttribute("href", href);
+  }
+  await expect(page.getByText("The saved event schedule is incomplete.", { exact: false })).toHaveCount(0);
   const paths = EVENTS.slice(0, 4).map((event) => `/events/${event.slug}`);
   expect(paths.length, "The bundled catalog must contain real detail records").toBeGreaterThan(0);
   await test.info().attach("empty-local-calendar-detail-evidence", {
     contentType: "application/json",
     body: Buffer.from(JSON.stringify({
-      discovery: "honest-incomplete-empty-state",
+      discovery: "honest-unavailable-schedule-with-official-recovery",
       detailEvidence: "unchanged-bundled-historical-records",
       paths,
     }, null, 2)),
