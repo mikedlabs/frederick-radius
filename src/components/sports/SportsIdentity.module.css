@@ -27,7 +27,7 @@
 
 /* Solid team fields and a secondary-color monogram provide actual identity.
    Foregrounds are fixed with each verified plate so either app theme is safe. */
-.teamHeading { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.1rem; border-radius: var(--app-radius-lg); color: var(--team-on-primary); background: var(--team-primary); }
+.teamHeading { display: grid; grid-template-columns: auto minmax(0,1fr); container-type: inline-size; align-items: center; gap: 1rem; padding: 1rem 1.1rem; border-radius: var(--app-radius-lg); color: var(--team-on-primary); background: var(--team-primary); }
 .teamHeading p { color: var(--team-on-primary); font-size: .8125rem; }
 .teamHeading h2 { margin: .1rem 0 .2rem; font-size: clamp(1.75rem, 5.7vw, 2.5rem); font-weight: 850; line-height: 1.02; letter-spacing: -.035em; overflow-wrap: anywhere; }
 .teamMonogram { display: grid; width: 4rem; height: 4rem; flex: 0 0 auto; place-items: center; border-radius: .75rem; background: var(--team-secondary); color: var(--team-on-secondary); font-size: 1.3rem; font-weight: 900; letter-spacing: -.06em; }
@@ -48,12 +48,17 @@
 .campusCard:hover { box-shadow: var(--app-elev-2); }
 
 .cowsCard { margin-top: 1rem; overflow: hidden; border: 1px solid var(--app-border); border-radius: var(--app-radius-lg); background: var(--app-bg-elevated); }
-.cowsMasthead { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 1rem; align-items: center; padding: 1.25rem; color: var(--team-on-primary); background: var(--team-primary); border-bottom: .65rem solid var(--team-secondary); }
+.cowsMasthead { display: grid; grid-template-columns: auto minmax(0,1fr); container-type: inline-size; gap: 1rem; align-items: center; padding: 1.25rem; color: var(--team-on-primary); background: var(--team-primary); border-bottom: .65rem solid var(--team-secondary); }
+.cowsMasthead > div { min-width: 0; overflow-wrap: anywhere; }
 .cowsMasthead p { font-size: .8125rem; font-weight: 650; }
 .cowsMasthead strong { display: block; max-width: 12ch; margin: .3rem 0; color: var(--team-secondary); font-size: clamp(2rem, 8vw, 3.5rem); font-weight: 900; line-height: .92; letter-spacing: -.045em; }
-.cowsBodyTitle { margin-top: .5rem; color: var(--app-ink); font-size: 1.5rem; font-weight: 800; line-height: 1.15; letter-spacing: -.03em; }
+.cowsBodyTitle { margin-top: .5rem; color: var(--app-ink); font-size: 1.5rem; font-weight: 800; line-height: 1.15; letter-spacing: -.03em; overflow-wrap: anywhere; }
 .cowsKicker { color: var(--app-ink-2); font-size: .75rem; font-weight: 700; }
 .teamAction { display: inline-flex; min-height: 44px; align-items: center; gap: .5rem; border: 1px solid var(--team-primary); border-radius: 999px; padding: .65rem .9rem; color: var(--team-on-primary); background: var(--team-primary); font-size: .8125rem; font-weight: 750; }
+/* Keep the real label and arrow inside the card at enlarged text sizes.
+   Physical inline padding leaves room for enlarged and spaced text. */
+.cowsCard .teamAction { display: block; width: fit-content; min-width: 0; max-width: 100%; padding-inline: 12px; border-radius: 1.5rem; white-space: normal; overflow-wrap: anywhere; }
+.cowsCard .teamAction svg { display: inline-block; margin-inline-start: .5rem; vertical-align: middle; }
 
 /* School palettes remain neutral until their own identity is verified. */
 .schoolLink { display: inline-flex; min-width: 0; max-width: 100%; min-height: 44px; align-items: center; gap: .5rem; padding: .65rem .85rem; border: 1px solid var(--app-control-border); border-radius: 999px; background: var(--app-bg); color: var(--app-link); font-size: .8125rem; font-weight: 650; line-height: 1.4; text-decoration: underline; text-underline-offset: .16em; overflow-wrap: anywhere; }
@@ -118,4 +123,9 @@
   .campusCard .teamMonogram { grid-column: 1; grid-row: 1; }
   .campusCopy { grid-column: 1 / -1; grid-row: 2; }
   .campusArrow { grid-column: 2; grid-row: 1; }
+  /* Each identity block measures its own available text width. */
+  .teamHeading > .teamMonogram,
+  .cowsMasthead > .teamMonogram { grid-column: 1; grid-row: 1; justify-self: start; }
+  .teamHeading > div,
+  .cowsMasthead > div { grid-column: 1 / -1; grid-row: 2; }
 }

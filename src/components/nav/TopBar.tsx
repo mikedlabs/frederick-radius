@@ -5,6 +5,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type RefObject,
@@ -79,6 +80,41 @@ export default function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
   const toolsOpenerRef = useRef<HTMLAnchorElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    const root = document.documentElement;
+    const property = "--app-topbar-h";
+    const previous = root.style.getPropertyValue(property);
+    const previousPriority = root.style.getPropertyPriority(property);
+    let published: string | null = null;
+    let disposed = false;
+    const measure = () => {
+      if (disposed) return;
+      // The row excludes the header's safe-top padding and bottom border.
+      // Map/picker consumers already account for their own safe inset.
+      const height = row.getBoundingClientRect().height;
+      if (!Number.isFinite(height) || height <= 0) return;
+      const value = `${height}px`;
+      if (root.style.getPropertyValue(property) !== value) root.style.setProperty(property, value);
+      published = value;
+    };
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(row);
+    window.addEventListener("resize", measure);
+    return () => {
+      disposed = true;
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+      if (published !== null && root.style.getPropertyValue(property) === published) {
+        if (previous) root.style.setProperty(property, previous, previousPriority);
+        else root.style.removeProperty(property);
+      }
+    };
+  }, []);
   useEffect(installNativeReturnOwner, []);
   useNativeRequestReturn({ target: "tools-opener", inputRef: toolsOpenerRef, pathname, ready: findInteractionReady });
   const closeSearch = useCallback(() => setSearchOpen(false), []);
@@ -288,6 +324,8 @@ export default function TopBar() {
         }}
       >
         <div
+          ref={rowRef}
+          data-app-topbar-row
           className={`${styles.row} mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-1.5 sm:gap-2 lg:max-w-screen-lg lg:pl-24`}
         >
           {isDeepPage ? (
