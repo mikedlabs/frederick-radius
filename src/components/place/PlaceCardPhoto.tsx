@@ -81,7 +81,7 @@ export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false, comp
   if (!source || source.kind === "owned") return null;
   const licenseLinks: Record<string, string> = { "CC BY-SA 4.0": "https://creativecommons.org/licenses/by-sa/4.0", "CC BY 2.0": "https://creativecommons.org/licenses/by/2.0" };
   const licenseHref = source.kind === "curated"
-    ? (licenseLinks[source.photo.license]
+    ? (source.photo.licenseUrl ?? licenseLinks[source.photo.license]
       ?? `${source.photo.source_url}#Licensing`)
     : null;
   return (
@@ -92,8 +92,10 @@ export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false, comp
         <GooglePhotoAttributionLine attribution={source.attribution} compact touchTarget={touchTarget} />
       ) : (
         <>
-          <span className="block pt-1">Photo by {source.photo.author}.{compact ? " Cropped for display." : ""}</span>
-          {!compact && <span className="block">The image is resized for display; previews may be cropped.</span>}
+          <span className="block pt-1">Photo by {source.photo.author}.{compact && !source.photo.modifications ? " Cropped for display." : ""}</span>
+          {source.photo.modifications
+            ? <span className="block">{source.photo.modifications}</span>
+            : !compact && <span className="block">The image is resized for display; previews may be cropped.</span>}
           <span className="flex flex-wrap gap-x-3">
             <a href={source.photo.source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Wikimedia Commons</a>
             <a href={licenseHref!} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{source.photo.license}</a>

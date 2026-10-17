@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 import { getOwnedPlacePhoto } from "./owned-place-photos";
 import { isPlacePhotoFailureSignal, placePhotoFailureSignalSrc, placeCardPhotoPlan, placePhotoGallerySources, recordPlaceCardPhotoResult, selectedPlaceCardPhoto } from "./place-card-photo";
 
@@ -176,5 +177,39 @@ describe("shared media failure signal", () => {
 
   it("accepts a decoded two-dimensional photograph", () => {
     expect(isPlacePhotoFailureSignal({ naturalWidth: 1200, naturalHeight: 800 })).toBe(false);
+  });
+});
+
+
+describe("existing licensed local place photographs", () => {
+  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS))("uses exact local bytes with the existing credit for %s at every consumer width", (slug, { image }) => {
+    for (const width of [88, 128, 360, 1200]) {
+      const plan = placeCardPhotoPlan({ slug }, width);
+      expect(plan.sources).toHaveLength(1);
+      expect(plan.sources[0]).toMatchObject({ kind: "curated", src: image.src, alt: image.alt,
+        photo: { author: image.creator, source_url: image.source_url, license: image.license.label,
+          licenseUrl: image.license.url, modifications: image.modifications } });
+      expect(getOwnedPlacePhoto(slug)).toBeNull();
+      expect(placePhotoGallerySources({ slug }, width)).toEqual(plan.sources);
+    }
+  });
+
+  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS))("retains eligible Google priority, then tries the local %s source only once", (slug, { image }) => {
+    const input = { ...place, slug };
+    const plan = placeCardPhotoPlan(input, 360);
+    expect(plan.sources.map((source) => source.kind)).toEqual(["google", "curated"]);
+    const google = selectedPlaceCardPhoto(plan, null)!;
+    let state = recordPlaceCardPhotoResult(plan, null, google.src, "failed");
+    expect(selectedPlaceCardPhoto(plan, state)?.src).toBe(image.src);
+    state = recordPlaceCardPhotoResult(plan, state, google.src, "loaded");
+    expect(state.loadedSrc).toBeNull();
+    state = recordPlaceCardPhotoResult(plan, state, image.src, "failed");
+    expect(selectedPlaceCardPhoto(plan, state)).toBeNull();
+    expect(recordPlaceCardPhotoResult(plan, state, image.src, "loaded")).toEqual(state);
+    expect(state.failedSources).toHaveLength(2);
+  });
+
+  it.each(["schifferstadt", "hessian-barracks", "co-canal", "brunswick", "town:frederick", "__proto__"])("does not broaden exact-place imagery to a history, town or inherited identity: %s", (slug) => {
+    expect(placeCardPhotoPlan({ slug }, 360).sources).toEqual([]);
   });
 });

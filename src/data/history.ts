@@ -1,3 +1,5 @@
+import { CREDITED_LOCAL_PLACE_PHOTOS } from "./credited-local-place-photos";
+
 /**
  * Frederick County history — curated moments and facts.
  *
@@ -83,14 +85,7 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "hessian-barracks",
-    image: {
-      src: "/history-photos/hessian-barracks.jpg",
-      alt: "The Hessian Barracks, a long two-story 1777 fieldstone military barracks with white wooden balconies, in Frederick, MD",
-      creator: "Acroterion",
-      source_url: "https://commons.wikimedia.org/wiki/File:Hessian_Barracks_MD1.jpg",
-      license: CC_BY_SA_4,
-      modifications: DISPLAY_MODIFICATIONS,
-    },
+    image: CREDITED_LOCAL_PLACE_PHOTOS["hessian-barracks-frederick-maryland"].image,
     title: "The Hessian Barracks go up",
     year: 1777,
     kind: "moment",
@@ -257,14 +252,7 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "schifferstadt",
-    image: {
-      src: "/history-photos/schifferstadt.jpg",
-      alt: "Schifferstadt, a 1758 German colonial stone farmhouse with one wing painted red, in Frederick, MD",
-      creator: "Pete Giove-Fourwinds",
-      source_url: "https://commons.wikimedia.org/wiki/File:Schifferstadt_House_and_Architectural_Museum.JPG",
-      license: CC_BY_SA_3,
-      modifications: DISPLAY_MODIFICATIONS,
-    },
+    image: CREDITED_LOCAL_PLACE_PHOTOS["schifferstadt-architectural-museum-frederick"].image,
     title: "Schifferstadt: oldest house in town",
     kind: "fact",
     body: "Joseph Brunner, an immigrant from Schifferstadt in the Rhineland, finished this stone farmhouse in 1758, 18 years before the Declaration of Independence. It's one of the oldest surviving German colonial homes in America and still has its original square nails.",
@@ -274,14 +262,7 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "co-canal",
-    image: {
-      src: "/history-photos/co-canal.jpg",
-      alt: "The stone walls of Lock 30 on the Chesapeake & Ohio Canal at Brunswick, MD, surrounded by greenery",
-      creator: "Deanlaw",
-      source_url: "https://commons.wikimedia.org/wiki/File:C%26O_Canal_Lock_30_West_Side_Brunswick_Maryland.jpg",
-      license: CC_BY_SA_3,
-      modifications: DISPLAY_MODIFICATIONS,
-    },
+    image: CREDITED_LOCAL_PLACE_PHOTOS["co-canal-lock-30-brunswick"].image,
     title: "The C&O Canal",
     kind: "fact",
     body: "The Chesapeake & Ohio Canal runs 184.5 miles from Georgetown to Cumberland and skirts the southern edge of Frederick County through Brunswick. Construction began in 1828 the same day the B&O Railroad broke ground a few miles away, the canal lost the race to the river.",

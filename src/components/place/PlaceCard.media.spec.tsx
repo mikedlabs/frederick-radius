@@ -5,7 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { mapListPhotoLoader } from "@/components/map/map-list-photo-loader";
-import { LANDMARK_PHOTOS } from "@/lib/integrations/wikimedia";
+import { curatedPhotoUrl, LANDMARK_PHOTOS } from "@/lib/integrations/wikimedia";
 
 const actions = vi.hoisted(() => ({ openSheet: vi.fn(), save: vi.fn() }));
 const imageLoads = vi.hoisted(() => new Map<string, ImgHTMLAttributes<HTMLImageElement>["onLoad"]>());
@@ -91,7 +91,7 @@ describe("PlaceCard selected media and credit", () => {
       await fail(ownedImage);
     }
     expect(photo()?.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("curated");
-    expect(photo()?.getAttribute("src")).toContain(encodeURIComponent(metadata.file));
+    expect(photo()?.getAttribute("src")).toBe(curatedPhotoUrl(metadata, 720));
     expect(photo()?.alt).toBe(metadata.alt);
     const pendingCredit = container.querySelector(".place-card-photo-credit")!;
     expect(loadedCredit()).toBeNull();
@@ -118,6 +118,37 @@ describe("PlaceCard selected media and credit", () => {
       expect(container.querySelector("h3")?.textContent).toBe(cardPlace.name);
       expect(container.querySelector('button[aria-label^="View "]')).not.toBeNull();
     }
+  });
+
+  it.each([
+    ["schifferstadt-architectural-museum-frederick", "Schifferstadt Architectural Museum"],
+    ["hessian-barracks-frederick-maryland", "Hessian Barracks Frederick Maryland"],
+    ["co-canal-lock-30-brunswick", "C&O Canal Lock 30"],
+  ])("keeps the exact local licensed %s photo and credit together through load and failure", async (slug, name) => {
+    const metadata = LANDMARK_PHOTOS[slug];
+    await render({ ...place, slug, name, google_photo_url: undefined, google_photo_attribution: undefined }, "discovery");
+    const image = photo()!;
+    expect(image.getAttribute("src")).toBe(metadata.localSrc);
+    expect(image.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("curated");
+    expect(loadedCredit()).toBeNull();
+    await load(image);
+    const credit = loadedCredit()!;
+    expect(credit.textContent).toContain(metadata.author);
+    expect(credit.textContent).toContain(metadata.modifications);
+    expect(credit.querySelector(`a[href="${metadata.source_url}"]`)).not.toBeNull();
+    expect(credit.querySelector(`a[href="${metadata.licenseUrl}"]`)?.textContent).toBe(metadata.license);
+    expect(credit.closest("button")).toBeNull();
+    await fail(image);
+    expect(photo()).toBeNull();
+    expect(loadedCredit()).toBeNull();
+    expect(container.querySelector(".place-card-photo-credit")).toBeNull();
+    expect(container.querySelector("h3")?.textContent).toBe(name);
+    expect(container.querySelector('button[aria-label^="View "]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label^="Save "]')).not.toBeNull();
+    expect(container.querySelector('a[aria-label^="Directions to "]')).not.toBeNull();
+    await load(image);
+    expect(photo()).toBeNull();
+    expect(loadedCredit()).toBeNull();
   });
 
   it.each(["feature", "answer", "grid", "tile", "row", "discovery"] as const)("keeps the %s card's loaded source, credit, and actions together through both failures", async (variant) => {
