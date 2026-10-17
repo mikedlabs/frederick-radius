@@ -21,13 +21,25 @@ const usablePreview: NonNullable<Story["play"]> = async ({ canvasElement, args }
   const card = canvasElement.querySelector<HTMLElement>("[data-today-place-preview]")!;
   await expect(canvas.getByRole("heading", { name: args.place.name })).toBeVisible();
   await expect(canvas.getByText(args.place.fact!, { exact: true })).toBeVisible();
+  const location = [args.place.where, args.place.distance].filter(Boolean).join(" · ");
+  await expect(canvas.getByText(location, { exact: true })).toBeVisible();
+  for (const selector of ["[data-today-pick-name]", "[data-today-pick-fact]", "[data-today-pick-location]"]) {
+    const field = card.querySelector<HTMLElement>(selector)!;
+    const range = document.createRange(); range.selectNodeContents(field);
+    const text = range.getBoundingClientRect(), bounds = field.getBoundingClientRect(), cardBounds = card.getBoundingClientRect();
+    await expect(field.scrollHeight).toBeLessThanOrEqual(field.clientHeight + 1);
+    await expect(text.left).toBeGreaterThanOrEqual(cardBounds.left - 1);
+    await expect(text.right).toBeLessThanOrEqual(cardBounds.right + 1);
+    await expect(text.top).toBeGreaterThanOrEqual(bounds.top - 2);
+    await expect(text.bottom).toBeLessThanOrEqual(bounds.bottom + 2);
+  }
   await expect(canvasElement.querySelector("a a")).toBeNull();
   await expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth + 1);
   for (const control of [canvas.getByRole("link", { name: `View place: ${args.place.name}` }), canvas.getByRole("link", { name: `Map: ${args.place.name}` })]) {
     control.scrollIntoView({ block: "center" });
     const bounds = control.getBoundingClientRect();
     await expect(bounds.width).toBeGreaterThanOrEqual(44);
-    await expect(bounds.height).toBeGreaterThanOrEqual(44);
+    await expect(bounds.height).toBeGreaterThanOrEqual(48);
   }
   const image = card.querySelector<HTMLImageElement>("img");
   if (image) {
@@ -38,6 +50,31 @@ const usablePreview: NonNullable<Story["play"]> = async ({ canvasElement, args }
     await expect(card.querySelector("[data-place-card-photo]")).toBeNull();
     await expect(card.querySelector(".place-card-photo-credit")).toBeNull();
   }
+};
+
+// Real venue identity, with an isolated unknown-hours fixture and no photo.
+export const ShortNameWithoutPhoto: Story = {
+  args: { place: { ...unknownPlace, slug: "ibiza-cafe", name: "Ibiza Cafe", fact: "Hours are not confirmed.", where: "Frederick", distance: null } },
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  play: async (context) => {
+    await usablePreview(context);
+    const card = context.canvasElement.querySelector<HTMLElement>("[data-today-place-preview]")!;
+    await expect(card.getAttribute("data-has-photo")).toBe("false");
+    // A short factual recommendation should fit without becoming a tall panel.
+    const bounds = card.getBoundingClientRect();
+    await expect(bounds.width).toBeGreaterThanOrEqual(350);
+    await expect(bounds.width).toBeLessThanOrEqual(360);
+    const height = bounds.height;
+    await expect(height).toBeGreaterThanOrEqual(140);
+    await expect(height).toBeLessThanOrEqual(190);
+    const name = card.querySelector<HTMLElement>("[data-today-pick-name]")!;
+    const nameSize = parseFloat(getComputedStyle(name).fontSize);
+    await expect(nameSize).toBeGreaterThanOrEqual(22);
+    await expect(nameSize).toBeLessThanOrEqual(26);
+    const fact = card.querySelector<HTMLElement>("[data-today-pick-fact]")!;
+    const location = card.querySelector<HTMLElement>("[data-today-pick-location]")!;
+    await expect(Math.abs(fact.getBoundingClientRect().top - location.getBoundingClientRect().top)).toBeLessThanOrEqual(1);
+  },
 };
 
 export const UnknownHoursWithoutPhoto: Story = { play: usablePreview };
@@ -52,7 +89,15 @@ export const EnlargedText320: Story = {
     document.documentElement.style.fontSize = "200%";
     return () => { document.documentElement.style.fontSize = previous; };
   },
-  play: usablePreview,
+  play: async (context) => {
+    await usablePreview(context);
+    const name = context.canvasElement.querySelector<HTMLElement>("[data-today-pick-name]")!;
+    const fact = context.canvasElement.querySelector<HTMLElement>("[data-today-pick-fact]")!;
+    await expect(parseFloat(getComputedStyle(document.documentElement).fontSize)).toBe(32);
+    await expect(parseFloat(getComputedStyle(name).fontSize)).toBeGreaterThanOrEqual(44);
+    await expect(parseFloat(getComputedStyle(name).fontSize)).toBeLessThanOrEqual(52);
+    await expect(parseFloat(getComputedStyle(fact).fontSize)).toBeGreaterThanOrEqual(30);
+  },
 };
 export const OwnedExactPlace: Story = {
   args: { place: { ...unknownPlace, slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park", where: "Frederick", distance: null }, category: "outdoors" },

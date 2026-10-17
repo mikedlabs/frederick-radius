@@ -47,27 +47,50 @@
 
 .entryControls {
   display: grid;
-  gap: var(--app-space-2);
+  container-type: inline-size;
   min-width: 0;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-xl);
+  background: var(--app-bg-elevated-solid);
+  box-shadow: var(--app-shadow-1);
+}
+
+.scope {
+  min-width: 0;
+  padding: 4px 8px 8px;
+  border-top: 1px solid var(--app-border);
 }
 
 .scope > div {
   margin-top: 0;
+  column-gap: var(--spacing);
 }
 
 .scope label {
   flex: 1 1 130px;
+  min-width: 0;
   max-width: none;
 }
 
 .scope select {
   width: 100%;
-  padding-inline: var(--app-space-4);
-  border: 1px solid var(--app-control-border);
-  border-radius: 999px;
-  background: var(--app-bg-sunken);
+  padding-inline: 8px;
+  border: 0;
+  border-radius: var(--app-radius-sm);
+  background: transparent;
+  font-size: 1rem;
   font-weight: 600;
   box-shadow: none;
+}
+
+.scope button {
+  flex: 0 1 auto;
+  min-height: 44px;
+  height: auto;
+  max-width: 100%;
+  padding: 8px 10px;
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
 }
 
 .scope select:focus-visible {
@@ -169,7 +192,7 @@
   overflow: hidden;
   border: 0;
   border-radius: var(--app-radius-xl);
-  /* A pending photograph still has a readable, fixed media ground. */
+  /* The real image owns the visual emphasis after it has decoded. */
   background: var(--app-media-ink);
   color: var(--app-on-brand);
   outline-offset: 4px;
@@ -199,6 +222,28 @@
 .geographicPhoto img {
   object-fit: cover;
   object-position: 54% 52%;
+  opacity: 0;
+  transition: opacity 180ms var(--app-ease-out);
+}
+
+.geographicDoorway[data-photo-state="loaded"] .geographicPhoto img {
+  opacity: 1;
+}
+
+.geographicDoorway[data-photo-state="pending"],
+.geographicDoorway[data-photo-state="pending"] .geographicPhoto {
+  background: var(--app-bg-sunken);
+  color: var(--app-ink);
+}
+
+.geographicDoorway[data-photo-state="pending"] .geographicCaption {
+  background: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .geographicPhoto img {
+    transition: none;
+  }
 }
 
 .geographicCaption {
