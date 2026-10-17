@@ -1,0 +1,108 @@
+.page { font-family: var(--font-sans), sans-serif; }
+
+/* The photo belongs to McCurdy Field, not any of the teams below. */
+.hero {
+  position: relative;
+  min-height: 21rem;
+  overflow: hidden;
+  border-radius: var(--app-radius-xl);
+  isolation: isolate;
+  background: var(--app-ink);
+  color: var(--app-on-brand);
+}
+.heroPhoto { object-fit: cover; object-position: center; }
+.heroShade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,.08) 0%, rgba(0,0,0,.48) 38%, rgba(0,0,0,.9) 100%);
+}
+.heroCopy { position: relative; padding: 5.5rem 1.25rem 1.25rem; }
+.heroCopy > p:first-child { font-size: .75rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+.heroCopy h1 { max-width: 12ch; margin-top: .65rem; font-size: clamp(2.75rem, 8vw, 4.5rem); font-weight: 850; line-height: .98; letter-spacing: -.055em; }
+.heroCopy h1 + p { max-width: 37rem; margin-top: .75rem; font-size: .875rem; line-height: 1.5; }
+.heroActions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+.heroActions a { display: inline-flex; min-height: 44px; align-items: center; padding: .65rem .9rem; border-radius: 999px; font-size: .8125rem; font-weight: 750; }
+.heroPrimary { color: var(--app-ink); background: var(--app-bg); }
+.heroSecondary { color: var(--app-on-brand); background: rgba(0,0,0,.5); border: 1px solid color-mix(in srgb, var(--app-on-brand) 65%, transparent); }
+
+/* Solid team fields and a secondary-color monogram provide actual identity.
+   Foregrounds are fixed with each verified plate so either app theme is safe. */
+.teamHeading { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.1rem; border-radius: var(--app-radius-lg); color: var(--team-on-primary); background: var(--team-primary); }
+.teamHeading p { color: var(--team-on-primary); font-size: .8125rem; }
+.teamHeading h2 { margin: .1rem 0 .2rem; font-size: clamp(1.75rem, 5.7vw, 2.5rem); font-weight: 850; line-height: 1.02; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.teamMonogram { display: grid; width: 4rem; height: 4rem; flex: 0 0 auto; place-items: center; border-radius: .75rem; background: var(--team-secondary); color: var(--team-on-secondary); font-size: 1.3rem; font-weight: 900; letter-spacing: -.06em; }
+
+.campusGrid { display: grid; gap: .75rem; }
+.campusCard { position: relative; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 1rem; min-height: 10rem; padding: 1.1rem; overflow: hidden; border: 1px solid color-mix(in srgb, var(--team-secondary) 65%, var(--team-primary)); border-radius: var(--app-radius-lg); background: var(--team-primary); color: var(--team-on-primary); }
+.campusCard::after { position: absolute; right: 0; bottom: 0; width: 42%; height: .55rem; background: var(--team-secondary); content: ""; }
+.campusCopy { min-width: 0; overflow-wrap: anywhere; }
+.campusSchool { display: block; font-size: .8125rem; font-weight: 650; line-height: 1.35; }
+.campusName { display: block; margin-top: .4rem; font-size: clamp(1.65rem, 7.2vw, 2.5rem); font-weight: 850; line-height: .98; letter-spacing: -.04em; overflow-wrap: anywhere; }
+.campusLevel { display: block; margin-top: .6rem; font-size: .75rem; font-weight: 550; line-height: 1.4; }
+.campusArrow { width: 1.2rem; height: 1.2rem; align-self: start; }
+.campusCard:focus-visible, .heroActions a:focus-visible { outline: 3px solid var(--app-link); outline-offset: 4px; }
+.campusCard:hover { box-shadow: var(--app-elev-2); }
+
+.cowsCard { margin-top: 1rem; overflow: hidden; border: 1px solid var(--app-border); border-radius: var(--app-radius-lg); background: var(--app-bg-elevated); }
+.cowsMasthead { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 1rem; align-items: center; padding: 1.25rem; color: var(--team-on-primary); background: var(--team-primary); border-bottom: .65rem solid var(--team-secondary); }
+.cowsMasthead p { font-size: .8125rem; font-weight: 650; }
+.cowsMasthead strong { display: block; max-width: 12ch; margin: .3rem 0; color: var(--team-secondary); font-size: clamp(2rem, 8vw, 3.5rem); font-weight: 900; line-height: .92; letter-spacing: -.045em; }
+.cowsBodyTitle { margin-top: .5rem; color: var(--app-ink); font-size: 1.5rem; font-weight: 800; line-height: 1.15; letter-spacing: -.03em; }
+.cowsKicker { color: var(--app-ink-2); font-size: .75rem; font-weight: 700; }
+.teamAction { display: inline-flex; min-height: 44px; align-items: center; gap: .5rem; border: 1px solid var(--team-primary); border-radius: 999px; padding: .65rem .9rem; color: var(--team-on-primary); background: var(--team-primary); font-size: .8125rem; font-weight: 750; }
+
+/* School palettes remain neutral until their own identity is verified. */
+.schoolLink { display: inline-flex; min-width: 0; max-width: 100%; min-height: 44px; align-items: center; gap: .5rem; padding: .65rem .85rem; border: 1px solid var(--app-control-border); border-radius: 999px; background: var(--app-bg); color: var(--app-link); font-size: .8125rem; font-weight: 650; line-height: 1.4; text-decoration: underline; text-underline-offset: .16em; overflow-wrap: anywhere; }
+.schoolLink svg { width: 1rem; height: 1rem; flex-shrink: 0; }
+.schoolOfficial { color: var(--app-link); }
+.schoolLink:focus-visible { outline: 3px solid var(--app-focus); outline-offset: 3px; }
+
+.board { overflow: hidden; border: 1px solid var(--app-border); border-radius: var(--app-radius-lg); background: var(--app-bg-elevated); }
+.boardHeader { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem .75rem; padding: 1rem; border-bottom: 1px solid var(--app-border); }
+.boardHeading { color: var(--app-ink); font-size: .9375rem; font-weight: 800; }
+.boardHint { max-width: 27rem; margin-top: .25rem; color: var(--app-ink-2); font-size: .8125rem; line-height: 1.4; }
+.calendarAction { display: inline-flex; min-height: 44px; align-items: center; gap: .4rem; flex-shrink: 0; padding: .65rem .85rem; border: 1px solid var(--app-control-border); border-radius: 999px; color: var(--app-ink); font-size: .8125rem; font-weight: 700; }
+.game { border-bottom: 1px solid var(--app-border); }
+.game:last-child { border-bottom: 0; }
+.gameSummary { display: grid; grid-template-columns: 3rem minmax(0,1fr) 1rem; gap: .8rem; min-height: 44px; align-items: start; padding: 1rem; cursor: pointer; list-style: none; }
+.gameSummary::-webkit-details-marker { display: none; }
+.gameSummary:focus-visible { outline: 3px solid var(--app-link); outline-offset: -3px; }
+.gameMark { display: grid; width: 3rem; height: 3.5rem; align-items: center; justify-content: center; border-bottom: .45rem solid var(--team-secondary); border-radius: .55rem; background: var(--team-primary); color: var(--team-on-primary); font-size: .9375rem; font-weight: 850; letter-spacing: -.04em; }
+.gameKicker { display: block; color: var(--app-ink-2); font-size: .75rem; line-height: 1.35; }
+.gameTeam { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .6rem; margin-top: .2rem; color: var(--app-ink); font-size: 1.125rem; font-weight: 850; line-height: 1.15; letter-spacing: -.025em; }
+.homeAway { padding: .2rem .45rem; border-radius: 999px; font-size: .6875rem; font-weight: 700; letter-spacing: 0; text-transform: capitalize; }
+.gameMatchup { display: block; margin-top: .35rem; color: var(--app-ink); font-size: .9375rem; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+.gameWhen { display: block; margin-top: .35rem; color: var(--app-ink-2); font-size: .8125rem; line-height: 1.45; overflow-wrap: anywhere; }
+.gameChevron { width: 1rem; height: 1rem; margin-top: .25rem; color: var(--app-ink-2); }
+.game[open] .gameChevron { transform: rotate(180deg); }
+
+.scoreboard { margin-top: .75rem; }
+.scoreboardHeader { padding-block: .65rem; }
+.scoreRow { display: grid; grid-template-columns: 2.75rem minmax(0,1fr); align-items: start; gap: .5rem .75rem; padding: .9rem 1rem; border-bottom: 1px solid var(--app-border); }
+.scoreRow:last-child { border-bottom: 0; }
+.scoreRow .gameMark { width: 2.75rem; height: 3.25rem; }
+.scoreRow .gameTeam { margin-top: .15rem; font-size: 1rem; }
+.scoreRow .gameMatchup { font-size: .875rem; }
+.scoreStatus { display: flex; grid-column: 2; flex-wrap: wrap; align-items: center; gap: .25rem 1rem; color: var(--app-ink); font-size: .8125rem; }
+.scoreStatus strong { font-variant-numeric: tabular-nums; }
+.scoreStatus > span { color: var(--app-ink-2); font-size: .75rem; }
+.scoreLink { display: inline-flex; min-height: 44px; align-items: center; gap: .3rem; color: var(--app-link); font-size: .8125rem; font-weight: 700; }
+
+@media (min-width: 760px) {
+  .campusGrid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .campusCard { min-height: 15rem; grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: 1rem .5rem; }
+  .campusCard .teamMonogram { grid-column: 1; }
+  .campusCopy { grid-column: 1 / -1; grid-row: 2; }
+  .campusArrow { grid-column: 2; grid-row: 1; }
+  .campusName { font-size: clamp(1.65rem, 2.5vw, 2.2rem); }
+}
+@media (max-width: 360px) {
+  .heroCopy { padding-inline: 1rem; }
+  .teamHeading, .cowsMasthead { gap: .75rem; padding: 1rem; }
+  .teamMonogram { width: 3rem; height: 3rem; font-size: 1rem; }
+  .campusCard { gap: .7rem; padding: 1rem; }
+  .campusArrow { width: 1rem; height: 1rem; }
+  .campusName { font-size: 1.5rem; }
+  .gameSummary { grid-template-columns: 2.75rem minmax(0,1fr) .85rem; gap: .65rem; padding: .85rem; }
+  .gameMark { width: 2.75rem; }
+}

@@ -18,6 +18,7 @@ export type KeysLike = {
   title?: string | null;
   venue_name?: string | null;
   source?: string | null;
+  description?: string | null;
 };
 
 /** The home venue, however a feed spells it ("Nymeo Field at Harry Grove
@@ -25,11 +26,10 @@ export type KeysLike = {
 const NYMEO_RE = /nymeo field|harry\s*grove/i;
 
 /**
- * Is this a Frederick Keys home game? True when ANY authoritative signal holds:
- *   • the row came from the Keys Stats-API feed (source "frederick-keys"),
- *   • the venue is Nymeo Field / Harry Grove Stadium, or
- *   • the title names the Keys ("Frederick Keys …", "… Keys vs …").
- * Honest by construction: a non-Keys event at another venue never matches.
+ * Does this event relate to the Keys or their stadium? This broad detector
+ * deliberately includes non-game stadium activities. Consumers promising a
+ * baseball home game must use isKeysHomeGame instead; venue alone is not proof
+ * that a career fair, concert or other stadium booking is a game.
  */
 export function isKeysEvent(e: KeysLike | null | undefined): boolean {
   if (!e) return false;
@@ -37,6 +37,34 @@ export function isKeysEvent(e: KeysLike | null | undefined): boolean {
   if (e.venue_name && NYMEO_RE.test(e.venue_name)) return true;
   const t = e.title ?? "";
   return /frederick\s+keys/i.test(t) || /\bkeys\s+vs\.?\b/i.test(t);
+}
+
+const KEYS_TEAM_RE = /\b(?:frederick\s+)?keys\b/i;
+const KEYS_MATCHUP_RE = /\b(?:frederick\s+)?keys\s+(?:vs\.?|versus)\s+\S|\S+\s+(?:vs\.?|versus)\s+(?:frederick\s+)?keys\b/i;
+const WATCH_PARTY_RE = /\bwatch\s+part(?:y|ies)\b/i;
+const NON_GAME_TITLE_RE = /\b(?:career\s+(?:days?|fairs?)|job\s+fairs?|concerts?|stadium\s+tours?|camps?|clinics?|tryouts?|trivia|fan\s*fest(?:ival)?s?)\b/i;
+const EXPLICIT_GAME_RE = /\b(?:baseball\s+games?|home\s+games?|home\s+opener|first\s+pitch|post[-\s]?game|season\s+opener)\b/i;
+
+/**
+ * A Keys baseball HOME game, rather than any event booked at their stadium.
+ * The dedicated Stats API adapter already checks the home team's identity.
+ * Other feeds need the home venue plus a Keys matchup, or explicit game
+ * evidence for a promotion-titled listing. A theme or venue alone is not
+ * enough. Lifecycle status is deliberately untouched so cancelled/postponed
+ * games can still explain a disrupted schedule.
+ */
+export function isKeysHomeGame(e: KeysLike | null | undefined): boolean {
+  if (!e) return false;
+  if (e.source === "frederick-keys") return true;
+  if (!e.venue_name || !NYMEO_RE.test(e.venue_name)) return false;
+
+  const title = e.title?.trim() ?? "";
+  if (!title || WATCH_PARTY_RE.test(title)) return false;
+  if (KEYS_MATCHUP_RE.test(title)) return true;
+  if (NON_GAME_TITLE_RE.test(title)) return false;
+
+  const evidence = `${title} ${e.description?.trim() ?? ""}`;
+  return KEYS_TEAM_RE.test(evidence) && EXPLICIT_GAME_RE.test(evidence);
 }
 
 /**
