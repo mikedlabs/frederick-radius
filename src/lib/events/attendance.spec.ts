@@ -15,6 +15,12 @@ describe("event attendance semantics", () => {
     expect(eventAttendanceMode({ title: "Strength & Stretch Thursdays (hybrid) @ Brunswick" })).toBe("mixed");
   });
 
+  it("recognizes (video) as an online event marker", () => {
+    // Regression: Chair Yoga (video) events were marked physical instead of online.
+    expect(eventAttendanceMode({ title: "Chair Yoga (video) @ Urbana" })).toBe("online");
+    expect(eventAttendanceMode({ title: "Chair Yoga (video)" })).toBe("online");
+  });
+
   it("does not mistake a virtual-reality activity for an online event", () => {
     expect(eventAttendanceMode({ title: "Virtual Reality Game Night", venue_name: "FCPL" })).toBe("physical");
   });
