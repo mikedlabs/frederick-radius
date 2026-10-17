@@ -189,11 +189,15 @@ describe("scheduled feed-health probes", () => {
 
     expect(sourceIds).toEqual(
       new Set([
+        "city_frederick_calendar",
         "dfp_events",
         "fc_parks_rec",
         "fcpl_libraries",
+        "frederick_county_calendar",
         "fredscanner",
+        "mount_airy_calendar",
         "nps",
+        "thurmont_calendar",
         "usgs_water",
         "visit_frederick",
       ]),
