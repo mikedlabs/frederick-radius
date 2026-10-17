@@ -64,7 +64,7 @@ const MOOD_TILES: Array<{
   color: string;
 }> = [
   { slug: "food", label: "Eat & drink", caption: "Coffee, brewery, dinner",  Icon: Coffee, color: BRAND.colors.brick },
-  { slug: "outdoors", label: "Outdoors", caption: "Parks, trails, water",     Icon: Trees,  color: "#315A43" },
+  { slug: "outdoors", label: "Outdoors", caption: "Parks, trails, water",     Icon: Trees,  color: BRAND.colors.forest },
   { slug: "family",   label: "With kids", caption: "Family-friendly spots",   Icon: Baby,   color: BRAND.colors.ridge },
 ];
 

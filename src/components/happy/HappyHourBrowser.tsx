@@ -91,7 +91,7 @@ function RowCard({ r, when, live, endsAt, accent, hideTown }: { r: HHRow; when: 
       <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: rail }} />
       {/* Stretched link needs its own name — the card text is OUTSIDE the
           anchor, so without a label a screen reader announces nothing. */}
-      <Link href={`/places/${r.slug}`} aria-label={r.name} className="block outline-none"><span className="absolute inset-0" aria-hidden /></Link>
+      <Link href={`/places/${r.slug}`} aria-label={r.name} className="block outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-focus)]"><span className="absolute inset-0" aria-hidden /></Link>
       <div className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-[10px]">
         {/* 52px tile: ask the proxy for 52px, not the stored 800px hero. */}
         {r.photo ? <Image src={proxyPhotoAtWidth(r.photo, 52)} alt="" fill sizes="52px" unoptimized={r.photo.startsWith("/api/place-photo")} className="object-cover" /> : <PhotoFallback />}

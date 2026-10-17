@@ -15,7 +15,7 @@ function muniColor(m: string): string {
   if (s.includes("frederick county")) return "var(--app-cool)";
   if (s.includes("frederick")) return "var(--app-brand)";
   if (s.includes("thurmont")) return "var(--app-positive)";
-  if (s.includes("mount airy")) return "#7E2C6F";
+  if (s.includes("mount airy")) return "var(--app-accent)";
   if (s.includes("walkersville")) return "var(--app-accent)";
   return "var(--app-ink-3)";
 }

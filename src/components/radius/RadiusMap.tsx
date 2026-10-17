@@ -1108,10 +1108,10 @@ export default function RadiusMap({
               type="button"
               onClick={() => setShowBuses((v) => !v)}
               aria-pressed={showBuses}
-              className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition active:scale-[0.96]"
-              style={{ background: showBuses ? "var(--app-cool)" : "transparent", color: showBuses ? "#fff" : "var(--app-ink-2)" }}
+              className="tap-44-y flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition active:scale-[0.96] motion-reduce:active:scale-100 motion-reduce:transition-none"
+              style={{ background: showBuses ? "var(--app-cool)" : "transparent", color: showBuses ? "var(--app-on-brand)" : "var(--app-ink-2)" }}
             >
-              <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showBuses ? "#fff" : "var(--app-cool)" }} />
+              <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showBuses ? "var(--app-on-brand)" : "var(--app-cool)" }} />
               Live buses
             </button>
             {readyOverlays.map((o) => {
@@ -1126,13 +1126,13 @@ export default function RadiusMap({
                     )
                   }
                   aria-pressed={on}
-                  className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition active:scale-[0.96]"
+                  className="tap-44-y flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition active:scale-[0.96] motion-reduce:active:scale-100 motion-reduce:transition-none"
                   style={{
                     background: on ? "var(--app-brand)" : "transparent",
-                    color: on ? "#fff" : "var(--app-ink-2)",
+                    color: on ? "var(--app-on-brand)" : "var(--app-ink-2)",
                   }}
                 >
-                  <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: on ? "#fff" : "var(--app-brand)" }} />
+                  <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: on ? "var(--app-on-brand)" : "var(--app-brand)" }} />
                   {o.label}
                 </button>
               );

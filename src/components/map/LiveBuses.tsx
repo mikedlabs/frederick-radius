@@ -900,7 +900,7 @@ function VisibleLiveBuses({
               }}
               aria-label={`Live TransIT bus ${label}, ${route?.name ?? "route unavailable"}, vehicle ${v.vehicleId}, ${effectiveFeedStatus === "stale" ? "last reported position" : p.moving ? "movement reported" : "reported position"}`}
               data-live-bus-marker
-              style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-bus-in 260ms ease-out both", opacity: effectiveFeedStatus === "stale" ? 0.62 : highlightRouteId && v.routeId !== highlightRouteId ? 0.28 : 1, transition: "opacity 300ms ease" }}
+              style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-bus-in 260ms ease-out both", opacity: effectiveFeedStatus === "stale" ? 0.62 : highlightRouteId && v.routeId !== highlightRouteId ? 0.28 : 1, transition: reduced ? "none" : "opacity 300ms ease" }}
             >
               {/* A fresh report only calls attention to the bus the rider is
                   inspecting. New unselected buses already receive fr-bus-in. */}

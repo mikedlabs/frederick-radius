@@ -2080,7 +2080,7 @@ export default function MapDock(props: MapDockProps) {
               {pane !== "contents" ? (
                 <button
                   type="button"
-                  className="dock-back"
+                  className="dock-back tap-44"
                   onClick={() => {
                     setPlaceReveal(null);
                     setEssentialsQuick(false);
@@ -2094,7 +2094,7 @@ export default function MapDock(props: MapDockProps) {
                 <span className="dock-pane-head-spacer" aria-hidden />
               )}
               <h2 className="dock-pane-title">{paneTitle}</h2>
-              <button type="button" className="dock-done" onClick={closePane}>
+              <button type="button" className="dock-done tap-44" onClick={closePane}>
                 Done
               </button>
             </div>
