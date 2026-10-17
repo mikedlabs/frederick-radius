@@ -55,6 +55,36 @@ describe("venue event attendance normalization", () => {
   });
 });
 
+describe("venue event feed images", () => {
+  it("keeps a Squarespace event photograph instead of the venue Google photo", () => {
+    const feedImage =
+      "https://images.squarespace-cdn.com/content/v1/5f9ef850cc5c2c1189e6fb4a/img/haunted+steinhardt+LS.png";
+    const [card] = venueEventsToCards([
+      event({
+        title: "Haunted Haloween Terrarium Workshop",
+        venue_slug: "steinhardt-brewing-company-frederick",
+        venue_name: "Steinhardt Brewing Company",
+        hero_image: feedImage,
+      }),
+    ]);
+
+    expect(card.hero_image).toBe(feedImage);
+    expect(card.hero_image).not.toMatch(/\/api\/place-photo/);
+  });
+
+  it("does not treat a Squarespace HTML collection URL as event art", () => {
+    const [card] = venueEventsToCards([
+      event({
+        venue_slug: "unmatched-test-venue",
+        hero_image:
+          "https://static1.squarespace.com/static/5f9ef850cc5c2c1189e6fb4a/63fbd6a3e552a97c025d010b/6aaf47a88598bb5c9cec89a2/1789872062045/",
+      }),
+    ]);
+
+    expect(card.hero_image).toBeUndefined();
+  });
+});
+
 describe("venue event mixed-calendar categories", () => {
   it("does not let a venue-level music stamp override a flea market title", () => {
     const [card] = venueEventsToCards([

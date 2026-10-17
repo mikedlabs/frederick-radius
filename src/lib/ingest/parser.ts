@@ -12,6 +12,7 @@
  * valid empty calendar, and keeps the raw VEVENT for audit evidence.
  */
 import { easternWallToUtcISO } from "@/lib/tz";
+import { icalAttachImage } from "@/lib/events/feed-image";
 
 export type ParsedEvent = {
   uid: string;
@@ -531,12 +532,22 @@ function parseEvent(event: RawEvent): ParsedEvent | null {
     ? directUrl
     : describedUrl;
   const stamp = parseDateProperty(firstProperty(event, "DTSTAMP"));
+  let heroImage: string | undefined;
+  for (const property of event.properties) {
+    if (property.key !== "ATTACH" && property.key !== "IMAGE") continue;
+    const image = icalAttachImage(property.params.FMTTYPE, property.value);
+    if (image) {
+      heroImage = image;
+      break;
+    }
+  }
 
   return {
     uid,
     summary,
     description: description || undefined,
     sourceUrl,
+    heroImage,
     rawLocation: rawLocation || undefined,
     startsAtUtc: start.iso,
     endsAtUtc,

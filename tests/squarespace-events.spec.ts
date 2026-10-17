@@ -3,6 +3,7 @@ import {
   fetchSquarespaceEventsResult,
   parseSquarespaceEvents,
 } from "../scripts/lib/extract-agent";
+import steinhardtFixture from "./fixtures/steinhardt-squarespace.json" with { type: "json" };
 
 // Fixture modeled on the real Squarespace `?format=json` response from
 // thebanyanmd.com/livemusic (verified May 2026): an `upcoming` array of
@@ -18,6 +19,10 @@ const banyanLike = {
       endDate: 1780808400000,
       excerpt: "<p>Trop-rock on the rooftop.</p>",
       fullUrl: "/livemusic/jimmy-kenny-and-the-pirate-beach-band",
+      assetUrl:
+        "https://images.squarespace-cdn.com/content/v1/site/img/jimmy-kenny.jpg",
+      contentType: "image/jpeg",
+      originalSize: "1200x800",
     },
     {
       title: "Radio Hero",
@@ -48,6 +53,24 @@ describe("parseSquarespaceEvents", () => {
     expect(first.ticket_url).toBe(
       "https://www.thebanyanmd.com/livemusic/jimmy-kenny-and-the-pirate-beach-band",
     );
+    expect(first.hero_image).toBe(
+      "https://images.squarespace-cdn.com/content/v1/site/img/jimmy-kenny.jpg",
+    );
+  });
+
+  it("captures Steinhardt collection photographs and skips HTML assetUrl rows", () => {
+    const events = parseSquarespaceEvents(
+      steinhardtFixture,
+      "https://www.steinhardtbrewing.com/live-music-events",
+    );
+    expect(events).toHaveLength(33);
+    const withImage = events.filter((event) => event.hero_image);
+    expect(withImage).toHaveLength(27);
+    const haunted = events.find((event) =>
+      event.title.includes("Haunted Haloween"),
+    );
+    expect(haunted?.hero_image).toMatch(/haunted\+steinhardt\+LS\.png$/);
+    expect(events.find((event) => event.title === "Mahjong")?.hero_image).toBeUndefined();
   });
 
   it("ignores the `past` array entirely", () => {

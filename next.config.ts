@@ -202,6 +202,58 @@ const nextConfig: NextConfig = {
         hostname: "static.wixstatic.com",
         pathname: "/media/**",
       },
+      // Venue/feed event photographs. Adapters emit hero_image only after
+      // src/lib/events/feed-image.ts accepts the URL (Squarespace, Tribe,
+      // iCal ATTACH, RSS image enclosures, college calendars).
+      { protocol: "https", hostname: "images.squarespace-cdn.com" },
+      { protocol: "https", hostname: "static1.squarespace.com" },
+      { protocol: "https", hostname: "static.squarespace.com" },
+      { protocol: "https", hostname: "images.squarespace.com" },
+      {
+        protocol: "https",
+        hostname: "www.celebratefrederick.com",
+        pathname: "/wp-content/uploads/**",
+      },
+      {
+        protocol: "https",
+        hostname: "monocacybrewing.com",
+        pathname: "/wp-content/uploads/**",
+      },
+      {
+        protocol: "https",
+        hostname: "delaplaine.org",
+        pathname: "/wp-content/uploads/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.civilwarmed.org",
+        pathname: "/wp-content/uploads/**",
+      },
+      {
+        protocol: "https",
+        hostname: "marylandensemble.org",
+        pathname: "/wp-content/uploads/**",
+      },
+      {
+        protocol: "https",
+        hostname: "catoctinlandtrust.org",
+        pathname: "/wp-content/uploads/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.frederick.edu",
+        pathname: "/images/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.mountairymd.gov",
+        pathname: "/calendar/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.cityoffrederickmd.gov",
+        pathname: "/calendar/**",
+      },
       // planespotters.net spotter-photo thumbnail CDN (/overhead aircraft photos)
       { protocol: "https", hostname: "t.plnspttrs.net" },
       { protocol: "https", hostname: "commons.wikimedia.org" },

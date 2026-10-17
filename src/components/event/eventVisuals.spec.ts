@@ -120,6 +120,26 @@ describe("eventCardVisual", () => {
     },
   );
 
+  it("uses a venue-feed photograph before a Google place photo", () => {
+    const src =
+      "https://images.squarespace-cdn.com/content/v1/5f9ef850cc5c2c1189e6fb4a/img/haunted+steinhardt+LS.png";
+    expect(
+      eventCardVisual(
+        event({
+          source: "venue-extract",
+          venue_name: "Steinhardt Brewing Company",
+          hero_image: src,
+          source_url: "https://www.steinhardtbrewing.com/live-music-events",
+        }),
+      ),
+    ).toMatchObject({
+      src,
+      caption: "Event image · Steinhardt Brewing Company",
+      presentation: "artwork",
+      sourceHref: "https://www.steinhardtbrewing.com/live-music-events",
+    });
+  });
+
   it("rejects a source-approved event with an image on the wrong host", () => {
     expect(
       eventCardVisual(

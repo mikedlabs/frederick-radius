@@ -95,6 +95,7 @@ export type RawEvent = {
   description_origin?: "source-excerpt" | "radius-summary";
   price?: string;
   ticket_url?: string;
+  hero_image?: string;
 };
 type VenueEvent = RawEvent & {
   venue_slug: string;
