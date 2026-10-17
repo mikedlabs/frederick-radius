@@ -103,6 +103,44 @@ describe("parseSquarespaceEvents", () => {
     expect(parseSquarespaceEvents("<html>")).toEqual([]);
   });
 
+  it("falls back to items[] when upcoming is empty or missing", () => {
+    const events = parseSquarespaceEvents(
+      {
+        upcoming: [],
+        items: [
+          {
+            title: "Patio Band",
+            startDate: 1780794000999,
+            endDate: 1780808400000,
+            excerpt: "<p>Outside set.</p>",
+            fullUrl: "/events/patio-band",
+          },
+        ],
+      },
+      "https://www.rockwell.example/events",
+    );
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      title: "Patio Band",
+      description: "Outside set.",
+      ticket_url: "https://www.rockwell.example/events/patio-band",
+    });
+  });
+
+  it("drops an endDate that is not after the start", () => {
+    const events = parseSquarespaceEvents({
+      upcoming: [
+        {
+          title: "Broken clock",
+          startDate: 1780794000999,
+          endDate: 1780794000999,
+        },
+      ],
+    });
+    expect(events[0]?.ends_at).toBeUndefined();
+  });
+
   it("keeps the relative URL when no base origin is given", () => {
     const events = parseSquarespaceEvents(banyanLike);
     expect(events[0].ticket_url).toBe("/livemusic/jimmy-kenny-and-the-pirate-beach-band");
@@ -142,5 +180,24 @@ describe("fetchSquarespaceEventsResult", () => {
     );
 
     expect(result).toEqual({ status: "failure", events: [] });
+  });
+
+  it("accepts a verified items[] collection when upcoming is absent", async () => {
+    const result = await fetchSquarespaceEventsResult(
+      "https://example.com/events",
+      {
+        fetchImpl: async () =>
+          new Response(
+            JSON.stringify({
+              items: [{ title: "Patio Band", startDate: 1780794000999 }],
+            }),
+            { status: 200 },
+          ),
+      },
+    );
+
+    expect(result.status).toBe("success");
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0]?.title).toBe("Patio Band");
   });
 });

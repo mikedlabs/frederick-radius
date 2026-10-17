@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { formatEventTime, formatEventDate } from "@/lib/format/eventTime";
 import { easternWallToUtcISO } from "@/lib/tz";
-import { parseCountyDateTime } from "@/lib/integrations/ical-live";
+import {
+  parseCountyDateTime,
+  parseCountyEventWindow,
+} from "@/lib/integrations/ical-live";
 
 describe("formatEventTime", () => {
   it("renders the documented acceptance case (P0-1)", () => {
@@ -70,5 +73,36 @@ describe("parseCountyDateTime", () => {
 
   it("returns null for an unparseable date", () => {
     expect(parseCountyDateTime("sometime next week", "5:00 PM")).toBeNull();
+  });
+});
+
+describe("parseCountyEventWindow", () => {
+  it("keeps a same-day CivicEngage range on one Eastern date", () => {
+    const window = parseCountyEventWindow("May 14, 2026", "10:30 AM - 02:00 PM");
+    expect(window?.start.toISOString()).toBe("2026-05-14T14:30:00.000Z");
+    expect(window?.end?.toISOString()).toBe("2026-05-14T18:00:00.000Z");
+  });
+
+  it("rolls an overnight range onto the next Eastern day", () => {
+    const window = parseCountyEventWindow("May 14, 2026", "10:00 PM - 1:00 AM");
+    expect(window?.start.toISOString()).toBe("2026-05-15T02:00:00.000Z");
+    expect(window?.end?.toISOString()).toBe("2026-05-15T05:00:00.000Z");
+  });
+
+  it("accepts an en-dash separator used by CivicEngage HTML", () => {
+    const window = parseCountyEventWindow("May 14, 2026", "10:00 PM – 1:00 AM");
+    expect(window?.end?.toISOString()).toBe("2026-05-15T05:00:00.000Z");
+  });
+
+  it("treats a single clock as a start with no published end", () => {
+    const window = parseCountyEventWindow("May 14, 2026", "5:30 PM");
+    expect(window?.start.toISOString()).toBe("2026-05-14T21:30:00.000Z");
+    expect(window?.end).toBeNull();
+  });
+
+  it("still anchors a date with no clock at midday", () => {
+    const window = parseCountyEventWindow("May 14, 2026");
+    expect(window?.start.toISOString()).toBe("2026-05-14T16:00:00.000Z");
+    expect(window?.end).toBeNull();
   });
 });

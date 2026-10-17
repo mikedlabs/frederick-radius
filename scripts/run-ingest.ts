@@ -7,7 +7,7 @@
  *   npm run ingest -- --no-geocode
  */
 import { getSql, closeDb } from "@/lib/db/client";
-import { parseICal } from "@/lib/ingest/parser";
+import { parseICalResult } from "@/lib/ingest/parser";
 import { upsertEvent, emptyStats } from "@/lib/ingest/upsert";
 import { geocodePending } from "@/lib/ingest/geocode";
 import sources from "@/../config/civicengage_sources.json" with { type: "json" };
@@ -16,13 +16,21 @@ type Source = { municipality: string; domain: string; enabled: boolean; catids: 
 const UA = "FrederickRadius/1.0 (+https://frederickradius.app; civic event index)";
 const feedUrl = (d: string, c: number) => `https://${d}/Common/Modules/iCalendar/iCalendar.aspx?catID=${c}&feed=calendar`;
 
-async function fetchFeed(url: string): Promise<string | null> {
+async function fetchFeed(
+  url: string,
+): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 20000);
   try {
     const r = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow", signal: ctrl.signal });
-    return r.ok ? await r.text() : null;
-  } catch { return null; } finally { clearTimeout(t); }
+    if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
+    return { ok: true, text: await r.text() };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "feed fetch failed",
+    };
+  } finally { clearTimeout(t); }
 }
 
 async function main() {
@@ -44,8 +52,16 @@ async function main() {
       let parsed = 0;
       for (const catID of src.catids) {
         const ics = await fetchFeed(feedUrl(src.domain, catID));
-        if (!ics) { process.stdout.write(`  ${src.municipality} catID ${catID}: feed unavailable\n`); continue; }
-        const events = parseICal(ics);
+        if (!ics.ok) {
+          process.stdout.write(`  ${src.municipality} catID ${catID}: ${ics.error}\n`);
+          continue;
+        }
+        const parsedFeed = parseICalResult(ics.text);
+        if (!parsedFeed.valid) {
+          process.stdout.write(`  ${src.municipality} catID ${catID}: ${parsedFeed.error}\n`);
+          continue;
+        }
+        const events = parsedFeed.events;
         parsed += events.length;
         for (const e of events) {
           await upsertEvent(sql, { sourceDomain: src.domain, municipality: src.municipality, category: src.category_map[String(catID)] ?? null }, e, stats);
