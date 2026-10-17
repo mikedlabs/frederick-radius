@@ -64,11 +64,26 @@ for (const appearance of ["light", "dark"] as const) {
   }
 }
 
-for (const width of [320, 390]) {
-test(`Sports identity remains usable at 200% text size on a ${width}px phone`, async ({ page }, testInfo) => {
+const enlargedCases = [
+  { width: 320, textSpacing: false },
+  { width: 390, textSpacing: false },
+  { width: 320, textSpacing: true },
+] as const;
+
+for (const { width, textSpacing } of enlargedCases) {
+test(`Sports identity remains usable at 200% text size${textSpacing ? " with wide native text and 0.12em letter spacing" : ""} on a ${width}px phone`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 844 });
   await page.goto("/sports", { waitUntil: "domcontentloaded" });
   await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
+  if (textSpacing) {
+    // Model a wider native reading preference on the affected control only;
+    // production fonts and all existing whole-card constraints stay intact.
+    await page.getByRole("link", { name: "Schedule and results", exact: true }).evaluate((element) => {
+      element.style.fontFamily = "Verdana, system-ui, sans-serif";
+      element.style.letterSpacing = "0.12em";
+    });
+  }
+  await page.evaluate(() => document.fonts.ready);
   for (const team of colleges) {
     const card = page.getByRole("link", { name: team.name, exact: true });
     await expect(card).toBeVisible();
@@ -130,6 +145,7 @@ test(`Sports identity remains usable at 200% text size on a ${width}px phone`, a
     const card = element.closest<HTMLElement>('[data-sports-team="cows"]')!;
     const cardBox = card.getBoundingClientRect();
     const actionBox = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
     const range = document.createRange();
     range.selectNodeContents(element);
     return {
@@ -138,6 +154,8 @@ test(`Sports identity remains usable at 200% text size on a ${width}px phone`, a
       action: { left: actionBox.left, right: actionBox.right, width: actionBox.width, height: actionBox.height,
         contentLeft: actionBox.left + element.clientLeft, contentRight: actionBox.left + element.clientLeft + element.clientWidth,
         clientWidth: element.clientWidth, scrollWidth: element.scrollWidth },
+      textStyle: { fontFamily: style.fontFamily, fontSize: style.fontSize, letterSpacing: style.letterSpacing,
+        paddingLeft: style.paddingLeft, paddingRight: style.paddingRight },
       text: [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0)
         .map((rect) => ({ left: rect.left, right: rect.right })),
       words: [...element.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE)
@@ -150,6 +168,8 @@ test(`Sports identity remains usable at 200% text size on a ${width}px phone`, a
         })),
     };
   });
+  // Preserve actual geometry even when a later word-fit assertion fails.
+  await testInfo.attach("cows-schedule-large-text-fit", { contentType: "application/json", body: JSON.stringify({ width, textSpacing, ...actionGeometry }) });
   expect(actionGeometry.card.scrollWidth, "The Cows card must not hide overflowing actions")
     .toBeLessThanOrEqual(actionGeometry.card.clientWidth);
   expect(actionGeometry.action.left).toBeGreaterThanOrEqual(actionGeometry.card.left);
@@ -167,7 +187,6 @@ test(`Sports identity remains usable at 200% text size on a ${width}px phone`, a
     expect(rect.left, "Every schedule label line must remain inside the control").toBeGreaterThanOrEqual(actionGeometry.action.contentLeft);
     expect(rect.right, "Every schedule label line must remain inside the control").toBeLessThanOrEqual(actionGeometry.action.contentRight);
   }
-  await testInfo.attach("cows-schedule-large-text-fit", { contentType: "application/json", body: JSON.stringify({ width, ...actionGeometry }) });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
 });
 }
