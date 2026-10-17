@@ -131,7 +131,7 @@ describe("Find source identity and failure recovery", () => {
     expect(host.textContent).toContain("Alyson Hurt");
   });
 
-  it("ignores an old A callback after A → B → A instead of reviving its decoded credit", async () => {
+  it("ignores an old A callback after switching from A to B and back to A", async () => {
     const local = freeSearchPlaceVisual({ slug: "schifferstadt-architectural-museum-frederick" })!;
     await renderLead(local);
     const oldLoad = pendingLoads.get(local.src)!;
