@@ -3,14 +3,14 @@
 Generated from the committed baseline and the refreshed artifacts at 2026-08-22T17:16:36.471Z.
 This report is a review aid. It does not approve, reject, or change a place status.
 
-**Manual review required:** 1 unreviewed public listing addition(s).
+**No unreviewed public catalog or public closure transition requires manual review.**
 
 ## Coverage delta
 
 | Metric | Before | After | Change |
 | --- | ---: | ---: | ---: |
-| Public places | 1570 | 1571 | +1 |
-| Public places with publishable verified hours | 0 | 9 | +9 |
+| Public places | 1571 | 1571 | 0 |
+| Public places with publishable verified hours | 9 | 9 | 0 |
 | Hours snapshot rows | 1522 | 1522 | 0 |
 | Fresh schedule rows in snapshot | 1160 | 1160 | 0 |
 | Unmatched database rows ignored | — | 14 | — |
@@ -25,9 +25,7 @@ An unreviewed removal must be checked before merge. Confirm a closure against th
 
 ### Added to public discovery
 
-| Slug | Place | Category | Town | Provider status | Review evidence |
-| --- | --- | --- | --- | --- | --- |
-| `urbana-regional-library-new-market` | Urbana Regional Library | library | urbana | — | Review required |
+No public listings were added.
 
 ## Provider status transitions
 
