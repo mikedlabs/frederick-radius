@@ -129,9 +129,37 @@ test.describe("Home Screen installation", () => {
       const panel = page.locator("[data-return-bridge]");
 
       await expect(panel).toBeHidden();
-      await page.waitForTimeout(11_000);
+      await page.waitForTimeout(2_000);
       await expect(panel).toBeHidden();
       await expect(page.locator("main h1")).toBeVisible();
+    });
+
+    test("shows a slim banner on a later visit and keeps Safari steps behind Add", async ({
+      page,
+    }) => {
+      await page.addInitScript(() => {
+        window.localStorage.setItem("fr:return-bridge:v1", JSON.stringify({
+          sessions: 1,
+          lastSessionAt: Date.now() - 36 * 60 * 60 * 1000,
+          valueKind: null,
+          valueAt: 0,
+          dismissals: 0,
+          snoozedUntil: 0,
+          autoDisabled: false,
+          completed: false,
+          lastOfferAt: 0,
+        }));
+      });
+      await page.goto("/today", { waitUntil: "domcontentloaded" });
+      await expect(page.locator("main h1")).toBeVisible();
+      const panel = page.locator("[data-return-bridge]");
+      await expect(panel).toHaveAttribute("data-presentation", "banner");
+      await expect(panel).toHaveAttribute("data-surface", "ios-safari");
+      await panel.getByRole("button", { name: "Add", exact: true }).click();
+      await expect(panel).toHaveAttribute("data-presentation", "panel");
+      await expect(panel).toContainText(
+        "In Safari, tap Share, choose Add to Home Screen",
+      );
     });
 
     test("opens Safari steps from the shareable page, returns focus, and fits a 320px phone", async ({ page }) => {
@@ -142,8 +170,8 @@ test.describe("Home Screen installation", () => {
       const panel = page.locator("[data-return-bridge]");
       await expect(content.getByRole("heading", { level: 1 })).toBeVisible();
       await expect(panel).toBeHidden();
-      // The landing page stays deliberate even after the shared mobile offer timer.
-      await page.waitForTimeout(11_000);
+      // The setup page stays deliberate; it already has an Add action.
+      await page.waitForTimeout(2_000);
       await expect(panel).toBeHidden();
       const add = content.getByRole("button", { name: "Add", exact: true });
       await add.click();

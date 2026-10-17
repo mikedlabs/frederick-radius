@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isIosDevice, isStandalone } from "@/lib/pwa-display";
+import { isStandalone } from "@/lib/pwa-display";
 import {
   RETURN_BRIDGE_OPEN_EVENT,
   RETURN_BRIDGE_VALUE_CANCEL_EVENT,
@@ -38,10 +38,10 @@ type InstallWindow = Window & {
   __frBeforeInstallPrompt?: BeforeInstallPromptEvent;
 };
 
-const VALUE_REVEAL_DELAY_MS = 6_500;
-const RETURN_REVEAL_DELAY_MS = 6_000;
-const SOCIAL_REVEAL_DELAY_MS = 10_000;
-export const FIRST_VISIT_INSTALL_DELAY_MS = 10_000;
+/** Short enough to follow a save, long enough that the save toast can land first. */
+export const VALUE_REVEAL_DELAY_MS = 1_200;
+/** Let the second-visit page paint before the banner slides in. */
+export const RETURN_REVEAL_DELAY_MS = 400;
 const PWA_LAUNCH_SESSION_KEY = "fr:pwa-launch:v1";
 
 function capturedInstallEvent(): BeforeInstallPromptEvent | null {
@@ -64,27 +64,24 @@ export async function requestBrowserInstall(
 }
 
 function delayFor(reason: ReturnBridgeOfferReason): number {
-  if (reason === "value") return VALUE_REVEAL_DELAY_MS;
-  if (reason === "social") return SOCIAL_REVEAL_DELAY_MS;
-  if (reason === "return") return RETURN_REVEAL_DELAY_MS;
-  return FIRST_VISIT_INSTALL_DELAY_MS;
-}
-
-/** Keep the timed first-visit invitation on phones; desktop retains a manual door. */
-export function shouldAutoOfferInstall(
-  reason: ReturnBridgeOfferReason | null,
-  userAgent: string,
-  maxTouchPoints = 0,
-): boolean {
-  if (!reason) return false;
-  if (reason !== "visit") return true;
-  return isIosDevice(userAgent, maxTouchPoints) || /Android|Mobile/i.test(userAgent);
+  return reason === "value" ? VALUE_REVEAL_DELAY_MS : RETURN_REVEAL_DELAY_MS;
 }
 
 /**
- * Owns the one global return-path surface. A first useful action can qualify in
- * session one; returning and social-entry visitors retain quieter
- * fallbacks. Manual doors in Saved, Compass, and Settings bypass snoozes.
+ * Automatic Home Screen invitations are a quiet banner after a return visit
+ * or a save. First visits, including social entry, stay clear. Manual doors
+ * in Saved, Compass, and Settings still open the full instructions.
+ */
+export function shouldAutoOfferInstall(
+  reason: ReturnBridgeOfferReason | null,
+): boolean {
+  return reason === "value" || reason === "return";
+}
+
+/**
+ * Owns the one global return-path surface. Automatic offers wait for a
+ * second visit or a save. Manual doors in Saved, Compass, and Settings
+ * bypass snoozes and open the full instructions.
  */
 export function useInstallPrompt(): {
   show: boolean;
@@ -196,10 +193,7 @@ export function useInstallPrompt(): {
       currentUrl: window.location.href,
     });
     let firstReason = returnBridgeOfferReason(initial, { socialEntry });
-    // The automatic first-visit invitation is a mobile retention tool. A
-    // desktop QR card after ten seconds interrupts reading and is better left
-    // behind the deliberate Saved/Compass/Settings door.
-    if (!shouldAutoOfferInstall(firstReason, userAgent, maxTouchPoints)) {
+    if (!shouldAutoOfferInstall(firstReason)) {
       firstReason = null;
     }
     if (firstReason) schedule(firstReason);
@@ -225,7 +219,9 @@ export function useInstallPrompt(): {
       const nextReason = returnBridgeOfferReason(next, {
         socialEntry,
       });
-      if (nextReason) schedule(nextReason);
+      if (shouldAutoOfferInstall(nextReason) && nextReason) {
+        schedule(nextReason);
+      }
     };
 
     const onValueCancel = (event: Event) => {

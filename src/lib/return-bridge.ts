@@ -7,10 +7,16 @@ export const RETURN_BRIDGE_VALUE_EVENT = "fr:return-bridge:value";
 export const RETURN_BRIDGE_VALUE_CANCEL_EVENT = "fr:return-bridge:value-cancel";
 export const RETURN_BRIDGE_OPEN_EVENT = "fr:open-install";
 
-export const RETURN_BRIDGE_SESSION_GAP_MS = 30 * 60 * 1000;
-// One automatic invitation is enough. Saved, Compass, and Settings retain a
-// deliberate way to reopen the instructions without nagging someone again.
-export const RETURN_BRIDGE_MAX_AUTO_DISMISSALS = 1;
+/** Automatic Home Screen invitations stay quiet for 30 days after Not now. */
+export const RETURN_BRIDGE_DISMISS_MS = 30 * 24 * 60 * 60 * 1000;
+
+export function isSameLocalCalendarDay(left: number, right: number): boolean {
+  const a = new Date(left);
+  const b = new Date(right);
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate();
+}
 
 export type ReturnBridgeValueKind =
   | "place"
@@ -98,10 +104,7 @@ export function parseReturnBridgeState(raw: string | null): ReturnBridgeState {
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return emptyReturnBridgeState();
     }
-    const dismissals = Math.min(
-      RETURN_BRIDGE_MAX_AUTO_DISMISSALS,
-      Math.floor(finiteNonNegative(parsed.dismissals)),
-    );
+    const dismissals = Math.floor(finiteNonNegative(parsed.dismissals));
     const valueKind = isReturnBridgeValueKind(parsed.valueKind)
       ? parsed.valueKind
       : null;
@@ -112,9 +115,9 @@ export function parseReturnBridgeState(raw: string | null): ReturnBridgeState {
       valueAt: valueKind ? finiteNonNegative(parsed.valueAt) : 0,
       dismissals,
       snoozedUntil: finiteNonNegative(parsed.snoozedUntil),
-      autoDisabled:
-        parsed.autoDisabled === true
-        || dismissals >= RETURN_BRIDGE_MAX_AUTO_DISMISSALS,
+      // Older clients wrote autoDisabled after one Not now. Keep that as a
+      // hard stop. Newer dismissals snooze for 30 days instead.
+      autoDisabled: parsed.autoDisabled === true,
       completed: parsed.completed === true,
       lastOfferAt: finiteNonNegative(parsed.lastOfferAt),
     };
@@ -129,7 +132,7 @@ export function beginReturnBridgeSession(
 ): ReturnBridgeState {
   const isNewSession =
     !state.lastSessionAt
-    || now - state.lastSessionAt > RETURN_BRIDGE_SESSION_GAP_MS;
+    || !isSameLocalCalendarDay(state.lastSessionAt, now);
   return {
     ...state,
     sessions: state.sessions + (isNewSession ? 1 : 0),
@@ -175,16 +178,13 @@ export function markReturnBridgeOfferShown(
 
 export function dismissReturnBridge(
   state: ReturnBridgeState,
+  now = Date.now(),
 ): ReturnBridgeState {
-  const dismissals = Math.min(
-    RETURN_BRIDGE_MAX_AUTO_DISMISSALS,
-    state.dismissals + 1,
-  );
   return {
     ...state,
-    dismissals,
-    snoozedUntil: 0,
-    autoDisabled: true,
+    dismissals: state.dismissals + 1,
+    snoozedUntil: now + RETURN_BRIDGE_DISMISS_MS,
+    autoDisabled: false,
   };
 }
 
@@ -210,13 +210,15 @@ export function returnBridgeOfferReason(
     return null;
   }
   if (state.valueKind && state.valueAt > state.lastOfferAt) return "value";
-  if (options.socialEntry && state.lastOfferAt === 0) return "social";
-  // A person who stays long enough to understand Radius should get one clear
-  // path back before they leave. `lastOfferAt` makes this a true one-time
-  // invitation even if they close the tab without pressing Not now. A later
-  // save can still qualify as new value because it carries a newer timestamp.
-  if (state.sessions >= 2 && state.lastOfferAt === 0) return "return";
-  if (state.sessions === 1 && state.lastOfferAt === 0) return "visit";
+  // First visits stay clear of Home Screen invitations, including social
+  // entry. A later save still qualifies because it carries a newer timestamp.
+  // After a 30-day snooze, a returning visitor may see the quiet banner again.
+  const offerAlreadyShown = state.lastOfferAt > 0;
+  const snoozeHasElapsed =
+    state.snoozedUntil > 0 && state.lastOfferAt <= state.snoozedUntil;
+  if (state.sessions >= 2 && (!offerAlreadyShown || snoozeHasElapsed)) {
+    return "return";
+  }
   return null;
 }
 
