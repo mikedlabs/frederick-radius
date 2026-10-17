@@ -8,7 +8,7 @@ import { loadEventArchiveSnapshot, TODAY_EVENT_SNAPSHOT_TIMEOUT_MS } from "@/lib
 import { resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 import SearchRefinements from "@/components/search/SearchRefinements";
 import { withBrowseReturnTo } from "@/lib/browse-return";
-import SearchPlaceVisual, { SearchPlaceVisualImage, SearchPlaceVisualCredit } from "@/components/search/SearchPlaceVisual";
+import SearchPlaceVisual, { SearchPlaceVisualImage, SearchPlaceVisualCredit, SearchPlaceLead } from "@/components/search/SearchPlaceVisual";
 import { freeSearchPlaceVisual } from "@/lib/search/place-visual";
 import { submittedSearchPlaceVisuals } from "@/lib/search/submitted-place-visual";
 import type { PlaceCardPhotoSource } from "@/lib/place-card-photo";
@@ -170,6 +170,34 @@ function SearchResultRow({
   const placePhoto = hit.type === "place"
     ? photoSource ?? freeSearchPlaceVisual(hit.place)
     : null;
+  if (lead && hit.type === "place" && placePhoto) {
+    const mapParams = new URLSearchParams({
+      place: hit.place.slug,
+      at: `${hit.place.geom.lat.toFixed(5)},${hit.place.geom.lng.toFixed(5)}`,
+      in: new URL(mapReturnTo ?? "/search", "https://frederickradius.app").searchParams.get("in") ?? "county",
+    });
+    const placeMapHref = withBrowseReturnTo(`/map?${mapParams.toString()}`, mapReturnTo);
+    return <li className="my-3 overflow-hidden rounded-[var(--app-radius-lg)] border" style={{ borderColor: "var(--app-border)" }}>
+      <SearchPlaceVisual source={placePhoto} lead>
+        <SearchPlaceLead fallback={<CategoryIcon slug={hit.place.category} className="h-5 w-5" aria-hidden />} actions={<>
+          <Link href={href} prefetch={false}
+            aria-label={`View place: ${d.title}`}
+            data-decision-impression="true" data-decision-surface="search" data-decision-entity="place"
+            data-decision-id={hit.place.slug} data-decision-position="lead" data-decision-action="open">
+            View place <ArrowRight aria-hidden />
+          </Link>
+          <Link href={placeMapHref} prefetch={false} aria-label={`Map: ${d.title}`}><MapPin aria-hidden />Map</Link>
+        </>}>
+          <p className="text-[0.6875rem] font-semibold leading-normal" style={{ color: "var(--app-ink-2)" }}>Best match · Place</p>
+          <h2>{d.title}</h2>
+          {d.subtitle && <p className="mt-2 text-[0.875rem] leading-normal" style={{ color: "var(--app-ink-2)" }}>{d.subtitle}</p>}
+          <p className="mt-2 text-[0.8125rem] leading-normal" style={{ color: hit.place.open_status?.state === "open" ? "var(--state-open)" : "var(--app-ink-2)" }}>
+            {hit.place.open_status ? formatHoursLine(hit.place.open_status) : "Hours not posted"}
+          </p>
+        </SearchPlaceLead>
+      </SearchPlaceVisual>
+    </li>;
+  }
   return (
     <li style={divided ? { borderTop: "1px solid var(--app-border)" } : undefined}>
       <SearchPlaceVisual source={placePhoto}>
@@ -199,7 +227,7 @@ function SearchResultRow({
             </span>
           )}
           {hit.type === "place" && (
-            <span className="mt-1.5 block text-[12px] leading-normal" style={{ color: hit.place.open_status?.state === "open" ? "var(--app-positive)" : "var(--app-ink-2)" }}>
+            <span className="mt-1.5 block text-[12px] leading-normal" style={{ color: hit.place.open_status?.state === "open" ? "var(--state-open)" : "var(--app-ink-2)" }}>
               {hit.place.open_status ? formatHoursLine(hit.place.open_status) : "Hours not posted"}
             </span>
           )}
@@ -354,7 +382,7 @@ export default async function SearchPage({
           className="text-[32px] font-semibold leading-tight tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Find in Frederick County
+          Find
         </h1>
         <SearchInput key={`${query}:${scopeParam}:${kind}`} defaultValue={query} returnTo={mapReturnHref ?? undefined} scope={town ?? scopeParam ?? "county"} kind={kind} />
         <SearchRefinements town={town ?? null} query={query} />

@@ -57,7 +57,7 @@ for (const width of [320, 375, 390, 430]) {
     await expect.poll(() => owned.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(1);
     const ownedResult = dialog.locator("li").filter({ has: owned });
     await expect(ownedResult.locator(".place-card-photo-credit")).toHaveCount(0);
-    await expect(dialog.getByRole("link", { name: "Open", exact: true })).toHaveAttribute("href", new RegExp(`/places/${creek}`));
+    await expect(dialog.getByRole("link", { name: "View place", exact: true })).toHaveAttribute("href", new RegExp(`/places/${creek}`));
     await dialog.getByRole("searchbox").fill("Cunningham Falls");
     const source = dialog.locator('.place-card-photo-credit a[href^="https://commons.wikimedia.org/wiki/File:"]');
     await expect(source).toHaveCount(1);
@@ -74,7 +74,7 @@ for (const width of [320, 375, 390, 430]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: testInfo.outputPath(`find-exact-source-${width}.png`) });
     observeFind = false;
-    await dialog.getByRole("link", { name: "Open", exact: true }).click();
+    await dialog.getByRole("link", { name: "View place", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/places/${falls}`));
     await page.goBack();
     await expect(page).toHaveURL(/\/contacts/);
@@ -103,6 +103,7 @@ for (const failure of ["error", "transparent"] as const) {
     await expect(result).toBeVisible();
     await expect(result.locator("img")).toHaveCount(0);
     await expect(result.locator(".place-card-photo-credit")).toHaveCount(0);
-    await expect(result.locator(`a[href^="/places/${falls}"]`)).toContainText("Cunningham Falls State Park");
+    await expect(result.getByRole("heading", { name: "Cunningham Falls State Park", exact: true })).toBeVisible();
+    await expect(result.getByRole("link", { name: "View place: Cunningham Falls State Park", exact: true })).toHaveAttribute("href", new RegExp(`/places/${falls}`));
   });
 }

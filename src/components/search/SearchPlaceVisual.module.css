@@ -1,0 +1,112 @@
+.lead {
+  display: flex;
+  flex-wrap: wrap;
+  container-type: inline-size;
+  min-width: 0;
+  color: var(--app-ink);
+  background: var(--app-bg-elevated-solid);
+}
+
+.leadPhoto {
+  width: 100%;
+  height: clamp(150px, 46vw, 180px);
+  border-radius: 0;
+}
+
+.leadHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.leadHeader > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.leadHeader h2,
+.leadHeader h3 {
+  margin: 4px 0 0;
+  color: var(--app-ink);
+  font-family: inherit;
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+
+.leadActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-block: 1px solid var(--app-border);
+}
+
+.leadActions > a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 12px;
+  color: var(--app-link);
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.3;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.leadActions > a:first-child {
+  background: var(--app-brand);
+  color: var(--app-on-brand);
+}
+
+.leadActions > a + a {
+  border-left: 1px solid var(--app-border);
+}
+
+.leadActions > a:focus-visible {
+  outline: 3px solid var(--app-focus);
+  outline-offset: -4px;
+}
+
+.leadActions > a:first-child:focus-visible {
+  outline-color: var(--app-on-brand);
+}
+
+.leadActions svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.leadActions:has(> a:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The result's own width controls the split, including narrow desktop dialogs. */
+.lead > .leadPhoto,
+.lead > .leadHeader {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.lead > .leadActions,
+.lead > :global(.place-card-photo-credit) {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+@container (min-width: 600px) {
+  .leadPhoto {
+    height: 240px;
+  }
+
+  .leadHeader {
+    align-items: center;
+  }
+}

@@ -1,5 +1,5 @@
 import type { PlaceCardData } from "@/lib/loaders/places";
-import { getLandmarkPhoto, wikimediaUrl, type WikimediaPhoto } from "@/lib/integrations/wikimedia";
+import { getLandmarkPhoto, curatedPhotoUrl, type WikimediaPhoto } from "@/lib/integrations/wikimedia";
 import { googlePhotoNameFromProxyUrl, publishableGooglePhotoAttribution } from "@/lib/google-photo-policy";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
@@ -61,7 +61,7 @@ export function placeCardPhotoPlan(
   const curated = getLandmarkPhoto(place.slug);
   const owned = getOwnedPlacePhoto(place.slug);
   const curatedSource: PlaceCardPhotoSource | null = curated
-    ? { kind: "curated", src: wikimediaUrl(curated.file, width * 2), alt: curated.alt, photo: curated }
+    ? { kind: "curated", src: curatedPhotoUrl(curated, width * 2), alt: curated.alt, photo: curated }
     : null;
   const suppliedSource = suppliedPhotoSource(place.google_photo_url, width,
     [place.google_photo_attribution, ...(place.google_photo_attributions ?? [])]

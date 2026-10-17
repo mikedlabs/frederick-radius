@@ -1,3 +1,5 @@
+import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
+
 /**
  * Wikimedia Commons photos for curated places.
  *
@@ -22,6 +24,10 @@ export type WikimediaPhoto = {
   license: string;
   source_url: string;
   verified: boolean;
+  /** Existing reviewed local copy; retain the Commons source and attribution. */
+  localSrc?: string;
+  licenseUrl?: string;
+  modifications?: string;
   /** When true, this curated photo WINS over the place's Google photo in
    *  PlaceHero — for landmarks whose Google hero is wrong or weak (verified by
    *  eye, per-place). Default/omitted: the Google photo wins and this only
@@ -37,6 +43,11 @@ export type WikimediaPhoto = {
 // Special:FilePath URL confirmed HTTP 200 image/jpeg (2026-06-20).
 // Later additions record their verification date where added.
 export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
+  ...Object.fromEntries(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).map(([slug, { file, image }]) => [slug, {
+    file, alt: image.alt, author: image.creator, license: image.license.label,
+    source_url: image.source_url, verified: true, localSrc: image.src,
+    licenseUrl: image.license.url, modifications: image.modifications,
+  } satisfies WikimediaPhoto])),
   "carroll-creek-linear-park-frederick": {
     file: "Carroll Creek Park Frederick MD1.jpg",
     alt: "Carroll Creek Linear Park in downtown Frederick, showing the landscaped creek promenade and footbridges.",
@@ -128,8 +139,13 @@ export function wikimediaUrl(file: string, width = 1200): string {
   return `https://commons.wikimedia.org/wiki/Special:FilePath/${encoded}?width=${width}`;
 }
 
+/** Resolve reviewed local bytes before considering a Commons transport URL. */
+export function curatedPhotoUrl(photo: WikimediaPhoto, width = 1200): string {
+  return photo.localSrc ?? wikimediaUrl(photo.file, width);
+}
+
 export function getLandmarkPhoto(slug: string): WikimediaPhoto | null {
-  const p = LANDMARK_PHOTOS[slug];
+  const p = Object.hasOwn(LANDMARK_PHOTOS, slug) ? LANDMARK_PHOTOS[slug] : null;
   return p && p.verified ? p : null;
 }
 

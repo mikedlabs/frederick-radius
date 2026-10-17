@@ -25,6 +25,21 @@ describe("free exact place photography in Find", () => {
     expect(isPaidGooglePhotoUrl(photo.src)).toBe(false);
   });
 
+  it.each([
+    ["Schifferstadt", "schifferstadt-architectural-museum-frederick", "/history-photos/schifferstadt.jpg"],
+    ["Hessian Barracks", "hessian-barracks-frederick-maryland", "/history-photos/hessian-barracks.jpg"],
+    ["Canal Lock 30", "co-canal-lock-30-brunswick", "/history-photos/co-canal.jpg"],
+  ])("carries the exact local licensed image and source through Find for %s", (query, slug, src) => {
+    const photo = freeSearchPlaceVisual(place(slug));
+    expect(photo).toMatchObject({ kind: "curated", src });
+    if (photo?.kind !== "curated") throw new Error("Expected a credited local source.");
+    expect(photo.photo.licenseUrl).toMatch(/^https:\/\/creativecommons.org\/licenses\/by-sa\/(3|4)\.0\/$/);
+    expect(photo.photo.modifications).toContain("converted");
+    const result = searchIndex(query, 20, []).find((row) => row.id === `place:${slug}`);
+    expect(result?.thumbnail).toBe(src);
+    expect(result?.thumbnailSource).toEqual(photo);
+  });
+
   it("keeps ordinary coffee typeahead free of Google photos", () => {
     const coffee = place("cugino-forno-frederick");
     expect(coffee.google_photo_url).toContain("/api/place-photo?");
@@ -45,7 +60,7 @@ describe("free exact place photography in Find", () => {
 
   it("never returns paid media or an unrelated town/category image for any current place", () => {
     const photos = clientPlaces().map(freeSearchPlaceVisual).filter(Boolean);
-    expect(photos).toHaveLength(9);
+    expect(photos).toHaveLength(12);
     expect(photos.some((photo) => isPaidGooglePhotoUrl(photo?.src))).toBe(false);
     expect(freeSearchPlaceVisual({ slug: "unreviewed-place", google_photo_url: "https://images.example.com/coffee.jpg", google_photo_attribution: undefined })).toBeNull();
   });

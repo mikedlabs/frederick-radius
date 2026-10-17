@@ -46,6 +46,8 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
   "src/lib/relevance.ts",
   "src/lib/integrations/closures.ts",
   "src/lib/integrations/wikimedia.ts",
+  // The shared local-image records carry the exact place and license facts.
+  "src/data/credited-local-place-photos.ts",
   // Additional immutable facts rendered by the place detail route.
   "src/data/place-visit-details.json",
   "src/data/business-info.json",

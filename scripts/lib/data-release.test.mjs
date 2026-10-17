@@ -82,6 +82,7 @@ test("the place release covers canonical server and place-page inputs", () => {
     "src/lib/relevance.ts",
     "src/lib/integrations/closures.ts",
     "src/lib/integrations/wikimedia.ts",
+    "src/data/credited-local-place-photos.ts",
     "src/data/business-info.json",
     "src/data/field-notes.json",
     "src/data/course-info.json",
@@ -176,4 +177,33 @@ test("official hours count canonical branches rather than metadata fields", () =
   const path = "src/data/places-official-hours.json";
   writeFileSync(join(root, path), JSON.stringify({ schema_version: 1, places: [{ slug: "a" }, { slug: "b" }], closures: { exceptions: [] } }));
   assert.equal(inspectArtifact(root, path).records, 2);
+});
+
+
+test("local licensed image records require promotion even when their adapter is unchanged", () => {
+  const root = fixtureRoot();
+  const manifest = fixtureManifest(root);
+  const recordsPath = "src/data/credited-local-place-photos.ts";
+  const adapterPath = "src/lib/integrations/wikimedia.ts";
+  const originalAdapter = inspectArtifact(root, adapterPath);
+  const target = resolve(root, recordsPath);
+  writeFileSync(target, `${readFileSync(target, "utf8")}export const changedLicense = "CC BY-SA 3.0";\n`);
+
+  const result = validateDataRelease(manifest, root);
+  assert.equal(result.dataVersion, null);
+  assert.ok(result.errors.some((error) => error.includes(recordsPath) && error.includes("digest differs")));
+  assert.deepEqual(inspectArtifact(root, adapterPath), originalAdapter);
+  assert.ok(result.errors.every((error) => error.includes(recordsPath)));
+
+  const promoted = refreshDataReleaseStream(manifest, "places", root, "2026-08-13T12:00:00Z");
+  assert.deepEqual(validateDataRelease(promoted, root).errors, []);
+  assert.notEqual(promoted.data_version, manifest.data_version);
+  assert.equal(promoted.streams.places.artifacts.find((artifact) => artifact.path === recordsPath).records, null);
+  for (const [name, stream] of Object.entries(manifest.streams)) {
+    if (name !== "places") assert.deepEqual(promoted.streams[name], stream);
+  }
+  assert.deepEqual(
+    promoted.streams.places.artifacts.filter((artifact) => artifact.path !== recordsPath),
+    manifest.streams.places.artifacts.filter((artifact) => artifact.path !== recordsPath),
+  );
 });
