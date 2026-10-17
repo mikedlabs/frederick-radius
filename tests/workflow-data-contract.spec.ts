@@ -17,6 +17,10 @@ function nasRunnerText(name: string): string {
 }
 
 type WorkflowDocument = {
+  on?: {
+    schedule?: Array<{ cron: string }>;
+    workflow_dispatch?: unknown;
+  };
   concurrency?: {
     group?: string;
     "cancel-in-progress"?: boolean;
@@ -33,6 +37,15 @@ type WorkflowDocument = {
       if?: string;
       "timeout-minutes"?: number;
       "runs-on"?: string | string[];
+      env?: Record<string, unknown>;
+      secrets?: unknown;
+      steps?: Array<{
+        name?: string;
+        uses?: string;
+        run?: string;
+        with?: Record<string, unknown>;
+        env?: Record<string, unknown>;
+      }>;
       permissions?: {
         actions?: string;
         contents?: string;
@@ -109,11 +122,6 @@ describe("scheduled data workflow contracts", () => {
         "collect",
         "${{ github.ref == 'refs/heads/main' }}",
       ],
-      [
-        "transit-steward.yml",
-        "transit",
-        "${{ github.ref == 'refs/heads/main' }}",
-      ],
     ] as const;
     expect(radiusDataJobs.sort()).toEqual(
       trustedGenerators
@@ -137,6 +145,7 @@ describe("scheduled data workflow contracts", () => {
     }
 
     const hostedJobs = [
+      ["transit-steward.yml", "transit"],
       ["publish-automated-pr.yml", "publish"],
       ["automated-pr-checks.yml", "dispatch"],
       ["ci.yml", "verify"],
@@ -150,6 +159,55 @@ describe("scheduled data workflow contracts", () => {
         `${name}:${jobName} must stay on an isolated hosted runner`,
       ).toBe("ubuntu-latest");
     }
+  });
+
+  it("keeps hosted public GTFS generation main-only, keyless, bounded and review-gated", () => {
+    const source = workflowText("transit-steward.yml");
+    const workflow = parse(source) as WorkflowDocument;
+    const producer = workflow.jobs?.transit;
+
+    expect(Object.keys(workflow.on ?? {}).sort()).toEqual(["schedule", "workflow_dispatch"]);
+    expect(workflow.on?.schedule).toEqual([{ cron: "23 10 * * *" }]);
+    expect(workflow.permissions).toEqual({});
+    expect(workflow.concurrency).toEqual({
+      group: "transit-steward",
+      "cancel-in-progress": false,
+    });
+    expect(producer?.["runs-on"]).toBe("ubuntu-latest");
+    expect(producer?.if).toBe("${{ github.ref == 'refs/heads/main' }}");
+    expect(producer?.permissions).toEqual({ contents: "read" });
+    expect(producer?.["timeout-minutes"]).toBe(30);
+    expect(producer?.env ?? {}).toEqual({});
+    expect(producer?.secrets).toBeUndefined();
+    expect(source).not.toMatch(/\bsecrets\s*:|\bsecrets[.\[]/);
+
+    const steps = producer?.steps ?? [];
+    const checkout = steps.find((step) => step.name === "Checkout");
+    expect(checkout?.with).toMatchObject({
+      ref: "${{ github.sha }}",
+      "persist-credentials": false,
+    });
+    const gates = [
+      "npm run build:transit",
+      "npm run validate:transit-data -- --frederick",
+      "npx vitest run tests/transit-static-snapshot.spec.ts",
+      "npm run data:release:write -- --stream transit",
+    ].map((run) => steps.findIndex((step) => step.run === run));
+    expect(gates.every((index) => index >= 0)).toBe(true);
+    expect(gates.every((index, position) => position === 0 || index > gates[position - 1]))
+      .toBe(true);
+    const upload = steps.find((step) => step.name === "Upload exact transit outputs");
+    expect(upload?.with).toMatchObject({
+      "if-no-files-found": "error",
+      "retention-days": 1,
+    });
+
+    expect(workflow.jobs?.["transit-publish"]?.permissions).toEqual({
+      actions: "read", contents: "write", "pull-requests": "write",
+    });
+    expect(workflow.jobs?.["transit-checks"]?.permissions).toEqual({
+      actions: "write", contents: "read",
+    });
   });
 
   it("caps the persistent NAS data runner so it cannot take over the appliance", () => {
