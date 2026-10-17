@@ -150,21 +150,41 @@ for (const width of [320, 375, 390, 430, 1366]) {
     // None-open is also a real answer; it deliberately has no pick-card marker.
     const decision = places.locator(":scope > section");
     await expect(decision).toHaveCount(1);
-    const decisionBox = (await decision.boundingBox())!;
+    // Runtime place facts can hydrate after the first arrival measurements.
+    // Compare adjacent elements in one frame instead of mixing the early
+    // quick-needs position with the later expanded decision card.
+    await expect.poll(() => places.evaluate((element) => {
+      const decision = element.querySelector(":scope > section")?.getBoundingClientRect();
+      const quick = element.querySelector('[role="group"][aria-label="Quick needs"]')?.getBoundingClientRect();
+      const photo = element.querySelector('[data-today-geographic-doorway]')?.getBoundingClientRect();
+      if (!decision || !quick || !photo) return false;
+      const rowBottom = innerWidth >= 640 ? Math.max(photo.bottom, decision.bottom) : decision.bottom;
+      const gap = quick.y - rowBottom;
+      return gap >= 0 && gap <= 17;
+    })).toBe(true);
+    const currentLayout = await places.evaluate((element) => {
+      const read = (selector: string) => {
+        const r = element.querySelector(selector)!.getBoundingClientRect();
+        return { x: r.x, y: r.y, width: r.width, height: r.height };
+      };
+      return { decision: read(":scope > section"), quick: read('[role="group"][aria-label="Quick needs"]') };
+    });
+    const decisionBox = currentLayout.decision;
+    const currentQuickNeedsBox = currentLayout.quick;
     expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(placesBox.y);
     expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(eventsBox.y);
     if (width >= 640) {
       expect(Math.abs(doorwayBox.y - decisionBox.y)).toBeLessThanOrEqual(1);
       expect(decisionBox.x).toBeGreaterThanOrEqual(doorwayBox.x + doorwayBox.width);
       const firstRowBottom = Math.max(doorwayBox.y + doorwayBox.height, decisionBox.y + decisionBox.height);
-      expect(quickNeedsBox.y).toBeGreaterThanOrEqual(firstRowBottom);
-      expect(quickNeedsBox.y - firstRowBottom).toBeLessThanOrEqual(17);
-      expect(quickNeedsBox.width).toBeGreaterThanOrEqual(placesBox.width - 1);
+      expect(currentQuickNeedsBox.y).toBeGreaterThanOrEqual(firstRowBottom);
+      expect(currentQuickNeedsBox.y - firstRowBottom).toBeLessThanOrEqual(17);
+      expect(currentQuickNeedsBox.width).toBeGreaterThanOrEqual(placesBox.width - 1);
     } else {
       expect(decisionBox.y).toBeGreaterThanOrEqual(doorwayBox.y + doorwayBox.height);
       expect(decisionBox.y - doorwayBox.y - doorwayBox.height).toBeLessThanOrEqual(17);
-      expect(quickNeedsBox.y).toBeGreaterThanOrEqual(decisionBox.y + decisionBox.height);
-      expect(quickNeedsBox.y - decisionBox.y - decisionBox.height).toBeLessThanOrEqual(17);
+      expect(currentQuickNeedsBox.y).toBeGreaterThanOrEqual(decisionBox.y + decisionBox.height);
+      expect(currentQuickNeedsBox.y - decisionBox.y - decisionBox.height).toBeLessThanOrEqual(17);
       const activeAlert = page.getByRole("region", { name: "Heads up", exact: true });
       const specialDay = page.locator('[data-moment-spotlight-day-of="true"]');
       if (width >= 375 && await activeAlert.count() === 0 && await specialDay.count() === 0) {

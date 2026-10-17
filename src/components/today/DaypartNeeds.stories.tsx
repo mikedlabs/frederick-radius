@@ -56,14 +56,23 @@ export const OpeningSoon: Story = {
 };
 
 export const PhotographLedPlace: Story = {
-  play: async ({ canvasElement }) => readablePlace(canvasElement),
+  play: async ({ canvasElement }) => {
+    await readablePlace(canvasElement);
+    const image = canvasElement.querySelector<HTMLImageElement>("img");
+    if (!image) throw new Error("The exact Creek registry entry must resolve without a supplied Google photo.");
+    image.scrollIntoView({ block: "center" });
+    await waitFor(() => expect(image.naturalWidth).toBeGreaterThan(1), { timeout: 5_000 });
+    await image.decode();
+    await expect(canvasElement.querySelector('[data-today-photo-source="owned"]')).toBeVisible();
+    await expect(canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
+  },
   args: {
     variant: "full",
     rows: [{
       category: "outdoors", label: "Parks", href: "/places?category=outdoors",
       picks: [{
         slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park",
-        photo: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
+        photo: null,
         rating: null, confidence: "unconfirmed", fact: "Hours are not confirmed.", where: "Frederick",
       }],
     }],

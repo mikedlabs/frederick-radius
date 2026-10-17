@@ -61,6 +61,34 @@ describe("place card photo source contract", () => {
     const source = selectedPlaceCardPhoto(placeCardPhotoPlan({ slug: "a-place", google_photo_url: "/images/real-owned-photo.jpg" }, 360), null);
     expect(source?.kind).toBe("owned");
   });
+
+  it("opts into exact free imagery before Google without changing the default order", () => {
+    expect(placeCardPhotoPlan(place, 360).sources.map((source) => source.kind))
+      .toEqual(["google", "curated"]);
+    const plan = placeCardPhotoPlan(place, 360, { preferNonGoogle: true });
+    expect(plan.sources.map((source) => source.kind)).toEqual(["curated", "google"]);
+    const curated = selectedPlaceCardPhoto(plan, null)!;
+    const state = recordPlaceCardPhotoResult(plan, null, curated.src, "failed");
+    expect(selectedPlaceCardPhoto(plan, state)?.kind).toBe("google");
+  });
+
+  it("keeps owned imagery first and does not duplicate a supplied owned source in free-first mode", () => {
+    const plan = placeCardPhotoPlan({ ...place, slug: "carroll-creek-linear-park-frederick" }, 360, { preferNonGoogle: true });
+    expect(plan.sources.map((source) => source.kind)).toEqual(["owned", "curated", "google"]);
+    const owned = plan.sources[0];
+    const repeated = placeCardPhotoPlan({ slug: "carroll-creek-linear-park-frederick", google_photo_url: owned.src }, 360, { preferNonGoogle: true });
+    expect(repeated.sources.map((source) => source.kind)).toEqual(["owned", "curated"]);
+    expect(repeated.sources.filter((source) => source.src === owned.src)).toHaveLength(1);
+    const compatibleOwned = placeCardPhotoPlan({ ...place, google_photo_url: "/images/real-owned-photo.jpg" }, 360, { preferNonGoogle: true });
+    expect(compatibleOwned.sources.map((source) => source.kind)).toEqual(["owned", "curated"]);
+  });
+
+  it("retains the preferred-curated exclusion in free-first mode, including after failure", () => {
+    const plan = placeCardPhotoPlan({ ...place, slug: "catoctin-furnace-thurmont" }, 192, { preferNonGoogle: true });
+    expect(plan.sources.map((source) => source.kind)).toEqual(["curated"]);
+    const state = recordPlaceCardPhotoResult(plan, null, plan.sources[0].src, "failed");
+    expect(selectedPlaceCardPhoto(plan, state)).toBeNull();
+  });
 });
 
 

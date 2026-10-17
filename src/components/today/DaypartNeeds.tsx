@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import styles from "./DaypartNeeds.module.css";
-import { useTodayPhotoCredit } from "./useTodayPhotoCredit";
-import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
+import { useTodayPlacePhoto } from "./useTodayPlacePhoto";
+import { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
+import { isPlacePhotoFailureSignal } from "@/lib/place-card-photo";
 import Link from "next/link";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import TodaySectionHeading from "@/components/today/TodaySectionHeading";
 import type { DaypartPick, DaypartRow } from "@/lib/loaders/daypartPicks";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
-import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { getWantAnswer } from "@/lib/want-cache";
 import { GEOLOCATION_CHANGE_EVENT } from "@/hooks/useGeolocation";
 import { daypartBrowseHref } from "@/lib/today/daypart-needs";
@@ -354,19 +354,7 @@ export function daypartLeadReason(
 /** Ask the photo proxy for its 1x1 failure signal. This particular shelf can
  * replace a failed photograph with a much better compact category card, so it
  * should never render the proxy's large decorative placeholder as content. */
-export function daypartPhotoSrc(src: string): string {
-  if (!src.startsWith("/api/place-photo")) return src;
-  const url = new URL(src, "https://frederickradius.local");
-  url.searchParams.set("fallback", "signal");
-  return `${url.pathname}?${url.searchParams.toString()}`;
-}
-
-export function isPhotoFailureSignal(image: {
-  naturalWidth: number;
-  naturalHeight: number;
-}): boolean {
-  return image.naturalWidth === 1 && image.naturalHeight === 1;
-}
+export { placePhotoFailureSignalSrc as daypartPhotoSrc, isPlacePhotoFailureSignal as isPhotoFailureSignal } from "@/lib/place-card-photo";
 
 /** The live ranker can honestly return no open places. Keep that answer in the
  * existing shelf instead of turning it into another full-size card. */
@@ -441,14 +429,8 @@ function DaypartPickCard({
   lead?: boolean;
   hydratePhoto?: boolean;
 }) {
-  // Keep the existing bounded image request and explicit 1x1 failure signal.
-  // A failed photo must never remove the real place or its availability limit.
-  const signaledPhoto = place.photo
-    ? daypartPhotoSrc(proxyPhotoAtWidth(place.photo, lead ? 360 : 172))
-    : null;
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const { credit, isProxy, allowed } = useTodayPhotoCredit(place, hydratePhoto && failedSrc !== signaledPhoto);
-  const showPhoto = Boolean(allowed && signaledPhoto && failedSrc !== signaledPhoto);
+  const { source, sourceIdentity, loaded, onResult } = useTodayPlacePhoto(place, lead ? 360 : 172, hydratePhoto);
+  const showPhoto = Boolean(source);
   const fact = place.fact || (place.confidence === "confirmed"
     ? "Open now" : place.confidence === "likely" ? "Likely open" : "Hours not confirmed");
 
@@ -468,24 +450,24 @@ function DaypartPickCard({
         data-decision-action="open"
         className={styles.pickLink}
       >
-        {showPhoto && signaledPhoto ? (
-          <span className={styles.photoFace}>
+        {source ? (
+          <span className={styles.photoFace} data-today-photo-source={source.kind}>
           <Image
-            src={signaledPhoto}
-            alt=""
+            key={sourceIdentity}
+            src={source.src}
+            alt={source.alt}
             fill
-            unoptimized={signaledPhoto.startsWith("/api/place-photo")}
+            sizes={`${lead ? 360 : 172}px`}
+            unoptimized={source.kind === "google"}
             priority={eager}
             fetchPriority={eager ? "high" : "auto"}
             placeholder="blur"
             blurDataURL={PAPER_CREAM_BLUR}
             className="object-cover"
             onLoad={(event) => {
-              if (isPhotoFailureSignal(event.currentTarget)) {
-                setFailedSrc(signaledPhoto);
-              }
+              onResult(source.src, isPlacePhotoFailureSignal(event.currentTarget) ? "failed" : "loaded");
             }}
-            onError={() => setFailedSrc(signaledPhoto)}
+            onError={() => onResult(source.src, "failed")}
           />
           </span>
         ) : (
@@ -499,7 +481,7 @@ function DaypartPickCard({
           {!place.fact && place.rating ? <span className={styles.rating}>{place.rating.toFixed(1)}★</span> : null}
         </span>
       </Link>
-      {showPhoto && isProxy && credit ? <div className={styles.credit}><GooglePhotoAttributionLine attribution={credit} compact /></div> : null}
+      {source && loaded ? <PlaceCardPhotoCredit source={source} loaded compact touchTarget /> : null}
     </article>
   );
 }
@@ -516,12 +498,7 @@ function OpeningSoonPick({
   category: string;
   hydratePhoto?: boolean;
 }) {
-  const signaledPhoto = place.photo
-    ? daypartPhotoSrc(proxyPhotoAtWidth(place.photo, 192))
-    : null;
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const { credit, isProxy, allowed } = useTodayPhotoCredit(place, hydratePhoto && failedSrc !== signaledPhoto);
-  const showPhoto = Boolean(allowed && signaledPhoto && failedSrc !== signaledPhoto);
+  const { source, sourceIdentity, loaded, onResult } = useTodayPlacePhoto(place, 192, hydratePhoto);
 
   return (
     <article className={styles.openingCard}>
@@ -538,22 +515,22 @@ function OpeningSoonPick({
         data-decision-action="open"
         className={styles.pickLink}
       >
-        {showPhoto && signaledPhoto ? (
-          <span className="relative min-h-[84px] w-[5.75rem] shrink-0 overflow-hidden">
+        {source ? (
+          <span className="relative min-h-[84px] w-[5.75rem] shrink-0 overflow-hidden" data-today-photo-source={source.kind}>
             <Image
-              src={signaledPhoto}
-              alt=""
+              key={sourceIdentity}
+              src={source.src}
+              alt={source.alt}
               fill
-              unoptimized={signaledPhoto.startsWith("/api/place-photo")}
+              sizes="192px"
+              unoptimized={source.kind === "google"}
               placeholder="blur"
               blurDataURL={PAPER_CREAM_BLUR}
               className="object-cover"
               onLoad={(event) => {
-                if (isPhotoFailureSignal(event.currentTarget)) {
-                  setFailedSrc(signaledPhoto);
-                }
+                onResult(source.src, isPlacePhotoFailureSignal(event.currentTarget) ? "failed" : "loaded");
               }}
-              onError={() => setFailedSrc(signaledPhoto)}
+              onError={() => onResult(source.src, "failed")}
             />
           </span>
         ) : (
@@ -574,7 +551,7 @@ function OpeningSoonPick({
           <PickContext place={place} fact={place.fact || "Opening time available"} />
         </span>
       </Link>
-      {showPhoto && isProxy && credit ? <div className={styles.credit}><GooglePhotoAttributionLine attribution={credit} compact /></div> : null}
+      {source && loaded ? <PlaceCardPhotoCredit source={source} loaded compact touchTarget /> : null}
     </article>
   );
 }

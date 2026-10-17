@@ -53,10 +53,12 @@ function suppliedPhotoSource(rawSrc: string | undefined, width: number,
   return null;
 }
 
-/** Exact landmark imagery only. Never substitute a town or category photo. */
+/** Exact landmark imagery only. Never substitute a town or category photo.
+ * Today may opt into free-first discovery; other callers retain their order. */
 export function placeCardPhotoPlan(
   place: PlacePhotoInput,
   width: number,
+  { preferNonGoogle = false }: { preferNonGoogle?: boolean } = {},
 ): PlaceCardPhotoPlan {
   const curated = getLandmarkPhoto(place.slug);
   const owned = getOwnedPlacePhoto(place.slug);
@@ -70,7 +72,9 @@ export function placeCardPhotoPlan(
   // If they fail, do not bring that known unsuitable image back.
   const fallbacks = curated?.preferCurated && curatedSource
     ? [curatedSource]
-    : [suppliedSource, curatedSource].filter((source): source is PlaceCardPhotoSource => source !== null);
+    : (preferNonGoogle && suppliedSource?.kind === "google"
+      ? [curatedSource, suppliedSource] : [suppliedSource, curatedSource])
+      .filter((source): source is PlaceCardPhotoSource => source !== null);
   const sources = [owned, ...fallbacks].filter((source): source is PlaceCardPhotoSource => source !== null)
     .filter((source, index, all) => all.findIndex((item) => sourceIdentity(item) === sourceIdentity(source)) === index);
   return { key: JSON.stringify([place.slug, sources.map((source) => [source.kind, source.src])]), sources };
