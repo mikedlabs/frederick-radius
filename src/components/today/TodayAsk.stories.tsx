@@ -58,7 +58,9 @@ export const EnlargedTextArrival: Story = {
     const find = canvas.getByRole("link", { name: "Find a place, service, event, or answer" });
     const box = find.getBoundingClientRect();
     await expect(within(find).getByText("Search")).toBeVisible();
-    await expect(getComputedStyle(find.querySelector("[data-find-prompt]")!).whiteSpace).toBe("nowrap");
+    const prompt = find.querySelector("[data-find-prompt]")!;
+    await expect(getComputedStyle(prompt).whiteSpace).toBe("nowrap");
+    await expect(prompt.scrollWidth).toBeLessThanOrEqual(prompt.clientWidth + 1);
     await expect(box.height).toBeGreaterThanOrEqual(56);
     await expect(box.height).toBeLessThan(120);
     const arrow = find.querySelector("svg:last-of-type")!.getBoundingClientRect();

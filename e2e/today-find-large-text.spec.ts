@@ -43,6 +43,7 @@ for (const { width, height, enlarged, label } of cases) {
     expect(findBox.height).toBeGreaterThanOrEqual(44);
 
     const visibleLabel = (await prompt.innerText()).replace(/\s+/g, " ").trim();
+    expect(await prompt.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
     if (enlarged) {
       expect(visibleLabel).toBe("Search");
       expect(findBox.height).toBeLessThan(140);
