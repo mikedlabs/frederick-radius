@@ -2,6 +2,9 @@ import { createHash } from "node:crypto";
 import { readFileSync, realpathSync, statSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 import postcss from "postcss";
+import routeCache from "next/dist/server/lib/route-cache-key.js";
+
+const { getRouteCacheKey, isRouteCacheOwner } = routeCache;
 
 const LABEL = ".content-chapter--plain .content-chapter__label";
 const RULE = ".content-chapter--plain .content-chapter__rule";
@@ -119,15 +122,72 @@ function localStylesheetPath(buildRoot, href) {
   return path;
 }
 
-/** Read only the exact Today HTML and the local CSS it actually links.
- * No cache scan, source CSS fallback, manifest guess, fetch or regeneration.
+function builtArtifactPath(buildRoot, path, label) {
+  const actual = realpathSync(resolve(buildRoot, path));
+  if (!contained(buildRoot, actual) || !statSync(actual).isFile()) {
+    throw new Error(`Built ${label} escapes current .next output or is not a file`);
+  }
+  return actual;
+}
+
+function builtJson(buildRoot, path, label) {
+  const value = JSON.parse(readFileSync(builtArtifactPath(buildRoot, path, label), "utf8"));
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`Built ${label} is not an object`);
+  return value;
+}
+
+function todayHtmlPath(buildRoot, result) {
+  const required = builtJson(buildRoot, "required-server-files.json", "required-server-files manifest");
+  const config = required.config;
+  if (!config || typeof config !== "object" || Array.isArray(config)) throw new Error("Built required-server-files manifest has no config object");
+  if (config.adapterPath != null && typeof config.adapterPath !== "string") throw new Error("Built config adapterPath must be a string when set");
+  // Match installed Next 16's export/worker useScopedBuildArtifacts predicate.
+  // The emitted config can redact the actual adapter path; never import it.
+  const scoped = Boolean(config.adapterPath) && config.output !== "export";
+  result.layout = scoped ? "scoped-route-cache" : "legacy-app";
+
+  const prerenders = builtJson(buildRoot, "prerender-manifest.json", "prerender manifest");
+  const prerender = prerenders.routes?.["/today"];
+  if (!prerender || prerender.routeType !== "page" || prerender.response !== "complete" || prerender.compute !== "static" ||
+      prerender.dataRoute !== "/today.rsc" || prerenders.notFoundRoutes?.includes("/today") || prerenders.dynamicRoutes?.["/today"] ||
+      !(prerender.initialRevalidateSeconds === false || Number.isFinite(prerender.initialRevalidateSeconds) && prerender.initialRevalidateSeconds > 0)) {
+    throw new Error("Built /today must be a complete static APP_PAGE prerender with /today.rsc and nonzero revalidation");
+  }
+  const pathRoutes = builtJson(buildRoot, "app-path-routes-manifest.json", "app-path-routes manifest");
+  const appPaths = builtJson(buildRoot, "server/app-paths-manifest.json", "app-paths manifest");
+  const sources = Object.entries(pathRoutes).filter(([, pathname]) => pathname === "/today").map(([source]) => source);
+  if (sources.length !== 1 || !sources[0].startsWith("/") || !sources[0].endsWith("/page") ||
+      typeof appPaths[sources[0]] !== "string" || !appPaths[sources[0]].endsWith("/page.js")) {
+    throw new Error("Built /today must have one APP_PAGE owner shared by app-path-routes and app-paths manifests");
+  }
+  const owner = { kind: "APP_PAGE", sourceRoute: sources[0] };
+  if (!isRouteCacheOwner("/today", owner, prerender, config.i18n?.locales)) throw new Error("Built /today prerender source does not match its APP_PAGE owner");
+  result.owner = owner;
+  // Use Next's pinned key implementation, including route-group source identity.
+  const key = getRouteCacheKey("/today", owner);
+  result.routeCacheKey = key;
+  const html = scoped ? `server${key}.html` : "server/app/today.html";
+  result.htmlPath = resolve(buildRoot, html);
+  const htmlPath = builtArtifactPath(buildRoot, html, "Today HTML");
+  const metaPath = html.replace(/\.html$/, ".meta");
+  result.metaPath = resolve(buildRoot, metaPath);
+  const meta = builtJson(buildRoot, metaPath, "Today metadata");
+  if (meta.routeCache?.key !== key || meta.routeCache?.owner?.kind !== owner.kind ||
+      meta.routeCache?.owner?.sourceRoute !== owner.sourceRoute || meta.routeCache?.isFallback !== false) {
+    throw new Error("Built Today metadata must match the selected non-fallback route-cache key and APP_PAGE owner");
+  }
+  return htmlPath;
+}
+
+/** Read only manifest-identified Today HTML and the local CSS it actually links.
+ * Emitted config selects exactly one Next artifact layout. No legacy rescue,
+ * cache scan, source CSS fallback, fetch, adapter execution or regeneration.
  */
 export function validateBuiltCssContract(root) {
-  const result = { htmlPath: resolve(root, ".next/server/app/today.html"), stylesheets: [], errors: [] };
+  const result = { layout: null, owner: null, routeCacheKey: null, htmlPath: null, metaPath: null, stylesheets: [], errors: [] };
   try {
     const buildRoot = realpathSync(resolve(root, ".next"));
-    const htmlPath = realpathSync(result.htmlPath);
-    if (!contained(buildRoot, htmlPath) || !statSync(htmlPath).isFile()) throw new Error("Built Today HTML escapes current .next output or is not a file");
+    const htmlPath = todayHtmlPath(buildRoot, result);
     const hrefs = stylesheetHrefs(readFileSync(htmlPath, "utf8"));
     if (hrefs.length === 0) throw new Error("Built Today HTML has no unconditional stylesheet links");
     const stylesheets = hrefs.map((href) => {
