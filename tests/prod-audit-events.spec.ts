@@ -3,6 +3,7 @@ import {
   classifyEventDetailResult,
   eventDetailGateSummary,
   eventDetailPathsFromHtml,
+  eventListingTrustViolations,
   hasEventDetailEvidence,
   isInternalEventDetailUrl,
   mapWithConcurrency,
@@ -30,6 +31,43 @@ const RECOVERY_HTML =
   '<main data-event-recovery="source-unavailable">This event could not be confirmed yet. See all events.</main>';
 
 describe("production event-link canary helpers", () => {
+  it("does not mistake serialized cancellation props, styles or comments for listings", () => {
+    const props = Array.from({ length: 27 }, () => String.raw`{\"cancelled\":false}`).join(",");
+    const html = `
+      <main><article><a href="/events/real-event">A real public event</a></article></main>
+      <script>self.__next_f.push([1,"${props}"])</script>
+      <script type="application/ld+json">{"name":"Cancelled archive entry"}</script>
+      <STYLE>.cancelled { color: red; } /* Private Corp */</STYLE>
+      <!-- <article>Cancelled: Private Corp</article> -->
+    `;
+    expect(eventListingTrustViolations(html)).toEqual([
+      { term: "Private Corp", count: 0 },
+      { term: "CANCELLED", count: 0 },
+    ]);
+  });
+
+  it.each([
+    ['<article><h3>Cancelled: evening concert</h3></article>', "CANCELLED"],
+    ['<article><h3>Evening concert</h3><span>Cancelled</span></article>', "CANCELLED"],
+    ['<article><h3>Private\nCorp booking</h3></article>', "Private Corp"],
+  ])("still rejects actual forbidden listing content: %s", (listing, term) => {
+    const html = `<script>self.__next_f.push([1,'{"cancelled":false}'])</script>${listing}`;
+    expect(eventListingTrustViolations(html).find((row) => row.term === term)?.count).toBe(1);
+  });
+
+  it("checks cancelled event cards in temporarily hidden React stream fragments", () => {
+    const html = '<div hidden id="S:0"><article><h3>Evening concert</h3><span>Cancelled</span></article></div><script>$RC("B:0","S:0")</script>';
+    expect(eventListingTrustViolations(html)).toEqual([
+      { term: "Private Corp", count: 0 },
+      { term: "CANCELLED", count: 1 },
+    ]);
+  });
+
+  it("does not let comment-looking script data swallow a later real cancelled listing", () => {
+    const html = '<script>const marker = "<!--";</script><article><h3>CANCELLED: concert</h3></article><!-- end -->';
+    expect(eventListingTrustViolations(html).find((row) => row.term === "CANCELLED")?.count).toBe(1);
+  });
+
   it("extracts unique internal event anchors without scanning serialized inventory", () => {
     const html = `
       <a href="/events/alive-at-five-2026-08-06">Alive at Five</a>
