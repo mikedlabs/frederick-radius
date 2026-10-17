@@ -122,6 +122,52 @@ test(`Sports identity remains usable at 200% text size on a ${width}px phone`, a
     expect(geometry.outsideViewportX, `${id} text must remain inside the phone viewport`).toBe(false);
     await testInfo.attach(`${id}-large-text-layout`, { contentType: "application/json", body: JSON.stringify({ width, ...geometry }) });
   }
+  const cows = page.locator('[data-sports-team="cows"]');
+  const schedule = cows.getByRole("link", { name: "Schedule and results", exact: true });
+  await schedule.scrollIntoViewIfNeeded();
+  await expect(schedule).toBeVisible();
+  const actionGeometry = await schedule.evaluate((element) => {
+    const card = element.closest<HTMLElement>('[data-sports-team="cows"]')!;
+    const cardBox = card.getBoundingClientRect();
+    const actionBox = element.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    return {
+      card: { left: cardBox.left + card.clientLeft, right: cardBox.left + card.clientLeft + card.clientWidth,
+        clientWidth: card.clientWidth, scrollWidth: card.scrollWidth },
+      action: { left: actionBox.left, right: actionBox.right, width: actionBox.width, height: actionBox.height,
+        contentLeft: actionBox.left + element.clientLeft, contentRight: actionBox.left + element.clientLeft + element.clientWidth,
+        clientWidth: element.clientWidth, scrollWidth: element.scrollWidth },
+      text: [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0)
+        .map((rect) => ({ left: rect.left, right: rect.right })),
+      words: [...element.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE)
+        .flatMap((node) => [...(node.textContent ?? "").matchAll(/\S+/g)].map((match) => {
+          const wordRange = document.createRange();
+          wordRange.setStart(node, match.index!);
+          wordRange.setEnd(node, match.index! + match[0].length);
+          return { word: match[0], lines: [...wordRange.getClientRects()]
+            .filter((rect) => rect.width > 0 && rect.height > 0).length };
+        })),
+    };
+  });
+  expect(actionGeometry.card.scrollWidth, "The Cows card must not hide overflowing actions")
+    .toBeLessThanOrEqual(actionGeometry.card.clientWidth);
+  expect(actionGeometry.action.left).toBeGreaterThanOrEqual(actionGeometry.card.left);
+  expect(actionGeometry.action.right).toBeLessThanOrEqual(actionGeometry.card.right);
+  expect(actionGeometry.action.scrollWidth, "The full schedule label must fit inside its own control")
+    .toBeLessThanOrEqual(actionGeometry.action.clientWidth);
+  expect(actionGeometry.action.width).toBeGreaterThanOrEqual(44);
+  expect(actionGeometry.action.height).toBeGreaterThanOrEqual(44);
+  expect(actionGeometry.text.length).toBeGreaterThan(0);
+  expect(actionGeometry.words.map(({ word }) => word)).toEqual(["Schedule", "and", "results"]);
+  for (const word of actionGeometry.words) {
+    expect(word.lines, `Keep the complete word ${word.word} readable on one line`).toBe(1);
+  }
+  for (const rect of actionGeometry.text) {
+    expect(rect.left, "Every schedule label line must remain inside the control").toBeGreaterThanOrEqual(actionGeometry.action.contentLeft);
+    expect(rect.right, "Every schedule label line must remain inside the control").toBeLessThanOrEqual(actionGeometry.action.contentRight);
+  }
+  await testInfo.attach("cows-schedule-large-text-fit", { contentType: "application/json", body: JSON.stringify({ width, ...actionGeometry }) });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
 });
 }
