@@ -127,7 +127,7 @@ describe("Today place photo preserves the decision and exact source", () => {
     const photo = container.querySelector("img")!;
     expect(photo).not.toBeNull();
     expect(photo.getAttribute("src")).toBe("blob:today-visible-photo");
-    expect(request.mock.calls[1][0]).toContain("w=720");
+    expect(request.mock.calls[1][0]).toContain("w=344");
     expect(request.mock.calls[1][0]).toContain("fallback=signal");
     expect(container.querySelector("a a")).toBeNull();
     expect(request).toHaveBeenCalledTimes(2);
@@ -145,5 +145,98 @@ describe("Today place photo preserves the decision and exact source", () => {
     expect(card?.querySelector('[data-today-place-lead]')?.getAttribute("href")).toContain("/places/local-place?returnTo=");
     expect(container.textContent).toContain("Places to try");
     expect(request).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("Today keeps the server-rendered lead through live ranking", () => {
+  it("does not replace the first-paint place with a live hero", async () => {
+    const serverRows = [{
+      category: "restaurant",
+      label: "Lunch",
+      href: "/nearby?c=lunch",
+      picks: [{
+        slug: "isabellas-taverna-tapas-bar-frederick",
+        name: "Isabella's Taverna",
+        rating: 4.6,
+        confidence: "likely" as const,
+        fact: "Likely open · check hours",
+        where: "Frederick",
+      }],
+    }];
+    state.answer.mockResolvedValue({
+      hero: { slug: "dublin-roasters-coffee-frederick", name: "Dublin Roasters Coffee", photo: null, where: "Frederick", distance: null, fact: "Hours not confirmed", confidence: "unconfirmed" },
+      also: [{ slug: "ibiza-cafe", name: "Ibiza Cafe", photo: null, where: "Frederick", distance: null, fact: "Hours not confirmed" }],
+      soon: null,
+      browseHref: "/nearby?c=lunch&in=county",
+      contextLabel: "Whole county",
+      contextSource: "county",
+    });
+    await act(async () => {
+      root.render(<DaypartNeeds rows={serverRows} variant="brief" />);
+    });
+    expect(container.textContent).toContain("Isabella's Taverna");
+    await act(async () => { await state.answer.mock.results[0]?.value; });
+    expect(container.textContent).toContain("Isabella's Taverna");
+    expect(container.textContent).not.toContain("Dublin Roasters");
+    expect(container.textContent).not.toContain("Ibiza Cafe");
+    expect(container.textContent).toContain("Places to try");
+    expect(container.textContent).toContain("Hours not confirmed");
+    expect(container.textContent).not.toContain("Places likely open");
+    expect(container.textContent).not.toContain("Likely open");
+    expect(container.textContent).not.toContain("check hours");
+  });
+
+  it("does not replace a first-paint opening-soon lead with a different live hero", async () => {
+    const serverRows = [{
+      category: "restaurant",
+      label: "Lunch",
+      href: "/nearby?c=lunch",
+      picks: [],
+      openingSoon: {
+        slug: "hootch-and-banter-frederick",
+        name: "Hootch & Banter",
+        rating: 4.5,
+        confidence: "confirmed" as const,
+        fact: "Opens soon · 4pm",
+        where: "Frederick",
+      },
+    }];
+    state.answer.mockResolvedValue({
+      hero: {
+        slug: "first-local-pick",
+        name: "First local pick",
+        photo: null,
+        where: "Frederick",
+        distance: null,
+        fact: "Open now",
+        confidence: "confirmed",
+      },
+      also: [],
+      soon: {
+        slug: "hootch-and-banter-frederick",
+        name: "Hootch & Banter",
+        photo: null,
+        where: "Frederick",
+        distance: null,
+        fact: "Opens soon · 4pm",
+        confidence: "confirmed",
+      },
+      browseHref: "/nearby?c=lunch&in=county",
+      contextLabel: "Whole county",
+      contextSource: "county",
+    });
+    await act(async () => {
+      root.render(<DaypartNeeds rows={serverRows} variant="brief" />);
+    });
+    expect(container.textContent).toContain("Hootch & Banter");
+    expect(container.textContent).toContain("Opens 4pm");
+    expect(container.textContent).not.toContain("Likely opens");
+    expect(container.textContent).not.toContain("check hours");
+    expect(container.querySelector("[data-today-opening-soon]")).not.toBeNull();
+    await act(async () => { await state.answer.mock.results[0]?.value; });
+    expect(container.textContent).toContain("Hootch & Banter");
+    expect(container.textContent).toContain("Opens 4pm");
+    expect(container.textContent).not.toContain("First local pick");
+    expect(container.querySelector("[data-today-opening-soon]")).not.toBeNull();
   });
 });

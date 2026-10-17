@@ -18,6 +18,7 @@ test("Today keeps the first open-place pick in view when photos fall back", asyn
     await route.fulfill({
       status: 200,
       contentType: "image/gif",
+      headers: { "x-photo-fallback": "daily-cap" },
       body: transparentGif,
     });
   });
@@ -58,23 +59,30 @@ test("Today keeps the first open-place pick in view when photos fall back", asyn
   await expect(
     page.getByRole("button", { name: /Plan the rest/ }),
   ).toHaveAttribute("aria-expanded", "false");
-  const firstPick = page.getByRole("link", {
-    name: /First local pick.*Open now/i,
-  });
-  await expect(firstPick).toBeVisible();
-  await expect(firstPick).not.toHaveAttribute("aria-label");
 
-  const rail = page
-    .getByRole("region", { name: "Open places right now" })
-    .locator(".shelf-rail");
-  await expect
-    .poll(() => rail.evaluate((element) => element.scrollLeft))
-    .toBe(0);
-  expect(
-    await rail.evaluate((element) => {
-      const first = element.firstElementChild?.getBoundingClientRect();
-      const frame = element.getBoundingClientRect();
-      return Boolean(first && first.left >= frame.left - 1);
-    }),
-  ).toBe(true);
+  const lead = page.locator("[data-today-place-preview], [data-today-opening-soon]").first();
+  await expect(lead).toBeVisible();
+  const firstName = (await lead.locator("[data-today-pick-name]").innerText()).trim();
+  expect(firstName.length).toBeGreaterThan(0);
+  expect(firstName).not.toBe("First local pick");
+
+  await page.waitForLoadState("networkidle");
+
+  await expect(lead.locator("[data-today-pick-name]")).toHaveText(firstName);
+  await expect(page.getByText("First local pick")).toHaveCount(0);
+  await expect(lead).toBeVisible();
+
+  const rail = page.locator(".today-answer-shelf.shelf-rail").first();
+  if (await rail.count()) {
+    await expect
+      .poll(() => rail.evaluate((element) => element.scrollLeft))
+      .toBe(0);
+    expect(
+      await rail.evaluate((element) => {
+        const first = element.firstElementChild?.getBoundingClientRect();
+        const frame = element.getBoundingClientRect();
+        return Boolean(first && first.left >= frame.left - 1);
+      }),
+    ).toBe(true);
+  }
 });

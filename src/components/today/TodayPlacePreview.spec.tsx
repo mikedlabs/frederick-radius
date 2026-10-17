@@ -128,6 +128,7 @@ describe("Today place preview exact media and actions", () => {
       routing.suspend = false;
     }
     expect(html).toContain('data-today-place-preview="true"');
+    expect(html).toContain('data-preview-layout="exact"');
     expect(html).toContain(`src="${schifferstadt.src}"`);
     expect(html).toContain("Schifferstadt");
     expect(html).toContain("Hours not confirmed");
@@ -185,6 +186,8 @@ describe("Today place preview exact media and actions", () => {
     expect(image()).toBeNull();
     expect(container.querySelector("[data-place-card-photo]")).toBeNull();
     expect(container.querySelector("[data-today-place-preview]")?.getAttribute("data-has-photo")).toBe("false");
+    expect(container.querySelector("[data-today-place-preview]")?.getAttribute("data-preview-layout")).toBe("exact");
+    expect(container.querySelector("[data-today-place-thumb-fallback]")).not.toBeNull();
     expect(credit()).toBeNull();
     expect(container.textContent).toContain(place.name);
     expect(container.textContent).toContain("Hours not confirmed");
@@ -213,7 +216,11 @@ describe("Today place preview exact media and actions", () => {
     vi.stubGlobal("fetch", request);
     const place = pick({ photo: rawPhoto, photoAttribution: attribution });
     await render(place);
+    expect(container.querySelector("[data-today-place-preview]")?.getAttribute("data-preview-layout")).toBe("compact");
+    expect(container.querySelector("[data-today-place-thumb]")).not.toBeNull();
+    expect(container.querySelector("[data-today-place-thumb-fallback]")).not.toBeNull();
     expect(container.querySelector("[data-place-card-photo]")?.getAttribute("data-place-card-photo-bytes")).toBe("idle");
+    expect(container.querySelector("[data-photo-ready]")?.getAttribute("data-photo-ready")).toBe("false");
     expect(image()).toBeNull();
     expect(request).not.toHaveBeenCalled();
     expect(create).not.toHaveBeenCalled();
@@ -223,16 +230,19 @@ describe("Today place preview exact media and actions", () => {
     const sourceUrl = new URL(source, "https://example.test");
     expect(sourceUrl.pathname).toBe("/api/place-photo");
     expect(sourceUrl.searchParams.get("name")).toBe(photoName);
-    expect(sourceUrl.searchParams.get("w")).toBe("720");
+    expect(sourceUrl.searchParams.get("w")).toBe("344");
     expect(sourceUrl.searchParams.get("fallback")).toBe("signal");
     expect(init).toEqual({ cache: "no-store", credentials: "same-origin", signal: expect.any(AbortSignal) });
     expect(image()?.getAttribute("src")).toBe("blob:today-preview-1");
     expect(create).toHaveBeenCalledTimes(1);
-    expect(credit()?.getAttribute("aria-hidden")).toBe("true");
+    expect(credit()).toBeNull();
     await decode(image()!);
+    expect(container.querySelector("[data-photo-ready]")?.getAttribute("data-photo-ready")).toBe("true");
+    expect(container.querySelector("[data-today-place-preview]")?.getAttribute("data-has-photo")).toBe("true");
     expect(credit()?.getAttribute("aria-hidden")).toBeNull();
     expect(credit()?.textContent).toContain("Exact photo contributor");
     expect(credit()?.querySelector(`a[href="${googleSource}"]`)?.textContent).toBe("Google Maps");
+    expect(container.querySelector("[data-today-place-thumb]")).not.toBeNull();
     expectActions(place);
   });
 
@@ -259,8 +269,7 @@ describe("Today place preview exact media and actions", () => {
     expect(nextImage).not.toBe(oldImage);
     expect(nextImage.getAttribute("src")).toBe(objectUrl);
     expect(oldImage.isConnected).toBe(false);
-    expect(credit()?.getAttribute("aria-hidden")).toBe("true");
-    expect(credit()?.hasAttribute("inert")).toBe(true);
+    expect(credit()).toBeNull();
     expect(request).toHaveBeenCalledTimes(1);
     expect(create).toHaveBeenCalledTimes(1);
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
@@ -270,7 +279,7 @@ describe("Today place preview exact media and actions", () => {
     await decode(oldImage);
     await act(async () => oldImage.dispatchEvent(new Event("error")));
     expect(image()).toBe(nextImage);
-    expect(credit()?.getAttribute("aria-hidden")).toBe("true");
+    expect(credit()).toBeNull();
     await decode(nextImage);
     expect(credit()?.getAttribute("aria-hidden")).toBeNull();
     expect(credit()?.hasAttribute("inert")).toBe(false);
@@ -294,14 +303,35 @@ describe("Today place preview exact media and actions", () => {
     await render(next);
     expect(image()).not.toBe(oldImage);
     expect(image()?.getAttribute("src")).toBe(oldImage.getAttribute("src"));
-    expect(credit()?.getAttribute("aria-hidden")).toBe("true");
+    expect(credit()).toBeNull();
     await decode(oldImage);
-    expect(credit()?.getAttribute("aria-hidden")).toBe("true");
+    expect(credit()).toBeNull();
     await decode(image()!);
     expect(credit()?.getAttribute("aria-hidden")).toBeNull();
     expect(request).toHaveBeenCalledTimes(1);
     expect(create).toHaveBeenCalledTimes(1);
     expectActions(next);
+  });
+
+  it("keeps the compact thumbnail slot after a Google fallback header", async () => {
+    const request = vi.fn<(source: string, init?: RequestInit) => Promise<Response>>(async () => new Response(
+      new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" }),
+      { headers: { "Content-Type": "image/png", "x-photo-fallback": "daily-cap" } },
+    ));
+    vi.stubGlobal("fetch", request);
+    const place = pick({ photo: rawPhoto, photoAttribution: attribution });
+    await render(place);
+    const thumb = container.querySelector("[data-today-place-thumb]");
+    expect(thumb).not.toBeNull();
+    await act(async () => enter[0]());
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(image()).toBeNull();
+    expect(container.querySelector("[data-place-card-photo]")).toBeNull();
+    expect(container.querySelector("[data-today-place-thumb]")).toBe(thumb);
+    expect(container.querySelector("[data-today-place-thumb-fallback]")).not.toBeNull();
+    expect(container.querySelector("[data-today-place-preview]")?.getAttribute("data-has-photo")).toBe("false");
+    expect(container.querySelector("[data-today-place-preview]")?.getAttribute("data-preview-layout")).toBe("compact");
+    expectActions(place);
   });
 
   it("keeps an uncredited Google candidate factual when metadata hydration is not allowed", async () => {
@@ -311,7 +341,12 @@ describe("Today place preview exact media and actions", () => {
     await render(place);
     expect(image()).toBeNull();
     expect(container.querySelector("[data-place-card-photo]")).toBeNull();
-    expect(container.textContent).toContain("Likely open");
+    expect(container.querySelector("[data-today-place-thumb]")).not.toBeNull();
+    expect(container.querySelector("[data-today-place-thumb-fallback]")).not.toBeNull();
+    expect(container.querySelector("[data-today-place-preview]")?.getAttribute("data-preview-layout")).toBe("compact");
+    expect(container.textContent).toContain("Hours not confirmed");
+    expect(container.textContent).not.toContain("Likely open");
+    expect(container.textContent).not.toContain("check hours");
     expectActions(place);
     expect(request).not.toHaveBeenCalled();
   });

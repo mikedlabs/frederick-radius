@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 import { getOwnedPlacePhoto } from "./owned-place-photos";
-import { isPlacePhotoFailureSignal, placePhotoFailureSignalSrc, placeCardPhotoPlan, placePhotoGallerySources, recordPlaceCardPhotoResult, selectedPlaceCardPhoto } from "./place-card-photo";
+import { hasExactPlacePhoto, isPlacePhotoFailureSignal, placePhotoFailureSignalSrc, placeCardPhotoPlan, placePhotoGallerySources, recordPlaceCardPhotoResult, selectedPlaceCardPhoto } from "./place-card-photo";
 
 const name = "places/monument/photos/canonical";
 const place = {
@@ -108,6 +108,12 @@ describe("exact owned place photo continuity", () => {
     expect(source).toMatchObject({ kind: "owned", src, alt: "Carroll Creek in Frederick." });
     expect(source).not.toHaveProperty("attribution");
     expect(input).toEqual({ slug });
+  });
+
+  it("treats owned and licensed files as exact first-paint photos, not proxy URLs", () => {
+    expect(hasExactPlacePhoto("carroll-creek-linear-park-frederick")).toBe(true);
+    expect(hasExactPlacePhoto("schifferstadt-architectural-museum-frederick")).toBe(true);
+    expect(hasExactPlacePhoto("beans-in-the-belfry-brunswick")).toBe(false);
   });
 
   it.each(["beans-in-the-belfry-brunswick", "town:frederick", "frederick", "__proto__"])("does not assign the scene to another identity: %s", (otherSlug) => {

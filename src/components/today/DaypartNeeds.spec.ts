@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import DaypartNeeds, {
   DaypartEmptyState,
+  briefShowsOpeningSoon,
   daypartBrowseHref,
   daypartEmptyCopy,
   daypartLeadReason,
@@ -16,6 +17,8 @@ import DaypartNeeds, {
   isDaypartCountywideContext,
   liveShelfFromWantAnswer,
   nextUnresolvedDaypartCategory,
+  preserveRenderedLead,
+  visibleDaypartLead,
 } from "./DaypartNeeds";
 
 describe("DaypartNeeds", () => {
@@ -58,7 +61,8 @@ describe("DaypartNeeds", () => {
     }));
     expect(html).toContain("Brunswick");
     expect(html).toContain("6 min walk");
-    expect(html).toContain("Opens soon · 10am");
+    expect(html).toContain("Opens 10am");
+    expect(html).not.toContain("Opens soon · 10am");
     expect(html).not.toContain("Open now");
   });
 
@@ -147,7 +151,7 @@ describe("DaypartNeeds", () => {
     expect(html).not.toContain("No place across Frederick County");
   });
 
-  it("treats an opening-soon transition as a useful starting category", () => {
+  it("treats a confirmed opening-soon transition as a useful starting category", () => {
     const rows = [
       {
         category: "museum",
@@ -164,8 +168,8 @@ describe("DaypartNeeds", () => {
           slug: "gravel-and-grind-frederick",
           name: "Gravel & Grind",
           rating: 4.8,
-          confidence: "likely" as const,
-          fact: "Likely opens at 8am · check hours",
+          confidence: "confirmed" as const,
+          fact: "Opens soon · 8am",
         },
       },
     ];
@@ -174,6 +178,38 @@ describe("DaypartNeeds", () => {
     expect(
       nextUnresolvedDaypartCategory(rows, "museum", { museum: true }),
     ).toBe("coffee");
+  });
+
+  it("does not start on a category whose only lead would be unconfirmed Opening soon", () => {
+    const rows = [
+      {
+        category: "restaurant",
+        label: "Lunch",
+        href: "/category/restaurant",
+        picks: [],
+        openingSoon: {
+          slug: "hootch",
+          name: "Hootch & Banter",
+          rating: 4.5,
+          confidence: "likely" as const,
+          fact: "Likely opens at 4pm · check hours",
+        },
+      },
+      {
+        category: "coffee",
+        label: "Coffee",
+        href: "/category/coffee",
+        picks: [{
+          slug: "dublin",
+          name: "Dublin Roasters",
+          rating: 4.6,
+          confidence: "likely" as const,
+          fact: "Likely open · check hours",
+        }],
+      },
+    ];
+
+    expect(initialDaypartCategory(rows, "brief")).toBe("coffee");
   });
 
   it("lets brief Today skip an unconfirmed shelf for a confirmed answer", () => {
@@ -681,6 +717,134 @@ describe("DaypartNeeds", () => {
       title: "Opening soon",
       aria: "Place opening soon",
     });
+    expect(
+      daypartShelfHeading(
+        [{ slug: "likely", name: "Likely", rating: null, confidence: "likely" }],
+        null,
+      ),
+    ).toEqual({
+      title: "Places to try",
+      aria: "Places to try, hours not confirmed",
+    });
+  });
+
+  it("keeps the server-rendered current lead when live ranking prefers someone else", () => {
+    const server = {
+      category: "restaurant",
+      label: "Lunch",
+      href: "/category/restaurant",
+      picks: [{ slug: "isabellas", name: "Isabella's", rating: 4.6, confidence: "likely" as const }],
+    };
+    const live = liveShelfFromWantAnswer(
+      {
+        hero: { slug: "dublin", name: "Dublin Roasters", photo: null, where: "Frederick", distance: null, fact: "Hours not confirmed", confidence: "unconfirmed" },
+        also: [
+          { slug: "ibiza", name: "Ibiza Cafe", photo: null, where: "Frederick", distance: null, fact: "Hours not confirmed" },
+        ],
+        browseHref: server.href,
+        contextLabel: "Across Frederick County",
+        contextSource: "county",
+      },
+      server,
+      "county",
+    );
+    expect(live.picks[0].slug).toBe("dublin");
+    expect(preserveRenderedLead(server, live, "brief").picks.map((pick) => pick.slug)[0]).toBe("isabellas");
+    expect(visibleDaypartLead(server, "brief")).toEqual({ kind: "place", slug: "isabellas" });
+  });
+
+  it("lets live ranking replace the lead only when that same place is now closed", () => {
+    const server = {
+      category: "restaurant",
+      label: "Dinner",
+      href: "/category/restaurant",
+      picks: [{ slug: "isabellas", name: "Isabella's", rating: 4.6, confidence: "likely" as const }],
+    };
+    const live = liveShelfFromWantAnswer(
+      {
+        hero: { slug: "ibiza", name: "Ibiza Cafe", photo: null, where: "Frederick", distance: null, fact: "Open until 10pm", confidence: "confirmed" },
+        also: [],
+        soon: { slug: "isabellas", name: "Isabella's", photo: null, where: "Frederick", distance: null, fact: "Opens soon · 4pm", confidence: "confirmed" },
+        browseHref: server.href,
+        contextLabel: "Across Frederick County",
+        contextSource: "county",
+      },
+      server,
+      "county",
+    );
+    const preserved = preserveRenderedLead(server, live, "brief");
+    expect(preserved.openingSoon?.slug).toBe("isabellas");
+    expect(preserved.picks.map((pick) => pick.slug)).toEqual(["ibiza"]);
+  });
+
+  it("keeps an opening-soon first paint in front of a different live confirmed hero", () => {
+    const soon = {
+      slug: "hootch",
+      name: "Hootch & Banter",
+      rating: 4.5,
+      confidence: "confirmed" as const,
+      fact: "Opens soon · 4pm",
+    };
+    const server = {
+      category: "restaurant",
+      label: "Lunch",
+      href: "/category/restaurant",
+      picks: [],
+      openingSoon: soon,
+    };
+    const live = liveShelfFromWantAnswer(
+      {
+        hero: {
+          slug: "hinzis",
+          name: "Hinzi's",
+          photo: null,
+          where: "Frederick",
+          distance: null,
+          fact: "Open now",
+          confidence: "confirmed",
+        },
+        also: [],
+        soon: {
+          slug: "hootch",
+          name: "Hootch & Banter",
+          photo: null,
+          where: "Frederick",
+          distance: null,
+          fact: "Opens soon · 4pm",
+          confidence: "confirmed",
+        },
+        browseHref: server.href,
+        contextLabel: "Across Frederick County",
+        contextSource: "county",
+      },
+      server,
+      "county",
+    );
+    expect(visibleDaypartLead(server, "brief")).toEqual({ kind: "soon", slug: "hootch" });
+    expect(live.picks[0].slug).toBe("hinzis");
+    expect(briefShowsOpeningSoon(
+      "brief",
+      visibleDaypartLead(server, "brief"),
+      live.openingSoon,
+      live.picks,
+      Boolean(live.openingSoon) && daypartShelfTier(live.picks) !== "confirmed",
+    )).toBe(true);
+  });
+
+  it("lets the same opening-soon place become the current card once it is open", () => {
+    const soon = {
+      slug: "hootch",
+      name: "Hootch & Banter",
+      rating: 4.5,
+      confidence: "likely" as const,
+    };
+    expect(briefShowsOpeningSoon(
+      "brief",
+      { kind: "soon", slug: "hootch" },
+      soon,
+      [{ slug: "hootch", name: "Hootch & Banter", rating: 4.5, confidence: "confirmed" }],
+      false,
+    )).toBe(false);
   });
 
   it("labels curated fallback cards as likely instead of confirmed open", () => {
@@ -706,9 +870,13 @@ describe("DaypartNeeds", () => {
     expect(html).toContain(
       "Countywide picks · Posted hours; check before going",
     );
+    expect(html).toContain("Places to try");
+    expect(html).not.toContain("Places likely open");
+    expect(html).not.toContain("likely open right now");
     expect(html).not.toContain('aria-label="Likely Cup');
     expect(html).toContain("Likely Cup");
-    expect(html).toContain("Likely open");
+    expect(html).toContain("Hours not confirmed");
+    expect(html).not.toContain("Likely open");
     expect(html).not.toContain("confirmed open");
   });
 
@@ -727,8 +895,8 @@ describe("DaypartNeeds", () => {
               rating: 4.8,
               photo: null,
               where: "Frederick",
-              confidence: "likely",
-              fact: "Likely opens at 8am · check hours",
+              confidence: "confirmed",
+              fact: "Opens soon · 8am",
             },
           },
         ],
@@ -740,7 +908,9 @@ describe("DaypartNeeds", () => {
     expect(html).toContain('data-place-availability="opening-soon"');
     expect(html).toContain('data-decision-position="opening-soon"');
     expect(html).toContain("Gravel &amp; Grind");
-    expect(html).toContain("Likely opens at 8am · check hours");
+    expect(html).toContain("Opens 8am");
+    expect(html).not.toContain("Likely opens");
+    expect(html).not.toContain("check hours");
     expect(html).not.toContain("Places open now");
     expect(html).not.toContain('data-today-place-lead="true"');
   });
@@ -773,10 +943,13 @@ describe("DaypartNeeds", () => {
     const withPhoto = renderPick(
       "/api/place-photo?name=places%2FChIJtest%2Fphotos%2Ffront&w=800",
     );
+    expect(withPhoto).toContain('data-preview-layout="compact"');
+    expect(withPhoto).toContain("data-today-place-thumb");
+    expect(withPhoto).toContain("data-today-place-thumb-fallback");
     expect(withPhoto).toContain('data-place-card-photo-source="google"');
     expect(withPhoto).toContain('data-place-card-photo-bytes="idle"');
+    expect(withPhoto).toContain('data-photo-ready="false"');
     expect(withPhoto).not.toContain("<img");
-    expect(withPhoto).toContain('visibility:hidden');
     expect(withPhoto).not.toContain('data-radius-plate="gravel-and-grind"');
 
     const withoutPhoto = renderPick();
@@ -785,6 +958,9 @@ describe("DaypartNeeds", () => {
     expect(withoutPhoto).toContain("Open now");
     expect(withoutPhoto).toContain('data-today-place-lead="true"');
     expect(withoutPhoto).toContain('data-has-photo="false"');
+    expect(withoutPhoto).toContain('data-preview-layout="compact"');
+    expect(withoutPhoto).toContain("data-today-place-thumb");
+    expect(withoutPhoto).toContain("data-today-place-thumb-fallback");
     expect(withoutPhoto).not.toContain("data-place-card-photo=");
     expect(withoutPhoto).toContain('aria-label="Map: Gravel &amp; Grind"');
     // A place name identifies the place, so it wraps instead of clipping.
@@ -841,8 +1017,8 @@ describe("DaypartNeeds", () => {
               name: "Opening Next",
               rating: null,
               where: "Frederick",
-              confidence: "likely" as const,
-              fact: "Likely opens at 8am · check hours",
+              confidence: "confirmed" as const,
+              fact: "Opens soon · 8am",
             },
           },
         ],
@@ -861,7 +1037,7 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("Browse places");
   });
 
-  it("lets an opening-soon transition replace an uncertain briefing pick", () => {
+  it("does not promote an unconfirmed opening time as Opening soon", () => {
     const html = renderToStaticMarkup(
       createElement(DaypartNeeds, {
         variant: "brief",
@@ -892,7 +1068,50 @@ describe("DaypartNeeds", () => {
       }),
     );
 
+    expect(html).toContain("Hours Unknown");
+    expect(html).toContain("Hours not confirmed");
+    expect(html).toContain("Places to try");
+    expect(html).toContain('data-today-place-lead="true"');
+    expect(html).not.toContain("Gravel &amp; Grind");
+    expect(html).not.toContain("Opening soon");
+    expect(html).not.toContain("Likely opens");
+    expect(html).not.toContain("check hours");
+    expect(html).not.toContain('data-today-opening-soon="true"');
+  });
+
+  it("lets a confirmed opening-soon transition replace an uncertain briefing pick", () => {
+    const html = renderToStaticMarkup(
+      createElement(DaypartNeeds, {
+        variant: "brief",
+        rows: [
+          {
+            category: "coffee",
+            label: "Coffee",
+            href: "/category/coffee",
+            picks: [
+              {
+                slug: "hours-unknown",
+                name: "Hours Unknown",
+                rating: 4.8,
+                where: "Frederick",
+                confidence: "unconfirmed" as const,
+              },
+            ],
+            openingSoon: {
+              slug: "gravel-and-grind-frederick",
+              name: "Gravel & Grind",
+              rating: 4.8,
+              where: "Frederick",
+              confidence: "confirmed" as const,
+              fact: "Opens soon · 8am",
+            },
+          },
+        ],
+      }),
+    );
+
     expect(html).toContain("Gravel &amp; Grind");
+    expect(html).toContain("Opens 8am");
     expect(html).toContain('aria-label="Place opening soon"');
     expect(html).toContain('data-today-opening-soon="true"');
     expect(html).not.toContain("Hours Unknown");
@@ -951,8 +1170,8 @@ describe("DaypartNeeds", () => {
               name: "Opening Next",
               rating: null,
               where: "Frederick",
-              confidence: "likely" as const,
-              fact: "Likely opens at 8am · check hours",
+              confidence: "confirmed" as const,
+              fact: "Opens soon · 8am",
             },
           },
         ],
@@ -965,6 +1184,76 @@ describe("DaypartNeeds", () => {
     expect(html).not.toContain("Third");
     expect(html).not.toContain("Fourth");
     expect(html).toContain('data-shelf-two="true"');
+  });
+
+  it("does not render likely or check hours in Today preview copy", () => {
+    const cardCopy = (html: string) =>
+      [...html.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/g)]
+        .map((match) =>
+          match[1]
+            .replace(/<(?:span|h3)[^>]*data-today-pick-name[\s\S]*?<\/(?:span|h3)>/g, "")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/&amp;/g, "&")
+            .replace(/\s+/g, " ")
+            .trim()
+            .toLocaleLowerCase(),
+        )
+        .join(" ");
+
+    const confirmedSoon = renderToStaticMarkup(
+      createElement(DaypartNeeds, {
+        variant: "brief",
+        rows: [{
+          category: "restaurant",
+          label: "Lunch",
+          href: "/category/restaurant",
+          picks: [],
+          openingSoon: {
+            slug: "hootch",
+            name: "Hootch & Banter",
+            rating: 4.5,
+            where: "Frederick",
+            confidence: "confirmed",
+            fact: "Opens soon · 4pm",
+          },
+        }],
+      }),
+    );
+    expect(confirmedSoon).toContain("Opening soon");
+    expect(confirmedSoon).toContain("Opens 4pm");
+    expect(cardCopy(confirmedSoon)).not.toMatch(/likely|check hours|probably|\bmay\b/);
+
+    const unconfirmedSoon = renderToStaticMarkup(
+      createElement(DaypartNeeds, {
+        variant: "brief",
+        rows: [{
+          category: "restaurant",
+          label: "Lunch",
+          href: "/category/restaurant",
+          picks: [{
+            slug: "dublin",
+            name: "Dublin Roasters",
+            rating: 4.6,
+            where: "Frederick",
+            confidence: "likely",
+            fact: "Likely open · check hours",
+          }],
+          openingSoon: {
+            slug: "hootch",
+            name: "Hootch & Banter",
+            rating: 4.5,
+            where: "Frederick",
+            confidence: "likely",
+            fact: "Likely opens at 4pm · check hours",
+          },
+        }],
+      }),
+    );
+    expect(unconfirmedSoon).toContain("Dublin Roasters");
+    expect(unconfirmedSoon).toContain("Hours not confirmed");
+    expect(unconfirmedSoon).not.toContain("Opening soon");
+    expect(unconfirmedSoon).not.toContain("Hootch");
+    expect(cardCopy(unconfirmedSoon)).not.toMatch(/likely|check hours|probably|\bmay\b/);
   });
 
   it("uses the photo proxy signal and recognizes its 1x1 failure image", () => {
