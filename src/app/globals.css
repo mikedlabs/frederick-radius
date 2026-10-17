@@ -487,6 +487,16 @@
   }
 }
 
+/* On a narrow Today screen, text enlargement needs the space that a rem
+   gutter would consume. Keep a physical reading inset and respect the device
+   safe area; every label and control still uses the visitor's full text size. */
+@media (max-width: 359px) {
+  .app-main-reading[data-app-primary-tab="/today"] {
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+}
+
 @media (min-width: 640px) {
   .app-main-reading {
     padding-left: max(1.25rem, env(safe-area-inset-left, 0px));

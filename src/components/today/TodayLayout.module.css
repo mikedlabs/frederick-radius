@@ -57,7 +57,7 @@
 
 .scope {
   min-width: 0;
-  padding: 4px 8px 8px;
+  padding: 4px 4px 8px;
   border-top: 1px solid var(--app-border);
 }
 
@@ -67,14 +67,16 @@
 }
 
 .scope label {
-  flex: 1 1 130px;
+  /* Reflow before the native label and location action compete for space. */
+  flex: 1 1 12rem;
   min-width: 0;
-  max-width: none;
+  max-width: 100%;
 }
 
 .scope select {
   width: 100%;
-  padding-inline: 8px;
+  /* Keep the native arrow and enlarged system-font label inside the picker. */
+  padding-inline: 4px;
   border: 0;
   border-radius: var(--app-radius-sm);
   background: transparent;
@@ -84,7 +86,7 @@
 }
 
 .scope button {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-height: 44px;
   height: auto;
   max-width: 100%;

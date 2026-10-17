@@ -14,13 +14,16 @@ function EntryControls() {
 const meta = {
   title: "Today/Unified discovery controls",
   component: EntryControls,
-  parameters: { layout: "centered", a11y: { test: "error" }, nextjs: { navigation: { pathname: "/today", query: { in: "county" } } } },
-  decorators: [(Story) => <div style={{ width: "min(520px, calc(100vw - 32px))" }}><Story /></div>],
+  parameters: { layout: "fullscreen", a11y: { test: "error" }, nextjs: { navigation: { pathname: "/today", query: { in: "county" } } } },
+  // Exercise the production reading gutter, including enlarged root text.
+  decorators: [(Story) => <main className="app-main-reading" data-app-primary-tab="/today"
+    style={{ width: "min(552px, 100vw)", boxSizing: "border-box" }}><Story /></main>],
 } satisfies Meta<typeof EntryControls>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 const usableControls: NonNullable<Story["play"]> = async ({ canvasElement }) => {
+  await canvasElement.ownerDocument.fonts.ready;
   const canvas = within(canvasElement);
   const group = canvasElement.querySelector<HTMLElement>("[data-today-entry-controls]")!;
   const find = canvas.getByRole("link", { name: "Find a place, service, event, or answer" });
@@ -34,6 +37,9 @@ const usableControls: NonNullable<Story["play"]> = async ({ canvasElement }) => 
   await expect(canvas.getByRole("status")).toHaveTextContent("Countywide briefing");
   await expect(canvas.queryByRole("link", { name: "Open now" })).not.toBeInTheDocument();
   const bounds = group.getBoundingClientRect();
+  await expect(bounds.left).toBeGreaterThanOrEqual(0);
+  await expect(bounds.right).toBeLessThanOrEqual(window.innerWidth);
+  await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth + 1);
   for (const control of [find, area, location]) {
     control.scrollIntoView({ block: "center" });
     const box = control.getBoundingClientRect();
@@ -41,7 +47,11 @@ const usableControls: NonNullable<Story["play"]> = async ({ canvasElement }) => 
     await expect(box.height).toBeGreaterThanOrEqual(44);
     await expect(box.left).toBeGreaterThanOrEqual(bounds.left - 1);
     await expect(box.right).toBeLessThanOrEqual(bounds.right + 1);
-    await expect(control.scrollWidth).toBeLessThanOrEqual(control.clientWidth + 1);
+    const controlName = control === area ? "Choose your area" : control === location ? "Use my location" : "Find what you need";
+    const diagnostic = { control: controlName, width: box.width, clientWidth: control.clientWidth,
+      scrollWidth: control.scrollWidth, groupWidth: bounds.width, font: getComputedStyle(control).font };
+    if (control.scrollWidth > control.clientWidth + 1) console.info("Today entry control overflow", JSON.stringify(diagnostic));
+    await expect(control.scrollWidth, JSON.stringify(diagnostic)).toBeLessThanOrEqual(control.clientWidth + 1);
     if (control instanceof HTMLSelectElement) {
       // Native select scrollWidth conceals a clipped selected option.
       const style = getComputedStyle(control);
@@ -50,7 +60,10 @@ const usableControls: NonNullable<Story["play"]> = async ({ canvasElement }) => 
       const labelWidth = context.measureText(control.selectedOptions[0].textContent ?? "").width;
       const available = box.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
         - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth) - 20;
-      await expect(labelWidth).toBeLessThanOrEqual(available + 1);
+      const selectedDiagnostic = { ...diagnostic, selected: control.selectedOptions[0].textContent,
+        labelWidth, available, padding: [style.paddingLeft, style.paddingRight], rootFont: getComputedStyle(document.documentElement).fontSize };
+      if (labelWidth > available + 1) console.info("Today native area text overflow", JSON.stringify(selectedDiagnostic));
+      await expect(labelWidth, JSON.stringify(selectedDiagnostic)).toBeLessThanOrEqual(available + 1);
     }
   }
   await expect(find.getBoundingClientRect().bottom).toBeLessThanOrEqual(area.getBoundingClientRect().top + 1);
@@ -79,3 +92,27 @@ export const EnlargedText320: Story = {
   },
   play: usableControls,
 };
+
+/** The app uses native fonts. A wider installed face exposes space assumptions
+ * hidden by the narrower Mac system face without changing any geometry check. */
+function wideNativeStory(enlarged = false): Story {
+  return {
+    globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+    beforeEach: () => {
+      const root = document.documentElement;
+      const previousFamily = root.style.getPropertyValue("--font-sans-base");
+      const previousSize = root.style.fontSize;
+      root.style.setProperty("--font-sans-base", "Verdana, sans-serif");
+      if (enlarged) root.style.fontSize = "200%";
+      return () => {
+        if (previousFamily) root.style.setProperty("--font-sans-base", previousFamily);
+        else root.style.removeProperty("--font-sans-base");
+        root.style.fontSize = previousSize;
+      };
+    },
+    play: usableControls,
+  };
+}
+
+export const WideNative320: Story = wideNativeStory();
+export const WideNativeEnlarged320: Story = wideNativeStory(true);
