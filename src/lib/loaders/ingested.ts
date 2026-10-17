@@ -21,6 +21,7 @@ import {
 } from "@/lib/events/normalize";
 import { hasImplausibleStartTime } from "@/lib/events/visible";
 import { fcplStoredLifecycle, FCPL_SOURCE_DOMAIN } from "@/lib/ingest/fcpl";
+import { isSurfacedCivicEngageCategory } from "@/lib/ingest/civicengage-category";
 import { fcplObservedAt, type FcplObservationRow } from "@/lib/ingest/fcpl-observation-envelope";
 import type { EventStatus } from "@/lib/event-status";
 
@@ -29,8 +30,8 @@ import type { EventStatus } from "@/lib/event-status";
 // everything"). Set RADIUS_EVENT_NOISE_FILTER=0 to disable.
 const EVENT_NOISE_FILTER = process.env.RADIUS_EVENT_NOISE_FILTER !== "0";
 
-// Sources whose category is set deliberately at the mapper boundary (not the
-// unreliable county catid mapping), so it's safe to keep + surface.
+// Sources whose category is set deliberately at the mapper boundary.
+// CivicEngage Radius slugs are gated separately via isSurfacedCivicEngageCategory.
 const RELIABLE_CATEGORY_DOMAINS = new Set(["frederick.librarycalendar.com", "fcvfra.com"]);
 
 export type IngestedOccurrence = {
@@ -210,14 +211,15 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
       address: head.address ? formatAddress(cleanFeedText(head.address)) : null,
       municipality: head.municipality,
       sourceDomain: head.source_domain,
-      // Phase 1.5: the county catid mapping is unreliable (birthday
-      // parties, theatre, and tasting rooms all arrive as "Workforce
-      // Services"). Quarantine the surfaced label until the upstream
-      // mapping is rebuilt. The raw value remains in ingested_events.
-      // FCPL + FCVFRA set their category at the mapper boundary (library
-      // program type / "community"), so keep theirs — only the county
-      // catid mess is quarantined.
-      category: RELIABLE_CATEGORY_DOMAINS.has(head.source_domain) ? head.category : null,
+      // FCPL + FCVFRA set a real Radius slug at their mapper. CivicEngage
+      // used to persist calendar labels ("Workforce Services"); those stay
+      // quarantined. After the catID lookup, ingest writes real slugs, and
+      // only those surface.
+      category:
+        RELIABLE_CATEGORY_DOMAINS.has(head.source_domain) ||
+        isSurfacedCivicEngageCategory(head.category)
+          ? head.category
+          : null,
       lat: head.lat != null ? Number(head.lat) : null,
       lng: head.lng != null ? Number(head.lng) : null,
       // cleanDescription also dedupes repeated sentences (municipal CMS
