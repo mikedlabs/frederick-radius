@@ -151,6 +151,22 @@ export function eventCardVisual(event: EventWithMeta): EventCardVisual | null {
   return VENUE_VISUALS[event.venue_place_slug] ?? null;
 }
 
+/** Seasonal archive scenes are owned photography, not this event's image. */
+export function isSeasonalArchiveSrc(src: string): boolean {
+  return src.includes("/images/seasons/");
+}
+
+/**
+ * Today's optional top photograph. It must belong to the lead event and must
+ * not be a dated seasonal stand-in. Place-photo fallbacks are rejected later
+ * by the cover (1px signal / `x-photo-fallback`).
+ */
+export function todayLeadEventVisual(event: EventWithMeta): EventCardVisual | null {
+  const visual = eventCardVisual(event);
+  if (!visual || isSeasonalArchiveSrc(visual.src)) return null;
+  return visual;
+}
+
 export type HorizonVisualPlan = {
   leadVisual: EventCardVisual | null;
   promotedIndex: number;

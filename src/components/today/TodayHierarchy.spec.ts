@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 const todayPage = readFileSync("src/app/(app)/today/page.tsx", "utf8");
 const todayAsk = readFileSync("src/components/today/TodayAsk.tsx", "utf8");
 const todayMasthead = readFileSync("src/components/today/TodayMasthead.tsx", "utf8");
-const geographicDoorway = readFileSync("src/components/today/TodayGeographicDoorway.tsx", "utf8");
+const tonightHeadline = readFileSync("src/components/today/TonightHeadline.tsx", "utf8");
 const globalCss = readFileSync("src/app/globals.css", "utf8");
 
 describe("Today decision hierarchy", () => {
@@ -45,7 +45,6 @@ describe("Today decision hierarchy", () => {
 
   it("keeps the exact scene and real answer before the four quick needs, with categories after news", () => {
     const find = renderedPage.indexOf("<TodayAsk embedded showQuickNeeds={false}");
-    const doorway = renderedPage.indexOf("<TodayGeographicDoorway />");
     const shortcuts = renderedPage.indexOf("<TodayQuickNeeds />");
     const lead = renderedPage.indexOf("{decisionLead}");
     const events = renderedPage.indexOf("{whatsOn}");
@@ -53,8 +52,7 @@ describe("Today decision hierarchy", () => {
     const categories = renderedPage.indexOf("<TodayQuickNeeds showShortcuts={false}><CravingStrip /></TodayQuickNeeds>");
 
     expect(find).toBeGreaterThan(-1);
-    expect(doorway).toBeGreaterThan(find);
-    expect(lead).toBeGreaterThan(doorway);
+    expect(lead).toBeGreaterThan(find);
     expect(shortcuts).toBeGreaterThan(lead);
     expect(events).toBeGreaterThan(lead);
     expect(news).toBeGreaterThan(events);
@@ -85,28 +83,26 @@ describe("Today decision hierarchy", () => {
     const weather = todayMasthead.indexOf("<section data-today-weather");
     const find = renderedPage.indexOf("<TodayAsk embedded");
     const scope = renderedPage.indexOf("<TodayScopeStatus");
-    const doorway = renderedPage.indexOf("<TodayGeographicDoorway />");
+    const lead = renderedPage.indexOf("{decisionLead}");
 
     expect(title).toBeGreaterThan(-1);
     expect(weather).toBeGreaterThan(title);
     expect(todayMasthead).not.toContain("<Suspense");
     expect(renderedPage).toContain("weather={\n          <Suspense");
     expect(scope).toBeGreaterThan(find);
-    expect(doorway).toBeGreaterThan(scope);
+    expect(lead).toBeGreaterThan(scope);
   });
 
-  it("uses the exact owned scene as a geographic place action beside one unchanged decision lead", () => {
-    expect(geographicDoorway).toContain('src="/images/seasons/summer/SUMMER CARROL CREEK.jpg"');
-    expect(geographicDoorway).toContain('alt="Carroll Creek in Frederick."');
-    expect(geographicDoorway).toContain('href="/places/carroll-creek-linear-park-frederick"');
-    expect(geographicDoorway).toContain("if (!todayShowsFrederickDoorway(scope)) return null");
-    expect(geographicDoorway).not.toContain("June 2023");
-    expect(geographicDoorway).not.toContain("Mike D");
+  it("keeps Today's first screen text-first and withholds the seasonal archive photo", () => {
+    expect(renderedPage).not.toContain("TodayGeographicDoorway");
+    expect(renderedPage).not.toContain("SUMMER CARROL CREEK");
     expect(todayMasthead).not.toContain("<Image");
+    expect(todayMasthead).toContain("data-today-dateline");
+    expect(todayMasthead).toContain("data-today-weather");
     expect(renderedPage.match(/\{decisionLead\}/g)).toHaveLength(1);
-    expect(renderedPage).toContain("fallback={<TodayGeographicDoorwayPending />}");
-    expect(renderedPage).not.toContain("fallback={<TodayGeographicDoorwayView");
-    expect(renderedPage.indexOf("<TodayGeographicDoorway />")).toBeLessThan(renderedPage.indexOf("{decisionLead}"));
+    expect(tonightHeadline).toContain("todayLeadEventVisual");
+    expect(tonightHeadline).toContain("confirmFallbackHeader");
+    expect(tonightHeadline).toContain("priority={false}");
     expect(renderedPage.indexOf("<TodayPlanTonightLink")).toBeGreaterThan(
       renderedPage.indexOf("<TodayAsk embedded"),
     );

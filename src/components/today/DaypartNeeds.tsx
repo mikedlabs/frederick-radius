@@ -780,16 +780,15 @@ export default function DaypartNeeds({
           briefUsesOpeningSoon ? active.openingSoon : null,
         )
       : daypartShelfHeading(active.picks, active.openingSoon);
-  // The default Today briefing asks this component for one concise answer.
-  // Its full mode remains available for contexts that need comparison. When
-  // opening soon is the more useful transition, it replaces the current-place
-  // card instead of becoming a second recommendation.
+  // The default Today briefing shows today's best three. Full mode remains
+  // for comparison. When opening soon is the more useful transition, it
+  // replaces the current-place cards instead of becoming a fourth pick.
   const visiblePicks = decisionPicks.slice(
     0,
     variant === "brief"
       ? briefUsesOpeningSoon
         ? 0
-        : 1
+        : 3
       : active.openingSoon
         ? 2
         : 3,
@@ -908,7 +907,7 @@ export default function DaypartNeeds({
           >
             {/* Mirrors the loaded shape (grid on phones, rail from sm) so the
                 answer does not jump from a row to a grid when it arrives. */}
-            {(variant === "brief" ? [0] : [0, 1, 2]).map((slot) => (
+            {[0, 1, 2].map((slot) => (
               <div
                 key={slot}
                 className="w-full shrink-0 sm:w-auto"
@@ -956,7 +955,7 @@ export default function DaypartNeeds({
                     <DaypartPickCard
                       place={place}
                       category={active.category}
-                      eager={index === 0}
+                      eager={false}
                       lead={index === 0}
                       hydratePhoto={variant === "brief" && index === 0}
                     />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { eventCardVisual, planHorizonVisual } from "./eventVisuals";
+import { eventCardVisual, planHorizonVisual, todayLeadEventVisual } from "./eventVisuals";
 
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
   return {
@@ -185,6 +185,24 @@ describe("eventCardVisual", () => {
       presentation: "photo",
       attribution,
     });
+  });
+});
+
+describe("todayLeadEventVisual", () => {
+  it("keeps a credited event image and rejects a seasonal archive stand-in", () => {
+    expect(
+      todayLeadEventVisual(
+        event({
+          source: "ticketmaster",
+          hero_image: "https://s1.ticketm.net/dam/a/approved-event.jpg",
+        }),
+      )?.src,
+    ).toBe("https://s1.ticketm.net/dam/a/approved-event.jpg");
+    expect(
+      todayLeadEventVisual(
+        event({ venue_place_slug: "carroll-creek-linear-park-frederick" }),
+      ),
+    ).toBeNull();
   });
 });
 

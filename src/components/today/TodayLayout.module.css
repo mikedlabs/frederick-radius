@@ -294,13 +294,11 @@
 }
 
 .places [data-today-decision-density="brief"] :global(.today-answer-shelf) {
-  display: block;
   padding-right: 0;
 }
 
 .places [data-today-decision-density="brief"] [data-today-place-card="lead"] {
   width: 100%;
-  min-height: 112px;
 }
 
 .eventRow {

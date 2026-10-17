@@ -816,7 +816,7 @@ describe("DaypartNeeds", () => {
     expect(html).not.toContain("Fourth");
   });
 
-  it("keeps the briefing variant to one useful lead with a route to every choice", () => {
+  it("keeps the briefing variant to today's best three with a route to every choice", () => {
     const html = renderToStaticMarkup(
       createElement(DaypartNeeds, {
         variant: "brief",
@@ -825,7 +825,7 @@ describe("DaypartNeeds", () => {
             category: "coffee",
             label: "Coffee",
             href: "/category/coffee",
-            picks: ["Lead", "Second", "Third"].map((name, index) => ({
+            picks: ["Lead", "Second", "Third", "Fourth"].map((name, index) => ({
               slug: `pick-${index}`,
               name,
               rating: 4.8 - index / 10,
@@ -849,12 +849,16 @@ describe("DaypartNeeds", () => {
     expect(html).toContain('aria-label="Open places right now"');
     expect(html).not.toContain("Open now and soon");
     expect(html).toContain("Lead");
-    expect(html).not.toContain("Second");
-    expect(html).not.toContain("Third");
+    expect(html).toContain("Second");
+    expect(html).toContain("Third");
+    expect(html).not.toContain("Fourth");
     expect(html).not.toContain("Opening Next");
     expect(html).not.toContain('role="tablist"');
     expect(html).toContain('href="/category/coffee"');
     expect(html).toContain("Browse places");
+    expect(html).not.toContain("Save");
+    expect(html.match(/data-today-place-card=/g)).toHaveLength(3);
+    expect(html).not.toContain('fetchpriority="high"');
   });
 
   it("lets an opening-soon transition replace an uncertain briefing pick", () => {

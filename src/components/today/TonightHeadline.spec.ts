@@ -132,8 +132,24 @@ describe("TonightHeadline", () => {
     expect(html).toContain("Test photographer");
     expect(html).toContain("Report photo");
     expect(html.indexOf("</a>")).toBeLessThan(html.indexOf("Venue · Test venue"));
-    expect(html).toContain('src="/api/place-photo?name=places%2Fvenue-photo"');
+    expect(html).toContain("/api/place-photo?name=places%2Fvenue-photo");
+    expect(html).toContain("fallback=signal");
     expect(html).not.toContain("/_next/image");
+  });
+
+  it("does not use a seasonal archive photograph as Today's lead image", () => {
+    const html = renderToStaticMarkup(
+      createElement(TonightHeadline, {
+        event: event({
+          venue_place_slug: "carroll-creek-linear-park-frederick",
+        }),
+        now,
+      }),
+    );
+
+    expect(html).not.toContain("SUMMER CARROL CREEK");
+    expect(html).not.toContain("<img");
+    expect(html).toContain(">View event<");
   });
 
   it("uses the one-shot editorial photo treatment while keeping link motion optional", () => {
@@ -154,6 +170,9 @@ describe("TonightHeadline", () => {
     );
 
     expect(imageHtml).toContain("ken-burns object-cover");
+    expect(imageHtml).toContain('data-cover-motion="still"');
+    expect(imageHtml).not.toContain("ken-burns-ready");
+    expect(imageHtml).not.toContain('fetchpriority="high"');
     expect(noImageHtml).toContain(
       "motion-safe:group-hover:translate-x-0.5",
     );
@@ -177,5 +196,6 @@ describe("TonightHeadline", () => {
     expect(html).not.toContain("<h2");
     expect(html).toContain('loading="lazy"');
     expect(html).not.toContain('rel="preload"');
+    expect(html).not.toContain('fetchpriority="high"');
   });
 });

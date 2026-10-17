@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import type { EventWithMeta } from "@/lib/loaders/events";
 // Data-free formatter (never the loader) so this stays a light leaf.
@@ -9,8 +8,11 @@ import { isEventLiveNow } from "@/lib/eventWhenLabel";
 import { isKeysEvent } from "@/lib/today/keysEvent";
 import KeysCard from "@/components/today/KeysCard";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
-import { eventCardVisual } from "@/components/event/eventVisuals";
+import { todayLeadEventVisual } from "@/components/event/eventVisuals";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
+import KenBurnsImage from "@/components/media/KenBurnsImage";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
+import { placePhotoFailureSignalSrc } from "@/lib/place-card-photo";
 import OfflineTodayCapture from "@/components/pwa/OfflineTodayCapture";
 import { easternDayKey } from "@/lib/tz";
 import { eventTown } from "@/lib/events/eventTown";
@@ -56,8 +58,10 @@ export default function TonightHeadline({
   const live = isEventLiveNow(event, now);
   const date = eventDateBlock(event);
   const accent = CATEGORY_BY_SLUG[event.category]?.color ?? "#7A7975";
-  const approvedVisual = eventCardVisual(event);
-  const featureImage = approvedVisual?.src;
+  const approvedVisual = todayLeadEventVisual(event);
+  const featureImage = approvedVisual
+    ? placePhotoFailureSignalSrc(proxyPhotoAtWidth(approvedVisual.src, 720))
+    : undefined;
   const tonight = !event.is_all_day && easternStartHour(event.starts_at) >= 17;
   // The one editor's pick, and it SAYS so (the unlabeled hero was the first
   // "why is this big?" of the old section) — same wording the What's-on
@@ -149,16 +153,17 @@ export default function TonightHeadline({
                 className="relative mt-3 aspect-[16/9] w-full overflow-hidden rounded-[var(--app-radius-lg)] sm:aspect-[21/9]"
                 style={{ boxShadow: "var(--app-elev-1), var(--app-edge)" }}
               >
-                <Image
+                <KenBurnsImage
                   src={featureImage}
                   alt=""
                   fill
-                  priority={!embedded}
+                  priority={false}
+                  confirmFallbackHeader
                   unoptimized={featureImage.startsWith("/api/place-photo")}
                   sizes="(max-width: 640px) 100vw, 720px"
                   placeholder="blur"
                   blurDataURL={PAPER_CREAM_BLUR}
-                  className="ken-burns object-cover"
+                  className="object-cover"
                 />
                 <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent, opacity: 0.9 }} />
               </figure>
