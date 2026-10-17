@@ -27,7 +27,7 @@ export const PartialSafetyRead: Story = {
     const heading = canvas.getByRole("heading", { level: 1, name: "This afternoon in Frederick County" });
     await expect(heading).toBeVisible();
     await expect(heading).toHaveTextContent(/^This afternoon$/);
-    await expect(canvas.getByText(/Frederick County.*Friday, October 16/)).toBeVisible();
+    await expect(canvas.getByText("Friday, October 16", { exact: true })).toBeVisible();
     await expect(canvas.getByText("The air-quality reading is unavailable.")).toBeVisible();
     const details = canvas.getByText("Forecast details", { exact: true });
     const forecast = canvas.getByRole("link", { name: /Full forecast.*Frederick/ });

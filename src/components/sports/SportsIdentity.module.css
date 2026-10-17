@@ -32,13 +32,17 @@
 .teamHeading h2 { margin: .1rem 0 .2rem; font-size: clamp(1.75rem, 5.7vw, 2.5rem); font-weight: 850; line-height: 1.02; letter-spacing: -.035em; overflow-wrap: anywhere; }
 .teamMonogram { display: grid; width: 4rem; height: 4rem; flex: 0 0 auto; place-items: center; border-radius: .75rem; background: var(--team-secondary); color: var(--team-on-secondary); font-size: 1.3rem; font-weight: 900; letter-spacing: -.06em; }
 
-.campusGrid { display: grid; gap: .75rem; }
-.campusCard { position: relative; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 1rem; min-height: 10rem; padding: 1.1rem; overflow: hidden; border: 1px solid color-mix(in srgb, var(--team-secondary) 65%, var(--team-primary)); border-radius: var(--app-radius-lg); background: var(--team-primary); color: var(--team-on-primary); }
-.campusCard::after { position: absolute; right: 0; bottom: 0; width: 42%; height: .55rem; background: var(--team-secondary); content: ""; }
+.sectionTitle { color: var(--app-ink); font-family: var(--font-sans), sans-serif; font-size: 1.375rem; font-weight: 800; line-height: 1.15; letter-spacing: -.035em; }
+.sectionHint { max-width: 36rem; margin-top: .5rem; color: var(--app-ink-2); font-size: .875rem; line-height: 1.45; }
+.campusGrid { display: grid; gap: .5rem; container-type: inline-size; }
+.campusCard { position: relative; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: .8rem; min-height: 7.75rem; padding: .875rem; overflow: hidden; border: 1px solid color-mix(in srgb, var(--team-secondary) 65%, var(--team-primary)); border-radius: var(--app-radius-lg); background: var(--team-primary); color: var(--team-on-primary); }
+.campusCard .teamMonogram { width: 3rem; height: 3rem; border-radius: .65rem; font-size: 1rem; }
 .campusCopy { min-width: 0; overflow-wrap: anywhere; }
 .campusSchool { display: block; font-size: .8125rem; font-weight: 650; line-height: 1.35; }
-.campusName { display: block; margin-top: .4rem; font-size: clamp(1.65rem, 7.2vw, 2.5rem); font-weight: 850; line-height: .98; letter-spacing: -.04em; overflow-wrap: anywhere; }
-.campusLevel { display: block; margin-top: .6rem; font-size: .75rem; font-weight: 550; line-height: 1.4; }
+.campusName { display: block; margin-top: .2rem; font-size: clamp(1.5rem, 6.5vw, 1.875rem); font-weight: 850; line-height: .98; letter-spacing: -.04em; overflow-wrap: anywhere; }
+.campusLevel { display: block; margin-top: .3rem; font-size: .75rem; font-weight: 550; line-height: 1.4; }
+.campusAction { display: block; margin-top: .35rem; font-size: .75rem; font-weight: 700; text-decoration: underline; text-underline-offset: .16em; }
+.page .schoolTitle { margin-top: .2rem; font-family: var(--font-sans), sans-serif; font-size: 1.25rem; font-weight: 800; line-height: 1.1; letter-spacing: -.03em; }
 .campusArrow { width: 1.2rem; height: 1.2rem; align-self: start; }
 .campusCard:focus-visible, .heroActions a:focus-visible { outline: 3px solid var(--app-link); outline-offset: 4px; }
 .campusCard:hover { box-shadow: var(--app-elev-2); }
@@ -90,7 +94,7 @@
 
 @media (min-width: 760px) {
   .campusGrid { grid-template-columns: repeat(3,minmax(0,1fr)); }
-  .campusCard { min-height: 15rem; grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: 1rem .5rem; }
+  .campusCard { min-height: 11rem; grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: 1rem .5rem; }
   .campusCard .teamMonogram { grid-column: 1; }
   .campusCopy { grid-column: 1 / -1; grid-row: 2; }
   .campusArrow { grid-column: 2; grid-row: 1; }
@@ -105,4 +109,13 @@
   .campusName { font-size: 1.5rem; }
   .gameSummary { grid-template-columns: 2.75rem minmax(0,1fr) .85rem; gap: .65rem; padding: .85rem; }
   .gameMark { width: 2.75rem; }
+}
+
+/* A font-relative threshold also responds to enlarged text. Keep the badge
+   and arrow together, then give the team name the whole readable line. */
+@container (max-width: 18rem) {
+  .campusCard { grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: .5rem; }
+  .campusCard .teamMonogram { grid-column: 1; grid-row: 1; }
+  .campusCopy { grid-column: 1 / -1; grid-row: 2; }
+  .campusArrow { grid-column: 2; grid-row: 1; }
 }

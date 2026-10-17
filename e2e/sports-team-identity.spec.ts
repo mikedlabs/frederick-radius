@@ -64,14 +64,19 @@ for (const appearance of ["light", "dark"] as const) {
   }
 }
 
-test("Sports identity remains usable at 200% text size on a narrow phone", async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 844 });
+for (const width of [320, 390]) {
+test(`Sports identity remains usable at 200% text size on a ${width}px phone`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 844 });
   await page.goto("/sports", { waitUntil: "domcontentloaded" });
   await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
   for (const team of colleges) {
     const card = page.getByRole("link", { name: team.name, exact: true });
     await expect(card).toBeVisible();
     expect(await card.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+    const copyWidth = (await card.locator("strong").locator("..").boundingBox())!.width;
+    expect(copyWidth, "Enlarged team text needs a readable column, not one or two characters per line").toBeGreaterThanOrEqual(120);
+    await testInfo.attach(`${team.id}-large-text-width`, { contentType: "application/json", body: JSON.stringify({ width, copyWidth }) });
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
 });
+}

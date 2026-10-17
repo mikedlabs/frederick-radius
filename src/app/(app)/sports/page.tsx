@@ -267,11 +267,8 @@ export default function SportsPage() {
 
       {/* ── College and high-school sports ─────────────────────────── */}
         <section>
-        <SectionHeading title="College and high-school sports" />
-        <p className="mt-2 max-w-[42rem] text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          The native schedule above carries college games. These official team
-          pages remain available for late changes, rosters, and full-season records.
-        </p>
+        <h2 className={styles.sectionTitle}>College teams</h2>
+        <p className={styles.sectionHint}>Open an official team calendar for schedules and results.</p>
 
         <div className={`${styles.campusGrid} mt-4`}>
           {COLLEGE_TEAMS.map((college) => {
@@ -292,6 +289,7 @@ export default function SportsPage() {
                   <span className={styles.campusSchool}>{team.name}</span>
                   <strong className={styles.campusName}>{team.nickname}</strong>
                   <small className={styles.campusLevel}>{college.level}</small>
+                  <span className={styles.campusAction}>Team calendar</span>
                 </span>
                 <ArrowUpRight className={styles.campusArrow} strokeWidth={2} aria-hidden />
               </a>
@@ -306,26 +304,13 @@ export default function SportsPage() {
             </div>
             <div className="min-w-0">
               <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em]">FCPS athletics</p>
-              <h3>Ten schools. One place to start.</h3>
-              <p>Use the county hub for official information, then open the live schedule, tickets, or stream.</p>
+              <h3 className={styles.schoolTitle}>High school sports</h3>
             </div>
-          </div>
-
-          <div className="sports-schools-actions">
-            <a href={FCPS_SCHEDULES} target="_blank" rel="noopener noreferrer">
-              Schedules <ArrowUpRight aria-hidden />
-            </a>
-            <a href={FCPS_TICKETS} target="_blank" rel="noopener noreferrer">
-              Tickets <ArrowUpRight aria-hidden />
-            </a>
-            <a href={FCPS_STREAMS} target="_blank" rel="noopener noreferrer">
-              Watch <ArrowUpRight aria-hidden />
-            </a>
           </div>
 
           <details className="sports-school-list">
             <summary>
-              <span>See all FCPS teams</span>
+              <span>Choose your school</span>
               <ChevronDown aria-hidden />
             </summary>
             <div className="sports-school-chips">
@@ -341,6 +326,17 @@ export default function SportsPage() {
               <ArrowUpRight aria-hidden />
             </a>
           </details>
+          <div className="sports-schools-actions">
+            <a href={FCPS_SCHEDULES} aria-label="Search schedules on ArbiterLive" target="_blank" rel="noopener noreferrer">
+              ArbiterLive <ArrowUpRight aria-hidden />
+            </a>
+            <a href={FCPS_TICKETS} aria-label="Search tickets on GoFan" target="_blank" rel="noopener noreferrer">
+              GoFan <ArrowUpRight aria-hidden />
+            </a>
+            <a href={FCPS_STREAMS} aria-label="Search streams on NFHS Network" target="_blank" rel="noopener noreferrer">
+              NFHS Network <ArrowUpRight aria-hidden />
+            </a>
+          </div>
         </div>
         </section>
       </PageChapter>

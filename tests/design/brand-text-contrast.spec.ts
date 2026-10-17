@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import ts from "typescript";
 
 /**
  * Keep the filled action color out of small text. Product text uses
@@ -55,6 +56,34 @@ function findViolations(file: string, source: string): string[] {
   return hits;
 }
 
+
+/** Check only the actionable element's own foreground. A branded fill, border
+ * or a child graphic is a separate role and must not become an exemption for
+ * unreadable navigation text. These two active paths exposed the pressed-token
+ * gap in the broader small-text guard above. */
+function findPressedActionText(file: string, source: string): string[] {
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const hits: string[] = [];
+  function visit(node: ts.Node) {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tag = node.tagName.getText(parsed);
+      if (["Link", "a", "button"].includes(tag)) {
+        const unreadable = node.attributes.properties.some((attribute) => {
+          if (!ts.isJsxAttribute(attribute)) return false;
+          const name = attribute.name.getText(parsed);
+          const value = attribute.initializer?.getText(parsed) ?? "";
+          return (name === "style" && /\bcolor:\s*["']var\(--app-brand-press\)["']/.test(value)) ||
+            (name === "className" && value.includes("text-[var(--app-brand-press)]"));
+        });
+        if (unreadable) hits.push(`${file}:${parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line + 1}`);
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(parsed);
+  return hits;
+}
+
 describe("brand color as small text (WCAG AA guard)", () => {
   it("no small text uses var(--app-brand) — use var(--app-link)", () => {
     const violations: string[] = [];
@@ -69,4 +98,22 @@ describe("brand color as small text (WCAG AA guard)", () => {
         `icons, fills, and large display type.\n${violations.join("\n")}`,
     ).toEqual([]);
   });
+
+  it.each(["app/(app)/today/page.tsx", "components/map/MapListPeek.tsx"])(
+    "%s keeps its navigation text readable in the selected appearance",
+    (file) => {
+      expect(findPressedActionText(file, readFileSync(join(SRC, file), "utf8"))).toEqual([]);
+    },
+  );
+
+  it("detects inline and utility pressed-color text while permitting actual filled controls", () => {
+    const source = `const actions = <>
+      <a href="/events" style={{ color: "var(--app-brand-press)" }}>Events</a>
+      <button className="text-[var(--app-brand-press)]">Show more</button>
+      <button style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}>Apply</button>
+      <a href="/events" style={{ color: "var(--app-link)" }}>Events</a>
+    </>;`;
+    expect(findPressedActionText("fixture.tsx", source)).toEqual(["fixture.tsx:2", "fixture.tsx:3"]);
+  });
+
 });
