@@ -143,14 +143,15 @@ export async function GET(request: NextRequest) {
   if (!skipLiveEventAssembly) {
     try {
       // Both Map and global Find use the same durable archive contract. A
-      // resolved snapshot may still be degraded because the archive is stale,
-      // missing, or timed out; that state is not a healthy empty calendar.
+      // resolved snapshot may still be sourceHealth.degraded because some
+      // feeds are behind; that is not an empty calendar. Only the empty
+      // no-copy origin means live events could not be checked at all.
       const snapshot = await loadEventArchiveSnapshot(new Date(), {
         timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
         seedFallback: false,
         caller: "search-api",
       });
-      liveEventsUnavailable = snapshot.sourceHealth?.degraded === true;
+      liveEventsUnavailable = snapshot.origin === "none";
       searchResult = qualifiedSearchIndex(
         q,
         limit,

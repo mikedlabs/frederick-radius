@@ -225,6 +225,7 @@ describe("Today durable event snapshot", () => {
         message: "The event schedule is taking longer than expected to load.",
       }],
     });
+    expect(result.origin).toBe("seeds");
   });
 
   it("does not let the Today route start the live provider fan-out", () => {
@@ -331,6 +332,7 @@ describe("Today durable event snapshot", () => {
       }),
     );
     expect(result.sourceHealth.degraded).toBe(false);
+    expect(result.origin).toBe("archive");
     expect(result.servedFromLastGood).toBeUndefined();
   });
 
@@ -346,9 +348,11 @@ describe("Today durable event snapshot", () => {
 
     expect(page).toContain("timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS");
     expect(page).toContain("seedFallback: false");
+    expect(page).toContain('snapshot.origin === "none"');
     expect(page).not.toContain("TODAY_EVENT_SNAPSHOT_TIMEOUT_MS");
     expect(endpoint).toContain("timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS");
     expect(endpoint).toContain("seedFallback: false");
+    expect(endpoint).toContain('snapshot.origin === "none"');
     expect(endpoint).not.toContain("TODAY_EVENT_SNAPSHOT_TIMEOUT_MS");
   });
 
@@ -546,6 +550,7 @@ describe("archive last-good fallback", () => {
       "archive-event-2026-07-31",
     );
     expect(result.sourceHealth.degraded).toBe(false);
+    expect(result.origin).toBe("last-good");
     expect(result.servedFromLastGood).toBe(true);
     expect(warn).toHaveBeenCalledWith(
       "[events] Archive read timed out.",
@@ -574,6 +579,7 @@ describe("archive last-good fallback", () => {
 
     expect(result.publicEvents).toEqual([]);
     expect(result.unified).toEqual([]);
+    expect(result.origin).toBe("none");
     expect(result.servedFromLastGood).toBeUndefined();
     expect(result.sourceHealth).toEqual({
       degraded: true,
@@ -605,6 +611,7 @@ describe("archive last-good fallback", () => {
 
     expect(result.publicEvents).toEqual([]);
     expect(result.sourceHealth.degraded).toBe(true);
+    expect(result.origin).toBe("none");
     expect(result.servedFromLastGood).toBeUndefined();
   });
 });

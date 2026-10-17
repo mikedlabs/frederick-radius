@@ -61,6 +61,7 @@ describe("GET /api/search map fast path", () => {
     mocks.loadEventArchiveSnapshot.mockResolvedValue({
       publicEvents: [liveEvent()],
       sourceHealth: { degraded: false, unavailable: [] },
+      origin: "archive",
     });
     mocks.approxLocation.mockResolvedValue({
       origin: null,
@@ -169,6 +170,29 @@ describe("GET /api/search map fast path", () => {
     expect(mocks.loadEventArchiveSnapshot).not.toHaveBeenCalled();
   });
 
+  it("does not label a degraded archive that still returned real events", async () => {
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
+      publicEvents: [liveEvent()],
+      sourceHealth: {
+        degraded: true,
+        unavailable: ["The event schedule has not been refreshed recently."],
+      },
+      origin: "archive",
+    });
+
+    const response = await GET(request("Radius Investor Showcase"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.results).toContainEqual(
+      expect.objectContaining({
+        id: "event:radius-investor-showcase",
+        title: "Radius Investor Showcase",
+      }),
+    );
+    expect(body.meta.liveEventsUnavailable).toBeUndefined();
+  });
+
   it("labels honest base results when live event enrichment rejects", async () => {
     mocks.loadEventArchiveSnapshot.mockRejectedValue(
       new Error("Live event assembly unavailable"),
@@ -183,7 +207,7 @@ describe("GET /api/search map fast path", () => {
   });
 
   it.each(["map", "global"])(
-    "labels a resolved degraded archive in %s search",
+    "labels a resolved unavailable archive in %s search",
     async (origin) => {
       mocks.loadEventArchiveSnapshot.mockResolvedValue({
         publicEvents: [],
@@ -191,6 +215,7 @@ describe("GET /api/search map fast path", () => {
           degraded: true,
           unavailable: ["event archive"],
         },
+        origin: "none",
       });
 
       const response = await GET(request("events tonight", origin));
@@ -210,6 +235,7 @@ describe("GET /api/search map fast path", () => {
         degraded: true,
         unavailable: ["event archive"],
       },
+      origin: "none",
     });
 
     const response = await GET(request("zzqxwvnotreal", "global"));

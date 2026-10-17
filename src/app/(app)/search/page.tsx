@@ -275,7 +275,10 @@ export default async function SearchPage({
       caller: "search",
     });
     eventPool = snapshot.publicEvents;
-    eventsUnavailable = snapshot.sourceHealth.degraded;
+    // A successful or last-good read can still be sourceHealth.degraded when
+    // some feeds are behind. Search only treats the empty no-copy origin as
+    // unavailable; partial calendars still rank as real results.
+    eventsUnavailable = snapshot.origin === "none";
   }
   const result = qualifiedSearch(query, 80, eventPool, { municipality: context.filterMunicipality, contextLabel: context.label, resultKind: kind });
   const hits = query ? result.hits : [];
@@ -571,7 +574,18 @@ export default async function SearchPage({
       {eventsUnavailable && (
         <p role="status" className="border-l-2 pl-3 text-[14px] leading-relaxed" style={{ borderColor: "var(--app-amber)", color: "var(--app-ink-2)" }}>
           Events didn&apos;t load.{" "}
-          <Link href="/events" className="underline underline-offset-2">See all events →</Link>
+          <Link
+            href={town
+              ? contextualSearchResult(
+                  { type: "action", id: "events", title: "Events", subtitle: "", href: "/events" },
+                  { ...result.meta, scopeMunicipality: town },
+                  query,
+                ).href
+              : "/events"}
+            className="underline underline-offset-2"
+          >
+            See all events →
+          </Link>
         </p>
       )}
       {rankedHits.length > 0 && (

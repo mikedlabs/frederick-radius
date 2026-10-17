@@ -166,6 +166,7 @@ describe("submitted search photo budget", () => {
     mocks.eventSnapshot.mockResolvedValue({
       publicEvents: [],
       sourceHealth: { degraded: true },
+      origin: "none",
     });
 
     const html = renderToStaticMarkup(
@@ -188,11 +189,35 @@ describe("submitted search photo budget", () => {
     expect(html).not.toContain("Catoctin Colorfest");
   });
 
+  it("does not show the events-did-not-load line when a degraded archive still has real events", async () => {
+    const eventPool = [{ slug: "archive-event-2026-07-31", title: "Archive event" }];
+    mocks.eventSnapshot.mockResolvedValue({
+      publicEvents: eventPool,
+      sourceHealth: { degraded: true },
+      origin: "archive",
+    });
+
+    const html = renderToStaticMarkup(
+      await SearchPage({ searchParams: Promise.resolve({ q: "Archive event" }) }),
+    );
+
+    expect(mocks.search).toHaveBeenCalledWith(
+      "Archive event",
+      80,
+      eventPool,
+      expect.objectContaining({ resultKind: "all" }),
+    );
+    expect(html).not.toContain("Events didn&#x27;t load.");
+    expect(html).toContain("There are no matches for");
+    expect(html).toContain("Need a recommendation or a plan?");
+  });
+
   it("does not show the events-did-not-load line when a last-good archive returns real events", async () => {
     const eventPool = [{ slug: "archive-event-2026-07-31", title: "Archive event" }];
     mocks.eventSnapshot.mockResolvedValue({
       publicEvents: eventPool,
-      sourceHealth: { degraded: false },
+      sourceHealth: { degraded: true },
+      origin: "last-good",
       servedFromLastGood: true,
     });
 
@@ -208,5 +233,20 @@ describe("submitted search photo budget", () => {
     );
     expect(html).not.toContain("Events didn&#x27;t load.");
     expect(html).not.toContain("may be incomplete");
+  });
+
+  it("keeps the visitor's town on the events recovery link", async () => {
+    mocks.eventSnapshot.mockResolvedValue({
+      publicEvents: [],
+      sourceHealth: { degraded: true },
+      origin: "none",
+    });
+
+    const html = renderToStaticMarkup(
+      await SearchPage({ searchParams: Promise.resolve({ q: "concerts", in: "brunswick" }) }),
+    );
+
+    expect(html).toContain("Events didn&#x27;t load.");
+    expect(html).toContain('href="/events?in=brunswick"');
   });
 });

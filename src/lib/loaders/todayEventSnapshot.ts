@@ -91,8 +91,17 @@ export type EventArchiveSourceHealth = EventSourceHealth & {
   issues: EventArchivePublicIssue[];
 };
 
+export type EventArchiveSnapshotOrigin = "archive" | "last-good" | "seeds" | "none";
+
 export type EventArchiveSnapshot = Omit<UnifiedEvents, "sourceHealth"> & {
   sourceHealth: EventArchiveSourceHealth;
+  /**
+   * Where the payload came from. Search ranks real rows from `archive` and
+   * `last-good` even when sourceHealth.degraded is true (a partial or stale
+   * archive still has events). `none` is the empty no-copy result with no
+   * seeds; that is the only origin Search treats as unavailable.
+   */
+  origin: EventArchiveSnapshotOrigin;
   /** True when this payload is a remembered real archive, not a fresh read. */
   servedFromLastGood?: boolean;
 };
@@ -297,6 +306,7 @@ function curatedFallback(
     unified,
     publicEvents: unified.filter(isPublicEvent),
     sourceHealth: eventArchiveSourceHealth([code]),
+    origin: "seeds",
   };
 }
 
@@ -305,6 +315,7 @@ function emptyFallback(code: EventArchivePublicReasonCode): EventArchiveSnapshot
     unified: [],
     publicEvents: [],
     sourceHealth: eventArchiveSourceHealth([code]),
+    origin: "none",
   };
 }
 
@@ -369,6 +380,7 @@ function archiveFallback(
       ...hydrated,
       unified: hydrated.unified.filter(inWindow),
       publicEvents: hydrated.publicEvents.filter(inWindow),
+      origin: "last-good",
       servedFromLastGood: true,
     };
   }
@@ -457,6 +469,7 @@ export function hydrateTodayEventSnapshot(
     unified,
     publicEvents: unified.filter(isPublicEvent),
     sourceHealth: eventArchiveSourceHealth(issues),
+    origin: "archive",
   };
 }
 
