@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/loaders/todayEventSnapshot", () => ({
   loadEventArchiveSnapshot: mocks.loadEventArchiveSnapshot,
-  TODAY_EVENT_SNAPSHOT_TIMEOUT_MS: 650,
+  EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS: 2_500,
 }));
 
 vi.mock("@/lib/ip-geo", () => ({
@@ -114,7 +114,11 @@ describe("GET /api/search map fast path", () => {
     expect(response.status).toBe(200);
     expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledWith(
       expect.any(Date),
-      { timeoutMs: 650 },
+      {
+        timeoutMs: 2_500,
+        seedFallback: false,
+        caller: "search-api",
+      },
     );
     expect(body.results).toContainEqual(
       expect.objectContaining({
@@ -227,5 +231,13 @@ describe("GET /api/search map fast path", () => {
     await GET(request("public restroom", "global"));
 
     expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledWith(
+      expect.any(Date),
+      {
+        timeoutMs: 2_500,
+        seedFallback: false,
+        caller: "search-api",
+      },
+    );
   });
 });

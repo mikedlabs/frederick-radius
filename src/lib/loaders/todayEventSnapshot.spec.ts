@@ -12,9 +12,11 @@ vi.mock("@/lib/db/client", () => ({
 
 import {
   EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
+  LAST_GOOD_SNAPSHOT_MAX_AGE_MS,
   loadEventArchiveSnapshot,
   hydrateTodayEventSnapshot,
   loadTodayEventSnapshot,
+  resetEventArchiveMemoryForTests,
   TODAY_EVENT_SNAPSHOT_MAX_AGE_MS,
   TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
 } from "./todayEventSnapshot";
@@ -81,6 +83,7 @@ describe("Today durable event snapshot", () => {
     expect(result.sourceHealth.degraded).toBe(false);
   });
   beforeEach(() => {
+    resetEventArchiveMemoryForTests();
     vi.clearAllMocks();
   });
 
@@ -198,6 +201,7 @@ describe("Today durable event snapshot", () => {
   });
 
   it("cancels a slow database read and returns curated fail-soft data", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
     vi.useFakeTimers();
     const cancel = vi.fn();
     const never = Object.assign(new Promise<never>(() => undefined), {
@@ -307,6 +311,47 @@ describe("Today durable event snapshot", () => {
     });
   });
 
+  it("returns a real archive when the read finishes between Today's 1s budget and the browse deadline", async () => {
+    vi.useFakeTimers();
+    mocks.getSql.mockReturnValue(vi.fn(() => new Promise((resolve) => {
+      setTimeout(() => resolve([envelope()]), 1_500);
+    })));
+
+    const pending = loadEventArchiveSnapshot(NOW, {
+      timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
+    });
+    await vi.advanceTimersByTimeAsync(1_001);
+    await vi.advanceTimersByTimeAsync(500);
+    const result = await pending;
+
+    expect(result.publicEvents).toContainEqual(
+      expect.objectContaining({
+        slug: "archive-event-2026-07-31",
+        title: "Archive event",
+      }),
+    );
+    expect(result.sourceHealth.degraded).toBe(false);
+    expect(result.servedFromLastGood).toBeUndefined();
+  });
+
+  it("keeps Search and its API on the browse deadline, not Today's 1s briefing budget", () => {
+    const page = readFileSync(
+      new URL("../../app/(app)/search/page.tsx", import.meta.url),
+      "utf8",
+    );
+    const endpoint = readFileSync(
+      new URL("../../app/api/search/route.ts", import.meta.url),
+      "utf8",
+    );
+
+    expect(page).toContain("timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS");
+    expect(page).toContain("seedFallback: false");
+    expect(page).not.toContain("TODAY_EVENT_SNAPSHOT_TIMEOUT_MS");
+    expect(endpoint).toContain("timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS");
+    expect(endpoint).toContain("seedFallback: false");
+    expect(endpoint).not.toContain("TODAY_EVENT_SNAPSHOT_TIMEOUT_MS");
+  });
+
   it("keeps both public event endpoints on runtime rendering", () => {
     const todayEndpoint = readFileSync(
       new URL("../../app/api/today/events/route.ts", import.meta.url),
@@ -323,6 +368,10 @@ describe("Today durable event snapshot", () => {
 });
 
 describe("archive read failures stay diagnostic without becoming public copy", () => {
+  beforeEach(() => {
+    resetEventArchiveMemoryForTests();
+  });
+
   afterEach(() => {
     mocks.getSql.mockReset();
     vi.restoreAllMocks();
@@ -418,6 +467,10 @@ describe("archive read failures stay diagnostic without becoming public copy", (
 // A unit test cannot see that difference. What it CAN do is refuse to let a
 // Date reach the driver at all, which is the property that actually matters.
 describe("archive query parameters", () => {
+  beforeEach(() => {
+    resetEventArchiveMemoryForTests();
+  });
+
   afterEach(() => {
     mocks.getSql.mockReset();
   });
@@ -447,5 +500,111 @@ describe("archive query parameters", () => {
       (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value),
     );
     expect(isoish.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("archive last-good fallback", () => {
+  beforeEach(() => {
+    resetEventArchiveMemoryForTests();
+  });
+
+  afterEach(() => {
+    mocks.getSql.mockReset();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  function answeringSql(rows: unknown[]) {
+    return () => {
+      const pending: Promise<unknown[]> & { cancel?: () => void } =
+        Promise.resolve(rows);
+      pending.cancel = () => undefined;
+      return pending;
+    };
+  }
+
+  function hangingSql() {
+    return () =>
+      Object.assign(new Promise<never>(() => undefined), {
+        cancel: () => undefined,
+      });
+  }
+
+  it("serves this server's last answered read when the next read times out", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    mocks.getSql.mockReturnValue(answeringSql([envelope()]));
+    await loadEventArchiveSnapshot(NOW);
+
+    vi.useFakeTimers();
+    mocks.getSql.mockReturnValue(hangingSql());
+    const later = new Date(NOW.getTime() + 2 * 60_000);
+    const pending = loadEventArchiveSnapshot(later, { seedFallback: false });
+    await vi.advanceTimersByTimeAsync(EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS + 1);
+    const result = await pending;
+
+    expect(result.publicEvents.map((row) => row.slug)).toContain(
+      "archive-event-2026-07-31",
+    );
+    expect(result.sourceHealth.degraded).toBe(false);
+    expect(result.servedFromLastGood).toBe(true);
+    expect(warn).toHaveBeenCalledWith(
+      "[events] Archive read timed out.",
+      expect.objectContaining({
+        timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
+        elapsedMs: expect.any(Number),
+      }),
+    );
+    expect(warn).toHaveBeenCalledWith(
+      "[events] Archive read failed; serving the last answered read.",
+      expect.objectContaining({ code: "event_archive_timeout", ageMs: 2 * 60_000 }),
+    );
+  });
+
+  it("returns no seed events when a timeout has nothing remembered", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.useFakeTimers();
+    mocks.getSql.mockReturnValue(hangingSql());
+    const pending = loadEventArchiveSnapshot(NOW, {
+      timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
+      seedFallback: false,
+      caller: "search",
+    });
+    await vi.advanceTimersByTimeAsync(EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS + 1);
+    const result = await pending;
+
+    expect(result.publicEvents).toEqual([]);
+    expect(result.unified).toEqual([]);
+    expect(result.servedFromLastGood).toBeUndefined();
+    expect(result.sourceHealth).toEqual({
+      degraded: true,
+      unavailable: ["The event schedule is taking longer than expected to load."],
+      issues: [{
+        code: "event_archive_timeout",
+        message: "The event schedule is taking longer than expected to load.",
+      }],
+    });
+    expect(warn).toHaveBeenCalledWith(
+      "[events] Archive read timed out.",
+      expect.objectContaining({
+        timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
+        elapsedMs: expect.any(Number),
+        caller: "search",
+      }),
+    );
+  });
+
+  it("stops reusing a remembered read after five minutes", async () => {
+    mocks.getSql.mockReturnValue(answeringSql([envelope()]));
+    await loadEventArchiveSnapshot(NOW);
+
+    mocks.getSql.mockReturnValue(null);
+    const result = await loadEventArchiveSnapshot(
+      new Date(NOW.getTime() + LAST_GOOD_SNAPSHOT_MAX_AGE_MS + 1),
+      { seedFallback: false },
+    );
+
+    expect(result.publicEvents).toEqual([]);
+    expect(result.sourceHealth.degraded).toBe(true);
+    expect(result.servedFromLastGood).toBeUndefined();
   });
 });

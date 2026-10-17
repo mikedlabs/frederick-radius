@@ -10,7 +10,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/search", () => ({ qualifiedSearch: (...args: unknown[]) => ({ hits: mocks.search(...args), meta: { qualifiers: {} } }), isEventSearchIntent: () => false }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
-vi.mock("@/lib/loaders/todayEventSnapshot", () => ({ loadEventArchiveSnapshot: (...args: unknown[]) => mocks.eventSnapshot(...args), TODAY_EVENT_SNAPSHOT_TIMEOUT_MS: 1000 }));
+vi.mock("@/lib/loaders/todayEventSnapshot", () => ({
+  loadEventArchiveSnapshot: (...args: unknown[]) => mocks.eventSnapshot(...args),
+  EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS: 2_500,
+}));
 vi.mock("@/components/search/SearchBrowsePosition", () => ({ default: () => null }));
 vi.mock("@/components/search/SearchRefinements", () => ({ default: () => <div data-search-area /> }));
 vi.mock("@/lib/search/answer", () => ({ primaryAnswerFor: () => undefined }));
@@ -142,5 +145,67 @@ describe("submitted search photo budget", () => {
     await SearchPage({ searchParams: Promise.resolve({ q: "coffee", kind }) });
     expect(mocks.eventSnapshot).not.toHaveBeenCalled();
     expect(mocks.search).toHaveBeenCalledWith("coffee", 80, undefined, expect.objectContaining({ resultKind: kind }));
+  });
+
+  it("gives the event archive the browse deadline and never ranks curated seeds as a fallback", async () => {
+    await SearchPage({ searchParams: Promise.resolve({ q: "concerts" }) });
+    expect(mocks.eventSnapshot).toHaveBeenCalledWith(
+      expect.any(Date),
+      {
+        timeoutMs: 2_500,
+        seedFallback: false,
+        caller: "search",
+      },
+    );
+  });
+
+  it.each([
+    ["All matches", { q: "concerts" }, "all"],
+    ["the Events tab", { q: "concerts", kind: "event" }, "event"],
+  ] as const)("says events did not load and ranks no seed events on %s when the archive is empty", async (_label, params, resultKind) => {
+    mocks.eventSnapshot.mockResolvedValue({
+      publicEvents: [],
+      sourceHealth: { degraded: true },
+    });
+
+    const html = renderToStaticMarkup(
+      await SearchPage({ searchParams: Promise.resolve(params) }),
+    );
+
+    expect(mocks.search).toHaveBeenCalledWith(
+      "concerts",
+      80,
+      [],
+      expect.objectContaining({ resultKind }),
+    );
+    expect(html).toContain("Events didn't load.");
+    expect(html).toContain("See all events →");
+    expect(html).toContain('href="/events"');
+    expect(html).not.toContain("may be incomplete");
+    expect(html).not.toContain("The current event schedule is unavailable");
+    expect(html).not.toContain("There are no matches for");
+    expect(html).not.toContain("Catoctin Colorfest");
+  });
+
+  it("does not show the events-did-not-load line when a last-good archive returns real events", async () => {
+    const eventPool = [{ slug: "archive-event-2026-07-31", title: "Archive event" }];
+    mocks.eventSnapshot.mockResolvedValue({
+      publicEvents: eventPool,
+      sourceHealth: { degraded: false },
+      servedFromLastGood: true,
+    });
+
+    const html = renderToStaticMarkup(
+      await SearchPage({ searchParams: Promise.resolve({ q: "Archive event" }) }),
+    );
+
+    expect(mocks.search).toHaveBeenCalledWith(
+      "Archive event",
+      80,
+      eventPool,
+      expect.objectContaining({ resultKind: "all" }),
+    );
+    expect(html).not.toContain("Events didn't load.");
+    expect(html).not.toContain("may be incomplete");
   });
 });
