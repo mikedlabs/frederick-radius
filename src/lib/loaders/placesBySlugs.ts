@@ -1,5 +1,8 @@
+import "server-only";
+
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import { withPrimaryGooglePhotoCredit } from "@/lib/loaders/selectedPlacePhoto";
 import {
   MAX_FOLLOWED_PLACES,
   MAX_FOLLOW_SLUG_LENGTH,
@@ -35,7 +38,7 @@ export function resolvePlacesBySlugs(
     }
     seen.add(slug);
     const place = clientPlaceBySlug(slug);
-    if (place) places.push(place);
+    if (place) places.push(withPrimaryGooglePhotoCredit(place));
   }
   return places;
 }
