@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -12,6 +12,16 @@ const source = "https://www.google.com/maps/contrib/123/photo/456";
 const pixel = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=", "base64");
 
 test.use({ serviceWorkers: "block" });
+
+async function expectPreviewActions(article: Locator, place: Locator, placeSlug: string, name: string, scope: string) {
+  const origin = `/today?${new URLSearchParams({ in: scope })}`;
+  await expect(place).toHaveAccessibleName(`View place: ${name}`);
+  await expect(place).toHaveAttribute("href", `/places/${placeSlug}?${new URLSearchParams({ returnTo: origin })}`);
+  const map = article.getByRole("link", { name: `Map: ${name}`, exact: true });
+  await expect(map).toHaveAttribute("href", `/map?${new URLSearchParams({ place: placeSlug, in: scope, returnTo: origin })}`);
+  await expect(place.locator("a")).toHaveCount(0);
+  await expect(article.locator("a a")).toHaveCount(0);
+}
 
 for (const width of [320, 375, 390, 430, 1366]) {
   test(`Today preserves readable town context and physical photo credits at ${width}px`, async ({ page }, testInfo) => {
@@ -37,19 +47,23 @@ for (const width of [320, 375, 390, 430, 1366]) {
     });
     await page.goto("/today?in=brunswick", { waitUntil: "domcontentloaded" });
     const place = page.locator(`[data-today-place-lead][data-decision-id="${slug}"]`);
-    await expect(place.locator("img")).toBeVisible();
-    await expect(place.locator("[data-today-pick-fact]")).toHaveText("Hours not confirmed");
-    await expect(place.locator("[data-today-pick-location]")).toHaveText("Brunswick · 6 min walk");
+    const article = page.locator("article[data-today-place-preview]").filter({ has: place });
+    await expect(article).toHaveCount(1);
+    await expectPreviewActions(article, place, slug, "Beans in the Belfry", "brunswick");
+    await article.scrollIntoViewIfNeeded();
+    await expect(article.locator("img")).toBeVisible();
+    await expect.poll(() => article.locator("img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 1 && image.naturalHeight > 1)).toBe(true);
+    await expect(article.locator("[data-today-pick-fact]")).toHaveText("Hours not confirmed");
+    await expect(article.locator("[data-today-pick-location]")).toHaveText("Brunswick · 6 min walk");
     await page.evaluate(() => document.fonts.ready);
-    const article = place.locator("..");
     const places = page.locator('[aria-label="Places for your area"]');
     const articleBox = (await article.boundingBox())!;
     const placesBox = (await places.boundingBox())!;
     expect(articleBox.width).toBeGreaterThanOrEqual(placesBox.width - 2);
     for (const selector of ["[data-today-pick-fact]", "[data-today-pick-location]"]) {
-      expect(await place.locator(selector).evaluate((element) => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(14);
+      expect(await article.locator(selector).evaluate((element) => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(14);
     }
-    expect(await place.locator("[data-today-pick-name]").evaluate((element) => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(17);
+    expect(await article.locator("[data-today-pick-name]").evaluate((element) => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(17);
     expect(await article.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
     expect(metadataRequests).toBe(1);
     expect(photoRequests.some((url) => new URL(url).searchParams.get("name") === resource)).toBe(true);
@@ -101,13 +115,18 @@ for (const failure of ["pixel", "error"] as const) {
     });
     await page.goto("/today?in=brunswick", { waitUntil: "domcontentloaded" });
     const place = page.locator(`[data-today-place-lead][data-decision-id="${slug}"]`);
+    const article = page.locator("article[data-today-place-preview]").filter({ has: place });
+    await expect(article).toHaveCount(1);
+    await expectPreviewActions(article, place, slug, "Beans in the Belfry", "brunswick");
+    await article.scrollIntoViewIfNeeded();
     await expect.poll(() => loads).toBeGreaterThan(0);
-    await expect(place.locator("img")).toHaveCount(0);
-    await expect(place).toContainText("Beans in the Belfry");
-    await expect(place).toContainText("Hours not confirmed");
-    await expect(place).toContainText("Brunswick · 6 min walk");
-    await expect(place).toHaveAttribute("href", `/places/${slug}`);
-    await expect(place.locator("..").getByRole("link", { name: "Google Maps", exact: true })).toHaveCount(0);
+    await expect(article.locator("img")).toHaveCount(0);
+    await expect(article).toContainText("Beans in the Belfry");
+    await expect(article).toContainText("Hours not confirmed");
+    await expect(article).toContainText("Brunswick · 6 min walk");
+    await expect(article).toHaveAttribute("data-has-photo", "false");
+    await expect(article.getByRole("link", { name: "Google Maps", exact: true })).toHaveCount(0);
+    await expect(article.locator(".place-card-photo-credit")).toHaveCount(0);
     await place.scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath(`today-card-${failure}-fallback.png`) });
   });
@@ -136,12 +155,16 @@ test("Today keeps the owned place visual separate from a real answer without an 
   });
   await page.goto("/today?in=county", { waitUntil: "domcontentloaded" });
   const place = page.locator(`[data-today-place-lead][data-decision-id="${pickSlug}"]`);
-  await expect(place).toHaveAttribute("href", "/places/ibiza-cafe");
-  await expect(place.locator("[data-today-pick-name]")).toHaveText("Ibiza Cafe");
-  await expect(place.locator("[data-today-pick-fact]")).toHaveText("Hours not confirmed");
+  const article = page.locator("article[data-today-place-preview]").filter({ has: place });
+  await expect(article).toHaveCount(1);
+  await expectPreviewActions(article, place, pickSlug, "Ibiza Cafe", "county");
+  await expect(article.locator("[data-today-pick-name]")).toHaveText("Ibiza Cafe");
+  await expect(article.locator("[data-today-pick-fact]")).toHaveText("Hours not confirmed");
   await expect.poll(() => metadataRequests).toBe(1);
-  await expect(place.locator("img")).toHaveCount(0);
-  await expect(place).not.toContainText("Carroll Creek");
+  await expect(article.locator("img")).toHaveCount(0);
+  await expect(article).not.toContainText("Carroll Creek");
+  await expect(article).toHaveAttribute("data-has-photo", "false");
+  await expect(article.locator(".place-card-photo-credit")).toHaveCount(0);
   const creek = page.getByRole("link", { name: "View Carroll Creek Linear Park in Frederick", exact: true });
   await expect(creek).toHaveAttribute("href", "/places/carroll-creek-linear-park-frederick");
   await expect(creek).toHaveAttribute("data-photo-state", "loaded");
@@ -150,7 +173,7 @@ test("Today keeps the owned place visual separate from a real answer without an 
   await expect(creek).not.toContainText("Ibiza");
   await expect(page.getByRole("combobox", { name: "Choose your area", exact: true })).toHaveValue("county");
   const quickNeeds = page.getByRole("group", { name: "Quick needs", exact: true });
-  expect(await place.evaluate((element) => Boolean(element.compareDocumentPosition(document.querySelector('[aria-label="Quick needs"]')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  expect(await article.evaluate((element) => Boolean(element.compareDocumentPosition(document.querySelector('[aria-label="Quick needs"]')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
   await expect(quickNeeds.getByRole("link")).toHaveCount(4);
   expect(uncreditedPhotoRequests).toBe(0);
   await testInfo.attach("separate-owned-place-and-uncredited-answer", { contentType: "application/json", body: JSON.stringify({ metadataRequests, uncreditedPhotoRequests, proof: "Real Today composition and owned image; a declared answer/failed credit transport tests honest fallback, not live venue hours or current image availability." }) });

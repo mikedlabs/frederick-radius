@@ -43,8 +43,25 @@
   background: var(--app-bg-sunken);
 }
 
-.lead .photoFace {
-  height: 190px;
+.photoFace > [data-place-card-photo] {
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.openingPhoto {
+  position: relative;
+  display: block;
+  width: 5.75rem;
+  min-height: 84px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.openingPhoto > [data-place-card-photo] {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  aspect-ratio: auto;
 }
 
 .photoRead {
@@ -60,11 +77,6 @@
   font-weight: 650;
   line-height: 1.3;
   overflow-wrap: anywhere;
-}
-
-.lead .pickName {
-  font-size: 21px;
-  letter-spacing: -0.02em;
 }
 
 .pickContext {
@@ -161,12 +173,6 @@
   line-height: 1.4;
 }
 
-@media (min-width: 640px) {
-  .lead .photoFace {
-    height: 180px;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .photoCard,
   .textCard,
@@ -198,4 +204,18 @@
   max-width: 100%;
   overflow-wrap: anywhere;
   outline-offset: -2px;
+}
+
+/* The full comparison shelf keeps its established rail width. The brief
+ * Today layout continues to make its one lead span the reading column. */
+@media (min-width: 640px) {
+  .leadPreview[data-today-place-card="lead"] {
+    width: 14.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .leadPreview[data-today-place-card="lead"] {
+    width: 17.5rem;
+  }
 }

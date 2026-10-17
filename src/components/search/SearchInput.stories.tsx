@@ -34,3 +34,17 @@ export const UrlRequestAt320: Story = {
   args: { defaultValue: "coffee & tea" },
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
 };
+
+
+export const NativeGetKeepsContext: Story = {
+  args: { defaultValue: "coffee & tea", scope: "county", kind: "place", returnTo: "/map?q=coffee&in=brunswick" },
+  play: async ({ canvasElement }) => {
+    const form = canvasElement.querySelector("form")!;
+    await expect(form.getAttribute("action")).toBe("/search");
+    await expect(form.method).toBe("get");
+    // The browser's actual successful controls also work without interception.
+    await expect(Array.from(new FormData(form).entries())).toEqual([
+      ["q", "coffee & tea"], ["returnTo", "/map?q=coffee&in=brunswick"], ["in", "county"], ["kind", "place"],
+    ]);
+  },
+};

@@ -35,7 +35,7 @@ async function readablePlace(canvasElement: HTMLElement) {
   // The enhancement briefly replaces the supplied card with its skeleton.
   // Re-query after the rejected fixture request restores the real shelf.
   await waitFor(() => expect(canvasElement.querySelector("[data-today-place-lead], [data-today-opening-soon]")).toBeVisible());
-  const card = canvasElement.querySelector<HTMLElement>("[data-today-place-lead], [data-today-opening-soon]")!;
+  const card = canvasElement.querySelector<HTMLElement>("[data-today-place-preview], [data-today-opening-soon]")!;
   await expect(card.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
   const name = card.querySelector<HTMLElement>("[data-today-pick-name]")!;
   const context = card.querySelector<HTMLElement>("[data-today-pick-context]")!;

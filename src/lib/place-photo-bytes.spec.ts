@@ -32,19 +32,75 @@ describe("visible photo byte transport", () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
-  it("recognizes a successful HTTP daily-cap signal without retaining its body or poisoning a later request", async () => {
-    const fallback = new Response("not-a-place-photograph", { headers: {
+  it("reads a successful signal to EOF without publishing its body or poisoning a later request", async () => {
+    let finish!: () => void;
+    const cancel = vi.fn();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array([1, 2, 3]));
+        finish = () => controller.close();
+      },
+      cancel,
+    });
+    const fallback = new Response(stream, { headers: {
       "Content-Type": "image/png", "X-Photo-Fallback": "daily-cap",
     } });
-    const read = vi.spyOn(fallback, "blob");
-    const cancel = vi.spyOn(fallback.body!, "cancel");
+    const blob = vi.spyOn(fallback, "blob");
+    const reader = vi.spyOn(fallback.body!, "getReader");
     const fetcher = vi.fn().mockResolvedValueOnce(fallback).mockResolvedValueOnce(photo());
     const load = createPlacePhotoBytesLoader(fetcher);
-    await expect(load(src)).resolves.toEqual({ kind: "fallback", reason: "daily-cap" });
-    expect(read).not.toHaveBeenCalled();
-    expect(cancel).toHaveBeenCalledTimes(1);
+    const pending = load(src);
+    let settled = false;
+    void pending.then(() => { settled = true; });
+    await vi.waitFor(() => expect(reader).toHaveBeenCalledTimes(1));
+    expect(settled).toBe(false);
+    expect(load(src)).toBe(pending);
+    expect(cancel).not.toHaveBeenCalled();
+    finish();
+    await expect(pending).resolves.toEqual({ kind: "fallback", reason: "daily-cap" });
+    expect(blob).not.toHaveBeenCalled();
+    expect(cancel).not.toHaveBeenCalled();
+    expect(fallback.bodyUsed).toBe(true);
+    expect(stream.locked).toBe(false);
     expect((await load(src)).kind).toBe("photo");
     expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("bounds a stalled signal body by the same deadline and allows a later request", async () => {
+    vi.useFakeTimers();
+    const cancel = vi.fn();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) { controller.enqueue(new Uint8Array([1, 2, 3])); },
+      cancel,
+    });
+    const fallback = new Response(stream, { headers: {
+      "Content-Type": "image/png", "X-Photo-Fallback": "daily-cap",
+    } });
+    const fetcher = vi.fn().mockResolvedValueOnce(fallback).mockResolvedValueOnce(photo());
+    const load = createPlacePhotoBytesLoader(fetcher);
+    const pending = load(src);
+    expect(load(src)).toBe(pending);
+    await vi.advanceTimersByTimeAsync(GOOGLE_PHOTO_BYTES_DEADLINE_MS);
+    await expect(pending).resolves.toEqual({ kind: "fallback", reason: "fetch-timeout" });
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(stream.locked).toBe(false);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect((await load(src)).kind).toBe("photo");
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each(["HTTP error", "non-image"])("still cancels an untrusted %s body instead of draining it", async (kind) => {
+    const response = kind === "HTTP error"
+      ? new Response("error", { status: 503, headers: { "Content-Type": "image/png" } })
+      : new Response("error", { headers: { "Content-Type": "text/html" } });
+    const cancel = vi.spyOn(response.body!, "cancel");
+    const reader = vi.spyOn(response.body!, "getReader");
+    await expect(createPlacePhotoBytesLoader(async () => response)(src)).resolves.toEqual({
+      kind: "fallback", reason: kind === "HTTP error" ? "http-503" : "not-image",
+    });
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(reader).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -148,13 +204,16 @@ describe("visible photo byte transport", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("cancels an oversized body without publishing it", async () => {
+  it.each(["photo", "signal"])("cancels an oversized %s body without publishing it", async (kind) => {
     const cancel = vi.fn();
     const stream = new ReadableStream<Uint8Array>({
       start(controller) { controller.enqueue(new Uint8Array(4 * 1024 * 1024 + 1)); },
       cancel,
     });
-    const load = createPlacePhotoBytesLoader(async () => new Response(stream, { headers: { "Content-Type": "image/jpeg" } }));
+    const headers: HeadersInit = kind === "signal"
+      ? { "Content-Type": "image/png", "X-Photo-Fallback": "daily-cap" }
+      : { "Content-Type": "image/jpeg" };
+    const load = createPlacePhotoBytesLoader(async () => new Response(stream, { headers }));
     await expect(load(src)).resolves.toEqual({ kind: "fallback", reason: "body-too-large" });
     expect(cancel).toHaveBeenCalledTimes(1);
     expect(stream.locked).toBe(false);

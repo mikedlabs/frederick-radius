@@ -1,0 +1,124 @@
+.preview {
+  display: grid;
+  container-type: inline-size;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  color: var(--app-ink);
+  background: var(--app-bg-elevated-solid);
+}
+
+.media {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.media > [data-place-card-photo] {
+  height: clamp(170px, 48vw, 230px);
+  aspect-ratio: auto;
+}
+
+.facts {
+  min-width: 0;
+  padding: clamp(18px, 5cqi, 28px);
+}
+
+.category {
+  margin: 0 0 10px;
+  color: var(--app-ink-2);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.name {
+  margin: 0;
+  color: var(--app-ink);
+  font-size: clamp(1.625rem, 7cqi, 2.125rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.context {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.fact,
+.location {
+  margin: 0;
+}
+
+.fact {
+  color: var(--app-ink);
+  font-weight: 600;
+}
+
+.location {
+  color: var(--app-ink-2);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--app-border);
+}
+
+.actions > a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 12px;
+  color: var(--app-link);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.4;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.actions > a:first-child {
+  color: var(--app-on-brand);
+  background: var(--app-brand);
+}
+
+.actions > a + a {
+  border-left: 1px solid var(--app-border);
+}
+
+.actions svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.actions > a:focus-visible {
+  outline: 3px solid var(--app-focus);
+  outline-offset: -4px;
+}
+
+.actions > a:first-child:focus-visible {
+  outline-color: var(--app-on-brand);
+}
+
+/* The facts carry the no-photo state; no empty media plate is reserved. */
+.preview[data-has-photo="false"] .facts {
+  padding-block: clamp(24px, 6cqi, 34px);
+}
+
+@container (min-width: 600px) {
+  .media > [data-place-card-photo] {
+    height: 260px;
+  }
+}

@@ -60,10 +60,17 @@ export function createPlacePhotoBytesLoader(fetcher: PhotoFetcher = (src, init) 
           return { kind: "fallback", reason: "fetch-timeout" };
         }
         const reason = response.headers.get("x-photo-fallback")?.trim();
-        const contentType = response.headers.get("content-type");
-        if (reason || !response.ok || !contentType?.startsWith("image/")) {
+        const contentType = response.headers.get("content-type") ?? "";
+        const fallbackReason = reason || (!response.ok ? `http-${response.status}`
+          : !contentType.startsWith("image/") ? "not-image" : null);
+        // The same-origin signal response is a finite PNG, not a photograph.
+        // Read it to EOF under the existing bounds: cancelling its successful
+        // body makes browsers report ERR_ABORTED even for an honest fallback.
+        const drainSignal = Boolean(reason && response.ok
+          && contentType.split(";")[0].trim().toLowerCase() === "image/png");
+        if (fallbackReason && !drainSignal) {
           void response.body?.cancel().catch(() => {});
-          return { kind: "fallback", reason: reason || (!response.ok ? `http-${response.status}` : "not-image") };
+          return { kind: "fallback", reason: fallbackReason };
         }
         // Own the reader so a stalled body can be cancelled as well as raced.
         // Merely racing response.blob() would leave its locked stream alive.
@@ -80,8 +87,9 @@ export function createPlacePhotoBytesLoader(fetcher: PhotoFetcher = (src, init) 
             return { kind: "fallback", reason: "body-too-large" };
           }
           length += value.byteLength;
-          chunks.push(new Uint8Array(value));
+          if (!drainSignal) chunks.push(new Uint8Array(value));
         }
+        if (fallbackReason) return { kind: "fallback", reason: fallbackReason };
         return length > 0
           ? { kind: "photo", blob: new Blob(chunks, { type: contentType }) }
           : { kind: "fallback", reason: "body-empty" };
