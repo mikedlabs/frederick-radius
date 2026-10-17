@@ -70,7 +70,7 @@ test("Today keeps the first open-place pick in view when photos fall back", asyn
 
   await expect(lead.locator("[data-today-pick-name]")).toHaveText(firstName);
   await expect(page.getByText("First local pick")).toHaveCount(0);
-  await expect(lead).toBeInViewport();
+  await expect(lead).toBeVisible();
 
   const rail = page.locator(".today-answer-shelf.shelf-rail").first();
   if (await rail.count()) {

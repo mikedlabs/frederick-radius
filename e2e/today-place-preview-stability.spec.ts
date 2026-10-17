@@ -55,9 +55,10 @@ test("Today preview height and lead stay put when photos fall back", async ({ pa
   const preview = page.locator("article[data-today-place-preview]").first();
   if (await preview.count()) {
     await expect(preview).toHaveAttribute("data-preview-layout", /compact|exact/);
-    await preview.screenshot({ path: testInfo.outputPath("today-preview-390-first-paint-card.png") });
   }
+  await lead.evaluate((element) => element.scrollIntoView({ block: "center", inline: "nearest" }));
   await page.screenshot({ path: testInfo.outputPath("today-preview-390-first-paint.png") });
+  await lead.screenshot({ path: testInfo.outputPath("today-preview-390-first-paint-card.png") });
 
   await page.waitForTimeout(2_000);
   await page.waitForLoadState("networkidle");
@@ -70,9 +71,10 @@ test("Today preview height and lead stay put when photos fall back", async ({ pa
   expect(laterHeight).toBe(firstHeight);
   if (await preview.count()) {
     await expect(preview).toHaveAttribute("data-has-photo", "false");
-    await preview.screenshot({ path: testInfo.outputPath("today-preview-390-after-photo-card.png") });
   }
+  await lead.evaluate((element) => element.scrollIntoView({ block: "center", inline: "nearest" }));
   await page.screenshot({ path: testInfo.outputPath("today-preview-390-after-photo.png") });
+  await lead.screenshot({ path: testInfo.outputPath("today-preview-390-after-photo-card.png") });
 
   await page.setViewportSize({ width: 320, height: 844 });
   await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
