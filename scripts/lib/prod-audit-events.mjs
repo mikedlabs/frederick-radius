@@ -9,6 +9,21 @@ function decodeAttribute(value) {
     .replace(/&#39;|&apos;/gi, "'");
 }
 
+/** A client prop such as `cancelled: false` is not a cancelled listing.
+ * Ignore raw-text blocks and comments, including Next's serialized RSC data.
+ * Keep DOM fragments marked hidden: React can reveal streamed event cards
+ * from those fragments, so their titles and badges must still be checked. */
+export function eventListingTrustViolations(html) {
+  const renderedMarkup = html.replace(
+    /<!--[\s\S]*?-->|<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,
+    " ",
+  );
+  return ["Private Corp", "CANCELLED"].map((term) => ({
+    term,
+    count: (renderedMarkup.match(new RegExp(term.replace(/ /g, "\\s+"), "gi")) ?? []).length,
+  }));
+}
+
 /**
  * Read only real server-rendered anchors. Looking for `/events/…` anywhere in
  * a Next document also matches serialized React payloads and hidden inventory,

@@ -16,7 +16,7 @@ const bounds = {
 
 function bodyFor(url: URL, overrides: Record<string, unknown> = {}) {
   const path = url.pathname;
-  if (path.includes("/Sidewalks/MapServer/2/")) {
+  if (path === "/arcgis/rest/services/Sidewalks/MapServer/2/query") {
     return {
       type: "FeatureCollection",
       features: [
@@ -43,7 +43,7 @@ function bodyFor(url: URL, overrides: Record<string, unknown> = {}) {
       ...overrides,
     };
   }
-  if (path.includes("/Sidewalks/MapServer/0/")) {
+  if (path === "/arcgis/rest/services/Sidewalks/MapServer/0/query") {
     return {
       type: "FeatureCollection",
       features: [
@@ -65,6 +65,9 @@ function bodyFor(url: URL, overrides: Record<string, unknown> = {}) {
       exceededTransferLimit: false,
       ...overrides,
     };
+  }
+  if (path !== "/arcgis/rest/services/Sidewalks/MapServer/4/query") {
+    throw new Error(`Unexpected City GIS fixture URL: ${url.toString()}`);
   }
   return {
     type: "FeatureCollection",
@@ -135,6 +138,19 @@ describe("Frederick City mobility normalization", () => {
     });
 
     expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(fetcher.mock.calls.map(([input]) => new URL(String(input)).pathname).sort())
+      .toEqual([
+        "/arcgis/rest/services/Sidewalks/MapServer/0/query",
+        "/arcgis/rest/services/Sidewalks/MapServer/2/query",
+        "/arcgis/rest/services/Sidewalks/MapServer/4/query",
+      ]);
+    const pathQuery = new URL(String(fetcher.mock.calls.find(([input]) =>
+      new URL(String(input)).pathname.endsWith("/4/query"),
+    )?.[0]));
+    expect(pathQuery.searchParams.get("outFields")).toBe(
+      "OBJECTID,Id,PATH_NAME,STATUS,PATH_WIDTH,Length",
+    );
+    expect(pathQuery.searchParams.get("f")).toBe("geojson");
     for (const [input] of fetcher.mock.calls) {
       const url = new URL(String(input));
       expect(url.searchParams.get("geometry")).toBe(
@@ -192,6 +208,53 @@ describe("Frederick City mobility normalization", () => {
         }),
       ]),
     );
+  });
+
+  it.each(["PLANNED", "DEV", "UNRECOGNIZED"])(
+    "keeps %s Path Plan geometry out of the route network",
+    async (status) => {
+      const fetcher = vi.fn(async (input: string | URL | Request) => {
+        const url = new URL(input instanceof Request ? input.url : input.toString());
+        const body = bodyFor(url);
+        if (url.pathname.endsWith("/4/query")) {
+          body.features[0].properties = {
+            ...body.features[0].properties,
+            STATUS: status,
+          };
+        }
+        return new Response(JSON.stringify(body), { status: 200 });
+      });
+      const result = await getFrederickCityMobility(bounds, { fetcher });
+      const path = result.features.find((feature) =>
+        feature.properties.name === "Carroll Creek",
+      );
+      expect(path?.properties).toMatchObject({
+        status: status === "UNRECOGNIZED" ? "UNKNOWN" : status,
+        routing_eligible: false,
+        routing_role: "context",
+      });
+    },
+  );
+
+  it("reports a 200 ArcGIS 404 envelope as unavailable without hiding working layers", async () => {
+    const fetcher = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      return new Response(JSON.stringify(url.pathname.endsWith("/4/query")
+        ? { error: { code: 404, message: "Service PathPlan/MapServer not found" } }
+        : bodyFor(url)), { status: 200 });
+    });
+    const result = await getFrederickCityMobility(bounds, { fetcher });
+
+    expect(result.radius).toMatchObject({ status: "current", coverage: "partial" });
+    expect(result.radius.sources.paths).toMatchObject({
+      sourceUrl: "https://spires.cityoffrederick.com/arcgis/rest/services/Sidewalks/MapServer/4",
+      status: "unavailable",
+      count: 0,
+      coverage: "partial",
+    });
+    expect(result.radius.sources.sidewalks.status).toBe("current");
+    expect(result.features.some((feature) => feature.properties.mobility_kind === "path"))
+      .toBe(false);
   });
 
   it("paginates by stable OBJECTID offsets", async () => {
