@@ -249,7 +249,7 @@ export default async function HomePage() {
           :not(:empty) wrapper means it then costs the ordinary day zero space:
           no phantom gap above the sky hero. */}
       <Suspense fallback={null}>
-        <div className="[&:not(:empty)]:mb-4">
+        <div className={styles.alerts}>
           <CivicAlerts compact />
         </div>
       </Suspense>
@@ -289,13 +289,14 @@ export default async function HomePage() {
       <div data-today-briefing className={styles.briefing}>
         {/* Find follows the conditions glance as the sole primary action.
             Seasonal campaigns and the event stream cannot bury either. */}
-        <div className="today-arrival today-arrival--find">
-          <TodayAsk embedded showQuickNeeds={false} density="arrival" />
+        <div className={styles.entryControls}>
+          <div className="today-arrival today-arrival--find">
+            <TodayAsk embedded showQuickNeeds={false} density="arrival" />
+          </div>
+          <div className={styles.scope}>
+            <Suspense fallback={null}><TodayScopeStatus density="compact" /></Suspense>
+          </div>
         </div>
-
-      <div className={styles.scope}>
-        <Suspense fallback={null}><TodayScopeStatus density="compact" /></Suspense>
-      </div>
 
       <div data-today-current-content className={styles.currentContent}>
         <div aria-label="Places for your area" className={styles.places}>
@@ -760,7 +761,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
               <p className="px-0.5 pt-1 text-[13.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
                 It is a quiet {easternStartHour(now.toISOString()) >= 17 ? "night" : "day"} around here. The
                 week ahead is on the{" "}
-                <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
+                <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-link)" }}>
                   events page
                 </Link>
                 .
@@ -784,7 +785,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                   <Link
                     href="/events"
                     className="tap-44-y flex items-center justify-between px-0.5 py-2.5 text-[13px] font-semibold"
-                    style={{ color: "var(--app-brand-press)" }}
+                    style={{ color: "var(--app-link)" }}
                   >
                     +{programOverflow} more today
                     <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />

@@ -1283,7 +1283,7 @@ function EmptyHint({
                 key={`recent-${s}`}
                 type="button"
                 onClick={() => onPick(s)}
-                className="tactile-interactive flex h-9 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[12.5px] font-medium shadow-[var(--app-shadow-1)] transition-transform hover:scale-[1.02] active:scale-95"
+                className="tactile-interactive flex min-h-11 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[12.5px] font-medium shadow-[var(--app-shadow-1)] transition-transform hover:scale-[1.02] active:scale-95"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
               >
                 <Clock className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />

@@ -17,6 +17,8 @@ import { clientPlaces } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { CRAVING_BY_KEY, matchesCraving } from "@/data/cravings";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { SPORTS_TEAM_IDENTITIES, sportsTeamStyle } from "@/lib/sports/team-identity";
+import styles from "@/components/sports/SportsIdentity.module.css";
 
 export const metadata: Metadata = {
   title: "Sports",
@@ -38,43 +40,22 @@ const FLYING_COWS_SCHEDULE = "https://goflyingcows.com/2026-schedule/";
 const FLYING_COWS_SITE = "https://goflyingcows.com/";
 
 const COLLEGE_TEAMS = [
-  {
-    name: "Hood College",
-    team: "Blazers",
-    level: "NCAA Division III · Frederick",
-    mark: "HC",
-    href: "https://hoodathletics.com/calendar",
-    tone: "plum",
-  },
-  {
-    name: "Mount St. Mary's",
-    team: "Mountaineers",
-    level: "NCAA Division I · Emmitsburg",
-    mark: "MSM",
-    href: "https://mountathletics.com/calendar",
-    tone: "blue",
-  },
-  {
-    name: "Frederick Community College",
-    team: "Cougars",
-    level: "NJCAA · Frederick",
-    mark: "FCC",
-    href: "https://www.fccathletics.com/composite",
-    tone: "green",
-  },
+  { id: "hood", level: "NCAA Division III · Frederick", href: "https://hoodathletics.com/calendar" },
+  { id: "mount", level: "NCAA Division I · Emmitsburg", href: "https://mountathletics.com/calendar" },
+  { id: "fcc", level: "NJCAA · Frederick", href: "https://www.fccathletics.com/composite" },
 ] as const;
 
 const FCPS_TEAMS = [
-  "Brunswick Railroaders",
-  "Catoctin Cougars",
-  "Frederick Cadets",
-  "Gov. Thomas Johnson Patriots",
-  "Linganore Lancers",
-  "Middletown Knights",
-  "Oakdale Bears",
-  "Tuscarora Titans",
-  "Urbana Hawks",
-  "Walkersville Lions",
+  { name: "Brunswick Railroaders", href: "https://bhs.sites.fcps.org/extracurricular/athletics" },
+  { name: "Catoctin Cougars", href: "https://chs.sites.fcps.org/parents_students/extracurricular_activities/athletics" },
+  { name: "Frederick Cadets", href: "https://fhs.sites.fcps.org/athletics" },
+  { name: "Gov. Thomas Johnson Patriots", href: "https://gtjhs.sites.fcps.org/parents_students/athletics" },
+  { name: "Linganore Lancers", href: "https://lhs.sites.fcps.org/extracurricular/athletics" },
+  { name: "Middletown Knights", href: "https://mhs.sites.fcps.org/extracurricular/athletics" },
+  { name: "Oakdale Bears", href: "https://ohs.sites.fcps.org/parents_students/extracurricular/athletics" },
+  { name: "Tuscarora Titans", href: "https://ths.sites.fcps.org/parents_students/athletics" },
+  { name: "Urbana Hawks", href: "https://uhs.sites.fcps.org/parents_students/extracurricular_activities/athletics" },
+  { name: "Walkersville Lions", href: "https://whs.sites.fcps.org/parents_students/w_h_s_athletics" },
 ] as const;
 
 const FCPS_ATHLETICS = "https://www.fcps.org/athletics";
@@ -106,37 +87,31 @@ export default function SportsPage() {
     .sort(byName);
 
   return (
-    <div className="space-y-10 pb-4 sm:space-y-12">
-      <header className="sports-hero">
+    <div className={`${styles.page} space-y-10 pb-4 sm:space-y-12`}>
+      <header className={styles.hero}>
         <Image
           src="/images/seasons/spring/aerial-view-baseball-field.jpg"
           alt="An aerial view of McCurdy Field and the surrounding Frederick neighborhood"
           fill
           priority
           sizes="(max-width: 768px) 100vw, 960px"
-          className="sports-hero-photo object-cover object-center"
+          className={styles.heroPhoto}
         />
-        <div className="sports-hero-shade" />
-        <div className="sports-hero-copy">
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]">Frederick County sports</p>
+        <div className={styles.heroShade} />
+        <div className={styles.heroCopy}>
+          <p>Frederick County sports</p>
           <h1>Frederick plays here.</h1>
           <p>Follow local teams from the Keys to Friday-night high school games, or find a place to play.</p>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className={styles.heroActions}>
             <Link
               href="#sports-schedule"
-              className="tap-44 inline-flex min-h-11 items-center rounded-full border px-3 text-[12px] font-semibold"
-              style={{ borderColor: "var(--app-on-brand)", color: "var(--app-ink)", background: "var(--app-on-brand)" }}
+              className={styles.heroPrimary}
             >
               See upcoming games
             </Link>
             <Link
               href="#sports-play"
-              className="tap-44 inline-flex min-h-11 items-center rounded-full border px-3 text-[12px] font-semibold"
-              style={{
-                borderColor: "color-mix(in srgb, var(--app-on-brand) 32%, transparent)",
-                color: "var(--app-on-brand)",
-                background: "color-mix(in srgb, var(--app-ink) 62%, transparent)",
-              }}
+              className={styles.heroSecondary}
             >
               Find a place to play
             </Link>
@@ -188,7 +163,13 @@ export default function SportsPage() {
         bodyClassName="space-y-10 sm:space-y-12"
       >
         <section>
-        <SectionHeading title="The Frederick Keys" />
+        <div className={styles.teamHeading} style={sportsTeamStyle("keys")} data-sports-team="keys">
+          <span className={styles.teamMonogram} data-sports-team-accent aria-hidden>{SPORTS_TEAM_IDENTITIES.keys.monogram}</span>
+          <div className="min-w-0">
+            <h2>The Frederick Keys</h2>
+            <p>Baseball · Nymeo Field</p>
+          </div>
+        </div>
         {/* Live score on game days (home or away) — the client island
             self-hides on an idle day and polls only while a game is live. */}
         <div className="[&:not(:empty)]:mt-4">
@@ -211,29 +192,27 @@ export default function SportsPage() {
         <section>
         <SectionHeading title="Frederick Flying Cows" />
         <div
-          className="mt-4 overflow-hidden rounded-[var(--app-radius-lg)] border"
-          style={{
-            borderColor: "var(--app-border)",
-            background: "var(--app-bg-elevated)",
-            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-          }}
+          className={styles.cowsCard}
+          style={sportsTeamStyle("cows")}
+          data-sports-team="cows"
         >
-          <div className="sports-cows-masthead" aria-hidden>
-            <span>Frederick</span>
-            <strong>FLYING COWS</strong>
-            <span>Professional basketball</span>
+          <div className={styles.cowsMasthead} aria-hidden>
+            <span className={styles.teamMonogram}>FC</span>
+            <div>
+              <p>Frederick</p>
+              <strong data-sports-team-accent>FLYING COWS</strong>
+              <p>Professional basketball</p>
+            </div>
           </div>
           <div className="grid gap-0 sm:grid-cols-[minmax(0,1.3fr)_minmax(15rem,.7fr)]">
             <div className="p-4 sm:p-5">
               <p
-                className="font-mono text-[10px] font-bold uppercase tracking-[0.15em]"
-                style={{ color: "var(--app-brand-press)" }}
+                className={styles.cowsKicker}
               >
                 Professional basketball in Frederick
               </p>
               <h3
-                className="mt-2 font-serif text-[26px] font-semibold leading-tight tracking-tight"
-                style={{ color: "var(--app-ink)" }}
+                className={styles.cowsBodyTitle}
               >
                 The Cows play at Hood College.
               </h3>
@@ -245,8 +224,7 @@ export default function SportsPage() {
                   href={FLYING_COWS_SCHEDULE}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="tap-44 inline-flex items-center gap-2 rounded-full px-3.5 text-[12px] font-semibold"
-                  style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
+                  className={styles.teamAction}
                 >
                   Schedule and results
                   <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
@@ -289,31 +267,34 @@ export default function SportsPage() {
 
       {/* ── College and high-school sports ─────────────────────────── */}
         <section>
-        <SectionHeading title="College and high-school sports" />
-        <p className="mt-2 max-w-[42rem] text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          The native schedule above carries college games. These official team
-          pages remain available for late changes, rosters, and full-season records.
-        </p>
+        <h2 className={styles.sectionTitle}>College teams</h2>
+        <p className={styles.sectionHint}>Open an official team calendar for schedules and results.</p>
 
-        <div className="sports-campus-grid mt-4">
-          {COLLEGE_TEAMS.map((college) => (
-            <a
-              key={college.name}
-              href={college.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`sports-campus-card sports-campus-card--${college.tone}`}
-              aria-label={`${college.name} ${college.team} official athletics calendar`}
-            >
-              <span className="sports-campus-mark" aria-hidden>{college.mark}</span>
-              <span className="sports-campus-copy">
-                <span>{college.name}</span>
-                <strong>{college.team}</strong>
-                <small>{college.level}</small>
-              </span>
-              <ArrowUpRight className="sports-campus-arrow" strokeWidth={2} aria-hidden />
-            </a>
-          ))}
+        <div className={`${styles.campusGrid} mt-4`}>
+          {COLLEGE_TEAMS.map((college) => {
+            const team = SPORTS_TEAM_IDENTITIES[college.id];
+            return (
+              <a
+                key={college.id}
+                href={college.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.campusCard}
+                style={sportsTeamStyle(college.id)}
+                data-sports-team={college.id}
+                aria-label={`${team.name} ${team.nickname} official athletics calendar`}
+              >
+                <span className={styles.teamMonogram} data-sports-team-accent aria-hidden>{team.monogram}</span>
+                <span className={styles.campusCopy}>
+                  <span className={styles.campusSchool}>{team.name}</span>
+                  <strong className={styles.campusName}>{team.nickname}</strong>
+                  <small className={styles.campusLevel}>{college.level}</small>
+                  <span className={styles.campusAction}>Team calendar</span>
+                </span>
+                <ArrowUpRight className={styles.campusArrow} strokeWidth={2} aria-hidden />
+              </a>
+            );
+          })}
         </div>
 
         <div className="sports-schools-panel mt-4">
@@ -323,36 +304,39 @@ export default function SportsPage() {
             </div>
             <div className="min-w-0">
               <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em]">FCPS athletics</p>
-              <h3>Ten schools. One place to start.</h3>
-              <p>Use the county hub for official information, then open the live schedule, tickets, or stream.</p>
+              <h3 className={styles.schoolTitle}>High school sports</h3>
             </div>
-          </div>
-
-          <div className="sports-schools-actions">
-            <a href={FCPS_SCHEDULES} target="_blank" rel="noopener noreferrer">
-              Schedules <ArrowUpRight aria-hidden />
-            </a>
-            <a href={FCPS_TICKETS} target="_blank" rel="noopener noreferrer">
-              Tickets <ArrowUpRight aria-hidden />
-            </a>
-            <a href={FCPS_STREAMS} target="_blank" rel="noopener noreferrer">
-              Watch <ArrowUpRight aria-hidden />
-            </a>
           </div>
 
           <details className="sports-school-list">
             <summary>
-              <span>See all FCPS teams</span>
+              <span>Choose your school</span>
               <ChevronDown aria-hidden />
             </summary>
             <div className="sports-school-chips">
-              {FCPS_TEAMS.map((team) => <span key={team}>{team}</span>)}
+              {FCPS_TEAMS.map((team) => (
+                <a key={team.name} href={team.href} target="_blank" rel="noopener noreferrer" className={styles.schoolLink}>
+                  {team.name}
+                  <ArrowUpRight aria-hidden />
+                </a>
+              ))}
             </div>
-            <a href={FCPS_ATHLETICS} target="_blank" rel="noopener noreferrer" className="sports-school-official">
+            <a href={FCPS_ATHLETICS} target="_blank" rel="noopener noreferrer" className={`sports-school-official ${styles.schoolOfficial}`}>
               Open the official FCPS athletics hub
               <ArrowUpRight aria-hidden />
             </a>
           </details>
+          <div className="sports-schools-actions">
+            <a href={FCPS_SCHEDULES} aria-label="Search schedules on ArbiterLive" target="_blank" rel="noopener noreferrer">
+              ArbiterLive <ArrowUpRight aria-hidden />
+            </a>
+            <a href={FCPS_TICKETS} aria-label="Search tickets on GoFan" target="_blank" rel="noopener noreferrer">
+              GoFan <ArrowUpRight aria-hidden />
+            </a>
+            <a href={FCPS_STREAMS} aria-label="Search streams on NFHS Network" target="_blank" rel="noopener noreferrer">
+              NFHS Network <ArrowUpRight aria-hidden />
+            </a>
+          </div>
         </div>
         </section>
       </PageChapter>

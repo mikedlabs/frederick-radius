@@ -97,16 +97,25 @@ export function eventsEmptyState({
   loading,
   dataComplete,
   hasFilters,
+  hasLoadedEvents,
 }: {
   loading: boolean;
   dataComplete: boolean;
   hasFilters: boolean;
+  hasLoadedEvents: boolean;
 }): { title: string; description: string; canRetry: boolean } {
   if (loading) {
     return {
       title: "Checking the calendar",
       description: "Your filters are still in place while the rest of the events load.",
       canRetry: false,
+    };
+  }
+  if (!dataComplete && !hasLoadedEvents) {
+    return {
+      title: "Event schedule unavailable",
+      description: "The schedule could not be loaded. Check again or use an official calendar.",
+      canRetry: true,
     };
   }
   if (!dataComplete) {
@@ -978,7 +987,9 @@ export default function EventsExplorer({
     loading: loadingAll,
     dataComplete,
     hasFilters: relaxations.length > 0,
+    hasLoadedEvents: eventPool.length > 0,
   });
+  const showOfficialCalendars = !dataComplete && eventPool.length === 0;
 
   const primaryHorizon = horizonGroups[0];
   const primaryLead = primaryHorizon?.events[0] ?? null;
@@ -1172,7 +1183,7 @@ export default function EventsExplorer({
         </div>
       )}
 
-      {currentSourceHealth.degraded && (
+      {currentSourceHealth.degraded && eventPool.length > 0 && (
         <details
           className="group rounded-[var(--app-radius-md)] border px-3 text-[12px] leading-relaxed"
           style={{
@@ -1191,9 +1202,7 @@ export default function EventsExplorer({
           </summary>
           <div className="flex items-start justify-between gap-3 border-t py-3" style={{ borderColor: "var(--app-border)" }}>
             <span>
-              {!dataComplete
-                ? "Some live calendars did not answer. Radius kept the last available events instead of treating missing feeds as empty."
-                : "Some live calendars did not answer. This board only includes events Radius could confirm."}
+              The saved event schedule is incomplete. These are the listings available to Radius; check with each organizer before going.
             </span>
             {!dataComplete && (
               <button
@@ -1309,6 +1318,28 @@ export default function EventsExplorer({
                 Check the calendar again
               </button>
             ) : null}
+            {showOfficialCalendars && (
+              <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
+                <a
+                  href="https://www.frederickcountymd.gov/calendar.aspx"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="tap-44-y inline-flex min-h-11 items-center text-[13px] font-semibold underline"
+                  style={{ color: "var(--app-link)" }}
+                >
+                  County calendar
+                </a>
+                <a
+                  href="https://www.celebratefrederick.com/events/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="tap-44-y inline-flex min-h-11 items-center text-[13px] font-semibold underline"
+                  style={{ color: "var(--app-link)" }}
+                >
+                  Celebrate Frederick
+                </a>
+              </div>
+            )}
           </div>
           
           {/* Honest relaxations — Bento-grid for quick actions */}
