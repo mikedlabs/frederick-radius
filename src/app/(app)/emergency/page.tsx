@@ -264,7 +264,7 @@ export default function EmergencyPage() {
         <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           Urgent care handles sprains, cuts, fevers, and the like. It is not
           an ER. For chest pain, trouble breathing, or heavy bleeding, call
-          or text 911. Check the provider&rsquo;s site or call ahead when you can.
+          or text 911. Check the provider&rsquo;s site for current hours.
         </p>
         {URGENT_CARE.map((u) => (
           <LineRow key={u.name} name={u.name} about={u.address} phone={u.phone} />

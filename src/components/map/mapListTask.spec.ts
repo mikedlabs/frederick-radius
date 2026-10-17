@@ -295,9 +295,9 @@ describe("buildMapTaskList", () => {
         places: [place("dublin-roasters-frederick", { category: "coffee" })],
       }),
     );
-    expect(list?.title).toBe("Likely open now · Whole county");
+    expect(list?.title).toBe("Posted schedules · Whole county");
     expect(list?.note).toBe(
-      "These places are usually open at this hour based on their posted schedules. Check before you go.",
+      "Hours for these places are not confirmed, so check before you go.",
     );
     expect(list?.rows).toHaveLength(1);
   });
@@ -345,12 +345,8 @@ describe("buildMapTaskList", () => {
 
 
 describe("map request constraints and source truth", () => {
-  it.each(["open now near me", "open late", "coffee open now", "coffee in Brunswick", "events tonight in Thurmont"])("keeps every constraint in %s", (query) => {
+  it.each(["open now near me", "open late", "coffee open now", "coffee in Brunswick", "events tonight in Thurmont", "likely open now"])("keeps every constraint in %s", (query) => {
     expect(mapQueryRoute(query)).toEqual({ kind: "search" });
-  });
-
-  it("routes only the explicitly qualified availability name to a posted-hours estimate", () => {
-    expect(mapQueryRoute("likely open now")).toEqual({ kind: "task", task: "likely-open" });
   });
 
   it("does not use a camera or town centroid as the reader's location", () => {

@@ -591,8 +591,8 @@ function answerEmergencyRequest(
 export function sourceHasVerifiedOpenStatus(source: AskSource): boolean {
   // A requested visit time is rendered as "At 6:00 PM · Open until 10 PM".
   // Keep that presentation prefix from erasing the verified state we just
-  // calculated for the requested time. "Likely open" remains intentionally
-  // excluded because it is not backed by a fresh schedule.
+  // calculated for the requested time. Unconfirmed hours remain excluded
+  // because they are not backed by a fresh schedule.
   return /^(?:At\b[^·]*·\s*)?(?:Open\b|Closing soon\b)/i.test(
     source.status ?? "",
   );
@@ -2227,7 +2227,7 @@ async function wantContextBlock(
         : wa.rankingMode === "best-fit"
         ? `Best fits (current hours shown):\n${open.map(line).join("\n")}`
         : likelyOpen
-          ? `Likely open from posted hours (check before going):\n${open.map(line).join("\n")}`
+          ? `Hours not confirmed:\n${open.map(line).join("\n")}`
           : `Open now:\n${open.map(line).join("\n")}`,
     );
   }

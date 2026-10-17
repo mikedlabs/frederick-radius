@@ -268,7 +268,7 @@ describe("rider timing estimates", () => {
     expect(deriveCatchability(12, null, true)).toBeNull();
     expect(deriveCatchability(7, 8, true)).toEqual({
       kind: "too-tight",
-      label: "Probably too tight",
+      label: "Too tight to catch",
     });
     expect(deriveCatchability(8, 8, true)).toEqual({
       kind: "tight",

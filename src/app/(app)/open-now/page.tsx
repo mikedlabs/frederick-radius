@@ -34,8 +34,9 @@ import FreshnessGuard from "@/components/today/FreshnessGuard";
  *   - The headline count is derived from THE SAME list rendered below,
  *     so the number can never contradict the content (review §7 caught
  *     "146 open" next to "Open now 0" — numbers from different sources).
- *   - Verified-open (Google hours say open) leads; "likely open" places
- *     (curated reliable windows, hours unverified) are labeled as such.
+ *   - Verified-open (Google hours say open) leads; places whose hours
+ *     are not confirmed are listed separately and labeled as such.
+ *     Never guess that they are open.
  *   - FreshnessGuard: a cached shell never presents an old evening as
  *     "right now."
  */
@@ -204,7 +205,7 @@ export default async function OpenNowPage() {
   const likelySections: IndexSection[] = [
     {
       key: "likely",
-      label: "Likely open · check hours",
+      label: "Hours not confirmed",
       rows: likely.slice(0, 12).map((p) => toRow(p, false)),
     },
   ];
@@ -245,7 +246,7 @@ export default async function OpenNowPage() {
           {snapshot.count > 0
             ? `${snapshot.count} ${snapshot.count === 1 ? "place is" : "places are"} confirmed open`
             : likely.length > 0
-              ? "Some places are usually open at this hour, but their hours are not recently confirmed."
+              ? "Hours are not confirmed for some listings at this hour."
               : "No county listings have recently checked hours confirming they are open."}
         </p>
       </header>
@@ -269,7 +270,7 @@ export default async function OpenNowPage() {
               the map link that follows, so the copy never references a section
               that isn't there. */}
           {likely.length > 0
-            ? "These places are usually open at this hour based on their posted schedules. Check before you go."
+            ? "Hours for these places are not confirmed."
             : "Open the map to look for places nearby, or check back a little later."}
         </p>
       )}

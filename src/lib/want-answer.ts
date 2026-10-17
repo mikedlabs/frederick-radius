@@ -337,7 +337,7 @@ function toRow(
     // the group heading already says it.
     fact:
       confidence === "likely"
-        ? "Likely open · check hours"
+        ? "Hours not confirmed"
         : laneLater
           ? line.replace(/^Closed · /, "")
           : line,
@@ -509,7 +509,7 @@ function toOpeningSoonRow(
     fact:
       match.confidence === "confirmed"
         ? `Opens soon · ${time}`
-        : `Likely opens at ${time} · check hours`,
+        : "Hours not confirmed",
     opensInMinutes: match.minutesUntil,
   };
 }

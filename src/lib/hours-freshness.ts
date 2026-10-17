@@ -5,7 +5,7 @@
  * hours come from an accepted provider or reviewed first-party source and were checked within the
  * freshness window. Everything else renders the existing "Hours not
  * posted" pattern (the unverified state, which the card components
- * already translate into honest silence or "Likely open").
+ * already translate into honest silence or "Hours not confirmed").
  *
  * Freshness is enforced by default. HOURS_FRESHNESS_ENFORCED=0 is an explicit
  * emergency rollback only; a missing deployment variable must never turn old

@@ -1,7 +1,7 @@
 /**
  * Trust as a designed system, not a scattered disclaimer.
  *
- * The app already refuses to lie ("Likely open", "Hours not confirmed",
+ * The app already refuses to lie ("Hours not confirmed",
  * curated vs live feeds). This turns those honest-but-ad-hoc strings
  * into one typed signal every surface can render the same way, so a
  * resident can answer "can I trust this, and where did it come from?"
@@ -144,7 +144,7 @@ export function placeHoursTrust(status: OpenStatus): TrustSignal {
       return {
         level: "unconfirmed",
         label: "Unconfirmed",
-        basis: "No posted hours. Call ahead to confirm.",
+        basis: "No posted hours.",
       };
   }
 }
@@ -181,7 +181,7 @@ export function formatChecked(iso: string | undefined, nowMs: number = Date.now(
 /** Brand token per level, resolved by the chip component. */
 export const TRUST_COLOR: Record<TrustLevel, string> = {
   verified: "var(--app-positive)",
-  // Calm provenance, not caution: "Live" (feed) and "Likely open" rows are
+  // Calm provenance, not caution: "Live" (feed) and unconfirmed-hours rows are
   // normal states, so they ride the muted ink tone instead of warning-amber.
   // Amber is reserved for genuinely stale/unconfirmed signals. (TRUST_COLOR is
   // consumed only by TrustChip; the label carries likely-vs-unconfirmed.)

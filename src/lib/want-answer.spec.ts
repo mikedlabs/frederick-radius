@@ -495,7 +495,7 @@ describe("buildWantAnswer context", () => {
       slug: "gravel-and-grind-frederick",
       name: "Gravel & Grind",
       confidence: "likely",
-      fact: "Likely opens at 8am · check hours",
+      fact: "Hours not confirmed",
       opensInMinutes: 47,
     });
     expect([
@@ -527,7 +527,7 @@ describe("buildWantAnswer context", () => {
     expect(
       answer?.open?.every((row) =>
         row.confidence === "likely"
-          ? row.fact === "Likely open · check hours"
+          ? row.fact === "Hours not confirmed"
           : /^(?:Open|Closing soon)\b/.test(row.fact),
       ),
     ).toBe(true);
