@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { classifyEvent } from "@/lib/events/classify";
+import { countyCategory, storedCopyCategory } from "@/lib/events/county-category";
 import { feedCategory } from "@/lib/integrations/ical-live";
 
 const feed = (o: Record<string, unknown>) =>
@@ -81,5 +82,53 @@ describe("feedCategory", () => {
     const celebrate = feed({ source: "celebrate", default_category: "arts" });
     expect(feedCategory(celebrate, "Live music concert with a band", "")).not.toBe("");
     expect(feedCategory(celebrate, "An unremarkable listing", "")).toBe("arts");
+  });
+});
+
+describe("storedCopyCategory", () => {
+  it("fills a blank county row with the shared title-only rule", () => {
+    expect(storedCopyCategory("county", null, "Gaver Farm-Fall Festival")).toBe(
+      "agritourism",
+    );
+    expect(storedCopyCategory("county", "", "Live Theatre Production")).toBe("theater");
+    expect(storedCopyCategory("county", "  ", "Urbana District Park Walk")).toBe(
+      "outdoors",
+    );
+    expect(
+      storedCopyCategory(
+        "county",
+        null,
+        "Police Accountability Board (Webstream on FCG TV 2 Only)",
+      ),
+    ).toBe("civic");
+    expect(storedCopyCategory("county", null, "Agriculture Business Council")).toBe(
+      "civic",
+    );
+    expect(storedCopyCategory("county", null, "Trivia with a Twist")).toBe("community");
+    expect(storedCopyCategory("county", null, "Fall Festival", "Gaver Farm")).toBe(
+      "agritourism",
+    );
+    expect(countyCategory("Board Games")).toBe("community");
+  });
+
+  it("leaves every other source's stored category untouched", () => {
+    expect(storedCopyCategory("fcpl", "family", "Live Theatre Production")).toBe(
+      "family",
+    );
+    expect(storedCopyCategory("fcvfra", "community", "Gaver Farm-Fall Festival")).toBe(
+      "community",
+    );
+    expect(storedCopyCategory("city-frederick", "music", "Urbana District Park Walk")).toBe(
+      "music",
+    );
+    expect(storedCopyCategory("fcpl", null, "Live Theatre Production")).toBe(
+      "community",
+    );
+  });
+
+  it("does not overwrite a non-blank county category", () => {
+    expect(storedCopyCategory("county", "family", "Gaver Farm-Fall Festival")).toBe(
+      "family",
+    );
   });
 });
