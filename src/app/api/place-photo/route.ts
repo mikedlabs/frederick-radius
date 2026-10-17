@@ -303,7 +303,7 @@ export async function GET(req: NextRequest) {
       signal: deadline.signal,
     });
     deadline.signal.throwIfAborted();
-    if (!resolved.name) {
+    if (resolved.name === null) {
       return placeholderResponse(name, w, resolved.reason, slug, signalFallback);
     }
     const url = photoUrl(resolved.name, w);
