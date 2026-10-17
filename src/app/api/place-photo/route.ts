@@ -4,17 +4,26 @@
  * Google photo media URLs embed the API key, so we can never put them in
  * client HTML. This route takes a photo resource name, fetches the image
  * server-side with the key, and returns a bounded, temporary per-request body
- * without storing the Google content. Google Places photo names and photo bytes are not ours to mirror
- * or retain, so every successful response is explicitly `no-store`.
+ * without storing the Google content. Stored photo names expire; the route
+ * resolves the current main/first photo for that Place ID (short process
+ * cache) before the media fetch. Photo bytes are not ours to mirror or retain,
+ * so every successful response is explicitly `no-store`.
  *
  *   /api/place-photo?name=places/XXX/photos/YYY&w=800
  *
  * The `name` MUST be a Google "places/.../photos/..." resource path — we
  * validate the shape to prevent the route being used as an open proxy.
  */
-import { reserveDailyUsage } from "@/lib/usage-meter";
+import { releaseDailyUsage, reserveDailyUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
-import { photoUrl } from "@/lib/integrations/google-places";
+import {
+  googlePhotoDeliveryConfigured,
+  photoUrl,
+} from "@/lib/integrations/google-places";
+import {
+  rememberRejectedPhotoName,
+  resolvePlacePhotoMediaName,
+} from "@/lib/google-photo-name";
 import { googlePhotoDailyCap } from "@/lib/google-photo-budget";
 import { createAbortDeadline } from "@/lib/promise-deadline";
 import {
@@ -282,16 +291,30 @@ export async function GET(req: NextRequest) {
       return placeholderResponse(name, w, "rate-limited", slug, signalFallback);
     }
 
-    const url = photoUrl(name, w);
-    if (!url) {
+    if (!googlePhotoDeliveryConfigured()) {
       // Key not configured — degrade to a gradient placeholder so the
       // page still renders coherently in dev / on misconfigured deploys.
       return placeholderResponse(name, w, "no-key", slug, signalFallback);
     }
 
+    // Stored photo names expire. Resolve the current main/first photo for
+    // this Place ID (short process cache) before spending a media request.
+    const resolved = await resolvePlacePhotoMediaName(name, {
+      signal: deadline.signal,
+    });
+    deadline.signal.throwIfAborted();
+    if (!resolved.name) {
+      return placeholderResponse(name, w, resolved.reason, slug, signalFallback);
+    }
+    const url = photoUrl(resolved.name, w);
+    if (!url) {
+      return placeholderResponse(name, w, "no-key", slug, signalFallback);
+    }
+
     // A reservation is both the aggregate daily gate and this attempt's usage
     // record. Database uncertainty fails closed so a broken counter cannot turn
-    // into unbounded Google spend.
+    // into unbounded Google spend. A later upstream rejection releases the
+    // unit so expired names cannot burn the day's allowance.
     let reservation: Awaited<ReturnType<typeof reserveDailyUsage>> = null;
     try {
       reservation = await reserveDailyUsage(
@@ -314,12 +337,26 @@ export async function GET(req: NextRequest) {
     if (!reservation.reserved) {
       return placeholderResponse(name, w, "daily-cap", slug, signalFallback);
     }
-    const upstream = await fetch(url, {
-      // Google redirects to the actual CDN object; follow it.
-      redirect: "follow",
-      cache: "no-store",
-      signal: deadline.signal,
-    });
+    let reserved = true;
+    const releaseUnusedReservation = async () => {
+      if (!reserved) return;
+      reserved = false;
+      await releaseDailyUsage("google_photo");
+    };
+    let upstream: Response;
+    try {
+      upstream = await fetch(url, {
+        // Google redirects to the actual CDN object; follow it.
+        redirect: "follow",
+        cache: "no-store",
+        signal: deadline.signal,
+      });
+    } catch (error) {
+      // Timeouts and caller aborts may still have reached Google; keep the
+      // unit. A transport failure before any response is not billable.
+      if (!deadline.signal.aborted) await releaseUnusedReservation();
+      throw error;
+    }
     if (deadline.signal.aborted) {
       // Fetch implementations that settle after cancellation still must not
       // leak their late body or replace a response already sent as fallback.
@@ -328,8 +365,10 @@ export async function GET(req: NextRequest) {
     }
     if (!upstream.ok || !upstream.body) {
       void upstream.body?.cancel().catch(() => {});
-      // The visible credit belongs to this exact resource name. The scheduled
-      // place refresh updates photo identity and attribution together.
+      if (upstream.status === 400 || upstream.status === 404) {
+        rememberRejectedPhotoName(resolved.name, `upstream-${upstream.status}`);
+      }
+      await releaseUnusedReservation();
       return placeholderResponse(name, w, `upstream-${upstream.status}`, slug, signalFallback);
     }
     // Fetch can decode an encoded response while retaining its wire length.
