@@ -1,5 +1,6 @@
 import { cleanFeedText } from "../../src/lib/format/text";
 import { clampDescription } from "../../src/lib/events/normalize";
+import { sourceFetchUserAgent } from "../../src/lib/http/source-user-agent";
 import {
   extractPageAnchors,
   normalizePageAnchor,
@@ -262,7 +263,7 @@ async function fetchRenderedPage(
     const { chromium } = await import("@playwright/test");
     browser = await chromium.launch();
     const page = await browser.newPage({
-      userAgent: UA,
+      userAgent: sourceFetchUserAgent(url, UA),
       // Opt-in escape hatch for environments behind a TLS-intercepting
       // proxy whose CA the bundled Chromium does not trust (render would
       // otherwise fail ERR_CERT_AUTHORITY_INVALID on every page). Off by
@@ -341,7 +342,7 @@ export async function fetchPageSnapshot(
     const { response: r, html } = await (async () => {
       try {
         const response = await fetch(url, {
-          headers: { "User-Agent": UA },
+          headers: { "User-Agent": sourceFetchUserAgent(url, UA) },
           redirect: "follow",
           signal: ctrl.signal,
         });
@@ -509,7 +510,7 @@ export async function fetchSquarespaceEventsResult(
   const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 20_000);
   try {
     const r = await (opts.fetchImpl ?? fetch)(url, {
-      headers: { "User-Agent": UA },
+      headers: { "User-Agent": sourceFetchUserAgent(url, UA) },
       redirect: "follow",
       signal: ctrl.signal,
     });

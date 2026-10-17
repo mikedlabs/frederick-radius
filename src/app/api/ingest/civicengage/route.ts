@@ -19,6 +19,10 @@ import {
 import { upsertEvent, emptyStats, type UpsertStats } from "@/lib/ingest/upsert";
 import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
 import { checkEventSchemaReadiness } from "@/lib/ingest/event-schema-readiness";
+import {
+  assignCivicEngageCategories,
+  civicEngageICalUrl,
+} from "@/lib/ingest/civicengage-identity";
 import { verifyCronAuth } from "../_auth";
 import sources from "@/../config/civicengage_sources.json" with { type: "json" };
 
@@ -80,11 +84,6 @@ type FeedResult =
       error: string;
     };
 
-type DedupedEvent = {
-  event: ParsedEvent;
-  category: string | null;
-};
-
 const UA = "FrederickRadius/1.0 (+https://frederickradius.app; civic event index)";
 const ROUTE_BUDGET_MS = 240_000;
 const FEED_TIMEOUT_MS = 20_000;
@@ -94,7 +93,7 @@ const WRITE_START_BUFFER_MS = 1_000;
 const AGGREGATE_RUN_SLUG = "civicengage:aggregate";
 
 function feedUrl(domain: string, catID: number): string {
-  return `https://${domain}/Common/Modules/iCalendar/iCalendar.aspx?catID=${catID}&feed=calendar`;
+  return civicEngageICalUrl(domain, catID);
 }
 
 function sourceRunSlug(src: Source): string {
@@ -242,47 +241,17 @@ async function fetchAndParseFeed(
 
 /**
  * CivicEngage publishes the same UID through multiple category calendars.
- * Preserve one deterministic event (configured catID order), and only keep a
- * category when every occurrence agrees. This prevents loop order from
- * silently assigning a conflicting category.
+ * Preserve one deterministic event (configured catID order) and persist the
+ * numeric catID only when every occurrence agrees.
  */
 function dedupeEvents(
-  src: Source,
   feedResults: readonly FeedResult[],
-): { events: DedupedEvent[]; duplicates: number } {
-  const byUid = new Map<
-    string,
-    {
-      event: ParsedEvent;
-      categories: Set<string | null>;
-    }
-  >();
-  let duplicates = 0;
-
-  for (const feed of feedResults) {
-    if (!feed.ok) continue;
-    const category = src.category_map[String(feed.catID)] ?? null;
-    for (const event of feed.events) {
-      const existing = byUid.get(event.uid);
-      if (existing) {
-        duplicates += 1;
-        existing.categories.add(category);
-      } else {
-        byUid.set(event.uid, {
-          event,
-          categories: new Set([category]),
-        });
-      }
-    }
-  }
-
-  return {
-    events: [...byUid.values()].map(({ event, categories }) => ({
-      event,
-      category: categories.size === 1 ? [...categories][0] : null,
-    })),
-    duplicates,
-  };
+): ReturnType<typeof assignCivicEngageCategories<ParsedEvent>> {
+  return assignCivicEngageCategories(
+    feedResults.flatMap((feed) =>
+      feed.ok ? [{ catID: feed.catID, events: feed.events }] : [],
+    ),
+  );
 }
 
 function summarizeFeedFailures(
@@ -340,7 +309,7 @@ async function ingestSource(
   const failedFeeds = feedResults.filter(
     (result): result is Extract<FeedResult, { ok: false }> => !result.ok,
   );
-  const { events, duplicates } = dedupeEvents(src, feedResults);
+  const { events, duplicates } = dedupeEvents(feedResults);
 
   let processed = 0;
   let failedRecords = 0;

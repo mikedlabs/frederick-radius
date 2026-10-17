@@ -131,6 +131,33 @@ describe("ingestICal", () => {
     expect(eventRow?.starts_at).toEqual(new Date("2099-01-11T00:30:00.000Z"));
     expect(eventRow?.ends_at).toEqual(new Date("2099-01-11T02:30:00.000Z"));
     expect(onConflictDoUpdate).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).toMatchObject({
+      "User-Agent": "FrederickRadius/1.0 (+https://frederickradius.app; event index)",
+    });
+  });
+
+  it("sends a browser-shaped User-Agent to Celebrate Frederick", async () => {
+    const { db } = fakeDb();
+    mocks.getDb.mockReturnValue(db);
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(SAMPLE, {
+        status: 200,
+        headers: { "content-type": "text/calendar" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await ingestICal({
+      source_slug: "celebrate_frederick",
+      url: "https://www.celebratefrederick.com/events/?ical=1",
+      defaultMunicipality: "frederick",
+      defaultVenueLatLng: { lng: -77.4109, lat: 39.4137 },
+    });
+
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).toMatchObject({
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 FrederickRadius/1.0 (+https://frederickradius.app)",
+    });
   });
 
   it("preserves explicit and default exclusive all-day ends through the database upsert", async () => {

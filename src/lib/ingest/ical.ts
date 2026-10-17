@@ -5,6 +5,7 @@ import { MUNICIPALITIES } from "@/data/municipalities";
 import { cutAtWordBoundary } from "@/lib/slug";
 import { parseICalResult } from "@/lib/ingest/parser";
 import { safeIngestWriteError } from "@/lib/ingest/write-outcome";
+import { sourceFetchUserAgent } from "@/lib/http/source-user-agent";
 
 const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
   { slug: "music", words: ["concert", "band", "music", "dj", "open mic", "acoustic"] },
@@ -69,7 +70,10 @@ async function fetchICal(url: string): Promise<string> {
       signal: controller.signal,
       headers: {
         Accept: "text/calendar, text/plain;q=0.9, */*;q=0.8",
-        "User-Agent": "FrederickRadius/1.0 (+https://frederickradius.app; event index)",
+        "User-Agent": sourceFetchUserAgent(
+          url,
+          "FrederickRadius/1.0 (+https://frederickradius.app; event index)",
+        ),
       },
     });
     if (!response.ok) {

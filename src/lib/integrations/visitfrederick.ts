@@ -61,12 +61,13 @@ import {
   visitFrederickFactsReuseApproved,
   visitFrederickSnapshotAgeMs,
 } from "@/lib/integrations/visitfrederick-snapshot";
+import { sourceFetchUserAgent } from "@/lib/http/source-user-agent";
 
 const FEED_URL = VISIT_FREDERICK_FEED_URL;
 const FETCH_TIMEOUT_MS = 2_500;
 const MAX_FEED_BYTES = 512 * 1_024;
 const SOURCE_LABEL = "Visit Frederick";
-const USER_AGENT = "FrederickRadius/1.0 (+https://frederickradius.app)";
+const USER_AGENT = sourceFetchUserAgent(FEED_URL);
 const EVENT_IMAGE_HOST = "assets.simpleviewinc.com";
 
 // Visit Frederick region tag (lower-cased) -> our municipality slug. The feed

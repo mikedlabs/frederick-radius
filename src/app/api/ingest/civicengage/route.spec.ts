@@ -350,6 +350,31 @@ describe("GET /api/ingest/civicengage", () => {
     });
   });
 
+  it("persists the numeric catID on unique CivicEngage rows", async () => {
+    await GET(request());
+
+    expect(mocks.upsertEvent.mock.calls.map(([, opts]) => opts)).toEqual([
+      {
+        sourceDomain: "www.testville.gov",
+        municipality: "Testville",
+        category: "14",
+        categoryCoverageComplete: true,
+      },
+      {
+        sourceDomain: "www.testville.gov",
+        municipality: "Testville",
+        category: "23",
+        categoryCoverageComplete: true,
+      },
+      {
+        sourceDomain: "www.testville.gov",
+        municipality: "Testville",
+        category: "27",
+        categoryCoverageComplete: true,
+      },
+    ]);
+  });
+
   it("deduplicates UIDs before writes and nulls conflicting categories deterministically", async () => {
     mocks.parseICalResult.mockReturnValue({
       valid: true,
