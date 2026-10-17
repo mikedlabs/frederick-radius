@@ -33,6 +33,12 @@ import {
   publicEventSourceCircuits,
 } from "@/lib/integrations/event-source-circuit";
 import { isEventWithinReadWindow } from "@/lib/events/visible";
+import {
+  approvedFeedImageUrl,
+  icalAttachImage,
+  rssItemImage,
+  tribeEventImage,
+} from "@/lib/events/feed-image";
 
 // Phase 1.6: drop venue open-status entries that are not events.
 // Default ON by owner directive (2026-05-16: "ship everything"). The
@@ -969,6 +975,8 @@ type ParsedVEvent = {
   /** iCal GEO ("lat;lon") — a per-event coordinate. Rare, but when a feed
    *  publishes one it is more precise than the venue centroid. */
   geo?: { lat: number; lng: number };
+  /** First https image ATTACH/IMAGE on the VEVENT, when the host is allowlisted. */
+  image?: string;
 };
 
 /** Parse an iCal GEO value ("39.41;-77.41"). Null on anything malformed or
@@ -1031,6 +1039,12 @@ function parseICalEvents(text: string): ParsedVEvent[] {
         case "GEO":
           cur.geo = parseICalGeo(value) ?? undefined;
           break;
+        case "ATTACH":
+        case "IMAGE": {
+          const image = icalAttachImage(params.FMTTYPE, unescapeIcalText(value));
+          if (image && !cur.image) cur.image = image;
+          break;
+        }
       }
     }
   }
@@ -1246,6 +1260,7 @@ async function fetchIcalFeed(
         source_label: feed.source_label,
         url: item.url ?? feed.url,
         is_free: isExplicitlyFree(`${title} ${cleanedDesc}`),
+        hero_image: item.image,
         last_verified_at: fetchedAt,
       };
       const validated = validateLiveEvent(candidate, feed.source);
@@ -1383,6 +1398,7 @@ async function fetchRssFeed(
         source_label: feed.source_label,
         url: link || feed.url,
         is_free: isExplicitlyFree(`${title} ${description}`),
+        hero_image: rssItemImage(block),
         last_verified_at: fetchedAt,
       };
       const validated = validateLiveEvent(candidate, feed.source);
@@ -1441,6 +1457,7 @@ type TribeEvent = {
   utc_start_date?: string; // "2026-07-11 14:30:00" (UTC)
   utc_end_date?: string;
   url?: string;
+  image?: unknown;
   venue?: { venue?: string; address?: string; city?: string; state?: string } | unknown[];
 };
 
@@ -1549,6 +1566,7 @@ async function fetchTribeFeed(
         source_label: feed.source_label,
         url: item.url ?? feed.url,
         is_free: isExplicitlyFree(`${title} ${cleanedDesc}`),
+        hero_image: tribeEventImage(item.image, feed.url),
         last_verified_at: fetchedAt,
       };
       const validated = validateLiveEvent(candidate, feed.source);
@@ -2000,6 +2018,7 @@ async function fetchJsonArrayFeed(
         source_label: feed.source_label,
         url: eventUrl,
         is_free: isExplicitlyFree(`${title} ${cleanedDesc}`),
+        hero_image: approvedFeedImageUrl(str("image")),
         last_verified_at: fetchedAt,
       };
       const validated = validateLiveEvent(candidate, feed.source);

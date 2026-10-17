@@ -1,5 +1,6 @@
 import { cleanFeedText } from "../../src/lib/format/text";
 import { clampDescription } from "../../src/lib/events/normalize";
+import { squarespaceItemImage } from "../../src/lib/events/feed-image";
 import {
   extractPageAnchors,
   normalizePageAnchor,
@@ -414,6 +415,8 @@ export type FeedEvent = {
   /** Publisher prose copied from the structured venue feed. */
   description_origin?: "source-excerpt";
   ticket_url?: string;
+  /** Publisher-provided event photograph when the collection publishes one. */
+  hero_image?: string;
 };
 
 export type SquarespaceEventsFetchResult =
@@ -459,6 +462,11 @@ export function parseSquarespaceEvents(
       endDate?: unknown;
       excerpt?: unknown;
       fullUrl?: unknown;
+      assetUrl?: unknown;
+      contentType?: unknown;
+      originalSize?: unknown;
+      filename?: unknown;
+      systemDataSourceType?: unknown;
     };
     const title = typeof it.title === "string" ? it.title.trim() : "";
     const startMs = typeof it.startDate === "number" ? it.startDate : NaN;
@@ -484,6 +492,8 @@ export function parseSquarespaceEvents(
     if (typeof it.fullUrl === "string" && it.fullUrl) {
       ev.ticket_url = origin ? `${origin}${it.fullUrl}` : it.fullUrl;
     }
+    const heroImage = squarespaceItemImage(it);
+    if (heroImage) ev.hero_image = heroImage;
     out.push(ev);
   }
   return out;

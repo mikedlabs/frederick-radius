@@ -1,5 +1,7 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { EventHeroImageAttribution } from "@/data/events";
+import { approvedFeedImageUrl } from "@/lib/events/feed-image";
+import { eventSourceLabel } from "@/lib/events/source-label";
 
 /**
  * A promoted event visual must say what the image actually depicts and where
@@ -40,67 +42,15 @@ const VENUE_VISUALS: Readonly<Record<string, EventCardVisual>> = {
   },
 };
 
-const EVENT_IMAGE_POLICY: Readonly<
-  Partial<
-    Record<
-      EventWithMeta["source"],
-      { hostname: string; pathnamePrefix?: string; caption: string }
-    >
-  >
-> = {
-  dfp: {
-    hostname: "ik.imagekit.io",
-    caption: "Event image · Downtown Frederick Partnership",
-  },
-  "visit-frederick": {
-    hostname: "assets.simpleviewinc.com",
-    caption: "Event image · Visit Frederick",
-  },
-  fcpl: {
-    hostname: "frederick.librarycalendar.com",
-    caption: "Event image · Frederick County Public Libraries",
-  },
-  ticketmaster: {
-    hostname: "s1.ticketm.net",
-    caption: "Event image · Ticketmaster",
-  },
-  seatgeek: {
-    hostname: "seatgeek.com",
-    caption: "Event image · SeatGeek",
-  },
-  mdcc: {
-    hostname: "static.wixstatic.com",
-    pathnamePrefix: "/media/",
-    caption: "Event image · Maryland Deaf Community Center",
-  },
-};
-
 function approvedProviderVisual(event: EventWithMeta): EventCardVisual | null {
   if (!event.hero_image) return null;
-  const policy = EVENT_IMAGE_POLICY[event.source];
-  if (!policy) return null;
-
-  try {
-    const url = new URL(event.hero_image);
-    if (
-      url.protocol !== "https:" ||
-      url.hostname !== policy.hostname ||
-      url.port !== "" ||
-      url.username !== "" ||
-      url.password !== "" ||
-      (policy.pathnamePrefix &&
-        !url.pathname.startsWith(policy.pathnamePrefix))
-    ) {
-      return null;
-    }
-  } catch {
-    return null;
-  }
+  const src = approvedFeedImageUrl(event.hero_image);
+  if (!src) return null;
 
   return {
-    src: event.hero_image,
-    caption: policy.caption,
-    key: `event:${event.hero_image}`,
+    src,
+    caption: `Event image · ${eventSourceLabel(event.source, event.venue_name)}`,
+    key: `event:${src}`,
     presentation: "artwork",
     sourceHref:
       typeof event.source_url === "string" &&

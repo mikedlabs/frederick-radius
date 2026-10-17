@@ -15,6 +15,7 @@ import {
   isLikelyEventActionUrl,
 } from "@/lib/events/attendance";
 import { isUpcomingEvent } from "@/lib/events/visible";
+import { approvedFeedImageUrl } from "@/lib/events/feed-image";
 
 /**
  * Venue events — produced by the extraction agent
@@ -42,6 +43,8 @@ export type VenueEvent = {
   venue_slug: string;
   venue_name: string;
   category?: string;
+  /** Publisher-provided event photograph when the venue feed publishes one. */
+  hero_image?: string;
   source: {
     url: string;
     fetchedAt: string;
@@ -159,7 +162,12 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
     is_recurring: false,
     venue_place_slug: physical ? place?.slug : undefined,
     placement,
-    hero_image: physical ? place?.google_photo_url : undefined,
+    // Feed art first. Google place photos remain a fallback when the
+    // venue page did not publish a real event image (withVenueThumbs
+    // still attaches venue credits for the proxy URL).
+    hero_image: physical
+      ? approvedFeedImageUrl(e.hero_image) ?? place?.google_photo_url
+      : undefined,
     venue_name:
       attendance_mode === "online" ? "Online" : cleanFeedText(e.venue_name),
     address:

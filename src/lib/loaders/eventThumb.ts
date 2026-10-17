@@ -43,12 +43,13 @@ function venuePhotoAttribution(
 }
 
 /**
- * Give events a thumbnail by borrowing their venue's verified photo.
+ * Give events a thumbnail by borrowing their venue's verified photo
+ * when the source did not publish event-specific art.
  *
- * Events have no images of their own, which is why the list read as a
- * wall of text. Most events happen *at a place* we now have a real
- * Google photo for (post the full enrichment run), so the honest,
- * zero-cost move is to show the venue's photo on the card.
+ * Publisher `hero_image` URLs (Squarespace, iCal ATTACH, Tribe, etc.)
+ * stay intact. Most other events happen *at a place* we have a real
+ * Google photo for, so the honest, zero-cost fallback is the venue
+ * photograph rather than a blank card.
  *
  * Two paths in order of trust:
  *   1. The shared venue resolver accepts an exact canonical slug, reviewed

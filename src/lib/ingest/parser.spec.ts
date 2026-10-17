@@ -72,6 +72,25 @@ END:VCALENDAR`;
     }
   });
 
+  it("keeps an image ATTACH from a WordPress iCal as heroImage", () => {
+    const result = parseICalResult(`BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:delaplaine-show
+DTSTAMP:20260727T120000Z
+DTSTART;TZID=America/New_York:20260730T170000
+SUMMARY:Opening Reception
+ATTACH;FMTTYPE=image/jpeg:https://delaplaine.org/wp-content/uploads/2025/10/show.jpg
+END:VEVENT
+END:VCALENDAR`);
+
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.events[0]?.heroImage).toBe(
+      "https://delaplaine.org/wp-content/uploads/2025/10/show.jpg",
+    );
+  });
+
   it("parses folded text, a canonical URL, and a Frederick wall-clock time", () => {
     const result = parseICalResult(`BEGIN:VCALENDAR
 VERSION:2.0
