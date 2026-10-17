@@ -25,22 +25,36 @@ async function forceActiveWeatherAlert(page: Page) {
       await route.continue();
       return;
     }
-    const response = await route.fetch();
-    const body = (await response.json()) as {
-      smartSignals?: Record<string, unknown> | null;
-    };
-    await route.fulfill({
-      response,
-      json: {
-        ...body,
-        smartSignals: {
-          ...body.smartSignals,
-          conditionsStatus: "current",
-          outdoorSafetyHold: null,
-          activeWeatherAlert: true,
+    try {
+      const response = await route.fetch();
+      const body = (await response.json()) as {
+        smartSignals?: Record<string, unknown> | null;
+      };
+      await route.fulfill({
+        response,
+        json: {
+          ...body,
+          smartSignals: {
+            ...body.smartSignals,
+            conditionsStatus: "current",
+            outdoorSafetyHold: null,
+            activeWeatherAlert: true,
+          },
         },
-      },
-    });
+      });
+    } catch {
+      await route.fulfill({
+        json: {
+          smartSignals: {
+            conditionsStatus: "current",
+            outdoorSafetyHold: null,
+            activeWeatherAlert: true,
+            marketsOpenTodayCount: 0,
+            roadsTrendingLongerCount: 0,
+          },
+        },
+      });
+    }
   });
 }
 
@@ -60,6 +74,7 @@ async function openEnlargedMap(page: Page, width: number, height: number, rootFo
   }, rootFontPx);
   await page.goto("/map", { waitUntil: "domcontentloaded" });
   await page.addStyleTag({ content: `html { font-size: ${rootFontPx}px !important; }` });
+  await expect(page.getByText("Compiling")).toHaveCount(0, { timeout: 60_000 });
   await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
   await expect(page.getByRole("combobox", { name: /Search (this map|Frederick Radius)/ })).toBeVisible({
     timeout: 30_000,
@@ -97,9 +112,34 @@ async function ensureGuidance(page: Page) {
   });
 }
 
+async function ensureNearbyOffer(page: Page) {
+  if (await page.locator(".map-location-offer").count()) return;
+  await page.evaluate(() => {
+    const dock = document.querySelector("[data-map-dock]");
+    if (!dock) return;
+    const offer = document.createElement("section");
+    offer.className = "map-location-offer";
+    offer.setAttribute("aria-labelledby", "map-location-offer-title");
+    offer.innerHTML = `
+      <div class="map-location-offer-copy">
+        <strong id="map-location-offer-title">Start with nearby results.</strong>
+        <span>Use your location for honest distances, or keep browsing the county.</span>
+      </div>
+      <div class="map-location-offer-actions" role="group" aria-label="Choose how to begin on the map">
+        <button type="button">Use my location</button>
+        <button type="button">Browse county</button>
+      </div>
+    `;
+    dock.prepend(offer);
+  });
+}
+
 test.describe("map large-text layout", () => {
   test.beforeAll(() => {
     mkdirSync(ARTIFACT_DIR, { recursive: true });
+  });
+  test.afterEach(async ({ page }) => {
+    await page.unrouteAll({ behavior: "ignoreErrors" }).catch(() => undefined);
   });
 
   for (const scenario of CASES) {
@@ -108,6 +148,7 @@ test.describe("map large-text layout", () => {
       await openEnlargedMap(page, scenario.width, scenario.height, scenario.rootFontPx);
       await expect(page.locator("[data-app-tabbar]")).toBeVisible();
       await ensureGuidance(page);
+      await ensureNearbyOffer(page);
 
       const reason = page.locator("[data-map-smart-note-reason]");
       const action = page.locator("[data-map-smart-note-action]");
@@ -164,6 +205,9 @@ test.describe("map large-text layout", () => {
         expect(boxesOverlap(nearbyBox!, tabBox!)).toBe(false);
       }
 
+      await page.evaluate(() => {
+        document.querySelectorAll("nextjs-portal, [data-next-badge-root]").forEach((node) => node.remove());
+      });
       const afterPath = path.join(ARTIFACT_DIR, scenario.afterFile);
       await page.screenshot({ path: afterPath, fullPage: false });
       await testInfo.attach(scenario.afterFile, { path: afterPath });
@@ -184,6 +228,9 @@ test.describe("map large-text layout", () => {
     expect(tabBox).not.toBeNull();
     expect(tabBox!.height).toBeLessThanOrEqual(64);
     expect(boxesOverlap(searchBox!, tabBox!)).toBe(false);
+    await page.evaluate(() => {
+      document.querySelectorAll("nextjs-portal, [data-next-badge-root]").forEach((node) => node.remove());
+    });
     const afterPath = path.join(ARTIFACT_DIR, "390-normal.png");
     await page.screenshot({ path: afterPath, fullPage: false });
     await testInfo.attach("390-normal.png", { path: afterPath });

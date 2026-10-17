@@ -12,7 +12,7 @@ describe("map large-text layout contracts", () => {
     expect(appMap).toContain("map-smart-note-dismiss");
     expect(appMap).not.toContain("whitespace-nowrap rounded-full px-2 py-1 font-semibold");
     expect(css).toMatch(/\.map-smart-note \{[\s\S]*?font-size: max\(12px, 0\.75rem\)/);
-    expect(css).toMatch(/\.map-smart-note-reason \{[\s\S]*?flex: 1 1 12ch/);
+    expect(css).toMatch(/\.map-smart-note-copy \{[\s\S]*?padding-right: 44px/);
     expect(css).toMatch(/\.map-smart-note-link \{[\s\S]*?font: inherit/);
     expect(css).toMatch(/\.map-smart-note-link \{[\s\S]*?text-decoration: underline/);
     expect(css).toMatch(/\.map-smart-note-dismiss \{[\s\S]*?width: 44px;[\s\S]*?height: 44px/);

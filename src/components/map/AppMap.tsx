@@ -4855,6 +4855,7 @@ export default function AppMap({
               >
                 {smartDefault.reason}
               </span>
+              {smartDefault.action ? " " : null}
               {smartDefault.action && (
                 "href" in smartDefault.action ? (
                   <Link

@@ -4008,23 +4008,15 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   animation: map-context-rail-in 180ms var(--app-ease-out) both;
 }
 .map-smart-note-copy {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: 0.55em;
-  row-gap: 0.15em;
   min-width: 0;
   padding-right: 44px;
-}
-.map-smart-note-reason {
-  flex: 1 1 12ch;
-  min-width: min(12ch, 100%);
   text-wrap: pretty;
 }
+.map-smart-note-reason {
+  min-width: 0;
+}
 .map-smart-note-link {
-  flex: 0 1 auto;
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
   margin: 0;
   padding: 0;
   border: 0;
