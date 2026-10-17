@@ -73,9 +73,42 @@
 
 /* The widest header has six independent actions. Keep their 44px targets
    instead of letting optional words push Find or Tools beyond the viewport. */
-.row {
+.bar .row {
+  /* The published height follows this row, so its floor must be independent. */
+  min-height: 56px;
+  height: auto;
+  flex-wrap: wrap;
+  padding-block: 6px;
   padding-left: max(1rem, env(safe-area-inset-left, 0px));
   padding-right: max(1rem, env(safe-area-inset-right, 0px));
+}
+/* Text-only enlargement must not turn 44px icon targets into 88px
+   controls inside the fixed-height app bar. Let labels reflow and the row
+   grow instead; every icon action keeps its physical touch target. */
+.row > button,
+.row .home,
+.row .tool,
+.row :global([data-location-chip]),
+.row :global([data-pulse-indicator]) {
+  min-width: 44px;
+  min-height: 44px;
+  height: auto;
+}
+.row > button:not(.search):not([data-header-back]) {
+  width: 44px;
+  height: 44px;
+}
+.row > :global([data-header-back]) {
+  margin-left: 0;
+}
+.row > button > svg,
+.row .tool > svg {
+  max-width: 24px;
+  max-height: 24px;
+}
+.row :global([data-location-chip]) > svg {
+  max-width: 16px;
+  max-height: 16px;
 }
 .home {
   display: inline-flex;
@@ -90,7 +123,7 @@
   .bar[data-dense-mobile-header="true"] :global([data-location-chip]) { max-width: 168px; }
 }
 @media (max-width: 767.98px) {
-  .row {
+  .bar .row {
     gap: 4px;
     padding-left: max(12px, env(safe-area-inset-left, 0px));
     padding-right: max(12px, env(safe-area-inset-right, 0px));
