@@ -206,6 +206,10 @@
      the TopBar's own 240ms ease so the two move as one piece of chrome. */
   --app-topbar-offset: var(--app-topbar-h);
   --app-bottomnav-reserve: 68px;
+  /* Measured Primary tab strip height (no safe-area). BottomNav publishes the
+     live value on /map so large text cannot leave map chrome using 68px. */
+  --app-tabbar-h: 56px;
+  --app-map-dock-gap: 7px;
   --app-browse-map-height: calc(
     100dvh - var(--app-topbar-h) - var(--app-bottomnav-reserve) -
       env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
@@ -259,6 +263,15 @@
 @media (min-width: 64rem) {
   :root {
     --app-bottomnav-reserve: 0px;
+  }
+}
+
+/* /map only: keep the existing 68px cold-open clearance, then follow the
+   measured tab strip so a taller bar (before the height cap, or if it still
+   grows) lifts the canvas and the dock together. */
+@media (max-width: 63.999rem) {
+  html:has([data-map-bottom-nav="true"]) {
+    --app-bottomnav-reserve: max(68px, calc(var(--app-tabbar-h, 56px) + 12px));
   }
 }
 
@@ -3453,7 +3466,19 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @media (max-width: 1023.98px) {
   .dock {
     top: auto;
-    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    /* Convert the viewport tab-bar clearance into a canvas-relative inset.
+       When --app-bottomnav-reserve already matches the strip, this is the
+       7px gap. If the bar outgrows a stale reserve, the dock still lifts. */
+    bottom: max(
+      var(--app-map-dock-gap, 7px),
+      calc(
+        var(--app-tabbar-h, var(--app-bottomnav-reserve, 68px))
+        + env(safe-area-inset-bottom, 0px)
+        + var(--app-map-dock-gap, 7px)
+        - var(--app-bottomnav-reserve, 68px)
+        - env(safe-area-inset-bottom, 0px)
+      )
+    );
   }
 
   /* iOS can cover a bottom-fixed search with its keyboard. While the field is
@@ -3954,18 +3979,18 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* One guidance surface owns the same top slot as the context rail. It is a
-   short decision note, not a second floating card competing with the map. */
+   short decision note, not a second floating card competing with the map.
+   Sentence and action share one rem body size so large text cannot turn the
+   link into a heading that squeezes the sentence into a one-word column. */
 .map-smart-note {
   position: absolute;
   top: 58px;
   left: 50%;
   z-index: var(--z-map-control);
   width: min(480px, calc(100% - 24px));
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 4px 4px 14px;
+  min-height: 44px;
+  display: block;
+  padding: 0.5rem 0.5rem 0.5rem 0.875rem;
   transform: translateX(-50%);
   border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
   border-radius: 16px;
@@ -3976,18 +4001,70 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     inset 0 1px 0 color-mix(in srgb, white 72%, transparent),
     0 8px 24px rgba(35, 29, 22, 0.13);
   color: var(--app-ink-2);
+  font-size: max(12px, 0.75rem);
+  line-height: 1.35;
   backdrop-filter: blur(16px) saturate(1.08);
   -webkit-backdrop-filter: blur(16px) saturate(1.08);
   animation: map-context-rail-in 180ms var(--app-ease-out) both;
 }
-.map-smart-note > [role="status"] {
+.map-smart-note-copy {
   min-width: 0;
-  flex: 1 1 auto;
-  font-size: 12px;
-  line-height: 1.25;
+  padding-right: 44px;
+  text-wrap: pretty;
 }
-.map-smart-note > a {
+.map-smart-note-reason {
+  min-width: 0;
+}
+.map-smart-note-link {
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--app-link);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.map-smart-note-link:hover,
+.map-smart-note-link:focus-visible {
+  color: var(--app-brand-press);
+}
+.map-smart-note-dismiss {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  color: var(--app-ink-3);
+  border-radius: 999px;
+  transition: color 140ms ease, background 140ms ease;
+}
+.map-smart-note-dismiss:hover,
+.map-smart-note-dismiss:focus-visible {
+  background: var(--app-bg-sunken);
+  color: var(--app-ink);
+}
+/* Recovery has no canvas to float over. Keep the same card, but sit it in
+   the fallback column above the heading so large text cannot cover it. */
+.map-error-fallback > .map-smart-note {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  width: auto;
   flex: 0 0 auto;
+  margin:
+    max(12px, env(safe-area-inset-top, 0px))
+    max(12px, env(safe-area-inset-right, 0px))
+    0
+    max(12px, env(safe-area-inset-left, 0px));
+  animation: none;
 }
 @keyframes map-context-rail-in {
   from {
@@ -6819,6 +6896,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .dock-host[data-map-error] .map-error-fallback-head {
     padding-top: calc(var(--map-dock-height, 0px) + var(--app-space-2) + var(--app-space-4));
   }
+  .dock-host[data-map-error] .map-error-fallback > .map-smart-note {
+    margin-top: calc(var(--map-dock-height, 0px) + var(--app-space-2) + var(--app-space-4));
+  }
+  .dock-host[data-map-error] .map-error-fallback:has(> .map-smart-note) .map-error-fallback-head {
+    padding-top: 14px;
+  }
 }
 @media (max-width: 1023.98px) {
   .dock-host[data-map-error] .map-error-fallback .map-list {
@@ -8819,8 +8902,29 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
 
   .dock {
     right: max(8px, env(safe-area-inset-right, 0px));
-    bottom: 7px;
+    bottom: max(
+      var(--app-map-dock-gap, 7px),
+      calc(
+        var(--app-tabbar-h, var(--app-bottomnav-reserve, 68px))
+        + env(safe-area-inset-bottom, 0px)
+        + var(--app-map-dock-gap, 7px)
+        - var(--app-bottomnav-reserve, 68px)
+        - env(safe-area-inset-bottom, 0px)
+      )
+    );
     left: max(8px, env(safe-area-inset-left, 0px));
+  }
+
+  /* Keep the Primary strip a bar on /map when root text is enlarged.
+     Labels may grow a little; the row stays 48px. */
+  [data-map-bottom-nav="true"] nav a {
+    height: 48px;
+    max-height: 48px;
+    gap: 2px;
+  }
+  [data-map-bottom-nav="true"] nav a span:last-child {
+    max-height: 1.2em;
+    overflow: hidden;
   }
 
   /* Location now belongs to the command surface. The desktop edge rail stays
