@@ -4847,37 +4847,43 @@ export default function AppMap({
             className="map-smart-note"
             data-map-top-surface="guidance"
           >
-            <span role="status" className="min-w-0 flex-1 text-pretty leading-snug">
-              {smartDefault.reason}
-            </span>
-            {smartDefault.action && (
-              "href" in smartDefault.action ? (
-                <Link
-                  href={smartDefault.action.href}
-                  className="tap-44-y shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-semibold"
-                  style={{ color: "var(--app-cool)" }}
-                >
-                  {smartDefault.action.label}
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  className="tap-44-y shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-semibold"
-                  style={{ color: "var(--app-cool)" }}
-                  onClick={() => {
-                    haptic("light");
-                    setShowRadar(true);
-                    setSmartNoteDismissed(true);
-                    track("map_smart_default_action", { action: "radar" });
-                  }}
-                >
-                  {smartDefault.action.label}
-                </button>
-              )
-            )}
+            <div className="map-smart-note-copy">
+              <span
+                role="status"
+                className="map-smart-note-reason"
+                data-map-smart-note-reason
+              >
+                {smartDefault.reason}
+              </span>
+              {smartDefault.action && (
+                "href" in smartDefault.action ? (
+                  <Link
+                    href={smartDefault.action.href}
+                    className="map-smart-note-link tap-44-y"
+                    data-map-smart-note-action
+                  >
+                    {smartDefault.action.label}
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    className="map-smart-note-link tap-44-y"
+                    data-map-smart-note-action
+                    onClick={() => {
+                      haptic("light");
+                      setShowRadar(true);
+                      setSmartNoteDismissed(true);
+                      track("map_smart_default_action", { action: "radar" });
+                    }}
+                  >
+                    {smartDefault.action.label}
+                  </button>
+                )
+              )}
+            </div>
             <button
               type="button"
-              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
+              className="map-smart-note-dismiss tap-44"
               onClick={() => {
                 setSmartNoteDismissed(true);
                 // Saying no is a real choice: the seeded layers turn off and
@@ -4889,7 +4895,6 @@ export default function AppMap({
                 if (smartLayerSeeds.has("incidents")) setShowIncidents(false);
               }}
               aria-label="Dismiss the suggested view"
-              style={{ color: "var(--app-ink-3)" }}
             >
               <X className="h-4 w-4" strokeWidth={2.3} aria-hidden />
             </button>

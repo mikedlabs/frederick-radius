@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { haptic } from "@/lib/haptics";
 import { shouldPrefetchGlobalNavigation } from "@/lib/fair/route-policy";
 import { TABS, tabIndexForPath } from "./tabs";
@@ -41,11 +41,49 @@ export default function BottomNav() {
   const realIdx = tabIndexForPath(pathname);
   const allowPrefetch = shouldPrefetchGlobalNavigation(pathname);
   const [pendingIdx, setPendingIdx] = useState<number | null>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const onMap = pathname === "/map";
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- pathname completion clears the optimistic destination
     setPendingIdx(null);
   }, [pathname]);
+
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!onMap || !nav) return;
+    const root = document.documentElement;
+    const property = "--app-tabbar-h";
+    const previous = root.style.getPropertyValue(property);
+    const previousPriority = root.style.getPropertyPriority(property);
+    let published: string | null = null;
+    let disposed = false;
+    const measure = () => {
+      if (disposed) return;
+      // The strip itself, not the shell's safe-area padding. Map clearance
+      // adds that inset separately so it is never counted twice.
+      const height = nav.getBoundingClientRect().height;
+      if (!Number.isFinite(height) || height <= 0) return;
+      const value = `${Math.round(height)}px`;
+      if (root.style.getPropertyValue(property) !== value) {
+        root.style.setProperty(property, value);
+      }
+      published = value;
+    };
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(nav);
+    window.addEventListener("resize", measure);
+    return () => {
+      disposed = true;
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+      if (published !== null && root.style.getPropertyValue(property) === published) {
+        if (previous) root.style.setProperty(property, previous, previousPriority);
+        else root.style.removeProperty(property);
+      }
+    };
+  }, [onMap]);
 
   if (!shouldShowBottomNav(pathname)) return null;
 
@@ -64,7 +102,7 @@ export default function BottomNav() {
       `}</style>
       <div
         data-bottom-nav-shell
-        data-map-bottom-nav={pathname === "/map" ? "true" : undefined}
+        data-map-bottom-nav={onMap ? "true" : undefined}
         className="pointer-events-none fixed inset-x-0 bottom-0 lg:hidden"
         style={{
           zIndex: "var(--z-nav)",
@@ -74,11 +112,13 @@ export default function BottomNav() {
         }}
       >
         <nav
+          ref={navRef}
           aria-label="Primary"
           aria-busy={pendingIdx !== null}
+          data-app-tabbar
           className={`${styles.dock} pointer-events-auto relative mx-auto max-w-screen-md overflow-hidden`}
         >
-          <ul className="mx-auto grid max-w-screen-md grid-cols-4 px-1 py-1">
+          <ul className={`mx-auto grid max-w-screen-md grid-cols-4 px-1 ${onMap ? "py-[4px]" : "py-1"}`}>
             {TABS.map(({ href, label, icon: Icon, prefetch, fillOnActive }, idx) => {
               const isAtDestination = pathname === href || pathname.startsWith(`${href}/`);
               const isRealActive = realIdx === idx;
@@ -123,7 +163,7 @@ export default function BottomNav() {
                     }}
                     onClick={handleActivate}
                     aria-current={isAtDestination ? "page" : undefined}
-                    className={`${styles.destination} relative flex h-12 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition-[color,transform,background-color] duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)]`}
+                    className={`${styles.destination} relative flex ${onMap ? "h-[48px] max-h-[48px]" : "h-12"} w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition-[color,transform,background-color] duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)]`}
                     data-selected={active ? "true" : "false"}
                   >
                     <span
@@ -138,7 +178,7 @@ export default function BottomNav() {
                       fill={active && fillOnActive ? "currentColor" : "none"}
                       aria-hidden
                     />
-                    <span className="text-[11px] font-medium leading-tight tracking-tight">
+                    <span className={`${onMap ? "text-[clamp(10px,0.6875rem,12px)]" : "text-[11px]"} font-medium leading-tight tracking-tight`}>
                       {label}
                     </span>
                   </Link>

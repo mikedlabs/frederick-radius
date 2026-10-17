@@ -57,4 +57,11 @@ describe("BottomNav contextual chrome", () => {
     expect(source).toContain("onPointerCancel={() => setPendingIdx(null)}");
     expect(source).toContain("if (event.buttons !== 0) setPendingIdx(null)");
   });
+
+  it("caps the /map strip and publishes its measured height", () => {
+    const source = readFileSync("src/components/nav/BottomNav.tsx", "utf8");
+    expect(source).toContain("--app-tabbar-h");
+    expect(source).toContain("h-[48px]");
+    expect(source).toContain('data-map-bottom-nav={onMap ? "true" : undefined}');
+  });
 });

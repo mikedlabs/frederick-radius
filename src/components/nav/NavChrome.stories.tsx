@@ -92,3 +92,23 @@ export const DesktopEvents: Story = {
   globals: { viewport: { value: "radiusDesktop", isRotated: false } },
   parameters: { nextjs: { navigation: { pathname: "/events" } } },
 };
+
+export const MapAt320LargeText: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  parameters: { nextjs: { navigation: { pathname: "/map" } } },
+  beforeEach: () => {
+    const previous = document.documentElement.style.fontSize;
+    document.documentElement.style.fontSize = "200%";
+    return () => {
+      document.documentElement.style.fontSize = previous;
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const navigation = within(canvasElement).getByRole("navigation", { name: "Primary" });
+    await expect(navigation).toHaveAttribute("data-app-tabbar");
+    await expect(navigation.getBoundingClientRect().height).toBeLessThanOrEqual(56);
+    const map = within(navigation).getByRole("link", { name: "Map" });
+    await expect(map.getBoundingClientRect().height).toBeLessThanOrEqual(48);
+    await expect(map.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+  },
+};
