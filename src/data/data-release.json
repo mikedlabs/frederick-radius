@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:6a3640101d45cf3af9867789156be6afea99d85a895f25070efdd97bca403002",
+  "data_version": "sha256:827f376fd9d6c162447ae4d89c38cb1fec8db537b3fa7b985fede98b70515eb8",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -258,11 +258,11 @@
       ]
     },
     "transit": {
-      "promoted_at": "2026-10-17T00:10:41.346Z",
+      "promoted_at": "2026-10-17T12:03:40.352Z",
       "artifacts": [
         {
           "path": "src/data/transit.json",
-          "sha256": "9a0634a49dea3ce837de04ff69aef3fec575fd23be999126321c68a78050fa66",
+          "sha256": "0aed1917ed6ad6aa9517a3ce10de47de09246f8db9a7d2ffb470336375233edc",
           "records": 8,
           "bytes": 77612
         },
