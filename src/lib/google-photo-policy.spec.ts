@@ -23,6 +23,21 @@ describe("Google photo publishing policy", () => {
     )).toBe(photoName);
   });
 
+  it("binds a nameless list credit to the URL-derived resource and rejects a different name", () => {
+    const slim = {
+      google_maps_uri: "https://www.google.com/maps/photos/photo-one",
+      authors: [{ display_name: "A photographer" }],
+    };
+    expect(publishableGooglePhotoAttribution(photoName, [slim as never], { bindUnnamedToUrl: true }))
+      .toEqual({ ...slim, photo_name: photoName });
+    expect(publishableGooglePhotoAttribution(photoName, [slim as never])).toBeUndefined();
+    expect(publishableGooglePhotoAttribution("places/ChIJtest/photos/other", [{
+      photo_name: photoName,
+      google_maps_uri: slim.google_maps_uri,
+      authors: slim.authors,
+    }], { bindUnnamedToUrl: true })).toBeUndefined();
+  });
+
   it("rejects legacy names, place-level fallbacks, and mismatched credits", () => {
     expect(publishableGooglePhotoNames([photoName], [])).toEqual([]);
     expect(publishableGooglePhotoNames([photoName], [{

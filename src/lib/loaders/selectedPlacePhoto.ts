@@ -4,6 +4,7 @@ import PHOTO_CREDITS_RAW from "@/data/event-venue-photo-credits.json" with { typ
 import PHOTO_SUPPRESS_RAW from "@/data/photo-suppress.json" with { type: "json" };
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 import type { Overrides } from "@/lib/overrides";
+import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import {
   bindSelectedPlacePhotoCredit,
   type SelectedPlacePhoto,
@@ -45,4 +46,34 @@ export function selectedPlacePhoto(
     place,
     PHOTO_CREDITS[place.slug],
   );
+}
+
+/** Wire fields the card check needs after it binds identity from the proxy URL. */
+export function primaryGooglePhotoAttribution(
+  attribution: SelectedPlacePhoto["attribution"],
+): GooglePhotoAttribution {
+  return {
+    google_maps_uri: attribution.google_maps_uri,
+    authors: attribution.authors.map((author) => ({
+      display_name: author.display_name,
+      uri: author.uri,
+    })),
+  } as GooglePhotoAttribution;
+}
+
+/**
+ * Restore the primary Google hero credit onto a slim catalog row. The client
+ * JSON keeps only the policy flag; list hydration still has to show Google's
+ * required author/source pair. Extra gallery attributions stay off the wire.
+ */
+export function withPrimaryGooglePhotoCredit<T extends SelectedPlacePhotoRecord>(
+  place: T,
+): T {
+  const photo = selectedPlacePhoto(place.slug, place);
+  if (!photo) return place;
+  return {
+    ...place,
+    google_photo_url: photo.url,
+    google_photo_attribution: primaryGooglePhotoAttribution(photo.attribution),
+  };
 }

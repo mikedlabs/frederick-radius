@@ -9,8 +9,11 @@ import { applyLivePlaceEvidenceMap } from "@/lib/live-place-evidence";
 /**
  * GET /api/places/by-slugs?slugs=a,b,c
  *
- * Returns the slim PlaceCardData for each known slug. Unknown slugs
- * are quietly dropped (the client filters them anyway). Used by:
+ * Returns the slim PlaceCardData for each known slug, with the primary
+ * Google photo's author/source credit restored from the server index.
+ * Unknown slugs are quietly dropped (the client filters them anyway).
+ * Used by:
+ *   - Nearby / map list photo hydration
  *   - SavedList — to hydrate the user's saved bookmarks + recently
  *     viewed slugs + the empty-state seeds.
  *

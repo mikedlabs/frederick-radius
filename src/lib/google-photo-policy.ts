@@ -20,16 +20,25 @@ function isIndividualGooglePhotoUrl(value?: string): boolean {
  * exact metadata record returned for that resource plus Google's individual
  * photo source link. Author attribution, when supplied, remains attached to
  * that same record for the full-size view.
+ *
+ * List hydration may omit `photo_name` because the proxy URL already carries
+ * that identity. `bindUnnamedToUrl` accepts that slim credit for the name
+ * taken from the URL and fills it on the returned record. A supplied name
+ * that does not match still fails, so a gallery extra cannot inherit the
+ * hero credit.
  */
 export function publishableGooglePhotoAttribution(
   photoName: string,
   attributions: readonly GooglePhotoAttribution[] = [],
+  options?: { bindUnnamedToUrl?: boolean },
 ): GooglePhotoAttribution | undefined {
-  return attributions.find(
-    (attribution) =>
-      attribution.photo_name === photoName &&
-      isIndividualGooglePhotoUrl(attribution.google_maps_uri),
-  );
+  const match = attributions.find((attribution) => {
+    const named = attribution.photo_name === photoName;
+    const unnamed = options?.bindUnnamedToUrl && !attribution.photo_name;
+    return (named || unnamed) && isIndividualGooglePhotoUrl(attribution.google_maps_uri);
+  });
+  if (!match) return undefined;
+  return match.photo_name ? match : { ...match, photo_name: photoName };
 }
 
 export function googlePhotoNameFromProxyUrl(value: string): string | undefined {

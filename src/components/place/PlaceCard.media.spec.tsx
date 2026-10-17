@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { mapListPhotoLoader } from "@/components/map/map-list-photo-loader";
 import { LANDMARK_PHOTOS } from "@/lib/integrations/wikimedia";
+import { resetPlacePhotoBytesCache } from "@/lib/place-photo-bytes";
 
 const actions = vi.hoisted(() => ({ openSheet: vi.fn(), save: vi.fn() }));
 const imageLoads = vi.hoisted(() => new Map<string, ImgHTMLAttributes<HTMLImageElement>["onLoad"]>());
@@ -55,7 +56,13 @@ describe("PlaceCard selected media and credit", () => {
     container = document.createElement("div"); document.body.append(container);
     root = createRoot(container);
   });
-  afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    resetPlacePhotoBytesCache();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
   async function render(cardPlace = place, variant: "answer" | "feature" | "tile" | "grid" | "row" | "discovery" = "answer") {
     await act(async () => root.render(<PlaceCard place={cardPlace} variant={variant} showSource={false} />));
   }
@@ -232,17 +239,36 @@ describe("PlaceCard selected media and credit", () => {
   });
   function lazyObserver() {
     const intersections: Array<() => void> = [];
+    const observers: Array<{ rootMargin: string; observed: Element[] }> = [];
     vi.stubGlobal("IntersectionObserver", class {
-      constructor(callback: IntersectionObserverCallback) {
+      readonly rootMargin: string;
+      readonly observed: Element[] = [];
+      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+        this.rootMargin = options?.rootMargin ?? "0px";
+        observers.push(this);
         intersections.push(() => callback([{ isIntersecting: true } as IntersectionObserverEntry], this as unknown as IntersectionObserver));
       }
-      observe() {} disconnect() {} unobserve() {}
+      observe(target: Element) { this.observed.push(target); }
+      disconnect() {} unobserve() {}
     });
-    return intersections;
+    return { intersections, observers };
+  }
+
+  function stubPhotoBytes(headers: HeadersInit = { "Content-Type": "image/jpeg" }, body = "jpeg-bytes") {
+    const objectUrl = `blob:place-photo-${Math.random().toString(16).slice(2)}`;
+    vi.spyOn(URL, "createObjectURL").mockReturnValue(objectUrl);
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const fetchMock = vi.fn<(input?: RequestInfo | URL) => Promise<Response>>(async () => new Response(new Blob([body], { type: "image/jpeg" }), {
+      status: 200,
+      headers,
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    return { fetchMock, objectUrl };
   }
 
   it("hydrates only a nearby row and keeps the exact photo credit through decoding", async () => {
-    const intersections = lazyObserver();
+    const { intersections, observers } = lazyObserver();
+    const { fetchMock, objectUrl } = stubPhotoBytes();
     vi.spyOn(mapListPhotoLoader, "peekData").mockReturnValue(undefined);
     const hydrate = vi.spyOn(mapListPhotoLoader, "loadData").mockResolvedValue({
       google_photo_url: place.google_photo_url!, google_photo_attribution: place.google_photo_attribution,
@@ -251,24 +277,30 @@ describe("PlaceCard selected media and credit", () => {
     await act(async () => root.render(<PlaceCard place={slimPlace} variant="row" lazyPhoto />));
     expect(photo()).toBeNull();
     expect(hydrate).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
     await act(async () => intersections.at(-1)!());
     expect(hydrate).toHaveBeenCalledExactlyOnceWith(slimPlace.slug);
+    expect(photo()).toBeNull();
+    expect(container.querySelector("[data-place-card-photo]")).not.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(observers.at(-1)?.rootMargin).toBe("48px 0px");
+    await act(async () => intersections.at(-1)!());
     const image = photo()!;
-    expect(image.getAttribute("src")).toContain("w=176");
-    expect(image.getAttribute("src")).toContain("fallback=signal");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("w=176");
+    expect(String(fetchMock.mock.calls[0][0])).toContain("fallback=signal");
+    expect(image.getAttribute("src")).toBe(objectUrl);
     expect(loadedCredit()).toBeNull();
     await load(image);
     expect(loadedCredit()?.textContent).toContain("Photo contributor");
     expect(loadedCredit()?.querySelector(`a[href="${googleSource}"]`)).not.toBeNull();
     expect(loadedCredit()?.closest("button")).toBeNull();
-    await load(image, 1, 1);
-    expect(photo()).toBeNull();
-    expect(container.querySelector(".place-card-photo-credit")).toBeNull();
     expect(hydrate).toHaveBeenCalledTimes(1);
   });
 
   it("never shows an old row's delayed hydration for the newly selected place", async () => {
-    const intersections = lazyObserver();
+    const { intersections } = lazyObserver();
+    stubPhotoBytes();
     vi.spyOn(mapListPhotoLoader, "peekData").mockReturnValue(undefined);
     let finishOld!: (photo: { google_photo_url: string; google_photo_attribution: typeof place.google_photo_attribution }) => void;
     const hydrate = vi.spyOn(mapListPhotoLoader, "loadData")
@@ -300,7 +332,8 @@ describe("PlaceCard selected media and credit", () => {
   });
 
   it("rejects a hydrated photo whose credit belongs to a different image", async () => {
-    const intersections = lazyObserver();
+    const { intersections } = lazyObserver();
+    stubPhotoBytes();
     vi.spyOn(mapListPhotoLoader, "peekData").mockReturnValue(undefined);
     vi.spyOn(mapListPhotoLoader, "loadData").mockResolvedValue({ google_photo_url: place.google_photo_url!,
       google_photo_attribution: { ...place.google_photo_attribution!, photo_name: "places/other/photos/another" } });
@@ -379,30 +412,87 @@ describe("PlaceCard selected media and credit", () => {
   });
 
   it("observes the whole discovery card before using the existing lazy metadata loader", async () => {
-    const observe = vi.fn();
-    let enterViewport: (() => void) | undefined;
-    vi.stubGlobal("IntersectionObserver", class {
-      constructor(callback: IntersectionObserverCallback) {
-        enterViewport = () => callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
-      }
-      observe = observe;
-      disconnect() {}
-    });
+    const { intersections, observers } = lazyObserver();
+    const { fetchMock, objectUrl } = stubPhotoBytes();
     vi.spyOn(mapListPhotoLoader, "peekData").mockReturnValue(undefined);
     const hydrate = vi.spyOn(mapListPhotoLoader, "loadData").mockResolvedValue({
       google_photo_url: place.google_photo_url!, google_photo_attribution: place.google_photo_attribution,
     });
     const slim = { ...place, slug: "unregistered-place", google_photo_url: undefined, google_photo_attribution: undefined };
     await act(async () => root.render(<PlaceCard place={slim} variant="discovery" lazyPhoto />));
-    expect(observe).toHaveBeenCalledWith(container.querySelector("article"));
+    expect(observers[0]?.observed[0]).toBe(container.querySelector("article"));
     expect(hydrate).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(photo()).toBeNull();
-    await act(async () => enterViewport!());
+    expect(container.querySelector('article[data-place-card-has-photo="false"]')).not.toBeNull();
+    await act(async () => intersections.at(-1)!());
     expect(hydrate).toHaveBeenCalledTimes(1);
     expect(hydrate).toHaveBeenCalledWith(slim.slug);
-    expect(photo()?.getAttribute("src")).toContain("w=720");
+    expect(photo()).toBeNull();
+    expect(container.querySelector("[data-place-card-photo-bytes='idle']")).not.toBeNull();
+    expect(container.querySelector('article[data-place-card-has-photo="true"]')).not.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(observers.at(-1)?.rootMargin).toBe("48px 0px");
+    await act(async () => intersections.at(-1)!());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("w=720");
+    expect(photo()?.getAttribute("src")).toBe(objectUrl);
     expect(loadedCredit()).toBeNull();
     await load(photo()!);
+    expect(loadedCredit()?.textContent).toContain("Photo contributor");
+  });
+
+  it("does not request Google photo bytes for an offscreen discovery card", async () => {
+    lazyObserver();
+    const { fetchMock } = stubPhotoBytes();
+    vi.spyOn(mapListPhotoLoader, "peekData").mockReturnValue(undefined);
+    const hydrate = vi.spyOn(mapListPhotoLoader, "loadData").mockResolvedValue({
+      google_photo_url: place.google_photo_url!, google_photo_attribution: place.google_photo_attribution,
+    });
+    const slim = { ...place, slug: "unregistered-place", google_photo_url: undefined, google_photo_attribution: undefined };
+    await act(async () => root.render(<PlaceCard place={slim} variant="discovery" lazyPhoto />));
+    expect(hydrate).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(photo()).toBeNull();
+  });
+
+  it("renders the compact no-photo card when the photo proxy sends x-photo-fallback", async () => {
+    const { intersections } = lazyObserver();
+    const { fetchMock } = stubPhotoBytes({ "Content-Type": "image/svg+xml", "x-photo-fallback": "daily-cap" }, "<svg></svg>");
+    vi.spyOn(mapListPhotoLoader, "peekData").mockReturnValue(undefined);
+    vi.spyOn(mapListPhotoLoader, "loadData").mockResolvedValue({
+      google_photo_url: place.google_photo_url!, google_photo_attribution: place.google_photo_attribution,
+    });
+    const slim = { ...place, slug: "unregistered-place", name: "Beans in the Belfry",
+      google_photo_url: undefined, google_photo_attribution: undefined };
+    await act(async () => root.render(<PlaceCard place={slim} variant="discovery" lazyPhoto />));
+    await act(async () => intersections.at(-1)!());
+    await act(async () => intersections.at(-1)!());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(photo()).toBeNull();
+    expect(container.querySelector("[data-place-card-photo]")).toBeNull();
+    expect(container.querySelector('article[data-place-card-has-photo="false"]')).not.toBeNull();
+    expect(container.querySelector(".place-card-photo-credit")).toBeNull();
+    expect(container.querySelector("h3")?.textContent).toBe("Beans in the Belfry");
+    expect(container.textContent).not.toContain("PHOTO NOT AVAILABLE");
+  });
+
+  it("never hides a real Google photo that arrived without x-photo-fallback", async () => {
+    const { intersections } = lazyObserver();
+    const { objectUrl } = stubPhotoBytes();
+    vi.spyOn(mapListPhotoLoader, "peekData").mockReturnValue(undefined);
+    vi.spyOn(mapListPhotoLoader, "loadData").mockResolvedValue({
+      google_photo_url: place.google_photo_url!, google_photo_attribution: place.google_photo_attribution,
+    });
+    const slim = { ...place, slug: "unregistered-place", google_photo_url: undefined, google_photo_attribution: undefined };
+    await act(async () => root.render(<PlaceCard place={slim} variant="discovery" lazyPhoto />));
+    await act(async () => intersections.at(-1)!());
+    await act(async () => intersections.at(-1)!());
+    const image = photo()!;
+    expect(image.getAttribute("src")).toBe(objectUrl);
+    await load(image, 1, 1);
+    expect(photo()).toBe(image);
+    expect(container.querySelector('article[data-place-card-has-photo="true"]')).not.toBeNull();
     expect(loadedCredit()?.textContent).toContain("Photo contributor");
   });
 

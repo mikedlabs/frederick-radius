@@ -29,6 +29,25 @@ describe("place card photo source contract", () => {
     expect(source?.kind).toBe("curated");
   });
 
+  it("binds a slim list credit to the hero URL and keeps it off a different gallery photo", () => {
+    const slim = { google_maps_uri: place.google_photo_attribution.google_maps_uri, authors: [{ display_name: "Photo contributor" }] };
+    const source = selectedPlaceCardPhoto(placeCardPhotoPlan({
+      ...place,
+      google_photo_attribution: slim as typeof place.google_photo_attribution,
+    }, 360), null);
+    expect(source?.kind).toBe("google");
+    if (source?.kind !== "google") throw new Error("Expected URL-bound Google hero");
+    expect(source.attribution.photo_name).toBe(name);
+    const extraName = "places/monument/photos/extra";
+    const extras = placePhotoGallerySources({
+      ...place,
+      google_photo_attribution: slim as typeof place.google_photo_attribution,
+      google_photos: [`/api/place-photo?name=${encodeURIComponent(extraName)}&w=800`],
+    }, 360);
+    expect(extras.filter((item) => item.kind === "google")).toHaveLength(1);
+    expect(extras.some((item) => item.kind === "google" && item.src.includes(encodeURIComponent(extraName)))).toBe(false);
+  });
+
   it.each([undefined, "https://example.com/a-scenic-image.jpg", "https://places.googleapis.com/photo?key=not-used"])("has no photo substitution for an unknown slug", (url) => {
     expect(selectedPlaceCardPhoto(placeCardPhotoPlan({ slug: "beans-in-the-belfry-brunswick", google_photo_url: url }, 360), null)).toBeNull();
   });
