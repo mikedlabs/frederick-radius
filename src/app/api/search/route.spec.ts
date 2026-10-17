@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/loaders/todayEventSnapshot", () => ({
   loadEventArchiveSnapshot: mocks.loadEventArchiveSnapshot,
-  TODAY_EVENT_SNAPSHOT_TIMEOUT_MS: 650,
+  EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS: 2_500,
 }));
 
 vi.mock("@/lib/ip-geo", () => ({
@@ -61,6 +61,7 @@ describe("GET /api/search map fast path", () => {
     mocks.loadEventArchiveSnapshot.mockResolvedValue({
       publicEvents: [liveEvent()],
       sourceHealth: { degraded: false, unavailable: [] },
+      origin: "archive",
     });
     mocks.approxLocation.mockResolvedValue({
       origin: null,
@@ -114,7 +115,11 @@ describe("GET /api/search map fast path", () => {
     expect(response.status).toBe(200);
     expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledWith(
       expect.any(Date),
-      { timeoutMs: 650 },
+      {
+        timeoutMs: 2_500,
+        seedFallback: false,
+        caller: "search-api",
+      },
     );
     expect(body.results).toContainEqual(
       expect.objectContaining({
@@ -165,6 +170,29 @@ describe("GET /api/search map fast path", () => {
     expect(mocks.loadEventArchiveSnapshot).not.toHaveBeenCalled();
   });
 
+  it("does not label a degraded archive that still returned real events", async () => {
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
+      publicEvents: [liveEvent()],
+      sourceHealth: {
+        degraded: true,
+        unavailable: ["The event schedule has not been refreshed recently."],
+      },
+      origin: "archive",
+    });
+
+    const response = await GET(request("Radius Investor Showcase"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.results).toContainEqual(
+      expect.objectContaining({
+        id: "event:radius-investor-showcase",
+        title: "Radius Investor Showcase",
+      }),
+    );
+    expect(body.meta.liveEventsUnavailable).toBeUndefined();
+  });
+
   it("labels honest base results when live event enrichment rejects", async () => {
     mocks.loadEventArchiveSnapshot.mockRejectedValue(
       new Error("Live event assembly unavailable"),
@@ -179,7 +207,7 @@ describe("GET /api/search map fast path", () => {
   });
 
   it.each(["map", "global"])(
-    "labels a resolved degraded archive in %s search",
+    "labels a resolved unavailable archive in %s search",
     async (origin) => {
       mocks.loadEventArchiveSnapshot.mockResolvedValue({
         publicEvents: [],
@@ -187,6 +215,7 @@ describe("GET /api/search map fast path", () => {
           degraded: true,
           unavailable: ["event archive"],
         },
+        origin: "none",
       });
 
       const response = await GET(request("events tonight", origin));
@@ -206,6 +235,7 @@ describe("GET /api/search map fast path", () => {
         degraded: true,
         unavailable: ["event archive"],
       },
+      origin: "none",
     });
 
     const response = await GET(request("zzqxwvnotreal", "global"));
@@ -227,5 +257,13 @@ describe("GET /api/search map fast path", () => {
     await GET(request("public restroom", "global"));
 
     expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledWith(
+      expect.any(Date),
+      {
+        timeoutMs: 2_500,
+        seedFallback: false,
+        caller: "search-api",
+      },
+    );
   });
 });

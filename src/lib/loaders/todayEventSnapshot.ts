@@ -53,11 +53,25 @@ export const EVENT_BROWSE_SNAPSHOT_LIMIT = 1_500;
 // connection, but no public request can turn this bounded archive read into a
 // long-running database wait.
 const EVENT_ARCHIVE_MAX_TIMEOUT_MS = 5_000;
+// A warm instance that already answered this read can reuse that snapshot for
+// a short window when the next database round-trip times out or is rejected.
+// Five minutes is long enough to cover a cold pooled reconnect after deploy,
+// and short enough that Search is not ranking a stale in-memory calendar.
+export const LAST_GOOD_SNAPSHOT_MAX_AGE_MS = 5 * 60 * 1_000;
 
 type EventArchiveSnapshotOptions = {
   horizonDays?: number;
   limit?: number;
   timeoutMs?: number;
+  /**
+   * When the archive cannot be read and nothing recent is remembered, Today
+   * still ranks the curated seeds. Search must not: passing false returns an
+   * empty public set so seeds are never shown as if they were the live
+   * calendar.
+   */
+  seedFallback?: boolean;
+  /** Optional label for timeout logs so a slow Search read is tellable from Today. */
+  caller?: string;
 };
 
 export type EventArchivePublicReasonCode =
@@ -77,8 +91,19 @@ export type EventArchiveSourceHealth = EventSourceHealth & {
   issues: EventArchivePublicIssue[];
 };
 
+export type EventArchiveSnapshotOrigin = "archive" | "last-good" | "seeds" | "none";
+
 export type EventArchiveSnapshot = Omit<UnifiedEvents, "sourceHealth"> & {
   sourceHealth: EventArchiveSourceHealth;
+  /**
+   * Where the payload came from. Search ranks real rows from `archive` and
+   * `last-good` even when sourceHealth.degraded is true (a partial or stale
+   * archive still has events). `none` is the empty no-copy result with no
+   * seeds; that is the only origin Search treats as unavailable.
+   */
+  origin: EventArchiveSnapshotOrigin;
+  /** True when this payload is a remembered real archive, not a fresh read. */
+  servedFromLastGood?: boolean;
 };
 
 const EVENT_ARCHIVE_PUBLIC_MESSAGES: Record<
@@ -281,7 +306,85 @@ function curatedFallback(
     unified,
     publicEvents: unified.filter(isPublicEvent),
     sourceHealth: eventArchiveSourceHealth([code]),
+    origin: "seeds",
   };
+}
+
+function emptyFallback(code: EventArchivePublicReasonCode): EventArchiveSnapshot {
+  return {
+    unified: [],
+    publicEvents: [],
+    sourceHealth: eventArchiveSourceHealth([code]),
+    origin: "none",
+  };
+}
+
+type RememberedArchiveRead = {
+  envelope: ArchiveEnvelope;
+  readAtMs: number;
+};
+
+type ArchiveMemoryGlobal = typeof globalThis & {
+  __frederickRadiusEventArchiveLastGoodV1?: Map<string, RememberedArchiveRead>;
+};
+
+/**
+ * The last archive read that answered in this server process, keyed by read
+ * shape. Process-local on purpose: the archive stays the cross-instance
+ * authority, and this only covers a warm instance whose next read is slow or
+ * rejected. globalThis keeps one copy when Next bundles this module twice.
+ * Shared process slot so later last-good work in this loader does not fork a
+ * second memo.
+ */
+function archiveMemory(): Map<string, RememberedArchiveRead> {
+  const shared = globalThis as ArchiveMemoryGlobal;
+  shared.__frederickRadiusEventArchiveLastGoodV1 ??= new Map();
+  return shared.__frederickRadiusEventArchiveLastGoodV1;
+}
+
+export function resetEventArchiveMemoryForTests(): void {
+  archiveMemory().clear();
+}
+
+/**
+ * A failed read reuses this process's last answered snapshot when it is still
+ * inside the five-minute window. Search then ranks those real events instead
+ * of the curated seeds. With nothing remembered, Search asks for an empty set;
+ * Today still takes the seeds.
+ */
+function archiveFallback(
+  now: Date,
+  code: EventArchivePublicReasonCode,
+  memoryKey: string,
+  windowStart: Date,
+  seedFallback: boolean,
+): EventArchiveSnapshot {
+  const remembered = archiveMemory().get(memoryKey);
+  const ageMs = remembered ? now.getTime() - remembered.readAtMs : Number.NaN;
+  if (
+    remembered &&
+    ageMs >= 0 &&
+    ageMs <= LAST_GOOD_SNAPSHOT_MAX_AGE_MS
+  ) {
+    console.warn("[events] Archive read failed; serving the last answered read.", {
+      code,
+      ageMs,
+    });
+    const hydrated = hydrateTodayEventSnapshot(remembered.envelope, now);
+    const startMs = windowStart.getTime();
+    const inWindow = (event: EventWithMeta) => {
+      const endMs = Date.parse(event.ends_at ?? "");
+      return (Number.isFinite(endMs) ? endMs : Date.parse(event.starts_at)) >= startMs;
+    };
+    return {
+      ...hydrated,
+      unified: hydrated.unified.filter(inWindow),
+      publicEvents: hydrated.publicEvents.filter(inWindow),
+      origin: "last-good",
+      servedFromLastGood: true,
+    };
+  }
+  return seedFallback ? curatedFallback(now, code) : emptyFallback(code);
 }
 
 function candidateRows(value: unknown): ArchiveCandidate[] {
@@ -366,6 +469,7 @@ export function hydrateTodayEventSnapshot(
     unified,
     publicEvents: unified.filter(isPublicEvent),
     sourceHealth: eventArchiveSourceHealth(issues),
+    origin: "archive",
   };
 }
 
@@ -393,7 +497,9 @@ export async function loadTodayEventSnapshot(
  * A visitor reads the archive written by the background source worker. This
  * function never contacts a publisher, geocoder, or ticketing provider. The
  * limits are clamped so a malformed caller cannot turn one page view into an
- * unbounded database response.
+ * unbounded database response. A slow or rejected read reuses this server's
+ * last answered snapshot for five minutes; Search opts out of the curated
+ * seed fallback so an unanswered read cannot be ranked as live results.
  */
 export async function loadEventArchiveSnapshot(
   now = new Date(),
@@ -414,8 +520,19 @@ export async function loadEventArchiveSnapshot(
       Math.floor(options.timeoutMs ?? EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS),
     ),
   );
+  const seedFallback = options.seedFallback !== false;
+  const { start, end } = snapshotBounds(now, horizonDays);
+  const memoryKey = `${horizonDays}:${limit}`;
   const sql = getSql();
-  if (!sql) return curatedFallback(now, "event_archive_unavailable");
+  if (!sql) {
+    return archiveFallback(
+      now,
+      "event_archive_unavailable",
+      memoryKey,
+      start,
+      seedFallback,
+    );
+  }
   // Bounds cross the wire as ISO text with an explicit cast, never as Date
   // objects.
   //
@@ -437,7 +554,6 @@ export async function loadEventArchiveSnapshot(
   // ISO text plus `::timestamptz` is correct under either mode, and it is
   // what the WRITE path in event-identity.ts has always done - which is
   // exactly why the collector kept working while every reader failed.
-  const { start, end } = snapshotBounds(now, horizonDays);
   const pending = sql<ArchiveEnvelope[]>`
     with latest_archive as (
       select status,
@@ -482,18 +598,38 @@ export async function loadEventArchiveSnapshot(
     from (values (1)) as anchor(value)
     left join latest_archive on true
   `;
+  const startedAt = Date.now();
   const outcome = await beforeDeadline(pending, timeoutMs);
   if (!outcome.ok) {
     if ("diagnostic" in outcome) {
       console.error("[events] Archive read rejected.", outcome.diagnostic);
+    } else {
+      // A timeout used to fall back without a trace, so Search stuck on
+      // "event schedule unavailable" looked identical to a quiet week in
+      // the logs.
+      console.warn("[events] Archive read timed out.", {
+        timeoutMs,
+        elapsedMs: Date.now() - startedAt,
+        horizonDays,
+        limit,
+        ...(options.caller ? { caller: options.caller } : {}),
+      });
     }
-    return curatedFallback(now, outcome.code);
+    return archiveFallback(now, outcome.code, memoryKey, start, seedFallback);
   }
   const envelope = outcome.value?.[0];
   // A missing row here is NOT an empty archive: the query anchors on
   // `(values (1))`, so a completed read always returns exactly one row.
   // Getting none back means the shape changed, which is its own bug.
-  return envelope
-    ? hydrateTodayEventSnapshot(envelope, now)
-    : curatedFallback(now, "event_archive_unavailable");
+  if (!envelope) {
+    return archiveFallback(
+      now,
+      "event_archive_unavailable",
+      memoryKey,
+      start,
+      seedFallback,
+    );
+  }
+  archiveMemory().set(memoryKey, { envelope, readAtMs: now.getTime() });
+  return hydrateTodayEventSnapshot(envelope, now);
 }

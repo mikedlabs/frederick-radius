@@ -4,7 +4,7 @@ import SearchBrowsePosition from "@/components/search/SearchBrowsePosition";
 import { cookies } from "next/headers";
 import { formatHoursLine } from "@/lib/hours";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { loadEventArchiveSnapshot, TODAY_EVENT_SNAPSHOT_TIMEOUT_MS } from "@/lib/loaders/todayEventSnapshot";
+import { EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS, loadEventArchiveSnapshot } from "@/lib/loaders/todayEventSnapshot";
 import { resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 import SearchRefinements from "@/components/search/SearchRefinements";
 import { withBrowseReturnTo } from "@/lib/browse-return";
@@ -269,9 +269,16 @@ export default async function SearchPage({
   // All results also searches exact event titles that carry no event keyword.
   // This is the bounded archive reader, without a publisher refresh fan-out.
   if (query && (kind === "all" || kind === "event")) {
-    const snapshot = await loadEventArchiveSnapshot(new Date(), { timeoutMs: TODAY_EVENT_SNAPSHOT_TIMEOUT_MS });
+    const snapshot = await loadEventArchiveSnapshot(new Date(), {
+      timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
+      seedFallback: false,
+      caller: "search",
+    });
     eventPool = snapshot.publicEvents;
-    eventsUnavailable = snapshot.sourceHealth.degraded;
+    // A successful or last-good read can still be sourceHealth.degraded when
+    // some feeds are behind. Search only treats the empty no-copy origin as
+    // unavailable; partial calendars still rank as real results.
+    eventsUnavailable = snapshot.origin === "none";
   }
   const result = qualifiedSearch(query, 80, eventPool, { municipality: context.filterMunicipality, contextLabel: context.label, resultKind: kind });
   const hits = query ? result.hits : [];
@@ -391,7 +398,7 @@ export default async function SearchPage({
       {/* Generic "ask about this" CTA — suppressed when a direct answer lead is
           present below, so the view never stacks two brand-emphasis blocks
           (one primary action per view). */}
-      {query && !answer && rankedHits.length === 0 && !suppressLocalHits && govAnswers.length === 0 ? (
+      {query && !answer && rankedHits.length === 0 && !suppressLocalHits && govAnswers.length === 0 && !eventsUnavailable ? (
         <Link
           href={`/ask?${new URLSearchParams({ q: query, in: town ?? "county" }).toString()}`}
           className="tactile-interactive flex min-h-12 items-center gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2"
@@ -542,7 +549,7 @@ export default async function SearchPage({
         </div>
       )}
 
-      {query && rankedHits.length === 0 && govAnswers.length === 0 && civicAnswers.length === 0 && (
+      {query && rankedHits.length === 0 && govAnswers.length === 0 && civicAnswers.length === 0 && !eventsUnavailable && (
         <div className="space-y-2 border-y px-2 py-8 text-center text-sm" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
           <p>There are no matches for &ldquo;{query}&rdquo;. Try a shorter search or add a town.</p>
           <p>
@@ -564,7 +571,23 @@ export default async function SearchPage({
           })}
         </nav>
       )}
-      {eventsUnavailable && <p role="status" className="border-l-2 pl-3 text-[14px] leading-relaxed" style={{ borderColor: "var(--app-amber)", color: "var(--app-ink-2)" }}>The current event schedule is unavailable, so these matches may be incomplete. <Link href={contextualSearchResult({ type: "action", id: "events", title: "Events", subtitle: "", href: "/events" }, { ...result.meta, scopeMunicipality: town }, query, "county").href} className="underline underline-offset-2">Check the events board.</Link></p>}
+      {eventsUnavailable && (
+        <p role="status" className="border-l-2 pl-3 text-[14px] leading-relaxed" style={{ borderColor: "var(--app-amber)", color: "var(--app-ink-2)" }}>
+          Events didn&apos;t load.{" "}
+          <Link
+            href={town
+              ? contextualSearchResult(
+                  { type: "action", id: "events", title: "Events", subtitle: "", href: "/events" },
+                  { ...result.meta, scopeMunicipality: town },
+                  query,
+                ).href
+              : "/events"}
+            className="underline underline-offset-2"
+          >
+            See all events →
+          </Link>
+        </p>
+      )}
       {rankedHits.length > 0 && (
         <section className="space-y-2" aria-label={`${rankedHits.length} results for ${query}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">

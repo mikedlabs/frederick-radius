@@ -5,8 +5,8 @@ import {
 } from "@/lib/search/index";
 import { isEventSearchIntent } from "@/lib/search";
 import {
+  EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
   loadEventArchiveSnapshot,
-  TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
 } from "@/lib/loaders/todayEventSnapshot";
 import { approxLocation } from "@/lib/ip-geo";
 import { roundCoord } from "@/lib/walkTime";
@@ -136,19 +136,22 @@ export async function GET(request: NextRequest) {
       base.results.some((result) => result.id.startsWith("civic:") || result.id.startsWith("department:")));
   // Rank against the promoted event archive, not just the small curated seed
   // set. The archive is refreshed in the background and has a cancellable
-  // sub-second read budget, so a search can discover current events without
+  // browse-sized read budget, so a search can discover current events without
   // starting publisher fan-out in a visitor request.
   let searchResult = base;
   let liveEventsUnavailable = false;
   if (!skipLiveEventAssembly) {
     try {
       // Both Map and global Find use the same durable archive contract. A
-      // resolved snapshot may still be degraded because the archive is stale,
-      // missing, or timed out; that state is not a healthy empty calendar.
+      // resolved snapshot may still be sourceHealth.degraded because some
+      // feeds are behind; that is not an empty calendar. Only the empty
+      // no-copy origin means live events could not be checked at all.
       const snapshot = await loadEventArchiveSnapshot(new Date(), {
-        timeoutMs: TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
+        timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
+        seedFallback: false,
+        caller: "search-api",
       });
-      liveEventsUnavailable = snapshot.sourceHealth?.degraded === true;
+      liveEventsUnavailable = snapshot.origin === "none";
       searchResult = qualifiedSearchIndex(
         q,
         limit,
