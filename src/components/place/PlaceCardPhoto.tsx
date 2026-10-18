@@ -62,6 +62,7 @@ export default function PlaceCardPhoto({ source, onResult, width = 360, frame = 
           placeholder="blur"
           blurDataURL={PAPER_CREAM_BLUR}
           className="object-cover"
+          style={source.kind === "owned" ? { objectPosition: source.objectPosition } : undefined}
           onLoad={(event) => {
             const failed = event.currentTarget.naturalWidth <= 1 || event.currentTarget.naturalHeight <= 1;
             onResult(source.src, failed ? "failed" : "loaded");

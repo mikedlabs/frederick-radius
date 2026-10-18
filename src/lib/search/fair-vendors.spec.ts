@@ -62,6 +62,14 @@ describe("named Fair vendors in countywide discovery", () => {
     expect(archived).not.toHaveProperty("lng");
   });
 
+  it.each(["Frederick Fair", "fair map"])("retains the dated guide for the explicit phrase %s", (query) => {
+    expect(searchIndex(query, 1, [])[0]?.href).toBe("/moments/great-frederick-fair-2026");
+  });
+
+  it("keeps the explicit fairgrounds-map guide phrase eligible", () => {
+    expect(search("fairgrounds map", 100, []).some((hit) => hit.type === "page" && hit.page.href === "/moments/great-frederick-fair-2026")).toBe(true);
+  });
+
   it("indexes the guide itself without answering ordinary Frederick queries with a campaign", () => {
     expect(searchIndex("Great Frederick Fair", 1, [])[0]?.href).toBe("/moments/great-frederick-fair-2026");
     for (const query of ["Frederick", "jazz 2026", "guide", "2026"]) {

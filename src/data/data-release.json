@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:e8fb7db01842522d078cd703e66c3b0c785724c8bfe6de24464d3ced96baf8b1",
+  "data_version": "sha256:761a2d1bb14e965c5d5a1ea30cb272522e242a0d4eeb5ac064ad92643f79fc88",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-17T18:51:12.649Z",
+      "promoted_at": "2026-10-18T00:40:14.459Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -183,6 +183,24 @@
           "sha256": "c658a191257a37116c83a02aeac5cb41ac1236d8fc9850882774810bcffbd5ec",
           "records": null,
           "bytes": 272332
+        },
+        {
+          "path": "src/lib/owned-place-photos.ts",
+          "sha256": "4ec75b06583c198fe472ecb7973b337fa6159e9e794387cec8b1b2fde17272e0",
+          "records": null,
+          "bytes": 1661
+        },
+        {
+          "path": "public/images/seasons/spring/aerial-view-baseball-field.jpg",
+          "sha256": "a497b955a148d29d39def38a9a217c218e57dcce3edf8b1977736e4e9d8aabfc",
+          "records": null,
+          "bytes": 315094
+        },
+        {
+          "path": "public/images/fair/fairgrounds-night-mike-d-1920.jpg",
+          "sha256": "41bcaa640ba03bc13756a246e04d51bef6c3d48d09b62c468f8054575b3ce0af",
+          "records": null,
+          "bytes": 572808
         },
         {
           "path": "src/data/place-visit-details.json",

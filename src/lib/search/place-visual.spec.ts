@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { clientPlaces, clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { isPaidGooglePhotoUrl } from "@/lib/google-photo-policy";
+import { placeCardPhotoPlan } from "@/lib/place-card-photo";
 import { freeSearchPlaceVisual } from "./place-visual";
 import { searchIndex } from "./index";
 
@@ -11,6 +12,26 @@ describe("free exact place photography in Find", () => {
     expect(freeSearchPlaceVisual(place("carroll-creek-linear-park-frederick"))).toMatchObject({
       kind: "owned", src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg", alt: "Carroll Creek in Frederick.",
     });
+  });
+
+  it.each([
+    ["McCurdy Field", "mccurdy-field", "/images/seasons/spring/aerial-view-baseball-field.jpg",
+      "An aerial view of McCurdy Field and the surrounding Frederick neighborhood."],
+    ["Frederick Fairgrounds", "frederick-fairgrounds-home-of-the-great-frederick-fair-frederick", "/images/fair/fairgrounds-night-mike-d-1920.jpg",
+      "Frederick Fairgrounds at night during The Great Frederick Fair."],
+  ])("leads the real Find query with the reviewed owned image for %s", (query, slug, src, alt) => {
+    const input = place(slug);
+    const photo = freeSearchPlaceVisual(input);
+    expect(photo).toMatchObject({ kind: "owned", src, alt });
+    expect(photo).not.toHaveProperty("attribution");
+    expect(photo?.kind === "owned" ? photo.objectPosition ?? "center" : undefined)
+      .toBe(slug === "frederick-fairgrounds-home-of-the-great-frederick-fair-frederick" ? "right" : "center");
+    expect(isPaidGooglePhotoUrl(photo!.src)).toBe(false);
+    expect(placeCardPhotoPlan(input, 360).sources[0]).toEqual(photo);
+    const result = searchIndex(query, 20, [])[0];
+    expect(result?.id).toBe(`place:${slug}`);
+    expect(result?.thumbnail).toBe(src);
+    expect(result?.thumbnailSource).toEqual(photo);
   });
 
   it.each(["cunningham-falls-state-park-thurmont", "baker-park-frederick", "barbara-fritchie-house-frederick", "catoctin-furnace-thurmont"])("preserves the exact reviewed Commons source and credit for %s", (slug) => {
@@ -75,7 +96,7 @@ describe("free exact place photography in Find", () => {
 
   it("never returns paid media or an unrelated town/category image for any current place", () => {
     const photos = clientPlaces().map(freeSearchPlaceVisual).filter(Boolean);
-    expect(photos).toHaveLength(13);
+    expect(photos).toHaveLength(15);
     expect(photos.some((photo) => isPaidGooglePhotoUrl(photo?.src))).toBe(false);
     expect(freeSearchPlaceVisual({ slug: "unreviewed-place", google_photo_url: "https://images.example.com/coffee.jpg", google_photo_attribution: undefined })).toBeNull();
   });

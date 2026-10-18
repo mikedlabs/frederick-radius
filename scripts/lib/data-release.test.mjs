@@ -86,6 +86,9 @@ test("the place release covers canonical server and place-page inputs", () => {
     "src/lib/integrations/wikimedia.ts",
     "src/data/credited-local-place-photos.ts",
     "public/place-photos/brewers-alley-2004.jpg",
+    "src/lib/owned-place-photos.ts",
+    "public/images/seasons/spring/aerial-view-baseball-field.jpg",
+    "public/images/fair/fairgrounds-night-mike-d-1920.jpg",
     "src/data/business-info.json",
     "src/data/field-notes.json",
     "src/data/course-info.json",
@@ -183,62 +186,64 @@ test("official hours count canonical branches rather than metadata fields", () =
 });
 
 
-test("local licensed image records require promotion even when their adapter is unchanged", () => {
-  const root = fixtureRoot();
-  const manifest = fixtureManifest(root);
-  const recordsPath = "src/data/credited-local-place-photos.ts";
-  const adapterPath = "src/lib/integrations/wikimedia.ts";
-  const originalAdapter = inspectArtifact(root, adapterPath);
-  const target = resolve(root, recordsPath);
-  writeFileSync(target, `${readFileSync(target, "utf8")}export const changedLicense = "CC BY-SA 3.0";\n`);
+for (const recordsPath of ["src/data/credited-local-place-photos.ts", "src/lib/owned-place-photos.ts"]) {
+  test(`local image records ${recordsPath} require promotion even when their adapter is unchanged`, () => {
+    const root = fixtureRoot();
+    const manifest = fixtureManifest(root);
+    const adapterPath = "src/lib/integrations/wikimedia.ts";
+    const originalAdapter = inspectArtifact(root, adapterPath);
+    const target = resolve(root, recordsPath);
+    writeFileSync(target, `${readFileSync(target, "utf8")}export const changedPhotoRecord = true;\n`);
 
-  const result = validateDataRelease(manifest, root);
-  assert.equal(result.dataVersion, null);
-  assert.ok(result.errors.some((error) => error.includes(recordsPath) && error.includes("digest differs")));
-  assert.deepEqual(inspectArtifact(root, adapterPath), originalAdapter);
-  assert.ok(result.errors.every((error) => error.includes(recordsPath)));
+    const result = validateDataRelease(manifest, root);
+    assert.equal(result.dataVersion, null);
+    assert.ok(result.errors.some((error) => error.includes(recordsPath) && error.includes("digest differs")));
+    assert.deepEqual(inspectArtifact(root, adapterPath), originalAdapter);
+    assert.ok(result.errors.every((error) => error.includes(recordsPath)));
 
-  const promoted = refreshDataReleaseStream(manifest, "places", root, "2026-08-13T12:00:00Z");
-  assert.deepEqual(validateDataRelease(promoted, root).errors, []);
-  assert.notEqual(promoted.data_version, manifest.data_version);
-  assert.equal(promoted.streams.places.artifacts.find((artifact) => artifact.path === recordsPath).records, null);
-  for (const [name, stream] of Object.entries(manifest.streams)) {
-    if (name !== "places") assert.deepEqual(promoted.streams[name], stream);
-  }
-  assert.deepEqual(
-    promoted.streams.places.artifacts.filter((artifact) => artifact.path !== recordsPath),
-    manifest.streams.places.artifacts.filter((artifact) => artifact.path !== recordsPath),
-  );
-});
+    const promoted = refreshDataReleaseStream(manifest, "places", root, "2026-08-13T12:00:00Z");
+    assert.deepEqual(validateDataRelease(promoted, root).errors, []);
+    assert.notEqual(promoted.data_version, manifest.data_version);
+    assert.equal(promoted.streams.places.artifacts.find((artifact) => artifact.path === recordsPath).records, null);
+    for (const [name, stream] of Object.entries(manifest.streams)) {
+      if (name !== "places") assert.deepEqual(promoted.streams[name], stream);
+    }
+    assert.deepEqual(
+      promoted.streams.places.artifacts.filter((artifact) => artifact.path !== recordsPath),
+      manifest.streams.places.artifacts.filter((artifact) => artifact.path !== recordsPath),
+    );
+  });
+}
 
 
-test("changing reviewed local photo bytes invalidates the places promotion without a metadata edit", () => {
-  const root = fixtureRoot();
-  const manifest = fixtureManifest(root);
-  const photoPath = "public/place-photos/brewers-alley-2004.jpg";
-  const metadataPath = "src/data/credited-local-place-photos.ts";
-  const metadata = inspectArtifact(root, metadataPath);
-  const target = resolve(root, photoPath);
-  writeFileSync(target, Buffer.concat([readFileSync(target), Buffer.from([0x01])]));
+for (const photoPath of PLACE_RELEASE_ARTIFACTS.filter((path) => path.endsWith(".jpg"))) {
+  test(`changing reviewed local photo bytes ${photoPath} invalidates the places promotion without a metadata edit`, () => {
+    const root = fixtureRoot();
+    const manifest = fixtureManifest(root);
+    const metadataPath = "src/data/credited-local-place-photos.ts";
+    const metadata = inspectArtifact(root, metadataPath);
+    const target = resolve(root, photoPath);
+    writeFileSync(target, Buffer.concat([readFileSync(target), Buffer.from([0x01])]));
 
-  const result = validateDataRelease(manifest, root);
-  assert.equal(result.dataVersion, null);
-  assert.ok(result.errors.some((error) => error.includes(photoPath) && error.includes("digest differs")));
-  assert.deepEqual(inspectArtifact(root, metadataPath), metadata);
-  assert.ok(result.errors.every((error) => error.includes(photoPath)));
+    const result = validateDataRelease(manifest, root);
+    assert.equal(result.dataVersion, null);
+    assert.ok(result.errors.some((error) => error.includes(photoPath) && error.includes("digest differs")));
+    assert.deepEqual(inspectArtifact(root, metadataPath), metadata);
+    assert.ok(result.errors.every((error) => error.includes(photoPath)));
 
-  const promoted = refreshDataReleaseStream(manifest, "places", root, "2026-08-13T12:00:00Z");
-  assert.deepEqual(validateDataRelease(promoted, root).errors, []);
-  assert.notEqual(promoted.data_version, manifest.data_version);
-  assert.equal(promoted.streams.places.artifacts.find((artifact) => artifact.path === photoPath).records, null);
-  for (const [name, stream] of Object.entries(manifest.streams)) {
-    if (name !== "places") assert.deepEqual(promoted.streams[name], stream);
-  }
-  assert.deepEqual(
-    promoted.streams.places.artifacts.filter((artifact) => artifact.path !== photoPath),
-    manifest.streams.places.artifacts.filter((artifact) => artifact.path !== photoPath),
-  );
-});
+    const promoted = refreshDataReleaseStream(manifest, "places", root, "2026-08-13T12:00:00Z");
+    assert.deepEqual(validateDataRelease(promoted, root).errors, []);
+    assert.notEqual(promoted.data_version, manifest.data_version);
+    assert.equal(promoted.streams.places.artifacts.find((artifact) => artifact.path === photoPath).records, null);
+    for (const [name, stream] of Object.entries(manifest.streams)) {
+      if (name !== "places") assert.deepEqual(promoted.streams[name], stream);
+    }
+    assert.deepEqual(
+      promoted.streams.places.artifacts.filter((artifact) => artifact.path !== photoPath),
+      manifest.streams.places.artifacts.filter((artifact) => artifact.path !== photoPath),
+    );
+  });
+}
 
 
 test("unregistered JPEG paths and unsupported formats are still rejected", () => {

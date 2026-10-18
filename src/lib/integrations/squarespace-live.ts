@@ -31,6 +31,7 @@ import {
   type EventAdapterResult,
 } from "@/lib/integrations/event-adapter-result";
 import { isEventWithinReadWindow } from "@/lib/events/visible";
+import { squarespaceItemImage, type SquarespaceImageItem } from "@/lib/events/feed-image";
 
 // Same ceiling as the iCal feeds — the unified assembly awaits all sources in
 // parallel, so one slow page must not hold the page hostage.
@@ -38,7 +39,7 @@ const FETCH_TIMEOUT_MS = 8_000;
 
 /** One item in a Squarespace events-collection `?format=json` payload.
  *  Only the fields we read are typed; the payload carries far more. */
-type SquarespaceItem = {
+type SquarespaceItem = SquarespaceImageItem & {
   title?: string;
   startDate?: number;
   endDate?: number;
@@ -151,12 +152,14 @@ async function fetchVenue(
       )) continue;
       const eventUrl = item.fullUrl && origin ? `${origin}${item.fullUrl}` : venue.squarespace;
       const description = descriptionFrom(item);
+      const heroImage = squarespaceItemImage(item, venue.squarespace);
       out.push({
         title,
         starts_at: start.toISOString(),
         ends_at: end?.toISOString(),
         description,
         ...(description ? { description_origin: "source-excerpt" as const } : {}),
+        ...(heroImage ? { hero_image: heroImage } : {}),
         ticket_url: eventUrl,
         venue_slug: venue.slug,
         venue_name: venueName,
