@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, within } from "storybook/test";
+import { consumeFindRequest, type FindTarget } from "@/lib/findBridge";
 import TodayAsk from "./TodayAsk";
 import TodayScopeStatus from "./TodayScopeStatus";
 import styles from "./TodayLayout.module.css";
@@ -69,6 +70,37 @@ const usableControls: NonNullable<Story["play"]> = async ({ canvasElement }) => 
   await expect(find.getBoundingClientRect().bottom).toBeLessThanOrEqual(area.getBoundingClientRect().top + 1);
   await expect(group.scrollWidth).toBeLessThanOrEqual(group.clientWidth + 1);
   await expect(canvasElement.querySelector("a a, a button, a select")).toBeNull();
+
+  // Native provider actions are essential here: synthetic click helpers can
+  // focus the anchor first and conceal WebKit's pointer-activation behavior.
+  // Keep ordinary interactive Storybook free of the Vitest-only module.
+  const inBrowserGate = Boolean((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__);
+  if (inBrowserGate) {
+    const { userEvent: nativeUserEvent } = await import("vitest/browser");
+    const bridgeWindow = window as Window & { __frPendingFind?: FindTarget };
+    // Do not consume or overwrite another surface's queued request.
+    await expect(bridgeWindow.__frPendingFind, "Find bridge must be idle before this isolated interaction").toBeUndefined();
+    const activeAtOpen: Array<Element | null> = [];
+    const onOpenSearch = () => { activeAtOpen.push(canvasElement.ownerDocument.activeElement); };
+    const origin = window.location.href;
+    window.addEventListener("fr:open-search", onOpenSearch);
+    try {
+      await nativeUserEvent.click(area);
+      await nativeUserEvent.keyboard("{Escape}");
+      await expect(area).toHaveFocus();
+      await expect(area).toHaveValue("county");
+      // Click a real child of the launcher; never pre-focus the target.
+      await nativeUserEvent.click(within(find).getByText("Find what you need", { exact: true }));
+      await expect(activeAtOpen).toHaveLength(1);
+      await expect(activeAtOpen[0]).toBe(find);
+      await expect(bridgeWindow.__frPendingFind).toBe("global");
+      await expect(window.location.href).toBe(origin);
+    } finally {
+      window.removeEventListener("fr:open-search", onOpenSearch);
+      consumeFindRequest("global");
+      await nativeUserEvent.cleanup();
+    }
+  }
 };
 
 export const Phone390: Story = {

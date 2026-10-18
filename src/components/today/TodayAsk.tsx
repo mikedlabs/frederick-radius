@@ -56,6 +56,9 @@ export default function TodayAsk({
             || event.shiftKey
           ) return;
           event.preventDefault();
+          // Touch activation need not focus links. The shared Find owner
+          // captures the active element to restore this exact launcher.
+          event.currentTarget.focus({ preventScroll: true });
           haptic("light");
           requestFind("global");
         }}
