@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { browseReturnLabel, normalizeBrowseReturnTo } from "@/lib/browse-return";
+import { markBrowseScrollReturn } from "@/lib/browse-scroll-return";
 
 /**
  * Restores the originating listing and its query, scope, and filters.
@@ -22,6 +23,10 @@ export default function MapReturnLink() {
     // returnTo URL the user just created.
     <a
       href={returnTo}
+      onClick={(event) => {
+        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        markBrowseScrollReturn(returnTo);
+      }}
       className="tap-44-y -ml-1 inline-flex items-center gap-1.5 px-1 text-[12.5px] font-semibold"
       style={{ color: "var(--app-brand-press)" }}
     >

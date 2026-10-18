@@ -12,6 +12,22 @@ export default function EventVisualCredit({
   compact?: boolean;
   className?: string;
 }) {
+  if (visual.licensedCredit) {
+    const credit = visual.licensedCredit;
+    return <div data-event-photo-credit data-event-licensed-credit
+      className={`break-words text-xs leading-snug [&_a]:inline-flex [&_a]:min-h-11 [&_a]:min-w-11 [&_a]:items-center ${className}`}
+      style={{ color: overlay ? "rgba(255,255,255,0.94)" : "var(--app-ink-3)" }}
+    >
+      <span className="block font-semibold">{visual.caption}</span>
+      <span className="mt-1 block">Photo by {credit.creator}.</span>
+      <span className="block">{credit.modifications}</span>
+      <span className="flex flex-wrap gap-x-3">
+        <a href={credit.source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Wikimedia Commons</a>
+        <a href={credit.license.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{credit.license.label}</a>
+        {credit.original_source_url && <a href={credit.original_source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Original photograph</a>}
+      </span>
+    </div>;
+  }
   if (visual.attribution) {
     return (
       <EventImageAttribution

@@ -173,9 +173,19 @@ test("Today keeps the owned place visual separate from a real answer without an 
   await expect(creek).not.toContainText("Ibiza");
   await expect(page.getByRole("combobox", { name: "Choose your area", exact: true })).toHaveValue("county");
   const quickNeeds = page.getByRole("group", { name: "Quick needs", exact: true });
-  expect(await article.evaluate((element) => Boolean(element.compareDocumentPosition(document.querySelector('[aria-label="Quick needs"]')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  const hierarchy = await article.evaluate((element) => {
+    const quick = document.querySelector('[aria-label="Quick needs"]')!;
+    const events = document.querySelector("[data-today-event-shortlist]")!;
+    const scene = document.querySelector("[data-today-geographic-doorway]")!;
+    return {
+      quickNeedsBeforeEvents: Boolean(quick.compareDocumentPosition(events) & Node.DOCUMENT_POSITION_FOLLOWING),
+      eventsBeforeAreaAnswer: Boolean(events.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
+      areaAnswerBeforeOwnedScene: Boolean(element.compareDocumentPosition(scene) & Node.DOCUMENT_POSITION_FOLLOWING),
+    };
+  });
+  expect(hierarchy).toEqual({ quickNeedsBeforeEvents: true, eventsBeforeAreaAnswer: true, areaAnswerBeforeOwnedScene: true });
   await expect(quickNeeds.getByRole("link")).toHaveCount(4);
   expect(uncreditedPhotoRequests).toBe(0);
-  await testInfo.attach("separate-owned-place-and-uncredited-answer", { contentType: "application/json", body: JSON.stringify({ metadataRequests, uncreditedPhotoRequests, proof: "Real Today composition and owned image; a declared answer/failed credit transport tests honest fallback, not live venue hours or current image availability." }) });
+  await testInfo.attach("separate-owned-place-and-uncredited-answer", { contentType: "application/json", body: JSON.stringify({ metadataRequests, uncreditedPhotoRequests, hierarchy, proof: "Real Today composition and owned image; a declared answer/failed credit transport tests honest fallback, not live venue hours or current image availability." }) });
   await page.screenshot({ path: testInfo.outputPath("today-county-no-attributable-photo.png"), fullPage: true });
 });

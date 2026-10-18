@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, within } from "storybook/test";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import EventCard from "./EventCard";
 
@@ -42,5 +43,35 @@ export const ApprovedVenuePhotograph: Story = {
   args: {
     variant: "glance",
     event: { ...sample, title: "Demonstration concert at Baker Park", venue_name: "Baker Park", venue_place_slug: "baker-park-frederick", municipality: "frederick", municipality_name: "Frederick" },
+  },
+};
+
+
+export const FreeReviewedPreviewWithoutPaidPhoto: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { variant: "glance", venuePhotos: "free-reviewed", event: {
+    ...sample, hero_image: "/api/place-photo?name=places%2Foffline%2Fphotos%2Fpolicy-fixture",
+    hero_image_attribution: { kind: "venue", venue_name: "Memorial Park", provider: "google_maps", source_uri: "https://maps.google.com/?cid=offline-fixture", authors: [] },
+  } },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByRole("link", { name: /Community concert at Memorial Park/ })).toBeVisible();
+    expect(canvasElement.querySelector("img")).toBeNull();
+    expect(canvasElement.innerHTML).not.toContain("/api/place-photo");
+    expect(canvasElement.querySelector("[data-event-photo-credit]")).toBeNull();
+  },
+};
+
+export const FreeReviewedOwnedVenuePreview: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  args: { variant: "glance", venuePhotos: "free-reviewed", event: {
+    ...sample, venue_name: "Baker Park", venue_place_slug: "baker-park-frederick", municipality: "frederick", municipality_name: "Frederick",
+  } },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("Venue · Baker Park", { exact: true })).toBeVisible();
+    const image = canvasElement.querySelector("img");
+    expect(image).not.toBeNull();
+    const url = new URL(image!.getAttribute("src")!, document.baseURI);
+    expect(url.searchParams.get("url") ?? url.pathname).toBe("/images/seasons/fall/018.jpg");
+    expect(canvasElement.innerHTML).not.toContain("/api/place-photo");
   },
 };

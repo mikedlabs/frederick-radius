@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventCardVisual, parseRecoveryEventVisual, planHorizonVisual } from "./eventVisuals";
 import fixture from "../../../tests/fixtures/steinhardt-squarespace.json" with { type: "json" };
+import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
   return {
@@ -209,6 +210,42 @@ describe("eventCardVisual", () => {
   });
 });
 
+describe("exact licensed event venue photographs", () => {
+  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS))("retains the complete local credit for %s without a paid fallback", (venue_place_slug, photo) => {
+    const visual = eventCardVisual(event({ venue_place_slug,
+      hero_image: "/api/place-photo?name=unused-google&w=800" }), { venuePhotos: "free-reviewed" })!;
+    expect(visual).toMatchObject({ src: photo.image.src, presentation: "photo", key: `licensed-venue:${venue_place_slug}`,
+      licensedCredit: { creator: photo.image.creator, source_url: photo.image.source_url,
+        license: photo.image.license, modifications: photo.image.modifications } });
+    expect(visual.attribution).toBeUndefined();
+    expect(eventCardVisual(event({ venue_place_slug }))).toEqual(visual);
+    expect(eventCardVisual(event({ venue_place_slug }), { venuePhotos: "owned-only" })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...visual, ignored: "drop" })).toEqual(visual);
+    expect(parseRecoveryEventVisual({ ...visual, licensedCredit: undefined })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit, creator: "Wrong creator" } })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit, modifications: "Unchanged" } })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit, license: { label: "Public domain", url: "https://example.test" } } })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...visual, sourceHref: "https://example.test" })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...visual, src: "/history-photos/wrong-venue.jpg" })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...visual, caption: "Photograph of this event" })).toBeNull();
+  });
+
+  it("keeps Brewer's Alley archival context and its original source visible in the tuple", () => {
+    const visual = eventCardVisual(event({ venue_place_slug: "brewers-alley-frederick" }))!;
+    expect(visual.caption).toBe("Venue · Brewer's Alley side entrance, photographed in 2004");
+    expect(visual.licensedCredit?.original_source_url).toBe(CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"].provenance.original_source_url);
+    expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit, original_source_url: undefined } })).toBeNull();
+  });
+
+  it("keeps approved publisher imagery ahead of the licensed venue and rejects venue aliases", () => {
+    expect(eventCardVisual(event({ source: "ticketmaster", hero_image: "https://s1.ticketm.net/dam/a/approved.jpg",
+      venue_place_slug: "brewers-alley-frederick" }))?.presentation).toBe("artwork");
+    for (const venue_place_slug of ["brewers-alley", "schifferstadt", "__proto__"]) {
+      expect(eventCardVisual(event({ venue_place_slug }), { venuePhotos: "free-reviewed" })).toBeNull();
+    }
+  });
+});
+
 describe("planHorizonVisual", () => {
   it("keeps a visual lead and does not promote a second image", () => {
     const lead = event({
@@ -403,5 +440,98 @@ describe("recovery event visual boundary", () => {
       venue_place_slug: "baker-park-bandshell" });
     expect(eventCardVisual(published, { venuePhotos: "owned-only" })).toEqual(eventCardVisual(published));
     expect(eventCardVisual(published, { venuePhotos: "owned-only" })?.presentation).toBe("artwork");
+  });
+});
+
+
+describe("exact owned event venue photographs", () => {
+  const fairgrounds = "frederick-fairgrounds-home-of-the-great-frederick-fair-frederick";
+  const suppliedGoogle = {
+    hero_image: "/api/place-photo?name=supplied-existing-venue&w=800",
+    hero_image_attribution: {
+      kind: "venue" as const,
+      venue_name: "Supplied venue",
+      provider: "google_maps" as const,
+      source_uri: "https://www.google.com/maps/place/supplied-existing-venue",
+      authors: [{ display_name: "Supplied photographer" }],
+    },
+  };
+
+  it.each([
+    [fairgrounds, "/images/fair/fairgrounds-night-mike-d-1920.jpg", "Frederick Fairgrounds during The Great Frederick Fair", "right"],
+    ["mccurdy-field", "/images/seasons/spring/aerial-view-baseball-field.jpg", "McCurdy Field", "center"],
+  ] as const)("prefers the exact owned venue over already-eligible Google media for %s", (venue_place_slug, src, venue, objectPosition) => {
+    const input = event({ ...suppliedGoogle, venue_place_slug });
+    const normal = eventCardVisual(input);
+    expect(normal).toEqual({ src, caption: `Venue · ${venue}`, key: `owned-venue:${venue_place_slug}`,
+      presentation: "photo", objectPosition });
+    expect(eventCardVisual(input, { venuePhotos: "owned-only" })).toEqual(normal);
+    expect(normal?.src).not.toContain("/api/place-photo");
+    expect(normal).not.toHaveProperty("attribution");
+    expect(normal).not.toHaveProperty("sourceHref");
+    expect(input.hero_image).toBe(suppliedGoogle.hero_image);
+    expect(input.hero_image_attribution).toBe(suppliedGoogle.hero_image_attribution);
+  });
+
+  it("retains event-specific publisher artwork ahead of the owned venue without photo framing", () => {
+    const approved = eventCardVisual(event({ venue_place_slug: fairgrounds, source: "ticketmaster",
+      source_url: "https://www.ticketmaster.com/offline-fixture", hero_image: "https://s1.ticketm.net/dam/a/offline-fixture.jpg" }));
+    expect(approved).toMatchObject({ src: "https://s1.ticketm.net/dam/a/offline-fixture.jpg",
+      caption: "Event image · Ticketmaster", presentation: "artwork" });
+    expect(approved).not.toHaveProperty("objectPosition");
+    expect(approved).not.toHaveProperty("attribution");
+  });
+
+  it.each(["frederick-fairgrounds", "fairgrounds", "mcclintocks-back-bar", "brewers-alley-frederick", "__proto__"])(
+    "does not invent an owned or licensed venue mapping for %s", venue_place_slug => {
+      expect(eventCardVisual(event({ venue_place_slug, venue_name: "Frederick Fairgrounds" }),
+        { venuePhotos: "owned-only" })).toBeNull();
+    });
+
+  it("never infers a photo from the Fairgrounds name without the exact canonical slug", () => {
+    expect(eventCardVisual(event({ venue_name: "Frederick Fairgrounds", venue_place_slug: undefined }),
+      { venuePhotos: "owned-only" })).toBeNull();
+  });
+
+  it("keeps legacy Baker Park Google precedence and its owned-only fallback unchanged", () => {
+    const input = event({ ...suppliedGoogle, venue_place_slug: "baker-park-bandshell" });
+    expect(eventCardVisual(input)?.attribution).toBe(suppliedGoogle.hero_image_attribution);
+    expect(eventCardVisual(input, { venuePhotos: "owned-only" })).toEqual({
+      src: "/images/seasons/fall/018.jpg", caption: "Venue · Baker Park Bandshell",
+      key: "radius-baker-park-bandshell", presentation: "photo",
+    });
+  });
+
+  it.each([fairgrounds, "mccurdy-field"])("round-trips %s through recovery using its exact canonical framing", venue_place_slug => {
+    const approved = eventCardVisual(event({ venue_place_slug }), { venuePhotos: "owned-only" })!;
+    const packet = Object.freeze({ ...approved, ignored: "not part of the visual contract" });
+    const parsed = parseRecoveryEventVisual(packet);
+    expect(parsed).toEqual(approved);
+    expect(parsed).not.toBe(packet);
+    expect(parsed).not.toHaveProperty("ignored");
+    expect(parsed).not.toHaveProperty("attribution");
+    expect(parseRecoveryEventVisual({ ...approved, objectPosition: undefined })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...approved, objectPosition: approved.objectPosition === "right" ? "center" : "right" })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...approved, objectPosition: "left" })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...approved, caption: "Event image · current performance" })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...approved, sourceHref: "https://example.test/not-this-photo" })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...approved, src: "/api/place-photo?name=unapproved" })).toBeNull();
+  });
+
+  it("does not let a recovery packet add owned framing to publisher art or a legacy venue tuple", () => {
+    const published = eventCardVisual(event({ source: "ticketmaster", source_url: "https://www.ticketmaster.com/offline-fixture",
+      hero_image: "https://s1.ticketm.net/dam/a/offline-fixture.jpg" }))!;
+    const legacy = eventCardVisual(event({ venue_place_slug: "baker-park-bandshell" }))!;
+    expect(parseRecoveryEventVisual({ ...published, objectPosition: "right" })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...legacy, objectPosition: "center" })).toBeNull();
+  });
+
+  it("keeps the selected lead rather than promoting a later publisher image", () => {
+    const lead = event({ slug: "selected-owned-venue", venue_place_slug: fairgrounds });
+    const later = event({ slug: "later-publisher-art", source: "ticketmaster",
+      hero_image: "https://s1.ticketm.net/dam/a/later-fixture.jpg" });
+    const rest = Object.freeze([later]);
+    expect(planHorizonVisual(lead, rest)).toEqual({ leadVisual: eventCardVisual(lead), promotedIndex: -1, promotedVisual: null });
+    expect(rest[0]).toBe(later);
   });
 });

@@ -142,4 +142,28 @@ describe("GET /api/today/events", () => {
     expect(await response.json()).toEqual({ error: "rate-limited" });
     expect(mocks.loadTodayEventSnapshot).not.toHaveBeenCalled();
   });
+
+  it("filters the selected town before capping the shortlist and keeps the response cache scoped by URL", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-10-18T18:00:00Z"));
+  try {
+    const base = {
+      description: "A synthetic scoped calendar record.", starts_at: "2026-10-18T23:00:00Z", ends_at: "2026-10-19T01:00:00Z",
+      timezone: "America/New_York", venue_name: "Community theatre", address: "Frederick County, MD",
+      geom: { lng: -77.4, lat: 39.4 }, category: "arts", audience: [], is_free: true,
+      source: "manual", is_verified: true, confidence: "curated", source_url: "https://example.test/calendar",
+      last_verified_at: "2026-10-18T17:00:00Z",
+    };
+    mocks.loadTodayEventSnapshot.mockResolvedValue({
+      publicEvents: [
+        ...Array.from({ length: 5 }, (_, index) => ({ ...base, slug: `county-${index}`, title: `County concert ${index}`, municipality: "frederick" })),
+        { ...base, slug: "brunswick-show", title: "Community theatre performance", municipality: "brunswick" },
+      ], sourceHealth: { degraded: false, unavailable: [] },
+    });
+    const response = await GET(new Request("https://frederickradius.app/api/today/events?in=brunswick"));
+    expect((await response.json()).events.map((event: { slug: string }) => event.slug)).toEqual(["brunswick-show"]);
+    expect(response.headers.get("Cache-Control")).toContain("s-maxage=300");
+    expect(mocks.isRateLimited).not.toHaveBeenCalled();
+  } finally { vi.useRealTimers(); }
+});
 });

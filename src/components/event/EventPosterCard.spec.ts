@@ -5,6 +5,8 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import EventPosterCard, { eventPosterPhotoSrc, posterVisualForEvent } from "@/components/event/EventPosterCard";
 import { eventCardVisual } from "@/components/event/eventVisuals";
 import EventCard from "@/components/event/EventCard";
+import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
+import TonightHeadline from "@/components/today/TonightHeadline";
 
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
   return {
@@ -96,6 +98,39 @@ describe("EventPosterCard visual trust", () => {
     const approved = eventCardVisual(publisher)!;
     expect(posterVisualForEvent(publisher, approved)).toEqual(approved);
     expect(posterVisualForEvent(publisher, { ...approved, presentation: "photo" })).toBeNull();
+  });
+
+  it("keeps photograph-led titles, time, venue and published prices outside the crop", () => {
+    const html = renderToStaticMarkup(createElement(EventPosterCard, {
+      event: event({ venue_place_slug: "baker-park-frederick", price_text: "$12 admission" }),
+    }));
+    expect(html).toContain('data-event-poster="photo"');
+    const photoEnd = html.indexOf("</figure>");
+    const facts = html.slice(photoEnd);
+    expect(facts).toContain("Summer concert");
+    expect(facts).toContain("Baker Park");
+    expect(facts).toContain("$12 admission");
+    expect(html).not.toContain("absolute inset-x-0 bottom-0 p-4");
+    expect(html).not.toContain("line-clamp");
+    expect(html).toContain("text-[1.375rem]");
+  });
+
+  it("keeps the complete archival venue credit outside the event action", () => {
+    const row = event({ venue_place_slug: "brewers-alley-frederick" });
+    const visual = eventCardVisual(row)!;
+    const metadata = CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"];
+    const html = renderToStaticMarkup(createElement(EventPosterCard, { event: row }));
+    const articleEnd = html.indexOf("</article>");
+    const credit = html.slice(articleEnd);
+    expect(html).toContain("brewers-alley-2004.jpg");
+    expect(credit).toContain("photographed in 2004");
+    expect(credit).toContain(metadata.image.creator);
+    expect(credit).toContain(metadata.image.source_url);
+    expect(credit).toContain(metadata.image.license.label);
+    expect(credit).toContain(metadata.image.license.url);
+    expect(credit).toContain(metadata.provenance.original_source_url);
+    expect(credit).toContain("Original file unchanged; display may resize or crop.");
+    expect(posterVisualForEvent(row, { ...visual, licensedCredit: undefined })).toBeNull();
   });
 
   it("renders a credited venue image with its author and direct Google Maps source", () => {
@@ -302,5 +337,40 @@ describe("EventPosterCard visual trust", () => {
 
     expect(tileHtml).toContain("Starting soon");
     expect(posterHtml).toContain("Starting soon");
+  });
+});
+
+
+describe("owned venue rendering without Google activation", () => {
+  const venueSlug = "frederick-fairgrounds-home-of-the-great-frederick-fair-frederick";
+  function fairgroundsEvent() {
+    return event({ slug: "owned-fairgrounds-layout-fixture", title: "Owned venue layout fixture",
+      venue_name: "Frederick Fairgrounds", venue_place_slug: venueSlug,
+      hero_image: "/api/place-photo?name=supplied-eligible-fixture&w=800",
+      hero_image_attribution: { kind: "venue", venue_name: "Frederick Fairgrounds", provider: "google_maps",
+        source_uri: "https://www.google.com/maps/place/supplied-eligible-fixture",
+        authors: [{ display_name: "Unused supplied photographer" }] } });
+  }
+
+  it.each(["poster", "glance", "headline"] as const)("renders owned framing and facts without a paid image URL on %s", surface => {
+    const row = fairgroundsEvent();
+    const node = surface === "poster" ? createElement(EventPosterCard, { event: row })
+      : surface === "glance" ? createElement(EventCard, { event: row, variant: "glance" })
+        : createElement(TonightHeadline, { event: row, now: new Date("2026-07-28T12:00:00-04:00"), embedded: true });
+    const html = renderToStaticMarkup(node);
+    expect(html).toContain("fairgrounds-night-mike-d-1920.jpg");
+    expect(html).toContain("object-position:right");
+    expect(html).toContain("Venue · Frederick Fairgrounds during The Great Frederick Fair");
+    expect(html).toContain("Owned venue layout fixture");
+    expect(html).toContain("/events/owned-fairgrounds-layout-fixture");
+    expect(html).not.toContain("/api/place-photo");
+    expect(html).not.toContain("Unused supplied photographer");
+    expect(html).not.toContain("Event image ·");
+  });
+
+  it("rejects an explicit crop override rather than changing the approved Fairgrounds framing", () => {
+    const row = fairgroundsEvent(), approved = eventCardVisual(row)!;
+    expect(posterVisualForEvent(row, approved)).toEqual(approved);
+    expect(posterVisualForEvent(row, { ...approved, objectPosition: "center" })).toBeNull();
   });
 });

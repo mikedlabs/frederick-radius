@@ -152,9 +152,9 @@ describe("primary tab palette contrast", () => {
       for (const node of [...facts, ...links]) {
         expect(expressionContrast(values, node.style.color, "var(--app-bg-elevated-solid)"), node.textContent).toBeGreaterThanOrEqual(4.5);
       }
-      const categoryIcon = template.content.querySelector<HTMLSpanElement>("header > span[aria-hidden]");
-      expect(categoryIcon).not.toBeNull();
-      expect(expressionContrast(values, categoryIcon!.style.color, categoryIcon!.style.background)).toBeGreaterThanOrEqual(4.5);
+      const title = template.content.querySelector<HTMLHeadingElement>("header h2");
+      expect(title?.textContent).toBe(detailEvent.title);
+      expect(expressionContrast(values, title!.style.color, "var(--app-bg-elevated-solid)")).toBeGreaterThanOrEqual(4.5);
       expect(template.content.querySelector('[style*="linear-gradient(to bottom"]')).toBeNull();
     });
     for (const surface of ["--app-bg", "--app-bg-elevated-solid", "--app-bg-sunken"]) {

@@ -83,7 +83,7 @@ describe("Today hydrated scope agrees with its area control", () => {
     await render();
     expect(getScope()).toBe("town:frederick");
     expect(container.querySelector("select")?.value).toBe("town:frederick");
-    expect(container.textContent).toContain("Frederick City place picks");
+    expect(container.textContent).toContain("Frederick City picks · Countywide weather");
     expect(state.answer).toHaveBeenCalledWith("cat:coffee", null, "town:frederick");
     expect(container.querySelector('a[href="/nearby?c=coffee&in=frederick"]')).not.toBeNull();
   });

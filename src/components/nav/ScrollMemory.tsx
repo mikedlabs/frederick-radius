@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { consumeBrowseScrollReturn } from "@/lib/browse-scroll-return";
 
 /**
  * ScrollMemory — back-button scroll continuity for list surfaces
@@ -148,6 +149,7 @@ export default function ScrollMemory() {
   const pathname = usePathname();
   const search = useSearchParams();
   const key = `${KEY_PREFIX}${pathname}${search?.size ? `?${search.toString()}` : ""}`;
+  const explicitReturnKey = useRef<string | null>(null);
 
   useEffect(() => {
     // Decide back-vs-fresh for THIS route state. Two back signals: a
@@ -155,8 +157,17 @@ export default function ScrollMemory() {
     // a document load whose navigation type is back_forward. The
     // popstate-last ordering needs no signal here — the module listener
     // above corrects and cancels the clear on its own.
-    let back = false;
-    if (lastPop && lastPop.key === key && Date.now() - lastPop.at < POP_FRESH_MS) {
+    const explicitReturn = consumeBrowseScrollReturn(key.slice(KEY_PREFIX.length));
+    if (explicitReturn) explicitReturnKey.current = key;
+    else if (explicitReturnKey.current !== key) explicitReturnKey.current = null;
+    // Strict Mode can replay an effect after consuming device state. Retain
+    // the decision for this mounted route, without replaying it on another.
+    let back = explicitReturn || explicitReturnKey.current === key;
+    if (back) {
+      // An explicit safe Back link performs a document navigation. It should
+      // restore the listing just like browser Back, without guessing history.
+      consultedDocNav = true;
+    } else if (lastPop && lastPop.key === key && Date.now() - lastPop.at < POP_FRESH_MS) {
       back = true;
     } else if (!consultedDocNav) {
       consultedDocNav = true;

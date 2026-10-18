@@ -13,6 +13,7 @@ vi.mock("@/lib/loaders/eventNearbyPlaces", () => ({ loadEventNearbyPlaces: async
 vi.mock("@/lib/loaders/eventRelated", () => ({ loadRelatedEventSections: async () => ({ lineup: [], moreUpcoming: { title: "More events", items: [] } }) }));
 import EventPage from "./page";
 import EventArtwork from "@/components/event/EventArtwork";
+import EventVenuePhoto from "@/components/event/EventVenuePhoto";
 import Image from "next/image";
 import { EventResolutionTimeoutError, EventResolutionUnavailableError } from "@/lib/loaders/eventResolver";
 const now = new Date("2026-10-06T12:00:00-04:00");
@@ -79,7 +80,10 @@ describe("event detail artwork presentation", () => {
     const page = await EventPage({ params: Promise.resolve({ slug: event.slug }), searchParams: Promise.resolve({}) });
     const nodes = elements(page);
     expect(nodes.some((node) => node.type === EventArtwork)).toBe(false);
-    expect(nodes.find((node) => node.type === Image)?.props).toMatchObject({ src: "/images/seasons/fall/018.jpg", className: "object-cover" });
+    const photo = nodes.findIndex(node => node.type === EventVenuePhoto);
+    expect(nodes[photo]?.props).toMatchObject({ visual: { src: "/images/seasons/fall/018.jpg", presentation: "photo" } });
+    expect(nodes.findIndex(node => node.type === "h1")).toBeLessThan(photo);
+    expect(nodes.some(node => node.props.href === "/events" && node.props.children === "Events")).toBe(true);
   });
 });
 

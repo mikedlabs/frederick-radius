@@ -437,3 +437,20 @@ describe("EventsExplorer event time windows", () => {
     ).toBe(false);
   });
 });
+
+describe("default collapse preserves the chosen recommendation order", () => {
+  it("does not replace a ranked later draw with an earlier ambiguous offer", () => {
+    const real = { ...event("real", "music", "2026-07-29T23:00:00.000Z"), venue_name: "Community Hall" };
+    const weak = { ...event("weak", "music", "2026-07-29T18:00:00.000Z"), venue_name: "Off Campus" };
+    const rows = [real, weak];
+    const bounds = {
+      now: Date.parse("2026-07-29T12:00:00.000Z"), next24: Date.parse("2026-07-30T04:00:00.000Z"),
+      weekendStart: Date.parse("2026-07-31T21:00:00.000Z"), weekendEnd: Date.parse("2026-08-03T04:00:00.000Z"), live: new Set<string>(),
+    };
+    const options = { events: rows, bounds, anyFilter: false, view: "list" as const, sort: "recommended" as const };
+    expect(eventsForDefaultList(options).map((row) => row.slug)).toEqual(["real", "weak"]);
+    expect(eventsForDefaultList({ ...options, sort: "time" })).toBe(rows);
+    expect(eventsForDefaultList({ ...options, view: "calendar" })).toBe(rows);
+    expect(eventsForDefaultList({ ...options, anyFilter: true })).toBe(rows);
+  });
+});

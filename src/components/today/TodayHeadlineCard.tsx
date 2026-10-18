@@ -27,22 +27,20 @@ export default function TodayHeadlineCard({
   const { identity, visibleVisual, failImage: unavailable, inspectLoadedImage } = useEventVisualLifecycle(visual);
 
   return (
-    <article className="min-w-0">
+    <article data-decision-impression="true" data-decision-surface="today" data-decision-entity="event" data-decision-id={eventSlug} data-decision-position="result" className="min-w-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)]" style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-shadow-1)" }}>
       <Link
         href={`/events/${eventSlug}`}
         prefetch={false}
         aria-labelledby={titleId}
         aria-describedby={detailId}
-        className={`group block min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--app-bg)] ${visibleVisual ? "" : "border-y py-4"}`}
-        style={visibleVisual ? undefined : { borderColor: "var(--app-border)" }}
+        className="group block min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--app-bg)]"
       >
-        {children}
         {visibleVisual?.presentation === "artwork" ? (
           <EventArtwork visual={visibleVisual} priority={priority} credit={false}
-            className="mt-3" onUnavailable={unavailable} />
+            className="overflow-hidden rounded-t-[var(--app-radius-lg)]" onUnavailable={unavailable} />
         ) : visibleVisual ? (
           <figure
-            className="relative mt-3 aspect-[16/9] w-full overflow-hidden rounded-[var(--app-radius-lg)] sm:aspect-[21/9]"
+            className="relative aspect-[16/9] w-full overflow-hidden rounded-t-[var(--app-radius-lg)] sm:aspect-[21/9]"
             style={{ boxShadow: "var(--app-elev-1), var(--app-edge)" }}
           >
             <Image key={identity} src={placePhotoFailureSignalSrc(visibleVisual.src)} alt="" fill priority={priority}
@@ -50,20 +48,21 @@ export default function TodayHeadlineCard({
               sizes="(max-width: 640px) 100vw, 720px"
               placeholder="blur" blurDataURL={PAPER_CREAM_BLUR}
               className="ken-burns object-cover"
+              style={{ objectPosition: visibleVisual.objectPosition }}
               onLoad={(event) => inspectLoadedImage(event.currentTarget)}
               onError={unavailable}
             />
             <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent, opacity: 0.9 }} />
           </figure>
-        ) : (
-          <span className="mt-3 inline-flex items-center gap-1.5 px-0.5 text-sm font-semibold"
-            style={{ color: "var(--app-brand-press)" }}>
-            View event
-            <ArrowRight aria-hidden className="h-3.5 w-3.5 transition-transform duration-200 motion-safe:group-hover:translate-x-0.5" strokeWidth={2.1} />
-          </span>
-        )}
+        ) : null}
+        <div className="min-w-0 p-4 [overflow-wrap:anywhere]">
+          {children}
+          {!visibleVisual && <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--app-brand-press)" }}>
+            View event<ArrowRight aria-hidden className="h-3.5 w-3.5 transition-transform duration-200 motion-safe:group-hover:translate-x-0.5" strokeWidth={2.1} />
+          </span>}
+        </div>
       </Link>
-      {visibleVisual && <EventVisualCredit visual={visibleVisual} className="mt-1.5 px-0.5" />}
+      {visibleVisual && <EventVisualCredit visual={visibleVisual} className="border-t px-4 py-1" />}
     </article>
   );
 }

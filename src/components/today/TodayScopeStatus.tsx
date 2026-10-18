@@ -22,7 +22,7 @@ export function todayScopeStatusText(
 ): string {
   const townSlug = scopeTownSlug(scope);
   const town = townSlug ? MUNICIPALITY_BY_SLUG[townSlug] : null;
-  if (town) return `${town.name} place picks · Countywide weather and events`;
+  if (town) return `${town.name} picks · Countywide weather`;
   if (scope === "nearme") {
     return hasDeviceLocation
       ? "Nearby place picks · Countywide weather and events"

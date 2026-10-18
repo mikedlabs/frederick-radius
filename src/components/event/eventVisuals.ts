@@ -1,6 +1,24 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { Event, EventHeroImageAttribution } from "@/data/events";
 import { approvedVenueFeedImage, STEINHARDT_EVENT_ART } from "@/lib/events/feed-image";
+import { getOwnedPlacePhoto, type OwnedPlacePhoto } from "@/lib/owned-place-photos";
+import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
+
+export type EventPhotoLicenseCredit = {
+  creator: string;
+  source_url: string;
+  license: { label: string; url: string };
+  modifications: string;
+  original_source_url?: string;
+};
+
+/** Recovery packets may reuse only the complete reviewed attribution tuple. */
+export function sameEventPhotoLicense(a: EventPhotoLicenseCredit | undefined, b: EventPhotoLicenseCredit | undefined): boolean {
+  if (!a || !b) return a === b;
+  return a.creator === b.creator && a.source_url === b.source_url
+    && a.license?.label === b.license?.label && a.license?.url === b.license?.url
+    && a.modifications === b.modifications && a.original_source_url === b.original_source_url;
+}
 
 /**
  * A promoted event visual must say what the image actually depicts and where
@@ -12,12 +30,16 @@ export type EventCardVisual = {
   caption: string;
   /** Unclassified publisher art stays intact; only verified photos may crop. */
   presentation: "artwork" | "photo";
+  /** Exact reviewed owned-photo framing; never inferred from event artwork. */
+  objectPosition?: NonNullable<OwnedPlacePhoto["objectPosition"]>;
   /** Stable identity used to avoid repeating the same photograph in a group. */
   key: string;
   /** Present when the image is a credited Google Maps photograph of a venue. */
   attribution?: EventHeroImageAttribution;
   /** Publisher page that supplied an event-specific image. */
   sourceHref?: string;
+  /** Exact local Creative Commons image provenance, displayed outside actions. */
+  licensedCredit?: EventPhotoLicenseCredit;
 };
 
 type EventVisualSource = Pick<Event,
@@ -44,6 +66,51 @@ const VENUE_VISUALS: Readonly<Record<string, EventCardVisual>> = {
     presentation: "photo",
   },
 };
+
+// Only these existing canonical place identities join the event visual path.
+// Reuse the owned registry for bytes and framing; do not guess from event names
+// or coordinates. The caption describes the venue, not this event or its date.
+const OWNED_EVENT_VENUE_LABELS: Readonly<Record<string, string>> = {
+  "frederick-fairgrounds-home-of-the-great-frederick-fair-frederick": "Frederick Fairgrounds during The Great Frederick Fair",
+  "mccurdy-field": "McCurdy Field",
+};
+
+function ownedEventVenueVisual(venueSlug: string | undefined): EventCardVisual | null {
+  if (!venueSlug || !Object.hasOwn(OWNED_EVENT_VENUE_LABELS, venueSlug)) return null;
+  const photo = getOwnedPlacePhoto(venueSlug);
+  if (!photo) return null;
+  return {
+    src: photo.src,
+    caption: `Venue · ${OWNED_EVENT_VENUE_LABELS[venueSlug]}`,
+    key: `owned-venue:${venueSlug}`,
+    presentation: "photo",
+    objectPosition: photo.objectPosition ?? "center",
+  };
+}
+
+const LICENSED_EVENT_VENUE_LABELS: Readonly<Record<keyof typeof CREDITED_LOCAL_PLACE_PHOTOS, string>> = {
+  "schifferstadt-architectural-museum-frederick": "Schifferstadt Architectural Museum",
+  "hessian-barracks-frederick-maryland": "Hessian Barracks",
+  "co-canal-lock-30-brunswick": "C&O Canal Lock 30 in Brunswick",
+  "brewers-alley-frederick": "Brewer's Alley side entrance, photographed in 2004",
+};
+
+function licensedEventVenueVisual(venueSlug: string | undefined): EventCardVisual | null {
+  if (!venueSlug || !Object.hasOwn(LICENSED_EVENT_VENUE_LABELS, venueSlug)) return null;
+  const slug = venueSlug as keyof typeof CREDITED_LOCAL_PLACE_PHOTOS;
+  const photo = CREDITED_LOCAL_PLACE_PHOTOS[slug];
+  const image = photo.image;
+  return {
+    src: image.src,
+    caption: `Venue · ${LICENSED_EVENT_VENUE_LABELS[slug]}`,
+    key: `licensed-venue:${slug}`,
+    presentation: "photo",
+    objectPosition: "center",
+    licensedCredit: { creator: image.creator, source_url: image.source_url,
+      license: { ...image.license }, modifications: image.modifications,
+      ...("provenance" in photo ? { original_source_url: photo.provenance.original_source_url } : {}) },
+  };
+}
 
 const EVENT_IMAGE_POLICY: Readonly<
   Partial<
@@ -161,19 +228,28 @@ function approvedVenueVisual(event: EventVisualSource): EventCardVisual | null {
  */
 export function eventCardVisual(
   event: EventVisualSource,
-  { venuePhotos = "all-approved" }: { venuePhotos?: "all-approved" | "owned-only" } = {},
+  { venuePhotos = "all-approved" }: { venuePhotos?: "all-approved" | "owned-only" | "free-reviewed" } = {},
 ): EventCardVisual | null {
   const providerVisual = approvedProviderVisual(event);
   if (providerVisual) return providerVisual;
+
+  // Event-specific publisher art stays first. Exact owned venue photographs
+  // avoid activating the existing Google path for these two reviewed places.
+  const ownedVisual = ownedEventVenueVisual(event.venue_place_slug);
+  if (ownedVisual) return ownedVisual;
+
+  const licensedVisual = venuePhotos !== "owned-only" ? licensedEventVenueVisual(event.venue_place_slug) : null;
+  if (licensedVisual) return licensedVisual;
 
   const venueVisual = venuePhotos === "all-approved" ? approvedVenueVisual(event) : null;
   if (venueVisual) return venueVisual;
 
   if (!event.venue_place_slug) return null;
-  return VENUE_VISUALS[event.venue_place_slug] ?? null;
+  return Object.hasOwn(VENUE_VISUALS, event.venue_place_slug)
+    ? VENUE_VISUALS[event.venue_place_slug] : null;
 }
 
-/** Slim recovery payloads may carry only existing owned or publisher visuals.
+/** Slim recovery payloads may carry existing owned, licensed or publisher visuals.
  * This validates the allowed tuple and transport, not independent subject
  * identity: the server resolver binds the visual to its selected event. */
 export function parseRecoveryEventVisual(value: unknown): EventCardVisual | null {
@@ -183,7 +259,17 @@ export function parseRecoveryEventVisual(value: unknown): EventCardVisual | null
     || typeof visual.caption !== "string" || visual.attribution !== undefined) return null;
   const sameTuple = (known: EventCardVisual) => visual.src === known.src
     && visual.key === known.key && visual.caption === known.caption
-    && visual.presentation === known.presentation;
+    && visual.presentation === known.presentation
+    && visual.objectPosition === known.objectPosition
+    && sameEventPhotoLicense(visual.licensedCredit, known.licensedCredit);
+  for (const slug of Object.keys(LICENSED_EVENT_VENUE_LABELS)) {
+    const known = licensedEventVenueVisual(slug);
+    if (known && sameTuple(known) && visual.sourceHref === undefined) return known;
+  }
+  for (const slug of Object.keys(OWNED_EVENT_VENUE_LABELS)) {
+    const known = ownedEventVenueVisual(slug);
+    if (known && sameTuple(known) && visual.sourceHref === undefined) return { ...known };
+  }
   for (const known of Object.values(VENUE_VISUALS)) {
     if (sameTuple(known) && visual.sourceHref === undefined) return { ...known };
   }

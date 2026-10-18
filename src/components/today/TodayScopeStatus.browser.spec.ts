@@ -101,7 +101,7 @@ describe("TodayScopeStatus location memory", () => {
     expect(window.location.hash).toBe("#find-radius");
     const status = container.querySelector('[data-testid="today-scope-status"]')!;
     expect(status.classList.contains("sr-only")).toBe(false);
-    expect(status.textContent).toContain("Brunswick place picks · Countywide weather and events");
+    expect(status.textContent).toContain("Brunswick picks · Countywide weather");
   });
 
   it("silently refreshes an already-granted fix when the lens is Near me", async () => {

@@ -90,7 +90,7 @@ describe("TonightHeadline", () => {
       'aria-describedby="today-headliner-summer-concert-detail"',
     );
     expect(html).toContain(">View event<");
-    expect(html).toContain("border-y");
+    expect(html).not.toContain("<figure");
     expect(html).not.toContain("<img");
     expect(html).not.toContain("unattributed-event.jpg");
   });

@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams()
 describe("TodayScopeStatus", () => {
   it("names the part of Today that follows a selected town", () => {
     expect(todayScopeStatusText("town:brunswick")).toBe(
-      "Brunswick place picks · Countywide weather and events",
+      "Brunswick picks · Countywide weather",
     );
   });
 

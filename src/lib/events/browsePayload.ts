@@ -8,7 +8,7 @@ import {
 import { countByIntent, type IntentId } from "@/lib/events/intents";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { easternDayKey } from "@/lib/tz";
-import { compareForLead } from "@/lib/events/lead-rank";
+import { rankRecommendations } from "@/lib/events/lead-rank";
 
 /** Number of immediately useful cards sent for each human time horizon. */
 export const INITIAL_EVENTS_PER_HORIZON = 6;
@@ -28,10 +28,9 @@ export type EventBrowseSummary = {
  * JSON boundary. Event detail pages load their own complete record.
  *
  * This intentionally returns EventWithMeta for compatibility with the shared
- * cards and predicates. Those consumers read this structural subset; ticketing,
- * long-form and detail-only fields are omitted. The source URL remains because
- * it is the honest join action for an online event without a separate meeting
- * URL.
+ * cards and predicates. Long-form and detail-only fields are omitted. Direct
+ * attendance URLs and the address remain because shared attendance inference
+ * must reach the same answer before and after this projection.
  */
 export function slimEventForBrowse(e: EventWithMeta): EventWithMeta {
   return {
@@ -46,6 +45,7 @@ export function slimEventForBrowse(e: EventWithMeta): EventWithMeta {
     recurrence_text: e.recurrence_text,
     venue_place_slug: e.venue_place_slug,
     venue_name: e.venue_name,
+    address: e.address,
     geom: e.geom,
     municipality: e.municipality,
     category: e.category,
@@ -54,6 +54,8 @@ export function slimEventForBrowse(e: EventWithMeta): EventWithMeta {
     price_text: e.price_text,
     attendance_mode: e.attendance_mode,
     online_url: e.online_url,
+    rsvp_url: e.rsvp_url,
+    ticket_url: e.ticket_url,
     source_url: e.source_url,
     source: e.source,
     hero_image: e.hero_image,
@@ -193,7 +195,8 @@ export function initialEventsForBrowse(
   const selected = new Set<string>();
 
   for (const group of groupByHorizon(crowd, bounds)) {
-    for (const event of [...group.events].sort((a, b) => compareForLead(a, b, featured)).slice(0, perHorizon)) {
+    const ranked = rankRecommendations(group.events, { featured, limit: perHorizon });
+    for (const event of ranked.slice(0, perHorizon)) {
       selected.add(eventIdentity(event));
     }
   }

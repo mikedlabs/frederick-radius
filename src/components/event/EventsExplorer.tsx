@@ -50,10 +50,10 @@ import { eventCardVisual, type EventCardVisual } from "@/components/event/eventV
 import {
   horizonLeadVariant,
   primaryLeadPrecedesInterestRail,
+  splitHorizonLead,
 } from "@/components/event/eventsExplorerLayout";
-import { compareForLead } from "@/lib/events/lead-rank";
+import { compareForRecommendation, rankRecommendations } from "@/lib/events/lead-rank";
 import {
-  compareEventsForDecision,
   eventsWithDecisionDistance,
 } from "@/lib/events/decision-rank";
 import {
@@ -324,9 +324,13 @@ export function eventsForDefaultList({
   anyFilter: boolean;
   bounds: Parameters<typeof collapseLaterSeries>[1];
 }): EventWithMeta[] {
-  return view === "list" && sort === "recommended" && !anyFilter
-    ? collapseLaterSeries(events, bounds)
-    : events;
+  if (view !== "list" || sort !== "recommended" || anyFilter) return events;
+  // collapseLaterSeries picks the earliest occurrence of an explicit series,
+  // then returns chronological rows. Restore the already-chosen Recommended
+  // rank, including attendance, featured and consented Near Me preferences.
+  const rank = new Map(events.map((event, index) => [eventIdentity(event), index]));
+  return collapseLaterSeries(events, bounds).sort((a, b) =>
+    (rank.get(eventIdentity(a)) ?? events.length) - (rank.get(eventIdentity(b)) ?? events.length));
 }
 
 export function eventsBrowseRequest(forceRefresh = false): {
@@ -741,9 +745,7 @@ export default function EventsExplorer({
   const filtered = useMemo(() => {
     const sortFn = (a: EventWithMeta, b: EventWithMeta): number => {
       if (sort === "recommended") {
-        return nearMeActive && deviceOrigin
-          ? compareEventsForDecision(a, b, featured)
-          : compareForLead(a, b, featured);
+        return compareForRecommendation(a, b, featured);
       }
       if (sort === "az")
         return (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" });
@@ -764,7 +766,7 @@ export default function EventsExplorer({
         return true;
       })
       .sort(sortFn);
-  }, [baseFiltered, intent, sub, cat, sort, nowISO, featured, nearMeActive, deviceOrigin]);
+  }, [baseFiltered, intent, sub, cat, sort, nowISO, featured]);
 
   // A healthy server snapshot knows the complete unfiltered totals even
   // though the first React payload contains only a bounded preview. Once a
@@ -871,8 +873,8 @@ export default function EventsExplorer({
         weekendStart: +new Date(weekendStartISO),
         weekendEnd: +new Date(weekendEndISO),
         live,
-      }),
-    [crowdFiltered, now, next24ISO, weekendStartISO, weekendEndISO, live],
+      }).map((group) => ({ ...group, events: sort === "recommended" ? rankRecommendations(group.events, { featured, limit: 6 }) : group.events })),
+    [crowdFiltered, now, next24ISO, weekendStartISO, weekendEndISO, live, sort, featured],
   );
 
   const mapPins = useMemo(
@@ -992,8 +994,8 @@ export default function EventsExplorer({
   const showOfficialCalendars = !dataComplete && eventPool.length === 0;
 
   const primaryHorizon = horizonGroups[0];
-  const primaryLead = primaryHorizon?.events[0] ?? null;
-  const showPrimaryLeadBeforeRail = primaryLeadPrecedesInterestRail({
+  const primaryLead = primaryHorizon ? splitHorizonLead(primaryHorizon.events, sort).lead : null;
+  const showPrimaryLeadBeforeRail = Boolean(primaryLead) && primaryLeadPrecedesInterestRail({
     view,
     sort,
     resultCount: filtered.length,
@@ -1172,7 +1174,7 @@ export default function EventsExplorer({
       ) : null}
 
       {showPrimaryLeadBeforeRail && primaryLead && (
-        <div data-events-primary-lead="before-interest">
+        <div data-events-primary-lead="before-interest" data-events-visual-shortlist>
           <PromotedEvent
             event={primaryLead}
             visual={eventCardVisual(primaryLead)}
@@ -1420,16 +1422,15 @@ export default function EventsExplorer({
           {horizonGroups.map((g, groupIdx) => {
             const isOpen = openGroups.has(g.key);
             const EXPANDED_CAP = 40;
-            // Every horizon gets one lead. The immediate horizon earns the
-            // full poster; later windows use the restrained glance card, whose
-            // own resolver allows only safe thumbnails or a category seal.
-            const lead = g.events[0] ?? null;
+            // Recommended promotes only usable attendance. An all-ambiguous
+            // horizon remains ordinary listings with unchanged counts/access.
+            // Alternate sorts retain their original first-row treatment.
+            const { lead, rest } = splitHorizonLead(g.events, sort);
             const leadVariant = horizonLeadVariant(groupIdx);
             const leadMovedBeforeRail =
-              groupIdx === 0 && showPrimaryLeadBeforeRail;
+              Boolean(lead) && groupIdx === 0 && showPrimaryLeadBeforeRail;
             const leadVisual =
               lead && leadVariant === "feature" ? eventCardVisual(lead) : null;
-            const rest = lead ? g.events.slice(1) : g.events;
             const PEEK = leadVariant === "feature" ? 2 : 3;
             const { groupCount, totalRest, canExpand } = eventGroupRenderState({
               summaryCount: summary.horizonCounts[g.key],
@@ -1470,7 +1471,9 @@ export default function EventsExplorer({
                 {totalRest > 0 && (
                   <>
                     {preview.length > 0 && (
-                      <CompactEventList events={preview} live={live} nowISO={nowISO} />
+                      sort === "recommended" ? <ul className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+                        {preview.map((event) => <li key={eventIdentity(event)} className="min-w-0"><EventCard event={event} variant="glance" venuePhotos="free-reviewed" live={live.has(event.slug)} nowISO={nowISO} /></li>)}
+                      </ul> : <CompactEventList events={preview} live={live} nowISO={nowISO} />
                     )}
                     {expanded.length > 0 && (
                       <div className="reveal-up">

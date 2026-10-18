@@ -7,6 +7,7 @@ import {
 import { allUpcoming } from "@/lib/loaders/events";
 import { selectTodayEvents } from "@/lib/today-events";
 import { eventCardVisual, parseRecoveryEventVisual } from "@/components/event/eventVisuals";
+import { parseScope, scopeTownSlug } from "@/lib/scope";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 
 // The event archive is a runtime database source. Prerendering this handler
@@ -59,8 +60,10 @@ export async function GET(request: Request) {
     logEventArchiveFailure("Today archive loader failed", error);
     return null;
   });
-  const events = selectTodayEvents(snapshot?.publicEvents ?? allUpcoming(now), now, 3,
-    (event) => parseRecoveryEventVisual(eventCardVisual(event, { venuePhotos: "owned-only" })),
+  const town = scopeTownSlug(parseScope(new URL(request.url).searchParams.get("in")));
+  const pool = (snapshot?.publicEvents ?? allUpcoming(now)).filter((event) => !town || event.municipality === town);
+  const events = selectTodayEvents(pool, now, 4,
+    (event) => parseRecoveryEventVisual(eventCardVisual(event, { venuePhotos: "free-reviewed" })),
   );
   const sourceHealth = publicEventArchiveSourceHealth(snapshot?.sourceHealth);
   const degraded = sourceHealth.degraded;

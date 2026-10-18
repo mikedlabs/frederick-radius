@@ -1,3 +1,4 @@
+import { hasRecommendationAttendance, type EventAttendanceInput } from "@/lib/events/attendance";
 import type {
   EventSortKey,
   ViewKey,
@@ -32,4 +33,19 @@ export function horizonLeadVariant(
   groupIndex: number,
 ): "feature" | "glance" {
   return groupIndex === 0 ? "feature" : "glance";
+}
+
+/** Promotion never removes an ambiguous listing. Alternate sorts retain their
+ * original first-row treatment; only Recommended requires attendance evidence.
+ * Remove by array index so another occurrence with the same slug survives. */
+export function splitHorizonLead<T extends EventAttendanceInput>(
+  events: readonly T[],
+  sort: EventSortKey,
+): { lead: T | null; rest: T[] } {
+  const index = sort === "recommended"
+    ? events.findIndex(hasRecommendationAttendance)
+    : events.length > 0 ? 0 : -1;
+  return index < 0
+    ? { lead: null, rest: [...events] }
+    : { lead: events[index], rest: events.filter((_, position) => position !== index) };
 }
