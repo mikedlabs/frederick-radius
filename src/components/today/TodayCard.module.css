@@ -148,6 +148,15 @@
   margin-top: 0;
 }
 
+/* Native focus scrolling must leave room for the fixed mobile navigation,
+   whose rem-based height grows with text. This also protects the focused
+   summary when closing its disclosure changes the document's scroll range. */
+.forecastDetails summary,
+.masthead .forecastLink {
+  scroll-margin-block-start: calc(var(--app-topbar-h, 56px) + 8px + env(safe-area-inset-top, 0px));
+  scroll-margin-block-end: calc(3.5rem + 20px + env(safe-area-inset-bottom, 0px));
+}
+
 .forecastDetails summary {
   display: flex;
   align-items: center;

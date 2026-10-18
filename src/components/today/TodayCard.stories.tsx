@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import TodayWeatherView, { WeatherUnavailable } from "./TodayWeatherView";
+import BottomNav from "@/components/nav/BottomNav";
 
 const meta = {
   title: "Today/Weather reading",
@@ -141,21 +142,7 @@ export const NarrowLongCondition: Story = {
   },
 };
 
-/** The real compact summary must reflow without hiding warning/feed context. */
-export const NarrowMastheadWarning: Story = {
-  args: {
-    density: "masthead", headline: "Flash Flood Warning is active.",
-    condition: "Chance showers and thunderstorms", temperatureF: 68,
-    variant: "CloudLightning", safetyNote: "Weather-alert and air-quality checks are unavailable.",
-  },
-  // The native browser gate resizes its real iframe. Avoid Storybook's
-  // centered rem padding so this fixture keeps the app's physical16px inset.
-  parameters: {
-    layout: "fullscreen", radiusWeatherPhoneFrame: true,
-    docs: { description: { story: "Available-forecast fixture with a long warning and unavailable safety feed. Native Vitest keyboard checks use actual compiled CSS at doubled root text. This is not live NWS, full-page zoom or VoiceOver proof." } },
-  },
-  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
-  play: async ({ canvasElement }) => {
+async function exerciseNarrowMasthead({ canvasElement }: Parameters<NonNullable<Story["play"]>>[0]) {
     const canvas = within(canvasElement);
     const summary = canvasElement.querySelector<HTMLElement>("summary[data-today-weather-summary]")!;
     const warning = canvas.getByRole("heading", { name: "Flash Flood Warning is active." });
@@ -185,6 +172,18 @@ export const NarrowMastheadWarning: Story = {
       await expect(box.height).toBeGreaterThanOrEqual(44);
       await expect(box.left).toBeGreaterThanOrEqual(0);
       await expect(box.right).toBeLessThanOrEqual(view.innerWidth);
+      if (canvasElement.querySelector("[data-bottom-nav-shell]") && hits.some((hit) => !hit)) {
+        const nav = canvasElement.querySelector('[aria-label="Primary"]')!.getBoundingClientRect();
+        console.info("Weather navigation hit diagnostic", JSON.stringify({
+          tag: element.tagName, focused: document.activeElement === element,
+          rect: { left: box.left, top: box.top, right: box.right, bottom: box.bottom },
+          scrollY: view.scrollY, viewportHeight: view.innerHeight, navTop: nav.top, hits,
+          owners: [[x,y],[x-21.5,y],[x+21.5,y],[x,y-21.5],[x,y+21.5]].map(([px,py]) => {
+            const hit = document.elementFromPoint(px,py);
+            return hit ? { tag: hit.tagName, primaryNav: Boolean(hit.closest('[aria-label="Primary"]')) } : null;
+          }),
+        }));
+      }
       await expect(hits, "center and four physical44px cardinal samples hit the focused control").toEqual([true,true,true,true,true]);
       const focused = getComputedStyle(element);
       await expect(focused.outlineStyle).not.toBe("none");
@@ -207,7 +206,10 @@ export const NarrowMastheadWarning: Story = {
     try {
       if (browser) {
         await browser.page.viewport(320, 568);
-        await waitFor(() => expect(document.documentElement.clientWidth).toBe(320));
+        // A scrolling desktop WebKit canvas may reserve a scrollbar gutter.
+        // The native viewport is still320px; physical hit/overflow probes below
+        // continue to inspect the actual laid-out control and document.
+        await waitFor(() => expect(view.innerWidth).toBe(320));
         await waitFor(() => expect(view.innerHeight).toBe(568));
         // A fresh canvas must begin at ordinary document focus. Fail instead
         // of repairing a stale focused node with focus(), blur() or a click.
@@ -288,5 +290,45 @@ export const NarrowMastheadWarning: Story = {
         finally { await browser.page.viewport(previousViewport.width, previousViewport.height); }
       }
     }
+}
+
+/** The real compact summary must reflow without hiding warning/feed context. */
+export const NarrowMastheadWarning: Story = {
+  args: {
+    density: "masthead", headline: "Flash Flood Warning is active.",
+    condition: "Chance showers and thunderstorms", temperatureF: 68,
+    variant: "CloudLightning", safetyNote: "Weather-alert and air-quality checks are unavailable.",
   },
+  // The native browser gate resizes its real iframe. Avoid Storybook's
+  // centered rem padding so this fixture keeps the app's physical16px inset.
+  parameters: {
+    layout: "fullscreen", radiusWeatherPhoneFrame: true,
+    docs: { description: { story: "Available-forecast fixture with a long warning and unavailable safety feed. Native Vitest keyboard checks use actual compiled CSS at doubled root text. This is not live NWS, full-page zoom or VoiceOver proof." } },
+  },
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  play: (context) => exerciseNarrowMasthead(context),
+};
+
+/** Real navigation can cover a focused control even when its DOM is visible.
+ * This fixture reproduces the warning-led page at doubled compact text. */
+export const NarrowMastheadWithNavigation: Story = {
+  args: NarrowMastheadWarning.args,
+  parameters: NarrowMastheadWarning.parameters,
+  globals: NarrowMastheadWarning.globals,
+  play: (context) => exerciseNarrowMasthead(context),
+  decorators: [(Story) => (
+    <>
+      <aside aria-label="Fixture safety alert" className="my-8 rounded-lg p-4 text-[13px]">
+        Heads up: Freeze Warning. Until 6:15 AM Sunday.
+      </aside>
+      <h1 className="text-[32px] font-bold leading-tight">Late tonight</h1>
+      <p className="mb-5 mt-2 text-[13px]">Saturday, October 17</p>
+      <Story />
+      <section className="mt-6 pb-40">
+        <h2 className="text-[20px] font-semibold">Find something useful</h2>
+        <p className="text-[14px]">Find places, events, services and local information.</p>
+      </section>
+      <BottomNav />
+    </>
+  )],
 };

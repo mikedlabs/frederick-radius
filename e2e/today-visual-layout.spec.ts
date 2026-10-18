@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import {
   dismissReturnBridge,
   emptyReturnBridgeState,
@@ -43,24 +43,66 @@ async function tabToCompactWeather(page: Page, control: Locator) {
 }
 
 async function compactWeatherTargetProbe(control: Locator) {
-  return control.evaluate((element) => {
+  return control.evaluate(async (element) => {
+    // Observe the browser's native focus scroll across paints; no focus or
+    // scrolling command manufactures the target position.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     const rect = element.getBoundingClientRect();
     const x = rect.x + rect.width / 2, y = rect.y + rect.height / 2;
-    return { width: rect.width, height: rect.height, left: rect.left, right: rect.right, viewport: innerWidth,
-      hits: [[x,y],[x-21.5,y],[x+21.5,y],[x,y-21.5],[x,y+21.5]].map(([px,py]) => {
-        const hit = document.elementFromPoint(px,py);
-        return px >= 0 && py >= 0 && px < innerWidth && py < innerHeight &&
-          (hit === element || (hit !== null && element.contains(hit)));
-      }) };
+    const points = [[x,y],[x-21.5,y],[x+21.5,y],[x,y-21.5],[x,y+21.5]];
+    const owners = points.map(([px,py]) => document.elementFromPoint(px,py));
+    const bounds = (selector: string) => {
+      const box = document.querySelector(selector)?.getBoundingClientRect();
+      return box ? { top: box.top, bottom: box.bottom, left: box.left, right: box.right } : null;
+    };
+    return {
+      width: rect.width, height: rect.height, left: rect.left, right: rect.right,
+      top: rect.top, bottom: rect.bottom, viewport: innerWidth, viewportHeight: innerHeight,
+      scrollY, focused: document.activeElement === element,
+      header: bounds("header"), navigation: bounds('nav[aria-label="Primary"]'),
+      hits: points.map(([px,py], index) => px >= 0 && py >= 0 && px < innerWidth && py < innerHeight
+        && (owners[index] === element || (owners[index] !== null && element.contains(owners[index])))),
+      hitOwners: owners.map((hit) => hit ? {
+        tag: hit.tagName, id: hit.id, primaryNavigation: Boolean(hit.closest('nav[aria-label="Primary"]')),
+        header: Boolean(hit.closest("header")),
+      } : null),
+    };
   });
 }
 
 function expectCompactWeatherTarget(probe: Awaited<ReturnType<typeof compactWeatherTargetProbe>>) {
+  expect(probe.focused).toBe(true);
   expect(probe.width).toBeGreaterThanOrEqual(44);
   expect(probe.height).toBeGreaterThanOrEqual(44);
   expect(probe.left).toBeGreaterThanOrEqual(0);
   expect(probe.right).toBeLessThanOrEqual(probe.viewport + 1);
   expect(probe.hits).toEqual([true,true,true,true,true]);
+}
+
+async function readyCompactWeatherTarget(control: Locator, testInfo: TestInfo, phase: string) {
+  let probe: Awaited<ReturnType<typeof compactWeatherTargetProbe>> | null = null;
+  const samples: Array<{ elapsedMs: number; probe: Awaited<ReturnType<typeof compactWeatherTargetProbe>> }> = [];
+  const started = Date.now();
+  let consecutiveReadyPaints = 0;
+  try {
+    // Keep the normal expectation deadline and every physical hit requirement.
+    // Persistent navigation occlusion remains a failure with its receipt.
+    await expect.poll(async () => {
+      probe = await compactWeatherTargetProbe(control);
+      samples.push({ elapsedMs: Date.now() - started, probe });
+      const ready = probe.focused && probe.width >= 44 && probe.height >= 44
+        && probe.left >= 0 && probe.right <= probe.viewport + 1 && probe.hits.every(Boolean);
+      consecutiveReadyPaints = ready ? consecutiveReadyPaints + 1 : 0;
+      return consecutiveReadyPaints >= 2;
+    }, { message: "Native weather focus must settle with all five physical target samples clear" }).toBe(true);
+    expectCompactWeatherTarget(probe!);
+    return probe!;
+  } finally {
+    await testInfo.attach(`compact-weather-target-${phase}`, {
+      contentType: "application/json", body: JSON.stringify({ phase, samples,
+        consecutiveReadyPaints, nativeInputOnly: true, scriptedFocusOrScroll: false }),
+    });
+  }
 }
 
 
@@ -134,16 +176,32 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const find = page.getByRole("link", {
       name: "Find a place, service, event, or answer", exact: true,
     });
-    const mastheadBox = (await masthead.boundingBox())!;
-    const findBox = (await find.boundingBox())!;
-    const weatherBox = (await page.locator("[data-today-weather]").boundingBox())!;
+    await expect(masthead).toHaveCount(1);
+    await expect(find).toHaveCount(1);
     const doorway = page.locator("[data-today-geographic-doorway]");
     await expect(doorway).toHaveAttribute("data-photo-state", "loaded");
     await expect(doorway).toHaveAttribute("href", "/places/carroll-creek-linear-park-frederick");
-    const photoBox = (await doorway.locator("figure").boundingBox())!;
-    const doorwayBox = (await doorway.boundingBox())!;
-    const captionBox = (await doorway.locator("[data-today-geographic-caption]").boundingBox())!;
-    const headingBox = (await masthead.locator("h1").boundingBox())!;
+    // Header hydration and a decoded photo can move the document between
+    // separate protocol calls. Compare all actual layout boxes in one paint.
+    const geometry = await page.evaluate(() => {
+      const bounds = (selector: string) => {
+        const rect = document.querySelector(selector)!.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      };
+      return {
+        mastheadBox: bounds("main .scroll-masthead"),
+        findBox: bounds('[data-find-density="arrival"] a[aria-label="Find a place, service, event, or answer"]'),
+        weatherBox: bounds("[data-today-weather]"),
+        photoBox: bounds("[data-today-geographic-doorway] figure"),
+        doorwayBox: bounds("[data-today-geographic-doorway]"),
+        captionBox: bounds("[data-today-geographic-caption]"),
+        headingBox: bounds("main .scroll-masthead h1"),
+      };
+    });
+    await testInfo.attach("today-first-screen-geometry", {
+      contentType: "application/json", body: JSON.stringify(geometry),
+    });
+    const { mastheadBox, findBox, weatherBox, photoBox, doorwayBox, captionBox, headingBox } = geometry;
     expect(findBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height);
     // The arrival action now has a deliberate phone density; neither weather
     // facts nor the photograph are subtracted from an artificial height budget.
@@ -569,8 +627,7 @@ test.describe("Today compiled chapter and compact weather at enlarged root text"
     // and scroll it into view, with the same physical44px hit oracle afterwards.
     const entryTabPresses = await tabToCompactWeather(page, enlargedControl);
     await expect(enlargedControl).toBeFocused();
-    const enlargedProbe = await compactWeatherTargetProbe(enlargedControl);
-    expectCompactWeatherTarget(enlargedProbe);
+    const enlargedProbe = await readyCompactWeatherTarget(enlargedControl, testInfo, "entry");
     let forecastProbe: Awaited<ReturnType<typeof compactWeatherTargetProbe>> | null = null;
     let expandedWeatherText: Awaited<ReturnType<typeof compactWeatherTextMetrics>> | null = null;
     if (enlargedState === "available") {
@@ -596,15 +653,14 @@ test.describe("Today compiled chapter and compact weather at enlarged root text"
       await page.keyboard.press("Tab");
       await expect(enlargedForecast).toBeFocused();
       await expect(enlargedForecast).toHaveAttribute("href", "/pulse?open=weather");
-      forecastProbe = await compactWeatherTargetProbe(enlargedForecast);
-      expectCompactWeatherTarget(forecastProbe);
+      forecastProbe = await readyCompactWeatherTarget(enlargedForecast, testInfo, "forecast");
       await page.keyboard.press("Shift+Tab");
       await expect(enlargedSummary).toBeFocused();
       await page.keyboard.press("Enter");
       await expect(enlargedWeather.locator("details")).not.toHaveAttribute("open");
       await expect(enlargedForecast).not.toBeVisible();
       await expect(enlargedSummary).toBeFocused();
-      expectCompactWeatherTarget(await compactWeatherTargetProbe(enlargedSummary));
+      await readyCompactWeatherTarget(enlargedSummary, testInfo, "closed-summary");
     } else {
       await expect(enlargedSummary).toHaveCount(0);
       await expect(enlargedForecast).toHaveAttribute("href", "/pulse?open=weather");
