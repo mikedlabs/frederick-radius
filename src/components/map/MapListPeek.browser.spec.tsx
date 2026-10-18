@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vite
 import MapListPeek, { type MapListPeekProps } from "./MapListPeek";
 import type { MapTaskList } from "./mapListTask";
 import type { MapPinPlace } from "./types";
+import { eventPinFromEvent } from "@/lib/map/eventPin";
 
 vi.mock("next/link", () => ({ default: (props: AnchorHTMLAttributes<HTMLAnchorElement>) => <a {...props} /> }));
 vi.mock("@/lib/haptics", () => ({ haptic: vi.fn() }));
@@ -142,6 +143,31 @@ describe("MapListPeek native directions", () => {
     await act(async () => retry.click());
     expect(onRetrySearch).toHaveBeenCalledOnce();
     expect(onPickPlace).not.toHaveBeenCalled();
+  });
+
+  it("renders the source presenter through the actual compact pin and opens the unchanged event", async () => {
+    const source: Parameters<typeof eventPinFromEvent>[0] = {
+      slug: "theatre", title: "Live Theatre Production", presenter: "Other Voices Theatre",
+      starts_at: "2030-04-18T22:00:00.000Z", ends_at: "2030-04-19T00:00:00.000Z",
+      venue_name: "Baker Park", municipality: "frederick", category: "community",
+      geom: { lng: -77.4201, lat: 39.4143 }, source: "city-frederick",
+      source_url: "https://www.cityoffrederickmd.gov/calendar", confidence: "verified",
+      last_verified_at: "2030-04-18T14:00:00.000Z", is_verified: true,
+    };
+    const pin = JSON.parse(JSON.stringify(eventPinFromEvent(source, new Date("2030-04-18T16:00:00.000Z"))));
+    await mount({ list: list([{ kind: "event", event: pin }]) });
+    const button = host.querySelector<HTMLButtonElement>('[data-map-list-event="theatre"]')!;
+
+    expect(button.textContent).toContain("Other Voices Theatre: Live Theatre Production");
+    expect(button.textContent).toContain("Baker Park");
+    await act(async () => button.click());
+    expect(onPickEvent).toHaveBeenCalledExactlyOnceWith(pin);
+    expect(onPickEvent.mock.calls[0][0].title).toBe("Live Theatre Production");
+    expect(onPickPlace).not.toHaveBeenCalled();
+    expect(onExpandedChange).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(source.title).toBe("Live Theatre Production");
+    expect(location.pathname + location.search).toBe(origin);
   });
 
   it("does not add place directions to event or unmapped event-link rows", async () => {

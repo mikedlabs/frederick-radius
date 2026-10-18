@@ -1,7 +1,8 @@
 import { haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
 import { clientPlaces } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
-import { MUNICIPALITIES } from "@/data/municipalities";
+import { isGenericEventVenueName, normalizeEventVenueIdentity } from "./venue-name";
+export { isGenericEventVenueName, normalizeEventVenueIdentity } from "./venue-name";
 
 export type EventVenueInput = {
   venue_place_slug?: string | null;
@@ -55,34 +56,6 @@ export const REVIEWED_EVENT_VENUE_ALIASES: Readonly<Record<string, string>> = {
   frederickfairgrounds:
     "frederick-fairgrounds-home-of-the-great-frederick-fair-frederick",
 };
-
-export function normalizeEventVenueIdentity(value: string | null | undefined): string {
-  return (value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
-}
-
-const GENERIC_EVENT_VENUE_IDENTITIES = new Set([
-  ...MUNICIPALITIES.flatMap((municipality) => [
-    normalizeEventVenueIdentity(municipality.name),
-    normalizeEventVenueIdentity(municipality.slug),
-  ]),
-  "frederick",
-  "frederickcounty",
-  "frederickmd",
-  "frederickmaryland",
-  "maryland",
-  "md",
-  "downtown",
-  "downtownfrederick",
-  "county",
-  "online",
-  "virtual",
-  "tbd",
-]);
-
-export function isGenericEventVenueName(value: string | null | undefined): boolean {
-  const identity = normalizeEventVenueIdentity(value);
-  return !identity || GENERIC_EVENT_VENUE_IDENTITIES.has(identity);
-}
 
 const STREET_SUFFIX =
   /\b(?:st|street|ave|avenue|rd|road|blvd|boulevard|way|dr|drive|ln|lane|pike|ct|court|pl|place|hwy|highway|pkwy|parkway|sq|square|ter|terrace|cir|circle|aly|alley|tpke|turnpike)\b/i;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { eventCardVisual, planHorizonVisual } from "./eventVisuals";
+import { eventCardVisual, parseRecoveryEventVisual, planHorizonVisual } from "./eventVisuals";
 import fixture from "../../../tests/fixtures/steinhardt-squarespace.json" with { type: "json" };
 
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
@@ -241,5 +241,167 @@ describe("planHorizonVisual", () => {
     expect(plan.promotedIndex).toBe(1);
     expect(rest[plan.promotedIndex].slug).toBe("third");
     expect(plan.promotedVisual?.key).toBe("radius-baker-park-bandshell");
+  });
+});
+
+
+describe("recovery event visual boundary", () => {
+  const sourceHref = "https://publisher.example/events/community-concert";
+  const attribution = {
+    kind: "venue" as const,
+    venue_name: "Test Venue",
+    provider: "google_maps" as const,
+    source_uri: "https://www.google.com/maps/place/example-photo",
+    authors: [{ display_name: "Supplied photographer" }],
+  };
+
+  function ownedVisual() {
+    const visual = eventCardVisual(event({ venue_place_slug: "baker-park-bandshell" }));
+    expect(visual).not.toBeNull();
+    return visual!;
+  }
+
+  function publisherVisual() {
+    const visual = eventCardVisual(event({
+      source: "fcpl", source_url: sourceHref,
+      hero_image: "https://frederick.librarycalendar.com/sites/default/files/program.jpg",
+    }));
+    expect(visual).not.toBeNull();
+    return visual!;
+  }
+
+  it.each([
+    "carroll-creek-linear-park-frederick",
+    "baker-park-frederick",
+    "baker-park-bandshell",
+  ])("round-trips the exact registered owned visual for %s as a fresh known-field record", venue_place_slug => {
+    const visual = eventCardVisual(event({ venue_place_slug }))!;
+    const packet = Object.freeze({ ...visual, unexpected: { doNotPublish: true } });
+    const parsed = parseRecoveryEventVisual(packet);
+    expect(parsed).toEqual(visual);
+    expect(parsed).not.toBe(packet);
+    expect(parsed).not.toHaveProperty("unexpected");
+    expect(parsed).not.toHaveProperty("sourceHref");
+    expect(parsed).not.toHaveProperty("attribution");
+    expect(packet.unexpected).toEqual({ doNotPublish: true });
+  });
+
+  it.each([
+    ["dfp", "https://ik.imagekit.io/vibemap/events/program.jpg", "Event image · Downtown Frederick Partnership"],
+    ["visit-frederick", "https://assets.simpleviewinc.com/sv-frederick-county/image/fetch/program.jpg", "Event image · Visit Frederick"],
+    ["fcpl", "https://frederick.librarycalendar.com/sites/default/files/program.jpg", "Event image · Frederick County Public Libraries"],
+    ["mdcc", "https://static.wixstatic.com/media/program.jpg", "Event image · Maryland Deaf Community Center"],
+    ["ticketmaster", "https://s1.ticketm.net/dam/a/program.jpg", "Event image · Ticketmaster"],
+    ["seatgeek", "https://seatgeek.com/images/program.jpg", "Event image · SeatGeek"],
+  ] as const)("retains %s source wording, source link and intact-art presentation", (source, hero_image, caption) => {
+    const approved = eventCardVisual(event({ source, source_url: sourceHref, hero_image }))!;
+    const packet = Object.freeze({ ...approved, discarded: "not part of the public visual" });
+    const parsed = parseRecoveryEventVisual(packet);
+    expect(parsed).toEqual({ src: hero_image, key: `event:${hero_image}`, caption, presentation: "artwork", sourceHref });
+    expect(parsed).not.toBe(packet);
+    expect(parsed).not.toHaveProperty("discarded");
+  });
+
+  it("retains only the reviewed Steinhardt collection and image account", () => {
+    const source_url = "https://www.steinhardtbrewing.com/live-music-events";
+    const approved = eventCardVisual(event({ source: "venue-extract", source_url,
+      venue_place_slug: "steinhardt-brewing-company-frederick", hero_image: fixture.upcoming[0].assetUrl }))!;
+    expect(parseRecoveryEventVisual(approved)).toEqual(approved);
+    expect(parseRecoveryEventVisual({ ...approved, sourceHref: "https://www.steinhardtbrewing.com/another-collection" })).toBeNull();
+    const wrongAccount = approved.src.replace("/5f9ef850cc5c2c1189e6fb4a/", "/unreviewed-account/");
+    expect(wrongAccount).not.toBe(approved.src);
+    expect(parseRecoveryEventVisual({ ...approved, src: wrongAccount, key: `event:${wrongAccount}` })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...approved, sourceHref: "https://www.rockwellbrewery.com/events" })).toBeNull();
+  });
+
+  it.each([
+    ["unregistered local photo", { src: "/images/unreviewed-event.jpg" }],
+    ["changed subject caption", { caption: "Venue · Another place" }],
+    ["changed source identity", { key: "another-photo" }],
+    ["changed photo classification", { presentation: "artwork" }],
+    ["invented external source credit", { sourceHref }],
+    ["injected Google attribution", { attribution }],
+  ] as const)("rejects an owned descriptor with %s", (_label, patch) => {
+    expect(parseRecoveryEventVisual({ ...ownedVisual(), ...patch })).toBeNull();
+  });
+
+  it.each([
+    ["missing source link", undefined],
+    ["HTTP source link", "http://publisher.example/events/program"],
+    ["script source link", "javascript:alert(1)"],
+    ["source credentials", "https://user:password@publisher.example/events/program"],
+    ["source port override", "https://publisher.example:444/events/program"],
+  ] as const)("rejects publisher art without usable source credit: %s", (_label, sourceHref) => {
+    expect(parseRecoveryEventVisual({ ...publisherVisual(), sourceHref })).toBeNull();
+  });
+
+  it.each([
+    ["changed publisher label", { caption: "Event image · Ticketmaster" }],
+    ["photo crop relabel", { presentation: "photo" }],
+    ["changed source identity", { key: "another-image" }],
+    ["Google attribution injected into publisher art", { attribution }],
+    ["malformed source", { src: 42 }],
+    ["malformed key", { key: null }],
+    ["malformed caption", { caption: [] }],
+  ] as const)("rejects %s in a publisher descriptor", (_label, patch) => {
+    expect(parseRecoveryEventVisual({ ...publisherVisual(), ...patch })).toBeNull();
+  });
+
+  it.each([
+    "/api/place-photo?name=not-for-recovery",
+    "https://frederickradius.app/api/place-photo?name=not-for-recovery",
+    "https://places.googleapis.com/v1/places/example/photos/example/media",
+    "https://lh3.googleusercontent.com/example-photo",
+    "/_next/image?url=%2Fapi%2Fplace-photo%3Fname%3Dhidden&w=384&q=75",
+    "https://frederickradius.app/_next/image?url=https%3A%2F%2Flh3.googleusercontent.com%2Fphoto&w=384&q=75",
+    "//frederick.librarycalendar.com/sites/default/files/program.jpg",
+    "http://frederick.librarycalendar.com/sites/default/files/program.jpg",
+    "https://frederick.librarycalendar.com.evil.example/sites/default/files/program.jpg",
+    "https://user:password@frederick.librarycalendar.com/sites/default/files/program.jpg",
+    "https://frederick.librarycalendar.com:444/sites/default/files/program.jpg",
+    "https://frederick.librarycalendar.com/unreviewed-account/program.jpg",
+    "data:image/png;base64,AA==",
+    "blob:https://frederickradius.app/unreviewed",
+  ])("does not accept unsafe or unapproved recovery media %s", src => {
+    expect(parseRecoveryEventVisual({ ...publisherVisual(), src, key: `event:${src}` })).toBeNull();
+  });
+
+  it.each([
+    ["dfp", "https://ik.imagekit.io/another-account/program.jpg"],
+    ["visit-frederick", "https://assets.simpleviewinc.com/another-county/image/fetch/program.jpg"],
+    ["fcpl", "https://frederick.librarycalendar.com/another-path/program.jpg"],
+  ] as const)("does not mint %s recovery art outside the existing optimizer account path", (source, hero_image) => {
+    expect(eventCardVisual(event({ source, hero_image, source_url: sourceHref }))).toBeNull();
+  });
+
+  it.each([
+    { label: "missing", value: undefined },
+    { label: "null", value: null },
+    { label: "array", value: [] },
+    { label: "number", value: 42 },
+    { label: "raw string", value: "raw-image-url" },
+  ])("treats a malformed optional visual as absent: $label", ({ value }) => {
+    expect(parseRecoveryEventVisual(value)).toBeNull();
+  });
+
+  it("keeps existing credited Google behavior by default but excludes it from owned-only recovery", () => {
+    const input = event({ hero_image: "/api/place-photo?name=credited", hero_image_attribution: attribution });
+    const normal = eventCardVisual(input);
+    expect(normal).toMatchObject({ src: input.hero_image, attribution });
+    expect(eventCardVisual(input, { venuePhotos: "owned-only" })).toBeNull();
+    expect(parseRecoveryEventVisual(normal)).toBeNull();
+    expect(input.hero_image_attribution).toBe(attribution);
+  });
+
+  it("keeps exact owned fallback and publisher priority when Google venue photos are excluded", () => {
+    const input = event({ hero_image: "/api/place-photo?name=credited", hero_image_attribution: attribution,
+      venue_place_slug: "baker-park-bandshell" });
+    expect(eventCardVisual(input)?.attribution).toBe(attribution);
+    expect(eventCardVisual(input, { venuePhotos: "owned-only" })).toEqual(ownedVisual());
+    const published = event({ source: "fcpl", source_url: sourceHref,
+      hero_image: "https://frederick.librarycalendar.com/sites/default/files/program.jpg",
+      venue_place_slug: "baker-park-bandshell" });
+    expect(eventCardVisual(published, { venuePhotos: "owned-only" })).toEqual(eventCardVisual(published));
+    expect(eventCardVisual(published, { venuePhotos: "owned-only" })?.presentation).toBe("artwork");
   });
 });

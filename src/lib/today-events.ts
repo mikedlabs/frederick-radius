@@ -1,19 +1,28 @@
 import type { Event } from "@/data/events";
+import type { EventCardVisual } from "@/components/event/eventVisuals";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { isEventEnded, isEventLiveNow, isEventToday } from "@/lib/eventWhenLabel";
 import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
-import { eventTrust } from "@/lib/trust";
+import type { SourceConfidence } from "@/lib/provenance";
+import { eventDecisionVerification } from "@/lib/events/decision-verification";
+import { eventAttendanceLabel, eventAttendanceMode, eventOnlineActionUrl } from "@/lib/events/attendance";
+import { isGenericEventVenueName, normalizeEventVenueIdentity } from "@/lib/events/venue-name";
+
+export type TodayEventCandidate = Event & { confidence: SourceConfidence };
 
 export type TodayEventMoment = "Now" | "Later" | "Tonight" | "Today";
 
 export type TodayEvent = {
   slug: string;
   title: string;
+  presenter?: string;
   venue: string;
   municipality: string;
   time: string;
   moment: TodayEventMoment;
   image: string | null;
+  /** Approved first-pick visual; absent in older cached responses. */
+  visual?: EventCardVisual;
   free: boolean;
 };
 
@@ -89,25 +98,31 @@ function momentFor(event: Event, now: Date): TodayEventMoment {
   return easternHour(new Date(event.starts_at)) >= 17 ? "Tonight" : "Later";
 }
 
-/** Today is editorially stricter than the full calendar. A prime homepage
- * card needs a real venue, trustworthy timing, and a source-backed row.
- * `is_verified` means Radius manually checked the listing; an event published
- * on a recognized government or organizer calendar is independently
- * trustworthy without rewriting that field to true. */
-export function isStrongTodayEvent(event: Event, now: Date): boolean {
+/** Prime picks need a recently checked source and a usable attendance path.
+ * Publisher identity alone is not freshness. Named venues remain useful even
+ * with approximate coordinates: this brief makes no proximity promise. */
+export function isStrongTodayEvent(event: TodayEventCandidate, now: Date): boolean {
   if (
-    eventTrust(event).level !== "verified" ||
+    !eventDecisionVerification(event, now).sourceVerified ||
     event.status === "cancelled" ||
     event.status === "postponed"
   ) return false;
-  if (!event.venue_name?.trim()) return false;
+  if (eventAttendanceMode(event) === "online") {
+    if (!eventOnlineActionUrl(event)) return false;
+  } else if (
+    isGenericEventVenueName(event.venue_name) ||
+    normalizeEventVenueIdentity(event.venue_name) === "offcampus"
+  ) return false;
   if (!isEventToday(event.starts_at, now) || isEventEnded(event, now)) return false;
   if (isUtilityEvent(event) || isRoutineProgram(event)) return false;
   if (event.is_all_day && TIMED_TITLE_ON_ALL_DAY_RE.test(event.title)) return false;
   return true;
 }
 
-export function selectTodayEvents(pool: readonly Event[], now = new Date(), limit = 3): TodayEvent[] {
+export function selectTodayEvents(
+  pool: readonly TodayEventCandidate[], now = new Date(), limit = 3,
+  resolveLeadVisual?: (event: TodayEventCandidate) => EventCardVisual | null,
+): TodayEvent[] {
   const candidates = pool
     .filter((event) => isStrongTodayEvent(event, now))
     .map((event) => ({ event, moment: momentFor(event, now) }));
@@ -127,14 +142,24 @@ export function selectTodayEvents(pool: readonly Event[], now = new Date(), limi
     .flatMap((moment) => grouped.get(moment)?.splice(0, 1) ?? []);
   const remainder = [...grouped.values()].flat().sort((a, b) => compareForLead(a.event, b.event));
 
-  return [...ordered, ...remainder].slice(0, limit).map(({ event, moment }) => ({
-    slug: event.slug,
-    title: event.title,
-    venue: event.venue_name!,
-    municipality: event.municipality,
-    time: event.is_all_day ? "All day" : clock(event.starts_at),
-    moment,
-    image: event.hero_image ?? null,
-    free: event.is_free,
-  }));
+  return [...ordered, ...remainder].slice(0, limit).map(({ event, moment }, index) => {
+    let visual: EventCardVisual | null = null;
+    // Resolve only the actual first choice before reducing its source record.
+    // Missing media never changes ranking or discards otherwise usable facts.
+    if (index === 0 && resolveLeadVisual) {
+      try { visual = resolveLeadVisual(event); } catch { /* Keep factual recovery usable. */ }
+    }
+    return {
+      slug: event.slug,
+      title: event.title,
+      ...(typeof event.presenter === "string" && event.presenter.trim() ? { presenter: event.presenter } : {}),
+      venue: eventAttendanceLabel(event),
+      municipality: event.municipality,
+      time: event.is_all_day ? "All day" : clock(event.starts_at),
+      moment,
+      image: event.hero_image ?? null,
+      free: event.is_free,
+      ...(visual ? { visual } : {}),
+    };
+  });
 }

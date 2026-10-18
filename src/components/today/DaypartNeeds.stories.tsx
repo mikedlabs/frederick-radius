@@ -36,6 +36,13 @@ async function readablePlace(canvasElement: HTMLElement) {
   // Re-query after the rejected fixture request restores the real shelf.
   await waitFor(() => expect(canvasElement.querySelector("[data-today-place-lead], [data-today-opening-soon]")).toBeVisible());
   const card = canvasElement.querySelector<HTMLElement>("[data-today-place-preview], [data-today-opening-soon-preview], [data-today-opening-soon]")!;
+  // Visibility can precede the real shelf's entrance animation settling.
+  // A translated ancestor yields fractional DOMRect precision in Chromium;
+  // measure the settled target without rounding or lowering its minimum.
+  const panel = card.closest<HTMLElement>(".today-decision-swap");
+  await waitFor(() => expect(panel?.getAnimations().some((animation) =>
+    animation.pending || animation.playState === "running",
+  ) ?? false).toBe(false));
   await expect(card.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
   const name = card.querySelector<HTMLElement>("[data-today-pick-name]")!;
   const context = card.querySelector<HTMLElement>("[data-today-pick-context]")!;

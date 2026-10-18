@@ -37,6 +37,7 @@ export function slimEventForBrowse(e: EventWithMeta): EventWithMeta {
   return {
     slug: e.slug,
     title: e.title,
+    ...(typeof e.presenter === "string" && e.presenter.trim() ? { presenter: e.presenter } : {}),
     description: e.description.slice(0, 160),
     starts_at: e.starts_at,
     ends_at: e.ends_at,

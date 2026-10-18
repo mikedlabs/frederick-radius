@@ -29,13 +29,13 @@ export default function TodaySectionHeading({
   return (
     <header
       data-today-section-heading="true"
-      className="today-section-heading mb-3"
+      className="today-section-heading mb-3 min-w-0 max-w-full"
     >
-      <div className="today-section-heading__copy flex items-start justify-between gap-4 px-0.5">
-        <div className="min-w-0">
+      <div className="today-section-heading__copy flex min-w-0 max-w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 px-0.5">
+        <div className="min-w-0 max-w-full [overflow-wrap:anywhere]">
           {eyebrow && <p className="fg-eyebrow mb-1.5">{eyebrow}</p>}
           <h2
-            className="flex items-center gap-2 font-sans text-[20px] font-semibold leading-none tracking-tight sm:text-[21px]"
+            className="flex min-w-0 max-w-full items-center gap-2 font-sans text-xl font-semibold leading-none tracking-tight sm:text-[1.3125rem]"
             style={{ color: "var(--app-ink)" }}
           >
             {live && (
@@ -48,11 +48,11 @@ export default function TodaySectionHeading({
                 }}
               />
             )}
-            {title}
+            <span className="min-w-0 [overflow-wrap:anywhere]">{title}</span>
           </h2>
           {meta && (
             <p
-              className="mt-1.5 font-mono text-[10.5px] leading-snug tabular-nums tracking-[0.03em]"
+              className="mt-1.5 font-mono text-xs leading-snug tabular-nums tracking-[0.03em]"
               style={{ color: "var(--app-ink-3)" }}
             >
               {meta}
@@ -63,15 +63,15 @@ export default function TodaySectionHeading({
           <Link
             href={href}
             aria-label={`${cta}: ${title}`}
-            className="today-section-heading__cta tap-44-y -my-2 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-[var(--app-radius-sm)] px-1.5 text-[12px] font-semibold tracking-tight outline-none"
+            className="today-section-heading__cta tap-44-y inline-flex min-h-11 min-w-0 max-w-full shrink-0 items-center gap-1 rounded-[var(--app-radius-sm)] px-1.5 text-sm font-semibold tracking-tight outline-none"
             style={{
               color:
                 "var(--app-heading-action, var(--today-section-ink, var(--app-brand-press)))",
             }}
           >
-            {cta}
+            <span className="min-w-0 [overflow-wrap:anywhere]">{cta}</span>
             <ArrowRight
-              className="today-section-heading__cta-icon h-3.5 w-3.5"
+              className="today-section-heading__cta-icon h-3.5 w-3.5 shrink-0"
               strokeWidth={2.1}
               aria-hidden
             />

@@ -1,3 +1,4 @@
+import { eventDisplayTitle } from "@/lib/events/display-title";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
@@ -104,7 +105,11 @@ export type MapDiscoveryBounds = {
 };
 
 type Coord = { lng: number; lat: number };
-type Candidate = MapDiscovery & { anchorKey: string };
+type Candidate = MapDiscovery & {
+  anchorKey: string;
+  /** Preserve canonical ordering when a source presenter enriches display copy. */
+  sortTitle?: string;
+};
 
 const FOOD_AND_DRINK = new Set([
   "restaurant", "coffee", "bar", "brewery", "winery", "distillery",
@@ -314,6 +319,7 @@ function eventCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
     if (
       !isCurrentVerifiedEvent(event, nowMs)
     ) continue;
+    const displayTitle = eventDisplayTitle(event);
     const venueName = event.venue_name.trim();
     // A time plus coordinates is not enough for a useful event plan. If the
     // source cannot name the venue, the card cannot explain where the joined
@@ -346,10 +352,10 @@ function eventCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
     if (!support) continue;
 
     const points: MapDiscoveryPoint[] = [
-      { id: `event:${event.slug}`, label: event.title, kind: "event", ...anchor },
+      { id: `event:${event.slug}`, label: displayTitle, kind: "event", ...anchor },
     ];
     const evidence: MapDiscoveryEvidence[] = [{
-      fact: `${event.title} is listed at ${venueName} on ${localDateTime(event.starts_at)}.`,
+      fact: `${displayTitle} is listed at ${venueName} on ${localDateTime(event.starts_at)}.`,
       source: "Frederick Radius event feeds",
       sourceUrl: `/events/${event.slug}`,
     }];
@@ -388,8 +394,9 @@ function eventCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
       anchorKey: `event:${event.slug}`,
       kind: "event-orbit",
       eyebrow: "Plan around an event",
-      title: `Before ${shortTitle(event.title)}`,
-      summary: `${event.title} begins ${localDateTime(event.starts_at)} at ${venueName}. ${details.slice(0, 2).join(", and ")}.`,
+      title: `Before ${shortTitle(displayTitle)}`,
+      sortTitle: `Before ${shortTitle(event.title)}`,
+      summary: `${displayTitle} begins ${localDateTime(event.starts_at)} at ${venueName}. ${details.slice(0, 2).join(", and ")}.`,
       center: discoveryCenter(points),
       zoom: 14.1,
       score: 96 - Math.min(28, hoursUntil / 4) + proximityScore(input.origin, anchor) + Math.min(8, points.length * 2),
@@ -484,8 +491,9 @@ function beerCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
     ];
     let secondSentence: string;
     if (event) {
-      points.push({ id: `event:${event.item.slug}`, label: event.item.title, kind: "event", lng: event.item.lng, lat: event.item.lat });
-      secondSentence = `${event.item.title} is listed ${formatDistance(event.distanceM)} away on ${localDateTime(event.item.starts_at)}.`;
+      const displayTitle = eventDisplayTitle(event.item);
+      points.push({ id: `event:${event.item.slug}`, label: displayTitle, kind: "event", lng: event.item.lng, lat: event.item.lat });
+      secondSentence = `${displayTitle} is listed ${formatDistance(event.distanceM)} away on ${localDateTime(event.item.starts_at)}.`;
       evidence.push({ fact: secondSentence, source: "Frederick Radius event feeds", sourceUrl: `/events/${event.item.slug}` });
     } else {
       const stopLabel = transitStopLabel(transit!.item.name);
@@ -677,7 +685,7 @@ export function buildMapDiscoveries(input: BuildMapDiscoveriesInput): MapDiscove
     ...beerCandidates(scoped),
     ...townPocketCandidates(scoped),
     ...historyCandidates(scoped),
-  ].sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));
+  ].sort((a, b) => b.score - a.score || (a.sortTitle ?? a.title).localeCompare(b.sortTitle ?? b.title));
 
   const chosen: Candidate[] = [];
   const usedKinds = new Set<MapDiscoveryKind>();

@@ -72,6 +72,24 @@ describe("events browse payload", () => {
     expect(slim.hero_image_attribution).toEqual(heroImageAttribution);
   });
 
+  it("preserves a supplied presenter without rewriting the canonical event title", () => {
+    const source = event("theatre", "2026-07-14T14:00:00.000Z", {
+      title: "Live Theatre Production", presenter: "Other Voices Theatre",
+    });
+    const payload = JSON.parse(JSON.stringify(slimEventForBrowse(source))) as EventWithMeta;
+
+    expect(payload.title).toBe("Live Theatre Production");
+    expect(payload.presenter).toBe("Other Voices Theatre");
+    expect(source.title).toBe("Live Theatre Production");
+    expect(source.presenter).toBe("Other Voices Theatre");
+  });
+
+  it.each([undefined, "", "   ", 42])("omits an unusable optional presenter (%s)", (presenter) => {
+    const source = event("legacy", "2026-07-14T14:00:00.000Z", { presenter } as Partial<EventWithMeta>);
+    expect(slimEventForBrowse(source)).not.toHaveProperty("presenter");
+    expect(slimEventForBrowse(source).title).toBe(source.title);
+  });
+
   it("keeps every current occurrence in the browse corpus and collapses only display rows", () => {
     const prepared = prepareEventsForBrowse([
       event("ended", "2026-07-14T08:00:00.000Z", {

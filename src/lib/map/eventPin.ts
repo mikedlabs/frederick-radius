@@ -9,6 +9,7 @@ type MapEventInput = Pick<
   EventWithMeta,
   | "slug"
   | "title"
+  | "presenter"
   | "starts_at"
   | "ends_at"
   | "is_all_day"
@@ -45,6 +46,7 @@ export function eventPinFromEvent(
     slug: event.slug,
     municipality: event.municipality,
     title: event.title,
+    ...(typeof event.presenter === "string" && event.presenter.trim() ? { presenter: event.presenter } : {}),
     starts_at: event.starts_at,
     ends_at: event.ends_at,
     is_all_day: event.is_all_day,

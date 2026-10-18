@@ -17,6 +17,7 @@ import MastheadNotes from "@/components/today/MastheadNotes";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import TonightHeadline from "@/components/today/TonightHeadline";
+import TodayEventRow from "@/components/today/TodayEventRow";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import WeekendPreview from "@/components/today/WeekendPreview";
 import FromYourSaved from "@/components/today/FromYourSaved";
@@ -24,13 +25,8 @@ import FromYourSaved from "@/components/today/FromYourSaved";
 // decorative divider between weather/discovery and action; the
 // reorder makes the divider unnecessary.
 
-import { eventDateBlock } from "@/lib/loaders/events";
 import { loadTodayEventSnapshot } from "@/lib/loaders/todayEventSnapshot";
-import { isUtilityEvent } from "@/lib/event-kind";
-import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
-import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { splitTonightFeature, withoutTodayFeature } from "@/lib/today/tonight";
+import { deriveTodayProgram } from "@/lib/today/event-program";
 import PoolsToday from "@/components/today/PoolsToday";
 import TodayLocalGuides, { TodayFoodTruckGuide } from "@/components/today/TodayLocalGuides";
 import { BREWERIES } from "@/data/beers";
@@ -41,7 +37,6 @@ import WeatherSafeGoldenHour from "@/components/today/WeatherSafeGoldenHour";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { leanFromForecast, wetWindowEnd } from "@/lib/today/weatherLean";
-import EventWalkTime from "@/components/today/EventWalkTime";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import PlaceSheetBoundary from "@/components/place/PlaceSheetBoundary";
 import TodayAsk, { TodayQuickNeeds } from "@/components/today/TodayAsk";
@@ -60,9 +55,6 @@ import {
   shouldRenderTodayEventSection,
   todayEventPicksMeta,
 } from "@/lib/today-events";
-import { eventTown } from "@/lib/events/eventTown";
-import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
-import { eventDecisionVerification } from "@/lib/events/decision-verification";
 import TodayMasthead from "@/components/today/TodayMasthead";
 import TodayGeographicDoorway, { TodayGeographicDoorwayPending } from "@/components/today/TodayGeographicDoorway";
 import PageChapter from "@/components/ui/PageChapter";
@@ -536,127 +528,6 @@ function easternStartHour(iso: string): number {
   );
 }
 
-/** The one today-program derivation, read by the What's-on program for both
- *  its feature and remaining rows. Keeping those decisions together means the
- *  selected feature can never be repeated in the timeline below it. */
-function deriveTodayProgram(publicEvents: Awaited<EventsPromise>["publicEvents"], now: Date) {
-  const todayAll = publicEvents
-    .filter((e) => isEventToday(e.starts_at, now))
-    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
-  // Time-honesty partition (the 7:55 PM audit render led with six ENDED 2-4 PM
-  // library crafts while a live Keys game sat ninth): the rail carries only
-  // what's live or still ahead; finished draws demote to a quiet "Earlier
-  // today" line list, and finished civic rows drop entirely (a meeting that
-  // ended has no evening value). Grouping stays by start-day; the floor is
-  // isEventEnded's real end time.
-  const ended = todayAll.filter((e) => isEventEnded(e, now));
-  const ahead = todayAll.filter((e) => !isEventEnded(e, now));
-  // The headline treatment is for DRAWS only. Routine recurring programming
-  // (storytime, ESL class, tech help — the standing library calendar) joins
-  // civic business in the quiet program rows, ordered by start time, so the
-  // hierarchy never flattens.
-  const todaysEvents = ahead
-    .filter(
-      (e) =>
-        !isUtilityEvent(e) &&
-        !isRoutineProgram(e) &&
-        eventDecisionVerification(e, now).sourceVerified,
-    )
-    .sort(compareForLead);
-  const strongEventKeys = new Set(
-    todaysEvents.map((event) => `${event.slug}|${event.starts_at}`),
-  );
-  // A public but not freshly source-verified draw can stay in the compact
-  // chronological program. It cannot receive Today's editorial headline.
-  const alsoToday = ahead.filter(
-    (event) => !strongEventKeys.has(`${event.slug}|${event.starts_at}`),
-  );
-  const earlierToday = ended.filter((e) => !isUtilityEvent(e));
-  // The selected lead renders exactly once (as the page headliner). Duplicate
-  // feed occurrences are removed from the compact program below instead of
-  // removing the lead.
-  const { feature, remaining: upcomingRest } = splitTonightFeature(now, todaysEvents);
-  return {
-    todayAll,
-    ahead,
-    feature,
-    upcomingRest,
-    remainingAlsoToday: withoutTodayFeature(feature, alsoToday),
-    remainingEarlierToday: withoutTodayFeature(feature, earlierToday),
-  };
-}
-
-/** One line of the day program: mono time column (the visible sort key),
- *  then title + venue. The editorial tier reads as TYPOGRAPHY — draws get
- *  weight, ink, and their category's color dot; civic/routine rows sit in
- *  the same timeline, smaller and grayer. Live rows swap the clock for a
- *  pulsing "Now". */
-function ProgramRow({
-  event: e,
-  quiet,
-  now,
-}: {
-  event: Awaited<EventsPromise>["publicEvents"][number];
-  quiet: boolean;
-  now: Date;
-}) {
-  const live = isEventLiveNow(e, now);
-  const time = eventDateBlock(e).time;
-  const accent = CATEGORY_BY_SLUG[e.category ?? ""]?.color ?? "#7A7975";
-  const town = eventTown(e);
-  // "Frederick · Frederick": some feeds stamp the town as the venue name.
-  // One mention is information, two is noise.
-  const venue = e.venue_name?.trim();
-  const where = [venue, town && town.toLowerCase() !== venue?.toLowerCase() ? town : null]
-    .filter(Boolean)
-    .join(" · ");
-  return (
-    <li>
-      <Link
-        href={`/events/${e.slug}`}
-        prefetch={false}
-        className={`tap-44-y flex items-start gap-3 border-b py-2 pr-0.5 ${styles.eventRow}`}
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <span
-          className={`flex w-[58px] shrink-0 items-center gap-1 pt-px font-mono text-[11px] font-semibold tabular-nums leading-snug ${styles.eventTime}`}
-          style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-3)" }}
-        >
-          {live && (
-            <span aria-hidden className="live-dot h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: "var(--app-brand)" }} />
-          )}
-          {live ? "Now" : time}
-        </span>
-        {quiet ? (
-          <span className="min-w-0 flex-1 truncate text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-            {e.title}
-            {(venue || town) && (
-              <span style={{ color: "var(--app-ink-3)" }}> · {venue ?? town}</span>
-            )}
-          </span>
-        ) : (
-          <div className="min-w-0 flex-1">
-            <span className={`line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight ${styles.eventTitle}`} style={{ color: "var(--app-ink)" }}>
-              {e.title}
-            </span>
-            {where && (
-              <span className={`mt-0.5 block truncate text-[11.5px] leading-snug ${styles.eventLocation}`} style={{ color: "var(--app-ink-3)" }}>
-                {where}
-              </span>
-            )}
-            {/* Real walk minutes from the user's cached fix (LocationPrime
-                consent), precisely-located venues only; self-hides. */}
-            {eventHasPreciseDisplayLocation(e) && <EventWalkTime dest={e.geom} />}
-          </div>
-        )}
-        {!quiet && (
-          <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: accent }} />
-        )}
-      </Link>
-    </li>
-  );
-}
-
 /** What's on = every PUBLIC event in the city or county TODAY, soonest first.
  *  Draws (concerts/markets/shows) lead as cards; routine recurring programs
  *  join the same chronological program as quiet rows. */
@@ -778,7 +649,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                     </p>
                     <ul>
                       {group.rows.map(({ e, quiet }) => (
-                        <ProgramRow key={`${e.slug}-${e.starts_at}`} event={e} quiet={quiet} now={now} />
+                        <TodayEventRow key={`${e.slug}-${e.starts_at}`} event={e} quiet={quiet} now={now} />
                       ))}
                     </ul>
                   </div>

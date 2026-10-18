@@ -32,6 +32,13 @@ function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
 const now = new Date("2026-07-26T16:00:00.000Z");
 
 describe("TonightHeadline", () => {
+  it("keeps a publisher-supplied presenter visible with the unchanged production title", () => {
+    const row = event({ title: "Live Theatre Production", presenter: "Other Voices Theatre" });
+    const html = renderToStaticMarkup(createElement(TonightHeadline, { event: row, now, embedded: true }));
+    expect(html).toContain("Other Voices Theatre: Live Theatre Production");
+    expect(html).toContain('href="/events/summer-concert"');
+    expect(row.title).toBe("Live Theatre Production");
+  });
   it("prints the same town label the program rows print for city events", () => {
     const html = renderToStaticMarkup(
       createElement(TonightHeadline, {
@@ -88,20 +95,34 @@ describe("TonightHeadline", () => {
     expect(html).not.toContain("unattributed-event.jpg");
   });
 
-  it("keeps approved event photography and its attribution", () => {
+  it("keeps approved publisher artwork intact with its source outside the event link", () => {
     const html = renderToStaticMarkup(
       createElement(TonightHeadline, {
         event: event({
           source: "ticketmaster",
-          hero_image: "https://s1.ticketm.net/dam/a/approved-event.jpg",
+          hero_image: "https://s1.ticketm.net/dam/a/approved-poster.jpg",
+          source_url: "https://www.ticketmaster.com/approved-event",
+          title: "Live Theatre Production",
+          presenter: "Other Voices Theatre",
         }),
         now,
       }),
     );
 
     expect(html).toContain("<img");
-    expect(html).toContain("approved-event.jpg");
+    expect(html).toContain("approved-poster.jpg");
+    expect(html).toContain("data-event-artwork");
+    expect(html).toContain("object-contain");
+    expect(html).not.toContain("object-cover");
+    expect(html).not.toContain("ken-burns");
+    expect(html).not.toContain("aspect-[16/9]");
+    expect(html).toContain("Other Voices Theatre: Live Theatre Production");
+    expect(html).toContain("Test venue · Frederick");
     expect(html).toContain("Event image · Ticketmaster");
+    expect(html.match(/Event image · Ticketmaster/g)).toHaveLength(1);
+    expect(html.indexOf("</a>")).toBeLessThan(html.indexOf("Event image · Ticketmaster"));
+    expect(html).toContain('href="https://www.ticketmaster.com/approved-event"');
+    expect(html).not.toContain("<figcaption");
     expect(html).not.toContain(">View event<");
   });
 
@@ -132,7 +153,7 @@ describe("TonightHeadline", () => {
     expect(html).toContain("Test photographer");
     expect(html).toContain("Report photo");
     expect(html.indexOf("</a>")).toBeLessThan(html.indexOf("Venue · Test venue"));
-    expect(html).toContain('src="/api/place-photo?name=places%2Fvenue-photo"');
+    expect(html).toContain('src="/api/place-photo?name=places%2Fvenue-photo&amp;fallback=signal"');
     expect(html).not.toContain("/_next/image");
   });
 
@@ -140,8 +161,7 @@ describe("TonightHeadline", () => {
     const imageHtml = renderToStaticMarkup(
       createElement(TonightHeadline, {
         event: event({
-          source: "ticketmaster",
-          hero_image: "https://s1.ticketm.net/dam/a/approved-event.jpg",
+          venue_place_slug: "carroll-creek-linear-park-frederick",
         }),
         now,
       }),
@@ -154,6 +174,9 @@ describe("TonightHeadline", () => {
     );
 
     expect(imageHtml).toContain("ken-burns object-cover");
+    expect(imageHtml).toContain("aspect-[16/9]");
+    expect(imageHtml).toContain("Venue · Carroll Creek Linear Park");
+    expect(imageHtml).not.toContain("data-event-artwork");
     expect(noImageHtml).toContain(
       "motion-safe:group-hover:translate-x-0.5",
     );

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEventVisualLifecycle } from "./useEventVisualLifecycle";
 import EventVisualCredit from "./EventVisualCredit";
 import type { EventCardVisual } from "./eventVisuals";
 
@@ -24,18 +24,10 @@ export default function EventArtwork({
   className?: string;
   onUnavailable?: () => void;
 }) {
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const currentSrc = useRef<string | null>(visual.src);
-  useLayoutEffect(() => {
-    currentSrc.current = visual.src;
-    return () => { currentSrc.current = null; };
-  }, [visual.src]);
-  if (visual.presentation !== "artwork" || failedSrc === visual.src) return null;
-
+  const { visibleVisual, failImage, inspectLoadedImage } = useEventVisualLifecycle(visual);
+  if (visual.presentation !== "artwork" || !visibleVisual) return null;
   const unavailable = () => {
-    if (currentSrc.current !== visual.src) return;
-    setFailedSrc(visual.src);
-    onUnavailable?.();
+    if (failImage()) onUnavailable?.();
   };
 
   return (
@@ -49,9 +41,7 @@ export default function EventArtwork({
           priority={priority}
           sizes="(max-width: 720px) 100vw, 720px"
           className="object-contain p-3"
-          onLoad={(event) => {
-            if (event.currentTarget.naturalWidth <= 1 || event.currentTarget.naturalHeight <= 1) unavailable();
-          }}
+          onLoad={(event) => inspectLoadedImage(event.currentTarget, onUnavailable)}
           onError={unavailable}
         />
       </div>

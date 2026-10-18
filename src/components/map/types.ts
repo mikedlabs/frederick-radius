@@ -154,6 +154,8 @@ export type EventPin = {
   municipality?: string;
   slug: string;
   title: string;
+  /** Source-supplied presenter, kept separate from the canonical title. */
+  presenter?: string;
   starts_at: string;
   ends_at?: string;
   is_all_day?: boolean;

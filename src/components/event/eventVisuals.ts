@@ -1,5 +1,5 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
-import type { EventHeroImageAttribution } from "@/data/events";
+import type { Event, EventHeroImageAttribution } from "@/data/events";
 import { approvedVenueFeedImage, STEINHARDT_EVENT_ART } from "@/lib/events/feed-image";
 
 /**
@@ -19,6 +19,10 @@ export type EventCardVisual = {
   /** Publisher page that supplied an event-specific image. */
   sourceHref?: string;
 };
+
+type EventVisualSource = Pick<Event,
+  "source" | "source_url" | "hero_image" | "hero_image_attribution" | "venue_place_slug"
+>;
 
 const VENUE_VISUALS: Readonly<Record<string, EventCardVisual>> = {
   "carroll-creek-linear-park-frederick": {
@@ -51,14 +55,17 @@ const EVENT_IMAGE_POLICY: Readonly<
 > = {
   dfp: {
     hostname: "ik.imagekit.io",
+    pathnamePrefix: "/vibemap/",
     caption: "Event image · Downtown Frederick Partnership",
   },
   "visit-frederick": {
     hostname: "assets.simpleviewinc.com",
+    pathnamePrefix: "/sv-frederick-county/image/fetch/",
     caption: "Event image · Visit Frederick",
   },
   fcpl: {
     hostname: "frederick.librarycalendar.com",
+    pathnamePrefix: "/sites/default/files/",
     caption: "Event image · Frederick County Public Libraries",
   },
   ticketmaster: {
@@ -76,7 +83,7 @@ const EVENT_IMAGE_POLICY: Readonly<
   },
 };
 
-function approvedProviderVisual(event: EventWithMeta): EventCardVisual | null {
+function approvedProviderVisual(event: EventVisualSource): EventCardVisual | null {
   if (!event.hero_image) return null;
   if (event.source === "venue-extract" && event.source_url && approvedVenueFeedImage(
     event.hero_image, event.source_url, event.venue_place_slug,
@@ -122,7 +129,7 @@ function approvedProviderVisual(event: EventWithMeta): EventCardVisual | null {
   };
 }
 
-function approvedVenueVisual(event: EventWithMeta): EventCardVisual | null {
+function approvedVenueVisual(event: EventVisualSource): EventCardVisual | null {
   const attribution = event.hero_image_attribution;
   if (
     !event.hero_image?.startsWith("/api/place-photo") ||
@@ -152,15 +159,51 @@ function approvedVenueVisual(event: EventWithMeta): EventCardVisual | null {
  *   carried by EventWithMeta;
  * - generic seasonal photographs that do not show the named venue.
  */
-export function eventCardVisual(event: EventWithMeta): EventCardVisual | null {
+export function eventCardVisual(
+  event: EventVisualSource,
+  { venuePhotos = "all-approved" }: { venuePhotos?: "all-approved" | "owned-only" } = {},
+): EventCardVisual | null {
   const providerVisual = approvedProviderVisual(event);
   if (providerVisual) return providerVisual;
 
-  const venueVisual = approvedVenueVisual(event);
+  const venueVisual = venuePhotos === "all-approved" ? approvedVenueVisual(event) : null;
   if (venueVisual) return venueVisual;
 
   if (!event.venue_place_slug) return null;
   return VENUE_VISUALS[event.venue_place_slug] ?? null;
+}
+
+/** Slim recovery payloads may carry only existing owned or publisher visuals.
+ * This validates the allowed tuple and transport, not independent subject
+ * identity: the server resolver binds the visual to its selected event. */
+export function parseRecoveryEventVisual(value: unknown): EventCardVisual | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const visual = value as Partial<EventCardVisual>;
+  if (typeof visual.src !== "string" || typeof visual.key !== "string"
+    || typeof visual.caption !== "string" || visual.attribution !== undefined) return null;
+  const sameTuple = (known: EventCardVisual) => visual.src === known.src
+    && visual.key === known.key && visual.caption === known.caption
+    && visual.presentation === known.presentation;
+  for (const known of Object.values(VENUE_VISUALS)) {
+    if (sameTuple(known) && visual.sourceHref === undefined) return { ...known };
+  }
+  if (visual.presentation !== "artwork" || typeof visual.sourceHref !== "string") return null;
+  try {
+    const source = new URL(visual.sourceHref);
+    if (source.protocol !== "https:" || source.username || source.password || source.port) return null;
+  } catch { return null; }
+  const sources: EventVisualSource["source"][] = [
+    ...Object.keys(EVENT_IMAGE_POLICY) as EventVisualSource["source"][], "venue-extract",
+  ];
+  for (const source of sources) {
+    const known = approvedProviderVisual({
+      source, source_url: visual.sourceHref, hero_image: visual.src,
+      ...(source === "venue-extract" ? { venue_place_slug: STEINHARDT_EVENT_ART.venueSlug } : {}),
+    });
+    if (known && sameTuple(known)) return { src: known.src, key: known.key,
+      caption: known.caption, presentation: known.presentation, sourceHref: visual.sourceHref };
+  }
+  return null;
 }
 
 export type HorizonVisualPlan = {

@@ -42,6 +42,22 @@ describe("eventPinFromEvent", () => {
     expect(pin).not.toHaveProperty("source_id");
   });
 
+  it("keeps source presenter identity separate from the canonical map title", () => {
+    const source = event({ title: "Live Theatre Production", presenter: "Other Voices Theatre" });
+    const pin = JSON.parse(JSON.stringify(eventPinFromEvent(source, NOW)));
+
+    expect(pin).toMatchObject({ title: "Live Theatre Production", presenter: "Other Voices Theatre" });
+    expect(source.title).toBe("Live Theatre Production");
+    expect(source.presenter).toBe("Other Voices Theatre");
+    expect(pin).not.toHaveProperty("description");
+  });
+
+  it.each([undefined, "", "   ", 42])("omits unusable optional presenter metadata (%s)", (presenter) => {
+    const pin = eventPinFromEvent(event({ presenter }), NOW);
+    expect(pin).not.toHaveProperty("presenter");
+    expect(pin.title).toBe("Alive @ Five");
+  });
+
   it("does not turn an unreviewed or malformed source into verified evidence", () => {
     const pin = eventPinFromEvent(event({
       source: "eventbrite",

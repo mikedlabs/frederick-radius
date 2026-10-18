@@ -90,6 +90,46 @@ describe("buildMapDiscoveries", () => {
     expect(finding?.evidence).toHaveLength(3);
   });
 
+  it("carries source presenter identity into discovery labels and evidence without changing event rank", () => {
+    const events: EventPin[] = [
+      { slug: "alpha", title: "Alpha concert", presenter: "Zulu Players", starts_at: "2026-07-22T21:00:00.000Z",
+        venue_name: "Named venue", lng: origin.lng, lat: origin.lat, category: "music" },
+      { slug: "zulu", title: "Zulu concert", presenter: "Alpha Players", starts_at: "2026-07-22T21:00:00.000Z",
+        venue_name: "Named venue", lng: origin.lng, lat: origin.lat, category: "music" },
+    ];
+    const dinner = place({ slug: "dinner", name: "Nearby Dinner", category: "restaurant",
+      open_status: { state: "open", closesAt: "23:00", closingSoon: false } });
+    const baseline = buildMapDiscoveries(input({ events: events.map((event) => ({ ...event, presenter: undefined })), places: [dinner] }));
+    const findings = buildMapDiscoveries(input({ events, places: [dinner] }));
+
+    expect(findings.map((finding) => ({ id: finding.id, score: finding.score })))
+      .toEqual(baseline.map((finding) => ({ id: finding.id, score: finding.score })));
+    expect(findings.map((finding) => finding.id)).toEqual(["event-orbit:alpha", "event-orbit:zulu"]);
+    const first = findings[0];
+    expect(first.title).toBe("Before Zulu Players: Alpha concert");
+    expect(first.points[0].label).toBe("Zulu Players: Alpha concert");
+    expect(first.summary).toContain("Zulu Players: Alpha concert begins");
+    expect(first.evidence[0].fact).toContain("Zulu Players: Alpha concert is listed at Named venue");
+    expect(first).not.toHaveProperty("sortTitle");
+    expect(events[0].title).toBe("Alpha concert");
+    expect(events[1].title).toBe("Zulu concert");
+  });
+
+  it("keeps presenter identity in a nearby event's beer-stop explanation", () => {
+    const event: EventPin = { slug: "nearby-theatre", title: "Live Theatre Production", presenter: "Other Voices Theatre",
+      starts_at: "2026-07-22T21:00:00.000Z", venue_name: "Named venue", lng: origin.lng, lat: origin.lat, category: "community" };
+    const places = [
+      place({ slug: "brewery", name: "Test Brewery", category: "brewery", open_status: { state: "open", closesAt: "23:00", closingSoon: false } }),
+      place({ slug: "dinner", name: "Nearby Dinner", category: "restaurant", open_status: { state: "open", closesAt: "23:00", closingSoon: false } }),
+    ];
+    const finding = buildMapDiscoveries(input({ events: [event], places })).find((item) => item.kind === "beer-neighborhood");
+
+    expect(finding?.points.find((point) => point.kind === "event")?.label).toBe("Other Voices Theatre: Live Theatre Production");
+    expect(finding?.summary).toContain("Other Voices Theatre: Live Theatre Production is listed");
+    expect(finding?.evidence.some((evidence) => evidence.fact.includes("Other Voices Theatre: Live Theatre Production is listed"))).toBe(true);
+    expect(event.title).toBe("Live Theatre Production");
+  });
+
   it("does not enable a nearby feed that is not part of the finding", () => {
     const event: EventPin = {
       slug: "garage-wins",

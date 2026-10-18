@@ -27,6 +27,8 @@ import EventArtwork from "./EventArtwork";
 import EventPosterCard from "./EventPosterCard";
 import EventSheet from "./EventSheet";
 import EventCard from "./EventCard";
+import TonightHeadline from "@/components/today/TonightHeadline";
+import { TodayEventsRecoveryView } from "@/components/today/TodayEventsRecovery";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const visual: EventCardVisual = {
@@ -189,4 +191,269 @@ describe("publisher event artwork lifecycle", () => {
     expect(host.querySelector("img")?.getAttribute("src")).toBe(third.hero_image);
     expect(host.querySelector("[data-event-photo-credit]")).not.toBeNull();
   });
+});
+
+
+describe("Today approved media lifecycle", () => {
+  let root: Root;
+  let host: HTMLDivElement;
+  beforeEach(() => {
+    imageCallbacks.clear();
+    host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  });
+  afterEach(() => { act(() => root.unmount()); host.remove(); vi.restoreAllMocks(); });
+
+  it.each(["publisher", "owned"] as const)("keeps the headline and event action after %s media fails, with no orphaned credit", (kind) => {
+    const row = kind === "publisher" ? event : { ...event, source: "manual" as const,
+      hero_image: undefined, venue_place_slug: "baker-park-frederick" };
+    act(() => root.render(<TonightHeadline event={row} now={new Date("2029-10-10T12:00:00-04:00")} embedded />));
+    const link = host.querySelector('a[href="/events/component-event"]')!;
+    const title = host.querySelector("h3")!;
+    expect(title.textContent).toBe(event.title);
+    expect(host.querySelector("[data-event-photo-credit]")).not.toBeNull();
+    expect(link.querySelector("[data-event-photo-credit]")).toBeNull();
+    expect(host.querySelector("a a")).toBeNull();
+    act(() => host.querySelector("img")!.dispatchEvent(new Event("error")));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector("[data-event-photo-credit]")).toBeNull();
+    expect(host.querySelector('a[href="/events/component-event"]')).toBe(link);
+    expect(host.querySelector("h3")).toBe(title);
+    expect(host.textContent).toContain("View event");
+    expect(host.textContent).toContain("2:00");
+    expect(host.textContent).toContain("Community hall");
+  });
+
+  it("rejects a one-pixel headline photograph and ignores stale callbacks after a different visual is displayed", () => {
+    const first = { ...event, source: "manual" as const, hero_image: undefined, venue_place_slug: "baker-park-frederick" };
+    const next = { ...first, venue_place_slug: "carroll-creek-linear-park-frederick" };
+    act(() => root.render(<TonightHeadline event={first} now={new Date("2029-10-10T12:00:00-04:00")} embedded />));
+    const oldImage = host.querySelector("img")!;
+    const oldCallbacks = imageCallbacks.get("/images/seasons/fall/018.jpg")!;
+    act(() => root.render(<TonightHeadline event={next} now={new Date("2029-10-10T12:00:00-04:00")} embedded />));
+    const image = host.querySelector("img")!;
+    act(() => oldCallbacks.onError?.({ currentTarget: oldImage } as Parameters<NonNullable<typeof oldCallbacks.onError>>[0]));
+    expect(host.querySelector("img")).toBe(image);
+    expect(host.textContent).toContain("Venue · Carroll Creek Linear Park");
+    Object.defineProperties(image, { naturalWidth: { value: 1 }, naturalHeight: { value: 1 } });
+    act(() => image.dispatchEvent(new Event("load")));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector("[data-event-photo-credit]")).toBeNull();
+    act(() => oldCallbacks.onError?.({ currentTarget: oldImage } as Parameters<NonNullable<typeof oldCallbacks.onError>>[0]));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.textContent).toContain(event.title);
+  });
+
+  it("retains the recovered pick after a failed approved thumbnail and removes its credit", () => {
+    const pick = { slug: event.slug, title: event.title, presenter: "Fixture presenter", venue: event.venue_name,
+      municipality: "frederick", time: "2:00 PM", moment: "Later" as const, image: null, free: true,
+      visual: { src: "/images/seasons/fall/018.jpg", key: "radius-baker-park-bandshell",
+        caption: "Venue · Baker Park", presentation: "photo" as const } };
+    act(() => root.render(<TodayEventsRecoveryView response={{ events: [pick], partial: false }} />));
+    const link = host.querySelector('a[href="/events/component-event"]')!;
+    expect(host.querySelector("article")?.getAttribute("data-decision-surface")).toBe("today");
+    expect(host.querySelector("img")).not.toBeNull();
+    act(() => host.querySelector("img")!.dispatchEvent(new Event("error")));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector("[data-event-photo-credit]")).toBeNull();
+    expect(host.querySelector('a[href="/events/component-event"]')).toBe(link);
+    expect(host.textContent).toContain("Fixture presenter: Community arts afternoon");
+    expect(host.textContent).toContain("2:00 PM");
+    expect(host.textContent).toContain("Community hall · Free");
+  });
+
+  it("requests the detectable failure response for an already-approved headline venue photo", () => {
+    const row = { ...event, source: "manual", hero_image: "/api/place-photo?name=component-venue&w=800",
+      hero_image_attribution: { kind: "venue", venue_name: "Component venue", provider: "google_maps",
+        source_uri: "https://www.google.com/maps/place/component-venue-photo",
+        authors: [{ display_name: "Component author", uri: "https://maps.google.com/maps/contrib/component" }] } } as EventWithMeta;
+    act(() => root.render(<TonightHeadline event={row} now={new Date("2029-10-10T12:00:00-04:00")} embedded />));
+    const image = host.querySelector("img")!;
+    const src = new URL(image.getAttribute("src")!, "https://radius.test");
+    expect(src.searchParams.get("fallback")).toBe("signal");
+    expect(src.searchParams.get("name")).toBe("component-venue");
+    expect(host.textContent).toContain("Component author");
+    Object.defineProperties(image, { naturalWidth: { value: 1 }, naturalHeight: { value: 1 } });
+    act(() => image.dispatchEvent(new Event("load")));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector("[data-event-photo-credit]")).toBeNull();
+    expect(host.textContent).not.toContain("Component author");
+    expect(host.textContent).toContain(event.title);
+  });
+
+  it.each(["artwork", "glance", "headline"] as const)("ignores an abandoned A request after A to B to A on %s", (surface) => {
+    const render = (src: string) => {
+      if (surface === "artwork") return <EventArtwork visual={{ ...visual, src }} />;
+      const row = { ...event, hero_image: src };
+      return surface === "glance" ? <EventCard event={row} variant="glance" />
+        : <TonightHeadline event={row} now={new Date("2029-10-10T12:00:00-04:00")} embedded />;
+    };
+    act(() => root.render(render(visual.src)));
+    const abandonedImage = host.querySelector("img")!;
+    const abandoned = imageCallbacks.get(visual.src)!;
+    act(() => root.render(render("https://s1.ticketm.net/dam/a/intermediate-b.jpg")));
+    act(() => root.render(render(visual.src)));
+    const current = host.querySelector("img")!;
+    expect(current).not.toBe(abandonedImage);
+    act(() => abandoned.onError?.({ currentTarget: abandonedImage } as Parameters<NonNullable<typeof abandoned.onError>>[0]));
+    expect(host.querySelector("img")).toBe(current);
+    expect(host.querySelector("[data-event-photo-credit]")).not.toBeNull();
+    act(() => current.dispatchEvent(new Event("error")));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector("[data-event-photo-credit]")).toBeNull();
+  });
+
+
+  type PrematureSurface = "artwork" | "glance" | "headline-art" | "headline-photo" | "recovery";
+  const prematureSurfaces: PrematureSurface[] = ["artwork", "glance", "headline-art", "headline-photo", "recovery"];
+  function renderPrematureSurface(surface: PrematureSurface) {
+    if (surface === "artwork") return <EventArtwork visual={visual} />;
+    if (surface === "glance") return <EventCard event={event} variant="glance" />;
+    if (surface === "headline-art") return <TonightHeadline event={event} now={new Date("2029-10-10T12:00:00-04:00")} embedded />;
+    if (surface === "headline-photo") return <TonightHeadline event={{ ...event, source: "manual", hero_image: undefined, venue_place_slug: "baker-park-frederick" }} now={new Date("2029-10-10T12:00:00-04:00")} embedded />;
+    return <TodayEventsRecoveryView response={{ partial: false, events: [{
+      slug: event.slug, title: event.title, venue: event.venue_name, municipality: "frederick",
+      time: "2:00 PM", moment: "Later", image: null, free: true,
+      visual: { ...visual, key: "event:" + visual.src },
+    }] }} />;
+  }
+  function imageState(image: HTMLImageElement, width: number, height: number, currentSrc: string) {
+    Object.defineProperties(image, {
+      naturalWidth: { value: width, configurable: true },
+      naturalHeight: { value: height, configurable: true },
+      currentSrc: { value: currentSrc, configurable: true },
+      complete: { value: true, configurable: true },
+    });
+  }
+  function prematureSyntheticLoad(image: HTMLImageElement) {
+    imageState(image, 0, 0, "");
+    const callbacks = imageCallbacks.get(image.getAttribute("src")!)!;
+    expect(callbacks.onLoad).toBeTypeOf("function");
+    // Mirrors the diagnosed Next callback: complete=true but no selected src
+    // or decoded pixels yet. This is not the browser's eventual native load.
+    act(() => callbacks.onLoad?.({ currentTarget: image } as Parameters<NonNullable<typeof callbacks.onLoad>>[0]));
+  }
+
+  it.each(prematureSurfaces)("keeps %s media and credit through premature zero dimensions until genuine loaded pixels", (surface) => {
+    act(() => root.render(renderPrematureSurface(surface)));
+    const image = host.querySelector("img")!;
+    prematureSyntheticLoad(image);
+    expect(host.querySelector("img")).toBe(image);
+    expect(host.querySelector("[data-event-photo-credit]")).not.toBeNull();
+    imageState(image, 600, 900, image.src);
+    act(() => image.dispatchEvent(new Event("load")));
+    expect(host.querySelector("img")).toBe(image);
+    expect(host.querySelector("[data-event-photo-credit]")).not.toBeNull();
+  });
+
+  it("rejects a completed selected zero-dimension response after native load and notifies once", () => {
+    const unavailable = vi.fn();
+    act(() => root.render(<EventArtwork visual={visual} onUnavailable={unavailable} />));
+    const image = host.querySelector("img")!;
+    const add = vi.spyOn(image, "addEventListener"), remove = vi.spyOn(image, "removeEventListener");
+    prematureSyntheticLoad(image);
+    expect(host.querySelector("img")).toBe(image);
+    expect(host.querySelector("[data-event-photo-credit]")).not.toBeNull();
+    expect(unavailable).not.toHaveBeenCalled();
+    const load = add.mock.calls.find(([name]) => name === "load")?.[1];
+    const error = add.mock.calls.find(([name]) => name === "error")?.[1];
+    expect(load).toBeTypeOf("function");
+    expect(error).toBeTypeOf("function");
+    // Real DPR3 one-pixel transport can round density-adjusted natural sizes
+    // to zero. The selected source and completion distinguish it from the
+    // earlier Next callback, whose currentSrc was still empty.
+    imageState(image, 0, 0, visual.src + "?w=384&q=75");
+    act(() => image.dispatchEvent(new Event("load")));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector("[data-event-photo-credit]")).toBeNull();
+    expect(unavailable).toHaveBeenCalledOnce();
+    expect(remove).toHaveBeenCalledWith("load", load);
+    expect(remove).toHaveBeenCalledWith("error", error);
+    act(() => {
+      image.dispatchEvent(new Event("load"));
+      image.dispatchEvent(new Event("error"));
+    });
+    expect(unavailable).toHaveBeenCalledOnce();
+  });
+
+  it.each(["one-pixel load", "native error"] as const)("accepts %s after a premature callback once, removing artwork and credit", (settlement) => {
+    const unavailable = vi.fn();
+    act(() => root.render(<EventArtwork visual={visual} onUnavailable={unavailable} />));
+    const image = host.querySelector("img")!;
+    prematureSyntheticLoad(image);
+    expect(host.querySelector("img")).toBe(image);
+    expect(unavailable).not.toHaveBeenCalled();
+    if (settlement === "one-pixel load") imageState(image, 1, 1, image.src);
+    act(() => image.dispatchEvent(new Event(settlement === "one-pixel load" ? "load" : "error")));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector("[data-event-photo-credit]")).toBeNull();
+    expect(unavailable).toHaveBeenCalledOnce();
+    act(() => {
+      image.dispatchEvent(new Event("load"));
+      image.dispatchEvent(new Event("error"));
+    });
+    expect(unavailable).toHaveBeenCalledOnce();
+  });
+
+  it("detaches pending native listeners after successful settlement without altering the selected source", () => {
+    act(() => root.render(<EventArtwork visual={visual} />));
+    const image = host.querySelector("img")!;
+    const add = vi.spyOn(image, "addEventListener"), remove = vi.spyOn(image, "removeEventListener");
+    prematureSyntheticLoad(image);
+    const load = add.mock.calls.find(([name]) => name === "load")?.[1];
+    const error = add.mock.calls.find(([name]) => name === "error")?.[1];
+    expect(load).toBeTypeOf("function");
+    expect(error).toBeTypeOf("function");
+    imageState(image, 600, 900, image.src);
+    act(() => image.dispatchEvent(new Event("load")));
+    expect(remove).toHaveBeenCalledWith("load", load);
+    expect(remove).toHaveBeenCalledWith("error", error);
+    expect(host.querySelector("img")).toBe(image);
+    expect(image.getAttribute("src")).toBe(visual.src);
+  });
+
+  it("detaches abandoned pending listeners across A to B to A and ignores the old element's native failure", () => {
+    const unavailable = vi.fn();
+    act(() => root.render(<EventArtwork visual={visual} onUnavailable={unavailable} />));
+    const oldImage = host.querySelector("img")!;
+    const add = vi.spyOn(oldImage, "addEventListener"), remove = vi.spyOn(oldImage, "removeEventListener");
+    prematureSyntheticLoad(oldImage);
+    const load = add.mock.calls.find(([name]) => name === "load")?.[1];
+    const error = add.mock.calls.find(([name]) => name === "error")?.[1];
+    expect(load).toBeTypeOf("function");
+    expect(error).toBeTypeOf("function");
+    const next = { ...visual, key: "intermediate", src: "https://s1.ticketm.net/dam/a/intermediate-native.jpg" };
+    act(() => root.render(<EventArtwork visual={next} onUnavailable={unavailable} />));
+    expect(remove).toHaveBeenCalledWith("load", load);
+    expect(remove).toHaveBeenCalledWith("error", error);
+    act(() => root.render(<EventArtwork visual={visual} onUnavailable={unavailable} />));
+    const current = host.querySelector("img")!;
+    expect(current).not.toBe(oldImage);
+    imageState(oldImage, 1, 1, oldImage.src);
+    act(() => {
+      oldImage.dispatchEvent(new Event("load"));
+      oldImage.dispatchEvent(new Event("error"));
+    });
+    expect(host.querySelector("img")).toBe(current);
+    expect(host.querySelector("[data-event-photo-credit]")).not.toBeNull();
+    expect(unavailable).not.toHaveBeenCalled();
+  });
+
+  it("detaches pending listeners on unmount and ignores later native events", () => {
+    const unavailable = vi.fn();
+    act(() => root.render(<EventArtwork visual={visual} onUnavailable={unavailable} />));
+    const image = host.querySelector("img")!;
+    const add = vi.spyOn(image, "addEventListener"), remove = vi.spyOn(image, "removeEventListener");
+    prematureSyntheticLoad(image);
+    const load = add.mock.calls.find(([name]) => name === "load")?.[1];
+    const error = add.mock.calls.find(([name]) => name === "error")?.[1];
+    expect(load).toBeTypeOf("function");
+    expect(error).toBeTypeOf("function");
+    act(() => root.render(null));
+    expect(remove).toHaveBeenCalledWith("load", load);
+    expect(remove).toHaveBeenCalledWith("error", error);
+    act(() => image.dispatchEvent(new Event("error")));
+    expect(host.childElementCount).toBe(0);
+    expect(unavailable).not.toHaveBeenCalled();
+  });
+
 });

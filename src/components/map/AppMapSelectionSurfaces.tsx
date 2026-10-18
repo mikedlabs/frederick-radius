@@ -22,6 +22,7 @@ import StopArrivalsPopup, {
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { municipalCivicFor, civicContacts } from "@/lib/loaders/municipalCivic";
 import { directionsHref } from "@/lib/map/directionsHref";
+import { eventDisplayTitle } from "@/lib/events/display-title";
 import { haversineMeters, type LngLat } from "@/lib/geo";
 import {
   nearestMapUtilities,
@@ -387,7 +388,7 @@ export default function AppMapSelectionSurfaces({
                       className="block truncate text-[14px] font-semibold"
                       style={{ color: "var(--app-ink)" }}
                     >
-                      {event.title}
+                      {eventDisplayTitle(event)}
                     </span>
                     <span
                       className="mt-0.5 block text-[12px]"

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { eventDisplayTitle } from "@/lib/events/display-title";
 import MapReturnLink from "@/components/place/MapReturnLink";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
@@ -542,7 +543,7 @@ export default async function EventPage({
                   <EventActions event={event} actions={["share"]} />
                 </div>
                 <div className="hidden lg:block rounded-full backdrop-blur-md" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}>
-                  <SaveButton refType="event" refId={event.slug} label={event.title} />
+                  <SaveButton refType="event" refId={event.slug} label={eventDisplayTitle(event)} />
                 </div>
               </div>
             </div>
@@ -552,7 +553,7 @@ export default async function EventPage({
                 {cat?.name ?? event.category}
               </p>
               <h1 className="mt-0.5 font-serif text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]">
-                {event.title}
+                {eventDisplayTitle(event)}
               </h1>
             </div>
           </div>
@@ -562,10 +563,10 @@ export default async function EventPage({
               <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>{cat?.name ?? "Event"}</p>
               <div className="flex shrink-0 items-center gap-1">
                 <EventActions event={event} actions={["share"]} />
-                <div className="hidden lg:block"><SaveButton refType="event" refId={event.slug} label={event.title} /></div>
+                <div className="hidden lg:block"><SaveButton refType="event" refId={event.slug} label={eventDisplayTitle(event)} /></div>
               </div>
             </div>
-            <h1 className="text-[26px] font-semibold leading-tight tracking-tight sm:text-[32px]" style={{ color: "var(--app-ink)" }}>{event.title}</h1>
+            <h1 className="text-[26px] font-semibold leading-tight tracking-tight sm:text-[32px]" style={{ color: "var(--app-ink)" }}>{eventDisplayTitle(event)}</h1>
           </div>
         )}
         {photoVisual ? (
@@ -1080,7 +1081,7 @@ export default async function EventPage({
           postponed event gets the same replacement as the grid: the
           organizer's word + a way back to tonight (Save stays so a
           postponed event can be tracked for its new date). */}
-      <MobileActionBar ariaLabel={`Actions for ${event.title}`}>
+      <MobileActionBar ariaLabel={`Actions for ${eventDisplayTitle(event)}`}>
         {eventStatus !== "scheduled" ? (
           <>
             {(notice?.source_url ?? event.source_url) && (
@@ -1088,7 +1089,7 @@ export default async function EventPage({
                 href={notice?.source_url ?? event.source_url ?? ""}
                 icon={ExternalLink}
                 label="Announcement"
-                ariaLabel={`Organizer's announcement for ${event.title}`}
+                ariaLabel={`Organizer's announcement for ${eventDisplayTitle(event)}`}
                 external
                 decisionAction="website"
               />
@@ -1109,7 +1110,7 @@ export default async function EventPage({
                 href={`/places/${event.venue_place_slug}`}
                 icon={MapPin}
                 label="Venue"
-                ariaLabel={`Venue page for ${event.title}`}
+                ariaLabel={`Venue page for ${eventDisplayTitle(event)}`}
                 decisionAction="open"
               />
             )}
@@ -1143,7 +1144,7 @@ export default async function EventPage({
                 href={event.ticket_url}
                 icon={Ticket}
                 label="Tickets"
-                ariaLabel={`Tickets for ${event.title}`}
+                ariaLabel={`Tickets for ${eventDisplayTitle(event)}`}
                 external
                 primary
                 decisionAction="ticket"
@@ -1154,7 +1155,7 @@ export default async function EventPage({
                 href={onlineActionUrl}
                 icon={ExternalLink}
                 label="Online details"
-                ariaLabel={`Online details for ${event.title}`}
+                ariaLabel={`Online details for ${eventDisplayTitle(event)}`}
                 external
                 primary
                 decisionAction="website"
@@ -1172,7 +1173,7 @@ export default async function EventPage({
             )}
           </>
         )}
-        <SaveButton refType="event" refId={event.slug} label={event.title} barLabel="Save" />
+        <SaveButton refType="event" refId={event.slug} label={eventDisplayTitle(event)} barLabel="Save" />
       </MobileActionBar>
     </div>
   );
