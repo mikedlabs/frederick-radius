@@ -188,3 +188,53 @@ existing in-memory result path.
 
 You are already using more of modern Next than most production apps. The
 gaps are deliberate, sequenced, and documented — not oversights.
+
+### Jev decision routing (optional)
+
+Jev classifies an otherwise ambiguous request into an existing places, events,
+or civic retrieval path. It never supplies local facts, changes location,
+relaxes hours/access constraints, or generates the displayed answer. Known
+queries, plans, emergencies and ordinary searches retain their existing path.
+
+The implementation uses the current Gateway HTTP decision endpoint with reviewed
+`typesafe-ai/jev-1.14.0`, zero retention and the TypeSafe provider. It reuses
+`AI_GATEWAY_API_KEY` or injected `VERCEL_OIDC_TOKEN`; no new service, provider
+account, SDK upgrade, embedding index or credential is required. The model's
+October 18 catalog rate was $0.042 per million input tokens, with no output-token
+charge. Gateway use and other Ask models can still incur separate charges.
+
+`ASK_JEV_ROUTING_ENABLED=1` also requires the existing global
+`ASK_AI_RUNTIME_ENABLED=1`, `ASK_AI_PROVIDER=gateway`, a nonzero clamped daily
+call limit, credentials, and a successful atomic reservation. For a Jev-only
+pilot, explicitly set `ASK_AI_GENERATION_ENABLED=0`. This prevents both existing
+prose generation and the tool agent from making paid calls while the classifier
+uses the master allowance. Omission preserves existing generation behavior.
+Jev consumes the
+same allowance as other Ask calls. A timeout, invalid/uncertain choice or failed
+reservation leaves the deterministic answer available and never starts another
+paid model. A valid uncertain decision may be cached; provider failures are not.
+Decisions are cached by query, pinned model and rubric for 24 hours. Relative
+dates and other constraints are reparsed for every request. The feature and
+master switches are checked before any cache read.
+
+Before enabling production:
+
+1. Verify the existing usage counter and unique day/upstream index. Do not
+   enable the global switch as a side effect of adding the model.
+2. Run the normal offline Ask gate and the full unit/type/lint checks.
+3. With an explicitly approved limited allowance and existing credentials,
+   run `NODE_OPTIONS=--conditions=react-server npx tsx --tsconfig tsconfig.json scripts/eval-ask-decisions.ts --live`.
+   This makes at most nine sequential reserved calls, with no retries. Every
+   labeled case must pass. Inspect Gateway Logs for exact model, routing and
+   actual cost; the printed token counts alone are not a billing receipt.
+4. Verify the public Ask response for an ambiguous attendance query, an
+   ordinary local query, an unavailable feed, and runtime disablement. Preserve
+   the current no-fact-invention, source and outdoor-safety boundaries.
+
+Without `--live`, that script only inventories the labeled evaluation set and
+explicitly reports that no model was exercised. Offline mocks are not evidence
+of Jev's live quality or latency. The initial 0.85 probability and 0.2 margin
+rules are conservative rollout thresholds, not measured calibration guarantees.
+
+Official references: [Gateway decision API](https://vercel.com/docs/ai-gateway/modalities/decision)
+and [Jev model](https://vercel.com/ai-gateway/models/jev-1.14.0).

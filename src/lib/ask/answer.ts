@@ -1,5 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
+import { resolveAskDecisionRoute } from "@/lib/ask/decision-routing";
+import { askDecisionRuntimeConfigured } from "@/lib/ask/decision-model";
 import { qualifiedSearch, type QualifiedSearchContext, type SearchHit } from "@/lib/search";
 import { isEventSearchIntent } from "@/lib/search";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
@@ -9,7 +11,6 @@ import { findTownCivicResource } from "@/data/town-websites";
 import { findMunicipalCivic } from "@/lib/loaders/municipalCivic";
 import { municipalOfficeHours } from "@/lib/municipal-civic-contact";
 import {
-  parseAskIntent,
   parseFixedAppointmentAnchor,
   type AskIntent,
   type FixedAppointmentAnchor,
@@ -24,6 +25,11 @@ import {
   askTextProvider,
   reserveAskModelCall,
 } from "@/lib/ask/runtime-budget";
+import {
+  isReviewedAskTextModelSelection,
+  selectAskTextModel,
+  type AskTextModelSelection,
+} from "@/lib/ask/model-selection";
 import { filterCitedSources } from "@/lib/ask/citations";
 import { buildTasteProfile, normalizeTasteSignals, rerankWithTaste, tasteSummary, type AskTasteSignals } from "@/lib/ask/taste";
 import {
@@ -1817,7 +1823,7 @@ export function eventMatchesTopic(event: Event, query: string): boolean {
     return event.category === "music" || /\b(?:concert|band|musician|orchestra|singer|songwriter)\b/i.test(text);
   }
   if (/\bfestivals?\b/i.test(query)) return /\b(?:festival|fest|carnival)\b/i.test(text);
-  if (/\bperformances?\b/i.test(query)) {
+  if (/\b(?:performances?|performers?|on[ -]stage|playing a set)\b/i.test(query)) {
     return ["music", "theater", "dance", "comedy"].includes(event.category) || /\b(?:performance|theater|theatre|concert|dance|comedy)\b/i.test(text);
   }
   return true;
@@ -1870,7 +1876,7 @@ Rules you must follow:
 function hasKey(): boolean {
   // Configuration is not permission to spend. Every cache miss still needs a
   // durable Eastern-day reservation immediately before its provider call.
-  return askTextGenerationRuntimeConfigured() || askAgentRuntimeConfigured();
+  return askTextGenerationRuntimeConfigured() || askAgentRuntimeConfigured() || askDecisionRuntimeConfigured();
 }
 
 /** One budgeted provider turn. Exported so the fail-closed boundary can be
@@ -1878,8 +1884,17 @@ function hasKey(): boolean {
  * intentionally broad deterministic routing. */
 export async function callAskModelWithBudget(
   userContent: string,
+  selection: AskTextModelSelection | null = selectAskTextModel(),
 ): Promise<string | null> {
-  if (!askTextGenerationRuntimeConfigured()) return null;
+  if (
+    !askTextGenerationRuntimeConfigured() ||
+    !isReviewedAskTextModelSelection(selection) ||
+    selection.provider !== askTextProvider()
+  ) return null;
+  // Own primitive values across the reservation await. Even an internal caller
+  // retaining this object cannot change the reviewed model after validation.
+  const selectedProvider = selection.provider;
+  const selectedModel = selection.model;
 
   // A cache miss owns exactly one provider attempt. Counter uncertainty or an
   // exhausted allowance keeps the deterministic Frederick answer; it never
@@ -1891,7 +1906,7 @@ export async function callAskModelWithBudget(
   const provider = askTextProvider();
   // Configuration is checked before reserving, but keep the provider dispatch
   // independently fail-closed in case the environment changes between checks.
-  if (!provider) return null;
+  if (!provider || provider !== selectedProvider) return null;
   const maxOutputTokens = askAiMaxOutputTokens();
   const controller = new AbortController();
   const deadline = setTimeout(() => controller.abort(), 3_500);
@@ -1902,7 +1917,7 @@ export async function callAskModelWithBudget(
     try {
       const { generateText } = await import("ai");
       const { text } = await generateText({
-        model: "anthropic/claude-haiku-4.5",
+        model: selectedModel,
         system: SYSTEM,
         prompt: userContent,
         maxOutputTokens,
@@ -1929,7 +1944,7 @@ export async function callAskModelWithBudget(
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
+          model: selectedModel,
           max_tokens: maxOutputTokens,
           system: SYSTEM,
           messages: [{ role: "user", content: userContent }],
@@ -1951,7 +1966,7 @@ export async function callAskModelWithBudget(
     const { generateText } = await import("ai");
     const { openai } = await import("@ai-sdk/openai");
     const { text } = await generateText({
-      model: openai("gpt-4o-mini"),
+      model: openai(selectedModel),
       system: SYSTEM,
       prompt: userContent,
       maxOutputTokens,
@@ -1971,8 +1986,9 @@ export async function callAskModelWithBudget(
 /**
  * ai-gw-2: cache the (paid) model answer so identical questions over identical
  * data reuse the response instead of re-billing the LLM on every POST. The
- * cache KEY is the full `userContent` — which embeds the query AND the retrieved
- * Frederick data block + civic/dept lines — so the cached prose can never drift
+ * cache KEY includes the reviewed provider/model identity and full `userContent`
+ * — which embeds the query AND the retrieved Frederick data block + civic/dept
+ * lines — so prose from another provider or model is never reused and cannot drift
  * from live data: when the catalog/events change, userContent changes and the
  * key changes. `sources` are recomputed live in askFrederick and never cached.
  *
@@ -1982,8 +1998,16 @@ export async function callAskModelWithBudget(
  * the next request may try again after the local answer has already been served.
  */
 const cachedCallModel = unstable_cache(
-  async (userContent: string): Promise<string> => {
-    const answer = await callAskModelWithBudget(userContent);
+  async (
+    userContent: string,
+    provider: AskTextModelSelection["provider"],
+    model: AskTextModelSelection["model"],
+  ): Promise<string> => {
+    const selection = { provider, model };
+    const answer = await callAskModelWithBudget(
+      userContent,
+      isReviewedAskTextModelSelection(selection) ? selection : null,
+    );
     if (answer === null) throw new Error("ask:no-answer"); // don't cache failures
     // Boundary cleaning for MODEL prose, same rule as feed text: the LLM
     // loves em dashes and the voice bans them (verified in the first live
@@ -1996,14 +2020,28 @@ const cachedCallModel = unstable_cache(
   // Cost: the key deliberately DROPS the per-commit SHA (it used to include
   // VERCEL_GIT_COMMIT_SHA, so every deploy wiped every cached answer — brutal on
   // a repo that ships many times a day, since each Ask question then re-paid the
-  // model). The cache key is the full userContent (query + the retrieved data
-  // block), so an answer can never drift out of sync with its data without the
-  // key changing. Only a change to the SYSTEM prompt or answer-shaping code
+  // model). Cache arguments include provider/model plus the full userContent
+  // (query + retrieved data block), so model switches and data changes each
+  // own their cache entry. Only a change to SYSTEM or answer-shaping code
   // isn't reflected in the key — bump this manual version tag (v3 -> v4) when
   // you change those. 24h TTL: even a novel question pays at most once a day.
   ["ask-answer-v4"],
   { revalidate: 86400, tags: ["ask"] },
 );
+
+/** Resolve once before the cache lookup and carry that exact identity into
+ * generation. Cached prose is not permission to bypass a runtime kill switch. */
+export async function callCachedAskModelWithBudget(
+  userContent: string,
+): Promise<string | null> {
+  const selection = selectAskTextModel();
+  if (!selection || !askTextGenerationRuntimeConfigured()) return null;
+  try {
+    return await cachedCallModel(userContent, selection.provider, selection.model);
+  } catch {
+    return null;
+  }
+}
 
 /** The verified downtown-parking block: the five city garages plus the one
  *  uniform rate schedule. Pure data, so parking questions stop getting the
@@ -2261,6 +2299,35 @@ export async function askFrederick(
   options: { taste?: AskTasteSignals | unknown; fit?: AskFitContext | unknown } = {},
 ): Promise<AskResult> {
   const now = new Date();
+  const decision = await resolveAskDecisionRoute(query || "", now);
+  const result = await answerFrederick(query, context, {
+    ...options,
+    decisionIntent: decision.intent,
+    skipPaidModel: decision.handled,
+  }, now);
+  if (!decision.usedDecision) return result;
+  return {
+    ...result,
+    intelligence: {
+      confidence: "medium",
+      retrieval: "keyword",
+      ...result.intelligence,
+      tools: [...new Set(["decision-route", ...(result.intelligence?.tools ?? [])])],
+    },
+  };
+}
+
+async function answerFrederick(
+  query: string,
+  context: QualifiedSearchContext,
+  options: {
+    taste?: AskTasteSignals | unknown;
+    fit?: AskFitContext | unknown;
+    decisionIntent: AskIntent;
+    skipPaidModel: boolean;
+  },
+  now: Date,
+): Promise<AskResult> {
   const q = (query || "").trim();
   if (!q) return { status: "empty", configured: hasKey(), usedModel: false, answer: null, sources: [] };
   const requestedOptions = requestedOptionCount(q);
@@ -2269,7 +2336,7 @@ export async function askFrederick(
     : requestedOptions === "multiple"
       ? 6
       : 4;
-  const intent = parseAskIntent(q, now);
+  const intent = options.decisionIntent;
   if (intent.kind === "plan") context = askPlanContext(q, context);
   const parsedPlaceDateTime = intent.kind === "place"
     ? parseAskDateTime(q, now)
@@ -2404,7 +2471,7 @@ export async function askFrederick(
   // evaluate verified hours at the actual meal window and preserve the user's
   // deadline. The general agent only sees current open states, so using it here
   // could undo that time grounding or add avoidable latency.
-  const agentAttempted = !amenitySupplement && !appointmentWindow && shouldUseRadiusAgent(q, intent);
+  const agentAttempted = !options.skipPaidModel && !amenitySupplement && !appointmentWindow && shouldUseRadiusAgent(q, intent);
   if (agentAttempted) {
     const intelligent = await runRadiusAgent(q, context, tasteSignals, fit);
     if (intelligent) {
@@ -2545,7 +2612,8 @@ export async function askFrederick(
   // events leak into the source cards. Event grounding belongs only to an
   // event/explore question; plan requests have already returned above.
   const eventGrounding = intent.kind === "event" || intent.kind === "explore";
-  const loadedEventPool = eventGrounding && (isEventSearchIntent(q) || anchor)
+  const decisionEvent = options.skipPaidModel && intent.kind === "event";
+  const loadedEventPool = eventGrounding && (decisionEvent || isEventSearchIntent(q) || anchor)
     ? await Promise.race([
         assembleUnifiedEvents(new Date()).then((result) => result.publicEvents).catch(() => undefined),
         new Promise<undefined>((resolve) => setTimeout(resolve, 1_500)),
@@ -2660,7 +2728,9 @@ export async function askFrederick(
     eventPool,
     availabilityConstraint
       ? { ...availabilitySearchContext, now: availabilityConstraint.at }
-      : eventSearchContext,
+      : options.skipPaidModel && (intent.kind === "event" || intent.kind === "place")
+        ? { ...eventSearchContext, resultKind: intent.kind, now }
+        : eventSearchContext,
   );
   const tasteProfile = buildTasteProfile(tasteSignals);
   const strictNearest = /\b(?:closest|nearest)\b/i.test(q);
@@ -2672,8 +2742,14 @@ export async function askFrederick(
     context.origin &&
     context.canShowDistance === true,
   );
-  const retrievalHits =
-    availabilityConstraint &&
+  const retrievalHits: SearchHit[] = decisionEvent
+    // The classifier supplies a retrieval category, not replacement keywords.
+    // Read the already scoped/date/topic-qualified current calendar even when
+    // its titles do not repeat "gatherings" or "attend" from the question.
+    ? rankForSources((eventPool ?? []).filter((event) => Date.parse(event.ends_at) > now.getTime()), q)
+        .slice(0, 12)
+        .map((event) => ({ type: "event" as const, event, score: 1 }))
+    : availabilityConstraint &&
     availabilityQualifiers &&
     availabilitySemanticQuery.length === 0
       ? temporalOpenPlaceHits(
@@ -3112,6 +3188,18 @@ export async function askFrederick(
     : "";
 
   const officialAnswer = Boolean(useMunicipal || useTownResource || civic || dept);
+  if (options.skipPaidModel && intent.kind === "civic" && !officialAnswer) {
+    return {
+      status: "empty",
+      configured: hasKey(),
+      usedModel: false,
+      answer: "I couldn’t match this request to a verified local government service. The county and city services directory can help you find the right official contact.",
+      sources: [],
+      context: context.contextLabel ?? "Frederick County",
+      intent,
+      actions: [{ label: "County & city services", kind: "open", href: "/contacts" }],
+    };
+  }
   const eventOnly = intent.kind === "event";
   // "Open now" intent: the questions that burned us are the TIME-anchored
   // kind, and "is anything open" is the place-side version. Confirmed-open
@@ -3377,7 +3465,7 @@ export async function askFrederick(
         strictNearest,
         combinedDiscovery,
         contextLabel: retrieval.meta.contextLabel,
-        eventIntent: isEventSearchIntent(q),
+        eventIntent: intent.kind === "event" || isEventSearchIntent(q),
         regions: intent.regions,
         reservation: intent.reservation,
         requestedTime: requestedVisitLabel ?? intent.requestedTime,
@@ -3453,12 +3541,8 @@ export async function askFrederick(
   // A failed or timed-out tool agent has already spent the user-visible AI
   // budget. Do not serially start the legacy model afterward; return the
   // deterministic, source-backed answer assembled above instead.
-  if (!agentAttempted) {
-    try {
-      answer = await cachedCallModel(userContent);
-    } catch {
-      answer = null;
-    }
+  if (!agentAttempted && !options.skipPaidModel) {
+    answer = await callCachedAskModelWithBudget(userContent);
   }
   const renderedAnswer = answer ?? deterministicAnswer({ count: sources.length });
   // Citation candidates = everything the prompt actually showed the model,

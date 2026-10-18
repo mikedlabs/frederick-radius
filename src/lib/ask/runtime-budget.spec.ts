@@ -10,6 +10,7 @@ vi.mock("@/lib/usage-meter", () => ({
 
 import {
   askAgentRuntimeConfigured,
+  askGenerationRequested,
   askAiDailyCallLimit,
   askAiEmbeddingDailyLimit,
   askAiMaxOutputTokens,
@@ -29,6 +30,7 @@ import {
 
 const ENV_KEYS = [
   "ASK_AI_RUNTIME_ENABLED",
+  "ASK_AI_GENERATION_ENABLED",
   "ASK_AI_DAILY_CALL_LIMIT",
   "ASK_AI_RUNTIME_EMBEDDINGS_ENABLED",
   "ASK_AI_EMBEDDING_DAILY_LIMIT",
@@ -203,4 +205,21 @@ describe("public Ask runtime budgets", () => {
     });
     expect(mocks.reserveDailyUsage).toHaveBeenCalledWith("ask_embedding", 9);
   });
+  it("can enable decisions without enabling either paid generation path", () => {
+    process.env.ASK_AI_RUNTIME_ENABLED = "1";
+    process.env.ASK_AI_PROVIDER = "gateway";
+    process.env.AI_GATEWAY_API_KEY = "offline-test";
+    process.env.ASK_RADIUS_AGENT = "1";
+    expect(askGenerationRequested()).toBe(true);
+    expect(askTextGenerationRuntimeConfigured()).toBe(true);
+    expect(askAgentRuntimeConfigured()).toBe(true);
+    for (const value of ["0", "", "true", "invalid"]) {
+      process.env.ASK_AI_GENERATION_ENABLED = value;
+      expect(askTextGenerationRuntimeConfigured()).toBe(false);
+      expect(askAgentRuntimeConfigured()).toBe(false);
+    }
+    process.env.ASK_AI_GENERATION_ENABLED = "1";
+    expect(askTextGenerationRuntimeConfigured()).toBe(true);
+  });
+
 });

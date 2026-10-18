@@ -110,11 +110,20 @@ export function askTextProviderCredentialConfigured(
   return Boolean(process.env.OPENAI_API_KEY?.trim());
 }
 
+/** Preserve existing generation behavior when omitted. An explicit 0 lets a
+ * decision-only pilot use the master budget without enabling prose or agents. */
+export function askGenerationRequested(
+  raw: string | undefined = process.env.ASK_AI_GENERATION_ENABLED,
+): boolean {
+  return raw === undefined || raw === "1";
+}
+
 /** Configuration only. Durable counter availability is checked atomically at
  * reservation time, immediately before provider work. */
 export function askTextGenerationRuntimeConfigured(): boolean {
   return (
     askAiRuntimeRequested() &&
+    askGenerationRequested() &&
     askAiDailyCallLimit() > 0 &&
     askTextProviderCredentialConfigured()
   );
@@ -125,6 +134,7 @@ export function askTextGenerationRuntimeConfigured(): boolean {
 export function askAgentRuntimeConfigured(): boolean {
   return (
     askAiRuntimeRequested() &&
+    askGenerationRequested() &&
     askAiDailyCallLimit() > 0 &&
     process.env.ASK_RADIUS_AGENT === "1" &&
     askTextProvider() === "gateway" &&

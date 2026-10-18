@@ -418,7 +418,7 @@ const CATEGORY_HINTS: Record<string, string[]> = {
  * hit) so "bands tonight" beats a title that merely contains a stray word;
  * chronological order breaks ties (stable sort over date-sorted input).
  */
-export function rankForSources(picked: AskEvent[], query: string): AskEvent[] {
+export function rankForSources<EventType extends AskEvent>(picked: EventType[], query: string): EventType[] {
   if (/\b(?:closest|nearest)\b/i.test(query)) {
     return [...picked].sort((a, b) =>
       (a.distance_m ?? Number.POSITIVE_INFINITY) -
