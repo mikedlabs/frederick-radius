@@ -2,7 +2,7 @@ import { createElement, Suspense, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import TodayMasthead from "./TodayMasthead";
-import TodayWeatherView from "./TodayWeatherView";
+import TodayWeatherView, { WeatherPending } from "./TodayWeatherView";
 
 vi.mock("@/components/nav/AppTransitionLink", () => ({
   default: ({ href, children, className }: { href: string; children: ReactNode; className?: string }) =>
@@ -25,12 +25,15 @@ describe("Today masthead composition", () => {
     function WaitingWeather(): never { throw new Promise(() => {}); }
     const html = renderToStaticMarkup(createElement(TodayMasthead, {
       title: "This afternoon in Frederick County",
-      weather: createElement(Suspense, { fallback: createElement("p", null, "Loading forecast") }, createElement(WaitingWeather)),
+      weather: createElement(Suspense, { fallback: createElement(WeatherPending) }, createElement(WaitingWeather)),
     }));
     expect(html).toContain("<h1");
     expect(html).toContain("This afternoon in Frederick County");
     expect(html).toContain("Loading forecast");
+    // The real pending owner preserves immediate access without a second route
+    // or claiming a provider read before the bounded child resolves.
     expect(html.match(/href="\/pulse\?open=weather"/g)).toHaveLength(1);
+    expect(html).not.toContain("briefly unavailable");
     expect(html).not.toContain("<img");
   });
 
@@ -49,7 +52,13 @@ describe("Today masthead composition", () => {
     }
     expect(html.match(/<a\b/g)).toHaveLength(1);
     expect(html).toContain("<details");
-    expect(html).toContain("<summary>Forecast details</summary>");
+    expect(html.match(/<summary\b/g)).toHaveLength(1);
+    const summary = html.slice(html.indexOf("<summary"), html.indexOf("</summary>"));
+    expect(summary).toContain("Forecast details for Frederick.");
+    expect(summary).toContain("70 degrees Fahrenheit forecast");
+    expect(summary).toContain("Mostly cloudy");
+    expect(summary).not.toMatch(/<(a|button|input|select|textarea|div)\b/);
+    expect(html.indexOf('href="/pulse?open=weather"')).toBeGreaterThan(html.indexOf("</summary>"));
     expect(html).not.toContain("<details open");
     expect(html).not.toMatch(/<(button|input|select|textarea)\b/);
     expect(html).not.toContain("Weather in Frederick");
@@ -72,7 +81,10 @@ describe("Today compact weather disclosure", () => {
     const details = html.slice(evidenceStart, evidenceEnd);
     expect(details).toContain('dateTime="2026-10-12T14:53:00.000Z"');
     expect(details).toContain("High 75°");
-    expect(html.indexOf("70°")).toBeLessThan(evidenceStart);
+    const summaryEnd = html.indexOf("</summary>");
+    expect(html.indexOf("70°")).toBeGreaterThan(evidenceStart);
+    expect(html.indexOf("70°")).toBeLessThan(summaryEnd);
+    expect(details.indexOf('href="/pulse?open=weather"')).toBeGreaterThan(details.indexOf("</summary>"));
     expect(html.indexOf("Flash Flood Warning is active.")).toBeLessThan(evidenceStart);
     expect(html.indexOf("The air-quality reading is unavailable.")).toBeGreaterThan(evidenceEnd);
     expect(details).not.toContain("Flash Flood Warning is active.");
@@ -87,6 +99,7 @@ describe("Today compact weather disclosure", () => {
     expect(html).toContain("Flash Flood Warning is active.");
     expect(html).toContain("The NWS forecast is briefly unavailable.");
     expect(html).not.toContain("<details");
+    expect(html.match(/href="\/pulse\?open=weather"/g)).toHaveLength(1);
     expect(html).not.toContain("70°");
     expect(html).not.toContain("High");
   });

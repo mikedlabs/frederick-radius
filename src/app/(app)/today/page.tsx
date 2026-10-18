@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
+import { WeatherPending } from "@/components/today/TodayWeatherView";
 import TodayPlanTonightLink from "@/components/today/TodayPlanTonightLink";
 import { ChevronRight } from "lucide-react";
 import { easternDayKey } from "@/lib/tz";
@@ -17,7 +18,6 @@ import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import TonightHeadline from "@/components/today/TonightHeadline";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
-import Skeleton from "@/components/ui/Skeleton";
 import WeekendPreview from "@/components/today/WeekendPreview";
 import FromYourSaved from "@/components/today/FromYourSaved";
 // CreekHairline removed in the pleasant-layout pass — it was a
@@ -280,7 +280,7 @@ export default async function HomePage() {
         shortTitle={frame.shortTitle}
         dateline={formatEasternDateline(now)}
         weather={
-          <Suspense fallback={<Skeleton.Block height={100} round="var(--app-radius-lg)" />}>
+          <Suspense fallback={<WeatherPending />}>
             <TodayCard density="masthead" />
           </Suspense>
         }
@@ -300,6 +300,9 @@ export default async function HomePage() {
 
       <div data-today-current-content className={styles.currentContent}>
         <div aria-label="Places for your area" className={styles.places}>
+          {/* The real selected-area answer leads the evergreen scene in both
+              document and visual order. Its existing scope/fallback stays mounted. */}
+          {decisionLead}
           {/* This owned Frederick scene is a place doorway, not a verdict
               about current conditions. Other town and Near me lenses suppress
               it. Before the client knows the URL lens, the neutral fallback
@@ -307,7 +310,6 @@ export default async function HomePage() {
           <Suspense fallback={<TodayGeographicDoorwayPending />}>
             <TodayGeographicDoorway />
           </Suspense>
-          {decisionLead}
           <div className={styles.quickNeeds}>
             <TodayQuickNeeds />
           </div>

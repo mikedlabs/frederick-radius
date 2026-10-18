@@ -75,12 +75,12 @@ async function fivePointForecastProbe(forecast: Locator) {
   });
 }
 
-async function tabToForecast(page: Page, forecast: Locator) {
+async function tabToWeatherControl(page: Page, forecast: Locator) {
   for (let presses = 0; presses < 40; presses += 1) {
     await page.keyboard.press("Tab");
     if (await forecast.evaluate((link) => document.activeElement === link)) return;
   }
-  throw new Error("The forecast link was not reachable within 40 ordinary Tab presses.");
+  throw new Error("The weather control was not reachable within 40 ordinary Tab presses.");
 }
 
 for (const appearance of ["light", "dark"] as const) {
@@ -175,15 +175,30 @@ for (const appearance of ["light", "dark"] as const) {
             document.documentElement.scrollWidth - window.innerWidth,
           )).toBeLessThanOrEqual(1);
 
-          const forecastBox = (await forecast.boundingBox())!;
-          // Round only CSS-transform representation, as in the existing layout gate.
-          expect(Math.round(forecastBox.height * 100) / 100).toBeGreaterThanOrEqual(44);
-          expect(forecastBox.width).toBeGreaterThanOrEqual(44);
-          await expect.poll(() => fivePointForecastProbe(forecast)).toEqual([true, true, true, true, true]);
+          const details = renderedWeather.locator("details");
+          const summary = details.locator("summary[data-today-weather-summary]");
+          const entryControl = weatherState === "available" ? summary : forecast;
+          if (weatherState === "available") {
+            await expect(details).toHaveCount(1);
+            await expect(details).not.toHaveAttribute("open");
+            await expect(summary).toHaveAccessibleName(/Forecast details for Frederick/);
+            await expect(forecast).not.toBeVisible();
+            await expect(summary.locator("a, button, input, select, textarea, div")).toHaveCount(0);
+          }
+          const entryBox = (await entryControl.boundingBox())!;
+          // Keep the same physical44px oracle for the single collapsed owner.
+          expect(Math.round(entryBox.height * 100) / 100).toBeGreaterThanOrEqual(44);
+          expect(entryBox.width).toBeGreaterThanOrEqual(44);
+          await expect.poll(() => fivePointForecastProbe(entryControl)).toEqual([true, true, true, true, true]);
+          const visibleSafety = renderedWeather.locator("[data-weather-headline], [data-weather-safety-note]");
+          for (const note of await visibleSafety.all()) {
+            await expect(note).toBeVisible();
+            expect(await note.evaluate((element) => element.closest("details") === null)).toBe(true);
+          }
           expect(runtimeErrors).toEqual([]);
           await testInfo.attach("weather-priority-geometry", {
             contentType: "application/json",
-            body: JSON.stringify({ viewport, appearance, providerMode, state: weatherState, order, weatherBox, forecastBox,
+            body: JSON.stringify({ viewport, appearance, providerMode, state: weatherState, order, weatherBox, entryBox,
               probe: "Center and four cardinal points at +/-21.5px; bounded samples, not exhaustive area proof." }),
           });
           const screenshotPath = testInfo.outputPath(`today-weather-${appearance}-${viewport.width}.png`);
@@ -193,20 +208,10 @@ for (const appearance of ["light", "dark"] as const) {
           await page.screenshot({ path: firstScreenPath, fullPage: false });
           await testInfo.attach("weather-priority-first-screen", { path: firstScreenPath, contentType: "image/png" });
 
-          await tabToForecast(page, forecast);
-          await expect(forecast).toBeFocused();
-          const details = renderedWeather.locator("details");
+          await tabToWeatherControl(page, entryControl);
+          await expect(entryControl).toBeFocused();
           if (weatherState === "available") {
-            await test.step("native keyboard reveals dated forecast evidence and returns to Full forecast", async () => {
-              const summary = details.locator("summary");
-              await expect(details).toHaveCount(1);
-              await expect(details).not.toHaveAttribute("open");
-              await expect(summary).toHaveText("Forecast details");
-              const summaryBox = (await summary.boundingBox())!;
-              expect(summaryBox.width).toBeGreaterThanOrEqual(44);
-              expect(summaryBox.height).toBeGreaterThanOrEqual(44);
-              await page.keyboard.press("Shift+Tab");
-              await expect(summary).toBeFocused();
+            await test.step("one native weather control reveals dated evidence and the full forecast route", async () => {
               await page.keyboard.press("Enter");
               await expect(details).toHaveAttribute("open", "");
               await expect(details.getByText("NWS forecast · Frederick", { exact: true })).toBeVisible();
@@ -215,26 +220,39 @@ for (const appearance of ["light", "dark"] as const) {
                 await expect(issued).toBeVisible();
                 const originalIssuance = await issued.getAttribute("datetime");
                 expect(Number.isFinite(Date.parse(originalIssuance ?? ""))).toBe(true);
-                // The date comes from NWS, including an older real issuance;
-                // browser time is never substituted for missing evidence.
                 expect(await issued.innerText()).toMatch(/\b20\d{2}\b/);
               } else {
                 await expect(details.getByText("Issue time unavailable", { exact: true })).toBeVisible();
               }
               await page.keyboard.press("Tab");
               await expect(forecast).toBeFocused();
+              const forecastBox = (await forecast.boundingBox())!;
+              expect(Math.round(forecastBox.height * 100) / 100).toBeGreaterThanOrEqual(44);
+              expect(forecastBox.width).toBeGreaterThanOrEqual(44);
+              await expect.poll(() => fivePointForecastProbe(forecast)).toEqual([true, true, true, true, true]);
+              await page.keyboard.press("Shift+Tab");
+              await expect(summary).toBeFocused();
+              await page.keyboard.press("Enter");
+              await expect(details).not.toHaveAttribute("open");
+              await expect(forecast).not.toBeVisible();
+              for (const note of await visibleSafety.all()) await expect(note).toBeVisible();
+              await page.keyboard.press("Enter");
+              await expect(details).toHaveAttribute("open", "");
+              await page.keyboard.press("Tab");
+              await expect(forecast).toBeFocused();
               await testInfo.attach("native-forecast-disclosure-keyboard", {
                 contentType: "application/json",
                 body: JSON.stringify({ exercised: true, appearance, viewport, providerMode, weatherState,
-                  contract: "Full forecast → Shift+Tab → summary → Enter → dated evidence → Tab → Full forecast" }),
+                  contract: "Tab → summary → Enter → dated evidence → Tab → Full forecast → Shift+Tab → summary → Enter close/reopen → Tab → Full forecast" }),
               });
             });
           } else {
             await expect(details).toHaveCount(0);
+            await expect(forecast).toBeVisible();
             await testInfo.attach("native-forecast-disclosure-keyboard", {
               contentType: "application/json",
               body: JSON.stringify({ exercised: false, appearance, viewport, providerMode, weatherState,
-                reason: "The actual unavailable/safety-only forecast has no routine-evidence disclosure. No provider markup was fabricated." }),
+                reason: "Unavailable/safety-only weather keeps its direct real forecast route without fabricating a routine read." }),
             });
           }
           const href = new URL((await forecast.getAttribute("href"))!, page.url());

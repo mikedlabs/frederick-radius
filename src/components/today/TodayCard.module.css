@@ -103,53 +103,60 @@
 }
 
 /* The compact read is factual. Only routine provenance and sun detail collapse;
-   urgent verdicts and unavailable safety checks stay in the visible reading. */
+   urgent verdicts and unavailable safety checks stay in the visible reading.
+   Only compact weather follows the root text size. Standard-density weather
+   keeps its existing scale. Wrap the reading instead of compressing its text
+   when an enlarged temperature, condition and disclosure cue need more room. */
 .masthead .reading {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: var(--app-space-2);
   min-height: 44px;
 }
 
 .masthead .details {
-  flex: 1 1 auto;
+  flex: 1 1 40%;
 }
 
 .masthead .condition {
+  display: block;
   overflow-wrap: break-word;
-  font-size: 14px;
+  font-size: var(--text-sm, 0.875rem);
   line-height: 1.3;
 }
 
 .masthead .temperature {
-  font-size: 36px;
+  font-size: var(--text-4xl, 2.25rem);
 }
 
 .masthead .headline {
   margin-bottom: var(--app-space-2);
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.35;
 }
 
 .forecastType {
+  display: block;
   margin: 3px 0 0;
   color: var(--app-ink-2);
-  font-size: 12px;
+  font-size: var(--text-xs, 0.75rem);
+  overflow-wrap: anywhere;
   line-height: 1.35;
 }
 
 .forecastDetails {
   min-width: 0;
-  margin-top: var(--spacing);
+  margin-top: 0;
 }
 
 .forecastDetails summary {
   display: flex;
   align-items: center;
   gap: var(--app-space-2);
-  width: fit-content;
+  width: 100%;
+  min-width: 44px;
   min-height: 44px;
-  color: var(--app-link);
-  font-size: 12px;
+  color: var(--app-ink);
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
   cursor: pointer;
   list-style: none;
@@ -159,14 +166,27 @@
   display: none;
 }
 
-.forecastDetails summary::after {
-  content: "+";
-  font-size: 16px;
-  line-height: 1;
+.forecastDetails summary > .reading {
+  width: 100%;
 }
 
-.forecastDetails[open] summary::after {
-  content: "−";
+.summaryCue {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: var(--spacing);
+  margin-inline-start: auto;
+  color: var(--app-link);
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 650;
+}
+
+.summaryCue svg {
+  transition: transform var(--app-dur-fast) var(--app-ease-out);
+}
+
+.forecastDetails[open] .summaryCue svg {
+  transform: rotate(90deg);
 }
 
 .forecastDetails summary:focus-visible {
@@ -176,24 +196,32 @@
 }
 
 .forecastEvidence {
+  padding-top: var(--app-space-2);
   padding-bottom: var(--app-space-2);
 }
 
 .masthead .source,
 .masthead .issuance {
-  font-size: 12px;
+  font-size: var(--text-xs, 0.75rem);
+  overflow-wrap: anywhere;
 }
 
 .masthead .stats {
+  font-size: var(--text-xs, 0.75rem);
+  overflow-wrap: anywhere;
   gap: 0 var(--app-space-2);
   margin-top: var(--app-space-2);
 }
 
 .masthead .safetyNote {
+  font-size: var(--text-xs, 0.75rem);
+  overflow-wrap: anywhere;
   margin-top: var(--app-space-2);
 }
 
 .unavailable.masthead {
+  font-size: 0.78125rem;
+  overflow-wrap: anywhere;
   flex-wrap: wrap;
   gap: var(--spacing);
   padding: 0;
@@ -208,3 +236,34 @@
     display: none;
   }
 }
+
+.forecastLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing);
+  min-width: 44px;
+  min-height: 44px;
+  padding-block: var(--app-space-2);
+  color: var(--app-link);
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 650;
+  line-height: 1.3;
+  outline-offset: 4px;
+}
+
+.forecastLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.forecastLink:focus-visible {
+  outline: 2px solid var(--app-link);
+  border-radius: var(--app-radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .summaryCue svg { transition: none; }
+}
+
+/* Preserve the prior100px pending reservation while keeping the route usable. */
+.pending { min-height: 100px; }

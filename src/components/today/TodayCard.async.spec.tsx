@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NwsForecast } from "@/lib/integrations/nws";
@@ -22,6 +22,10 @@ vi.mock("@/lib/integrations/nws-alerts", () => ({ getNwsAlertsResult: providers.
 vi.mock("@/lib/integrations/airnow", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/integrations/airnow")>(),
   getAirQuality: providers.air,
+}));
+vi.mock("@/components/nav/AppTransitionLink", () => ({
+  default: ({ href, children, className }: { href: string; children: ReactNode; className?: string }) =>
+    createElement("a", { href, className }, children),
 }));
 vi.mock("@/components/pwa/OfflineTodayCapture", () => ({ default: providers.capture }));
 vi.mock("@/components/today/DaylightLeftInline", () => ({
@@ -108,6 +112,9 @@ describe("TodayCard provider composition", () => {
     providers.air.mockResolvedValue(null);
     const html = renderToStaticMarkup(await TodayCard({ density: "masthead" }));
     expect(html).toContain('data-weather-density="masthead"');
+    expect(html.match(/<summary\b/g)).toHaveLength(1);
+    expect(html.indexOf('href="/pulse?open=weather"')).toBeGreaterThan(html.indexOf("</summary>"));
+    expect(html.indexOf("The air-quality reading is unavailable.")).toBeGreaterThan(html.indexOf("</details>"));
     for (const fact of ["72°", "Mostly sunny", "NWS forecast · Frederick", "Oct 8, 2026, 7:35 AM EDT", "High 76°", "Sunset", "data-live-daylight", "The air-quality reading is unavailable."]) {
       expect(html).toContain(fact);
     }
@@ -125,6 +132,8 @@ describe("TodayCard provider composition", () => {
     expect(html).toContain('data-weather-density="masthead"');
     expect(html).toContain('data-weather-state="unavailable"');
     expect(html).toContain("The NWS forecast is briefly unavailable.");
+    expect(html).toContain('href="/pulse?open=weather"');
+    expect(html).not.toContain("<details");
     expect(html).not.toContain("70°");
     expect(providers.capture).not.toHaveBeenCalled();
   });
