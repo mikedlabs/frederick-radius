@@ -123,7 +123,9 @@ export default function BottomNav() {
                     }}
                     onClick={handleActivate}
                     aria-current={isAtDestination ? "page" : undefined}
-                    className={`${styles.destination} relative flex h-12 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition-[color,transform,background-color] duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)]`}
+                    data-press-target="tab"
+                    data-pending={pendingIdx === idx ? "true" : "false"}
+                    className={`${styles.destination} relative flex h-12 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition-colors duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)]`}
                     data-selected={active ? "true" : "false"}
                   >
                     <span
@@ -131,15 +133,17 @@ export default function BottomNav() {
                       className="absolute left-1/2 top-0 h-[2px] w-7 -translate-x-1/2"
                       style={{ background: active ? "var(--app-on-brand)" : "transparent", opacity: 0.5 }}
                     />
-                    <Icon
-                      width={20}
-                      height={20}
-                      strokeWidth={active ? 2.25 : 2}
-                      fill={active && fillOnActive ? "currentColor" : "none"}
-                      aria-hidden
-                    />
-                    <span className="text-[11px] font-medium leading-tight tracking-tight">
-                      {label}
+                    <span data-press-face className="flex flex-col items-center justify-center gap-1">
+                      <Icon
+                        width={20}
+                        height={20}
+                        strokeWidth={active ? 2.25 : 2}
+                        fill={active && fillOnActive ? "currentColor" : "none"}
+                        aria-hidden
+                      />
+                      <span className="text-[11px] font-medium leading-tight tracking-tight">
+                        {label}
+                      </span>
                     </span>
                   </Link>
                 </li>

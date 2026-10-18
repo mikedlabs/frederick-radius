@@ -250,10 +250,12 @@ export default function PlaceCard({
       >
         <button
           type="button"
+          data-press-target="card"
           onClick={openDetail}
           aria-label={`View ${actionName} details`}
-          className="group block w-full min-w-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-focus)]"
+          className="group block w-full min-w-0 text-left"
         >
+          <span data-press-face className="block">
           {photo && <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={360}
             sizes="(max-width: 640px) calc(100vw - 32px), 600px" deferGoogleBytes={lazyPhoto} />}
           <div className={photo ? "p-4" : "flex items-start gap-3 p-3"}>
@@ -273,6 +275,7 @@ export default function PlaceCard({
               {photo && fact && <p className="mt-2 line-clamp-2 text-[14px] leading-[1.45]" style={{ color: "var(--app-ink-2)" }}>{fact}</p>}
             </div>
           </div>
+          </span>
         </button>
         <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} touchTarget compact />
         <div className="grid grid-cols-2 gap-2 px-4 pb-4 [&_button]:flex-row [&_button]:gap-2 [&_button]:border [&_button]:border-[var(--app-control-border)] [&_button]:text-[13px]">
@@ -299,16 +302,18 @@ export default function PlaceCard({
   if (variant === "feature") {
     return (
       <article
-        className="tactile tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
+        className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
         style={{ boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
       >
         <div aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: color }} />
         <button
           type="button"
+          data-press-target="card"
           onClick={openDetail}
           aria-label={`View ${actionName} details`}
-          className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+          className="group block min-h-11 w-full text-left"
         >
+          <span data-press-face className="block">
           <PlaceCardPhoto source={photo} onResult={onPhotoResult} />
           <div className="flex items-start gap-3 p-4 pl-5">
             {!photo && <CategoryMark category={place.category} color={color} size={46} />}
@@ -346,6 +351,7 @@ export default function PlaceCard({
               </div>
             </div>
           </div>
+          </span>
         </button>
         <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} />
         <div className="absolute right-2.5 top-2.5 z-10">
@@ -362,7 +368,7 @@ export default function PlaceCard({
     const loved = (place.customers_loved ?? []).slice(0, 3);
     return (
       <article
-        className="tactile tactile-e3 tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)]"
+        className="tactile tactile-e3 relative overflow-hidden rounded-[var(--app-radius-lg)]"
         style={{
           backgroundColor: "var(--app-bg-elevated-solid)",
           backgroundImage: "var(--app-paper-light)",
@@ -371,10 +377,12 @@ export default function PlaceCard({
         <div aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: color }} />
         <button
           type="button"
+          data-press-target="card"
           onClick={openDetail}
           aria-label={`View ${actionName} details`}
-          className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+          className="group block min-h-11 w-full text-left"
         >
+          <span data-press-face className="block">
           <PlaceCardPhoto source={photo} onResult={onPhotoResult} />
           <div className="space-y-2.5 p-4">
             <div className="flex items-start gap-3">
@@ -429,6 +437,7 @@ export default function PlaceCard({
               </p>
             ) : null}
           </div>
+          </span>
         </button>
         <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} />
         <div className="absolute right-2.5 top-2.5 z-10">
@@ -443,7 +452,7 @@ export default function PlaceCard({
   if (variant === "tile") {
     return (
       <article
-        className="tactile tactile-interactive group relative w-[244px] shrink-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
+        className="tactile relative w-[244px] shrink-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
         style={{
           borderColor: "var(--app-border)",
           boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
@@ -451,10 +460,12 @@ export default function PlaceCard({
       >
         <button
           type="button"
+          data-press-target="card"
           onClick={openDetail}
           aria-label={`View ${actionName} details`}
-          className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+          className="group block min-h-11 w-full text-left"
         >
+          <span data-press-face className="block">
           <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={244} />
           <div className="space-y-2 p-3.5 pb-4">
             <div className={`flex items-center gap-2.5${!photo ? " pr-9" : ""}`}>
@@ -491,6 +502,7 @@ export default function PlaceCard({
             )}
           </div>
           <div aria-hidden className="h-[3px] w-full" style={{ background: color }} />
+          </span>
         </button>
         <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} />
         {showSource && (
@@ -509,13 +521,15 @@ export default function PlaceCard({
   // chips. ~a third the footprint of a tile.
   if (variant === "grid") {
     return (
-      <article className="tactile tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)]">
+      <article className="tactile relative overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)]">
         <button
           type="button"
+          data-press-target="card"
           onClick={openDetail}
           aria-label={`View ${actionName} details`}
-          className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+          className="group block min-h-11 w-full text-left"
         >
+          <span data-press-face className="block">
           <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={180} />
           <div className="flex items-start gap-2.5 p-2.5">
             {!photo && <CategoryMark category={place.category} color={color} size={40} />}
@@ -539,6 +553,7 @@ export default function PlaceCard({
             </div>
           </div>
           <div aria-hidden className="h-[2px] w-full" style={{ background: color }} />
+          </span>
         </button>
         <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} />
       </article>
@@ -555,7 +570,7 @@ export default function PlaceCard({
   ) : null;
   return (
     <article
-      className="tactile tactile-interactive tactile-e2 group relative overflow-hidden rounded-[var(--app-radius-lg)]"
+      className="tactile tactile-e2 relative overflow-hidden rounded-[var(--app-radius-lg)]"
       style={{
         backgroundColor: "var(--app-bg-elevated-solid)",
         backgroundImage: "var(--app-paper-light)",
@@ -568,10 +583,13 @@ export default function PlaceCard({
       />
       <button
         type="button"
+        data-press-target="card"
         onClick={openDetail}
         aria-label={`View ${actionName} details`}
-        className="absolute inset-0 z-0 rounded-[var(--app-radius-lg)] text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-inset"
-      />
+        className="absolute inset-0 z-0 rounded-[var(--app-radius-lg)] text-left"
+      >
+        <span data-press-face="outline" aria-hidden />
+      </button>
       <div className="flex items-stretch gap-3 p-3 pl-3.5">
         <div ref={photoAnchorRef} className="pointer-events-none relative z-10 shrink-0 self-center">
           {photo ? (

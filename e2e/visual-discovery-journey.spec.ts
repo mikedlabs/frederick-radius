@@ -21,7 +21,9 @@ const MCCURDY_IMAGE = "/images/seasons/spring/aerial-view-baseball-field.jpg";
 const TODAY_PATH = "/today?in=frederick";
 const EVENTS_PATH = "/events?in=frederick&lens=today";
 
-test.use({ isMobile: true, hasTouch: true, serviceWorkers: "block" });
+// Live HTTPS verification must exercise the real production security policy.
+// The local compiled fixture server retains its HTTP-only transport allowance.
+test.use({ isMobile: true, hasTouch: true, serviceWorkers: "block", bypassCSP: !LIVE });
 
 type RuntimeEvidence = { errors: string[]; consoleErrors: string[]; failedRequests: Array<{ url: string; error: string | null }>; blocked: string[]; eventReads: string[]; savedReads: number; todayReads: number; todayScopes: Array<string | null>; localHttpCspAdjusted: boolean };
 const runtimeByPage = new WeakMap<Page, RuntimeEvidence>();
@@ -71,11 +73,14 @@ async function prepare(context: BrowserContext, page: Page, baseURL: string | un
   observe(page);
   context.on("requestfailed", (request) => { const url = new URL(request.url()); evidence.failedRequests.push({ url: `${url.origin}${url.pathname}`, error: request.failure()?.errorText ?? null }); });
   await context.addCookies([{ name: "fr_onboarded", value: "1", domain: origin.hostname, path: "/" }]);
-  await context.addInitScript(({ key, bridge }) => {
+  await context.addInitScript(({ key, bridge, appOrigin }) => {
+    // Directions may open a blocked foreign/opaque document. Only initialize
+    // Radius storage on the actual app origin; retain all real page errors.
+    if (location.origin !== appOrigin) return;
     if (localStorage.getItem("fr:saved:v1") === null) localStorage.setItem("fr:saved:v1", "[]");
     localStorage.setItem("fr_map_location_intro_v1", "dismissed");
     localStorage.setItem(key, JSON.stringify(bridge));
-  }, { key: RETURN_BRIDGE_STORAGE_KEY, bridge: dismissReturnBridge(emptyReturnBridgeState()) });
+  }, { key: RETURN_BRIDGE_STORAGE_KEY, bridge: dismissReturnBridge(emptyReturnBridgeState()), appOrigin: origin.origin });
   await context.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -422,6 +427,9 @@ if (!LIVE) {
     const dialog = page.getByRole("dialog", { name: record!.title, exact: true });
     await expect(dialog).toBeVisible();
     const full = dialog.getByRole("link", { name: "See full page", exact: true });
+    // Let real document prefetches settle before leaving in WebKit. Aborting
+    // intercepted in-flight RSC reads can surface as engine access-control errors.
+    await page.waitForLoadState("networkidle", { timeout: 10_000 });
     await full.tap();
     await expect(page).toHaveURL(new RegExp(`/events/${slug}\\?`));
     expect(new URL(page.url()).searchParams.get("returnTo")).toBe(TODAY_PATH);
@@ -432,7 +440,9 @@ if (!LIVE) {
     await nativeTarget(save);
     await save.tap();
     await expect(save).toHaveAttribute("aria-pressed", "true");
+    await page.waitForLoadState("networkidle", { timeout: 10_000 });
     await page.getByRole("link", { name: "Back to Today", exact: true }).tap();
+    await expect(page).toHaveURL(new URL(TODAY_PATH, origin).href);
     expect(new URL(page.url()).search).toBe("?in=frederick");
     await expect.poll(() => page.evaluate((position) => Math.abs(scrollY - position), before)).toBeLessThan(80);
     await page.getByRole("navigation", { name: "Primary", exact: true }).filter({ visible: true }).getByRole("link", { name: "Saved", exact: true }).tap();
@@ -440,6 +450,7 @@ if (!LIVE) {
     await expect(saved).toContainText(record!.title);
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(saved).toContainText(record!.title);
+    await page.waitForLoadState("networkidle", { timeout: 10_000 });
     await saved.locator('a[href^="/events/"]').first().tap();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(displayedTitle);
     expect(new URL(page.url()).searchParams.get("returnTo")).toBe("/my-radius");
@@ -453,6 +464,7 @@ if (!LIVE) {
     await nativeTarget(directions);
     await directions.tap();
     await expect.poll(() => evidence.blocked.some((url) => url.includes(directionUrl.hostname))).toBe(true);
+    await page.waitForLoadState("networkidle", { timeout: 10_000 });
     await page.getByRole("link", { name: "Back to saved", exact: true }).tap();
     await expect(saved).toContainText(record!.title);
     await assertPageWidth(page);

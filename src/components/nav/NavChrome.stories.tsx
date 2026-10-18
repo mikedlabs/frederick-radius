@@ -65,10 +65,13 @@ export const SavedAt390: Story = {
     const saved = within(navigation).getByRole("link", { name: "Saved" });
     map.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "touch", isPrimary: true }));
     await waitFor(() => expect(navigation).toHaveAttribute("aria-busy", "true"));
+    expect(map).toHaveAttribute("data-pending", "true");
+    expect(map).not.toHaveAttribute("aria-current");
     expect(saved).toHaveAttribute("data-selected", "true");
     expect(map).toHaveAttribute("data-selected", "false");
     map.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true, pointerType: "touch", isPrimary: true }));
     await waitFor(() => expect(navigation).toHaveAttribute("aria-busy", "false"));
+    expect(map).toHaveAttribute("data-pending", "false");
     expect(saved).toHaveAttribute("data-selected", "true");
   },
 };

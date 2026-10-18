@@ -2,11 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Event } from "@/data/events";
 
 const mocks = vi.hoisted(() => ({
-  assembleUnifiedEvents: vi.fn(),
+  loadEventArchiveSnapshot: vi.fn(),
 }));
 
-vi.mock("@/lib/loaders/unifiedEvents", () => ({
-  assembleUnifiedEvents: mocks.assembleUnifiedEvents,
+vi.mock("@/lib/loaders/todayEventSnapshot", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/loaders/todayEventSnapshot")>(),
+  loadEventArchiveSnapshot: mocks.loadEventArchiveSnapshot,
 }));
 
 import { askFrederick } from "./answer";
@@ -49,7 +50,7 @@ describe("Ask communication-access event routing", () => {
       starts_at: "2026-07-14T22:00:00.000Z",
       ends_at: "2026-08-18T23:00:00.000Z",
     });
-    mocks.assembleUnifiedEvents.mockResolvedValue({
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
       unified: [multiWeekCourse],
       publicEvents: [multiWeekCourse],
       sourceHealth: { degraded: false, unavailable: [] },
@@ -81,7 +82,7 @@ describe("Ask communication-access event routing", () => {
       slug: "captioned-meeting",
       title: "Captioned community meeting",
     });
-    mocks.assembleUnifiedEvents.mockResolvedValue({
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
       unified: [captionedMeeting],
       publicEvents: [captionedMeeting],
       sourceHealth: { degraded: false, unavailable: [] },

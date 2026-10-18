@@ -2,7 +2,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { qualifiedSearch, type QualifiedSearchContext, type SearchHit } from "@/lib/search";
 import { isEventSearchIntent } from "@/lib/search";
-import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { loadAskEventSnapshot, withAskEventCoverage, type AskEventSnapshot } from "@/lib/ask/event-snapshot";
 import { matchCivicAction } from "@/data/civic-actions";
 import { departmentJurisdictionLabel, isDepartmentRequest, matchDepartment } from "@/data/department-contacts";
 import { findTownCivicResource } from "@/data/town-websites";
@@ -1477,6 +1477,13 @@ async function answerParkingRequest(
     };
   }
 
+  let eventSnapshot: AskEventSnapshot | undefined;
+  const requestedMunicipality = municipalityNamedInQuery(target)?.slug ?? municipalityNamedInQuery(query)?.slug;
+  let matchedEventMunicipality: string | null | undefined;
+  const calendarAnswer = (result: AskResult) => withAskEventCoverage(
+    result, eventSnapshot?.sourceHealth,
+    requestedMunicipality ?? matchedEventMunicipality ?? context.municipality,
+  );
   let anchorName = context.origin ? rankingAnchor(context) : "downtown Frederick";
   let anchor = context.origin ?? FREDERICK_CENTER;
   let anchorHref: string | undefined;
@@ -1490,17 +1497,28 @@ async function answerParkingRequest(
       anchor = placeHit.place.geom;
       anchorHref = `/places/${placeHit.place.slug}`;
     } else {
-      const pool = await Promise.race([
-        assembleUnifiedEvents(new Date()).then((result) => result.publicEvents).catch(() => [] as Event[]),
-        new Promise<Event[]>((resolve) => setTimeout(() => resolve([]), 1_200)),
-      ]);
+      eventSnapshot = await loadAskEventSnapshot(new Date());
+      const pool = eventSnapshot.publicEvents;
       const eventHit = qualifiedSearch(target, 8, pool, context).hits.find((hit) => hit.type === "event");
-      if (eventHit?.type === "event" && eventHit.event.geom) {
+      if (eventHit?.type === "event") matchedEventMunicipality = eventHit.event.municipality;
+      if (eventHit?.type === "event" && !Boolean(eventHasCredibleLocation(eventHit.event))) {
+        return calendarAnswer({
+          status: "empty", configured: hasKey(), usedModel: false,
+          answer: `I found “${eventHit.event.title}”, but its exact venue location is not verified, so I can’t identify the nearest garage. Open the parking guide to compare downtown garages.`,
+          sources: [], intent,
+          actions: [
+            { label: "Open the event", kind: "open", href: `/events/${eventHit.event.slug}` },
+            { label: "Open the parking guide", kind: "open", href: "/parking" },
+          ],
+          intelligence: { tools: ["places", "events", "parking"], confidence: "medium", retrieval: "keyword" },
+        });
+      }
+      if (eventHit?.type === "event" && eventHasCredibleLocation(eventHit.event)) {
         anchorName = eventHit.event.title;
         anchor = eventHit.event.geom;
         anchorHref = `/events/${eventHit.event.slug}`;
       } else {
-        return {
+        return calendarAnswer({
           status: "empty",
           configured: hasKey(),
           usedModel: false,
@@ -1509,7 +1527,7 @@ async function answerParkingRequest(
           intent,
           actions: [{ label: "Open the parking guide", kind: "open", href: "/parking" }],
           intelligence: { tools: ["places", "events", "parking"], confidence: "medium", retrieval: "keyword" },
-        };
+        });
       }
     }
   }
@@ -1520,7 +1538,7 @@ async function answerParkingRequest(
     .sort((a, b) => a.distance - b.distance);
   const nearestGarageDistance = ranked[0]?.distance ?? Infinity;
   if (nearestGarageDistance > 3_500) {
-    return {
+    return calendarAnswer({
       status: "empty",
       configured: hasKey(),
       usedModel: false,
@@ -1533,7 +1551,7 @@ async function answerParkingRequest(
         { label: "Open the county map", kind: "open", href: "/map?in=county" },
       ],
       intelligence: { tools: ["places", "parking"], confidence: "high", retrieval: "keyword" },
-    };
+    });
   }
   const sources = ranked.slice(0, 3).map(({ garage, distance }): AskSource => ({
     slug: `parking-${garage.slug}`,
@@ -1550,7 +1568,7 @@ async function answerParkingRequest(
   }));
   const lead = ranked[0];
   const answer = lead
-    ? `${lead.garage.name} is the closest mapped city garage to ${anchorName}, about ${formatDistance(lead.distance)} away. It is open ${lead.garage.hours}, and the city schedule is ${PARKING_RATE_SCHEDULE.summary}; this ranking uses walking distance and does not show live space availability.`
+    ? `${lead.garage.name} is the closest mapped city garage to ${anchorName}, about ${formatDistance(lead.distance)} away. It is open ${lead.garage.hours}, and the city schedule is ${PARKING_RATE_SCHEDULE.summary}; this ranking uses approximate straight-line distance and does not show live space availability.`
     : "I couldn't find a mapped city garage for that location.";
 
   const parkingActions: AskAction[] = [
@@ -1559,7 +1577,7 @@ async function answerParkingRequest(
     { label: "Less walking", kind: "refine", query: `Plan an outing near ${anchorName} with easy parking and less walking` },
   ];
 
-  return {
+  return calendarAnswer({
     status: sources.length > 0 ? "matches" : "empty",
     configured: hasKey(),
     usedModel: false,
@@ -1569,7 +1587,7 @@ async function answerParkingRequest(
     intent,
     actions: parkingActions.slice(0, 3),
     intelligence: { tools: ["places", "parking"], confidence: "high", retrieval: "keyword" },
-  };
+  });
 }
 
 async function answerAmenityRequest(
@@ -2536,21 +2554,18 @@ export async function askFrederick(
     };
   }
 
-  // Event questions need the same live, deduplicated calendar as /events and
-  // /search. Bound a cold miss so Ask still fails soft to curated seeds rather
-  // than making the visitor wait on a slow third-party calendar.
+  // Event questions need the same current, deduplicated calendar as /events and
+  // /search. Read the durable archive once; its cancellable deadline preserves
+  // curated offline fallback without starting a third-party refresh.
   const anchor = timeAnchorOf(q);
   // A time word does not turn a place request into an event request. Loading
   // the calendar for "coffee right now" both wastes time and lets unrelated
   // events leak into the source cards. Event grounding belongs only to an
   // event/explore question; plan requests have already returned above.
   const eventGrounding = intent.kind === "event" || intent.kind === "explore";
-  const loadedEventPool = eventGrounding && (isEventSearchIntent(q) || anchor)
-    ? await Promise.race([
-        assembleUnifiedEvents(new Date()).then((result) => result.publicEvents).catch(() => undefined),
-        new Promise<undefined>((resolve) => setTimeout(resolve, 1_500)),
-      ])
-    : undefined;
+  const eventSnapshot = eventGrounding && (isEventSearchIntent(q) || anchor)
+    ? await loadAskEventSnapshot(now) : undefined;
+  const loadedEventPool = eventSnapshot?.publicEvents;
   const eventQualifiers = parseSearchQualifiers(q);
   const namedEventMunicipality = municipalityNamedInQuery(q);
   const queryEventMunicipality = namedEventMunicipality?.slug ??
@@ -2559,6 +2574,7 @@ export async function askFrederick(
       : eventQualifiers.regions.length > 0
         ? null
         : context.municipality);
+  const calendarAnswer = (result: AskResult) => withAskEventCoverage(result, eventSnapshot?.sourceHealth, queryEventMunicipality);
   const townScopedLoadedEventPool = loadedEventPool
     ? scopeAskEvents(loadedEventPool, queryEventMunicipality)
     : undefined;
@@ -2944,7 +2960,7 @@ export async function askFrederick(
   if (anchor && eventContextPool) {
     try {
       const ctx = eventContextLines(eventContextPool, anchor, now, q);
-      eventsBlock = `${ctx.block}\n`;
+      eventsBlock = `${eventSnapshot?.sourceHealth.degraded ? "Calendar coverage is partial. Do not claim these listings are the complete calendar.\n" : ""}${ctx.block}\n`;
       const toAskEventSource = (e: (typeof ctx.picked)[number]): AskSource => ({
         slug: e.slug,
         name: e.title,
@@ -3406,7 +3422,7 @@ export async function askFrederick(
           { label: "Try this weekend", kind: "refine" as const, query: "What events are happening this weekend?" },
         ]
       : responseActions;
-    return {
+    return calendarAnswer({
       status: responseSources.length > 0 ? "matches" : "empty",
       configured: hasKey(),
       usedModel: false,
@@ -3421,7 +3437,7 @@ export async function askFrederick(
         retrieval: "keyword",
         personalized,
       } : undefined,
-    };
+    });
   }
 
   // Cold-window honesty guard: for a few minutes after a deploy the
@@ -3432,11 +3448,13 @@ export async function askFrederick(
   // the board links instead; place questions (a want/category) still
   // reach the model on place data alone.
   if (/\b(?:tonight|this evening)\b/i.test(q) && !eventsBlock && !want) {
-    return {
+    return calendarAnswer({
       status: "empty",
       configured: hasKey(),
       usedModel: false,
-      answer: "I can’t see the live event calendar right now, so I won’t guess at tonight. The events board has the current list.",
+      answer: eventSnapshot && !eventSnapshot.sourceHealth.degraded
+        ? "I did not find a matching event for tonight in the available calendar."
+        : "I can’t fully verify tonight’s event listings, so I won’t guess. Open the event calendar to inspect the available listings.",
       sources: [],
       context: retrieval.meta.contextLabel,
       intent,
@@ -3444,7 +3462,7 @@ export async function askFrederick(
         { label: "Open tonight’s events", kind: "open", href: "/events?when=today" },
         { label: "Open live music", kind: "open", href: "/live-music" },
       ],
-    };
+    });
   }
 
   // Cached on a hit (identical question + identical data); a miss or a cached
@@ -3471,7 +3489,7 @@ export async function askFrederick(
   const renderedSources = answer
     ? filterCitedSources(citationCandidates, renderedAnswer)
     : sources;
-  return {
+  return calendarAnswer({
     status: answer ? "answered" : sources.length > 0 ? "matches" : "empty",
     configured: hasKey(),
     usedModel: Boolean(answer),
@@ -3490,7 +3508,7 @@ export async function askFrederick(
       retrieval: "keyword",
       personalized,
     } : undefined,
-  };
+  });
 }
 
 function deterministicAnswer({

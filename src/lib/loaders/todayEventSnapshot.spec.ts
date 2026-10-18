@@ -197,6 +197,19 @@ describe("Today durable event snapshot", () => {
     });
   });
 
+  it("bypasses an already initialized connection during promoted builds", async () => {
+    const sql = vi.fn();
+    mocks.getSql.mockReturnValue(sql);
+    vi.stubEnv("RADIUS_DATA_MODE", "promoted");
+    try {
+      const result = await loadEventArchiveSnapshot(NOW);
+      expect(mocks.getSql).not.toHaveBeenCalled();
+      expect(sql).not.toHaveBeenCalled();
+      expect(result.publicEvents.length).toBeGreaterThan(0);
+      expect(result.sourceHealth.issues[0].code).toBe("event_archive_unavailable");
+    } finally { vi.unstubAllEnvs(); }
+  });
+
   it("cancels a slow database read and returns curated fail-soft data", async () => {
     vi.useFakeTimers();
     const cancel = vi.fn();

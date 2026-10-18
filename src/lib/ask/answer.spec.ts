@@ -989,7 +989,7 @@ describe("askFrederick structured answers", () => {
       category: "parking",
       confidence: "high",
     });
-    expect(result.answer).toContain("uses walking distance and does not show live space availability");
+    expect(result.answer).toContain("uses approximate straight-line distance and does not show live space availability");
     expect(result.sources.every((source) => source.category === "parking")).toBe(true);
   });
 
