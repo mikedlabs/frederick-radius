@@ -283,12 +283,12 @@ export const EnlargedTextOnlyRelative320: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   play: async ({ canvasElement }) => {
     await expect(window.innerWidth).toBe(320);
-    await doubleActualText(canvasElement, [14, 12, 12]);
+    await doubleActualText(canvasElement, [20, 12, 14]);
     const canvas = within(canvasElement);
     // The full View revalidates and rejects the data URL supplied in response.
     await expect(canvasElement.querySelector("img")).toBeNull();
     await expect(canvasElement.querySelector("[data-event-photo-credit]")).toBeNull();
-    await expect(canvas.getByText("Now", { exact: true })).toBeVisible();
+    await expect(canvas.getByText("Now · 9:17 AM", { exact: true })).toBeVisible();
     await expect(canvas.getByText("Today", { exact: true })).toBeVisible();
     await expect(canvas.queryByText("9:17 AM", { exact: true })).toBeNull();
     await expect(canvas.queryByText("All day", { exact: true })).toBeNull();

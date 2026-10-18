@@ -162,8 +162,8 @@
 .events {
   margin: 0;
   padding: 0;
-  border-top: 1px solid var(--app-border);
-  padding-top: var(--app-space-4);
+  border-top: 0;
+  padding-top: 0;
 }
 
 .geographicDoorway {

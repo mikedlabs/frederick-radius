@@ -10,9 +10,9 @@ const imageCallbacks = vi.hoisted(() => new Map<string, Pick<ImgHTMLAttributes<H
 // made by this jsdom test and the fixture does not represent a real event.
 vi.mock("next/image", async () => {
   const { useLayoutEffect } = await import("react");
-  return { default: function ImageTransport({ src, alt, className, onLoad, onError }: ImgHTMLAttributes<HTMLImageElement>) {
+  return { default: function ImageTransport({ src, alt, className, style, onLoad, onError }: ImgHTMLAttributes<HTMLImageElement>) {
     useLayoutEffect(() => { if (typeof src === "string") imageCallbacks.set(src, { onLoad, onError }); }, [src, onLoad, onError]);
-    return createElement("img", { src, alt, className, onLoad, onError });
+    return createElement("img", { src, alt, className, style, onLoad, onError });
   } };
 });
 vi.mock("@/components/ui/BottomSheet", () => ({
@@ -25,6 +25,7 @@ vi.mock("@/lib/decision/telemetry", () => ({ trackDecision: vi.fn() }));
 
 import EventArtwork from "./EventArtwork";
 import EventPosterCard from "./EventPosterCard";
+import EventVenuePhoto from "./EventVenuePhoto";
 import EventSheet from "./EventSheet";
 import EventCard from "./EventCard";
 import TonightHeadline from "@/components/today/TonightHeadline";
@@ -303,13 +304,15 @@ describe("Today approved media lifecycle", () => {
   });
 
 
-  type PrematureSurface = "artwork" | "glance" | "headline-art" | "headline-photo" | "recovery";
-  const prematureSurfaces: PrematureSurface[] = ["artwork", "glance", "headline-art", "headline-photo", "recovery"];
+  type PrematureSurface = "artwork" | "glance" | "headline-art" | "headline-photo" | "recovery" | "detail-photo" | "sheet-photo";
+  const prematureSurfaces: PrematureSurface[] = ["artwork", "glance", "headline-art", "headline-photo", "recovery", "detail-photo", "sheet-photo"];
   function renderPrematureSurface(surface: PrematureSurface) {
     if (surface === "artwork") return <EventArtwork visual={visual} />;
     if (surface === "glance") return <EventCard event={event} variant="glance" />;
     if (surface === "headline-art") return <TonightHeadline event={event} now={new Date("2029-10-10T12:00:00-04:00")} embedded />;
     if (surface === "headline-photo") return <TonightHeadline event={{ ...event, source: "manual", hero_image: undefined, venue_place_slug: "baker-park-frederick" }} now={new Date("2029-10-10T12:00:00-04:00")} embedded />;
+    if (surface === "detail-photo") return <EventVenuePhoto visual={{ ...visual, presentation: "photo" }} />;
+    if (surface === "sheet-photo") return <EventSheet event={{ ...event, source: "manual", hero_image: undefined, venue_place_slug: "baker-park-frederick" }} onClose={() => {}} historyLayerId="component-event" />;
     return <TodayEventsRecoveryView response={{ partial: false, events: [{
       slug: event.slug, title: event.title, venue: event.venue_name, municipality: "frederick",
       time: "2:00 PM", moment: "Later", image: null, free: true,
@@ -454,6 +457,124 @@ describe("Today approved media lifecycle", () => {
     act(() => image.dispatchEvent(new Event("error")));
     expect(host.childElementCount).toBe(0);
     expect(unavailable).not.toHaveBeenCalled();
+  });
+
+
+  const ownedPosterVenues = [
+    { slug: "frederick-fairgrounds-home-of-the-great-frederick-fair-frederick", name: "Frederick Fairgrounds",
+      src: "/images/fair/fairgrounds-night-mike-d-1920.jpg" },
+    { slug: "mccurdy-field", name: "McCurdy Field", src: "/images/seasons/spring/aerial-view-baseball-field.jpg" },
+  ];
+  function ownedPosterFixture(venue: typeof ownedPosterVenues[number]) {
+    // Declared component facts only; no claim that this event happened at the
+    // venue. The owned registry, not the supplied unused Google URL, resolves.
+    return { ...event, source: "manual" as const, venue_name: venue.name, venue_place_slug: venue.slug,
+      hero_image: "/api/place-photo?name=unused-poster-fixture&w=800",
+      hero_image_attribution: { kind: "venue" as const, venue_name: venue.name, provider: "google_maps" as const,
+        source_uri: "https://www.google.com/maps/place/unused-poster-fixture",
+        authors: [{ display_name: "Unused poster photographer" }] } };
+  }
+
+  it.each(ownedPosterVenues)("keeps the selected owned Poster for $name pending until real native pixels settle", (venue) => {
+    act(() => root.render(<EventPosterCard event={ownedPosterFixture(venue)} nowISO="2029-10-10T12:00:00-04:00" />));
+    const image = host.querySelector("img")!;
+    expect(image.getAttribute("src")).toBe(venue.src);
+    // The existing helper mirrors the diagnosed initial Next onLoad callback
+    // with complete=true, natural0/0 and no selected currentSrc. It does not
+    // stand in for a completed failed response or a compiled browser proof.
+    prematureSyntheticLoad(image);
+    expect(host.querySelector("img")).toBe(image);
+    expect(host.querySelector('[data-event-poster="photo"]')).not.toBeNull();
+    expect(host.querySelector('[data-event-fallback="date-category"]')).toBeNull();
+    imageState(image, 640, 360, image.src);
+    act(() => image.dispatchEvent(new Event("load")));
+    expect(host.querySelector("img")).toBe(image);
+    expect(host.querySelector('[data-event-poster="photo"]')).not.toBeNull();
+    expect([...imageCallbacks.keys()].some(src => src.startsWith("/api/place-photo"))).toBe(false);
+  });
+
+  it.each(["selected-zero", "one-pixel", "native-error"] as const)("settles a genuine Poster %s failure after the pending callback without Google refill", (settlement) => {
+    const venue = ownedPosterVenues[0];
+    act(() => root.render(<EventPosterCard event={ownedPosterFixture(venue)} nowISO="2029-10-10T12:00:00-04:00" />));
+    const image = host.querySelector("img")!;
+    prematureSyntheticLoad(image);
+    expect(host.querySelector("img")).toBe(image);
+    if (settlement !== "native-error") imageState(image, settlement === "one-pixel" ? 1 : 0, settlement === "one-pixel" ? 1 : 0,
+      "https://localhost/_next/image?url=" + encodeURIComponent(venue.src) + "&w=384&q=75");
+    act(() => image.dispatchEvent(new Event(settlement === "native-error" ? "error" : "load")));
+    expect(host.querySelector('[data-event-fallback="date-category"]')).not.toBeNull();
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector("[data-event-photo-credit]")).toBeNull();
+    expect(host.textContent).toContain(event.title);
+    expect(host.textContent).toContain(venue.name);
+    expect(host.querySelector('a[href="/events/component-event"]')).not.toBeNull();
+    expect([...imageCallbacks.keys()].some(src => src.startsWith("/api/place-photo"))).toBe(false);
+    expect(host.textContent).not.toContain("Unused poster photographer");
+    act(() => root.render(<EventPosterCard event={ownedPosterFixture(venue)} nowISO="2029-10-10T12:00:00-04:00" />));
+    expect(host.querySelector("img")).toBeNull();
+    expect([...imageCallbacks.keys()].some(src => src.startsWith("/api/place-photo"))).toBe(false);
+  });
+
+  it("does not activate an already-eligible Google image after exact owned venue media fails", () => {
+    const row = { ...event, source: "manual" as const, venue_name: "Frederick Fairgrounds",
+      venue_place_slug: "frederick-fairgrounds-home-of-the-great-frederick-fair-frederick",
+      hero_image: "/api/place-photo?name=unused-existing-venue&w=800",
+      hero_image_attribution: { kind: "venue" as const, venue_name: "Frederick Fairgrounds",
+        provider: "google_maps" as const, source_uri: "https://www.google.com/maps/place/unused-existing-venue",
+        authors: [{ display_name: "Unused existing photographer" }] } };
+    const render = () => <TonightHeadline event={row} now={new Date("2029-10-10T12:00:00-04:00")} embedded />;
+    act(() => root.render(render()));
+    const link = host.querySelector('a[href="/events/component-event"]')!;
+    const image = host.querySelector("img")!;
+    expect(image.getAttribute("src")).toBe("/images/fair/fairgrounds-night-mike-d-1920.jpg");
+    expect(image.style.objectPosition).toBe("right");
+    expect(host.textContent).toContain("Venue · Frederick Fairgrounds during The Great Frederick Fair");
+    expect([...imageCallbacks.keys()].some(src => src.startsWith("/api/place-photo"))).toBe(false);
+    act(() => image.dispatchEvent(new Event("error")));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector("[data-event-photo-credit]")).toBeNull();
+    expect(host.querySelector('a[href="/events/component-event"]')).toBe(link);
+    expect(host.textContent).toContain(event.title);
+    // An ordinary same-selection rerender must not refill the failure with a
+    // newly mounted paid image, even though supplied Google credit exists.
+    act(() => root.render(render()));
+    expect(host.querySelector("img")).toBeNull();
+    expect([...imageCallbacks.keys()].some(src => src.startsWith("/api/place-photo"))).toBe(false);
+    expect(host.textContent).not.toContain("Unused existing photographer");
+  });
+
+  it("removes every licensed credit link when its venue image fails, keeping the event facts", () => {
+    const row = { ...event, source: "manual" as const, venue_name: "Brewer's Alley", venue_place_slug: "brewers-alley-frederick",
+      hero_image: "/api/place-photo?name=unused-licensed-venue&w=800" };
+    act(() => root.render(<EventPosterCard event={row} />));
+    const image = host.querySelector("img")!;
+    expect(image.getAttribute("src")).toBe("/place-photos/brewers-alley-2004.jpg");
+    expect(host.querySelector("[data-event-licensed-credit]")?.textContent).toContain("Stacy (Rambling Traveler)");
+    expect(host.querySelector("[data-event-licensed-credit]")?.textContent).toContain("CC BY-SA 2.0");
+    act(() => image.dispatchEvent(new Event("error")));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector("[data-event-photo-credit]")).toBeNull();
+    expect(host.querySelector('a[href="/events/component-event"]')).not.toBeNull();
+    expect(host.textContent).toContain("Brewer's Alley");
+    expect([...imageCallbacks.keys()].some(src => src.startsWith("/api/place-photo"))).toBe(false);
+  });
+
+  it("keeps a sheet's title, time and attendance action readable after a licensed venue image fails", () => {
+    act(() => root.render(<EventSheet event={{ ...event, source: "manual", venue_name: "Brewer's Alley", venue_place_slug: "brewers-alley-frederick" }} onClose={() => {}} historyLayerId="component-event" />));
+    const heading = host.querySelector("h2")!;
+    const photo = host.querySelector("[data-event-venue-media]")!;
+    const tickets = host.querySelector('a[href="https://publisher.example/tickets"]')!;
+    expect(heading.textContent).toBe(event.title);
+    expect(photo.contains(heading)).toBe(false);
+    expect(heading.compareDocumentPosition(photo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tickets.compareDocumentPosition(photo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    act(() => host.querySelector("img")!.dispatchEvent(new Event("error")));
+    expect(host.querySelector("[data-event-venue-media]")).toBeNull();
+    expect(host.querySelector("[data-event-photo-credit]")).toBeNull();
+    expect(host.querySelector("h2")).toBe(heading);
+    expect(host.querySelector('a[href="https://publisher.example/tickets"]')).toBe(tickets);
+    expect(host.textContent).toContain("2:00");
+    expect(host.textContent).toContain("Brewer's Alley");
   });
 
 });

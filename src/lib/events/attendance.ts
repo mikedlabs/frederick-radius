@@ -7,6 +7,8 @@
  * online class from inheriting a town centroid and turning into directions,
  * parking, weather, or "nearby food" advice.
  */
+import { isGenericEventVenueName, normalizeEventVenueIdentity } from "./venue-name";
+
 export type EventAttendanceMode = "physical" | "online" | "mixed";
 
 export type EventAttendanceInput = {
@@ -117,6 +119,18 @@ export function eventOnlineActionUrl(
  */
 export function hasActionableAttendance(event: EventAttendanceInput): boolean {
   return !isOnlineOnlyEvent(event) || eventOnlineActionUrl(event) !== null;
+}
+
+/**
+ * A promoted recommendation needs usable attendance evidence. Keep this
+ * stricter than hasActionableAttendance: ambiguous physical listings remain
+ * in the full calendar, but cannot be offered as a ready-to-use next move.
+ * Named venues remain eligible without precise coordinates.
+ */
+export function hasRecommendationAttendance(event: EventAttendanceInput): boolean {
+  if (isOnlineOnlyEvent(event)) return eventOnlineActionUrl(event) !== null;
+  return !isGenericEventVenueName(event.venue_name)
+    && normalizeEventVenueIdentity(event.venue_name) !== "offcampus";
 }
 
 /** User-facing venue text shared by cards and sheets. */

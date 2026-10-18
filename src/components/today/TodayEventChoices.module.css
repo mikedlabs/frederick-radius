@@ -1,0 +1,21 @@
+.choices {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--app-space-3);
+  min-width: 0;
+}
+
+.choices > li {
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .choices {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+
+  .choices > li:first-child {
+    grid-row: span 3;
+  }
+}

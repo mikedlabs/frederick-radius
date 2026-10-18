@@ -39,11 +39,12 @@ describe("Today decision hierarchy", () => {
     expect(find).toBeGreaterThan(weather);
     expect(lead).toBeGreaterThan(find);
     expect(lead).toBeGreaterThan(weather);
-    expect(events).toBeGreaterThan(lead);
+    expect(events).toBeGreaterThan(find);
+    expect(events).toBeLessThan(lead);
     expect(events).toBeGreaterThan(weather);
   });
 
-  it("puts the real area answer before the exact scene and four quick needs, with categories after news", () => {
+  it("keeps quick needs before visual events and the area answer before its scene, with categories after news", () => {
     const find = renderedPage.indexOf("<TodayAsk embedded showQuickNeeds={false}");
     const doorway = renderedPage.indexOf("<TodayGeographicDoorway />");
     const shortcuts = renderedPage.indexOf("<TodayQuickNeeds />");
@@ -56,8 +57,10 @@ describe("Today decision hierarchy", () => {
     expect(doorway).toBeGreaterThan(find);
     expect(lead).toBeGreaterThan(find);
     expect(doorway).toBeGreaterThan(lead);
-    expect(shortcuts).toBeGreaterThan(doorway);
-    expect(events).toBeGreaterThan(lead);
+    expect(shortcuts).toBeGreaterThan(find);
+    expect(shortcuts).toBeLessThan(events);
+    expect(events).toBeGreaterThan(find);
+    expect(events).toBeLessThan(lead);
     expect(news).toBeGreaterThan(events);
     expect(categories).toBeGreaterThan(news);
     expect(renderedPage.match(/<TodayQuickNeeds\s*\/>/g)).toHaveLength(1);
@@ -187,15 +190,14 @@ describe("Today decision hierarchy", () => {
     );
   });
 
-  it("keeps the optional event feature inside the countywide event program", () => {
+  it("uses the same scoped visual shortlist for server paint and recovery", () => {
     const eventsStart = todayPage.indexOf("async function WhatsOn");
     const events = todayPage.slice(eventsStart);
 
     expect(eventsStart).toBeGreaterThan(-1);
-    expect(events).toContain("featureIsPromoted && feature ?");
-    expect(events).toContain("<TonightHeadline event={feature} now={now} embedded />");
-    expect(events).toContain("meta={todayEventPicksMeta({");
-    expect(events).toContain("return <TodayEventsRecovery />;");
+    expect(events).toContain("selectTodayEvents(snapshot.publicEvents, now, 4");
+    expect(events).toContain('venuePhotos: "free-reviewed"');
+    expect(events).toContain("initialResponse={initialResponse} scoped");
     expect(events).not.toContain("Some event sources are still updating.");
   });
 

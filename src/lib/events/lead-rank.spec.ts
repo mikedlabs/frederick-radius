@@ -4,9 +4,13 @@ import {
   eventLeadTier,
   eventProminence,
   compareForLead,
+  compareRecommendationAttendance,
+  compareForRecommendation,
+  rankRecommendations,
   pickLeadEvent,
 } from "./lead-rank";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { compareEventsForDecision } from "./decision-rank";
 
 // Minimal stand-ins — the ranker only reads title, hero_image, category, starts_at.
 function ev(p: Partial<EventWithMeta>): EventWithMeta {
@@ -125,5 +129,85 @@ describe("compareForLead + pickLeadEvent", () => {
     expect(pickLeadEvent([storytime, photo], new Set(["elsewhere"]))).toBe(photo);
     // An empty set is the everyday no-editorial case.
     expect(pickLeadEvent([storytime, photo], new Set())).toBe(photo);
+  });
+});
+
+describe("recommended attendance before existing rank", () => {
+  it("does not let a featured or image-backed ambiguous row outrank a named venue", () => {
+    const weak = ev({ slug: "featured-off-campus", title: "Film festival tickets", venue_name: "Off Campus", category: "film", hero_image: "fixture.jpg" });
+    const real = ev({ slug: "named-concert", title: "Concert", venue_name: "Sky Stage", category: "music" });
+    const featured = new Set(["featured-off-campus"]);
+    // The old comparator remains unchanged for its other callers.
+    expect(compareForLead(weak, real, featured)).toBeLessThan(0);
+    expect([weak, real].sort((a, b) => compareRecommendationAttendance(a, b) || compareForLead(a, b, featured))).toEqual([real, weak]);
+  });
+
+  it("preserves featured and Near Me ranking within the eligible partition", () => {
+    const near = ev({ slug: "near", title: "Near concert", venue_name: "Near Hall", category: "music", distance_m: 100 });
+    const far = ev({ slug: "far", title: "Far concert", venue_name: "Far Hall", category: "music", distance_m: 1_000 });
+    const weak = ev({ slug: "weak", title: "Nearby offer", venue_name: "Off Campus", category: "music", distance_m: 1 });
+    const rank = (featured: Set<string>) => [weak, far, near].sort((a, b) =>
+      compareRecommendationAttendance(a, b) || compareEventsForDecision(a, b, featured));
+    expect(rank(new Set(["weak"]))).toEqual([near, far, weak]);
+    expect(rank(new Set(["weak", "far"]))).toEqual([far, near, weak]);
+  });
+});
+
+
+describe("useful and varied recommendations", () => {
+  it("does not mistake bookable product promotion for a stronger public outing", () => {
+    const sales = ev({ slug: "showroom", title: "Home Improvement Expo", venue_name: "Exhibition Hall", category: "community", ticket_url: "https://example.test/tickets", price_text: "$20", hero_image: "showroom.jpg", starts_at: "2026-06-20T12:00:00Z" });
+    const outing = ev({ slug: "community-day", title: "Summer Festival", venue_name: "Town Park", category: "community", starts_at: "2026-06-20T18:00:00Z" });
+    expect(compareForLead(sales, outing)).toBeLessThan(0);
+    expect([sales, outing].sort(compareForRecommendation)).toEqual([outing, sales]);
+    expect(rankRecommendations([sales, outing])).toEqual([outing, sales]);
+  });
+
+  it("keeps a public science expo eligible without treating expo as sales language", () => {
+    const science = ev({ slug: "science", title: "Community Science Expo", venue_name: "Discovery Center", category: "family", hero_image: "science.jpg" });
+    const concert = ev({ slug: "concert", title: "Concert", venue_name: "Music Hall", category: "music" });
+    expect(compareForRecommendation(science, concert)).toBeLessThan(0);
+    expect(rankRecommendations([concert, science])[0]).toBe(science);
+  });
+
+  it("ignores admission and ticket-link completeness when comparing equivalent outings", () => {
+    const free = ev({ title: "Outdoor Concert", venue_name: "Town Park", category: "music", starts_at: "2026-06-20T17:00:00Z", is_free: true });
+    const paid = ev({ title: "Evening Concert", venue_name: "Music Hall", category: "music", starts_at: "2026-06-20T20:00:00Z", ticket_url: "https://example.test/tickets", price_text: "$15", is_free: false });
+    expect(compareForRecommendation(free, paid)).toBeLessThan(0);
+    expect(compareForRecommendation({ ...free, is_free: false }, paid)).toBeLessThan(0);
+  });
+
+  it("offers different places and interests without removing other occurrences", () => {
+    const first = ev({ slug: "same-series", title: "Morning Concert", venue_name: "Music Hall", category: "music", starts_at: "2026-06-20T14:00:00Z" });
+    const duplicateSlug = ev({ slug: "same-series", title: "Afternoon Concert", venue_name: "Music Hall", category: "music", starts_at: "2026-06-20T17:00:00Z" });
+    const thirdConcert = ev({ slug: "other-concert", title: "Evening Concert", venue_name: "Music Hall", category: "music", starts_at: "2026-06-20T19:00:00Z" });
+    const outdoor = ev({ slug: "walk", title: "Guided Nature Walk", venue_name: "Forest Park", category: "outdoors", starts_at: "2026-06-20T20:00:00Z" });
+    const theatre = ev({ slug: "play", title: "Theatre Performance", venue_name: "Community Theatre", category: "arts", starts_at: "2026-06-20T21:00:00Z" });
+    const source = Object.freeze([first, duplicateSlug, thirdConcert, outdoor, theatre].map(event => Object.freeze(event)));
+    const before = JSON.stringify(source);
+    const ranked = rankRecommendations(source, { limit: 3 });
+    expect(ranked.slice(0, 3)).toEqual([first, outdoor, theatre]);
+    expect(ranked.slice(3)).toEqual([duplicateSlug, thirdConcert]);
+    expect(ranked).toHaveLength(source.length);
+    expect(new Set(ranked).size).toBe(source.length);
+    expect(JSON.stringify(source)).toBe(before);
+  });
+
+  it("keeps editorial picks and valid destinations ahead of variety", () => {
+    const first = ev({ slug: "featured-1", title: "First Concert", venue_name: "Music Hall", category: "music" });
+    const second = ev({ slug: "featured-2", title: "Second Concert", venue_name: "Music Hall", category: "music" });
+    const outside = ev({ slug: "outside", title: "Guided Walk", venue_name: "Forest Park", category: "outdoors" });
+    const weak = ev({ slug: "weak", title: "Festival", venue_name: "Off Campus", category: "family", hero_image: "weak.jpg" });
+    const source = [weak, first, second, outside];
+    expect(rankRecommendations(source, { featured: new Set([first.slug, second.slug, weak.slug]), limit: 3 })).toEqual([first, second, outside, weak]);
+  });
+
+  it("uses consented distance between comparable choices and remains bounded", () => {
+    const far = ev({ slug: "far", title: "Concert", venue_name: "Far Hall", category: "music", distance_m: 3_000 });
+    const near = ev({ slug: "near", title: "Concert", venue_name: "Near Hall", category: "music", distance_m: 300 });
+    expect(compareForRecommendation(near, far)).toBeLessThan(0);
+    expect(rankRecommendations([far, near], { limit: 1 })).toEqual([near, far]);
+    expect(rankRecommendations([], { limit: 6 })).toEqual([]);
+    expect(rankRecommendations([far, near], { limit: -1 })).toEqual([near, far]);
   });
 });

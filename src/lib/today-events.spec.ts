@@ -52,6 +52,12 @@ describe("Today event shortlist", () => {
       degraded: false,
     })).toBe("3 event picks today · 2 event picks tonight · Countywide");
     expect(todayEventPicksMeta({
+      todayPicks: 2,
+      tonightPicks: 1,
+      degraded: false,
+      scopeLabel: "Middletown",
+    })).toBe("2 event picks today · 1 event pick tonight · Middletown");
+    expect(todayEventPicksMeta({
       todayPicks: 0,
       tonightPicks: 0,
       degraded: true,
@@ -165,13 +171,13 @@ describe("Today event shortlist", () => {
 });
 
 
-describe("Today first-pick visual resolution", () => {
+describe("Today selected event visual resolution", () => {
   function live(patch: Partial<TodayEventCandidate> = {}) {
     return event({ slug: "live-choice", title: "Community concert", presenter: "Supplied presenter",
       starts_at: "2026-07-16T17:00:00.000Z", ends_at: "2026-07-16T18:30:00.000Z", ...patch });
   }
 
-  it("resolves only the selected first source record after eligibility, ordering and limiting", () => {
+  it("resolves each selected source record after eligibility, ordering and limiting", () => {
     const first = Object.freeze(live({ venue_place_slug: "baker-park-bandshell" }));
     const later = Object.freeze(event({ slug: "later-choice", title: "Evening concert",
       venue_place_slug: "carroll-creek-linear-park-frederick", ticket_url: "https://example.test/tickets/evening" }));
@@ -185,24 +191,25 @@ describe("Today first-pick visual resolution", () => {
     const selected = selectTodayEvents(pool, now, 2, resolveVisual);
     expect(selected.map(row => row.slug)).toEqual([first.slug, later.slug]);
     expect(selected[0]).toEqual({ ...baseline[0], visual });
-    expect(selected[1]).toEqual(baseline[1]);
-    expect(resolveVisual).toHaveBeenCalledTimes(1);
+    expect(selected[1]).toEqual({ ...baseline[1], visual });
+    expect(resolveVisual).toHaveBeenCalledTimes(2);
     expect(resolveVisual.mock.calls[0][0]).toBe(first);
     expect(selected[0]).toMatchObject({ title: first.title, presenter: first.presenter, visual });
-    expect(selected[1]).not.toHaveProperty("visual");
+    expect(resolveVisual.mock.calls[1][0]).toBe(later);
     expect(JSON.stringify(pool)).toBe(before);
   });
 
-  it("does not search later choices for an image or promote their image onto a photo-less first choice", () => {
+  it("keeps each selected image on its own source event, including a photo-less first choice", () => {
     const first = live();
     const later = event({ slug: "illustrated-later-choice", title: "Evening concert", venue_place_slug: "baker-park-bandshell" });
     const resolveVisual = vi.fn((source: TodayEventCandidate) =>
       parseRecoveryEventVisual(eventCardVisual(source, { venuePhotos: "owned-only" })));
     const selected = selectTodayEvents([later, first], now, 3, resolveVisual);
     expect(selected.map(row => row.slug)).toEqual([first.slug, later.slug]);
-    expect(resolveVisual).toHaveBeenCalledTimes(1);
+    expect(resolveVisual).toHaveBeenCalledTimes(2);
     expect(resolveVisual.mock.calls[0][0]).toBe(first);
-    expect(selected.every(row => row.visual === undefined)).toBe(true);
+    expect(selected[0]).not.toHaveProperty("visual");
+    expect(selected[1].visual).toEqual(eventCardVisual(later, { venuePhotos: "owned-only" }));
     expect(eventCardVisual(later, { venuePhotos: "owned-only" })).not.toBeNull();
   });
 
@@ -213,7 +220,7 @@ describe("Today first-pick visual resolution", () => {
     const baseline = selectTodayEvents(pool, now);
     const resolveVisual = vi.fn<(source: TodayEventCandidate) => never>(() => { throw new Error("Optional visual unavailable"); });
     expect(selectTodayEvents(pool, now, 3, resolveVisual)).toEqual(baseline);
-    expect(resolveVisual).toHaveBeenCalledTimes(1);
+    expect(resolveVisual).toHaveBeenCalledTimes(2);
     expect(resolveVisual.mock.calls[0][0]).toBe(first);
     expect(first.title).toBe("Community concert");
     expect(first.presenter).toBe("Supplied presenter");
@@ -226,4 +233,38 @@ describe("Today first-pick visual resolution", () => {
     expect(selectTodayEvents([live()], now, 0, resolveVisual)).toEqual([]);
     expect(resolveVisual).not.toHaveBeenCalled();
   });
+});
+
+
+it("carries only published admission and end clocks into the Today choice", () => {
+  const published = event({ slug: "published", title: "Concert", price_text: "$10 at the door" });
+  const unknown = event({ slug: "unknown", title: "Art Opening", category: "arts", ends_at: undefined, price_text: undefined, is_free: false });
+  const picks = selectTodayEvents([published, unknown], now);
+  expect(picks.find(row => row.slug === published.slug)).toMatchObject({ time: "7:00 PM", endTime: "9:00 PM", price: "$10 at the door" });
+  expect(picks.find(row => row.slug === unknown.slug)).not.toHaveProperty("price");
+  expect(picks.find(row => row.slug === unknown.slug)).not.toHaveProperty("endTime");
+});
+
+it("keeps a varied same-time shortlist instead of filling it with one venue", () => {
+  const concerts = [0, 1, 2, 3].map(index => event({ slug: `concert-${index}`, title: `Concert ${index}`, venue_name: "Music Hall" }));
+  const walk = event({ slug: "walk", title: "Guided Walk", category: "outdoors", venue_name: "Forest Park", starts_at: "2026-07-17T00:00:00.000Z" });
+  const result = selectTodayEvents([...concerts, walk], now, 2);
+  expect(result.map(row => row.slug)).toContain(walk.slug);
+  expect(result).toHaveLength(2);
+});
+
+
+it.each([
+  ["zero duration", "2026-07-16T13:00:00.000Z"],
+  ["backward end", "2026-07-16T12:59:00.000Z"],
+  ["publisher end-of-day sentinel", "2026-07-17T03:59:00.000Z"],
+  ["invalid published end", "not-a-date"],
+])("does not turn %s into a published duration in Today", (_label, ends_at) => {
+  const candidate = event({ slug: "unknown-duration", title: "Community Concert",
+    starts_at: "2026-07-16T13:00:00.000Z", ends_at,
+    last_verified_at: "2026-07-16T11:00:00.000Z" });
+  const picks = selectTodayEvents([candidate], new Date("2026-07-16T12:00:00.000Z"));
+  expect(picks).toHaveLength(1);
+  expect(picks[0]).toMatchObject({ slug: candidate.slug, time: "9:00 AM" });
+  expect(picks[0]).not.toHaveProperty("endTime");
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { buildHorizonBounds, groupByHorizon } from "@/lib/eventHorizon";
+import { hasRecommendationAttendance } from "./attendance";
 import {
   collapseLaterSeries,
   initialEventsForBrowse,
@@ -64,7 +65,8 @@ describe("events browse payload", () => {
     );
 
     expect(slim.description).toHaveLength(160);
-    expect("ticket_url" in slim).toBe(false);
+    expect(slim.ticket_url).toBe("https://example.com/ticket");
+    expect(slim.address).toBe("1 Test St");
     expect(slim.source_url).toBe("https://example.com/source");
     expect(slim.source).toBe("seed");
     expect(slim.geo_confidence).toBe("venue_match");
@@ -194,4 +196,59 @@ describe("events browse payload", () => {
     expect(initial.map((item) => item.slug)).toContain("concert");
     expect(initial).toHaveLength(6);
   });
+});
+
+describe("recommended attendance survives the bounded browse projection", () => {
+  it("includes a usable seventh candidate while retaining the complete archive and summary", () => {
+    const weak = Array.from({ length: 8 }, (_, index) =>
+      event("off-campus-" + index, "2026-07-14T18:00:00.000Z", { venue_name: "Off Campus", hero_image: "fixture.jpg" }));
+    const real = event("usable-concert", "2026-07-14T23:00:00.000Z", {
+      title: "Concert", venue_name: "Community Hall", hero_image: undefined, geo_confidence: "area",
+    });
+    const source = [...weak, real], before = JSON.stringify(source);
+    const prepared = prepareEventsForBrowse(source, BOUNDS);
+    const initial = initialEventsForBrowse(prepared, BOUNDS, 6, new Set(weak.map((row) => row.slug)));
+    expect(initial).toHaveLength(6);
+    expect(initial.map((row) => row.slug)).toContain(real.slug);
+    expect(prepared).toHaveLength(9);
+    expect(summarizeEventsForBrowse(prepared, BOUNDS).totalCount).toBe(9);
+    expect(summarizeEventsForBrowse(prepared, BOUNDS).horizonCounts.today).toBe(9);
+    expect(prepared.map((row) => [row.slug, row.starts_at, row.ends_at])).toEqual(source.map((row) => [row.slug, row.starts_at, row.ends_at]));
+    expect(JSON.stringify(source)).toBe(before);
+  });
+
+  it("preserves direct RSVP/ticket evidence and address-based attendance inference", () => {
+    const online = event("online", "2026-07-14T18:00:00.000Z", {
+      attendance_mode: "online", venue_name: "Off Campus", online_url: undefined,
+      source_url: "https://example.test/calendar.ics", rsvp_url: "https://example.test/events/register",
+      ticket_url: "https://example.test/events/tickets",
+    });
+    const viaAddress = event("address-online", "2026-07-14T18:00:00.000Z", {
+      title: "Artist talk", venue_name: "Frederick", address: "Zoom",
+      source_url: "https://example.test/events/artist-talk",
+    });
+    for (const row of [online, viaAddress]) {
+      const slim = JSON.parse(JSON.stringify(slimEventForBrowse(row))) as EventWithMeta;
+      expect(hasRecommendationAttendance(row)).toBe(true);
+      expect(hasRecommendationAttendance(slim)).toBe(true);
+      expect(slim.starts_at).toBe(row.starts_at);
+      expect(slim.ends_at).toBe(row.ends_at);
+    }
+    expect(slimEventForBrowse(online).rsvp_url).toBe(online.rsvp_url);
+    expect(slimEventForBrowse(online).ticket_url).toBe(online.ticket_url);
+  });
+});
+
+
+it("chooses a varied first paint before the six-row cap without changing full counts", () => {
+  const concerts = Array.from({ length: 8 }, (_, index) => event(`concert-${index}`, `2026-07-14T${String(13 + index).padStart(2, "0")}:00:00.000Z`, {
+    title: `Summer Concert ${index}`, venue_name: "Music Hall", category: "music",
+  }));
+  const walk = event("nature-walk", "2026-07-14T22:00:00.000Z", { title: "Guided Nature Walk", venue_name: "Forest Park", category: "outdoors" });
+  const prepared = prepareEventsForBrowse([...concerts, walk], BOUNDS);
+  const selected = initialEventsForBrowse(prepared, BOUNDS);
+  expect(selected.map(row => row.slug)).toContain(walk.slug);
+  expect(selected).toHaveLength(6);
+  expect(prepared).toHaveLength(9);
+  expect(summarizeEventsForBrowse(prepared, BOUNDS).totalCount).toBe(9);
 });

@@ -5,9 +5,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
-import Image from "next/image";
-import { Accessibility, AlertTriangle, ArrowLeft, ArrowRight, Ban, Calendar, ChevronDown, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { Accessibility, AlertTriangle, ArrowRight, Ban, Calendar, ChevronDown, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
 import { EVENTS } from "@/data/events";
 import { formatEventWhen, seriesOccurrenceLabel, eventDateBlock } from "@/lib/loaders/events";
 import {
@@ -49,7 +47,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import PlaceCard from "@/components/place/PlaceCard";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
-import EventVisualCredit from "@/components/event/EventVisualCredit";
+import EventVenuePhoto from "@/components/event/EventVenuePhoto";
 import EventArtwork from "@/components/event/EventArtwork";
 import EventSourceLink from "@/components/event/EventSourceLink";
 import { eventCardVisual } from "@/components/event/eventVisuals";
@@ -414,10 +412,10 @@ export default async function EventPage({
 
       {/* Visually small breadcrumbs with invisible 44px hit areas
           (WCAG 2.5.5) — py-3.5/-my-3.5 grows the tap zone only. */}
-      {!photoVisual && (
+      {
         <nav aria-label="Breadcrumb" className="text-xs">
           <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
-            <li><Link href="/events" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Events</Link></li>
+            <li><Link href="/events" className="inline-flex min-h-11 items-center gap-1.5 px-1 -mx-1 hover:underline">Events</Link></li>
             <li aria-hidden>·</li>
             <li>
               {physicalAttendance && MUNICIPALITY_BY_SLUG[event.municipality] ? (
@@ -428,7 +426,7 @@ export default async function EventPage({
             </li>
           </ol>
         </nav>
-      )}
+      }
 
       {/* Cancellation banner — loud, above the hero, so a user who
        *  came here for this event sees it's off before anything else.
@@ -506,75 +504,24 @@ export default async function EventPage({
         data-decision-entity="event"
         data-decision-id={event.slug}
         data-decision-position="detail"
-        className={`shader-rim overflow-hidden ${photoVisual ? "-mx-4 -mt-4 sm:mx-0 sm:mt-0 rounded-none sm:rounded-[var(--app-radius-xl)] border-y sm:border" : "rounded-[var(--app-radius-xl)] border"}`}
+        className="shader-rim overflow-hidden rounded-[var(--app-radius-xl)] border"
         style={{
           borderColor: "var(--app-border)",
           opacity: eventStatus === "cancelled" ? 0.85 : 1,
           viewTransitionName: `event-${event.slug}`,
         }}
       >
-        {photoVisual ? (
-          <div className="relative h-64 w-full overflow-hidden sm:h-72">
-            <Image
-              src={photoVisual.src}
-              alt=""
-              fill
-              unoptimized={photoVisual.src.startsWith("/api/place-photo")}
-              priority
-              sizes="(max-width: 720px) 100vw, 720px"
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
-            {/* Top row: action cluster and back button (glassmorphic) */}
-            <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
-              {/* Glassmorphic back button */}
-              <Link
-                href="/events"
-                className="tactile-interactive flex h-9 items-center justify-center gap-1.5 rounded-full px-3.5 text-xs font-semibold text-white shadow-sm backdrop-blur-md transition-transform active:scale-95"
-                style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}
-              >
-                <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
-                Back
-              </Link>
-              <div className="flex shrink-0 items-center gap-1">
-                <div className="rounded-full backdrop-blur-md" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}>
-                  <EventActions event={event} actions={["share"]} />
-                </div>
-                <div className="hidden lg:block rounded-full backdrop-blur-md" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}>
-                  <SaveButton refType="event" refId={event.slug} label={eventDisplayTitle(event)} />
-                </div>
-              </div>
-            </div>
-            {/* Bottom: category eyebrow + title */}
-            <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-              <p className="text-[11px] font-medium uppercase tracking-[0.14em] opacity-85">
-                {cat?.name ?? event.category}
-              </p>
-              <h1 className="mt-0.5 font-serif text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]">
-                {eventDisplayTitle(event)}
-              </h1>
+        <div className="relative min-w-0 bg-[var(--app-bg-elevated)] px-5 pb-2 pt-5">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs font-semibold" style={{ color: "var(--app-ink-3)" }}>{cat?.name ?? "Event"}</p>
+            <div className="flex shrink-0 items-center gap-1">
+              <EventActions event={event} actions={["share"]} />
+              <div className="hidden lg:block"><SaveButton refType="event" refId={event.slug} label={eventDisplayTitle(event)} /></div>
             </div>
           </div>
-        ) : (
-          <div className="relative bg-[var(--app-bg-elevated)] px-5 pb-2 pt-5">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>{cat?.name ?? "Event"}</p>
-              <div className="flex shrink-0 items-center gap-1">
-                <EventActions event={event} actions={["share"]} />
-                <div className="hidden lg:block"><SaveButton refType="event" refId={event.slug} label={eventDisplayTitle(event)} /></div>
-              </div>
-            </div>
-            <h1 className="text-[26px] font-semibold leading-tight tracking-tight sm:text-[32px]" style={{ color: "var(--app-ink)" }}>{eventDisplayTitle(event)}</h1>
-          </div>
-        )}
-        {photoVisual ? (
-          <EventVisualCredit
-            visual={photoVisual}
-            className="border-t bg-[var(--app-bg-elevated)] px-5 py-2"
-          />
-        ) : null}
+          <h1 className="break-words text-[1.625rem] font-semibold leading-tight tracking-tight sm:text-[2rem]" style={{ color: "var(--app-ink)" }}>{eventDisplayTitle(event)}</h1>
+        </div>
+        {photoVisual && <EventVenuePhoto visual={photoVisual} priority className="bg-[var(--app-bg-elevated)] px-5 pt-3" />}
         {/* Below-the-hero metadata strip: trust + description + venue/
          *  free/recurrence/organizer/freshness. */}
         <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
@@ -586,12 +533,12 @@ export default async function EventPage({
           <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
             <span className="inline-flex items-baseline gap-1.5">
               <Calendar className="h-4 w-4 translate-y-0.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand)" }} aria-hidden />
-              <span className="font-serif text-[17px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+              <span className="text-[1.0625rem] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
                 {whenDate}
               </span>
             </span>
             {whenTime && (
-              <span className="font-mono tabular-nums text-[14px]" style={{ color: "var(--app-ink-2)" }}>
+              <span className="text-sm tabular-nums" style={{ color: "var(--app-ink-2)" }}>
                 {whenTime}
               </span>
             )}

@@ -44,6 +44,7 @@ export default function EventCard({
   priorityImage = true,
   visual,
   nowISO,
+  venuePhotos = "all-approved",
 }: {
   event: EventWithMeta;
   /**
@@ -95,6 +96,8 @@ export default function EventCard({
   visual?: EventCardVisual;
   /** Server-captured page time, used for stable started/unknown-end copy. */
   nowISO?: string;
+  /** Supplementary-card policy; feature cards retain their existing gate. */
+  venuePhotos?: "all-approved" | "free-reviewed";
 }) {
   const displayTitle = eventDisplayTitle(event);
   const status = event.status ?? "scheduled";
@@ -155,7 +158,7 @@ export default function EventCard({
   const accentText = `var(--app-list-fact-color, color-mix(in srgb, ${accent} 55%, var(--app-ink)))`;
   const categoryLabel = cat?.name ?? (event.category ? event.category : "Event");
   const accessLabel = communicationAccessLabels(event)[0];
-  const cardVisual = eventCardVisual(event);
+  const cardVisual = eventCardVisual(event, { venuePhotos });
   const decisionAttributes = {
     "data-decision-impression": "true",
     "data-decision-surface": "events",

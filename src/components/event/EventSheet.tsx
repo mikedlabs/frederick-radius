@@ -1,18 +1,14 @@
 "use client";
 
-import { useEffect, useState, useRef, type RefObject } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { motion, useScroll, useTransform } from "framer-motion";
 import { ExternalLink, MapPin, Navigation, Ticket, CalendarCheck } from "lucide-react";
 import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
-import CategoryIcon from "@/components/place/CategoryIcon";
 import ItineraryButton from "@/components/saved/ItineraryButton";
 import EventActions from "@/components/event/EventActions";
-import EventVisualCredit from "@/components/event/EventVisualCredit";
+import EventVenuePhoto from "@/components/event/EventVenuePhoto";
 import EventArtwork from "@/components/event/EventArtwork";
 import { eventCardVisual } from "@/components/event/eventVisuals";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { eventDateBlock } from "@/lib/events/format";
 import { eventDecisionLocation, eventDecisionTime, eventTimeCaution } from "@/lib/events/decision-facts";
@@ -147,12 +143,6 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
   const eventVisual = eventCardVisual(event);
   const photoVisual = eventVisual?.presentation === "photo" ? eventVisual : null;
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const { scrollY } = useScroll({ container: scrollRef });
-  const heroY = useTransform(scrollY, [0, 300], [0, 100]);
-  const heroScale = useTransform(scrollY, [-100, 0], [1.1, 1]);
-  // Fade the hero text out slightly as it scrolls up
-  const textOpacity = useTransform(scrollY, [0, 150], [1, 0.3]);
 
   useEffect(() => {
     trackDecision({
@@ -177,100 +167,18 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
        *  everything) so the sheet often ends flush at the viewport bottom —
        *  the footer needs enough padding to clear the floating BottomNav
        *  pill, where the place sheet's long scroll never parks there. */}
-      <div ref={scrollRef} className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[88px]">
-        {/* Hero — the venue's photo when the event carries one, with the
-         *  category eyebrow + title overlaid (same cinematic pattern as
-         *  the place sheet). Photoless events keep their category and
-         *  title on the neutral reading surface. */}
-        {photoVisual ? (
-          <div className="relative aspect-[16/9] w-full overflow-hidden">
-            <motion.div 
-              className="absolute inset-0 origin-bottom"
-              style={{ y: heroY, scale: heroScale }}
-            >
-              <Image
-                src={photoVisual.src}
-                alt=""
-                fill
-                unoptimized={photoVisual.src.startsWith("/api/place-photo")}
-                priority
-                sizes="(max-width: 720px) 100vw, 720px"
-                placeholder="blur"
-                blurDataURL={PAPER_CREAM_BLUR}
-                className="object-cover"
-              />
-            </motion.div>
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.2) 55%, rgba(0,0,0,0.8) 100%)",
-              }}
-            />
-            <motion.div 
-              className="absolute inset-x-0 bottom-0 p-5 pb-4"
-              style={{ opacity: textOpacity }}
-            >
-              <p
-                className="text-[11px] font-bold uppercase tracking-[0.14em]"
-                style={{
-                  color: "var(--app-on-brand)",
-                  textShadow: "0 1px 2px rgba(0,0,0,0.55)",
-                }}
-              >
-                {categoryLabel}
-              </p>
-              <h2
-                className={`mt-1 font-sans text-[24px] font-semibold leading-tight tracking-tight text-white ${isCancelled ? "line-through opacity-80" : ""}`}
-                style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
-              >
-                {eventDisplayTitle(event)}
-              </h2>
-            </motion.div>
-            <div className="absolute left-3 top-3 z-10">
-              <ItineraryButton eventId={event.slug} label={`Add ${eventDisplayTitle(event)} to itinerary`} />
-            </div>
-          </div>
-        ) : null}
-        {photoVisual ? (
-          <EventVisualCredit
-            visual={photoVisual}
-            className="border-b px-5 py-2"
-          />
-        ) : null}
-
+      <div className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[88px]">
         {/* reveal-up: the sheet's blocks settle top-to-bottom on open —
          *  the one cascade grammar every surface shares. */}
         <div className="reveal-up px-5 pt-4">
-          {!photoVisual && (
-            <header className="flex items-start gap-3">
-              <span
-                aria-hidden
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
-                style={{
-                  background: "var(--app-bg-sunken)",
-                  color: "var(--app-ink-3)",
-                }}
-              >
-                <CategoryIcon slug={event.category} className="h-5 w-5" strokeWidth={2} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-                  {categoryLabel}
-                </p>
-                <h2
-                  className={`font-sans text-[22px] font-semibold leading-tight tracking-tight ${isCancelled ? "line-through opacity-80" : ""}`}
-                  style={{ color: "var(--app-ink)" }}
-                >
-                  {eventDisplayTitle(event)}
-                </h2>
-              </div>
-              <div className="shrink-0">
-                <ItineraryButton eventId={event.slug} label={`Add ${eventDisplayTitle(event)} to itinerary`} />
-              </div>
-            </header>
-          )}
+          <header className="min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs font-semibold" style={{ color: "var(--app-ink-3)" }}>{categoryLabel}</p>
+              <ItineraryButton eventId={event.slug} label={`Add ${eventDisplayTitle(event)} to itinerary`} />
+            </div>
+            <h2 className={`mt-1 break-words text-[1.375rem] font-semibold leading-tight tracking-tight ${isCancelled ? "line-through opacity-80" : ""}`}
+              style={{ color: "var(--app-ink)" }}>{eventDisplayTitle(event)}</h2>
+          </header>
 
           {/* Cancelled / postponed — loud, first, never mistakable for "on". */}
           {statusText && (
@@ -283,7 +191,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
           )}
 
           {/* When — the first question a tap is asking. */}
-          <p className="mt-3 text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
+          <p className="mt-3 break-words text-base font-semibold" style={{ color: "var(--app-ink)" }}>
             <span className="font-mono tabular-nums">
               {date.weekday} {date.month} {date.day}
             </span>
@@ -308,7 +216,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
            *  and the normalizer blanked the duplicate) — the whole row
            *  hides rather than render an orphaned pin. */}
           {(attendanceLabel || (physicalAttendance && event.address)) && (
-            <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+            <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 break-words text-sm" style={{ color: "var(--app-ink-3)" }}>
               {attendanceLabel ? (
                 <span className="inline-flex items-center gap-1" style={{ color: "var(--app-ink-2)" }}>
                   {physicalAttendance ? (
@@ -331,7 +239,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
           {/* Cost — free is a headline, a price is a fact, silence is
            *  honest when the source told us neither. */}
           {(event.is_free || event.price_text) && (
-            <p className="mt-2 text-[13px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+            <p className="mt-2 text-sm font-semibold" style={{ color: "var(--app-ink-2)" }}>
               {event.is_free ? "Free" : event.price_text}
             </p>
           )}
@@ -427,6 +335,8 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
             {!canAttend && <Link href="/events?lens=today" onClick={onClose} className="flex min-h-11 items-center justify-center rounded-[var(--app-radius-md)] px-4 text-[13px] font-semibold" style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}>Find upcoming events</Link>}
             <EventActions event={{ ...event, ends_at: eventHasTrustworthyEnd(event) ? event.ends_at : event.starts_at }} actions={canAttend && !isDateOnlyEventAnchor(event) ? ["calendar", "share"] : ["share"]} labeled className="pt-1" />
           </div>
+
+          {photoVisual && <EventVenuePhoto visual={photoVisual} className="mt-4" />}
 
           {eventVisual?.presentation === "artwork" && (
             <EventArtwork visual={eventVisual} className="mt-4" />

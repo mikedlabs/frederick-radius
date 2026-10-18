@@ -63,6 +63,10 @@ export default function EventSheetBoundary({
     if (!event && !fetchMissing) return;
     e.preventDefault();
     e.stopPropagation();
+    // Safari touch activation can leave document.activeElement on the body.
+    // The provider captures the active opener for native Back/focus return,
+    // so establish the actual intercepted link without moving the listing.
+    anchor.focus({ preventScroll: true });
     if (fetchFull || !event) openEventSheetBySlug(slug);
     else openEventSheet(event);
   };

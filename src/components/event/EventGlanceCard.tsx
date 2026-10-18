@@ -53,6 +53,7 @@ export default function EventGlanceCard({ eventSlug, visual, accent, cancelled, 
                   sizes="auto, min(100vw, 480px)"
                   placeholder="blur" blurDataURL={PAPER_CREAM_BLUR}
                   className={visibleVisual.presentation === "artwork" ? "object-contain bg-[var(--app-bg-sunken)] p-1" : "object-cover transition-transform duration-700 ease-out group-hover:scale-105"}
+                  style={visibleVisual.objectPosition ? { objectPosition: visibleVisual.objectPosition } : undefined}
                   onLoad={(event) => inspectLoadedImage(event.currentTarget)}
                   onError={failImage}
                 />

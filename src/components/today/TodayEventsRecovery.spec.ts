@@ -378,14 +378,14 @@ describe("Today recovery optional visual compatibility", () => {
     } finally { await act(async () => root.unmount()); }
   });
 
-  it("keeps chronological picks in place when only a later row has a visual", () => {
+  it("keeps pick order and renders approved imagery on a later row", () => {
     const later = { ...event, slug: "later-event", visual: { src: "/images/seasons/fall/018.jpg",
       key: "radius-baker-park-bandshell", caption: "Venue · Baker Park", presentation: "photo" as const } };
     const html = renderToStaticMarkup(createElement(TodayEventsRecoveryView, {
       response: { partial: false, events: [event, later] },
     }));
     expect(html.indexOf(`/events/${event.slug}`)).toBeLessThan(html.indexOf("/events/later-event"));
-    expect(html).not.toContain("<img");
-    expect(html).not.toContain("Venue · Baker Park");
+    expect(html.match(/<img/g)).toHaveLength(1);
+    expect(html).toContain("Venue · Baker Park");
   });
 });

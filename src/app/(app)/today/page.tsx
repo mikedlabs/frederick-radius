@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
 import { WeatherPending } from "@/components/today/TodayWeatherView";
 import TodayPlanTonightLink from "@/components/today/TodayPlanTonightLink";
-import { ChevronRight } from "lucide-react";
 import { easternDayKey } from "@/lib/tz";
 import OnNowBand from "@/components/today/OnNowBand";
 import KeysScore from "@/components/today/KeysScore";
@@ -14,10 +12,6 @@ import MomentSpotlight from "@/components/today/MomentSpotlight";
 import TodayFairFeature from "@/components/today/TodayFairFeatureIsland";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
-import DismissibleSection from "@/components/today/DismissibleSection";
-import EventCard from "@/components/event/EventCard";
-import TonightHeadline from "@/components/today/TonightHeadline";
-import TodayEventRow from "@/components/today/TodayEventRow";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import WeekendPreview from "@/components/today/WeekendPreview";
 import FromYourSaved from "@/components/today/FromYourSaved";
@@ -26,7 +20,6 @@ import FromYourSaved from "@/components/today/FromYourSaved";
 // reorder makes the divider unnecessary.
 
 import { loadTodayEventSnapshot } from "@/lib/loaders/todayEventSnapshot";
-import { deriveTodayProgram } from "@/lib/today/event-program";
 import PoolsToday from "@/components/today/PoolsToday";
 import TodayLocalGuides, { TodayFoodTruckGuide } from "@/components/today/TodayLocalGuides";
 import { BREWERIES } from "@/data/beers";
@@ -48,13 +41,12 @@ import CravingStrip from "@/components/now/CravingStrip";
 import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
 import { getStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
-import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming";
 import TodayScopeStatus from "@/components/today/TodayScopeStatus";
 import TodayEventsRecovery from "@/components/today/TodayEventsRecovery";
 import {
-  shouldRenderTodayEventSection,
-  todayEventPicksMeta,
+  selectTodayEvents,
 } from "@/lib/today-events";
+import { eventCardVisual, parseRecoveryEventVisual } from "@/components/event/eventVisuals";
 import TodayMasthead from "@/components/today/TodayMasthead";
 import TodayGeographicDoorway, { TodayGeographicDoorwayPending } from "@/components/today/TodayGeographicDoorway";
 import PageChapter from "@/components/ui/PageChapter";
@@ -180,7 +172,7 @@ export default async function HomePage() {
   // shared town lens is applied by DaypartNeeds through /api/want; replacing
   // this component with an event headline made a town change look completely
   // inert on any day with a promoted draw. Events still get their editorial
-  // feature, but inside the explicitly countywide What's-on program below.
+  // feature after the scoped event shortlist below.
   const decisionLead = (
     <Suspense fallback={<OpenPlaceLead rows={baseDaypartRows} note={null} />}>
       <WeatherAwareOpenPlaceLead
@@ -290,7 +282,30 @@ export default async function HomePage() {
           </div>
         </div>
 
+      {/* Keep practical actions near Find while visual discovery leads the day. */}
+      <div className={styles.quickNeeds}>
+        <TodayQuickNeeds />
+      </div>
+
       <div data-today-current-content className={styles.currentContent}>
+      <PageChapter
+        label="Follow the day"
+        variant="plain"
+        className={styles.events}
+      >
+        {/* A second civic moment still matters during the Fair campaign. Keep
+            it with the day's program so it survives without competing with
+            the place choices below. */}
+        {fairPromotionPhase &&
+        civicMoment &&
+        civicMoment.slug !== TODAY_FAIR_PROMOTION_SLUG &&
+        !civicMomentLeadsToday ? (
+          <div className="mb-4">
+            <MomentSpotlight moment={civicMoment} />
+          </div>
+        ) : null}
+        {whatsOn}
+      </PageChapter>
         <div aria-label="Places for your area" className={styles.places}>
           {/* The real selected-area answer leads the evergreen scene in both
               document and visual order. Its existing scope/fallback stays mounted. */}
@@ -302,29 +317,9 @@ export default async function HomePage() {
           <Suspense fallback={<TodayGeographicDoorwayPending />}>
             <TodayGeographicDoorway />
           </Suspense>
-          <div className={styles.quickNeeds}>
-            <TodayQuickNeeds />
-          </div>
         </div>
 
-      <PageChapter
-        label="Follow the day"
-        variant="plain"
-        className={styles.events}
-      >
-        {/* A second civic moment still matters during the Fair campaign. Keep
-            it with the day's program so it survives without competing with
-            the place choices above. */}
-        {fairPromotionPhase &&
-        civicMoment &&
-        civicMoment.slug !== TODAY_FAIR_PROMOTION_SLUG &&
-        !civicMomentLeadsToday ? (
-          <div className="mb-4">
-            <MomentSpotlight moment={civicMoment} />
-          </div>
-        ) : null}
-        {whatsOn}
-      </PageChapter>
+
       </div>
 
       {/* News follows the first local answers. Feed work stays bounded and
@@ -528,181 +523,12 @@ function easternStartHour(iso: string): number {
   );
 }
 
-/** What's on = every PUBLIC event in the city or county TODAY, soonest first.
- *  Draws (concerts/markets/shows) lead as cards; routine recurring programs
- *  join the same chronological program as quiet rows. */
+/** The same bounded, source-verified shortlist powers server paint and client recovery. */
 async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
-  const { publicEvents, sourceHealth } = await eventsPromise;
-  // (The overnight "First thing tomorrow" strip that used to live here grew into
-  // its own composed TomorrowPreview beat above — top draw + weather look, gated
-  // on the same "late" daypart — so the tomorrow answer isn't duplicated.)
-  // The headliner itself renders ONCE in TodayDecisionLead; this section
-  // carries the rest of the program. Same derivation, same promise.
-  const { feature, upcomingRest, remainingAlsoToday, remainingEarlierToday } =
-    deriveTodayProgram(publicEvents, now);
-  const featureIsPromoted = feature
-    ? shouldPromoteTodayHeadliner(feature, now)
-    : false;
-  // The day PROGRAM (replaced the unlabeled sideways rail + separate "Also
-  // today" bucket, owner call 2026-07-15: "feels like a list with no
-  // understanding of what's in the list"). One chronological spine, grouped
-  // by daypart, draws and quiet civic/routine rows interleaved at their real
-  // times — the tier survives as typography (weight + ink), not as a second
-  // mystery list. A vertical column also shows the whole evening at a
-  // glance where the rail hid all but two tiles.
-  const program = [
-    ...(!featureIsPromoted && feature ? [{ e: feature, quiet: false }] : []),
-    ...upcomingRest.map((e) => ({ e, quiet: false })),
-    ...remainingAlsoToday.map((e) => ({ e, quiet: true })),
-  ].sort((a, b) => Date.parse(a.e.starts_at) - Date.parse(b.e.starts_at));
-  // The front page is a briefing, not the calendar. Eight rows show the shape
-  // of the day without making every visitor scroll through the full feed; the
-  // explicit remainder link preserves complete access.
-  const PROGRAM_MAX = 3;
-  const shown = program.slice(0, PROGRAM_MAX);
-  const programOverflow = program.length - shown.length;
-  // Count only the briefing picks a person can see here. The complete total
-  // remains on /events from the same unifiedEvents set. Labeling this bounded
-  // front-page selection as picks prevents a degraded archive fallback (or a
-  // deliberate three-row brief) from contradicting the full calendar count.
-  const briefingPicks = [
-    ...(featureIsPromoted && feature ? [feature] : []),
-    ...shown.map(({ e }) => e),
-  ];
-  const briefingTonightPicks = briefingPicks.filter(
-    (event) => !event.is_all_day && easternStartHour(event.starts_at) >= 17,
-  ).length;
-  const partOf = (row: (typeof program)[number]): string => {
-    if (row.e.is_all_day) return "All day";
-    const h = easternStartHour(row.e.starts_at);
-    return h < 12 ? "This morning" : h < 17 ? "This afternoon" : "Tonight";
-  };
-  const programGroups: { label: string; rows: typeof program }[] = [];
-  for (const row of shown) {
-    const label = partOf(row);
-    const last = programGroups[programGroups.length - 1];
-    if (last && last.label === label) last.rows.push(row);
-    else programGroups.push({ label, rows: [row] });
-  }
-  // A degraded archive with no usable rows is an unknown calendar state, not
-  // an empty day. Do not leave a heading with a blank body or claim that
-  // nothing is happening; the full Events board remains available in the
-  // global navigation while this optional briefing section stays quiet.
-  if (!shouldRenderTodayEventSection({
-    degraded: sourceHealth.degraded,
-    featurePromoted: featureIsPromoted,
-    programCount: program.length,
-    earlierCount: remainingEarlierToday.length,
-  })) {
-    return <TodayEventsRecovery />;
-  }
-
-  return (
-    <section className="mt-5 space-y-3" aria-label="Events today">
-      <DismissibleSection
-        id="upcoming"
-        title="Events today"
-        href="/events"
-        cta={briefingPicks.length > 0 || feature ? "See all" : "Full board"}
-        flat
-        meta={todayEventPicksMeta({
-          todayPicks: briefingPicks.length,
-          tonightPicks: briefingTonightPicks,
-          degraded: sourceHealth.degraded,
-        })}
-      >
-        {/* Keep degraded-source honesty in the section's own metadata rather
-            than repeating the Events page's full warning card. Today stays
-            calm and scannable; the board remains the place to retry feeds and
-            inspect the complete coverage state. */}
-        {/* A real draw can still earn the editorial feature, but it belongs to
-            the explicitly countywide event program. It must never displace the
-            town-aware place answer above or make the shared town control feel
-            inert. The program array below already removes this exact feature. */}
-        {featureIsPromoted && feature ? (
-          <TonightHeadline event={feature} now={now} embedded />
-        ) : null}
-        {program.length > 0 || remainingEarlierToday.length > 0 ? (
-          <div className="space-y-3">
-            {/* ONE-HERO composition, part 2: the quiet-day truth. When no real
-                draw earned the page headline, say so plainly instead of
-                promoting a routine row into a fake hero; the quiet program
-                rows below and the week content further down carry the page.
-                Suppressed when sources are degraded — we can't call a day quiet
-                when a feed just failed to load. */}
-            {!feature && !sourceHealth.degraded && (
-              <p className="px-0.5 pt-1 text-[13.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                It is a quiet {easternStartHour(now.toISOString()) >= 17 ? "night" : "day"} around here. The
-                week ahead is on the{" "}
-                <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-link)" }}>
-                  events page
-                </Link>
-                .
-              </p>
-            )}
-            {programGroups.length > 0 && (
-              <div className="reveal-up">
-                {programGroups.map((group) => (
-                  <div key={group.label}>
-                    <p className="px-0.5 pb-1 pt-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-                      {group.label}
-                    </p>
-                    <ul>
-                      {group.rows.map(({ e, quiet }) => (
-                        <TodayEventRow key={`${e.slug}-${e.starts_at}`} event={e} quiet={quiet} now={now} />
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-                {programOverflow > 0 && (
-                  <Link
-                    href="/events"
-                    className="tap-44-y flex items-center justify-between px-0.5 py-2.5 text-[13px] font-semibold"
-                    style={{ color: "var(--app-link)" }}
-                  >
-                    +{programOverflow} more today
-                    <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-                  </Link>
-                )}
-              </div>
-            )}
-            {/* Finished draws collapse to one honest line — the record of the
-                day is a tap away, but done things don't spend screen. Native
-                <details>: no client JS. */}
-            {remainingEarlierToday.length > 0 && (
-              <details className="group">
-                <summary className="tap-44-y flex cursor-pointer list-none items-center gap-1.5 px-0.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-ink-3)" }}>
-                  <ChevronRight aria-hidden className="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" strokeWidth={2.5} />
-                  Earlier today · {remainingEarlierToday.length} wrapped up
-                </summary>
-                <ul className="mt-1">
-                  {remainingEarlierToday.map((e) => (
-                    <li key={`${e.slug}-${e.starts_at}`}>
-                      <EventCard event={e} variant="utility" hideDate />
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </div>
-        ) : featureIsPromoted ? (
-          /* The headliner above is the whole calendar — an honest one-liner,
-             not an "empty" claim the hero itself contradicts. */
-          <p className="text-body py-4" style={{ color: "var(--app-ink-3)" }}>
-            Nothing else is on the calendar today.
-          </p>
-        ) : sourceHealth.degraded ? null : (
-          <p
-            className="text-body py-4"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {/* Only an empty set we TRUST is stated as "no events." The
-                heading already carries the one route to the complete board,
-                so this stays an answer instead of repeating the same link. */}
-            No events are on the calendar today.
-          </p>
-        )}
-      </DismissibleSection>
-    </section>
+  const snapshot = await eventsPromise;
+  const events = selectTodayEvents(snapshot.publicEvents, now, 4, (event) =>
+    parseRecoveryEventVisual(eventCardVisual(event, { venuePhotos: "free-reviewed" })),
   );
+  const initialResponse = snapshot.sourceHealth.degraded && events.length === 0 ? undefined : { events, partial: snapshot.sourceHealth.degraded };
+  return <TodayEventsRecovery initialResponse={initialResponse} scoped />;
 }

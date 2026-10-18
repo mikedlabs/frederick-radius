@@ -4,6 +4,7 @@ import {
   eventAttendanceMode,
   eventOnlineActionUrl,
   hasActionableAttendance,
+  hasRecommendationAttendance,
   hasPhysicalAttendance,
   isLikelyEventActionUrl,
 } from "./attendance";
@@ -57,5 +58,33 @@ describe("event attendance semantics", () => {
       title: "Strength & Stretch (hybrid)",
       venue_name: "Brunswick Senior Center",
     })).toBe("Brunswick Senior Center · Online option");
+  });
+});
+
+describe("recommendation attendance without calendar removal", () => {
+  it.each(["Off Campus", " off-campus ", "OFF CAMPUS", "Frederick", "Frederick County", "TBD", ""])(
+    "keeps physical %s browsable without promoting it", (venue_name) => {
+      const listing = { title: "Published event", venue_name };
+      expect(hasActionableAttendance(listing)).toBe(true);
+      expect(hasRecommendationAttendance(listing)).toBe(false);
+    },
+  );
+
+  it("accepts a named venue without requiring paid geocoding or exact coordinates", () => {
+    const named = { title: "Concert", venue_name: "Sky Stage", geo_confidence: "area", geom: { lat: 39.4, lng: -77.4 } };
+    expect(hasRecommendationAttendance(named)).toBe(true);
+  });
+
+  it("uses the real online attendance route rather than its physical placeholder", () => {
+    const online = { attendance_mode: "online" as const, venue_name: "Off Campus", source_url: "https://example.test/calendar.ics" };
+    expect(hasRecommendationAttendance(online)).toBe(false);
+    expect(hasRecommendationAttendance({ ...online, rsvp_url: "https://example.test/events/register" })).toBe(true);
+    expect(hasRecommendationAttendance({ ...online, ticket_url: "https://example.test/events/tickets" })).toBe(true);
+    expect(hasRecommendationAttendance({ ...online, online_url: "javascript:alert(1)" })).toBe(false);
+  });
+
+  it("preserves Today's existing hybrid venue requirement", () => {
+    expect(hasRecommendationAttendance({ title: "Concert (hybrid)", venue_name: "Off Campus", online_url: "https://example.test/join" })).toBe(false);
+    expect(hasRecommendationAttendance({ title: "Concert (hybrid)", venue_name: "Community Hall" })).toBe(true);
   });
 });

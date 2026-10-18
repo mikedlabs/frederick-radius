@@ -15,6 +15,15 @@
  * thumbnail, so it no longer distinguishes a real draw from a storytime.)
  */
 import { isUtilityEvent } from "@/lib/event-kind";
+import { hasRecommendationAttendance, type EventAttendanceInput } from "./attendance";
+import { intentForCategory } from "./intents";
+import { normalizeEventVenueIdentity } from "./venue-name";
+
+/** Recommended order first separates usable attendance from ambiguous rows.
+ * It does not remove listings or change the existing rank inside either set. */
+export function compareRecommendationAttendance(a: EventAttendanceInput, b: EventAttendanceInput): number {
+  return Number(!hasRecommendationAttendance(a)) - Number(!hasRecommendationAttendance(b));
+}
 
 /** The structural subset the ranker actually reads — EventWithMeta satisfies
  *  it, and so do lighter shapes (e.g. the On-now strip's OnNowEvent), so the
@@ -114,4 +123,124 @@ export function pickLeadEvent<T extends LeadRankable & { slug?: string }>(
     if (editorial) return editorial;
   }
   return [...pool].sort((a, b) => compareForLead(a, b))[0];
+}
+
+
+/** The recommendation shape stays compatible with full and slim event rows. */
+export type RecommendationRankable = LeadRankable & EventAttendanceInput & {
+  slug?: string;
+  distance_m?: number;
+};
+
+// A sales listing remains useful in the calendar, but an unspecified discovery
+// request should not be led by a product showroom because it has a ticket link.
+// Product evidence is required alongside show/expo language: art, science and
+// community expos are not classified as sales events merely for being expos.
+const SALES_LANGUAGE = /\b(?:clearance|liquidation|factory[- ]direct|warehouse sale|sales? event|truckload sale)\b/i;
+const PRODUCT_SHOWCASE = /\b(?:furniture|mattress(?:es)?|appliances?|home improvement|hot tubs?|swim spas?|recreational vehicles?)\b/i;
+const SHOWCASE_LANGUAGE = /\b(?:expo|show|sale|showcase)\b/i;
+const PUBLIC_OUTING_TITLE = /\b(?:festivals?|carnivals?|concerts?|farmers?['’]? markets?|makers?['’]? markets?|street fairs?|performances?|parades?|screenings?|guided walks?|tours?|comedy|theat(?:er|re)|live music)\b/i;
+const PUBLIC_OUTING_INTENTS = new Set(["music", "arts", "food", "family", "sports", "outdoors"]);
+
+function isSalesShowcase(event: RecommendationRankable): boolean {
+  const title = event.title ?? "";
+  return SALES_LANGUAGE.test(title)
+    || (PRODUCT_SHOWCASE.test(title) && SHOWCASE_LANGUAGE.test(title));
+}
+
+function hasPublicOutingSignal(event: RecommendationRankable): boolean {
+  return PUBLIC_OUTING_INTENTS.has(intentForCategory(event.category))
+    || PUBLIC_OUTING_TITLE.test(event.title ?? "");
+}
+
+/** Eligibility and editorial meaning, before optional travel/media tiebreaks. */
+function compareRecommendationPriority(
+  a: RecommendationRankable,
+  b: RecommendationRankable,
+  featured?: ReadonlySet<string>,
+): number {
+  const attendance = compareRecommendationAttendance(a, b);
+  if (attendance) return attendance;
+  if (featured?.size) {
+    const aFeatured = Boolean(a.slug && featured.has(a.slug));
+    const bFeatured = Boolean(b.slug && featured.has(b.slug));
+    if (aFeatured !== bFeatured) return aFeatured ? -1 : 1;
+  }
+  const tier = eventLeadTier(a) - eventLeadTier(b);
+  if (tier) return tier;
+  const sales = Number(isSalesShowcase(a)) - Number(isSalesShowcase(b));
+  if (sales) return sales;
+  return Number(hasPublicOutingSignal(b)) - Number(hasPublicOutingSignal(a));
+}
+
+/**
+ * Recommended is a useful outing suggestion, not a popularity claim. A ticket
+ * URL, an admission price, and an image do not prove that an event is popular.
+ * Explicit chronology and legacy lead ranking remain separate contracts.
+ */
+export function compareForRecommendation(
+  a: RecommendationRankable,
+  b: RecommendationRankable,
+  featured?: ReadonlySet<string>,
+): number {
+  const priority = compareRecommendationPriority(a, b, featured);
+  if (priority) return priority;
+  const aDistance = Number.isFinite(a.distance_m);
+  const bDistance = Number.isFinite(b.distance_m);
+  if (aDistance && bDistance && a.distance_m !== b.distance_m) return a.distance_m! - b.distance_m!;
+  if (aDistance !== bDistance) return aDistance ? -1 : 1;
+  const imagery = Number(!a.hero_image) - Number(!b.hero_image);
+  if (imagery) return imagery;
+  return Date.parse(a.starts_at) - Date.parse(b.starts_at);
+}
+
+/**
+ * Preserve the whole collection while making a bounded first shortlist varied.
+ * Alternatives can move forward only inside an equivalent recommendation tier;
+ * a weak destination, routine program or sales event cannot win for variety.
+ * Every source occurrence is retained by array identity, including equal slugs.
+ */
+export function rankRecommendations<T extends RecommendationRankable>(
+  events: readonly T[],
+  { featured, limit = 6, previouslySelected = [] }: {
+    featured?: ReadonlySet<string>;
+    limit?: number;
+    previouslySelected?: readonly RecommendationRankable[];
+  } = {},
+): T[] {
+  const remaining = [...events].sort((a, b) => compareForRecommendation(a, b, featured));
+  const selected: T[] = [];
+  const venueCounts = new Map<string, number>();
+  const intentCounts = new Map<string, number>();
+  for (const event of previouslySelected) {
+    const venue = normalizeEventVenueIdentity(event.venue_name);
+    if (venue) venueCounts.set(venue, (venueCounts.get(venue) ?? 0) + 1);
+    const intent = intentForCategory(event.category);
+    intentCounts.set(intent, (intentCounts.get(intent) ?? 0) + 1);
+  }
+  const target = Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : 6;
+  while (remaining.length && selected.length < target) {
+    const first = remaining[0];
+    let bestIndex = 0;
+    let bestPenalty = Infinity;
+    for (let index = 0; index < remaining.length; index += 1) {
+      const event = remaining[index];
+      if (compareRecommendationPriority(first, event, featured) !== 0) break;
+      const venue = normalizeEventVenueIdentity(event.venue_name);
+      const intent = intentForCategory(event.category);
+      const penalty = (venue ? (venueCounts.get(venue) ?? 0) * 2 : 0)
+        + (intentCounts.get(intent) ?? 0);
+      if (penalty < bestPenalty) {
+        bestIndex = index;
+        bestPenalty = penalty;
+      }
+    }
+    const [chosen] = remaining.splice(bestIndex, 1);
+    selected.push(chosen);
+    const venue = normalizeEventVenueIdentity(chosen.venue_name);
+    if (venue) venueCounts.set(venue, (venueCounts.get(venue) ?? 0) + 1);
+    const intent = intentForCategory(chosen.category);
+    intentCounts.set(intent, (intentCounts.get(intent) ?? 0) + 1);
+  }
+  return [...selected, ...remaining];
 }

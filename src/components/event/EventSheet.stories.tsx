@@ -18,6 +18,8 @@ const meta = {
   globals: { viewport: { value: "radiusMobile", isRotated: false } },
   args: { event, onClose: fn(), historyLayerId: "workshop-event-detail" },
   beforeEach: () => {
+    const oldFontSize = document.documentElement.style.fontSize;
+    document.documentElement.style.fontSize = "100%";
     // Match the real preview document, as in the shared Sheet story. A
     // different mocked route correctly dismisses this route-scoped sheet.
     const originalPathname = usePathname.getMockImplementation();
@@ -29,6 +31,7 @@ const meta = {
     const fixtureFetch: typeof fetch = async () => Response.json({ user: null, slugs: [] });
     window.fetch = fixtureFetch;
     return () => {
+      document.documentElement.style.fontSize = oldFontSize;
       if (originalPathname) usePathname.mockImplementation(originalPathname);
       else usePathname.mockReset();
       if (window.fetch === fixtureFetch) window.fetch = originalFetch;
@@ -39,6 +42,40 @@ const meta = {
 } satisfies Meta<typeof EventSheet>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const LicensedVenueAt320Root200: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false }, motion: "reduce" },
+  args: { event: { ...event, venue_name: "Brewer's Alley", venue_place_slug: "brewers-alley-frederick" } },
+  play: async () => {
+    if ((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) {
+      const { page } = await import("vitest/browser"); await page.viewport(320, 568);
+    }
+    await waitFor(() => expect(window.innerWidth).toBe(320));
+    const dialog = await within(document.body).findByRole("dialog", { name: event.title });
+    const panel = dialog.querySelector<HTMLElement>("[data-bottom-sheet-panel]")!;
+    const heading = panel.querySelector("h2")!;
+    const image = panel.querySelector<HTMLImageElement>("img")!;
+    image.scrollIntoView({ block: "center", behavior: "instant" });
+    await waitFor(async () => { await image.decode(); expect(image.naturalWidth).toBeGreaterThan(1); });
+    const caption = within(panel).getByText("Venue · Brewer's Alley side entrance, photographed in 2004");
+    const time = within(panel).getByText(/2:00 PM/).closest("p")!;
+    const venue = within(panel).getByText("Brewer's Alley · Frederick", { exact: true });
+    const nodes = [heading, time, venue, caption];
+    const normal = nodes.map(node => parseFloat(getComputedStyle(node).fontSize));
+    document.documentElement.style.fontSize = "200%";
+    await waitFor(() => nodes.forEach((node, i) => expect(parseFloat(getComputedStyle(node).fontSize) / normal[i]).toBeCloseTo(2, 2)));
+    for (const node of nodes) {
+      node.scrollIntoView({ block: "center", behavior: "instant" });
+      await waitFor(() => expect(node).toBeVisible());
+      expect(node.scrollWidth).toBeLessThanOrEqual(node.clientWidth + 1);
+      expect(node.scrollHeight).toBeLessThanOrEqual(node.clientHeight + 1);
+    }
+    expect(panel.querySelector("figure")?.contains(heading)).toBe(false);
+    expect(heading.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(document.body.scrollWidth).toBeLessThanOrEqual(window.innerWidth + 1);
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth + 1);
+  },
+};
 
 export const FreeWithoutPhotography: Story = {
   play: async () => {
@@ -57,7 +94,9 @@ export const OwnedVenuePhotography: Story = {
   args: { event: { ...event, venue_name: "Baker Park Bandshell", venue_place_slug: "baker-park-bandshell" } },
   play: async () => {
     const dialog = await within(document.body).findByRole("dialog", { name: event.title });
-    await expect(within(dialog).getByText("Venue · Baker Park Bandshell")).toBeVisible();
+    const caption = within(dialog).getByText("Venue · Baker Park Bandshell");
+    caption.scrollIntoView({ block: "center", behavior: "instant" });
+    await waitFor(() => expect(caption).toBeVisible());
   },
 };
 export const LoadingDetails: Story = { args: { event: null, pending: true, onOpenFullPage: fn() } };
