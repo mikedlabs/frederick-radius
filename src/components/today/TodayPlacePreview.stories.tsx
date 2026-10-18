@@ -113,7 +113,15 @@ export const LicensedExactPlace: Story = {
   play: async (context) => {
     await usablePreview(context);
     const canvas = within(context.canvasElement);
-    await expect(await canvas.findByText("Photo by Pete Giove-Fourwinds.")).toBeVisible();
+    // Browser decoding can finish before Next's onLoad and React's credit
+    // commit. Require the real accessible credit state, not just DOM text.
+    await waitFor(async () => {
+      const credit = context.canvasElement.querySelector(".place-card-photo-credit");
+      await expect(credit).toBeVisible();
+      await expect(credit).not.toHaveAttribute("aria-hidden", "true");
+      await expect(credit).not.toHaveAttribute("inert");
+      await expect(canvas.getByText("Photo by Pete Giove-Fourwinds.", { exact: true })).toBeVisible();
+    });
     await expect(canvas.getByText("Resized and converted for display; cards may crop the image responsively.")).toBeVisible();
     for (const control of [canvas.getByRole("link", { name: "Wikimedia Commons" }), canvas.getByRole("link", { name: "CC BY-SA 3.0" })]) {
       control.scrollIntoView({ block: "center" });

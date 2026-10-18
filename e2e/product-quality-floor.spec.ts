@@ -52,6 +52,9 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await page.setViewportSize({ width, height });
     await page.goto("/today", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("combobox", { name: "Choose your area" })).toBeEnabled();
+    const weatherRegion = page.locator('[data-today-weather] [data-weather-state]');
+    await expect(weatherRegion).toHaveAttribute("data-weather-state", /^(available|safety-only|unavailable)$/);
+    const weatherState = await weatherRegion.getAttribute("data-weather-state");
     await page.evaluate(() => document.fonts.ready);
     const find = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
     await expect(find).toBeVisible();
@@ -64,15 +67,34 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(mastheadBox).not.toBeNull();
     const leadingNoticeSpace = Math.max(0, mastheadBox!.y - 80);
     expect(findBox!.y + findBox!.height - leadingNoticeSpace).toBeLessThan(height - 80);
-    const weather = page.locator('[data-today-weather] a[href*="/pulse"][href*="open=weather"]');
-    await expect(weather).toHaveCount(1);
+    const forecast = weatherRegion.locator('a[href="/pulse?open=weather"]');
+    await expect(forecast).toHaveCount(1);
+    const summary = weatherRegion.locator('summary[data-today-weather-summary]');
+    const weather = weatherState === "available" ? summary : forecast;
     await expect(weather).toBeVisible();
-    await expect(page.locator('[data-today-weather] [data-weather-state]'))
-      .toHaveAttribute("data-weather-state", /^(available|safety-only|unavailable)$/);
     const weatherBox = await weather.boundingBox();
     expect(weatherBox).not.toBeNull();
     expect(weatherBox!.height).toBeGreaterThanOrEqual(44);
+    expect(weatherBox!.width).toBeGreaterThanOrEqual(44);
     expect(weatherBox!.y + weatherBox!.height).toBeLessThanOrEqual(findBox!.y);
+    if (weatherState === "available") {
+      const details = weatherRegion.locator("details");
+      await expect(details).not.toHaveAttribute("open");
+      await expect(forecast).not.toBeVisible();
+      await summary.click();
+      await expect(details).toHaveAttribute("open", "");
+      await expect(forecast).toBeVisible();
+      await expect(forecast).toHaveAttribute("href", "/pulse?open=weather");
+      const forecastBox = await forecast.boundingBox();
+      expect(forecastBox).not.toBeNull();
+      expect(forecastBox!.width).toBeGreaterThanOrEqual(44);
+      expect(forecastBox!.height).toBeGreaterThanOrEqual(44);
+      await summary.click();
+      await expect(details).not.toHaveAttribute("open");
+      await expect(forecast).not.toBeVisible();
+    } else {
+      await expect(summary).toHaveCount(0);
+    }
     const campaign = page.locator("[data-today-fair-feature]");
     if (await campaign.count()) {
       expect((await campaign.boundingBox())!.y).toBeGreaterThan(findBox!.y + findBox!.height);

@@ -28,14 +28,17 @@ export default function AnimatedSkyGlyph({
   variant,
   size = 56,
   className = "",
+  as: Root = "div",
 }: {
   variant: SkyVariant;
   size?: number;
   className?: string;
+  /** Use phrasing content only when the glyph belongs inside a native summary. */
+  as?: "div" | "span";
 }) {
   const dim = { width: size, height: size };
   return (
-    <div
+    <Root
       className={`sky-glyph sky-glyph--${variant.toLowerCase()} ${className}`}
       style={dim}
       aria-hidden
@@ -230,6 +233,6 @@ export default function AnimatedSkyGlyph({
           ))}
         </svg>
       )}
-    </div>
+    </Root>
   );
 }

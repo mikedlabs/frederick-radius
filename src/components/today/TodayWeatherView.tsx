@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { ChevronRight } from "lucide-react";
+import AppTransitionLink from "@/components/nav/AppTransitionLink";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import styles from "./TodayCard.module.css";
 
@@ -38,6 +40,26 @@ function forecastIssuance(value: string | null) {
   };
 }
 
+function FullForecastLink() {
+  return (
+    <AppTransitionLink href="/pulse?open=weather" prefetch={false} tabIndex={0} className={styles.forecastLink}>
+      <span>Full forecast</span><ChevronRight aria-hidden className="h-4 w-4" />
+      <span className="sr-only"> for Frederick.</span>
+    </AppTransitionLink>
+  );
+}
+
+/** Suspense keeps the existing forecast route available without claiming a read. */
+export function WeatherPending() {
+  return (
+    <section aria-label="Loading Frederick forecast" data-weather-state="pending"
+      className={`${styles.unavailable} ${styles.masthead} ${styles.pending}`}>
+      <span data-weather-message>Loading forecast…</span>
+      <FullForecastLink />
+    </section>
+  );
+}
+
 export function WeatherUnavailable({ density = "standard" }: { density?: TodayWeatherViewProps["density"] } = {}) {
   return (
     <section
@@ -46,8 +68,8 @@ export function WeatherUnavailable({ density = "standard" }: { density?: TodayWe
       data-weather-density={density}
       className={`${styles.unavailable} ${density === "masthead" ? styles.masthead : ""}`}
     >
-      <span>The NWS forecast is briefly unavailable.</span>
-      <span className={styles.handoff}>County status</span>
+      <span data-weather-message>The NWS forecast is briefly unavailable.</span>
+      {density === "masthead" ? <FullForecastLink /> : <span className={styles.handoff}>County status</span>}
     </section>
   );
 }
@@ -63,8 +85,8 @@ export default function TodayWeatherView({
   const Condition = hasDistinctRead ? "p" : "h2";
   const provenance = (
     <>
-      <p className={styles.source}>NWS forecast · Frederick</p>
-      <p className={styles.issuance}>
+      <p data-weather-source className={styles.source}>NWS forecast · Frederick</p>
+      <p data-weather-issuance className={styles.issuance}>
         {issuance ? <>Issued <time dateTime={issuance.dateTime}>{issuance.label}</time></> : "Issue time unavailable"}
       </p>
     </>
@@ -79,39 +101,46 @@ export default function TodayWeatherView({
         className={`${styles.card} ${styles.masthead}`}
       >
         {children}
-        {hasDistinctRead && <h2 className={styles.headline}>{headline}</h2>}
+        {/* The civic banner is an independent bounded read. Keep this warning
+            visible even when that banner is absent or shows another source. */}
+        {hasDistinctRead && <h2 data-weather-headline className={styles.headline}>{headline}</h2>}
         {forecastAvailable ? (
-          <>
-            <div className={styles.reading}>
-              {temperatureF !== null && (
-                <span className={styles.temperature}>
-                  <span className="sr-only">{temperatureF} degrees Fahrenheit forecast</span>
-                  <span aria-hidden="true">{temperatureF}°</span>
-                </span>
-              )}
-              {variant && <AnimatedSkyGlyph variant={variant} size={28} className={styles.glyph} />}
-              <div className={styles.details}>
-                {condition && <Condition className={styles.condition}>{condition}</Condition>}
-                <p className={styles.forecastType}>Frederick · NWS</p>
-              </div>
-            </div>
-            <details className={styles.forecastDetails}>
-              <summary>Forecast details</summary>
-              <div className={styles.forecastEvidence}>
-                {provenance}
-                {(highF !== null || sun || daylight) && (
-                  <p className={styles.stats}>
-                    {highF !== null && <span>{`High ${highF}°`}</span>}
-                    {(sun || daylight) && <span>{sun ? `${sun.label} ${sun.time}` : null}{daylight}</span>}
-                  </p>
+          <details className={styles.forecastDetails}>
+            <summary data-today-weather-summary>
+              <span className="sr-only">Forecast details for Frederick. </span>
+              <span className={styles.reading}>
+                {temperatureF !== null && (
+                  <span data-weather-temperature className={styles.temperature}>
+                    <span className="sr-only">{temperatureF} degrees Fahrenheit forecast</span>
+                    <span aria-hidden="true">{temperatureF}°</span>
+                  </span>
                 )}
-              </div>
-            </details>
-          </>
+                {variant && <AnimatedSkyGlyph as="span" variant={variant} size={28} className={styles.glyph} />}
+                <span className={styles.details}>
+                  {condition && <span data-weather-condition className={styles.condition}>{condition}</span>}
+                  <span data-weather-scope className={styles.forecastType}>Frederick · NWS</span>
+                </span>
+                <span data-weather-disclosure-cue className={styles.summaryCue} aria-hidden="true">Details<ChevronRight className="h-4 w-4" /></span>
+              </span>
+            </summary>
+            <div className={styles.forecastEvidence}>
+              {provenance}
+              {(highF !== null || sun || daylight) && (
+                <p data-weather-stats className={styles.stats}>
+                  {highF !== null && <span>{`High ${highF}°`}</span>}
+                  {(sun || daylight) && <span>{sun ? `${sun.label} ${sun.time}` : null}{daylight}</span>}
+                </p>
+              )}
+              <FullForecastLink />
+            </div>
+          </details>
         ) : (
-          <p className={styles.safetyNote}>The NWS forecast is briefly unavailable.</p>
+          <>
+            <p data-weather-message className={styles.safetyNote}>The NWS forecast is briefly unavailable.</p>
+            <FullForecastLink />
+          </>
         )}
-        {safetyNote && <p className={styles.safetyNote}>{safetyNote}</p>}
+        {safetyNote && <p data-weather-safety-note className={styles.safetyNote}>{safetyNote}</p>}
       </section>
     );
   }

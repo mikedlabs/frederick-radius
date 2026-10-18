@@ -43,7 +43,7 @@ describe("Today decision hierarchy", () => {
     expect(events).toBeGreaterThan(weather);
   });
 
-  it("keeps the exact scene and real answer before the four quick needs, with categories after news", () => {
+  it("puts the real area answer before the exact scene and four quick needs, with categories after news", () => {
     const find = renderedPage.indexOf("<TodayAsk embedded showQuickNeeds={false}");
     const doorway = renderedPage.indexOf("<TodayGeographicDoorway />");
     const shortcuts = renderedPage.indexOf("<TodayQuickNeeds />");
@@ -54,8 +54,9 @@ describe("Today decision hierarchy", () => {
 
     expect(find).toBeGreaterThan(-1);
     expect(doorway).toBeGreaterThan(find);
-    expect(lead).toBeGreaterThan(doorway);
-    expect(shortcuts).toBeGreaterThan(lead);
+    expect(lead).toBeGreaterThan(find);
+    expect(doorway).toBeGreaterThan(lead);
+    expect(shortcuts).toBeGreaterThan(doorway);
     expect(events).toBeGreaterThan(lead);
     expect(news).toBeGreaterThan(events);
     expect(categories).toBeGreaterThan(news);
@@ -106,7 +107,7 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage.match(/\{decisionLead\}/g)).toHaveLength(1);
     expect(renderedPage).toContain("fallback={<TodayGeographicDoorwayPending />}");
     expect(renderedPage).not.toContain("fallback={<TodayGeographicDoorwayView");
-    expect(renderedPage.indexOf("<TodayGeographicDoorway />")).toBeLessThan(renderedPage.indexOf("{decisionLead}"));
+    expect(renderedPage.indexOf("{decisionLead}")).toBeLessThan(renderedPage.indexOf("<TodayGeographicDoorway />"));
     expect(renderedPage.indexOf("<TodayPlanTonightLink")).toBeGreaterThan(
       renderedPage.indexOf("<TodayAsk embedded"),
     );
