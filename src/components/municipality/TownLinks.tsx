@@ -45,7 +45,7 @@ export default function TownLinks({
       className="rounded-[var(--app-radius-lg)] border p-4"
       style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
     >
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2">
         <h2 className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
           Official town site
         </h2>
@@ -53,11 +53,13 @@ export default function TownLinks({
           href={town.homepage}
           target="_blank"
           rel="noopener noreferrer"
-          className="tap-44-y inline-flex items-center gap-1 text-[13px] font-semibold"
+          className="tap-44-y inline-flex min-w-0 max-w-full items-center gap-1 text-[13px] font-semibold"
           style={{ color: "var(--app-brand-press)" }}
         >
-          {town.homepage.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
-          <ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden />
+          <span className="min-w-0 [overflow-wrap:anywhere]">
+            {town.homepage.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
+          </span>
+          <ExternalLink className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
         </a>
       </div>
 
