@@ -3,12 +3,12 @@ import { getLandmarkPhoto, curatedPhotoUrl, type WikimediaPhoto } from "@/lib/in
 import { googlePhotoNameFromProxyUrl, publishableGooglePhotoAttribution } from "@/lib/google-photo-policy";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
-import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
+import { getOwnedPlacePhoto, type OwnedPlacePhoto } from "@/lib/owned-place-photos";
 
 export type PlaceCardPhotoSource =
   | { kind: "curated"; src: string; alt: string; photo: WikimediaPhoto }
   | { kind: "google"; src: string; alt: string; attribution: GooglePhotoAttribution }
-  | { kind: "owned"; src: string; alt: string };
+  | Pick<OwnedPlacePhoto, "kind" | "src" | "alt" | "objectPosition">;
 export type PlaceCardPhotoPlan = { key: string; sources: readonly PlaceCardPhotoSource[] };
 export type PlaceCardPhotoState = { planKey: string; failedSources: readonly string[]; loadedSrc: string | null };
 export type PlaceCardPhotoResult = "loaded" | "failed";

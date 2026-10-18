@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventCardVisual, planHorizonVisual } from "./eventVisuals";
+import fixture from "../../../tests/fixtures/steinhardt-squarespace.json" with { type: "json" };
 
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
   return {
@@ -119,6 +120,26 @@ describe("eventCardVisual", () => {
       });
     },
   );
+
+  it("keeps publisher eligibility separate from shared transport hosts and source labels", () => {
+    const library = "https://frederick.librarycalendar.com/sites/default/files/program.jpg";
+    expect(eventCardVisual(event({ source: "ticketmaster", hero_image: library }))).toBeNull();
+    expect(eventCardVisual(event({ source: "fcpl", hero_image: "https://s1.ticketm.net/dam/a/program.jpg" }))).toBeNull();
+    expect(eventCardVisual(event({ source: "fcpl", hero_image: library })))
+      .toMatchObject({ caption: "Event image · Frederick County Public Libraries", presentation: "artwork" });
+  });
+
+  it("presents only source/account-bound Steinhardt art as publisher artwork", () => {
+    const input = event({ source: "venue-extract", source_url: "https://www.steinhardtbrewing.com/live-music-events",
+      venue_place_slug: "steinhardt-brewing-company-frederick", hero_image: fixture.upcoming[0].assetUrl });
+    expect(eventCardVisual(input)).toMatchObject({ src: fixture.upcoming[0].assetUrl,
+      caption: "Event image · Steinhardt Brewing Company", presentation: "artwork", sourceHref: input.source_url });
+    expect(eventCardVisual({ ...input, source: "ticketmaster" })).toBeNull();
+    expect(eventCardVisual({ ...input, venue_place_slug: "rockwell-brewery-frederick" })).toBeNull();
+    expect(eventCardVisual({ ...input, source_url: "https://www.rockwellbrewery.com/events" })).toBeNull();
+    expect(eventCardVisual({ ...input, source_url: null })).toBeNull();
+    expect(eventCardVisual({ ...input, source_url: "" })).toBeNull();
+  });
 
   it("rejects a source-approved event with an image on the wrong host", () => {
     expect(

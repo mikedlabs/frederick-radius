@@ -719,7 +719,12 @@ const PAGE_INDEX = APP_PAGES.map((page) => ({
     [...(page.indexTitle === false ? [] : page.title.toLowerCase().split(/[^a-z0-9]+/)), ...page.keywords.filter((k) => !k.includes(" ")).map((k) => k.toLowerCase())]
       .filter((w) => w.length >= 2),
   ),
-  phrases: page.keywords.filter((k) => k.includes(" ")).map((k) => k.toLowerCase()),
+  // Guide keywords match whole words and their ordinary s/es plurals, not
+  // different nouns such as "Fairgrounds" that merely begin with "Fair".
+  phrases: page.keywords.filter((k) => k.includes(" ")).map((keyword) => new RegExp(
+    `(?:^|[^\\p{L}\\p{N}])${keyword.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:s|es)?(?=$|[^\\p{L}\\p{N}])`,
+    "u",
+  )),
 }));
 
 export function search(
@@ -935,7 +940,7 @@ export function search(
       for (const t of terms) if (words.has(t)) s += 14;
       // A typed multi-word keyword ("ev charging", "post office") is the
       // strongest signal — full weight, since its words don't score solo.
-      if (phrases.some((p) => ql.includes(p))) s += 14;
+      if (phrases.some((pattern) => pattern.test(ql))) s += 14;
       if (s >= 14) {
         // A direct working guide should lead a terse utility query. The
         // supporting place candidates remain underneath when the catalog has

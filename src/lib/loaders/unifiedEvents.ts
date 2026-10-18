@@ -650,7 +650,10 @@ const cachedAssemble = unstable_cache(
   // v35: lifecycle bypasses all discovery-only filters and deduplication.
   // v36: shared text normalization repairs facility/locality boundaries and
   // possessive suffixes before cached event copy reaches any surface.
-  ["unified-events-v36"],
+  // v37: source/account-bound Squarespace publisher artwork precedes the
+  // venue-photo fallback. Cached hero_image identities now change, so old
+  // tuples must not retain Google venue photos or omit eligible event art.
+  ["unified-events-v37"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.

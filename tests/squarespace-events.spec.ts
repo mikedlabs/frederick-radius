@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import steinhardt from "./fixtures/steinhardt-squarespace.json" with { type: "json" };
 import {
   fetchSquarespaceEventsResult,
   parseSquarespaceEvents,
@@ -33,6 +34,15 @@ const banyanLike = {
 };
 
 describe("parseSquarespaceEvents", () => {
+  it("carries only the reviewed source/account artwork through the persisted parser", () => {
+    const rows = parseSquarespaceEvents(steinhardt, "https://www.steinhardtbrewing.com/live-music-events");
+    expect(rows).toHaveLength(33);
+    expect(rows.filter((row) => row.hero_image)).toHaveLength(27);
+    expect(rows[0].hero_image).toBe(steinhardt.upcoming[0].assetUrl);
+    expect(parseSquarespaceEvents(steinhardt, "https://www.rockwellbrewery.com/events")
+      .some((row) => row.hero_image)).toBe(false);
+  });
+
   it("parses upcoming events with ISO dates and absolute ticket URLs", () => {
     const events = parseSquarespaceEvents(banyanLike, "https://www.thebanyanmd.com/livemusic");
     expect(events).toHaveLength(2);

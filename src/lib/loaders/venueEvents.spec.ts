@@ -4,6 +4,8 @@ import {
   type VenueEvent,
 } from "@/lib/loaders/venueEvents";
 import { prepareEventArchiveRows } from "@/lib/events/event-archive-batch";
+import { withVenueThumb } from "@/lib/loaders/eventThumb";
+import fixture from "../../../tests/fixtures/steinhardt-squarespace.json" with { type: "json" };
 
 function event(overrides: Partial<VenueEvent> = {}): VenueEvent {
   return {
@@ -119,5 +121,35 @@ describe("venue event durable identity", () => {
 
     expect(before.slug).not.toBe(after.slug);
     expect(before.source_id).toBe(after.source_id);
+  });
+});
+
+
+describe("source-bound venue event art priority", () => {
+  const image = fixture.upcoming[0].assetUrl;
+  const source = { url: "https://www.steinhardtbrewing.com/live-music-events", fetchedAt: "2026-10-17T12:00:00.000Z" };
+
+  it("keeps the publisher source and art ahead of venue photography through thumbnail enrichment", () => {
+    const [card] = venueEventsToCards([event({
+      title: fixture.upcoming[0].title,
+      venue_slug: "steinhardt-brewing-company-frederick",
+      venue_name: "Steinhardt Brewing Company",
+      hero_image: image, source,
+    })]);
+    const enriched = withVenueThumb(card);
+    expect(enriched.hero_image).toBe(image);
+    expect(enriched.hero_image_attribution).toBeUndefined();
+    expect(enriched.source).toBe("venue-extract");
+    expect(enriched.source_url).toBe(source.url);
+  });
+
+  it("does not promote the same CDN image under an unrelated source or venue", () => {
+    for (const overrides of [
+      { source: { ...source, url: "https://www.rockwellbrewery.com/events" } },
+      { venue_slug: "rockwell-brewery-frederick", venue_name: "Rockwell Brewery" },
+    ]) {
+      const [card] = venueEventsToCards([event({ venue_slug: "steinhardt-brewing-company-frederick", venue_name: "Steinhardt Brewing Company", hero_image: image, source, ...overrides })]);
+      expect(card.hero_image).not.toBe(image);
+    }
   });
 });

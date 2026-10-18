@@ -1,5 +1,6 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { EventHeroImageAttribution } from "@/data/events";
+import { approvedVenueFeedImage, STEINHARDT_EVENT_ART } from "@/lib/events/feed-image";
 
 /**
  * A promoted event visual must say what the image actually depicts and where
@@ -77,6 +78,17 @@ const EVENT_IMAGE_POLICY: Readonly<
 
 function approvedProviderVisual(event: EventWithMeta): EventCardVisual | null {
   if (!event.hero_image) return null;
+  if (event.source === "venue-extract" && event.source_url && approvedVenueFeedImage(
+    event.hero_image, event.source_url, event.venue_place_slug,
+  )) {
+    return {
+      src: event.hero_image,
+      caption: STEINHARDT_EVENT_ART.caption,
+      key: `event:${event.hero_image}`,
+      presentation: "artwork",
+      sourceHref: event.source_url,
+    };
+  }
   const policy = EVENT_IMAGE_POLICY[event.source];
   if (!policy) return null;
 

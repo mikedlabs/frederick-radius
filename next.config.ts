@@ -203,6 +203,12 @@ const nextConfig: NextConfig = {
         hostname: "static.wixstatic.com",
         pathname: "/media/**",
       },
+      // The reviewed Steinhardt event-art account, not all Squarespace hosts.
+      {
+        protocol: "https",
+        hostname: "images.squarespace-cdn.com",
+        pathname: "/content/v1/5f9ef850cc5c2c1189e6fb4a/**",
+      },
       // planespotters.net spotter-photo thumbnail CDN (/overhead aircraft photos)
       { protocol: "https", hostname: "t.plnspttrs.net" },
       { protocol: "https", hostname: "commons.wikimedia.org" },

@@ -677,3 +677,14 @@ describe("search — app-page guides", () => {
     expect(search("pizza", 10).some((h) => h.type === "page")).toBe(false);
   });
 });
+
+describe("guide keyword phrase boundaries", () => {
+  it.each([
+    ["swimming pools", "/sports"],
+    ["bike racks", "/amenities"],
+    ["power outages", "/pulse"],
+    ["drop boxes", "/shipping"],
+  ])("preserves the existing guide for the plural phrase %s", (query, href) => {
+    expect(search(query, 100, []).some((hit) => hit.type === "page" && hit.page.href === href)).toBe(true);
+  });
+});
