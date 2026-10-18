@@ -146,6 +146,9 @@
 
 .places {
   display: grid;
+  /* Constrain the implicit track before enlarged headings contribute their
+     intrinsic width. Children may reflow instead of widening the whole page. */
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: var(--app-space-4);
   margin: 0;
