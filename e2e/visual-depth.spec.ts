@@ -250,18 +250,43 @@ test("reduced motion keeps Pulse and Today actions still on hover and navigation
   await expectTouchTarget(current);
   const box = await current.boundingBox();
   expect(box).not.toBeNull();
+  const origin = page.url();
   await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
   await page.mouse.down();
   try {
     await expect.poll(() => current.evaluate((element) => element.matches(":active"))).toBe(true);
     await expect.poll(() => current.evaluate((element) => {
       const style = getComputedStyle(element);
-      return { transform: style.transform, scale: style.scale };
-    })).toEqual({ transform: "none", scale: "none" });
+      // CSS optimization may serialize none + scale:1 as an identity matrix.
+      // Check its exact physical meaning, including separate scale axes,
+      // rather than requiring one equivalent CSS spelling.
+      const matrix = new DOMMatrixReadOnly(style.transform === "none" ? undefined : style.transform);
+      const scale = style.scale === "none" ? [1, 1, 1] : style.scale.split(/\s+/).map(Number);
+      const individualScale = scale.length === 1 ? [scale[0], scale[0], 1]
+        : scale.length === 2 ? [...scale, 1] : scale;
+      const { x, y, width, height } = element.getBoundingClientRect();
+      return {
+        matrixIdentity: matrix.isIdentity,
+        matrix: [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f],
+        individualScale,
+        translate: style.translate,
+        rotate: style.rotate,
+        box: { x, y, width, height },
+      };
+    })).toEqual({
+      matrixIdentity: true,
+      matrix: [1, 0, 0, 1, 0, 0],
+      individualScale: [1, 1, 1],
+      translate: "none",
+      rotate: "none",
+      box,
+    });
   } finally {
     // Release away from the current route's link: this checks the actual
     // pressed state without turning the assertion into a navigation action.
     await page.mouse.move(0, 0);
     await page.mouse.up();
   }
+  await expect(page).toHaveURL(origin);
+  await expect(current).toHaveAttribute("aria-current", "page");
 });

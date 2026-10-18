@@ -137,7 +137,13 @@ test("a place sheet closes in place and Save acknowledges before auth resolves",
   );
   const search = page.getByRole("combobox", { name: "Search this map" });
   const fallback = page.getByRole("region", { name: "Available results without the map", exact: true });
-  await expect.poll(async () => await search.isVisible() || await fallback.isVisible()).toBe(true);
+  // The product allows its deferred renderer up to 15 seconds to become
+  // usable or expose recovery. Require an actionable control within that
+  // same bound; a loading scene or error alone is never success.
+  await expect.poll(async () => await search.isVisible() || await fallback.isVisible(), {
+    timeout: 15_000,
+    message: "the map exposes search or its actionable results recovery",
+  }).toBe(true);
   const rendererAvailable = await search.isVisible();
   if (rendererAvailable) {
     await search.fill("Gravel and Grind");
@@ -531,7 +537,10 @@ test.describe("stable native press surfaces", () => {
   }
 
   async function pressAndDragOut(page: Page, target: Locator, reduce: boolean) {
-    await target.scrollIntoViewIfNeeded();
+    // A target can be inside the viewport yet covered by persistent mobile
+    // navigation. The nearest-edge helper leaves it there. Center the real
+    // control with native scrolling before measuring its unchanged hit box.
+    await target.evaluate((node) => node.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" }));
     await expect(target).toBeVisible();
     // Wait for real entrance/layout work before taking the physical baseline.
     await expect.poll(async () => {
@@ -712,6 +721,20 @@ test.describe("stable native press surfaces", () => {
       const recovery = page.getByRole("link", { name: "See what's on", exact: true });
       await expect(recovery).toHaveAttribute("data-press-target", "control");
       const recoveryText = reducedMotion === "reduce" ? await doubleReadingText(page, recovery) : null;
+      let recoveryEdgeStart: PressSnapshot | null = null;
+      if (reducedMotion === "reduce") {
+        // Reproduce the viewport-edge position that nearest-only scrolling
+        // misses at different system-font metrics: the whole control is in
+        // the viewport, where fixed navigation may still cover its center.
+        await recovery.evaluate((node) => {
+          const rect = node.getBoundingClientRect();
+          window.scrollTo({ top: Math.max(0, scrollY + rect.top - (innerHeight - rect.height - 12)), behavior: "instant" });
+        });
+        recoveryEdgeStart = await snapshot(recovery);
+        expect(recoveryEdgeStart.box.y).toBeGreaterThanOrEqual(0);
+        expect(recoveryEdgeStart.box.y + recoveryEdgeStart.box.height).toBeLessThanOrEqual((await page.viewportSize())!.height);
+        await attach(info, "native-control-edge-start", recoveryEdgeStart);
+      }
       const button = await pressAndDragOut(page, recovery, reducedMotion === "reduce");
       const recoveryWidth = await noOverflow(page);
       expect(new URL(page.url()).pathname).toBe("/events/declared-missing-native-interaction-event");
@@ -733,7 +756,7 @@ test.describe("stable native press surfaces", () => {
       await expect(page.getByRole("navigation", { name: "Switch town", exact: true }).getByRole("link", { name: "Brunswick", exact: true })).toHaveAttribute("aria-current", "page");
       expect(await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(reducedMotion === "reduce");
       expect(runtime.get(page)?.errors).toEqual([]);
-      await attach(info, "native-control-geometry", { reducedMotion, button, pill, tabsToRecovery, tabsToTown, actualKeyboardRecovery: true, actualKeyboardTownNavigation: true, recoveryText, townText, recoveryWidth, townWidth });
+      await attach(info, "native-control-geometry", { reducedMotion, button, pill, tabsToRecovery, tabsToTown, actualKeyboardRecovery: true, actualKeyboardTownNavigation: true, recoveryEdgeStart, recoveryText, townText, recoveryWidth, townWidth });
     });
 
     test(`real event and place cards move only their direct face with ${reducedMotion} motion`, async ({ page }, info) => {
