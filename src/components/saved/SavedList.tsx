@@ -1,5 +1,6 @@
 "use client";
 
+import { eventDisplayTitle } from "@/lib/events/display-title";
 import { townAccent } from "@/lib/townAccent";
 import { useEffect, useMemo, useState } from "react";
 import { useSavedList, useMounted, type SavedRef } from "@/hooks/useSaved";
@@ -314,7 +315,7 @@ function EventRow({ event, today }: { event: DecoratedEvent; today: boolean }) {
         <span>{parts?.mon ?? ""}</span>
       </span>
       <span className="who">
-        <b>{event.title}</b>
+        <b>{eventDisplayTitle(event)}</b>
         {where && <span className={today ? "is-today" : undefined}>{where}</span>}
       </span>
       <span className="arr" aria-hidden><ArrowRight className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} /></span>

@@ -4,8 +4,9 @@ import {
   loadTodayEventSnapshot,
   publicEventArchiveSourceHealth,
 } from "@/lib/loaders/todayEventSnapshot";
-import { EVENTS } from "@/data/events";
+import { allUpcoming } from "@/lib/loaders/events";
 import { selectTodayEvents } from "@/lib/today-events";
+import { eventCardVisual, parseRecoveryEventVisual } from "@/components/event/eventVisuals";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 
 // The event archive is a runtime database source. Prerendering this handler
@@ -58,7 +59,9 @@ export async function GET(request: Request) {
     logEventArchiveFailure("Today archive loader failed", error);
     return null;
   });
-  const events = selectTodayEvents(snapshot?.publicEvents ?? EVENTS, now);
+  const events = selectTodayEvents(snapshot?.publicEvents ?? allUpcoming(now), now, 3,
+    (event) => parseRecoveryEventVisual(eventCardVisual(event, { venuePhotos: "owned-only" })),
+  );
   const sourceHealth = publicEventArchiveSourceHealth(snapshot?.sourceHealth);
   const degraded = sourceHealth.degraded;
 

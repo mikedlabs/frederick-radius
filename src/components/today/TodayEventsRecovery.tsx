@@ -4,6 +4,10 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import DismissibleSection from "@/components/today/DismissibleSection";
+import EventGlanceCard from "@/components/event/EventGlanceCard";
+import { parseRecoveryEventVisual, type EventCardVisual } from "@/components/event/eventVisuals";
+import { createAbortDeadline } from "@/lib/promise-deadline";
+import { eventDisplayTitle } from "@/lib/events/display-title";
 import {
   todayEventPicksMeta,
   type TodayEvent,
@@ -15,11 +19,21 @@ type RecoveryState =
   | { status: "ready"; response: TodayEventResponse }
   | { status: "failed" };
 
+// A client wait ceiling, independent of the archive reader's server budget.
+// It covers response headers and JSON consumption, even if abort is ignored.
+const RECOVERY_ATTEMPT_TIMEOUT_MS = 4_000;
 const RECOVERY_RETRY_DELAY_MS = 750;
+
+type RecoveryAttempt =
+  | { status: "ready"; response: TodayEventResponse }
+  | { status: "failed" }
+  | { status: "stopped" };
 const TODAY_EVENT_MOMENTS = new Set(["Now", "Later", "Tonight", "Today"]);
 const EVENT_SLUG = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
-function isTodayEvent(value: unknown): value is TodayEvent {
+type TodayEventFacts = Omit<TodayEvent, "visual">;
+
+function isTodayEvent(value: unknown): value is TodayEventFacts {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const event = value as Partial<TodayEvent>;
   return (
@@ -27,6 +41,7 @@ function isTodayEvent(value: unknown): value is TodayEvent {
     EVENT_SLUG.test(event.slug) &&
     typeof event.title === "string" &&
     event.title.trim().length > 0 &&
+    (event.presenter === undefined || typeof event.presenter === "string") &&
     typeof event.venue === "string" &&
     typeof event.municipality === "string" &&
     typeof event.time === "string" &&
@@ -47,10 +62,14 @@ function parseResponse(value: unknown): TodayEventResponse | null {
   ) {
     return null;
   }
-  const events = candidate.events.filter(isTodayEvent);
-  return events.length === candidate.events.length
-    ? { events, partial: candidate.partial }
-    : null;
+  const facts = candidate.events.filter(isTodayEvent);
+  if (facts.length !== candidate.events.length) return null;
+  const events = facts.map((event) => {
+    const { visual: optionalVisual, ...fields } = event as TodayEventFacts & { visual?: unknown };
+    const visual = parseRecoveryEventVisual(optionalVisual);
+    return { ...fields, ...(visual ? { visual } : {}) };
+  });
+  return { events, partial: candidate.partial };
 }
 
 function rowTime(event: TodayEvent): string {
@@ -59,17 +78,74 @@ function rowTime(event: TodayEvent): string {
   return event.time;
 }
 
+/** The caller supplies an approved visual. This pure presentation seam also
+ * supports declared offline layout fixtures without weakening API approval. */
+export function TodayEventBriefCard({ event, visual }: { event: TodayEvent; visual: EventCardVisual }) {
+  return (
+    <EventGlanceCard eventSlug={event.slug} visual={visual} cancelled={false}
+      accent="var(--app-brand)" surface="today" compactCredit={false}>
+      <div className="min-h-[96px] min-w-0 flex-1 [overflow-wrap:anywhere]">
+        <p className="font-mono text-xs font-semibold tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+          {rowTime(event)}
+        </p>
+        <h3 className="mt-1 text-base font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+          {eventDisplayTitle(event)}
+        </h3>
+        <p className="mt-1 text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          {event.venue}{event.free ? " · Free" : ""}
+        </p>
+      </div>
+    </EventGlanceCard>
+  );
+}
+
+async function recoverAttempt(parentSignal: AbortSignal): Promise<RecoveryAttempt> {
+  const deadline = createAbortDeadline(RECOVERY_ATTEMPT_TIMEOUT_MS, parentSignal);
+  let onAbort: (() => void) | undefined;
+  const stopped = new Promise<RecoveryAttempt>((resolve) => {
+    onAbort = () => resolve({ status: "stopped" });
+    if (deadline.signal.aborted) onAbort();
+    else deadline.signal.addEventListener("abort", onAbort, { once: true });
+  });
+  // Keep a rejection handler attached after the race settles. An abandoned
+  // fetch/body must not publish a late result or an unhandled rejection.
+  const request = (async (): Promise<RecoveryAttempt> => {
+    if (deadline.signal.aborted) return { status: "stopped" };
+    const response = await fetch("/api/today/events", {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+      signal: deadline.signal,
+    });
+    if (deadline.signal.aborted) return { status: "stopped" };
+    if (!response.ok) return { status: "failed" };
+    const parsed = parseResponse(await response.json());
+    return parsed
+      ? { status: "ready", response: parsed }
+      : { status: "failed" };
+  })().catch((): RecoveryAttempt => ({ status: "failed" }));
+
+  try {
+    // Aborting fetch alone is not a bound when a transport or body stalls.
+    return await Promise.race([request, stopped]);
+  } finally {
+    if (onAbort) deadline.signal.removeEventListener("abort", onAbort);
+    deadline.dispose();
+  }
+}
+
 function waitForRetry(signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
-    const timeout = window.setTimeout(resolve, RECOVERY_RETRY_DELAY_MS);
-    signal.addEventListener(
-      "abort",
-      () => {
-        window.clearTimeout(timeout);
-        resolve();
-      },
-      { once: true },
-    );
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
+    const finish = () => {
+      window.clearTimeout(timeout);
+      signal.removeEventListener("abort", finish);
+      resolve();
+    };
+    const timeout = window.setTimeout(finish, RECOVERY_RETRY_DELAY_MS);
+    signal.addEventListener("abort", finish, { once: true });
   });
 }
 
@@ -106,17 +182,17 @@ export function TodayEventsRecoveryView({
           style={{ borderColor: "var(--app-border)" }}
         >
           <div className="min-w-0">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
               Events today
             </p>
-            <p role="status" className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            <p role="status" className="mt-1 text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
               {status}
             </p>
           </div>
           <Link
             href="/events"
             aria-label="Open the full events board"
-            className="tap-44-y inline-flex min-h-11 shrink-0 items-center gap-1 text-[12px] font-semibold"
+            className="tap-44-y inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-semibold"
             style={{ color: "var(--app-link)" }}
           >
             Full board
@@ -141,17 +217,18 @@ export function TodayEventsRecoveryView({
         flat
         meta={meta}
       >
-        <ul>
-          {events.map((event) => (
-            <li key={event.slug}>
-              <Link
+        <ul className="space-y-2">
+          {events.map((event, index) => {
+            const visual = index === 0 ? parseRecoveryEventVisual(event.visual) : null;
+            return <li key={event.slug}>
+              {visual ? <TodayEventBriefCard event={event} visual={visual} /> : <Link
                 href={`/events/${event.slug}`}
                 prefetch={false}
                 className="tap-44-y flex items-start gap-3 border-b py-2 pr-0.5"
                 style={{ borderColor: "var(--app-border)" }}
               >
                 <span
-                  className="flex w-[58px] shrink-0 items-center gap-1 pt-px font-mono text-[11px] font-semibold tabular-nums leading-snug"
+                  className="flex w-[58px] shrink-0 items-center gap-1 pt-px font-mono text-xs font-semibold tabular-nums leading-snug"
                   style={{
                     color:
                       event.moment === "Now"
@@ -170,13 +247,13 @@ export function TodayEventsRecoveryView({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span
-                    className="line-clamp-2 block text-[14px] font-semibold leading-snug tracking-tight"
+                    className="block text-sm font-semibold leading-snug tracking-tight [overflow-wrap:anywhere]"
                     style={{ color: "var(--app-ink)" }}
                   >
-                    {event.title}
+                    {eventDisplayTitle(event)}
                   </span>
                   <span
-                    className="mt-0.5 block truncate text-[11.5px] leading-snug"
+                    className="mt-0.5 block text-xs leading-snug [overflow-wrap:anywhere]"
                     style={{ color: "var(--app-ink-3)" }}
                   >
                     {event.venue}
@@ -189,9 +266,9 @@ export function TodayEventsRecoveryView({
                   strokeWidth={2.25}
                   style={{ color: "var(--app-ink-3)" }}
                 />
-              </Link>
-            </li>
-          ))}
+              </Link>}
+            </li>;
+          })}
         </ul>
       </DismissibleSection>
     </section>
@@ -216,16 +293,17 @@ export default function TodayEventsRecovery() {
       try {
         for (let attempt = 0; attempt < 2; attempt += 1) {
           if (controller.signal.aborted) return;
-          const response = await fetch("/api/today/events", {
-            cache: "no-store",
-            headers: { Accept: "application/json" },
-            signal: controller.signal,
-          });
-          if (!response.ok) throw new Error("Today events request failed");
-          const parsed = parseResponse(await response.json());
-          if (!parsed) throw new Error("Today events response was invalid");
-          if (parsed.events.length > 0 || !parsed.partial) {
-            setState({ status: "ready", response: parsed });
+          const result = await recoverAttempt(controller.signal);
+          if (controller.signal.aborted) return;
+          if (result.status === "failed") {
+            setState({ status: "failed" });
+            return;
+          }
+          if (
+            result.status === "ready" &&
+            (result.response.events.length > 0 || !result.response.partial)
+          ) {
+            setState({ status: "ready", response: result.response });
             return;
           }
           if (attempt === 0) await waitForRetry(controller.signal);

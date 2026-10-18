@@ -10,6 +10,7 @@ import {
 } from "react";
 import { CalendarDays } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { eventDisplayTitle } from "@/lib/events/display-title";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { haptic } from "@/lib/haptics";
@@ -271,7 +272,7 @@ export default function MapList({
                           <CalendarDays className="h-4 w-4" strokeWidth={2.1} />
                         </span>
                         <span className="map-list-main">
-                          <span className="map-list-name">{event.title}</span>
+                          <span className="map-list-name">{eventDisplayTitle(event)}</span>
                           <span className="map-list-sub">
                             <span style={{ color: "var(--app-ink-2)", fontWeight: 650 }}>
                               {eventClock(event.starts_at)}

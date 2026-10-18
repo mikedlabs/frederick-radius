@@ -104,6 +104,23 @@ describe("rankMapListEvents", () => {
   });
 });
 
+describe("map list event identity", () => {
+  it.each([
+    { presenter: "Other Voices Theatre", label: "Other Voices Theatre: Live Theatre Production" },
+    { presenter: undefined, label: "Live Theatre Production" },
+  ])("keeps optional presenter identity on the available event row ($label)", ({ presenter, label }) => {
+    const source = { ...event("theatre", "2030-04-18T22:00:00.000Z", -77.4), title: "Live Theatre Production", presenter };
+    const html = renderToStaticMarkup(createElement(MapList, {
+      places: [], events: [source], userLoc: null, onPick: () => {}, onPickEvent: () => {},
+    }));
+
+    expect(html).toContain(`>${label}</span>`);
+    expect(html).toContain('data-decision-id="theatre"');
+    expect(source.title).toBe("Live Theatre Production");
+    expect(source.presenter).toBe(presenter);
+  });
+});
+
 describe("map list photos", () => {
   it("uses an inline photo when a full place record already carries one", () => {
     const withPhoto = {

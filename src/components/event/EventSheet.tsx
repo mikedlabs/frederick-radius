@@ -25,6 +25,7 @@ import { statusLabel } from "@/lib/event-status";
 import { formatDistance } from "@/lib/geo";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { haptic } from "@/lib/haptics";
+import { eventDisplayTitle } from "@/lib/events/display-title";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { trackDecision, type DecisionAction } from "@/lib/decision/telemetry";
 import {
@@ -224,11 +225,11 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 className={`mt-1 font-sans text-[24px] font-semibold leading-tight tracking-tight text-white ${isCancelled ? "line-through opacity-80" : ""}`}
                 style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
               >
-                {event.title}
+                {eventDisplayTitle(event)}
               </h2>
             </motion.div>
             <div className="absolute left-3 top-3 z-10">
-              <ItineraryButton eventId={event.slug} label={`Add ${event.title} to itinerary`} />
+              <ItineraryButton eventId={event.slug} label={`Add ${eventDisplayTitle(event)} to itinerary`} />
             </div>
           </div>
         ) : null}
@@ -262,11 +263,11 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                   className={`font-sans text-[22px] font-semibold leading-tight tracking-tight ${isCancelled ? "line-through opacity-80" : ""}`}
                   style={{ color: "var(--app-ink)" }}
                 >
-                  {event.title}
+                  {eventDisplayTitle(event)}
                 </h2>
               </div>
               <div className="shrink-0">
-                <ItineraryButton eventId={event.slug} label={`Add ${event.title} to itinerary`} />
+                <ItineraryButton eventId={event.slug} label={`Add ${eventDisplayTitle(event)} to itinerary`} />
               </div>
             </header>
           )}

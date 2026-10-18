@@ -6,6 +6,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 // a value import of loaders/events would drag its places-client static
 // import (1.8MB JSON) into every client bundle that renders an event card.
 import { eventDateBlock } from "@/lib/events/format";
+import { eventDisplayTitle } from "@/lib/events/display-title";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import ItineraryButton from "@/components/saved/ItineraryButton";
 import TrustChip from "@/components/ui/TrustChip";
@@ -95,6 +96,7 @@ export default function EventCard({
   /** Server-captured page time, used for stable started/unknown-end copy. */
   nowISO?: string;
 }) {
+  const displayTitle = eventDisplayTitle(event);
   const status = event.status ?? "scheduled";
   const cardNow = nowISO ? new Date(nowISO) : null;
   // Presentation-level guard: even if a stale caller passes `live`, a card
@@ -195,7 +197,7 @@ export default function EventCard({
           style={{ color: "var(--app-ink-2)" }}
         >
           <span className="absolute inset-0" aria-hidden />
-          {event.title}
+          {displayTitle}
           {venueLabel && (
             <span style={{ color: "var(--app-ink-3)" }}> · {venueLabel}</span>
           )}
@@ -279,7 +281,7 @@ export default function EventCard({
             style={{ color: "var(--app-ink)" }}
           >
             <span className="block line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight">
-              {event.title}
+              {displayTitle}
             </span>
             <span
               className="block text-[12px] font-normal leading-relaxed"
@@ -380,7 +382,7 @@ export default function EventCard({
               style={{ color: "var(--app-ink)" }}
             >
               <span className="absolute inset-0" aria-hidden />
-              {event.title}
+              {displayTitle}
             </Link>
             <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
               <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-2)" }}>{timingText}</span>
@@ -445,7 +447,7 @@ export default function EventCard({
                 className="text-[15px] font-semibold leading-snug tracking-tight line-clamp-2"
                 style={{ color: "var(--app-ink)" }}
               >
-                {event.title}
+                {displayTitle}
               </h3>
               {/* WHEN — supporting mono data (the design-system thesis on the
                   temporal token). A live dot + "Now" when it's happening
@@ -548,7 +550,7 @@ export default function EventCard({
             style={{ color: "var(--app-ink)" }}
           >
             <span className="absolute inset-0" aria-hidden />
-            {event.title}
+            {displayTitle}
           </Link>
         </div>
         <p className="mt-0.5 text-xs" style={{ color: "var(--app-ink-3)" }}>
@@ -583,7 +585,7 @@ export default function EventCard({
         </div>
       </div>
       <div className="relative z-10 flex shrink-0 items-center self-start">
-        <ItineraryButton eventId={event.slug} label={`Add ${event.title} to itinerary`} />
+        <ItineraryButton eventId={event.slug} label={`Add ${displayTitle} to itinerary`} />
       </div>
     </article>
   );

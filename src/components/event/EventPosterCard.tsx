@@ -11,6 +11,7 @@ import DatePlate from "@/components/event/DatePlate";
 import { communicationAccessLabels } from "@/lib/events/communication-access";
 import { eventDateBlock } from "@/lib/events/format";
 import { formatDistance } from "@/lib/geo";
+import { eventDisplayTitle } from "@/lib/events/display-title";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { statusLabel } from "@/lib/event-status";
 import { ReasonChipRow } from "@/components/ui/ReasonChip";
@@ -177,7 +178,7 @@ export default function EventPosterCard({
               className={`text-[20px] font-semibold leading-tight tracking-tight outline-none after:absolute after:inset-0 focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
               style={{ color: "var(--app-ink)" }}
             >
-              {event.title}
+              {eventDisplayTitle(event)}
             </Link>
             <p className="mt-1.5 text-[13px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>{timingText}</p>
             {venueLabel && <p className="mt-0.5 text-[13px]" style={{ color: "var(--app-ink-2)" }}>{venueLabel}</p>}
@@ -312,7 +313,7 @@ export default function EventPosterCard({
           style={{ color: titleColor }}
         >
           <span className="absolute inset-0" aria-hidden />
-          <span className="line-clamp-2">{event.title}</span>
+          <span className="line-clamp-2">{eventDisplayTitle(event)}</span>
         </Link>
         <p className="mt-1 text-[13px]" style={{ color: subColor }}>
           {date.weekday && (

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useId, useState, type CSSProperties } from "react";
 import { CalendarDays, ChevronDown, CornerUpRight, LoaderCircle } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { eventDisplayTitle } from "@/lib/events/display-title";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance, haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
 import { withMapReturnTo } from "@/lib/map-return";
@@ -216,7 +217,7 @@ function EventRow({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-semibold leading-snug text-[var(--app-ink)]">
-          {event.title}
+          {eventDisplayTitle(event)}
         </span>
         <span className="mt-0.5 block truncate text-[13px] leading-snug text-[var(--app-ink-2)]">
           {event.venue_name}

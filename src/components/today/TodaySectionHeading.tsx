@@ -35,7 +35,7 @@ export default function TodaySectionHeading({
         <div className="min-w-0">
           {eyebrow && <p className="fg-eyebrow mb-1.5">{eyebrow}</p>}
           <h2
-            className="flex items-center gap-2 font-sans text-[20px] font-semibold leading-none tracking-tight sm:text-[21px]"
+            className="flex items-center gap-2 font-sans text-xl font-semibold leading-none tracking-tight sm:text-[1.3125rem]"
             style={{ color: "var(--app-ink)" }}
           >
             {live && (
@@ -52,7 +52,7 @@ export default function TodaySectionHeading({
           </h2>
           {meta && (
             <p
-              className="mt-1.5 font-mono text-[10.5px] leading-snug tabular-nums tracking-[0.03em]"
+              className="mt-1.5 font-mono text-xs leading-snug tabular-nums tracking-[0.03em]"
               style={{ color: "var(--app-ink-3)" }}
             >
               {meta}
@@ -63,7 +63,7 @@ export default function TodaySectionHeading({
           <Link
             href={href}
             aria-label={`${cta}: ${title}`}
-            className="today-section-heading__cta tap-44-y -my-2 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-[var(--app-radius-sm)] px-1.5 text-[12px] font-semibold tracking-tight outline-none"
+            className="today-section-heading__cta tap-44-y -my-2 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-[var(--app-radius-sm)] px-1.5 text-sm font-semibold tracking-tight outline-none"
             style={{
               color:
                 "var(--app-heading-action, var(--today-section-ink, var(--app-brand-press)))",

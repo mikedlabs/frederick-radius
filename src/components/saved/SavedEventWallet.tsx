@@ -22,6 +22,7 @@
  * the shared event helpers (eventLipFact / eventWhenParts / eventPriceLabel,
  * built on eventDateBlock + isEventLiveNow) so no claim outruns the data.
  */
+import { eventDisplayTitle } from "@/lib/events/display-title";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -135,7 +136,7 @@ function Card({
           >
             <CategoryIcon slug={event.category} className="h-[21px] w-[21px]" strokeWidth={2.25} />
             <span className={`sw-name${statusText ? " is-struck" : ""}`}>
-              {event.title}
+              {eventDisplayTitle(event)}
             </span>
           </Link>
           <span className="sw-card-summary">
@@ -158,7 +159,7 @@ function Card({
               className="sw-disclosure tap-44"
               aria-expanded={open}
               aria-controls={`swe-stub-${event.slug}`}
-              aria-label={`${open ? "Hide" : "Show"} details for ${event.title}`}
+              aria-label={`${open ? "Hide" : "Show"} details for ${eventDisplayTitle(event)}`}
               onClick={toggle}
             >
               <ChevronDown aria-hidden className="h-4 w-4" strokeWidth={2.2} />
@@ -254,7 +255,7 @@ function Card({
             aria-busy={removing}
             className="sw-act-quiet"
             style={{ marginLeft: "auto" }}
-            aria-label={`Remove ${event.title} from saved`}
+            aria-label={`Remove ${eventDisplayTitle(event)} from saved`}
           >
             {removing ? "Removing…" : "Remove"}
           </button>

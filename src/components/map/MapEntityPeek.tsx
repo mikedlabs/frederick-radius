@@ -28,6 +28,7 @@ import { type ParkingPin } from "@/lib/map/parking";
 import { mapPopupSource } from "./mapPopupSource";
 import MapResultSurface from "./MapResultSurface";
 import { withMapReturnTo } from "@/lib/map-return";
+import { eventDisplayTitle } from "@/lib/events/display-title";
 
 function eventWhen(startsAt: string): string {
   const date = new Date(startsAt);
@@ -62,6 +63,7 @@ export function MapEventPeek({
   onClose: () => void;
   parking?: ParkingPin[];
 }) {
+  const displayTitle = eventDisplayTitle(event);
   const color = event.category_color || "var(--app-brand)";
   const plan = parking.length > 0 
     ? garagePlanFor(
@@ -73,8 +75,8 @@ export function MapEventPeek({
   return (
     <MapResultSurface
       className="map-peek map-entity-peek"
-      ariaLabel={event.title}
-      closeLabel={`Close ${event.title}`}
+      ariaLabel={displayTitle}
+      closeLabel={`Close ${displayTitle}`}
       onClose={onClose}
     >
       <div className="map-peek-body">
@@ -94,7 +96,7 @@ export function MapEventPeek({
           <span className="map-peek-cat" style={{ color }}>
             {eventWhen(event.starts_at)}
           </span>
-          <span className="map-peek-name font-serif">{event.title}</span>
+          <span className="map-peek-name font-serif">{displayTitle}</span>
           <span className="map-peek-detail">{event.venue_name}</span>
           <span className="map-peek-source">Listing from {event.source_label ?? "Frederick Radius"}. Confirm with the organizer before you go.</span>
           {plan && (
