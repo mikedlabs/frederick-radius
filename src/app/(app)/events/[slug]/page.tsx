@@ -109,6 +109,7 @@ function SeriesDateRow({
 
   return (
     <Link
+      prefetch={false}
       href={`/events/${event.slug}`}
       className="tap-44 flex items-center gap-3 border-b py-2.5 transition hover:bg-[var(--app-bg-sunken)]"
       style={{ borderColor: "var(--app-border)", opacity: isPast ? 0.55 : 1 }}
@@ -410,16 +411,19 @@ export default async function EventPage({
     >
       <Suspense fallback={null}><MapReturnLink /></Suspense>
 
+      {/* Event-content links load their destination only on a committed tap.
+          This includes conditional/related links below: speculative route
+          requests can race native document Back while detail hydrates. */}
       {/* Visually small breadcrumbs with invisible 44px hit areas
           (WCAG 2.5.5) — py-3.5/-my-3.5 grows the tap zone only. */}
       {
         <nav aria-label="Breadcrumb" className="text-xs">
           <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
-            <li><Link href="/events" className="inline-flex min-h-11 items-center gap-1.5 px-1 -mx-1 hover:underline">Events</Link></li>
+            <li><Link prefetch={false} href="/events" className="inline-flex min-h-11 items-center gap-1.5 px-1 -mx-1 hover:underline">Events</Link></li>
             <li aria-hidden>·</li>
             <li>
               {physicalAttendance && MUNICIPALITY_BY_SLUG[event.municipality] ? (
-                <Link href={`/m/${event.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{event.municipality_name}</Link>
+                <Link prefetch={false} href={`/m/${event.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{event.municipality_name}</Link>
               ) : (
                 <span>{physicalAttendance ? event.municipality_name : "Online"}</span>
               )}
@@ -644,7 +648,7 @@ export default async function EventPage({
                   Organizer&rsquo;s announcement
                 </a>
               )}
-              <Link href="/events?lens=today" className={primaryCls} style={primaryStyle}>
+              <Link prefetch={false} href="/events?lens=today" className={primaryCls} style={primaryStyle}>
                 <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-on-brand)" }} aria-hidden />
                 Find something else
               </Link>
@@ -675,12 +679,12 @@ export default async function EventPage({
                   {recordAction.label}
                 </a>
               ) : (
-                <Link href={recordAction.href} className={quietCls} style={quietStyle}>
+                <Link prefetch={false} href={recordAction.href} className={quietCls} style={quietStyle}>
                   <MapPin className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
                   {recordAction.label}
                 </Link>
               ))}
-              <Link href="/events?lens=today" className={primaryCls} style={primaryStyle}>
+              <Link prefetch={false} href="/events?lens=today" className={primaryCls} style={primaryStyle}>
                 <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-on-brand)" }} aria-hidden />
                 Find something else
               </Link>
@@ -766,7 +770,7 @@ export default async function EventPage({
                 {thirdAction.label}
               </a>
             ) : (
-              <Link href={thirdAction.href} data-decision-action="open" className={primaryCls} style={primaryStyle}>
+              <Link prefetch={false} href={thirdAction.href} data-decision-action="open" className={primaryCls} style={primaryStyle}>
                 <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={iconOnBrand} aria-hidden />
                 {thirdAction.label}
               </Link>
@@ -956,6 +960,7 @@ export default async function EventPage({
               {moreUpcoming.title}
             </h2>
             <Link
+              prefetch={false}
               href="/events"
               className="tap-44 inline-flex items-center text-[12px] font-semibold"
               style={{ color: "var(--app-brand-press)" }}

@@ -50,9 +50,19 @@ const civic = { alerts: [], available: true, degraded: false } as unknown as Off
 describe("County status API, visible pill and Pulse masthead", () => {
   let container: HTMLDivElement;
   let root: Root;
+  let frames: Map<number, FrameRequestCallback>;
+  let nextFrame = 0;
+  const flushFrames = async () => {
+    const callbacks = [...frames.values()]; frames.clear();
+    await act(async () => { for (const callback of callbacks) callback(performance.now()); });
+  };
   beforeEach(() => {
     vi.resetAllMocks(); vi.useFakeTimers(); vi.setSystemTime(NOW);
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    window.dispatchEvent(new Event("pageshow"));
+    frames = new Map(); nextFrame = 0;
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { const id = ++nextFrame; frames.set(id, callback); return id; });
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => { frames.delete(id); });
     container = document.createElement("div"); document.body.append(container); root = createRoot(container);
   });
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); vi.unstubAllGlobals(); });
@@ -81,6 +91,7 @@ describe("County status API, visible pill and Pulse masthead", () => {
     vi.setSystemTime(Date.parse(NOW) + elapsed);
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json(payload)));
     await act(async () => root.render(createElement(PulseIndicator)));
+    await flushFrames();
     const board = document.createElement("div");
     board.innerHTML = renderToStaticMarkup(createElement(PulseBoard, {
       hero: { countyStatus: pageSummary, allClear: false, degraded: true, tone: "danger", line: "Pulse detail keeps its own source and context.", sub: "This example does not establish the state of other feeds.", renderedAt: Date.now() },
@@ -104,8 +115,10 @@ describe("County status API, visible pill and Pulse masthead", () => {
       createElement(PulseIndicator),
       createElement(PulseBoard, { hero: { countyStatus: summary, allClear: true, line: "No issue is reported in these sample checks.", sub: "Other sources keep their own details.", renderedAt: Date.now() }, chips: [], tiles: [] }),
     )));
+    await flushFrames();
     expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Clear in checked feeds");
     await act(async () => vi.advanceTimersByTimeAsync(COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS - 1));
+    await flushFrames();
     expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Clear in checked feeds");
     await act(async () => vi.advanceTimersByTimeAsync(1));
     expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Unable to verify");
@@ -121,6 +134,7 @@ describe("County status API, visible pill and Pulse masthead", () => {
       createElement(PulseIndicator),
       createElement(PulseBoard, { hero: { countyStatus: summary, allClear: false, line: "Published warning.", sub: "Source checks retain their times.", renderedAt: Date.now() }, chips: [], tiles: [] }),
     )));
+    await flushFrames();
     expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Urgent");
     await act(async () => vi.advanceTimersByTimeAsync(6_999));
     expect(container.querySelector("[data-pulse-desktop-state]")?.textContent).toBe("Urgent");

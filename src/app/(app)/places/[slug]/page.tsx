@@ -299,11 +299,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           clips vertically as well. */}
       <nav aria-label="Breadcrumb" className="-mx-1 px-1 text-xs">
         <ol className="flex min-w-max items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
-          <li><Link href="/places" className="-mx-1 -my-3.5 inline-flex min-w-11 items-center justify-center px-1 py-3.5 hover:underline">Places</Link></li>
+          <li><Link prefetch={false} href="/places" className="-mx-1 -my-3.5 inline-flex min-w-11 items-center justify-center px-1 py-3.5 hover:underline">Places</Link></li>
           {town && (
             <>
               <li aria-hidden>·</li>
-              <li><Link href={`/m/${place.municipality}`} className="-mx-1 -my-3.5 inline-flex min-w-11 items-center justify-center px-1 py-3.5 hover:underline">{town.name}</Link></li>
+              <li><Link prefetch={false} href={`/m/${place.municipality}`} className="-mx-1 -my-3.5 inline-flex min-w-11 items-center justify-center px-1 py-3.5 hover:underline">{town.name}</Link></li>
             </>
           )}
           {/* Category already appears in the hero pill, the identity line,
@@ -606,7 +606,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       <section className="space-y-3">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-title" style={{ color: "var(--app-ink)" }}>Nearby</h2>
-          <Link href={exploreAreaHref} className="tap-44 inline-flex items-center text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+          <Link prefetch={false} href={exploreAreaHref} className="tap-44 inline-flex items-center text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
             View area <ArrowRight aria-hidden className="ml-1 h-3.5 w-3.5" strokeWidth={2.25} />
           </Link>
         </div>
@@ -646,7 +646,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
           {cat && (
-            <Link href={`/category/${place.category}`} className="tap-44 inline-flex items-center" style={{ color: "var(--app-brand-press)" }}>
+            <Link prefetch={false} href={`/category/${place.category}`} className="tap-44 inline-flex items-center" style={{ color: "var(--app-brand-press)" }}>
               More {cat.name.toLowerCase()} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           )}

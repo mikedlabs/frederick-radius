@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import AppTransitionLink from "./AppTransitionLink";
 import { countyStatusLabel, countyStatusSnapshotDeadline, COUNTY_STATUS_FUTURE_TOLERANCE_MS, type CountyStatusSummary } from "@/lib/pulse/county-status";
 import { createAbortDeadline } from "@/lib/promise-deadline";
+import { documentReadIsActive, scheduleDocumentRead } from "@/lib/document-read-lifecycle";
 
 /**
  * PulseIndicator — header dot that lights up when something is
@@ -67,9 +68,19 @@ export default function PulseIndicator() {
     let request: AbortController | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let expiry: ReturnType<typeof setTimeout> | undefined;
-    const visible = () => document.visibilityState !== "hidden";
+    let cancelScheduled: (() => void) | null = null;
+    const visible = documentReadIsActive;
+    const scheduleStatus = () => {
+      if (disposed || !visible() || request || cancelScheduled) return;
+      cancelScheduled = scheduleDocumentRead(() => {
+        cancelScheduled = null;
+        void fetchStatus();
+      }, () => { cancelScheduled = null; });
+    };
     const cancel = () => {
       generation++;
+      cancelScheduled?.();
+      cancelScheduled = null;
       if (timer) clearTimeout(timer);
       if (expiry) clearTimeout(expiry);
       timer = undefined;
@@ -128,23 +139,28 @@ export default function PulseIndicator() {
         deadline.dispose();
         if (request === controller) request = null;
         if (!disposed && id === generation && visible()) {
-          timer = setTimeout(fetchStatus, POLL_INTERVAL_MS);
+          timer = setTimeout(scheduleStatus, POLL_INTERVAL_MS);
         }
       }
     };
     const onVisibility = () => {
-      if (visible()) void fetchStatus();
+      if (visible()) scheduleStatus();
       else {
         cancel();
         setPhase("unavailable");
       }
     };
-    void fetchStatus();
+    const onPageHide = () => { cancel(); setPhase("unavailable"); };
+    scheduleStatus();
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("pageshow", onVisibility);
     return () => {
       disposed = true;
       cancel();
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", onVisibility);
     };
   }, []);
 

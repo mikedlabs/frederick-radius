@@ -33,6 +33,8 @@ describe("VenueMiniMap", () => {
 
     const html = renderMap();
 
+    expect(html).toContain('href="/map?c=-77.40837,39.41279,15.5"');
+    expect(html).toContain('aria-label="Open the map centered on Carroll Creek Linear Park"');
     expect(html).toContain('data-local-locator="true"');
     expect(html).toContain("Radius locator");
     expect(html).toContain("Open map");
@@ -47,6 +49,8 @@ describe("VenueMiniMap", () => {
 
     const html = renderMap();
 
+    expect(html).toContain('href="/map?c=-77.40837,39.41279,15.5"');
+    expect(html).toContain('aria-label="Open the map centered on Carroll Creek Linear Park"');
     expect(html).toContain("/api/static-map?lng=-77.40837&amp;lat=39.41279");
     expect(html).toContain('width="1280"');
     expect(html).toContain('height="560"');

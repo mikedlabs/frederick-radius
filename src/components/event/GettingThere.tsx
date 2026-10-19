@@ -29,8 +29,8 @@ export default function GettingThere({ geom, venuePlaceSlug, geoPrecise, parking
               <div className="flex flex-wrap items-center gap-x-3 text-[12px]">
                 {parkingNote?.source_url && <a href={parkingNote.source_url} target="_blank" rel="noopener noreferrer" className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool)" }}>Parking source</a>}
                 {verified && <span>Checked {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" }).format(new Date(verified))}</span>}
-                {!parkingNote && parkingDecision && <Link href={`/places/${parkingDecision.slug}`} className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool)" }}>See garage &amp; directions</Link>}
-                {!parkingNote && <Link href="/parking" className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool)" }}>Check parking rates</Link>}
+                {!parkingNote && parkingDecision && <Link prefetch={false} href={`/places/${parkingDecision.slug}`} className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool)" }}>See garage &amp; directions</Link>}
+                {!parkingNote && <Link prefetch={false} href="/parking" className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool)" }}>Check parking rates</Link>}
               </div>
             </div>
           </li>
@@ -40,7 +40,7 @@ export default function GettingThere({ geom, venuePlaceSlug, geoPrecise, parking
             <TrainFront className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
             <div>
               <p>{station.name} MARC station is {station.distanceLabel} away in a straight line. Check outbound and return service for the event date before planning the trip.</p>
-              <Link href="/transit" className="tap-44 inline-flex items-center text-[12px] font-semibold underline" style={{ color: "var(--app-cool)" }}>Check train schedules</Link>
+              <Link prefetch={false} href="/transit" className="tap-44 inline-flex items-center text-[12px] font-semibold underline" style={{ color: "var(--app-cool)" }}>Check train schedules</Link>
             </div>
           </li>
         )}

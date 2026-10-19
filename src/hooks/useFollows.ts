@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useSavedList, useToggleSave, useIsSaved, savedChangeDescription } from "@/hooks/useSaved";
 import { track } from "@/lib/track";
 import { createAbortDeadline, withDeadlineOutcome } from "@/lib/promise-deadline";
+import { documentReadIsActive, scheduleDocumentRead } from "@/lib/document-read-lifecycle";
 import { businessTopic } from "@/lib/push-topics";
 import {
   cancelPendingReturnBridgeValue,
@@ -219,6 +220,7 @@ const subscribeRemote = (cb: () => void) => {
  * don't issue duplicate requests.
  */
 let authPromise: Promise<AuthState> | null = null;
+let cancelAuthRead: (() => void) | null = null;
 let authGeneration = 0;
 
 /**
@@ -234,6 +236,7 @@ function commitFollowBootstrap(bootstrap: FollowedSlugsBootstrap) {
   const auth: AuthState = bootstrap.user
     ? { user: bootstrap.user }
     : "anonymous";
+  cancelAuthRead?.();
   authGeneration++;
   authPromise = Promise.resolve(auth);
 
@@ -264,27 +267,60 @@ function commitFollowBootstrap(bootstrap: FollowedSlugsBootstrap) {
 }
 
 function detectAuth(): Promise<AuthState> {
-  if (!authPromise) {
-    const request = fetch("/api/auth/me", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { user: null }))
-      .then((data: { user: { id: string; email: string | null } | null }) =>
-        data.user ? ({ user: data.user } as AuthState) : "anonymous",
-      )
-      .catch(() => "anonymous" as AuthState);
-    const lookup = withDeadlineOutcome(request, FOLLOW_WRITE_TIMEOUT_MS).then((result): AuthState => {
-      if (authPromise !== lookup) return "unknown";
-      if (result.status === "timed_out") {
-        // Release only this lookup. A timeout is not anonymous identity, and a
-        // late response must not replace a newer bootstrap or retry.
-        authPromise = null;
-        authGeneration++;
-        return "unknown";
+  if (authPromise) return authPromise;
+  // Skipping a hidden/departed page is not a signed-out identity. Do not
+  // poison the shared cache or start a deadline while no read can be admitted.
+  if (!documentReadIsActive()) return Promise.resolve("unknown");
+  const generation = authGeneration;
+  const controller = new AbortController();
+  let cancelFrame = () => {};
+  let resolveUnknown = () => {};
+  const cancel = () => {
+    controller.abort();
+    cancelFrame();
+    resolveUnknown();
+  };
+  const onVisibility = () => { if (!documentReadIsActive()) cancel(); };
+  window.addEventListener("pagehide", cancel);
+  document.addEventListener("visibilitychange", onVisibility);
+  cancelAuthRead = cancel;
+  const request = new Promise<AuthState>((resolve) => {
+    resolveUnknown = () => resolve("unknown");
+    const read = async () => {
+      if (!documentReadIsActive() || authGeneration !== generation || authPromise !== lookup) {
+        cancel();
+        return;
       }
-      return result.status === "fulfilled" ? result.value : "unknown";
-    });
-    authPromise = lookup;
-  }
-  return authPromise;
+      try {
+        const response = await fetch("/api/auth/me", { cache: "no-store", signal: controller.signal });
+        const data = response.ok ? await response.json() as { user: FollowUser | null } : { user: null };
+        // Some transports ignore abort. The old result still cannot become
+        // anonymous or replace a newer server bootstrap after departure.
+        if (controller.signal.aborted || !documentReadIsActive()) resolve("unknown");
+        else resolve(data.user ? { user: data.user } : "anonymous");
+      } catch {
+        resolve(controller.signal.aborted || !documentReadIsActive() ? "unknown" : "anonymous");
+      }
+    };
+    cancelFrame = scheduleDocumentRead(() => { void read(); }, resolveUnknown);
+  });
+  const lookup = withDeadlineOutcome(request, FOLLOW_WRITE_TIMEOUT_MS).then((result): AuthState => {
+    if (authPromise !== lookup) return "unknown";
+    if (result.status !== "fulfilled" || result.value === "unknown") {
+      cancel();
+      authPromise = null;
+      authGeneration++;
+      return "unknown";
+    }
+    return result.value;
+  }).finally(() => {
+    cancelFrame();
+    window.removeEventListener("pagehide", cancel);
+    document.removeEventListener("visibilitychange", onVisibility);
+    if (cancelAuthRead === cancel) cancelAuthRead = null;
+  });
+  authPromise = lookup;
+  return lookup;
 }
 
 /**
@@ -391,15 +427,18 @@ export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap): {
     ]);
   }, [bootstrap]);
   const [committedBootstrapKey, setCommittedBootstrapKey] = useState<string | null>(null);
+  const consumedBootstrap = useRef<FollowedSlugsBootstrap | undefined>(undefined);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const remoteSlugs = useSyncExternalStore(subscribeRemote, readRemote, readServerRemote);
 
   useEffect(() => {
     let cancelled = false;
+    let retryNeeded = true;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
     const scheduleTransientRetry = () => {
-      if (cancelled) return;
+      retryNeeded = true;
+      if (cancelled || !documentReadIsActive()) return;
       const delay = Math.min(1_000 * 2 ** retryAttempt, 15_000);
       retryTimer = setTimeout(() => {
         if (!cancelled) setRetryAttempt((attempt) => attempt + 1);
@@ -408,47 +447,75 @@ export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap): {
 
     const hydrate = async (a: AuthState) => {
       if (a === "anonymous" || a === "unknown") return;
+      // A defined server membership snapshot is already authoritative. Keep
+      // this read-only path from implicitly importing unrelated local saves.
+      if (bootstrap?.slugs !== undefined && bootstrap.user?.id === a.user.id
+        && remoteStoreUserId === a.user.id && remoteStore !== null) return;
+      retryNeeded = true;
       const result = await ensureRemoteHydrated(localSlugs, a.user.id);
       if (cancelled) return;
       if (result === "transient-error") {
         scheduleTransientRetry();
         return;
       }
+      retryNeeded = false;
       if (result !== "unauthorized") return;
 
       // The server rejected the cookie after the page snapshot was created.
       // Re-read identity instead of leaving the tab permanently "authed".
+      retryNeeded = true;
       const refreshed = await detectAuth();
       if (cancelled) return;
       setAuth(refreshed);
-      if (refreshed !== "anonymous" && refreshed !== "unknown") {
+      retryNeeded = refreshed === "unknown";
+      if (refreshed === "unknown") scheduleTransientRetry();
+      else if (refreshed !== "anonymous") {
+        retryNeeded = true;
         const retry = await ensureRemoteHydrated(localSlugs, refreshed.user.id);
-        if (!cancelled && retry === "transient-error") scheduleTransientRetry();
+        if (cancelled) return;
+        retryNeeded = false;
+        if (retry === "transient-error") scheduleTransientRetry();
       }
     };
 
-    if (bootstrap) {
-      const verified: AuthState = bootstrap.user
-        ? { user: bootstrap.user }
-        : "anonymous";
+    // A retry or restored document must use the current shared identity/store,
+    // never replay a server payload already consumed before a later 401/write.
+    // Object identity still lets a genuinely new server snapshot be authoritative.
+    if (bootstrap && consumedBootstrap.current !== bootstrap) {
+      consumedBootstrap.current = bootstrap;
       commitFollowBootstrap(bootstrap);
-      void Promise.resolve().then(() => {
-        if (cancelled) return;
-        setCommittedBootstrapKey(bootstrapKey);
-        setAuth(verified);
-      });
-      if (bootstrap.user && bootstrap.slugs === undefined) void hydrate(verified);
-    } else {
-      void detectAuth().then((detected) => {
-        if (cancelled) return;
-        setAuth(detected);
-        if (detected === "unknown") scheduleTransientRetry();
-        else void hydrate(detected);
-      });
     }
+    void detectAuth().then((detected) => {
+      if (cancelled) return;
+      // Also acknowledge the same payload on Strict Mode effect replay, when
+      // the first effect's microtask may have been cancelled after its commit.
+      if (bootstrap) setCommittedBootstrapKey(bootstrapKey);
+      setAuth(detected);
+      retryNeeded = detected === "unknown";
+      if (detected === "unknown") scheduleTransientRetry();
+      else void hydrate(detected);
+    });
+    const onResume = () => {
+      if (!cancelled && documentReadIsActive() && retryNeeded) {
+        retryNeeded = false;
+        setRetryAttempt((attempt) => attempt + 1);
+      } else if (!documentReadIsActive() && retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = undefined;
+      }
+    };
+    const onPageHide = () => {
+      if (retryTimer) { clearTimeout(retryTimer); retryTimer = undefined; }
+    };
+    window.addEventListener("pageshow", onResume);
+    window.addEventListener("pagehide", onPageHide);
+    document.addEventListener("visibilitychange", onResume);
     return () => {
       cancelled = true;
       if (retryTimer) clearTimeout(retryTimer);
+      window.removeEventListener("pageshow", onResume);
+      window.removeEventListener("pagehide", onPageHide);
+      document.removeEventListener("visibilitychange", onResume);
     };
   }, [bootstrap, bootstrapKey, localSlugs, retryAttempt]);
 
@@ -922,6 +989,7 @@ async function maybeSync(localSlugs: Set<string>, remoteSlugs: Set<string>, user
  *  different account on the same device starts fresh instead of
  *  showing the previous session's follow set. */
 export function resetFollowsSyncFlag(userId?: string) {
+  cancelAuthRead?.();
   if (userId) clearSyncedFlag(userId);
   followWriteEpoch++;
   // Pending/unknown server writes remain held even if this account signs out.

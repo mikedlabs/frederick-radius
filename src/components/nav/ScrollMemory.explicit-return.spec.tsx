@@ -15,6 +15,8 @@ let scroll: ReturnType<typeof vi.fn>;
 const path = "/today?in=frederick";
 
 beforeEach(() => {
+  window.dispatchEvent(new Event("pagehide"));
+  window.dispatchEvent(new Event("pageshow"));
   vi.useFakeTimers();
   route.pathname = "/today";
   route.search = "in=frederick";

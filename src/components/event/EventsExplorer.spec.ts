@@ -107,9 +107,8 @@ describe("EventsExplorer deferred browse reconciliation", () => {
   it("keeps personalized event results hidden until browser scope and filters are restored", () => {
     const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
 
-    expect(source).toContain("data-events-restoring-view");
     expect(source).toContain("data-events-personalized-view hidden={!urlReady}");
-    expect(source).toContain("Radius is restoring your town, time, and event filters.");
+    expect(source).toContain("<EventsRestorePreview events={events} nowISO={nowISO} degraded={sourceHealth.degraded} />");
   });
 
   it("bypasses a cached degraded response only when the person checks again", () => {

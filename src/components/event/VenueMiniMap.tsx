@@ -33,6 +33,7 @@ export default function VenueMiniMap({
   return (
     <Link
       href={`/map?c=${lng},${lat},15.5`}
+      prefetch={false}
       aria-label={`Open the map centered on ${name}`}
       className="tactile tactile-interactive block overflow-hidden rounded-[var(--app-radius-md)] border"
       style={{ borderColor: "var(--app-border)" }}
