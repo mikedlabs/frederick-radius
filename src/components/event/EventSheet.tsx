@@ -379,6 +379,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
               </p>
               <Link
                 href={`/map?open=${encodeURIComponent(event.venue_place_slug)}&intent=eat-drink`}
+                prefetch={false}
                 onClick={() => { haptic("light"); onClose(); }}
                 className="tap-44 mt-2 inline-flex items-center gap-1 text-[12.5px] font-semibold"
                 style={{ color: "var(--app-link)" }}
