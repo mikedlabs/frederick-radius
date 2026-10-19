@@ -16,6 +16,7 @@ export default function EventArtwork({
   credit = true,
   className,
   onUnavailable,
+  frame = "standard",
 }: {
   visual: EventCardVisual;
   priority?: boolean;
@@ -23,6 +24,8 @@ export default function EventArtwork({
   credit?: boolean;
   className?: string;
   onUnavailable?: () => void;
+  /** Leads give intact publisher artwork a wider, unpadded presentation. */
+  frame?: "standard" | "poster";
 }) {
   const { visibleVisual, failImage, inspectLoadedImage } = useEventVisualLifecycle(visual);
   if (visual.presentation !== "artwork" || !visibleVisual) return null;
@@ -32,7 +35,7 @@ export default function EventArtwork({
 
   return (
     <figure data-event-artwork className={className}>
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]">
+      <div data-event-artwork-frame={frame} className={`relative w-full overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] ${frame === "poster" ? "aspect-[16/10]" : "aspect-[4/3]"}`}>
         <Image
           key={visual.src}
           src={visual.src}
@@ -40,7 +43,7 @@ export default function EventArtwork({
           fill
           priority={priority}
           sizes="(max-width: 720px) 100vw, 720px"
-          className="object-contain p-3"
+          className={frame === "poster" ? "object-contain" : "object-contain p-3"}
           onLoad={(event) => inspectLoadedImage(event.currentTarget, onUnavailable)}
           onError={unavailable}
         />

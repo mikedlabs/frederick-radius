@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:37f153ca48e010d4731f36c21c5ba14ae44d1037ab3e01de96ffc5d3ef7f859c",
+  "data_version": "sha256:7194b9ebb283e4b27fed8aad87e9d4cf6845230219ac7020c005a12b0b5fd401",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-18T09:28:25.744Z",
+      "promoted_at": "2026-10-19T15:22:31.116Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -174,9 +174,9 @@
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
-          "sha256": "550146872eb8d1b82b1006aca72e02137b55899ab43cfa7165e796a1d3cd132b",
+          "sha256": "ff925357b5f8508bc79b5d465ecd9ddb44b67bd2d925821fd19b85ab196166d3",
           "records": null,
-          "bytes": 3158
+          "bytes": 6995
         },
         {
           "path": "public/place-photos/brewers-alley-2004.jpg",

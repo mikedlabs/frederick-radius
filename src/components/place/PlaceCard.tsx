@@ -17,6 +17,7 @@ import CategoryIcon from "./CategoryIcon";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { directionsHref } from "@/lib/map/directionsHref";
 import SourceBadge from "./SourceBadge";
+import discoveryStyles from "./NearbyDiscoveryCard.module.css";
 import FieldNoteTag, { DealHookTag } from "./FieldNoteTag";
 import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
 import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
@@ -154,6 +155,7 @@ export default function PlaceCard({
   showSource = variant === "answer" || variant === "feature",
   neutral = false,
   lazyPhoto = false,
+  discoverySurface,
 }: {
   place: PlaceCardData;
   compact?: boolean;
@@ -161,6 +163,8 @@ export default function PlaceCard({
   /** Hydrate the photo on scroll; set by surfaces that withhold inline
    *  photo URLs from their payload. */
   lazyPhoto?: boolean;
+  /** Nearby alone uses a compact address-led layout; other discovery callers keep their existing cards. */
+  discoverySurface?: "nearby";
   /** Show the source/trust badge. Defaults by variant (off in dense lists,
    *  on for the lead); the full trust tier still lives on the detail sheet. */
   showSource?: boolean;
@@ -228,6 +232,7 @@ export default function PlaceCard({
   // Nearby discovery gives an exact place photograph enough room to identify
   // the destination. A missing/exhausted plan keeps a compact, factual card.
   if (variant === "discovery") {
+    const nearby = discoverySurface === "nearby";
     const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? place.city;
     const repeatedFacts = new Set([place.name, cat?.name, place.category, town, "Hours not confirmed"]
       .filter((value): value is string => Boolean(value))
@@ -244,8 +249,9 @@ export default function PlaceCard({
       <article
         ref={photoAnchorRef}
         data-place-card-variant="discovery"
+        data-place-card-surface={discoverySurface}
         data-place-card-has-photo={photo ? "true" : "false"}
-        className="relative mx-auto w-full min-w-0 max-w-[600px] overflow-hidden rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated-solid)]"
+        className={nearby ? discoveryStyles.card : "relative mx-auto w-full min-w-0 max-w-[600px] overflow-hidden rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated-solid)]"}
         style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1)" }}
       >
         <button
@@ -258,7 +264,22 @@ export default function PlaceCard({
           <span data-press-face className="block">
           {photo && <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={360}
             sizes="(max-width: 640px) calc(100vw - 32px), 600px" deferGoogleBytes={lazyPhoto} />}
-          <div className={photo ? "p-4" : "flex items-start gap-3 p-3"}>
+          {nearby ? <div className={`${discoveryStyles.body} ${photo ? "" : discoveryStyles.withoutPhoto}`}>
+            {!photo && <CategoryMark category={place.category} color="var(--app-ink-2)" size={36} />}
+            <div className={discoveryStyles.copy}>
+              <p className={discoveryStyles.eyebrow}>
+                <span>{cat?.name ?? place.category}</span>
+                {town && <><span aria-hidden>·</span><span>{town}</span></>}
+              </p>
+              <h3 className={discoveryStyles.title}>{place.name}</h3>
+              {place.address && <p className={discoveryStyles.address}>{place.address}</p>}
+              <div className={discoveryStyles.facts}>
+                {hoursUnknown ? <span>Hours not confirmed</span> : <PlaceStatus status={place.open_status} />}
+                {place.distance_m !== undefined && <span className={discoveryStyles.distance}>{formatDistance(place.distance_m)}</span>}
+              </div>
+              {photo && fact && <p className={discoveryStyles.note}>{fact}</p>}
+            </div>
+          </div> : <div className={photo ? "p-4" : "flex items-start gap-3 p-3"}>
             {!photo && <CategoryMark category={place.category} color="var(--app-ink-2)" size={44} />}
             <div className="min-w-0 flex-1">
               <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] leading-normal" style={{ color: "var(--app-ink-2)" }}>
@@ -274,22 +295,25 @@ export default function PlaceCard({
               </div>
               {photo && fact && <p className="mt-2 line-clamp-2 text-[14px] leading-[1.45]" style={{ color: "var(--app-ink-2)" }}>{fact}</p>}
             </div>
-          </div>
+          </div>}
           </span>
         </button>
         <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} touchTarget compact />
-        <div className="grid grid-cols-2 gap-2 px-4 pb-4 [&_button]:flex-row [&_button]:gap-2 [&_button]:border [&_button]:border-[var(--app-control-border)] [&_button]:text-[13px]">
+        <div className={nearby ? discoveryStyles.actions : "grid grid-cols-2 gap-2 px-4 pb-4 [&_button]:flex-row [&_button]:gap-2 [&_button]:border [&_button]:border-[var(--app-control-border)] [&_button]:text-[13px]"}>
           <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} barLabel="Save" />
           <a
             href={directions}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`Directions to ${actionName}`}
+            data-press-target={nearby ? "secondary" : undefined}
             className="flex min-h-[52px] min-w-0 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-2 py-2 text-[13px] font-semibold leading-snug outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-focus)]"
-            style={{ borderColor: "var(--app-control-border)", color: "var(--app-link)" }}
+            style={{ borderColor: nearby ? "var(--app-brand)" : "var(--app-control-border)", color: nearby ? "var(--app-on-brand)" : "var(--app-link)" }}
           >
-            Directions
-            <ArrowUpRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} aria-hidden />
+            <span data-press-face={nearby ? "" : undefined} className="inline-flex items-center justify-center gap-2">
+              Directions
+              <ArrowUpRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} aria-hidden />
+            </span>
           </a>
         </div>
       </article>

@@ -44,3 +44,61 @@
     aspect-ratio: 4 / 3;
   }
 }
+
+
+/* A recommendation is an invitation to browse. The photograph has its own
+   full-width canvas; factual copy and independent credits never overlay it. */
+.discovery {
+  min-width: 0;
+  height: 100%;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-bg-elevated-solid, var(--app-bg-elevated));
+  box-shadow: var(--app-shadow-1);
+}
+
+.discoveryOpen {
+  display: block;
+  min-height: 48px;
+  border-radius: inherit;
+  color: var(--app-ink);
+}
+
+.discoveryContent {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border-radius: inherit;
+}
+
+.discoveryFigure {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--app-radius-lg) var(--app-radius-lg) 0 0;
+  background: var(--app-bg-sunken);
+}
+
+.discoveryPhoto {
+  object-fit: cover;
+}
+
+.discoveryArtwork {
+  object-fit: contain;
+}
+
+.discoveryFacts {
+  min-width: 0;
+  padding: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.discoveryCredit {
+  position: relative;
+  z-index: 1;
+  margin: 0 1rem;
+  padding-block: 0.625rem 0.875rem;
+  border-top: 1px solid var(--app-border);
+  overflow-wrap: anywhere;
+}

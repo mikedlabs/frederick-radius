@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MapPin, Ticket, Accessibility, Navigation } from "lucide-react";
+import { MapPin, Ticket, Accessibility, Navigation, Clock3 } from "lucide-react";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import type { EventWithMeta } from "@/lib/loaders/events";
 // VALUE import from the DATA-FREE formatter module, never from the loader:
@@ -52,6 +52,7 @@ export default function EventCard({
    *   `utility` — TINY one-line muted row (civic meetings, recurring
    *     pickups, municipal notices). No photo, no chips. The long tail.
    *   `compact` — single-line Rolodex row (date pill + title + meta).
+   *   `discovery` — photo-forward Recommended preview, using reviewed free media.
    *   `glance`  — the default ~108px browsing card. Anchored by a left
    *     accent rail + a centered category icon on a tonal tile.
    *   `row`     — legacy list card with full chip row + actions.
@@ -64,7 +65,7 @@ export default function EventCard({
    * leads the text; the dense variants (utility / compact) stay photoless so
    * the long tail reads as a calm list. See docs/PHOTO_POLICY.md.
    */
-  variant?: "row" | "tile" | "feature" | "compact" | "glance" | "utility";
+  variant?: "row" | "tile" | "feature" | "compact" | "glance" | "discovery" | "utility";
   /** Live right now — renders a small pulsing dot in the compact row so
    *  "happening now" reads even in the dense listing. */
   live?: boolean;
@@ -96,7 +97,7 @@ export default function EventCard({
   visual?: EventCardVisual;
   /** Server-captured page time, used for stable started/unknown-end copy. */
   nowISO?: string;
-  /** Supplementary-card policy; feature cards retain their existing gate. */
+  /** Supplementary-card policy; discovery always uses free reviewed media. */
   venuePhotos?: "all-approved" | "free-reviewed";
 }) {
   const displayTitle = eventDisplayTitle(event);
@@ -158,7 +159,7 @@ export default function EventCard({
   const accentText = `var(--app-list-fact-color, color-mix(in srgb, ${accent} 55%, var(--app-ink)))`;
   const categoryLabel = cat?.name ?? (event.category ? event.category : "Event");
   const accessLabel = communicationAccessLabels(event)[0];
-  const cardVisual = eventCardVisual(event, { venuePhotos });
+  const cardVisual = eventCardVisual(event, { venuePhotos: variant === "discovery" ? "free-reviewed" : venuePhotos });
   const decisionAttributes = {
     "data-decision-impression": "true",
     "data-decision-surface": "events",
@@ -166,6 +167,42 @@ export default function EventCard({
     "data-decision-id": event.slug,
     "data-decision-position": "result",
   } as const;
+
+  if (variant === "discovery") {
+    return <EventGlanceCard eventSlug={event.slug} visual={cardVisual} accent={accent}
+      cancelled={isCancelled} layout="discovery" compactCredit={false}>
+      <div className="flex min-w-0 items-start gap-3" data-event-card-heading>
+        <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent="var(--app-brand)" size="sm" />
+        <div className="min-w-0 flex-1">
+          <p className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold" style={{ color: "var(--app-ink-2)" }}>
+            <span>{categoryLabel}</span>
+            {confirmedLive && <span className="inline-flex items-center gap-1.5" style={{ color: "var(--app-live-text)" }}>
+              <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-live-text)" }} />Happening now
+            </span>}
+            {statusText && <span style={{ color: statusForeground }}>{statusText}</span>}
+          </p>
+          <h3 className={`break-words text-lg font-semibold leading-snug tracking-tight ${isCancelled ? "line-through" : ""}`}>{displayTitle}</h3>
+        </div>
+      </div>
+      <p data-event-card-time className="mt-3 flex min-w-0 items-start gap-2 text-sm font-semibold leading-snug tabular-nums">
+        <Clock3 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+        <span>{date.weekday} {date.month} {date.day}{timingText ? ` · ${timingText}` : ""}</span>
+      </p>
+      {venueLabel && <p data-event-card-venue className="mt-2 flex min-w-0 items-start gap-2 text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
+        <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span className="min-w-0 break-words">{venueLabel}</span>
+      </p>}
+      {event.is_recurring && event.recurrence_text && <p className="mt-2 text-xs leading-snug" style={{ color: "var(--app-ink-2)" }}>{event.recurrence_text}</p>}
+      {(event.is_free || event.price_text || accessLabel || event.distance_m !== undefined) && <div
+        className="mt-3 flex min-w-0 flex-wrap items-start gap-x-3 gap-y-2 border-t pt-3 text-xs leading-snug"
+        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
+        {(event.is_free || event.price_text) && <span className="flex min-w-0 items-start gap-1.5 font-semibold">
+          <Ticket className="h-3.5 w-3.5 shrink-0" aria-hidden /><span className="min-w-0 break-words">{event.is_free ? "Free" : event.price_text}</span>
+        </span>}
+        {accessLabel && <span className="flex min-w-0 items-start gap-1.5"><Accessibility className="h-3.5 w-3.5 shrink-0" aria-hidden /><span>{accessLabel}</span></span>}
+        {event.distance_m !== undefined && <span className="flex items-center gap-1.5 tabular-nums"><Navigation className="h-3.5 w-3.5 shrink-0" aria-hidden />{formatDistance(event.distance_m)} away</span>}
+      </div>}
+    </EventGlanceCard>;
+  }
 
   // Utility variant — TINY single muted line for the civic / municipal
   // long tail: board meetings, recurring pickups, posted notices. One

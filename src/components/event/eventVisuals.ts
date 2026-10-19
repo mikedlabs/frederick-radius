@@ -93,6 +93,9 @@ const LICENSED_EVENT_VENUE_LABELS: Readonly<Record<keyof typeof CREDITED_LOCAL_P
   "hessian-barracks-frederick-maryland": "Hessian Barracks",
   "co-canal-lock-30-brunswick": "C&O Canal Lock 30 in Brunswick",
   "brewers-alley-frederick": "Brewer's Alley side entrance, photographed in 2004",
+  "delaplaine-arts-center-frederick": "Delaplaine Arts Center exterior",
+  "weinberg-center-for-the-arts-frederick": "Weinberg Center exterior, photographed in 2018",
+  "c-burr-artz-public-library-frederick": "C. Burr Artz Public Library exterior",
 };
 
 function licensedEventVenueVisual(venueSlug: string | undefined): EventCardVisual | null {

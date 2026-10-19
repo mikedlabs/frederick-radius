@@ -67,3 +67,20 @@ export const FailedArtwork: Story = {
     await expect(context.canvasElement.querySelector("[data-event-photo-credit]")).toBeNull();
   },
 };
+
+
+export const PosterPortraitAt320: Story = {
+  args: { frame: "poster" },
+  play: async context => {
+    await assertContained(context);
+    const image = context.canvasElement.querySelector<HTMLImageElement>("img")!;
+    expect(getComputedStyle(image).padding).toBe("0px");
+    const frame = image.parentElement!.getBoundingClientRect();
+    expect(frame.width / frame.height).toBeCloseTo(1.6, 2);
+  },
+};
+export const PosterLandscapeAt390: Story = {
+  ...PosterPortraitAt320,
+  args: { frame: "poster", visual: { ...portrait, src: layoutArtwork(900, 500), key: "poster-landscape-layout-fixture" } },
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+};

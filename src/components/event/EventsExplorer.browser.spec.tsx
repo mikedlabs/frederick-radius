@@ -307,10 +307,10 @@ describe("Recommended attendance promotion through the mounted explorer", () => 
     expect(host.querySelector("[data-events-primary-lead]")).toBeNull();
     expect(eventLinks().filter((href) => href === "/events/off-campus-offer")).toHaveLength(1);
     expect(eventLinks().filter((href) => href === "/events/weekend-concert")).toHaveLength(1);
-    // Both ordinary preview rows are now visual glance cards. Assert their
-    // exact horizon and document order instead of assuming only a lead uses
-    // that presentation variant.
-    const ordinary = [...host.querySelectorAll<HTMLAnchorElement>('[data-test-card-variant="glance"]')];
+    // Recommended supplementary rows use discovery cards while ordinary
+    // group leads retain glance cards. Their exact horizon and document order
+    // remain the contract, regardless of this presentation difference.
+    const ordinary = [...host.querySelectorAll<HTMLAnchorElement>('[data-test-card-variant="glance"], [data-test-card-variant="discovery"]')];
     expect(ordinary.map(link => link.getAttribute("href"))).toEqual(["/events/off-campus-offer", "/events/weekend-concert"]);
     expect(ordinary[0].closest("section")?.querySelector(".section-heading h2")?.textContent).toBe("Today1");
     expect(ordinary[1].closest("section")?.querySelector(".section-heading h2")?.textContent).toBe("This weekend1");

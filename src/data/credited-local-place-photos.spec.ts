@@ -14,6 +14,29 @@ const identities = [
 ] as const;
 
 describe("reviewed local licensed place identity", () => {
+  it.each([
+    ["delaplaine-arts-center-frederick", "Delaplaine Arts Center", "40 S Carroll St"],
+    ["weinberg-center-for-the-arts-frederick", "Weinberg Center for the Arts", "20 W Patrick St"],
+    ["c-burr-artz-public-library-frederick", "C. Burr Artz Public Library", "110 E Patrick St"],
+  ] as const)("binds reviewed local venue bytes and public reuse records to %s", (slug, name, address) => {
+    const record = CREDITED_LOCAL_PLACE_PHOTOS[slug];
+    expect(clientPlaceBySlug(slug)).toMatchObject({ name, address, municipality: "frederick" });
+    const bytes = readFileSync(path.join(process.cwd(), "public", record.image.src));
+    expect(createHash("sha256").update(bytes).digest("hex")).toBe(record.review.sha256);
+    expect(bytes.byteLength).toBeLessThan(500_000);
+    expect(record.review.reviewed_on).toBe("2026-10-19");
+    expect(record.image.modifications).toContain("rendition stored unchanged");
+    expect(record.image.license.url).toMatch(/^https:\/\/creativecommons\.org\//);
+    expect(record.image.creator).not.toBe("");
+    const photo = getLandmarkPhoto(slug)!;
+    expect(photo).toMatchObject({ localSrc: record.image.src, author: record.image.creator,
+      source_url: record.image.source_url, license: record.image.license.label,
+      licenseUrl: record.image.license.url, verified: true });
+    expect(curatedPhotoUrl(photo, 720)).toBe(record.image.src);
+    expect(decodeURIComponent(new URL(photo.source_url).pathname).replaceAll("_", " "))
+      .toBe(`/wiki/File:${record.file}`);
+  });
+
   it.each(identities)("keeps the existing History record and local bytes bound to the actual %s destination", (slug, historySlug, name) => {
     const record = CREDITED_LOCAL_PLACE_PHOTOS[slug];
     expect(clientPlaceBySlug(slug)?.name).toBe(name);

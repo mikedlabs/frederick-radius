@@ -708,8 +708,11 @@ function PlaceSheetContent({
 
         {/* Footer — link to full page + share */}
         <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs" style={{ borderColor: "var(--app-border)" }}>
+          {/* BottomSheet owns this native document navigation. App Router
+              prefetch cannot be reused and races the atomic page replacement. */}
           <Link
             href={fullPageHref}
+            prefetch={false}
             className="inline-flex items-center gap-1 font-medium"
             style={{ color: "var(--app-brand-press)" }}
           >

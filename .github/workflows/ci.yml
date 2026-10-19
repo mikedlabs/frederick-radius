@@ -150,10 +150,11 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           PW_PRODUCTION: "1"
-      - name: WebKit photo and map continuity
+      - name: WebKit visual discovery and map continuity
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: >-
           npx playwright test e2e/today-map-visual-depth.spec.ts
+          e2e/events-nearby-visual-cards.spec.ts
           --project=webkit-mobile --workers=1 --retries=1
         env:
           NEXT_TELEMETRY_DISABLED: "1"
