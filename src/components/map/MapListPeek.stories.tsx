@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import MapListPeek from "./MapListPeek";
 import type { MapTaskList } from "./mapListTask";
+import { clearMapSelectionOpener, rememberMapSelectionOpener, restoreMapSelectionOpenerFocus, takeMapSelectionOpener } from "./mapSelectionFocus";
 
 const list: MapTaskList = {
   key: "component-fixture", title: "Coffee shops and bakeries · Whole county", scope: "county", unit: "place",
@@ -155,5 +156,49 @@ export const DirectDirectionsInMapFallback: Story = {
   parameters: {
     ...DirectDirectionsAt320.parameters,
     docs: { description: { story: "The same 320px shortlist in the map-unavailable presentation, retaining its partial-search and unknown-hours qualifications. These are component fixtures, not live status evidence." } },
+  },
+};
+
+export const NativePointerOpener: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  beforeEach: () => {
+    clearMapSelectionOpener();
+    return () => clearMapSelectionOpener();
+  },
+  render: args => <div>
+    <p className="p-3 text-sm">Choose a place to see its details.</p>
+    <MapListPeek {...args} onPickPlace={place => {
+      // This is the same synchronous opener capture used by AppMap before
+      // opening its selected result. The real row must supply pointer focus.
+      rememberMapSelectionOpener();
+      args.onPickPlace(place);
+    }} />
+  </div>,
+  play: async ({ canvasElement, args }) => {
+    if (!(globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) return;
+    const browser = await import("vitest/browser");
+    const canvas = within(canvasElement);
+    // A trusted click on noninteractive text establishes this story frame;
+    // neither the test nor the callback assigns preparatory focus to a row.
+    await browser.userEvent.click(canvas.getByText("Choose a place to see its details."));
+    const owner = canvasElement.ownerDocument;
+    await expect([owner.body, owner.documentElement]).toContain(owner.activeElement);
+    const rows = canvasElement.querySelectorAll<HTMLButtonElement>("[data-map-list-place]");
+    const before = { href: location.href, state: history.state };
+    for (const row of [rows[0], rows[1]]) {
+      let trusted = false;
+      row.addEventListener("pointerdown", event => { trusted = event.isTrusted; }, { once: true });
+      await browser.userEvent.click(row);
+      await expect(trusted).toBe(true);
+      await expect(row).toHaveFocus();
+      await expect(takeMapSelectionOpener()?.exact).toBe(rows[0]);
+    }
+    await expect(args.onPickPlace).toHaveBeenCalledTimes(2);
+    await expect(rows[1]).toHaveFocus();
+    restoreMapSelectionOpenerFocus();
+    await waitFor(() => expect(rows[0]).toHaveFocus());
+    await expect(takeMapSelectionOpener()).toBeNull();
+    await expect({ href: location.href, state: history.state }).toEqual(before);
+    await expect(args.onPickEvent).not.toHaveBeenCalled();
   },
 };

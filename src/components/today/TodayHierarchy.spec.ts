@@ -44,7 +44,7 @@ describe("Today decision hierarchy", () => {
     expect(events).toBeGreaterThan(weather);
   });
 
-  it("keeps quick needs before visual events and the area answer before its scene, with categories after news", () => {
+  it("puts the owned scene before four quick needs, events and one area answer, with categories after news", () => {
     const find = renderedPage.indexOf("<TodayAsk embedded showQuickNeeds={false}");
     const doorway = renderedPage.indexOf("<TodayGeographicDoorway />");
     const shortcuts = renderedPage.indexOf("<TodayQuickNeeds />");
@@ -56,12 +56,14 @@ describe("Today decision hierarchy", () => {
     expect(find).toBeGreaterThan(-1);
     expect(doorway).toBeGreaterThan(find);
     expect(lead).toBeGreaterThan(find);
-    expect(doorway).toBeGreaterThan(lead);
+    expect(doorway).toBeLessThan(shortcuts);
+    expect(doorway).toBeLessThan(events);
+    expect(doorway).toBeLessThan(lead);
     expect(shortcuts).toBeGreaterThan(find);
     expect(shortcuts).toBeLessThan(events);
     expect(events).toBeGreaterThan(find);
     expect(events).toBeLessThan(lead);
-    expect(news).toBeGreaterThan(events);
+    expect(news).toBeGreaterThan(lead);
     expect(categories).toBeGreaterThan(news);
     expect(renderedPage.match(/<TodayQuickNeeds\s*\/>/g)).toHaveLength(1);
     expect(renderedPage.match(/<TodayQuickNeeds showShortcuts=\{false\}/g)).toHaveLength(1);
@@ -99,7 +101,7 @@ describe("Today decision hierarchy", () => {
     expect(doorway).toBeGreaterThan(scope);
   });
 
-  it("uses the exact owned scene as a geographic place action beside one unchanged decision lead", () => {
+  it("uses the exact owned scene as an earlier geographic action separate from one unchanged decision lead", () => {
     expect(geographicDoorway).toContain('src="/images/seasons/summer/SUMMER CARROL CREEK.jpg"');
     expect(geographicDoorway).toContain('alt="Carroll Creek in Frederick."');
     expect(geographicDoorway).toContain('href="/places/carroll-creek-linear-park-frederick"');
@@ -110,7 +112,13 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage.match(/\{decisionLead\}/g)).toHaveLength(1);
     expect(renderedPage).toContain("fallback={<TodayGeographicDoorwayPending />}");
     expect(renderedPage).not.toContain("fallback={<TodayGeographicDoorwayView");
-    expect(renderedPage.indexOf("{decisionLead}")).toBeLessThan(renderedPage.indexOf("<TodayGeographicDoorway />"));
+    expect(renderedPage.indexOf("<TodayGeographicDoorway />")).toBeLessThan(renderedPage.indexOf("{decisionLead}"));
+    const placeAnswer = renderedPage.slice(
+      renderedPage.indexOf('<div aria-label="Places for your area"'),
+      renderedPage.indexOf("<LocalNewsBrief"),
+    );
+    expect(placeAnswer).toContain("{decisionLead}");
+    expect(placeAnswer).not.toContain("<TodayGeographicDoorway");
     expect(renderedPage.indexOf("<TodayPlanTonightLink")).toBeGreaterThan(
       renderedPage.indexOf("<TodayAsk embedded"),
     );

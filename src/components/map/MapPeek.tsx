@@ -42,6 +42,8 @@ import {
   type MapPeekDecisionItem,
 } from "./mapDecisionScenes";
 import MapResultSurface from "./MapResultSurface";
+import { curatedPhotoUrl } from "@/lib/integrations/wikimedia";
+import styles from "./MapPeek.module.css";
 
 type MapCardDetails = {
   slug: string;
@@ -92,14 +94,16 @@ export function MapPeekPhoto({
   };
   return (
     <>
-      <div className="map-peek-body" data-map-place-slug={slug}>
+      <div className={`map-peek-body ${styles.body}`} data-map-place-slug={slug} data-has-photo={Boolean(source) || undefined}>
         <button
           type="button"
           className="map-peek-visual"
+          data-press-target="control"
           data-loading={photoPending || Boolean(source && !ready) || undefined}
           onClick={onOpenDetails}
           aria-label={`Open details for ${placeName}`}
         >
+          <span data-press-face className={styles.photoFace}>
           {source ? (
             <Image
               key={`${photo.generation}:${source.src}`}
@@ -110,10 +114,11 @@ export function MapPeekPhoto({
               data-map-peek-photo-source={source.kind}
               fill
               unoptimized={source.kind === "google"}
-              sizes="(max-width: 359px) 88px, 104px"
+              sizes="(max-width: 520px) calc(100vw - 48px), 412px"
               placeholder="blur"
               blurDataURL={PAPER_CREAM_BLUR}
               className="absolute inset-0 h-full w-full object-cover"
+              style={source.kind === "owned" ? { objectPosition: source.objectPosition } : undefined}
               onLoad={(event) => reportState(isPlacePhotoFailureSignal(event.currentTarget) ? "failed" : "loaded")}
               onError={() => reportState("failed")}
             />
@@ -127,6 +132,7 @@ export function MapPeekPhoto({
               {glyph}
             </span>
           )}
+          </span>
         </button>
         {children}
       </div>
@@ -259,17 +265,31 @@ export default function MapPeek({
       : null;
   const address = activeDetails?.address?.trim();
   const locationLine = address || town;
-  // The selected route remains the only URL/credit transport. Once it has
-  // settled (including an unavailable response), use the same reviewed
-  // fallback plan as cards and details instead of giving up after Google.
-  const photoPlan: PlaceCardPhotoPlan = activeDetails || detailsResolvedSlug === place.slug
-    ? placeCardPhotoPlan({
-        slug: place.slug,
-        google_photo_url: activeDetails?.google_photo_url ?? activeDetails?.hero_image,
-        google_photo_attribution: activeDetails?.google_photo_attribution,
-      }, 104)
-    : { key: `pending:${place.slug}`, sources: [] };
-  const photoPending = !activeDetails && detailsResolvedSlug !== place.slug;
+  // Exact owned or locally bundled licensed images need no metadata trip. The
+  // selected route remains the only Google URL/credit transport, with the
+  // existing proxy size unchanged. Only free reviewed sources gain detail.
+  const selectedPhotoPlan = placeCardPhotoPlan({
+    slug: place.slug,
+    google_photo_url: activeDetails?.google_photo_url ?? activeDetails?.hero_image,
+    google_photo_attribution: activeDetails?.google_photo_attribution,
+  }, 104);
+  // Avoid starting a remote Commons request before the selected route can
+  // provide its preferred Google photo. Local reviewed bytes have no such wait.
+  const eligibleSources = activeDetails || detailsResolvedSlug === place.slug
+    ? selectedPhotoPlan.sources
+    : selectedPhotoPlan.sources.filter(source => source.kind === "owned" ||
+      (source.kind === "curated" && source.photo.localSrc));
+  const photoSources = eligibleSources.map(source => source.kind === "curated"
+    ? { ...source, src: curatedPhotoUrl(source.photo, 720) }
+    : source);
+  const photoPlan: PlaceCardPhotoPlan = {
+    // Adding selected metadata cannot replace an already decoded owned image.
+    key: photoSources[0]?.kind === "owned"
+      ? JSON.stringify([place.slug, photoSources[0]])
+      : JSON.stringify([selectedPhotoPlan.key, photoSources.map(source => source.src)]),
+    sources: photoSources,
+  };
+  const photoPending = photoPlan.sources.length === 0 && !activeDetails && detailsResolvedSlug !== place.slug;
   const dirHref = place.geom ? directionsHref(place.geom.lat, place.geom.lng) : "#";
   const nameId = useId();
   const descriptionId = useId();
@@ -389,7 +409,7 @@ export default function MapPeek({
 
   return (
     <MapResultSurface
-      className="map-peek"
+      className={`map-peek ${styles.preview}`}
       labelledBy={nameId}
       describedBy={descriptionId}
       closeLabel={`Close ${place.name}`}
@@ -409,8 +429,8 @@ export default function MapPeek({
           <span className="map-peek-cat" style={{ color: "var(--app-ink-3)" }}>
             {cat?.name ?? place.category}
           </span>
-          <button type="button" className="map-peek-title-button" onClick={openDetails}>
-            <span id={nameId} className="map-peek-name font-serif">{place.name}</span>
+          <button type="button" className="map-peek-title-button" data-press-target="control" onClick={openDetails}>
+            <span data-press-face id={nameId} className="map-peek-name">{place.name}</span>
           </button>
           {locationLine && <span className="map-peek-address">{locationLine}</span>}
           <span className="map-peek-meta">
@@ -422,9 +442,10 @@ export default function MapPeek({
               </>
             )}
           </span>
-          <button type="button" className="map-peek-details-link" onClick={openDetails}>
-            Details
-            <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+          <button type="button" className="map-peek-details-link" data-press-target="control" onClick={openDetails}>
+            <span data-press-face className={styles.actionFace}>Details
+              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+            </span>
           </button>
         </div>
       </MapPeekPhoto>
@@ -481,6 +502,8 @@ export default function MapPeek({
           target="_blank"
           rel="noopener noreferrer"
           className="map-peek-act map-peek-act-go"
+          data-press-target="control"
+          style={{ "--press-ack-color": "var(--app-on-brand)", "--press-focus-color": "var(--app-on-brand)" } as React.CSSProperties}
           onClick={() => {
             haptic("light");
             track("map_peek", { pick: "directions" });
@@ -494,12 +517,15 @@ export default function MapPeek({
             });
           }}
         >
-          <CornerUpRight className="h-4 w-4" strokeWidth={2} aria-hidden />
-          Directions
+          <span data-press-face className={styles.actionFace}>
+            <CornerUpRight className="h-4 w-4" strokeWidth={2} aria-hidden />
+            Directions
+          </span>
         </a>
         <button
           type="button"
           className="map-peek-act"
+          data-press-target="control"
           data-on={saved || undefined}
           aria-pressed={saved}
           disabled={saving}
@@ -534,6 +560,7 @@ export default function MapPeek({
             }
           }}
         >
+          <span data-press-face className={styles.actionFace}>
           <Bookmark
             className="h-4 w-4"
             strokeWidth={2}
@@ -541,17 +568,21 @@ export default function MapPeek({
             aria-hidden
           />
           {saving ? adding ? "Saving…" : "Removing…" : saved ? "Saved" : "Save"}
+          </span>
         </button>
         <button
           type="button"
           className="map-peek-act map-peek-act-share"
+          data-press-target="control"
           onClick={() => void sharePlace()}
           aria-label={shareStatus === "copied" ? "Link copied" : `Share ${place.name}`}
         >
+          <span data-press-face className={styles.actionFace}>
           {shareStatus === "copied"
             ? <Check className="h-4 w-4" strokeWidth={2} aria-hidden />
             : <Share2 className="h-4 w-4" strokeWidth={2} aria-hidden />}
           <span>{shareStatus === "copied" ? "Copied" : "Share"}</span>
+          </span>
         </button>
       </div>
     </MapResultSurface>

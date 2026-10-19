@@ -63,9 +63,9 @@ import {
  *
  *   1. Identity       → active alerts and the time-aware masthead
  *   2. Conditions     → one verified weather glance before browsing
- *   3. Decide now     → one Find doorway before campaigns
- *                       + a location-aware place answer
- *   4. Follow the day → a short chronological civic and event program
+ *   3. Find and see   → one Find doorway, then an exact scoped place photograph
+ *                       and four practical shortcuts
+ *   4. Follow the day → a short event program and one location-aware place answer
  *   5. Plan the rest  → scheduled utilities, sports, light, and tomorrow
  *   6. Keep exploring → local guides and saved places, collapsed
  *
@@ -282,7 +282,15 @@ export default async function HomePage() {
           </div>
         </div>
 
-      {/* Keep practical actions near Find while visual discovery leads the day. */}
+      {/* Put an actual place photograph on arrival, before the utility grid
+          and event program. This owned Frederick doorway stays hidden for
+          other town and Near me lenses; it makes no current-conditions claim.
+          Until the URL lens is known, its fallback is deliberately neutral. */}
+      <Suspense fallback={<TodayGeographicDoorwayPending />}>
+        <TodayGeographicDoorway />
+      </Suspense>
+
+      {/* All four practical actions remain together below the first visual. */}
       <div className={styles.quickNeeds}>
         <TodayQuickNeeds />
       </div>
@@ -307,16 +315,9 @@ export default async function HomePage() {
         {whatsOn}
       </PageChapter>
         <div aria-label="Places for your area" className={styles.places}>
-          {/* The real selected-area answer leads the evergreen scene in both
-              document and visual order. Its existing scope/fallback stays mounted. */}
+          {/* Keep the real selected-area answer mounted once, including its
+              existing scope and honest availability fallback. */}
           {decisionLead}
-          {/* This owned Frederick scene is a place doorway, not a verdict
-              about current conditions. Other town and Near me lenses suppress
-              it. Before the client knows the URL lens, the neutral fallback
-              reserves geometry without naming or fetching a place image. */}
-          <Suspense fallback={<TodayGeographicDoorwayPending />}>
-            <TodayGeographicDoorway />
-          </Suspense>
         </div>
 
 

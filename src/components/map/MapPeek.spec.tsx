@@ -7,9 +7,9 @@ import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import { placeCardPhotoPlan, placePhotoFailureSignalSrc, type PlaceCardPhotoPlan } from "@/lib/place-card-photo";
 import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 const imageCallbacks = vi.hoisted(() => new Map<string, { load: React.ReactEventHandler<HTMLImageElement>; error: React.ReactEventHandler<HTMLImageElement> }>());
-vi.mock("next/image", () => ({ default: ({ src, alt, onLoad, onError, ...props }: { src: string; alt: string; onLoad: React.ReactEventHandler<HTMLImageElement>; onError: React.ReactEventHandler<HTMLImageElement>; "aria-hidden"?: boolean; "data-map-peek-photo-state"?: string; "data-map-peek-photo-source"?: string }) => {
+vi.mock("next/image", () => ({ default: ({ src, alt, onLoad, onError, ...props }: { src: string; alt: string; onLoad: React.ReactEventHandler<HTMLImageElement>; onError: React.ReactEventHandler<HTMLImageElement>; "aria-hidden"?: boolean; "data-map-peek-photo-state"?: string; "data-map-peek-photo-source"?: string; style?: React.CSSProperties }) => {
   imageCallbacks.set(src, { load: onLoad, error: onError });
-  return <img src={src} alt={alt} aria-hidden={props["aria-hidden"]} data-map-peek-photo-state={props["data-map-peek-photo-state"]} data-map-peek-photo-source={props["data-map-peek-photo-source"]} onLoad={onLoad} onError={onError} />;
+  return <img src={src} alt={alt} aria-hidden={props["aria-hidden"]} data-map-peek-photo-state={props["data-map-peek-photo-state"]} data-map-peek-photo-source={props["data-map-peek-photo-source"]} onLoad={onLoad} onError={onError} style={props.style as React.CSSProperties | undefined} />;
 } }));
 vi.mock("@/hooks/useFollows", () => ({
   useIsFollowed: () => false,
@@ -229,7 +229,7 @@ describe("MapPeek selected photo and source identity", () => {
     expect(google.getAttribute("data-map-peek-photo-source")).toBe("google");
     expect(new URL(google.getAttribute("src")!, "https://frederickradius.app").searchParams.get("w")).toBe("208");
     await load(1, 1);
-    expect(host.querySelector("img")?.getAttribute("src")).toBe(wikimediaUrl(getLandmarkPhoto(slug)!.file, 208));
+    expect(host.querySelector("img")?.getAttribute("src")).toBe(wikimediaUrl(getLandmarkPhoto(slug)!.file, 720));
     await load(1280, 891);
     expect(host.textContent).toContain("Photo by Acroterion.");
     expect(fetchCard).toHaveBeenCalledOnce();
@@ -256,6 +256,62 @@ describe("MapPeek selected photo and source identity", () => {
     await act(async () => opener.click());
     expect(observedOpeners).toEqual([opener]);
     expect(document.activeElement).toBe(opener);
+  });
+
+  it.each([
+    ["carroll-creek-linear-park-frederick", "Carroll Creek Linear Park"],
+    ["mccurdy-field", "McCurdy Field"],
+    ["frederick-fairgrounds-home-of-the-great-frederick-fair-frederick", "Frederick Fairgrounds"],
+    ["brewers-alley-frederick", "Brewer's Alley"],
+  ])("uses reviewed %s imagery while selected metadata is still pending", async (slug, name) => {
+    const place: MapPinPlace = {
+      slug, name, category: "outdoors", municipality: "frederick",
+      geom: { lat: 39.4143, lng: -77.4105 }, source: "manual", is_verified: true,
+      open_status: { state: "unknown" }, short_blurb: "A selected-card image fixture.",
+    };
+    const fetchCard = vi.fn<(input: string) => Promise<Response>>(() => new Promise<Response>(() => {}));
+    vi.stubGlobal("fetch", fetchCard);
+    await act(async () => root.render(<MapPeek place={place} distanceOrigin={null} distanceOriginLabel="from you" onClose={vi.fn()} onDetails={openDetails} />));
+    const image = host.querySelector("img")!;
+    expect(image).not.toBeNull();
+    expect(image.src).not.toContain("/api/place-photo");
+    expect(image.getAttribute("data-map-peek-photo-source")).toBe(slug === "brewers-alley-frederick" ? "curated" : "owned");
+    if (slug.includes("fairgrounds")) expect(image.style.objectPosition).toBe("right");
+    await load(1920, 1080);
+    expect(host.querySelector("[data-map-place-slug]")?.getAttribute("data-has-photo")).toBe("true");
+    expect(host.querySelector("img")?.alt).toContain(slug === "brewers-alley-frederick" ? "2004" : name.split(" ")[0]);
+    expect(fetchCard).toHaveBeenCalledOnce();
+    expect(fetchCard.mock.calls[0][0]).toBe(`/api/places/map-card/${slug}`);
+    expect(host.querySelector("button a, a button")).toBeNull();
+    for (const action of host.querySelectorAll(".map-peek-acts > *")) {
+      expect(action.getAttribute("data-press-target")).toBe("control");
+      expect(action.querySelector(":scope > [data-press-face]")).not.toBeNull();
+    }
+  });
+
+  it("keeps the same decoded owned image and focused Details when metadata adds a Google fallback", async () => {
+    const slug = "carroll-creek-linear-park-frederick";
+    const place: MapPinPlace = {
+      slug, name: "Carroll Creek Linear Park", category: "outdoors", municipality: "frederick",
+      geom: { lat: 39.4143, lng: -77.4105 }, source: "manual", is_verified: true,
+      open_status: { state: "unknown" }, short_blurb: "A selected-card continuity fixture.",
+    };
+    let resolve!: (value: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(done => { resolve = done; })));
+    await act(async () => root.render(<MapPeek place={place} distanceOrigin={null} distanceOriginLabel="from you" onClose={vi.fn()} onDetails={openDetails} />));
+    await load(1920, 1078);
+    const image = host.querySelector("img")!;
+    const details = host.querySelector<HTMLButtonElement>(".map-peek-details-link")!;
+    details.focus();
+    await act(async () => resolve(Response.json({ place: {
+      slug, address: "Carroll Creek", google_photo_url: src, google_photo_attribution: credit,
+    } })));
+    expect(host.querySelector("img")).toBe(image);
+    expect(image.dataset.mapPeekPhotoState).toBe("ready");
+    expect(image.alt).toBe(getOwnedPlacePhoto(slug)!.alt);
+    expect(host.querySelector(".map-peek-source-credit")).toBeNull();
+    expect(document.activeElement).toBe(details);
+    expect(host.querySelectorAll("img")).toHaveLength(1);
   });
 
   it("keeps exact owned Creek imagery available after selected metadata is unavailable", async () => {
