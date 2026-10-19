@@ -1,5 +1,8 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
+import { decodeArchiveEnvelope, encodeArchiveEnvelope } from "./eventArchiveCacheCodec";
+
 import { getSql } from "@/lib/db/client";
 import { isPromotedDataBuild } from "@/lib/data-release-mode";
 import { archivedEventFromSnapshot } from "@/lib/events/event-identity";
@@ -59,6 +62,8 @@ type EventArchiveSnapshotOptions = {
   horizonDays?: number;
   limit?: number;
   timeoutMs?: number;
+  /** Share only successful raw archive reads; Today/Ask stay direct by default. */
+  cache?: boolean;
 };
 
 export type EventArchivePublicReasonCode =
@@ -237,8 +242,10 @@ export function logEventArchiveFailure(
 async function beforeDeadline<T>(
   pending: CancellablePromiseLike<T>,
   timeoutMs: number,
+  { signal, cancelOnFailure = true }: { signal?: AbortSignal; cancelOnFailure?: boolean } = {},
 ): Promise<DeadlineOutcome<T>> {
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
   const guarded = Promise.resolve(pending).then(
     (value) => ({ status: "ok" as const, value }),
     (error: unknown) => ({ status: "failed" as const, error }),
@@ -246,14 +253,19 @@ async function beforeDeadline<T>(
   const stopped = new Promise<{ status: "timeout" }>((resolve) => {
     timer = setTimeout(
       () => resolve({ status: "timeout" }),
-      timeoutMs,
+      Math.max(0, timeoutMs),
     );
+    if (signal) {
+      onAbort = () => resolve({ status: "timeout" });
+      if (signal.aborted) onAbort();
+      else signal.addEventListener("abort", onAbort, { once: true });
+    }
   });
   try {
     const result = await Promise.race([guarded, stopped]);
     if (result.status !== "ok") {
       try {
-        pending.cancel?.();
+        if (result.status === "timeout" || cancelOnFailure) pending.cancel?.();
       } catch {
         // Cancellation is best-effort; the guarded promise consumes a late rejection.
       }
@@ -270,6 +282,7 @@ async function beforeDeadline<T>(
     return { ok: true, value: result.value };
   } finally {
     if (timer) clearTimeout(timer);
+    if (onAbort) signal?.removeEventListener("abort", onAbort);
   }
 }
 
@@ -396,30 +409,39 @@ export async function loadTodayEventSnapshot(
  * limits are clamped so a malformed caller cannot turn one page view into an
  * unbounded database response.
  */
-export async function loadEventArchiveSnapshot(
-  now = new Date(),
-  options: EventArchiveSnapshotOptions = {},
-): Promise<EventArchiveSnapshot> {
-  const horizonDays = Math.max(
-    1,
-    Math.min(120, Math.floor(options.horizonDays ?? EVENT_BROWSE_HORIZON_DAYS)),
-  );
-  const limit = Math.max(
-    1,
-    Math.min(2_000, Math.floor(options.limit ?? EVENT_BROWSE_SNAPSHOT_LIMIT)),
-  );
-  const timeoutMs = Math.max(
-    100,
-    Math.min(
-      EVENT_ARCHIVE_MAX_TIMEOUT_MS,
-      Math.floor(options.timeoutMs ?? EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS),
-    ),
-  );
-  // A connection may already exist in this process before build mode starts.
-  // Check before getSql, whose initialized-connection fast path bypasses getDb.
-  if (isPromotedDataBuild()) return curatedFallback(now, "event_archive_unavailable");
+class ArchiveSnapshotReadError extends Error {
+  constructor(readonly code: EventArchivePublicReasonCode) {
+    super(code);
+    this.name = "ArchiveSnapshotReadError";
+  }
+}
+
+/** Validate transport shape without hydrating date-relative event decisions. */
+function isArchiveEnvelope(value: unknown): value is ArchiveEnvelope {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const envelope = value as Partial<ArchiveEnvelope>;
+  return Array.isArray(envelope.candidates) && envelope.candidates.every((row) =>
+    row && typeof row === "object" && !Array.isArray(row) &&
+    typeof row.canonical_slug === "string" && row.canonical_slug.length > 0 &&
+    // The transport owns row shape; hydration owns individual record validity.
+    // A bad snapshot must not withhold verified events beside it.
+    Object.hasOwn(row, "snapshot")) &&
+    (typeof envelope.archive_status === "string" || envelope.archive_status === null) &&
+    (typeof envelope.archive_finished_at === "string" || envelope.archive_finished_at instanceof Date || envelope.archive_finished_at === null) &&
+    (typeof envelope.archive_records_failed === "number" || typeof envelope.archive_records_failed === "string" || envelope.archive_records_failed === null);
+}
+
+function boundedInteger(value: number | undefined, fallback: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, Math.floor(Number.isFinite(value) ? value! : fallback)));
+}
+
+async function readArchiveEnvelope(start: Date, end: Date, limit: number, timeoutMs: number, signal?: AbortSignal): Promise<ArchiveEnvelope> {
+  // A cache transport may resolve after its caller has already timed out.
+  if (signal?.aborted) throw new ArchiveSnapshotReadError("event_archive_timeout");
+  // Storage/build state can change between the caller guard and a cache miss.
+  if (isPromotedDataBuild()) throw new ArchiveSnapshotReadError("event_archive_unavailable");
   const sql = getSql();
-  if (!sql) return curatedFallback(now, "event_archive_unavailable");
+  if (!sql) throw new ArchiveSnapshotReadError("event_archive_unavailable");
   // Bounds cross the wire as ISO text with an explicit cast, never as Date
   // objects.
   //
@@ -441,7 +463,6 @@ export async function loadEventArchiveSnapshot(
   // ISO text plus `::timestamptz` is correct under either mode, and it is
   // what the WRITE path in event-identity.ts has always done - which is
   // exactly why the collector kept working while every reader failed.
-  const { start, end } = snapshotBounds(now, horizonDays);
   const pending = sql<ArchiveEnvelope[]>`
     with latest_archive as (
       select status,
@@ -486,18 +507,76 @@ export async function loadEventArchiveSnapshot(
     from (values (1)) as anchor(value)
     left join latest_archive on true
   `;
-  const outcome = await beforeDeadline(pending, timeoutMs);
+  const outcome = await beforeDeadline(pending, timeoutMs, { signal });
   if (!outcome.ok) {
-    if ("diagnostic" in outcome) {
-      console.error("[events] Archive read rejected.", outcome.diagnostic);
-    }
-    return curatedFallback(now, outcome.code);
+    if ("diagnostic" in outcome) console.error("[events] Archive read rejected.", outcome.diagnostic);
+    throw new ArchiveSnapshotReadError(outcome.code);
   }
   const envelope = outcome.value?.[0];
-  // A missing row here is NOT an empty archive: the query anchors on
-  // `(values (1))`, so a completed read always returns exactly one row.
-  // Getting none back means the shape changed, which is its own bug.
-  return envelope
-    ? hydrateTodayEventSnapshot(envelope, now)
-    : curatedFallback(now, "event_archive_unavailable");
+  // The anchored SQL always returns one row, even for a truly empty archive.
+  if (!envelope) throw new ArchiveSnapshotReadError("event_archive_unavailable");
+  if (!isArchiveEnvelope(envelope)) throw new ArchiveSnapshotReadError("event_archive_unavailable");
+  return envelope;
+}
+
+export async function loadEventArchiveSnapshot(
+  now = new Date(),
+  options: EventArchiveSnapshotOptions = {},
+): Promise<EventArchiveSnapshot> {
+  const horizonDays = boundedInteger(options.horizonDays, EVENT_BROWSE_HORIZON_DAYS, 1, 120);
+  const limit = boundedInteger(options.limit, EVENT_BROWSE_SNAPSHOT_LIMIT, 1, 2_000);
+  const timeoutMs = boundedInteger(options.timeoutMs, EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS, 100, EVENT_ARCHIVE_MAX_TIMEOUT_MS);
+  // Never teach a shared cache that a promoted/no-storage build has no events.
+  if (isPromotedDataBuild() || !getSql()) return curatedFallback(now, "event_archive_unavailable");
+  const { start, end } = snapshotBounds(now, horizonDays);
+  if (!options.cache) {
+    try {
+      return hydrateTodayEventSnapshot(await readArchiveEnvelope(start, end, limit, timeoutMs), now);
+    } catch (error) {
+      return curatedFallback(now, error instanceof ArchiveSnapshotReadError ? error.code : "event_archive_unavailable");
+    }
+  }
+
+  const controller = new AbortController();
+  const deadlineAt = performance.now() + timeoutMs;
+  // Next must have time to retain/decode a prior entry after a failed refresh.
+  // This shortens SQL's budget; it never extends the public caller's deadline.
+  const settleReserveMs = Math.min(50, Math.floor(timeoutMs / 4));
+  let freshUncachedEnvelope: ArchiveEnvelope | null = null;
+  const pipeline = (async (): Promise<EventArchiveSnapshot> => {
+    try {
+      const cachedRead = unstable_cache(async () => {
+        const remainingMs = Math.floor(deadlineAt - performance.now() - settleReserveMs);
+        if (controller.signal.aborted || remainingMs <= 0) {
+          throw new ArchiveSnapshotReadError("event_archive_timeout");
+        }
+        const envelope = await readArchiveEnvelope(start, end, limit, Math.min(timeoutMs, remainingMs), controller.signal);
+        try {
+          return await encodeArchiveEnvelope(envelope);
+        } catch (error) {
+          // An over-budget successful read is still useful to this caller. Reject
+          // inside the cache so it cannot replace the last good persisted value.
+          freshUncachedEnvelope = envelope;
+          throw error;
+        }
+      }, [
+        "durable-event-archive-envelope-gzip-v1",
+        start.toISOString(), end.toISOString(), String(limit), String(timeoutMs),
+      ], { revalidate: 300, tags: ["events", "durable-event-archive"] });
+      const encoded = await cachedRead();
+      if (freshUncachedEnvelope) return hydrateTodayEventSnapshot(freshUncachedEnvelope, now);
+      const envelope = await decodeArchiveEnvelope(encoded);
+      if (!isArchiveEnvelope(envelope)) throw new ArchiveSnapshotReadError("event_archive_unavailable");
+      // Never cache the clock-dependent hydrated result or advance source dates.
+      return hydrateTodayEventSnapshot(envelope, now);
+    } catch (error) {
+      if (freshUncachedEnvelope) return hydrateTodayEventSnapshot(freshUncachedEnvelope, now);
+      return curatedFallback(now, error instanceof ArchiveSnapshotReadError ? error.code : "event_archive_unavailable");
+    }
+  })();
+  const outcome = await beforeDeadline(Object.assign(pipeline, {
+    cancel: () => controller.abort(),
+  }), Math.max(0, Math.floor(deadlineAt - performance.now())), { cancelOnFailure: false });
+  // Success must not abort Next's legitimate background stale revalidation.
+  return outcome.ok ? outcome.value : curatedFallback(now, outcome.code);
 }

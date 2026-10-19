@@ -117,7 +117,6 @@ const refusalCases = [
   ["HTTP recovery error", { recovery: { status: 500, cacheControl: "no-store", payload: { events: [1], partial: false } } }, "runtime-recovery-invalid"],
   ["undocumented recovery", { recovery: { status: 200, cacheControl: "no-store", payload: { events: [1] } } }, "runtime-recovery-invalid"],
   ["cacheable recovery", { recovery: { status: 200, cacheControl: "public", payload: { events: [1], partial: false } } }, "runtime-recovery-invalid"],
-  ["empty current runtime", { recovery: { status: 200, cacheControl: "no-store", payload: { events: [], partial: false } } }, "runtime-recovery-empty"],
   ["zero retry budget", { waitMs: 0 }, "wait-disabled"],
 ];
 for (const [label, overrides, category] of refusalCases) {
@@ -216,4 +215,141 @@ test("late anchors cannot turn an exceeded deadline green", async () => {
   assert.equal(result.category, "deadline-expired");
   assert.deepEqual(result.paths, []);
   assert.equal(h.reads.length, 1);
+});
+
+const emptyToday = {
+  status: 200, cacheControl: "no-store", payload: { events: [], partial: false },
+};
+function browseResponse({ status = 200, events = [{ slug: "api-future-event", starts_at: "2026-10-20T22:00:00.000Z" }], degraded = false, body, contentType = "application/json", url = `${BASE}/api/events/browse` } = {}) {
+  return {
+    status, url,
+    headers: new Headers({ "content-type": contentType, date: "Sun, 18 Oct 2026 23:59:00 GMT", age: "30", "x-vercel-cache": "HIT", "cache-control": "public, s-maxage=300, stale-while-revalidate=900" }),
+    body: body ?? JSON.stringify({ events, liveSlugs: [], generatedAt: "2026-10-19T03:59:00.000Z", sourceHealth: { degraded, unavailable: [], issues: [] } }),
+    hops: [{ status, url, ttfbMs: 100 }],
+  };
+}
+
+test("an honestly empty late-night Today qualifies one broad read, then waits for actual canonical anchors", async () => {
+  const h = harness({ recovery: emptyToday }, (path, _options, _count, advance, now) => {
+    if (path === "/api/events/browse") { advance(1_000); return browseResponse(); }
+    return page(path, { links: path === "/events" && now() >= 321_000 ? ["/events/rendered-upcoming-event", "/events/another-rendered-event"] : [] });
+  });
+  const result = await h.run();
+  assert.equal(result.category, "recovered");
+  assert.equal(result.elapsedMs, 321_000);
+  assert.deepEqual(result.paths, ["/events/another-rendered-event", "/events/rendered-upcoming-event"]);
+  assert.equal(h.reads.filter(read => read.path === "/api/events/browse").length, 1);
+  assert.deepEqual(h.reads[0].options, { accept: "application/json", follow: false, ordinary: true, timeoutMs: 20_000 });
+  assert.ok(h.reads.slice(1).every(read => read.path === "/today" || read.path === "/events"));
+  assert.equal(h.receipts[0].category, "initial-empty");
+  assert.equal(h.receipts[0].deploymentId, DPL);
+  const broad = h.receipts.find(item => item.surface === "/api/events/browse");
+  assert.equal(broad.category, "runtime-browse-eligible");
+  assert.equal(broad.apiEventCount, 1);
+  assert.equal(broad.cacheStatus, "HIT");
+  assert.equal(broad.cacheAge, "30");
+  assert.equal(broad.sourceDegraded, false);
+  assert.ok(!JSON.stringify(h.receipts).includes("api-future-event"), "receipts log bounded counts, not the event corpus");
+});
+
+test("healthy broader API records never substitute for rendered event links", async () => {
+  const h = harness({ recovery: emptyToday }, path => path === "/api/events/browse" ? browseResponse() : page(path));
+  const result = await h.run();
+  assert.equal(result.category, "deadline-expired");
+  assert.equal(result.elapsedMs, MAX_EVENT_LINK_WAIT_MS);
+  assert.deepEqual(result.paths, []);
+  assert.equal(h.reads.filter(read => read.path === "/api/events/browse").length, 1);
+  assert.ok(result.observations.some(item => item.category === "waiting-for-isr"));
+});
+
+for (const [label, reader, category] of [
+  ["genuine empty calendar", () => browseResponse({ events: [] }), "runtime-browse-empty"],
+  ["degraded calendar", () => browseResponse({ degraded: true }), "runtime-browse-degraded"],
+  ["server failure", () => browseResponse({ status: 500 }), "runtime-browse-invalid"],
+  ["redirect", () => browseResponse({ status: 302 }), "runtime-browse-invalid"],
+  ["invalid JSON", () => browseResponse({ body: "not JSON" }), "runtime-browse-invalid"],
+  ["unverified source health", () => browseResponse({ body: JSON.stringify({ events: [{}] }) }), "runtime-browse-invalid"],
+  ["malformed event rows", () => browseResponse({ events: [null] }), "runtime-browse-invalid"],
+  ["undated event rows", () => browseResponse({ events: [{ slug: "api-only-event" }] }), "runtime-browse-invalid"],
+  ["HTML response", () => browseResponse({ contentType: "text/html" }), "runtime-browse-invalid"],
+  ["foreign response", () => browseResponse({ url: "https://example.test/api/events/browse" }), "runtime-browse-invalid"],
+  ["read failure", () => { throw new Error("read failed"); }, "runtime-browse-failed"],
+  ["read timeout", () => { const error = new Error("timed out"); error.name = "TimeoutError"; throw error; }, "runtime-browse-timeout"],
+]) {
+  test(`empty Today plus ${label} remains red without HTML polling or API retries`, async () => {
+    const h = harness({ recovery: emptyToday }, reader);
+    const result = await h.run();
+    assert.equal(result.category, category);
+    assert.deepEqual(result.paths, []);
+    assert.equal(h.reads.length, 1);
+    assert.equal(h.reads[0].path, "/api/events/browse");
+    assert.equal(h.sleeps.length, 0);
+    assert.equal(result.observations.at(-1).category, category);
+  });
+}
+
+test("an honestly partial empty Today can qualify broader healthy inventory without changing its reported health", async () => {
+  const h = harness({ recovery: { ...emptyToday, payload: { events: [], partial: true } } }, path =>
+    path === "/api/events/browse" ? browseResponse() : page(path, { links: path === "/events" ? ["/events/real-rendered-upcoming-event"] : [] }));
+  const result = await h.run();
+  assert.equal(result.category, "recovered");
+  assert.deepEqual(result.paths, ["/events/real-rendered-upcoming-event"]);
+  assert.equal(h.reads.filter(read => read.path === "/api/events/browse").length, 1);
+  assert.equal(result.observations.find(item => item.surface === "/api/events/browse").todayPartial, true);
+  assert.equal(result.observations.find(item => item.surface === "/api/events/browse").sourceDegraded, false);
+});
+
+test("an empty Today cannot qualify broader reads before all identity and earlier checks pass", async () => {
+  for (const [overrides, category] of [
+    [{ expectedSha: null }, "expected-sha-required"],
+    [{ deployedSha: "a".repeat(12) }, "deployment-mismatch"],
+    [{ earlierChecksHealthy: false }, "earlier-check-failed"],
+    [{ pages: new Map([["/today", page("/today")], ["/events", page("/events", { id: "dpl_wrong" })]]) }, "deployment-drift"],
+    [{ pages: new Map([["/today", page("/today")], ["/events", page("/events", { id: null })]]) }, "deployment-marker-missing"],
+  ]) {
+    const h = harness({ recovery: emptyToday, ...overrides });
+    assert.equal((await h.run()).category, category);
+    assert.equal(h.reads.length, 0);
+  }
+});
+
+test("healthy broader data cannot excuse a later document deployment mismatch", async () => {
+  const h = harness({ recovery: emptyToday }, path => path === "/api/events/browse" ? browseResponse() : page(path, { id: "dpl_wrong", links: ["/events/wrong-release-event"] }));
+  const result = await h.run();
+  assert.equal(result.category, "deployment-drift");
+  assert.deepEqual(result.paths, []);
+  assert.equal(h.reads.length, 2);
+});
+
+test("the broad qualification read consumes the same overall ISR wait budget", async () => {
+  const h = harness({ recovery: emptyToday, waitMs: 5_000 }, (_path, options, _count, advance) => {
+    assert.equal(options.timeoutMs, 5_000);
+    advance(5_001);
+    return browseResponse();
+  });
+  const result = await h.run();
+  assert.equal(result.category, "deadline-expired");
+  assert.deepEqual(result.paths, []);
+  assert.equal(h.reads.length, 1);
+  assert.equal(h.sleeps.length, 0);
+});
+
+test("a partial empty Today plus a degraded broader collection remains red", async () => {
+  const h = harness({ recovery: { ...emptyToday, payload: { events: [], partial: true } } }, () => browseResponse({ degraded: true }));
+  const result = await h.run();
+  assert.equal(result.category, "runtime-browse-degraded");
+  assert.deepEqual(result.paths, []);
+  assert.equal(h.reads.length, 1);
+  assert.equal(result.observations.at(-1).todayPartial, true);
+});
+
+
+test("a nonempty Today keeps its existing qualification without any broader API read, even when partial", async () => {
+  const h = harness({ recovery: { status: 200, cacheControl: "no-store", payload: { events: [{ slug: "today-event" }], partial: true } } }, path =>
+    page(path, { links: path === "/events" ? ["/events/real-rendered-event"] : [] }));
+  const result = await h.run();
+  assert.equal(result.category, "recovered");
+  assert.deepEqual(result.paths, ["/events/real-rendered-event"]);
+  assert.equal(h.reads.length, 2);
+  assert.ok(h.reads.every(read => read.path === "/today" || read.path === "/events"));
 });

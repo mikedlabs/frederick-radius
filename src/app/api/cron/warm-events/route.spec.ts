@@ -10,6 +10,7 @@ import {
 const mocks = vi.hoisted(() => ({
   verifyCronAuth: vi.fn(),
   assembleUnifiedEvents: vi.fn(),
+  loadEventArchiveSnapshot: vi.fn(),
   getCachedLiveEvents: vi.fn(),
   withLiveEventFetchSession: vi.fn(),
   sendWarmFailureAlert: vi.fn(),
@@ -21,6 +22,9 @@ vi.mock("../../ingest/_auth", () => ({
 }));
 vi.mock("@/lib/loaders/unifiedEvents", () => ({
   assembleUnifiedEvents: mocks.assembleUnifiedEvents,
+}));
+vi.mock("@/lib/loaders/todayEventSnapshot", () => ({
+  loadEventArchiveSnapshot: mocks.loadEventArchiveSnapshot,
 }));
 vi.mock("@/lib/integrations/ical-live", () => ({
   getCachedLiveEvents: mocks.getCachedLiveEvents,
@@ -39,6 +43,7 @@ import {
 } from "./route";
 import {
   EVENT_ALERT_BUDGET_MS,
+  EVENT_BROWSE_ARCHIVE_WARM_BUDGET_MS,
   EVENT_WARM_BUDGET_MS,
 } from "./config";
 
@@ -56,6 +61,10 @@ describe("GET /api/cron/warm-events", () => {
     mocks.withLiveEventFetchSession.mockImplementation(
       (work: () => Promise<unknown>) => work(),
     );
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
+      publicEvents: [{ slug: "durable-event" }],
+      sourceHealth: { degraded: false, unavailable: [], issues: [] },
+    });
     mocks.assembleUnifiedEvents.mockResolvedValue({
       unified: [{ id: "a" }, { id: "b" }],
       publicEvents: [],
@@ -79,6 +88,10 @@ describe("GET /api/cron/warm-events", () => {
 
     expect(maxDuration).toBe(90);
     expect(response.status).toBe(200);
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledWith(expect.any(Date), { cache: true });
+    expect(mocks.loadEventArchiveSnapshot.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.assembleUnifiedEvents.mock.invocationCallOrder[0],
+    );
     expect(mocks.withLiveEventFetchSession).toHaveBeenCalledTimes(1);
     expect(mocks.assembleUnifiedEvents).toHaveBeenCalledTimes(1);
     expect(mocks.getCachedLiveEvents).toHaveBeenCalledTimes(1);
@@ -99,6 +112,72 @@ describe("GET /api/cron/warm-events", () => {
     expect(body.warmed).not.toHaveProperty("live60");
     expect(body).not.toHaveProperty("mapFeeds");
     expect(body).not.toHaveProperty("archive");
+  });
+
+  it("checks cron authorization before durable reads or provider work", async () => {
+    mocks.verifyCronAuth.mockReturnValue(new Response("unauthorized", { status: 401 }));
+    expect((await GET(request())).status).toBe(401);
+    expect(mocks.loadEventArchiveSnapshot).not.toHaveBeenCalled();
+    expect(mocks.withLiveEventFetchSession).not.toHaveBeenCalled();
+    expect(mocks.assembleUnifiedEvents).not.toHaveBeenCalled();
+  });
+
+  it("accepts a genuinely empty durable calendar without a failure alert", async () => {
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
+      publicEvents: [], sourceHealth: { degraded: false, unavailable: [], issues: [] },
+    });
+    const response = await GET(request());
+    expect(response.status).toBe(200);
+    expect((await response.json()).warmed.browseArchive).toEqual({ ok: true, count: 0 });
+    expect(mocks.sendWarmFailureAlert).not.toHaveBeenCalled();
+  });
+
+  it("does not call a timed-out durable fallback a successful cache warm", async () => {
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
+      publicEvents: [], sourceHealth: {
+        degraded: true, unavailable: ["The event schedule is taking longer than expected to load."],
+        issues: [{ code: "event_archive_timeout" }],
+      },
+    });
+    const response = await GET(request());
+    expect(response.status).toBe(500);
+    expect((await response.json()).warmed.browseArchive).toEqual({ ok: false, error: "browse archive read unavailable" });
+    expect(mocks.sendWarmFailureAlert).toHaveBeenCalledWith([
+      { cache: "browseArchive", error: "browse archive read unavailable" },
+    ]);
+    expect(mocks.assembleUnifiedEvents).toHaveBeenCalledOnce();
+  });
+
+  it("bounds a hung durable warm and still performs the existing source session once", async () => {
+    vi.useFakeTimers();
+    mocks.loadEventArchiveSnapshot.mockImplementation(() => new Promise(() => undefined));
+    const pending = GET(request());
+    await vi.advanceTimersByTimeAsync(EVENT_BROWSE_ARCHIVE_WARM_BUDGET_MS);
+    const response = await pending;
+    expect(response.status).toBe(500);
+    expect((await response.json()).warmed.browseArchive).toEqual({ ok: false, error: "browse archive warm exceeded its budget" });
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.withLiveEventFetchSession).toHaveBeenCalledOnce();
+    expect(mocks.assembleUnifiedEvents).toHaveBeenCalledOnce();
+    expect(mocks.getCachedLiveEvents).toHaveBeenCalledOnce();
+  });
+
+  it("keeps stale durable source health separate from available cached rows", async () => {
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
+      publicEvents: [{ slug: "durable-event" }],
+      sourceHealth: {
+        degraded: true, unavailable: ["The event schedule has not been refreshed recently."],
+        issues: [{ code: "event_archive_stale" }],
+      },
+    });
+    const response = await GET(request());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      ok: true, healthy: false, degraded: true,
+      warmed: { browseArchive: { ok: true, count: 1 } },
+      source_health: { degraded: true, unavailable: ["The event schedule has not been refreshed recently."] },
+    });
+    expect(mocks.sendWarmFailureAlert).not.toHaveBeenCalled();
   });
 
   it("separates a completed cache warm from degraded publisher coverage", async () => {
@@ -164,7 +243,7 @@ describe("GET /api/cron/warm-events", () => {
     const response = await responsePromise;
     const body = await response.json();
 
-    expect(EVENT_WARM_BUDGET_MS + EVENT_ALERT_BUDGET_MS).toBeLessThan(
+    expect(EVENT_BROWSE_ARCHIVE_WARM_BUDGET_MS + EVENT_WARM_BUDGET_MS + EVENT_ALERT_BUDGET_MS).toBeLessThan(
       maxDuration * 1_000 - 20_000,
     );
     expect(response.status).toBe(500);
@@ -224,7 +303,7 @@ describe("GET /api/cron/warm-events", () => {
     const response = await responsePromise;
 
     expect(response.status).toBe(500);
-    expect(EVENT_WARM_BUDGET_MS + EVENT_ALERT_BUDGET_MS).toBeLessThan(
+    expect(EVENT_BROWSE_ARCHIVE_WARM_BUDGET_MS + EVENT_WARM_BUDGET_MS + EVENT_ALERT_BUDGET_MS).toBeLessThan(
       maxDuration * 1_000 - 20_000,
     );
   });

@@ -47,6 +47,7 @@ describe("GET /api/events/browse", () => {
     const response = await GET(request());
 
     expect(dynamic).toBe("force-dynamic");
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledWith(expect.any(Date), { cache: true });
     expect(response.headers.get("Cache-Control")).toBe(
       "public, s-maxage=300, stale-while-revalidate=900",
     );
@@ -107,6 +108,8 @@ describe("GET /api/events/browse", () => {
 
   it("lets Check again bypass a stale shared answer without caching the recovery read", async () => {
     const response = await GET(request(true));
+
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledWith(expect.any(Date), { cache: false });
 
     expect(response.headers.get("Cache-Control")).toBe(
       "private, no-store, max-age=0",

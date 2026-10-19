@@ -66,7 +66,7 @@ export async function GET(request: Request) {
   }
 
   const now = new Date();
-  const snapshot = await loadEventArchiveSnapshot(now).catch((error: unknown) => {
+  const snapshot = await loadEventArchiveSnapshot(now, { cache: !bypassCache }).catch((error: unknown) => {
     // Keep the board usable and the diagnostic server-side. Public health is
     // reconstructed from stable allowlisted codes below.
     logEventArchiveFailure("Browse archive loader failed", error);
