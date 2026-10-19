@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { clientPlaces, clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { isPaidGooglePhotoUrl } from "@/lib/google-photo-policy";
 import { placeCardPhotoPlan } from "@/lib/place-card-photo";
+import { OWNED_PLACE_PHOTOS } from "@/lib/owned-place-photos";
+import { LANDMARK_PHOTOS, curatedPhotoUrl } from "@/lib/integrations/wikimedia";
+import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 import { freeSearchPlaceVisual } from "./place-visual";
 import { searchIndex } from "./index";
 
@@ -76,6 +79,24 @@ describe("free exact place photography in Find", () => {
     expect(isPaidGooglePhotoUrl(photo.src)).toBe(false);
   });
 
+  it.each([
+    ["Delaplaine", "delaplaine-arts-center-frederick"],
+    ["Weinberg Center", "weinberg-center-for-the-arts-frederick"],
+    ["C Burr Artz", "c-burr-artz-public-library-frederick"],
+  ] as const)("preserves the registered local subject and license through Find for %s", (query, slug) => {
+    const expected = CREDITED_LOCAL_PLACE_PHOTOS[slug].image;
+    const photo = freeSearchPlaceVisual(place(slug));
+    expect(photo).toMatchObject({
+      kind: "curated", src: expected.src, alt: expected.alt,
+      photo: { author: expected.creator, source_url: expected.source_url,
+        license: expected.license.label, licenseUrl: expected.license.url, modifications: expected.modifications },
+    });
+    const result = searchIndex(query, 20, []).find((row) => row.id === `place:${slug}`);
+    expect(result?.thumbnail).toBe(expected.src);
+    expect(result?.thumbnailSource).toEqual(photo);
+    expect(isPaidGooglePhotoUrl(photo!.src)).toBe(false);
+  });
+
   it("keeps ordinary coffee typeahead free of Google photos", () => {
     const coffee = place("cugino-forno-frederick");
     expect(coffee.google_photo_url).toContain("/api/place-photo?");
@@ -95,9 +116,34 @@ describe("free exact place photography in Find", () => {
   });
 
   it("never returns paid media or an unrelated town/category image for any current place", () => {
-    const photos = clientPlaces().map(freeSearchPlaceVisual).filter(Boolean);
-    expect(photos).toHaveLength(15);
-    expect(photos.some((photo) => isPaidGooglePhotoUrl(photo?.src))).toBe(false);
+    const catalog = clientPlaces();
+    const approvedSlugs = new Set([
+      ...Object.keys(OWNED_PLACE_PHOTOS),
+      ...Object.entries(LANDMARK_PHOTOS).filter(([, photo]) => photo.verified).map(([slug]) => slug),
+    ]);
+    const shownSlugs: string[] = [];
+    for (const candidate of catalog) {
+      const photo = freeSearchPlaceVisual(candidate);
+      if (!approvedSlugs.has(candidate.slug)) {
+        expect(photo, candidate.slug).toBeNull();
+        continue;
+      }
+      expect(photo, candidate.slug).not.toBeNull();
+      expect(isPaidGooglePhotoUrl(photo!.src), candidate.slug).toBe(false);
+      shownSlugs.push(candidate.slug);
+      const owned = OWNED_PLACE_PHOTOS[candidate.slug];
+      if (owned) {
+        expect(photo).toMatchObject({ kind: "owned", src: owned.src, alt: owned.alt });
+      } else {
+        const registered = LANDMARK_PHOTOS[candidate.slug];
+        expect(photo?.kind).toBe("curated");
+        if (photo?.kind !== "curated") throw new Error(`Missing reviewed source for ${candidate.slug}`);
+        expect(photo.src).toBe(curatedPhotoUrl(registered, 256));
+        expect(photo.alt).toBe(registered.alt);
+        expect(photo.photo).toBe(registered);
+      }
+    }
+    expect(shownSlugs.sort()).toEqual(catalog.map(({ slug }) => slug).filter((slug) => approvedSlugs.has(slug)).sort());
     expect(freeSearchPlaceVisual({ slug: "unreviewed-place", google_photo_url: "https://images.example.com/coffee.jpg", google_photo_attribution: undefined })).toBeNull();
   });
 });

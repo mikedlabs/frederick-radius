@@ -25,7 +25,16 @@ describe("exact local photo optimizer admission", () => {
 
   it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS))("allows the reviewed source bytes for %s through the actual Next config", (_slug, { image }) => {
     expect(hasLocalMatch(config.images?.localPatterns, image.src)).toBe(true);
+    expect(hasLocalMatch(config.images?.localPatterns, `${image.src}?download=1`)).toBe(false);
+    expect(hasLocalMatch(config.images?.localPatterns, `${image.src}?v=2`)).toBe(false);
   });
+
+  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).filter(([, { image }]) => image.src.startsWith("/place-photos/")))
+    ("does not admit an unreviewed sibling or suffix of the exact %s source", (_slug, { image }) => {
+      expect(hasLocalMatch(config.images?.localPatterns, image.src.replace(/\.jpg$/, ".jpeg"))).toBe(false);
+      expect(hasLocalMatch(config.images?.localPatterns, `${image.src}/extra`)).toBe(false);
+      expect(hasLocalMatch(config.images?.localPatterns, image.src.replace(/\.jpg$/, "-unreviewed.jpg"))).toBe(false);
+    });
 
   it.each([
     "/place-photos/unreviewed.jpg",

@@ -53,4 +53,67 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       modifications: '"Brewer\'s Alley, Frederick". Side alley exterior, October 26, 2004. Original file unchanged; display may resize or crop.',
     },
   },
+  "delaplaine-arts-center-frederick": {
+    "file": "Delaplaine Arts Center Frederick MD1.jpg",
+    "review": {
+      "captured_on": "2017-04-02",
+      "reviewed_on": "2026-10-19",
+      "original_file_url": "https://upload.wikimedia.org/wikipedia/commons/e/eb/Delaplaine_Arts_Center_Frederick_MD1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "rendition_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/eb/Delaplaine_Arts_Center_Frederick_MD1.jpg/1280px-Delaplaine_Arts_Center_Frederick_MD1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "sha256": "d64f8b365780e8a11d0af6e289b564e65ff01ce0fb4e6bf9b5f211d3bd2882a9"
+    },
+    "image": {
+      "src": "/place-photos/delaplaine-exterior.jpg",
+      "alt": "Delaplaine Arts Center exterior in Frederick, photographed in 2017.",
+      "creator": "Acroterion",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Delaplaine_Arts_Center_Frederick_MD1.jpg",
+      "license": {
+        "label": "CC BY-SA 4.0",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "modifications": "Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop."
+    }
+  },
+  "weinberg-center-for-the-arts-frederick": {
+    "file": "Weinberg Center for the Arts 02.jpg",
+    "review": {
+      "captured_on": "2018-04-01",
+      "reviewed_on": "2026-10-19",
+      "original_file_url": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Weinberg_Center_for_the_Arts_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "rendition_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/Weinberg_Center_for_the_Arts_02.jpg/1280px-Weinberg_Center_for_the_Arts_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "sha256": "97115f0d8d2432ed63b712e4b60bc56a93fc6b956924837d33b53fec8c83137f"
+    },
+    "image": {
+      "src": "/place-photos/weinberg-exterior.jpg",
+      "alt": "The Weinberg Center marquee and West Patrick Street in Frederick, photographed in 2018.",
+      "creator": "Bohemian Baltimore",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Weinberg_Center_for_the_Arts_02.jpg",
+      "license": {
+        "label": "CC BY-SA 4.0",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "modifications": "Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop."
+    }
+  },
+  "c-burr-artz-public-library-frederick": {
+    "file": "C Burr Artz Public Library viewed from Carroll Creek.jpg",
+    "review": {
+      "captured_on": "2026-04-11",
+      "reviewed_on": "2026-10-19",
+      "original_file_url": "https://upload.wikimedia.org/wikipedia/commons/9/95/C_Burr_Artz_Public_Library_viewed_from_Carroll_Creek.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "rendition_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/C_Burr_Artz_Public_Library_viewed_from_Carroll_Creek.jpg/1280px-C_Burr_Artz_Public_Library_viewed_from_Carroll_Creek.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "sha256": "2342a2518be168a56376b569b0c4850fc6db0c333114c33eda8a95ea7576ed0a"
+    },
+    "image": {
+      "src": "/place-photos/c-burr-artz-exterior.jpg",
+      "alt": "C. Burr Artz Public Library viewed from Carroll Creek in Frederick.",
+      "creator": "Benstudent",
+      "source_url": "https://commons.wikimedia.org/wiki/File:C_Burr_Artz_Public_Library_viewed_from_Carroll_Creek.jpg",
+      "license": {
+        "label": "CC0 1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/"
+      },
+      "modifications": "Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop."
+    }
+  },
 } as const;

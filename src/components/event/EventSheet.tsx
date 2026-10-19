@@ -394,6 +394,9 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
           <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs" style={{ borderColor: "var(--app-border)" }}>
             <Link
               href={withBrowseReturnTo(`/events/${event.slug}`, typeof window !== "undefined" ? browseReturnFromLocation(new URL(window.location.href)) : null)}
+              // BottomSheet replaces the document atomically, so speculative
+              // App Router data is unused and can race that navigation.
+              prefetch={false}
               onClick={() => {
                 haptic("light");
                 trackDecision({

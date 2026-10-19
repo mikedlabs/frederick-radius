@@ -6,11 +6,14 @@ export default function EventVisualCredit({
   overlay = false,
   compact = false,
   className = "",
+  inlineLicensed = false,
 }: {
   visual: EventCardVisual;
   overlay?: boolean;
   compact?: boolean;
   className?: string;
+  /** Discovery cards keep complete license facts in naturally wrapping copy. */
+  inlineLicensed?: boolean;
 }) {
   if (visual.licensedCredit) {
     const credit = visual.licensedCredit;
@@ -19,8 +22,10 @@ export default function EventVisualCredit({
       style={{ color: overlay ? "rgba(255,255,255,0.94)" : "var(--app-ink-3)" }}
     >
       <span className="block font-semibold">{visual.caption}</span>
-      <span className="mt-1 block">Photo by {credit.creator}.</span>
-      <span className="block">{credit.modifications}</span>
+      {inlineLicensed ? <span className="mt-1 block">Photo by {credit.creator}. {credit.modifications}</span> : <>
+        <span className="mt-1 block">Photo by {credit.creator}.</span>
+        <span className="block">{credit.modifications}</span>
+      </>}
       <span className="flex flex-wrap gap-x-3">
         <a href={credit.source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Wikimedia Commons</a>
         <a href={credit.license.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{credit.license.label}</a>

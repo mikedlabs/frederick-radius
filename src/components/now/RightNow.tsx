@@ -586,7 +586,6 @@ export default function RightNow({
   }
 
   // ── The answer (nearest open of the chosen craving / meal occasion) ──
-  const ActiveIcon = ICONS[active.icon] ?? Utensils;
   const townName = townKey ? (MUNICIPALITY_BY_SLUG[townKey]?.name ?? null) : null;
   // The heading reflects what you actually picked: the active facet ("Thrift &
   // vintage") when one is set, otherwise the craving/meal ("Shops"). Without
@@ -614,7 +613,7 @@ export default function RightNow({
         : "across Frederick County";
   return (
     <div className="space-y-4" data-nearby-interaction-ready={interactionReady ? "true" : "false"}>
-      <header className="space-y-2">
+      <header className={styles.answerHeader}>
         {/* The cravings live on /today now (the "I want…" grid), so the
             answer's back affordance returns there rather than swapping to a
             duplicate on-page picker. */}
@@ -635,53 +634,46 @@ export default function RightNow({
               window.location.assign("/today");
             }
           }}
-          className="tactile-interactive -ml-2 inline-flex min-h-[44px] items-center gap-1 rounded-full px-2 text-[13px] font-semibold"
-          style={{ color: "var(--app-ink-3)" }}
+          className={styles.back}
+          data-press-target="secondary"
         >
-          <ArrowLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          Back
-        </button>
-        <div className="flex items-center gap-2.5">
-          <span
-            aria-hidden
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-md)]"
-            style={{ background: `color-mix(in srgb, ${active.color} 14%, var(--app-bg-elevated-solid))` }}
-          >
-            <ActiveIcon className="h-5 w-5" strokeWidth={2} style={{ color: active.color }} />
+          <span data-press-face>
+            <ArrowLeft className="h-5 w-5" strokeWidth={2} aria-hidden />
+            <span className="sr-only">Back</span>
           </span>
-          <div>
-            <h1
-              className="font-sans text-[22px] font-semibold leading-tight tracking-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              {headingNoun} {areaLabel}
-            </h1>
-            {/* Meals frame the count on the CLOCK fact ("open for dinner now")
-                — never a service claim. Nouns keep the plain "open now". */}
-            <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
-              {matched.length === 0
-                ? `No matching places ${townName ? `in ${townName}` : "in the county"} · ${sortLabel}`
-                : requestedAvailability === "not-applicable"
-                  ? `${matched.length} ${matched.length === 1 ? "place" : "places"} ${origin ? "nearby" : "in the county"} · ${sortLabel}`
-                : meal
-                ? openCount > 0
-                  ? `${openCount} open ${meal.phrase} right now · ${sortLabel}`
-                  : mayReportNoneOpen
-                    ? `No matches are open ${meal.phrase} right now · ${sortLabel}`
-                    : `No matches are confirmed open ${meal.phrase} right now · ${sortLabel}`
-                  : craving?.alwaysOpen
-                  ? `${matched.length} ${matched.length === 1 ? "place" : "places"} · ${sortLabel}`
-                  : openOnly
-                    ? `${openNowCountLabel(openCount, mayReportNoneOpen)} · ${sortLabel}`
-                    : townName
-                      ? `${openNowCountLabel(openCount, mayReportNoneOpen)} · ${matched.length} in ${townName} · ${sortLabel}`
-                      : `${openNowCountLabel(openCount, mayReportNoneOpen)} · ${matched.length} ${origin ? "nearby" : "in the county"} · ${sortLabel}`}
-            </p>
-          </div>
+        </button>
+        <div className={styles.answerHeading}>
+          <h1
+            className={styles.answerTitle}
+            style={{ color: "var(--app-ink)" }}
+          >
+            {headingNoun} {areaLabel}
+          </h1>
+          {/* Meals frame the count on the CLOCK fact ("open for dinner now")
+              — never a service claim. Nouns keep the plain "open now". */}
+          <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+            {matched.length === 0
+              ? `No matching places ${townName ? `in ${townName}` : "in the county"} · ${sortLabel}`
+              : requestedAvailability === "not-applicable"
+                ? `${matched.length} ${matched.length === 1 ? "place" : "places"} ${origin ? "nearby" : "in the county"} · ${sortLabel}`
+              : meal
+              ? openCount > 0
+                ? `${openCount} open ${meal.phrase} right now · ${sortLabel}`
+                : mayReportNoneOpen
+                  ? `No matches are open ${meal.phrase} right now · ${sortLabel}`
+                  : `No matches are confirmed open ${meal.phrase} right now · ${sortLabel}`
+                : craving?.alwaysOpen
+                ? `${matched.length} ${matched.length === 1 ? "place" : "places"} · ${sortLabel}`
+                : openOnly
+                  ? `${openNowCountLabel(openCount, mayReportNoneOpen)} · ${sortLabel}`
+                  : townName
+                    ? `${openNowCountLabel(openCount, mayReportNoneOpen)} · ${matched.length} in ${townName} · ${sortLabel}`
+                    : `${openNowCountLabel(openCount, mayReportNoneOpen)} · ${matched.length} ${origin ? "nearby" : "in the county"} · ${sortLabel}`}
+          </p>
         </div>
       </header>
 
-      <div className={styles.mobileFilters}>
+      <div className={styles.mobileFilters} data-nearby-filter-dock>
         <p className={styles.filterSummary}>
           {[
             facetDefs.find((facet) => facet.key === facetKey)?.label ?? (facetDefs.length > 0 ? "All types" : "All places"),
@@ -852,7 +844,7 @@ export default function RightNow({
                   {MUNICIPALITY_BY_SLUG[place.municipality ?? ""]?.name ?? place.city}
                   {` · ${(distance / 1609).toFixed(distance < 16090 ? 1 : 0)} mi from ${townName}`}
                 </p>
-                <PlaceCard place={place} variant="discovery" lazyPhoto />
+                <PlaceCard place={place} variant="discovery" discoverySurface="nearby" lazyPhoto />
               </li>
             ))}
           </ul>
@@ -929,7 +921,7 @@ export default function RightNow({
               {/* Business decision card — the place's photo leads (category
                   glyph fallback), then name, open status, walk time, one tap
                   to details + directions. */}
-              <PlaceCard place={p} variant="discovery" lazyPhoto />
+              <PlaceCard place={p} variant="discovery" discoverySurface="nearby" lazyPhoto />
               {p.distance_m !== undefined && (
                 <span className="sr-only">{walkLabel(p.distance_m)}</span>
               )}

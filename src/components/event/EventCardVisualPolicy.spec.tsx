@@ -9,6 +9,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 vi.mock("next/image", () => ({ default: ({ src, alt, className, style, onLoad, onError }: ImgHTMLAttributes<HTMLImageElement>) =>
   createElement("img", { src, alt, className, style, onLoad, onError }) }));
 import EventCard from "./EventCard";
+import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const candidate: EventWithMeta = {
@@ -32,8 +33,8 @@ beforeEach(() => {
 });
 afterEach(() => { act(() => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
 
-function render(event = candidate, venuePhotos?: "all-approved" | "free-reviewed") {
-  act(() => root.render(<EventCard event={event} variant="glance" venuePhotos={venuePhotos} nowISO="2029-10-10T16:00:00-04:00" />));
+function render(event = candidate, venuePhotos?: "all-approved" | "free-reviewed", variant: "glance" | "discovery" = "glance") {
+  act(() => root.render(<EventCard event={event} variant={variant} venuePhotos={venuePhotos} nowISO="2029-10-10T16:00:00-04:00" />));
 }
 function factsSurvive() {
   expect(host.querySelector('a[href="/events/offline-preview-policy"]')).not.toBeNull();
@@ -68,5 +69,82 @@ describe("bounded event preview photo policy", () => {
     expect(host.innerHTML).not.toContain("/api/place-photo");
     expect(host.textContent).toContain("Venue · Baker Park");
     factsSurvive();
+  });
+});
+
+
+describe("photo-forward discovery card contracts", () => {
+  const owned = { ...candidate, venue_name: "Baker Park", venue_place_slug: "baker-park-frederick" };
+
+  it("keeps a useful media-free card rather than activating a paid venue photo", () => {
+    render(candidate, "all-approved", "discovery");
+    expect(host.querySelector('[data-event-card-layout="discovery"]')).not.toBeNull();
+    expect(host.querySelector('[data-event-media="none"]')).not.toBeNull();
+    expect(host.querySelector("figure, img")).toBeNull();
+    expect(host.innerHTML).not.toContain("/api/place-photo");
+    factsSurvive();
+  });
+
+  it("places the exact approved venue image ahead of complete independent facts and credit", () => {
+    render(owned, "free-reviewed", "discovery");
+    const link = host.querySelector('a[href="/events/offline-preview-policy"]')!;
+    const figure = host.querySelector("figure")!;
+    expect(host.querySelector('[data-event-media="photo"]')).not.toBeNull();
+    expect(host.querySelector("img")?.getAttribute("src")).toBe("/images/seasons/fall/018.jpg");
+    expect(figure.compareDocumentPosition(host.querySelector("h3")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(figure.textContent).not.toContain(candidate.title);
+    expect(link.textContent).toContain("Baker Park");
+    expect(link.contains(host.querySelector("[data-event-photo-credit]"))).toBe(false);
+    expect(host.textContent).toContain("Venue · Baker Park");
+    expect(host.querySelector("a a, button a")).toBeNull();
+    factsSurvive();
+  });
+
+  it("keeps approved publisher artwork source-specific and outside the factual open-event target", () => {
+    render({ ...candidate, source: "dfp", hero_image: "https://ik.imagekit.io/vibemap/offline-publisher-layout.jpg",
+      source_url: "https://downtownfrederick.org/vm-event/offline-publisher-layout/", hero_image_attribution: undefined }, "free-reviewed", "discovery");
+    expect(host.querySelector('[data-event-media="artwork"]')).not.toBeNull();
+    expect(host.querySelector("img")?.getAttribute("src")).toBe("https://ik.imagekit.io/vibemap/offline-publisher-layout.jpg");
+    const credit = host.querySelector("[data-event-photo-credit]")!;
+    expect(credit.textContent).toContain("Event image · Downtown Frederick Partnership");
+    expect(credit.querySelector("a")?.getAttribute("href")).toBe("https://downtownfrederick.org/vm-event/offline-publisher-layout/");
+    expect(host.querySelector('a[href="/events/offline-preview-policy"]')?.contains(credit)).toBe(false);
+    factsSurvive();
+  });
+
+  it("keeps all archival license facts and real credit links separate from the event action", () => {
+    render({ ...candidate, venue_name: "Brewer's Alley", venue_place_slug: "brewers-alley-frederick" }, "free-reviewed", "discovery");
+    const credit = host.querySelector("[data-event-licensed-credit]")!;
+    const image = CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"].image;
+    expect(credit.textContent).toContain("photographed in 2004");
+    expect(credit.textContent).toContain(image.creator);
+    expect(credit.textContent).toContain(image.modifications);
+    expect(credit.querySelector(`a[href="${image.source_url}"]`)).not.toBeNull();
+    expect(credit.querySelector(`a[href="${image.license.url}"]`)).not.toBeNull();
+    expect(host.querySelector('a[href="/events/offline-preview-policy"]')?.contains(credit)).toBe(false);
+    factsSurvive();
+  });
+
+  it.each(["error", "one-pixel"] as const)("collapses unavailable %s media and its credit without changing the factual link", failure => {
+    render(owned, "free-reviewed", "discovery");
+    const link = host.querySelector('a[href="/events/offline-preview-policy"]');
+    const image = host.querySelector("img")!;
+    if (failure === "one-pixel") Object.defineProperties(image, { naturalWidth: { value: 1 }, naturalHeight: { value: 1 } });
+    act(() => image.dispatchEvent(new Event(failure === "error" ? "error" : "load")));
+    expect(host.querySelector('[data-event-media="none"]')).not.toBeNull();
+    expect(host.querySelector("figure, img, [data-event-photo-credit]")).toBeNull();
+    expect(host.querySelector('a[href="/events/offline-preview-policy"]')).toBe(link);
+    factsSurvive();
+  });
+
+  it("retains cancellation and honest unknown-end copy without a live claim", () => {
+    act(() => root.render(<EventCard event={{ ...owned, status: "cancelled", ends_at: owned.starts_at }}
+      variant="discovery" live nowISO="2029-10-10T20:00:00-04:00" />));
+    expect(host.textContent).toContain("Cancelled");
+    expect(host.textContent).toContain("end time not listed");
+    expect(host.textContent).not.toContain("Happening now");
+    expect(host.querySelector(".live-dot")).toBeNull();
+    expect(host.textContent).toContain(candidate.title);
+    expect(request).not.toHaveBeenCalled();
   });
 });

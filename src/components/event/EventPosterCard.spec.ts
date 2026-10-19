@@ -79,7 +79,9 @@ describe("EventPosterCard visual trust", () => {
     );
 
     expect(html).toContain('data-event-poster="artwork"');
-    expect(html).toContain('class="object-contain p-3"');
+    expect(html).toContain('data-event-artwork-frame="poster"');
+    expect(html).toContain('class="object-contain"');
+    expect(html).not.toContain('class="object-contain p-3"');
     expect(html).not.toContain("ken-burns");
     expect(html).not.toContain("object-cover");
     const artworkEnd = html.indexOf("</figure>");

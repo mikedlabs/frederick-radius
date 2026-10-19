@@ -1473,8 +1473,8 @@ export default function EventsExplorer({
                 {totalRest > 0 && (
                   <>
                     {preview.length > 0 && (
-                      sort === "recommended" ? <ul className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
-                        {preview.map((event) => <li key={eventIdentity(event)} className="min-w-0"><EventCard event={event} variant="glance" venuePhotos="free-reviewed" live={live.has(event.slug)} nowISO={nowISO} /></li>)}
+                      sort === "recommended" ? <ul data-events-discovery-grid className="grid min-w-0 grid-cols-1 items-start gap-4 sm:grid-cols-2">
+                        {preview.map((event) => <li key={eventIdentity(event)} className="min-w-0"><EventCard event={event} variant="discovery" venuePhotos="free-reviewed" live={live.has(event.slug)} nowISO={nowISO} /></li>)}
                       </ul> : <CompactEventList events={preview} live={live} nowISO={nowISO} />
                     )}
                     {expanded.length > 0 && (

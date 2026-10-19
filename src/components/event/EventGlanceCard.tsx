@@ -12,7 +12,7 @@ import styles from "./EventGlanceCard.module.css";
 
 /** Only the optional thumbnail needs client state. EventCard's factual
  * children and its other variants retain their server-compatible boundary. */
-export default function EventGlanceCard({ eventSlug, visual, accent, cancelled, children, surface = "events", compactCredit = true }: {
+export default function EventGlanceCard({ eventSlug, visual, accent, cancelled, children, surface = "events", compactCredit = true, layout = "glance" }: {
   eventSlug: string;
   visual: EventCardVisual | null;
   accent: string;
@@ -20,14 +20,43 @@ export default function EventGlanceCard({ eventSlug, visual, accent, cancelled, 
   children: ReactNode;
   surface?: "events" | "today";
   compactCredit?: boolean;
+  /** Photo-forward browsing is opt-in; existing glance rows retain their density. */
+  layout?: "glance" | "discovery";
 }) {
   const { identity, visibleVisual, failImage, inspectLoadedImage } = useEventVisualLifecycle(visual);
-  let imageSrc = visibleVisual ? proxyPhotoAtWidth(visibleVisual.src, 132) : null;
+  let imageSrc = visibleVisual ? proxyPhotoAtWidth(visibleVisual.src, layout === "discovery" ? 720 : 132) : null;
   if (imageSrc?.startsWith("/api/place-photo")) {
     const proxy = new URL(imageSrc, "https://frederickradius.local");
     proxy.searchParams.set("fallback", "signal");
     imageSrc = `${proxy.pathname}${proxy.search}${proxy.hash}`;
   }
+
+  if (layout === "discovery") return (
+    <article
+      data-decision-impression="true" data-decision-surface={surface} data-decision-entity="event"
+      data-decision-id={eventSlug} data-decision-position="result"
+      data-event-card-layout="discovery" data-event-media={visibleVisual?.presentation ?? "none"}
+      className={`${styles.discovery} tactile relative`}
+    >
+      <Link href={`/events/${eventSlug}`} data-decision-action="open" data-press-target="card"
+        prefetch={false} className={styles.discoveryOpen}>
+        <div data-press-face className={styles.discoveryContent}>
+          {visibleVisual && imageSrc && <figure className={styles.discoveryFigure}>
+            <Image key={identity} src={imageSrc} alt="" fill
+              unoptimized={imageSrc.startsWith("/api/place-photo")} loading="lazy"
+              sizes="(max-width: 639px) calc(100vw - 32px), (max-width: 1024px) 50vw, 480px"
+              placeholder="blur" blurDataURL={PAPER_CREAM_BLUR}
+              className={visibleVisual.presentation === "artwork" ? styles.discoveryArtwork : styles.discoveryPhoto}
+              style={visibleVisual.objectPosition ? { objectPosition: visibleVisual.objectPosition } : undefined}
+              onLoad={(event) => inspectLoadedImage(event.currentTarget)} onError={failImage}
+            />
+          </figure>}
+          <div className={styles.discoveryFacts}>{children}</div>
+        </div>
+      </Link>
+      {visibleVisual && <EventVisualCredit visual={visibleVisual} compact={false} inlineLicensed className={styles.discoveryCredit} />}
+    </article>
+  );
 
   return (
     <article

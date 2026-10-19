@@ -156,6 +156,10 @@ const nextConfig: NextConfig = {
       { pathname: "/from-above/**", search: "" },
       { pathname: "/history-photos/**", search: "" },
       { pathname: "/place-photos/brewers-alley-2004.jpg", search: "" },
+      // Exact reviewed local venue files; arbitrary paths or query strings stay blocked.
+      { pathname: "/place-photos/delaplaine-exterior.jpg", search: "" },
+      { pathname: "/place-photos/weinberg-exterior.jpg", search: "" },
+      { pathname: "/place-photos/c-burr-artz-exterior.jpg", search: "" },
       // Brewery logo marks (the breweries' own site icons, committed with
       // provenance in src/data/brewery-marks.json) — the /beer passport.
       { pathname: "/brewery-marks/**", search: "" },

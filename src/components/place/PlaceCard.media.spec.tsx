@@ -63,8 +63,8 @@ describe("PlaceCard selected media and credit", () => {
     root = createRoot(container);
   });
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-  async function render(cardPlace = place, variant: "answer" | "feature" | "tile" | "grid" | "row" | "discovery" = "answer") {
-    await act(async () => root.render(<PlaceCard place={cardPlace} variant={variant} showSource={false} />));
+  async function render(cardPlace = place, variant: "answer" | "feature" | "tile" | "grid" | "row" | "discovery" = "answer", nearby = false) {
+    await act(async () => root.render(<PlaceCard place={cardPlace} variant={variant} showSource={false} discoverySurface={nearby ? "nearby" : undefined} />));
   }
   function photo() { return container.querySelector<HTMLImageElement>("[data-place-card-photo] img"); }
   function loadedCredit() { return container.querySelector('.place-card-photo-credit:not([aria-hidden="true"])'); }
@@ -73,6 +73,49 @@ describe("PlaceCard selected media and credit", () => {
     await act(async () => image.dispatchEvent(new Event("load")));
   }
   async function fail(image: HTMLImageElement) { await act(async () => image.dispatchEvent(new Event("error"))); }
+
+  it("keeps a Nearby place's address, honest hours, and independent actions after its real photo plan fails", async () => {
+    const nearbyPlace = { ...place, slug: "schifferstadt-architectural-museum-frederick", name: "Schifferstadt Architectural Museum",
+      address: "1110 Rosemont Ave, Frederick, MD", google_photo_url: undefined, google_photo_attribution: undefined };
+    await render(nearbyPlace, "discovery", true);
+    const image = photo()!;
+    expect(image.getAttribute("src")).toBe(LANDMARK_PHOTOS[nearbyPlace.slug].localSrc);
+    await load(image);
+    expect(loadedCredit()?.textContent).toContain(LANDMARK_PHOTOS[nearbyPlace.slug].author);
+    expect(loadedCredit()?.closest("button")).toBeNull();
+    await fail(image);
+    expect(photo()).toBeNull();
+    expect(loadedCredit()).toBeNull();
+    expect(container.querySelector("article")?.dataset.placeCardSurface).toBe("nearby");
+    expect(container.textContent).toContain(nearbyPlace.address);
+    expect(container.textContent?.match(/Hours not confirmed/g)).toHaveLength(1);
+    const open = container.querySelector<HTMLButtonElement>('button[aria-label^="View "]')!;
+    const save = container.querySelector<HTMLButtonElement>("[data-save-ref]")!;
+    const directions = container.querySelector<HTMLAnchorElement>('a[aria-label^="Directions to "]')!;
+    expect(open.contains(save)).toBe(false);
+    expect(open.contains(directions)).toBe(false);
+    expect(directions.dataset.pressTarget).toBe("secondary");
+    expect(directions.querySelector(":scope > [data-press-face]")).not.toBeNull();
+    expect(directions.target).toBe("_blank");
+    expect(directions.rel).toBe("noopener noreferrer");
+    await act(async () => save.click());
+    expect(actions.openSheet).not.toHaveBeenCalled();
+    expect(actions.save).toHaveBeenCalledWith("place", nearbyPlace.slug);
+    await act(async () => open.click());
+    expect(actions.openSheet).toHaveBeenCalledWith(nearbyPlace, { returnFocus: open });
+  });
+
+  it("does not borrow the owned Creek image for a nearby place with a similar name", async () => {
+    const promenade = { ...place, slug: "carroll-creek-promenade", name: "Carroll Creek Promenade",
+      address: "38 S Market St", google_photo_url: undefined, google_photo_attribution: undefined };
+    await render(promenade, "discovery", true);
+    expect(photo()).toBeNull();
+    expect(container.querySelector("article")?.dataset.placeCardHasPhoto).toBe("false");
+    expect(container.textContent).toContain(promenade.name);
+    expect(container.textContent).toContain(promenade.address);
+    expect(container.querySelector('a[aria-label^="Directions to "]')?.getAttribute("href")).toMatch(/^https:\/\//);
+    expect(fetch).not.toHaveBeenCalled();
+  });
 
   it.each(Object.entries(LANDMARK_PHOTOS))("uses the exact owned source first when present, then the existing curated file for %s", async (slug, metadata) => {
     const cardPlace = { ...place, slug,
