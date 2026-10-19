@@ -151,6 +151,36 @@ describe("durable archive cache through installed Next App Router revalidation",
     expect((await cached()).sourceHealth.issues[0].code).toBe("event_archive_unavailable");
     expect(sql).toHaveBeenCalledOnce(); expect(cache.set).not.toHaveBeenCalled();
   });
+  it.each([
+    { label: "cached null", cacheEnabled: true, invalidSnapshot: null },
+    { label: "cached string", cacheEnabled: true, invalidSnapshot: "invalid" },
+    { label: "cached array", cacheEnabled: true, invalidSnapshot: [] },
+    { label: "cached number", cacheEnabled: true, invalidSnapshot: 17 },
+    { label: "direct null", cacheEnabled: false, invalidSnapshot: null },
+    { label: "direct string", cacheEnabled: false, invalidSnapshot: "invalid" },
+    { label: "direct array", cacheEnabled: false, invalidSnapshot: [] },
+    { label: "direct number", cacheEnabled: false, invalidSnapshot: 17 },
+  ])("keeps verified records when one snapshot is invalid: $label", async ({ cacheEnabled, invalidSnapshot }) => {
+    const raw = envelope([
+      { canonical_slug: event().slug, snapshot: event() },
+      { canonical_slug: "invalid-record-2026-10-19", snapshot: invalidSnapshot },
+    ]);
+    const sql = vi.fn().mockResolvedValue([raw]); mocks.getSql.mockReturnValue(sql);
+    const read = () => inApp(() => loadEventArchiveSnapshot(NOW, { cache: cacheEnabled }));
+    const result = await read();
+    expect(result.publicEvents.some(e => e.slug === event().slug)).toBe(true);
+    expect(result.publicEvents.some(e => e.slug === "invalid-record-2026-10-19")).toBe(false);
+    expect(result.sourceHealth.degraded).toBe(true);
+    expect(result.sourceHealth.issues.map(issue => issue.code)).toEqual(["event_archive_validation"]);
+    if (cacheEnabled) {
+      const warm = await read();
+      expect(warm.sourceHealth).toEqual(result.sourceHealth);
+      expect(warm.publicEvents.some(e => e.slug === event().slug)).toBe(true);
+      expect(sql).toHaveBeenCalledOnce(); expect(cache.set).toHaveBeenCalledOnce();
+    } else {
+      expect(cache.get).not.toHaveBeenCalled(); expect(cache.set).not.toHaveBeenCalled();
+    }
+  });
   it("keys explicit Eastern windows, limits and normalized timeouts without a release SHA", async () => {
     const sql = vi.fn().mockResolvedValue([envelope()]); mocks.getSql.mockReturnValue(sql);
     await cached(NOW, { limit: 6, timeoutMs: 2_500.9 });

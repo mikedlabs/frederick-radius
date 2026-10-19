@@ -423,7 +423,9 @@ function isArchiveEnvelope(value: unknown): value is ArchiveEnvelope {
   return Array.isArray(envelope.candidates) && envelope.candidates.every((row) =>
     row && typeof row === "object" && !Array.isArray(row) &&
     typeof row.canonical_slug === "string" && row.canonical_slug.length > 0 &&
-    row.snapshot && typeof row.snapshot === "object" && !Array.isArray(row.snapshot)) &&
+    // The transport owns row shape; hydration owns individual record validity.
+    // A bad snapshot must not withhold verified events beside it.
+    Object.hasOwn(row, "snapshot")) &&
     (typeof envelope.archive_status === "string" || envelope.archive_status === null) &&
     (typeof envelope.archive_finished_at === "string" || envelope.archive_finished_at instanceof Date || envelope.archive_finished_at === null) &&
     (typeof envelope.archive_records_failed === "number" || typeof envelope.archive_records_failed === "string" || envelope.archive_records_failed === null);
