@@ -447,7 +447,9 @@ async function run() {
   // A source outage may render the event-specific Radius recovery screen only
   // if the route still fulfills its successful HTML response contract. Every
   // 5xx is a deployment failure, even when its body contains branded recovery
-  // copy. Stale 404s and foreign responses fail as well.
+  // copy. Stale 404s and foreign responses fail as well. If Today honestly has
+  // no picks, one normal wider browse read can qualify the existing bounded
+  // ISR wait. Only actual canonical-page anchors can satisfy the final gate.
   const links = await waitForRenderedEventLinks({
     baseUrl: BASE,
     pages: checkedPages,

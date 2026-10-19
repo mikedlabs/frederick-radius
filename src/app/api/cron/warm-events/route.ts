@@ -1,40 +1,21 @@
 /**
- * Cache-warming cron — keeps the live-event caches hot so a real visitor
- * never pays the cold-miss cost of fetching the slow municipal iCal/RSS
- * feeds at render time.
+ * Warm the existing publisher products and the durable discovery read.
  *
- * WHY THIS EXISTS
- * ---------------
- * /today + /events + /map read assembleUnifiedEvents (unstable_cache, 840s);
- * the durable event-archive worker reads getCachedLiveEvents (840s).
- * Visitor event details stay on seed/archive/database-only fallbacks and
- * never start this provider fanout.
- * Those caches are LAZY: an expired cache can block up to ~8s awaiting the
- * slowest upstream feed. Their explicit version keys survive ordinary
- * deploys, so a release itself no longer creates a cold first-visitor window.
- * (Vercel runtime errors: hundreds of `[ical-live] … RSS timed out` on
- * /today, /events, /map, /events/[slug], affecting 150+ users — the
- * "loads slow even on a fast network" symptom, which is server-side TTFB,
- * not bandwidth.)
+ * Events SSR and /api/events/browse share one successful-envelope cache.
+ * Warm that bounded archive read first; it never calls a publisher or model.
+ * The existing source-fetch session then fills the unified and90-day source
+ * products once per source. The separate event-archive job remains the writer;
+ * this route does not import records or repeat its identity-write workload.
  *
- * This cron pre-pays that fetch on a 15-minute schedule, so the chronically
- * slow feeds (mount-airy, county,
- * parks, thurmont, city-frederick) are pulled by the BACKGROUND job and
- * users only ever read a warm cache. It calls the SAME functions the
- * pages call, so it populates the SAME cache keys.
- *
- * Map-layer caches are warmed by /api/cron/warm-map on a staggered schedule.
- * Keeping that independent fanout out of this route leaves enough runtime
- * headroom for the event cache that Today and event detail actually require.
- * Durable identity writes are also independent: /api/cron/event-archive
- * reuses these hot cache products on a slower schedule, with its own database
- * budget and heartbeat. An archive backlog can no longer make this
- * user-facing cache warm look failed.
+ * The schedule, source budgets, authentication and separate map warmer stay
+ * unchanged. A failed required warm remains visible through the existing
+ * failure summary. Source freshness is reported separately from usable rows.
  */
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { verifyCronAuth } from "../../ingest/_auth";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { loadEventArchiveSnapshot } from "@/lib/loaders/todayEventSnapshot";
 import {
   getCachedLiveEvents,
   withLiveEventFetchSession,
@@ -43,6 +24,7 @@ import { sendWarmFailureAlert, type WarmFailure } from "@/lib/integrations/alert
 import { withDeadlineOutcome } from "@/lib/promise-deadline";
 import {
   EVENT_ALERT_BUDGET_MS,
+  EVENT_BROWSE_ARCHIVE_WARM_BUDGET_MS,
   EVENT_WARM_BUDGET_MS,
 } from "./config";
 
@@ -61,9 +43,27 @@ export async function GET(request: Request) {
   if (auth) return auth;
 
   const t0 = Date.now();
-  // Warm every cache key a user-facing render reads:
-  //  - assembleUnifiedEvents → current unified-events version (/today, /events, /map)
-  //  - getCachedLiveEvents(90) → durable event-archive source horizon
+  // This is the same bounded durable read used by Events SSR and browsing.
+  // Start it before source assembly can occupy the shared pooled connection.
+  // No publishers, collectors, geocoders or models are invoked by this read.
+  const browseArchiveOutcome = await withDeadlineOutcome(
+    loadEventArchiveSnapshot(new Date(), { cache: true }),
+    EVENT_BROWSE_ARCHIVE_WARM_BUDGET_MS,
+  );
+  const archiveReadFailed = browseArchiveOutcome.status === "fulfilled"
+    && browseArchiveOutcome.value.sourceHealth.issues.some((issue) =>
+      issue.code === "event_archive_timeout" || issue.code === "event_archive_unavailable");
+  const browseArchive: PromiseSettledResult<Awaited<ReturnType<typeof loadEventArchiveSnapshot>>> =
+    browseArchiveOutcome.status === "fulfilled" && !archiveReadFailed
+      ? { status: "fulfilled", value: browseArchiveOutcome.value }
+      : { status: "rejected", reason: new Error(
+          browseArchiveOutcome.status === "timed_out"
+            ? "browse archive warm exceeded its budget"
+            : "browse archive read unavailable",
+        ) };
+  // Retain the existing publisher/assembly products for their consumers:
+  //  - assembleUnifiedEvents → unified discovery/collection product
+  //  - getCachedLiveEvents(90) → durable event-archive writer's source horizon
   // Each source page stays below the persistent-cache byte ceiling; warming
   // the archive horizon keeps durable identity current without making a
   // visitor pay for a cold source read.
@@ -168,6 +168,11 @@ export async function GET(request: Request) {
   };
 
   const warmed = {
+    browseArchive: summarize(
+      "browseArchive",
+      browseArchive,
+      browseArchive.status === "fulfilled" ? browseArchive.value.publicEvents.length : 0,
+    ),
     unified: summarize(
       "unified",
       unified,
@@ -180,21 +185,21 @@ export async function GET(request: Request) {
     ),
   };
 
-  const unifiedUnavailable =
-    unified.status === "fulfilled"
-      ? [...new Set(unified.value.sourceHealth.unavailable)]
-          .map((source) => source.trim())
-          .filter(Boolean)
-          .sort()
-          .slice(0, 32)
-      : [];
+  const unifiedUnavailable = [...new Set([
+    ...(unified.status === "fulfilled" ? unified.value.sourceHealth.unavailable : []),
+    ...(browseArchive.status === "fulfilled" ? browseArchive.value.sourceHealth.unavailable : []),
+  ])]
+    .map((source) => source.trim())
+    .filter(Boolean)
+    .sort()
+    .slice(0, 32);
   const sourceDegraded =
-    unified.status === "fulfilled"
-    && unified.value.sourceHealth.degraded;
+    (unified.status === "fulfilled" && unified.value.sourceHealth.degraded)
+    || (browseArchive.status === "fulfilled" && browseArchive.value.sourceHealth.degraded);
   const body = () => ({
-    // `ok` answers whether both cache writes completed. Source health is a
-    // separate truth: a fail-soft warm can be operationally complete while
-    // one publisher is unavailable.
+    // `ok` answers whether the required warm reads returned usable answers.
+    // Source health is separate: returned rows do not prove a fresh publisher
+    // or that a background cache revalidation succeeded.
     ok: failures.length === 0,
     healthy: failures.length === 0 && !sourceDegraded,
     degraded: failures.length > 0 || sourceDegraded,

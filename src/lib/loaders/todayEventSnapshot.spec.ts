@@ -262,9 +262,9 @@ describe("Today durable event snapshot", () => {
       "utf8",
     );
 
-    expect(page).toContain("loadEventArchiveSnapshot(now)");
+    expect(page).toContain("loadEventArchiveSnapshot(now, { cache: true })");
     expect(page).not.toMatch(/assembleUnifiedEvents\s*\(/);
-    expect(endpoint).toContain("loadEventArchiveSnapshot(now)");
+    expect(endpoint).toContain("loadEventArchiveSnapshot(now, { cache: !bypassCache })");
     expect(endpoint).not.toMatch(/assembleUnifiedEvents\s*\(/);
   });
 

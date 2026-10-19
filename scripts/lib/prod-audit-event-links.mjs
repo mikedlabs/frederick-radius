@@ -33,7 +33,8 @@ function renderedPaths(pages, baseUrl) {
 /**
  * Defer only an empty anchor verdict with proven runtime recovery and pinned
  * release identity. The caller still crawls every returned actual anchor.
- * Requests are ordinary canonical HTML GETs; no API, refresh, or SW probes.
+ * An empty Today shortlist may qualify one normal browse read before polling.
+ * API rows never count as rendered links; no refresh or SW probes are made.
  */
 export async function waitForRenderedEventLinks({
   baseUrl,
@@ -55,7 +56,7 @@ export async function waitForRenderedEventLinks({
   const budgetMs = eventLinkWaitBudget(waitMs);
   const observations = [];
   let attempts = 0;
-  const receipt = (surface, result, category) => {
+  const receipt = (surface, result, category, detail = {}) => {
     const item = {
       category,
       surface,
@@ -66,6 +67,9 @@ export async function waitForRenderedEventLinks({
       cacheStatus: result?.headers?.get("x-vercel-cache") ?? null,
       cacheControl: result?.headers?.get("cache-control") ?? null,
       deploymentId: pageDeploymentId(result?.body || ""),
+      renderedEventLinkCount: SURFACES.includes(surface)
+        ? eventDetailPathsFromHtml(result?.body || "", baseUrl).length : null,
+      ...detail,
     };
     observations.push(item);
     observe(item);
@@ -99,9 +103,6 @@ export async function waitForRenderedEventLinks({
       typeof recovery.payload?.partial !== "boolean") {
     return finish("runtime-recovery-invalid", "runtime event recovery has not passed its documented contract");
   }
-  if (recovery.payload.events.length === 0) {
-    return finish("runtime-recovery-empty", "runtime event recovery has no current events");
-  }
   if (!pages.get("/today")?.body.includes('data-today-event-recovery="true"')) {
     return finish("runtime-recovery-not-mounted", "Today has no explicit runtime recovery mount");
   }
@@ -116,6 +117,67 @@ export async function waitForRenderedEventLinks({
   }
 
   const deadline = startedAt + budgetMs;
+  if (recovery.payload.events.length === 0) {
+    // Today can honestly have no remaining picks late at night, or use its
+    // shorter read deadline. Qualify only one normal wider archive read after
+    // every existing identity/mount gate, without treating API rows as anchors.
+    const surface = "/api/events/browse";
+    const detail = { todayPartial: recovery.payload.partial, todayEventCount: 0 };
+    const remainingMs = Math.floor(deadline - now());
+    if (remainingMs <= 0) return finish("deadline-expired", "the ISR wait budget expired before browse qualification");
+    let result;
+    try {
+      result = await request(surface, {
+        accept: "application/json", follow: false, ordinary: true,
+        timeoutMs: Math.min(requestTimeoutMs, remainingMs),
+      });
+    } catch (error) {
+      const category = error?.name === "TimeoutError" || error?.name === "AbortError"
+        ? "runtime-browse-timeout" : "runtime-browse-failed";
+      receipt(surface, null, category, detail);
+      return finish(category, "the normal broader event read failed");
+    }
+    if (now() > deadline) {
+      receipt(surface, result, "deadline-expired", detail);
+      return finish("deadline-expired", "the broader event read exceeded the ISR wait budget");
+    }
+    let payload = null;
+    let sameEndpoint = false;
+    try {
+      const url = new URL(result.url);
+      const base = new URL(baseUrl);
+      sameEndpoint = url.origin === base.origin && url.pathname === surface && !url.search;
+      payload = JSON.parse(result.body);
+    } catch { /* Invalid transport/JSON must not qualify an empty document. */ }
+    const shapeValid = result.status === 200 && sameEndpoint && !result.externalRedirect &&
+      (result.headers?.get("content-type") || "").includes("application/json") &&
+      Array.isArray(payload?.events) && payload.events.every(event =>
+        event && typeof event === "object" && !Array.isArray(event) &&
+        typeof event.slug === "string" && /^[a-z0-9][a-z0-9-]{2,}$/i.test(event.slug) &&
+        typeof event.starts_at === "string" && Number.isFinite(Date.parse(event.starts_at))) &&
+      Array.isArray(payload.liveSlugs) && payload.liveSlugs.every(slug => typeof slug === "string") &&
+      typeof payload.generatedAt === "string" && Number.isFinite(Date.parse(payload.generatedAt)) &&
+      typeof payload.sourceHealth?.degraded === "boolean" &&
+      Array.isArray(payload.sourceHealth.unavailable) && Array.isArray(payload.sourceHealth.issues);
+    const qualification = {
+      ...detail,
+      apiEventCount: Array.isArray(payload?.events) ? payload.events.length : null,
+      sourceDegraded: typeof payload?.sourceHealth?.degraded === "boolean" ? payload.sourceHealth.degraded : null,
+    };
+    if (!shapeValid) {
+      receipt(surface, result, "runtime-browse-invalid", qualification);
+      return finish("runtime-browse-invalid", "the normal broader event read failed its documented contract");
+    }
+    if (payload.sourceHealth.degraded) {
+      receipt(surface, result, "runtime-browse-degraded", qualification);
+      return finish("runtime-browse-degraded", "the broader event collection is degraded");
+    }
+    if (payload.events.length === 0) {
+      receipt(surface, result, "runtime-browse-empty", qualification);
+      return finish("runtime-browse-empty", "the broader event collection has no upcoming events");
+    }
+    receipt(surface, result, "runtime-browse-eligible", qualification);
+  }
   while (now() < deadline) {
     attempts += 1;
     for (const surface of SURFACES) {
