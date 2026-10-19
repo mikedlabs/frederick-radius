@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { consumeBrowseScrollReturn } from "@/lib/browse-scroll-return";
+import { restoreBrowseFocusReturn, takeBrowseFocusReturn, type BrowseFocusReturn } from "@/lib/browse-focus-return";
 
 /**
  * ScrollMemory — back-button scroll continuity for list surfaces
@@ -71,6 +72,7 @@ let lastPop: { key: string; at: number } | null = null;
 // route effect after a load may read it (later SPA navs within the same
 // document would otherwise inherit "back_forward" forever).
 let consultedDocNav = false;
+let consultedFocusDocNav = false;
 
 const ABORT_EVENTS = ["wheel", "touchmove", "pointerdown", "keydown"] as const;
 
@@ -150,6 +152,7 @@ export default function ScrollMemory() {
   const search = useSearchParams();
   const key = `${KEY_PREFIX}${pathname}${search?.size ? `?${search.toString()}` : ""}`;
   const explicitReturnKey = useRef<string | null>(null);
+  const pendingFocusReturn = useRef<{ key: string; value: BrowseFocusReturn } | null>(null);
 
   useEffect(() => {
     // Decide back-vs-fresh for THIS route state. Two back signals: a
@@ -221,6 +224,23 @@ export default function ScrollMemory() {
       window.removeEventListener("scroll", save);
       if (raf) cancelAnimationFrame(raf);
     };
+  }, [key]);
+
+  useEffect(() => {
+    // A full-document Back loses sheet refs. Restore only this consumed native
+    // detail transaction, after the actual browse target is stable and ready.
+    const initialDocument = !consultedFocusDocNav;
+    consultedFocusDocNav = true;
+    const navigation = initialDocument
+      ? performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined
+      : undefined;
+    const here = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (pendingFocusReturn.current?.key !== here) pendingFocusReturn.current = null;
+    const value = pendingFocusReturn.current?.value ?? takeBrowseFocusReturn(here,
+      navigation?.type === "back_forward" || explicitReturnKey.current === key);
+    if (!value) return;
+    pendingFocusReturn.current = { key: here, value };
+    return restoreBrowseFocusReturn(value, () => { pendingFocusReturn.current = null; });
   }, [key]);
 
   return null;

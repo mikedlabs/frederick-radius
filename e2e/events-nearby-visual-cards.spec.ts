@@ -4,6 +4,8 @@ import type { EventWithMeta } from "../src/lib/loaders/events";
 import { eventCardVisual } from "../src/components/event/eventVisuals";
 import { placeCardPhotoPlan } from "../src/lib/place-card-photo";
 import { dismissReturnBridge, emptyReturnBridgeState, RETURN_BRIDGE_STORAGE_KEY } from "../src/lib/return-bridge";
+import { EVENTS } from "../src/data/events";
+import { BROWSE_FOCUS_RETURN_KEY } from "../src/lib/browse-focus-return";
 
 /** Declared event DTOs travel through the existing browse/summary APIs and real
  * production components. Their photographs are the actual licensed local bytes.
@@ -579,4 +581,141 @@ test("Nearby exhausted photo transport keeps exact place, directions and Save at
   await noOverflow(page);
   expect(evidence.targetPrefetches, "Native-owned detail transitions must not launch unused Next prefetches").toEqual([]);
     expect(evidence.errors).toEqual([]);
+});
+
+
+// A canonical SSR heading can paint before that document starts auth hydration.
+// Await its already-issued fixture read before deliberately leaving this local
+// HTTP document. This covers settled-detail Back, not a fast cancellation race.
+// No additional request is issued; the existing declared auth fixture and
+// strict runtime-error assertions remain unchanged.
+function detailAuthRead(page: Page, appOrigin: string) {
+  return page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.origin === appOrigin && url.pathname === "/api/auth/me"
+      && response.request().method() === "GET" && response.status() === 200;
+  });
+}
+
+async function settleLocalWebKitDetail(page: Page, context: BrowserContext, appOrigin: string) {
+  const origin = new URL(appOrigin);
+  const localHttpWebKit = context.browser()?.browserType().name() === "webkit" && origin.protocol === "http:"
+    && ["localhost", "127.0.0.1", "[::1]"].includes(origin.hostname);
+  // WebKit's local Inspector reports canceled startup/prefetch reads as CORS
+  // diagnostics. Cover a settled detail return, with every error still fatal.
+  if (localHttpWebKit) await page.waitForLoadState("networkidle", { timeout: 10_000 });
+  return { localHttpWebKitIdle: localHttpWebKit, idleTimeoutMs: localHttpWebKit ? 10_000 : null,
+    authBodyCompleted: true, boundary: "Settled-detail Back; immediate cancellation stress is not covered." };
+}
+
+async function documentReturnGeometry(open: Locator) {
+  return open.evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    return { url: location.href, scrollY, timeOrigin: performance.timeOrigin, navigationType: navigation?.type,
+      top: box.top, bottom: box.bottom, width: box.width, height: box.height,
+      documentHeight: document.documentElement.scrollHeight, focused: document.activeElement === node,
+      active: document.activeElement?.outerHTML.slice(0, 1_000) };
+  });
+}
+
+test("native Event full-document Back restores its actual opener after a BFCache miss", async ({ page, context, baseURL }, info) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const evidence = await prepare(context, page, baseURL);
+  const seed = EVENTS.find((event) => event.slug === "snallyfest-2026-kickoff")!;
+  expect(seed).toBeDefined();
+  evidence.fixtureBoundary = "Loopback-only declared Today transport fixture exposes an unchanged historical bundled event solely for native return acceptance; actual summary and full SSR are NOT replaced, no dates or source verification shifted. It is not a current recommendation proof. Supported automatic-return opt-out remains active.";
+  evidence.measurements.unchangedHistoricalRecord = { slug: seed.slug, title: seed.title,
+    startsAt: seed.starts_at, endsAt: seed.ends_at, lastVerifiedAt: seed.last_verified_at };
+  await context.route("**/api/today/events?*", async route => {
+    expect(route.request().method()).toBe("GET");
+    const time = new Intl.DateTimeFormat("en-US", { timeZone: seed.timezone, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    await route.fulfill({ json: { partial: false, events: [{ slug: seed.slug, title: seed.title,
+      venue: seed.venue_name, municipality: seed.municipality, time: time.format(new Date(seed.starts_at)),
+      endTime: time.format(new Date(seed.ends_at)), moment: "Later", image: null, free: seed.is_free,
+      ...(seed.price_text ? { price: seed.price_text } : {}) }] } });
+  });
+  // This exact free seed resolver stays real; neither its DTO nor the actual
+  // blocking canonical document is replaced by the declared presentation seam.
+  const appOrigin = new URL(baseURL ?? "http://localhost:3010").origin;
+  await context.route(url => url.origin === appOrigin && url.pathname === `/api/events/${seed.slug}/summary`, route => {
+    expect(route.request().method()).toBe("GET");
+    return route.continue();
+  });
+  const response = await page.goto("/today?in=frederick", { waitUntil: "domcontentloaded" });
+  expect(response?.status()).toBe(200);
+  const open = page.locator(`[data-today-event-shortlist] a[href="/events/${seed.slug}"]`);
+  await expect(open).toHaveCount(1); await target(open);
+  const before = await documentReturnGeometry(open); evidence.measurements.beforeHistoricalEventDocument = before;
+  const summaryRead = page.waitForResponse(response => new URL(response.url()).pathname === `/api/events/${seed.slug}/summary`);
+  await open.tap();
+  const dialog = page.getByRole("dialog"); await expect(dialog.getByRole("heading", { name: seed.title, exact: true })).toBeVisible();
+  const summaryResponse = await summaryRead; expect(summaryResponse.status()).toBe(200);
+  const summary = (await summaryResponse.json() as { event: { slug: string; title: string; starts_at: string; ends_at: string } }).event;
+  expect({ slug: summary.slug, title: summary.title, starts: summary.starts_at, ends: summary.ends_at })
+    .toEqual({ slug: seed.slug, title: seed.title, starts: seed.starts_at, ends: seed.ends_at });
+  const authRead = detailAuthRead(page, appOrigin);
+  const full = dialog.getByRole("link", { name: "See full page", exact: true }); await full.tap();
+  await expect.poll(() => new URL(page.url()).pathname).toBe(`/events/${seed.slug}`);
+  await expect(page.getByRole("heading", { level: 1, name: seed.title, exact: true })).toBeVisible();
+  await expect(page.getByText("This event has already happened.", { exact: true })).toBeVisible();
+  const authResponse = await authRead; await authResponse.finished(); expect((await authResponse.json()).user).toBeNull();
+  evidence.measurements.eventDetailAuthSettled = { status: authResponse.status(), boundary: "Existing anonymous fixture response completed before native Back; no extra fetch. Fast cancellation not claimed." };
+  const stored = await page.evaluate(key => JSON.parse(sessionStorage.getItem(key) ?? "null"), BROWSE_FOCUS_RETURN_KEY);
+  evidence.measurements.eventDocumentDepartureIntent = stored;
+  expect(stored.source).toBe(new URL(before.url).pathname + new URL(before.url).search);
+  expect(stored.opener.href).toBe(`/events/${seed.slug}`);
+  expect(Object.keys(stored.opener).sort()).toEqual(["ariaLabel", "href", "id", "tagName"]);
+  const structured = await page.locator('script[type="application/ld+json"]').allTextContents();
+  const eventData = structured.map(text => JSON.parse(text) as { "@type"?: string; startDate?: string; endDate?: string }).find(data => data["@type"] === "Event");
+  expect(new Date(eventData!.startDate!).toISOString()).toBe(new Date(seed.starts_at).toISOString());
+  expect(new Date(eventData!.endDate!).toISOString()).toBe(new Date(seed.ends_at).toISOString());
+  evidence.measurements.settledDetailBoundary = await settleLocalWebKitDetail(page, context, appOrigin);
+  await page.goBack({ waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(before.url); await expect(dialog).toHaveCount(0); await expect(open).toHaveCount(1);
+  evidence.measurements.afterHistoricalEventDocument = await documentReturnGeometry(open);
+  await expect(open, "A new document restores the actual Event link without scripted focus").toBeFocused();
+  const after = await documentReturnGeometry(open); evidence.measurements.afterHistoricalEventDocument = after;
+  expect(after.navigationType).toBe("back_forward");
+  expect(after.timeOrigin, "This deliberately covers a fresh document, not retained BFCache refs").not.toBe(before.timeOrigin);
+  await expect.poll(async () => Math.abs(await page.evaluate(() => scrollY) - before.scrollY)).toBeLessThan(80);
+  expect(await page.evaluate(key => sessionStorage.getItem(key), BROWSE_FOCUS_RETURN_KEY)).toBeNull();
+  evidence.measurements.width = await noOverflow(page); await screenshot(page, info, "event-native-document-return-focus");
+  expect(evidence.errors).toEqual([]);
+});
+
+test("native Nearby full-document Back restores its exact place opener after a BFCache miss", async ({ page, context, baseURL }, info) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 320, height: 568 }); await page.emulateMedia({ reducedMotion: "reduce" });
+  const evidence = await prepare(context, page, baseURL);
+  const appOrigin = new URL(baseURL ?? "http://localhost:3010").origin;
+  const response = await page.goto("/nearby?c=outside&facet=park&sort=rated&in=frederick", { waitUntil: "domcontentloaded" });
+  expect(response?.status()).toBe(200); await expect(page.locator('[data-nearby-interaction-ready="true"]')).toBeVisible();
+  const { card, open } = await creekCard(page); await exactImage(card, CREEK_IMAGE, 16 / 9); await target(open);
+  const before = await documentReturnGeometry(open); evidence.measurements.beforeNearbyDocument = before;
+  await open.tap(); const dialog = page.getByRole("dialog"); await expect(dialog.getByRole("heading", { name: CREEK_NAME, exact: true })).toBeVisible();
+  const authRead = detailAuthRead(page, appOrigin);
+  await dialog.getByRole("link", { name: "See full page", exact: true }).tap();
+  await expect(page.getByRole("heading", { level: 1, name: CREEK_NAME, exact: true })).toBeVisible();
+  const authResponse = await authRead; await authResponse.finished(); expect((await authResponse.json()).user).toBeNull();
+  evidence.measurements.nearbyDetailAuthSettled = { status: authResponse.status(), boundary: "Existing anonymous fixture response completed before native Back; no extra fetch. Fast cancellation not claimed." };
+  const stored = await page.evaluate(key => JSON.parse(sessionStorage.getItem(key) ?? "null"), BROWSE_FOCUS_RETURN_KEY);
+  evidence.measurements.nearbyDocumentDepartureIntent = stored;
+  expect(stored.source).toBe(new URL(before.url).pathname + new URL(before.url).search);
+  expect(stored.opener.ariaLabel).toMatch(/^View Carroll Creek Linear Park .*details$/);
+  evidence.measurements.settledDetailBoundary = await settleLocalWebKitDetail(page, context, appOrigin);
+  await page.goBack({ waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(before.url); await expect(dialog).toHaveCount(0);
+  await expect(page.locator('[data-nearby-interaction-ready="true"]')).toBeVisible();
+  evidence.measurements.afterNearbyDocument = await documentReturnGeometry(open);
+  await expect(open, "The actual address-specific place button receives focus without pre-focus").toBeFocused();
+  const after = await documentReturnGeometry(open); evidence.measurements.afterNearbyDocument = after;
+  expect(after.navigationType).toBe("back_forward");
+  expect(after.timeOrigin, "This deliberately covers a fresh document, not retained BFCache refs").not.toBe(before.timeOrigin);
+  await expect.poll(async () => Math.abs(await page.evaluate(() => scrollY) - before.scrollY)).toBeLessThan(80);
+  await exactImage(card, CREEK_IMAGE, 16 / 9);
+  expect(await page.evaluate(key => sessionStorage.getItem(key), BROWSE_FOCUS_RETURN_KEY)).toBeNull();
+  evidence.measurements.width = await noOverflow(page); await screenshot(page, info, "nearby-native-document-return-focus");
+  expect(evidence.targetPrefetches).toEqual([]); expect(evidence.errors).toEqual([]);
 });
