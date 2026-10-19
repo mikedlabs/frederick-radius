@@ -606,10 +606,12 @@ test.describe("stable native press surfaces", () => {
   }
 
   async function replaceDocument(page: Page, path: string) {
-    // Direct fixture document changes should not cancel unrelated WebKit RSC
-    // prefetches and manufacture a startup access-control page error. Wait on
-    // the actual network, within a bound, without changing navigation state.
-    if (page.url() !== "about:blank") await page.waitForLoadState("networkidle", { timeout: 10_000 });
+    // Keep the established WebKit-only boundary for canceled RSC prefetch
+    // diagnostics. Chromium readiness belongs to the destination's real
+    // interaction assertions, not unrelated background network quiescence.
+    if (page.context().browser()?.browserType().name() === "webkit" && page.url() !== "about:blank") {
+      await page.waitForLoadState("networkidle", { timeout: 10_000 });
+    }
     return page.goto(path, { waitUntil: "domcontentloaded" });
   }
 
@@ -711,6 +713,62 @@ test.describe("stable native press surfaces", () => {
     }
     return { baseline, hovered, pressed: pressed!, released };
   }
+
+  test("Chromium fixture document changes remain usable with a declared active background read", async ({ page, browserName }, info) => {
+    test.skip(browserName !== "chromium", "WebKit retains its separate RSC-settling boundary and strict error checks.");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const backgroundPath = "/__declared-native-background-read.svg";
+    let heldRead = false;
+    let released = false;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    await page.route((url) => url.pathname === backgroundPath, async (route) => {
+      heldRead = true;
+      await gate;
+      return route.fulfill({ status: 200, contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" />' });
+    });
+    await page.addInitScript((path) => {
+      if (location.pathname !== "/events") return;
+      // An unattached image starts a real, held same-origin HTTP read before
+      // this document can reach networkidle. It never changes product layout.
+      const image = new Image();
+      image.src = path;
+      (window as Window & { declaredNativeBackgroundRead?: HTMLImageElement }).declaredNativeBackgroundRead = image;
+    }, backgroundPath);
+    try {
+      const trigger = await events(page);
+      await expect.poll(() => heldRead).toBe(true);
+      await trigger.click();
+      const sheet = page.getByRole("dialog", { name: eventTitle, exact: true });
+      await expect(sheet).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(sheet).toHaveCount(0);
+      await expect(trigger).toBeFocused();
+      // The actual event UI has worked while this declared read is pending.
+      // Prove the old global gate would block rather than silently assuming it.
+      await expect(page.waitForLoadState("networkidle", { timeout: 600 })).rejects.toThrow(/Timeout 600ms exceeded/);
+      expect(released).toBe(false);
+      const townDocumentStarts = page.waitForRequest((request) => request.isNavigationRequest()
+        && new URL(request.url()).pathname === "/m/frederick").then(() => {
+        released = true;
+        release();
+      });
+      const [response] = await Promise.all([replaceDocument(page, "/m/frederick"), townDocumentStarts]);
+      expect(response?.status()).toBe(200);
+      await expect(page).toHaveURL(/\/m\/frederick$/);
+      const town = page.getByRole("navigation", { name: "Switch town", exact: true }).getByRole("link", { name: "Brunswick", exact: true });
+      await expect(town).toHaveAttribute("data-press-target", "control");
+      const townGeometry = await pressAndDragOut(page, town, true);
+      expect(runtime.get(page)?.errors).toEqual([]);
+      await attach(info, "background-read-document-transition", { backgroundPath, heldRead,
+        networkIdleWasBlocked: true, eventSheetOpenedAndClosedWhileReadHeld: true,
+        releasedOnlyWhenTownDocumentStarted: released, townGeometry });
+    } finally {
+      // Also release on an assertion failure: a failed proof must not leave
+      // a route handler or read pending after its isolated browser context.
+      release();
+    }
+  });
 
   for (const reducedMotion of ["no-preference", "reduce"] as const) {
     test(`real Button and town Pill retain their hit rectangles with ${reducedMotion} motion${reducedMotion === "reduce" ? " at 320px and 200% text" : ""}`, async ({ page }, info) => {
