@@ -28,6 +28,7 @@ import { usePathname } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
+import { markBrowseFocusDeparture } from "@/lib/browse-focus-return";
 
 /**
  * BottomSheet — the shared progressive-detail shell (app-like pass,
@@ -283,6 +284,7 @@ export default function BottomSheet({
     event.preventDefault();
     event.stopPropagation();
     haptic("light");
+    markBrowseFocusDeparture(href, lastFocused.current);
     historyLayer.leaveTo(href);
   };
 
