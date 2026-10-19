@@ -2346,7 +2346,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 [data-press-target="tab"] {
   --press-focus-offset: -3px;
 }
-[data-press-target]:focus-visible {
+/* Keep this owned focus rule above generic :is() focus groups produced by
+   CSS minification; their strongest branch otherwise overrides inset rings. */
+[data-press-target][data-press-target]:focus-visible {
   outline: 2px solid var(--press-focus-color, var(--app-focus));
   outline-offset: var(--press-focus-offset, 3px);
 }

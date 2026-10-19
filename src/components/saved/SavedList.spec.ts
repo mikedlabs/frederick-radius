@@ -109,7 +109,7 @@ describe("SavedList empty state", () => {
       expect(source).not.toContain('role="button"');
       expect(source).toContain("aria-expanded={open}");
       expect(source).toContain("aria-controls=");
-      expect(source).toContain("className=\"sw-brand\"");
+      expect(source).toMatch(/className="sw-brand(?: [^"]*)?"/);
       expect(source).toContain("<Link");
       expect(source).toContain("onToggle");
     }

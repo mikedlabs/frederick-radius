@@ -194,10 +194,34 @@ const eventSample = {
 } satisfies Event;
 const eventNow = new Date("2029-10-08T12:00:00-04:00");
 function EventDeck({ multiple = false }: { multiple?: boolean }) {
-  return <div data-app-primary-tab="/my-radius" className="w-[min(30rem,100vw)] p-4">
+  return <div data-app-primary-tab="/my-radius" className="w-[min(30rem,100vw)] max-w-full p-4">
     <SavedEventWallet events={multiple ? [eventSample, { ...eventSample, slug: "workshop-second-event", title: "Library story afternoon" }] : [eventSample]} now={eventNow} />
   </div>;
 }
+async function physicalWalletTarget(control: HTMLElement) {
+  control.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+  let geometry: unknown;
+  try {
+    await waitFor(() => {
+      const box = control.getBoundingClientRect();
+      const x = box.x + box.width / 2, y = box.y + box.height / 2;
+      const owners = [[x, y], [x - 21, y], [x + 21, y], [x, y - 21], [x, y + 21]].map(([px, py]) => {
+        const owner = control.ownerDocument.elementFromPoint(px, py);
+        return { x: px, y: py, owned: owner !== null && control.contains(owner),
+          owner: owner?.className, ownerText: owner?.textContent?.trim().slice(0, 80) };
+      });
+      geometry = { label: control.textContent?.trim(), root: getComputedStyle(document.documentElement).fontSize,
+        bounds: { x: box.x, y: box.y, width: box.width, height: box.height }, owners };
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      for (const point of owners) expect(point.owned).toBe(true);
+    });
+  } catch (error) {
+    console.info("Saved native target failure geometry", JSON.stringify(geometry));
+    throw error;
+  }
+}
+
 export const SingleCollapsedEventAt390: Story = {
   globals: { viewport: { value: "radiusMobile", isRotated: false } },
   beforeEach: () => sample(), render: () => <EventDeck />,
@@ -205,25 +229,64 @@ export const SingleCollapsedEventAt390: Story = {
     const canvas = within(canvasElement);
     const card = canvas.getByRole("listitem").firstElementChild!;
     const disclosure = canvas.getByRole("button", { name: "Show details for Community concert" });
+    const opener = canvas.getByRole("link", { name: /^Community concert$/ });
+    await physicalWalletTarget(opener);
+    await physicalWalletTarget(disclosure);
+    await expect(opener.contains(disclosure)).toBe(false);
+    await expect(opener).toHaveAttribute("href", "/events/workshop-saved-event?returnTo=%2Fmy-radius");
+    await expect(disclosure).toHaveAttribute("aria-expanded", "false");
     await expect(card.getBoundingClientRect().height).toBeLessThanOrEqual(96);
     await expect(disclosure.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     await userEvent.click(disclosure);
     await waitFor(() => expect(canvas.getByRole("link", { name: /Open event/ })).toBeVisible());
     await expect(card.getBoundingClientRect().height).toBeGreaterThanOrEqual(186);
+    await expect(disclosure).toHaveAttribute("aria-expanded", "true");
+    await expect(opener).toHaveAttribute("href", "/events/workshop-saved-event?returnTo=%2Fmy-radius");
     await userEvent.click(canvas.getByRole("button", { name: "Hide details for Community concert" }));
     await expect(card.getBoundingClientRect().height).toBeLessThanOrEqual(96);
   },
 };
+async function multipleCollapsedWalletTargets({ canvasElement }: { canvasElement: HTMLElement }) {
+  const canvas = within(canvasElement);
+  const [first, last] = canvas.getAllByRole("listitem");
+  await expect(first.firstElementChild!.getBoundingClientRect().height).toBe(186);
+  await expect(last.firstElementChild!.getBoundingClientRect().height).toBe(186);
+  await expect(Math.abs(last.getBoundingClientRect().top - first.getBoundingClientRect().top - 62)).toBeLessThanOrEqual(1);
+  for (const name of ["Community concert", "Library story afternoon"]) {
+    const opener = canvas.getByRole("link", { name });
+    const disclosure = canvas.getByRole("button", { name: `Show details for ${name}` });
+    await physicalWalletTarget(opener);
+    await physicalWalletTarget(disclosure);
+    await expect(opener.contains(disclosure)).toBe(false);
+    await expect(disclosure).toHaveAttribute("aria-expanded", "false");
+  }
+  await userEvent.click(canvas.getByRole("button", { name: "Show details for Library story afternoon" }));
+  await expect(last.firstElementChild!.getBoundingClientRect().height).toBeGreaterThanOrEqual(186);
+  await waitFor(() => expect(canvas.getByRole("link", { name: /Open event/ })).toBeVisible());
+}
+
 export const MultipleCollapsedEventsAt390: Story = {
   ...SingleCollapsedEventAt390, render: () => <EventDeck multiple />,
+  play: multipleCollapsedWalletTargets,
+};
+
+export const MultipleCollapsedEventsAt320WithEnlargedRoot: Story = {
+  ...MultipleCollapsedEventsAt390,
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  beforeEach: () => {
+    const cleanup = sample();
+    const previous = document.documentElement.style.fontSize;
+    document.documentElement.style.fontSize = "200%";
+    return async () => {
+      try { await cleanup(); }
+      finally { document.documentElement.style.fontSize = previous; }
+    };
+  },
+  render: () => <div data-wallet-narrow-frame style={{ width: 320, maxWidth: "100%" }}><EventDeck multiple /></div>,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const [first, last] = canvas.getAllByRole("listitem");
-    await expect(first.firstElementChild!.getBoundingClientRect().height).toBe(186);
-    await expect(last.firstElementChild!.getBoundingClientRect().height).toBe(186);
-    await expect(Math.abs(last.getBoundingClientRect().top - first.getBoundingClientRect().top - 62)).toBeLessThanOrEqual(1);
-    await userEvent.click(canvas.getByRole("button", { name: "Show details for Library story afternoon" }));
-    await expect(last.firstElementChild!.getBoundingClientRect().height).toBeGreaterThanOrEqual(186);
-    await waitFor(() => expect(canvas.getByRole("link", { name: /Open event/ })).toBeVisible());
+    const frame = canvasElement.querySelector<HTMLElement>("[data-wallet-narrow-frame]")!;
+    await expect(frame.getBoundingClientRect().width).toBe(320);
+    await expect(frame.scrollWidth).toBeLessThanOrEqual(frame.clientWidth + 1);
+    await multipleCollapsedWalletTargets({ canvasElement });
   },
 };

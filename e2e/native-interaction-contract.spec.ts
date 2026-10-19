@@ -770,6 +770,85 @@ test.describe("stable native press surfaces", () => {
     }
   });
 
+  test("compiled town rail keeps real keyboard focus inset, contrasted and physically stable", async ({ page }, info) => {
+    await replaceDocument(page, "/m/frederick");
+    const town = page.getByRole("navigation", { name: "Switch town", exact: true })
+      .getByRole("link", { name: "Brunswick", exact: true });
+    await expect(town).toHaveAttribute("data-press-target", "control");
+    await expect(town).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    await town.scrollIntoViewIfNeeded();
+    const before = await snapshot(town);
+    expect(before.box.width).toBeGreaterThanOrEqual(44);
+    expect(before.box.height).toBeGreaterThanOrEqual(44);
+    expect(before.hits).toEqual([true, true, true, true, true]);
+    await page.evaluate(() => {
+      window.addEventListener("keydown", (event) => {
+        (window as Window & { nativeTownFocusKey?: { trusted: boolean; key: string; alt: boolean } }).nativeTownFocusKey = {
+          trusted: event.isTrusted, key: event.key, alt: event.altKey,
+        };
+      }, { capture: true });
+    });
+    const keyboard = await reachByKeyboard(page, town);
+    const presentation = await town.evaluate((node) => {
+      const css = getComputedStyle(node);
+      const backgrounds: string[] = [];
+      for (let element: Element | null = node; element; element = element.parentElement) {
+        backgrounds.push(getComputedStyle(element).backgroundColor);
+      }
+      return {
+        actualFocus: node === document.activeElement, focusVisible: node.matches(":focus-visible"),
+        outlineStyle: css.outlineStyle, outlineWidth: css.outlineWidth, outlineOffset: css.outlineOffset,
+        outlineColor: css.outlineColor, ownedOffset: css.getPropertyValue("--press-focus-offset").trim(),
+        backgrounds, inlineStyle: node.getAttribute("style"),
+        key: (window as Window & { nativeTownFocusKey?: { trusted: boolean; key: string; alt: boolean } }).nativeTownFocusKey,
+      };
+    });
+    const focused = await snapshot(town);
+    await attach(info, "compiled-town-keyboard-focus", { keyboard, before, focused, presentation });
+    expect(presentation.actualFocus).toBe(true);
+    expect(presentation.focusVisible).toBe(true);
+    expect(presentation.key).toMatchObject({ trusted: true, key: "Tab" });
+    expect(presentation.outlineStyle).toBe("solid");
+    expect(parseFloat(presentation.outlineWidth)).toBeGreaterThanOrEqual(2);
+    // Check the compiled cascade, not just an inline custom property. CSS
+    // optimization previously merged generic focus selectors into :is(),
+    // increasing their specificity and moving this ring outside the rail.
+    expect(presentation.ownedOffset).toBe("-3px");
+    expect(presentation.outlineOffset).toBe("-3px");
+    expect(parseFloat(presentation.outlineOffset) + parseFloat(presentation.outlineWidth)).toBeLessThanOrEqual(0);
+    fixedOuter(before, focused);
+    expect(focused.hits).toEqual([true, true, true, true, true]);
+
+    const rgba = (value: string): [number, number, number, number] => {
+      const match = /^rgba?\(([^)]+)\)$/.exec(value);
+      if (!match) throw new Error(`Unexpected actual computed focus color: ${value}`);
+      const parts = match[1].split(/[,\s/]+/).filter(Boolean).map(Number);
+      return [parts[0], parts[1], parts[2], parts[3] ?? 1];
+    };
+    const over = (foreground: number[], background: number[]) => foreground.slice(0, 3)
+      .map((channel, index) => channel * foreground[3] + background[index] * (1 - foreground[3]));
+    // The normal light browser canvas is white. Composite every real ancestor
+    // fill so the Pill's translucent surface is not assumed opaque.
+    const fill = [...presentation.backgrounds].reverse().reduce((background, color) => over(rgba(color), background), [255, 255, 255]);
+    const ring = over(rgba(presentation.outlineColor), fill);
+    const luminance = (color: number[]) => color.map((channel) => {
+      const value = channel / 255;
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    }).reduce((value, channel, index) => value + channel * [0.2126, 0.7152, 0.0722][index], 0);
+    const light = Math.max(luminance(fill), luminance(ring));
+    const dark = Math.min(luminance(fill), luminance(ring));
+    const contrast = (light + 0.05) / (dark + 0.05);
+    expect(contrast, "the inset keyboard focus ring contrasts against the actual Pill fill").toBeGreaterThanOrEqual(3);
+    await attach(info, "compiled-town-focus-contrast", { fill, ring, contrast });
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/m\/brunswick(?:[?#]|$)/);
+    await expect(page.getByRole("navigation", { name: "Switch town", exact: true })
+      .getByRole("link", { name: "Brunswick", exact: true })).toHaveAttribute("aria-current", "page");
+    await noOverflow(page);
+    expect(runtime.get(page)?.errors).toEqual([]);
+  });
+
   for (const reducedMotion of ["no-preference", "reduce"] as const) {
     test(`real Button and town Pill retain their hit rectangles with ${reducedMotion} motion${reducedMotion === "reduce" ? " at 320px and 200% text" : ""}`, async ({ page }, info) => {
       await page.emulateMedia({ reducedMotion });
