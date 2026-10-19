@@ -413,6 +413,19 @@ describe("EventsExplorer event time windows", () => {
     ).toBe(false);
   });
 
+  it.each([
+    { label: "after Eastern midnight", now: "2026-10-19T00:05:00-04:00", end: "2026-10-19T01:30:00-04:00" },
+    { label: "fall clock change", now: "2026-11-01T01:15:00-05:00", end: "2026-11-01T02:30:00-05:00" },
+    { label: "spring clock change", now: "2026-03-08T03:15:00-04:00", end: "2026-03-08T04:30:00-04:00" },
+  ])("keeps a confirmed overnight event in Today: $label", ({ now, end }) => {
+    const nowMs = Date.parse(now);
+    const previousNight = new Date(nowMs - 3 * 3_600_000).toISOString();
+    const overnight = event("overnight", "music", previousNight);
+    overnight.ends_at = end;
+    const overnightBounds = { ...bounds, now: nowMs, next24: nowMs + 18 * 3_600_000 };
+    expect(eventMatchesTimeWindow(overnight, "today", overnightBounds)).toBe(true);
+    expect(eventMatchesTimeWindow(overnight, "today", { ...overnightBounds, now: Date.parse(end) + 1 })).toBe(false);
+  });
   it("does not put a live weekday event into the upcoming weekend", () => {
     const mondayBounds = {
       now: Date.parse("2026-08-03T10:30:00-04:00"),

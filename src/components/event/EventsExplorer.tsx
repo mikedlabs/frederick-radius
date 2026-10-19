@@ -408,7 +408,9 @@ export function eventMatchesTimeWindow(
     start <= bounds.now &&
     dayKeyEastern(event.starts_at) === dayKeyEastern(nowDate.toISOString());
   if (time === "today") {
-    return startedToday || (start >= bounds.now && start < bounds.next24);
+    // A confirmed overnight session remains useful after Eastern midnight.
+    // The range-listing and ended-event guards above still own their limits.
+    return live || startedToday || (start >= bounds.now && start < bounds.next24);
   }
   if (time === "weekend") {
     const weekendIsNow =
