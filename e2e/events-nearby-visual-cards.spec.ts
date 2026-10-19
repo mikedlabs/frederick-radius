@@ -333,6 +333,43 @@ for (const width of [390, 320]) {
     const slug = (await card.getAttribute("data-decision-id"))!;
     const event = events.find((candidate) => candidate.slug === slug)!;
     const link = card.locator('a[data-decision-action="open"]');
+    const appOrigin = new URL(baseURL!).origin;
+    const expectedMap = new URL(`/map?open=${encodeURIComponent(event.venue_place_slug!)}&intent=eat-drink`, appOrigin);
+    const mapEvidence = {
+      venue: event.venue_place_slug!, expectedHref: expectedMap.pathname + expectedMap.search,
+      phases: [] as Array<{ phase: string; observedAt: string }>,
+      prefetches: [] as Array<{ url: string; phase: string; segment: string | null; observedAt: string }>,
+      exposure: {} as Record<string, unknown>,
+      document: null as { url: string; status: number } | null,
+    };
+    evidence.measurements.eventMapCTA = mapEvidence;
+    let mapPhase: string | null = null;
+    const markMapPhase = (phase: string) => {
+      mapPhase = phase;
+      mapEvidence.phases.push({ phase, observedAt: new Date().toISOString() });
+    };
+    const isMapDestination = (url: URL) => url.origin === appOrigin && url.pathname === "/map"
+      && url.searchParams.get("open") === event.venue_place_slug && url.searchParams.get("intent") === "eat-drink";
+    context.on("request", (request) => {
+      const url = new URL(request.url()), headers = request.headers();
+      const segment = headers["next-router-segment-prefetch"] ?? null;
+      // Next can prefetch a queried link's searchless /_tree as well. Attribute
+      // that request only while the actual EventSheet Map CTA is exercised.
+      const searchlessTree = url.pathname === "/map" && !url.searchParams.has("open")
+        && !url.searchParams.has("intent") && segment === "/_tree";
+      if (mapPhase && request.method() === "GET" && url.origin === appOrigin
+        && headers["next-router-prefetch"] === "1" && (isMapDestination(url) || searchlessTree)) {
+        mapEvidence.prefetches.push({ url: url.href, phase: mapPhase, segment, observedAt: new Date().toISOString() });
+      }
+    });
+    context.on("response", (response) => {
+      const request = response.request();
+      if (request.method() === "GET" && request.isNavigationRequest() && request.resourceType() === "document"
+        && isMapDestination(new URL(response.url()))) {
+        mapEvidence.document = { url: response.url(), status: response.status() };
+        mapPhase = null; // The real Map document's unrelated links are outside this sheet's scope.
+      }
+    });
     if (width === 320) {
       expect(await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(true);
       await reducedPress(page, link);
@@ -341,6 +378,7 @@ for (const width of [390, 320]) {
     const before = { url: page.url(), scrollY: await page.evaluate(() => scrollY) };
     evidence.measurements.beforeEvent = before;
     await screenshot(page, info, `events-${width}-discovery`);
+    markMapPhase("initial-sheet-open");
     await link.tap();
     const dialog = page.getByRole("dialog", { name: event.title, exact: true });
     await expect(dialog).toBeVisible();
@@ -352,11 +390,21 @@ for (const width of [390, 320]) {
     await expect(save).toHaveAttribute("aria-pressed", "true");
     const saved = await page.evaluate((key) => localStorage.getItem(key), SAVED_KEY);
     expect(JSON.parse(saved!)).toEqual([{ type: "event", id: slug, saved_at: expect.any(String) }]);
-    const full = new URL((await dialog.getByRole("link", { name: "See full page", exact: true }).getAttribute("href"))!, page.url());
+    const mapLink = dialog.getByRole("link", { name: "Eat & drink nearby", exact: true });
+    await expect(mapLink).toHaveAttribute("href", mapEvidence.expectedHref);
+    markMapPhase("around-venue-cta-exposed");
+    mapEvidence.exposure.mapCTA = await target(mapLink);
+    const fullLink = dialog.getByRole("link", { name: "See full page", exact: true });
+    mapEvidence.exposure.fullPageFooter = await target(fullLink);
+    // Observe actual paints with the Around-the-venue/footer region exposed;
+    // absence is tested against real Next scheduling, not a source-attribute mock.
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    const full = new URL((await fullLink.getAttribute("href"))!, page.url());
     expect(full.pathname).toBe(`/events/${slug}`);
     expect(full.searchParams.get("returnTo")).toBe(new URL(before.url).pathname + new URL(before.url).search);
     // The declared fixture has no real SSR archive row. Do not replace HTML or
     // claim a fake full-page pass; public release proof chooses a current row.
+    markMapPhase("sheet-native-back");
     await page.goBack();
     await expect(dialog).toHaveCount(0);
     await expect(page).toHaveURL(before.url);
@@ -367,6 +415,22 @@ for (const width of [390, 320]) {
     await page.goBack();
     await expect(dialog).toHaveCount(0);
     evidence.measurements.width = await noOverflow(page);
+    // Positive control: this same unchanged CTA still performs its real native
+    // document navigation. The basemap transport remains blocked by the guard,
+    // so this does not claim a rendered map or camera interaction.
+    markMapPhase("map-cta-native-activation");
+    await link.tap();
+    await expect(dialog).toBeVisible();
+    mapEvidence.exposure.activation = await target(mapLink);
+    const destination = page.waitForResponse((response) => {
+      const request = response.request();
+      return request.method() === "GET" && request.isNavigationRequest() && request.resourceType() === "document"
+        && isMapDestination(new URL(response.url()));
+    });
+    await mapLink.tap();
+    expect((await destination).status()).toBe(200);
+    expect(mapEvidence.document).toEqual({ url: expect.any(String), status: 200 });
+    expect(mapEvidence.prefetches, "Native-owned Around-the-venue CTA must not launch unused queried or searchless Map prefetches").toEqual([]);
     expect(evidence.eventReads).toContain("browse");
     expect(evidence.eventReads).toContain(slug);
     expect(evidence.targetPrefetches, "Native-owned detail transitions must not launch unused Next prefetches").toEqual([]);
