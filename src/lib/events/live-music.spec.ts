@@ -6,6 +6,7 @@ import {
   liveMusicAhead,
 } from "./live-music";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 // A real verified music venue from the curated set, so the test exercises
 // the actual join (and fails loudly if the slug is ever removed).
@@ -113,5 +114,64 @@ describe("isLiveMusicEvent fitness/class veto (2026-07-17 radar screenshot)", ()
   it("keeps a real dance party and real shows", () => {
     expect(isLiveMusicEvent({ category: "music", venue_place_slug: undefined, title: "Salsa Night Dance Party! Carnaval De La Salsa" })).toBe(true);
     expect(isLiveMusicEvent({ category: "food", venue_place_slug: VENUE, title: "Michelle & Jason Hannon" })).toBe(true);
+  });
+});
+
+describe("inferredNonMusicCategory venue-calendar veto (2026-10-17)", () => {
+  // squarespace-live stamps `inferredNonMusicCategory(title) ?? "music"`.
+  const ingestCategory = (title: string) => inferredNonMusicCategory(title) ?? "music";
+
+  it("retags the live Steinhardt / Banyan examples that are not shows", () => {
+    expect(ingestCategory("Haunted Haloween Terrarium Workshop")).toBe("community");
+    expect(ingestCategory("Frederick Plant Swap")).toBe("community");
+    expect(ingestCategory("Mahjong")).toBe("community");
+    expect(ingestCategory("Pictures with Santa")).toBe("family");
+    expect(ingestCategory("Banyan's Fall Market")).toBe("market");
+  });
+
+  it("maps each word-boundary signal to an existing category id", () => {
+    const cases: Array<[string, "market" | "community" | "family"]> = [
+      ["Terrarium Workshop", "community"],
+      ["Haunted Terrarium Night", "community"],
+      ["Improv Class", "community"],
+      ["Frederick Plant Swap", "community"],
+      ["Mahjong", "community"],
+      ["Pictures with Santa", "family"],
+      ["Queer Craft Night", "community"],
+      ["Banyan's Fall Market", "market"],
+      ["Trivia Night", "community"],
+      ["Bingo!", "community"],
+      ["Yoga in the Taproom", "community"],
+      ["Painting with a Twist", "community"],
+      ["Vendor Fair", "market"],
+    ];
+    for (const [title, category] of cases) {
+      expect(inferredNonMusicCategory(title)).toBe(category);
+      expect(CATEGORY_BY_SLUG[category]).toBeDefined();
+    }
+  });
+
+  it("keeps real band titles as music", () => {
+    for (const title of [
+      "Jimmy Kenny and The Pirate Beach Band",
+      "Radio Hero",
+      "The Hot Sardines",
+      "Las Áñez",
+      "Emo Night",
+      "Bluegrass Jam",
+      "The Plate Scrapers (live)",
+      "Michelle & Jason Hannon",
+      "Market Street Band",
+      "New Market String Band",
+      "Classic Rock Night",
+      "Working Class Heroes",
+      "Santa Fe and The Fat City Horns",
+    ]) {
+      expect(inferredNonMusicCategory(title)).toBeNull();
+      expect(ingestCategory(title)).toBe("music");
+      expect(
+        isLiveMusicEvent({ category: "food", venue_place_slug: VENUE, title }),
+      ).toBe(true);
+    }
   });
 });
