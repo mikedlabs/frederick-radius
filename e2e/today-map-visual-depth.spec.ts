@@ -14,11 +14,16 @@ const creekSlug = "carroll-creek-linear-park-frederick";
 const lockSlug = "co-canal-lock-30-brunswick";
 const creek = catalog.find((place) => place.slug === creekSlug)!;
 const lock = catalog.find((place) => place.slug === lockSlug)!;
+const otherMapPlace = catalog.find((place) => place.slug === "baker-park-frederick")!;
 const creekPhoto = getOwnedPlacePhoto(creekSlug)!;
 const lockPhoto = CREDITED_LOCAL_PLACE_PHOTOS[lockSlug].image;
 const failureSignal = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
 const returnTo = "/search?q=Creek&in=frederick&kind=place";
 const mapPath = `/map?${new URLSearchParams({ q: "Creek", in: "frederick", c: "-77.4100,39.4150,12.4", show: "transit", layers: "parks", returnTo })}`;
+
+type SearchOutcome = "match" | "nonmatch" | "empty";
+type SearchRead = { query: string | null; scope: string | null; origin: string | null; phase: number; completed?: SearchOutcome };
+type HeldSearch = { phase: number; promise: Promise<void>; release: () => void; outcome: SearchOutcome };
 
 type Evidence = {
   fixture: true;
@@ -30,6 +35,7 @@ type Evidence = {
   measurements: Record<string, unknown>;
   wantScopes: Array<string | null>;
   metadataReads: string[];
+  searchReads: SearchRead[];
   localHttpCspAdjusted: boolean;
 };
 const evidenceByPage = new WeakMap<Page, Evidence>();
@@ -48,7 +54,7 @@ function imageSource(requestUrl: URL, origin: string) {
     : requestUrl;
 }
 
-async function prepare(context: BrowserContext, page: Page, baseURL: string | undefined, options: { map?: boolean; failCreek?: boolean; holdMetadata?: boolean } = {}) {
+async function prepare(context: BrowserContext, page: Page, baseURL: string | undefined, options: { map?: boolean; failCreek?: boolean; holdMetadata?: boolean; holdScopedSearch?: boolean } = {}) {
   if (!baseURL || !["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname)) {
     throw new Error("Declared visual-depth acceptance may run only against the owned loopback compiled server.");
   }
@@ -56,7 +62,7 @@ async function prepare(context: BrowserContext, page: Page, baseURL: string | un
   const evidence: Evidence = {
     fixture: true,
     proofBoundary: "Real compiled UI and exact bundled venue photographs; fictional browse availability. External providers, model calls, writes and rendered-basemap claims are excluded.",
-    errors: [], blocked: [], images: [], failedImages: [], measurements: {}, wantScopes: [], metadataReads: [], localHttpCspAdjusted: false,
+    errors: [], blocked: [], images: [], failedImages: [], measurements: {}, wantScopes: [], metadataReads: [], searchReads: [], localHttpCspAdjusted: false,
   };
   evidenceByPage.set(page, evidence);
   page.on("pageerror", (error) => evidence.errors.push(error.message));
@@ -64,6 +70,15 @@ async function prepare(context: BrowserContext, page: Page, baseURL: string | un
   let releaseMetadata!: () => void;
   const metadataGate = new Promise<void>((resolve) => { releaseMetadata = resolve; });
   if (!options.holdMetadata) releaseMetadata();
+  const heldSearches: HeldSearch[] = [];
+  const holdSearch = () => {
+    let release!: () => void;
+    const promise = new Promise<void>((resolve) => { release = resolve; });
+    const gate: HeldSearch = { phase: heldSearches.length, promise, release, outcome: "match" };
+    heldSearches.push(gate);
+    return gate;
+  };
+  let activeSearch = options.holdScopedSearch ? holdSearch() : null;
   await context.addCookies([{ name: "fr_onboarded", value: "1", domain: new URL(origin).hostname, path: "/" }]);
   await context.addInitScript(({ key, bridge, map }) => {
     localStorage.setItem("fr:scope:v1", "county");
@@ -115,13 +130,34 @@ async function prepare(context: BrowserContext, page: Page, baseURL: string | un
       } });
     }
     if (url.pathname === "/api/today/events") return route.fulfill({ json: { events: [], partial: false } });
-    if (url.pathname === "/api/map/places") return route.fulfill({ json: { generatedAt: new Date().toISOString(), places: [{
-      slug: creek.slug, name: creek.name, category: creek.category, geom: creek.geom, municipality: creek.municipality,
-      source: creek.source, is_verified: creek.is_verified, field_notes: creek.field_notes,
-      short_blurb: creek.short_blurb, primary_type: creek.primary_type, open_status: { state: "unknown" },
-    }] } });
-    if (url.pathname === "/api/search") return route.fulfill({ json: { results: [{ type: "place", id: `place:${creek.slug}`, title: creek.name,
-      subtitle: creek.municipality, href: `/places/${creek.slug}`, lng: creek.geom.lng, lat: creek.geom.lat }] } });
+    if (url.pathname === "/api/map/places") return route.fulfill({ json: { generatedAt: new Date().toISOString(),
+      places: (options.holdScopedSearch ? [creek, otherMapPlace] : [creek]).map((place) => ({
+        slug: place.slug, name: place.name, category: place.category, geom: place.geom, municipality: place.municipality,
+        source: place.source, is_verified: place.is_verified, field_notes: place.field_notes,
+        short_blurb: place.short_blurb, primary_type: place.primary_type, open_status: { state: "unknown" },
+      })),
+    } });
+    if (url.pathname === "/api/search") {
+      const gate = activeSearch;
+      const read: SearchRead = { query: url.searchParams.get("q"), scope: url.searchParams.get("in"),
+        origin: url.searchParams.get("origin"), phase: gate?.phase ?? -1 };
+      evidence.searchReads.push(read);
+      if (options.holdScopedSearch) {
+        // Delay ONLY the real scoped canonical-search transport. The live map
+        // records, selected-card source plan, filters and URL stay untouched.
+        expect(read.query).toBe(creek.name);
+        expect(read.scope).toBe("frederick");
+        expect(read.origin).toBe("map");
+        if (!gate) throw new Error("The scoped-search fixture must declare its response phase.");
+        await gate.promise;
+      }
+      const outcome = gate?.outcome ?? "match";
+      const place = outcome === "nonmatch" ? otherMapPlace : creek;
+      await route.fulfill({ json: { results: outcome === "empty" ? [] : [{ type: "place", id: `place:${place.slug}`, title: place.name,
+        subtitle: place.municipality, href: `/places/${place.slug}`, lng: place.geom.lng, lat: place.geom.lat }] } });
+      read.completed = outcome;
+      return;
+    }
     if (url.pathname.startsWith("/api/places/map-card/")) {
       evidence.metadataReads.push(decodeURIComponent(url.pathname.split("/").at(-1)!));
       await metadataGate;
@@ -147,7 +183,15 @@ async function prepare(context: BrowserContext, page: Page, baseURL: string | un
     if (url.pathname.startsWith("/api/")) return route.fulfill({ status: 503, json: { error: "Optional read unavailable in the declared visual-depth fixture" } });
     return route.continue();
   });
-  return { evidence, releaseMetadata, failLock: () => { lockFails = true; } };
+  return { evidence, releaseMetadata, failLock: () => { lockFails = true; },
+    holdScopedSearch: () => { activeSearch = holdSearch(); return activeSearch.phase; },
+    releaseScopedSearch: (outcome: SearchOutcome) => {
+      if (!activeSearch) throw new Error("No declared scoped search is held.");
+      activeSearch.outcome = outcome;
+      activeSearch.release();
+    },
+    releaseAllSearch: () => { for (const gate of heldSearches) gate.release(); },
+  };
 }
 
 async function decoded(image: Locator, expected: string) {
@@ -506,3 +550,119 @@ test("Map makes the exact owned image prominent before metadata and keeps real D
     boundary.releaseMetadata();
   }
 });
+
+
+const coldSelectedMapPath = `/map?${new URLSearchParams({ in: "frederick", q: creek.name,
+  place: creekSlug, c: "-77.4100,39.4150,12.4", layers: "parks", show: "transit" })}`;
+
+async function reloadContinuityState(page: Page) {
+  return page.evaluate(() => ({
+    url: location.href,
+    selectedSlugs: [...document.querySelectorAll(".map-peek [data-map-place-slug]")].map((node) => node.getAttribute("data-map-place-slug")),
+    saved: JSON.parse(localStorage.getItem("fr:saved:v1") ?? "[]"),
+    mapError: document.querySelector(".dock-host")?.getAttribute("data-map-error") ?? null,
+    activeElement: document.activeElement?.outerHTML.slice(0, 500),
+  }));
+}
+
+async function selectedWhileSearchHeld(page: Page, boundary: Awaited<ReturnType<typeof prepare>>, baseURL: string | undefined, phase: number) {
+  await expect(page.getByRole("region", { name: "Available results without the map", exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect.poll(() => boundary.evidence.searchReads.filter((read) => read.phase === phase).length,
+    { message: "The actual scoped canonical search must reach its declared held response" }).toBeGreaterThan(0);
+  expect(boundary.evidence.searchReads.filter((read) => read.phase === phase).every((read) => read.completed === undefined)).toBe(true);
+  const card = page.locator(".map-peek[data-map-result-surface]");
+  await expect(card.locator("[data-map-place-slug]"), "a pending scoped search cannot erase the valid URL-selected place")
+    .toHaveAttribute("data-map-place-slug", creekSlug);
+  const image = card.locator('img[data-map-peek-photo-source="owned"]');
+  await decoded(image, creekPhoto.src);
+  // Observe the actual selection for more than500ms while canonical search
+  // is still held. Record any loss permanently instead of accepting a later
+  // reappearance. No selected DOM, focus, filter, or photo is injected.
+  const heldAt = Date.now();
+  const samples: Array<{ elapsedMs: number; url: string; selected: boolean }> = [];
+  boundary.evidence.measurements[`heldScopedSearch${phase}`] = samples;
+  let selectionLost = false;
+  await expect.poll(async () => {
+    const url = page.url();
+    const selected = await card.locator(`[data-map-place-slug="${creekSlug}"]`).count() === 1;
+    const elapsedMs = Date.now() - heldAt;
+    samples.push({ elapsedMs, url, selected });
+    selectionLost ||= !selected || url !== new URL(coldSelectedMapPath, baseURL).href;
+    return elapsedMs >= 600 && !selectionLost;
+  }, { timeout: 2_000, intervals: [100], message: "The actual URL and selected place remain stable for over500ms of held scoped search" }).toBe(true);
+  return { card, image };
+}
+
+test("Map preserves a cold scoped URL selection and anonymous Save across held canonical search and reload", async ({ context, page, baseURL }, info) => {
+  test.setTimeout(45_000);
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const boundary = await prepare(context, page, baseURL, { map: true, holdScopedSearch: true });
+  const phases: unknown[] = [];
+  boundary.evidence.measurements.reloadContinuity = phases;
+  try {
+    await page.goto(coldSelectedMapPath, { waitUntil: "domcontentloaded" });
+    const first = await selectedWhileSearchHeld(page, boundary, baseURL, 0);
+    phases.push({ name: "cold selected URL while scoped search is held", state: await reloadContinuityState(page) });
+    boundary.releaseScopedSearch("match");
+    await expect.poll(() => boundary.evidence.searchReads.some((read) => read.phase === 0 && read.completed === "match")).toBe(true);
+    await expect(first.card).toBeVisible();
+    await expect(page).toHaveURL(new URL(coldSelectedMapPath, baseURL).href);
+    await decoded(first.image, creekPhoto.src);
+    const save = first.card.getByRole("button", { name: "Save", exact: true });
+    await save.click();
+    await expect(first.card.getByRole("button", { name: "Saved", exact: true })).toHaveAttribute("aria-pressed", "true");
+    expect((await reloadContinuityState(page)).saved).toEqual([{ type: "place", id: creekSlug, saved_at: expect.any(String) }]);
+    phases.push({ name: "actual anonymous Save before reload", state: await reloadContinuityState(page) });
+    const reloadPhase = boundary.holdScopedSearch();
+    await page.reload({ waitUntil: "domcontentloaded" });
+    const restored = await selectedWhileSearchHeld(page, boundary, baseURL, reloadPhase);
+    await expect(restored.card.getByRole("button", { name: "Saved", exact: true })).toHaveAttribute("aria-pressed", "true");
+    expect((await reloadContinuityState(page)).saved).toEqual([{ type: "place", id: creekSlug, saved_at: expect.any(String) }]);
+    phases.push({ name: "reload selection, exact photo and Saved while search remains held", state: await reloadContinuityState(page) });
+    boundary.releaseScopedSearch("match");
+    await expect.poll(() => boundary.evidence.searchReads.some((read) => read.phase === reloadPhase && read.completed === "match")).toBe(true);
+    await expect(page).toHaveURL(new URL(coldSelectedMapPath, baseURL).href);
+    await expect(restored.card.getByRole("button", { name: "Saved", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await decoded(restored.image, creekPhoto.src);
+    await assertWidth(page);
+    expect(boundary.evidence.errors).toEqual([]);
+  } finally {
+    phases.push({ name: "final actual state", state: await reloadContinuityState(page) });
+    await attach(info, "map-scoped-search-save-reload", { phases, searchReads: boundary.evidence.searchReads,
+      proofBoundary: "Declared canonical-search timing through real HTTP seams and actual compiled UI. Forced WebGL-unavailable fallback; no painted-map, live recommendation or provider claim." });
+    boundary.releaseAllSearch();
+  }
+});
+
+for (const outcome of ["nonmatch"] as const) {
+  test(`Map dismisses the URL-selected place after scoped canonical search settles ${outcome}`, async ({ context, page, baseURL }, info) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const boundary = await prepare(context, page, baseURL, { map: true, holdScopedSearch: true });
+    const phases: unknown[] = [];
+    boundary.evidence.measurements.settledSearchControl = phases;
+    try {
+      await page.goto(coldSelectedMapPath, { waitUntil: "domcontentloaded" });
+      const { card } = await selectedWhileSearchHeld(page, boundary, baseURL, 0);
+      phases.push({ name: "valid selected place while canonical search is pending", state: await reloadContinuityState(page) });
+      boundary.releaseScopedSearch(outcome);
+      await expect.poll(() => boundary.evidence.searchReads.some((read) => read.phase === 0 && read.completed === outcome)).toBe(true);
+      await expect(card, "a genuinely settled result set still removes a place it excludes").toHaveCount(0);
+      const dismissed = new URL(coldSelectedMapPath, baseURL);
+      dismissed.searchParams.delete("place");
+      await expect(page).toHaveURL(dismissed.href);
+      const current = new URL(page.url());
+      for (const key of ["in", "q", "c", "layers", "show"]) expect(current.searchParams.get(key)).toBe(new URL(coldSelectedMapPath, baseURL).searchParams.get(key));
+      if (outcome === "nonmatch") {
+        await expect(page.getByRole("region", { name: "Available results without the map", exact: true })
+          .locator(`[data-map-list-place="${otherMapPlace.slug}"]`)).toBeVisible();
+      }
+      expect(boundary.evidence.errors).toEqual([]);
+    } finally {
+      phases.push({ name: "final actual state", state: await reloadContinuityState(page) });
+      await attach(info, `map-settled-scoped-search-${outcome}`, { phases, searchReads: boundary.evidence.searchReads, outcome });
+      boundary.releaseAllSearch();
+    }
+  });
+}
