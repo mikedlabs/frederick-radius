@@ -34,7 +34,7 @@ async function installSelectedBoundary(page: Page, baseURL: string | undefined) 
   const owned = getOwnedPlacePhoto(creekSlug)!;
   expect(curated).not.toBeNull();
   expect(owned).not.toBeNull();
-  const commonsSrc = wikimediaUrl(curated.file, 208);
+  const commonsSrc = wikimediaUrl(curated.file, 720);
   const metadataRequests: string[] = [];
   const googleRequests: string[] = [];
   const commonsRequests: string[] = [];

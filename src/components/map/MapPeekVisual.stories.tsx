@@ -1,0 +1,211 @@
+import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+import MapPeek from "./MapPeek";
+import type { MapPinPlace } from "./types";
+
+const creek: MapPinPlace = {
+  slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park",
+  category: "outdoors", municipality: "frederick", geom: { lat: 39.4143, lng: -77.4105 },
+  source: "manual", is_verified: true, open_status: { state: "unknown" },
+  short_blurb: "A reviewed place photograph anchors the selected map result.",
+};
+const meta = {
+  title: "Map/Photo-led place preview",
+  component: MapPeek,
+  parameters: { layout: "fullscreen", a11y: { test: "error" }, docs: { description: {
+    component: "The real selected-place preview, using existing exact owned or licensed images. Metadata and anonymous auth are controlled workshop responses. They do not certify current hours. Place facts, independent actions and exact Details opener remain usable if an image fails.",
+  } } },
+  args: { place: creek, distanceOrigin: null, distanceOriginLabel: "from you", onClose: fn(), onDetails: fn() },
+  beforeEach: () => {
+    const original = window.fetch;
+    const saved = window.localStorage.getItem("fr:saved:v1");
+    window.localStorage.removeItem("fr:saved:v1");
+    window.fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, window.location.href);
+      if (url.pathname === "/api/auth/me") return Response.json({ user: null });
+      if (url.pathname.startsWith("/api/places/map-card/")) return Response.json({ place: null }, { status: 404 });
+      return original(input, init);
+    };
+    return () => {
+      window.fetch = original;
+      if (saved === null) window.localStorage.removeItem("fr:saved:v1");
+      else window.localStorage.setItem("fr:saved:v1", saved);
+    };
+  },
+  render: args => <div data-app-primary-tab="/map" style={{ minHeight: "100dvh", background: "var(--app-bg-sunken)" }}>
+    <div style={{ height: 56 }} aria-hidden />
+    <div data-map-preview-host style={{ position: "relative", height: "calc(100dvh - 56px - 68px - env(safe-area-inset-top) - env(safe-area-inset-bottom))" }}>
+      <MapPeek {...args} />
+    </div>
+    <div style={{ height: 68 }} aria-hidden />
+  </div>,
+} satisfies Meta<typeof MapPeek>;
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+async function reachable(target: HTMLElement) {
+  target.scrollIntoView({ block: "center", inline: "nearest" });
+  await waitFor(async () => {
+    const box = target.getBoundingClientRect();
+    const owner = target.ownerDocument;
+    const view = owner.defaultView!;
+    const hits = [[0, 0], [-21.5, 0], [21.5, 0], [0, -21.5], [0, 21.5]].map(([dx, dy]) => {
+      const x = box.x + box.width / 2 + dx, y = box.y + box.height / 2 + dy;
+      const hit = owner.elementFromPoint(x, y);
+      return x >= 0 && y >= 0 && x < view.innerWidth && y < view.innerHeight && hit !== null && target.contains(hit);
+    });
+    const geometry = JSON.stringify({ label: target.getAttribute("aria-label") ?? target.textContent, box: box.toJSON(), hits });
+    await expect(box.width, geometry).toBeGreaterThanOrEqual(44);
+    await expect(box.height, geometry).toBeGreaterThanOrEqual(44);
+    await expect(hits, geometry).toEqual([true, true, true, true, true]);
+  });
+}
+
+const checkPreview: NonNullable<Story["play"]> = async ({ canvasElement, args }) => {
+  const canvas = within(canvasElement);
+  const surface = canvasElement.querySelector<HTMLElement>("[data-map-result-surface]")!;
+  const image = surface.querySelector<HTMLImageElement>("img")!;
+  await waitFor(async () => {
+    await image.decode();
+    await expect(image.naturalWidth).toBeGreaterThan(1);
+    await expect(image.dataset.mapPeekPhotoState).toBe("ready");
+  });
+  const host = canvasElement.querySelector<HTMLElement>("[data-map-preview-host]")!;
+  const body = surface.querySelector<HTMLElement>(".map-peek-body")!;
+  const frame = surface.querySelector<HTMLElement>(".map-peek-visual")!;
+  const text = surface.querySelector<HTMLElement>(".map-peek-text")!;
+  await canvasElement.ownerDocument.fonts.ready;
+  await waitFor(() => expect(new DOMMatrix(getComputedStyle(surface).transform).isIdentity).toBe(true));
+  const surfaceBox = surface.getBoundingClientRect(), hostBox = host.getBoundingClientRect();
+  // Shared mobile results reserve8px below the card; desktop reserves12px.
+  // The preview's height cap must still leave24px total inside its real host.
+  await expect(surfaceBox.top).toBeGreaterThanOrEqual(hostBox.top + 8 - 0.5);
+  await expect(surfaceBox.bottom).toBeLessThanOrEqual(hostBox.bottom - 8 + 0.5);
+  await expect(surfaceBox.height).toBeLessThanOrEqual(hostBox.height - 24 + 0.5);
+  await expect(frame.getBoundingClientRect().width).toBeGreaterThan(body.clientWidth - 1);
+  await expect(text.getBoundingClientRect().top).toBeGreaterThanOrEqual(frame.getBoundingClientRect().bottom);
+  await expect(surface.scrollWidth).toBeLessThanOrEqual(surface.clientWidth);
+  await expect(canvasElement.ownerDocument.documentElement.scrollWidth).toBeLessThanOrEqual(canvasElement.ownerDocument.documentElement.clientWidth);
+  const details = canvas.getByRole("button", { name: /^Details$/ });
+  const directions = canvas.getByRole("link", { name: /^Directions$/ });
+  const save = canvas.getByRole("button", { name: /^Save$/ });
+  const share = canvas.getByRole("button", { name: `Share ${args.place.name}` });
+  // The legacy narrow-screen selector hides direct span children. The new
+  // face must remain painted, not merely leave a correctly sized blank button.
+  const shareFace = share.querySelector<HTMLElement>(":scope > [data-press-face]")!;
+  await expect(shareFace).toBeVisible();
+  await expect(shareFace.querySelector("svg")).toBeVisible();
+  await expect(within(shareFace).getByText("Share")).toBeVisible();
+  // Flex-item blockification computes authored inline-flex as flex.
+  await expect(getComputedStyle(shareFace).display).toBe("flex");
+  for (const target of [details, directions, save, share, canvas.getByRole("button", { name: `Close ${args.place.name}` })]) await reachable(target);
+  await expect(directions).toHaveAttribute("target", "_blank");
+  await expect(directions).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(surface.querySelector("button a, a button")).toBeNull();
+  // A native pointer click must hand the actual Details opener to the sheet.
+  if ((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) {
+    const browser = await import("vitest/browser");
+    let trusted = false;
+    details.addEventListener("pointerdown", event => { trusted = event.isTrusted; }, { once: true });
+    await browser.userEvent.click(details);
+    await expect(trusted).toBe(true);
+  } else await userEvent.click(details);
+  await expect(args.onDetails).toHaveBeenCalledOnce();
+  await expect(details).toHaveFocus();
+  await expect(canvas.getByText("Hours not posted")).toBeVisible();
+};
+
+export const OwnedAt320: Story = { globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } }, play: checkPreview };
+export const OwnedAt375: Story = { ...OwnedAt320, globals: { viewport: { value: "radiusMobileCompact", isRotated: false } } };
+export const OwnedAt390: Story = { ...OwnedAt320, globals: { viewport: { value: "radiusMobile", isRotated: false } } };
+export const OwnedAt430: Story = { ...OwnedAt320, globals: { viewport: { value: "radiusMobileLarge", isRotated: false } } };
+export const DoubleTextAt320: Story = {
+  ...OwnedAt320,
+  beforeEach: () => {
+    const root = document.documentElement;
+    const previous = root.style.fontSize;
+    root.style.fontSize = "200%";
+    return () => { root.style.fontSize = previous; };
+  },
+};
+export const LicensedPlace: Story = {
+  ...OwnedAt375,
+  args: { place: { ...creek, slug: "brewers-alley-frederick", name: "Brewer's Alley", category: "food-drink" } },
+  play: async context => {
+    await checkPreview(context);
+    const canvas = within(context.canvasElement);
+    await expect(canvas.getByText(/Side alley exterior, October 26, 2004/)).toBeVisible();
+    for (const name of ["Wikimedia Commons", "CC BY-SA 2.0"]) await reachable(canvas.getByRole("link", { name }));
+    await expect(context.args.onDetails).toHaveBeenCalledOnce();
+  },
+};
+
+export const ShortScreenAt320: Story = {
+  ...OwnedAt320,
+  play: async context => {
+    if (!(globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) return;
+    const browser = await import("vitest/browser");
+    await browser.page.viewport(320, 540);
+    await checkPreview(context);
+  },
+};
+
+export const FailedLicensedPhoto: Story = {
+  ...LicensedPlace,
+  play: async context => {
+    await checkPreview(context);
+    const canvas = within(context.canvasElement);
+    context.canvasElement.querySelector<HTMLImageElement>("img")!.dispatchEvent(new Event("error"));
+    await waitFor(() => expect(context.canvasElement.querySelector("img")).toBeNull());
+    await expect(context.canvasElement.querySelector(".map-peek-source-credit")).toBeNull();
+    await expect(canvas.getByText("Brewer's Alley")).toBeVisible();
+    await expect(canvas.getByText("Hours not posted")).toBeVisible();
+    for (const target of [canvas.getByRole("button", { name: /^Details$/ }), canvas.getByRole("link", { name: /^Directions$/ }), canvas.getByRole("button", { name: /^Save$/ })]) await reachable(target);
+    await expect(context.args.onDetails).toHaveBeenCalledOnce();
+  },
+};
+
+export const ReducedMotionPress: Story = {
+  ...OwnedAt320,
+  play: async context => {
+    if (!(globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) return;
+    const browser = await import("vitest/browser");
+    if (browser.server.browser !== "chromium") return;
+    const protocol = browser.cdp();
+    const original = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    await protocol.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+    try {
+      await expect(matchMedia("(prefers-reduced-motion: reduce)").matches).toBe(true);
+      await checkPreview(context);
+      const details = within(context.canvasElement).getByRole("button", { name: /^Details$/ });
+      const face = details.querySelector<HTMLElement>(":scope > [data-press-face]")!;
+      const before = details.getBoundingClientRect();
+      await browser.userEvent.keyboard("[Space>]");
+      try {
+        await expect(details.matches(":active")).toBe(true);
+        await expect(new DOMMatrix(getComputedStyle(face).transform).isIdentity).toBe(true);
+        await expect(["none", "1"]).toContain(getComputedStyle(face).scale);
+        await expect(getComputedStyle(details).boxShadow).toContain("inset");
+        const held = details.getBoundingClientRect();
+        await expect([held.x, held.y, held.width, held.height]).toEqual([before.x, before.y, before.width, before.height]);
+        await expect(details.matches(":focus-visible")).toBe(true);
+        const css = getComputedStyle(details);
+        await expect(parseFloat(css.outlineWidth)).toBeGreaterThanOrEqual(2);
+        await expect(parseFloat(css.outlineWidth) + parseFloat(css.outlineOffset)).toBeLessThanOrEqual(0);
+      } finally { await browser.userEvent.keyboard("[/Space]"); }
+      await expect(context.args.onDetails).toHaveBeenCalledTimes(2);
+    } finally {
+      await protocol.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: original ? "reduce" : "no-preference" }] });
+    }
+  },
+};
+
+export const ShortLandscapeAt568: Story = {
+  ...OwnedAt320,
+  play: async context => {
+    if (!(globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) return;
+    const browser = await import("vitest/browser");
+    await browser.page.viewport(568, 320);
+    await checkPreview(context);
+  },
+};

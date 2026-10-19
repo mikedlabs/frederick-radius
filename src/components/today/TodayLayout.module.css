@@ -159,6 +159,13 @@
   min-width: 0;
 }
 
+/* Keep the four utilities easy to scan after the arrival photograph. Text may
+   grow the controls at enlarged sizes; the touch owners never shrink below 56px. */
+.quickNeeds :global([role="group"][aria-label="Quick needs"]) > a {
+  min-height: 56px;
+  padding-block: var(--app-space-2);
+}
+
 .events {
   margin: 0;
   padding: 0;
@@ -420,26 +427,7 @@
     height: 100%;
   }
 
-  .places:has(.geographicDoorway) {
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-    column-gap: var(--app-space-6);
-  }
 
-  .places:has(.geographicDoorway) > .geographicDoorway {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: start;
-  }
-
-  .places:has(.geographicDoorway) > section {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .places:has(.geographicDoorway) > .quickNeeds {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
 }
 
 @media (min-width: 960px) {

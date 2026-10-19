@@ -107,7 +107,10 @@ function PlaceRow({
         data-decision-id={place.slug}
         data-decision-position="result"
         data-decision-action="open"
-        onClick={() => {
+        onClick={(event) => {
+          // Safari pointer clicks do not focus buttons. The selection owner
+          // captures activeElement synchronously before the dock becomes inert.
+          event.currentTarget.focus({ preventScroll: true });
           haptic("light");
           onPick(place);
         }}
@@ -197,7 +200,8 @@ function EventRow({
       data-decision-id={event.slug}
       data-decision-position="result"
       data-decision-action="open"
-      onClick={() => {
+      onClick={(click) => {
+        click.currentTarget.focus({ preventScroll: true });
         haptic("light");
         onPick(event);
       }}

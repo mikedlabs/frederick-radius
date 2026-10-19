@@ -6,6 +6,7 @@ import MapListPeek, { type MapListPeekProps } from "./MapListPeek";
 import type { MapTaskList } from "./mapListTask";
 import type { MapPinPlace } from "./types";
 import { eventPinFromEvent } from "@/lib/map/eventPin";
+import { clearMapSelectionOpener, rememberMapSelectionOpener, restoreMapSelectionOpenerFocus, takeMapSelectionOpener } from "./mapSelectionFocus";
 
 vi.mock("next/link", () => ({ default: (props: AnchorHTMLAttributes<HTMLAnchorElement>) => <a {...props} /> }));
 vi.mock("@/lib/haptics", () => ({ haptic: vi.fn() }));
@@ -48,7 +49,7 @@ describe("MapListPeek native directions", () => {
     vi.stubGlobal("fetch", vi.fn());
   });
   afterEach(async () => {
-    await act(async () => root.unmount()); host.remove();
+    await act(async () => root.unmount()); host.remove(); clearMapSelectionOpener();
     vi.restoreAllMocks(); vi.unstubAllGlobals(); history.replaceState(null, "", "/");
   });
 
@@ -96,6 +97,30 @@ describe("MapListPeek native directions", () => {
     directions().focus(); expect(document.activeElement).toBe(directions());
     expect(directions().tabIndex).toBe(0);
     expect(host.querySelectorAll('[data-decision-impression="true"]')).toHaveLength(5);
+  });
+
+  it.each(["place", "event"] as const)("captures the actual %s row before selection, then restores it without pre-click focus", async kind => {
+    const pin = { slug: "overnight-concert", title: "Overnight concert", starts_at: "2026-10-19T02:00:00Z", category: "music", venue_name: "Test venue", lat: 39.3135, lng: -77.6261 };
+    const onPick = () => rememberMapSelectionOpener();
+    onPickPlace.mockImplementation(onPick);
+    onPickEvent.mockImplementation(onPick);
+    await mount({ list: list(kind === "place" ? [{ kind, place: place(0) }] : [{ kind, event: pin }]) });
+    const row = host.querySelector<HTMLButtonElement>(kind === "place" ? "[data-map-list-place]" : "[data-map-list-event]")!;
+    expect(document.activeElement).not.toBe(row);
+    const before = { href: location.href, state: history.state };
+    // DOM click performs no implicit preparatory focus, reproducing Safari's
+    // pointer boundary while exercising the production callback and helper.
+    await act(async () => row.click());
+    expect(takeMapSelectionOpener()?.exact).toBe(row);
+    expect(kind === "place" ? onPickPlace : onPickEvent).toHaveBeenCalledOnce();
+    const other = document.createElement("button"); host.append(other); other.focus();
+    expect(document.activeElement).toBe(other);
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { callback(0); return 1; });
+    restoreMapSelectionOpenerFocus();
+    expect(document.activeElement).toBe(row);
+    expect(takeMapSelectionOpener()).toBeNull();
+    expect({ href: location.href, state: history.state }).toEqual(before);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it.each([

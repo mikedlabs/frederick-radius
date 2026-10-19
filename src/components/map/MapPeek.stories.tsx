@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { MapPeekPhoto } from "./MapPeek";
 import styles from "./MapResultSurface.module.css";
+import previewStyles from "./MapPeek.module.css";
 import type { PlaceCardPhotoPlan } from "@/lib/place-card-photo";
 
 // Controlled local image transports exercise the actual image/credit/CSS
@@ -60,8 +61,8 @@ const meta = {
     color: "var(--app-brand)", onOpenDetails: fn(),
   },
   render: args => (
-    <div data-app-primary-tab="/map" style={{ padding: "12px 10px", width: "100%" }}>
-      <section className={`map-peek ${styles.surface}`} aria-label="Selected place component fixture"
+    <div data-app-primary-tab="/map" style={{ padding: "12px 10px", width: "100%", height: "calc(100dvh - 56px - 68px - env(safe-area-inset-top) - env(safe-area-inset-bottom))" }}>
+      <section className={`map-peek ${styles.surface} ${previewStyles.preview}`} aria-label="Selected place component fixture"
         style={{ position: "relative", left: "auto", right: "auto", bottom: "auto" }}>
         <MapPeekPhoto {...args}>
           <div className="map-peek-text">

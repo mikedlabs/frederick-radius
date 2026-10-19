@@ -153,9 +153,9 @@ async function scrollQuickNeedsWithNativeKeys(
   }
 }
 
-/** Reach the first choice's useful text through ordinary document scrolling.
- * Its photograph may lead on arrival, but it cannot cost more than the existing
- * one-viewport budget to read the title and published timing. */
+/** Reach the first event's useful text through ordinary document scrolling.
+ * The owned place photograph leads on arrival; it cannot cost more than the
+ * existing one-viewport budget to read the first event title and timing. */
 async function scrollFirstEventFactsWithNativeInput(
   page: Page, title: Locator, timing: Locator, primaryNav: Locator,
   nativeKeys: boolean, testInfo: TestInfo,
@@ -236,6 +236,10 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const doorway = page.locator("[data-today-geographic-doorway]");
     await expect(doorway).toHaveAttribute("data-photo-state", "loaded");
     await expect(doorway).toHaveAttribute("href", "/places/carroll-creek-linear-park-frederick");
+    await expect.poll(() => doorway.locator("img").evaluate(async (image: HTMLImageElement) => {
+      try { await image.decode(); } catch { return false; }
+      return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1;
+    })).toBe(true);
     // Header hydration and a decoded photo can move the document between
     // separate protocol calls. Compare all actual layout boxes in one paint.
     const geometry = await page.evaluate(() => {
@@ -246,6 +250,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
       return {
         mastheadBox: bounds("main .scroll-masthead"),
         findBox: bounds('[data-find-density="arrival"] a[aria-label="Find a place, service, event, or answer"]'),
+        entryControlsBox: bounds("[data-today-entry-controls]"),
         weatherBox: bounds("[data-today-weather]"),
         photoBox: bounds("[data-today-geographic-doorway] figure"),
         doorwayBox: bounds("[data-today-geographic-doorway]"),
@@ -256,7 +261,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await testInfo.attach("today-first-screen-geometry", {
       contentType: "application/json", body: JSON.stringify(geometry),
     });
-    const { mastheadBox, findBox, weatherBox, photoBox, doorwayBox, captionBox, headingBox } = geometry;
+    const { mastheadBox, findBox, entryControlsBox, weatherBox, photoBox, doorwayBox, captionBox, headingBox } = geometry;
     expect(findBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height);
     // The arrival action now has a deliberate phone density; neither weather
     // facts nor the photograph are subtracted from an artificial height budget.
@@ -264,6 +269,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(findBox.height).toBeLessThanOrEqual(56);
     await expect(page.locator('[data-find-density="arrival"]')).toHaveCount(1);
     expect(doorwayBox.y).toBeGreaterThanOrEqual(findBox.y + findBox.height);
+    expect(doorwayBox.y).toBeGreaterThanOrEqual(entryControlsBox.y + entryControlsBox.height);
     // The real named caption shares the photo's grid area; it must fit inside
     // the image rather than precede it or cover a separate blank rectangle.
     expect(captionBox.x).toBeGreaterThanOrEqual(photoBox.x - 1);
@@ -383,14 +389,18 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const decision = places.locator(":scope > section");
     await expect(decision).toHaveCount(1);
     // Read the live hierarchy in one frame. Runtime choices may hydrate after
-    // arrival, but they cannot move the four practical shortcuts below cards.
+    // arrival, but the owned visual, practical actions, events and area answer
+    // retain the same vertical and document order at every viewport width.
     await expect.poll(() => page.evaluate(() => {
-      const find = document.querySelector('[data-find-density="arrival"] a[aria-label="Find a place, service, event, or answer"]')?.getBoundingClientRect();
+      const entry = document.querySelector("[data-today-entry-controls]")?.getBoundingClientRect();
+      const photo = document.querySelector("[data-today-geographic-doorway]")?.getBoundingClientRect();
       const quick = document.querySelector('[role="group"][aria-label="Quick needs"]')?.getBoundingClientRect();
       const events = document.querySelector('[role="group"][aria-label="Follow the day"]')?.getBoundingClientRect();
       const places = document.querySelector('[aria-label="Places for your area"]')?.getBoundingClientRect();
-      return Boolean(find && quick && events && places && quick.y >= find.bottom
-        && events.y >= quick.bottom && places.y >= events.bottom);
+      const news = document.querySelector('section[aria-label="Local news"]')?.getBoundingClientRect();
+      return Boolean(entry && photo && quick && events && places && news && photo.y >= entry.bottom
+        && quick.y >= photo.bottom && events.y >= quick.bottom && places.y >= events.bottom
+        && news.y >= places.bottom);
     })).toBe(true);
     const currentLayout = await page.evaluate(() => {
       const read = (element: Element) => {
@@ -401,31 +411,40 @@ for (const width of [320, 375, 390, 430, 1366]) {
       const events = document.querySelector('[role="group"][aria-label="Follow the day"]')!;
       const quick = document.querySelector('[role="group"][aria-label="Quick needs"]')!;
       const decision = places.querySelector(":scope > section")!;
-      const photo = places.querySelector("[data-today-geographic-doorway]")!;
+      const photo = document.querySelector("[data-today-geographic-doorway]")!;
+      const entry = document.querySelector("[data-today-entry-controls]")!;
+      const news = document.querySelector('section[aria-label="Local news"]')!;
       const precedes = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-      return { places: read(places), events: read(events), decision: read(decision), photo: read(photo), quick: read(quick),
-        decisionBeforePhoto: precedes(decision, photo), quickBeforeEvents: precedes(quick, events), eventsBeforePlaces: precedes(events, places) };
+      return { places: read(places), events: read(events), decision: read(decision), photo: read(photo), quick: read(quick), news: read(news),
+        entryBeforePhoto: precedes(entry, photo), photoBeforeQuick: precedes(photo, quick),
+        photoOutsidePlaces: !places.contains(photo), quickBeforeEvents: precedes(quick, events),
+        eventsBeforePlaces: precedes(events, places), placesBeforeNews: precedes(places, news) };
     });
     const placesBox = currentLayout.places;
     const eventsBox = currentLayout.events;
     const decisionBox = currentLayout.decision;
     const currentDoorwayBox = currentLayout.photo;
     const currentQuickNeedsBox = currentLayout.quick;
-    expect(currentLayout.decisionBeforePhoto).toBe(true);
+    expect(currentLayout.entryBeforePhoto).toBe(true);
+    expect(currentLayout.photoBeforeQuick).toBe(true);
+    expect(currentLayout.photoOutsidePlaces).toBe(true);
     expect(currentLayout.quickBeforeEvents).toBe(true);
     expect(currentLayout.eventsBeforePlaces).toBe(true);
+    expect(currentLayout.placesBeforeNews).toBe(true);
+    expect(currentDoorwayBox.y + currentDoorwayBox.height).toBeLessThanOrEqual(currentQuickNeedsBox.y);
     expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(currentQuickNeedsBox.y);
     expect(findBox.y + findBox.height).toBeLessThanOrEqual(currentQuickNeedsBox.y);
     expect(currentQuickNeedsBox.y + currentQuickNeedsBox.height).toBeLessThanOrEqual(eventsBox.y);
     expect(eventsBox.y + eventsBox.height).toBeLessThanOrEqual(placesBox.y);
-    if (width >= 640) {
-      expect(Math.abs(currentDoorwayBox.y - decisionBox.y)).toBeLessThanOrEqual(1);
-      expect(currentDoorwayBox.x).toBeGreaterThanOrEqual(decisionBox.x + decisionBox.width);
-    } else {
-      expect(currentDoorwayBox.y).toBeGreaterThanOrEqual(decisionBox.y + decisionBox.height);
-      expect(currentDoorwayBox.y - decisionBox.y - decisionBox.height).toBeLessThanOrEqual(17);
+    expect(placesBox.y + placesBox.height).toBeLessThanOrEqual(currentLayout.news.y);
+    expect(decisionBox.y).toBeGreaterThanOrEqual(eventsBox.y + eventsBox.height);
+    if (width < 640) {
       const activeAlert = page.getByRole("region", { name: "Heads up", exact: true });
       const specialDay = page.locator('[data-moment-spotlight-day-of="true"]');
+      if (await activeAlert.count() === 0 && await specialDay.count() === 0) {
+        expect(photoBox.y, "the first owned place photograph begins in the ordinary arrival viewport").toBeGreaterThanOrEqual(0);
+        expect(photoBox.y + photoBox.height, "the decoded owned place photograph is above the fixed tabs on ordinary arrival").toBeLessThanOrEqual(primaryNavBox!.y);
+      }
       if (width >= 375 && await activeAlert.count() === 0 && await specialDay.count() === 0) {
         expect(currentQuickNeedsBox.y + currentQuickNeedsBox.height, "all four practical shortcuts stay within the existing arrival/native-scroll budget").toBeLessThanOrEqual(primaryNavBox!.y + 844);
         const firstChoice = events.locator('[data-today-event-shortlist] article[data-decision-entity="event"]').first();
@@ -439,7 +458,6 @@ for (const width of [320, 375, 390, 430, 1366]) {
           const [actionBox, titleBox, timeBox] = await Promise.all([firstAction.boundingBox(), firstTitle.boundingBox(), firstTime.boundingBox()]);
           expect(actionBox!.height).toBeGreaterThanOrEqual(44);
           expect(actionBox!.width).toBeGreaterThanOrEqual(44);
-          expect(actionBox!.y, "the first actual event choice begins before the fixed tabs on ordinary arrival").toBeLessThan(primaryNavBox!.y);
           expect(titleBox!.height).toBeGreaterThan(0); expect(timeBox!.height).toBeGreaterThan(0);
           const primaryNav = page.locator("[data-bottom-nav-shell]").getByRole("navigation", { name: "Primary", exact: true });
           await scrollFirstEventFactsWithNativeInput(page, firstTitle, firstTime, primaryNav, browserName === "webkit" && isMobile, testInfo);
@@ -458,8 +476,8 @@ for (const width of [320, 375, 390, 430, 1366]) {
     )).toBe(true);
     await testInfo.attach("today-arrival-geometry", {
       contentType: "application/json",
-      body: JSON.stringify({ width, mastheadBox, weatherBox, findBox, captionBox, photoBox, doorwayBox, quickNeedsBox, decisionBox, primaryNavBox,
-        note: "Weather and Find lead four practical shortcuts, then visual event choices and place discovery. The real scoped place decision precedes the exact owned scene in DOM and visual order. Desktop pairs that decision left with accurate scenery right." }),
+      body: JSON.stringify({ width, mastheadBox, weatherBox, findBox, entryControlsBox, captionBox, photoBox, doorwayBox, quickNeedsBox, decisionBox, primaryNavBox, currentLayout,
+        note: "Weather and Find with scope lead the exact decoded owned place scene, four practical shortcuts, Follow the day, one scoped area answer and news. DOM and vertical visual order match at phone and desktop widths. Event facts retain the existing bounded native-scroll requirement." }),
     });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}.png`), fullPage: true });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}-viewport.png`), fullPage: false });
