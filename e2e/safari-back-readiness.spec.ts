@@ -127,8 +127,8 @@ async function prepare(context: BrowserContext, page: Page, baseURL: string | un
   return { origin, evidence, optionalMapCandidates, detailPrefetches };
 }
 
-async function owned44(control: Locator) {
-  await control.evaluate(node => node.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" }));
+async function owned44(control: Locator, scroll = true) {
+  if (scroll) await control.evaluate(node => node.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" }));
   await expect.poll(() => control.evaluate(node => {
     const b = node.getBoundingClientRect(), x = b.x + b.width / 2, y = b.y + b.height / 2;
     return b.width >= 43.95 && b.height >= 43.95 && [[0, 0], [-21, 0], [21, 0], [0, -21], [0, 21]].every(([dx, dy]) => {
@@ -208,14 +208,20 @@ for (const holdExplorer of [false, true]) {
     await expect(board).toHaveAttribute("data-events-interaction-ready", "true");
     await expect(board).toHaveAttribute("data-events-complete", "true"); await expect(board).toHaveAttribute("aria-busy", "false");
     const open = page.locator(`main a[href="/events/${seed.slug}"]`).filter({ visible: true }).first();
-    // The real actionability check finishes any source-card entrance before
-    // measuring the return origin. It never activates the link or forces input.
+    await owned44(open);
+    // The initial scroll can start a card entrance. Finish real actionability
+    // after it, then recheck hit ownership without another scroll. Native point
+    // input below cannot silently change the captured source by auto-scrolling.
     await open.tap({ trial: true });
-    await owned44(open); const before = await geometry(open); evidence.measurements.before = before;
+    await owned44(open, false); const before = await geometry(open); evidence.measurements.before = before;
     expect(before.scrollY, "The return contract must preserve a meaningful scrolled listing").toBeGreaterThan(100);
     await observeOpenerActivation(open);
     evidence.measurements.phase = "sheet-open";
-    await open.tap();
+    const x = before.left + before.width / 2, y = before.top + before.height / 2;
+    expect(Number.isFinite(x) && Number.isFinite(y)).toBe(true);
+    expect(x).toBeGreaterThanOrEqual(0); expect(x).toBeLessThan(390);
+    expect(y).toBeGreaterThanOrEqual(0); expect(y).toBeLessThan(844);
+    await page.touchscreen.tap(x, y);
     const activation = await page.evaluate(() => (window as unknown as {
       __frBackOpenerPointerDown?: OpenerPointerDown }).__frBackOpenerPointerDown);
     evidence.measurements.openerPointerDown = activation;
