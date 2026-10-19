@@ -3045,9 +3045,17 @@ export default function AppMap({
     () => (selectedSlug ? visiblePlaces.find((place) => place.slug === selectedSlug) ?? null : null),
     [selectedSlug, visiblePlaces],
   );
+  // A cold URL-selected place can open in the renderer fallback before its
+  // scoped search resolves. Its temporary empty source is not yet a filter
+  // exclusion; retain the card until that same committed query has settled.
+  const committedSearchPending =
+    isBrowseMap &&
+    submittedQuery.length >= 2 &&
+    submittedQuery === q.trim() &&
+    (searchMatchesQuery !== submittedQuery || searchSettledQuery !== submittedQuery);
   useEffect(() => {
-    if (selectedSlug && !selectedPlace) dismissMapSelection();
-  }, [dismissMapSelection, selectedPlace, selectedSlug]);
+    if (selectedSlug && !selectedPlace && !committedSearchPending) dismissMapSelection();
+  }, [committedSearchPending, dismissMapSelection, selectedPlace, selectedSlug]);
 
   // The single selected place uses the Radius brick regardless of category.
   // Category remains visible on the result card; the map itself gains one
