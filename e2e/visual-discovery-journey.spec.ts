@@ -300,9 +300,19 @@ if (!LIVE) {
       await expect(page).toHaveURL(/\/my-radius/);
       const saved = page.locator(`[id="swe-slot-${events[0].slug}"]`);
       await expect(saved).toContainText(events[0].title);
+      // The actual title link must remain a physical target, including the
+      // 320px enlarged-text document retained from the discovery journey.
+      await nativeTarget(saved.locator('a[href^="/events/"]').first());
       expect(evidence.savedReads).toBeGreaterThan(0);
+      // Reaching the real Saved link can start a document prefetch. Keep
+      // WebKit's strict error observer from seeing that read canceled by our
+      // intentional reload; Chromium still uses actual UI readiness above.
+      if (context.browser()?.browserType().name() === "webkit") {
+        await page.waitForLoadState("networkidle", { timeout: 10_000 });
+      }
       await page.reload({ waitUntil: "domcontentloaded" });
       await expect(saved).toContainText(events[0].title);
+      await nativeTarget(saved.locator('a[href^="/events/"]').first());
       expect(await page.evaluate((key) => localStorage.getItem(key), SAVED_KEY)).toBe(committed);
       const savedHref = new URL((await saved.locator('a[href^="/events/"]').first().getAttribute("href"))!, page.url());
       expect(savedHref.pathname).toBe(`/events/${events[0].slug}`);
@@ -451,7 +461,9 @@ if (!LIVE) {
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(saved).toContainText(record!.title);
     await page.waitForLoadState("networkidle", { timeout: 10_000 });
-    await saved.locator('a[href^="/events/"]').first().tap();
+    const savedOpen = saved.locator('a[href^="/events/"]').first();
+    await nativeTarget(savedOpen);
+    await savedOpen.tap();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(displayedTitle);
     expect(new URL(page.url()).searchParams.get("returnTo")).toBe("/my-radius");
     await expect(page.locator(`[data-save-ref="event:${slug}"]`).filter({ visible: true })).toHaveAttribute("aria-pressed", "true");

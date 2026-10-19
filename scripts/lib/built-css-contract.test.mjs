@@ -15,7 +15,10 @@ const COMPILED = ".content-chapter__label{letter-spacing:.14em;flex:none;font-si
 const OLD_COMPILED = ".content-chapter__label{letter-spacing:.14em;flex:none;font-size:.625rem}.content-chapter__rule{background:linear-gradient(90deg,var(--content-chapter-accent),var(--app-border));flex:1;min-width:1.5rem;height:1px}.content-chapter--plain .content-chapter__label{font-family:var(--font-sans),system-ui,sans-serif;letter-spacing:.13em;text-transform:uppercase;font-size:.6875rem;font-weight:750}.content-chapter--plain .content-chapter__rule{background:var(--app-border)}";
 // Minified delivery fixture for the new shared controls. Both quoted and
 // unquoted attribute values must survive the emitted-rule parser.
-const PRESS_COMPILED = '[data-press-target]{transform:none;scale:1;cursor:pointer}[data-press-target][data-press-target]:is(:hover,:active,:focus-visible){transform:none;scale:1}[data-press-target]>[data-press-face]{transform-origin:50%;transition:transform var(--app-dur-fast) var(--app-ease-out),opacity var(--app-dur-fast) var(--app-ease-out)}[data-press-target]:where(:not(:disabled):not([aria-disabled="true"])):active>[data-press-face]{transform:scale(var(--press-scale,.985))}[data-press-target][data-press-target]:where(:not(:disabled):not([aria-disabled=true])):active{box-shadow:inset 0 0 0 2px var(--press-ack-color,var(--app-focus))}[data-press-target]:has(>[data-link-pending=true]){box-shadow:inset 0 0 0 2px var(--press-ack-color,var(--app-focus))}[data-press-target]:focus-visible{outline:2px solid var(--press-focus-color,var(--app-focus));outline-offset:var(--press-focus-offset,3px)}';
+const PRESS_COMPILED = '[data-press-target]{transform:none;scale:1;cursor:pointer}[data-press-target][data-press-target]:is(:hover,:active,:focus-visible){transform:none;scale:1}[data-press-target]>[data-press-face]{transform-origin:50%;transition:transform var(--app-dur-fast) var(--app-ease-out),opacity var(--app-dur-fast) var(--app-ease-out)}[data-press-target]:where(:not(:disabled):not([aria-disabled="true"])):active>[data-press-face]{transform:scale(var(--press-scale,.985))}[data-press-target][data-press-target]:where(:not(:disabled):not([aria-disabled=true])):active{box-shadow:inset 0 0 0 2px var(--press-ack-color,var(--app-focus))}[data-press-target]:has(>[data-link-pending=true]){box-shadow:inset 0 0 0 2px var(--press-ack-color,var(--app-focus))}[data-press-target][data-press-target]:focus-visible{outline:2px solid var(--press-focus-color,var(--app-focus));outline-offset:var(--press-focus-offset,3px)}';
+// Actual minifier merge: its :has(input:focus-visible) branch gives the
+// global :is() specificity 0,2,1, above the former target-only 0,2,0 rule.
+const GLOBAL_FOCUS_COMPETITOR = ":is(:focus-visible,.search-field-shell:has(input:focus-visible)){outline:2px solid var(--app-focus);outline-offset:2px}";
 const PRESS_REDUCED = '@media (prefers-reduced-motion:reduce){[data-press-target],[data-press-target]>[data-press-face],[data-press-target]:active>[data-press-face]{transform:none;scale:1;transition:none}}';
 const PRESS_CSS = PRESS_COMPILED + PRESS_REDUCED;
 const pressErrors = (css) => sharedPressCssContractErrors([{ href: "/_next/static/chunks/test.css", css }]);
@@ -296,6 +299,31 @@ test("scoped HTML and metadata remain contained in current output", (t) => {
 
 test("accepts the complete minified shared-press delivery contract", () => {
   assert.deepEqual(pressErrors(PRESS_CSS), []);
+});
+
+test("rejects weak shared focus ownership beside the minified global focus competitor", () => {
+  const weak = PRESS_CSS.replaceAll("[data-press-target][data-press-target]:focus-visible", "[data-press-target]:focus-visible");
+  for (const css of [GLOBAL_FOCUS_COMPETITOR + weak, weak + GLOBAL_FOCUS_COMPETITOR]) {
+    const failures = pressErrors(css);
+    assert.equal(failures.length, 2);
+    assert.ok(failures.some(error => error.includes("[data-press-target][data-press-target]:focus-visible outline ")));
+    assert.ok(failures.some(error => error.includes("[data-press-target][data-press-target]:focus-visible outline-offset ")));
+  }
+});
+
+test("accepts owned shared focus above the minified global competitor in either delivery order", () => {
+  for (const css of [GLOBAL_FOCUS_COMPETITOR + PRESS_CSS, PRESS_CSS + GLOBAL_FOCUS_COMPETITOR]) {
+    assert.deepEqual(pressErrors(css), []);
+  }
+});
+
+test("linked weak focus cannot be rescued by a stronger unlinked stylesheet", t => {
+  const weak = PRESS_CSS.replaceAll("[data-press-target][data-press-target]:focus-visible", "[data-press-target]:focus-visible");
+  const { root, write } = fixture(t, COMPILED, undefined, { pressCss: GLOBAL_FOCUS_COMPETITOR + weak });
+  write(".next/static/chunks/unlinked-owned-focus.css", PRESS_CSS);
+  const failures = validateBuiltCssContract(root).errors;
+  assert.equal(failures.length, 2);
+  assert.ok(failures.every(error => error.includes("[data-press-target][data-press-target]:focus-visible outline")));
 });
 
 test("accepts Lightning CSS identity-transform lowering from the fresh emitted bundle", () => {

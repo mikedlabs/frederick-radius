@@ -91,7 +91,10 @@ const PRESS_ACTIVE = `${PRESS_TARGET}:where(:not(:disabled):not([aria-disabled=t
 const PRESS_STILL = `${PRESS_TARGET}${PRESS_TARGET}:is(:hover,:active,:focus-visible)`;
 const PRESS_ACK = `${PRESS_TARGET}${PRESS_TARGET}:where(:not(:disabled):not([aria-disabled=true])):active`;
 const PRESS_PENDING = `${PRESS_TARGET}:has(>[data-link-pending=true])`;
-const PRESS_FOCUS = `${PRESS_TARGET}:focus-visible`;
+// The minifier can merge global focus rules into :is(:focus-visible,
+// .search-field-shell:has(input:focus-visible)), raising them to 0,2,1.
+// Require the owned 0,3,0 selector so delivered offset/color survive that merge.
+const PRESS_FOCUS = `${PRESS_TARGET}${PRESS_TARGET}:focus-visible`;
 const PRESS_REDUCED_ACTIVE = `${PRESS_TARGET}:active>[data-press-face]`;
 // Lightning CSS lowers transform:none + scale:1 into transform:scale(1).
 // Keep that emitted identity equivalent without accepting a moving transform.

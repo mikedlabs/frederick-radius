@@ -123,13 +123,16 @@ function Card({
         <CategoryIcon slug={event.category} className="h-full w-full" strokeWidth={1.5} />
       </span>
 
-      <div className="sw-face">
+      {/* The fixed 62px wallet lip must fit the 44px opener even when root
+          text sizing grows. Keep vertical padding at 16px; horizontal padding
+          continues to use the shared spacing token. */}
+      <div className="sw-face" style={{ paddingBlock: 16 }}>
         {/* Lockup — category glyph "logo" + serif title left. Right slot: the
             ONE mono lip fact while tucked; the category TIER wordmark on raise. */}
         <div className="sw-top">
           <Link
             href={withBrowseReturnTo(`/events/${event.slug}`, "/my-radius")}
-            className="sw-brand"
+            className="sw-brand min-h-[44px]"
             onClick={() =>
               track("saved_event_wallet_open", { category: event.category })
             }
