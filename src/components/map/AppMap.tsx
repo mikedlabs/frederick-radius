@@ -2853,9 +2853,12 @@ export default function AppMap({
 
     if (writeUrl) {
       try {
-        replaceMapUrl((params) => {
-          params.set("c", mapCameraParam(viewport));
-        });
+        replaceMapUrl(
+          (params) => {
+            params.set("c", mapCameraParam(viewport));
+          },
+          { preserveHistoryState: true },
+        );
       } catch {
         /* Camera sharing is an enhancement; the committed results still hold. */
       }

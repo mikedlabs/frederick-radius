@@ -3,21 +3,16 @@
   "source_id": "fcpl_branch_hours",
   "weekly": {
     "url": "https://www.fcpl.org/branches-hours",
-    "observed_at": "2026-10-12T09:13:08.000Z",
-    "sha256": "8d7f005c8f8d7d3533edc81627d0515ff01ee121e040393837c4bfad0b656a0e"
+    "observed_at": "2026-10-18T09:28:13.724Z",
+    "sha256": "f059906283684624c477460d3928e5da3423e3cb47f650612db0f25e36c8215d"
   },
   "closures": {
     "url": "https://www.fcpl.org/holiday-closings",
-    "observed_at": "2026-10-12T09:18:49.000Z",
-    "sha256": "c7e6a3f5c927e79fe4e90624811f8436364c9463fb0ce1e1e8f24446a9af76c4",
-    "coverage_from": "2026-10-12",
+    "observed_at": "2026-10-18T09:28:14.283Z",
+    "sha256": "e14cbc6a6ba6c3a9f85a7e5f635b44c1d3780660e09c7e33ed30091da1422914",
+    "coverage_from": "2026-10-18",
     "coverage_through": "2027-12-31",
     "exceptions": [
-      {
-        "date": "2026-10-12",
-        "reason": "Libraries Closed - Staff Development Day",
-        "closed": true
-      },
       {
         "date": "2026-11-11",
         "reason": "Veteran's Day",
@@ -160,7 +155,7 @@
       }
     ]
   },
-  "expires_at": "2026-10-19T09:13:08.000Z",
+  "expires_at": "2026-10-25T09:28:13.724Z",
   "places": [
     {
       "slug": "brunswick-branch-library-brunswick",
