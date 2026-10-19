@@ -3,6 +3,7 @@ import { expect, test, type BrowserContext, type Locator, type Page, type TestIn
 import type { EventWithMeta } from "../src/lib/loaders/events";
 import { eventCardVisual } from "../src/components/event/eventVisuals";
 import { placeCardPhotoPlan } from "../src/lib/place-card-photo";
+import { dismissReturnBridge, emptyReturnBridgeState, RETURN_BRIDGE_STORAGE_KEY } from "../src/lib/return-bridge";
 
 /** Declared event DTOs travel through the existing browse/summary APIs and real
  * production components. Their photographs are the actual licensed local bytes.
@@ -22,7 +23,7 @@ const VENUES = [
 
 test.use({ isMobile: true, hasTouch: true, serviceWorkers: "block" });
 type Evidence = {
-  fixtureBoundary: string; errors: string[]; blocked: string[]; eventReads: string[];
+  fixtureBoundary: string; automaticReturnOfferOptedOut: boolean; errors: string[]; blocked: string[]; eventReads: string[];
   targetPrefetches: Array<{ path: string; segment: string | null; observedAt: string }>;
   imageSignals: string[]; cspLocalHttpOnly: boolean; measurements: Record<string, unknown>;
 };
@@ -35,6 +36,8 @@ test.afterEach(async ({ page }, info) => {
     url: location.href, width: innerWidth, height: innerHeight, scrollY,
     documentWidth: document.documentElement.scrollWidth, bodyWidth: document.body.scrollWidth,
     active: document.activeElement?.outerHTML.slice(0, 1200),
+    returnBridgeProfile: localStorage.getItem("fr:return-bridge:v1"),
+    automaticReturnOfferCount: document.querySelectorAll("aside[data-return-bridge]").length,
     images: Array.from(document.querySelectorAll<HTMLImageElement>("main article img")).map((image) => ({
       currentSrc: image.currentSrc, complete: image.complete, naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight,
       article: image.closest("article")?.getAttribute("data-place-card-has-photo"),
@@ -72,8 +75,13 @@ async function prepare(context: BrowserContext, page: Page, baseURL: string | un
   }
   const evidence: Evidence = {
     fixtureBoundary: options.events ? "Declared event HTTP DTOs; real compiled UI and licensed bytes; full event SSR not replaced or claimed" : "Actual place catalog, owned image bytes and real public place SSR; no replacement place DTO",
+    automaticReturnOfferOptedOut: true,
     errors: [], blocked: [], eventReads: [], targetPrefetches: [], imageSignals: [], cspLocalHttpOnly: false, measurements: {},
   };
+  // This anonymous profile already dismissed the optional Keep Radius offer.
+  // Its supported preference isolates card/detail journeys from timed mobile
+  // install invitations; installation/return-offer UX is not covered here.
+  evidence.fixtureBoundary += "; automatic install/return invitation opted out through the supported dismissal state before startup";
   receipts.set(page, evidence);
   const nativeDetailPaths = new Set([`/places/${CREEK}`, ...(options.events ?? []).map((event) => `/events/${event.slug}`)]);
   context.on("request", (request) => {
@@ -86,10 +94,13 @@ async function prepare(context: BrowserContext, page: Page, baseURL: string | un
   });
   page.on("pageerror", (error) => evidence.errors.push(error.message));
   await context.addCookies([{ name: "fr_onboarded", value: "1", domain: origin.hostname, path: "/" }]);
-  await context.addInitScript(() => {
+  await context.addInitScript(({ appOrigin, bridgeKey, bridgeState }) => {
+    if (location.origin !== appOrigin) return;
     if (localStorage.getItem("fr:saved:v1") === null) localStorage.setItem("fr:saved:v1", "[]");
     localStorage.setItem("fr:appearance:v1", "light");
-  });
+    localStorage.setItem(bridgeKey, JSON.stringify(bridgeState));
+  }, { appOrigin: origin.origin, bridgeKey: RETURN_BRIDGE_STORAGE_KEY,
+    bridgeState: dismissReturnBridge(emptyReturnBridgeState()) });
   const localWebKit = context.browser()?.browserType().name() === "webkit" && origin.protocol === "http:"
     && ["localhost", "127.0.0.1", "[::1]"].includes(origin.hostname);
   await context.route("**/*", async (route) => {
@@ -160,6 +171,11 @@ async function noOverflow(page: Page) {
 }
 
 async function target(control: Locator, minimum = 44) {
+  // Verify the declared profile preference, rather than hiding an offer,
+  // clicking through it, or depending on the scenario finishing in ten seconds.
+  expect(await control.page().evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "null")?.autoDisabled,
+    RETURN_BRIDGE_STORAGE_KEY)).toBe(true);
+  await expect(control.page().locator("aside[data-return-bridge]"), "Optional return offer stays absent for the opted-out card-test profile").toHaveCount(0);
   // Nearest scrolling can leave a previously measured card behind the sticky
   // event toolbar. Center the real control before testing all five hit points.
   await control.evaluate((node) => node.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" }));
