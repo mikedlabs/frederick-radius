@@ -36,11 +36,11 @@ export default function EventGlanceCard({ eventSlug, visual, accent, cancelled, 
       data-decision-entity="event"
       data-decision-id={eventSlug}
       data-decision-position="result"
-      className={`${styles.card} event-card--glance tactile tactile-interactive group relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-3 transition-transform duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] hover:scale-[1.01] active:scale-[0.98]`}
+      className={`${styles.card} event-card--glance tactile relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-3`}
       style={{ borderColor: "var(--app-border)", boxShadow: `var(--app-list-card-shadow, inset 3px 0 0 ${accent}, var(--app-edge), var(--app-hi), var(--app-elev-1))` }}
     >
-      <Link href={`/events/${eventSlug}`} data-decision-action="open" prefetch={false} className={`block outline-none ${cancelled ? "line-through opacity-70" : ""}`} style={{ color: "var(--app-ink)" }}>
-        <div className={styles.content}>
+      <Link href={`/events/${eventSlug}`} data-decision-action="open" data-press-target="card" prefetch={false} className={`block min-h-11 rounded-[var(--app-radius-sm)] outline-none ${cancelled ? "line-through opacity-70" : ""}`} style={{ color: "var(--app-ink)" }}>
+        <div data-press-face className={styles.content}>
           {children}
           {visibleVisual && imageSrc && (
             <figure className={styles.figure}>
@@ -52,7 +52,7 @@ export default function EventGlanceCard({ eventSlug, visual, accent, cancelled, 
                   loading="lazy"
                   sizes="auto, min(100vw, 480px)"
                   placeholder="blur" blurDataURL={PAPER_CREAM_BLUR}
-                  className={visibleVisual.presentation === "artwork" ? "object-contain bg-[var(--app-bg-sunken)] p-1" : "object-cover transition-transform duration-700 ease-out group-hover:scale-105"}
+                  className={visibleVisual.presentation === "artwork" ? "object-contain bg-[var(--app-bg-sunken)] p-1" : "object-cover"}
                   style={visibleVisual.objectPosition ? { objectPosition: visibleVisual.objectPosition } : undefined}
                   onLoad={(event) => inspectLoadedImage(event.currentTarget)}
                   onError={failImage}

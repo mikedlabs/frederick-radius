@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
@@ -70,7 +70,7 @@ export function MapPeekPhoto({
   color: string;
   slug?: string;
   photoPending?: boolean;
-  onOpenDetails: () => void;
+  onOpenDetails: (event: MouseEvent<HTMLButtonElement>) => void;
   children?: React.ReactNode;
 }) {
   const [photo, setPhoto] = useState<PlaceCardPhotoState & { generation: number }>(() => ({
@@ -371,7 +371,11 @@ export default function MapPeek({
     }
   };
 
-  const openDetails = () => {
+  const openDetails = (event: MouseEvent<HTMLButtonElement>) => {
+    // Safari pointer activation can blur a button before its click callback.
+    // The sheet provider captures the current active element synchronously;
+    // hand it this exact opener, without moving the map or scroll position.
+    event.currentTarget.focus({ preventScroll: true });
     trackDecision({
       stage: "open",
       surface: "map",

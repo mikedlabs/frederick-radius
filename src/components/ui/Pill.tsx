@@ -87,30 +87,23 @@ function CountBadge({ count, active, tone }: { count: number; active: boolean; t
   );
 }
 
-/** Shared inner content. `spinner` swaps the leading icon for a
- *  loading glyph (link path only — see LinkBody). */
+/** Shared inner content. Pending links preserve their existing icon footprint. */
 function Body({
   icon,
   children,
   count,
   active,
   tone,
-  spinner = false,
 }: {
   icon?: ReactNode;
   children: ReactNode;
   count?: number;
   active: boolean;
   tone: Tone;
-  spinner?: boolean;
 }) {
   return (
     <>
-      {spinner ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" strokeWidth={2.25} aria-hidden />
-      ) : (
-        icon
-      )}
+      {icon}
       {children}
       {typeof count === "number" && count > 0 && (
         <CountBadge count={count} active={active} tone={tone} />
@@ -129,7 +122,13 @@ function LinkBody(props: {
   tone: Tone;
 }) {
   const { pending } = useLinkStatus();
-  return <Body {...props} spinner={pending} />;
+  const icon = props.icon ? <span className="relative inline-flex shrink-0">
+    <span className="inline-flex" style={{ visibility: pending ? "hidden" : undefined }}>{props.icon}</span>
+    {pending && <Loader2 className="absolute inset-0 m-auto h-3.5 w-3.5 animate-spin motion-reduce:animate-none" strokeWidth={2.25} aria-hidden />}
+  </span> : undefined;
+  return <span data-press-face data-link-pending={pending ? "true" : "false"} className="inline-flex min-w-0 items-center [gap:inherit]">
+    <Body {...props} icon={icon} />
+  </span>;
 }
 
 export default function Pill({
@@ -147,13 +146,12 @@ export default function Pill({
   ...rest
 }: PillProps) {
   const pad = size === "sm" ? "px-3 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]";
-  // tap-44-y supplies the one shared 44px vertical target. Keeping a second
-  // pseudo-element here made neighboring pills compete for the same tap.
-  // tap-pop: chips push OUT under the finger and spring back on release
-  // (owner ask, 2026-07-22) — cards press in, chips pop out.
+  // A real 44px box survives clipped scrolling rails. An invisible extender
+  // can be cut off by their overflow boundary even when its CSS claims 44px.
+  // Keep compact label sizes and movement on the owned inner face.
   const base =
-    `tap-44-y tap-pop inline-flex shrink-0 items-center gap-1.5 rounded-full font-semibold tracking-tight transition ${pad}`;
-  const inactiveCls = active || bare ? "" : "border border-[var(--app-border-strong)]";
+    `inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold tracking-tight transition-colors ${pad}`;
+  const inactiveCls = active || bare ? "border border-transparent" : "border border-[var(--app-border-strong)]";
   const cls = `${base} ${inactiveCls} ${className}`.trim();
   const fillStyle: CSSProperties = active
     ? {
@@ -166,13 +164,20 @@ export default function Pill({
         color: "var(--app-ink-2)",
         transitionTimingFunction: "var(--app-ease-spring)",
       };
-  const merged = { ...fillStyle, ...style };
+  const merged = {
+    ...fillStyle,
+    "--press-ack-color": active ? ACTIVE_FG[tone] : "var(--app-focus)",
+    "--press-focus-color": active ? ACTIVE_FG[tone] : "var(--app-focus)",
+    "--press-focus-offset": "-3px",
+    ...style,
+  } as CSSProperties;
 
   if (href) {
     return (
       <Link
         href={href}
         aria-current={active ? "page" : undefined}
+        data-press-target="control"
         className={cls}
         style={merged}
         onClick={() => {
@@ -197,14 +202,17 @@ export default function Pill({
         onClick?.();
       }}
       aria-pressed={active}
+      data-press-target="control"
       className={cls}
       style={merged}
       aria-label={rest["aria-label"]}
       title={rest.title}
     >
-      <Body icon={icon} count={count} active={active} tone={tone}>
-        {children}
-      </Body>
+      <span data-press-face className="inline-flex min-w-0 items-center [gap:inherit]">
+        <Body icon={icon} count={count} active={active} tone={tone}>
+          {children}
+        </Body>
+      </span>
     </button>
   );
 }

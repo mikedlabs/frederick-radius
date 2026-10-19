@@ -10,6 +10,7 @@
  */
 import { unstable_cache } from "next/cache";
 import { getSql } from "@/lib/db/client";
+import { isPromotedDataBuild } from "@/lib/data-release-mode";
 import { isVenueStatusNonEvent, isRoutineRecurringClass } from "@/lib/event-noise";
 import { cleanFeedText, formatAddress } from "@/lib/format/text";
 import {
@@ -120,15 +121,17 @@ function seriesKeyOf(r: Row): string {
 
 async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   const sql = getSql();
-  if (!sql) return [];
+  // The public wrapper handles optional storage before entering the cache.
+  // If it disappears while the cache lookup awaits, this is a failed read.
+  if (!sql) throw new Error("Ingested event storage unavailable");
   // Future + slightly-past events, plus any event whose stated end is still in
   // the window. The end branch is load-bearing for all-day rows: they start at
   // local midnight, so a start-only cutoff dropped them after 6 AM and erased
   // day two of every multi-day span.
   const since = new Date(Date.now() - 6 * 3600_000).toISOString();
-  let rows: Row[];
-  try {
-    rows = (await sql<Row[]>`
+  // Operational failures must reject inside the cache. An empty successful
+  // query is real data; a failed query is not evidence that events vanished.
+  let rows = (await sql<Row[]>`
       select e.id, e.raw_event_id, e.tzid, e.source_uid, e.source_domain, e.source_url, e.title, e.description,
              e.starts_at_utc, e.ends_at_utc, e.all_day, e.venue_name, e.address,
              e.lat, e.lng, e.municipality, e.category,
@@ -145,9 +148,6 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
       order by starts_at_utc asc
       limit ${limit}
     `) as unknown as Row[];
-  } catch {
-    return [];
-  }
 
   // Sanitize the venue at the SOURCE row so BOTH the series key and the
   // displayed venue use clean values — a feed that dumped its description
@@ -260,8 +260,9 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
 }
 
 /** ISR-cached (1h) — the cron refreshes the data daily, hourly is plenty. */
-export const getIngestedSeries = unstable_cache(
+const cachedIngestedSeries = unstable_cache(
   async (limit = 4000) => loadUpcoming(limit),
+  // v12-read-errors: rejected database reads no longer persist as empty data.
   // v11: shared normalization repairs sublocation/locality boundaries and
   // title possessives in cached series copy.
   // v9: retain FCPL occurrence lifecycle from the existing raw source row.
@@ -271,9 +272,17 @@ export const getIngestedSeries = unstable_cache(
   // shape change must invalidate the persisted cache (the #509 lesson). The
   // deploy SHA is a second key segment so a forgotten version bump still
   // auto-busts on deploy.
-  ["ingested-series-v11", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["ingested-series-v12-read-errors", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 3600, tags: ["ingested-events"] }
 );
+
+/** Optional storage stays optional, including after a connection was opened
+ * earlier in this process. Neither offline nor promoted builds may seed the
+ * shared cache with an empty answer that outlives that environment. */
+export async function getIngestedSeries(limit = 4000): Promise<IngestedSeries[]> {
+  if (isPromotedDataBuild() || !getSql()) return [];
+  return cachedIngestedSeries(limit);
+}
 
 /** Count summary for headers. */
 export async function getIngestedSummary(): Promise<{ total: number; series: number; recurring: number }> {

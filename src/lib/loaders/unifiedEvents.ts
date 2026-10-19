@@ -4,17 +4,15 @@
  * + Bandsintown) + extracted venue lineups, deduplicated, collapsed,
  * thumb-decorated, and classified.
  *
- * Lifted verbatim from /events' inline assembly (June-9 deep audit P0-5):
- * /today counted ONLY curated seeds for its "This weekend" chip while
- * /events counted this full set, so the two surfaces told the user "1"
- * and "13" for the same weekend. Both pages now call this function, so
- * the numbers cannot diverge again — one query, one truth.
+ * Scheduled collection and archive-refresh jobs use this provider assembly.
+ * Primary Today, Events, Map, and Ask visitor reads use the bounded durable
+ * archive reader in todayEventSnapshot. Some legacy visitor consumers still
+ * call this assembly and need separate migration; do not copy that fan-out.
  *
  * Server-only (live fetches). Every async source is fail-soft: a hung or
  * throwing provider degrades to its empty bucket and the result still
- * assembles from curated data. All feed fetches are HTTP-cached upstream
- * (next.revalidate), so concurrent /today + /events renders share cache
- * entries rather than re-fetching.
+ * assembles from curated data. Feed fetches retain their upstream HTTP cache
+ * policy (next.revalidate); the archive stores the resulting shared event set.
  */
 import {
   allUpcoming,

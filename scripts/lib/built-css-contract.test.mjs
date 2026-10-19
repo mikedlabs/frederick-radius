@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
-import { chapterCssContractErrors, validateBuiltCssContract } from "./built-css-contract.mjs";
+import { chapterCssContractErrors, sharedPressCssContractErrors, validateBuiltCssContract } from "./built-css-contract.mjs";
 
 // Exact small rule excerpts, not whole production bundles. Local BUILD_ID
 // 8Kr1rsxeIT3VvJXS7JHbX, 401043-byte CSS SHA256:
@@ -13,6 +13,12 @@ const COMPILED = ".content-chapter__label{letter-spacing:.14em;flex:none;font-si
 // 400984-byte SHA256 ff98fdd381f0866f0d1b94d77783007d0db7f956c3a802055458872089c23656.
 // Provenance: today-css-delivery-20261017/approved-protected-comparison.json.
 const OLD_COMPILED = ".content-chapter__label{letter-spacing:.14em;flex:none;font-size:.625rem}.content-chapter__rule{background:linear-gradient(90deg,var(--content-chapter-accent),var(--app-border));flex:1;min-width:1.5rem;height:1px}.content-chapter--plain .content-chapter__label{font-family:var(--font-sans),system-ui,sans-serif;letter-spacing:.13em;text-transform:uppercase;font-size:.6875rem;font-weight:750}.content-chapter--plain .content-chapter__rule{background:var(--app-border)}";
+// Minified delivery fixture for the new shared controls. Both quoted and
+// unquoted attribute values must survive the emitted-rule parser.
+const PRESS_COMPILED = '[data-press-target]{transform:none;scale:1;cursor:pointer}[data-press-target][data-press-target]:is(:hover,:active,:focus-visible){transform:none;scale:1}[data-press-target]>[data-press-face]{transform-origin:50%;transition:transform var(--app-dur-fast) var(--app-ease-out),opacity var(--app-dur-fast) var(--app-ease-out)}[data-press-target]:where(:not(:disabled):not([aria-disabled="true"])):active>[data-press-face]{transform:scale(var(--press-scale,.985))}[data-press-target][data-press-target]:where(:not(:disabled):not([aria-disabled=true])):active{box-shadow:inset 0 0 0 2px var(--press-ack-color,var(--app-focus))}[data-press-target]:has(>[data-link-pending=true]){box-shadow:inset 0 0 0 2px var(--press-ack-color,var(--app-focus))}[data-press-target]:focus-visible{outline:2px solid var(--press-focus-color,var(--app-focus));outline-offset:var(--press-focus-offset,3px)}';
+const PRESS_REDUCED = '@media (prefers-reduced-motion:reduce){[data-press-target],[data-press-target]>[data-press-face],[data-press-target]:active>[data-press-face]{transform:none;scale:1;transition:none}}';
+const PRESS_CSS = PRESS_COMPILED + PRESS_REDUCED;
+const pressErrors = (css) => sharedPressCssContractErrors([{ href: "/_next/static/chunks/test.css", css }]);
 const errors = (css) => chapterCssContractErrors([{ href: "/_next/static/chunks/test.css", css }]);
 const LABEL = ".content-chapter--plain .content-chapter__label";
 const RULE = ".content-chapter--plain .content-chapter__rule";
@@ -21,7 +27,7 @@ const OWNER = { kind: "APP_PAGE", sourceRoute: "/(app)/today/page" };
 // installed-Next adapter fixture; this is not a duplicated hash algorithm.
 const KEY = "/route-cache/APP_PAGE/00c17ba820f06f516bb2a4a6aa987ba7c9fa6ee5969bed7e86db819d47af9246/$/today";
 
-function fixture(t, css = COMPILED, html = '<link rel="stylesheet" href="/_next/static/chunks/current.css"/>', { scoped = false, output } = {}) {
+function fixture(t, css = COMPILED, html = '<link rel="stylesheet" href="/_next/static/chunks/current.css"/>', { scoped = false, output, pressCss = PRESS_CSS } = {}) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "radius-built-css-")));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const write = (path, value) => { const file = join(root, path); mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, value); return file; };
@@ -36,7 +42,7 @@ function fixture(t, css = COMPILED, html = '<link rel="stylesheet" href="/_next/
   json(".next/server/app-paths-manifest.json", { [OWNER.sourceRoute]: "app/(app)/today/page.js" });
   json(metaPath, { routeCache: { key: KEY, owner: OWNER, isFallback: false } });
   write(htmlPath, html);
-  write(".next/static/chunks/current.css", css);
+  write(".next/static/chunks/current.css", css + pressCss);
   return { root, write, json, config, prerender, htmlPath, metaPath };
 }
 
@@ -285,4 +291,82 @@ test("scoped HTML and metadata remain contained in current output", (t) => {
   rmSync(join(root, metaPath));
   symlinkSync(outsideMeta, join(root, metaPath));
   assert.ok(validateBuiltCssContract(root).errors.some((error) => error.includes("escapes current .next")));
+});
+
+
+test("accepts the complete minified shared-press delivery contract", () => {
+  assert.deepEqual(pressErrors(PRESS_CSS), []);
+});
+
+test("accepts Lightning CSS identity-transform lowering from the fresh emitted bundle", () => {
+  // Fresh 1vlz4j-kozx3d.css folds both properties into transform:scale(1).
+  const lowered = PRESS_CSS.replaceAll("transform:none;scale:1", "transform:scale(1)")
+    .replaceAll("var(--app-dur-fast) var", "var(--app-dur-fast)var");
+  assert.deepEqual(pressErrors(lowered), []);
+  assert.ok(pressErrors(lowered + "[data-press-target]{scale:.97}").length > 0);
+});
+
+test("shared hooks in markup or comments do not establish emitted interaction rules", () => {
+  assert.ok(pressErrors('/* [data-press-target]{transform:none} */ [data-something-else]{transform:none}').length > 0);
+});
+
+for (const [property, badValue] of [["transform:none", "transform:scale(.97)"], ["scale:1", "scale:.97"],
+  ["transform:scale(var(--press-scale,.985))", "transform:none"],
+  ["transition:none", "transition:transform 200ms"], ["outline:2px solid", "outline:0 solid"]]) {
+  test(`rejects a shared-press property regression: ${badValue}`, () => {
+    assert.ok(pressErrors(PRESS_CSS.replace(property, badValue)).length > 0);
+  });
+}
+
+test("requires reduced-motion declarations, not a comment or wrong media condition", () => {
+  assert.ok(pressErrors(PRESS_COMPILED).some(error => error.includes("Shared press reduced")));
+  assert.ok(pressErrors(PRESS_CSS.replace("prefers-reduced-motion:reduce", "prefers-reduced-motion:no-preference")).length > 0);
+  assert.ok(pressErrors(PRESS_COMPILED + `@supports(display:flex){${PRESS_REDUCED}}`).length > 0);
+});
+
+test("reduced-motion overrides must follow normal motion and respect importance", () => {
+  assert.ok(pressErrors(PRESS_REDUCED + PRESS_COMPILED).some(error => error.includes("must override")));
+  assert.ok(pressErrors(PRESS_CSS.replace("transform:scale(var(--press-scale,.985))", "transform:scale(var(--press-scale,.985))!important"))
+    .some(error => error.includes("must override")));
+});
+
+test("later exact shared-press resets fail the contract", () => {
+  assert.ok(pressErrors(PRESS_CSS + "[data-press-target]{all:unset}").length > 0);
+  assert.ok(pressErrors(PRESS_CSS + "[data-press-target]:has(>[data-link-pending=true]){all:unset}").length > 0);
+  assert.ok(pressErrors(PRESS_CSS + "@media(prefers-reduced-motion:reduce){[data-press-target]:active>[data-press-face]{transform:scale(.97)}}")
+    .some(error => error.includes("transform")));
+});
+
+for (const condition of ["@media print", "@supports(display:flex)", "@container(width > 1px)", "@layer source-only"]) {
+  test(`conditional shared-press rules cannot establish base delivery: ${condition}`, () => {
+    assert.ok(pressErrors(`${condition}{${PRESS_COMPILED}}${PRESS_REDUCED}`).some(error => error.includes("Shared press base")));
+  });
+}
+
+test("build rejects source-only shared-press styles even with updated markup hooks", t => {
+  const { root, write } = fixture(t, COMPILED, '<link rel="stylesheet" href="/_next/static/chunks/current.css"/><button data-press-target="control"><span data-press-face>Save</span></button>', { pressCss: "" });
+  write("src/app/globals.css", PRESS_CSS);
+  assert.ok(validateBuiltCssContract(root).errors.some(error => error.includes("Shared press base")));
+});
+
+test("unlinked good shared-press chunks cannot rescue the linked bundle", t => {
+  const { root, write } = fixture(t, COMPILED, undefined, { pressCss: "" });
+  write(".next/static/chunks/unlinked-good.css", PRESS_CSS);
+  assert.ok(validateBuiltCssContract(root).errors.some(error => error.includes("Shared press base")));
+});
+
+test("conditional stylesheet links cannot rescue missing shared-press base CSS", t => {
+  const { root, write } = fixture(t, COMPILED, '<link rel="stylesheet" href="/_next/static/chunks/current.css"/><link rel="stylesheet" media="print" href="/_next/static/chunks/conditional.css"/>', { pressCss: "" });
+  write(".next/static/chunks/conditional.css", PRESS_CSS);
+  const result = validateBuiltCssContract(root);
+  assert.equal(result.stylesheets.length, 1);
+  assert.ok(result.errors.some(error => error.includes("Shared press base")));
+});
+
+test("shared-press rules may be split across unconditional linked stylesheets in delivery order", t => {
+  const { root, write } = fixture(t, COMPILED, '<link rel="stylesheet" href="/_next/static/chunks/current.css"/><link rel="stylesheet" href="/_next/static/chunks/reduced.css"/>', { pressCss: PRESS_COMPILED });
+  write(".next/static/chunks/reduced.css", PRESS_REDUCED);
+  assert.deepEqual(validateBuiltCssContract(root).errors, []);
+  write(".next/static/chunks/reduced.css", "");
+  assert.ok(validateBuiltCssContract(root).errors.some(error => error.includes("Shared press reduced")));
 });

@@ -2,11 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Event } from "@/data/events";
 
 const mocks = vi.hoisted(() => ({
-  assembleUnifiedEvents: vi.fn(),
+  loadEventArchiveSnapshot: vi.fn(),
 }));
 
-vi.mock("@/lib/loaders/unifiedEvents", () => ({
-  assembleUnifiedEvents: mocks.assembleUnifiedEvents,
+vi.mock("@/lib/loaders/todayEventSnapshot", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/loaders/todayEventSnapshot")>(),
+  loadEventArchiveSnapshot: mocks.loadEventArchiveSnapshot,
 }));
 
 import { askFrederick } from "./answer";
@@ -69,7 +70,7 @@ describe("Ask event proximity", () => {
       "mount-airy",
       { lng: -77.1547, lat: 39.3762 },
     );
-    mocks.assembleUnifiedEvents.mockResolvedValue({
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
       unified: [mountAiry, downtown],
       publicEvents: [mountAiry, downtown],
       sourceHealth: { degraded: false, unavailable: [] },
@@ -136,7 +137,7 @@ describe("Ask event proximity", () => {
       },
     );
     badEmmitsburgPoint.geo_confidence = "area";
-    mocks.assembleUnifiedEvents.mockResolvedValue({
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
       unified: [endingBeforeEvening, suspiciousDaylong, badEmmitsburgPoint, aliveAtFive],
       publicEvents: [endingBeforeEvening, suspiciousDaylong, badEmmitsburgPoint, aliveAtFive],
       sourceHealth: { degraded: false, unavailable: [] },
@@ -180,7 +181,7 @@ describe("Ask event proximity", () => {
         ends_at: "2026-08-14T00:00:00.000Z",
       },
     );
-    mocks.assembleUnifiedEvents.mockResolvedValue({
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
       unified: [outsideCore, downtown],
       publicEvents: [outsideCore, downtown],
       sourceHealth: { degraded: false, unavailable: [] },
@@ -220,7 +221,7 @@ describe("Ask event proximity", () => {
         ends_at: "2026-08-14T00:00:00.000Z",
       },
     );
-    mocks.assembleUnifiedEvents.mockResolvedValue({
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
       unified: [frederick, brunswick],
       publicEvents: [frederick, brunswick],
       sourceHealth: { degraded: false, unavailable: [] },
@@ -264,7 +265,7 @@ describe("Ask event proximity", () => {
         ends_at: "2026-08-16T00:00:00.000Z",
       },
     );
-    mocks.assembleUnifiedEvents.mockResolvedValue({
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
       unified: [frederick, brunswick],
       publicEvents: [frederick, brunswick],
       sourceHealth: { degraded: false, unavailable: [] },
@@ -297,7 +298,7 @@ describe("Ask event proximity", () => {
       },
     );
     badEmmitsburgPoint.geo_confidence = "area";
-    mocks.assembleUnifiedEvents.mockResolvedValue({
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
       unified: [badEmmitsburgPoint],
       publicEvents: [badEmmitsburgPoint],
       sourceHealth: { degraded: false, unavailable: [] },
@@ -347,7 +348,7 @@ describe("Ask event proximity", () => {
         ends_at: "2026-08-16T01:00:00.000Z",
       },
     );
-    mocks.assembleUnifiedEvents.mockResolvedValue({
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
       unified: [downtown, brunswick, middletown],
       publicEvents: [downtown, brunswick, middletown],
       sourceHealth: { degraded: false, unavailable: [] },

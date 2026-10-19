@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Bookmark, LocateFixed, Map, Navigation } from "lucide-react";
 import { useState } from "react";
+import { expect, fn, within } from "storybook/test";
 
 import { Button } from "./Button";
 
@@ -30,6 +31,16 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+async function establishCurrentStoryFrame(browser: typeof import("vitest/browser"), instruction: HTMLElement) {
+  // The runner replaces its iframe between story files. Establish this one
+  // through trusted input before native Tab, without focusing the action.
+  let setupPointerTrusted = false;
+  instruction.addEventListener("pointerdown", event => { setupPointerTrusted = event.isTrusted; }, { once: true });
+  await browser.userEvent.click(instruction);
+  expect(setupPointerTrusted).toBe(true);
+  expect([document.body, document.documentElement]).toContain(document.activeElement);
+}
 
 export const Primary: Story = {};
 
@@ -81,16 +92,51 @@ function SavedPlaceAction() {
 
 export const PressedState: Story = {
   render: () => <SavedPlaceAction />,
+  play: async ({ canvasElement }) => {
+    if (!(globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) return;
+    const browser = await import("vitest/browser");
+    const keys = browser.server.browser === "webkit" && browser.server.platform === "darwin" ? "{Alt>}{Tab}{/Alt}" : "{Tab}";
+    const canvas = within(canvasElement);
+    await establishCurrentStoryFrame(browser, canvas.getByText("This place is not saved yet."));
+    const button = canvas.getByRole("button", { name: "Save Gravel & Grind" });
+    const before = button.getBoundingClientRect();
+    await browser.userEvent.keyboard(keys);
+    expect(button).toHaveFocus();
+    await browser.userEvent.keyboard("{Enter}");
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    expect(button).toHaveTextContent("Saved to My Radius");
+    await browser.userEvent.keyboard(" ");
+    expect(button).toHaveAttribute("aria-pressed", "false");
+    expect(button).toHaveTextContent("Save Gravel & Grind");
+    expect(button.getBoundingClientRect().height).toBe(before.height);
+  },
 };
 
 export const KeyboardFocus: Story = {
+  render: (args) => <div className="space-y-3 p-4">
+    <p className="text-sm">Use the map action to explore Frederick County.</p>
+    <Button {...args} />
+  </div>,
   args: {
     children: "Open Frederick County map",
     variant: "secondary",
     iconRight: <Navigation className="h-4 w-4" aria-hidden />,
+    onClick: fn(),
   },
-  play: async ({ canvasElement }) => {
-    canvasElement.querySelector<HTMLButtonElement>("button")?.focus();
+  play: async ({ canvasElement, args }) => {
+    if (!(globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) return;
+    const browser = await import("vitest/browser");
+    const keys = browser.server.browser === "webkit" && browser.server.platform === "darwin" ? "{Alt>}{Tab}{/Alt}" : "{Tab}";
+    const canvas = within(canvasElement);
+    await establishCurrentStoryFrame(browser, canvas.getByText("Use the map action to explore Frederick County."));
+    const button = canvas.getByRole("button", { name: "Open Frederick County map" });
+    expect([document.body, document.documentElement]).toContain(document.activeElement);
+    await browser.userEvent.keyboard(keys);
+    expect(button).toHaveFocus();
+    expect(button.matches(":focus-visible")).toBe(true);
+    expect(parseFloat(getComputedStyle(button).outlineWidth)).toBeGreaterThanOrEqual(2);
+    await browser.userEvent.keyboard("{Enter}");
+    expect(args.onClick).toHaveBeenCalledOnce();
   },
 };
 
@@ -105,4 +151,25 @@ export const LongActionAt320: Story = {
       </Button>
     </div>
   ),
+};
+
+export const OppositeEdgeAction: Story = {
+  render: () => (
+    <div className="w-[296px]">
+      <Button className="w-full justify-between" iconRight={<Navigation className="h-4 w-4" data-schedule-icon aria-hidden />}>
+        <span>Open full schedule</span>
+      </Button>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await document.fonts.ready;
+    const button = within(canvasElement).getByRole("button", { name: "Open full schedule" });
+    const label = within(button).getByText("Open full schedule");
+    const icon = button.querySelector("[data-schedule-icon]")!;
+    const edge = button.getBoundingClientRect();
+    const padding = getComputedStyle(button);
+    expect(Math.abs(label.getBoundingClientRect().left - edge.left - parseFloat(padding.paddingLeft))).toBeLessThanOrEqual(1);
+    expect(Math.abs(edge.right - icon.getBoundingClientRect().right - parseFloat(padding.paddingRight))).toBeLessThanOrEqual(1);
+    expect(edge.height).toBeGreaterThanOrEqual(44);
+  },
 };

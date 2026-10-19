@@ -29,10 +29,8 @@ import {
   rerankWithAskFit,
   type AskFitContext,
 } from "@/lib/ask/fit";
-import {
-  assembleUnifiedEvents,
-  type EventSourceHealth,
-} from "@/lib/loaders/unifiedEvents";
+import type { EventSourceHealth } from "@/lib/loaders/unifiedEvents";
+import { loadAskEventSnapshot, withAskEventCoverage, type AskEventSnapshot } from "./event-snapshot";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
@@ -176,11 +174,6 @@ type AskEventTrustInput = Pick<
   | "last_verified_at"
   | "starts_at"
 >;
-
-type AskEventSearchSnapshot = {
-  publicEvents: EventWithMeta[];
-  sourceHealth: EventSourceHealth;
-};
 
 function normalizeHealthName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -486,6 +479,8 @@ export async function runRadiusAgent(
   const now = new Date();
   let plan: AskPlanPreview | null = null;
   let usedHybrid = false;
+  let eventSnapshot: AskEventSnapshot | undefined;
+  let eventSnapshotPromise: Promise<AskEventSnapshot> | undefined;
 
   const searchPlaces = tool({
     description: "Find real Frederick County places using keyword, semantic, hours, distance, town, price, and local-only constraints.",
@@ -531,22 +526,14 @@ export async function runRadiusAgent(
   });
 
   const searchEvents = tool({
-    description: "Find current Frederick County events from Radius's unified, deduplicated calendar.",
+    description: "Find current Frederick County events from Radius's durable, deduplicated calendar.",
     inputSchema: z.object({ query: z.string().min(1).max(300), limit: z.number().int().min(1).max(12).default(6) }),
     execute: async ({ query: toolQuery, limit }) => {
       toolsUsed.add("events");
-      const failedSnapshot = (source: string): AskEventSearchSnapshot => ({
-        publicEvents: [],
-        sourceHealth: { degraded: true, unavailable: [source] },
-      });
-      const snapshot = await Promise.race<AskEventSearchSnapshot>([
-        assembleUnifiedEvents(now)
-          .then(({ publicEvents, sourceHealth }) => ({ publicEvents, sourceHealth }))
-          .catch(() => failedSnapshot("Radius calendar refresh")),
-        new Promise<AskEventSearchSnapshot>((resolve) =>
-          setTimeout(() => resolve(failedSnapshot("Radius calendar refresh")), 1_500),
-        ),
-      ]);
+      // Tool refinements in one answer share one read and coverage receipt.
+      // The promise belongs to this run, never another visitor request.
+      const snapshot = await (eventSnapshotPromise ??= loadAskEventSnapshot(now));
+      eventSnapshot = snapshot;
       const eventIntent = parseAskIntent(toolQuery, now);
       const asksCommunicationAccess =
         /\b(?:deaf(?:blind)?|hard[-\s]of[-\s]hearing|ASL|American Sign Language|sign language|captioned|captions?|CART|assistive[-\s]listening|interpreter)\b/i.test(toolQuery);
@@ -754,7 +741,7 @@ export async function runRadiusAgent(
       const place = placeEvidence.get(source.slug);
       return place ? [place] : [];
     });
-    return {
+    return withAskEventCoverage<RadiusAgentAnswer>({
       answer: qualifyAskAnswerForAccess(answer, citedPlaces, fit),
       sources: citedSources,
       actions: output.followUps.map((item) => ({ label: item.label, kind: "refine", query: item.query })),
@@ -768,7 +755,7 @@ export async function runRadiusAgent(
       personalized: [tasteSummary(taste), askFitSummary(fit) ? `Fit to ${askFitSummary(fit)}` : null]
         .filter((label): label is string => Boolean(label))
         .join(" · ") || undefined,
-    };
+    }, eventSnapshot?.sourceHealth, context.municipality);
   } catch {
     return null;
   }

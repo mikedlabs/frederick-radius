@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getSql } from "@/lib/db/client";
+import { isPromotedDataBuild } from "@/lib/data-release-mode";
 import { archivedEventFromSnapshot } from "@/lib/events/event-identity";
 import { isPublicEvent } from "@/lib/events/classify";
 import { applyEventNotices } from "@/lib/events/notices";
@@ -414,6 +415,9 @@ export async function loadEventArchiveSnapshot(
       Math.floor(options.timeoutMs ?? EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS),
     ),
   );
+  // A connection may already exist in this process before build mode starts.
+  // Check before getSql, whose initialized-connection fast path bypasses getDb.
+  if (isPromotedDataBuild()) return curatedFallback(now, "event_archive_unavailable");
   const sql = getSql();
   if (!sql) return curatedFallback(now, "event_archive_unavailable");
   // Bounds cross the wire as ISO text with an explicit cast, never as Date

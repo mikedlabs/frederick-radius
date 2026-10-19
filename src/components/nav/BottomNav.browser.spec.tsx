@@ -22,15 +22,33 @@ describe("BottomNav destination truth", () => {
   await act(async () => link("/map").dispatchEvent(new MouseEvent("pointerdown", {bubbles:true,button:0})));
   expect(selected()).toEqual(["Today"]);
   expect(busy()).toBe("true");
+  expect(link("/map").getAttribute("data-pending")).toBe("true");
+  expect(link("/map").getAttribute("aria-current")).toBeNull();
+  expect(link("/today").getAttribute("aria-current")).toBe("page");
   await act(async () => link("/map").dispatchEvent(new Event("pointercancel", {bubbles:true})));
   expect(selected()).toEqual(["Today"]); expect(busy()).toBe("false");
+  expect(link("/map").getAttribute("data-pending")).toBe("false");
  });
  it("changes the selected tab only after the destination pathname commits", async () => {
   Object.defineProperty(document, "startViewTransition", { configurable:true, value:(callback:()=>void)=>callback() });
   await mount();
   await act(async () => link("/events").click());
   expect(state.push).toHaveBeenCalledWith("/events"); expect(selected()).toEqual(["Today"]);
+  expect(link("/events").getAttribute("data-pending")).toBe("true");
   state.pathname="/events"; await mount();
   expect(selected()).toEqual(["Events"]); expect(busy()).toBe("false");
+  expect(link("/events").getAttribute("data-pending")).toBe("false");
+ });
+ it("clears a provisional drag-out while preserving a request after ordinary pointer exit", async () => {
+  Object.defineProperty(document, "startViewTransition", { configurable:true, value:(callback:()=>void)=>callback() });
+  await mount();
+  await act(async () => link("/map").dispatchEvent(new MouseEvent("pointerdown", {bubbles:true,button:0})));
+  await act(async () => link("/map").dispatchEvent(new MouseEvent("pointerout", {bubbles:true,buttons:1,relatedTarget:document.body})));
+  expect(link("/map").getAttribute("data-pending")).toBe("false");
+  expect(state.push).not.toHaveBeenCalled();
+  await act(async () => link("/map").click());
+  await act(async () => link("/map").dispatchEvent(new MouseEvent("pointerout", {bubbles:true,buttons:0,relatedTarget:document.body})));
+  expect(link("/map").getAttribute("data-pending")).toBe("true");
+  expect(selected()).toEqual(["Today"]);
  });
 });

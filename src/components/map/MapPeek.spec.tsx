@@ -238,6 +238,26 @@ describe("MapPeek selected photo and source identity", () => {
     expect(host.textContent).toContain("Save");
   });
 
+  it.each([".map-peek-visual", ".map-peek-title-button", ".map-peek-details-link"])("hands the actual %s opener to the sheet callback without relying on pointer focus", async selector => {
+    const place: MapPinPlace = {
+      slug: "map-focus-fixture", name: "Map focus fixture", category: "shops", municipality: "frederick",
+      geom: { lat: 39.4143, lng: -77.4105 }, source: "manual", is_verified: true,
+      open_status: { state: "unknown" }, short_blurb: "A selected-card focus fixture.",
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false })));
+    const observedOpeners: Array<Element | null> = [];
+    await act(async () => root.render(<MapPeek place={place} distanceOrigin={null} distanceOriginLabel="from you"
+      onClose={vi.fn()} onDetails={() => observedOpeners.push(document.activeElement)} />));
+    const opener = host.querySelector<HTMLButtonElement>(selector)!;
+    expect(opener).not.toBeNull();
+    expect(document.activeElement).not.toBe(opener);
+    // DOM click supplies no preparatory focus, reproducing the missing
+    // handoff that the real Safari Close/Escape/Back acceptance test caught.
+    await act(async () => opener.click());
+    expect(observedOpeners).toEqual([opener]);
+    expect(document.activeElement).toBe(opener);
+  });
+
   it("keeps exact owned Creek imagery available after selected metadata is unavailable", async () => {
     const slug = "carroll-creek-linear-park-frederick";
     const place: MapPinPlace = {

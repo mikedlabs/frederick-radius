@@ -480,4 +480,21 @@ describe("PlaceCard selected media and credit", () => {
     expect(actions.save).toHaveBeenCalledWith("place", cardPlace.slug);
   });
 
+  it.each(["feature", "answer", "tile", "row", "discovery"] as const)("keeps %s Save and credit actions outside the primary press owner", async variant => {
+    await render(place, variant);
+    await load(photo()!);
+    const opener = container.querySelector<HTMLButtonElement>('button[aria-label^="View "]')!;
+    const save = container.querySelector<HTMLButtonElement>("[data-save-ref]")!;
+    expect(opener.getAttribute("data-press-target")).toBe("card");
+    expect(opener.querySelectorAll(":scope > [data-press-face]")).toHaveLength(1);
+    expect(opener.contains(save)).toBe(false);
+    expect(opener.contains(loadedCredit())).toBe(false);
+    await act(async () => save.click());
+    expect(actions.save).toHaveBeenCalledWith("place", place.slug);
+    expect(actions.openSheet).not.toHaveBeenCalled();
+    await act(async () => opener.click());
+    expect(actions.openSheet).toHaveBeenCalledOnce();
+    expect(actions.openSheet).toHaveBeenCalledWith(place, { returnFocus: opener });
+  });
+
 });

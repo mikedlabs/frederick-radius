@@ -2204,8 +2204,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * .tactile          = edge + top highlight + base elevation
  * .tactile-e2/3/4   = swap the ambient elevation layer
  * .tactile-interactive = spring lift on hover, crisp press
- * Used by the Surface / Button / Chip primitives. Motion is
- * tokenized so the global reduced-motion rule neutralizes it.
+ * Older surfaces retain this vocabulary. Shared controls use the still
+ * data-press-target contract below so their hit rectangles never shrink.
  * ───────────────────────────────────────────────────── */
 .tactile {
   box-shadow: var(--app-edge), var(--app-elev-1);
@@ -2229,11 +2229,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 .tactile-interactive:active {
-  /* The press: the control visibly "gives" under a finger, then the
-     base .tactile transition (spring ease) carries the release with a
-     small overshoot — the difference between a button that moves and
-     one that feels alive. 150ms ease-out press-in reads soft rather
-     than snapped (owner ask: smoother, not as sharp). */
+  /* Legacy whole-surface feedback. New shared controls put movement on an
+     inner face and leave their actual button or link physically still. */
   transform: translateY(0) scale(0.965);
   box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-1);
   transition:
@@ -2316,6 +2313,67 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .tactile-ring:hover,
 .tactile-ring:focus-visible {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--section-accent, var(--app-brand)) 52%, transparent), var(--app-elev-1);
+}
+
+/* Shared controls keep their physical hit rectangle still. Only the owned
+   inner face responds to a press; sibling Save and credit actions never do. */
+[data-press-target] {
+  transform: none;
+  scale: 1;
+  cursor: pointer;
+}
+[data-press-target][data-press-target]:is(:hover, :active, :focus-visible) {
+  transform: none;
+  scale: 1;
+}
+[data-press-target] > [data-press-face] {
+  transform-origin: center;
+  transition: transform var(--app-dur-fast) var(--app-ease-out), opacity var(--app-dur-fast) var(--app-ease-out);
+}
+[data-press-target]:where(:not(:disabled):not([aria-disabled="true"])):active > [data-press-face] {
+  transform: scale(var(--press-scale, .985));
+}
+[data-press-target][data-press-target]:where(:not(:disabled):not([aria-disabled="true"])):active {
+  box-shadow: inset 0 0 0 2px var(--press-ack-color, var(--app-focus));
+}
+[data-press-target]:has(> [data-link-pending="true"]) {
+  box-shadow: inset 0 0 0 2px var(--press-ack-color, var(--app-focus));
+}
+[data-press-target="card"] {
+  --press-scale: .995;
+  --press-focus-offset: -3px;
+}
+[data-press-target="tab"] {
+  --press-focus-offset: -3px;
+}
+[data-press-target]:focus-visible {
+  outline: 2px solid var(--press-focus-color, var(--app-focus));
+  outline-offset: var(--press-focus-offset, 3px);
+}
+[data-press-target]:disabled {
+  cursor: default;
+}
+/* The row's existing detail button is an overlay. Its face supplies a quiet
+   inset edge while the photograph, facts, Save and credit keep their bounds. */
+[data-press-face="outline"] {
+  position: absolute;
+  inset: 1px;
+  border: 1px solid var(--app-focus);
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+}
+[data-press-target]:active > [data-press-face="outline"] {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-press-target],
+  [data-press-target] > [data-press-face],
+  [data-press-target]:active > [data-press-face] {
+    transform: none;
+    scale: 1;
+    transition: none;
+  }
 }
 
 /* ─────────────────────────────────────────────────────

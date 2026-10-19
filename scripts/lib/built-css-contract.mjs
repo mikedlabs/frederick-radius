@@ -85,6 +85,109 @@ export function chapterCssContractErrors(stylesheets) {
   return errors;
 }
 
+const PRESS_TARGET = "[data-press-target]";
+const PRESS_FACE = `${PRESS_TARGET}>[data-press-face]`;
+const PRESS_ACTIVE = `${PRESS_TARGET}:where(:not(:disabled):not([aria-disabled=true])):active>[data-press-face]`;
+const PRESS_STILL = `${PRESS_TARGET}${PRESS_TARGET}:is(:hover,:active,:focus-visible)`;
+const PRESS_ACK = `${PRESS_TARGET}${PRESS_TARGET}:where(:not(:disabled):not([aria-disabled=true])):active`;
+const PRESS_PENDING = `${PRESS_TARGET}:has(>[data-link-pending=true])`;
+const PRESS_FOCUS = `${PRESS_TARGET}:focus-visible`;
+const PRESS_REDUCED_ACTIVE = `${PRESS_TARGET}:active>[data-press-face]`;
+// Lightning CSS lowers transform:none + scale:1 into transform:scale(1).
+// Keep that emitted identity equivalent without accepting a moving transform.
+const identityScaleTransform = (value) => /^scale\(1(?:,1)?\)$/.test(value);
+const noTransform = (value) => value === "none" || identityScaleTransform(value);
+const unitScale = (value) => value === "1" || value === "1 1";
+const pressScale = (value) => /^scale\(var\(--press-scale,(?:0?\.\d+)\)\)$/.test(value);
+const insetAck = (value) => value.startsWith("inset 0 0 0 2px ") && value.includes("var(--press-ack-color,var(--app-focus))");
+const PRESS_BASE_CONTRACTS = [
+  [PRESS_TARGET, "transform", noTransform],
+  [PRESS_TARGET, "scale", unitScale],
+  [PRESS_TARGET, "cursor", (value) => value === "pointer"],
+  [PRESS_STILL, "transform", noTransform],
+  [PRESS_STILL, "scale", unitScale],
+  [PRESS_FACE, "transform-origin", (value) => value === "center" || value === "50%" || value === "50% 50%"],
+  [PRESS_FACE, "transition", (value) => /^transform(?: |$)/.test(value) && value.includes("var(--app-dur-fast)")],
+  [PRESS_ACTIVE, "transform", pressScale],
+  [PRESS_ACK, "box-shadow", insetAck],
+  [PRESS_PENDING, "box-shadow", insetAck],
+  [PRESS_FOCUS, "outline", (value) => value === "2px solid var(--press-focus-color,var(--app-focus))"],
+  [PRESS_FOCUS, "outline-offset", (value) => value === "var(--press-focus-offset,3px)"],
+];
+const PRESS_REDUCED_CONTRACTS = [PRESS_TARGET, PRESS_FACE, PRESS_REDUCED_ACTIVE]
+  .flatMap((selector) => [[selector, "transform", noTransform], [selector, "scale", unitScale],
+    [selector, "transition", (value) => value === "none"]]);
+
+function pressSelector(value) {
+  return value.trim().replace(/\s+/g, " ").replace(/\s*([>,+~])\s*/g, "$1")
+    .replace(/\[([\w-]+)=["']([\w-]+)["']\]/g, "[$1=$2]");
+}
+function pressValue(value) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ").replace(/,\s*/g, ",");
+}
+
+/** Verify delivery of the actual shared interaction rules, using only the
+ * emitted sheets linked by the chosen Today artifact. This deliberately
+ * accepts exact root selectors and the direct reduced-motion media block;
+ * unrelated, layer-only or other conditional rules cannot establish delivery.
+ * It is an emitted-rule guard, not a replacement for browser cascade/hit tests.
+ */
+export function sharedPressCssContractErrors(stylesheets) {
+  const winners = { base: new Map(), reduced: new Map() };
+  const errors = [];
+  let order = 0;
+  for (const { href, css } of stylesheets) {
+    let ast;
+    try { ast = postcss.parse(css, { from: href }); }
+    catch (error) { errors.push(`Cannot parse shared-press stylesheet ${href}: ${error.reason ?? error.message}`); continue; }
+    ast.walkRules((rule) => {
+      const reduced = rule.parent.type === "atrule" && rule.parent.name.toLowerCase() === "media" &&
+        rule.parent.parent?.type === "root" && rule.parent.params.replace(/\s+/g, "").toLowerCase() === "(prefers-reduced-motion:reduce)";
+      const scope = rule.parent.type === "root" ? "base" : reduced ? "reduced" : null;
+      if (!scope) return;
+      const contracts = scope === "base" ? PRESS_BASE_CONTRACTS : PRESS_REDUCED_CONTRACTS;
+      for (const rawSelector of rule.selectors) {
+        const selector = pressSelector(rawSelector);
+        const properties = contracts.filter(([target]) => target === selector).map(([, property]) => property);
+        if (!properties.length) continue;
+        rule.each((declaration) => {
+          if (declaration.type !== "decl") return;
+          const property = declaration.prop.toLowerCase();
+          for (const affected of property === "all" ? properties : properties.includes(property) ? [property] : []) {
+            const key = `${selector}|${affected}`;
+            const previous = winners[scope].get(key);
+            if (previous?.important && !declaration.important) continue;
+            winners[scope].set(key, { value: property === "all" ? null : pressValue(declaration.value),
+              important: Boolean(declaration.important), order: order++, href });
+          }
+        });
+      }
+    });
+  }
+  for (const [scope, contracts] of [["base", PRESS_BASE_CONTRACTS], ["reduced", PRESS_REDUCED_CONTRACTS]]) {
+    for (const [selector, property, accepts] of contracts) {
+      const winner = winners[scope].get(`${selector}|${property}`);
+      // An explicit non-unit individual scale still fails. Only absence beside
+      // the compiler's identity transform is the accepted lowered shorthand.
+      if (property === "scale" && !winner && identityScaleTransform(winners[scope].get(`${selector}|transform`)?.value)) continue;
+      if (!winner || typeof winner.value !== "string" || !accepts(winner.value)) errors.push(`Shared press ${scope}: ${selector} ${property} has ${winner ? JSON.stringify(winner.value) : "no qualifying emitted declaration"}`);
+    }
+  }
+  // These equal-specificity face rules must actually override normal motion,
+  // including when linked stylesheets split or reverse the rule order.
+  for (const [baseSelector, reducedSelector, property] of [
+    [PRESS_ACTIVE, PRESS_REDUCED_ACTIVE, "transform"],
+    [PRESS_FACE, PRESS_FACE, "transition"],
+  ]) {
+    const base = winners.base.get(`${baseSelector}|${property}`);
+    const reduced = winners.reduced.get(`${reducedSelector}|${property}`);
+    if (base && reduced && (base.important && !reduced.important || base.important === reduced.important && base.order > reduced.order)) {
+      errors.push(`Shared press reduced: ${reducedSelector} ${property} must override the normal-motion declaration`);
+    }
+  }
+  return errors;
+}
+
 function contained(root, path) {
   const inside = relative(root, path);
   return inside !== ".." && !inside.startsWith("../") && !isAbsolute(inside);
@@ -196,7 +299,7 @@ export function validateBuiltCssContract(root) {
       result.stylesheets.push({ href, path, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") });
       return { href, css: bytes.toString("utf8") };
     });
-    result.errors.push(...chapterCssContractErrors(stylesheets));
+    result.errors.push(...chapterCssContractErrors(stylesheets), ...sharedPressCssContractErrors(stylesheets));
   } catch (error) { result.errors.push(`Cannot validate built Today CSS: ${error.message}`); }
   return result;
 }
