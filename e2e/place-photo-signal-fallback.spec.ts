@@ -33,7 +33,10 @@ test("a failed photo signal collapses its place face and keeps the real listing 
       });
     }, true);
   });
-  await context.addCookies([{ name: "fr_onboarded", value: "1", url: baseURL! }]);
+  await context.addCookies([
+    { name: "fr_onboarded", value: "1", url: baseURL! },
+    { name: "fr_scope", value: "town:frederick", url: baseURL! },
+  ]);
   let interceptedPhotos = 0;
   let blockedGoogleRequests = 0;
   let blockedEnrichmentRequests = 0;
@@ -47,7 +50,7 @@ test("a failed photo signal collapses its place face and keeps the real listing 
       blockedGoogleRequests += 1;
       return route.abort("blockedbyclient");
     }
-    if (url.pathname === `/api/place/${FALLBACK_PLACE_SLUG}/enrich`) {
+    if (/^\/api\/place\/[^/]+\/enrich$/.test(url.pathname)) {
       blockedEnrichmentRequests += 1;
       return route.abort("blockedbyclient");
     }
@@ -63,11 +66,33 @@ test("a failed photo signal collapses its place face and keeps the real listing 
     }
     return route.continue();
   });
-  const response = await page.goto("/m/frederick", { waitUntil: "domcontentloaded" });
+  // A town's five editorial picks legitimately change as verified hours do.
+  // Use the supported full shopping inventory, independent of that top-five rank.
+  const response = await page.goto("/category/shopping", { waitUntil: "domcontentloaded" });
   expect(response?.status()).toBe(200);
   expect((await response!.allHeaders())["content-security-policy"]).toBeTruthy();
-  const heading = page.getByRole("heading", { name: "Dancing Bear Toys and Games", exact: true });
-  const card = page.locator("article").filter({ has: heading });
+  const browse = page.getByRole("region", { name: "All shopping", exact: true });
+  await browse.getByRole("button", { name: /^All shopping/ }).click();
+  await browse.getByRole("button", { name: /^Sort: / }).click();
+  await browse.getByRole("group", { name: "Sort", exact: true }).getByRole("button", { name: /^A→Z/ }).click();
+  await expect(browse.getByRole("button", { name: "Sort: A→Z", exact: true })).toBeVisible();
+  // Wait for the old ranked page's exit animation, then traverse only real
+  // bounded pagination controls; no fixture can inject this target into the list.
+  await expect(browse.locator("article")).toHaveCount(24);
+  // Choose the large photo face before revealing later alphabetical pages.
+  await browse.getByRole("radio", { name: "Grid", exact: true }).click();
+  await expect(browse.getByRole("radio", { name: "Grid", exact: true })).toHaveAttribute("aria-checked", "true");
+  const heading = browse.getByRole("heading", { name: "Dancing Bear Toys and Games", exact: true });
+  let browsePages = 1;
+  while (await heading.count() === 0 && browsePages < 12) {
+    const before = await browse.locator("article").count();
+    await browse.getByRole("button", { name: /^Show \d+ more$/ }).click();
+    await expect.poll(() => browse.locator("article").count()).toBeGreaterThan(before);
+    browsePages++;
+  }
+  // `has` resolves within each article; keep its heading locator relative
+  // rather than requiring another ancestor browse region inside the card.
+  const card = browse.locator("article").filter({ has: page.getByRole("heading", { name: "Dancing Bear Toys and Games", exact: true }) });
   const open = card.getByRole("button", { name: /^View Dancing Bear Toys and Games .*details$/ });
   await expect(heading).toBeVisible();
   await open.scrollIntoViewIfNeeded();
@@ -92,8 +117,7 @@ test("a failed photo signal collapses its place face and keeps the real listing 
   await expect(card.locator(".place-card-photo-credit")).toHaveCount(0);
   await expect(heading).toBeVisible();
   await expect(open).toBeVisible();
-  // Town rankings can move this place between answer and grid variants.
-  // A grid may show real reason chips instead of a rating. Attribution belongs
+  // The browse grid may show real reason chips instead of a rating. Attribution belongs
   // to displayed Google content, never to an exhausted photograph.
   const displayedRatings = card.getByTitle(/from [\d,]+ Google reviews$/);
   for (const rating of await displayedRatings.all()) {
@@ -111,7 +135,7 @@ test("a failed photo signal collapses its place face and keeps the real listing 
     contentType: "application/json",
     body: JSON.stringify({ loaded, targetLoads: targetLoads(), expectedPhotoName, interceptedPhotos, blockedGoogleRequests, blockedEnrichmentRequests, forwardedGoogleRequests: 0, cspBypassed: bypassCSP,
       securityProof: "Local HTTP transport regression; public HTTPS acceptance separately keeps CSP enforcement enabled.",
-      preservedListing: "Dancing Bear Toys and Games", removedBlankPhotoFace: true }),
+      preservedListing: "Dancing Bear Toys and Games", listingSurface: "/category/shopping", browsePath: "All shopping → A→Z → Grid → real pagination", browsePages, removedBlankPhotoFace: true }),
   });
   await page.screenshot({ path: testInfo.outputPath("place-photo-factual-fallback.png") });
 });
