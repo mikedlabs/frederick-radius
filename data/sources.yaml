@@ -2549,6 +2549,174 @@ sources:
       changed facts require review before promotion. No other Dublin identity
       or header phone inherits this location's schedule.
 
+  - id: pistarros_hours
+    name: "Pistarro's — First-party Hours"
+    owner: "Pistarro's"
+    url: https://pistarro.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Pistarro's"
+    status: active
+    collection: workflow
+    evidence_aliases: [pistarros_hours, https://pistarro.com/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 221 N East Street restaurant footer publishes all seven weekdays. Happy-hour times do not replace operating hours.
+      One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
+
+  - id: jojos_hours
+    name: "JoJo's Restaurant & Tap House — First-party Hours"
+    owner: "JoJo's Restaurant & Tap House"
+    url: https://jojosrestauranttaphouse.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "JoJo's Restaurant & Tap House"
+    status: active
+    collection: workflow
+    evidence_aliases: [jojos_hours, https://jojosrestauranttaphouse.com/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 16-18 East Patrick Street location. Closed Monday and Tuesday, overnight closes on other days; dining-room and tap-house service remain distinct.
+      One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
+
+  - id: thai_table_hours
+    name: "Thai Table — First-party Hours"
+    owner: "Thai Table"
+    url: https://thaitablecuisine.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Thai Table"
+    status: active
+    collection: workflow
+    evidence_aliases: [thai_table_hours, https://thaitablecuisine.com/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 5221 Buckeystown Pike Suite A restaurant. Monday closed; lunch and dinner remain separate windows rather than falsely open all afternoon.
+      One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
+
+  - id: thai_meric_hours
+    name: "Thai Meric Eatery & Bar — First-party Hours"
+    owner: "Thai Meric Eatery & Bar"
+    url: https://www.thaimeric.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Thai Meric Eatery & Bar"
+    status: active
+    collection: workflow
+    evidence_aliases: [thai_meric_hours, https://www.thaimeric.com/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 1170 W Patrick Street Suite E restaurant. Visible business hours and location-bound structured hours must agree, including the weekday service gap.
+      One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
+
+  - id: white_rabbit_hours
+    name: "White Rabbit Gastropub — First-party Hours"
+    owner: "White Rabbit Gastropub"
+    url: https://www.whiterabbitgastropub.com/readme
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "White Rabbit Gastropub"
+    status: active
+    collection: workflow
+    evidence_aliases: [white_rabbit_hours, https://www.whiterabbitgastropub.com/readme]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 18 Market Space restaurant publishes 11am-10pm every day. Weekend brunch is a subset of operating hours, not a replacement week.
+      One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
+
+  - id: il_porto_frederick_hours
+    name: "Il Porto Frederick — First-party Hours"
+    owner: "Il Porto Frederick"
+    url: https://www.ilportorestaurant.com/location-frederick/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Il Porto Frederick"
+    status: active
+    collection: workflow
+    evidence_aliases: [il_porto_frederick_hours, https://www.ilportorestaurant.com/location-frederick/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact Frederick location at 200 S Market Street and phone 301-620-7480. Never inherit the Gaithersburg location phone or schedule.
+      One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
+
+  - id: sumittra_hours
+    name: "Sumittra Thai Cuisine — First-party Hours"
+    owner: "Sumittra Thai Cuisine"
+    url: https://www.sumittra.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: weekly (manual review before expiry)
+    snapshot_cadence: weekly
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Sumittra Thai Cuisine"
+    status: active
+    collection: workflow
+    evidence_aliases: [sumittra_hours, https://www.sumittra.com/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 12 E Patrick Street restaurant. Manually reviewed Firecrawl processed HTML supplies ordinary weekly split service; generic holiday/service wording is not a holiday calendar.
+      Native GitHub collection preserves this manual record and actual expiry without a provider call. The existing Codex upkeep owner may refresh it before expiry after the private attempted-credit ledger reserves the read; no automatic paid GitHub job, top-up or model extraction.
+
+  - id: curious_iguana_hours
+    name: "Curious Iguana — First-party Hours"
+    owner: "Curious Iguana"
+    url: https://curiousiguana.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: weekly (manual review before expiry)
+    snapshot_cadence: weekly
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Curious Iguana"
+    status: active
+    collection: workflow
+    evidence_aliases: [curious_iguana_hours, https://curiousiguana.com/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 12 N Market Street bookstore. Manually reviewed Firecrawl processed HTML. Ordinary-week evidence ends before First Saturday so its later closing is never represented as an ordinary Saturday. Visible phone identity is not the page placeholder telephone anchor.
+      Native GitHub collection preserves this manual record and actual expiry without a provider call. The existing Codex upkeep owner may refresh it before expiry after the private attempted-credit ledger reserves the read; no automatic paid GitHub job, top-up or model extraction.
+
   - id: fcpl_branch_hours
     name: Frederick County Public Libraries — Official Branch Hours
     owner: Frederick County Public Libraries

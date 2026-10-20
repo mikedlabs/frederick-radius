@@ -13,7 +13,8 @@ be delayed by GitHub; these are windows, not guaranteed publication deadlines.
 | Owner | Window | Scope and publication rule |
 | --- | --- | --- |
 | `transit-steward.yml` | Daily 07:23 | Public Frederick GTFS. Existing review and release checks remain. |
-| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus exact reviewed merchant sources. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. |
+| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus ten exact reviewed native merchant sources. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. |
+| Existing Codex data upkeep, manual merchant cohort | Review before evidence expires | Sumittra and Curious Iguana only. Read their official pages through the existing Firecrawl connection when evidence is within 48 hours of expiry. A private preflight reserves each attempt before a read, capped at two attempts per UTC day and 30 per UTC month. No automatic paid GitHub job. |
 | `ingest-venues.yml` native job | Daily 11:07 | Banyan, Weinberg and New Spire native sources. No model, Firecrawl key, browser or paid-review prerequisite. Future changes need review. Failed/unselected sources retain their rows and dates. |
 | `refresh-commerce-links.yml` native mode | Daily 12:37 | At most 20 eligible official business sites and one same-host follow page each. Static HTML only, finite body/deadline, no retries, redirects or destination probes. New/changed actions need review. |
 | `listing-maintenance.yml` | Daily 14:07 | Offline reconciliation of every promoted public listing, per-field states, town/category totals and bounded source candidates. No merchant or provider requests. |
@@ -49,6 +50,45 @@ policy authority, raise provider budgets or provision services.
 - Images need exact place identity and owner permission or a supported license.
   Provider eligibility is not a successfully decoded image. Missing local bytes
   and remote availability are different states.
+- Reviewed bundled City Hall and Mount St. Mary's photographs load before a
+  provider fallback. Barbara Fritchie House retains its preferred accurate
+  image policy using existing local licensed bytes. Source and license credits
+  travel with the selected photograph; no new merchant image rights are inferred.
+
+## Bounded manual hours evidence
+
+The ordinary native collector must not request a manual-owned source or create
+a failure solely because it intentionally skipped that transport. It carries
+the exact approved row and any existing hold unchanged. The original observation
+and expiry still determine whether users see current hours.
+
+Before an explicitly authorized manual read, check the existing Firecrawl credit
+balance and the established private ledger, then reserve an attempt:
+
+```sh
+npx tsx --tsconfig tsconfig.json scripts/manual-merchant-refresh-budget.ts --ledger "$RADIUS_MANUAL_CREDIT_LEDGER" --check
+npx tsx --tsconfig tsconfig.json scripts/manual-merchant-refresh-budget.ts --ledger "$RADIUS_MANUAL_CREDIT_LEDGER" --reserve=sumittra-thai-cuisine
+```
+
+The ledger must already exist outside a Git worktree. The tool has no initialization,
+reset, increased-cap or provider-execution option. Missing, invalid, locked or
+uncertain history stops the paid read; pending and failed attempts still count.
+Keep the reservation, exact source/final URL, fresh-fetch result, actual response
+capture time, source hash and reported credit use privately. Do not commit account
+balances, raw merchant pages, provider credentials or credit ledgers.
+
+Use plain HTML retrieval only: no search, crawl, agent, model JSON extraction,
+browser actions, enhanced proxy, retry, top-up or additional service. This manual
+merchant lane does not reset or unblock Source Watch, Tavily, Apify or Google holds.
+New or changed facts still require source review and explicit candidate acceptance.
+
+Curious Iguana's ordinary Saturday closes earlier than First Saturday. Its
+ordinary-week evidence ends before that New York midnight, and collection on
+First Saturday is rejected until a dated extension can be represented. Do not
+use an early-closure exception to invent a later closing. Avoid repeated reads
+when this known boundary, rather than evidence age, limits the horizon. Sumittra's
+Sunday/holiday wording supplies ordinary weekly hours only; it does not establish
+an independently verified holiday calendar.
 
 ## Whole-catalog evidence
 

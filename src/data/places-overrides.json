@@ -91,6 +91,13 @@
     "baker-park-bandshell"
   ],
   "patch": {
+    "thai-table-frederick": {
+      "phone": "(240) 877-7034"
+    },
+    "il-porto-restaurant": {
+      "phone": "(301) 620-7480",
+      "website": "https://www.ilportorestaurant.com/location-frederick/"
+    },
     "hootch-and-banter-frederick": {
       "phone": "(301) 732-4971"
     },
@@ -312,7 +319,7 @@
     },
     "the-tasting-room-frederick": {
       "short_blurb": "This North Market restaurant serves New American dishes and keeps an extensive wine list.",
-      "website": "https://www.trrestaurant.com/",
+      "website": "https://trrestaurant.com/",
       "commerce_links": [
         {
           "provider": "opentable",
@@ -1050,7 +1057,8 @@
       "name": "McClintock's Back Bar"
     },
     "jojos-restaurant-tap-house": {
-      "name": "JoJo's Restaurant Tap House"
+      "name": "JoJo's Restaurant & Tap House",
+      "address": "16-18 E Patrick St"
     },
     "keeney-and-basford-funeral-homes": {
       "category": "services"
@@ -1387,6 +1395,7 @@
       "name": "Rockwell Brewery Riverside"
     },
     "pistarros": {
+      "name": "Pistarro's",
       "subcategories": [
         "pizza"
       ]

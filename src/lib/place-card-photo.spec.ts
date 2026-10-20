@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
+import { LANDMARK_PHOTOS } from "@/lib/integrations/wikimedia";
 import { getOwnedPlacePhoto } from "./owned-place-photos";
 import { isPlacePhotoFailureSignal, placePhotoFailureSignalSrc, placeCardPhotoPlan, placePhotoGallerySources, recordPlaceCardPhotoResult, selectedPlaceCardPhoto } from "./place-card-photo";
 
@@ -194,7 +195,7 @@ describe("existing licensed local place photographs", () => {
     }
   });
 
-  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS))("retains eligible Google priority, then tries the local %s source only once", (slug, { image }) => {
+  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).filter(([slug]) => !LANDMARK_PHOTOS[slug]?.preferCurated && !LANDMARK_PHOTOS[slug]?.preferLocal))("retains eligible Google priority, then tries the local %s source only once", (slug, { image }) => {
     const input = { ...place, slug };
     const plan = placeCardPhotoPlan(input, 360);
     expect(plan.sources.map((source) => source.kind)).toEqual(["google", "curated"]);
@@ -207,6 +208,25 @@ describe("existing licensed local place photographs", () => {
     expect(selectedPlaceCardPhoto(plan, state)).toBeNull();
     expect(recordPlaceCardPhotoResult(plan, state, image.src, "loaded")).toEqual(state);
     expect(state.failedSources).toHaveLength(2);
+  });
+
+  it.each(["city-hall-8", "mount-st-marys-university-emmitsburg"] as const)("uses the reviewed local %s photo before requesting a provider fallback", (slug) => {
+    const plan = placeCardPhotoPlan({ ...place, slug }, 360);
+    expect(plan.sources.map((source) => source.kind)).toEqual(["curated", "google"]);
+    expect(selectedPlaceCardPhoto(plan, null)?.src).toBe(CREDITED_LOCAL_PLACE_PHOTOS[slug].image.src);
+    const failed = recordPlaceCardPhotoResult(plan, null, plan.sources[0].src, "failed");
+    expect(selectedPlaceCardPhoto(plan, failed)?.kind).toBe("google");
+    expect(LANDMARK_PHOTOS[slug].preferCurated).toBeUndefined();
+  });
+
+  it("keeps the reviewed Barbara Fritchie photograph ahead of the misidentified provider image", () => {
+    const slug = "barbara-fritchie-house-frederick";
+    const plan = placeCardPhotoPlan({ ...place, slug }, 360);
+    expect(plan.sources.map((source) => source.kind)).toEqual(["curated"]);
+    expect(selectedPlaceCardPhoto(plan, null)?.src).toBe(CREDITED_LOCAL_PLACE_PHOTOS[slug].image.src);
+    expect(plan.sources[0]).toMatchObject({ photo: { author: "Preservation Maryland", license: "CC BY-SA 2.0" } });
+    const failed = recordPlaceCardPhotoResult(plan, null, plan.sources[0].src, "failed");
+    expect(selectedPlaceCardPhoto(plan, failed)).toBeNull();
   });
 
   it.each(["schifferstadt", "hessian-barracks", "co-canal", "brunswick", "town:frederick", "__proto__"])("does not broaden exact-place imagery to a history, town or inherited identity: %s", (slug) => {

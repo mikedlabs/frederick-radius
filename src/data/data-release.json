@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:147ffccd17b58ce2c6993500fef3873723fa29a38b21d638abf8e1d4fc1beb2a",
+  "data_version": "sha256:f1beabc4868fafac645c50bdcc134c5ede9599f4f89934a73b28b7a3251de104",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-20T05:32:38.523Z",
+      "promoted_at": "2026-10-20T16:19:11.428Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -48,9 +48,9 @@
         },
         {
           "path": "src/data/places-overrides.json",
-          "sha256": "4c090b64db86c5ae46e6612a29391a82bb8d4b862d5f14590a478fff69eed86c",
+          "sha256": "8245593152454e89e5f1a7e7d5996f713f6fc554d17ece5ba8046af598a5701c",
           "records": 4,
-          "bytes": 43615
+          "bytes": 43891
         },
         {
           "path": "src/data/place-status-overrides.json",
@@ -72,9 +72,9 @@
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "8f59dc96b6ec82a78037829d6fea6dbed728cbf703b6d9a0c2354e798f919850",
-          "records": 4,
-          "bytes": 5006
+          "sha256": "3ddcb95ee07413d1078112bfba0c7c3b9012cd9ec3e6a66c6536560ed8d212bf",
+          "records": 12,
+          "bytes": 15784
         },
         {
           "path": "src/data/business-status.json",
@@ -174,21 +174,39 @@
         },
         {
           "path": "src/lib/integrations/wikimedia.ts",
-          "sha256": "9ecbf4bb0a95a84c9363c8c4889bc95bc1c769190b5411314798863cb61a6078",
+          "sha256": "6eb9654065092edbd64bb120e7bbbf16f50834ecb7fad269cb856c60e38cadde",
           "records": null,
-          "bytes": 10323
+          "bytes": 11032
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
-          "sha256": "31a7376f9eded27ca2b97371bcef70904192a657e4c76aa7224356af50d056c4",
+          "sha256": "8ea2151dff35bb4be47c4288fa992a5262ec56e1859aff20e9b08a5abb61672c",
           "records": null,
-          "bytes": 8170
+          "bytes": 10618
         },
         {
           "path": "public/place-photos/brewers-alley-2004.jpg",
           "sha256": "c658a191257a37116c83a02aeac5cb41ac1236d8fc9850882774810bcffbd5ec",
           "records": null,
           "bytes": 272332
+        },
+        {
+          "path": "public/history-photos/frederick-county-established.jpg",
+          "sha256": "dce5b9246b9dffee8ad50bd6417f9919aa0cf36fa8ca7acba0d668b7b6d7b39d",
+          "records": null,
+          "bytes": 577379
+        },
+        {
+          "path": "public/history-photos/mount-st-marys-founded.jpg",
+          "sha256": "a8bea45385bd9a1e6a18ff3015db03672c96307cc8fcb7b99f0a5de728ed22ad",
+          "records": null,
+          "bytes": 397616
+        },
+        {
+          "path": "public/history-photos/barbara-fritchie-flag.jpg",
+          "sha256": "e54e4ff55a6e2a98a1e065ccabb4a8a5a253be0b0a1c71d3c89d7f59ba5d3768",
+          "records": null,
+          "bytes": 489737
         },
         {
           "path": "src/lib/owned-place-photos.ts",
@@ -258,15 +276,15 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "1378e182678edb516f6a16fd4c4256b221f812a405ae09ecb85669377368254c",
+          "sha256": "212436fbdfd3483be4c4a92422f2932df9460c46d6d2705a06195fcbf640a3f4",
           "records": 1571,
-          "bytes": 2294130
+          "bytes": 2299793
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "1acac18a4b3fd81e6affaf11d9e6426327ff442b57a2d9780774442cf7ba4152",
-          "records": 13,
-          "bytes": 27032
+          "sha256": "03c9850cd9b037c9834f385a4dcd1c24dc40f988e254d050450ecf0cbf69def5",
+          "records": 21,
+          "bytes": 33455
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
@@ -277,13 +295,13 @@
       ]
     },
     "sources": {
-      "promoted_at": "2026-10-20T05:16:37.533Z",
+      "promoted_at": "2026-10-20T12:07:53.013Z",
       "artifacts": [
         {
           "path": "src/data/source-registry.generated.json",
-          "sha256": "9877c37eb46769ff29c521fc24d8429a4ee1e31f0d15997e5e25bcb7db7dc39e",
-          "records": 132,
-          "bytes": 86457
+          "sha256": "a24aaa7436acfb251e26ca9be8bd6961d5674a430e661729939a4c81b2b251fa",
+          "records": 140,
+          "bytes": 92265
         }
       ]
     },

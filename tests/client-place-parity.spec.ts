@@ -4,6 +4,8 @@ import { decoratePlace, publicPlaces, type PlaceCardData } from "@/lib/loaders/p
 import { clientPlaces } from "@/lib/loaders/places-client";
 import { resolveCommerceLinks } from "@/lib/commerce/links";
 import { hoursFreshnessEnforced } from "@/lib/hours-freshness";
+import { readFileSync } from "node:fs";
+import { parseDocument } from "yaml";
 
 type ClientRow = PlaceCardData & { hours_policy_strict?: boolean };
 
@@ -15,6 +17,26 @@ describe("server/client place inventory parity", () => {
     expect(client.map((place) => place.slug).sort()).toEqual(
       server.map((place) => place.slug).sort(),
     );
+  });
+
+  it("rejects duplicate override keys before parsing can discard reviewed corrections", () => {
+    const document = parseDocument(readFileSync("src/data/places-overrides.json", "utf8"), { uniqueKeys: true });
+    expect(document.errors.map((error) => error.message)).toEqual([]);
+  });
+
+  it("publishes reviewed business corrections through both canonical read models", () => {
+    const corrections = [
+      { slug: "thai-table-frederick", phone: "(240) 877-7034" },
+      { slug: "il-porto-restaurant", phone: "(301) 620-7480", website: "https://www.ilportorestaurant.com/location-frederick/" },
+      { slug: "pistarros", name: "Pistarro's", subcategories: expect.arrayContaining(["pizza"]) },
+      { slug: "jojos-restaurant-tap-house", name: "JoJo's Restaurant & Tap House", address: "16-18 E Patrick St" },
+      { slug: "the-tasting-room-frederick", website: "https://trrestaurant.com/" },
+    ];
+    for (const dataset of [server, client]) {
+      for (const correction of corrections) {
+        expect(dataset.find((place) => place.slug === correction.slug), correction.slug).toMatchObject(correction);
+      }
+    }
   });
 
   it("ships Beans' source-reviewed menu and order links through the canonical override contract", () => {

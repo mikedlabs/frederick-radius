@@ -42,7 +42,8 @@ describe("free exact place photography in Find", () => {
     expect(photo?.kind).toBe("curated");
     if (photo?.kind !== "curated") throw new Error("Expected a reviewed landmark source.");
     expect(photo.photo.verified).toBe(true);
-    expect(photo.src).toContain("https://commons.wikimedia.org/wiki/Special:FilePath/");
+    if (photo.photo.localSrc) expect(photo.src).toBe(photo.photo.localSrc);
+    else expect(photo.src).toContain("https://commons.wikimedia.org/wiki/Special:FilePath/");
     expect(photo.photo.source_url).toContain("https://commons.wikimedia.org/wiki/File:");
     expect(photo.photo.author).toBeTruthy();
     expect(photo.photo.license).toBeTruthy();

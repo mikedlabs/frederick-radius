@@ -592,6 +592,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "curious_iguana_hours",
+    "name": "Curious Iguana — First-party Hours",
+    "owner": "Curious Iguana",
+    "url": "https://curiousiguana.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "weekly (manual review before expiry)",
+    "snapshotCadence": "weekly",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "curious_iguana_hours",
+      "https://curiousiguana.com/"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "delaplaine_calendar",
     "name": "Delaplaine Arts Center Events",
     "owner": "Delaplaine Arts Center",
@@ -1511,6 +1532,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "il_porto_frederick_hours",
+    "name": "Il Porto Frederick — First-party Hours",
+    "owner": "Il Porto Frederick",
+    "url": "https://www.ilportorestaurant.com/location-frederick/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://www.ilportorestaurant.com/location-frederick/",
+      "il_porto_frederick_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "islamic_society_frederick_calendar",
     "name": "Islamic Society of Frederick Calendar",
     "owner": "Islamic Society of Frederick",
@@ -1526,6 +1568,27 @@
     "transformFile": "src/lib/integrations/ical-live.ts",
     "evidenceAliases": [
       "isf"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "jojos_hours",
+    "name": "JoJo's Restaurant & Tap House — First-party Hours",
+    "owner": "JoJo's Restaurant & Tap House",
+    "url": "https://jojosrestauranttaphouse.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://jojosrestauranttaphouse.com/",
+      "jojos_hours"
     ],
     "rowsRequired": false,
     "publicationApplicability": "required"
@@ -2101,6 +2164,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "pistarros_hours",
+    "name": "Pistarro's — First-party Hours",
+    "owner": "Pistarro's",
+    "url": "https://pistarro.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://pistarro.com/",
+      "pistarros_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "pulsepoint",
     "name": "PulsePoint Incidents",
     "owner": "PulsePoint Foundation",
@@ -2241,6 +2325,69 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "sumittra_hours",
+    "name": "Sumittra Thai Cuisine — First-party Hours",
+    "owner": "Sumittra Thai Cuisine",
+    "url": "https://www.sumittra.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "weekly (manual review before expiry)",
+    "snapshotCadence": "weekly",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://www.sumittra.com/",
+      "sumittra_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "thai_meric_hours",
+    "name": "Thai Meric Eatery & Bar — First-party Hours",
+    "owner": "Thai Meric Eatery & Bar",
+    "url": "https://www.thaimeric.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://www.thaimeric.com/",
+      "thai_meric_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "thai_table_hours",
+    "name": "Thai Table — First-party Hours",
+    "owner": "Thai Table",
+    "url": "https://thaitablecuisine.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://thaitablecuisine.com/",
+      "thai_table_hours"
+    ],
     "rowsRequired": false,
     "publicationApplicability": "required"
   },
@@ -2425,6 +2572,27 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/visitfrederick.ts",
     "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "white_rabbit_hours",
+    "name": "White Rabbit Gastropub — First-party Hours",
+    "owner": "White Rabbit Gastropub",
+    "url": "https://www.whiterabbitgastropub.com/readme",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://www.whiterabbitgastropub.com/readme",
+      "white_rabbit_hours"
+    ],
     "rowsRequired": false,
     "publicationApplicability": "required"
   },

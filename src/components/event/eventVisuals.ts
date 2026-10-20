@@ -98,6 +98,9 @@ const LICENSED_EVENT_VENUE_LABELS: Readonly<Record<keyof typeof CREDITED_LOCAL_P
   "c-burr-artz-public-library-frederick": "C. Burr Artz Public Library exterior",
   "new-market-historic-district-new-market": "New Market Historic District streetscape",
   "catoctin-mountain-park": "Chimney Rock at Catoctin Mountain Park",
+  "city-hall-8": "Frederick City Hall exterior",
+  "mount-st-marys-university-emmitsburg": "Mount St. Mary's University campus chapel",
+  "barbara-fritchie-house-frederick": "Barbara Fritchie House exterior",
 };
 
 function licensedEventVenueVisual(venueSlug: string | undefined): EventCardVisual | null {

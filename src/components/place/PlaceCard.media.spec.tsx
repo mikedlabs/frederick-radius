@@ -239,7 +239,8 @@ describe("PlaceCard selected media and credit", () => {
 
   it.each(["barbara-fritchie-house-frederick", "catoctin-furnace-thurmont"])("never substitutes the known unsuitable Google photo for preferred curated %s", async (slug) => {
     await render({ ...place, slug });
-    expect(photo()?.getAttribute("src")).toContain(encodeURIComponent(LANDMARK_PHOTOS[slug].file));
+    if (LANDMARK_PHOTOS[slug].localSrc) expect(photo()?.getAttribute("src")).toBe(LANDMARK_PHOTOS[slug].localSrc);
+    else expect(photo()?.getAttribute("src")).toContain(encodeURIComponent(LANDMARK_PHOTOS[slug].file));
     await fail(photo()!);
     expect(photo()).toBeNull();
     expect(container.querySelector(".place-card-photo-credit")).toBeNull();
@@ -310,7 +311,8 @@ describe("PlaceCard selected media and credit", () => {
 
   it.each(["barbara-fritchie-house-frederick", "catoctin-furnace-thurmont"])("keeps unsuitable Google photos out of %s rows after curated failure", async (slug) => {
     await render({ ...place, slug }, "row");
-    expect(photo()?.getAttribute("src")).toContain(encodeURIComponent(LANDMARK_PHOTOS[slug].file));
+    if (LANDMARK_PHOTOS[slug].localSrc) expect(photo()?.getAttribute("src")).toBe(LANDMARK_PHOTOS[slug].localSrc);
+    else expect(photo()?.getAttribute("src")).toContain(encodeURIComponent(LANDMARK_PHOTOS[slug].file));
     await fail(photo()!);
     expect(photo()).toBeNull();
     expect(container.querySelector(".place-card-photo-credit")).toBeNull();
