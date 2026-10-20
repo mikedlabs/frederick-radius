@@ -94,7 +94,7 @@ export function MapPeekPhoto({
   };
   return (
     <>
-      <div className={`map-peek-body ${styles.body}`} data-map-place-slug={slug} data-has-photo={Boolean(source) || undefined}>
+      <div className={`map-peek-body ${styles.body}`} data-map-place-slug={slug} data-has-photo={Boolean(source) || undefined} data-photo-kind={source?.kind}>
         <button
           type="button"
           className="map-peek-visual"
@@ -426,15 +426,18 @@ export default function MapPeek({
         onOpenDetails={openDetails}
       >
         <div className="map-peek-text">
-          <span className="map-peek-cat" style={{ color: "var(--app-ink-3)" }}>
-            {cat?.name ?? place.category}
-          </span>
-          <button type="button" className="map-peek-title-button" data-press-target="control" onClick={openDetails}>
-            <span data-press-face id={nameId} className="map-peek-name">{place.name}</span>
-          </button>
-          {locationLine && <span className="map-peek-address">{locationLine}</span>}
+          <div className={styles.heading}>
+            <button type="button" className="map-peek-title-button" data-press-target="control" onClick={openDetails}>
+              <span data-press-face id={nameId} className="map-peek-name">{place.name}</span>
+            </button>
+            <button type="button" className="map-peek-details-link" data-press-target="control" onClick={openDetails}>
+              <span data-press-face className={styles.actionFace}>Details
+                <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+              </span>
+            </button>
+          </div>
           <span className="map-peek-meta">
-            <span style={{ color: statusTone(status), fontWeight: 650 }}>{hoursLine}</span>
+            <span className={styles.status} data-map-place-status={status.state} style={{ color: statusTone(status) }}>{hoursLine}</span>
             {dist && (
               <>
                 <span aria-hidden className="map-peek-dot">·</span>
@@ -442,11 +445,7 @@ export default function MapPeek({
               </>
             )}
           </span>
-          <button type="button" className="map-peek-details-link" data-press-target="control" onClick={openDetails}>
-            <span data-press-face className={styles.actionFace}>Details
-              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
-            </span>
-          </button>
+          {locationLine && <span className="map-peek-address">{locationLine}</span>}
         </div>
       </MapPeekPhoto>
 

@@ -38,7 +38,7 @@ async function installSelectedBoundary(page: Page, baseURL: string | undefined) 
   expect(curated).not.toBeNull();
   expect(owned).not.toBeNull();
   const commonsSrc = wikimediaUrl(curated.file, 720);
-  const browseCommonsSrc = wikimediaUrl(curated.file, 144);
+  const browseCommonsSrc = wikimediaUrl(curated.file, 176);
   const metadataRequests: string[] = [];
   const googleRequests: string[] = [];
   const commonsRequests: string[] = [];
@@ -46,7 +46,7 @@ async function installSelectedBoundary(page: Page, baseURL: string | undefined) 
   const allOwnedRequests: string[] = [];
   let browseOwnedUrl: string | undefined;
   const declareOwnedBrowseRequest = (url: string) => {
-    // Identify the actual decoded72px thumbnail from its currentSrc rather
+    // Identify the actual decoded88px thumbnail from its currentSrc rather
     // than a broad width threshold that could absorb a detail request.
     expect(allOwnedRequests).toContain(url);
     if (browseOwnedUrl) expect(url).toBe(browseOwnedUrl);
@@ -234,8 +234,8 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 375, height: 667 }
         await expect(frame).toHaveAttribute("data-photo-state", "ready");
         await expect(frame).toHaveAttribute("data-photo-source", kind);
         const frameBox = await frame.boundingBox();
-        expect(frameBox?.width).toBe(72);
-        expect(frameBox?.height).toBe(72);
+        expect(frameBox?.width).toBe(88);
+        expect(frameBox?.height).toBe(88);
         await expect.poll(() => frame.locator("img").evaluate((node) => {
           const image = node as HTMLImageElement;
           return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1;

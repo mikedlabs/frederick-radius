@@ -84,7 +84,7 @@ function PlaceRow({
 }) {
   // Supply only canonical identity: automatic browse rows must not turn
   // inline Google metadata into new paid image requests.
-  const registryPlan = placeCardPhotoPlan({ slug: place.slug }, 72);
+  const registryPlan = placeCardPhotoPlan({ slug: place.slug }, 88);
   // Owned browse photos stand alone, keeping the owner's compact rows free
   // of an invisible licensed-alternative footer. Failure retains the category.
   const owned = registryPlan.sources.find((source) => source.kind === "owned");
@@ -107,7 +107,6 @@ function PlaceRow({
   // fix there is no honest origin, so the row says nothing about distance.
   const hasDestination = isValidCoord(place.geom);
   const distance = userLoc && hasDestination ? formatDistance(haversineMeters(userLoc, place.geom)) : null;
-  const blurb = place.short_blurb?.trim();
 
   return (
     <div
@@ -151,14 +150,15 @@ function PlaceRow({
           }
         >
           <CategoryIcon slug={place.category} className="h-5 w-5" strokeWidth={1.9} />
-          {photo && <CompactPlacePhoto src={photo.src} size={72} onResult={onPhotoResult}
+          {photo && <CompactPlacePhoto src={photo.src} size={88} onResult={onPhotoResult}
             objectPosition={photo.kind === "owned" ? photo.objectPosition : undefined} />}
         </span>
-        <span className="min-w-0 flex-1">
-          <span data-map-list-place-name className="block break-words text-[15px] font-semibold leading-snug text-[var(--app-ink)]">
+        <span className={styles.placeCopy}>
+          <span data-map-list-place-name className={styles.placeName}>
             {place.name}
           </span>
-          <span className="mt-0.5 block text-[13px] leading-snug text-[var(--app-ink-2)]">
+          {status && <span className={styles.placeStatus} style={{ color: status.tone }}>{status.text}</span>}
+          <span className={styles.placeLocation}>
             {[category?.name ?? place.category, town].filter(Boolean).join(" · ")}
             {distance && (
               <>
@@ -167,13 +167,7 @@ function PlaceRow({
               </>
             )}
           </span>
-          {status && <span className="mt-0.5 block text-[12px] font-semibold leading-snug" style={{ color: status.tone }}>{status.text}</span>}
           {searchSubtitle && <span className="mt-0.5 block text-[12px] leading-snug text-[var(--app-ink-2)]">{searchSubtitle}</span>}
-          {!searchSubtitle && blurb && (
-            <span className="mt-0.5 block truncate text-[13px] leading-snug text-[var(--app-ink-2)]">
-              {blurb}
-            </span>
-          )}
         </span>
       </button>
       {hasDestination && (

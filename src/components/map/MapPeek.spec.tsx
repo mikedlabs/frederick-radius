@@ -52,6 +52,7 @@ describe("MapPeek selected photo and source identity", () => {
   };
   it("requests the transparent proxy signal and withholds venue alt and credit until genuine image bytes load", async () => {
     await render();
+    expect(host.querySelector(".map-peek-body")?.getAttribute("data-photo-kind")).toBe("google");
     expect(host.querySelector("img")?.src).toContain("fallback=signal");
     expect(host.querySelector("img")?.alt).toBe("");
     expect(host.querySelector("img")?.getAttribute("aria-hidden")).toBe("true");
@@ -76,6 +77,7 @@ describe("MapPeek selected photo and source identity", () => {
   it.each([[1, 1], [1, 600], [800, 1]])("replaces a %s by %s pixel signal with category artwork and no photo attribution", async (width, height) => {
     await render(); await load(width, height);
     expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector(".map-peek-body")?.hasAttribute("data-photo-kind")).toBe(false);
     expect(host.querySelector("[data-map-peek-photo-state=failed]")).toBeTruthy();
     expect(host.textContent).toBe("F");
     expect(host.querySelector("a")).toBeNull();

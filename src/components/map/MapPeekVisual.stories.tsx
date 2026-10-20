@@ -65,6 +65,9 @@ const checkPreview: NonNullable<Story["play"]> = async ({ canvasElement, args })
   const canvas = within(canvasElement);
   const surface = canvasElement.querySelector<HTMLElement>("[data-map-result-surface]")!;
   const image = surface.querySelector<HTMLImageElement>("img")!;
+  // A short landscape scrollport can initially clip a native lazy image.
+  // Bring the actual photo into view before checking its normal load event.
+  image.scrollIntoView({ block: "nearest", inline: "nearest" });
   await waitFor(async () => {
     await image.decode();
     await expect(image.naturalWidth).toBeGreaterThan(1);
@@ -90,6 +93,13 @@ const checkPreview: NonNullable<Story["play"]> = async ({ canvasElement, args })
   const directions = canvas.getByRole("link", { name: /^Directions$/ });
   const save = canvas.getByRole("button", { name: /^Save$/ });
   const share = canvas.getByRole("button", { name: `Share ${args.place.name}` });
+  const heading = surface.querySelector<HTMLElement>(".map-peek-title-button")!;
+  // The name and Details form one row, with current status below it. The
+  // primary destination action gets more space than secondary Save/Share.
+  await expect(Math.abs(details.getBoundingClientRect().top - heading.getBoundingClientRect().top)).toBeLessThanOrEqual(1);
+  await expect(surface.querySelector("[data-map-place-status]")).toHaveTextContent("Hours not posted");
+  await expect(surface.querySelector(".map-peek-cat")).toBeNull();
+  await expect(directions.getBoundingClientRect().width).toBeGreaterThan(save.getBoundingClientRect().width);
   // The legacy narrow-screen selector hides direct span children. The new
   // face must remain painted, not merely leave a correctly sized blank button.
   const shareFace = share.querySelector<HTMLElement>(":scope > [data-press-face]")!;
@@ -119,6 +129,25 @@ export const OwnedAt320: Story = { globals: { viewport: { value: "radiusMobileNa
 export const OwnedAt375: Story = { ...OwnedAt320, globals: { viewport: { value: "radiusMobileCompact", isRotated: false } } };
 export const OwnedAt390: Story = { ...OwnedAt320, globals: { viewport: { value: "radiusMobile", isRotated: false } } };
 export const OwnedAt430: Story = { ...OwnedAt320, globals: { viewport: { value: "radiusMobileLarge", isRotated: false } } };
+export const UnknownPhotoAt320: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { place: { ...creek, slug: "workshop-unpictured-place", name: "Sample unpictured place", category: "shops" } },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvasElement.querySelector("img")).toBeNull());
+    const surface = canvasElement.querySelector<HTMLElement>("[data-map-result-surface]")!;
+    await canvasElement.ownerDocument.fonts.ready;
+    await waitFor(() => expect(new DOMMatrix(getComputedStyle(surface).transform).isIdentity).toBe(true));
+    const frame = canvasElement.querySelector<HTMLElement>(".map-peek-visual")!;
+    await expect(frame.getBoundingClientRect().width).toBe(64);
+    await expect(frame.getBoundingClientRect().height).toBe(64);
+    await expect(canvas.getByText("Hours not posted")).toBeVisible();
+    await expect(canvasElement.querySelector(".map-peek-source-credit")).toBeNull();
+    for (const target of [canvas.getByRole("button", { name: /^Details$/ }), canvas.getByRole("link", { name: /^Directions$/ }), canvas.getByRole("button", { name: `Close ${args.place.name}` })]) await reachable(target);
+    await userEvent.click(canvas.getByRole("button", { name: /^Details$/ }));
+    await expect(args.onDetails).toHaveBeenCalledOnce();
+  },
+};
 export const DoubleTextAt320: Story = {
   ...OwnedAt320,
   beforeEach: () => {

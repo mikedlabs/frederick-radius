@@ -16,7 +16,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { usePushRecentPlace } from "@/hooks/useRecentPlaces";
 import { browseReturnFromLocation, withBrowseReturnTo } from "@/lib/browse-return";
 import { readCachedGeoPosition } from "@/hooks/useGeolocation";
-import { isInFrederickCountyArea, type LngLat } from "@/lib/geo";
+import { haversineMeters, isInFrederickCountyArea, isValidCoord, type LngLat } from "@/lib/geo";
 import LazySheetFallback from "@/components/ui/LazySheetFallback";
 import { navigateAfterHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import { fetchPlaceSheetLookup } from "@/lib/place-sheet-lookup";
@@ -31,6 +31,13 @@ function preloadPlaceSheet() {
   });
 }
 
+type InitialPlace = Pick<PlaceCardData, "slug" | "name" | "category" | "municipality" | "geom" | "open_status"> & Partial<PlaceCardData>;
+type LookupOptions = {
+  initialPlace?: InitialPlace;
+  travelOrigin?: (LngLat & { timestamp?: number }) | null;
+  returnFocus?: HTMLElement | null;
+};
+
 type Ctx = {
   openSheet: (
     p: PlaceCardData,
@@ -41,13 +48,22 @@ type Ctx = {
   ) => void;
   openSheetBySlug: (
     slug: string,
-    options?: { returnFocus?: HTMLElement | null },
+    options?: LookupOptions,
   ) => void;
   closeSheet: () => void;
 };
 
 const PlaceSheetContext = createContext<Ctx | null>(null);
 const TRAVEL_ORIGIN_MAX_AGE_MS = 5 * 60_000;
+const LOOKUP_CACHE_AGE_MS = 60_000;
+const LOOKUP_CACHE_LIMIT = 20;
+
+function hasPlaceIdentity(place: PlaceCardData | InitialPlace, slug: string): boolean {
+  return place.slug === slug && typeof place.name === "string" && Boolean(place.name.trim())
+    && typeof place.category === "string" && Boolean(place.category)
+    && typeof place.municipality === "string" && Boolean(place.municipality)
+    && isValidCoord(place.geom) && typeof place.open_status?.state === "string";
+}
 
 function freshTravelOrigin(
   value: (LngLat & { timestamp?: number }) | null | undefined,
@@ -69,6 +85,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [place, setPlace] = useState<PlaceCardData | null>(null);
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
+  const [metadataUnavailable, setMetadataUnavailable] = useState(false);
   const [travelOrigin, setTravelOrigin] = useState<LngLat | null>(null);
   const [mapReturnTo, setMapReturnTo] = useState<string | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -79,6 +96,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   // follows the canonical page fallback, or taps a different place.
   const reqRef = useRef(0);
   const lookupAbortRef = useRef<AbortController | null>(null);
+  const lookupCacheRef = useRef(new Map<string, { place: PlaceCardData; at: number }>());
   const abortLookup = useCallback(() => {
     lookupAbortRef.current?.abort();
     lookupAbortRef.current = null;
@@ -125,6 +143,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
       reqRef.current++;
       abortLookup();
       setPendingSlug(null);
+      setMetadataUnavailable(false);
       if (!hydrationUpdate) {
         openerRef.current =
           options?.returnFocus ??
@@ -158,7 +177,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   const openSheetBySlug = useCallback(
     (
       slug: string,
-      options?: { returnFocus?: HTMLElement | null },
+      options?: LookupOptions,
     ) => {
       const normalizedSlug = slug.trim();
       if (!normalizedSlug) return;
@@ -175,17 +194,46 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
       openPathRef.current = current?.pathname ?? pathname;
       const returnTo = current ? browseReturnFromLocation(current) : null;
       setMapReturnTo(returnTo);
-      setTravelOrigin(freshTravelOrigin(readCachedGeoPosition()));
+      const origin = freshTravelOrigin(options?.travelOrigin === undefined ? readCachedGeoPosition() : options.travelOrigin);
+      setTravelOrigin(origin);
+      const withDistance = (value: PlaceCardData): PlaceCardData => ({
+        ...value,
+        distance_m: origin ? haversineMeters(origin, value.geom) : undefined,
+      });
       activePlaceSlugRef.current = normalizedSlug;
       const req = ++reqRef.current;
       abortLookup();
+      setMetadataUnavailable(false);
       const controller = new AbortController();
       lookupAbortRef.current = controller;
-      setPlace(null);
+      const cached = lookupCacheRef.current.get(normalizedSlug);
+      if (cached && Date.now() - cached.at >= 0 && Date.now() - cached.at < LOOKUP_CACHE_AGE_MS) {
+        lookupAbortRef.current = null;
+        setPlace(withDistance(cached.place));
+        setPendingSlug(null);
+        pushRecent(normalizedSlug);
+        return;
+      }
+      lookupCacheRef.current.delete(normalizedSlug);
+      const initial = options?.initialPlace;
+      const knownInitial = initial && hasPlaceIdentity(initial, normalizedSlug) ? initial : null;
+      // A known map pin supplies immediate identity, never authoritative metadata.
+      setPlace(knownInitial ? withDistance(knownInitial as PlaceCardData) : null);
       setPendingSlug(normalizedSlug);
+      const isCurrentLookup = () => reqRef.current === req
+        && activePlaceSlugRef.current === normalizedSlug
+        && !controller.signal.aborted
+        && window.location.pathname === openPathRef.current;
 
-      const goToCanonicalPage = () => {
-        if (reqRef.current !== req) return;
+      const recoverLookup = () => {
+        if (!isCurrentLookup()) return;
+        if (knownInitial) {
+          // Offline browsing keeps the useful pin and the existing history layer.
+          // Missing metadata is not permission to try provider enrichment instead.
+          setPendingSlug(null);
+          setMetadataUnavailable(true);
+          return;
+        }
         activePlaceSlugRef.current = null;
         setPlace(null);
         setPendingSlug(null);
@@ -198,16 +246,20 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
 
       fetchPlaceSheetLookup(normalizedSlug, controller.signal)
         .then((resolved) => {
-          if (reqRef.current !== req) return;
-          if (!resolved) {
-            goToCanonicalPage();
+          if (!isCurrentLookup()) return;
+          if (!resolved || !hasPlaceIdentity(resolved, normalizedSlug)) {
+            recoverLookup();
             return;
           }
+          lookupCacheRef.current.set(normalizedSlug, { place: resolved, at: Date.now() });
+          if (lookupCacheRef.current.size > LOOKUP_CACHE_LIMIT) {
+            lookupCacheRef.current.delete(lookupCacheRef.current.keys().next().value!);
+          }
           pushRecent(resolved.slug);
-          setPlace(resolved);
+          setPlace(withDistance(resolved));
           setPendingSlug(null);
         })
-        .catch(goToCanonicalPage)
+        .catch(recoverLookup)
         .finally(() => {
           if (lookupAbortRef.current === controller) lookupAbortRef.current = null;
         });
@@ -221,6 +273,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
     activePlaceSlugRef.current = null;
     setPlace(null);
     setPendingSlug(null);
+    setMetadataUnavailable(false);
     setTravelOrigin(null);
     setMapReturnTo(null);
   }, [abortLookup]);
@@ -236,7 +289,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   return (
     <PlaceSheetContext.Provider value={{ openSheet, openSheetBySlug, closeSheet }}>
       {children}
-      {pendingSlug ? (
+      {pendingSlug && !place ? (
         <LazySheetFallback
           label="Loading place details"
           onClose={closeSheet}
@@ -256,6 +309,8 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
         >
           <PlaceSheet
             place={place}
+            metadataPending={Boolean(pendingSlug)}
+            metadataUnavailable={metadataUnavailable}
             travelOrigin={travelOrigin}
             mapReturnTo={mapReturnTo}
             onClose={closeSheet}

@@ -154,6 +154,7 @@ jobs:
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: >-
           npx playwright test e2e/today-map-visual-depth.spec.ts
+          e2e/map-seeded-sheet-continuity.spec.ts
           e2e/events-nearby-visual-cards.spec.ts
           e2e/safari-back-readiness.spec.ts
           --project=webkit-mobile --workers=1 --retries=1

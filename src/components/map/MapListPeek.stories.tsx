@@ -36,6 +36,8 @@ export const RankedUnknownHours: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getAllByText("Hours not confirmed")).toHaveLength(5);
     await expect(canvas.queryByText(/from you/)).not.toBeInTheDocument();
+    await expect(canvas.queryByText("Component review fixture, not a public listing.")).not.toBeInTheDocument();
+    await expect(canvasElement.querySelector("img")).toBeNull();
     await expect(canvas.getByRole("button", { name: /Show 3 more places/ })).toBeVisible();
   },
 };
@@ -241,8 +243,8 @@ export const ExactReviewedPhotosAt320: Story = {
     }
     await waitFor(() => expect(canvasElement.querySelectorAll('[data-photo-state="ready"]')).toHaveLength(3));
     for (const frame of canvasElement.querySelectorAll<HTMLElement>("[data-map-list-photo]")) {
-      await expect(frame.getBoundingClientRect().width).toBe(72);
-      await expect(frame.getBoundingClientRect().height).toBe(72);
+      await expect(frame.getBoundingClientRect().width).toBe(88);
+      await expect(frame.getBoundingClientRect().height).toBe(88);
     }
     const row = canvasElement.querySelector<HTMLElement>('[data-map-list-place-row="new-market-historic-district-new-market"]')!;
     const scoped = within(row);
@@ -267,6 +269,10 @@ export const ExactReviewedPhotosAt320: Story = {
   },
 };
 
+export const ExactReviewedPhotosAt375: Story = { ...ExactReviewedPhotosAt320, globals: { viewport: { value: "radiusMobileCompact", isRotated: false } } };
+export const ExactReviewedPhotosAt390: Story = { ...ExactReviewedPhotosAt320, globals: { viewport: { value: "radiusMobile", isRotated: false } } };
+export const ExactReviewedPhotosAt430: Story = { ...ExactReviewedPhotosAt320, globals: { viewport: { value: "radiusMobileLarge", isRotated: false } } };
+
 export const PhotoFailureKeepsStableRows: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   args: { list: { ...reviewedPhotoList, key: "reviewed-failed-photo", rows: [reviewedPhotoList.rows[0], list.rows[0]] } },
@@ -281,8 +287,8 @@ export const PhotoFailureKeepsStableRows: Story = {
     await image.decode();
     await waitFor(() => expect(frame).toHaveAttribute("data-photo-state", "ready"));
     const before = [frame, first, second].map(element => element.getBoundingClientRect());
-    await expect(before[0].width).toBe(72);
-    await expect(before[0].height).toBe(72);
+    await expect(before[0].width).toBe(88);
+    await expect(before[0].height).toBe(88);
     await expect(emptyFrame.getBoundingClientRect().width).toBe(38);
     await expect(emptyFrame.getBoundingClientRect().height).toBe(38);
     image.dispatchEvent(new Event("error"));
