@@ -1,3 +1,9 @@
+/* Native nearest/focus scrolling must keep full touch areas clear of the
+ * fractional viewport-height clip. This adds no row or credit-box space. */
+.body {
+  scroll-padding-block: 4px;
+}
+
 .placeRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

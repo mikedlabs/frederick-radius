@@ -385,7 +385,7 @@ export default function MapListPeek({
         id={listId}
         data-map-list-body
         hidden={!expanded}
-        className="max-h-[min(46dvh,380px)] overflow-y-auto overscroll-contain border-t border-[var(--app-border)]"
+        className={`${styles.body} max-h-[min(46dvh,380px)] overflow-y-auto overscroll-contain border-t border-[var(--app-border)]`}
       >
         {list.note && (
           <p className="px-3 pb-1 pt-2 text-[12px] leading-snug text-[var(--app-ink-3)]">

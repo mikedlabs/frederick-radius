@@ -69,7 +69,7 @@ const narrowList: MapTaskList = {
 /** The fallback's uncertainty and Retry precede the rows in a real scroller.
  * Scroll each independent target into reach, then probe one stable painted
  * frame. A clipped/covered 44px area still fails with its exact hit geometry. */
-async function expectReachableTarget(target: HTMLElement) {
+async function expectReachableTarget(target: HTMLElement, edgeClearance = 0) {
   target.scrollIntoView({ block: "nearest", inline: "nearest" });
   const owner = target.ownerDocument;
   const view = owner.defaultView!;
@@ -88,16 +88,29 @@ async function expectReachableTarget(target: HTMLElement) {
         hit: hit ? { tag: hit.tagName, label: hit.getAttribute("aria-label") } : null,
       };
     });
+    const scroller = target.closest<HTMLElement>("[data-map-list-body]");
+    const clip = scroller?.getBoundingClientRect();
+    const scrollport = scroller && clip ? {
+      top: clip.top + scroller.clientTop, bottom: clip.bottom,
+      scrollTop: scroller.scrollTop, clientHeight: scroller.clientHeight,
+      scrollHeight: scroller.scrollHeight,
+    } : null;
     const geometry = JSON.stringify({
       target: target.getAttribute("aria-label") ?? target.textContent,
       box: { x: box.x, y: box.y, width: box.width, height: box.height },
-      viewport: { width: view.innerWidth, height: view.innerHeight }, samples,
+      viewport: { width: view.innerWidth, height: view.innerHeight }, samples, scrollport,
     });
     await expect(Math.abs(box.x - previous.x), geometry).toBeLessThanOrEqual(0.25);
     await expect(Math.abs(box.y - previous.y), geometry).toBeLessThanOrEqual(0.25);
     await expect(box.width, geometry).toBeGreaterThanOrEqual(44);
     await expect(box.height, geometry).toBeGreaterThanOrEqual(44);
     await expect(samples.map((sample) => sample.reachable), geometry).toEqual([true, true, true, true, true]);
+    if (edgeClearance > 0) {
+      if (!scrollport) throw new Error("This action must belong to the real map-list scrollport.");
+      await expect(scrollport.scrollHeight, geometry).toBeGreaterThan(scrollport.clientHeight);
+      await expect(box.top - scrollport.top, geometry).toBeGreaterThanOrEqual(edgeClearance);
+      await expect(scrollport.bottom - box.bottom, geometry).toBeGreaterThanOrEqual(edgeClearance);
+    }
   });
 }
 
@@ -242,7 +255,10 @@ export const ExactReviewedPhotosAt320: Story = {
     await expect(scoped.getByText("Photo by Acroterion.")).toBeVisible();
     await expect(source.closest("button")).toBeNull();
     await expect(canvasElement.querySelector("button a, a button")).toBeNull();
-    for (const target of [open, directions, source, license]) await expectReachableTarget(target);
+    for (const target of [open, directions]) await expectReachableTarget(target);
+    // Native nearest scrolling must expose the entire credit action inside
+    // the fractional-height scrollport, including its physical edge probes.
+    for (const target of [source, license]) await expectReachableTarget(target, 3);
     await expect(canvas.queryByText(/from you/)).not.toBeInTheDocument();
     await userEvent.click(open);
     const selected = reviewedPhotoList.rows[1];
