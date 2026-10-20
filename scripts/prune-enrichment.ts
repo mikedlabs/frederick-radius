@@ -38,7 +38,7 @@ function main() {
   if (!ok) process.exit(1);
 
   if (process.argv.includes("--write")) {
-    writeFileSync(OUT, JSON.stringify(kept, null, 2) + "\n");
+    writeFileSync(OUT, JSON.stringify(kept) + "\n");
     console.log("wrote pruned src/data/places-enrichment.json\n");
   } else {
     console.log("DRY RUN — re-run with --write to apply.\n");

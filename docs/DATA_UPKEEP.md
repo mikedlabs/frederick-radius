@@ -86,6 +86,11 @@ the client models and release manifest. Never copy an old generated client set
 or a whole release manifest over newer reviewed data, restamp a retained source,
 or rerun a paid collector just because its branch is stale.
 
+Keep the existing enrichment snapshot compact when writing it. Whitespace
+expansion can exhaust the tracked repository budget even when no source facts
+change. Compacting bytes must preserve every parsed value and observation and
+requires the normal places-stream digest refresh; it does not renew evidence.
+
 Normal `verify` and `style-lint` remain required. Vercel owns the normal build
 from merged main. Confirm the exact deployment, public aliases and relevant
 mobile flows before reporting an update as live. Do not deploy the same SHA

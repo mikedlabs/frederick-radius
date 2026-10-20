@@ -27,7 +27,7 @@ function outOfState(rec) {
   return false;
 }
 
-// path -> "min" (single-line) | "pretty" (2-space) | "object" (keyed, 2-space)
+// path -> "min" (single-line) | "pretty" (2-space) | "object" (keyed; enrichment stays compact)
 const FILES = {
   "src/data/places-client.json": "min",
   "src/data/places-discovered.json": "pretty",
@@ -61,7 +61,9 @@ for (const [rel, mode] of Object.entries(FILES)) {
   }
 
   const serialized =
-    mode === "min" ? JSON.stringify(out) : JSON.stringify(out, null, 2);
+    mode === "min" || rel === "src/data/places-enrichment.json"
+      ? JSON.stringify(out)
+      : JSON.stringify(out, null, 2);
   writeFileSync(path, serialized + (endsNL ? "\n" : ""));
   grand += removed;
   console.log(`  ${rel.padEnd(38)} removed ${removed}`);

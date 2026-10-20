@@ -139,7 +139,7 @@ function main() {
   }
 
   writeFileSync(DISCOVERED, JSON.stringify(discovered, null, 2));
-  writeFileSync(ENRICHMENT, JSON.stringify(enrichment, null, 2));
+  writeFileSync(ENRICHMENT, JSON.stringify(enrichment));
   console.log(`\n  Appended ${added} curated places (${skipped} skipped). discovered now ${discovered.length}.`);
   console.log("  by town:", Object.entries(byMuni).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}:${v}`).join("  "));
   console.log("  wrote places-discovered.json + places-enrichment.json (APPEND-only; existing slugs untouched).\n");
