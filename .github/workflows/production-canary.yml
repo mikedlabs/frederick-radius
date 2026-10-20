@@ -38,6 +38,8 @@ jobs:
     # the one event that mattered — the build that died — skipped this job
     # silently. A failed build leaves the apex serving an older commit, which
     # is exactly the drift this canary exists to name.
+    # Another workflow may create the Production record before Vercel. Trust
+    # the completion status author, not the record's original creator.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (
@@ -47,7 +49,7 @@ jobs:
           github.event.deployment_status.state == 'error'
         ) &&
         github.event.deployment.environment == 'Production' &&
-        github.event.deployment.creator.login == 'vercel[bot]'
+        github.event.deployment_status.creator.login == 'vercel[bot]'
       )
     runs-on: ubuntu-latest
     timeout-minutes: 10
