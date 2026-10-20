@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page, type Route, type TestInfo } from "@playwright/test";
+import { writeFile } from "node:fs/promises";
 import catalog from "../src/data/places-client.json";
 
 const creekSlug = "carroll-creek-linear-park-frederick";
@@ -12,6 +13,23 @@ type DeferredLookup = {
   finish: (result: "full" | "unavailable") => void;
   done: Promise<void>;
 };
+type RequestMetadata = {
+  method: string;
+  path: string;
+  resourceType: string;
+  nextRouterPrefetch: string | null;
+};
+
+function automaticPlaceMetadataRequests(requests: string[]) {
+  // Basic and live Google context share /enrich; venue events use /events.
+  // A Next navigation prefetch of the /events page is not either API route.
+  return requests.filter(request => /^\S+ \/api\/place\/[^/]+\/(?:enrich|events)$/.test(request));
+}
+
+function expectNoAutomaticPlaceMetadata(requests: string[]) {
+  const offendingRequests = automaticPlaceMetadataRequests(requests);
+  expect(offendingRequests, `Unresolved sheet metadata must not trigger place enrichment or venue-event APIs. Request receipt: ${JSON.stringify({ offendingRequests, requests }, null, 2)}`).toEqual([]);
+}
 
 /** Loopback acceptance of the real map recovery, sheet, focus and history.
  * The map/search/by-slugs boundaries use committed catalog records and an
@@ -27,6 +45,7 @@ async function installBoundary(page: Page, baseURL: string | undefined, info: Te
   const localCspAdjustments: Array<{ before: string; after: string }> = [];
   const lookups: DeferredLookup[] = [];
   const requests: string[] = [];
+  const requestMetadata: RequestMetadata[] = [];
   const blocked: string[] = [];
   const pageErrors: string[] = [];
   page.on("pageerror", error => pageErrors.push(error.message));
@@ -44,6 +63,10 @@ async function installBoundary(page: Page, baseURL: string | undefined, info: Te
   await page.route("**/*", async (route: Route) => {
     const request = route.request(), url = new URL(request.url());
     requests.push(`${request.method()} ${url.pathname}`);
+    requestMetadata.push({
+      method: request.method(), path: url.pathname, resourceType: request.resourceType(),
+      nextRouterPrefetch: request.headers()["next-router-prefetch"] ?? null,
+    });
     if (url.origin !== origin || !["GET", "HEAD"].includes(request.method())) {
       blocked.push(`${request.method()} ${url.hostname}${url.pathname}`);
       return route.abort("blockedbyclient");
@@ -115,10 +138,16 @@ async function installBoundary(page: Page, baseURL: string | undefined, info: Te
     },
     releaseAll() { for (const lookup of lookups) lookup.finish("unavailable"); },
     async attach() {
-      await info.attach("loopback-continuity-boundary", { body: JSON.stringify({
+      const receipt = JSON.stringify({
         scope: "Controlled loopback catalog records; unavailable optional metadata and WebGL; real application/history/owned local image. No live-provider availability claim.",
-        lookups: lookups.map(lookup => lookup.slug), requests, blocked, pageErrors, localHttpWebKitCspOnly: localCspAdjustments,
-      }, null, 2), contentType: "application/json" });
+        lookups: lookups.map(lookup => lookup.slug), requests, requestMetadata,
+        automaticPlaceMetadataRequests: automaticPlaceMetadataRequests(requests),
+        legacyBroadDiagnosticMatches: requests.filter(request => /\/enrich|\/events$|\/api\/place\/.*\/context/.test(request)),
+        blocked, pageErrors, localHttpWebKitCspOnly: localCspAdjustments,
+      }, null, 2);
+      const receiptPath = info.outputPath("loopback-continuity-boundary.json");
+      await writeFile(receiptPath, receipt);
+      await info.attach("loopback-continuity-boundary", { path: receiptPath, contentType: "application/json" });
     },
   };
 }
@@ -190,7 +219,7 @@ test("seeded Details hydrates within one sheet and native Back restores its exac
     await expect(sheet.getByRole("status")).toHaveText("Loading place details…");
     await expect(page.getByRole("dialog")).toHaveCount(1);
     await expect.poll(() => boundary.lookups.length).toBe(1);
-    expect(boundary.requests.some(path => path.includes("/enrich"))).toBe(false);
+    expectNoAutomaticPlaceMetadata(boundary.requests);
     await expect.poll(() => page.evaluate(() => String(history.state?.__frederickRadiusLayer ?? ""))).toMatch(/^place-sheet:/);
     await page.goBack();
     await expectSameMap(page, selectedUrl);
@@ -247,7 +276,7 @@ test("failed seeded metadata stays usable in the same layer without automatic en
     await expect(sheet.getByRole("link", { name: "Directions", exact: true })).toBeVisible();
     const fullPage = sheet.getByRole("link", { name: "See full page", exact: true });
     await expect(fullPage).toHaveAttribute("href", `/places/${creekSlug}?returnTo=${encodeURIComponent(new URL(selectedUrl).pathname + new URL(selectedUrl).search)}`);
-    expect(boundary.requests.some(path => /\/enrich|\/events$|\/api\/place\/.*\/context/.test(path))).toBe(false);
+    expectNoAutomaticPlaceMetadata(boundary.requests);
     expect(await page.evaluate(() => history.state.__frederickRadiusLayer)).toBe(layer);
     await expect(page).toHaveURL(selectedUrl);
     await expect(page.getByRole("dialog")).toHaveCount(1);

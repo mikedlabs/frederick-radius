@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
+import { writeFile } from "node:fs/promises";
 
 const placeName = "Curious Iguana";
 const placeSlug = "the-curious-iguana-frederick";
@@ -82,19 +83,50 @@ async function expectNoOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 }
 
-async function expectReachableTarget(target: Locator) {
+async function expectReachableTarget(target: Locator, diagnostics?: { page: Page; info: TestInfo; label: string }) {
+  const inspect = () => target.evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    const x = box.left + box.width / 2, y = box.top + box.height / 2;
+    const describe = (element: Element) => ({ tag: element.tagName, class: element.getAttribute("class"), label: element.getAttribute("aria-label"), text: element.textContent?.trim().slice(0, 140) });
+    const ancestors = [];
+    for (let element: Element | null = node; element; element = element.parentElement) {
+      const style = getComputedStyle(element), rect = element.getBoundingClientRect();
+      ancestors.push({ ...describe(element), box: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, position: style.position, zIndex: style.zIndex, opacity: style.opacity, transform: style.transform, pointerEvents: style.pointerEvents, overflow: style.overflow, scrollPaddingTop: style.scrollPaddingTop });
+    }
+    const points = [[x, y], [x - 21.5, y], [x + 21.5, y], [x, y - 21.5], [x, y + 21.5]].map(([px, py]) => {
+      const hit = document.elementFromPoint(px, py);
+      return { x: px, y: py, owned: hit === node || Boolean(hit && node.contains(hit)), hit: hit ? describe(hit) : null, stack: document.elementsFromPoint(px, py).slice(0, 6).map(describe) };
+    });
+    return { at: performance.now(), scrollY, scrollHeight: document.documentElement.scrollHeight, viewport: { width: innerWidth, height: innerHeight, offsetTop: visualViewport?.offsetTop }, box: { x: box.x, y: box.y, width: box.width, height: box.height }, activeElement: document.activeElement ? describe(document.activeElement) : null, points, ancestors, animations: document.getAnimations().filter(animation => animation.playState === "running").map(animation => ({ name: (animation as CSSAnimation).animationName ?? null, target: animation.effect instanceof KeyframeEffect && animation.effect.target instanceof Element ? describe(animation.effect.target) : null })) };
+  });
+  const samples: Array<{ stage: string; state: Awaited<ReturnType<typeof inspect>> }> = [];
   await target.evaluate((node) => node.scrollIntoView({ block: "center" }));
   await expect(target).toBeVisible();
   // Small controls have real 44px pseudo-element hit extenders. Probe the
   // effective target rather than incorrectly requiring a 44px visual face.
-  await expect.poll(() => target.evaluate((node) => {
-    const box = node.getBoundingClientRect();
-    const x = box.left + box.width / 2, y = box.top + box.height / 2;
-    return [[x, y], [x - 21.5, y], [x + 21.5, y], [x, y - 21.5], [x, y + 21.5]].every(([px, py]) => {
-      const hit = document.elementFromPoint(px, py);
-      return hit === node || Boolean(hit && node.contains(hit));
-    });
-  })).toBe(true);
+  try {
+    await expect.poll(() => diagnostics ? inspect().then(state => {
+      samples.push({ stage: "physical-probe", state });
+      return state.points.every(point => point.owned);
+    }) : target.evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      const x = box.left + box.width / 2, y = box.top + box.height / 2;
+      return [[x, y], [x - 21.5, y], [x + 21.5, y], [x, y - 21.5], [x, y + 21.5]].every(([px, py]) => {
+        const hit = document.elementFromPoint(px, py);
+        return hit === node || Boolean(hit && node.contains(hit));
+      });
+    })).toBe(true);
+  } catch (error) {
+    if (diagnostics) {
+      const geometryPath = diagnostics.info.outputPath(`${diagnostics.label}-hit-geometry.json`);
+      await writeFile(geometryPath, JSON.stringify(samples, null, 2));
+      await diagnostics.info.attach(`${diagnostics.label}-hit-geometry`, { contentType: "application/json", path: geometryPath });
+      const path = diagnostics.info.outputPath(`${diagnostics.label}-failure.png`);
+      await diagnostics.page.screenshot({ path });
+      await diagnostics.info.attach(`${diagnostics.label}-failure`, { contentType: "image/png", path });
+    }
+    throw error;
+  }
 }
 
 for (const dismissal of ["Back", "Close", "Escape"] as const) {
@@ -177,7 +209,7 @@ for (const width of [390, 320]) {
     await expect(page.getByRole("dialog")).toHaveCount(0);
     const restoredCard = page.locator("main article").filter({ has: page.getByRole("heading", { name: placeName, exact: true }) });
     const restoredOpen = restoredCard.getByRole("button", { name: /^View Curious Iguana .*details$/ });
-    await expectReachableTarget(restoredOpen);
+    await expectReachableTarget(restoredOpen, { page, info, label: "nearby-restored-open" });
     const scrollBeforeReopen = await page.evaluate(() => scrollY);
     await openFullSheet(page, restoredOpen);
     await page.keyboard.press("Escape");
