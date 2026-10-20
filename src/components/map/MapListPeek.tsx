@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState, type CSSProperties } from "react";
+import { useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { CalendarDays, ChevronDown, CornerUpRight, LoaderCircle } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { eventDisplayTitle } from "@/lib/events/display-title";
@@ -11,6 +11,10 @@ import { withMapReturnTo } from "@/lib/map-return";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { haptic } from "@/lib/haptics";
 import CategoryIcon from "@/components/place/CategoryIcon";
+import CompactPlacePhoto from "@/components/place/CompactPlacePhoto";
+import { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
+import { placeCardPhotoPlan, recordPlaceCardPhotoResult, selectedPlaceCardPhoto,
+  type PlaceCardPhotoResult, type PlaceCardPhotoState } from "@/lib/place-card-photo";
 import {
   MAP_TASK_LIST_PAGE,
   mapRankedSearchHref,
@@ -28,9 +32,9 @@ import styles from "./MapListPeek.module.css";
  * dock, shows five rows, pages with "Show more", and collapses to its title
  * so the map stays readable. Opening a place is always an explicit row tap.
  *
- * Every row leads with a visual that cannot lie: the category mark on the
- * place's own color, or a time plate for an event. Photos are left to the
- * place card, because a row must never wait on, or fake, a photograph.
+ * Exact owned/licensed registry photos render immediately where available;
+ * other places retain their category mark. This browse surface never hydrates
+ * or requests paid Google imagery. Event time plates remain unchanged.
  */
 
 function placeStatus(place: MapPinPlace): { text: string; tone: string } | null {
@@ -78,6 +82,23 @@ function PlaceRow({
   leading?: boolean;
   searchSubtitle?: string;
 }) {
+  // Supply only canonical identity: automatic browse rows must not turn
+  // inline Google metadata into new paid image requests.
+  const registryPlan = placeCardPhotoPlan({ slug: place.slug }, 72);
+  // Owned browse photos stand alone, keeping the owner's compact rows free
+  // of an invisible licensed-alternative footer. Failure retains the category.
+  const owned = registryPlan.sources.find((source) => source.kind === "owned");
+  const plan = { ...registryPlan, sources: owned ? [owned] : registryPlan.sources.filter((source) => source.kind === "curated") };
+  const creditSource = plan.sources.find((source) => source.kind === "curated") ?? null;
+  const currentPlan = useRef(plan.key);
+  useLayoutEffect(() => { currentPlan.current = plan.key; }, [plan.key]);
+  const [photoState, setPhotoState] = useState<PlaceCardPhotoState | null>(null);
+  const photo = selectedPlaceCardPhoto(plan, photoState);
+  const photoLoaded = photoState?.planKey === plan.key && photoState.loadedSrc === photo?.src;
+  const onPhotoResult = (src: string, result: PlaceCardPhotoResult) => {
+    setPhotoState((state) => currentPlan.current === plan.key
+      ? recordPlaceCardPhotoResult(plan, state, src, result) : state);
+  };
   const category = CATEGORY_BY_SLUG[place.category];
   const color = category?.color ?? "var(--app-brand)";
   const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name;
@@ -118,6 +139,10 @@ function PlaceRow({
         <span
           aria-hidden
           className={styles.categoryMark}
+          data-map-list-photo={place.slug}
+          data-has-photo-plan={plan.sources.length > 0 || undefined}
+          data-photo-state={photo ? photoLoaded ? "ready" : "pending" : "fallback"}
+          data-photo-source={photo?.kind}
           style={
             {
               color,
@@ -126,6 +151,8 @@ function PlaceRow({
           }
         >
           <CategoryIcon slug={place.category} className="h-5 w-5" strokeWidth={1.9} />
+          {photo && <CompactPlacePhoto src={photo.src} size={72} onResult={onPhotoResult}
+            objectPosition={photo.kind === "owned" ? photo.objectPosition : undefined} />}
         </span>
         <span className="min-w-0 flex-1">
           <span data-map-list-place-name className="block break-words text-[15px] font-semibold leading-snug text-[var(--app-ink)]">
@@ -168,6 +195,10 @@ function PlaceRow({
           <span>Directions</span>
         </a>
       )}
+      {creditSource && <div className={styles.photoCredit}>
+        <PlaceCardPhotoCredit source={creditSource}
+          loaded={Boolean(photoLoaded && photo?.src === creditSource.src)} touchTarget compact />
+      </div>}
     </div>
   );
 }
@@ -354,7 +385,7 @@ export default function MapListPeek({
         id={listId}
         data-map-list-body
         hidden={!expanded}
-        className="max-h-[min(46dvh,380px)] overflow-y-auto overscroll-contain border-t border-[var(--app-border)]"
+        className={`${styles.body} max-h-[min(46dvh,380px)] overflow-y-auto overscroll-contain border-t border-[var(--app-border)]`}
       >
         {list.note && (
           <p className="px-3 pb-1 pt-2 text-[12px] leading-snug text-[var(--app-ink-3)]">

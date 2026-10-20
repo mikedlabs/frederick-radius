@@ -57,6 +57,48 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "beans_belfry_hours",
+    "name": "Beans in the Belfry — First-party Hours",
+    "owner": "Beans in the Belfry",
+    "url": "https://beansinthebelfry.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "beans_belfry_hours",
+      "https://beansinthebelfry.com/"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "brewers_alley_hours",
+    "name": "Brewer's Alley — First-party Hours",
+    "owner": "Brewer's Alley",
+    "url": "https://brewers-alley.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "brewers_alley_hours",
+      "https://brewers-alley.com/"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "business_info_extraction",
     "name": "Business Website Information Workflow",
     "owner": "Frederick Radius",
@@ -1327,6 +1369,27 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "gravel_grind_hours",
+    "name": "Gravel & Grind — First-party Hours",
+    "owner": "Gravel & Grind",
+    "url": "https://www.gravelandgrind.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "gravel_grind_hours",
+      "https://www.gravelandgrind.com/"
+    ],
     "rowsRequired": false,
     "publicationApplicability": "required"
   },

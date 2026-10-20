@@ -8,7 +8,7 @@
 > runs on GitHub Actions; if it's a safe, idempotent refresh of a known
 > source, it runs on Vercel cron.
 
-**Last updated:** 2026-09-01
+**Last updated:** 2026-10-19
 
 ---
 
@@ -29,7 +29,7 @@ food-truck jobs.
 | Every 4 hours at :15                                                       | `food-truck-schedules`        | Refreshes the compact published-stop artifact from allowlisted vendor, venue, and organizer calendars.                                                                                                                                                      | Vercel cron (`/api/cron/food-truck-schedules`)                           |
 | Nightly 09:00 UTC                                                          | `ingest/civicengage`          | Refreshes Frederick County and municipal CivicEngage calendars into the event store, with one durable source heartbeat per domain.                                                                                                                          | Vercel cron (`/api/ingest/civicengage`)                                  |
 | Dormant                                                                    | `business-status`             | The legacy status-only diagnostic is manual. The scheduled hours refresh already collects Google business status in the same paid Place Details request, so a second sweep would pay twice for the same observation.                                      | Manual diagnostic only; not present in `vercel.json`                     |
-| Nightly 08:00 UTC                                                          | `hours-refresh`               | Refreshes one seventh of Google-backed place hours and persists the results to Postgres. Requires `HOURS_REFRESH_CRON=1`.                                                                                                                                   | Vercel cron (`/api/cron/hours-refresh`)                                  |
+| Nightly 08:00 UTC | `hours-refresh` | Paid Google writer over six deterministic daily buckets. Requires reviewed policy/runtime switches, the hours flag, and a shared daily budget large enough for the selected bucket; otherwise it makes no provider request. | Vercel cron (`/api/cron/hours-refresh`) |
 | Nightly 08:20 UTC                                                          | `spatial-places`              | Atomically syncs the deployed public place catalog into its private PostGIS mirror and stamps a checksum only after exact coordinate parity. Requires verified migration `0037` and `RADIUS_POSTGIS_SYNC=1`.                                                | Vercel cron (`/api/cron/spatial-places`)                                 |
 | Nightly 08:30 UTC                                                          | `radius-search`               | Fills or updates a bounded batch of the private place search index. Unchanged place documents cost nothing. Requires `RADIUS_SEARCH_CRON=1`.                                                                                                                | Vercel cron (`/api/cron/radius-search`)                                  |
 | Every 2 hours at :05                                                       | `data-health-feeds`           | Pulls the bounded live-feed set and persists one current snapshot for each successful source.                                                                                                                                                               | Vercel cron (`/api/cron/data-health-feeds`)                              |
@@ -40,7 +40,8 @@ food-truck jobs.
 | Daily 08:00 UTC                                                            | **ingest-business-info**      | Reads eligible food and drink websites in a bounded batch, rebuilds the description review queue, and opens a review PR.                                                                                                                                    | GitHub Actions (`.github/workflows/ingest-business-info.yml`)            |
 | Daily 08:30 UTC                                                            | **ingest-civic**              | Refreshes municipal civic information from configured government sources and opens a review PR.                                                                                                                                                             | GitHub Actions (`.github/workflows/ingest-civic.yml`)                    |
 | Daily 09:30 UTC                                                            | **ingest-venues**             | Refreshes events from configured venue websites, runs copy and provenance checks, and opens a review PR.                                                                                                                                                    | GitHub Actions (`.github/workflows/ingest-venues.yml`)                   |
-| Nightly 09:00 UTC                                                          | **data-steward**              | Pulls the business-status and hours snapshots, rebuilds public data, blocks critical safety failures, reports high-severity debt, and opens a review PR for incremental improvements.                                                                       | GitHub Actions (`.github/workflows/data-steward.yml`)                    |
+| Nightly 09:17 UTC                                                          | **data-steward**              | Pulls the business-status and hours snapshots, rebuilds public data, blocks critical safety failures, reports high-severity debt, and opens a review PR for incremental improvements.                                                                       | GitHub Actions (`.github/workflows/data-steward.yml`)                    |
+| Daily 09:17 UTC | **official-hours** (independent data-steward job) | Makes at most five fixed free HTTP GETs: two FCPL pages and three reviewed merchant sites. Failed or conflicting merchant pages become review records; dated schedules keep their real coverage horizon. Rebuilds and validates the public snapshot, then opens or updates the existing reviewed hours PR. A green job is not a merged deployment. | GitHub Actions (`.github/workflows/data-steward.yml`) |
 | Manual                                                                     | **feed-health**               | Runs the deeper all-source diagnostic on demand. Scheduled Vercel collectors own source heartbeats, and the nightly health reporter owns the recurring signal, so GitHub does not pay to probe the same endpoints again.                                   | Manual `workflow_dispatch` (`.github/workflows/feed-health.yml`)         |
 | Manual                                                                     | **legacy data snapshot**      | Fetches the isolated `data-snapshots` branch for pipeline development. Production does not read this branch, so refresh and freshness verification remain manual until a production consumer is approved.                                                 | Manual `workflow_dispatch` (`data-refresh.yml`, `freshness-check.yml`)   |
 | Monthly on the 1st at 08:00 UTC; runner activation pending                 | **Build MARC schedule**       | Rebuilds the reviewed MARC GTFS snapshot, validates the exact output, and sends any change through a pull request. Before the capped `radius-data-nas` runner completes its accepted handoff and pilot, a scheduled or manual build can queue but cannot run. | Capped NAS build with GitHub-hosted publish and checks (`.github/workflows/build-marc-schedule.yml`) |
@@ -55,6 +56,15 @@ Each GitHub Actions workflow listed above exposes `workflow_dispatch` for a
 manual run. All cron times are UTC; Frederick County
 is UTC−4 during daylight saving time and UTC−5 during standard time. Source
 Watch is manual-only while its unchanged-repeat proof is pending.
+
+Source Intelligence persists validated main-branch state checkpoints alongside
+its Actions cache. Missing established state stops paid runs; explicit first
+initialization is allowed only when history has no earlier provider reservations.
+Its manual `tavily-recover`
+choice reconstructs conservative Scout reservations from complete workflow
+history without a provider request or review issue; it never resets budgets,
+changes these schedules, or fabricates a Firecrawl comparison baseline. See
+`docs/SOURCE_INTELLIGENCE.md` for the recovery procedure.
 
 ---
 
@@ -87,6 +97,15 @@ produces a _repo_ artifact rather than a live-store write:
   remain fail-soft. Critical publication gates still block the PR; known
   high-severity coverage debt is reported without preventing an incremental
   refresh from being reviewed.
+- **official-hours** runs independently on the same 09:17 UTC schedule, with
+  the fixed FCPL and reviewed merchant allowlists. It does not use Google,
+  Firecrawl, Tavily, Apify, a model, or a new cron. The existing hours review PR
+  carries both artifacts and their derived client release. Unchanged parsed
+  schedules may refresh a real successful observation; failed reads retain
+  their old successful timestamps and stage review rather than advancing
+  freshness. Dated merchant weeks still expire at their actual end. The source
+  ledger and generated coverage report measure published evidence separately
+  from collection and pending review.
 - **feed-health** is an operator diagnostic. It has no `|| true`, so a dead
   critical feed fails a manual run, but recurring source health comes from the
   collectors' durable heartbeats and the single nightly reporter.

@@ -37,6 +37,23 @@ describe("PlaceMedallion", () => {
     expect(html).toContain("<svg");
   });
 
+  it("uses the exact owned Creek image before supplied Google media without requiring a lookup", () => {
+    const html = renderToStaticMarkup(createElement(PlaceMedallion, {
+      place: { ...PLACE, slug: "carroll-creek-linear-park-frederick", google_photo_url: "/api/place-photo?name=places%2Fcreek%2Fphotos%2Ffront&w=800" },
+    }));
+    const src = html.match(/<img[^>]*src="([^"]+)"/)?.[1];
+    expect(new URL(src!, "https://frederickradius.local").searchParams.get("url"))
+      .toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+    expect(html).toContain('data-place-photo-source="owned"');
+    expect(html).not.toContain("/api/place-photo");
+  });
+
+  it("does not show a licensed photograph in a lockup without an independent credit surface", () => {
+    const html = renderToStaticMarkup(createElement(PlaceMedallion, { place: { ...PLACE, slug: "new-market-historic-district-new-market" } }));
+    expect(html).not.toContain("<img");
+    expect(html).toContain('data-place-media="fallback"');
+  });
+
   it("uses the category mark when a place has no approved photo", () => {
     const html = renderToStaticMarkup(
       createElement(PlaceMedallion, { place: PLACE }),

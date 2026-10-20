@@ -96,6 +96,8 @@ const LICENSED_EVENT_VENUE_LABELS: Readonly<Record<keyof typeof CREDITED_LOCAL_P
   "delaplaine-arts-center-frederick": "Delaplaine Arts Center exterior",
   "weinberg-center-for-the-arts-frederick": "Weinberg Center exterior, photographed in 2018",
   "c-burr-artz-public-library-frederick": "C. Burr Artz Public Library exterior",
+  "new-market-historic-district-new-market": "New Market Historic District streetscape",
+  "catoctin-mountain-park": "Chimney Rock at Catoctin Mountain Park",
 };
 
 function licensedEventVenueVisual(venueSlug: string | undefined): EventCardVisual | null {

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 const read = (name: string) => readFileSync(`.github/workflows/${name}`, "utf8");
-const expectedPaths = ["docs/coverage-scorecard.md", "docs/hours-refresh-review.md", "src/data/data-release.json", "src/data/event-venue-photo-credits.json", "src/data/place-refresh-identities.json", "src/data/places-client-hours.json", "src/data/places-client.json", "src/data/places-official-hours.json"].sort();
+const expectedPaths = ["docs/coverage-scorecard.md", "docs/hours-refresh-review.md", "src/data/data-release.json", "src/data/event-venue-photo-credits.json", "src/data/place-refresh-identities.json", "src/data/places-client-hours.json", "src/data/places-client.json", "src/data/places-official-hours.json", "src/data/places-merchant-hours.json"].sort();
 describe("official library hours delivery boundary", () => {
   it("reuses the existing schedule and credential-isolated publication with a fail-closed semantic gate", () => {
     const workflow = parse(read("data-steward.yml"));
@@ -26,7 +26,7 @@ describe("official library hours delivery boundary", () => {
     expect(checks.with.head_sha).toBe("${{ needs.official-hours-publish.outputs.pr_head_sha }}");
     expect(JSON.stringify(producer)).not.toMatch(/secrets\.|DATABASE_URL|GOOGLE_PLACES|self-hosted/);
   });
-  it("permits exactly the same eight output paths in both existing trusted check boundaries", () => {
+  it("permits exactly the same bounded output paths in both existing trusted check boundaries", () => {
     for (const name of ["automated-pr-checks.yml", "automated-pr-status-bridge.yml"]) {
       const text = read(name);
       const match = text.match(/'bot\/official-library-hours':\s*\[([^\]]+)\]/);

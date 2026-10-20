@@ -1,7 +1,8 @@
 /** Bounded first-party refresh. A failed fetch/parse never rewrites the last good artifact or observation date. */
 import { readFileSync, writeFileSync, renameSync, appendFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { collectMerchantOfficialHours, fetchMerchantHoursPage } from "./lib/merchant-official-hours";
 import { FCPL_HOURS_URL, FCPL_CLOSURES_URL } from "../src/lib/official-hours";
 import { fetchOfficialHoursPage, parseFcplOfficialHours, officialHoursNeedsReview } from "./lib/fcpl-official-hours";
 
@@ -10,6 +11,8 @@ export async function refreshOfficialHours(args = process.argv.slice(2), options
   outputPath?: string;
   fetchPage?: typeof fetchOfficialHoursPage;
   now?: Date;
+  merchantOutputPath?: string;
+  fetchMerchantPage?: typeof fetchMerchantHoursPage;
 } = {}) {
   for (const arg of args) if (!/^--(?:dry-run$|evidence-dir=|weekly-observed-at=|closures-observed-at=)/.test(arg)) throw new Error(`Unknown option: ${arg}`);
   const fetchPage = options.fetchPage ?? fetchOfficialHoursPage;
@@ -25,17 +28,28 @@ export async function refreshOfficialHours(args = process.argv.slice(2), options
   const output = options.outputPath ?? resolve("src/data/places-official-hours.json");
   let previous: unknown;
   try { previous = JSON.parse(readFileSync(output, "utf8")); } catch { previous = undefined; }
-  const reviewRequired = officialHoursNeedsReview(previous, artifact);
+  const merchantOutput = options.merchantOutputPath ?? (options.outputPath ? resolve(dirname(output), "merchant-hours.json") : resolve("src/data/places-merchant-hours.json"));
+  let previousMerchant: unknown;
+  try { previousMerchant = JSON.parse(readFileSync(merchantOutput, "utf8")); } catch { previousMerchant = undefined; }
+  // Historical FCPL replay never makes fresh merchant requests or advances merchant evidence.
+  // Injected FCPL-only tests likewise cannot accidentally use a live transport.
+  const merchantFetcher = options.fetchMerchantPage ?? (options.fetchPage ? async () => { throw new Error("No merchant test receipt supplied."); } : fetchMerchantHoursPage);
+  const merchants = evidence || (options.fetchPage && !options.fetchMerchantPage) ? undefined : await collectMerchantOfficialHours(previousMerchant, merchantFetcher, options.now);
+  const reviewRequired = officialHoursNeedsReview(previous, artifact) || (merchants?.reviewRequired ?? false);
   if (!args.includes("--dry-run")) {
     const temporary = `${output}.tmp`;
     writeFileSync(temporary, JSON.stringify(artifact, null, 2) + "\n");
     renameSync(temporary, output);
+    if (merchants) {
+      writeFileSync(`${merchantOutput}.tmp`, JSON.stringify(merchants.artifact, null, 2) + "\n");
+      renameSync(`${merchantOutput}.tmp`, merchantOutput);
+    }
   }
-  console.log(JSON.stringify({ status: "complete", reviewRequired, dryRun: args.includes("--dry-run"), source: artifact.source_id, places: artifact.places.length, dateExceptions: artifact.closures.exceptions.length, observedAt: [weekly.observedAt, closures.observedAt], expiresAt: artifact.expires_at }));
-  return { reviewRequired, artifact };
+  console.log(JSON.stringify({ status: "complete", reviewRequired, dryRun: args.includes("--dry-run"), source: artifact.source_id, places: artifact.places.length, dateExceptions: artifact.closures.exceptions.length, observedAt: [weekly.observedAt, closures.observedAt], expiresAt: artifact.expires_at, merchantSchedules: merchants?.artifact.places.length ?? "unchanged-offline", merchantPendingCount: merchants?.artifact.review.length ?? 0, merchantReview: merchants?.artifact.review.map(({ slug, reason }) => ({ slug, reason })) ?? [] }));
+  return { reviewRequired, artifact, merchants };
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  refreshOfficialHours().then(({ reviewRequired }) => {
-    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `review_required=${reviewRequired}\n`);
+  refreshOfficialHours().then(({ reviewRequired, merchants }) => {
+    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `review_required=${reviewRequired}\nmerchant_pending_count=${merchants?.artifact.review.length ?? 0}\nmerchant_pending_summary=${merchants?.artifact.review.map(({ slug, reason }) => `${slug}: ${reason}`).join(", ") || "none"}\n`);
   }).catch((error) => { console.error(error instanceof Error ? error.message : error); process.exitCode = 1; });
 }

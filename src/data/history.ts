@@ -274,14 +274,7 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "new-market-antiques",
-    image: {
-      src: "/history-photos/new-market-antiques.jpg",
-      alt: "The historic Main Street of New Market, MD, with a brick storefront building and picket fences along the road",
-      creator: "Acroterion",
-      source_url: "https://commons.wikimedia.org/wiki/File:New_Market_HD_MD1.jpg",
-      license: CC_BY_SA_4,
-      modifications: DISPLAY_MODIFICATIONS,
-    },
+    image: CREDITED_LOCAL_PLACE_PHOTOS["new-market-historic-district-new-market"].image,
     title: "Antiques Capital of Maryland",
     kind: "fact",
     body: "The town of New Market, population about 600, was officially designated the Antiques Capital of Maryland by the General Assembly in 1985. Its single Main Street has packed nearly 40 antique shops into less than a mile.",
@@ -323,14 +316,7 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "catoctin-mountain-park",
-    image: {
-      src: "/history-photos/catoctin-mountain-park.jpg",
-      alt: "The Chimney Rock vista at Catoctin Mountain Park, MD, with boulders overlooking a forested mountain valley",
-      creator: "Vegemighty",
-      source_url: "https://commons.wikimedia.org/wiki/File:Chimney_rock_catoctin.JPG",
-      license: CC0,
-      modifications: DISPLAY_MODIFICATIONS,
-    },
+    image: CREDITED_LOCAL_PLACE_PHOTOS["catoctin-mountain-park"].image,
     title: "Catoctin Mountain Park",
     kind: "fact",
     body: "One of the few US national parks created from CCC reforestation work in the 1930s, the mountain had been clear-cut for charcoal to feed the Catoctin Furnace iron works (which made cannonballs for the Continental Army). The Civilian Conservation Corps planted the trees you walk under today.",

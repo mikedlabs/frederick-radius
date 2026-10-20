@@ -1,7 +1,94 @@
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { APPEARANCE_KEY } from "../src/lib/appearance";
+import CLIENT_HOURS_RAW from "../src/data/places-client-hours.json";
+import type { Hours } from "../src/data/places";
+import { getOpenStatus, isScheduleEvidenceCurrent } from "../src/lib/hours";
+import { encodeSpec } from "../src/lib/plan/plan-token";
+
+
+// WebKit applies production upgrade-insecure-requests to localhost assets
+// despite bypassCSP. This seam applies only to HTTP loopback document GETs;
+// the same compiled document and every other response header stay intact.
+const localHeaderProof = new WeakMap<Page, {
+  changed: Array<{ url: string; before: string; after: string; htmlSha256: string; otherHeadersUnchanged: boolean }>;
+  untouched: Record<string, { count: number; exampleUrl: string }>;
+}>();
+test.beforeEach(async ({ page, browserName, baseURL }) => {
+  if (browserName !== "webkit" || !baseURL) return;
+  const origin = new URL(baseURL);
+  if (origin.protocol !== "http:" || !["localhost", "127.0.0.1"].includes(origin.hostname)) return;
+  const proof = { changed: [] as Array<{ url: string; before: string; after: string; htmlSha256: string; otherHeadersUnchanged: boolean }>, untouched: {} as Record<string, { count: number; exampleUrl: string }> };
+  localHeaderProof.set(page, proof);
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.origin !== origin.origin || url.protocol !== "http:" || !["localhost", "127.0.0.1"].includes(url.hostname)
+      || request.method() !== "GET" || !request.isNavigationRequest() || request.resourceType() !== "document") {
+      const reason = url.origin !== origin.origin ? "other-origin" : request.method() !== "GET" ? "non-get" : "non-navigation-document";
+      const previous = proof.untouched[reason];
+      proof.untouched[reason] = { count: (previous?.count ?? 0) + 1, exampleUrl: previous?.exampleUrl ?? `${url.origin}${url.pathname}` };
+      return route.fallback();
+    }
+    const response = await route.fetch({ maxRedirects: 0 });
+    const originalHeaders = response.headers();
+    const headers = { ...originalHeaders };
+    const before = headers["content-security-policy"];
+    if (before) {
+      const after = before.split(";").filter((directive) => directive.trim().toLowerCase() !== "upgrade-insecure-requests").join(";");
+      headers["content-security-policy"] = after;
+      const otherHeaders = Object.fromEntries(Object.entries(headers).filter(([name]) => name !== "content-security-policy"));
+      const originalOtherHeaders = Object.fromEntries(Object.entries(originalHeaders).filter(([name]) => name !== "content-security-policy"));
+      expect(otherHeaders).toEqual(originalOtherHeaders);
+      if (before !== after) proof.changed.push({ url: `${url.origin}${url.pathname}`, before, after, htmlSha256: createHash("sha256").update(await response.body()).digest("hex"), otherHeadersUnchanged: true });
+    }
+    await route.fulfill({ response, headers });
+  });
+});
+test.afterEach(async ({ page }, info) => {
+  const proof = localHeaderProof.get(page);
+  if (proof) await info.attach("webkit-http-loopback-document-header-seam", { contentType: "application/json", body: JSON.stringify(proof) });
+});
+
+const BEANS_SLUG = "beans-in-the-belfry-brunswick";
+const beansEvidence = (CLIENT_HOURS_RAW as Array<{ slug: string; hours: Hours }>).find((row) => row.slug === BEANS_SLUG);
+const localPlanClock = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+function localPlanStart(iso: string) {
+  const parts = Object.fromEntries(localPlanClock.formatToParts(new Date(iso)).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+function beansWindowState(at: Date): "open" | "closed" | "unknown" {
+  const hours = beansEvidence?.hours as Hours | undefined;
+  if (!hours || !isScheduleEvidenceCurrent(hours, new Date())) return "unknown";
+  const first = getOpenStatus(hours, { verified: true }, at);
+  const last = getOpenStatus(hours, { verified: true }, new Date(at.getTime() + 40 * 60_000 - 1));
+  if (first.state === "closed" || last.state === "closed") return "closed";
+  if ((first.state === "open" || first.state === "closing-soon") && (last.state === "open" || last.state === "closing-soon") && first.closesAt === last.closesAt) return "open";
+  return "unknown";
+}
+function beansPlannedWindow(state: "open" | "closed" = "open") {
+  const now = Date.now();
+  const hours = beansEvidence?.hours as Hours | undefined;
+  if (hours && isScheduleEvidenceCurrent(hours, new Date(now))) {
+    // Choose a real future visit covered by this source, not the wall-clock
+    // test execution hour. Never manufacture a newer source observation.
+    const end = Math.min(now + 7 * 86_400_000, Date.parse(hours._official!.expires_at) - 40 * 60_000);
+    for (let at = Math.ceil((now + 60 * 60_000) / 900_000) * 900_000; at < end; at += 900_000) {
+      if (beansWindowState(new Date(at)) === state) return { at: new Date(at).toISOString(), verified: true };
+    }
+  }
+  // Held/expired evidence remains an explicit unconfirmed draft. Its old
+  // weekly pattern is not treated as a current opening or closing claim.
+  const afterEvidence = hours?._official ? Date.parse(hours._official.expires_at) + 60_000 : 0;
+  return { at: new Date(Math.ceil(Math.max(now + 86_400_000, afterEvidence) / 60_000) * 60_000).toISOString(), verified: false };
+}
+function beansPlanUrl(at = beansPlannedWindow().at, requireVerifiedHours = false, returnTo?: string) {
+  const token = encodeSpec({ v: 1, i: { audience: "friends", vibe: "easy", duration_hours: 3, municipality: "brunswick", anchor_slug: BEANS_SLUG, start_at: at, require_verified_hours: requireVerifiedHours }, s: [{ p: BEANS_SLUG }] });
+  return `/plan?${new URLSearchParams({ p: token, in: "brunswick", ...(returnTo ? { returnTo } : {}) })}`;
+}
+
 
 async function seedAppearance(page: Page, appearance: "light" | "dark") {
   // App appearance is an explicit saved choice, independent of OS emulation.
@@ -77,7 +164,7 @@ async function withDeclaredRainNote(page: Page) {
   let injected = 0;
   await page.route((url) => url.pathname === "/plan", async (route) => {
     if (route.request().method() !== "POST" || !route.request().headers()["next-action"]) {
-      await route.continue();
+      await route.fallback();
       return;
     }
     const response = await route.fetch();
@@ -142,9 +229,11 @@ for (const [width, appearance, audience] of [[320, "light", "family"], [320, "da
 }
 
 async function rebuildCurrentAnchoredPlan(page: Page) {
-  await page.goto("/plan?place=beans-in-the-belfry-brunswick&in=brunswick", { waitUntil: "domcontentloaded" });
+  await page.goto("/plan?place=brunswick-heritage-museum&in=brunswick", { waitUntil: "domcontentloaded" });
   const stops = page.getByRole("list", { name: "Plan stops, in order", exact: true });
-  await expect(stops.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
+  await expect(stops.getByRole("heading", { name: "Brunswick Heritage Museum", exact: true })).toBeVisible();
+  await expect(stops.getByText("Hours unconfirmed", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Draft outing. These times are suggestions. Confirm each venue’s hours before setting out.", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Pinned", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Adjust", exact: true }).click();
   const editor = page.getByRole("dialog", { name: "Adjust the plan", exact: true });
@@ -157,8 +246,9 @@ async function rebuildCurrentAnchoredPlan(page: Page) {
   const spec = JSON.parse(Buffer.from(token, "base64url").toString("utf8")) as {
     i: { start_at: string; require_verified_hours: boolean }; s: Array<{ p?: string }>;
   };
-  expect(spec.s[0].p).toBe("beans-in-the-belfry-brunswick");
+  expect(spec.s[0].p).toBe("brunswick-heritage-museum");
   expect(spec.i.require_verified_hours).toBe(false);
+  await expect(stops.locator("[data-plan-stop]").first().getByText("Hours unconfirmed", { exact: true })).toBeVisible();
   expect(Date.parse(spec.i.start_at)).toBeGreaterThanOrEqual(before - 10_000);
   expect(Date.parse(spec.i.start_at)).toBeLessThanOrEqual(Date.now() + 10_000);
   return { stops, token };
@@ -181,8 +271,8 @@ for (const colorScheme of ["light", "dark"] as const) {
       // Measure viewport and document coordinates in one frame. Native result
       // focus may scroll, but the first stop must also fit at document top.
       measurements.push({ phase, ...await expectFirstStopFitsAtDocumentTop(page) });
-      await expect(page.getByText("Beans in the Belfry is your first stop. Add saved places below or adjust the plan.", { exact: true })).toHaveCount(0);
-      await expect(stops.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
+      await expect(page.getByText("Brunswick Heritage Museum is your first stop. Add saved places below or adjust the plan.", { exact: true })).toHaveCount(0);
+      await expect(stops.getByRole("heading", { name: "Brunswick Heritage Museum", exact: true })).toBeVisible();
       await expect(page.getByRole("button", { name: "Pinned", exact: true })).toHaveAttribute("aria-pressed", "true");
       await expect(stops.getByRole("button", { name: "Change", exact: true })).toBeEnabled();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -219,9 +309,57 @@ test("desktop dark anchored current-date result passes WCAG AA after rebuild and
   }
 });
 
+
+test("a source-confirmed closed choice stays saved outside the timed route and Adjust recovers an honest visit", async ({ page }, info) => {
+  const closed = beansPlannedWindow("closed");
+  const open = beansPlannedWindow("open");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(beansPlanUrl(closed.at, true), { waitUntil: "domcontentloaded" });
+  const review = page.getByRole("region", { name: "Choices to review", exact: true });
+  await expect(review.getByRole("link", { name: "Beans in the Belfry", exact: true })).toHaveAttribute("href", /^\/places\/beans-in-the-belfry-brunswick\?/);
+  await expect(review.getByText("This choice is outside the timed route.", { exact: true })).toBeVisible();
+  await expect(review.getByText(closed.verified
+    ? "The recorded hours do not cover this visit. Its choice is saved."
+    : "Current verified hours do not cover this visit. Confirm the hours or adjust your hours preference.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Plan stops, in order", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Open full route", exact: true })).toHaveCount(0);
+  const heldToken = new URL(page.url()).searchParams.get("p")!;
+  const held = JSON.parse(Buffer.from(heldToken, "base64url").toString("utf8")) as { i: { require_verified_hours: boolean }; s: Array<{ p: string }> };
+  expect(held.i.require_verified_hours).toBe(true);
+  expect(held.s).toEqual([{ p: BEANS_SLUG }]);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(review).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("p")).toBe(heldToken);
+  await page.getByRole("button", { name: "Adjust", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "Adjust the plan", exact: true });
+  await editor.getByRole("combobox", { name: "Start time", exact: true }).selectOption("custom");
+  await editor.getByLabel("Custom start date and time in Frederick", { exact: true }).fill(localPlanStart(open.at));
+  await editor.getByText("Fine-tune the outing", { exact: true }).click();
+  const confirmed = editor.getByRole("checkbox", { name: "Only include stops with confirmed hours", exact: true });
+  await expect(confirmed).toBeChecked();
+  if (!open.verified) await confirmed.uncheck();
+  await editor.getByRole("button", { name: "Update this plan", exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  const stops = page.getByRole("list", { name: "Plan stops, in order", exact: true });
+  const first = stops.locator("[data-plan-stop]").first();
+  await expect(first.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
+  await expect(first.getByRole("link", { name: "Details", exact: true })).toHaveAttribute("href", /^\/places\/beans-in-the-belfry-brunswick\?/);
+  await expect(page.getByRole("link", { name: "Open full route", exact: true })).toHaveAttribute("href", /google\.com\/maps/);
+  if (open.verified) await expect(first.getByText("Hours unconfirmed", { exact: true })).toHaveCount(0);
+  else {
+    await expect(first.getByText("Hours unconfirmed", { exact: true })).toBeVisible();
+    await expect(page.getByText("Draft outing. These times are suggestions. Confirm each venue’s hours before setting out.", { exact: true })).toBeVisible();
+  }
+  const recovered = JSON.parse(Buffer.from(new URL(page.url()).searchParams.get("p")!, "base64url").toString("utf8")) as { i: { start_at: string; require_verified_hours: boolean }; s: Array<{ p?: string }> };
+  expect(recovered.i.start_at).toBe(open.at);
+  expect(recovered.i.require_verified_hours).toBe(open.verified);
+  expect(recovered.s[0].p).toBe(BEANS_SLUG);
+  await info.attach("source-specific-planning-hours", { contentType: "application/json", body: JSON.stringify({ source: beansEvidence?.hours._official, closed, open, retainedChoice: held.s, recovered }) });
+});
+
 test("a visual outing keeps choices through a pre-trip check and map fallback", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/plan?place=beans-in-the-belfry-brunswick&in=brunswick", { waitUntil: "domcontentloaded" });
+  await page.goto(beansPlanUrl(), { waitUntil: "domcontentloaded" });
   const stops = page.getByRole("list", { name: "Plan stops, in order" });
   await expect(stops.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "Carroll Creek in Frederick." })).toBeVisible();
@@ -253,7 +391,7 @@ test("a visual outing keeps choices through a pre-trip check and map fallback", 
 test("planner motion finishes quickly and reduced motion shows the same choices", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.goto("/plan?place=beans-in-the-belfry-brunswick&in=brunswick", { waitUntil: "domcontentloaded" });
+  await page.goto(beansPlanUrl(), { waitUntil: "domcontentloaded" });
   const stop = page.locator("[data-plan-stop]").first();
   await expect(stop.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
   const normal = await stop.evaluate((element) => ({ duration: getComputedStyle(element).animationDuration, name: getComputedStyle(element).animationName }));
@@ -405,7 +543,7 @@ for (const outcome of ["loaded", "unavailable"] as const) {
       });
     });
     try {
-      await page.goto("/plan?place=beans-in-the-belfry-brunswick&in=brunswick", { waitUntil: "domcontentloaded" });
+      await page.goto(beansPlanUrl(), { waitUntil: "domcontentloaded" });
       const stop = page.locator("[data-plan-stop]").first();
       const heading = stop.getByRole("heading", { name: "Beans in the Belfry", exact: true });
       await expect(heading).toBeVisible();
@@ -502,7 +640,7 @@ for (const view of ["editor", "saved outing"] as const) {
       await Promise.all(pending.map((route) => route.continue()));
     };
     try {
-      await page.goto(view === "editor" ? "/plan" : "/plan?place=beans-in-the-belfry-brunswick&in=brunswick", { waitUntil: "commit" });
+      await page.goto(view === "editor" ? "/plan" : "/plan?place=brunswick-heritage-museum&in=brunswick", { waitUntil: "commit" });
       const planner = page.locator("[data-plan-controls-ready]");
       await expect(planner).toHaveAttribute("data-plan-controls-ready", "false");
       await expect.poll(() => held.size).toBeGreaterThan(0);
@@ -557,6 +695,8 @@ for (const view of ["editor", "saved outing"] as const) {
         expect(actionRequests).toBe(1);
         await pausedMotion.evaluate((element) => element.parentNode?.removeChild(element));
       } else {
+        await expect(planner.getByText("Hours unconfirmed", { exact: true })).toBeVisible();
+        await expect(planner.getByText("Draft outing. These times are suggestions. Confirm each venue’s hours before setting out.", { exact: true })).toBeVisible();
         const before = new URL(page.url()).searchParams.get("p");
         const pin = planner.getByRole("button", { name: "Pinned", exact: true });
         await expect(pin).toBeDisabled();

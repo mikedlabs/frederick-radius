@@ -23,10 +23,11 @@ import { CATEGORIES } from "@/data/categories";
 import { EVENTS } from "@/data/events";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { breweryMediaCoverage } from "@/lib/beer/brewery-media";
-import { isHoursFresh } from "@/lib/hours-freshness";
 import { isGooglePlaceId } from "@/lib/provenance";
 import {
   COVERAGE_TARGETS,
+  hasPublishedFreshHours,
+  hasUsefulPhoto,
   summarizeCoverageByCategory,
   type CoveragePlace,
 } from "@/lib/quality/coverage";
@@ -41,6 +42,7 @@ import { partitionEvents } from "@/lib/validation/placement";
 
 type Place = {
   slug: string;
+  name: string;
   municipality?: string;
   google_place_id?: string;
   google_rating?: number;
@@ -48,6 +50,7 @@ type Place = {
   hours_verified?: boolean;
   hours_updated_at?: string;
   google_photo_url?: string;
+  hero_image?: string;
   local_favorite?: boolean;
 };
 
@@ -73,15 +76,6 @@ function hasStoredSchedule(place: Place): boolean {
   return Boolean(
     (source?.hours && Object.keys(source.hours).length > 0) ||
       (entry?.has_hours && entry.weekday_hours?.length),
-  );
-}
-
-function hasPublishedFreshHours(place: Place): boolean {
-  return Boolean(
-    place.hours &&
-      Object.keys(place.hours).length > 0 &&
-      place.hours_verified &&
-      isHoursFresh(place.hours_updated_at),
   );
 }
 
@@ -141,7 +135,7 @@ for (const p of PLACES) {
   if (hasStoredSchedule(p)) r.withStoredHours++;
   if (hasPublishedFreshHours(p)) r.withFreshHours++;
   if (p.google_rating != null) r.withRating++;
-  if (p.google_photo_url) r.withPhoto++;
+  if (hasUsefulPhoto(p)) r.withPhoto++;
   if (NOTE_SLUGS.has(p.slug)) r.notes++;
   if (p.local_favorite) r.favorites++;
 }
@@ -258,6 +252,8 @@ const md = [
   "This matrix uses the normalized public client records that discovery and Ask",
   "consume. It reveals categories whose inventory is large but whose current",
   "hours, imagery, decision-useful copy, or direct actions are still thin.",
+  "Photo coverage counts eligible references and exact reviewed local imagery;",
+  "successful image loading is a separate browser check.",
   "",
   "| Category | Places | Fresh hours | Publishable photo | Useful copy | Direct action |",
   "| --- | ---: | ---: | ---: | ---: | ---: |",
@@ -265,9 +261,10 @@ const md = [
   "",
   "## Hours refresh artifact",
   "",
-  "This is the committed rolling snapshot that strict `Open now` claims read.",
-  "Stored source schedules above are inventory only; they do not make this",
-  "artifact current.",
+  "This is the Google rolling snapshot used by strict `Open now` claims.",
+  "Reviewed first-party schedules contribute separately to the published fresh",
+  "hours above and retain their own expiry and date coverage. Stored schedules",
+  "are inventory only; they do not make either source current.",
   "",
   "| Check | Count |",
   "| --- | ---: |",
@@ -302,13 +299,15 @@ const md = [
         ? "Every cycle bucket meets the writer's minimum persistence ratio."
         : "No current refresh bucket has reached the committed artifact.",
   "",
-  "Live recovery path:",
+  "Google recovery path (only after reviewed provider authorization):",
   "",
-  "1. Apply `drizzle/0024_place_hours_refresh.sql` and `drizzle/0034_expose_place_hours_refresh_read_only.sql` in Supabase.",
-  "2. In Vercel Production, set `HOURS_REFRESH_CRON=1`, `GOOGLE_PLACES_API_KEY`, `DATABASE_URL`, and `CRON_SECRET`.",
-  "3. Confirm `/api/cron/hours-refresh` reports `enabled: true` and writes rows.",
-  "4. In GitHub Actions, add browser-safe repository variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; the 09:17 UTC data-steward job reads the snapshot through Supabase's read-only Data API after the 08:00 UTC Vercel writer.",
-  "5. Review and merge the bot PR containing `places-hours-refresh.json` and the rebuilt client snapshot.",
+  "1. Keep the Google writer and pull held until the documented written authorization is reviewed. A green policy-held invocation is not a refreshed schedule.",
+  "2. Verify `drizzle/0024_place_hours_refresh.sql` and `drizzle/0034_expose_place_hours_refresh_read_only.sql`, the existing shared daily budget, and an explicit bounded run cap before enabling paid collection.",
+  "3. Only after authorization, set `GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL=written-google-authorization-confirmed`, `GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED=1`, `HOURS_REFRESH_CRON=1`, `GOOGLE_PLACES_API_KEY`, `DATABASE_URL`, and `CRON_SECRET` in Vercel Production. Mirror the three non-secret activation switches in GitHub repository variables to admit the steward handoff.",
+  "4. Confirm `/api/cron/hours-refresh` writes current verified rows. Supply the browser-safe GitHub variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the read-only pull after the writer; do not infer publication from a successful skipped job.",
+  "5. Review and merge the bot PR with `places-hours-refresh.json`, rebuilt client snapshots, and the reviewed places release manifest, then verify the exact production deployment and published fresh-hours gain.",
+  "",
+  "The free reviewed first-party refresh runs independently through `refresh:official-hours`; it does not need or enable the Google switches. Publish only verified identity-matched schedules and retain their actual source timestamps and expiry. See `docs/AGENTS_SCHEDULE.md` for both owners.",
   "",
   "## Committed event quality",
   "",

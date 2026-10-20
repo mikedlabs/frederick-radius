@@ -7,16 +7,16 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-10-18 — 1571 places._
+_Generated 2026-10-20 — 1571 places._
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick | 854 | 680 (80%) | 1 (0%) | 710 (83%) | 710 (83%) | 50 | 296 |
+| Frederick | 854 | 680 (80%) | 3 (0%) | 710 (83%) | 711 (83%) | 50 | 296 |
 | Thurmont | 110 | 75 (68%) | 1 (1%) | 100 (91%) | 99 (90%) | 3 | 30 |
-| Brunswick | 97 | 65 (67%) | 2 (2%) | 84 (87%) | 77 (79%) | 2 | 24 |
+| Brunswick | 97 | 65 (67%) | 3 (3%) | 84 (87%) | 77 (79%) | 2 | 24 |
 | Walkersville | 86 | 66 (77%) | 1 (1%) | 81 (94%) | 78 (91%) | 2 | 29 |
 | Middletown | 85 | 52 (61%) | 1 (1%) | 72 (85%) | 74 (87%) | 4 | 27 |
-| New Market | 75 | 51 (68%) | 0 (0%) | 62 (83%) | 59 (79%) | 4 | 13 |
+| New Market | 75 | 51 (68%) | 0 (0%) | 62 (83%) | 60 (80%) | 4 | 13 |
 | Mount Airy | 63 | 48 (76%) | 0 (0%) | 58 (92%) | 58 (92%) | 5 | 27 |
 | Emmitsburg | 57 | 39 (68%) | 1 (2%) | 52 (91%) | 51 (89%) | 2 | 18 |
 | Myersville | 46 | 33 (72%) | 1 (2%) | 40 (87%) | 40 (87%) | 2 | 9 |
@@ -24,26 +24,26 @@ _Generated 2026-10-18 — 1571 places._
 | Urbana | 30 | 21 (70%) | 1 (3%) | 24 (80%) | 25 (83%) | 2 | 10 |
 | Burkittsville | 30 | 15 (50%) | 0 (0%) | 28 (93%) | 30 (100%) | 2 | 8 |
 | Rosemont | 2 | 0 (0%) | 0 (0%) | 1 (50%) | 1 (50%) | 0 | 1 |
-| **Total** | **1571** | 1165 (74%) | 9 (1%) | 1342 (85%) | 1328 (85%) | **79** | **502** |
+| **Total** | **1571** | 1165 (74%) | 12 (1%) | 1342 (85%) | 1330 (85%) | **79** | **502** |
 
 ## Coverage by category
 
 This matrix uses the normalized public client records that discovery and Ask
 consume. It reveals categories whose inventory is large but whose current
 hours, imagery, decision-useful copy, or direct actions are still thin.
+Photo coverage counts eligible references and exact reviewed local imagery;
+successful image loading is a separate browser check.
 
 | Category | Places | Fresh hours | Publishable photo | Useful copy | Direct action |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Restaurants | 177 | 0 (0%) | 161 (91%) | 42 (23.7%) | 170 (96%) |
 | Shopping | 176 | 0 (0%) | 161 (91.5%) | 2 (1.1%) | 169 (96%) |
 | Churches & worship | 162 | 0 (0%) | 129 (79.6%) | 1 (0.6%) | 149 (92%) |
-| Parks | 137 | 0 (0%) | 119 (86.9%) | 16 (11.7%) | 99 (72.3%) |
+| Parks | 137 | 0 (0%) | 120 (87.6%) | 16 (11.7%) | 99 (72.3%) |
 | Wellness | 137 | 0 (0%) | 108 (78.8%) | 6 (4.4%) | 135 (98.5%) |
 | Civic & public | 75 | 0 (0%) | 62 (82.7%) | 2 (2.7%) | 67 (89.3%) |
 | Services | 59 | 0 (0%) | 38 (64.4%) | 6 (10.2%) | 55 (93.2%) |
 | Markets | 57 | 0 (0%) | 53 (93%) | 21 (36.8%) | 56 (98.2%) |
 | Yoga & fitness | 42 | 0 (0%) | 40 (95.2%) | 1 (2.4%) | 40 (95.2%) |
-| Coffee | 39 | 0 (0%) | 35 (89.7%) | 6 (15.4%) | 33 (84.6%) |
 | Family | 39 | 0 (0%) | 32 (82.1%) | 7 (17.9%) | 39 (100%) |
 | Bakeries | 36 | 0 (0%) | 33 (91.7%) | 4 (11.1%) | 33 (91.7%) |
 | Lodging | 34 | 0 (0%) | 31 (91.2%) | 2 (5.9%) | 34 (100%) |
@@ -59,7 +59,7 @@ hours, imagery, decision-useful copy, or direct actions are still thin.
 | Pizza | 18 | 0 (0%) | 18 (100%) | 3 (16.7%) | 16 (88.9%) |
 | Auto care | 16 | 0 (0%) | 9 (56.3%) | 7 (43.8%) | 16 (100%) |
 | Breweries | 16 | 0 (0%) | 12 (75%) | 5 (31.3%) | 16 (100%) |
-| Antiques | 15 | 0 (0%) | 13 (86.7%) | 0 (0%) | 13 (86.7%) |
+| Antiques | 15 | 0 (0%) | 14 (93.3%) | 0 (0%) | 13 (86.7%) |
 | Wineries | 14 | 0 (0%) | 14 (100%) | 11 (78.6%) | 14 (100%) |
 | Playgrounds | 13 | 0 (0%) | 8 (61.5%) | 0 (0%) | 5 (38.5%) |
 | Book stores | 12 | 0 (0%) | 11 (91.7%) | 1 (8.3%) | 12 (100%) |
@@ -74,13 +74,16 @@ hours, imagery, decision-useful copy, or direct actions are still thin.
 | Community | 2 | 0 (0%) | 0 (0%) | 2 (100%) | 2 (100%) |
 | Tours & rides | 2 | 0 (0%) | 1 (50%) | 2 (100%) | 2 (100%) |
 | Transit | 1 | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) |
+| Restaurants | 177 | 1 (0.6%) | 161 (91%) | 42 (23.7%) | 170 (96%) |
+| Coffee | 39 | 2 (5.1%) | 35 (89.7%) | 6 (15.4%) | 33 (84.6%) |
 | Libraries | 15 | 9 (60%) | 12 (80%) | 2 (13.3%) | 14 (93.3%) |
 
 ## Hours refresh artifact
 
-This is the committed rolling snapshot that strict `Open now` claims read.
-Stored source schedules above are inventory only; they do not make this
-artifact current.
+This is the Google rolling snapshot used by strict `Open now` claims.
+Reviewed first-party schedules contribute separately to the published fresh
+hours above and retain their own expiry and date coverage. Stored schedules
+are inventory only; they do not make either source current.
 
 | Check | Count |
 | --- | ---: |
@@ -109,13 +112,15 @@ Oldest refresh: 2026-08-13T08:01:03.490Z. Newest refresh: 2026-08-22T08:01:01.24
 
 **Stalled:** missing cycle days 0, 1, 2, 3, 4, 5; underfilled cycle days none. Check the Vercel writer before the next pull.
 
-Live recovery path:
+Google recovery path (only after reviewed provider authorization):
 
-1. Apply `drizzle/0024_place_hours_refresh.sql` and `drizzle/0034_expose_place_hours_refresh_read_only.sql` in Supabase.
-2. In Vercel Production, set `HOURS_REFRESH_CRON=1`, `GOOGLE_PLACES_API_KEY`, `DATABASE_URL`, and `CRON_SECRET`.
-3. Confirm `/api/cron/hours-refresh` reports `enabled: true` and writes rows.
-4. In GitHub Actions, add browser-safe repository variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; the 09:17 UTC data-steward job reads the snapshot through Supabase's read-only Data API after the 08:00 UTC Vercel writer.
-5. Review and merge the bot PR containing `places-hours-refresh.json` and the rebuilt client snapshot.
+1. Keep the Google writer and pull held until the documented written authorization is reviewed. A green policy-held invocation is not a refreshed schedule.
+2. Verify `drizzle/0024_place_hours_refresh.sql` and `drizzle/0034_expose_place_hours_refresh_read_only.sql`, the existing shared daily budget, and an explicit bounded run cap before enabling paid collection.
+3. Only after authorization, set `GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL=written-google-authorization-confirmed`, `GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED=1`, `HOURS_REFRESH_CRON=1`, `GOOGLE_PLACES_API_KEY`, `DATABASE_URL`, and `CRON_SECRET` in Vercel Production. Mirror the three non-secret activation switches in GitHub repository variables to admit the steward handoff.
+4. Confirm `/api/cron/hours-refresh` writes current verified rows. Supply the browser-safe GitHub variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the read-only pull after the writer; do not infer publication from a successful skipped job.
+5. Review and merge the bot PR with `places-hours-refresh.json`, rebuilt client snapshots, and the reviewed places release manifest, then verify the exact production deployment and published fresh-hours gain.
+
+The free reviewed first-party refresh runs independently through `refresh:official-hours`; it does not need or enable the Google switches. Publish only verified identity-matched schedules and retain their actual source timestamps and expiry. See `docs/AGENTS_SCHEDULE.md` for both owners.
 
 ## Committed event quality
 

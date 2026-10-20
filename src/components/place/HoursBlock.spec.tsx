@@ -29,3 +29,27 @@ describe("official hours detail display", () => {
     expect(html).toContain("not current enough to confirm a visit");
   });
 });
+
+
+describe("missing and merchant hours", () => {
+  it("labels the exact merchant week and links its real source without inventing a library closure calendar", async () => {
+    const data = (await import("@/data/places-merchant-hours.json")).default;
+    const { merchantHoursForPlace } = await import("@/lib/merchant-hours");
+    const at = new Date("2026-10-19T23:30:00Z");
+    vi.useFakeTimers(); vi.setSystemTime(at);
+    const schedule = merchantHoursForPlace({ slug: "brewers-alley-frederick", category: "restaurant", website: "https://brewers-alley.com/" }, data, at).hours!;
+    const html = renderToStaticMarkup(<HoursBlock hours={schedule} verified />);
+    expect(html).toContain("2026-10-19 through 2026-10-25");
+    expect(html).toContain('href="https://brewers-alley.com/"');
+    expect(html).toContain("Official business hours");
+    expect(html).not.toContain("FCPL");
+  });
+  it("shows usable contact actions without inventing a historical schedule", () => {
+    const html = renderToStaticMarkup(<HoursBlock website="https://example.org/" phone="(301) 555-0100" />);
+    expect(html).toContain("Hours not recently confirmed");
+    expect(html).toContain('href="https://example.org/"');
+    expect(html).toContain('href="tel:3015550100"');
+    expect(html).not.toContain("Hours not posted");
+    expect(html).not.toContain("FCPL");
+  });
+});

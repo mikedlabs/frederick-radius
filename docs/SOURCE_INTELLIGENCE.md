@@ -189,6 +189,40 @@ routine spend small. Reruns and unsuccessful attempts count. Unknown or
 malformed recent history fails closed before either provider secret is exposed.
 The provider dashboards remain the final billing record.
 
+### Persistent state and recovery
+
+The Actions cache is an acceleration layer. A validated state checkpoint is
+the durable backup for the Scout query cache, attempted-credit ledger, and
+initialized Watch comparison state. Checkpoints come only from this exact
+workflow in this repository on `main`. A cache miss restores the newest
+checkpoint into staging, verifies its run identity, manifest, fixed file paths,
+schemas, sizes, and hashes, then installs the validated files. Invalid newest
+evidence stops the job; it must not fall back to an older, smaller ledger.
+The requested checkpoint retention is 90 days, bounded by the repository's
+configured artifact limit. A limit below nine days blocks checkpoint creation
+because it cannot cover the longest eight-day scheduled gap. An authentic
+expired newest checkpoint is unavailable; it does not permit using an older
+checkpoint or spending without state.
+
+An established ledger must never be reset with `initialize_state`. That input
+is only for the first intentional initialization. If both cache and checkpoint
+are absent, select the manual `tavily-recover` tool. It makes no provider
+request and posts no review issue. Complete authenticated workflow history
+reconstructs conservative attempted-credit reservations, including failed runs
+and reruns. Recovery takes the greater of each existing counter and its history
+floor, preserves valid query-cache bytes, and explicitly reports a missing
+query cache as lost and rebuilt. The reservations are protective upper bounds,
+not a claim about provider billing. Corrupt existing state or incomplete
+history blocks recovery.
+The first-initialization gate also verifies that workflow history contains no
+earlier main-branch reservations for the selected provider.
+
+Recovery does not invent Firecrawl comparison hashes. A lost Watch baseline
+requires authentic saved evidence or a separately reviewed new baseline.
+Watch fingerprints still advance only after successful issue delivery; Scout
+attempted-credit state is retained even when a request or issue delivery fails.
+No recovery path raises a provider cap or changes the scheduled profiles.
+
 The scheduled selection and the deferred watch rollout are exact and
 fail-closed:
 

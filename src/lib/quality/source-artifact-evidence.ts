@@ -1,3 +1,5 @@
+import MERCHANT_HOURS_RAW from "@/data/places-merchant-hours.json" with { type: "json" };
+import { MERCHANT_HOURS_SOURCES, validateMerchantHoursArtifact } from "@/lib/merchant-hours";
 import OFFICIAL_HOURS_RAW from "@/data/places-official-hours.json" with { type: "json" };
 import { validateOfficialHoursArtifact } from "@/lib/official-hours";
 import BUSINESS_INFO_RAW from "@/data/business-info.json" with { type: "json" };
@@ -89,6 +91,18 @@ export function buildSourceArtifactEvidence(
   });
 }
 
+/** Source-specific observations and failed review attempts never become a county-wide success. */
+export function merchantSourceArtifactEvidence(value: unknown): SourceEvidence[] {
+  try { validateMerchantHoursArtifact(value); } catch { return []; }
+  return MERCHANT_HOURS_SOURCES.flatMap((source) => {
+    const row = value.places.find((item) => item.slug === source.slug);
+    const review = value.review.find((item) => item.slug === source.slug);
+    const evidence: SourceEvidence[] = row ? [{ sourceKey: source.ledger_id, kind: "artifact", attemptedAt: row.observed_at, outcome: "success", succeededAt: row.observed_at, publishedAt: row.observed_at, expiresAt: row.expires_at, recordCount: 1 }] : [];
+    if (review) evidence.push({ sourceKey: source.ledger_id, kind: "artifact", attemptedAt: review.checked_at, outcome: "failure", error: `Official merchant hours require review: ${review.reason}. The last schedule was not reverified.` });
+    return evidence;
+  });
+}
+
 export function bundledSourceArtifactEvidence(): SourceEvidence[] {
   const businessInfo = BUSINESS_INFO_RAW as Record<string, TimestampedSource>;
   const municipalCivic =
@@ -104,7 +118,7 @@ export function bundledSourceArtifactEvidence(): SourceEvidence[] {
     validateOfficialHoursArtifact(OFFICIAL_HOURS_RAW);
     officialHours = [{ sourceKey: "fcpl_branch_hours", timestamps: [OFFICIAL_HOURS_RAW.weekly.observed_at, OFFICIAL_HOURS_RAW.closures.observed_at], recordCount: OFFICIAL_HOURS_RAW.places.length, timestampCoverage: "artifact" }];
   } catch { /* Missing/invalid evidence cannot report a successful publication. */ }
-  return buildSourceArtifactEvidence([
+  return [...merchantSourceArtifactEvidence(MERCHANT_HOURS_RAW), ...buildSourceArtifactEvidence([
     ...officialHours,
     {
       sourceKey: "business_info_extraction",
@@ -131,5 +145,5 @@ export function bundledSourceArtifactEvidence(): SourceEvidence[] {
       recordCount: transitRoutes,
       timestampCoverage: "artifact",
     },
-  ]);
+  ])];
 }

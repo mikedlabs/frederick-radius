@@ -2448,6 +2448,81 @@ sources:
       so the workflow parses, time-budgets, upserts, records ingest health,
       and revalidates the shared event cache.
 
+  - id: brewers_alley_hours
+    name: "Brewer's Alley — First-party Hours"
+    owner: "Brewer's Alley"
+    url: https://brewers-alley.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Brewer's Alley"
+    status: active
+    collection: workflow
+    evidence_aliases: [brewers_alley_hours, https://brewers-alley.com/]
+    last_validated: 2026-10-19
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: |
+      One exact reviewed merchant identity in the existing free official-hours
+      workflow. One bounded static HTML GET per run, no credentials, provider,
+      redirect, retry, scripts or images. Real observations expire within seven
+      days; a dated merchant week expires at its own end. Failed or ambiguous
+      reads retain old evidence and stage a fail-closed review item. New facts
+      require review before promotion; job success is not published freshness.
+
+  - id: gravel_grind_hours
+    name: "Gravel & Grind — First-party Hours"
+    owner: "Gravel & Grind"
+    url: https://www.gravelandgrind.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Gravel & Grind"
+    status: active
+    collection: workflow
+    evidence_aliases: [gravel_grind_hours, https://www.gravelandgrind.com/]
+    last_validated: 2026-10-19
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: |
+      One exact reviewed merchant identity in the existing free official-hours
+      workflow. One bounded static HTML GET per run, no credentials, provider,
+      redirect, retry, scripts or images. Real observations expire within seven
+      days; a dated merchant week expires at its own end. Failed or ambiguous
+      reads retain old evidence and stage a fail-closed review item. New facts
+      require review before promotion; job success is not published freshness.
+
+  - id: beans_belfry_hours
+    name: "Beans in the Belfry — First-party Hours"
+    owner: "Beans in the Belfry"
+    url: https://beansinthebelfry.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Beans in the Belfry"
+    status: active
+    collection: workflow
+    evidence_aliases: [beans_belfry_hours, https://beansinthebelfry.com/]
+    last_validated: 2026-10-19
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: |
+      One exact reviewed merchant identity in the existing free official-hours
+      workflow. One bounded static HTML GET per run, no credentials, provider,
+      redirect, retry, scripts or images. Real observations expire within seven
+      days; a dated merchant week expires at its own end. Failed or ambiguous
+      reads retain old evidence and stage a fail-closed review item. New facts
+      require review before promotion; job success is not published freshness.
+
   - id: fcpl_branch_hours
     name: Frederick County Public Libraries — Official Branch Hours
     owner: Frederick County Public Libraries

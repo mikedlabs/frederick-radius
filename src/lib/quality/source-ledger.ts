@@ -47,6 +47,8 @@ export type SourceEvidence = {
   outcome: SourceEvidenceOutcome;
   succeededAt?: string | null;
   publishedAt?: string | null;
+  /** Actual source evidence horizon; a recent publication cannot extend it. */
+  expiresAt?: string | null;
   recordCount?: number | null;
   error?: string | null;
 };
@@ -419,8 +421,16 @@ function freshnessFor(
   publishedAt: string | null,
   cadence: string,
   nowMs: number,
+  expiresAt?: string | null,
 ): SourceFreshness {
-  const maxAgeHours = cadenceMaxAgeHours(cadence);
+  let maxAgeHours = cadenceMaxAgeHours(cadence);
+  if (expiresAt !== undefined) {
+    const expiryMs = timestamp(expiresAt);
+    const publishedMs = timestamp(publishedAt);
+    if (expiryMs === null || publishedMs === null || expiryMs < publishedMs) return { state: "invalid", ageHours: null, maxAgeHours };
+    const evidenceHours = (expiryMs - publishedMs) / 3_600_000;
+    maxAgeHours = maxAgeHours === null ? evidenceHours : Math.min(maxAgeHours, evidenceHours);
+  }
   if (maxAgeHours === null) {
     return {
       state: "not_applicable",
@@ -439,7 +449,7 @@ function freshnessFor(
   }
   const ageHours = Math.max(0, (nowMs - publishedMs) / 3_600_000);
   return {
-    state: ageHours > maxAgeHours ? "stale" : "current",
+    state: ageHours > maxAgeHours || (expiresAt !== undefined && nowMs >= timestamp(expiresAt)!) ? "stale" : "current",
     ageHours,
     maxAgeHours,
   };
@@ -569,6 +579,7 @@ export function buildSourceLedger(
         lastPublishedAt,
         source.refreshCadence,
         now.getTime(),
+        latestPublished?.expiresAt,
       );
       let state: SourceLedgerState;
       const hasFutureEvidence = [attemptMs, successMs, publishedMs].some(

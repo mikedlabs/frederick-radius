@@ -1,4 +1,8 @@
 import { isHoursFresh } from "@/lib/hours-freshness";
+import { isScheduleEvidenceCurrent } from "@/lib/hours";
+import type { Hours } from "@/data/places";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
+import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 
 export const COVERAGE_TARGETS = {
   hours: 60,
@@ -14,7 +18,7 @@ export type CoveragePlace = {
   name: string;
   category?: string;
   municipality?: string;
-  hours?: Record<string, unknown>;
+  hours?: Record<string, unknown> | null;
   hours_verified?: boolean;
   hours_updated_at?: string;
   hero_image?: string;
@@ -87,7 +91,9 @@ function hasText(value?: string): boolean {
 }
 
 export function hasUsefulPhoto(place: CoveragePlace): boolean {
-  return hasText(place.hero_image) || hasText(place.google_photo_url);
+  return hasText(place.hero_image) || hasText(place.google_photo_url)
+    || Boolean(getOwnedPlacePhoto(place.slug))
+    || Object.hasOwn(CREDITED_LOCAL_PLACE_PHOTOS, place.slug);
 }
 
 /** Count only a schedule that the public app may use for an open-now claim. */
@@ -99,7 +105,8 @@ export function hasPublishedFreshHours(
     place.hours_verified &&
       place.hours &&
       Object.keys(place.hours).length > 0 &&
-      isHoursFresh(place.hours_updated_at, now),
+      isHoursFresh(place.hours_updated_at, now) &&
+      isScheduleEvidenceCurrent(place.hours as Hours, now),
   );
 }
 

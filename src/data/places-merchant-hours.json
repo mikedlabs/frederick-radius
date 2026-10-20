@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "places": [
+    {
+      "slug": "brewers-alley-frederick",
+      "source_url": "https://brewers-alley.com/",
+      "source_name": "Brewer's Alley",
+      "source_sha256": "5b654b25f053234d8da44df2ca821bc23a4af6d3606f16d3fa31d02421e89328",
+      "observed_at": "2026-10-19T23:24:49.283Z",
+      "expires_at": "2026-10-26T04:00:00.000Z",
+      "coverage_from": "2026-10-19",
+      "coverage_through": "2026-10-25",
+      "kind": "dated_week",
+      "hours": {
+        "mon": [
+          {
+            "open": "11:00",
+            "close": "23:30"
+          }
+        ],
+        "tue": [
+          {
+            "open": "11:00",
+            "close": "23:30"
+          }
+        ],
+        "wed": [
+          {
+            "open": "11:00",
+            "close": "23:30"
+          }
+        ],
+        "thu": [
+          {
+            "open": "11:00",
+            "close": "23:30"
+          }
+        ],
+        "sun": [
+          {
+            "open": "11:00",
+            "close": "23:30"
+          }
+        ],
+        "fri": [
+          {
+            "open": "11:00",
+            "close": "01:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "11:00",
+            "close": "01:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "gravel-and-grind-frederick",
+      "source_url": "https://www.gravelandgrind.com/",
+      "source_name": "Gravel & Grind",
+      "source_sha256": "3bc29ef0ba2835133c9065f3aa1abde90056617abce96a898d7e0218b15b3629",
+      "observed_at": "2026-10-19T23:24:50.964Z",
+      "expires_at": "2026-10-26T23:24:50.964Z",
+      "coverage_from": "2026-10-19",
+      "coverage_through": "2026-10-26",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "08:00",
+            "close": "14:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "08:00",
+            "close": "14:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "08:00",
+            "close": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "08:00",
+            "close": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "08:00",
+            "close": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "08:00",
+            "close": "17:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "08:00",
+            "close": "16:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "beans-in-the-belfry-brunswick",
+      "source_url": "https://beansinthebelfry.com/",
+      "source_name": "Beans in the Belfry",
+      "source_sha256": "855581772c2ebbf294888207da85fe0d242f09411a0a35206c7a0818026d2cbd",
+      "observed_at": "2026-10-19T23:24:52.016Z",
+      "expires_at": "2026-10-26T23:24:52.016Z",
+      "coverage_from": "2026-10-19",
+      "coverage_through": "2026-10-26",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "08:30",
+            "close": "15:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "08:30",
+            "close": "15:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "08:30",
+            "close": "15:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "08:30",
+            "close": "15:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "08:30",
+            "close": "15:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "08:00",
+            "close": "17:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "08:00",
+            "close": "17:00"
+          }
+        ]
+      }
+    }
+  ],
+  "review": []
+}

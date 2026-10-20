@@ -41,5 +41,5 @@ export default function LiveOpenStatus({
     return () => window.clearInterval(id);
   }, [hours, verified]);
 
-  return <OpenClosedDot status={status} />;
+  return status.state === "unknown" ? <span className="text-xs font-medium" style={{ color: "var(--app-ink-3)" }}>Hours not recently confirmed</span> : <OpenClosedDot status={status} />;
 }

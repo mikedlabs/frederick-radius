@@ -122,10 +122,12 @@ describe("map list event identity", () => {
 });
 
 describe("map list photos", () => {
-  it("uses an inline photo when a full place record already carries one", () => {
+  it("keeps an exactly credited inline photo pending until decoding and narrows its 72px frame", () => {
     const withPhoto = {
       ...place("photo-place", -77.4),
-      google_photo_url: "/api/place-photo?name=photo-place",
+      google_photo_url: "/api/place-photo?name=places%2Fphoto-place%2Fphotos%2Ffront&w=800",
+      google_photo_attribution: { photo_name: "places/photo-place/photos/front", authors: [],
+        google_maps_uri: "https://www.google.com/maps/photos/photo-place" },
     } as MapPinPlace;
     const html = renderToStaticMarkup(
       createElement(MapList, {
@@ -138,8 +140,11 @@ describe("map list photos", () => {
       }),
     );
 
-    expect(html).toContain('data-photo-state="ready"');
-    expect(html).toContain("/api/place-photo?name=photo-place");
+    expect(html).toContain('data-photo-state="pending"');
+    expect(html).not.toContain('data-photo-state="ready"');
+    expect(html).toContain("places%2Fphoto-place%2Fphotos%2Ffront");
+    expect(html).toContain("w=144");
+    expect(html).toContain("fallback=signal");
   });
 
   it("batches, deduplicates, and caches visible-row photo requests", async () => {

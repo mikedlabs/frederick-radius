@@ -116,4 +116,26 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       "modifications": "Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop."
     }
   },
+  "new-market-historic-district-new-market": {
+    file: "New_Market_HD_MD1.jpg",
+    image: {
+      src: "/history-photos/new-market-antiques.jpg",
+      alt: "The historic Main Street of New Market, MD, with a brick storefront building and picket fences along the road",
+      creator: "Acroterion",
+      source_url: "https://commons.wikimedia.org/wiki/File:New_Market_HD_MD1.jpg",
+      license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
+      modifications: "Resized and converted for display; cards may crop the image responsively.",
+    },
+  },
+  "catoctin-mountain-park": {
+    file: "Chimney_rock_catoctin.JPG",
+    image: {
+      src: "/history-photos/catoctin-mountain-park.jpg",
+      alt: "The Chimney Rock vista at Catoctin Mountain Park, MD, with boulders overlooking a forested mountain valley",
+      creator: "Vegemighty",
+      source_url: "https://commons.wikimedia.org/wiki/File:Chimney_rock_catoctin.JPG",
+      license: { label: "CC0 1.0", url: "https://creativecommons.org/publicdomain/zero/1.0/" },
+      modifications: "Resized and converted for display; cards may crop the image responsively.",
+    },
+  },
 } as const;

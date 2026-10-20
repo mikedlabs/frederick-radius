@@ -1,9 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import {
-  useEffect,
   useMemo,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -14,9 +13,13 @@ import { eventDisplayTitle } from "@/lib/events/display-title";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { haptic } from "@/lib/haptics";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import CategoryIcon from "@/components/place/CategoryIcon";
-import { mapListPhotoLoader } from "./map-list-photo-loader";
+import { usePlacePhotoData } from "@/components/place/usePlacePhoto";
+import CompactPlacePhoto from "@/components/place/CompactPlacePhoto";
+import { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
+import { placeCardPhotoPlan, recordPlaceCardPhotoResult, selectedPlaceCardPhoto,
+  type PlaceCardPhotoResult, type PlaceCardPhotoState } from "@/lib/place-card-photo";
+import type { PlaceCardData } from "@/lib/loaders/places";
 import type { EventPin, MapPinPlace } from "./types";
 
 /**
@@ -48,91 +51,93 @@ function openLine(p: MapPinPlace): { text: string; tone: string } | null {
   }
 }
 
-/** Full PlaceCardData callers may already carry a photo even though the main
- * /map pin payload deliberately does not. Read that optional runtime field
- * without widening MapPinPlace and accidentally making it part of the payload
- * contract. */
-function inlinePhoto(place: MapPinPlace): string | undefined {
-  const value = (place as MapPinPlace & { google_photo_url?: unknown })
-    .google_photo_url;
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
-function MapListPlaceVisual({
-  place,
-  color,
-}: {
-  place: MapPinPlace;
-  color: string;
+/** Pin payloads stay small. Only a visible row without an exact reviewed
+ * source hydrates its one policy-bound Google image and individual credit. */
+function MapListPlaceRow({ p, userLoc, onPick }: {
+  p: MapPinPlace;
+  userLoc: LngLat | null;
+  onPick: (place: MapPinPlace) => void;
 }) {
-  const anchorRef = useRef<HTMLSpanElement>(null);
-  const [photoUrl, setPhotoUrl] = useState<string | null | undefined>(
-    () => inlinePhoto(place) ?? mapListPhotoLoader.peek(place.slug),
-  );
-
-  useEffect(() => {
-    if (photoUrl !== undefined) return;
-
-    let active = true;
-    let started = false;
-    const hydrate = () => {
-      if (started) return;
-      started = true;
-      void mapListPhotoLoader.load(place.slug).then((photo) => {
-        if (active) setPhotoUrl(photo);
-      });
-    };
-
-    const anchor = anchorRef.current;
-    if (!anchor || typeof IntersectionObserver === "undefined") {
-      hydrate();
-      return () => {
-        active = false;
-      };
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return;
-        observer.disconnect();
-        hydrate();
-      },
-      { rootMargin: "180px 0px" },
-    );
-    observer.observe(anchor);
-    return () => {
-      active = false;
-      observer.disconnect();
-    };
-  }, [photoUrl, place.slug]);
-
+  const input = p as MapPinPlace & Partial<Pick<PlaceCardData, "google_photo_url" | "google_photo_attribution">>;
+  const inlinePlan = placeCardPhotoPlan(input, 72);
+  const { photoData, anchorRef: photoAnchorRef } = usePlacePhotoData(p.slug, inlinePlan.sources.length === 0);
+  const plan = photoData ? placeCardPhotoPlan({ ...input, ...photoData }, 72) : inlinePlan;
+  const currentPlan = useRef(plan.key);
+  useLayoutEffect(() => { currentPlan.current = plan.key; }, [plan.key]);
+  const [photoState, setPhotoState] = useState<PlaceCardPhotoState | null>(null);
+  const photo = selectedPlaceCardPhoto(plan, photoState);
+  const photoLoaded = photoState?.planKey === plan.key && photoState.loadedSrc === photo?.src;
+  const onPhotoResult = (src: string, result: PlaceCardPhotoResult) => {
+    setPhotoState((state) => currentPlan.current === plan.key
+      ? recordPlaceCardPhotoResult(plan, state, src, result) : state);
+  };
+  const cat = CATEGORY_BY_SLUG[p.category];
+  const color = cat?.color ?? "var(--app-brand)";
+  const open = openLine(p);
+  const town = MUNICIPALITY_BY_SLUG[p.municipality]?.name;
+  const dist = userLoc && p.geom ? formatDistance(haversineMeters(userLoc, p.geom)) : null;
   return (
-    <span
-      ref={anchorRef}
-      aria-hidden
-      className="map-list-place-visual"
-      data-photo-state={photoUrl ? "ready" : "fallback"}
-      style={{ "--map-list-place-color": color } as CSSProperties}
-    >
-      {photoUrl ? (
-        <Image
-          src={photoUrl}
-          alt=""
-          fill
-          unoptimized={photoUrl.startsWith("/api/place-photo")}
-          sizes="44px"
-          placeholder="blur"
-          blurDataURL={PAPER_CREAM_BLUR}
-          className="object-cover"
-        />
-      ) : (
-        <CategoryIcon
-          slug={place.category}
-          className="h-5 w-5"
-          strokeWidth={1.8}
-        />
-      )}
-    </span>
+    <li>
+      <div ref={photoAnchorRef}>
+        {/* Picking a row IS the open: it selects the place and
+            raises its peek. Position is `result` rather than
+            `sheet` so the browse list and the pin tap stay
+            distinguishable in the funnel — they are two
+            different ways of finding the same place. */}
+        <button
+          type="button"
+          className="map-list-row tap-44"
+          data-map-place-slug={p.slug}
+          data-decision-impression="true"
+          data-decision-surface="map"
+          data-decision-entity="place"
+          data-decision-id={p.slug}
+          data-decision-position="result"
+          data-decision-action="open"
+          onClick={() => {
+            haptic("light");
+            onPick(p);
+          }}
+        >
+          <span aria-hidden className="map-list-place-visual"
+            data-photo-state={photo ? photoLoaded ? "ready" : "pending" : "fallback"}
+            data-photo-source={photo?.kind}
+            // Keep every row stable while metadata arrives or a source fails.
+            style={{ "--map-list-place-color": color, width: 72, height: 72 } as CSSProperties}>
+            <CategoryIcon slug={p.category} className="h-5 w-5" strokeWidth={1.8} />
+            {photo && <CompactPlacePhoto src={photo.src} size={72} onResult={onPhotoResult}
+              objectPosition={photo.kind === "owned" ? photo.objectPosition : undefined} />}
+          </span>
+          <span className="map-list-main">
+            <span className="map-list-name">{p.name}</span>
+            <span className="map-list-sub">
+              {/* The category hue already lives in the visual.
+                  Raw category colors are not guaranteed to meet
+                  text contrast on the paper background. */}
+              <span className="map-list-category">
+                {cat?.name ?? p.category}
+              </span>
+              {town && (
+                <>
+                  <span aria-hidden className="map-list-mid">·</span>
+                  <span>{town}</span>
+                </>
+              )}
+              {open && (
+                <>
+                  <span aria-hidden className="map-list-mid">·</span>
+                  <span style={{ color: open.tone, fontWeight: 600 }}>
+                    {open.text}
+                  </span>
+                </>
+              )}
+            </span>
+          </span>
+          {dist && <span className="map-list-dist">{dist}</span>}
+        </button>
+      </div>
+      {photo && photoLoaded && <PlaceCardPhotoCredit source={photo} loaded touchTarget compact />}
+    </li>
   );
 }
 
@@ -297,67 +302,7 @@ export default function MapList({
               </h2>
               <ul className="map-list-rows">
                 {rows.map((p) => {
-                  const cat = CATEGORY_BY_SLUG[p.category];
-                  const color = cat?.color ?? "var(--app-brand)";
-                  const open = openLine(p);
-                  // The town anchors a whole-county roll ("Golf · Ijamsville") the
-                  // way /nearby and /category cards already do — without it a row
-                  // like "Whiskey Creek Golf Club · Golf" places nothing.
-                  const town = MUNICIPALITY_BY_SLUG[p.municipality]?.name;
-                  const dist =
-                    userLoc && p.geom ? formatDistance(haversineMeters(userLoc, p.geom)) : null;
-                  return (
-                    <li key={p.slug}>
-                      {/* Picking a row IS the open: it selects the place and
-                          raises its peek. Position is `result` rather than
-                          `sheet` so the browse list and the pin tap stay
-                          distinguishable in the funnel — they are two
-                          different ways of finding the same place. */}
-                      <button
-                        type="button"
-                        className="map-list-row tap-44"
-                        data-map-place-slug={p.slug}
-                        data-decision-impression="true"
-                        data-decision-surface="map"
-                        data-decision-entity="place"
-                        data-decision-id={p.slug}
-                        data-decision-position="result"
-                        data-decision-action="open"
-                        onClick={() => {
-                          haptic("light");
-                          onPick(p);
-                        }}
-                      >
-                        <MapListPlaceVisual place={p} color={color} />
-                        <span className="map-list-main">
-                          <span className="map-list-name">{p.name}</span>
-                          <span className="map-list-sub">
-                            {/* The category hue already lives in the visual.
-                                Raw category colors are not guaranteed to meet
-                                text contrast on the paper background. */}
-                            <span className="map-list-category">
-                              {cat?.name ?? p.category}
-                            </span>
-                            {town && (
-                              <>
-                                <span aria-hidden className="map-list-mid">·</span>
-                                <span>{town}</span>
-                              </>
-                            )}
-                            {open && (
-                              <>
-                                <span aria-hidden className="map-list-mid">·</span>
-                                <span style={{ color: open.tone, fontWeight: 600 }}>
-                                  {open.text}
-                                </span>
-                              </>
-                            )}
-                          </span>
-                        </span>
-                        {dist && <span className="map-list-dist">{dist}</span>}
-                      </button>
-                    </li>
-                  );
+                  return <MapListPlaceRow key={p.slug} p={p} userLoc={userLoc} onPick={onPick} />;
                 })}
               </ul>
             </section>
