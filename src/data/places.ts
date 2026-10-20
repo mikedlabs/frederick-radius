@@ -15,7 +15,10 @@ export type HoursDateException = {
 export type OfficialHoursEvidence = {
   slug: string;
   source_url: string;
-  closures_url: string;
+  closures_url?: string;
+  kind?: "merchant";
+  schedule_kind?: "weekly" | "dated_week";
+  source_name?: string;
   observed_at: string;
   expires_at: string;
   coverage_from: string;

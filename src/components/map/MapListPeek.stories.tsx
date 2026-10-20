@@ -202,3 +202,144 @@ export const NativePointerOpener: Story = {
     await expect(args.onPickEvent).not.toHaveBeenCalled();
   },
 };
+
+
+const photoFixture = list.rows[0];
+if (photoFixture.kind !== "place") throw new Error("Expected the declared place fixture.");
+const reviewedPhotoList: MapTaskList = {
+  ...list, key: "reviewed-photo-list", title: "Places with reviewed local photos", note: null,
+  rows: [
+    { kind: "place", place: { ...photoFixture.place, slug: "mccurdy-field", name: "McCurdy Field", category: "park", short_blurb: "" } },
+    { kind: "place", place: { ...photoFixture.place, slug: "new-market-historic-district-new-market", name: "New Market Historic District", municipality: "new-market", geom: { lat: 39.3828, lng: -77.2694 }, category: "antiques", short_blurb: "" } },
+    { kind: "place", place: { ...photoFixture.place, slug: "catoctin-mountain-park", name: "Catoctin Mountain Park", municipality: "thurmont", geom: { lat: 39.6483, lng: -77.4665 }, category: "park", short_blurb: "" } },
+  ],
+};
+
+export const ExactReviewedPhotosAt320: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { list: reviewedPhotoList },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await canvasElement.ownerDocument.fonts.ready;
+    for (const image of canvasElement.querySelectorAll<HTMLImageElement>("img")) {
+      await image.decode();
+      await expect(image.naturalWidth).toBeGreaterThan(1);
+      await expect(image.naturalHeight).toBeGreaterThan(1);
+    }
+    await waitFor(() => expect(canvasElement.querySelectorAll('[data-photo-state="ready"]')).toHaveLength(3));
+    for (const frame of canvasElement.querySelectorAll<HTMLElement>("[data-map-list-photo]")) {
+      await expect(frame.getBoundingClientRect().width).toBe(72);
+      await expect(frame.getBoundingClientRect().height).toBe(72);
+    }
+    const row = canvasElement.querySelector<HTMLElement>('[data-map-list-place-row="new-market-historic-district-new-market"]')!;
+    const scoped = within(row);
+    const open = scoped.getByRole("button", { name: /New Market Historic District/ });
+    const directions = scoped.getByRole("link", { name: "Directions to New Market Historic District" });
+    const source = scoped.getByRole("link", { name: "Wikimedia Commons" });
+    const license = scoped.getByRole("link", { name: "CC BY-SA 4.0" });
+    await expect(source).toHaveAttribute("href", "https://commons.wikimedia.org/wiki/File:New_Market_HD_MD1.jpg");
+    await expect(license).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0/");
+    await expect(scoped.getByText("Photo by Acroterion.")).toBeVisible();
+    await expect(source.closest("button")).toBeNull();
+    await expect(canvasElement.querySelector("button a, a button")).toBeNull();
+    for (const target of [open, directions, source, license]) await expectReachableTarget(target);
+    await expect(canvas.queryByText(/from you/)).not.toBeInTheDocument();
+    await userEvent.click(open);
+    const selected = reviewedPhotoList.rows[1];
+    if (selected.kind !== "place") throw new Error("Expected the reviewed exact place row.");
+    await expect(args.onPickPlace).toHaveBeenCalledWith(selected.place);
+  },
+};
+
+export const PhotoFailureKeepsStableRows: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { list: { ...reviewedPhotoList, key: "reviewed-failed-photo", rows: [reviewedPhotoList.rows[0], list.rows[0]] } },
+  play: async ({ canvasElement, args }) => {
+    await canvasElement.ownerDocument.fonts.ready;
+    const canvas = within(canvasElement);
+    const first = canvas.getByRole("button", { name: /McCurdy Field/ });
+    const second = canvas.getByRole("button", { name: /Sample coffee place 1/ });
+    const frame = first.querySelector<HTMLElement>("[data-map-list-photo]")!;
+    const emptyFrame = second.querySelector<HTMLElement>("[data-map-list-photo]")!;
+    const image = frame.querySelector("img")!;
+    await image.decode();
+    await waitFor(() => expect(frame).toHaveAttribute("data-photo-state", "ready"));
+    const before = [frame, first, second].map(element => element.getBoundingClientRect());
+    await expect(before[0].width).toBe(72);
+    await expect(before[0].height).toBe(72);
+    await expect(emptyFrame.getBoundingClientRect().width).toBe(38);
+    await expect(emptyFrame.getBoundingClientRect().height).toBe(38);
+    image.dispatchEvent(new Event("error"));
+    await waitFor(() => expect(frame).toHaveAttribute("data-photo-state", "fallback"));
+    await expect(frame.querySelector("img")).toBeNull();
+    for (const [index, element] of [frame, first, second].entries()) {
+      const after = element.getBoundingClientRect();
+      for (const dimension of ["x", "y", "width", "height"] as const) {
+        await expect(Math.abs(after[dimension] - before[index][dimension])).toBeLessThanOrEqual(0.5);
+      }
+    }
+    await expect(first).toHaveTextContent("Hours not confirmed");
+    await expect(canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
+    await expectReachableTarget(first);
+    await userEvent.click(first);
+    const selected = reviewedPhotoList.rows[0];
+    if (selected.kind !== "place") throw new Error("Expected the owned place row.");
+    await expect(args.onPickPlace).toHaveBeenCalledWith(selected.place);
+  },
+};
+
+
+export const LicensedPhotoKeepsTotalRowGeometry: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { list: { ...reviewedPhotoList, key: "stable-licensed-credit", rows: [reviewedPhotoList.rows[1], list.rows[0]] } },
+  render: function Render(args) {
+    const [shown, setShown] = useState(false);
+    return <div>
+      <button type="button" className="min-h-[44px] px-3" onClick={() => setShown(true)}>Show the reviewed photo fixture</button>
+      {shown && <MapListPeek {...args} />}
+    </div>;
+  },
+  play: async ({ canvasElement }) => {
+    await canvasElement.ownerDocument.fonts.ready;
+    const canvas = within(canvasElement);
+    const measure = () => {
+      const row = canvasElement.querySelector<HTMLElement>('[data-map-list-place-row="new-market-historic-district-new-market"]')!;
+      const nextRow = canvasElement.querySelector<HTMLElement>('[data-map-list-place-row="component-fixture-0"]')!;
+      return [row, row.querySelector<HTMLElement>("[data-map-list-place]")!, row.querySelector<HTMLElement>("[data-map-list-photo]")!, nextRow]
+        .map(element => { const box = element.getBoundingClientRect(); return { x: box.x, y: box.y, width: box.width, height: box.height }; });
+    };
+    let pending: ReturnType<typeof measure> | undefined;
+    // Observe the actual initial commit before its local image decode, rather
+    // than changing the image, clock, source plan or component's load handler.
+    const observer = new MutationObserver(() => {
+      const frame = canvasElement.querySelector<HTMLElement>('[data-map-list-photo="new-market-historic-district-new-market"]');
+      if (!pending && frame?.dataset.photoState === "pending") pending = measure();
+    });
+    observer.observe(canvasElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-photo-state"] });
+    try {
+      await userEvent.click(canvas.getByRole("button", { name: "Show the reviewed photo fixture" }));
+      const frame = canvasElement.querySelector<HTMLElement>('[data-map-list-photo="new-market-historic-district-new-market"]')!;
+      const image = frame.querySelector("img")!;
+      await image.decode();
+      await waitFor(() => expect(frame).toHaveAttribute("data-photo-state", "ready"));
+      await expect(pending).toBeDefined();
+      const loaded = measure();
+      await expect(canvas.getByRole("link", { name: "Wikimedia Commons" })).toBeVisible();
+      image.dispatchEvent(new Event("error"));
+      await waitFor(() => expect(frame).toHaveAttribute("data-photo-state", "fallback"));
+      const failed = measure();
+      const evidence = JSON.stringify({ pending, loaded, failed });
+      for (const state of [loaded, failed]) {
+        for (const [index, box] of state.entries()) {
+          for (const dimension of ["x", "y", "width", "height"] as const) {
+            await expect(Math.abs(box[dimension] - pending![index][dimension]), evidence).toBeLessThanOrEqual(0.5);
+          }
+        }
+      }
+      // Failed bytes must not leave an accessible claim that their photograph
+      // is displayed, even while the exact legal-credit footprint stays put.
+      await expect(canvas.queryByRole("link", { name: "Wikimedia Commons" })).not.toBeInTheDocument();
+      await expect(canvas.getByRole("button", { name: /New Market Historic District/ })).toHaveTextContent("Hours not confirmed");
+    } finally { observer.disconnect(); }
+  },
+};

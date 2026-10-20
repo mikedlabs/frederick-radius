@@ -124,7 +124,7 @@ export function isScheduleEvidenceCurrent(hours: Hours, at: Date): boolean {
   if (!evidence) return true;
   const date = nowInFrederick(at).date;
   return isHoursFresh(evidence.observed_at, at) &&
-    at.getTime() <= Date.parse(evidence.expires_at) &&
+    at.getTime() < Date.parse(evidence.expires_at) &&
     date >= evidence.coverage_from && date <= evidence.coverage_through;
 }
 

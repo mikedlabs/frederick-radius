@@ -6,6 +6,8 @@
 // prebuild, coverage, audits) import this loader directly, and server-only's
 // default export throws outside a React Server context, which breaks the
 // build. server-only would need a script-side stub before it could return.
+import MERCHANT_HOURS_RAW from "@/data/places-merchant-hours.json" with { type: "json" };
+import { merchantHoursForPlace } from "@/lib/merchant-hours";
 import OFFICIAL_HOURS_RAW from "@/data/places-official-hours.json" with { type: "json" };
 import { officialHoursForPlace } from "@/lib/official-hours";
 import { isScheduleEvidenceCurrent } from "@/lib/hours";
@@ -1135,7 +1137,8 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   const refreshedHours = !hoursPatchOutranksRefresh && refresh?.weekday_hours
     ? parseGoogleHours(refresh.weekday_hours)
     : undefined;
-  const official = officialHoursForPlace(enriched, OFFICIAL_HOURS_RAW, now);
+  const library = officialHoursForPlace(enriched, OFFICIAL_HOURS_RAW, now);
+  const official = library.enrolled ? library : merchantHoursForPlace(enriched, MERCHANT_HOURS_RAW, now);
   // Enrolled first-party identities never fall back to a holiday-blind weekly
   // provider schedule when their closure evidence is absent, invalid or stale.
   const hours = official.enrolled ? official.hours : refreshedHours ?? enriched.hours;

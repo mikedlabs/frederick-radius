@@ -50,6 +50,7 @@ jobs:
                 'src/data/places-client-hours.json',
                 'src/data/places-client.json',
                 'src/data/places-official-hours.json',
+                'src/data/places-merchant-hours.json',
               ],
               'bot/data-steward': [
                 'docs/coverage-scorecard.md',

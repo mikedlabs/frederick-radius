@@ -20,13 +20,27 @@
   transition: background-color 140ms ease;
 }
 
+/* Exact registry identities reserve their photo slot through decode/failure.
+ * Other rows keep the compact category mark without asynchronous resizing. */
 .categoryMark {
+  position: relative;
+  overflow: hidden;
   display: grid;
   width: 38px;
   height: 38px;
   flex-shrink: 0;
   place-items: center;
   border-radius: var(--app-radius-sm);
+}
+
+.categoryMark[data-has-photo-plan] {
+  width: 72px;
+  height: 72px;
+}
+
+.photoCredit {
+  min-width: 0;
+  grid-column: 1 / -1;
 }
 
 .placeDirections {

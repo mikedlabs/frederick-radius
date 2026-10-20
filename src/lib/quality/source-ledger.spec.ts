@@ -611,3 +611,20 @@ describe("cadence parsing", () => {
     expect(cadenceMaxAgeHours("on_demand")).toBeNull();
   });
 });
+
+
+describe("publication evidence expiry", () => {
+  it("does not let a same-day observation extend a short dated schedule", () => {
+    const proof = success({ publishedAt: "2026-07-28T11:00:00.000Z", expiresAt: "2026-07-28T11:30:00.000Z" });
+    const current = buildSourceLedger([source({ refreshCadence: "daily" })], [proof], [], new Date("2026-07-28T11:15:00Z"))[0];
+    expect(current.state).toBe("healthy");
+    expect(buildSourceLedger([source({ refreshCadence: "daily" })], [proof], [], new Date("2026-07-28T11:30:00Z"))[0].state).toBe("stale");
+    const expired = buildSourceLedger([source({ refreshCadence: "daily" })], [proof], [], NOW)[0];
+    expect(expired.state).toBe("stale"); expect(expired.freshness.state).toBe("stale");
+    expect(buildSourceLedger([source({ refreshCadence: "daily" })], [success()], [], NOW)[0].state).toBe("healthy");
+  });
+  it.each([null, "unknown", "2026-07-28T10:00:00.000Z"])("fails closed for invalid explicit publication horizon %s", (expiresAt) => {
+    const row = buildSourceLedger([source()], [success({ expiresAt })], [], NOW)[0];
+    expect(row.state).toBe("invalid_evidence");
+  });
+});

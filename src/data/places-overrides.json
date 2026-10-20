@@ -91,6 +91,9 @@
     "baker-park-bandshell"
   ],
   "patch": {
+    "frederick-coffee-company-frederick": {
+      "website": "https://fredcoffeeco.com/"
+    },
     "white-rabbit-gastropub": {
       "category": "restaurant",
       "subcategories": ["bar", "gastropub", "pizza"],

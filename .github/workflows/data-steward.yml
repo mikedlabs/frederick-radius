@@ -316,7 +316,7 @@ jobs:
       branch: ${{ needs.steward-publish.outputs.pr_branch }}
       head_sha: ${{ needs.steward-publish.outputs.pr_head_sha }}
 
-  # The free, official-library pilot is independent of the gated paid writer
+  # The free, reviewed first-party cohort is independent of the gated paid writer
   # and the offline NAS. Reuse this schedule and the existing review publisher.
   official-hours:
     if: ${{ github.ref == 'refs/heads/main' }}
@@ -326,6 +326,8 @@ jobs:
       contents: read
     outputs:
       artifact_name: ${{ steps.artifact-name.outputs.name }}
+      merchant_pending_count: ${{ steps.refresh.outputs.merchant_pending_count }}
+      merchant_pending_summary: ${{ steps.refresh.outputs.merchant_pending_summary }}
       review_required: ${{ steps.refresh.outputs.review_required != 'false' || steps.catalog-review.outputs.review_required != 'false' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -337,7 +339,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Refresh both required official pages
+      - name: Refresh required library pages and reviewed merchant sources
         id: refresh
         run: npm run refresh:official-hours
       - name: Rebuild the public place snapshot
@@ -349,7 +351,7 @@ jobs:
         run: |
           npm run coverage:scorecard
           npm run gates
-          npx vitest run src/lib/official-hours.spec.ts src/lib/quality/fcpl-official-hours.spec.ts src/lib/official-hours-integration.spec.ts tests/official-hours-workflow.spec.ts tests/client-place-parity.spec.ts
+          npx vitest run src/lib/merchant-hours.spec.ts src/lib/quality/source-artifact-evidence.spec.ts src/lib/quality/source-ledger.spec.ts src/lib/official-hours.spec.ts src/lib/quality/fcpl-official-hours.spec.ts src/lib/official-hours-integration.spec.ts tests/official-hours-workflow.spec.ts tests/client-place-parity.spec.ts
           npm run data:release:write -- --stream places
       - name: Stage bounded hours outputs
         env:
@@ -358,6 +360,7 @@ jobs:
           set -euo pipefail
           for path in \
             src/data/places-official-hours.json \
+            src/data/places-merchant-hours.json \
             src/data/place-refresh-identities.json \
             src/data/places-client.json \
             src/data/places-client-hours.json \
@@ -382,7 +385,8 @@ jobs:
       - name: Report refresh outcome
         if: ${{ always() }}
         run: |
-          echo "Official FCPL hours require both source pages, a successful reviewed PR, and a production deployment. The seven-day expiry never moves on a failed fetch. Inspect the failed step or pending official-hours PR before the published snapshot expires." >> "$GITHUB_STEP_SUMMARY"
+          echo "Nine library schedules require both FCPL pages. Three reviewed merchant sources retain their own observations and dated coverage; failed or conflicted merchant reads stage review instead of extending evidence. A successful workflow is not publication: inspect the reviewed PR and production deployment before claiming current hours." >> "$GITHUB_STEP_SUMMARY"
+          echo "Pending merchant sources: ${{ steps.refresh.outputs.merchant_pending_count }}. Source reasons: ${{ steps.refresh.outputs.merchant_pending_summary }}." >> "$GITHUB_STEP_SUMMARY"
 
   official-hours-publish:
     needs: official-hours
@@ -397,6 +401,7 @@ jobs:
       branch: bot/official-library-hours
       allowed_paths: |
         src/data/places-official-hours.json
+        src/data/places-merchant-hours.json
         src/data/place-refresh-identities.json
         src/data/places-client.json
         src/data/places-client-hours.json
@@ -404,20 +409,32 @@ jobs:
         src/data/data-release.json
         docs/coverage-scorecard.md
         docs/hours-refresh-review.md
-      commit_message: "data: refresh official library hours"
-      title: "data: refresh official library hours"
+      commit_message: "data: refresh reviewed first-party hours"
+      title: "data: refresh reviewed first-party hours"
       auto_merge: ${{ needs.official-hours.outputs.review_required == 'false' }}
       body: |
-        Two fixed official FCPL pages supply nine library schedules and dated
-        full/early closures. No paid providers or private database access.
-        Review the weekly windows, every changed date exception, source hashes,
-        observation dates and expiry in places-official-hours.json.
+        Refreshes the bounded free first-party cohort: nine FCPL libraries from
+        both required official pages, plus Brewer's Alley, Gravel & Grind and
+        Beans in the Belfry from their three reviewed canonical merchant URLs.
+        No paid providers, private database access, redirects or source retries.
+        Review each changed weekly window, source hash, observation, expiry and
+        dated closure. Brewer's actual published week cannot extend beyond its
+        final date. Other merchant evidence retains the seven-day limit and
+        does not imply an independently verified holiday calendar.
+        Pending merchant sources: ${{ needs.official-hours.outputs.merchant_pending_count }}.
+        Source reasons: ${{ needs.official-hours.outputs.merchant_pending_summary }}.
+        Changed, failed or conflicted merchant reads retain the old approved
+        observation and a source-specific hold. Candidate proof stays in the
+        review queue, outside the public schedule; it cannot accept itself on
+        repeated reads. These holds do not block the other sources' routine
+        refreshes. Approve an exact candidate in a separate reviewed change to
+        restore only that source. No new or changed public hours auto-promote.
         Semantic source changes require review: ${{ needs.official-hours.outputs.review_required }}.
-        Only an unchanged reviewed schedule/identity/closure set may auto-merge
-        after normal required checks. A failed
-        or ambiguous page never extends the last published observation.
-        The source ledger grades the deployed artifact; this PR alone is not
-        production freshness. Merge after required checks and source review.
+        Only unchanged approved facts, fresh observations and restrictive
+        source-specific holds may auto-merge after normal required checks.
+        Removing a hold or changing an accepted schedule still needs review. Collection success
+        alone is not production freshness: merge and verify the published
+        artifact and exact production deployment before reporting coverage.
 
   official-hours-checks:
     needs: official-hours-publish

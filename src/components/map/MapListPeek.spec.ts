@@ -72,10 +72,40 @@ describe("MapListPeek", () => {
     expect(withFix).toContain("from you");
   });
 
-  it("leads every place row with the category mark, not a photo", () => {
+  it("keeps an immediate category fallback for places without an exact reviewed photo", () => {
     const html = render();
     expect(html).not.toContain("<img");
     expect(html).toContain("<svg");
+  });
+
+  it.each([
+    ["new-market-historic-district-new-market", "/history-photos/new-market-antiques.jpg"],
+    ["catoctin-mountain-park", "/history-photos/catoctin-mountain-park.jpg"],
+  ])("uses the existing exact licensed registry photo for %s without a metadata request", (slug, image) => {
+    const html = render({ list: list({ rows: [{ kind: "place", place: place(slug) }] }) });
+    expect(html).toContain('data-has-photo-plan="true"');
+    expect(html).toContain('data-photo-source="curated"');
+    expect(html).toContain('data-photo-state="pending"');
+    const src = html.match(/<img[^>]*src="([^"]+)"/)![1].replaceAll("&amp;", "&");
+    const original = new URL(src, "https://frederickradius.app").searchParams.get("url") ?? src;
+    expect(original).toBe(image);
+    // Keep the credit footprint, without an accessible displayed-photo claim,
+    // while the actual image is still awaiting decode.
+    expect(html).toMatch(/<div[^>]*aria-hidden="true"[^>]*inert=""[^>]*class="place-card-photo-credit/);
+    expect(html).toContain("visibility:hidden");
+  });
+
+  it("does not bind generic scenery or automatically request supplied paid Google imagery", () => {
+    const paidPlace = { ...place("new-market-coffee-shop"),
+      google_photo_url: "/api/place-photo?name=places%2Fshop%2Fphotos%2Fhero&w=800",
+      google_photo_attribution: { photo_name: "places/shop/photos/hero", authors: [{ display_name: "Real author" }], google_maps_uri: "https://www.google.com/maps/photos/shop" },
+    };
+    const html = render({ list: list({ rows: [{ kind: "place", place: paidPlace }] }) });
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("/api/place-photo");
+    expect(html).toContain('data-photo-state="fallback"');
+    expect(html).not.toContain("data-has-photo-plan");
+    expect(html).toContain("Hours not confirmed");
   });
 
   it("collapses to its title so the map stays readable", () => {

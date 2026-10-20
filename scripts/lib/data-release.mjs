@@ -28,6 +28,7 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
   "src/data/place-status-overrides.json",
   "src/data/places-hours-refresh.json",
   "src/data/places-official-hours.json",
+  "src/data/places-merchant-hours.json",
   "src/data/business-status.json",
   // Server-loader editorial and policy inputs.
   "src/data/known-for.json",
@@ -152,7 +153,7 @@ export function inspectArtifact(root, relativePath) {
       const detail = error instanceof Error ? error.message : String(error);
       throw new Error(`${relativePath} is not valid JSON: ${detail}`);
     }
-    records = relativePath === "src/data/places-official-hours.json" && Array.isArray(value?.places)
+    records = ["src/data/places-official-hours.json", "src/data/places-merchant-hours.json"].includes(relativePath) && Array.isArray(value?.places)
       ? value.places.length
       : jsonRecordCount(value);
   } else if (extension !== ".ts" && !(extension === ".jpg" && PLACE_RELEASE_ARTIFACTS.includes(relativePath))) {

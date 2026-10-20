@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:7194b9ebb283e4b27fed8aad87e9d4cf6845230219ac7020c005a12b0b5fd401",
+  "data_version": "sha256:527c21b87c94fc2c709e1744e81920b3705641250868243f82618bb25f55a268",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,13 +14,13 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-19T15:22:31.116Z",
+      "promoted_at": "2026-10-20T00:04:40.256Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
-          "sha256": "537add18684a29f3a9c5c68925837cad5c8141832ba2fe12629daef3d88de571",
+          "sha256": "90ea45683334010e94f1276d32c208ceb9756442f397046da77766e6ae6724e3",
           "records": null,
-          "bytes": 126873
+          "bytes": 126962
         },
         {
           "path": "src/data/places-dfp.json",
@@ -48,9 +48,9 @@
         },
         {
           "path": "src/data/places-overrides.json",
-          "sha256": "343c4f01b9e5ee08300df9fa72a8cdcf2f5423e88318c5f84aba135440a84581",
+          "sha256": "48e1d60aa9618d52b8a877c0280ab7dcbf8062279f47900634523de37389bfa7",
           "records": 4,
-          "bytes": 43443
+          "bytes": 43539
         },
         {
           "path": "src/data/place-status-overrides.json",
@@ -69,6 +69,12 @@
           "sha256": "6207149090b85dfcdabd044c499cb64d21c570940e6fdf8541fba99eb5a20f58",
           "records": 9,
           "bytes": 12142
+        },
+        {
+          "path": "src/data/places-merchant-hours.json",
+          "sha256": "2e5c396c0064a4d5bf74d84cffade0401b397dad7201dd8713cecd39dbef5d5f",
+          "records": 3,
+          "bytes": 3764
         },
         {
           "path": "src/data/business-status.json",
@@ -174,9 +180,9 @@
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
-          "sha256": "ff925357b5f8508bc79b5d465ecd9ddb44b67bd2d925821fd19b85ab196166d3",
+          "sha256": "31a7376f9eded27ca2b97371bcef70904192a657e4c76aa7224356af50d056c4",
           "records": null,
-          "bytes": 6995
+          "bytes": 8170
         },
         {
           "path": "public/place-photos/brewers-alley-2004.jpg",
@@ -252,15 +258,15 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "ef245256a750911b0e8f3d2cf11a987a509df2872b81839d7be572904107abcd",
+          "sha256": "0170809408cea2276bf8609bbc75cd21da5119b58eae5a41955cbe8901fa38a4",
           "records": 1571,
-          "bytes": 2290288
+          "bytes": 2292243
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "3119a1e3c965ab50bdfb652e7ef203f8b04d0938540741301073c84c22bdc746",
-          "records": 9,
-          "bytes": 23987
+          "sha256": "ea495912a31a5e320426d5ff4c08dafcccdafa025d504e18c740945002b5029a",
+          "records": 12,
+          "bytes": 26266
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
@@ -271,13 +277,13 @@
       ]
     },
     "sources": {
-      "promoted_at": "2026-10-16T23:31:35.287Z",
+      "promoted_at": "2026-10-19T23:53:08.422Z",
       "artifacts": [
         {
           "path": "src/data/source-registry.generated.json",
-          "sha256": "8005a7847cba1e81120faa5068825a08968d6781564e2e4067151ac328ff2100",
-          "records": 128,
-          "bytes": 83599
+          "sha256": "770059942ea3c88841d63b67c1408c22bae3e3b5278865c983a074e32a2ed9e6",
+          "records": 131,
+          "bytes": 85724
         }
       ]
     },

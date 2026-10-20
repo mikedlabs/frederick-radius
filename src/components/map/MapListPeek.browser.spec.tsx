@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, type AnchorHTMLAttributes } from "react";
+import { act, type AnchorHTMLAttributes, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import MapListPeek, { type MapListPeekProps } from "./MapListPeek";
@@ -8,6 +8,10 @@ import type { MapPinPlace } from "./types";
 import { eventPinFromEvent } from "@/lib/map/eventPin";
 import { clearMapSelectionOpener, rememberMapSelectionOpener, restoreMapSelectionOpenerFocus, takeMapSelectionOpener } from "./mapSelectionFocus";
 
+// This image seam reports actual load/error lifecycle without requesting providers.
+vi.mock("next/image", () => ({ default: ({ src, alt, ref, onLoad, onError, style }: ComponentProps<"img">) =>
+  // eslint-disable-next-line @next/next/no-img-element
+  <img ref={ref} src={src} alt={alt ?? ""} onLoad={onLoad} onError={onError} style={style} /> }));
 vi.mock("next/link", () => ({ default: (props: AnchorHTMLAttributes<HTMLAnchorElement>) => <a {...props} /> }));
 vi.mock("@/lib/haptics", () => ({ haptic: vi.fn() }));
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -205,5 +209,82 @@ describe("MapListPeek native directions", () => {
     expect(host.querySelector('[data-map-list-event-link="unmapped"]')?.getAttribute("href")).toContain("returnTo=");
     await act(async () => host.querySelector<HTMLButtonElement>('[data-map-list-event="trivia"]')!.click());
     expect(onPickEvent).toHaveBeenCalledOnce(); expect(onPickPlace).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("MapListPeek reviewed place media", () => {
+  let host: HTMLDivElement;
+  let root: Root;
+  beforeEach(() => {
+    host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+    vi.stubGlobal("fetch", vi.fn(() => { throw new Error("This browse photo must not fetch metadata or providers"); }));
+  });
+  afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+  const mount = async (selected: MapPinPlace, onPickPlace = vi.fn()) => act(async () => {
+    root.render(<MapListPeek list={list([{ kind: "place", place: selected }])} expanded userLoc={null}
+      onExpandedChange={() => {}} onPickPlace={onPickPlace} onPickEvent={() => {}} />);
+  });
+  const load = async (image: HTMLImageElement) => {
+    Object.defineProperties(image, { naturalWidth: { configurable: true, value: 600 }, naturalHeight: { configurable: true, value: 400 } });
+    await act(async () => image.dispatchEvent(new Event("load")));
+  };
+
+  it.each([
+    ["mccurdy-field", "McCurdy Field", "/images/seasons/spring/aerial-view-baseball-field.jpg"],
+    ["carroll-creek-linear-park-frederick", "Carroll Creek Linear Park", "/images/seasons/summer/SUMMER CARROL CREEK.jpg"],
+  ])("paints exact owned %s without metadata or a licensed footer and retains its actions after failure", async (slug, name, src) => {
+    const selected = place(0, { slug, name, category: "park" });
+    const onPick = vi.fn();
+    await mount(selected, onPick);
+    const image = host.querySelector<HTMLImageElement>("img")!;
+    expect(image.getAttribute("src")).toBe(src);
+    await load(image);
+    expect(host.querySelector('[data-map-list-photo]')?.getAttribute("data-photo-state")).toBe("ready");
+    expect(host.querySelector(".place-card-photo-credit")).toBeNull();
+    await act(async () => image.dispatchEvent(new Event("error")));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector('[data-map-list-photo]')?.getAttribute("data-photo-state")).toBe("fallback");
+    const details = host.querySelector<HTMLButtonElement>(`[data-map-list-place="${slug}"]`)!;
+    expect(details.textContent).toContain("Hours not confirmed");
+    await act(async () => details.click());
+    expect(onPick).toHaveBeenCalledExactlyOnceWith(selected);
+    expect(document.activeElement).toBe(details);
+    expect(host.querySelector(`[data-map-list-directions="${slug}"]`)).not.toBeNull();
+    expect(host.querySelector(".place-card-photo-credit")).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("credits the exact licensed image only after decode, outside independent selection and directions", async () => {
+    const selected = place(0, { slug: "new-market-historic-district-new-market", name: "New Market Historic District" });
+    const onPick = vi.fn();
+    await mount(selected, onPick);
+    const image = host.querySelector<HTMLImageElement>("img")!;
+    expect(image.getAttribute("src")).toBe("/history-photos/new-market-antiques.jpg");
+    const pendingCredit = host.querySelector<HTMLElement>(".place-card-photo-credit")!;
+    expect(pendingCredit.getAttribute("aria-hidden")).toBe("true");
+    expect(pendingCredit.hasAttribute("inert")).toBe(true);
+    expect(pendingCredit.style.visibility).toBe("hidden");
+    await load(image);
+    const credit = host.querySelector<HTMLElement>(".place-card-photo-credit")!;
+    expect(credit.style.visibility).toBe("");
+    expect(credit.hasAttribute("inert")).toBe(false);
+    expect(credit.textContent).toContain("Acroterion");
+    expect(credit.textContent).toContain("CC BY-SA 4.0");
+    expect(credit.querySelector('a[href="https://commons.wikimedia.org/wiki/File:New_Market_HD_MD1.jpg"]')).not.toBeNull();
+    expect(credit.closest("button, a")).toBeNull();
+    expect(host.querySelector("button a, a button")).toBeNull();
+    const source = credit.querySelector("a")!;
+    document.addEventListener("click", event => event.preventDefault(), { once: true });
+    await act(async () => source.click());
+    expect(onPick).not.toHaveBeenCalled();
+    await act(async () => image.dispatchEvent(new Event("error")));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector(".place-card-photo-credit")).toBe(credit);
+    expect(credit.getAttribute("aria-hidden")).toBe("true");
+    expect(credit.hasAttribute("inert")).toBe(true);
+    expect(credit.style.visibility).toBe("hidden");
+    expect(host.textContent).toContain("New Market Historic District");
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

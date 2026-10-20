@@ -13,6 +13,8 @@ export default function HoursBlock({
   hours,
   verified = false,
   provenance,
+  website,
+  phone,
 }: {
   hours?: Hours;
   verified?: boolean;
@@ -20,6 +22,8 @@ export default function HoursBlock({
    *  days ago."). Lives inside the expanded details so it stays honest
    *  without competing with the open/closed dot in the decision zone. */
   provenance?: string;
+  website?: string;
+  phone?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
@@ -27,7 +31,16 @@ export default function HoursBlock({
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
-  if (!hours) return null;
+  if (!hours) return (
+    <section aria-label="Hours" className="rounded-[var(--app-radius-md)] border p-3" style={{ borderColor: "var(--app-border)" }}>
+      <p className="text-sm font-medium">Hours not recently confirmed</p>
+      <p className="mt-1 text-xs" style={{ color: "var(--app-ink-2)" }}>Check with the business before going.</p>
+      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        {website && <a href={website} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline">Check the official website</a>}
+        {phone && <a href={`tel:${phone.replace(/[^+\d]/g, "")}`} className="inline-flex min-h-11 items-center underline">Call to check hours</a>}
+      </div>
+    </section>
+  );
   const status = getOpenStatus(hours, { verified }, now);
   const today = hoursForDate(hours, now);
   const exception = hours._official?.exceptions.find((item) => item.date === easternDayKey(now));
@@ -39,7 +52,7 @@ export default function HoursBlock({
       style={{ borderColor: "var(--app-border)" }}
       onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}
     >
-      <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2.5 list-none">
+      <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-3 py-2.5 list-none">
         <span className="flex min-w-0 items-center gap-2">
           {/* The SCHEDULE fact, not open/closed: the header's LiveOpenStatus
               is the page's one status voice, and this summary used to
@@ -72,7 +85,11 @@ export default function HoursBlock({
         )}
         {hours._official && (
           <p className="mb-2 text-xs" style={{ color: "var(--app-ink-2)" }}>
-            {exception && today ? `${exception.reason}. ` : ""}The table shows normal weekly hours. Dated closures take priority.
+            {hours._official.kind === "merchant"
+              ? hours._official.schedule_kind === "dated_week"
+                ? `The business published this schedule for ${hours._official.coverage_from} through ${hours._official.coverage_through}.`
+                : "The table shows the business's posted weekly hours. Special-date changes may not be included. Check the official website before going."
+              : <>{exception && today ? `${exception.reason}. ` : ""}The table shows normal weekly hours. Dated closures take priority.</>}
           </p>
         )}
         <ul className="divide-y border-t text-sm" style={{ borderColor: "var(--app-border)" }}>
@@ -86,9 +103,9 @@ export default function HoursBlock({
           ))}
         </ul>
         {hours._official && (
-          <p className="mt-2 flex flex-wrap gap-x-3 text-xs">
-            <a href={hours._official.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline">Official branch hours</a>
-            <a href={hours._official.closures_url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline">FCPL holiday closures</a>
+          <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+            <a href={hours._official.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline">{hours._official.kind === "merchant" ? "Official business hours" : "Official branch hours"}</a>
+            {hours._official.closures_url && <a href={hours._official.closures_url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline">FCPL holiday closures</a>}
           </p>
         )}
         {provenance && (

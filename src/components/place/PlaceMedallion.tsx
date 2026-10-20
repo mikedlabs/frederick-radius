@@ -1,4 +1,9 @@
-import Image from "next/image";
+"use client";
+
+import { useLayoutEffect, useRef, useState } from "react";
+import CompactPlacePhoto from "./CompactPlacePhoto";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
+import type { PlaceCardPhotoResult } from "@/lib/place-card-photo";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
@@ -47,13 +52,35 @@ export function PlaceMedallion({
   const categoryColor =
     CATEGORY_BY_SLUG[place.category]?.color ?? "var(--app-brand)";
   const inverse = surface === "inverse";
-  const photo = place.google_photo_url;
-  const photoSrc = photo ? medallionPhotoSrc(photo, size) : null;
+  // A medallion is often inside a navigation link and has no independent
+  // credit surface. Reuse exact owned images here; licensed alternatives stay
+  // on cards/sheets that can display their full source and license links.
+  const owned = getOwnedPlacePhoto(place.slug);
+  const sources = [owned?.src, place.google_photo_url ? medallionPhotoSrc(place.google_photo_url, size) : undefined]
+    .filter((src, index, all): src is string => Boolean(src) && all.indexOf(src) === index);
+  const planKey = JSON.stringify([place.slug, sources]);
+  const currentPlan = useRef(planKey);
+  useLayoutEffect(() => { currentPlan.current = planKey; }, [planKey]);
+  const [state, setState] = useState<{ key: string; failed: string[]; loaded: string | null } | null>(null);
+  const failures = state?.key === planKey ? state.failed : [];
+  const photoSrc = sources.find((src) => !failures.includes(src)) ?? null;
+  const photoLoaded = state?.key === planKey && state.loaded === photoSrc;
+  const onResult = (src: string, result: PlaceCardPhotoResult) => {
+    setState((previous) => {
+      if (currentPlan.current !== planKey) return previous;
+      const value = previous?.key === planKey ? previous : { key: planKey, failed: [], loaded: null };
+      if (sources.find((candidate) => !value.failed.includes(candidate)) !== src) return previous;
+      return result === "loaded" ? { ...value, loaded: src }
+        : { ...value, failed: [...value.failed, src], loaded: null };
+    });
+  };
 
   return (
     <span
       aria-hidden
-      data-place-media={photo ? "photo" : "fallback"}
+      data-place-media={photoSrc ? "photo" : "fallback"}
+      data-photo-state={photoSrc ? photoLoaded ? "ready" : "pending" : "fallback"}
+      data-place-photo-source={photoSrc === owned?.src ? "owned" : photoSrc ? "supplied" : undefined}
       data-place-slug={place.slug}
       className={`relative grid shrink-0 place-items-center overflow-hidden ${
         shape === "circle"
@@ -82,18 +109,8 @@ export function PlaceMedallion({
         }}
       />
       {photoSrc ? (
-        <Image
-          // Proxy responses are unoptimized (Next cannot resize an opaque
-          // route), so `sizes` alone would still pull the stored 800px hero
-          // down to paint a 40px circle. Ask the proxy for the real size.
-          src={photoSrc}
-          alt=""
-          fill
-          loading="lazy"
-          sizes={`${size}px`}
-          unoptimized={photoSrc.startsWith("/api/place-photo")}
-          className="object-cover"
-        />
+        <CompactPlacePhoto src={photoSrc} size={size} onResult={onResult}
+          objectPosition={photoSrc === owned?.src ? owned?.objectPosition : undefined} />
       ) : null}
     </span>
   );

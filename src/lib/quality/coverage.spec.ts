@@ -28,6 +28,7 @@ describe("coverage quality metrics", () => {
   it("counts only recently verified hours that may support an open-now claim", () => {
     const now = new Date("2026-07-23T12:00:00-04:00");
     expect(hasPublishedFreshHours(place(), now)).toBe(false);
+    expect(hasPublishedFreshHours(place({ hours: null, hours_verified: true, hours_updated_at: now.toISOString() }), now)).toBe(false);
     expect(
       hasPublishedFreshHours(
         place({
@@ -50,6 +51,30 @@ describe("coverage quality metrics", () => {
     ).toBe(false);
   });
 
+  it("stops counting a first-party schedule at its actual date horizon even within seven days", () => {
+    const checkedAt = "2026-10-19T16:00:00.000Z";
+    const datedPlace = place({
+      hours_verified: true,
+      hours_updated_at: checkedAt,
+      hours: {
+        mon: [{ open: "09:00", close: "17:00" }],
+        _official: {
+          slug: "fixture",
+          source_url: "https://example.com/hours",
+          observed_at: checkedAt,
+          expires_at: "2026-10-21T03:59:59.999Z",
+          coverage_from: "2026-10-20",
+          coverage_through: "2026-10-20",
+          exceptions: [],
+        },
+      },
+    });
+
+    expect(hasPublishedFreshHours(datedPlace, new Date("2026-10-19T17:00:00Z"))).toBe(false);
+    expect(hasPublishedFreshHours(datedPlace, new Date("2026-10-20T16:00:00Z"))).toBe(true);
+    expect(hasPublishedFreshHours(datedPlace, new Date("2026-10-21T04:00:00Z"))).toBe(false);
+  });
+
   it("counts only a publishable card photo field", () => {
     expect(hasUsefulPhoto(place())).toBe(false);
     expect(hasUsefulPhoto(place({ google_photo_url: "  " }))).toBe(false);
@@ -57,6 +82,13 @@ describe("coverage quality metrics", () => {
     expect(
       hasUsefulPhoto(place({ google_photo_url: "/api/place-photo?name=places%2F1%2Fphotos%2F1" })),
     ).toBe(true);
+  });
+
+  it("counts exact reviewed local imagery even when no Google photo field exists", () => {
+    for (const slug of ["carroll-creek-linear-park-frederick", "new-market-historic-district-new-market", "catoctin-mountain-park"]) {
+      expect(hasUsefulPhoto(place({ slug }))).toBe(true);
+    }
+    expect(hasUsefulPhoto(place({ slug: "unreviewed-nearby-merchant" }))).toBe(false);
   });
 
   it("requires a stored contact or transaction action", () => {

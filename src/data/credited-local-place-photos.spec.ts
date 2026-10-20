@@ -11,6 +11,8 @@ const identities = [
   ["schifferstadt-architectural-museum-frederick", "schifferstadt", "Schifferstadt Architectural Museum"],
   ["hessian-barracks-frederick-maryland", "hessian-barracks", "Hessian Barracks Frederick Maryland"],
   ["co-canal-lock-30-brunswick", "co-canal", "C&O Canal Lock 30"],
+  ["new-market-historic-district-new-market", "new-market-antiques", "New Market Historic District"],
+  ["catoctin-mountain-park", "catoctin-mountain-park", "Catoctin Mountain Park"],
 ] as const;
 
 describe("reviewed local licensed place identity", () => {

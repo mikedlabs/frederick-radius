@@ -685,7 +685,7 @@ function PlaceSheetContent({
 
         {place.hours?._official && (
           <div className="mt-4">
-            <HoursBlock hours={place.hours} verified={place.hours_verified} provenance="Hours from Frederick County Public Libraries." />
+            <HoursBlock hours={place.hours} verified={place.hours_verified} provenance={`Hours from ${place.hours._official.source_name ?? "Frederick County Public Libraries"}.`} />
           </div>
         )}
         {/* Provider text is never a fallback for an expired first-party schedule. */}

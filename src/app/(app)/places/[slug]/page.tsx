@@ -531,7 +531,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         <HoursBlock hours={place.hours} verified={place.hours_verified ?? false} provenance={hoursConfirmed ?? undefined} />
       ) : place.google_hours && place.google_hours.length > 0 ? (
         <GoogleHours lines={place.google_hours} />
-      ) : null}
+      ) : <HoursBlock website={place.website} phone={place.phone} />}
 
       <PlacePhotoGallery
         key={place.slug}
