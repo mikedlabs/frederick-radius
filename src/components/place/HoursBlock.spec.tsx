@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import HoursBlock from "./HoursBlock";
 import { parseFcplOfficialHours } from "../../../scripts/lib/fcpl-official-hours";
 import { FCPL_HOURS_URL, FCPL_CLOSURES_URL, officialHoursForPlace } from "@/lib/official-hours";
+import { placeHoursProvenance } from "@/lib/place-hours-provenance";
+import type { MerchantHoursArtifact } from "@/lib/merchant-hours";
 const now = new Date("2026-10-12T16:00:00Z");
 const artifact = parseFcplOfficialHours(
   { url: FCPL_HOURS_URL, observedAt: "2026-10-12T09:13:00.000Z", html: readFileSync("tests/fixtures/fcpl-hours-index.html", "utf8") },
@@ -32,6 +34,36 @@ describe("official hours detail display", () => {
 
 
 describe("missing and merchant hours", () => {
+  it("renders merchant provenance from its own source and observation, distinct from library evidence", async () => {
+    const { merchantHoursForPlace, MERCHANT_HOURS_SOURCES } = await import("@/lib/merchant-hours");
+    const { parseMerchantOfficialHours } = await import("../../../scripts/lib/merchant-official-hours");
+    const at = new Date("2026-10-20T16:00:00Z");
+    vi.useFakeTimers(); vi.setSystemTime(at);
+    const source = MERCHANT_HOURS_SOURCES.find(item => item.slug === "thai-meric-eatery-bar-frederick")!;
+    // Offline replay of the saved source fixture at its original observation.
+    const merchantRow = parseMerchantOfficialHours(source, {
+      url: source.url,
+      html: readFileSync("tests/fixtures/merchant-hours/thai-meric-eatery-bar-frederick.html", "utf8"),
+      observedAt: "2026-10-20T11:42:21.627Z",
+    }, at);
+    const data: MerchantHoursArtifact = { schema_version: 1, places: [merchantRow], review: [] };
+    const merchantHours = merchantHoursForPlace({ slug: "thai-meric-eatery-bar-frederick", category: "restaurant", website: "https://www.thaimeric.com/" }, data, at).hours;
+    expect(merchantRow).toBeDefined();
+    expect(merchantHours).toBeDefined();
+    expect(merchantHours?._official).toMatchObject({ source_name: merchantRow.source_name, source_url: merchantRow.source_url, observed_at: merchantRow.observed_at });
+    const merchantProvenance = placeHoursProvenance({ hours: merchantHours, hours_source: "first_party", hours_updated_at: "2026-10-20T15:59:00Z" });
+    const merchantHtml = renderToStaticMarkup(<HoursBlock hours={merchantHours} verified provenance={merchantProvenance} />);
+    expect(merchantHtml).toContain("Hours from Thai Meric Eatery &amp; Bar, observed Oct 20, 2026 at 7:42 AM ET.");
+    expect(merchantHtml).toContain(`href="${merchantRow.source_url}"`);
+    expect(merchantHtml).not.toContain("Frederick County Public Libraries");
+    expect(merchantHtml).not.toContain("confirmed today");
+    const libraryProvenance = placeHoursProvenance({ hours, hours_source: "first_party" }, now.getTime());
+    const libraryHtml = renderToStaticMarkup(<HoursBlock hours={hours} verified provenance={libraryProvenance} />);
+    expect(libraryHtml).toContain("Hours from Frederick County Public Libraries, observed Oct 12, 2026 at 5:13 AM ET.");
+    expect(libraryHtml).toContain("Official branch hours");
+    expect(libraryHtml).not.toContain("Thai Meric");
+  });
+
   it("labels the exact merchant week and links its real source without inventing a library closure calendar", async () => {
     const data = (await import("@/data/places-merchant-hours.json")).default;
     const { merchantHoursForPlace } = await import("@/lib/merchant-hours");

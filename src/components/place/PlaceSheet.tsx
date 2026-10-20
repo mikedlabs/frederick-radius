@@ -19,6 +19,7 @@ import OpenClosedDot from "./OpenClosedDot";
 import GoogleHours from "./GoogleHours";
 import HoursBlock from "./HoursBlock";
 import { getOpenStatus } from "@/lib/hours";
+import { placeHoursProvenance } from "@/lib/place-hours-provenance";
 import SaveButton from "@/components/saved/SaveButton";
 import ShareButton from "./ShareButton";
 import SourceBadge from "./SourceBadge";
@@ -685,7 +686,7 @@ function PlaceSheetContent({
 
         {place.hours?._official && (
           <div className="mt-4">
-            <HoursBlock hours={place.hours} verified={place.hours_verified} provenance={`Hours from ${place.hours._official.source_name ?? "Frederick County Public Libraries"}.`} />
+            <HoursBlock hours={place.hours} verified={place.hours_verified} provenance={placeHoursProvenance(place)} />
           </div>
         )}
         {/* Provider text is never a fallback for an expired first-party schedule. */}
