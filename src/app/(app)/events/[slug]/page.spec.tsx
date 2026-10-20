@@ -15,6 +15,7 @@ import EventPage from "./page";
 import EventArtwork from "@/components/event/EventArtwork";
 import EventVenuePhoto from "@/components/event/EventVenuePhoto";
 import Image from "next/image";
+import Link from "next/link";
 import { EventResolutionTimeoutError, EventResolutionUnavailableError } from "@/lib/loaders/eventResolver";
 const now = new Date("2026-10-06T12:00:00-04:00");
 const event: EventWithMeta = { slug: "current-concert", title: "Evening concert", description: "A public concert.", starts_at: "2026-10-06T19:00:00-04:00", ends_at: "2026-10-06T22:00:00-04:00", timezone: "America/New_York", venue_name: "Weinberg Center", venue_place_slug: "venue", address: "20 W Patrick Street", geom: { lng: -77.4126, lat: 39.4142 }, municipality: "frederick", category: "music", audience: [], is_free: false, source: "manual", source_url: "https://example.org/concert", source_id: "42", license: "Publisher", confidence: "partner", first_seen_at: now.toISOString(), last_verified_at: now.toISOString(), is_verified: true, category_name: "Music", municipality_name: "Frederick", placement: "venue", geo_confidence: "venue_match" };
@@ -117,5 +118,29 @@ describe("event detail operational recovery rendering", () => {
     await expect(EventPage({ params: Promise.resolve({ slug: event.slug }), searchParams: Promise.resolve({}) })).rejects.toBe(failure);
     expect(mocks.noStore).not.toHaveBeenCalled();
     expect(mocks.captureMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe("event detail navigation loads destinations on intent", () => {
+  it.each(["scheduled", "cancelled", "ended"] as const)("preserves real breadcrumb and action links for %s events without speculative loads", async (state) => {
+    const current: EventWithMeta = state === "ended"
+      ? { ...event, starts_at: "2026-10-06T10:00:00-04:00", ends_at: "2026-10-06T11:00:00-04:00" }
+      : { ...event, status: state };
+    mocks.resolve.mockResolvedValue({ kind: "live", event: current });
+    const page = await EventPage({ params: Promise.resolve({ slug: event.slug }), searchParams: Promise.resolve({}) });
+    const nodes = elements(page);
+    const breadcrumb = nodes.find(node => node.type === "nav" && node.props["aria-label"] === "Breadcrumb")!;
+    const crumbs = elements(breadcrumb).filter(node => node.type === Link);
+    expect(crumbs.map(node => ({ href: node.props.href, label: node.props.children }))).toEqual([
+      { href: "/events", label: "Events" },
+      { href: "/m/frederick", label: "Frederick" },
+    ]);
+    const links = nodes.filter(node => node.type === Link);
+    expect(links.length).toBeGreaterThan(2);
+    for (const link of links) {
+      expect(link.props.prefetch, String(link.props.href)).toBe(false);
+      expect(link.props.href).toMatch(/^\//);
+    }
+    expect(links.some(node => node.props.href === (state === "scheduled" ? "/places/venue" : "/events?lens=today"))).toBe(true);
   });
 });

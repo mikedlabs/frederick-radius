@@ -22,9 +22,10 @@ import { restoreBrowseFocusReturn, takeBrowseFocusReturn, type BrowseFocusReturn
  *   - It records the true position per URL (sessionStorage, rAF
  *     throttled), guarded so another page's scroll can't poison it —
  *     a write only counts while the URL still matches the key.
- *   - On popstate it re-asserts the stored position every frame for a
- *     settle window (~3s): late clamped restores (Next's own, or the
- *     browser's) get corrected the moment the document is tall enough.
+ *   - On popstate it waits for the actual Events board's URL/data readiness
+ *     before starting the normal ~3s settle window. A short server preview
+ *     must not use up that correction window while Explorer is still loading.
+ *     Late clamped restores get corrected once the document is tall enough.
  *     The FIRST user input (wheel, touch, pointer, key) aborts — the
  *     reader's intent always beats the memory.
  *   - If the page settles genuinely shorter than the memory (content
@@ -45,6 +46,7 @@ import { restoreBrowseFocusReturn, takeBrowseFocusReturn, type BrowseFocusReturn
  */
 const KEY_PREFIX = "fr:scroll:";
 const RESTORE_WINDOW_MS = 3_000;
+const EVENTS_READY_WAIT_MS = 10_000;
 const CLEAR_DELAY_MS = 400;
 const POP_FRESH_MS = 3_000;
 
@@ -76,7 +78,27 @@ let consultedFocusDocNav = false;
 
 const ABORT_EVENTS = ["wheel", "touchmove", "pointerdown", "keydown"] as const;
 
+type ActiveCorrection = { key: string; cancel: () => void };
+let activeCorrection: ActiveCorrection | null = null;
+let documentDeparted = false;
+
+function eventsSurfaceReady(): boolean {
+  if (window.location.pathname !== "/events") return true;
+  // The same actual-board contract used by native detail focus restoration.
+  // A preview, a URL-only hydrate, or an in-flight continuation is not ready.
+  const board = document.querySelector("[data-events-interaction-ready]");
+  return board?.getAttribute("data-events-interaction-ready") === "true"
+    && board.getAttribute("data-events-complete") === "true"
+    && board.getAttribute("aria-busy") === "false";
+}
+
 function restoreFor(key: string) {
+  if (documentDeparted) return;
+  cancelPendingClear(key);
+  // Module popstate, a late route effect and Strict Mode can all describe
+  // this one return. Keep the original target and bounded wait they captured.
+  if (activeCorrection?.key === key) return;
+  activeCorrection?.cancel();
   let stored = 0;
   try {
     stored = Number(sessionStorage.getItem(key) ?? 0);
@@ -86,50 +108,66 @@ function restoreFor(key: string) {
   if (!Number.isFinite(stored) || stored <= 0) return;
 
   let cancelled = false;
+  let frame = 0;
+  const owner: ActiveCorrection = { key, cancel: () => cleanup() };
   const cleanup = () => {
-    for (const e of ABORT_EVENTS) window.removeEventListener(e, abort);
-  };
-  const abort = () => {
+    if (cancelled) return;
     cancelled = true;
-    cleanup();
+    cancelAnimationFrame(frame);
+    for (const e of ABORT_EVENTS) window.removeEventListener(e, abort);
+    window.removeEventListener("pagehide", abort);
+    if (activeCorrection === owner) activeCorrection = null;
   };
+  const abort = () => cleanup();
+  activeCorrection = owner;
   for (const e of ABORT_EVENTS) {
     window.addEventListener(e, abort, { passive: true });
   }
+  window.addEventListener("pagehide", abort);
 
-  const deadline = Date.now() + RESTORE_WINDOW_MS;
-  let asserted = false;
+  const readinessDeadline = Date.now() + EVENTS_READY_WAIT_MS;
+  let settleDeadline: number | null = eventsSurfaceReady()
+    ? Date.now() + RESTORE_WINDOW_MS : null;
+  const maxPosition = () => Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  const finishAtCurrentHeight = () => {
+    // A readiness timeout cannot prove the page is genuinely shorter. Bound
+    // best effort by the original target, never jump past it to a tall preview.
+    const final = Math.min(stored, maxPosition());
+    if (Math.abs(window.scrollY - final) > 2) {
+      window.scrollTo({ top: final, behavior: "instant" as ScrollBehavior });
+    }
+    // Only a completed correction records its bounded result. Departure,
+    // route changes and user intent leave the original target untouched.
+    try { sessionStorage.setItem(key, String(Math.round(final))); } catch { /* optional memory */ }
+    cleanup();
+  };
   const attempt = () => {
     if (cancelled) return;
-    // A further navigation moved us off this key — stand down.
+    // A further navigation moved us off this key — stand down without writing.
     if (keyForLocation() !== key) {
       cleanup();
       return;
     }
-    // Assert only when the FULL target is reachable; an intermediate
-    // hydration height would clamp. Keep asserting until the settle
-    // window closes — Next's own (clamped) restore can land AFTER ours
-    // and would otherwise win.
-    const max = document.documentElement.scrollHeight - window.innerHeight;
-    if (max >= stored) {
-      if (Math.abs(window.scrollY - stored) > 2) {
-        window.scrollTo({ top: stored, behavior: "instant" as ScrollBehavior });
+    if (settleDeadline === null) {
+      if (!eventsSurfaceReady()) {
+        if (Date.now() >= readinessDeadline) { finishAtCurrentHeight(); return; }
+        frame = requestAnimationFrame(attempt);
+        return;
       }
-      asserted = true;
+      settleDeadline = Date.now() + RESTORE_WINDOW_MS;
     }
-    if (Date.now() < deadline) {
-      requestAnimationFrame(attempt);
+    // Assert only when the FULL target is reachable. Keep asserting through
+    // the original settle window so a later native/Next clamp cannot win.
+    if (maxPosition() >= stored && Math.abs(window.scrollY - stored) > 2) {
+      window.scrollTo({ top: stored, behavior: "instant" as ScrollBehavior });
+    }
+    if (Date.now() < settleDeadline) {
+      frame = requestAnimationFrame(attempt);
       return;
     }
-    // Deadline: the page settled genuinely shorter than the memory
-    // (content changed since the visit). Best effort — bottom of what
-    // exists beats the top of the page.
-    if (!asserted && max > 0) {
-      window.scrollTo({ top: max, behavior: "instant" as ScrollBehavior });
-    }
-    cleanup();
+    finishAtCurrentHeight();
   };
-  requestAnimationFrame(attempt);
+  frame = requestAnimationFrame(attempt);
 }
 
 // The popstate listener lives at MODULE scope, not in an effect: this
@@ -139,6 +177,8 @@ function restoreFor(key: string) {
 // did). A module listener can't be unmounted. By the time popstate
 // fires the URL is already the destination, so it can act directly.
 if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => { documentDeparted = true; });
+  window.addEventListener("pageshow", () => { documentDeparted = false; });
   window.addEventListener("popstate", () => {
     const key = keyForLocation();
     lastPop = { key, at: Date.now() };
@@ -160,15 +200,16 @@ export default function ScrollMemory() {
     // a document load whose navigation type is back_forward. The
     // popstate-last ordering needs no signal here — the module listener
     // above corrects and cancels the clear on its own.
+    if (activeCorrection && activeCorrection.key !== key) activeCorrection.cancel();
     const explicitReturn = consumeBrowseScrollReturn(key.slice(KEY_PREFIX.length));
     if (explicitReturn) explicitReturnKey.current = key;
     else if (explicitReturnKey.current !== key) explicitReturnKey.current = null;
     // Strict Mode can replay an effect after consuming device state. Retain
     // the decision for this mounted route, without replaying it on another.
-    let back = explicitReturn || explicitReturnKey.current === key;
+    let back = explicitReturn || explicitReturnKey.current === key || activeCorrection?.key === key;
     if (back) {
-      // An explicit safe Back link performs a document navigation. It should
-      // restore the listing just like browser Back, without guessing history.
+      // Explicit Back and a still-pending module correction both identify this
+      // return, even if the destination effect arrives after POP_FRESH_MS.
       consultedDocNav = true;
     } else if (lastPop && lastPop.key === key && Date.now() - lastPop.at < POP_FRESH_MS) {
       back = true;
@@ -207,10 +248,12 @@ export default function ScrollMemory() {
     // beats a scheduled reset.
     let raf = 0;
     const save = () => {
-      if (raf) return;
+      // Native restoration and preview-height clamps can emit scroll events.
+      // They must not replace the captured target while correction is active.
+      if (raf || documentDeparted || activeCorrection?.key === key) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
-        if (keyForLocation() !== key) return;
+        if (documentDeparted || keyForLocation() !== key || activeCorrection?.key === key) return;
         cancelPendingClear(key);
         try {
           sessionStorage.setItem(key, String(Math.round(window.scrollY)));
@@ -219,10 +262,16 @@ export default function ScrollMemory() {
         }
       });
     };
+    const cancelQueuedSave = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    };
     window.addEventListener("scroll", save, { passive: true });
+    window.addEventListener("pagehide", cancelQueuedSave);
     return () => {
       window.removeEventListener("scroll", save);
-      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener("pagehide", cancelQueuedSave);
+      cancelQueuedSave();
     };
   }, [key]);
 

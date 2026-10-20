@@ -54,9 +54,20 @@ describe("confirmed follow membership and shared mutation state", () => {
   let serverSlugs: Set<string>;
   let reads: number;
   let authReads: number;
+  let frames: Map<number, FrameRequestCallback>;
+  let nextFrame = 0;
+  const flushFrames = async () => {
+    const callbacks = [...frames.values()]; frames.clear();
+    await act(async () => { for (const callback of callbacks) callback(performance.now()); });
+  };
 
   beforeEach(() => {
     locks = installSavedLocks();
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    window.dispatchEvent(new Event("pageshow"));
+    frames = new Map(); nextFrame = 0;
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { const id = ++nextFrame; frames.set(id, callback); return id; });
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => { frames.delete(id); });
     vi.clearAllMocks();
     mocks.synced.mockReturnValue(true);
     resetFollowsSyncFlag();
@@ -106,6 +117,7 @@ describe("confirmed follow membership and shared mutation state", () => {
     serverSlugs = new Set(slugs);
     await act(async () => root.render(<Snapshot bootstrap={bootstrap} />));
     await act(async () => root.render(<><Snapshot bootstrap={bootstrap} />{ids.map((slug, index) => <Probe key={index} index={index} slug={slug} />)}</>));
+    await flushFrames();
   }
   function saved() { return container.querySelector("output")!.textContent; }
   function states() { return [...container.querySelectorAll("[data-mutation]")].map((item) => item.getAttribute("data-mutation")); }

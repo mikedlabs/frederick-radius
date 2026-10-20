@@ -87,6 +87,7 @@ export default function NearbyArchiveContext({
             </p>
             <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-2 text-[11px] font-semibold">
               <Link
+                prefetch={false}
                 href="/archive#building-records"
                 className="inline-flex items-center gap-1"
                 style={{ color: "var(--app-cool)" }}

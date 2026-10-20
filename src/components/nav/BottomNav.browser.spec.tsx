@@ -3,14 +3,15 @@ import { act, type AnchorHTMLAttributes } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import BottomNav from "./BottomNav";
-const state = vi.hoisted(() => ({ pathname: "/today", push: vi.fn() }));
+import SideRail from "./SideRail";
+const state = vi.hoisted(() => ({ pathname: "/today", push: vi.fn(), prefetches: new Map<string, boolean | "auto" | undefined>() }));
 vi.mock("next/navigation", () => ({ usePathname: () => state.pathname, useRouter: () => ({ push: state.push }) }));
-vi.mock("next/link", () => ({ default: ({ prefetch, ...props }: AnchorHTMLAttributes<HTMLAnchorElement> & { prefetch?: boolean }) => { void prefetch; return <a {...props} />; } }));
+vi.mock("next/link", () => ({ default: ({ prefetch, ...props }: AnchorHTMLAttributes<HTMLAnchorElement> & { prefetch?: boolean | "auto" }) => { if (props.href) state.prefetches.set(props.href, prefetch); return <a {...props} />; } }));
 vi.mock("@/lib/haptics", () => ({ haptic: vi.fn() }));
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let container: HTMLDivElement;
 let root: Root;
-beforeEach(() => { state.pathname = "/today"; state.push.mockReset(); container=document.createElement("div"); document.body.append(container); root=createRoot(container); });
+beforeEach(() => { state.pathname = "/today"; state.push.mockReset(); state.prefetches.clear(); container=document.createElement("div"); document.body.append(container); root=createRoot(container); });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); Reflect.deleteProperty(document,"startViewTransition"); });
 const mount=async () => { await act(async () => root.render(<BottomNav />)); };
 const link=(href:string) => container.querySelector<HTMLAnchorElement>(`a[href="${href}"]`)!;
@@ -51,4 +52,21 @@ describe("BottomNav destination truth", () => {
   expect(link("/map").getAttribute("data-pending")).toBe("true");
   expect(selected()).toEqual(["Today"]);
  });
+ it.each([["mobile", BottomNav], ["desktop", SideRail]] as const)("keeps %s detail tabs navigable without automatically warming destinations", async (_name, Component) => {
+  Object.defineProperty(document, "startViewTransition", { configurable:true, value:(callback:()=>void)=>callback() });
+  for (const pathname of ["/events/evening-concert", "/places/brewers-alley-frederick"]) {
+   state.pathname = pathname; state.prefetches.clear();
+   await act(async () => root.render(<Component />));
+   expect([...container.querySelectorAll("a")].map(node => node.getAttribute("href"))).toEqual(["/today", "/map", "/events", "/my-radius"]);
+   expect(container.querySelector('[aria-label="Primary"]')).not.toBeNull();
+   expect([...state.prefetches.values()]).toEqual([false, false, false, false]);
+   await act(async () => link("/map").click());
+   expect(state.push).toHaveBeenLastCalledWith("/map");
+  }
+  state.pathname = "/events/calendar"; state.prefetches.clear();
+  await act(async () => root.render(<Component />));
+  expect(state.prefetches.get("/events")).toBe("auto");
+  expect(state.prefetches.get("/map")).toBe(false);
+ });
+
 });

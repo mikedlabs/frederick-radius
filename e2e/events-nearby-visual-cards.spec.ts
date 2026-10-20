@@ -5,6 +5,8 @@ import { eventCardVisual } from "../src/components/event/eventVisuals";
 import { placeCardPhotoPlan } from "../src/lib/place-card-photo";
 import { dismissReturnBridge, emptyReturnBridgeState, RETURN_BRIDGE_STORAGE_KEY } from "../src/lib/return-bridge";
 import { EVENTS } from "../src/data/events";
+import { MUNICIPALITY_BY_SLUG } from "../src/data/municipalities";
+import { getPlaceBySlug } from "../src/lib/loaders/places";
 import { BROWSE_FOCUS_RETURN_KEY } from "../src/lib/browse-focus-return";
 
 /** Declared event DTOs travel through the existing browse/summary APIs and real
@@ -754,14 +756,61 @@ test("native Nearby full-document Back restores its exact place opener after a B
   await page.setViewportSize({ width: 320, height: 568 }); await page.emulateMedia({ reducedMotion: "reduce" });
   const evidence = await prepare(context, page, baseURL);
   const appOrigin = new URL(baseURL ?? "http://localhost:3010").origin;
+  const canonicalPrefetches: Array<Record<string, unknown>> = [];
+  const canonicalNavigations: Array<Record<string, unknown>> = [];
+  const prefetchByRequest = new WeakMap<import("@playwright/test").Request, Record<string, unknown>>();
+  let detailPhase = "nearby-list";
+  evidence.measurements.canonicalPlacePrefetchRequests = canonicalPrefetches;
+  evidence.measurements.legitimateCanonicalPlaceNavigations = canonicalNavigations;
+  context.on("request", request => {
+    const url = new URL(request.url()), headers = request.headers();
+    const referrerPath = new URL(headers.referer ?? request.frame().url(), appOrigin).pathname;
+    if (referrerPath !== `/places/${CREEK}` || url.origin !== appOrigin || request.method() !== "GET") return;
+    url.searchParams.delete("_rsc"); url.searchParams.sort();
+    const entry = { href: url.pathname + url.search, at: new Date().toISOString(), phase: detailPhase,
+      referrerPath, nextUrl: headers["next-url"] ?? null, resourceType: request.resourceType(),
+      segment: headers["next-router-segment-prefetch"] ?? null };
+    if (request.isNavigationRequest()) { canonicalNavigations.push(entry); return; }
+    if (headers["next-router-prefetch"] !== "1") return;
+    // All paths are observed; this never replaces or cancels actual reads.
+    canonicalPrefetches.push(entry); prefetchByRequest.set(request, entry);
+  });
+  context.on("response", response => {
+    const entry = prefetchByRequest.get(response.request()); if (entry) entry.status = response.status();
+  });
+  context.on("requestfinished", request => {
+    const entry = prefetchByRequest.get(request); if (entry) entry.finishedAt = new Date().toISOString();
+  });
+  context.on("requestfailed", request => {
+    const entry = prefetchByRequest.get(request); if (entry) entry.failure = request.failure()?.errorText;
+  });
   const response = await page.goto("/nearby?c=outside&facet=park&sort=rated&in=frederick", { waitUntil: "domcontentloaded" });
   expect(response?.status()).toBe(200); await expect(page.locator('[data-nearby-interaction-ready="true"]')).toBeVisible();
   const { card, open } = await creekCard(page); await exactImage(card, CREEK_IMAGE, 16 / 9); await target(open);
   const before = await documentReturnGeometry(open); evidence.measurements.beforeNearbyDocument = before;
   await open.tap(); const dialog = page.getByRole("dialog"); await expect(dialog.getByRole("heading", { name: CREEK_NAME, exact: true })).toBeVisible();
   const authRead = detailAuthRead(page, appOrigin);
+  detailPhase = "canonical-place-open";
   await dialog.getByRole("link", { name: "See full page", exact: true }).tap();
   await expect(page.getByRole("heading", { level: 1, name: CREEK_NAME, exact: true })).toBeVisible();
+  const breadcrumbs = page.getByRole("navigation", { name: "Breadcrumb", exact: true });
+  await expect(breadcrumbs.getByRole("link", { name: "Places", exact: true })).toHaveAttribute("href", "/places");
+  const canonicalPlace = getPlaceBySlug(CREEK)!;
+  expect(canonicalPlace).toBeDefined();
+  const canonicalTown = MUNICIPALITY_BY_SLUG[canonicalPlace.municipality];
+  await expect(breadcrumbs.getByRole("link", { name: canonicalTown.name, exact: true }))
+    .toHaveAttribute("href", `/m/${canonicalPlace.municipality}`);
+  const areaMap = page.getByRole("link", { name: "View area", exact: true });
+  // Same pure catalog resolver and five-decimal camera formatting as the real
+  // canonical Place document; never infer its expected target from the DOM.
+  const canonicalMapHref = `/map?c=${canonicalPlace.geom.lng.toFixed(5)},${canonicalPlace.geom.lat.toFixed(5)},15.5`;
+  await expect(areaMap).toBeVisible(); await expect(areaMap).toHaveAttribute("href", canonicalMapHref);
+  evidence.measurements.canonicalPlaceNavigationLinks = {
+    breadcrumbs: await breadcrumbs.locator("a").evaluateAll(links => links.map(link => ({
+      href: link.getAttribute("href"), text: link.textContent?.trim() }))),
+    mapHref: await areaMap.getAttribute("href"), expectedMapHref: canonicalMapHref,
+    canonicalPlace: { slug: canonicalPlace.slug, municipality: canonicalPlace.municipality, geom: canonicalPlace.geom },
+    boundary: "Real SSR links retained; no Map activation or painted-basemap claim." };
   const authResponse = await authRead; await authResponse.finished(); expect((await authResponse.json()).user).toBeNull();
   evidence.measurements.nearbyDetailAuthSettled = { status: authResponse.status(), boundary: "Existing anonymous fixture response completed before native Back; no extra fetch. Fast cancellation not claimed." };
   const stored = await page.evaluate(key => JSON.parse(sessionStorage.getItem(key) ?? "null"), BROWSE_FOCUS_RETURN_KEY);
@@ -769,6 +818,7 @@ test("native Nearby full-document Back restores its exact place opener after a B
   expect(stored.source).toBe(new URL(before.url).pathname + new URL(before.url).search);
   expect(stored.opener.ariaLabel).toMatch(/^View Carroll Creek Linear Park .*details$/);
   evidence.measurements.settledDetailBoundary = await settleLocalWebKitDetail(page, context, appOrigin);
+  detailPhase = "native-place-back";
   await page.goBack({ waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(before.url); await expect(dialog).toHaveCount(0);
   await expect(page.locator('[data-nearby-interaction-ready="true"]')).toBeVisible();
@@ -781,5 +831,6 @@ test("native Nearby full-document Back restores its exact place opener after a B
   await exactImage(card, CREEK_IMAGE, 16 / 9);
   expect(await page.evaluate(key => sessionStorage.getItem(key), BROWSE_FOCUS_RETURN_KEY)).toBeNull();
   evidence.measurements.width = await noOverflow(page); await screenshot(page, info, "nearby-native-document-return-focus");
+  expect(canonicalPrefetches, "Canonical Place links remain available on intent without optional page speculation across Back").toEqual([]);
   expect(evidence.targetPrefetches).toEqual([]); expect(evidence.errors).toEqual([]);
 });

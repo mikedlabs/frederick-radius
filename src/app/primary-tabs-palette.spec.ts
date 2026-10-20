@@ -217,9 +217,17 @@ describe("primary tab palette contrast", () => {
           const container = document.createElement("div");
           document.body.append(container);
           const root = createRoot(container);
+          Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+          window.dispatchEvent(new Event("pageshow"));
+          const frames = new Map<number, FrameRequestCallback>();
+          let nextFrame = 0;
+          vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { const id = ++nextFrame; frames.set(id, callback); return id; });
+          vi.stubGlobal("cancelAnimationFrame", (id: number) => { frames.delete(id); });
           vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ ...summary, ok: true, lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString() })));
           try {
             await act(async () => { root.render(createElement(PulseIndicator)); });
+            const admitted = [...frames.values()]; frames.clear();
+            await act(async () => { for (const callback of admitted) callback(performance.now()); });
             const indicator = container.querySelector<HTMLAnchorElement>("[data-pulse-indicator]");
             expect(indicator?.dataset.pulseState).toBe("ready");
             const background = indicator!.style.background || indicator!.className.match(/bg-\[([^\]]+)\]/)?.[1];

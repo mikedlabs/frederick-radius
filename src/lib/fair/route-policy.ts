@@ -21,9 +21,13 @@ export function shouldShowGlobalAppChrome(pathname: string): boolean {
   return !isFairDayPath(pathname);
 }
 
-/** Fair Day does not warm unrelated app surfaces. */
+/** Fair Day stays low-request. Native detail Back can depart during hydration,
+ * so canonical detail pages also wait for a real tab activation to load it. */
 export function shouldPrefetchGlobalNavigation(pathname: string): boolean {
-  return !isFairDayPath(pathname);
+  const normalized = normalizePathname(pathname);
+  const canonicalDetail = /^\/(?:events|places)\/[^/]+$/.test(normalized)
+    && normalized !== "/events/calendar";
+  return !isFairDayPath(pathname) && !canonicalDetail;
 }
 
 /** High-frequency first-party activity posts stay off the Fair hot path. */

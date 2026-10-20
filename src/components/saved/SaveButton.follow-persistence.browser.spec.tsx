@@ -52,7 +52,12 @@ describe("SaveButton with the real follow persistence hook", () => {
   let reads: Array<{ signal?: AbortSignal }>;
   let imports: Array<{ slugs: string[]; request: ReturnType<typeof deferred<Response>> }>;
   let topics: Array<{ add?: string[]; remove?: string[] }>;
-
+  let frames: Map<number, FrameRequestCallback>;
+  let nextFrame = 0;
+  const flushFrames = async () => {
+    const callbacks = [...frames.values()]; frames.clear();
+    await act(async () => { for (const callback of callbacks) callback(performance.now()); });
+  };
 
   beforeEach(() => {
     locks = installSavedLocks();
@@ -60,6 +65,11 @@ describe("SaveButton with the real follow persistence hook", () => {
     mocks.hasSynced.mockReturnValue(true);
     mocks.markSynced.mockImplementation(() => mocks.hasSynced.mockReturnValue(true));
     resetFollowsSyncFlag();
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    window.dispatchEvent(new Event("pageshow"));
+    frames = new Map(); nextFrame = 0;
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { const id = ++nextFrame; frames.set(id, callback); return id; });
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => { frames.delete(id); });
     localStorage.clear();
     writes = [];
     reads = [];
@@ -413,7 +423,7 @@ describe("SaveButton with the real follow persistence hook", () => {
   });
 
   it("bounds a hung import body, shares one fresh read, and ignores its late accepted slugs after removal", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] });
     mocks.hasSynced.mockReturnValue(false);
     localStorage.setItem("fr:saved:v1", JSON.stringify(["test-stop", "second-import"].map((id) => ({ type: "place", id, saved_at: "2026-10-07T00:00:00.000Z" }))));
     await render([], ["test-stop", "other-stop"]);
@@ -442,7 +452,7 @@ describe("SaveButton with the real follow persistence hook", () => {
   });
 
   it("holds a lost import outcome without a second batch or conflicting write and permits unrelated saves", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] });
     mocks.hasSynced.mockReturnValue(false);
     localStorage.setItem("fr:saved:v1", JSON.stringify([{ type: "place", id: "test-stop", saved_at: "2026-10-07T00:00:00.000Z" }]));
     await render([], ["test-stop", "other-stop"]);
@@ -542,7 +552,7 @@ describe("SaveButton with the real follow persistence hook", () => {
   });
 
   it("bounds a hung save without aborting it and permits retry only after its HTTP response and fresh read", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] });
     await render([], ["test-stop", "other-stop"]);
     await click();
     await act(async () => { await vi.advanceTimersByTimeAsync(FOLLOW_WRITE_TIMEOUT_MS); });
@@ -571,7 +581,7 @@ describe("SaveButton with the real follow persistence hook", () => {
   });
 
   it("settles every intent queued before timeout without launching a second mutation", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] });
     await render();
     await click(0);
     await click(1);
@@ -590,7 +600,7 @@ describe("SaveButton with the real follow persistence hook", () => {
   });
 
   it("bounds the reconciliation body read, keeps the hold, and ignores a late read after a successful retry", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] });
     await render();
     await click();
     await act(async () => { await vi.advanceTimersByTimeAsync(FOLLOW_WRITE_TIMEOUT_MS); });
@@ -616,7 +626,7 @@ describe("SaveButton with the real follow persistence hook", () => {
   });
 
   it("keeps missing membership unknown when the reconciliation snapshot is truncated", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] });
     await render();
     await click();
     await act(async () => { await vi.advanceTimersByTimeAsync(FOLLOW_WRITE_TIMEOUT_MS); });
@@ -658,6 +668,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     identity = deferred<Response>();
     const user = bootstrap.user;
     await act(async () => root.render(<SaveButton refType="place" refId="test-stop" label="Save test-stop" />));
+    await flushFrames();
     await click();
     expect(button().disabled).toBe(true);
     await act(async () => identity!.resolve(response(200, { user })));
@@ -675,6 +686,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     await act(async () => root.render(control === "icon"
       ? <SaveButton refType="place" refId="test-stop" label="Save test-stop" />
       : <MyRadiusButton slug="test-stop" name="Test Stop" />));
+    await flushFrames();
     expect(button().getAttribute("aria-pressed")).toBe("true");
     await click();
     await act(async () => identity!.resolve(response(200, { user: bootstrap.user })));
@@ -697,11 +709,12 @@ describe("SaveButton with the real follow persistence hook", () => {
   });
 
   it("releases a hung identity lookup without a local save and recovers with a fresh lookup", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] });
     identity = deferred<Response>();
     const oldLookup = identity;
     const user = bootstrap.user;
     await act(async () => root.render(<SaveButton refType="place" refId="test-stop" label="Save test-stop" />));
+    await flushFrames();
     await click();
     await act(async () => { await vi.advanceTimersByTimeAsync(FOLLOW_WRITE_TIMEOUT_MS); });
     expect(button().disabled).toBe(false);
@@ -716,6 +729,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     // The list listener also retries unknown identity, so controls use the
     // recovered account rather than continuing to display a local snapshot.
     await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+    await flushFrames();
     await click();
     expect(writes).toHaveLength(1);
     await settle(0);
@@ -730,6 +744,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     identity = deferred<Response>();
     const user = bootstrap.user;
     await act(async () => root.render(<SaveButton refType="place" refId="test-stop" label="Save test-stop" />));
+    await flushFrames();
     await click();
     bootstrap = { user: { id: `different-${accountSequence}`, email: null }, slugs: ["only-new-account"] };
     await act(async () => root.render(<Snapshot bootstrap={bootstrap} />));

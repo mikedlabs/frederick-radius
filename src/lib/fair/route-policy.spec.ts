@@ -35,4 +35,21 @@ describe("Fair Day route policy", () => {
     expect(shouldPostAutomaticActivity("/today")).toBe(true);
     expect(shouldPrefetchGlobalNavigation("/today")).toBe(true);
   });
+  it.each([
+    "/events/evening-concert", "/events/evening-concert/",
+    "/places/brewers-alley-frederick", "/places/brewers-alley-frederick/",
+  ])("keeps %s chrome and activity available while deferring automatic tab loads", (pathname) => {
+    expect(shouldPrefetchGlobalNavigation(pathname)).toBe(false);
+    expect(shouldShowGlobalAppChrome(pathname)).toBe(true);
+    expect(shouldPostAutomaticActivity(pathname)).toBe(true);
+  });
+
+  it.each([
+    "/events", "/events/", "/events/calendar", "/events/calendar/",
+    "/places", "/places/", "/today", "/my-radius",
+    "/events/example/related", "/places/example/photos", "/moments/in-the-street-2026",
+  ])("preserves automatic tab loading for the existing non-detail route %s", (pathname) => {
+    expect(shouldPrefetchGlobalNavigation(pathname)).toBe(true);
+  });
+
 });
