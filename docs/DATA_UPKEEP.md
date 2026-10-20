@@ -1,0 +1,96 @@
+# Daily listing and event upkeep
+
+Daily collection must produce useful published facts, preserve the date each
+source was actually observed, and stay within a finite spending boundary.
+A successful fetch, a reviewed main artifact and a verified public deployment
+are separate outcomes.
+
+## Owners and cadence
+
+GitHub schedules use UTC. They run without this Mac being open. Start times can
+be delayed by GitHub; these are windows, not guaranteed publication deadlines.
+
+| Owner | Window | Scope and publication rule |
+| --- | --- | --- |
+| `transit-steward.yml` | Daily 07:23 | Public Frederick GTFS. Existing review and release checks remain. |
+| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus exact reviewed merchant sources. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. |
+| `ingest-venues.yml` native job | Daily 11:07 | Banyan, Weinberg and New Spire native sources. No model, Firecrawl key, browser or paid-review prerequisite. Future changes need review. Failed/unselected sources retain their rows and dates. |
+| `refresh-commerce-links.yml` native mode | Daily 12:37 | At most 20 eligible official business sites and one same-host follow page each. Static HTML only, finite body/deadline, no retries, redirects or destination probes. New/changed actions need review. |
+| `listing-maintenance.yml` | Daily 14:07 | Offline reconciliation of every promoted public listing, per-field states, town/category totals and bounded source candidates. No merchant or provider requests. |
+| `build-marc-schedule.yml` | Monthly, day 1 at 08:00 | Existing public MARC GTFS cadence, hosted runtime capped at 15 minutes, isolated review publisher. No dependency on an unregistered NAS. |
+
+Staggering leaves room for protected checks between publishers. It reduces
+collisions but does not waive the current-main guard. An app merge or a long
+verification can still require reconciliation.
+
+`bot/venue-native-refresh` is distinct from the old paid venue review branch.
+Model-assisted venue work requires explicit manual `include_model_sources`.
+Other pre-existing paid adapters retain their current caps, approval and
+recovery holds. This change does not reset Apify fingerprints, grant Google
+policy authority, raise provider budgets or provision services.
+
+## Facts that may refresh
+
+- An unchanged accepted schedule can receive a new observation only after a
+  successful current source read. Published date coverage and expiry still apply.
+- A failed library cohort leaves its bytes, observations and expiry untouched.
+  Independent merchants can still refresh. The run reports partial collection.
+- Individual changed/unparseable merchant sources keep their old approved
+  evidence and a review hold. Repeated reads cannot approve a candidate.
+- A complete native venue read may replace that source's inventory. Failed and
+  unselected source inventories remain unchanged. Actual end times, separate
+  showtimes, school-show qualifiers and cross-source recovery remain intact.
+- A menu/order/reservation link must be an exact safe anchor on an eligible
+  official source. Found anchors are not checkout or destination verification.
+  Preserve classifier priority so the main menu precedes an individual section.
+- A partial link crawl cannot prove an old deep destination is dead. Such a
+  candidate is held privately; the complete prior public record and its old
+  observation remain. Do not freshly stamp an unseen PDF or silently delete it.
+- Images need exact place identity and owner permission or a supported license.
+  Provider eligibility is not a successfully decoded image. Missing local bytes
+  and remote availability are different states.
+
+## Whole-catalog evidence
+
+Run `npm run audit:listings -- --output-dir /private/tmp/radius-listing-review`.
+The report refuses an invalid release manifest or a mismatched canonical public
+catalog. JSON contains exactly one row per promoted public slug, with:
+
+- Current, stale, review-required or unknown hours and the actual evidence horizon.
+- Owned, licensed local/remote, provider-eligible or missing image plans.
+- Missing contacts, source candidates and concrete next actions.
+- Town/category totals that reconcile to the full public denominator.
+- Exact reviewed data version and git revision. Served deployment, remote-image
+  decoding and contact ownership remain explicitly unverified by this report.
+
+The daily diagnostic artifact lasts 30 days. One listing exception issue tracks
+expired accepted official evidence, source/promotion holds, missing bundled
+images or an unverifiable report. Unknown inventory remains visible as product
+debt. Identical failure fingerprints do not create repeated issue edits.
+Recovery requires committed-source status and complete version, scope, row and
+image-total evidence. Local reports label uncommitted work as a working-tree
+draft; its git revision identifies the base, not a published release.
+
+Native commerce observations also have a separate 30-day artifact with selected
+slugs, successes, failures and held candidates. It contains no secrets or raw
+page bodies. The public publisher accepts only its established allowlist;
+diagnostics never become a public fact by being uploaded.
+
+## Serialized review and publication
+
+The daily Codex upkeep pass reviews the existing native-source updates, then
+processes them one at a time. It must preserve older pending source candidates
+from authenticated diagnostic artifacts rather than overwrite them blindly.
+A still-current source receipt may be reconciled onto current main, rebuilding
+the client models and release manifest. Never copy an old generated client set
+or a whole release manifest over newer reviewed data, restamp a retained source,
+or rerun a paid collector just because its branch is stale.
+
+Normal `verify` and `style-lint` remain required. Vercel owns the normal build
+from merged main. Confirm the exact deployment, public aliases and relevant
+mobile flows before reporting an update as live. Do not deploy the same SHA
+again or start duplicate production canaries.
+
+The Codex review pass needs its execution host available and consumes Codex
+account usage. GitHub collection continues independently. If review cannot run,
+new or conflicting facts stay held; accepted evidence expires honestly.

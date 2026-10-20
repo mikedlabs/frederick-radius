@@ -1,18 +1,23 @@
 name: Ingest venue events
-run-name: Ingest venue events (firecrawl=${{ vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}, cap=${{ vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }})
+run-name: Ingest venue events (firecrawl=${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources && vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}, cap=${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources && vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }})
 
 # Captures lineups from venues that only post on their own site
 # (the official Weinberg calendar, The Banyan, Sky Stage, and others). Runs the venue
-# extraction agent, refreshes src/data/venue-events.json, commits.
-# Uses a standard Anthropic API key dedicated to this workflow in the GitHub
-# Data Enrichment environment. Never use an Anthropic Admin API key here.
+# native collectors daily without a model, browser, or paid provider.
+# Explicit manual model collection keeps its dedicated Data Enrichment key
+# and existing paid-review pause. Both modes use the protected review publisher.
 # Configure: config/venue-sources.json
 
 on:
   schedule:
-    - cron: "30 9 * * *"
+    - cron: "7 11 * * *"
   workflow_dispatch:
     inputs:
+      include_model_sources:
+        description: "Explicitly include paid model-assisted venue sources"
+        required: false
+        type: boolean
+        default: false
       refresh_open_review:
         description: "I want to replace the currently open venue-event review with a fresh paid run"
         required: false
@@ -27,7 +32,7 @@ concurrency:
 
 jobs:
   review-gate:
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.include_model_sources }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -71,6 +76,72 @@ jobs:
               core.notice(`Manual override accepted; paid extraction may update review PR #${review.number}.`);
             }
             core.setOutput('should_run', 'true');
+
+  # Native feeds have an independent admission path: an old paid review, model
+  # key, environment approval or browser installation cannot stop this cohort.
+  native:
+    if: ${{ github.ref == 'refs/heads/main' && !(github.event_name == 'workflow_dispatch' && inputs.include_model_sources) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      artifact_name: ${{ steps.artifact-name.outputs.name }}
+      review_required: ${{ steps.extract.outputs.review_required }}
+      future_additions: ${{ steps.extract.outputs.future_additions }}
+      future_removals: ${{ steps.extract.outputs.future_removals }}
+      expired_removals: ${{ steps.extract.outputs.expired_removals }}
+      failed_sources: ${{ steps.extract.outputs.failed_sources }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+      - run: npm ci
+      - name: Verify native source selection, promotion and review
+        run: >-
+          npx vitest run tests/venue-collection-mode.spec.ts
+          tests/venue-collection-review.spec.ts tests/venue-native-collection.spec.ts
+          tests/venue-native-workflow.spec.ts tests/venue-event-alternatives.spec.ts
+          tests/venue-event-promotion.spec.ts tests/squarespace-events.spec.ts
+          tests/weinberg-events.spec.ts --maxWorkers=2 --no-file-parallelism
+      - name: Collect three reviewed native venue sources
+        id: extract
+        run: npm run ingest:venues -- --deterministic-only
+      - name: Verify native event provenance and voice
+        run: |
+          npm run style:lint
+          npx vitest run tests/venue-events-copy.spec.ts tests/venue-event-time.spec.ts
+          npm run data:release:write -- --stream venue-events
+      - name: Stage exact native review files
+        run: |
+          set -euo pipefail
+          for path in src/data/venue-event-source-inventory.json src/data/venue-events.json src/data/venue-event-source-state.json src/data/data-release.json; do
+            install -D -m 0644 "$path" "$RUNNER_TEMP/native-venue-output/$path"
+          done
+      - name: Pin native output to this generator attempt
+        id: artifact-name
+        env:
+          ARTIFACT_NAME: native-venue-review-${{ github.run_id }}-${{ github.run_attempt }}
+        run: echo "name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+      - name: Upload bounded native review artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.artifact-name.outputs.name }}
+          path: ${{ runner.temp }}/native-venue-output
+          if-no-files-found: error
+          retention-days: 7
+      - name: Report source-specific native outcome
+        if: always()
+        env:
+          FAILED_SOURCES: ${{ steps.extract.outputs.failed_sources }}
+          REVIEW_REQUIRED: ${{ steps.extract.outputs.review_required }}
+        run: |
+          echo "Native cohort: Banyan, Weinberg and New Spire. Failed sources retain their old inventory and observation; successful sources can advance independently. Failed sources: $FAILED_SOURCES. Future fact review required: $REVIEW_REQUIRED. Collection is not merged production publication." >> "$GITHUB_STEP_SUMMARY"
 
   ingest:
     needs: review-gate
@@ -155,7 +226,7 @@ jobs:
           FIRECRAWL_API_KEY: ${{ steps.firecrawl-budget.outputs.allowed == 'true' && steps.firecrawl-budget.outputs.enabled == 'true' && secrets.FIRECRAWL_API_KEY || '' }}
           FIRECRAWL_FETCH_FALLBACK: ${{ vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}
           FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}
-        run: npm run ingest:venues
+        run: npm run ingest:venues -- --include-model-sources
       # Commits pushed with GITHUB_TOKEN do not start another workflow run.
       # Run the copy/provenance gates here before the bot writes to main.
       - name: Verify venue copy provenance and voice
@@ -199,16 +270,17 @@ jobs:
           exit 1
 
   publish:
-    needs: ingest
+    needs: [native, ingest]
+    if: ${{ always() && (needs.native.result == 'success' || needs.ingest.result == 'success') }}
     permissions:
       actions: read
       contents: write
       pull-requests: write
     uses: ./.github/workflows/publish-automated-pr.yml
     with:
-      artifact: ${{ needs.ingest.outputs.artifact_name }}
+      artifact: ${{ needs.native.outputs.artifact_name || needs.ingest.outputs.artifact_name }}
       base_sha: ${{ github.sha }}
-      branch: bot/venue-event-refresh
+      branch: ${{ needs.native.result == 'success' && 'bot/venue-native-refresh' || 'bot/venue-event-refresh' }}
       allowed_paths: |
         src/data/venue-event-source-inventory.json
         src/data/venue-events.json
@@ -216,8 +288,21 @@ jobs:
         src/data/data-release.json
       commit_message: "data: refresh venue events (automated)"
       title: "data: refresh venue events"
+      auto_merge: ${{ needs.native.result == 'success' && needs.native.outputs.review_required == 'false' }}
       body: |
-        Automated venue-event extraction refresh.
+        Native daily collection is limited to Banyan, Weinberg and New Spire;
+        model sources require explicit manual admission and their existing paid
+        review gate. Both modes preserve per-source provenance and completeness.
+
+        Native future additions/changes: ${{ needs.native.outputs.future_additions }}.
+        Native future removals/changes: ${{ needs.native.outputs.future_removals }}.
+        Proven expired rows removed: ${{ needs.native.outputs.expired_removals }}.
+        Failed native sources retained: ${{ needs.native.outputs.failed_sources }}.
+        Native semantic review required: ${{ needs.native.outputs.review_required }}.
+        Only unchanged native facts, actual observations and safe past expiry
+        may queue auto-merge after all required checks. Changed future facts and
+        all manually requested model output require review. Repeated collection
+        compares against current main and cannot approve its pending changes.
 
         The workflow ran the Radius copy/provenance checks before opening
         this PR. Review event times, source links, and unexpected row-count

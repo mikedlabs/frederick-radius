@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, renameSync, appendFileSync } from "node:fs
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { collectMerchantOfficialHours, fetchMerchantHoursPage } from "./lib/merchant-official-hours";
-import { FCPL_HOURS_URL, FCPL_CLOSURES_URL } from "../src/lib/official-hours";
+import { FCPL_HOURS_URL, FCPL_CLOSURES_URL, validateOfficialHoursArtifact, type OfficialHoursArtifact } from "../src/lib/official-hours";
 import { fetchOfficialHoursPage, parseFcplOfficialHours, officialHoursNeedsReview } from "./lib/fcpl-official-hours";
 
 export async function refreshOfficialHours(args = process.argv.slice(2), options: {
@@ -22,12 +22,26 @@ export async function refreshOfficialHours(args = process.argv.slice(2), options
   const closuresObserved = value("closures-observed-at");
   if (evidence && (!weeklyObserved || !closuresObserved)) throw new Error("Offline evidence requires both actual observation timestamps.");
   if (!evidence && (weeklyObserved || closuresObserved)) throw new Error("Live observations are recorded only after each successful response.");
-  const weekly = evidence ? { url: FCPL_HOURS_URL, html: readFileSync(resolve(evidence, "fcpl-hours-index-20261012.html"), "utf8"), observedAt: weeklyObserved! } : await fetchPage(FCPL_HOURS_URL);
-  const closures = evidence ? { url: FCPL_CLOSURES_URL, html: readFileSync(resolve(evidence, "fcpl-holiday-closings-20261012.html"), "utf8"), observedAt: closuresObserved! } : await fetchPage(FCPL_CLOSURES_URL);
-  const artifact = parseFcplOfficialHours(weekly, closures, options.now);
   const output = options.outputPath ?? resolve("src/data/places-official-hours.json");
   let previous: unknown;
   try { previous = JSON.parse(readFileSync(output, "utf8")); } catch { previous = undefined; }
+  let artifact: OfficialHoursArtifact;
+  let libraryStatus: "current" | "source_unavailable" = "current";
+  let libraryError: string | undefined;
+  try {
+    const weekly = evidence ? { url: FCPL_HOURS_URL, html: readFileSync(resolve(evidence, "fcpl-hours-index-20261012.html"), "utf8"), observedAt: weeklyObserved! } : await fetchPage(FCPL_HOURS_URL);
+    const closures = evidence ? { url: FCPL_CLOSURES_URL, html: readFileSync(resolve(evidence, "fcpl-holiday-closings-20261012.html"), "utf8"), observedAt: closuresObserved! } : await fetchPage(FCPL_CLOSURES_URL);
+    artifact = parseFcplOfficialHours(weekly, closures, options.now);
+  } catch (error) {
+    // Replay/library-only callers retain their original fail-loud behavior.
+    // A live multi-source run can still update unrelated merchant evidence,
+    // but only when a valid last-good FCPL artifact is available to preserve.
+    if (evidence || (options.fetchPage && !options.fetchMerchantPage)) throw error;
+    validateOfficialHoursArtifact(previous);
+    artifact = previous;
+    libraryStatus = "source_unavailable";
+    libraryError = error instanceof Error ? error.message : "Official library source unavailable.";
+  }
   const merchantOutput = options.merchantOutputPath ?? (options.outputPath ? resolve(dirname(output), "merchant-hours.json") : resolve("src/data/places-merchant-hours.json"));
   let previousMerchant: unknown;
   try { previousMerchant = JSON.parse(readFileSync(merchantOutput, "utf8")); } catch { previousMerchant = undefined; }
@@ -37,19 +51,21 @@ export async function refreshOfficialHours(args = process.argv.slice(2), options
   const merchants = evidence || (options.fetchPage && !options.fetchMerchantPage) ? undefined : await collectMerchantOfficialHours(previousMerchant, merchantFetcher, options.now);
   const reviewRequired = officialHoursNeedsReview(previous, artifact) || (merchants?.reviewRequired ?? false);
   if (!args.includes("--dry-run")) {
-    const temporary = `${output}.tmp`;
-    writeFileSync(temporary, JSON.stringify(artifact, null, 2) + "\n");
-    renameSync(temporary, output);
+    if (libraryStatus === "current") {
+      const temporary = `${output}.tmp`;
+      writeFileSync(temporary, JSON.stringify(artifact, null, 2) + "\n");
+      renameSync(temporary, output);
+    }
     if (merchants) {
       writeFileSync(`${merchantOutput}.tmp`, JSON.stringify(merchants.artifact, null, 2) + "\n");
       renameSync(`${merchantOutput}.tmp`, merchantOutput);
     }
   }
-  console.log(JSON.stringify({ status: "complete", reviewRequired, dryRun: args.includes("--dry-run"), source: artifact.source_id, places: artifact.places.length, dateExceptions: artifact.closures.exceptions.length, observedAt: [weekly.observedAt, closures.observedAt], expiresAt: artifact.expires_at, merchantSchedules: merchants?.artifact.places.length ?? "unchanged-offline", merchantPendingCount: merchants?.artifact.review.length ?? 0, merchantReview: merchants?.artifact.review.map(({ slug, reason }) => ({ slug, reason })) ?? [] }));
-  return { reviewRequired, artifact, merchants };
+  console.log(JSON.stringify({ status: libraryStatus === "current" ? "complete" : "partial", libraryStatus, ...(libraryError ? { libraryError } : {}), reviewRequired, dryRun: args.includes("--dry-run"), source: artifact.source_id, places: artifact.places.length, dateExceptions: artifact.closures.exceptions.length, observedAt: [artifact.weekly.observed_at, artifact.closures.observed_at], expiresAt: artifact.expires_at, merchantSchedules: merchants?.artifact.places.length ?? "unchanged-offline", merchantPendingCount: merchants?.artifact.review.length ?? 0, merchantReview: merchants?.artifact.review.map(({ slug, reason }) => ({ slug, reason })) ?? [] }));
+  return { reviewRequired, artifact, merchants, libraryStatus, libraryError };
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  refreshOfficialHours().then(({ reviewRequired, merchants }) => {
-    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `review_required=${reviewRequired}\nmerchant_pending_count=${merchants?.artifact.review.length ?? 0}\nmerchant_pending_summary=${merchants?.artifact.review.map(({ slug, reason }) => `${slug}: ${reason}`).join(", ") || "none"}\n`);
+  refreshOfficialHours().then(({ reviewRequired, merchants, libraryStatus }) => {
+    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `review_required=${reviewRequired}\nlibrary_status=${libraryStatus}\nmerchant_pending_count=${merchants?.artifact.review.length ?? 0}\nmerchant_pending_summary=${merchants?.artifact.review.map(({ slug, reason }) => `${slug}: ${reason}`).join(", ") || "none"}\n`);
   }).catch((error) => { console.error(error instanceof Error ? error.message : error); process.exitCode = 1; });
 }

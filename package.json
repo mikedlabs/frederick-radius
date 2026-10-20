@@ -71,6 +71,7 @@
     "discover": "tsx --tsconfig tsconfig.json scripts/discover-places.ts",
     "discover:overture": "tsx --tsconfig tsconfig.json scripts/overture-candidates.ts",
     "review:public-map-gaps": "tsx --tsconfig tsconfig.json scripts/public-map-discrepancies.ts",
+    "audit:listings": "tsx --tsconfig tsconfig.json scripts/listing-maintenance-report.ts",
     "audit:data": "tsx --tsconfig tsconfig.json scripts/audit-data.ts",
     "audit:categories": "tsx --tsconfig tsconfig.json scripts/category-audit.ts",
     "coverage:scorecard": "tsx --tsconfig tsconfig.json scripts/coverage-scorecard.ts",

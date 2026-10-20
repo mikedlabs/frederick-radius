@@ -9,6 +9,7 @@ export const MERCHANT_HOURS_SOURCES = [
   { slug: "brewers-alley-frederick", name: "Brewer's Alley", ledger_id: "brewers_alley_hours", category: "restaurant", url: "https://brewers-alley.com/", kind: "dated_week" },
   { slug: "gravel-and-grind-frederick", name: "Gravel & Grind", ledger_id: "gravel_grind_hours", category: "coffee", url: "https://www.gravelandgrind.com/", kind: "weekly" },
   { slug: "beans-in-the-belfry-brunswick", name: "Beans in the Belfry", ledger_id: "beans_belfry_hours", category: "coffee", url: "https://beansinthebelfry.com/", kind: "weekly" },
+  { slug: "dublin-roasters-frederick", name: "Dublin Roasters Coffee", ledger_id: "dublin_roasters_hours", category: "coffee", url: "https://dublinroasterscoffee.com", kind: "weekly" },
 ] as const;
 export type MerchantHoursSource = typeof MERCHANT_HOURS_SOURCES[number];
 export type MerchantHoursRecord = {

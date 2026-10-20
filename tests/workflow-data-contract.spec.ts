@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
@@ -35,7 +36,7 @@ type WorkflowDocument = {
     string,
     {
       if?: string;
-      "timeout-minutes"?: number;
+      "timeout-minutes"?: number | string;
       "runs-on"?: string | string[];
       env?: Record<string, unknown>;
       secrets?: unknown;
@@ -108,11 +109,6 @@ describe("scheduled data workflow contracts", () => {
 
     const trustedGenerators = [
       [
-        "build-marc-schedule.yml",
-        "build",
-        "${{ github.ref == 'refs/heads/main' }}",
-      ],
-      [
         "data-steward.yml",
         "steward",
         "${{ github.ref == 'refs/heads/main' && vars.HOURS_REFRESH_CRON == '1' && vars.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL == 'written-google-authorization-confirmed' && vars.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED == '1' }}",
@@ -145,6 +141,7 @@ describe("scheduled data workflow contracts", () => {
     }
 
     const hostedJobs = [
+      ["build-marc-schedule.yml", "build"],
       ["transit-steward.yml", "transit"],
       ["publish-automated-pr.yml", "publish"],
       ["automated-pr-checks.yml", "dispatch"],
@@ -167,7 +164,7 @@ describe("scheduled data workflow contracts", () => {
     const producer = workflow.jobs?.transit;
 
     expect(Object.keys(workflow.on ?? {}).sort()).toEqual(["schedule", "workflow_dispatch"]);
-    expect(workflow.on?.schedule).toEqual([{ cron: "23 10 * * *" }]);
+    expect(workflow.on?.schedule).toEqual([{ cron: "23 7 * * *" }]);
     expect(workflow.permissions).toEqual({});
     expect(workflow.concurrency).toEqual({
       group: "transit-steward",
@@ -331,7 +328,7 @@ describe("scheduled data workflow contracts", () => {
     [
       "ingest-venues.yml",
       "ANTHROPIC_VENUE_EVENTS_API_KEY",
-      'cron: "30 9 * * *"',
+      'cron: "7 11 * * *"',
     ],
   ])(
     "%s isolates its Anthropic key in the Data Enrichment environment",
@@ -343,7 +340,10 @@ describe("scheduled data workflow contracts", () => {
         `ANTHROPIC_API_KEY: \${{ secrets.${secretName} }}`,
       );
       expect(workflow).toContain(schedule);
-      expect(workflow).toContain("if: ${{ github.ref == 'refs/heads/main' }}");
+      if (name === "ingest-venues.yml") {
+        const jobs = (parse(workflow) as WorkflowDocument).jobs;
+        for (const owner of ["native", "review-gate"]) expect(jobs?.[owner].if).toContain("github.ref == 'refs/heads/main'");
+      } else expect(workflow).toContain("if: ${{ github.ref == 'refs/heads/main' }}");
       expect(workflow).not.toContain("secrets.ANTHROPIC_API_KEY");
       expect(workflow).not.toContain("ANTHROPIC_ADMIN_API_KEY");
     },
@@ -377,15 +377,17 @@ describe("scheduled data workflow contracts", () => {
           scope +
           "_FIRECRAWL_FETCH_FALLBACK == '1' && 'operator-firecrawl-fallback-budget'",
       );
-      expect(workflow).toContain(
-        "run-name: " +
-          (name === "ingest-venues.yml"
-            ? "Ingest venue events"
-            : name === "ingest-business-info.yml"
-              ? "Ingest business deep-info"
-              : "Ingest municipal civic data") +
+      if (name === "ingest-venues.yml") {
+        // Native ticks report zero; the paid mode keeps the authenticated title
+        // used by the shared reservation ledger (behavior covered separately).
+        expect(workflow).toContain("run-name: Ingest venue events");
+        expect(parse(workflow)["run-name"]).toContain("inputs.include_model_sources");
+      } else {
+        expect(workflow).toContain(
+          "run-name: " + (name === "ingest-business-info.yml" ? "Ingest business deep-info" : "Ingest municipal civic data") +
           ` (firecrawl=\${{ vars.${scope}_FIRECRAWL_FETCH_FALLBACK || '0' }}, cap=\${{ vars.${scope}_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }})`,
-      );
+        );
+      }
       expect(workflow).toContain("actions: read");
       expect(workflow).toContain(
         "FIRECRAWL_LEGACY_DISABLED_RUN_IDS: ${{ vars.FIRECRAWL_LEGACY_DISABLED_RUN_IDS || '' }}",
@@ -447,12 +449,11 @@ describe("scheduled data workflow contracts", () => {
     ).toBeLessThan(google.indexOf("run: npm ci"));
     expect(google).toContain("Missing GOOGLE_PLACES_API_KEY");
     expect(google).not.toContain("skipping enrichment");
-    expect(
-      venue.indexOf("Require venue extraction configuration"),
-    ).toBeLessThan(venue.indexOf("run: npm ci"));
-    expect(
-      venue.indexOf("Require venue extraction configuration"),
-    ).toBeLessThan(venue.indexOf("Install Chromium"));
+    const paidVenueSteps = (parse(venue) as WorkflowDocument).jobs?.ingest.steps ?? [];
+    const configuration = paidVenueSteps.findIndex((step) => step.name === "Require venue extraction configuration");
+    expect(configuration).toBeGreaterThanOrEqual(0);
+    expect(configuration).toBeLessThan(paidVenueSteps.findIndex((step) => step.run === "npm ci"));
+    expect(configuration).toBeLessThan(paidVenueSteps.findIndex((step) => step.name === "Install Chromium"));
     expect(venue).toContain("Missing ANTHROPIC_VENUE_EVENTS_API_KEY");
   });
 
@@ -597,6 +598,7 @@ describe("scheduled data workflow contracts", () => {
     ["ingest-business-info.yml", "ingest", "publish"],
     ["ingest-civic.yml", "ingest", "publish"],
     ["ingest-venues.yml", "ingest", "publish"],
+    ["ingest-venues.yml", "native", "publish"],
     ["refresh-commerce-links.yml", "refresh", "publish"],
     ["data-refresh.yml", "refresh", "publish"],
   ])(
@@ -618,7 +620,7 @@ describe("scheduled data workflow contracts", () => {
       const generator = workflow.jobs?.[generatorName];
       const publisher = workflow.jobs?.[publisherName];
       const upload = generator?.steps?.find((step) =>
-        step.uses?.startsWith("actions/upload-artifact@"),
+        step.uses?.startsWith("actions/upload-artifact@") && step.with?.name === "${{ steps.artifact-name.outputs.name }}",
       );
 
       expect(generator?.outputs?.artifact_name).toBe(
@@ -628,9 +630,9 @@ describe("scheduled data workflow contracts", () => {
         true,
       );
       expect(upload?.with?.name).toBe("${{ steps.artifact-name.outputs.name }}");
-      expect(publisher?.with?.artifact).toBe(
-        `\${{ needs.${generatorName}.outputs.artifact_name }}`,
-      );
+      expect(publisher?.with?.artifact).toBe(name === "ingest-venues.yml"
+        ? "${{ needs.native.outputs.artifact_name || needs.ingest.outputs.artifact_name }}"
+        : `\${{ needs.${generatorName}.outputs.artifact_name }}`);
       expect(publisher?.with?.artifact).not.toContain("github.run_attempt");
     },
   );
@@ -723,10 +725,12 @@ describe("scheduled data workflow contracts", () => {
         baseShas.length,
         `${name} must bind every artifact to its generation commit`,
       ).toBe(publishers.length);
+      // Venue native/paid producers are mutually exclusive. Commerce adds one
+      // private diagnostic artifact that the exact publisher never receives.
       expect(
         artifactUploads.length,
-        `${name} must stage each PR through an artifact`,
-      ).toBe(publishers.length);
+        `${name} must stage every producer through its exact artifact`,
+      ).toBe(["ingest-venues.yml", "refresh-commerce-links.yml"].includes(name) ? 2 : publishers.length);
       expect(
         exactHeads.length,
         `${name} must dispatch checks for the exact published head`,
@@ -1030,10 +1034,18 @@ describe("scheduled data workflow contracts", () => {
       const workflow = parse(text) as WorkflowDocument;
       for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
         if (!job["runs-on"]) continue;
-        expect(
-          job["timeout-minutes"],
-          `${name}:${jobName} needs an explicit timeout`,
-        ).toBeGreaterThan(0);
+        const timeout = job["timeout-minutes"];
+        if (typeof timeout === "string") {
+          // Evaluate the one reviewed conditional ceiling in both real modes;
+          // a template string alone is not evidence of a finite time budget.
+          expect(`${name}:${jobName}`).toBe("refresh-commerce-links.yml:refresh");
+          const expression = timeout.replace(/^\$\{\{|\}\}$/g, "").trim();
+          for (const [event, native, expected] of [["schedule", true, 15], ["workflow_dispatch", true, 15], ["workflow_dispatch", false, 40]] as const) {
+            expect(runInNewContext(`(${expression})`, { github: { event_name: event }, inputs: { native_daily: native } }, { timeout: 1000 })).toBe(expected);
+          }
+        } else {
+          expect(timeout, `${name}:${jobName} needs an explicit timeout`).toBeGreaterThan(0);
+        }
       }
     }
   });

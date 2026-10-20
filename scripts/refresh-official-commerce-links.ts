@@ -13,11 +13,11 @@
  */
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { clientPlaces } from "@/lib/loaders/places-client";
+import { parseNativeCommerceOptions, runNativeCommerceRefresh } from "./lib/native-commerce-refresh";
 import { publicPlaces } from "@/lib/loaders/places";
-import {
-  fetchPageSnapshot,
-  type PageSnapshot,
-} from "./lib/extract-agent";
+import type { PageSnapshot } from "./lib/extract-agent";
 import {
   classifyOfficialCommerceLinks,
   type ExtractedBusinessCommerceLink,
@@ -115,6 +115,7 @@ async function fetchAdaptive(
   url: string,
   minChars: number,
 ): Promise<PageSnapshot | null> {
+  const { fetchPageSnapshot } = await import("./lib/extract-agent");
   const plain = await fetchPageSnapshot(url, { maxChars: 12_000 });
   if (
     plain &&
@@ -258,9 +259,26 @@ async function mapConcurrent<T, R>(
   return results;
 }
 
-async function main() {
+export async function main(args = process.argv.slice(2)) {
   const cfg = JSON.parse(readFileSync(CFG, "utf8")) as Config;
-  const options = parseOptions(process.argv.slice(2), cfg);
+  if (args.includes("--native-daily")) {
+    const nativeOptions = parseNativeCommerceOptions(args);
+    const existing = JSON.parse(readFileSync(OUT, "utf8")) as Record<string, CommerceRefreshRecord>;
+    const result = await runNativeCommerceRefresh({ places: clientPlaces(), existing, excludedDomains: cfg.excludeDomains, options: nativeOptions });
+    if (!nativeOptions.plan && result.checked_count > 0) writeFileSync(OUT, `${JSON.stringify(result.records, null, 2)}\n`);
+    const { records: _records, ...receipt } = result;
+    void _records;
+    // Private run diagnostics are separate from the bounded publisher artifact.
+    // Only an explicit trusted operator path creates a receipt file.
+    const receiptPath = process.env.NATIVE_COMMERCE_RECEIPT_PATH;
+    if (receiptPath) writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, { mode: 0o600 });
+    console.log(JSON.stringify(receipt, null, 2));
+    const output = process.env.GITHUB_OUTPUT;
+    if (output) appendFileSync(output, [`native_daily=true`, `review_required=${result.review_required}`, `selected_count=${result.selected_count}`, `checked_count=${result.checked_count}`, `failed_count=${result.failed_count}`, `safe_hold_count=${result.safe_hold_count}`, ""].join("\n"));
+    if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Native daily commerce links\n\n${result.selected_count} selected from a ${result.roster.length}-site rotating roster; ${result.checked_count} checked, ${result.safe_hold_count} held for prior destinations not reobserved, ${result.failed_count} failed; ${result.requests} free GETs. Review required: ${result.review_required}. No destination verification, providers, rendering, retries or redirects.\n`);
+    return result;
+  }
+  const options = parseOptions(args, cfg);
   const existing = JSON.parse(
     readFileSync(OUT, "utf8"),
   ) as Record<string, CommerceRefreshRecord>;
@@ -417,7 +435,9 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}

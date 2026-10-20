@@ -20,8 +20,10 @@ concurrency:
 jobs:
   build:
     if: ${{ github.ref == 'refs/heads/main' }}
-    runs-on: [self-hosted, radius-data]
-    timeout-minutes: 30
+    # This public, keyless monthly feed must not wait on an unregistered NAS.
+    # Keep the existing cadence and isolated publisher; bound hosted time.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -32,6 +34,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
+          cache: npm
       - run: npm ci
       - name: Rebuild MARC schedule from GTFS
         run: npm run build:marc-schedule

@@ -326,6 +326,7 @@ jobs:
       contents: read
     outputs:
       artifact_name: ${{ steps.artifact-name.outputs.name }}
+      library_status: ${{ steps.refresh.outputs.library_status }}
       merchant_pending_count: ${{ steps.refresh.outputs.merchant_pending_count }}
       merchant_pending_summary: ${{ steps.refresh.outputs.merchant_pending_summary }}
       review_required: ${{ steps.refresh.outputs.review_required != 'false' || steps.catalog-review.outputs.review_required != 'false' }}
@@ -385,7 +386,8 @@ jobs:
       - name: Report refresh outcome
         if: ${{ always() }}
         run: |
-          echo "Nine library schedules require both FCPL pages. Three reviewed merchant sources retain their own observations and dated coverage; failed or conflicted merchant reads stage review instead of extending evidence. A successful workflow is not publication: inspect the reviewed PR and production deployment before claiming current hours." >> "$GITHUB_STEP_SUMMARY"
+          echo "Library source status: ${{ steps.refresh.outputs.library_status }}. A failed FCPL cohort retains its original bytes and evidence dates while unrelated merchant sources may refresh." >> "$GITHUB_STEP_SUMMARY"
+          echo "Nine library schedules require both FCPL pages. Four reviewed merchant sources retain their own observations and dated coverage; failed or conflicted merchant reads stage review instead of extending evidence. A successful workflow is not publication: inspect the reviewed PR and production deployment before claiming current hours." >> "$GITHUB_STEP_SUMMARY"
           echo "Pending merchant sources: ${{ steps.refresh.outputs.merchant_pending_count }}. Source reasons: ${{ steps.refresh.outputs.merchant_pending_summary }}." >> "$GITHUB_STEP_SUMMARY"
 
   official-hours-publish:
@@ -415,12 +417,15 @@ jobs:
       body: |
         Refreshes the bounded free first-party cohort: nine FCPL libraries from
         both required official pages, plus Brewer's Alley, Gravel & Grind and
-        Beans in the Belfry from their three reviewed canonical merchant URLs.
+        Beans in the Belfry and Dublin Roasters from their four reviewed canonical merchant URLs.
         No paid providers, private database access, redirects or source retries.
         Review each changed weekly window, source hash, observation, expiry and
         dated closure. Brewer's actual published week cannot extend beyond its
         final date. Other merchant evidence retains the seven-day limit and
         does not imply an independently verified holiday calendar.
+        Library source status: ${{ needs.official-hours.outputs.library_status }}.
+        Failed library reads preserve original evidence and expiry while unrelated
+        merchant sources can refresh. Partial collection is not fresh library data.
         Pending merchant sources: ${{ needs.official-hours.outputs.merchant_pending_count }}.
         Source reasons: ${{ needs.official-hours.outputs.merchant_pending_summary }}.
         Changed, failed or conflicted merchant reads retain the old approved

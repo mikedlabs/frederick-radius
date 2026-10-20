@@ -2523,6 +2523,32 @@ sources:
       reads retain old evidence and stage a fail-closed review item. New facts
       require review before promotion; job success is not published freshness.
 
+  - id: dublin_roasters_hours
+    name: "Dublin Roasters Coffee — First-party Hours"
+    owner: Dublin Roasters Coffee
+    url: https://dublinroasterscoffee.com
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: Dublin Roasters Coffee
+    status: active
+    collection: workflow
+    evidence_aliases: [dublin_roasters_hours, https://dublinroasterscoffee.com]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: |
+      The exact 1780 N Market Street coffee shop publishes the complete weekly
+      schedule beside its matching address and 240-285-9146 location phone.
+      One bounded static HTML GET per run, no credentials, provider, redirect,
+      retry, scripts or images. Real evidence expires within seven days.
+      Conflicted or failed reads retain old evidence and hold only this source;
+      changed facts require review before promotion. No other Dublin identity
+      or header phone inherits this location's schedule.
+
   - id: fcpl_branch_hours
     name: Frederick County Public Libraries — Official Branch Hours
     owner: Frederick County Public Libraries

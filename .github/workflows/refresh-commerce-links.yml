@@ -6,8 +6,15 @@ name: Refresh official commerce links
 # data. Changes open as a review PR before they can affect the app.
 
 on:
+  schedule:
+    # Stagger publishers to leave room for protected checks on the shared manifest.
+    - cron: "37 12 * * *"
   workflow_dispatch:
     inputs:
+      native_daily:
+        description: "Use the bounded free daily mode; turn off only for an intentional manual deep read"
+        type: boolean
+        default: true
       limit:
         description: "Maximum official websites to check (1-200)"
         required: false
@@ -31,13 +38,14 @@ jobs:
   refresh:
     if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: ${{ (github.event_name == 'schedule' || inputs.native_daily != false) && 15 || 40 }}
     permissions:
       contents: read
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     outputs:
       artifact_name: ${{ steps.artifact-name.outputs.name }}
+      review_required: ${{ steps.refresh.outputs.review_required != 'false' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -49,21 +57,30 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Chromium for JS-only official sites
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.native_daily == false }}
         timeout-minutes: 10
         run: npx playwright install --with-deps chromium
       - name: Verify deterministic commerce-link logic
         run: >-
           npx vitest run
+          tests/native-commerce-refresh.spec.ts
           tests/official-commerce-links.spec.ts
           tests/official-commerce-refresh.spec.ts
           tests/business-info-source.spec.ts
           src/lib/loaders/businessInfo.spec.ts
       - name: Refresh links from official sites
+        id: refresh
         env:
+          NATIVE_COMMERCE_RECEIPT_PATH: ${{ runner.temp }}/native-commerce-receipt.json
+          NATIVE_DAILY: ${{ github.event_name == 'schedule' || inputs.native_daily != false }}
           REFRESH_LIMIT: ${{ github.event.inputs.limit || '80' }}
           REFRESH_SLUG: ${{ github.event.inputs.slug }}
           REFRESH_FORCE: ${{ github.event.inputs.force }}
         run: |
+          if [ "$NATIVE_DAILY" = "true" ]; then
+            npm run refresh:commerce-links -- --native-daily --limit=20 --max-follow=1
+            exit 0
+          fi
           case "$REFRESH_LIMIT" in
             ''|*[!0-9]*)
               echo "::error title=Invalid refresh limit::The limit must be a positive whole number."
@@ -88,11 +105,30 @@ jobs:
             args+=(--force)
           fi
           npm run refresh:commerce-links -- "${args[@]}"
+      - name: Preserve source-specific collection outcomes
+        if: ${{ always() && steps.refresh.outputs.native_daily == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: official-commerce-observations-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/native-commerce-receipt.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Identify actual candidate changes
+        id: changed
+        run: |
+          if git diff --quiet -- src/data/business-info.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Rebuild public place artifacts
+        if: ${{ steps.changed.outputs.changed == 'true' }}
         run: npm run build:client-places
       - name: Promote reviewed place-page facts
+        if: ${{ steps.changed.outputs.changed == 'true' }}
         run: npm run data:release:write -- --stream places
       - name: Stage exact commerce-link output
+        if: ${{ steps.changed.outputs.changed == 'true' }}
         run: |
           set -euo pipefail
           install -D -m 0644 \
@@ -112,21 +148,30 @@ jobs:
             "$RUNNER_TEMP/official-commerce-link-output/src/data/data-release.json"
 
       - name: Pin commerce artifact name to this generator attempt
+        if: ${{ steps.changed.outputs.changed == 'true' }}
         id: artifact-name
         env:
           ARTIFACT_NAME: official-commerce-link-output-${{ github.run_id }}-${{ github.run_attempt }}
         run: echo "name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Upload exact commerce-link output
+        if: ${{ steps.changed.outputs.changed == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ steps.artifact-name.outputs.name }}
           path: ${{ runner.temp }}/official-commerce-link-output
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 30
+
+      - name: Report a completely unreadable native batch
+        if: ${{ steps.refresh.outputs.native_daily == 'true' && steps.refresh.outputs.selected_count != '0' && steps.refresh.outputs.checked_count == '0' }}
+        run: |
+          echo "No selected official site could be read. Prior facts and observations were preserved; inspect the per-source outcomes."
+          exit 1
 
   publish:
     needs: refresh
+    if: ${{ needs.refresh.outputs.artifact_name != '' }}
     permissions:
       actions: read
       contents: write
@@ -144,7 +189,18 @@ jobs:
         src/data/places-client.json
       commit_message: "data: refresh official commerce links"
       title: "data: refresh official restaurant links"
+      auto_merge: ${{ needs.refresh.outputs.review_required == 'false' }}
       body: |
+        Daily mode checks at most 20 official sites, rotating the full eligible
+        roster before freshness filtering. One same-host follow page is allowed;
+        no browser, paid fallback, destination probes, redirects or retries.
+        Failed reads preserve prior facts and their real observation dates.
+        Link presence means an anchor was found, not that checkout was tested.
+        Actual new/changed actions require review; only unchanged source facts
+        with renewed observations may auto-merge after all normal required checks.
+        Exact candidate artifacts remain available for 30 days so an older
+        unmerged source update can be reconciled rather than silently lost.
+
         Deterministic refresh of menu, ordering, reservation, catering, and
         gift-card links found as exact anchors on official business sites.
 
