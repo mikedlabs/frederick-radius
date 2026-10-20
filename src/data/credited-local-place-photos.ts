@@ -138,4 +138,53 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       modifications: "Resized and converted for display; cards may crop the image responsively.",
     },
   },
+  // Existing licensed History bytes, visually reviewed for the exact public
+  // identities. These are establishing views, not a current-activity claim.
+  "city-hall-8": {
+    file: "Frederick_City_Hall_MD4.jpg",
+    preferLocal: true,
+    review: {
+      reviewed_on: "2026-10-20",
+      sha256: "dce5b9246b9dffee8ad50bd6417f9919aa0cf36fa8ca7acba0d668b7b6d7b39d",
+    },
+    image: {
+      src: "/history-photos/frederick-county-established.jpg",
+      alt: "Frederick City Hall, the 1862 Italianate brick building that served as the Frederick County Courthouse",
+      creator: "Acroterion",
+      source_url: "https://commons.wikimedia.org/wiki/File:Frederick_City_Hall_MD4.jpg",
+      license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
+      modifications: "Resized and converted for display; cards may crop the image responsively.",
+    },
+  },
+  "mount-st-marys-university-emmitsburg": {
+    file: "UNIV_CHAPEL.jpg",
+    preferLocal: true,
+    review: {
+      reviewed_on: "2026-10-20",
+      sha256: "a8bea45385bd9a1e6a18ff3015db03672c96307cc8fcb7b99f0a5de728ed22ad",
+    },
+    image: {
+      src: "/history-photos/mount-st-marys-founded.jpg",
+      alt: "The stone Gothic Chapel of the Immaculate Conception on the Mount St. Mary's University campus near Emmitsburg, MD",
+      creator: "Steven C. Berger",
+      source_url: "https://commons.wikimedia.org/wiki/File:UNIV_CHAPEL.jpg",
+      license: { label: "CC BY-SA 3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" },
+      modifications: "Resized and converted for display; cards may crop the image responsively.",
+    },
+  },
+  "barbara-fritchie-house-frederick": {
+    file: "Barbara_Fritchie_House,_exterior_(30378964054).jpg",
+    review: {
+      reviewed_on: "2026-10-20",
+      sha256: "e54e4ff55a6e2a98a1e065ccabb4a8a5a253be0b0a1c71d3c89d7f59ba5d3768",
+    },
+    image: {
+      src: "/history-photos/barbara-fritchie-flag.jpg",
+      alt: "Exterior of the Barbara Fritchie House, a brick historic house museum with a white picket fence in downtown Frederick, MD",
+      creator: "Preservation Maryland",
+      source_url: "https://commons.wikimedia.org/wiki/File:Barbara_Fritchie_House,_exterior_(30378964054).jpg",
+      license: { label: "CC BY-SA 2.0", url: "https://creativecommons.org/licenses/by-sa/2.0/" },
+      modifications: "Resized and converted for display; cards may crop the image responsively.",
+    },
+  },
 } as const;

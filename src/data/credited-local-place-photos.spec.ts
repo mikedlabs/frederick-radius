@@ -52,6 +52,38 @@ describe("reviewed local licensed place identity", () => {
     expect(decodeURIComponent(new URL(photo.source_url).pathname)).toBe(`/wiki/File:${record.file}`);
   });
 
+  it.each([
+    ["city-hall-8", "frederick-county-established", "City Hall", "101 N Court St", "frederick"],
+    ["mount-st-marys-university-emmitsburg", "mount-st-marys-founded", "Mount St. Mary's University", "16300 Old Emmitsburg Rd, Emmitsburg, MD 21727", "emmitsburg"],
+    ["barbara-fritchie-house-frederick", "barbara-fritchie-flag", "Barbara Fritchie House", "Barbara Fritchie House, 154 W Patrick St, Frederick, MD 21701", "frederick"],
+  ] as const)("reuses the complete existing licensed History source for the exact %s place", (slug, historySlug, name, address, municipality) => {
+    const record = CREDITED_LOCAL_PLACE_PHOTOS[slug];
+    expect(clientPlaceBySlug(slug)).toMatchObject({ name, address, municipality });
+    expect(HISTORY.find((entry) => entry.slug === historySlug)?.image).toEqual(record.image);
+    const bytes = readFileSync(path.join(process.cwd(), "public", record.image.src));
+    expect(createHash("sha256").update(bytes).digest("hex")).toBe(record.review.sha256);
+    expect(record.review.reviewed_on).toBe("2026-10-20");
+    expect(record.image.creator).not.toBe("");
+    expect(record.image.modifications).toContain("crop the image responsively");
+    expect(record.image.license.url).toMatch(/^https:\/\/creativecommons\.org\/licenses\/by-sa\//);
+    const photo = getLandmarkPhoto(slug)!;
+    expect(photo).toMatchObject({ file: record.file, localSrc: record.image.src,
+      author: record.image.creator, source_url: record.image.source_url,
+      license: record.image.license.label, licenseUrl: record.image.license.url,
+      modifications: record.image.modifications, verified: true });
+    expect(curatedPhotoUrl(photo, 144)).toBe(record.image.src);
+    expect(curatedPhotoUrl(photo, 1200)).toBe(record.image.src);
+    expect(decodeURIComponent(new URL(photo.source_url).pathname)).toBe(`/wiki/File:${record.file}`);
+    if (slug === "barbara-fritchie-house-frederick") expect(photo.preferCurated).toBe(true);
+  });
+
+  it("does not assign the campus chapel to nearby merchants or similarly named places", () => {
+    for (const slug of ["mount-st-marys-university-bookstore-emmitsburg", "saxbys-at-mount-st-marys-university-emmitsburg", "mount-st-marys-emmitsburg", "nha-tho-mount-st-marys-university-emmitsburg"]) {
+      expect(clientPlaceBySlug(slug)).toBeDefined();
+      expect(getLandmarkPhoto(slug)).toBeNull();
+    }
+  });
+
   it("binds the unaltered Brewer's Alley exterior to its exact venue, Flickr source and older license", () => {
     const slug = "brewers-alley-frederick";
     const record = CREDITED_LOCAL_PLACE_PHOTOS[slug];

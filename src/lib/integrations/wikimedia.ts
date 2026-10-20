@@ -28,6 +28,8 @@ export type WikimediaPhoto = {
   localSrc?: string;
   licenseUrl?: string;
   modifications?: string;
+  /** Prefer reviewed bundled bytes without claiming the provider image is wrong. */
+  preferLocal?: boolean;
   /** When true, this curated photo WINS over the place's Google photo in
    *  PlaceHero — for landmarks whose Google hero is wrong or weak (verified by
    *  eye, per-place). Default/omitted: the Google photo wins and this only
@@ -43,11 +45,15 @@ export type WikimediaPhoto = {
 // Special:FilePath URL confirmed HTTP 200 image/jpeg (2026-06-20).
 // Later additions record their verification date where added.
 export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
-  ...Object.fromEntries(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).map(([slug, { file, image }]) => [slug, {
-    file, alt: image.alt, author: image.creator, license: image.license.label,
-    source_url: image.source_url, verified: true, localSrc: image.src,
-    licenseUrl: image.license.url, modifications: image.modifications,
-  } satisfies WikimediaPhoto])),
+  ...Object.fromEntries(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).map(([slug, record]) => {
+    const { file, image } = record;
+    return [slug, {
+      file, alt: image.alt, author: image.creator, license: image.license.label,
+      source_url: image.source_url, verified: true, localSrc: image.src,
+      licenseUrl: image.license.url, modifications: image.modifications,
+      ...("preferLocal" in record ? { preferLocal: record.preferLocal } : {}),
+    } satisfies WikimediaPhoto];
+  })),
   "carroll-creek-linear-park-frederick": {
     file: "Carroll Creek Park Frederick MD1.jpg",
     alt: "Carroll Creek Linear Park in downtown Frederick, showing the landscaped creek promenade and footbridges.",
@@ -113,11 +119,14 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
   // preferCurated — these places HAVE a Google hero, but it's wrong or weak
   // (checked by eye 2026-06-20), so the curated landmark shot wins instead.
   "barbara-fritchie-house-frederick": {
-    file: "Barbara Fritchie House MD1.jpg",
-    alt: "The brick Barbara Fritchie House in downtown Frederick, flag at the eaves.",
-    author: "Acroterion",
-    license: "CC BY-SA 4.0",
-    source_url: "https://commons.wikimedia.org/wiki/File:Barbara_Fritchie_House_MD1.jpg",
+    file: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].file,
+    alt: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.alt,
+    author: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.creator,
+    license: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.license.label,
+    source_url: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.source_url,
+    localSrc: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.src,
+    licenseUrl: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.license.url,
+    modifications: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.modifications,
     verified: true,
     // Google hero is dominated by a directional park sign, not the house.
     preferCurated: true,

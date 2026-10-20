@@ -91,6 +91,23 @@
     "baker-park-bandshell"
   ],
   "patch": {
+    "thai-table-frederick": {
+      "phone": "(240) 877-7034"
+    },
+    "il-porto-restaurant": {
+      "phone": "(301) 620-7480",
+      "website": "https://www.ilportorestaurant.com/location-frederick/"
+    },
+    "pistarros": {
+      "name": "Pistarro's"
+    },
+    "jojos-restaurant-tap-house": {
+      "name": "JoJo's Restaurant & Tap House",
+      "address": "16-18 E Patrick St"
+    },
+    "the-tasting-room-frederick": {
+      "website": "https://trrestaurant.com/"
+    },
     "hootch-and-banter-frederick": {
       "phone": "(301) 732-4971"
     },

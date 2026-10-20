@@ -50,6 +50,9 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
   // Exact local-image records and reviewed source bytes are promoted together.
   "src/data/credited-local-place-photos.ts",
   "public/place-photos/brewers-alley-2004.jpg",
+  "public/history-photos/frederick-county-established.jpg",
+  "public/history-photos/mount-st-marys-founded.jpg",
+  "public/history-photos/barbara-fritchie-flag.jpg",
   "src/lib/owned-place-photos.ts",
   "public/images/seasons/spring/aerial-view-baseball-field.jpg",
   "public/images/fair/fairgrounds-night-mike-d-1920.jpg",

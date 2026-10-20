@@ -9,10 +9,23 @@ import { openingHoursJsonLd } from "./seo/jsonld";
 import { decoratePlace, publicPlaces } from "./loaders/places";
 import { collectMerchantOfficialHours, fetchMerchantHoursPage, merchantHoursNeedsReview, parseMerchantOfficialHours } from "../../scripts/lib/merchant-official-hours";
 const now = new Date("2026-10-20T05:00:00.000Z");
+const nativeSources = MERCHANT_HOURS_SOURCES.filter((source) => !("collection" in source && source.collection === "manual"));
 const names = ["brewers-alley", "gravel-and-grind", "beans-in-the-belfry", "dublin-roasters"];
-const pages = MERCHANT_HOURS_SOURCES.map((source, i) => ({ url: source.url, html: readFileSync(`tests/fixtures/merchant-hours/${names[i]}.html`, "utf8"), observedAt: source.slug === "dublin-roasters-frederick" ? "2026-10-20T04:54:00.113Z" : "2026-10-19T23:24:49.283Z" }));
+// Immutable legacy fixture cohort. Later exact source enrollments are tested
+// separately and declared unavailable here, never silently given these pages.
+const legacySources = MERCHANT_HOURS_SOURCES.filter((source) => ["brewers-alley-frederick", "gravel-and-grind-frederick", "beans-in-the-belfry-brunswick", "dublin-roasters-frederick"].includes(source.slug));
+const pages = legacySources.map((source, i) => ({ url: source.url, html: readFileSync(`tests/fixtures/merchant-hours/${names[i]}.html`, "utf8"), observedAt: source.slug === "dublin-roasters-frederick" ? "2026-10-20T04:54:00.113Z" : "2026-10-19T23:24:49.283Z" }));
 const place = (i: number) => ({ slug: MERCHANT_HOURS_SOURCES[i].slug, category: MERCHANT_HOURS_SOURCES[i].category, website: MERCHANT_HOURS_SOURCES[i].url });
-const parsed = (): MerchantHoursArtifact => ({ schema_version: 1, places: MERCHANT_HOURS_SOURCES.map((source, i) => parseMerchantOfficialHours(source, pages[i], now)), review: [] });
+const parsed = (): MerchantHoursArtifact => ({ schema_version: 1, places: legacySources.map((source, i) => parseMerchantOfficialHours(source, pages[i], now)), review: [] });
+function fixturePage(url: string, fixtures = pages) {
+  const page = fixtures.find((item) => item.url === url);
+  if (!page) throw new Error("Source is outside this immutable legacy fixture cohort.");
+  return page;
+}
+function legacyReviews(artifact: MerchantHoursArtifact) {
+  expect(artifact.review.filter((row) => !legacySources.some((source) => source.slug === row.slug))).toEqual(nativeSources.filter((source) => !legacySources.some((legacy) => legacy.slug === source.slug)).map((source) => ({ slug: source.slug, checked_at: artifact.review[0].checked_at, reason: "source_unavailable" })));
+  return artifact.review.filter((row) => legacySources.some((source) => source.slug === row.slug));
+}
 afterEach(() => vi.unstubAllEnvs());
 describe("reviewed merchant hours", () => {
   it("keeps the committed approvals bound to their canonical identities without treating holds as current", () => {
@@ -60,7 +73,7 @@ describe("reviewed merchant hours", () => {
   });
   it("expires all immutable merchant fixtures at their own exclusive boundary even when the shipped snapshot has no merchant schedules", () => {
     const artifact = parsed();
-    expect(artifact.places).toHaveLength(MERCHANT_HOURS_SOURCES.length);
+    expect(artifact.places).toHaveLength(legacySources.length);
     for (const [i, row] of artifact.places.entries()) {
       const before = merchantHoursForPlace(place(i), artifact, new Date(Date.parse(row.expires_at) - 1)).hours;
       if (!before) throw new Error(`${row.slug} must retain its schedule just before expiry`);
@@ -106,14 +119,14 @@ describe("reviewed merchant hours", () => {
     await expect(fetchMerchantHoursPage(MERCHANT_HOURS_SOURCES[0].url, vi.fn(async () => new Response(body, { headers: { "content-type": "text/html" } })))).rejects.toThrow(/body read limit/);
     expect(reads).toBeLessThanOrEqual(2050); expect(cancelled).toHaveBeenCalled();
   });
-  it("refreshes only the four allowed sources once, preserves failed timestamps, and requires review", async () => {
+  it("reads each reviewed source once and preserves failed legacy timestamps and new-source holds", async () => {
     const previous = parsed();
-    const fetcher = vi.fn(async (url: string) => { const i = MERCHANT_HOURS_SOURCES.findIndex((source) => source.url === url); if (i === 0) throw new Error("source unavailable"); return i === 1 ? { ...pages[i], html: pages[i].html + "<p>Holiday hours</p>" } : pages[i]; });
+    const fetcher = vi.fn(async (url: string) => { const i = legacySources.findIndex((source) => source.url === url); if (i < 0) throw new Error("Source outside legacy fixture cohort"); if (i === 0) throw new Error("source unavailable"); return i === 1 ? { ...pages[i], html: pages[i].html + "<p>Holiday hours</p>" } : pages[i]; });
     const result = await collectMerchantOfficialHours(previous, fetcher, now);
-    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(MERCHANT_HOURS_SOURCES.map((source) => source.url));
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(nativeSources.map((source) => source.url));
     expect(result.artifact.places[0]).toEqual(previous.places[0]);
     expect(result.artifact.places[1]).toEqual(previous.places[1]);
-    expect(result.artifact.review.map((row) => row.reason)).toEqual(["source_unavailable", "unparseable_or_conflicted"]);
+    expect(legacyReviews(result.artifact).map((row) => row.reason)).toEqual(["source_unavailable", "unparseable_or_conflicted"]);
     expect(result.reviewRequired).toBe(false);
     expect(merchantHoursForPlace(place(0), result.artifact, now).hours).toBeUndefined();
     expect(merchantHoursForPlace(place(2), result.artifact, now).hours).toBeDefined();
@@ -124,8 +137,8 @@ describe("reviewed merchant hours", () => {
     expect(merchantHoursNeedsReview(before, after)).toBe(false);
     const changed = structuredClone(after); changed.places[1].hours.mon![0].close = "15:00"; expect(merchantHoursNeedsReview(before, changed)).toBe(true);
     const conflicted = structuredClone(before); conflicted.review.push({ slug: place(1).slug, checked_at: now.toISOString(), reason: "unparseable_or_conflicted" });
-    const result = await collectMerchantOfficialHours(conflicted, vi.fn(async (url) => pages.find((page) => page.url === url)!), now);
-    expect(result.artifact.review).toHaveLength(1); expect(result.reviewRequired).toBe(false);
+    const result = await collectMerchantOfficialHours(conflicted, vi.fn(async (url) => fixturePage(url)), now);
+    expect(legacyReviews(result.artifact)).toHaveLength(1); expect(result.reviewRequired).toBe(false);
     expect(merchantHoursForPlace(place(1), result.artifact, now).hours).toBeUndefined();
     const candidate = result.artifact.review[0].candidate!;
     expect(() => acceptReviewedMerchantHoursCandidate(result.artifact, candidate.slug, { source_sha256: "0".repeat(64), observed_at: candidate.observed_at }, now)).toThrow(/exact pending source proof/);
@@ -133,8 +146,8 @@ describe("reviewed merchant hours", () => {
     const accepted = acceptReviewedMerchantHoursCandidate(result.artifact, candidate.slug, candidate, now);
     expect(merchantHoursNeedsReview(result.artifact, accepted)).toBe(true);
     expect(accepted.places.find((row) => row.slug === candidate.slug)).toEqual(candidate);
-    const next = await collectMerchantOfficialHours(accepted, vi.fn(async (url) => pages.find((page) => page.url === url)!), now);
-    expect(next.artifact.review).toEqual([]); expect(next.reviewRequired).toBe(false);
+    const next = await collectMerchantOfficialHours(accepted, vi.fn(async (url) => fixturePage(url)), now);
+    expect(legacyReviews(next.artifact)).toEqual([]); expect(next.reviewRequired).toBe(false);
   });
   it("holds only a new dated week while nine libraries and three unchanged merchants remain refreshable", async () => {
     const nextAt = new Date("2026-10-26T23:30:00.000Z");
@@ -144,9 +157,9 @@ describe("reviewed merchant hours", () => {
       return `${next.getUTCMonth() + 1}/${next.getUTCDate()}/26`;
     });
     const previous = parsed();
-    const collected = await collectMerchantOfficialHours(previous, vi.fn(async (url) => nextPages.find((page) => page.url === url)!), nextAt);
+    const collected = await collectMerchantOfficialHours(previous, vi.fn(async (url) => fixturePage(url, nextPages)), nextAt);
     expect(collected.reviewRequired).toBe(false);
-    expect(collected.artifact.review).toHaveLength(1);
+    expect(legacyReviews(collected.artifact)).toHaveLength(1);
     expect(collected.artifact.review[0]).toMatchObject({ slug: place(0).slug, reason: "changed_facts", candidate: { coverage_from: "2026-10-26", coverage_through: "2026-11-01", observed_at: nextPages[0].observedAt } });
     expect(collected.artifact.places[0]).toEqual(previous.places[0]);
     expect(merchantHoursForPlace(place(0), collected.artifact, nextAt).hours).toBeUndefined();
@@ -162,48 +175,49 @@ describe("reviewed merchant hours", () => {
     try {
       writeFileSync(outputPath, JSON.stringify(parseFcplOfficialHours(libraryPages[0], libraryPages[1], now)));
       writeFileSync(merchantOutputPath, JSON.stringify(previous));
-      const runner = await refreshOfficialHours([], { outputPath, merchantOutputPath, now: nextAt, fetchPage: vi.fn(async (url) => ({ ...libraryPages.find((page) => page.url === url)!, observedAt: nextPages[0].observedAt })), fetchMerchantPage: vi.fn(async (url) => nextPages.find((page) => page.url === url)!) });
+      const runner = await refreshOfficialHours([], { outputPath, merchantOutputPath, now: nextAt, fetchPage: vi.fn(async (url) => ({ ...libraryPages.find((page) => page.url === url)!, observedAt: nextPages[0].observedAt })), fetchMerchantPage: vi.fn(async (url) => fixturePage(url, nextPages)) });
       expect(runner.reviewRequired).toBe(false);
       expect(runner.artifact.weekly.observed_at).toBe(nextPages[0].observedAt);
-      expect(runner.merchants?.artifact.review).toHaveLength(1);
+      expect(legacyReviews(runner.merchants!.artifact)).toHaveLength(1);
       expect(runner.merchants?.artifact.places[0]).toEqual(previous.places[0]);
     } finally { rmSync(directory, { recursive: true, force: true }); }
-    const repeated = await collectMerchantOfficialHours(collected.artifact, vi.fn(async (url) => nextPages.find((page) => page.url === url)!), nextAt);
+    const repeated = await collectMerchantOfficialHours(collected.artifact, vi.fn(async (url) => fixturePage(url, nextPages)), nextAt);
     expect(repeated.reviewRequired).toBe(false); expect(repeated.artifact.places[0]).toEqual(previous.places[0]);
     expect(repeated.artifact.review[0].candidate).toEqual(collected.artifact.review[0].candidate);
     expect(merchantHoursForPlace(place(0), repeated.artifact, nextAt).hours).toBeUndefined();
-    const transient = await collectMerchantOfficialHours(repeated.artifact, vi.fn(async (url) => { if (url === place(0).website) throw new Error("source unavailable"); return nextPages.find((page) => page.url === url)!; }), nextAt);
+    const transient = await collectMerchantOfficialHours(repeated.artifact, vi.fn(async (url) => { if (url === place(0).website) throw new Error("source unavailable"); return fixturePage(url, nextPages); }), nextAt);
     expect(transient.artifact.review[0].candidate).toEqual(repeated.artifact.review[0].candidate);
     expect(transient.artifact.places[0]).toEqual(previous.places[0]); expect(transient.reviewRequired).toBe(false);
   });
   it("keeps new enrollment unpublished and refuses to discard invalid approval state", async () => {
-    const fetcher = vi.fn(async (url: string) => pages.find((page) => page.url === url)!);
+    const fetcher = vi.fn(async (url: string) => fixturePage(url));
     const staged = await collectMerchantOfficialHours({ schema_version: 1, places: [], review: [] }, fetcher, now);
-    expect(staged.artifact.places).toEqual([]); expect(staged.artifact.review).toHaveLength(MERCHANT_HOURS_SOURCES.length); expect(staged.reviewRequired).toBe(false);
+    expect(staged.artifact.places).toEqual([]); expect(staged.artifact.review).toHaveLength(nativeSources.length); expect(staged.reviewRequired).toBe(false);
     expect(MERCHANT_HOURS_SOURCES.every((_, i) => !merchantHoursForPlace(place(i), staged.artifact, now).hours)).toBe(true);
     const first = staged.artifact.review[0].candidate!;
     const accepted = acceptReviewedMerchantHoursCandidate(staged.artifact, first.slug, first, now);
-    expect(accepted.places).toEqual([first]); expect(accepted.review).toHaveLength(MERCHANT_HOURS_SOURCES.length - 1);
+    expect(accepted.places).toEqual([first]); expect(accepted.review).toHaveLength(nativeSources.length - 1);
     const repeat = await collectMerchantOfficialHours(accepted, fetcher, now);
-    expect(repeat.artifact.places).toEqual([first]); expect(repeat.artifact.review).toHaveLength(MERCHANT_HOURS_SOURCES.length - 1);
+    expect(repeat.artifact.places).toEqual([first]); expect(repeat.artifact.review).toHaveLength(nativeSources.length - 1);
     fetcher.mockClear();
     await expect(collectMerchantOfficialHours(undefined, fetcher, now)).rejects.toThrow(/Invalid merchant/);
     expect(fetcher).not.toHaveBeenCalled();
   });
-  it("the real existing refresh runner publishes both bounded artifacts using exactly six injected source reads", async () => {
+  it("the real refresh runner reads the native cohort and publishes only represented legacy fixture evidence", async () => {
     const { refreshOfficialHours } = await import("../../scripts/refresh-official-hours");
     const { FCPL_HOURS_URL, FCPL_CLOSURES_URL } = await import("./official-hours");
     const directory = mkdtempSync(join(tmpdir(), "merchant-hour-runner-"));
     const outputPath = join(directory, "libraries.json"), merchantOutputPath = join(directory, "merchants.json");
     writeFileSync(merchantOutputPath, JSON.stringify(parsed()));
     const fetchPage = vi.fn(async (url: string) => ({ url, observedAt: "2026-10-19T23:24:00.000Z", html: readFileSync(url === FCPL_HOURS_URL ? "tests/fixtures/fcpl-hours-index.html" : "tests/fixtures/fcpl-holiday-closings.html", "utf8") }));
-    const fetchMerchantPage = vi.fn(async (url: string) => pages.find((page) => page.url === url)!);
+    const fetchMerchantPage = vi.fn(async (url: string) => fixturePage(url));
     try {
       const result = await refreshOfficialHours([], { outputPath, merchantOutputPath, fetchPage, fetchMerchantPage, now });
       expect(fetchPage.mock.calls.map(([url]) => url)).toEqual([FCPL_HOURS_URL, FCPL_CLOSURES_URL]);
-      expect(fetchMerchantPage.mock.calls.map(([url]) => url)).toEqual(MERCHANT_HOURS_SOURCES.map((source) => source.url));
+      expect(fetchMerchantPage.mock.calls.map(([url]) => url)).toEqual(nativeSources.map((source) => source.url));
       expect(JSON.parse(readFileSync(outputPath, "utf8")).places).toHaveLength(9);
-      expect(JSON.parse(readFileSync(merchantOutputPath, "utf8")).places).toHaveLength(MERCHANT_HOURS_SOURCES.length);
+      expect(JSON.parse(readFileSync(merchantOutputPath, "utf8")).places).toHaveLength(legacySources.length);
+      expect(legacyReviews(result.merchants!.artifact)).toEqual([]);
       expect(result.merchants?.reviewRequired).toBe(false);
     } finally { rmSync(directory, { recursive: true, force: true }); }
   });

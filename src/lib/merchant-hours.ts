@@ -10,6 +10,14 @@ export const MERCHANT_HOURS_SOURCES = [
   { slug: "gravel-and-grind-frederick", name: "Gravel & Grind", ledger_id: "gravel_grind_hours", category: "coffee", url: "https://www.gravelandgrind.com/", kind: "weekly" },
   { slug: "beans-in-the-belfry-brunswick", name: "Beans in the Belfry", ledger_id: "beans_belfry_hours", category: "coffee", url: "https://beansinthebelfry.com/", kind: "weekly" },
   { slug: "dublin-roasters-frederick", name: "Dublin Roasters Coffee", ledger_id: "dublin_roasters_hours", category: "coffee", url: "https://dublinroasterscoffee.com", kind: "weekly" },
+  { slug: "pistarros", name: "Pistarro’s", ledger_id: "pistarros_hours", category: "restaurant", url: "https://pistarro.com/", kind: "weekly" },
+  { slug: "jojos-restaurant-tap-house", name: "JoJo's Restaurant & Tap House", ledger_id: "jojos_hours", category: "restaurant", url: "https://jojosrestauranttaphouse.com/", kind: "weekly" },
+  { slug: "thai-table-frederick", name: "Thai Table", ledger_id: "thai_table_hours", category: "restaurant", url: "https://thaitablecuisine.com/", kind: "weekly" },
+  { slug: "thai-meric-eatery-bar-frederick", name: "Thai Meric Eatery & Bar", ledger_id: "thai_meric_hours", category: "restaurant", url: "https://www.thaimeric.com/", kind: "weekly" },
+  { slug: "white-rabbit-gastropub", name: "White Rabbit Gastropub", ledger_id: "white_rabbit_hours", category: "restaurant", url: "https://www.whiterabbitgastropub.com/readme", kind: "weekly" },
+  { slug: "il-porto-restaurant", name: "Il Porto Restaurant", ledger_id: "il_porto_frederick_hours", category: "restaurant", url: "https://www.ilportorestaurant.com/location-frederick/", kind: "weekly" },
+  { slug: "sumittra-thai-cuisine", name: "Sumittra Thai Cuisine", ledger_id: "sumittra_hours", category: "restaurant", url: "https://www.sumittra.com/", kind: "weekly", collection: "manual" },
+  { slug: "the-curious-iguana-frederick", name: "Curious Iguana", ledger_id: "curious_iguana_hours", category: "book-store", url: "https://curiousiguana.com/", kind: "weekly", collection: "manual" },
 ] as const;
 export type MerchantHoursSource = typeof MERCHANT_HOURS_SOURCES[number];
 export type MerchantHoursRecord = {
@@ -44,6 +52,30 @@ export function merchantHoursExpiry(observedAt: string, coverageThrough?: string
   const [year, month, day] = nextDate.split("-").map(Number);
   return new Date(Math.min(limit, Date.parse(easternWallToUtcISO(year, month, day, 0, 0)))).toISOString();
 }
+/** Ordinary Iguana Saturdays cannot describe its longer first Saturday.
+ * Keep that date outside the evidence rather than invent an extension in the
+ * closure-only exception model. Native sources retain their exact seven days.
+ */
+export function merchantWeeklyHoursWindow(slug: string, observedAt: string): { expires_at: string; coverage_through: string } {
+  const expires = merchantHoursExpiry(observedAt);
+  const ordinary = { expires_at: expires, coverage_through: easternDayKey(new Date(expires)) };
+  if (slug !== "the-curious-iguana-frederick") return ordinary;
+  const from = easternDayKey(new Date(observedAt));
+  for (let offset = 0; offset <= 7; offset++) {
+    const day = new Date(Date.parse(`${from}T12:00:00Z`) + offset * 86_400_000);
+    if (day.getUTCDay() !== 6 || day.getUTCDate() > 7) continue;
+    if (offset === 0) throw new Error("First-Saturday hours require separate dated review.");
+    const date = day.toISOString().slice(0, 10);
+    const [year, month, dateOfMonth] = date.split("-").map(Number);
+    const boundary = easternWallToUtcISO(year, month, dateOfMonth, 0, 0);
+    if (Date.parse(boundary) <= Date.parse(expires)) return {
+      expires_at: new Date(boundary).toISOString(),
+      coverage_through: new Date(day.getTime() - 86_400_000).toISOString().slice(0, 10),
+    };
+    break;
+  }
+  return ordinary;
+}
 export function validateMerchantHoursArtifact(value: unknown): asserts value is MerchantHoursArtifact {
   const artifact = value as MerchantHoursArtifact;
   if (!artifact || artifact.schema_version !== 1 || !Array.isArray(artifact.places) || !Array.isArray(artifact.review) || artifact.places.length > MERCHANT_HOURS_SOURCES.length) throw new Error("Invalid merchant hours artifact.");
@@ -54,7 +86,10 @@ export function validateMerchantHoursArtifact(value: unknown): asserts value is 
     seen.add(row.slug);
     if (row.kind === "dated_week") {
       if (Date.parse(row.coverage_through) - Date.parse(row.coverage_from) !== 6 * 86_400_000 || row.expires_at !== merchantHoursExpiry(row.observed_at, row.coverage_through)) throw new Error("A dated merchant week cannot renew beyond its actual dates.");
-    } else if (row.coverage_from !== easternDayKey(new Date(row.observed_at)) || row.expires_at !== merchantHoursExpiry(row.observed_at) || row.coverage_through !== easternDayKey(new Date(row.expires_at))) throw new Error("Weekly merchant evidence must retain its actual seven-day limit.");
+    } else {
+      const window = merchantWeeklyHoursWindow(source.slug, row.observed_at);
+      if (row.coverage_from !== easternDayKey(new Date(row.observed_at)) || row.expires_at !== window.expires_at || row.coverage_through !== window.coverage_through) throw new Error("Weekly merchant evidence must retain its actual source-specific limit.");
+    }
     const observedDay = easternDayKey(new Date(row.observed_at));
     if (observedDay < row.coverage_from || observedDay > row.coverage_through) throw new Error("Merchant observation is outside the published week.");
     for (const day of WEEKDAYS) {

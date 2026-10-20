@@ -220,6 +220,487 @@
           }
         ]
       }
+    },
+    {
+      "slug": "pistarros",
+      "source_url": "https://pistarro.com/",
+      "source_name": "Pistarro’s",
+      "source_sha256": "abfbbaedd5fd99d5e339d5a5f454e8171e8deaff17261309e4fed7f4a4b62cbd",
+      "observed_at": "2026-10-20T11:42:20.553Z",
+      "expires_at": "2026-10-27T11:42:20.553Z",
+      "coverage_from": "2026-10-20",
+      "coverage_through": "2026-10-27",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "11:30",
+            "close": "21:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "11:30",
+            "close": "21:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "11:30",
+            "close": "21:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "11:30",
+            "close": "21:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "11:30",
+            "close": "21:30"
+          }
+        ],
+        "sat": [
+          {
+            "open": "11:30",
+            "close": "21:30"
+          }
+        ],
+        "sun": [
+          {
+            "open": "10:00",
+            "close": "21:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "jojos-restaurant-tap-house",
+      "source_url": "https://jojosrestauranttaphouse.com/",
+      "source_name": "JoJo's Restaurant & Tap House",
+      "source_sha256": "eac4bc2354d5e877ed1f73d4844639e9e33dd279878b14b23018e78c8f2fdc47",
+      "observed_at": "2026-10-20T11:42:21.312Z",
+      "expires_at": "2026-10-27T11:42:21.312Z",
+      "coverage_from": "2026-10-20",
+      "coverage_through": "2026-10-27",
+      "kind": "weekly",
+      "hours": {
+        "mon": [],
+        "tue": [],
+        "wed": [
+          {
+            "open": "11:00",
+            "close": "00:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "11:00",
+            "close": "00:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "11:00",
+            "close": "02:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "02:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "10:00",
+            "close": "00:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "thai-table-frederick",
+      "source_url": "https://thaitablecuisine.com/",
+      "source_name": "Thai Table",
+      "source_sha256": "b309651b89223c972b1a506ccd1c0c4ebe68b8ec3aa23431caec0afd80f0de2f",
+      "observed_at": "2026-10-20T11:42:21.785Z",
+      "expires_at": "2026-10-27T11:42:21.785Z",
+      "coverage_from": "2026-10-20",
+      "coverage_through": "2026-10-27",
+      "kind": "weekly",
+      "hours": {
+        "mon": [],
+        "tue": [
+          {
+            "open": "11:30",
+            "close": "14:30"
+          },
+          {
+            "open": "16:30",
+            "close": "21:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "11:30",
+            "close": "14:30"
+          },
+          {
+            "open": "16:30",
+            "close": "21:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "11:30",
+            "close": "14:30"
+          },
+          {
+            "open": "16:30",
+            "close": "21:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "11:30",
+            "close": "14:30"
+          },
+          {
+            "open": "16:30",
+            "close": "21:30"
+          }
+        ],
+        "sat": [
+          {
+            "open": "12:00",
+            "close": "21:30"
+          }
+        ],
+        "sun": [
+          {
+            "open": "12:00",
+            "close": "20:30"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "thai-meric-eatery-bar-frederick",
+      "source_url": "https://www.thaimeric.com/",
+      "source_name": "Thai Meric Eatery & Bar",
+      "source_sha256": "b6a4152d67f6d8f82ecba07a4fed1e5349161fb31302150f8dde02f98bff10d7",
+      "observed_at": "2026-10-20T11:42:21.627Z",
+      "expires_at": "2026-10-27T11:42:21.627Z",
+      "coverage_from": "2026-10-20",
+      "coverage_through": "2026-10-27",
+      "kind": "weekly",
+      "hours": {
+        "sun": [
+          {
+            "open": "12:00",
+            "close": "20:45"
+          }
+        ],
+        "mon": [
+          {
+            "open": "11:00",
+            "close": "14:15"
+          },
+          {
+            "open": "16:00",
+            "close": "20:45"
+          }
+        ],
+        "tue": [
+          {
+            "open": "11:00",
+            "close": "14:15"
+          },
+          {
+            "open": "16:00",
+            "close": "20:45"
+          }
+        ],
+        "wed": [
+          {
+            "open": "11:00",
+            "close": "14:15"
+          },
+          {
+            "open": "16:00",
+            "close": "20:45"
+          }
+        ],
+        "thu": [
+          {
+            "open": "11:00",
+            "close": "14:15"
+          },
+          {
+            "open": "16:00",
+            "close": "20:45"
+          }
+        ],
+        "fri": [
+          {
+            "open": "11:00",
+            "close": "14:15"
+          },
+          {
+            "open": "16:00",
+            "close": "21:15"
+          }
+        ],
+        "sat": [
+          {
+            "open": "12:00",
+            "close": "21:15"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "white-rabbit-gastropub",
+      "source_url": "https://www.whiterabbitgastropub.com/readme",
+      "source_name": "White Rabbit Gastropub",
+      "source_sha256": "d54cfd3190a860defd44652f6f2c9a26f2d73468bae15032b24ba94c6d2eb6a5",
+      "observed_at": "2026-10-20T11:43:10.835Z",
+      "expires_at": "2026-10-27T11:43:10.835Z",
+      "coverage_from": "2026-10-20",
+      "coverage_through": "2026-10-27",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "il-porto-restaurant",
+      "source_url": "https://www.ilportorestaurant.com/location-frederick/",
+      "source_name": "Il Porto Restaurant",
+      "source_sha256": "af755fbbb91f83a6f90ec3d72e3bd5b2ae39ffcad3ff25bc8addb54e37342b71",
+      "observed_at": "2026-10-20T11:56:02.211Z",
+      "expires_at": "2026-10-27T11:56:02.211Z",
+      "coverage_from": "2026-10-20",
+      "coverage_through": "2026-10-27",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "11:30",
+            "close": "22:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "11:30",
+            "close": "22:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "11:30",
+            "close": "22:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "11:30",
+            "close": "22:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "11:30",
+            "close": "22:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "11:30",
+            "close": "22:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "11:30",
+            "close": "21:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "sumittra-thai-cuisine",
+      "source_url": "https://www.sumittra.com/",
+      "source_name": "Sumittra Thai Cuisine",
+      "source_sha256": "03058ab1ee05f5bea3f1f761d9bc9da031b86241ecdcc5705e1b52a355809d21",
+      "observed_at": "2026-10-20T11:49:26.851Z",
+      "expires_at": "2026-10-27T11:49:26.851Z",
+      "coverage_from": "2026-10-20",
+      "coverage_through": "2026-10-27",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "11:00",
+            "close": "14:30"
+          },
+          {
+            "open": "16:30",
+            "close": "21:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "11:00",
+            "close": "14:30"
+          },
+          {
+            "open": "16:30",
+            "close": "21:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "11:00",
+            "close": "14:30"
+          },
+          {
+            "open": "16:30",
+            "close": "21:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "11:00",
+            "close": "14:30"
+          },
+          {
+            "open": "16:30",
+            "close": "21:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "11:00",
+            "close": "14:30"
+          },
+          {
+            "open": "16:30",
+            "close": "22:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "12:00",
+            "close": "22:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "12:00",
+            "close": "21:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "the-curious-iguana-frederick",
+      "source_url": "https://curiousiguana.com/",
+      "source_name": "Curious Iguana",
+      "source_sha256": "5ec16523f886677fc82ce4c8339a048e0f82339eced7780172cdb6d17bcfb6e7",
+      "observed_at": "2026-10-20T11:50:31.369Z",
+      "expires_at": "2026-10-27T11:50:31.369Z",
+      "coverage_from": "2026-10-20",
+      "coverage_through": "2026-10-27",
+      "kind": "weekly",
+      "hours": {
+        "sun": [
+          {
+            "open": "10:00",
+            "close": "19:00"
+          }
+        ],
+        "mon": [
+          {
+            "open": "10:00",
+            "close": "19:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "10:00",
+            "close": "19:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "10:00",
+            "close": "19:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "20:00"
+          }
+        ]
+      }
     }
   ],
   "review": []

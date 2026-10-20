@@ -70,6 +70,8 @@ export function placeCardPhotoPlan(
   // If they fail, do not bring that known unsuitable image back.
   const fallbacks = curated?.preferCurated && curatedSource
     ? [curatedSource]
+    : curated?.preferLocal && curatedSource
+      ? [curatedSource, suppliedSource].filter((source): source is PlaceCardPhotoSource => source !== null)
     : [suppliedSource, curatedSource].filter((source): source is PlaceCardPhotoSource => source !== null);
   const sources = [owned, ...fallbacks].filter((source): source is PlaceCardPhotoSource => source !== null)
     .filter((source, index, all) => all.findIndex((item) => sourceIdentity(item) === sourceIdentity(source)) === index);

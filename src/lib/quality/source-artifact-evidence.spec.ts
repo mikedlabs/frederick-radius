@@ -14,7 +14,8 @@ import {
 const fixtureNow = new Date("2026-10-19T23:30:00.000Z");
 function merchantFixture(): MerchantHoursArtifact {
   const names = ["brewers-alley", "gravel-and-grind", "beans-in-the-belfry", "dublin-roasters"];
-  return { schema_version: 1, review: [], places: MERCHANT_HOURS_SOURCES.map((source, i) => parseMerchantOfficialHours(source, { url: source.url, observedAt: "2026-10-19T23:24:49.283Z", html: readFileSync(`tests/fixtures/merchant-hours/${names[i]}.html`, "utf8") }, fixtureNow)) };
+  return { schema_version: 1, review: [], // Explicit legacy fixture cohort; added sources must not borrow its evidence.
+  places: MERCHANT_HOURS_SOURCES.filter((source) => ["brewers-alley-frederick", "gravel-and-grind-frederick", "beans-in-the-belfry-brunswick", "dublin-roasters-frederick"].includes(source.slug)).map((source, i) => parseMerchantOfficialHours(source, { url: source.url, observedAt: "2026-10-19T23:24:49.283Z", html: readFileSync(`tests/fixtures/merchant-hours/${names[i]}.html`, "utf8") }, fixtureNow)) };
 }
 function expectHonestArtifactOutcomes(evidence: SourceEvidence[]) {
   for (const item of evidence) {
@@ -171,12 +172,20 @@ describe("bundled source artifact evidence", () => {
       "beans_belfry_hours",
       "brewers_alley_hours",
       "business_info_extraction",
+      "curious_iguana_hours",
       "dublin_roasters_hours",
       "fcpl_branch_hours",
       "gravel_grind_hours",
+      "il_porto_frederick_hours",
+      "jojos_hours",
       "municipal_civic_extraction",
+      "pistarros_hours",
+      "sumittra_hours",
+      "thai_meric_hours",
+      "thai_table_hours",
       "transit_gtfs",
       "venue_event_extraction",
+      "white_rabbit_hours",
     ]);
     expect(
       evidence.find((item) => item.sourceKey === "business_info_extraction"),

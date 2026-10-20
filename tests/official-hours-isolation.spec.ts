@@ -11,7 +11,11 @@ import { FCPL_CLOSURES_URL, FCPL_HOURS_URL } from "../src/lib/official-hours";
 const before = new Date("2026-10-19T23:30:00Z");
 const now = new Date("2026-10-20T05:00:00Z");
 const fixtures = ["brewers-alley", "gravel-and-grind", "beans-in-the-belfry", "dublin-roasters"];
-const merchants = MERCHANT_HOURS_SOURCES.map((source, index) => ({
+const nativeSources = MERCHANT_HOURS_SOURCES.filter((source) => !("collection" in source && source.collection === "manual"));
+// This historical isolation scenario has actual source pages for the original
+// four only. Later native sources fail explicitly; manual evidence is untouched.
+const legacySources = MERCHANT_HOURS_SOURCES.filter((source) => ["brewers-alley-frederick", "gravel-and-grind-frederick", "beans-in-the-belfry-brunswick", "dublin-roasters-frederick"].includes(source.slug));
+const merchants = legacySources.map((source, index) => ({
   url: source.url,
   html: readFileSync(`tests/fixtures/merchant-hours/${fixtures[index]}.html`, "utf8"),
   observedAt: "2026-10-19T23:24:49.283Z",
@@ -26,10 +30,14 @@ function setup() {
   const outputPath = join(directory, "library.json");
   const merchantOutputPath = join(directory, "merchant.json");
   const libraryBytes = JSON.stringify(parseFcplOfficialHours(libraries[0], libraries[1], before));
-  const merchantBytes = JSON.stringify({ schema_version: 1, places: MERCHANT_HOURS_SOURCES.map((source, index) => parseMerchantOfficialHours(source, merchants[index], before)), review: [] });
+  const merchantBytes = JSON.stringify({ schema_version: 1, places: legacySources.map((source, index) => parseMerchantOfficialHours(source, merchants[index], before)), review: [] });
   writeFileSync(outputPath, libraryBytes);
   writeFileSync(merchantOutputPath, merchantBytes);
-  const fetchMerchantPage = vi.fn(async (url: string) => ({ ...merchants.find((page) => page.url === url)!, observedAt: now.toISOString() }));
+  const fetchMerchantPage = vi.fn(async (url: string) => {
+    const page = merchants.find((page) => page.url === url);
+    if (!page) throw new Error("Source is outside the declared legacy fixture cohort.");
+    return { ...page, observedAt: now.toISOString() };
+  });
   return { directory, outputPath, merchantOutputPath, libraryBytes, merchantBytes, fetchMerchantPage };
 }
 
@@ -48,10 +56,10 @@ describe("independent official-hours cohorts", () => {
       expect(result.reviewRequired).toBe(false);
       expect(readFileSync(t.outputPath, "utf8")).toBe(t.libraryBytes);
       expect(result.artifact.weekly.observed_at).toBe(libraries[0].observedAt);
-      expect(t.fetchMerchantPage.mock.calls.map(([url]) => url)).toEqual(MERCHANT_HOURS_SOURCES.map((source) => source.url));
+      expect(t.fetchMerchantPage.mock.calls.map(([url]) => url)).toEqual(nativeSources.map((source) => source.url));
       const published = JSON.parse(readFileSync(t.merchantOutputPath, "utf8"));
-      expect(published.review).toEqual([]);
-      expect(published.places).toHaveLength(MERCHANT_HOURS_SOURCES.length);
+      expect(published.review).toEqual(nativeSources.filter((source) => !legacySources.some((legacy) => legacy.slug === source.slug)).map((source) => ({ slug: source.slug, checked_at: now.toISOString(), reason: "source_unavailable" })));
+      expect(published.places).toHaveLength(legacySources.length);
       expect(published.places.every((row: { observed_at: string }) => row.observed_at === now.toISOString())).toBe(true);
     } finally { rmSync(t.directory, { recursive: true, force: true }); }
   });
@@ -72,7 +80,7 @@ describe("independent official-hours cohorts", () => {
     try {
       const result = await refreshOfficialHours(["--dry-run"], { ...t, fetchPage: vi.fn(async () => { throw new Error("source unavailable"); }), now });
       expect(result.libraryStatus).toBe("source_unavailable");
-      expect(t.fetchMerchantPage).toHaveBeenCalledTimes(MERCHANT_HOURS_SOURCES.length);
+      expect(t.fetchMerchantPage).toHaveBeenCalledTimes(nativeSources.length);
       expect(readFileSync(t.outputPath, "utf8")).toBe(t.libraryBytes);
       expect(readFileSync(t.merchantOutputPath, "utf8")).toBe(t.merchantBytes);
     } finally { rmSync(t.directory, { recursive: true, force: true }); }
