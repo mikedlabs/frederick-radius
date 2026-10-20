@@ -287,9 +287,13 @@ describe("primary tab palette contrast", () => {
         const markup = renderToStaticMarkup(createElement(MapPeek, {
           place, distanceOrigin: null, distanceOriginLabel: "from you", onClose: () => {}, onDetails: () => {},
         }));
-        const foreground = markup.match(/class="map-peek-meta"><span style="color:([^;]+);/);
-        expect(foreground, "rendered hours status").not.toBeNull();
-        expect(expressionContrast(values, foreground![1], declaration(stylesheet, ".map-peek", "background")), open_status.state).toBeGreaterThanOrEqual(4.5);
+        const rendered = document.createElement("template");
+        rendered.innerHTML = markup;
+        const status = rendered.content.querySelector<HTMLElement>(`[data-map-place-status="${open_status.state}"]`);
+        expect(status, "rendered hours status").not.toBeNull();
+        const foreground = status!.style.getPropertyValue("color");
+        expect(foreground, "rendered status foreground").not.toBe("");
+        expect(expressionContrast(values, foreground, declaration(stylesheet, ".map-peek", "background")), open_status.state).toBeGreaterThanOrEqual(4.5);
       }
     });
   }

@@ -85,7 +85,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 // (the rule that closed the 12MB bundle leak) the points arrive as a
 // server prop and only the Amenity type is imported (erased at build).
 import type { Amenity } from "@/lib/loaders/amenities";
-import { haversineMeters, type LngLat } from "@/lib/geo";
+import type { LngLat } from "@/lib/geo";
 import { readCachedPosition } from "@/hooks/useGeolocation";
 import { sizedImage } from "@/lib/format/img";
 // THE one duplicate rule (pure, no data imports — bundle-safe). The
@@ -902,16 +902,9 @@ export default function AppMap({
       });
     });
   }, [cameraMaxBounds, initialBounds, recenterToKnownLocation, shortLandscapeViewport, urlCamera]);
-  const { openSheet } = usePlaceSheet();
-  // ── Sheet hydration (the /map payload slim). Browse mode ships pin-field
-  // records only; the sheet is the one consumer that wants the full card
-  // (photos, rating, hours, address). Open INSTANTLY with the pin fields —
-  // PlaceSheet optional-chains everything beyond them — then swap in the full
-  // record from /api/places/by-slugs (CDN-cached 1h) when it lands, usually
-  // within a frame or two. Cache per slug so re-taps are instant + offline-
-  // tolerant. Callers holding full records (SavedList, radius mode) just get
-  // one redundant background fetch the first time, served from cache.
-  const hydratedRef = useRef(new globalThis.Map<string, PlaceCardData>());
+  const { openSheetBySlug } = usePlaceSheet();
+  // The provider owns hydration, cancellation and its small visited-place cache.
+  // The slim pin supplies immediate identity while authoritative metadata loads.
   const openPlaceSheet = (pin: MapPinPlace) => {
     // React mirrors the selected slug into the map URL, but a fast Details tap
     // can beat that effect. Commit the selection before the persistent sheet
@@ -928,29 +921,10 @@ export default function AppMap({
       // The sheet still opens if address-bar persistence is unavailable.
     }
 
-    const withDist = (x: PlaceCardData): PlaceCardData =>
-      userLoc ? { ...x, distance_m: haversineMeters(userLoc, x.geom) } : x;
     const travelOrigin = userLoc && locationFixTimestamp
       ? { ...userLoc, timestamp: locationFixTimestamp }
       : null;
-    const cached = hydratedRef.current.get(pin.slug);
-    if (cached) {
-      openSheet(withDist(cached), { travelOrigin });
-      return;
-    }
-    openSheet(withDist(pin as PlaceCardData), { travelOrigin });
-    fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(pin.slug)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { places?: PlaceCardData[] } | null) => {
-        const full = d?.places?.[0];
-        if (full && full.slug === pin.slug) {
-          hydratedRef.current.set(pin.slug, full);
-          openSheet(withDist(full), { travelOrigin });
-        }
-      })
-      .catch(() => {
-        /* offline / transient — the pin-field sheet stays up, still useful */
-      });
+    openSheetBySlug(pin.slug, { initialPlace: pin, travelOrigin });
   };
   // Mode-driven layer defaults. The map mounts client-side via
   // dynamic({ ssr:false }), so the initial mode read here is the

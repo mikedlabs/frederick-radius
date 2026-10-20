@@ -60,6 +60,8 @@ import {
  */
 type Props = {
   place: PlaceCardData | null;
+  metadataPending?: boolean;
+  metadataUnavailable?: boolean;
   travelOrigin?: LngLat | null;
   mapReturnTo?: string | null;
   onClose: () => void;
@@ -69,6 +71,8 @@ type Props = {
 
 export default function PlaceSheet({
   place,
+  metadataPending = false,
+  metadataUnavailable = false,
   travelOrigin,
   mapReturnTo,
   onClose,
@@ -87,6 +91,8 @@ export default function PlaceSheet({
         <PlaceSheetContent
           key={place.slug}
           place={place}
+          metadataPending={metadataPending}
+          metadataUnavailable={metadataUnavailable}
           travelOrigin={travelOrigin}
           mapReturnTo={mapReturnTo}
           onClose={dismiss}
@@ -98,11 +104,15 @@ export default function PlaceSheet({
 
 function PlaceSheetContent({
   place,
+  metadataPending,
+  metadataUnavailable,
   travelOrigin,
   mapReturnTo,
   onClose,
 }: {
   place: PlaceCardData;
+  metadataPending: boolean;
+  metadataUnavailable: boolean;
   travelOrigin?: LngLat | null;
   mapReturnTo?: string | null;
   onClose: () => void;
@@ -203,7 +213,9 @@ function PlaceSheetContent({
     google_photo_attribution?: GooglePhotoAttribution;
     google_maps_uri?: string;
   } | null>(null);
+  const metadataUnresolved = metadataPending || metadataUnavailable;
   const needsBasicEnrichment = Boolean(
+    !metadataUnresolved &&
     !place.google_photo_url &&
     !place.google_hours?.length &&
     !place.phone &&
@@ -224,7 +236,7 @@ function PlaceSheetContent({
   // author/source line in the sheet without making every catalog download pay
   // for every business's profile URLs and report metadata.
   useEffect(() => {
-    if (!place.google_photo_url || place.google_photo_attribution) return;
+    if (metadataUnresolved || !place.google_photo_url || place.google_photo_attribution) return;
     const controller = new AbortController();
     fetch(`/api/places/map-card/${encodeURIComponent(place.slug)}`, {
       signal: controller.signal,
@@ -252,6 +264,7 @@ function PlaceSheetContent({
       .catch(() => {});
     return () => controller.abort();
   }, [
+    metadataUnresolved,
     place.google_photo_attribution,
     place.google_photo_url,
     place.slug,
@@ -259,13 +272,14 @@ function PlaceSheetContent({
 
   // Upcoming events happening AT this venue — a strong "should I go" signal.
   useEffect(() => {
+    if (metadataUnresolved) return;
     let cancelled = false;
     fetch(`/api/place/${place.slug}/events`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (!cancelled && Array.isArray(d?.events)) setVenueEvents(d.events); })
       .catch(() => {});
     return () => { cancelled = true; setVenueEvents([]); };
-  }, [place.slug]);
+  }, [metadataUnresolved, place.slug]);
 
   // Static enrichment wins; on-demand fills the gap.
   const photos = place.google_photos?.length
@@ -384,6 +398,8 @@ function PlaceSheetContent({
               <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
             </div>
           </header>
+          {metadataPending && <p role="status" className="mb-3 text-[13px] text-[var(--app-ink-2)]">Loading place details…</p>}
+          {metadataUnavailable && <p role="status" className="mb-3 text-[13px] text-[var(--app-ink-2)]">More details are unavailable. You can keep browsing or open the full page.</p>}
 
           {/* Address + source provenance + "known for" — three quiet
            *  lines that establish what this place is before the data
@@ -563,7 +579,7 @@ function PlaceSheetContent({
           </div>
         )}
 
-        <div className="mt-3">
+        {!metadataUnresolved && <div className="mt-3">
           <LiveGooglePlaceContext
             key={place.slug}
             slug={place.slug}
@@ -573,7 +589,7 @@ function PlaceSheetContent({
               place.description_reviewed ?? false,
             ) === "scraped"}
           />
-        </div>
+        </div>}
 
         {place.accessibility?.communication ? (
           <div className="mt-4">
