@@ -29,7 +29,8 @@ describe("Eastern timezone formatting", () => {
     { wall: [2026, 7, 4, 0, 0] as const, utc: "2026-07-04T04:00:00.000Z" },
     { wall: [2027, 1, 1, 0, 0] as const, utc: "2027-01-01T05:00:00.000Z" },
   ])("converts Eastern wall time $wall with the date's offset", ({ wall, utc }) => {
-    expect(easternWallToUtcISO(...wall)).toBe(utc);
+    const [year, month, day, hour, minute] = wall;
+    expect(easternWallToUtcISO(year, month, day, hour, minute)).toBe(utc);
   });
 
   it("retains seconds across an Eastern year boundary", () => {
