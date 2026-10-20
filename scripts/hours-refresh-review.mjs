@@ -397,7 +397,7 @@ export function renderHoursRefreshReview(analysis, holdback = null) {
   return [
     "# Hours refresh review",
     "",
-    `Generated from the committed baseline and the refreshed artifacts at ${generated}.`,
+    `Compared committed baseline with the current artifacts. Provider snapshot timestamp: ${generated}; this does not redate retained observations or first-party evidence.`,
     "This report is a review aid. It does not approve, reject, or change a place status.",
     "",
     reviewLine,

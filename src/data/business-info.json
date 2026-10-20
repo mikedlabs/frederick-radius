@@ -584,13 +584,13 @@
     },
     "commerce_source": {
       "url": "https://tincornerfrederick.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-10-20T05:08:06.490Z"
     },
     "commerce_links": [
       {
-        "type": "menu",
+        "type": "order",
         "url": "https://www.toasttab.com/local/order/tin-corner-700-north-market-street",
-        "anchor_text": "Menu",
+        "anchor_text": "ORDER ONLINE",
         "source_url": "https://tincornerfrederick.com/"
       }
     ]
@@ -685,7 +685,7 @@
     "name": "Thai Table",
     "commerce_source": {
       "url": "https://thaitablecuisine.com/",
-      "checkedAt": "2026-07-29T12:31:45.836Z"
+      "checkedAt": "2026-10-20T05:08:04.518Z"
     },
     "commerce_links": [
       {
@@ -1361,7 +1361,7 @@
     "name": "The Perfect Blend Cafe",
     "commerce_source": {
       "url": "https://theperfectblendfrederick.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-10-20T05:08:05.464Z"
     },
     "commerce_links": [
       {
@@ -2053,7 +2053,7 @@
     "name": "Tous les Jours Bakery & Cafe",
     "commerce_source": {
       "url": "https://tljus.com/stores/frederick-1170-g-west-patrick-st?utm_source=google&utm_medium=gbp&utm_campaign=frederick",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-10-20T05:08:06.639Z"
     },
     "commerce_links": [
       {
@@ -2884,5 +2884,65 @@
       "contentHash": "a9efff1a9ce3d64d5aba13d764bd3e231307385df1d9302b3e2b97589b49c832",
       "extractorVersion": "business-deep-info-v2-plain-copy"
     }
+  },
+  "thai-meric-eatery-bar-frederick": {
+    "name": "Thai Meric Eatery & Bar",
+    "commerce_source": {
+      "url": "https://www.thaimeric.com/",
+      "checkedAt": "2026-10-20T05:08:04.230Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://order.toasttab.com/egiftcards/thai-meric-eatery-and-bar-1170-w-patrick-st-ste-e",
+        "anchor_text": "GIft Cards",
+        "source_url": "https://www.thaimeric.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.thaimeric.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://www.thaimeric.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.thaimeric.com/menu/khao-soi",
+        "anchor_text": "Khao Soi",
+        "source_url": "https://www.thaimeric.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.thaimeric.com/menu/pad-kee-mao",
+        "anchor_text": "Pad Kee Mao",
+        "source_url": "https://www.thaimeric.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.thaimeric.com/menu/pad-thai",
+        "anchor_text": "Pad Thai",
+        "source_url": "https://www.thaimeric.com/"
+      }
+    ]
+  },
+  "the-banyan-frederick": {
+    "name": "The Banyan",
+    "commerce_source": {
+      "url": "https://www.thebanyanmd.com/",
+      "checkedAt": "2026-10-20T05:08:04.622Z"
+    },
+    "commerce_links": [
+      {
+        "type": "reservation",
+        "url": "https://tables.toasttab.com/restaurants/04f15c32-7d43-4e3d-bea6-0dd643a0b560/findTime",
+        "anchor_text": "Make a Reservation",
+        "source_url": "https://www.thebanyanmd.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.thebanyanmd.com/rooftop-bar-drink-menu",
+        "anchor_text": "Rooftop Bar Drink menu",
+        "source_url": "https://www.thebanyanmd.com/"
+      }
+    ]
   }
 }

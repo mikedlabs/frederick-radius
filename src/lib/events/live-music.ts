@@ -29,7 +29,7 @@ import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 const NON_MUSIC_TITLE =
   /\b(yoga|trivia|bingo|paint(?:ing)?|run\s+club|book\s+club|comedy|fitness|zumba|cardio|exercise|pilates|barre|workout|poses|learn\s+to)\b/i;
 const MARKET_TITLE =
-  /\b(?:flea|farmers'?|makers?|artisan|craft|holiday|vintage|night)\s+market\b|\bmarket\s+(?:day|festival|fair)\b/i;
+  /\b(?:flea|farmers'?|makers?|artisan|craft|holiday|vintage|night|fall|autumn|spring|summer|winter)\s+market\b|\bmarket\s+(?:day|festival|fair)\b/i;
 
 export type InferredNonMusicCategory = "market" | "community";
 

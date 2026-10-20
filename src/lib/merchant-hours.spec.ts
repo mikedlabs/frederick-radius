@@ -8,9 +8,9 @@ import { getOpenStatus, hoursForDate, isScheduleEvidenceCurrent } from "./hours"
 import { openingHoursJsonLd } from "./seo/jsonld";
 import { decoratePlace, publicPlaces } from "./loaders/places";
 import { collectMerchantOfficialHours, fetchMerchantHoursPage, merchantHoursNeedsReview, parseMerchantOfficialHours } from "../../scripts/lib/merchant-official-hours";
-const now = new Date("2026-10-19T23:30:00.000Z");
-const names = ["brewers-alley", "gravel-and-grind", "beans-in-the-belfry"];
-const pages = MERCHANT_HOURS_SOURCES.map((source, i) => ({ url: source.url, html: readFileSync(`tests/fixtures/merchant-hours/${names[i]}.html`, "utf8"), observedAt: "2026-10-19T23:24:49.283Z" }));
+const now = new Date("2026-10-20T05:00:00.000Z");
+const names = ["brewers-alley", "gravel-and-grind", "beans-in-the-belfry", "dublin-roasters"];
+const pages = MERCHANT_HOURS_SOURCES.map((source, i) => ({ url: source.url, html: readFileSync(`tests/fixtures/merchant-hours/${names[i]}.html`, "utf8"), observedAt: source.slug === "dublin-roasters-frederick" ? "2026-10-20T04:54:00.113Z" : "2026-10-19T23:24:49.283Z" }));
 const place = (i: number) => ({ slug: MERCHANT_HOURS_SOURCES[i].slug, category: MERCHANT_HOURS_SOURCES[i].category, website: MERCHANT_HOURS_SOURCES[i].url });
 const parsed = (): MerchantHoursArtifact => ({ schema_version: 1, places: MERCHANT_HOURS_SOURCES.map((source, i) => parseMerchantOfficialHours(source, pages[i], now)), review: [] });
 afterEach(() => vi.unstubAllEnvs());
@@ -60,7 +60,7 @@ describe("reviewed merchant hours", () => {
   });
   it("expires all immutable merchant fixtures at their own exclusive boundary even when the shipped snapshot has no merchant schedules", () => {
     const artifact = parsed();
-    expect(artifact.places).toHaveLength(3);
+    expect(artifact.places).toHaveLength(MERCHANT_HOURS_SOURCES.length);
     for (const [i, row] of artifact.places.entries()) {
       const before = merchantHoursForPlace(place(i), artifact, new Date(Date.parse(row.expires_at) - 1)).hours;
       if (!before) throw new Error(`${row.slug} must retain its schedule just before expiry`);
@@ -106,7 +106,7 @@ describe("reviewed merchant hours", () => {
     await expect(fetchMerchantHoursPage(MERCHANT_HOURS_SOURCES[0].url, vi.fn(async () => new Response(body, { headers: { "content-type": "text/html" } })))).rejects.toThrow(/body read limit/);
     expect(reads).toBeLessThanOrEqual(2050); expect(cancelled).toHaveBeenCalled();
   });
-  it("refreshes only the three allowed sources once, preserves failed timestamps, and requires review", async () => {
+  it("refreshes only the four allowed sources once, preserves failed timestamps, and requires review", async () => {
     const previous = parsed();
     const fetcher = vi.fn(async (url: string) => { const i = MERCHANT_HOURS_SOURCES.findIndex((source) => source.url === url); if (i === 0) throw new Error("source unavailable"); return i === 1 ? { ...pages[i], html: pages[i].html + "<p>Holiday hours</p>" } : pages[i]; });
     const result = await collectMerchantOfficialHours(previous, fetcher, now);
@@ -136,7 +136,7 @@ describe("reviewed merchant hours", () => {
     const next = await collectMerchantOfficialHours(accepted, vi.fn(async (url) => pages.find((page) => page.url === url)!), now);
     expect(next.artifact.review).toEqual([]); expect(next.reviewRequired).toBe(false);
   });
-  it("holds only a new dated week while nine libraries and two unchanged merchants remain refreshable", async () => {
+  it("holds only a new dated week while nine libraries and three unchanged merchants remain refreshable", async () => {
     const nextAt = new Date("2026-10-26T23:30:00.000Z");
     const nextPages = pages.map((page) => ({ ...page, observedAt: "2026-10-26T23:24:00.000Z" }));
     nextPages[0].html = pages[0].html.replace(/10\/(\d{2})\/26/g, (_, day: string) => {
@@ -150,7 +150,7 @@ describe("reviewed merchant hours", () => {
     expect(collected.artifact.review[0]).toMatchObject({ slug: place(0).slug, reason: "changed_facts", candidate: { coverage_from: "2026-10-26", coverage_through: "2026-11-01", observed_at: nextPages[0].observedAt } });
     expect(collected.artifact.places[0]).toEqual(previous.places[0]);
     expect(merchantHoursForPlace(place(0), collected.artifact, nextAt).hours).toBeUndefined();
-    expect([1, 2].every((i) => merchantHoursForPlace(place(i), collected.artifact, nextAt).hours)).toBe(true);
+    expect([1, 2, 3].every((i) => merchantHoursForPlace(place(i), collected.artifact, nextAt).hours)).toBe(true);
     const { officialHoursForPlace, FCPL_HOURS_URL, FCPL_CLOSURES_URL } = await import("./official-hours");
     const { refreshOfficialHours } = await import("../../scripts/refresh-official-hours");
     const { parseFcplOfficialHours } = await import("../../scripts/lib/fcpl-official-hours");
@@ -179,18 +179,18 @@ describe("reviewed merchant hours", () => {
   it("keeps new enrollment unpublished and refuses to discard invalid approval state", async () => {
     const fetcher = vi.fn(async (url: string) => pages.find((page) => page.url === url)!);
     const staged = await collectMerchantOfficialHours({ schema_version: 1, places: [], review: [] }, fetcher, now);
-    expect(staged.artifact.places).toEqual([]); expect(staged.artifact.review).toHaveLength(3); expect(staged.reviewRequired).toBe(false);
+    expect(staged.artifact.places).toEqual([]); expect(staged.artifact.review).toHaveLength(MERCHANT_HOURS_SOURCES.length); expect(staged.reviewRequired).toBe(false);
     expect(MERCHANT_HOURS_SOURCES.every((_, i) => !merchantHoursForPlace(place(i), staged.artifact, now).hours)).toBe(true);
     const first = staged.artifact.review[0].candidate!;
     const accepted = acceptReviewedMerchantHoursCandidate(staged.artifact, first.slug, first, now);
-    expect(accepted.places).toEqual([first]); expect(accepted.review).toHaveLength(2);
+    expect(accepted.places).toEqual([first]); expect(accepted.review).toHaveLength(MERCHANT_HOURS_SOURCES.length - 1);
     const repeat = await collectMerchantOfficialHours(accepted, fetcher, now);
-    expect(repeat.artifact.places).toEqual([first]); expect(repeat.artifact.review).toHaveLength(2);
+    expect(repeat.artifact.places).toEqual([first]); expect(repeat.artifact.review).toHaveLength(MERCHANT_HOURS_SOURCES.length - 1);
     fetcher.mockClear();
     await expect(collectMerchantOfficialHours(undefined, fetcher, now)).rejects.toThrow(/Invalid merchant/);
     expect(fetcher).not.toHaveBeenCalled();
   });
-  it("the real existing refresh runner publishes both bounded artifacts using exactly five injected source reads", async () => {
+  it("the real existing refresh runner publishes both bounded artifacts using exactly six injected source reads", async () => {
     const { refreshOfficialHours } = await import("../../scripts/refresh-official-hours");
     const { FCPL_HOURS_URL, FCPL_CLOSURES_URL } = await import("./official-hours");
     const directory = mkdtempSync(join(tmpdir(), "merchant-hour-runner-"));
@@ -203,7 +203,7 @@ describe("reviewed merchant hours", () => {
       expect(fetchPage.mock.calls.map(([url]) => url)).toEqual([FCPL_HOURS_URL, FCPL_CLOSURES_URL]);
       expect(fetchMerchantPage.mock.calls.map(([url]) => url)).toEqual(MERCHANT_HOURS_SOURCES.map((source) => source.url));
       expect(JSON.parse(readFileSync(outputPath, "utf8")).places).toHaveLength(9);
-      expect(JSON.parse(readFileSync(merchantOutputPath, "utf8")).places).toHaveLength(3);
+      expect(JSON.parse(readFileSync(merchantOutputPath, "utf8")).places).toHaveLength(MERCHANT_HOURS_SOURCES.length);
       expect(result.merchants?.reviewRequired).toBe(false);
     } finally { rmSync(directory, { recursive: true, force: true }); }
   });

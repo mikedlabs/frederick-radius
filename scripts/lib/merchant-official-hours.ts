@@ -30,14 +30,27 @@ function oneVisibleSchedule(text: string, pattern: RegExp): RegExpMatchArray {
   if (!matches.length || matches.some((row) => row.slice(1).map(time).join("|") !== matches[0].slice(1).map(time).join("|"))) throw new Error("Missing or conflicting visible merchant schedules.");
   return matches[0];
 }
-function structuredOpeningHours(document: Document, permitFlat: boolean): string[] {
+function structuredOpeningHours(document: Document, source: MerchantHoursSource): string[] {
+  const permitFlat = source.slug === "gravel-and-grind-frederick" || source.slug === "dublin-roasters-frederick";
   const schedules: string[] = [];
   function visit(value: unknown, flat: boolean) {
     if (Array.isArray(value)) { value.forEach((item) => visit(item, flat)); return; }
     if (!value || typeof value !== "object") return;
-    if ("openingHoursSpecification" in value || ("openingHours" in value && (!permitFlat || !flat))) throw new Error("Unreviewed structured merchant hours format.");
+    if ("openingHoursSpecification" in value || "specialOpeningHoursSpecification" in value || ("openingHours" in value && (!permitFlat || !flat))) throw new Error("Unreviewed structured merchant hours format.");
     if ("openingHours" in value) {
       if (typeof value.openingHours !== "string") throw new Error("Unreviewed structured merchant hours format.");
+      if (source.slug === "dublin-roasters-frederick") {
+        const entity = value as Record<string, unknown>;
+        const types = Array.isArray(entity["@type"]) ? entity["@type"] : [entity["@type"]];
+        const address = typeof entity.address === "string" ? entity.address : "";
+        // A matching clock on another entity is not this location's evidence.
+        if (!types.some((type) => type === "LocalBusiness" || type === "CafeOrCoffeeShop")
+          || typeof entity.name !== "string" || !/^Dublin Roasters(?: Coffee)?$/i.test(entity.name.trim())
+          || !/1780 N\.? Market (?:Street|St\.?)\s*,?\s*Frederick,?\s*MD\s*21701/i.test(address)
+          || typeof entity.telephone !== "string" || entity.telephone.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "") !== "2402859146") {
+          throw new Error("Mismatched structured Dublin location identity.");
+        }
+      }
       schedules.push(value.openingHours);
     }
     for (const child of Object.values(value)) if (typeof child === "object") visit(child, false);
@@ -54,7 +67,7 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
   if (!MERCHANT_HOURS_SOURCES.some((item) => item.slug === source.slug && item.url === source.url) || page.url !== source.url || !isHoursFresh(page.observedAt, now)) throw new Error("Unapproved merchant source or observation.");
   const { text, document } = textPage(page.html);
   if (/temporarily closed|closed (?:today|tomorrow|for)|closing early|special hours|holiday hours|until sold out|drinks only|kitchen hours/i.test(text)) throw new Error("Unresolved merchant notice or service qualifier.");
-  const structured = structuredOpeningHours(document, source.slug === "gravel-and-grind-frederick");
+  const structured = structuredOpeningHours(document, source);
   const hours: Hours = {};
   let from = easternDayKey(new Date(page.observedAt));
   let through: string | undefined;
@@ -79,26 +92,34 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
     const range = `\\s*[-–—]\\s*${CLOCK}`;
     const match = oneVisibleSchedule(text, new RegExp(`Hours Monday\\s*[-–—]\\s*Tuesday ${CLOCK}${range} Wednesday\\s*[-–—]\\s*Saturday ${CLOCK}${range} Sunday ${CLOCK}${range} Contact`, "i"));
     set(hours, ["mon", "tue"], match[1], match[2]); set(hours, ["wed", "thu", "fri", "sat"], match[3], match[4]); set(hours, ["sun"], match[5], match[6]);
-    // Missing JSON-LD days are unknown, not closed. Explicit overlapping facts must agree.
-    for (const schedule of structured) {
-      for (const part of schedule.split(",").map((item) => item.trim()).filter(Boolean)) {
-        const found = part.match(/^(Mo|Tu|We|Th|Fr|Sa|Su) (\d{2}:\d{2})-(\d{2}:\d{2})$/);
-        if (!found) throw new Error("Unrecognized structured merchant weekday.");
-        const day = WEEKDAYS[["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].indexOf(found[1])];
-        if (hours[day]?.[0]?.open !== found[2] || hours[day]?.[0]?.close !== found[3]) throw new Error("Conflicting visible and structured merchant hours.");
-      }
-    }
+  } else if (source.slug === "dublin-roasters-frederick") {
+    if (!/Dublin Roasters/i.test(text)
+      || !/1780 N\.? Market (?:Street|St\.?)\s*[●·,]?\s*Frederick,?\s*MD\s*21701/i.test(text)
+      || !/\(?240\)?[ -]285[ -]9146/.test(text)) throw new Error("Missing exact Dublin Roasters location identity.");
+    const match = oneVisibleSchedule(text, new RegExp(`Hours Mon\\s*[-–—]\\s*Fri:\\s*${CLOCK}\\s*[-–—]\\s*${CLOCK} Sat\\s*[-–—]\\s*Sun:\\s*${CLOCK}\\s*[-–—]\\s*${CLOCK}`, "i"));
+    set(hours, ["mon", "tue", "wed", "thu", "fri"], match[1], match[2]);
+    set(hours, ["sat", "sun"], match[3], match[4]);
   } else {
     if (!/Beans in the Belfry/i.test(text) || !/122 West Potomac Street,? Brunswick,? MD\s*21716/i.test(text) || !/301[ -]834[ -]7178/.test(text)) throw new Error("Missing exact Beans in the Belfry identity.");
     const match = oneVisibleSchedule(text, new RegExp(`Opening Hours Monday to Friday ${CLOCK} to ${CLOCK} Saturday and Sunday ${CLOCK} to ${CLOCK}`, "i"));
     set(hours, ["mon", "tue", "wed", "thu", "fri"], match[1], match[2]); set(hours, ["sat", "sun"], match[3], match[4]);
+  }
+  // Partial structured data may corroborate a visible day, never fill or
+  // override it. This agreement check is shared by every admitted source.
+  for (const schedule of structured) {
+    for (const part of schedule.split(",").map((item) => item.trim()).filter(Boolean)) {
+      const found = part.match(/^(Mo|Tu|We|Th|Fr|Sa|Su) (\d{2}:\d{2})-(\d{2}:\d{2})$/);
+      if (!found) throw new Error("Unrecognized structured merchant weekday.");
+      const day = WEEKDAYS[["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].indexOf(found[1])];
+      if (hours[day]?.[0]?.open !== found[2] || hours[day]?.[0]?.close !== found[3]) throw new Error("Conflicting visible and structured merchant hours.");
+    }
   }
   const expires = merchantHoursExpiry(new Date(page.observedAt).toISOString(), through);
   const record: MerchantHoursRecord = { slug: source.slug, source_url: source.url, source_name: source.name, source_sha256: createHash("sha256").update(page.html).digest("hex"), observed_at: new Date(page.observedAt).toISOString(), expires_at: expires, coverage_from: from, coverage_through: through ?? easternDayKey(new Date(expires)), kind: source.kind, hours };
   validateMerchantHoursArtifact({ schema_version: 1, places: [record], review: [] });
   return record;
 }
-/** Three fixed GETs, sequentially; no provider, credentials, redirects or retries. */
+/** Reviewed fixed GETs, sequentially; no provider, credentials, redirects or retries. */
 export async function fetchMerchantHoursPage(url: string, fetchImpl: typeof fetch = fetch, timeoutMs = 20_000): Promise<OfficialPageReceipt> {
   if (!MERCHANT_HOURS_SOURCES.some((source) => source.url === url)) throw new Error("Unapproved merchant URL.");
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 20_000) throw new Error("Invalid source deadline.");

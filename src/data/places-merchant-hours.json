@@ -165,6 +165,61 @@
           }
         ]
       }
+    },
+    {
+      "slug": "dublin-roasters-frederick",
+      "source_url": "https://dublinroasterscoffee.com",
+      "source_name": "Dublin Roasters Coffee",
+      "source_sha256": "d790767d1e868fef40c6bbd57f3e260c01531d51451afc5788cee781288b43f1",
+      "observed_at": "2026-10-20T04:54:00.113Z",
+      "expires_at": "2026-10-27T04:54:00.113Z",
+      "coverage_from": "2026-10-20",
+      "coverage_through": "2026-10-27",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "07:00",
+            "close": "15:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "07:00",
+            "close": "15:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "07:00",
+            "close": "15:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "07:00",
+            "close": "15:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "07:00",
+            "close": "15:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "08:00",
+            "close": "15:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "08:00",
+            "close": "15:00"
+          }
+        ]
+      }
     }
   ],
   "review": []

@@ -13,7 +13,7 @@ import {
 
 const fixtureNow = new Date("2026-10-19T23:30:00.000Z");
 function merchantFixture(): MerchantHoursArtifact {
-  const names = ["brewers-alley", "gravel-and-grind", "beans-in-the-belfry"];
+  const names = ["brewers-alley", "gravel-and-grind", "beans-in-the-belfry", "dublin-roasters"];
   return { schema_version: 1, review: [], places: MERCHANT_HOURS_SOURCES.map((source, i) => parseMerchantOfficialHours(source, { url: source.url, observedAt: "2026-10-19T23:24:49.283Z", html: readFileSync(`tests/fixtures/merchant-hours/${names[i]}.html`, "utf8") }, fixtureNow)) };
 }
 function expectHonestArtifactOutcomes(evidence: SourceEvidence[]) {
@@ -171,6 +171,7 @@ describe("bundled source artifact evidence", () => {
       "beans_belfry_hours",
       "brewers_alley_hours",
       "business_info_extraction",
+      "dublin_roasters_hours",
       "fcpl_branch_hours",
       "gravel_grind_hours",
       "municipal_civic_extraction",
@@ -194,7 +195,7 @@ describe("merchant source publication evidence", () => {
     const artifact = structuredClone(original);
     artifact.review.push({ slug: artifact.places[0].slug, checked_at: "2026-10-20T10:00:00.000Z", reason: "unparseable_or_conflicted" });
     const evidence = merchantSourceArtifactEvidence(artifact);
-    expect(evidence.filter((row) => row.outcome === "success")).toHaveLength(3);
+    expect(evidence.filter((row) => row.outcome === "success")).toHaveLength(4);
     expect(evidence.find((row) => row.sourceKey === "brewers_alley_hours" && row.outcome === "success")).toMatchObject({ publishedAt: original.places[0].observed_at, expiresAt: original.places[0].expires_at, recordCount: 1 });
     expect(evidence.find((row) => row.outcome === "failure")).toMatchObject({ sourceKey: "brewers_alley_hours", attemptedAt: "2026-10-20T10:00:00.000Z" });
     expectHonestArtifactOutcomes(evidence);
@@ -211,11 +212,11 @@ describe("merchant source publication evidence", () => {
     try {
       const { bundledSourceArtifactEvidence: bundledHeldEvidence } = await import("./source-artifact-evidence");
       const evidence = bundledHeldEvidence();
-      expect(new Set(evidence.map((row) => row.sourceKey)).size).toBe(8);
+      expect(new Set(evidence.map((row) => row.sourceKey)).size).toBe(9);
       expect(evidence.filter((row) => row.sourceKey === "brewers_alley_hours")).toHaveLength(2);
       expect(evidence.find((row) => row.sourceKey === "brewers_alley_hours" && row.outcome === "success")).toMatchObject({ publishedAt: held.observed_at, succeededAt: held.observed_at, expiresAt: held.expires_at });
       expect(evidence.find((row) => row.outcome === "failure")).toMatchObject({ sourceKey: "brewers_alley_hours", attemptedAt: checkedAt });
-      for (const sourceKey of ["fcpl_branch_hours", "gravel_grind_hours", "beans_belfry_hours"]) expect(evidence.find((row) => row.sourceKey === sourceKey && row.outcome === "success")).toBeDefined();
+      for (const sourceKey of ["fcpl_branch_hours", "gravel_grind_hours", "beans_belfry_hours", "dublin_roasters_hours"]) expect(evidence.find((row) => row.sourceKey === sourceKey && row.outcome === "success")).toBeDefined();
       expectHonestArtifactOutcomes(evidence);
     } finally {
       vi.doUnmock("@/data/places-merchant-hours.json");

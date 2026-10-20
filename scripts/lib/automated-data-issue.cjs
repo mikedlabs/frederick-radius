@@ -13,6 +13,12 @@ const FAMILIES = {
     activeTitle: "Stale data sources · active",
     labels: ["data-pipeline", "automated", "stale-source"],
   },
+  listings: {
+    marker: "<!-- automated-data-issue:listings -->",
+    legacyTitlePattern: /^Listing maintenance failure \d{4}-\d{2}-\d{2}$/,
+    activeTitle: "Listing maintenance needs attention · active",
+    labels: ["data-pipeline", "automated"],
+  },
   // The apex is serving a commit that is not main, or is failing its health
   // checks. This family exists because a red canary run is invisible: on
   // 2026-08-05 a /trust build error froze production, the scheduled canary
@@ -62,9 +68,10 @@ async function listOpenFamilyIssues({ github, context, config }) {
     .sort((a, b) => b.number - a.number);
 }
 
-function currentBody({ config, context, body }) {
+function currentBody({ config, context, body, fingerprint }) {
   return [
     config.marker,
+    ...(fingerprint ? [`<!-- automated-data-fingerprint:${fingerprint} -->`] : []),
     body.trim(),
     "",
     `Latest failing run: ${runUrl(context)}`,
@@ -73,10 +80,11 @@ function currentBody({ config, context, body }) {
   ].join("\n");
 }
 
-async function upsertFailure({ github, context, family, body }) {
+async function upsertFailure({ github, context, family, body, fingerprint }) {
+  if (fingerprint !== undefined && !/^[a-f0-9]{64}$/.test(fingerprint)) throw new Error("Invalid failure-state fingerprint.");
   const config = familyConfig(family);
   const matches = await listOpenFamilyIssues({ github, context, config });
-  const renderedBody = currentBody({ config, context, body });
+  const renderedBody = currentBody({ config, context, body, fingerprint });
   let primary;
 
   if (matches.length === 0) {
@@ -90,13 +98,17 @@ async function upsertFailure({ github, context, family, body }) {
     primary = response.data;
   } else {
     primary = matches[0];
-    await github.rest.issues.update({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      issue_number: primary.number,
-      title: config.activeTitle,
-      body: renderedBody,
-    });
+    // A repeated identical failure state remains visible without a daily
+    // issue edit/notification. Other families retain their existing behavior.
+    if (!fingerprint || !primary.body?.includes(`<!-- automated-data-fingerprint:${fingerprint} -->`)) {
+      await github.rest.issues.update({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        issue_number: primary.number,
+        title: config.activeTitle,
+        body: renderedBody,
+      });
+    }
   }
 
   for (const duplicate of matches.slice(1)) {

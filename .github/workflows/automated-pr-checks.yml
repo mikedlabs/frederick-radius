@@ -92,6 +92,12 @@ jobs:
                 'src/data/venue-event-source-state.json',
                 'src/data/venue-events.json',
               ],
+              'bot/venue-native-refresh': [
+                'src/data/data-release.json',
+                'src/data/venue-event-source-inventory.json',
+                'src/data/venue-event-source-state.json',
+                'src/data/venue-events.json',
+              ],
               'bot/google-photo-attribution-backfill': [
                 'docs/coverage-scorecard.md',
                 'src/data/data-release.json',

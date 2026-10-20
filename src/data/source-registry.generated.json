@@ -633,6 +633,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "dublin_roasters_hours",
+    "name": "Dublin Roasters Coffee — First-party Hours",
+    "owner": "Dublin Roasters Coffee",
+    "url": "https://dublinroasterscoffee.com",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "dublin_roasters_hours",
+      "https://dublinroasterscoffee.com"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "evangelical_lutheran_calendar",
     "name": "Evangelical Lutheran Church Calendar",
     "owner": "Evangelical Lutheran Church, Frederick",

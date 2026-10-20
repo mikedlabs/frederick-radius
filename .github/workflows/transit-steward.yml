@@ -12,9 +12,10 @@ name: Transit steward
 
 on:
   schedule:
-    # Keep the existing daily refresh window. Public GTFS generation must not
+    # Refresh before the other daily data owners, leaving time for protected
+    # publication checks. Public GTFS generation must not
     # wait for the separately managed NAS runner to be registered or online.
-    - cron: "23 10 * * *"
+    - cron: "23 7 * * *"
   workflow_dispatch: {}
 
 permissions: {}
