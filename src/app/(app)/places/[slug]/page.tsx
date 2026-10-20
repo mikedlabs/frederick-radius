@@ -11,6 +11,7 @@ import { googleMapsDirections, appleMapsDirections, actionsForPlace } from "@/li
 import { isCommerceSearchLink, resolveCommerceLinks } from "@/lib/commerce/links";
 import LiveOpenStatus from "@/components/place/LiveOpenStatus";
 import HoursBlock from "@/components/place/HoursBlock";
+import { placeHoursProvenance } from "@/lib/place-hours-provenance";
 import GoogleHours from "@/components/place/GoogleHours";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
@@ -99,26 +100,6 @@ function safeBlurb(p: {
   );
 }
 
-/** "today", "3 days ago", "last month" — for the hours freshness line. */
-function confirmedAgo(iso: string | undefined): string | null {
-  if (!iso) return null;
-  const d = Date.now() - new Date(iso).getTime();
-  if (!Number.isFinite(d) || d < 0) return null;
-  const days = Math.floor(d / 86_400_000);
-  if (days <= 0) return "today";
-  if (days === 1) return "yesterday";
-  if (days < 30) return `${days} days ago`;
-  if (days < 60) return "last month";
-  return `${Math.floor(days / 30)} months ago`;
-}
-
-const HOURS_SOURCE_LABEL: Record<string, string> = {
-  google_places: "Google",
-  first_party: "Frederick County Public Libraries",
-  osm: "OpenStreetMap",
-  manual_override: "the Frederick Radius team",
-};
-
 export const revalidate = 300;
 
 export async function generateStaticParams() {
@@ -178,9 +159,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
     place.description ?? place.short_blurb,
     place.description_reviewed ?? false,
   );
-  const hoursConfirmed = place.hours_source
-    ? `Hours from ${HOURS_SOURCE_LABEL[place.hours_source] ?? place.hours_source}, confirmed ${confirmedAgo(place.hours_updated_at) ?? "recently"}.`
-    : null;
+  const hoursConfirmed = placeHoursProvenance(place);
   const googleUrl = googleMapsDirections(place.geom.lat, place.geom.lng);
   const appleUrl = appleMapsDirections(place.geom.lat, place.geom.lng, place.name);
   const actions = actionsForPlace(place);
