@@ -172,6 +172,63 @@ for (const width of [320, 375, 390, 430]) {
   });
 }
 
+test("exact named venue leads with its owned photo and native Enter survives Back at 390px", async ({ page }, info) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await imageTransport(page);
+  await page.goto("/contacts", { waitUntil: "domcontentloaded" });
+  let dialog = await openFind(page);
+  const paidFindRequests: string[] = [];
+  let observeFind = true;
+  page.on("request", request => {
+    if (observeFind && new URL(request.url()).pathname === "/api/place-photo") paidFindRequests.push(request.url());
+  });
+  const query = "Baker Park Bandshell";
+  const slug = "baker-park-bandshell";
+  const responsePending = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === "/api/search" && url.searchParams.get("q") === query;
+  });
+  const input = dialog.getByRole("searchbox");
+  await input.fill(query);
+  const response = await responsePending;
+  expect(response.status()).toBe(200);
+  expect((await response.json()).results[0]).toMatchObject({
+    id: `place:${slug}`, title: query, href: `/places/${slug}`,
+    thumbnailSource: { kind: "owned", src: "/images/seasons/fall/018.jpg" },
+  });
+  const first = dialog.locator("#search-opt-0");
+  await expect(first.getByRole("heading", { name: query, exact: true })).toBeVisible();
+  await expect(first.getByRole("link", { name: "View place", exact: true })).toHaveAttribute("href", `/places/${slug}`);
+  const photo = first.locator('[data-search-place-visual="owned"] img');
+  await photo.scrollIntoViewIfNeeded();
+  await expect.poll(() => photo.evaluate(async node => {
+    const image = node as HTMLImageElement;
+    try { await image.decode(); } catch { return false; }
+    const url = new URL(image.currentSrc);
+    return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1
+      && url.origin === location.origin && url.pathname === "/_next/image"
+      && url.searchParams.get("url") === "/images/seasons/fall/018.jpg";
+  })).toBe(true);
+  await expect(first.locator(".place-card-photo-credit")).toHaveCount(0);
+  expect(paidFindRequests).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: info.outputPath("find-exact-bandshell-owned-390.png") });
+  observeFind = false;
+  await input.press("Enter");
+  await expect(page).toHaveURL(new RegExp(`/places/${slug}$`));
+  await expect(page.getByRole("heading", { level: 1, name: query, exact: true })).toBeVisible();
+  await expect(dialog).toHaveCount(0);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/contacts$/);
+  dialog = await openFind(page);
+  await expect(dialog.getByRole("searchbox")).toHaveValue(query);
+  await expect(dialog.locator("#search-opt-0").getByRole("heading", { name: query, exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Close Find", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator("header").getByRole("button", { name: "Ask or find across Frederick County", exact: true }).filter({ visible: true })).toBeFocused();
+});
+
 for (const failure of ["error", "transparent"] as const) {
   test(`submitted Search keeps the real result and removes failed photo credit after ${failure}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });

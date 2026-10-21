@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:e62f7c4c0eeb154dd32ff7ba70399d83d8449a74899fe43387536de4a6695af6",
+  "data_version": "sha256:8963c3f0f53b2e60ab1062629700250adc5b8f9158073c556f8b7cb669e15c54",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-20T23:59:20.499Z",
+      "promoted_at": "2026-10-21T06:49:33.032Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -210,9 +210,15 @@
         },
         {
           "path": "src/lib/owned-place-photos.ts",
-          "sha256": "4ec75b06583c198fe472ecb7973b337fa6159e9e794387cec8b1b2fde17272e0",
+          "sha256": "d7db84c3c3f3a9973cd96bf9cf4df94747a873fc836bdb484758504df87d6046",
           "records": null,
-          "bytes": 1661
+          "bytes": 2281
+        },
+        {
+          "path": "public/images/seasons/fall/018.jpg",
+          "sha256": "00a10a8a498e7b09bff6887dc881329c3542860e754b25db37a6aa12af05845c",
+          "records": null,
+          "bytes": 294430
         },
         {
           "path": "public/images/seasons/spring/aerial-view-baseball-field.jpg",

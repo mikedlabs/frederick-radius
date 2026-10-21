@@ -84,6 +84,15 @@ const STOP = new Set([
 // near Frederick" can rank every business with Frederick in its name.
 const LOCAL_CONTEXT = new Set(["frederick", "maryland", "county", "md"]);
 
+/** A complete canonical name, never a prefix, fuzzy match, or alias. */
+export function isExactPlaceNameQuery(query: string, name: string): boolean {
+  const key = (value: string) => value.toLowerCase().normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "").replace(/['’]/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const queryKey = key(query);
+  return queryKey.length > 0 && queryKey === key(name);
+}
+
 function normalize(s: string): string[] {
   const terms = s
     .toLowerCase()
@@ -1054,9 +1063,17 @@ export function search(
     if (hit.type === "place" && isNamedFairVendorPlace(hit.place.name, fairVendors)) return explicitFair ? 2 : 3;
     return 0;
   };
+  const exactNamedPlaces = new Set(!eventIntent ? hits.filter((hit) =>
+    hit.type === "place" && isExactPlaceNameQuery(query, hit.place.name),
+  ) : []);
   hits.sort((a, b) => {
     const namedFairDifference = namedFairPriority(b) - namedFairPriority(a);
     if (namedFairDifference !== 0) return namedFairDifference;
+    // Once a place passes the real scope/eligibility filters, its complete
+    // canonical name beats an incidental prefix match before truncation. Keep
+    // event-shaped requests and the explicit Fair policy on their own paths.
+    const exactPlaceDifference = Number(exactNamedPlaces.has(b)) - Number(exactNamedPlaces.has(a));
+    if (exactPlaceDifference !== 0) return exactPlaceDifference;
     // Keep one transitive ordering across mixed result types. The previous
     // comparator sorted event-vs-event pairs by distance but event-vs-place
     // pairs by relevance, which could push a higher-scoring event below a

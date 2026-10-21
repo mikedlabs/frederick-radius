@@ -1431,18 +1431,17 @@ export function curationScore(featureScore: number, localFavorite: boolean | und
   return Math.min(1, base + boost);
 }
 
+/** Reuse the formatter while formatting each caller's exact instant. */
+const DAYPART_CLOCK = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  hour: "numeric",
+  hour12: false,
+});
+
 /** Coarse Eastern daypart for moment-fit. Local copy so the loader has
  *  no dependency cycle with now-picks.ts (which imports rankPlaces). */
 function dayPartLocal(d: Date): "morning" | "midday" | "evening" {
-  const hour =
-    parseInt(
-      new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/New_York",
-        hour: "numeric",
-        hour12: false,
-      }).format(d),
-      10,
-    ) % 24;
+  const hour = parseInt(DAYPART_CLOCK.format(d), 10) % 24;
   if (hour < 10) return "morning";
   if (hour < 16) return "midday";
   return "evening";
@@ -2180,7 +2179,12 @@ export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
   }
 
   if (ctx.profile === "visitor") {
-    results.sort((a, b) => visitorScore(b, now) - visitorScore(a, now));
+    // Score each eligible place once. The unchanged descending comparator
+    // preserves native stable-sort input order when scores tie.
+    results = results
+      .map((place) => ({ place, score: visitorScore(place, now) }))
+      .sort((a, b) => b.score - a.score)
+      .map(({ place }) => place);
   } else {
     // Every axis lives on 0–1 for the no-origin fallback. When a deliberate
     // origin exists, the shared nearby contract adds an evidence gate and

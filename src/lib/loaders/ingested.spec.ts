@@ -9,7 +9,7 @@ vi.mock("next/cache", () => ({
 }));
 
 vi.mock("@/lib/db/client", () => ({
-  getSql: mocks.getSql,
+  getSql: () => transactionalSql(mocks.getSql()),
 }));
 
 import { getIngestedSeries } from "./ingested";
@@ -19,6 +19,16 @@ import {
   ingestedSeriesToCards,
 } from "./ingestedEvents";
 import { cleanEventSlug } from "@/lib/events/normalize";
+
+type TestSql = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>;
+function transactionalSql(query: TestSql | null) {
+  if (!query) return query;
+  return Object.assign(query, { begin: async (run: (transaction: TestSql) => Promise<unknown>) => {
+    const transaction: TestSql = async (strings, ...values) =>
+      strings.join(" ").includes("set_config('statement_timeout'") ? [] : query(strings, ...values);
+    return run(transaction);
+  } });
+}
 
 describe("multi-day all-day ingested visibility", () => {
   beforeEach(() => {

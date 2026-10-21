@@ -9,11 +9,21 @@ import { prepareEventArchiveRows, syncEventArchiveBatchWithWriter, type EventArc
 
 const mocks = vi.hoisted(() => ({ getSql: vi.fn() }));
 vi.mock("next/cache", () => ({ unstable_cache: (fn: unknown) => fn }));
-vi.mock("@/lib/db/client", () => ({ getSql: mocks.getSql }));
+vi.mock("@/lib/db/client", () => ({ getSql: () => transactionalSql(mocks.getSql()) }));
 vi.mock("@/lib/integrations/mapboxGeocode", () => ({
   upgradeEventGeom: async (event: unknown) => event,
   upgradeEventGeoms: async (events: unknown) => events,
 }));
+
+type TestSql = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>;
+function transactionalSql(query: TestSql | null) {
+  if (!query) return query;
+  return Object.assign(query, { begin: async (run: (transaction: TestSql) => Promise<unknown>) => {
+    const transaction: TestSql = async (strings, ...values) =>
+      strings.join(" ").includes("set_config('statement_timeout'") ? [] : query(strings, ...values);
+    return run(transaction);
+  } });
+}
 
 const NOW = new Date("2026-10-03T01:20:00Z");
 function source(id: string) {

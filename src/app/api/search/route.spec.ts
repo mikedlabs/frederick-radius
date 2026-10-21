@@ -296,4 +296,40 @@ describe("GET /api/search map fast path", () => {
     const body = await (await pending).json();
     expect(body.results).toContainEqual(expect.objectContaining({ id: "event:water-safety-training", title: query }));
   });
+
+  it.each([
+    ["Baker Park", "baker-park-frederick"],
+    ["Baker Park Bandshell", "baker-park-bandshell"],
+  ])("retains the existing archive wait while exact %s leads the generic layer", async (query, slug) => {
+    let resolveArchive!: (snapshot: { publicEvents: EventWithMeta[]; sourceHealth: { degraded: boolean; unavailable: string[] } }) => void;
+    mocks.loadEventArchiveSnapshot.mockImplementation(() => new Promise(resolve => { resolveArchive = resolve; }));
+    const req = request(query, "global");
+    req.nextUrl.searchParams.set("in", "county");
+    const pending = GET(req);
+    expect(await Promise.race([pending, Promise.resolve(null)])).toBeNull();
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledOnce();
+    resolveArchive({ publicEvents: [liveEvent()], sourceHealth: { degraded: false, unavailable: [] } });
+    const body = await (await pending).json();
+    expect(body.results[0]).toMatchObject({ id: `place:${slug}`, href: `/places/${slug}` });
+    expect(body.meta.liveEventsUnavailable).toBeUndefined();
+  });
+
+
+  it("still waits for archive enrichment when a complete place name can also name an event", async () => {
+    const query = "Gravel & Grind";
+    let resolveArchive!: (snapshot: { publicEvents: EventWithMeta[]; sourceHealth: { degraded: boolean; unavailable: string[] } }) => void;
+    mocks.loadEventArchiveSnapshot.mockImplementation(() => new Promise(resolve => { resolveArchive = resolve; }));
+    const req = request(query, "global");
+    req.nextUrl.searchParams.set("in", "county");
+    req.nextUrl.searchParams.set("limit", "20");
+    const pending = GET(req);
+    expect(await Promise.race([pending, Promise.resolve(null)])).toBeNull();
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledOnce();
+    const event = { ...liveEvent(), slug: "gravel-grind-gathering", title: query };
+    resolveArchive({ publicEvents: [event], sourceHealth: { degraded: false, unavailable: [] } });
+    const body = await (await pending).json();
+    expect(body.results).toContainEqual(expect.objectContaining({ id: "place:gravel-and-grind-frederick" }));
+    expect(body.results).toContainEqual(expect.objectContaining({ id: `event:${event.slug}`, title: query }));
+  });
+
 });

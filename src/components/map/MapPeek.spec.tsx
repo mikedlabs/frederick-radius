@@ -151,7 +151,7 @@ describe("MapPeek selected photo and source identity", () => {
     expect(host.querySelector("a")).toBeNull();
   });
   it("keeps an exact Commons fallback visible after the selected Google image fails", async () => {
-    const slug = "baker-park-frederick";
+    const slug = "rose-hill-manor-park-museums-frederick";
     const plan = placeCardPhotoPlan({ slug, google_photo_url: src, google_photo_attribution: credit }, 78);
     const landmark = getLandmarkPhoto(slug)!;
     expect(plan.sources.map(source => source.kind)).toEqual(["google", "curated"]);
@@ -160,7 +160,7 @@ describe("MapPeek selected photo and source identity", () => {
     // and incorrectly stops at a letter. The production caller passes plan.
     const props = {
       plan, src, googlePhoto: true, attribution: credit,
-      placeName: "Baker Park", glyph: "B", color: "var(--app-brand)", onOpenDetails: openDetails,
+      placeName: "Rose Hill Manor", glyph: "R", color: "var(--app-brand)", onOpenDetails: openDetails,
     };
     await act(async () => root.render(<MapPeekPhoto {...props}><button type="button">Details</button></MapPeekPhoto>));
     const details = host.querySelectorAll("button")[1];
@@ -191,7 +191,7 @@ describe("MapPeek selected photo and source identity", () => {
     await act(async () => fallback!.dispatchEvent(new Event("error")));
     expect(host.querySelector("img")).toBeNull();
     expect(host.querySelector("a")).toBeNull();
-    expect(host.textContent).toBe("BDetails");
+    expect(host.textContent).toBe("RDetails");
     expect(document.activeElement).toBe(details);
     await act(async () => root.render(<MapPeekPhoto {...props}><button type="button">Details</button></MapPeekPhoto>));
     expect(host.querySelector("img")).toBeNull();
@@ -259,9 +259,9 @@ describe("MapPeek selected photo and source identity", () => {
   });
 
   it("hydrates one selected map card and uses its existing URL/credit payload without an API plan field", async () => {
-    const slug = "baker-park-frederick";
+    const slug = "rose-hill-manor-park-museums-frederick";
     const place: MapPinPlace = {
-      slug, name: "Baker Park", category: "outdoors", municipality: "frederick",
+      slug, name: "Rose Hill Manor", category: "outdoors", municipality: "frederick",
       geom: { lat: 39.418, lng: -77.415 }, source: "manual", is_verified: true,
       open_status: { state: "unknown" }, short_blurb: "A selected-card test fixture.",
     };
@@ -282,7 +282,7 @@ describe("MapPeek selected photo and source identity", () => {
     await load(1, 1);
     expect(host.querySelector("img")?.getAttribute("src")).toBe(wikimediaUrl(getLandmarkPhoto(slug)!.file, 720));
     await load(1280, 891);
-    expect(host.querySelector(`a[href="${getLandmarkPhoto(slug)!.source_url}"]`)?.textContent).toBe("Acroterion");
+    expect(host.querySelector(`a[href="${getLandmarkPhoto(slug)!.source_url}"]`)?.textContent).toBe("LittleLuckyMd");
     expect(fetchCard).toHaveBeenCalledOnce();
     expect(host.textContent).toContain("Hours not posted");
     expect(host.textContent).toContain("Directions");

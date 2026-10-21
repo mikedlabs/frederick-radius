@@ -20,6 +20,24 @@ export const OWNED_PLACE_PHOTOS: Readonly<Record<string, OwnedPlacePhoto>> = {
     width: 1920,
     height: 1078,
   },
+  // Existing owner-permitted Seasons photograph, visually reviewed for these
+  // exact park and bandshell identities. It does not show a current event.
+  "baker-park-frederick": {
+    kind: "owned",
+    src: "/images/seasons/fall/018.jpg",
+    alt: "An aerial view of Baker Park and its bandshell seating in Frederick.",
+    width: 1920,
+    height: 1079,
+    objectPosition: "right",
+  },
+  "baker-park-bandshell": {
+    kind: "owned",
+    src: "/images/seasons/fall/018.jpg",
+    alt: "The Baker Park Bandshell and outdoor seating in Frederick.",
+    width: 1920,
+    height: 1079,
+    objectPosition: "right",
+  },
   // Existing owner-supplied Seasons photo already identified on Sports.
   "mccurdy-field": {
     kind: "owned",
