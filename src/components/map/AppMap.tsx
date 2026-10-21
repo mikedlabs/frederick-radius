@@ -280,6 +280,7 @@ import LightningDensity from "./LightningDensity";
 import MapboxTraffic from "./MapboxTraffic";
 import { useMapRendererLifecycle } from "./useMapRendererLifecycle";
 import { shouldApplyInitialMapSelection } from "./mapInitialSelection";
+import { useInitialPlaceCameraFocus } from "./useInitialPlaceCameraFocus";
 import LiveIncidents from "./LiveIncidents";
 import LiveRotorcraft, {
   type RotorcraftLayerStatus,
@@ -838,6 +839,11 @@ export default function AppMap({
   // transient move overwrite the address bar and turn the wrong frame into
   // the new source of truth.
   const cameraUrlWriteReadyRef = useRef(!urlCamera);
+  // A settled map can write its own county camera before the place card mounts.
+  // Only the camera supplied on entry suppresses the initial place focus.
+  const [entryHasCamera] = useState(() => Boolean(urlCamera));
+  const initialPlaceCameraPendingRef = useRef<string | null>(null);
+  const initialPlaceCameraGestureRef = useRef(false);
   // `reuseMaps` keeps the GL instance warm across route changes. That is a
   // major speed win, but Mapbox can then retain the camera from the previous
   // mount and ignore the new component's `initialViewState`. Re-apply an
@@ -1740,6 +1746,7 @@ export default function AppMap({
    * coordinating every transition through one gate so stale cards can never
    * reappear under the next selection. */
   const clearMapSelection = useCallback(() => {
+    initialPlaceCameraPendingRef.current = null;
     entitySelectionUrlIntentRef.current = { place: null, event: null };
     historySelectionUrlIntentRef.current = null;
     liveLayerClosersRef.current.closeAll();
@@ -1853,6 +1860,7 @@ export default function AppMap({
 
   const dismissMapSelection = useCallback(() => {
     if (selectionHistoryDismissRequestedRef.current) return;
+    initialPlaceCameraPendingRef.current = null;
     // Consume initial intent before an asynchronous Back can update the URL.
     deepLinkPlaceAppliedRef.current = true;
     deepLinkEventAppliedRef.current = true;
@@ -3002,6 +3010,18 @@ export default function AppMap({
     () => (selectedSlug ? visiblePlaces.find((place) => place.slug === selectedSlug) ?? null : null),
     [selectedSlug, visiblePlaces],
   );
+  useInitialPlaceCameraFocus({
+    pending: initialPlaceCameraPendingRef,
+    ready: isBrowseMap && mapLoaded && !mapError,
+    selectedPlace: peekPlace?.slug === selectedSlug ? selectedPlace : null,
+    getMap: () => mapRef.current?.getMap() ?? null,
+    hasEntryCamera: entryHasCamera,
+    hasUserCameraIntent: () =>
+      initialPlaceCameraGestureRef.current || cameraIntentRef.current,
+    hasOtherCameraOwner: () =>
+      autoFitNearbyScope || activeSceneId !== null || Boolean(sceneCameraPendingRef.current),
+    markCameraIntent: () => { cameraIntentRef.current = true; },
+  });
   // A cold URL-selected place can open in the renderer fallback before its
   // scoped search resolves. Its temporary empty source is not yet a filter
   // exclusion; retain the card until that same committed query has settled.
@@ -4204,6 +4224,7 @@ export default function AppMap({
   // not buried three levels into Filters. cameraIntentRef stays false: this is
   // a return to the default frame, not a user pan the leash should preserve.
   const fitCounty = () => {
+    initialPlaceCameraGestureRef.current = true;
     setResultScope("county");
     if (getScope() !== "county") setScope("county");
     if (isBrowseMap) {
@@ -5047,12 +5068,14 @@ export default function AppMap({
             // Mapbox can emit dragstart just before movestart. Preserve that
             // positive user signal when movestart itself omits originalEvent.
             if (isUserMove) {
+              initialPlaceCameraGestureRef.current = true;
               manualViewportGestureRef.current = true;
             } else if (!manualViewportGestureRef.current) {
               setShowResultsHere(false);
             }
           }}
           onDragStart={() => {
+            initialPlaceCameraGestureRef.current = true;
             manualViewportGestureRef.current = true;
           }}
           onZoomStart={(e) => {
@@ -5060,6 +5083,7 @@ export default function AppMap({
               Boolean((e as { originalEvent?: unknown }).originalEvent) ||
               cameraControlGestureRef.current
             ) {
+              initialPlaceCameraGestureRef.current = true;
               manualViewportGestureRef.current = true;
             }
           }}
@@ -5157,6 +5181,7 @@ export default function AppMap({
                   { kind: "place", value: place },
                   { addHistory: false },
                 );
+                if (isBrowseMap) initialPlaceCameraPendingRef.current = place.slug;
               }
             }
             if (

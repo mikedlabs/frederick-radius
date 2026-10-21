@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:8963c3f0f53b2e60ab1062629700250adc5b8f9158073c556f8b7cb669e15c54",
+  "data_version": "sha256:1eabce68a2b3b6db030e20f19de819ea59d94f412e2e009f904ca5a7f78b8206",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-21T06:49:33.032Z",
+      "promoted_at": "2026-10-21T07:58:28.694Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -72,9 +72,9 @@
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "5a06996d7e891821acd89da3b577d5356fa6723186826ad45f8271fcc6744aa9",
+          "sha256": "1b226b370ad1c2a6ab8fc7b4e9a2993f3e363fd088bbf638acc2b804e9ebf6f0",
           "records": 13,
-          "bytes": 17299
+          "bytes": 17160
         },
         {
           "path": "src/data/business-status.json",
@@ -282,15 +282,15 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "c52c1b5ecf8c948ff1f22d85d7864bb0c4d363c93147c1cd4a7270893f529166",
+          "sha256": "cc92ab8406ea8716e7011d52c6673360cabc0ea77f0e0820a0024115e9e840a1",
           "records": 1571,
-          "bytes": 2299203
+          "bytes": 2299870
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "7c938bca37e2c5465a1e7b75862d53e653c4daf85b0bd6c10e52b2dadb47909c",
-          "records": 20,
-          "bytes": 32701
+          "sha256": "6c9060fe3a90bb06a6174ce8b018edbb76df56aa35bb44cce2ce5f146465c355",
+          "records": 21,
+          "bytes": 33453
         },
         {
           "path": "src/data/event-venue-photo-credits.json",

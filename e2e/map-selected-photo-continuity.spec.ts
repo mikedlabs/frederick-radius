@@ -230,6 +230,8 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 375, height: 667 }
       const fallbackBrowseRow = list.locator(`[data-map-list-place-row="${fallbackSlug}"]`);
       const creekBrowseRow = list.locator(`[data-map-list-place-row="${creekSlug}"]`);
       for (const [row, kind] of [[fallbackBrowseRow, "curated"], [creekBrowseRow, "owned"]] as const) {
+        // Native lazy thumbnails decode after their row enters the scrollable list.
+        await row.scrollIntoViewIfNeeded();
         const frame = row.locator("[data-map-list-photo]");
         await expect(frame).toHaveAttribute("data-photo-state", "ready");
         await expect(frame).toHaveAttribute("data-photo-source", kind);

@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isFatalMapboxError, mapboxFailureKind } from "./mapboxFailure";
 import { MAP_RENDERER_LOAD_TIMEOUT_MS, useMapRendererLifecycle } from "./useMapRendererLifecycle";
 import { shouldApplyInitialMapSelection } from "./mapInitialSelection";
+import { useInitialPlaceCameraFocus } from "./useInitialPlaceCameraFocus";
+import MapResultSurface from "./MapResultSurface";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 type Lifecycle = ReturnType<typeof useMapRendererLifecycle>;
@@ -209,5 +211,131 @@ describe("compatible Mapbox failure classification", () => {
   ] as const)("classifies %s after loaded=%s without changing the legacy boolean", (message, loaded, kind, fatal) => {
     expect(mapboxFailureKind(message, loaded)).toBe(kind);
     expect(isFatalMapboxError(message, loaded)).toBe(fatal);
+  });
+});
+
+
+// Exercise the production layout effect and actual result-surface markup.
+// The renderer's camera API and DOM geometry are bounded unit doubles; this
+// proves lifecycle/obstruction handling, not WebGL pin paint or appearance.
+describe("cold place focus after the renderer and result card commit", () => {
+  const place = { slug: "schifferstadt-architectural-museum-frederick", geom: { lng: -77.4438, lat: 39.4221 } };
+  let root: Root;
+  let container: HTMLDivElement;
+  let pending: { current: string | null };
+  let userCameraIntent: boolean;
+  const easeTo = vi.fn();
+  const markCameraIntent = vi.fn();
+  type FocusProps = {
+    ready?: boolean;
+    card?: boolean;
+    visiblePlace?: typeof place | null;
+    entryCamera?: boolean;
+    otherOwner?: boolean;
+    metadata?: string;
+  };
+  function FocusOwner({ ready = false, card = true, visiblePlace = place, entryCamera = false, otherOwner = false, metadata = "initial" }: FocusProps) {
+    useInitialPlaceCameraFocus({
+      pending, ready, selectedPlace: visiblePlace,
+      getMap: () => ({
+        getContainer: () => container.querySelector<HTMLElement>(".mapboxgl-map")!,
+        getZoom: () => 9.6,
+        easeTo,
+      }),
+      hasEntryCamera: entryCamera,
+      hasUserCameraIntent: () => userCameraIntent,
+      hasOtherCameraOwner: () => otherOwner,
+      markCameraIntent,
+    });
+    return <div className="dock-host">
+      <div className="mapboxgl-map"><canvas /></div>
+      {card && <MapResultSurface className="map-peek" ariaLabel="Selected place" onClose={() => { pending.current = null; }}>
+        <div data-map-place-slug={place.slug}>{metadata}</div>
+      </MapResultSurface>}
+    </div>;
+  }
+  beforeEach(() => {
+    container = document.createElement("div"); document.body.append(container);
+    root = createRoot(container);
+    pending = { current: place.slug };
+    userCameraIntent = false;
+    easeTo.mockReset(); markCameraIntent.mockReset();
+    vi.stubGlobal("innerWidth", 390); vi.stubGlobal("innerHeight", 844);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.matches(".mapboxgl-map")) return new DOMRect(0, 57, 390, 720);
+      if (this.matches(".map-peek")) return new DOMRect(8, 324, 374, 445);
+      return new DOMRect();
+    });
+    vi.stubGlobal("fetch", vi.fn(() => { throw new Error("No network allowed in camera lifecycle proof"); }));
+    window.history.replaceState(null, "", `/map?place=${place.slug}`);
+  });
+  afterEach(async () => {
+    await act(async () => root.unmount()); container.remove();
+    expect(fetch).not.toHaveBeenCalled();
+    vi.restoreAllMocks(); vi.unstubAllGlobals();
+  });
+  const render = async (props: FocusProps = {}) => { await act(async () => root.render(<FocusOwner {...props} />)); };
+
+  it("waits for a real load, then focuses above the mounted card despite generated county c", async () => {
+    await render();
+    expect(easeTo).not.toHaveBeenCalled();
+    window.history.replaceState(null, "", `/map?place=${place.slug}&c=-77.4100,39.4600,9.60`);
+    await render({ ready: true });
+    expect(container.querySelector(".map-peek[data-map-result-surface]")).not.toBeNull();
+    expect(easeTo).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      center: [place.geom.lng, place.geom.lat], zoom: 15,
+      padding: { top: 20, right: 20, bottom: 469, left: 20 }, retainPadding: false,
+    }));
+    expect(markCameraIntent).toHaveBeenCalledTimes(1);
+    await render({ ready: true, metadata: "hours and photo metadata arrived" });
+    expect(easeTo).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits for the actual card and matching visible canonical pin", async () => {
+    await render({ ready: true, card: false });
+    expect(easeTo).not.toHaveBeenCalled();
+    await render({ ready: true, visiblePlace: null });
+    expect(easeTo).not.toHaveBeenCalled();
+    await render({ ready: true });
+    expect(easeTo).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the same actual result markup for the desktop card obstruction", async () => {
+    vi.stubGlobal("innerWidth", 1440); vi.stubGlobal("innerHeight", 900);
+    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockImplementation(function (this: HTMLElement) {
+      if (this.matches(".mapboxgl-map")) return new DOMRect(0, 88, 1440, 772);
+      if (this.matches(".map-peek")) return new DOMRect(10, 430, 460, 418);
+      return new DOMRect();
+    });
+    await render({ ready: true });
+    expect(easeTo).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      padding: { top: 96, right: 40, bottom: 446, left: 40 }, retainPadding: false,
+    }));
+  });
+
+  it.each(["saved entry camera", "user gesture", "Nearby or scene"])("consumes once without moving for %s", async (owner) => {
+    await render();
+    userCameraIntent = owner === "user gesture";
+    await render({ ready: true, entryCamera: owner === "saved entry camera", otherOwner: owner === "Nearby or scene" });
+    expect(easeTo).not.toHaveBeenCalled();
+    userCameraIntent = false;
+    await render({ ready: true, metadata: "later metadata" });
+    expect(easeTo).not.toHaveBeenCalled();
+  });
+
+  it("does not revive a cold request after a newer URL, Close, or return to the same place", async () => {
+    await render();
+    window.history.replaceState(null, "", "/map?place=baker-park-frederick");
+    await render({ ready: true });
+    expect(easeTo).not.toHaveBeenCalled();
+    window.history.replaceState(null, "", `/map?place=${place.slug}`);
+    await render({ ready: true });
+    expect(easeTo).not.toHaveBeenCalled();
+    // A fresh still-pending load can also be cancelled through the real card.
+    pending.current = place.slug;
+    await render({ ready: false });
+    await act(async () => { container.querySelector<HTMLButtonElement>(".map-peek-close")!.click(); });
+    await render({ ready: true });
+    expect(easeTo).not.toHaveBeenCalled();
   });
 });
