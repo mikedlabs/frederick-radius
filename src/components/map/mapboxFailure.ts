@@ -3,6 +3,14 @@ const MAPBOX_HARD_FAILURE_RE =
 const MAPBOX_LOAD_FAILURE_RE =
   /failed to (?:fetch|load)|unable to (?:fetch|load)|network ?error|load failed|sprite.*(?:failed|404|not found)|(?:failed|404|not found).*sprite/i;
 
+export function mapboxFailureKind(
+  message: string,
+  mapLoaded: boolean,
+): "hard" | "soft" | null {
+  if (MAPBOX_HARD_FAILURE_RE.test(message)) return "hard";
+  return !mapLoaded && MAPBOX_LOAD_FAILURE_RE.test(message) ? "soft" : null;
+}
+
 /**
  * A credential, renderer, or style failure is always terminal. An individual
  * network/tile request is terminal only during cold start; once a style has
@@ -12,6 +20,5 @@ export function isFatalMapboxError(
   message: string,
   mapLoaded: boolean,
 ): boolean {
-  if (MAPBOX_HARD_FAILURE_RE.test(message)) return true;
-  return !mapLoaded && MAPBOX_LOAD_FAILURE_RE.test(message);
+  return mapboxFailureKind(message, mapLoaded) !== null;
 }

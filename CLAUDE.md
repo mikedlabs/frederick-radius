@@ -106,12 +106,15 @@ draft must read like a person typing in a thread, not composed copy:
 - **Never argue about AI or tools.** The app being right is the entire
   argument; that debate gets zero oxygen.
 
-## Locked architecture (do not restructure)
+## Architecture and interaction contracts
 
 The interaction rules that keep this capability-dense app understandable are
 documented in `docs/USER_FIRST_INTERACTION_CONTRACT.md`. Preserve its single
 request doorway, explicit location scope, one-overlay limit, and origin-aware
 Back behavior when adding or changing tools.
+These describe the current interaction model, not a ban on refactoring or
+owner-authorized UX changes. When an approved task changes the behavior,
+update its implementation, relevant contract and tests together.
 
 - /map is the clean whole-county browse surface by default (owner call
   2026-07-08: "the map IS the page" — the Nearby/Whole-county toggle pill
@@ -210,28 +213,36 @@ Back behavior when adding or changing tools.
 - When Storybook is running, agents can inspect the component catalog through
   the local `storybook` MCP server in `.mcp.json`. This is a development tool;
   it is not included in the production application.
-- Use `npm run test:visual:capture` to review Find, Ask, and map changes. Only
+- Use the provider-free and renderer-enabled capture commands in
+  `docs/VISUAL_CONTRACT.md` to review Find, Ask, and map changes. A provider-free
+  capture does not prove that a styled map rendered. Only
   reviewed Linux/Chromium references become blocking baselines; never promote
   a macOS font-rendering difference into CI by accident. See
   `docs/VISUAL_CONTRACT.md`.
 
-- `npx tsc --noEmit` · `npx eslint <changed files>` · `npx vitest run`
-  must pass before any commit.
+- During iteration, run the focused tests that cover the change and ESLint on
+  changed source files. Run typecheck for TypeScript or interface changes.
+  Run the full unit suite once on the completed application PR candidate.
+  After a narrow follow-up, rerun affected checks; repeat the whole suite only
+  for a new failure, broader change or unresolved risk. Required hosted CI
+  still validates the exact final revision before merge.
 - **Lockfile edits: regenerate with `npx -y npm@10 install`, never bare
   `npm install`.** CI pins node 22, whose npm 10 rejects locks written by
   npm 11+ ("Missing: <pkg> from lock file" in `npm ci`). A lock written by a
   newer local npm poisons every CI job including main's, and it reads like a
   branch conflict when it is a version skew. Learned 2026-08-20 after it
   broke four PRs and then main itself.
-- `npm run test:ux` (Playwright: render health + axe WCAG A/AA on every
-  key surface, pinned at ZERO violations) before any commit that touches
-  UI. Sandboxes with a preinstalled Chromium: set `PW_CHROMIUM_PATH`.
+- Use focused browser/component checks during UI edits. Run `npm run test:ux`
+  once on the completed UI release candidate for render health and zero
+  axe WCAG A/AA violations across key surfaces. Narrow documentation or policy
+  follow-ups do not require another complete UI run. Sandboxes with a
+  preinstalled Chromium: set `PW_CHROMIUM_PATH`.
 - CI `verify` and `style-lint` RUN and are REQUIRED on main's ruleset — a
   red one blocks the merge, including the nightly data PRs. (An older note
   here claimed they were permanently red from account-level Actions limits;
   that was true once and stale by 2026-08-19, and believing it means
   shrugging at real failures.) Local runs remain the fast pre-commit gate.
-- After a merge, prod deploys automatically (~3–4 min). Verify the change
+- After a merge, Vercel owns the automatic production build. Verify the change
   ON PROD (`scripts/prod-audit.mjs` with `EXPECTED_SHA`, plus a check
   specific to the change). Stale ISR entries persist briefly
   (stale-while-revalidate) — test never-seen URLs for fresh behavior.

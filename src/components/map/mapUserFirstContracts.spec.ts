@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const appMap = readFileSync("src/components/map/AppMap.tsx", "utf8");
+const rendererLifecycle = readFileSync("src/components/map/useMapRendererLifecycle.ts", "utf8");
 const dock = readFileSync("src/components/map/MapDock.tsx", "utf8");
 const location = readFileSync("src/components/map/useMapLocation.ts", "utf8");
 const resultSurface = readFileSync("src/components/map/MapResultSurface.tsx", "utf8");
@@ -26,7 +27,8 @@ describe("user-first map contracts", () => {
   });
 
   it("keeps Radius search usable when the interactive renderer is unavailable", () => {
-    expect(appMap).toContain("useState(() => !MAP_RENDERER_CONFIGURED)");
+    expect(appMap).toContain("configured: MAP_RENDERER_CONFIGURED");
+    expect(rendererLifecycle).toContain('useState<"soft" | "hard" | null>(() => configured ? null : "hard")');
     expect(appMap).toMatch(/\{dock && \(\s*<div\s+className="map-dock-slot"/);
     expect(appMap).toContain("mapAvailable={!mapError}");
     expect(appMap).toContain("searchMatches={searchMatchesForSurface}");
@@ -34,6 +36,28 @@ describe("user-first map contracts", () => {
     expect(dock).toContain(
       'aria-label={mapAvailable ? "Search this map" : "Search Frederick Radius"}',
     );
+  });
+
+  it("keeps soft recovery wired to the same renderer without claiming visible mark readiness", () => {
+    expect(appMap).toMatch(/\{mountRenderer && \([\s\S]*?<Map\b/);
+    expect(appMap).toContain('inert={mapFailureKind === "soft"}');
+    expect(appMap).toContain('aria-hidden={mapFailureKind === "soft" || undefined}');
+    expect(appMap).toContain("data-map-failure-kind={mapFailureKind ?? undefined}");
+    expect(appMap).toMatch(/onLoad=\{\(e\) => \{[\s\S]*?if \(!markRendererLoaded\(\)\) return;[\s\S]*?e.target.touchZoomRotate.disableRotation\(\)/);
+    expect(appMap).toContain("reportRendererError(msg)");
+    expect(appMap).toContain('data-map-place-marks={dock ? placeMarksHealth : undefined}');
+    const loadHandler = appMap.slice(appMap.indexOf("onLoad={(e) => {"), appMap.indexOf("onIdle={(e) => {"));
+    expect(loadHandler).not.toContain("setPlaceMarksHealth");
+    expect(loadHandler).toContain('"place", initialPlaceSlug, window.location.search');
+    expect(loadHandler).toContain('"event", initialEventSlug, window.location.search');
+    expect(loadHandler).toMatch(/deepLinkPlaceAppliedRef.current = true;[\s\S]*?shouldApplyInitialMapSelection/);
+    expect(loadHandler).toMatch(/deepLinkEventAppliedRef.current = true;[\s\S]*?shouldApplyInitialMapSelection/);
+    const dismiss = appMap.slice(appMap.indexOf("const dismissMapSelection = useCallback"), appMap.indexOf("const syncSelectionFromHistory"));
+    const open = appMap.slice(appMap.indexOf("const openMapSelection = useCallback"), appMap.indexOf("const openMapSelection = useCallback") + 1_600);
+    for (const interaction of [dismiss, open]) {
+      expect(interaction).toContain("deepLinkPlaceAppliedRef.current = true");
+      expect(interaction).toContain("deepLinkEventAppliedRef.current = true");
+    }
   });
 
   it("keeps the first chooser focused and preserves access to detailed map controls", () => {
