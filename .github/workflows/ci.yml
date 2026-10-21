@@ -172,6 +172,9 @@ jobs:
           e2e/safari-back-readiness.spec.ts
           e2e/map-place-response-deadline.spec.ts
           e2e/search-scope-quality.spec.ts
+          e2e/find-place-media.spec.ts
+          e2e/nearby-place-media.spec.ts
+          e2e/map-selected-photo-continuity.spec.ts
           --project=webkit-mobile --workers=1 --retries=1
         env:
           NEXT_TELEMETRY_DISABLED: "1"

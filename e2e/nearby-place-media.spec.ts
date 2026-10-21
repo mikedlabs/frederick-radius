@@ -1,5 +1,6 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
+import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
 
 const creek = "carroll-creek-linear-park-frederick";
 
@@ -32,6 +33,8 @@ async function expectReachableTarget(target: Locator) {
     });
   })).toBe(true);
 }
+
+registerWebkitLoopbackDocumentSeam();
 
 for (const width of [320, 375, 390, 430]) {
   test(`Nearby uses the actual Creek photo and keeps discovery actions usable at ${width}px`, async ({ page }, testInfo) => {
