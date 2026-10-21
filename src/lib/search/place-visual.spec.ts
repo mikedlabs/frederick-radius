@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { clientPlaces, clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { isPaidGooglePhotoUrl } from "@/lib/google-photo-policy";
 import { placeCardPhotoPlan } from "@/lib/place-card-photo";
-import { OWNED_PLACE_PHOTOS } from "@/lib/owned-place-photos";
+import { getOwnedPlacePhoto, OWNED_PLACE_PHOTOS } from "@/lib/owned-place-photos";
 import { LANDMARK_PHOTOS, curatedPhotoUrl } from "@/lib/integrations/wikimedia";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 import { freeSearchPlaceVisual } from "./place-visual";
@@ -53,6 +53,19 @@ describe("free exact place photography in Find", () => {
     expect(result).toBeDefined();
     expect(result?.thumbnail).toBe(photo!.src);
     expect(result?.thumbnailSource).toEqual(photo);
+  });
+
+  it("reuses the exact canonical carillon photograph in Find without borrowing it for the suppressed alias", () => {
+    const slug = "joseph-dill-baker-memorial-carillon-bell-tower";
+    const input = place(slug);
+    expect(input).toBeDefined();
+    const photo = freeSearchPlaceVisual(input);
+    expect(photo).toMatchObject({ kind: "owned", src: "/images/seasons/fall/021.jpg", objectPosition: "left" });
+    expect(photo).not.toHaveProperty("attribution");
+    const result = searchIndex(input.name, 20, []).find(row => row.id === `place:${slug}`);
+    expect(result?.thumbnailSource).toEqual(photo);
+    expect(result?.thumbnail).toBe(photo!.src);
+    expect(getOwnedPlacePhoto("bell-tower-baker-park")).toBeNull();
   });
 
   it.each(["cunningham-falls-state-park-thurmont", "historic-utica-covered-bridge-thurmont", "barbara-fritchie-house-frederick", "catoctin-furnace-thurmont"])("preserves the exact reviewed Commons source and credit for %s", (slug) => {

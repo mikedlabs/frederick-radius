@@ -85,9 +85,18 @@ test("the place release covers canonical server and place-page inputs", () => {
     "src/lib/integrations/closures.ts",
     "src/lib/integrations/wikimedia.ts",
     "src/data/credited-local-place-photos.ts",
+    "public/history-photos/schifferstadt.jpg",
+    "public/history-photos/hessian-barracks.jpg",
+    "public/history-photos/co-canal.jpg",
+    "public/place-photos/delaplaine-exterior.jpg",
+    "public/place-photos/weinberg-exterior.jpg",
+    "public/place-photos/c-burr-artz-exterior.jpg",
+    "public/history-photos/new-market-antiques.jpg",
+    "public/history-photos/catoctin-mountain-park.jpg",
     "public/place-photos/brewers-alley-2004.jpg",
     "src/lib/owned-place-photos.ts",
     "public/images/seasons/fall/018.jpg",
+    "public/images/seasons/fall/021.jpg",
     "public/images/seasons/spring/aerial-view-baseball-field.jpg",
     "public/images/fair/fairgrounds-night-mike-d-1920.jpg",
     "src/data/business-info.json",
@@ -256,3 +265,33 @@ test("unregistered JPEG paths and unsupported formats are still rejected", () =>
     assert.throws(() => inspectArtifact(root, photoPath), /unsupported release artifact type/);
   }
 });
+
+
+for (const imagePath of [
+  "public/history-photos/schifferstadt.jpg",
+  "public/history-photos/hessian-barracks.jpg",
+  "public/history-photos/co-canal.jpg",
+  "public/place-photos/delaplaine-exterior.jpg",
+  "public/place-photos/weinberg-exterior.jpg",
+  "public/place-photos/c-burr-artz-exterior.jpg",
+  "public/history-photos/new-market-antiques.jpg",
+  "public/history-photos/catoctin-mountain-park.jpg",
+  "public/images/seasons/fall/021.jpg"
+]) {
+  test(`reviewed local photo bytes ${imagePath} require their own places promotion`, () => {
+    const root = fixtureRoot();
+    const manifest = fixtureManifest(root);
+    const target = resolve(root, imagePath);
+    writeFileSync(target, Buffer.concat([readFileSync(target), Buffer.from([0x01])]));
+    const result = validateDataRelease(manifest, root);
+    assert.equal(result.dataVersion, null);
+    assert.ok(result.errors.some(error => error.includes(imagePath) && error.includes("digest differs")));
+    assert.ok(result.errors.every(error => error.includes(imagePath)));
+    const promoted = refreshDataReleaseStream(manifest, "places", root, "2026-08-13T12:00:00Z");
+    assert.deepEqual(validateDataRelease(promoted, root).errors, []);
+    assert.notEqual(promoted.data_version, manifest.data_version);
+    for (const [name, stream] of Object.entries(manifest.streams)) {
+      if (name !== "places") assert.deepEqual(promoted.streams[name], stream);
+    }
+  });
+}

@@ -3,6 +3,7 @@
  * This small module is client-safe; it does not import the History collection. */
 export const CREDITED_LOCAL_PLACE_PHOTOS = {
   "schifferstadt-architectural-museum-frederick": {
+    preferLocal: true,
     file: "Schifferstadt_House_and_Architectural_Museum.JPG",
     image: {
       src: "/history-photos/schifferstadt.jpg",
@@ -14,6 +15,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     },
   },
   "hessian-barracks-frederick-maryland": {
+    preferLocal: true,
     file: "Hessian_Barracks_MD1.jpg",
     image: {
       src: "/history-photos/hessian-barracks.jpg",
@@ -25,6 +27,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     },
   },
   "co-canal-lock-30-brunswick": {
+    preferLocal: true,
     file: "C&O_Canal_Lock_30_West_Side_Brunswick_Maryland.jpg",
     image: {
       src: "/history-photos/co-canal.jpg",
@@ -36,6 +39,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     },
   },
   "brewers-alley-frederick": {
+    preferLocal: true,
     file: "Downtown_frederick_maryland.jpg",
     provenance: {
       title: "Brewer's Alley, Frederick",
@@ -54,6 +58,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     },
   },
   "delaplaine-arts-center-frederick": {
+    preferLocal: true,
     "file": "Delaplaine Arts Center Frederick MD1.jpg",
     "review": {
       "captured_on": "2017-04-02",
@@ -75,6 +80,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     }
   },
   "weinberg-center-for-the-arts-frederick": {
+    preferLocal: true,
     "file": "Weinberg Center for the Arts 02.jpg",
     "review": {
       "captured_on": "2018-04-01",
@@ -96,6 +102,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     }
   },
   "c-burr-artz-public-library-frederick": {
+    preferLocal: true,
     "file": "C Burr Artz Public Library viewed from Carroll Creek.jpg",
     "review": {
       "captured_on": "2026-04-11",
@@ -117,6 +124,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     }
   },
   "new-market-historic-district-new-market": {
+    preferLocal: true,
     file: "New_Market_HD_MD1.jpg",
     image: {
       src: "/history-photos/new-market-antiques.jpg",
@@ -128,6 +136,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     },
   },
   "catoctin-mountain-park": {
+    preferLocal: true,
     file: "Chimney_rock_catoctin.JPG",
     image: {
       src: "/history-photos/catoctin-mountain-park.jpg",

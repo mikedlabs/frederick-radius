@@ -3074,3 +3074,24 @@ sources:
     notes: >-
       Exact 6 N Church Street Middletown restaurant and phone 301-371-3500. Visible complete weekly hours include Monday and Sunday closed.
       One bounded native HTML GET per daily refresh, no credentials, provider, redirect or retry. Only this reviewed URL has a 1 MiB body cap; other native merchants retain 512000 bytes. Evidence expires within seven days; failed/conflicted reads retain old evidence and stage review, without automatic changed-fact acceptance.
+
+  - id: common_market_hours
+    name: "Common Market — First-party Grocery Hours"
+    owner: Common Market
+    url: https://www.commonmarket.coop/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: Common Market
+    status: active
+    collection: workflow
+    evidence_aliases: [common_market_hours, https://www.commonmarket.coop/]
+    last_validated: 2026-10-21
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Two independent exact grocery bindings at 5728 Buckeystown Pike, Unit B1, Frederick MD 21704 and 927 W 7th Street, Frederick MD 21701 share this one source owner. The official Organization contact card lists both addresses and one unqualified Daily store schedule, separately from cafe contacts.
+      One bounded 512000-byte native GET per unique URL per daily run, reused immutably for the two independent bindings. No credentials, provider, redirect or retry. Seven-day expiry; independent changed-fact and acceptance holds remain blocking. No cafe hours or image reuse rights inferred.

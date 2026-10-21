@@ -198,22 +198,65 @@ test("Nearby controls remain reachable and one sheet closes back to the same res
   }
 });
 
-async function startReopenDiagnostics(open: Locator) {
-  await open.evaluate((node) => {
+async function startReopenDiagnostics(open: Locator, nativeEvents = false) {
+  await open.evaluate((node, nativeEvents) => {
+    (window as unknown as { __nearbyReopenDiagnostics?: { cleanup?: () => void } }).__nearbyReopenDiagnostics?.cleanup?.();
     const snapshots: unknown[] = [];
+    const cleanups: Array<() => void> = [];
     const describe = (element: Element | null) => {
       if (!element) return null;
       const rect = element.getBoundingClientRect(), style = getComputedStyle(element);
       return { tag: element.tagName, label: element.getAttribute("aria-label"), text: element.textContent?.trim().slice(0, 100), rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, clientHeight: element.clientHeight, scrollHeight: element.scrollHeight, position: style.position, overflow: style.overflow, transform: style.transform };
     };
-    const capture = (stage: string, trustedClick?: boolean) => {
+    const capture = (stage: string, trustedClick?: boolean, event?: Record<string, unknown>) => {
+      if (snapshots.length >= 96) return;
       const card = node.closest("article");
-      snapshots.push({ stage, at: performance.now(), trustedClick, scrollY, scrollHeight: document.documentElement.scrollHeight, viewport: { width: innerWidth, height: innerHeight, offsetTop: visualViewport?.offsetTop }, bodyOverflow: document.body.style.overflow, history: { layer: history.state?.__frederickRadiusLayer, scrollY: history.state?.__frederickRadiusLayerScrollY }, active: describe(document.activeElement), open: describe(node), card: describe(card), hasPhoto: card?.getAttribute("data-place-card-has-photo"), photos: Array.from(card?.querySelectorAll("[data-place-card-photo], img") ?? []).map(element => ({ ...describe(element), source: element.getAttribute("data-place-card-photo-source"), bytes: element.getAttribute("data-place-card-photo-bytes"), src: element instanceof HTMLImageElement ? element.currentSrc || element.getAttribute("src") : null, complete: element instanceof HTMLImageElement ? element.complete : undefined, naturalWidth: element instanceof HTMLImageElement ? element.naturalWidth : undefined })), precedingCards: Array.from(document.querySelectorAll('main article[data-place-card-variant="discovery"]')).slice(0, 16).map(element => ({ ...describe(element), hasPhoto: element.getAttribute("data-place-card-has-photo") })) });
+      snapshots.push({ stage, at: performance.now(), trustedClick, event, scrollY, scrollHeight: document.documentElement.scrollHeight, viewport: { width: innerWidth, height: innerHeight, offsetTop: visualViewport?.offsetTop }, bodyOverflow: document.body.style.overflow, history: { layer: history.state?.__frederickRadiusLayer, scrollY: history.state?.__frederickRadiusLayerScrollY }, url: location.pathname + location.search, openerConnected: node.isConnected, nearbyReady: node.closest("[data-nearby-interaction-ready]")?.getAttribute("data-nearby-interaction-ready"), active: describe(document.activeElement), open: describe(node), card: describe(card), hasPhoto: card?.getAttribute("data-place-card-has-photo"), dialogs: Array.from(document.querySelectorAll('[role="dialog"]')).slice(0, 3).map(describe), photos: Array.from(card?.querySelectorAll("[data-place-card-photo], img") ?? []).slice(0, 4).map(element => ({ ...describe(element), source: element.getAttribute("data-place-card-photo-source"), bytes: element.getAttribute("data-place-card-photo-bytes"), src: element instanceof HTMLImageElement ? element.currentSrc || element.getAttribute("src") : null, complete: element instanceof HTMLImageElement ? element.complete : undefined, naturalWidth: element instanceof HTMLImageElement ? element.naturalWidth : undefined })), precedingCards: Array.from(document.querySelectorAll('main article[data-place-card-variant="discovery"]')).slice(0, 16).map(element => ({ ...describe(element), hasPhoto: element.getAttribute("data-place-card-has-photo") })) });
     };
-    (window as unknown as { __nearbyReopenDiagnostics: { snapshots: unknown[]; capture: typeof capture } }).__nearbyReopenDiagnostics = { snapshots, capture };
-    node.addEventListener("click", event => capture("trusted-click-before-product-handler", event.isTrusted), { capture: true, once: true });
+    const openerClick = (event: Event) => capture("trusted-click-before-product-handler", event.isTrusted);
+    node.addEventListener("click", openerClick, { capture: true, once: true, passive: true });
+    cleanups.push(() => node.removeEventListener("click", openerClick, true));
+    if (nativeEvents) {
+      const nativeInput = (event: Event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        const point = event instanceof MouseEvent ? { x: event.clientX, y: event.clientY, button: event.button } : null;
+        const hit = point ? document.elementFromPoint(point.x, point.y) : null;
+        capture(`document-${event.type}`, event.isTrusted, {
+          type: event.type, trusted: event.isTrusted, point, target: describe(target),
+          targetOwnedByOpener: Boolean(target && (target === node || node.contains(target))),
+          hit: describe(hit), hitOwnedByOpener: Boolean(hit && (hit === node || node.contains(hit))),
+          path: event.composedPath().filter((element): element is Element => element instanceof Element).slice(0, 6).map(describe),
+        });
+      };
+      for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "focusin"]) {
+        document.addEventListener(type, nativeInput, { capture: true, passive: true });
+        cleanups.push(() => document.removeEventListener(type, nativeInput, true));
+      }
+      const onPop = (event: PopStateEvent) => capture("window-popstate", event.isTrusted, {
+        type: event.type, trusted: event.isTrusted, layer: event.state?.__frederickRadiusLayer,
+      });
+      window.addEventListener("popstate", onPop, { passive: true });
+      cleanups.push(() => window.removeEventListener("popstate", onPop));
+      const observer = new MutationObserver(records => {
+        const changes: Array<{ kind: string; dialog: ReturnType<typeof describe> }> = [];
+        for (const record of records) {
+          for (const [kind, nodes] of [["added", record.addedNodes], ["removed", record.removedNodes]] as const) {
+            for (const changed of nodes) {
+              if (!(changed instanceof Element)) continue;
+              const dialogs = changed.matches('[role="dialog"]') ? [changed] : Array.from(changed.querySelectorAll('[role="dialog"]')).slice(0, 3);
+              for (const dialog of dialogs) if (changes.length < 8) changes.push({ kind, dialog: describe(dialog) });
+            }
+          }
+        }
+        if (changes.length) capture("dialog-mutation", undefined, { changes });
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      cleanups.push(() => observer.disconnect());
+    }
+    const cleanup = () => { for (const stop of cleanups) stop(); };
+    (window as unknown as { __nearbyReopenDiagnostics: { snapshots: unknown[]; capture: typeof capture; cleanup: () => void } }).__nearbyReopenDiagnostics = { snapshots, capture, cleanup };
     capture("before-reopen");
-  });
+  }, nativeEvents);
 }
 
 async function recordReopenDiagnostics(page: Page, stage: string) {
@@ -222,11 +265,15 @@ async function recordReopenDiagnostics(page: Page, stage: string) {
   }, stage);
 }
 
-async function attachReopenDiagnostics(page: Page, info: TestInfo) {
-  const snapshots = await page.evaluate(() => (window as unknown as { __nearbyReopenDiagnostics?: { snapshots: unknown[] } }).__nearbyReopenDiagnostics?.snapshots ?? []);
-  const path = info.outputPath("nearby-reopen-scroll-geometry.json");
+async function attachReopenDiagnostics(page: Page, info: TestInfo, label = "nearby-reopen-scroll-geometry") {
+  const snapshots = await page.evaluate(() => {
+    const diagnostics = (window as unknown as { __nearbyReopenDiagnostics?: { snapshots: unknown[]; cleanup?: () => void } }).__nearbyReopenDiagnostics;
+    diagnostics?.cleanup?.();
+    return diagnostics?.snapshots ?? [];
+  });
+  const path = info.outputPath(`${label}.json`);
   await writeFile(path, JSON.stringify(snapshots, null, 2));
-  await info.attach("nearby-reopen-scroll-geometry", { contentType: "application/json", path });
+  await info.attach(label, { contentType: "application/json", path });
 }
 
 async function trustedReopenBaseline(page: Page) {
@@ -255,7 +302,11 @@ for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: width === 320 ? 568 : 844 });
     const { open } = await chooseBooks(page, "county");
     const browseUrl = page.url();
-    const { fullPage } = await openFullSheet(page, open);
+    await startReopenDiagnostics(open, true);
+    const { fullPage } = await openFullSheet(page, open).finally(async () => {
+      await recordReopenDiagnostics(page, "initial-open-complete-or-failed");
+      await attachReopenDiagnostics(page, info, "nearby-initial-open-geometry");
+    });
     const fullHref = new URL((await fullPage.getAttribute("href"))!, browseUrl);
     expect(fullHref.pathname).toBe(`/places/${placeSlug}`);
     expect(fullHref.searchParams.get("returnTo")).toBe(new URL(browseUrl).pathname + new URL(browseUrl).search);

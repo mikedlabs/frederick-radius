@@ -123,7 +123,7 @@ describe("reviewed merchant hours", () => {
     const previous = parsed();
     const fetcher = vi.fn(async (url: string) => { const i = legacySources.findIndex((source) => source.url === url); if (i < 0) throw new Error("Source outside legacy fixture cohort"); if (i === 0) throw new Error("source unavailable"); return i === 1 ? { ...pages[i], html: pages[i].html + "<p>Holiday hours</p>" } : pages[i]; });
     const result = await collectMerchantOfficialHours(previous, fetcher, now);
-    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(nativeSources.map((source) => source.url));
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([...new Set(nativeSources.map((source) => source.url))]);
     expect(result.artifact.places[0]).toEqual(previous.places[0]);
     expect(result.artifact.places[1]).toEqual(previous.places[1]);
     expect(legacyReviews(result.artifact).map((row) => row.reason)).toEqual(["source_unavailable", "unparseable_or_conflicted"]);
@@ -214,7 +214,7 @@ describe("reviewed merchant hours", () => {
     try {
       const result = await refreshOfficialHours([], { outputPath, merchantOutputPath, fetchPage, fetchMerchantPage, now });
       expect(fetchPage.mock.calls.map(([url]) => url)).toEqual([FCPL_HOURS_URL, FCPL_CLOSURES_URL]);
-      expect(fetchMerchantPage.mock.calls.map(([url]) => url)).toEqual(nativeSources.map((source) => source.url));
+      expect(fetchMerchantPage.mock.calls.map(([url]) => url)).toEqual([...new Set(nativeSources.map((source) => source.url))]);
       expect(JSON.parse(readFileSync(outputPath, "utf8")).places).toHaveLength(9);
       expect(JSON.parse(readFileSync(merchantOutputPath, "utf8")).places).toHaveLength(legacySources.length);
       expect(legacyReviews(result.merchants!.artifact)).toEqual([]);

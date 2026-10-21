@@ -56,7 +56,7 @@ describe("independent official-hours cohorts", () => {
       expect(result.reviewRequired).toBe(false);
       expect(readFileSync(t.outputPath, "utf8")).toBe(t.libraryBytes);
       expect(result.artifact.weekly.observed_at).toBe(libraries[0].observedAt);
-      expect(t.fetchMerchantPage.mock.calls.map(([url]) => url)).toEqual(nativeSources.map((source) => source.url));
+      expect(t.fetchMerchantPage.mock.calls.map(([url]) => url)).toEqual([...new Set(nativeSources.map((source) => source.url))]);
       const published = JSON.parse(readFileSync(t.merchantOutputPath, "utf8"));
       expect(published.review).toEqual(nativeSources.filter((source) => !legacySources.some((legacy) => legacy.slug === source.slug)).map((source) => ({ slug: source.slug, checked_at: now.toISOString(), reason: "source_unavailable" })));
       expect(published.places).toHaveLength(legacySources.length);
@@ -80,7 +80,7 @@ describe("independent official-hours cohorts", () => {
     try {
       const result = await refreshOfficialHours(["--dry-run"], { ...t, fetchPage: vi.fn(async () => { throw new Error("source unavailable"); }), now });
       expect(result.libraryStatus).toBe("source_unavailable");
-      expect(t.fetchMerchantPage).toHaveBeenCalledTimes(nativeSources.length);
+      expect(t.fetchMerchantPage).toHaveBeenCalledTimes(new Set(nativeSources.map((source) => source.url)).size);
       expect(readFileSync(t.outputPath, "utf8")).toBe(t.libraryBytes);
       expect(readFileSync(t.merchantOutputPath, "utf8")).toBe(t.merchantBytes);
     } finally { rmSync(t.directory, { recursive: true, force: true }); }

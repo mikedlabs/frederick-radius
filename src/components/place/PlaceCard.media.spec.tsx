@@ -7,6 +7,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { mapListPhotoLoader } from "@/components/map/map-list-photo-loader";
 import { curatedPhotoUrl, LANDMARK_PHOTOS } from "@/lib/integrations/wikimedia";
 import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
+import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 
 const actions = vi.hoisted(() => ({ openSheet: vi.fn(), save: vi.fn() }));
 const imageLoads = vi.hoisted(() => new Map<string, ImgHTMLAttributes<HTMLImageElement>["onLoad"]>());
@@ -104,6 +105,52 @@ describe("PlaceCard selected media and credit", () => {
     expect(actions.save).toHaveBeenCalledWith("place", nearbyPlace.slug);
     await act(async () => open.click());
     expect(actions.openSheet).toHaveBeenCalledWith(nearbyPlace, { returnFocus: open });
+  });
+
+  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS))("shows the exact licensed %s source before eligible Google on Nearby, with credit bound to decoded pixels", async (slug, { image: metadata }) => {
+    const hydrate = vi.spyOn(mapListPhotoLoader, "loadData");
+    const nearbyPlace = { ...place, slug };
+    await act(async () => root.render(<PlaceCard place={nearbyPlace} variant="discovery" discoverySurface="nearby" lazyPhoto />));
+    const local = photo()!;
+    expect(local.getAttribute("src")).toBe(metadata.src);
+    expect(local.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("curated");
+    expect(hydrate).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(loadedCredit()).toBeNull();
+    await load(local);
+    const credit = loadedCredit()!;
+    expect(credit.textContent).toContain(metadata.creator);
+    expect(credit.textContent).toContain(metadata.modifications);
+    expect(credit.querySelector(`a[href="${metadata.source_url}"]`)).not.toBeNull();
+    expect(credit.querySelector(`a[href="${metadata.license.url}"]`)?.textContent).toBe(metadata.license.label);
+    expect(credit.closest("button")).toBeNull();
+    expect(credit.textContent).not.toContain("Photo contributor");
+    await fail(local);
+    expect(loadedCredit()).toBeNull();
+    if (LANDMARK_PHOTOS[slug].preferCurated) {
+      expect(photo()).toBeNull();
+      expect(fetch).not.toHaveBeenCalled();
+    } else {
+      // The already supplied exact provider credit is still eligible only after
+      // the local file fails; no metadata request buys a replacement.
+      await act(async () => { await Promise.resolve(); });
+      const fallback = photo()!;
+      expect(fallback).not.toBeNull();
+      expect(fallback.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("google");
+      await load(fallback);
+      expect(loadedCredit()?.textContent).toContain("Photo contributor");
+      expect(loadedCredit()?.textContent).not.toContain(metadata.creator);
+      expect(loadedCredit()?.querySelector(`a[href="${googleSource}"]`)).not.toBeNull();
+      await load(local);
+      expect(photo()).toBe(fallback);
+      expect(loadedCredit()?.textContent).toContain("Photo contributor");
+      await fail(fallback);
+      expect(photo()).toBeNull();
+      expect(loadedCredit()).toBeNull();
+    }
+    expect(container.querySelector('button[aria-label^="View "]')).not.toBeNull();
+    expect(container.querySelector("[data-save-ref]")).not.toBeNull();
+    expect(container.querySelector('a[aria-label^="Directions to "]')).not.toBeNull();
   });
 
   it.each(["baker-park-frederick", "baker-park-bandshell"])("shows the reviewed owned Nearby photo for %s without metadata hydration or Google credits", async slug => {
