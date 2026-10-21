@@ -183,6 +183,23 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
     if (!/Beans in the Belfry/i.test(text) || !/122 West Potomac Street,? Brunswick,? MD\s*21716/i.test(text) || !/301[ -]834[ -]7178/.test(text)) throw new Error("Missing exact Beans in the Belfry identity.");
     const match = oneVisibleSchedule(text, new RegExp(`Opening Hours Monday to Friday ${CLOCK} to ${CLOCK} Saturday and Sunday ${CLOCK} to ${CLOCK}`, "i"));
     set(hours, ["mon", "tue", "wed", "thu", "fri"], match[1], match[2]); set(hours, ["sat", "sun"], match[3], match[4]);
+  } else if (source.slug === "alekos-middletown") {
+    if (!/\bAleko(?:['’]s|s)\b/i.test(text)
+      || !/\b6\s+N\s+Church\s+Street\s+Middletown,?\s+MD\s+21769\b/i.test(text)
+      || !/\bTel:\s*\(?301\)?[ .-]*371[ .-]*3500(?!\d)/i.test(text)) throw new Error("Missing exact Aleko location identity.");
+    if (/\b(?:seasonal|summer|winter|pickup|pick-up|delivery|takeout|take-out|online)(?:\s+only)?\s+hours\b|\b(?:pickup|pick-up|delivery|takeout|take-out|online)\s+only\b|\bhours (?:vary|may|subject to)|by appointment/i.test(text)) throw new Error("Unresolved Aleko notice or service qualifier.");
+    const range = `${CLOCK}\\s*[-–—]\\s*${CLOCK}`;
+    const pattern = new RegExp(`HOURS:\\s*Monday CLOSED Tuesday ${range} Wednesday ${range} Thursday ${range} Friday ${range} Saturday ${range} Sunday CLOSED`, "i");
+    const matches = [...text.matchAll(new RegExp(pattern.source, "gi"))];
+    const weekdays = [...text.matchAll(/\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/gi)];
+    if (weekdays.some((day) => !matches.some((match) => day.index >= match.index && day.index < match.index + match[0].length))) throw new Error("Missing or conflicting visible Aleko schedule.");
+    const match = reviewedVisibleSchedule(text, pattern);
+    hours.mon = []; hours.sun = [];
+    set(hours, ["tue"], match[1], match[2]);
+    set(hours, ["wed"], match[3], match[4]);
+    set(hours, ["thu"], match[5], match[6]);
+    set(hours, ["fri"], match[7], match[8]);
+    set(hours, ["sat"], match[9], match[10]);
   } else if (source.slug === "kulfi-ice-creams-frederick") {
     if (!/Kulfi Ice Cream\b/i.test(text) || !/5241 Buckeystown Pike Frederick MD 21704/i.test(text) || !/\(240\) 815-5466/.test(text)) throw new Error("Missing exact Kulfi location identity.");
     if (/\b(?:seasonal|summer|winter|pickup|pick-up|delivery|takeout|take-out|online)(?:\s+only)?\s+hours\b|\b(?:pickup|pick-up|delivery|takeout|take-out|online)\s+only\b|\bhours (?:vary|may|subject to)|by appointment/i.test(text)) throw new Error("Unresolved Kulfi notice or service qualifier.");
@@ -285,9 +302,13 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
 }
 /** Reviewed fixed GETs, sequentially; no provider, credentials, redirects or retries. */
 export async function fetchMerchantHoursPage(url: string, fetchImpl: typeof fetch = fetch, timeoutMs = 20_000): Promise<OfficialPageReceipt> {
-  if (!MERCHANT_HOURS_SOURCES.some((source) => source.url === url)) throw new Error("Unapproved merchant URL.");
+  const source = MERCHANT_HOURS_SOURCES.find((item) => item.url === url);
+  if (!source) throw new Error("Unapproved merchant URL.");
   if (MERCHANT_HOURS_SOURCES.some((source) => source.url === url && "collection" in source && source.collection === "manual")) throw new Error("Manual merchant sources require separately reviewed evidence; native fetching is disabled.");
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 20_000) throw new Error("Invalid source deadline.");
+  const maxBytes = "max_response_bytes" in source ? source.max_response_bytes : 512_000;
+  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0 || maxBytes > 1_048_576) throw new Error("Invalid reviewed merchant response cap.");
+  const capError = () => new Error(`Merchant page exceeds ${maxBytes === 512_000 ? "512 KB" : `${maxBytes} bytes`}.`);
   const controller = new AbortController(); const deadline = Date.now() + timeoutMs;
   async function bounded<T>(promise: Promise<T>): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -298,11 +319,16 @@ export async function fetchMerchantHoursPage(url: string, fetchImpl: typeof fetc
   try {
     const response = await bounded(fetchImpl(url, { redirect: "error", credentials: "omit", signal: controller.signal, headers: { Accept: "text/html" } }));
     if (!response.ok || !response.headers.get("content-type")?.includes("text/html") || !response.body) throw new Error(`Merchant source failed (${response.status}).`);
-    reader = response.body.getReader(); const chunks: Uint8Array[] = []; let bytes = 0; let reads = 0;
+    reader = response.body.getReader();
+    // Content-Length may describe compressed bytes or be absent/understated.
+    // It can refuse an oversized response early, never replace stream counting.
+    const declaredBytes = response.headers.get("content-length");
+    if (declaredBytes !== null && /^\d+$/.test(declaredBytes) && Number(declaredBytes) > maxBytes) throw capError();
+    const chunks: Uint8Array[] = []; let bytes = 0; let reads = 0;
     for (;;) {
       if (Date.now() >= deadline) throw new Error("Merchant source deadline exceeded.");
       if (++reads > 2048) throw new Error("Merchant source body read limit exceeded.");
-      const result = await bounded(reader.read()); if (result.done) break; bytes += result.value.byteLength; if (bytes > 512_000) throw new Error("Merchant page exceeds 512 KB."); chunks.push(result.value); }
+      const result = await bounded(reader.read()); if (result.done) break; bytes += result.value.byteLength; if (bytes > maxBytes) throw capError(); chunks.push(result.value); }
     return { url, html: Buffer.concat(chunks).toString("utf8"), observedAt: new Date().toISOString() };
   } finally { controller.abort(); if (reader) void reader.cancel().catch(() => {}); }
 }

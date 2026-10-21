@@ -169,7 +169,7 @@ describe("bundled source artifact evidence", () => {
     const evidence = bundledSourceArtifactEvidence();
 
     expect([...new Set(evidence.map((item) => item.sourceKey))].sort()).toEqual([
-      "beans_belfry_hours",
+      "alekos_hours",      "beans_belfry_hours",
       "brewers_alley_hours",
       "business_info_extraction",
       "curious_iguana_hours",

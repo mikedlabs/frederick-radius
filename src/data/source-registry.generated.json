@@ -39,6 +39,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "alekos_hours",
+    "name": "Aleko's Village Cafe — First-party Hours",
+    "owner": "Aleko's Village Cafe",
+    "url": "https://www.alekosvillagecafe.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "alekos_hours",
+      "https://www.alekosvillagecafe.com/"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "bandsintown",
     "name": "Bandsintown — Live Music",
     "owner": "Bandsintown",
