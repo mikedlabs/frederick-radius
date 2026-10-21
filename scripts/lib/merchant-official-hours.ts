@@ -183,6 +183,21 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
     if (!/Beans in the Belfry/i.test(text) || !/122 West Potomac Street,? Brunswick,? MD\s*21716/i.test(text) || !/301[ -]834[ -]7178/.test(text)) throw new Error("Missing exact Beans in the Belfry identity.");
     const match = oneVisibleSchedule(text, new RegExp(`Opening Hours Monday to Friday ${CLOCK} to ${CLOCK} Saturday and Sunday ${CLOCK} to ${CLOCK}`, "i"));
     set(hours, ["mon", "tue", "wed", "thu", "fri"], match[1], match[2]); set(hours, ["sat", "sun"], match[3], match[4]);
+  } else if (source.slug === "kulfi-ice-creams-frederick") {
+    if (!/Kulfi Ice Cream\b/i.test(text) || !/5241 Buckeystown Pike Frederick MD 21704/i.test(text) || !/\(240\) 815-5466/.test(text)) throw new Error("Missing exact Kulfi location identity.");
+    if (/\b(?:seasonal|summer|winter|pickup|pick-up|delivery|takeout|take-out|online)(?:\s+only)?\s+hours\b|\b(?:pickup|pick-up|delivery|takeout|take-out|online)\s+only\b|\bhours (?:vary|may|subject to)|by appointment/i.test(text)) throw new Error("Unresolved Kulfi notice or service qualifier.");
+    // Both posted copies share the PM suffix in these exact afternoon ranges.
+    // This reviewed typography belongs only to Kulfi, not other sources.
+    const normalized = text.replace(/\b([123])(?=\s*[-–—]\s*(?:9|11)pm\b)/gi, "$1pm");
+    const range = `${CLOCK}\\s*[-–—]\\s*${CLOCK}`;
+    const pattern = new RegExp(`(?:Opening Hours\\s+)?Mon\\s*[-–—]\\s*Wed:\\s*${range}\\s*,?\\s*Thursday:\\s*${range} Fri\\s*[-–—]\\s*Sat:\\s*${range}\\s*,?\\s*Sunday:\\s*${range}`, "i");
+    const matches = [...normalized.matchAll(new RegExp(pattern.source, "gi"))];
+    const markers = [...normalized.matchAll(/\b(?:Hours|Mon(?:day)?|Tue(?:sday)?|Wed(?:nesday)?|Thu(?:rsday)?|Fri(?:day)?|Sat(?:urday)?|Sun(?:day)?)\b/gi)];
+    if (matches.length < 2 || markers.some((marker) => !matches.some((match) => marker.index! >= match.index! && marker.index! < match.index! + match[0].length))) throw new Error("Missing or conflicting visible merchant schedules.");
+    const match = oneVisibleSchedule(normalized, pattern);
+    setWindows(hours, ["mon", "tue", "wed"], match.slice(1, 3)); setWindows(hours, ["thu"], match.slice(3, 5));
+    setWindows(hours, ["fri", "sat"], match.slice(5, 7)); setWindows(hours, ["sun"], match.slice(7, 9));
+    if (WEEKDAYS.some((day) => hours[day]?.some((slot) => slot.open >= slot.close))) throw new Error("Unreviewed Kulfi overnight hours.");
   } else if (source.slug === "sumittra-thai-cuisine") {
     const identity = compact(text.replace(/\bMaryland\b/gi, "MD"));
     if (!identity.includes(compact("Sumittra Thai Cuisine 12 E Patrick St Frederick MD 21701 3016682303 Monday Thursday"))) throw new Error("Missing exact Sumittra location identity.");

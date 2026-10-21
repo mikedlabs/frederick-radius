@@ -1594,6 +1594,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "kulfi_hours",
+    "name": "Kulfi Ice Creams — First-party Hours",
+    "owner": "Kulfi Ice Creams",
+    "url": "https://kulfi-icecream.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://kulfi-icecream.com/",
+      "kulfi_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "mapillary_objects",
     "name": "Mapillary — Street-Level Object Detections",
     "owner": "Mapillary",

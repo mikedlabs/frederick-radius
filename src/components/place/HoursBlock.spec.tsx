@@ -5,13 +5,20 @@ import HoursBlock from "./HoursBlock";
 import { parseFcplOfficialHours } from "../../../scripts/lib/fcpl-official-hours";
 import { FCPL_HOURS_URL, FCPL_CLOSURES_URL, officialHoursForPlace } from "@/lib/official-hours";
 import { placeHoursProvenance } from "@/lib/place-hours-provenance";
-import type { MerchantHoursArtifact } from "@/lib/merchant-hours";
+import { merchantHoursForPlace, MERCHANT_HOURS_SOURCES, type MerchantHoursArtifact } from "@/lib/merchant-hours";
+import { parseMerchantOfficialHours } from "../../../scripts/lib/merchant-official-hours";
 const now = new Date("2026-10-12T16:00:00Z");
 const artifact = parseFcplOfficialHours(
   { url: FCPL_HOURS_URL, observedAt: "2026-10-12T09:13:00.000Z", html: readFileSync("tests/fixtures/fcpl-hours-index.html", "utf8") },
   { url: FCPL_CLOSURES_URL, observedAt: "2026-10-12T09:18:00.000Z", html: readFileSync("tests/fixtures/fcpl-holiday-closings.html", "utf8") }, now);
 const row = artifact.places[1];
 const hours = officialHoursForPlace({ slug: row.slug, website: row.source_url, category: "library" }, artifact, now).hours!;
+function merchantFixture(slug: string, file: string, observedAt: string, at: Date): MerchantHoursArtifact {
+  const source = MERCHANT_HOURS_SOURCES.find((item) => item.slug === slug)!;
+  return { schema_version: 1, review: [], places: [parseMerchantOfficialHours(source, {
+    url: source.url, html: readFileSync(`tests/fixtures/merchant-hours/${file}.html`, "utf8"), observedAt,
+  }, at)] };
+}
 afterEach(() => vi.useRealTimers());
 describe("official hours detail display", () => {
   it("shows today's dated closure, the unmodified normal week, and both actual official source links", () => {
@@ -34,9 +41,7 @@ describe("official hours detail display", () => {
 
 
 describe("missing and merchant hours", () => {
-  it("renders merchant provenance from its own source and observation, distinct from library evidence", async () => {
-    const { merchantHoursForPlace, MERCHANT_HOURS_SOURCES } = await import("@/lib/merchant-hours");
-    const { parseMerchantOfficialHours } = await import("../../../scripts/lib/merchant-official-hours");
+  it("renders merchant provenance from its own source and observation, distinct from library evidence", () => {
     const at = new Date("2026-10-20T16:00:00Z");
     vi.useFakeTimers(); vi.setSystemTime(at);
     const source = MERCHANT_HOURS_SOURCES.find(item => item.slug === "thai-meric-eatery-bar-frederick")!;
@@ -64,16 +69,36 @@ describe("missing and merchant hours", () => {
     expect(libraryHtml).not.toContain("Thai Meric");
   });
 
-  it("labels the exact merchant week and links its real source without inventing a library closure calendar", async () => {
-    const data = (await import("@/data/places-merchant-hours.json")).default;
-    const { merchantHoursForPlace } = await import("@/lib/merchant-hours");
+  it("labels the exact merchant week and links its real source without inventing a library closure calendar", () => {
     const at = new Date("2026-10-19T23:30:00Z");
     vi.useFakeTimers(); vi.setSystemTime(at);
+    // Immutable approved source replay; the current publication may be held.
+    const data = merchantFixture("brewers-alley-frederick", "brewers-alley", "2026-10-19T23:24:49.283Z", at);
     const schedule = merchantHoursForPlace({ slug: "brewers-alley-frederick", category: "restaurant", website: "https://brewers-alley.com/" }, data, at).hours!;
+    expect(schedule).toBeDefined();
     const html = renderToStaticMarkup(<HoursBlock hours={schedule} verified />);
     expect(html).toContain("2026-10-19 through 2026-10-25");
     expect(html).toContain('href="https://brewers-alley.com/"');
     expect(html).toContain("Official business hours");
+    expect(html).not.toContain("FCPL");
+  });
+  it.each([
+    ["brewers-alley-frederick", "brewers-alley", "2026-10-19T23:24:49.283Z"],
+    ["gravel-and-grind-frederick", "gravel-and-grind", "2026-10-19T23:24:50.964Z"],
+  ])("withholds %s's retained approved schedule after a failed verification and keeps its contact action", (slug, file, observedAt) => {
+    const at = new Date("2026-10-20T12:00:00Z");
+    vi.useFakeTimers(); vi.setSystemTime(at);
+    const data = merchantFixture(slug, file, observedAt, at);
+    data.review.push({ slug, checked_at: "2026-10-20T09:32:45.347Z", reason: "source_unavailable" });
+    const source = MERCHANT_HOURS_SOURCES.find((item) => item.slug === slug)!;
+    const result = merchantHoursForPlace({ slug, category: source.category, website: source.url }, data, at);
+    expect(result).toEqual({ enrolled: true });
+    expect(data.places[0].observed_at).toBe(observedAt);
+    const html = renderToStaticMarkup(<HoursBlock hours={result.hours} verified={Boolean(result.hours)} website={source.url} />);
+    expect(html).toContain("Hours not recently confirmed");
+    expect(html).toContain(`href="${source.url}"`);
+    expect(html).not.toContain("Official business hours");
+    expect(html).not.toContain("The business published this schedule");
     expect(html).not.toContain("FCPL");
   });
   it("shows usable contact actions without inventing a historical schedule", () => {

@@ -4,6 +4,7 @@ import { hasRemoteMatch } from "next/dist/shared/lib/match-remote-pattern";
 import fixture from "./fixtures/steinhardt-squarespace.json" with { type: "json" };
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "../src/data/credited-local-place-photos";
 import { OWNED_PLACE_PHOTOS } from "../src/lib/owned-place-photos";
+import { LANDMARK_PHOTOS } from "../src/lib/integrations/wikimedia";
 import config from "../next.config";
 
 describe("Wikimedia photo rendering", () => {
@@ -18,6 +19,19 @@ describe("Wikimedia photo rendering", () => {
 
 
 describe("exact local photo optimizer admission", () => {
+  it.each(Object.entries(LANDMARK_PHOTOS).flatMap(([slug, photo]) => photo.verified && photo.localSrc
+    ? [{ slug, src: photo.localSrc }] : []))
+    ("allows the bundled curated source for $slug through the real optimizer policy", ({ src }) => {
+      expect(hasLocalMatch(config.images?.localPatterns, src)).toBe(true);
+      expect(hasLocalMatch(config.images?.localPatterns, `${src}?download=1`)).toBe(false);
+      expect(hasLocalMatch(config.images?.localPatterns, `${src}?v=2`)).toBe(false);
+      if (src.startsWith("/place-photos/")) {
+        expect(config.images?.localPatterns).toContainEqual({ pathname: src, search: "" });
+        expect(hasLocalMatch(config.images?.localPatterns, `${src}/extra`)).toBe(false);
+        expect(hasLocalMatch(config.images?.localPatterns, src.replace(/\.(\w+)$/, "-unreviewed.$1"))).toBe(false);
+      }
+    });
+
   it.each(Object.entries(OWNED_PLACE_PHOTOS))("allows the owned source bytes for %s through the actual Next config without allowing query variants", (_slug, photo) => {
     expect(hasLocalMatch(config.images?.localPatterns, photo.src)).toBe(true);
     expect(hasLocalMatch(config.images?.localPatterns, `${photo.src}?download=1`)).toBe(false);

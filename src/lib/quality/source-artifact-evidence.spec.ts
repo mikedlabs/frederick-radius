@@ -178,6 +178,7 @@ describe("bundled source artifact evidence", () => {
       "gravel_grind_hours",
       "il_porto_frederick_hours",
       "jojos_hours",
+      "kulfi_hours",
       "municipal_civic_extraction",
       "pistarros_hours",
       "sumittra_hours",

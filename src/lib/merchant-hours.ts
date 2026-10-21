@@ -18,6 +18,7 @@ export const MERCHANT_HOURS_SOURCES = [
   { slug: "il-porto-restaurant", name: "Il Porto Restaurant", ledger_id: "il_porto_frederick_hours", category: "restaurant", url: "https://www.ilportorestaurant.com/location-frederick/", kind: "weekly" },
   { slug: "sumittra-thai-cuisine", name: "Sumittra Thai Cuisine", ledger_id: "sumittra_hours", category: "restaurant", url: "https://www.sumittra.com/", kind: "weekly", collection: "manual" },
   { slug: "the-curious-iguana-frederick", name: "Curious Iguana", ledger_id: "curious_iguana_hours", category: "book-store", url: "https://curiousiguana.com/", kind: "weekly", collection: "manual" },
+  { slug: "kulfi-ice-creams-frederick", name: "Kulfi Ice Creams", ledger_id: "kulfi_hours", category: "ice-cream", url: "https://kulfi-icecream.com/", kind: "weekly" },
 ] as const;
 export type MerchantHoursSource = typeof MERCHANT_HOURS_SOURCES[number];
 export type MerchantHoursRecord = {

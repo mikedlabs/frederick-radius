@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
+import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
 
 const placeName = "Curious Iguana";
 const placeSlug = "the-curious-iguana-frederick";
@@ -105,17 +106,22 @@ async function expectReachableTarget(target: Locator, diagnostics?: { page: Page
   // Small controls have real 44px pseudo-element hit extenders. Probe the
   // effective target rather than incorrectly requiring a 44px visual face.
   try {
-    await expect.poll(() => diagnostics ? inspect().then(state => {
-      samples.push({ stage: "physical-probe", state });
-      return state.points.every(point => point.owned);
-    }) : target.evaluate((node) => {
-      const box = node.getBoundingClientRect();
-      const x = box.left + box.width / 2, y = box.top + box.height / 2;
-      return [[x, y], [x - 21.5, y], [x + 21.5, y], [x, y - 21.5], [x, y + 21.5]].every(([px, py]) => {
-        const hit = document.elementFromPoint(px, py);
-        return hit === node || Boolean(hit && node.contains(hit));
+    await expect.poll(async () => {
+      // A just-dismissed history layer can finish restoring its scroll across
+      // two frames. Retry the real scroll as well as the unchanged hit probes.
+      await target.evaluate((node) => node.scrollIntoView({ block: "center" }));
+      return diagnostics ? inspect().then(state => {
+        samples.push({ stage: "physical-probe", state });
+        return state.points.every(point => point.owned);
+      }) : target.evaluate((node) => {
+        const box = node.getBoundingClientRect();
+        const x = box.left + box.width / 2, y = box.top + box.height / 2;
+        return [[x, y], [x - 21.5, y], [x + 21.5, y], [x, y - 21.5], [x, y + 21.5]].every(([px, py]) => {
+          const hit = document.elementFromPoint(px, py);
+          return hit === node || Boolean(hit && node.contains(hit));
+        });
       });
-    })).toBe(true);
+    }).toBe(true);
   } catch (error) {
     if (diagnostics) {
       const geometryPath = diagnostics.info.outputPath(`${diagnostics.label}-hit-geometry.json`);
@@ -133,23 +139,31 @@ for (const dismissal of ["Back", "Close", "Escape"] as const) {
   test(`Nearby preserves Books, Top rated, focus and list position after sheet ${dismissal}`, async ({ page }, info) => {
     const { card, open } = await chooseBooks(page, "frederick");
     await expectReachableTarget(open);
-    const before = { url: page.url(), scrollY: await page.evaluate(() => scrollY) };
-    const { dialog } = await openFullSheet(page, open);
-    if (dismissal === "Back") await page.goBack();
-    else if (dismissal === "Close") await dialog.getByRole("button", { name: "Close place details", exact: true }).click();
-    else await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expectSelectedBooks(page, "frederick");
-    await expect(page).toHaveURL(before.url);
-    await expect(card.getByRole("heading", { name: placeName, exact: true })).toBeVisible();
-    await expect(open).toBeFocused();
-    await expect.poll(async () => Math.abs(await page.evaluate(() => scrollY) - before.scrollY)).toBeLessThan(80);
-    await expectNoOverflow(page);
-    await info.attach("nearby-sheet-return", { contentType: "application/json", body: JSON.stringify({ dismissal, before, after: { url: page.url(), scrollY: await page.evaluate(() => scrollY) }, restoredPlace: placeSlug }) });
+    const before = { url: page.url() };
+    await startReopenDiagnostics(open);
+    try {
+      const { dialog } = await openFullSheet(page, open);
+      await recordReopenDiagnostics(page, "full-dialog-open");
+      if (dismissal === "Back") await page.goBack();
+      else if (dismissal === "Close") await dialog.getByRole("button", { name: "Close place details", exact: true }).click();
+      else await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expectSelectedBooks(page, "frederick");
+      await expect(page).toHaveURL(before.url);
+      await expect(card.getByRole("heading", { name: placeName, exact: true })).toBeVisible();
+      await expect(open).toBeFocused();
+      await recordReopenDiagnostics(page, "after-close-and-focus");
+      await expectRestoredOpeningPosition(page, open);
+      await expectNoOverflow(page);
+      await info.attach("nearby-sheet-return", { contentType: "application/json", body: JSON.stringify({ dismissal, before: { ...before, openingPosition: await trustedReopenBaseline(page) }, after: { url: page.url(), scrollY: await page.evaluate(() => scrollY) }, restoredPlace: placeSlug }) });
+    } finally {
+      await recordReopenDiagnostics(page, "final-or-failed-scroll-assertion");
+      await attachReopenDiagnostics(page, info);
+    }
   });
 }
 
-test("Nearby controls remain reachable and one sheet closes back to the same result at 320px", async ({ page }) => {
+test("Nearby controls remain reachable and one sheet closes back to the same result at 320px", async ({ page }, info) => {
   await page.setViewportSize({ width: 320, height: 568 });
   const { card, open } = await chooseBooks(page, "frederick");
   const filters = await openFilters(page);
@@ -159,22 +173,82 @@ test("Nearby controls remain reachable and one sheet closes back to the same res
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(filters.trigger).toBeFocused();
-  await expectReachableTarget(card.locator(`[data-save-ref="place:${placeSlug}"]`));
+  await expectReachableTarget(card.locator(`[data-save-ref="place:${placeSlug}"]`), { page, info, label: "nearby-save-320" });
   await expectReachableTarget(open);
-  const before = { url: page.url(), scrollY: await page.evaluate(() => scrollY) };
+  const before = { url: page.url() };
   await expectNoOverflow(page);
-  const { dialog } = await openFullSheet(page, open);
-  const close = dialog.getByRole("button", { name: "Close place details", exact: true });
-  await expectReachableTarget(close);
-  await expectNoOverflow(page);
-  await close.click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expectSelectedBooks(page, "frederick");
-  await expect(page).toHaveURL(before.url);
-  await expect(open).toBeFocused();
-  await expect.poll(async () => Math.abs(await page.evaluate(() => scrollY) - before.scrollY)).toBeLessThan(80);
-  await expectNoOverflow(page);
+  await startReopenDiagnostics(open);
+  try {
+    const { dialog } = await openFullSheet(page, open);
+    await recordReopenDiagnostics(page, "full-dialog-open");
+    const close = dialog.getByRole("button", { name: "Close place details", exact: true });
+    await expectReachableTarget(close);
+    await expectNoOverflow(page);
+    await close.click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expectSelectedBooks(page, "frederick");
+    await expect(page).toHaveURL(before.url);
+    await expect(open).toBeFocused();
+    await recordReopenDiagnostics(page, "after-close-and-focus");
+    await expectRestoredOpeningPosition(page, open);
+    await expectNoOverflow(page);
+  } finally {
+    await recordReopenDiagnostics(page, "final-or-failed-scroll-assertion");
+    await attachReopenDiagnostics(page, info);
+  }
 });
+
+async function startReopenDiagnostics(open: Locator) {
+  await open.evaluate((node) => {
+    const snapshots: unknown[] = [];
+    const describe = (element: Element | null) => {
+      if (!element) return null;
+      const rect = element.getBoundingClientRect(), style = getComputedStyle(element);
+      return { tag: element.tagName, label: element.getAttribute("aria-label"), text: element.textContent?.trim().slice(0, 100), rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, clientHeight: element.clientHeight, scrollHeight: element.scrollHeight, position: style.position, overflow: style.overflow, transform: style.transform };
+    };
+    const capture = (stage: string, trustedClick?: boolean) => {
+      const card = node.closest("article");
+      snapshots.push({ stage, at: performance.now(), trustedClick, scrollY, scrollHeight: document.documentElement.scrollHeight, viewport: { width: innerWidth, height: innerHeight, offsetTop: visualViewport?.offsetTop }, bodyOverflow: document.body.style.overflow, history: { layer: history.state?.__frederickRadiusLayer, scrollY: history.state?.__frederickRadiusLayerScrollY }, active: describe(document.activeElement), open: describe(node), card: describe(card), hasPhoto: card?.getAttribute("data-place-card-has-photo"), photos: Array.from(card?.querySelectorAll("[data-place-card-photo], img") ?? []).map(element => ({ ...describe(element), source: element.getAttribute("data-place-card-photo-source"), bytes: element.getAttribute("data-place-card-photo-bytes"), src: element instanceof HTMLImageElement ? element.currentSrc || element.getAttribute("src") : null, complete: element instanceof HTMLImageElement ? element.complete : undefined, naturalWidth: element instanceof HTMLImageElement ? element.naturalWidth : undefined })), precedingCards: Array.from(document.querySelectorAll('main article[data-place-card-variant="discovery"]')).slice(0, 16).map(element => ({ ...describe(element), hasPhoto: element.getAttribute("data-place-card-has-photo") })) });
+    };
+    (window as unknown as { __nearbyReopenDiagnostics: { snapshots: unknown[]; capture: typeof capture } }).__nearbyReopenDiagnostics = { snapshots, capture };
+    node.addEventListener("click", event => capture("trusted-click-before-product-handler", event.isTrusted), { capture: true, once: true });
+    capture("before-reopen");
+  });
+}
+
+async function recordReopenDiagnostics(page: Page, stage: string) {
+  await page.evaluate(stage => {
+    (window as unknown as { __nearbyReopenDiagnostics?: { capture: (stage: string) => void } }).__nearbyReopenDiagnostics?.capture(stage);
+  }, stage);
+}
+
+async function attachReopenDiagnostics(page: Page, info: TestInfo) {
+  const snapshots = await page.evaluate(() => (window as unknown as { __nearbyReopenDiagnostics?: { snapshots: unknown[] } }).__nearbyReopenDiagnostics?.snapshots ?? []);
+  const path = info.outputPath("nearby-reopen-scroll-geometry.json");
+  await writeFile(path, JSON.stringify(snapshots, null, 2));
+  await info.attach("nearby-reopen-scroll-geometry", { contentType: "application/json", path });
+}
+
+async function trustedReopenBaseline(page: Page) {
+  return page.evaluate(() => {
+    const state = (window as unknown as { __nearbyReopenDiagnostics?: { snapshots: Array<{ stage?: string; trustedClick?: boolean; scrollY?: number; open?: { rect?: { y?: number } } }> } }).__nearbyReopenDiagnostics;
+    const click = state?.snapshots.find(snapshot => snapshot.stage === "trusted-click-before-product-handler" && snapshot.trustedClick === true);
+    const scrollY = click?.scrollY, openerY = click?.open?.rect?.y;
+    return typeof scrollY === "number" && Number.isFinite(scrollY) && typeof openerY === "number" && Number.isFinite(openerY)
+      ? { scrollY, openerY }
+      : null;
+  });
+}
+
+async function expectRestoredOpeningPosition(page: Page, open: Locator) {
+  // Lazy photos may settle above the result before a real click. Compare with
+  // that captured action, preserving both scroll and the visible place.
+  const openingPosition = await trustedReopenBaseline(page);
+  expect(openingPosition, "the real opener click must record finite scroll and visual coordinates").not.toBeNull();
+  if (!openingPosition) throw new Error("Missing trusted opener click geometry");
+  await expect.poll(async () => Math.abs(await page.evaluate(() => scrollY) - openingPosition.scrollY)).toBeLessThan(80);
+  await expect.poll(async () => Math.abs(await open.evaluate(node => node.getBoundingClientRect().y) - openingPosition.openerY)).toBeLessThan(80);
+}
 
 for (const width of [390, 320]) {
   test(`the full place page returns to explicit county Books and Top rated after saved scope changes at ${width}px`, async ({ page, context }, info) => {
@@ -210,12 +284,19 @@ for (const width of [390, 320]) {
     const restoredCard = page.locator("main article").filter({ has: page.getByRole("heading", { name: placeName, exact: true }) });
     const restoredOpen = restoredCard.getByRole("button", { name: /^View Curious Iguana .*details$/ });
     await expectReachableTarget(restoredOpen, { page, info, label: "nearby-restored-open" });
-    const scrollBeforeReopen = await page.evaluate(() => scrollY);
-    await openFullSheet(page, restoredOpen);
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(restoredOpen).toBeFocused();
-    await expect.poll(async () => Math.abs(await page.evaluate(() => scrollY) - scrollBeforeReopen)).toBeLessThan(80);
+    await startReopenDiagnostics(restoredOpen);
+    try {
+      await openFullSheet(page, restoredOpen);
+      await recordReopenDiagnostics(page, "full-dialog-open");
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expect(restoredOpen).toBeFocused();
+      await recordReopenDiagnostics(page, "after-close-and-focus");
+      await expectRestoredOpeningPosition(page, restoredOpen);
+    } finally {
+      await recordReopenDiagnostics(page, "final-or-failed-scroll-assertion");
+      await attachReopenDiagnostics(page, info);
+    }
     await expectSelectedBooks(page, "county");
     await expectNoOverflow(page);
     await info.attach("nearby-canonical-return", { contentType: "application/json", body: JSON.stringify({ width, browseUrl, fullPage: fullHref.href, conflictingSavedScope: "town:brunswick", reloadedUrl: page.url(), selectedFacet: "Books", selectedSort: "Top rated", selectedScope: "county", oneOverlay: true, restoredPlace: placeSlug }) });
@@ -334,6 +415,7 @@ test.beforeEach(async ({ page, context, baseURL }) => {
     // No external referral page is loaded: goto's Referer header alone tests
     // the real document.referrer branch. All other external transport is off.
     if (url.origin !== origin) return route.abort("blockedbyclient");
+    if (request.method() === "GET" && request.isNavigationRequest() && request.resourceType() === "document") return route.fallback();
     return route.continue();
   });
 });
@@ -368,7 +450,7 @@ for (const entry of ["direct", "external"] as const) {
   });
 }
 
-test("empty-town recovery and denied Near me never reuse a former town as precise origin", async ({ page }) => {
+test("empty-town recovery and denied Near me never reuse a former town as precise origin", async ({ page, browserName }, info) => {
   const response = await page.goto("/nearby?c=shops&facet=book-store&in=rosemont", { waitUntil: "domcontentloaded" });
   expect(response?.status()).toBe(200);
   await ready(page);
@@ -384,18 +466,42 @@ test("empty-town recovery and denied Near me never reuse a former town as precis
   await scopeIs(page, "county");
   await expectNoPreciseOrigin(page);
   await expect(page.getByRole("heading", { name: "Curious Iguana", exact: true })).toBeVisible();
-  expect(await page.evaluate(async () => (await navigator.permissions.query({ name: "geolocation" })).state)).toBe("denied");
-  // Exercise Nearby's actual native scope update rather than the shared header
-  // router navigation, which would refresh away the obsolete server context.
-  await page.getByRole("main").getByRole("button", { name: /^Use my location\b/ }).click();
-  await scopeIs(page, "nearme");
-  await expect(page.getByRole("main").getByRole("status").filter({ hasText: "Location is off." })).toBeVisible();
-  await expectNoPreciseOrigin(page);
-  const url = new URL(page.url());
-  expect(url.searchParams.get("facet")).toBe("book-store");
-  expect(url.searchParams.get("sort")).toBe("nearest");
-  expect([...url.searchParams.keys()].some((key) => /^(lat|lng|latitude|longitude)$/.test(key))).toBe(false);
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const permissionBefore = await page.evaluate(async () => (await navigator.permissions.query({ name: "geolocation" })).state);
+  try {
+    if (browserName === "chromium") expect(permissionBefore).toBe("denied");
+    // WebKit can report prompt after grantPermissions([]). Observe the real
+    // native callback; never replace its outcome or record any coordinates.
+    await page.evaluate(() => {
+      const native = navigator.geolocation.getCurrentPosition;
+      const observations = { successCount: 0, errorCodes: [] as number[] };
+      (window as unknown as { __nearbyNativeLocation: typeof observations }).__nearbyNativeLocation = observations;
+      navigator.geolocation.getCurrentPosition = function (success, error, options) {
+        return native.call(this, position => {
+          observations.successCount++;
+          success(position);
+        }, failure => {
+          observations.errorCodes.push(failure.code);
+          error?.(failure);
+        }, options);
+      };
+    });
+    // Exercise Nearby's actual native scope update rather than the shared header
+    // router navigation, which would refresh away the obsolete server context.
+    await page.getByRole("main").getByRole("button", { name: /^Use my location\b/ }).click();
+    await scopeIs(page, "nearme");
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __nearbyNativeLocation: { errorCodes: number[] } }).__nearbyNativeLocation.errorCodes)).toContain(1);
+    expect(await page.evaluate(() => (window as unknown as { __nearbyNativeLocation: { successCount: number } }).__nearbyNativeLocation.successCount)).toBe(0);
+    await expect(page.getByRole("main").getByRole("status").filter({ hasText: "Location is off." })).toBeVisible();
+    await expectNoPreciseOrigin(page);
+    const url = new URL(page.url());
+    expect(url.searchParams.get("facet")).toBe("book-store");
+    expect(url.searchParams.get("sort")).toBe("nearest");
+    expect([...url.searchParams.keys()].some((key) => /^(lat|lng|latitude|longitude)$/.test(key))).toBe(false);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  } finally {
+    const nativeCallbacks = await page.evaluate(() => (window as unknown as { __nearbyNativeLocation?: { successCount: number; errorCodes: number[] } }).__nearbyNativeLocation ?? null);
+    await info.attach("nearby-native-permission", { contentType: "application/json", body: JSON.stringify({ browserName, permissionBefore, nativeCallbacks }) });
+  }
 });
 
 });
@@ -426,3 +532,5 @@ for (const dismissal of ["Escape", "Close"] as const) {
     await expect(page.getByRole("heading", { level: 1, name: "Find something nearby", exact: true })).toBeVisible();
   });
 }
+
+registerWebkitLoopbackDocumentSeam();
