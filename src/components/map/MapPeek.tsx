@@ -138,7 +138,7 @@ export function MapPeekPhoto({
       </div>
       {ready && source && source.kind !== "owned" && (
         <div className="map-peek-source-credit">
-          <PlaceCardPhotoCredit source={source} loaded touchTarget />
+          <PlaceCardPhotoCredit source={source} loaded touchTarget discloseModifications />
         </div>
       )}
     </>

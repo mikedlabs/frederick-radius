@@ -1,6 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { isEventSearchIntent } from "@/lib/search";
+import { isLiveEventIndependentMapActionQuery } from "@/lib/search/index";
 
 const mocks = vi.hoisted(() => ({
   loadEventArchiveSnapshot: vi.fn(),
@@ -67,6 +69,7 @@ describe("GET /api/search map fast path", () => {
       status: "unavailable",
     });
   });
+  afterEach(() => { vi.useRealTimers(); });
 
   it("honors an explicit town over both map coordinates and a different stored town", async () => {
     const req = request("coffee");
@@ -223,9 +226,74 @@ describe("GET /api/search map fast path", () => {
     expect(mocks.recordSearchMiss).not.toHaveBeenCalled();
   });
 
-  it("does not use the map-only fast path for global search", async () => {
-    await GET(request("public restroom", "global"));
+  it.each([
+    ["coffee nearby", "brunswick"],
+    ["pharmacy", "county"],
+    ["steak dinner", "county"],
+  ])("returns the same scoped local %s answer while the archive never settles", async (query, scope) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date());
+    mocks.loadEventArchiveSnapshot.mockImplementation(() => new Promise(() => {}));
+    const scopedRequest = (origin: string) => {
+      const req = request(query, origin);
+      req.nextUrl.searchParams.set("in", scope);
+      req.cookies.set("fr_scope", "town:frederick");
+      return req;
+    };
+    // Map already has this local path. Global Find must keep its complete
+    // ranking, qualification and source facts, including an explicit lens.
+    const expected = await (await GET(scopedRequest("map"))).json();
+    // With explicit scope no async context lookup is required. A pending
+    // calendar must not add even one unresolved await before this response.
+    const response = await Promise.race([GET(scopedRequest("global")), Promise.resolve(null)]);
+    expect(response, "a proven local answer must not wait for the event archive").not.toBeNull();
+    if (!response) throw new Error("Local search is still waiting on the archive");
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(body).toEqual(expected);
+    expect(body.results.length).toBeGreaterThan(0);
+    if (scope === "brunswick") {
+      const places = body.results.filter((result: { type: string }) => result.type === "place");
+      expect(places.length).toBeGreaterThan(0);
+      expect(places.every((result: { subtitle: string }) => result.subtitle.includes("Brunswick"))).toBe(true);
+    }
+    expect(mocks.loadEventArchiveSnapshot).not.toHaveBeenCalled();
+  });
 
+  it.each(["Schifferstadt", "public restroom", "coffee events tonight", "public restroom events tonight"])("keeps mixed or event-shaped global query %s on the archive path", async query => {
+    await GET(request(query, "global"));
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledExactlyOnceWith(expect.any(Date), { timeoutMs: 650 });
+  });
+
+  it("waits for the archive and returns its matching event for an otherwise unanswered title", async () => {
+    let resolveArchive!: (snapshot: { publicEvents: EventWithMeta[]; sourceHealth: { degraded: boolean; unavailable: string[] } }) => void;
+    mocks.loadEventArchiveSnapshot.mockImplementation(() => new Promise(resolve => { resolveArchive = resolve; }));
+    const req = request("Radius Investor Showcase", "global");
+    req.nextUrl.searchParams.set("in", "county");
+    const pending = GET(req);
+    expect(await Promise.race([pending, Promise.resolve(null)])).toBeNull();
     expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledOnce();
+    resolveArchive({ publicEvents: [liveEvent()], sourceHealth: { degraded: false, unavailable: [] } });
+    const body = await (await pending).json();
+    expect(body.results).toContainEqual(expect.objectContaining({ id: "event:radius-investor-showcase" }));
+  });
+
+  it("does not mistake an archived Water Safety Training title for a complete global utility request", async () => {
+    const query = "Water Safety Training";
+    // These real parsers expose the ambiguity: a loose map shortcut is not
+    // evidence that global search's mixed ranker has no relevant event.
+    expect(isEventSearchIntent(query)).toBe(false);
+    expect(isLiveEventIndependentMapActionQuery(query)).toBe(true);
+    let resolveArchive!: (snapshot: { publicEvents: EventWithMeta[]; sourceHealth: { degraded: boolean; unavailable: string[] } }) => void;
+    mocks.loadEventArchiveSnapshot.mockImplementation(() => new Promise(resolve => { resolveArchive = resolve; }));
+    const req = request(query, "global");
+    req.nextUrl.searchParams.set("in", "county");
+    const pending = GET(req);
+    expect(await Promise.race([pending, Promise.resolve(null)])).toBeNull();
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledOnce();
+    resolveArchive({ publicEvents: [{ ...liveEvent(), slug: "water-safety-training", title: query }], sourceHealth: { degraded: false, unavailable: [] } });
+    const body = await (await pending).json();
+    expect(body.results).toContainEqual(expect.objectContaining({ id: "event:water-safety-training", title: query }));
   });
 });

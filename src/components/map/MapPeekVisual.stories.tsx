@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import MapPeek from "./MapPeek";
 import type { MapPinPlace } from "./types";
+import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 
 const creek: MapPinPlace = {
   slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park",
@@ -163,10 +164,30 @@ export const LicensedPlace: Story = {
   play: async context => {
     await checkPreview(context);
     const canvas = within(context.canvasElement);
-    await expect(canvas.getByText(/Side alley exterior, October 26, 2004/)).toBeVisible();
-    for (const name of ["Wikimedia Commons", "CC BY-SA 2.0"]) await reachable(canvas.getByRole("link", { name }));
+    const photo = getLandmarkPhoto(context.args.place.slug)!;
+    const sourceLink = canvas.getByRole("link", { name: `Photo by ${photo.author}. Wikimedia Commons` });
+    await expect(sourceLink).toHaveTextContent(photo.author);
+    await expect(sourceLink).toHaveAttribute("href", photo.source_url);
+    const licenseLink = canvas.getByRole("link", { name: photo.license });
+    const editSummary = canvas.getByText("Edited photo", { exact: true });
+    const fullEdits = canvas.getByText(photo.modifications!, { exact: true });
+    await expect(fullEdits).not.toBeVisible();
+    for (const target of [sourceLink, licenseLink, editSummary]) await reachable(target);
+    editSummary.focus();
+    await userEvent.click(editSummary);
+    await expect(fullEdits).toBeVisible();
+    await expect(editSummary).toHaveFocus();
+    for (const target of [sourceLink, licenseLink, editSummary, canvas.getByRole("link", { name: /^Directions$/ }), canvas.getByRole("button", { name: `Close ${context.args.place.name}` })]) await reachable(target);
+    await userEvent.click(editSummary);
+    await expect(fullEdits).not.toBeVisible();
     await expect(context.args.onDetails).toHaveBeenCalledOnce();
   },
+};
+
+export const CatoctinAt390: Story = {
+  ...LicensedPlace,
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  args: { place: { ...creek, slug: "catoctin-furnace-thurmont", name: "Catoctin Furnace", municipality: "thurmont" } },
 };
 
 export const ShortScreenAt320: Story = {

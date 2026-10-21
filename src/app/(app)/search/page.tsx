@@ -264,16 +264,24 @@ export default async function SearchPage({
   // a power user can refine the query.
   const cookieStore = await cookies();
   const context = resolveDecisionContext({ scopeRaw: scopeParam ?? cookieStore.get(SCOPE_COOKIE)?.value ?? "county", homeMuniRaw: null });
+  // Complete resident tasks already lead with their authoritative local
+  // action and suppress unrelated matches. Decide that before awaiting an
+  // event archive whose results this view would discard.
+  const civicCandidates = query ? searchCivicActions(query, 2) : [];
+  const suppressLocalHits = isHighConfidenceCivicIntent(query, civicCandidates);
+  const civicOnly = kind === "all" && suppressLocalHits;
   let eventPool;
   let eventsUnavailable = false;
   // All results also searches exact event titles that carry no event keyword.
   // This is the bounded archive reader, without a publisher refresh fan-out.
-  if (query && (kind === "all" || kind === "event")) {
+  if (query && !civicOnly && (kind === "all" || kind === "event")) {
     const snapshot = await loadEventArchiveSnapshot(new Date(), { timeoutMs: TODAY_EVENT_SNAPSHOT_TIMEOUT_MS });
     eventPool = snapshot.publicEvents;
     eventsUnavailable = snapshot.sourceHealth.degraded;
   }
-  const result = qualifiedSearch(query, 80, eventPool, { municipality: context.filterMunicipality, contextLabel: context.label, resultKind: kind });
+  // Keep the existing query/location interpretation for refinement and Back
+  // links; civic-only results need neither live nor curated event candidates.
+  const result = qualifiedSearch(query, 80, civicOnly ? [] : eventPool, { municipality: context.filterMunicipality, contextLabel: context.label, resultKind: kind });
   const hits = query ? result.hits : [];
   const town = result.meta.scopeMunicipality ?? context.filterMunicipality;
   const resultParams = new URLSearchParams();
@@ -300,8 +308,6 @@ export default async function SearchPage({
   // (stray token) with no county answer in sight. Departments with their
   // phone numbers + the county's own How-Do-I links lead the list.
   const departmentCandidates = query ? findDepartments(query) : [];
-  const civicCandidates = query ? searchCivicActions(query, 2) : [];
-  const suppressLocalHits = isHighConfidenceCivicIntent(query, civicCandidates);
   // A one-word overlap is not a trustworthy resident-task answer. Keep the
   // official action row for complete civic intents; otherwise let a clearly
   // requested department fallback handle the question without inventing a

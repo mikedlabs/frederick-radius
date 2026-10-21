@@ -2,7 +2,7 @@ import { stampEventProvenance } from "@/lib/provenance";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import { AlertCircle, Apple, ArrowRight, CalendarCheck, Car, ChevronDown, ExternalLink, Globe, Instagram, Mail, MapPin, Navigation, Phone, ShoppingBag, UtensilsCrossed } from "lucide-react";
 import ShareButton from "@/components/place/ShareButton";
 import { PLACES } from "@/data/places";
@@ -102,6 +102,11 @@ function safeBlurb(p: {
 
 export const revalidate = 300;
 
+// Metadata and the page share one expensive nearby recommendation pass.
+// React's render cache adds no cross-request lifetime; existing ISR and
+// other callers' explicit origin/time behavior stay unchanged.
+const getPlaceForRender = cache((slug: string) => getPlaceBySlug(slug));
+
 export async function generateStaticParams() {
   return PLACES.map((p) => ({ slug: p.slug }));
 }
@@ -118,7 +123,7 @@ export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
   const { slug } = await params;
-  const place = getPlaceBySlug(slug);
+  const place = getPlaceForRender(slug);
   // notFound() HERE, not just in the page body: metadata resolves before
   // the response streams, so the 404 status reaches the wire instead of a
   // soft 404 (200 + not-found UI) Google indexes (June-9 audit P0-2).
@@ -144,7 +149,7 @@ export async function generateMetadata(
 
 export default async function PlacePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const place = getPlaceBySlug(slug);
+  const place = getPlaceForRender(slug);
   if (!place) notFound();
 
   const cat = CATEGORY_BY_SLUG[place.category];

@@ -391,6 +391,7 @@ export default async function HomePage() {
         title="Local guides and saved places"
         storageKey="fr.today.more-ideas"
         defaultOpen={false}
+        mountOnOpen
         headingLevel={2}
         className="today-disclosure mt-6 border-t pt-2 [&>h2>button]:min-h-11"
       >

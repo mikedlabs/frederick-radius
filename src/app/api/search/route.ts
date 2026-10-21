@@ -97,10 +97,8 @@ export async function GET(request: NextRequest) {
   };
   const base = qualifiedSearchIndex(q, limit, undefined, searchContext);
   const mapRequest = request.nextUrl.searchParams.get("origin") === "map";
-  // Most map searches already have a complete answer in Radius's local place
-  // and control index. Do not make "coffee nearby" wait for a countywide live
-  // calendar. Event-shaped and genuinely unanswered phrases retain the live
-  // enrichment path.
+  // Map searches and proven local Find needs can already have a complete
+  // answer. Event-shaped and ambiguous phrases retain archive enrichment.
   const normalizedQuery = normalizedSearchText(q);
   const qualifiers = base.meta.qualifiers;
   const normalizedQualifiedQuery = normalizedSearchText(
@@ -122,17 +120,24 @@ export async function GET(request: NextRequest) {
       (result.type === "place" || result.type === "municipality") &&
       normalizedSearchText(result.title) === normalizedQuery,
   );
+  const eventIndependentMapAction = isLiveEventIndependentMapActionQuery(q);
   const baseAnswersMap =
-    isLiveEventIndependentMapActionQuery(q) ||
+    eventIndependentMapAction ||
     Boolean(qualifiers.compoundIntent || qualifiers.strictPlaceKind) ||
     directCategoryRequest ||
     exactEntityAnswer;
   const baseHasAtmHandoff = base.results.some(
     (result) => result.id === "action:map-atm",
   );
+  // With no event intent, the shared qualified ranker already constrains
+  // these queries to places. A calendar cannot improve their ranked facts.
+  // Require an actual local answer; bare names and unanswered phrases stay
+  // mixed searches so an archived event title remains discoverable.
+  const qualifiedLocalAnswer = qualifiers.constrained &&
+    base.results.some((result) => result.type === "place");
   const skipLiveEventAssembly =
     !isEventSearchIntent(q) &&
-    ((mapRequest && baseAnswersMap) || baseHasAtmHandoff ||
+    (qualifiedLocalAnswer || (mapRequest && baseAnswersMap) || baseHasAtmHandoff ||
       base.results.some((result) => result.id.startsWith("civic:") || result.id.startsWith("department:")));
   // Rank against the promoted event archive, not just the small curated seed
   // set. The archive is refreshed in the background and has a cancellable

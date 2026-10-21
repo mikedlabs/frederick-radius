@@ -1,7 +1,7 @@
 /* Selected-place preview only. Other map result types retain their own layout. */
 .preview.preview {
   max-height: min(62dvh, 480px, calc(100% - 24px));
-  gap: 12px;
+  gap: 10px;
   padding: 12px;
   border-radius: 24px;
   scroll-padding-block: 8px 88px;
@@ -196,6 +196,42 @@
 
 .preview.preview :global(.place-card-photo-credit) {
   padding-inline: 0;
+}
+
+.preview.preview :global([data-photo-modifications-disclosure] .place-card-photo-credit-row) {
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.preview.preview :global(.place-card-photo-edits) {
+  min-width: 44px;
+  margin-inline-start: auto;
+}
+
+.preview.preview :global(.place-card-photo-edits > summary) {
+  min-width: 44px;
+  min-height: 48px;
+  align-content: center;
+  list-style-position: inside;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.preview.preview :global(.place-card-photo-edits > summary:focus-visible) {
+  outline: 2px solid var(--app-ink);
+  outline-offset: -2px;
+}
+
+.preview.preview :global(.place-card-photo-edits[open]) {
+  flex-basis: 100%;
+  margin-inline-start: 0;
+}
+
+.preview.preview :global(.place-card-photo-credit-details) {
+  display: grid;
+  gap: 4px;
+  padding-block: 4px 8px;
+  overflow-wrap: anywhere;
 }
 
 @media (max-height: 540px) {
