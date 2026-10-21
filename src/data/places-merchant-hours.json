@@ -60,11 +60,11 @@
       "slug": "gravel-and-grind-frederick",
       "source_url": "https://www.gravelandgrind.com/",
       "source_name": "Gravel & Grind",
-      "source_sha256": "3bc29ef0ba2835133c9065f3aa1abde90056617abce96a898d7e0218b15b3629",
-      "observed_at": "2026-10-19T23:24:50.964Z",
-      "expires_at": "2026-10-26T23:24:50.964Z",
-      "coverage_from": "2026-10-19",
-      "coverage_through": "2026-10-26",
+      "source_sha256": "9ab03e5e935728946e6a3bccbf5a6a0d373b180cdfcfe7b754e2253f3ec0d517",
+      "observed_at": "2026-10-21T11:25:54.038Z",
+      "expires_at": "2026-10-28T11:25:54.038Z",
+      "coverage_from": "2026-10-21",
+      "coverage_through": "2026-10-28",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -801,6 +801,116 @@
           }
         ]
       }
+    },
+    {
+      "slug": "common-market-frederick",
+      "source_url": "https://www.commonmarket.coop/",
+      "source_name": "Common Market Co-op (Route 85)",
+      "source_sha256": "88adae502354903a666b28839041e70b91a66ae89eda62efa20140250da8d99f",
+      "observed_at": "2026-10-21T11:25:55.197Z",
+      "expires_at": "2026-10-28T11:25:55.197Z",
+      "coverage_from": "2026-10-21",
+      "coverage_through": "2026-10-28",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "08:00",
+            "close": "21:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "08:00",
+            "close": "21:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "08:00",
+            "close": "21:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "08:00",
+            "close": "21:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "08:00",
+            "close": "21:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "08:00",
+            "close": "21:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "08:00",
+            "close": "21:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "common-market",
+      "source_url": "https://www.commonmarket.coop/",
+      "source_name": "Common Market (7th Street)",
+      "source_sha256": "88adae502354903a666b28839041e70b91a66ae89eda62efa20140250da8d99f",
+      "observed_at": "2026-10-21T11:25:55.197Z",
+      "expires_at": "2026-10-28T11:25:55.197Z",
+      "coverage_from": "2026-10-21",
+      "coverage_through": "2026-10-28",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "08:00",
+            "close": "21:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "08:00",
+            "close": "21:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "08:00",
+            "close": "21:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "08:00",
+            "close": "21:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "08:00",
+            "close": "21:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "08:00",
+            "close": "21:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "08:00",
+            "close": "21:00"
+          }
+        ]
+      }
     }
   ],
   "review": [
@@ -808,66 +918,6 @@
       "slug": "brewers-alley-frederick",
       "checked_at": "2026-10-21T09:33:34.762Z",
       "reason": "source_unavailable"
-    },
-    {
-      "slug": "gravel-and-grind-frederick",
-      "checked_at": "2026-10-21T09:33:34.762Z",
-      "reason": "pending_acceptance",
-      "candidate": {
-        "slug": "gravel-and-grind-frederick",
-        "source_url": "https://www.gravelandgrind.com/",
-        "source_name": "Gravel & Grind",
-        "source_sha256": "e356a1822991e4ad63ae22910dd2641b27f8fc14488f2c8cb889cac7efdcafa5",
-        "observed_at": "2026-10-21T09:33:35.147Z",
-        "expires_at": "2026-10-28T09:33:35.147Z",
-        "coverage_from": "2026-10-21",
-        "coverage_through": "2026-10-28",
-        "kind": "weekly",
-        "hours": {
-          "mon": [
-            {
-              "open": "08:00",
-              "close": "14:00"
-            }
-          ],
-          "tue": [
-            {
-              "open": "08:00",
-              "close": "14:00"
-            }
-          ],
-          "wed": [
-            {
-              "open": "08:00",
-              "close": "17:00"
-            }
-          ],
-          "thu": [
-            {
-              "open": "08:00",
-              "close": "17:00"
-            }
-          ],
-          "fri": [
-            {
-              "open": "08:00",
-              "close": "17:00"
-            }
-          ],
-          "sat": [
-            {
-              "open": "08:00",
-              "close": "17:00"
-            }
-          ],
-          "sun": [
-            {
-              "open": "08:00",
-              "close": "16:00"
-            }
-          ]
-        }
-      }
     }
   ]
 }

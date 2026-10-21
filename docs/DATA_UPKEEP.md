@@ -13,7 +13,7 @@ be delayed by GitHub; these are windows, not guaranteed publication deadlines.
 | Owner | Window | Scope and publication rule |
 | --- | --- | --- |
 | `transit-steward.yml` | Daily 07:23 | Public Frederick GTFS. Existing review and release checks remain. |
-| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus twelve exact reviewed native merchant sources. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. |
+| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus thirteen exact reviewed native merchant URLs for fourteen listing identities. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. |
 | Existing Codex data upkeep, manual merchant cohort | Review before evidence expires | Sumittra and Curious Iguana only. Read their official pages through the existing Firecrawl connection when evidence is within 48 hours of expiry. A private preflight reserves each attempt before a read, capped at two attempts per UTC day and 30 per UTC month. No automatic paid GitHub job. |
 | `ingest-venues.yml` native job | Daily 11:07 | Banyan, Weinberg and New Spire native sources. No model, Firecrawl key, browser or paid-review prerequisite. Future changes need review. Failed/unselected sources retain their rows and dates. |
 | `refresh-commerce-links.yml` native mode | Daily 12:37 | At most 20 eligible official business sites and one same-host follow page each. Static HTML only, finite body/deadline, no retries, redirects or destination probes. New/changed actions need review. |
@@ -61,6 +61,15 @@ official page was 773,517 bytes at enrollment. The registry owns that exception;
 callers cannot raise it through a URL or command option. Every source still has
 the existing deadline, body-read ceiling, no-redirect and no-retry policy.
 Failed or changed evidence remains held for review.
+
+Common Market's one exact official homepage has independent Route 85 and 7th
+Street grocery bindings. Its shared contact card supplies ordinary store hours
+only; separate cafe contacts do not establish cafe service hours, and no
+holiday calendar is verified. Within one
+collection run, those bindings reuse the same immutable response, observation
+and hash. Each listing retains its own review/acceptance state. There is no
+persistent page cache and no reused receipt receives a new observation.
+Both bindings retain the ordinary 512000-byte limit and seven-day expiry.
 
 ## Bounded manual hours evidence
 

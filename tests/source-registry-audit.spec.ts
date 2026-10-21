@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
+import { MERCHANT_HOURS_SOURCES } from "@/lib/merchant-hours";
+import { buildSourceRegistryArtifact } from "@/../scripts/build-source-registry";
 import {
   auditSourceRows,
   REQUIRED_ACTIVE,
@@ -30,6 +32,25 @@ function manifestRows(): SourceRow[] {
 describe("source registry audit", () => {
   it("accepts the checked-in manifest", () => {
     expect(auditSourceRows(manifestRows())).toEqual([]);
+  });
+
+  it("maps every merchant binding to one source owner, including both Common Market groceries", () => {
+    const registry = buildSourceRegistryArtifact(readFileSync(resolve("data/sources.yaml"), "utf8"));
+    const commonUrl = "https://www.commonmarket.coop/";
+    const bindings = MERCHANT_HOURS_SOURCES.filter((source) => source.url === commonUrl);
+    expect(bindings.map((source) => source.slug)).toEqual(["common-market-frederick", "common-market"]);
+    expect(bindings.map((source) => source.ledger_id)).toEqual(["common_market_hours", "common_market_hours"]);
+    for (const source of MERCHANT_HOURS_SOURCES) {
+      const owners = registry.filter((row) => row.evidenceAliases.includes(source.url));
+      expect(owners.map((row) => row.id)).toEqual([source.ledger_id]);
+      expect(owners[0]?.url).toBe(source.url);
+    }
+  });
+
+  it("still rejects a second ledger owner for the shared Common Market URL", () => {
+    const row = (id: string) => `  - id: ${id}\n    name: Official store hours\n    status: active\n    collection: workflow\n    refresh_cadence: daily\n    evidence_aliases: [https://www.commonmarket.coop/]\n`;
+    expect(() => buildSourceRegistryArtifact(`sources:\n${row("common_market_hours")}${row("other_owner")}`))
+      .toThrow("https://www.commonmarket.coop/: evidence alias belongs to both common_market_hours and other_owner.");
   });
 
   it("fails closed on unsupported snapshot and change cadences", () => {

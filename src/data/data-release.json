@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:32c2f7fae411c40446376a66f6cc1f5380138496608c292af57bf41fe7a96797",
+  "data_version": "sha256:2e6223ea35aef92b307173331e7a028342163b93fd0d3469c03468423f8b4db6",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-21T09:46:08.688Z",
+      "promoted_at": "2026-10-21T11:51:05.949Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -72,9 +72,9 @@
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "3454c536dc1c97f9f2113969b36a40369e802f8e1757384b5036b93a5732721f",
-          "records": 14,
-          "bytes": 19708
+          "sha256": "8e23a8c97b598ae48953346eb7db4e7fe6a64ed852656e3cc202a677d7ea49dc",
+          "records": 16,
+          "bytes": 20687
         },
         {
           "path": "src/data/business-status.json",
@@ -180,9 +180,57 @@
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
-          "sha256": "8ea2151dff35bb4be47c4288fa992a5262ec56e1859aff20e9b08a5abb61672c",
+          "sha256": "af80921c0c02b0c27111793f8406ff3ca876c9358c79458ad0a15e38b29835c5",
           "records": null,
-          "bytes": 10618
+          "bytes": 10825
+        },
+        {
+          "path": "public/history-photos/schifferstadt.jpg",
+          "sha256": "47252f431893d172bba9684de27ebec43e2d66c58cca5caf4616bf4b708cf97c",
+          "records": null,
+          "bytes": 555332
+        },
+        {
+          "path": "public/history-photos/hessian-barracks.jpg",
+          "sha256": "afdfb489d4d90a281c373cc9711b39a0b755d20a42ecf56d5f4f7a65b2d81a10",
+          "records": null,
+          "bytes": 331214
+        },
+        {
+          "path": "public/history-photos/co-canal.jpg",
+          "sha256": "c25b97915142a0a18cd339fcabe84891edda5c343017f758620fdc2ccb12ef1f",
+          "records": null,
+          "bytes": 536413
+        },
+        {
+          "path": "public/place-photos/delaplaine-exterior.jpg",
+          "sha256": "d64f8b365780e8a11d0af6e289b564e65ff01ce0fb4e6bf9b5f211d3bd2882a9",
+          "records": null,
+          "bytes": 382537
+        },
+        {
+          "path": "public/place-photos/weinberg-exterior.jpg",
+          "sha256": "97115f0d8d2432ed63b712e4b60bc56a93fc6b956924837d33b53fec8c83137f",
+          "records": null,
+          "bytes": 373960
+        },
+        {
+          "path": "public/place-photos/c-burr-artz-exterior.jpg",
+          "sha256": "2342a2518be168a56376b569b0c4850fc6db0c333114c33eda8a95ea7576ed0a",
+          "records": null,
+          "bytes": 456913
+        },
+        {
+          "path": "public/history-photos/new-market-antiques.jpg",
+          "sha256": "879775deabe7c5fe4d2653b928b287a794ea37e2aa431843e2efb745c79f9334",
+          "records": null,
+          "bytes": 385375
+        },
+        {
+          "path": "public/history-photos/catoctin-mountain-park.jpg",
+          "sha256": "60e2d812bceedb309d4ed1a8a98c99fa18895c8b8fd377beee6ee3eb1254d3de",
+          "records": null,
+          "bytes": 430067
         },
         {
           "path": "public/place-photos/brewers-alley-2004.jpg",
@@ -210,15 +258,21 @@
         },
         {
           "path": "src/lib/owned-place-photos.ts",
-          "sha256": "d7db84c3c3f3a9973cd96bf9cf4df94747a873fc836bdb484758504df87d6046",
+          "sha256": "45d4f57dcf75ccaf8e473ff19e6cd63b8fb86f8f1d054d494b8c8208d06ceed8",
           "records": null,
-          "bytes": 2281
+          "bytes": 2784
         },
         {
           "path": "public/images/seasons/fall/018.jpg",
           "sha256": "00a10a8a498e7b09bff6887dc881329c3542860e754b25db37a6aa12af05845c",
           "records": null,
           "bytes": 294430
+        },
+        {
+          "path": "public/images/seasons/fall/021.jpg",
+          "sha256": "32eecff2e02913ad7b0093ef599318936b8a6694cdacda39623c393399732967",
+          "records": null,
+          "bytes": 409846
         },
         {
           "path": "public/images/seasons/spring/aerial-view-baseball-field.jpg",
@@ -282,15 +336,15 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "9be0fecfbd3965a9c5701301d2d262ef4825f2bb48ecc60321e64def656fa5d7",
+          "sha256": "4b214bcbe5b56d6a288b5d560148e08b953809252fcf4cdcf69eeefc630986a6",
           "records": 1571,
-          "bytes": 2299793
+          "bytes": 2301782
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "7a7bae1658bafa466b8ac361de49b69701a60110fd99d4b7d604d721c5d6c902",
-          "records": 21,
-          "bytes": 33387
+          "sha256": "8f62adffb6e94fc127000891938559a29a0858a8c5f97e10d6c536f79b4124ce",
+          "records": 24,
+          "bytes": 35658
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
@@ -301,13 +355,13 @@
       ]
     },
     "sources": {
-      "promoted_at": "2026-10-21T09:02:54.873Z",
+      "promoted_at": "2026-10-21T11:51:05.949Z",
       "artifacts": [
         {
           "path": "src/data/source-registry.generated.json",
-          "sha256": "21e014ba198b209fce16c5c861f6065c9eb1c9304942d440223cafad682d1164",
-          "records": 142,
-          "bytes": 93671
+          "sha256": "9c07029312e21ea3a832b013e11f024ab9e663c84dfbdd61941c3f9392e4dc8f",
+          "records": 143,
+          "bytes": 94386
         }
       ]
     },

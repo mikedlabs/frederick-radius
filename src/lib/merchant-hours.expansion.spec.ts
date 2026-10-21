@@ -153,7 +153,7 @@ describe("five exact official merchant hours adapters", () => {
     const before: MerchantHoursArtifact = { schema_version: 1, places: [], review: [] };
     const fetcher = vi.fn(async (url: string) => { const source = sources.find((source) => source.url === url); if (!source) throw new Error("Unrepresented legacy fixture."); return page(source.slug as Slug); });
     const staged = await collectMerchantOfficialHours(before, fetcher, now);
-    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(MERCHANT_HOURS_SOURCES.filter((source) => !("collection" in source && source.collection === "manual")).map((source) => source.url));
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([...new Set(MERCHANT_HOURS_SOURCES.filter((source) => !("collection" in source && source.collection === "manual")).map((source) => source.url))]);
     expect(staged.artifact.places).toEqual([]);
     for (const source of sources) {
       const slug = source.slug as Slug;
