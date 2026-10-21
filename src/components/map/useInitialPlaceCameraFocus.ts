@@ -51,7 +51,7 @@ export function useInitialPlaceCameraFocus({
     markCameraIntent();
     smoothFocus(map, [selectedPlace.geom.lng, selectedPlace.geom.lat], {
       minZoom: 15,
-      maxStep: 6,
+      maxStep: Math.max(6, 15 - map.getZoom()),
       padding,
     });
   }, [getMap, hasEntryCamera, hasOtherCameraOwner, hasUserCameraIntent, markCameraIntent, pending, ready, selectedPlace]);

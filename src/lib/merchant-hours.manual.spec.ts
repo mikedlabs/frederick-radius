@@ -37,6 +37,8 @@ const nativeFixtures: Record<string, string> = {
   "thai-meric-eatery-bar-frederick": "thai-meric-eatery-bar-frederick", "white-rabbit-gastropub": "white-rabbit-gastropub",
   "il-porto-restaurant": "il-porto-restaurant",
   "kulfi-ice-creams-frederick": "kulfi-ice-creams-frederick",
+  // Representative Aleko facts use this harness clock only, never public evidence.
+  "alekos-middletown": "alekos-middletown",
 };
 const native = MERCHANT_HOURS_SOURCES.filter((source) => !("collection" in source && source.collection === "manual"));
 function baseline() {

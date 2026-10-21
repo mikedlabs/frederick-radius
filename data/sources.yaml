@@ -3052,3 +3052,25 @@ sources:
       A public-domain alternative for a supporting number is the EIA
       weekly Maryland average (state-level only, no station or county
       granularity) — register it separately if we ever want it.
+
+
+  - id: alekos_hours
+    name: "Aleko's Village Cafe — First-party Hours"
+    owner: "Aleko's Village Cafe"
+    url: https://www.alekosvillagecafe.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Aleko's Village Cafe"
+    status: active
+    collection: workflow
+    evidence_aliases: [alekos_hours, https://www.alekosvillagecafe.com/]
+    last_validated: 2026-10-21
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 6 N Church Street Middletown restaurant and phone 301-371-3500. Visible complete weekly hours include Monday and Sunday closed.
+      One bounded native HTML GET per daily refresh, no credentials, provider, redirect or retry. Only this reviewed URL has a 1 MiB body cap; other native merchants retain 512000 bytes. Evidence expires within seven days; failed/conflicted reads retain old evidence and stage review, without automatic changed-fact acceptance.

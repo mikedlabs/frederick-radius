@@ -13,7 +13,7 @@ be delayed by GitHub; these are windows, not guaranteed publication deadlines.
 | Owner | Window | Scope and publication rule |
 | --- | --- | --- |
 | `transit-steward.yml` | Daily 07:23 | Public Frederick GTFS. Existing review and release checks remain. |
-| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus eleven exact reviewed native merchant sources. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. |
+| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus twelve exact reviewed native merchant sources. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. |
 | Existing Codex data upkeep, manual merchant cohort | Review before evidence expires | Sumittra and Curious Iguana only. Read their official pages through the existing Firecrawl connection when evidence is within 48 hours of expiry. A private preflight reserves each attempt before a read, capped at two attempts per UTC day and 30 per UTC month. No automatic paid GitHub job. |
 | `ingest-venues.yml` native job | Daily 11:07 | Banyan, Weinberg and New Spire native sources. No model, Firecrawl key, browser or paid-review prerequisite. Future changes need review. Failed/unselected sources retain their rows and dates. |
 | `refresh-commerce-links.yml` native mode | Daily 12:37 | At most 20 eligible official business sites and one same-host follow page each. Static HTML only, finite body/deadline, no retries, redirects or destination probes. New/changed actions need review. |
@@ -54,6 +54,13 @@ policy authority, raise provider budgets or provision services.
   provider fallback. Barbara Fritchie House retains its preferred accurate
   image policy using existing local licensed bytes. Source and license credits
   travel with the selected photograph; no new merchant image rights are inferred.
+
+The native merchant fetcher normally accepts at most 512,000 HTML bytes. The
+exact enrolled Aleko's URL has a reviewed 1 MiB exception because its complete
+official page was 773,517 bytes at enrollment. The registry owns that exception;
+callers cannot raise it through a URL or command option. Every source still has
+the existing deadline, body-read ceiling, no-redirect and no-retry policy.
+Failed or changed evidence remains held for review.
 
 ## Bounded manual hours evidence
 

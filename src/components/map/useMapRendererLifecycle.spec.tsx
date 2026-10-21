@@ -8,6 +8,7 @@ import { isFatalMapboxError, mapboxFailureKind } from "./mapboxFailure";
 import { MAP_RENDERER_LOAD_TIMEOUT_MS, useMapRendererLifecycle } from "./useMapRendererLifecycle";
 import { shouldApplyInitialMapSelection } from "./mapInitialSelection";
 import { useInitialPlaceCameraFocus } from "./useInitialPlaceCameraFocus";
+import { CAM_EASE, FREDERICK_MAX_ZOOM } from "./constants";
 import MapResultSurface from "./MapResultSurface";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -233,13 +234,14 @@ describe("cold place focus after the renderer and result card commit", () => {
     entryCamera?: boolean;
     otherOwner?: boolean;
     metadata?: string;
+    zoom?: number;
   };
-  function FocusOwner({ ready = false, card = true, visiblePlace = place, entryCamera = false, otherOwner = false, metadata = "initial" }: FocusProps) {
+  function FocusOwner({ ready = false, card = true, visiblePlace = place, entryCamera = false, otherOwner = false, metadata = "initial", zoom = 9.6 }: FocusProps) {
     useInitialPlaceCameraFocus({
       pending, ready, selectedPlace: visiblePlace,
       getMap: () => ({
         getContainer: () => container.querySelector<HTMLElement>(".mapboxgl-map")!,
-        getZoom: () => 9.6,
+        getZoom: () => zoom,
         easeTo,
       }),
       hasEntryCamera: entryCamera,
@@ -289,6 +291,42 @@ describe("cold place focus after the renderer and result card commit", () => {
     expect(markCameraIntent).toHaveBeenCalledTimes(1);
     await render({ ready: true, metadata: "hours and photo metadata arrived" });
     expect(easeTo).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [8.63, 15],
+    [9.6, 15],
+    [16.5, 16.5],
+    [FREDERICK_MAX_ZOOM, FREDERICK_MAX_ZOOM],
+  ])("reaches the cold-place intent from actual map zoom %s without reducing a closer view", async (zoom, expectedZoom) => {
+    // The production hook calls the actual smoothFocus helper; only the map
+    // camera API and measured DOM rectangles are doubles. At8.63 the old
+    // fixed six-level step incorrectly requested14.63 instead of15.
+    await render({ ready: true, zoom });
+    expect(easeTo).toHaveBeenCalledExactlyOnceWith({
+      center: [place.geom.lng, place.geom.lat],
+      zoom: expectedZoom,
+      padding: { top: 20, right: 20, bottom: 469, left: 20 },
+      retainPadding: false,
+      duration: 520,
+      easing: CAM_EASE,
+      essential: true,
+    });
+    expect(easeTo.mock.calls[0][0].zoom).toBeLessThanOrEqual(FREDERICK_MAX_ZOOM);
+    expect(markCameraIntent).toHaveBeenCalledTimes(1);
+    await render({ ready: true, zoom, metadata: "later metadata" });
+    expect(easeTo).toHaveBeenCalledTimes(1);
+  });
+
+  it("reaches15 from the low county zoom without motion when reduced motion is requested", async () => {
+    vi.stubGlobal("matchMedia", vi.fn((query: string) => ({ matches: query === "(prefers-reduced-motion: reduce)" })));
+    await render({ ready: true, zoom: 8.63 });
+    expect(easeTo).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      zoom: 15, duration: 0,
+      center: [place.geom.lng, place.geom.lat],
+      padding: { top: 20, right: 20, bottom: 469, left: 20 },
+      retainPadding: false,
+    }));
   });
 
   it("waits for the actual card and matching visible canonical pin", async () => {

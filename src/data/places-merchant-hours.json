@@ -756,6 +756,51 @@
           }
         ]
       }
+    },
+    {
+      "slug": "alekos-middletown",
+      "source_url": "https://www.alekosvillagecafe.com/",
+      "source_name": "Aleko's Village Cafe",
+      "source_sha256": "17442fd021ed6b713f39892ae7736a8cd4515de6cf00626035b61b9a38b73aed",
+      "observed_at": "2026-10-21T08:23:25.373Z",
+      "expires_at": "2026-10-28T08:23:25.373Z",
+      "coverage_from": "2026-10-21",
+      "coverage_through": "2026-10-28",
+      "kind": "weekly",
+      "hours": {
+        "mon": [],
+        "sun": [],
+        "tue": [
+          {
+            "open": "11:00",
+            "close": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "11:00",
+            "close": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "11:00",
+            "close": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "11:00",
+            "close": "20:30"
+          }
+        ],
+        "sat": [
+          {
+            "open": "11:00",
+            "close": "20:30"
+          }
+        ]
+      }
     }
   ],
   "review": [
