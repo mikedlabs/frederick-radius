@@ -64,6 +64,9 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
   "src/lib/owned-place-photos.ts",
   "public/images/seasons/fall/018.jpg",
   "public/images/seasons/fall/021.jpg",
+  "public/images/seasons/winter/PG134 Replacement.jpg",
+  "public/images/seasons/spring/016.jpg",
+  "public/images/seasons/winter/WINTER NEW 7.jpg",
   "public/images/seasons/spring/aerial-view-baseball-field.jpg",
   "public/images/fair/fairgrounds-night-mike-d-1920.jpg",
   // Additional immutable facts rendered by the place detail route.

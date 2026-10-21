@@ -5,8 +5,8 @@
       "slug": "brewers-alley-frederick",
       "source_url": "https://brewers-alley.com/",
       "source_name": "Brewer's Alley",
-      "source_sha256": "2feb313c6eb7a9b90251c8b873d5e546f84e1eb439bb3f567ebbd5b63f99904f",
-      "observed_at": "2026-10-21T07:17:21.265Z",
+      "source_sha256": "156bd78a065d24b6753e8a8f2336361b00c58ed2a866d28b80247ee5afaa4b6c",
+      "observed_at": "2026-10-21T21:27:39.693Z",
       "expires_at": "2026-10-26T04:00:00.000Z",
       "coverage_from": "2026-10-19",
       "coverage_through": "2026-10-25",
@@ -36,12 +36,6 @@
             "close": "23:30"
           }
         ],
-        "sun": [
-          {
-            "open": "11:00",
-            "close": "23:30"
-          }
-        ],
         "fri": [
           {
             "open": "11:00",
@@ -52,6 +46,12 @@
           {
             "open": "11:00",
             "close": "01:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "11:00",
+            "close": "23:30"
           }
         ]
       }
@@ -913,11 +913,5 @@
       }
     }
   ],
-  "review": [
-    {
-      "slug": "brewers-alley-frederick",
-      "checked_at": "2026-10-21T09:33:34.762Z",
-      "reason": "source_unavailable"
-    }
-  ]
+  "review": []
 }
