@@ -118,9 +118,13 @@ describe("PlaceCard selected media and credit", () => {
   });
 
   it.each(Object.entries(LANDMARK_PHOTOS))("uses the exact owned source first when present, then the existing curated file for %s", async (slug, metadata) => {
+    // Cunningham's reviewed local source must also win with an eligible
+    // provider image present; the other rows exercise their existing fallback.
+    const localFirst = slug === "cunningham-falls-state-park-thurmont";
     const cardPlace = { ...place, slug,
       name: slug === "carroll-creek-linear-park-frederick" ? "Carroll Creek Linear Park" : place.name,
-      google_photo_url: undefined, google_photo_attribution: undefined };
+      google_photo_url: localFirst ? place.google_photo_url : undefined,
+      google_photo_attribution: localFirst ? place.google_photo_attribution : undefined };
     await render(cardPlace);
     if (slug === "carroll-creek-linear-park-frederick") {
       const ownedImage = photo()!;
@@ -136,6 +140,10 @@ describe("PlaceCard selected media and credit", () => {
     expect(photo()?.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("curated");
     expect(photo()?.getAttribute("src")).toBe(curatedPhotoUrl(metadata, 720));
     expect(photo()?.alt).toBe(metadata.alt);
+    if (localFirst) {
+      expect(metadata.preferLocal).toBe(true);
+      expect(photo()?.getAttribute("src")).toBe("/place-photos/cunningham-falls.jpg");
+    }
     const pendingCredit = container.querySelector(".place-card-photo-credit")!;
     expect(loadedCredit()).toBeNull();
     expect(pendingCredit.getAttribute("aria-hidden")).toBe("true");
@@ -151,8 +159,9 @@ describe("PlaceCard selected media and credit", () => {
     expect(credit.textContent).toContain(metadata.author);
     expect(credit.textContent).toContain(metadata.license);
     if (metadata.license === "CC BY 2.0") {
-      expect(credit.querySelector('a[href="https://creativecommons.org/licenses/by/2.0"]')).not.toBeNull();
+      expect(credit.querySelector(`a[href="${metadata.licenseUrl ?? "https://creativecommons.org/licenses/by/2.0"}"]`)).not.toBeNull();
     }
+    if (localFirst) expect(credit.textContent).toContain(metadata.modifications);
     expect(credit.querySelector(`a[href="${metadata.source_url}"]`)).not.toBeNull();
     if (slug === "carroll-creek-linear-park-frederick") {
       await fail(photo()!);
@@ -258,7 +267,7 @@ describe("PlaceCard selected media and credit", () => {
     await render(place);
     await fail(photo()!); await fail(photo()!);
     await render({ ...place, slug: "catoctin-furnace-thurmont", name: "Catoctin Furnace" });
-    expect(photo()?.getAttribute("src")).toContain("Catoctin%20Iron%20Furnace%20copy.jpg");
+    expect(photo()?.getAttribute("src")).toBe("/place-photos/catoctin-furnace.jpg");
     expect(loadedCredit()).toBeNull();
     await load(photo()!);
     expect(container.querySelector(".place-card-photo-credit")?.textContent).toContain("G Wayne Rhodes");
@@ -273,7 +282,7 @@ describe("PlaceCard selected media and credit", () => {
     await load(photo()!);
     expect(container.querySelector(".place-card-photo-credit")?.textContent).toContain("G Wayne Rhodes");
     await act(async () => oldLoad({ currentTarget: oldImage } as SyntheticEvent<HTMLImageElement>));
-    expect(photo()?.getAttribute("src")).toContain("Catoctin%20Iron%20Furnace%20copy.jpg");
+    expect(photo()?.getAttribute("src")).toBe("/place-photos/catoctin-furnace.jpg");
     expect(container.querySelector(".place-card-photo-credit")?.textContent).toContain("G Wayne Rhodes");
     expect(container.querySelector(".place-card-photo-credit")?.textContent).not.toContain("Photo contributor");
   });

@@ -64,10 +64,14 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
   },
   "cunningham-falls-state-park-thurmont": {
     file: "Cunningham Falls.jpg",
-    alt: "Cunningham Falls cascading over the rocks at Cunningham Falls State Park near Thurmont.",
+    alt: "Cunningham Falls partially frozen in February 2005 at Cunningham Falls State Park near Thurmont.",
     author: "Alyson Hurt",
     license: "CC BY 2.0",
     source_url: "https://commons.wikimedia.org/wiki/File:Cunningham_Falls.jpg",
+    localSrc: "/place-photos/cunningham-falls.jpg",
+    licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
+    modifications: "Historical photograph from February 2005. Display may resize or crop.",
+    preferLocal: true,
     verified: true,
   },
   "francis-scott-key-grave-and-monument": {
@@ -133,10 +137,13 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
   },
   "catoctin-furnace-thurmont": {
     file: "Catoctin Iron Furnace copy.jpg",
-    alt: "The stone Catoctin Iron Furnace ruins and casting shed near Thurmont.",
+    alt: "The stone Catoctin Iron Furnace ruins and casting shed near Thurmont, photographed in 2017.",
     author: "G Wayne Rhodes",
     license: "CC BY-SA 4.0",
     source_url: "https://commons.wikimedia.org/wiki/File:Catoctin_Iron_Furnace_copy.jpg",
+    localSrc: "/place-photos/catoctin-furnace.jpg",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+    modifications: "Resized to 1,200 px and recompressed as JPEG; display may crop the photograph.",
     verified: true,
     // Google hero is a waterfall, not the iron furnace (misattributed).
     preferCurated: true,

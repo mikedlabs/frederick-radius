@@ -45,11 +45,13 @@ describe("Find source identity and failure recovery", () => {
 
   it("shows the exact credit only after a usable image loads, outside the real result anchor", async () => {
     await render();
+    expect(host.querySelector("img")?.getAttribute("src")).toBe("/place-photos/cunningham-falls.jpg");
     expect(host.querySelector(".place-card-photo-credit")).toBeNull();
     await load(host.querySelector("img")!);
     expect(host.textContent).toContain("Photo by Alyson Hurt.");
-    expect(host.querySelector('a[href^="https://commons.wikimedia.org/wiki/File:"]')).not.toBeNull();
-    expect(host.querySelector('a[href^="https://creativecommons.org/"]')).not.toBeNull();
+    expect(host.textContent).toContain("Historical photograph from February 2005. Display may resize or crop.");
+    expect(host.querySelector('a[href="https://commons.wikimedia.org/wiki/File:Cunningham_Falls.jpg"]')).not.toBeNull();
+    expect(host.querySelector('a[href="https://creativecommons.org/licenses/by/2.0/"]')).not.toBeNull();
     expect(host.querySelector("a a")).toBeNull();
     expect(host.querySelector('a[href^="/places/"]')?.textContent).toContain("Cunningham Falls");
   });
@@ -120,15 +122,18 @@ describe("Find source identity and failure recovery", () => {
   });
 
   it("uses a single sharper width of the same free Commons source without changing its record", async () => {
-    const original = commons.src;
-    await renderLead(commons);
+    const remote = freeSearchPlaceVisual({ slug: "francis-scott-key-grave-and-monument" })!;
+    const original = remote.src;
+    await renderLead(remote, "Francis Scott Key Grave and Monument");
     expect(host.querySelectorAll("img")).toHaveLength(1);
     const src = host.querySelector("img")!.getAttribute("src")!;
     expect(new URL(src).searchParams.get("width")).toBe("720");
     expect(new URL(src).pathname).toBe(new URL(original).pathname);
-    expect(commons.src).toBe(original);
+    expect(remote.src).toBe(original);
     await load(host.querySelector("img")!);
-    expect(host.textContent).toContain("Alyson Hurt");
+    expect(host.textContent).toContain("Engineerchange");
+    expect(host.querySelector('a[href="https://commons.wikimedia.org/wiki/File:Francis_Scott_Key_Monument_(March_2024).jpg"]')).not.toBeNull();
+    expect(host.querySelector('a[href="https://creativecommons.org/licenses/by-sa/4.0"]')).not.toBeNull();
   });
 
   it("ignores an old A callback after switching from A to B and back to A", async () => {

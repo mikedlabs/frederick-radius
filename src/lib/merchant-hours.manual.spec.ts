@@ -6,7 +6,7 @@ import { MERCHANT_HOURS_SOURCES, acceptReviewedMerchantHoursCandidate, merchantH
 import { getOpenStatus, hoursForDate } from "./hours";
 import { openingHoursJsonLd, specialOpeningHoursJsonLd } from "./seo/jsonld";
 
-const NOW = new Date("2026-10-20T12:00:00.000Z");
+const NOW = new Date("2026-10-20T23:45:00.000Z");
 const sumittra = MERCHANT_HOURS_SOURCES.find((source) => source.slug === "sumittra-thai-cuisine")!;
 const iguana = MERCHANT_HOURS_SOURCES.find((source) => source.slug === "the-curious-iguana-frederick")!;
 const porto = MERCHANT_HOURS_SOURCES.find((source) => source.slug === "il-porto-restaurant")!;
@@ -36,12 +36,13 @@ const nativeFixtures: Record<string, string> = {
   pistarros: "pistarros", "jojos-restaurant-tap-house": "jojos-restaurant-tap-house", "thai-table-frederick": "thai-table-frederick",
   "thai-meric-eatery-bar-frederick": "thai-meric-eatery-bar-frederick", "white-rabbit-gastropub": "white-rabbit-gastropub",
   "il-porto-restaurant": "il-porto-restaurant",
+  "kulfi-ice-creams-frederick": "kulfi-ice-creams-frederick",
 };
 const native = MERCHANT_HOURS_SOURCES.filter((source) => !("collection" in source && source.collection === "manual"));
 function baseline() {
   return artifact(...MERCHANT_HOURS_SOURCES.map((source) => manual.some((item) => item.slug === source.slug)
     ? parse(source)
-    : parse(source, fixture(nativeFixtures[source.slug]), "2026-10-20T11:56:00.000Z")));
+    : parse(source, fixture(nativeFixtures[source.slug]), source.slug === "kulfi-ice-creams-frederick" ? "2026-10-20T23:40:48.409Z" : "2026-10-20T11:56:00.000Z")));
 }
 const nativeFetcher = () => vi.fn(async (url: string) => {
   const source = native.find((item) => item.url === url);

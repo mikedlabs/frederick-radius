@@ -2,11 +2,11 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import MERCHANT from "@/data/places-merchant-hours.json";
-import OFFICIAL from "@/data/places-official-hours.json";
 import CLIENT from "@/data/places-client.json";
-import { merchantHoursForPlace } from "@/lib/merchant-hours";
-import { officialHoursForPlace } from "@/lib/official-hours";
+import { merchantHoursForPlace, MERCHANT_HOURS_SOURCES, type MerchantHoursArtifact } from "@/lib/merchant-hours";
+import { officialHoursForPlace, FCPL_HOURS_URL, FCPL_CLOSURES_URL } from "@/lib/official-hours";
+import { parseMerchantOfficialHours } from "../scripts/lib/merchant-official-hours";
+import { parseFcplOfficialHours } from "../scripts/lib/fcpl-official-hours";
 import type { PlaceCardPhotoPlan } from "@/lib/place-card-photo";
 import {
   buildListingMaintenanceReport, renderListingMaintenanceMarkdown,
@@ -15,6 +15,19 @@ import {
 import { parseMaintenanceArguments, runListingMaintenanceReport } from "../scripts/listing-maintenance-report";
 
 const AS_OF = new Date("2026-10-20T12:00:00.000Z");
+// Immutable source replays test acceptance and expiry independently of real
+// publication holds or a later successful source refresh.
+const MERCHANT: MerchantHoursArtifact = { schema_version: 1, review: [], places: [
+  ["brewers-alley-frederick", "brewers-alley", "2026-10-19T23:24:49.283Z"],
+  ["gravel-and-grind-frederick", "gravel-and-grind", "2026-10-19T23:24:50.964Z"],
+].map(([slug, file, observedAt]) => {
+  const source = MERCHANT_HOURS_SOURCES.find((item) => item.slug === slug)!;
+  return parseMerchantOfficialHours(source, { url: source.url, html: readFileSync(`tests/fixtures/merchant-hours/${file}.html`, "utf8"), observedAt }, AS_OF);
+}) };
+const LIBRARY_AS_OF = new Date("2026-10-12T16:00:00.000Z");
+const OFFICIAL = parseFcplOfficialHours(
+  { url: FCPL_HOURS_URL, observedAt: "2026-10-12T09:13:00.000Z", html: readFileSync("tests/fixtures/fcpl-hours-index.html", "utf8") },
+  { url: FCPL_CLOSURES_URL, observedAt: "2026-10-12T09:18:00.000Z", html: readFileSync("tests/fixtures/fcpl-holiday-closings.html", "utf8") }, LIBRARY_AS_OF);
 const SHA = "a".repeat(40);
 const VERSION = `sha256:${"b".repeat(64)}`;
 const WEEK = { mon: [{ open: "09:00", close: "17:00" }] };
@@ -77,6 +90,18 @@ describe("listing maintenance hours truth", () => {
     const artifact = { ...MERCHANT, review: [{ slug: p.slug, checked_at: AS_OF.toISOString(), reason }] };
     expect(firstHours(p, { merchantHours: artifact })).toMatchObject({ state: "needs_review", reason: `merchant_${reason}`, observed_at: raw.observed_at });
   });
+  it("retains both failed-source holds without freshening or discarding the previous approved evidence", () => {
+    const held: MerchantHoursArtifact = { ...MERCHANT, review: MERCHANT.places.map((row) => ({
+      slug: row.slug, checked_at: "2026-10-20T09:32:45.347Z", reason: "source_unavailable",
+    })) };
+    for (const raw of held.places) {
+      const source = MERCHANT_HOURS_SOURCES.find((item) => item.slug === raw.slug)!;
+      const p = base({ slug: raw.slug, name: raw.source_name, category: source.category, website: raw.source_url });
+      expect(merchantHoursForPlace(p, held, AS_OF)).toEqual({ enrolled: true });
+      expect(firstHours(p, { merchantHours: held })).toMatchObject({ state: "needs_review", reason: "merchant_source_unavailable", observed_at: raw.observed_at, expires_at: raw.expires_at });
+    }
+    expect(held.places).toEqual(MERCHANT.places);
+  });
   it("does not let a mismatched historical provider row override current first-party proof", () => {
     const raw = MERCHANT.places[1];
     const p = base({ slug: raw.slug, name: raw.source_name, category: "coffee", website: raw.source_url });
@@ -92,12 +117,12 @@ describe("listing maintenance hours truth", () => {
   it("requires both library artifacts and suppresses expired or identity-mismatched library evidence", () => {
     const raw = OFFICIAL.places[0];
     const p = base({ slug: raw.slug, name: raw.source_name, category: "library", website: raw.source_url });
-    const approved = officialHoursForPlace(p, OFFICIAL, AS_OF);
+    const approved = officialHoursForPlace(p, OFFICIAL, LIBRARY_AS_OF);
     const shipped = { ...p, hours: approved.hours, hours_verified: true, hours_updated_at: approved.observedAt };
-    expect(firstHours(shipped, { officialHours: OFFICIAL }).state).toBe("current");
-    expect(firstHours(shipped, { officialHours: { ...OFFICIAL, closures: {} } }).state).toBe("needs_review");
-    expect(firstHours(shipped, { officialHours: OFFICIAL, asOf: new Date("2026-10-26T12:00:00Z") }).state).toBe("stale");
-    expect(firstHours({ ...shipped, website: "https://different.org/" }, { officialHours: OFFICIAL }).state).toBe("needs_review");
+    expect(firstHours(shipped, { officialHours: OFFICIAL, asOf: LIBRARY_AS_OF }).state).toBe("current");
+    expect(firstHours(shipped, { officialHours: { ...OFFICIAL, closures: {} }, asOf: LIBRARY_AS_OF }).state).toBe("needs_review");
+    expect(firstHours(shipped, { officialHours: OFFICIAL, asOf: new Date(Date.parse(OFFICIAL.expires_at) + 1) }).state).toBe("stale");
+    expect(firstHours({ ...shipped, website: "https://different.org/" }, { officialHours: OFFICIAL, asOf: LIBRARY_AS_OF }).state).toBe("needs_review");
   });
 });
 

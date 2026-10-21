@@ -2675,6 +2675,27 @@ sources:
       Exact Frederick location at 200 S Market Street and phone 301-620-7480. Never inherit the Gaithersburg location phone or schedule.
       One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
 
+  - id: kulfi_hours
+    name: "Kulfi Ice Creams — First-party Hours"
+    owner: "Kulfi Ice Creams"
+    url: https://kulfi-icecream.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Kulfi Ice Creams"
+    status: active
+    collection: workflow
+    evidence_aliases: [kulfi_hours, https://kulfi-icecream.com/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 5241 Buckeystown Pike shop and phone 240-815-5466. Both posted weekly schedules must agree; a shared PM suffix is interpreted only for this reviewed source.
+      One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
+
   - id: sumittra_hours
     name: "Sumittra Thai Cuisine — First-party Hours"
     owner: "Sumittra Thai Cuisine"
