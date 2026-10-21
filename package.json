@@ -4,6 +4,7 @@
   "private": true,
   "packageManager": "npm@10.9.8",
   "scripts": {
+    "postinstall": "node scripts/backport-next-image-socket.cjs",
     "predev": "npm run data:release:check && node scripts/build-fair-photo-viewer.mjs",
     "dev": "next dev",
     "dev:refresh-data": "npm run build:client-places && next dev",
