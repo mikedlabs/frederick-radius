@@ -157,6 +157,7 @@ jobs:
           e2e/map-seeded-sheet-continuity.spec.ts
           e2e/events-nearby-visual-cards.spec.ts
           e2e/safari-back-readiness.spec.ts
+          e2e/map-place-response-deadline.spec.ts
           --project=webkit-mobile --workers=1 --retries=1
         env:
           NEXT_TELEMETRY_DISABLED: "1"

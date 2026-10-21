@@ -1,12 +1,20 @@
 import type { MapPinPlace } from "./types";
 import { beginMapSourceTiming } from "./mapPerf";
+import { startBoundedJsonRequest } from "@/lib/bounded-json-request";
 
 type MapPlacesPayload = {
   generatedAt: string;
   places: MapPinPlace[];
 };
 
-let pending: Promise<MapPlacesPayload> | null = null;
+export const MAP_PLACES_REQUEST_TIMEOUT_MS = 10_000;
+
+type MapPlacesFlight = {
+  promise: Promise<MapPlacesPayload>;
+  cancel: () => void;
+};
+
+let pending: MapPlacesFlight | null = null;
 
 function validPayload(value: unknown): value is MapPlacesPayload {
   if (!value || typeof value !== "object") return false;
@@ -26,17 +34,20 @@ function validPayload(value: unknown): value is MapPlacesPayload {
 }
 
 export function loadMapPlaces(): Promise<MapPlacesPayload> {
-  if (pending) return pending;
+  if (pending) return pending.promise;
   const finishTiming = beginMapSourceTiming("places");
-  pending = fetch("/api/map/places", {
+  const task = startBoundedJsonRequest("/api/map/places", {
     credentials: "same-origin",
     headers: { accept: "application/json" },
-  })
-    .then(async (response) => {
-      if (!response.ok) {
-        throw new Error(`Map places returned ${response.status}`);
+  }, { deadlineMs: MAP_PLACES_REQUEST_TIMEOUT_MS, label: "Map places" });
+  const flight: MapPlacesFlight = {
+    cancel: task.cancel,
+    promise: task.promise.then((payload) => {
+      // A reset may retire an already-resolved request before this continuation
+      // runs. It must neither publish that old result nor affect its successor.
+      if (pending !== flight) {
+        throw new DOMException("Map places request cancelled", "AbortError");
       }
-      const payload: unknown = await response.json();
       if (!validPayload(payload)) throw new Error("Map places were malformed");
       finishTiming(payload.places.length > 0 ? "ready" : "empty");
       return payload;
@@ -47,10 +58,12 @@ export function loadMapPlaces(): Promise<MapPlacesPayload> {
         error instanceof DOMException &&
         error.name === "AbortError";
       finishTiming(aborted ? "aborted" : "error");
-      pending = null;
+      if (pending === flight) pending = null;
       throw error;
-    });
-  return pending;
+    }),
+  };
+  pending = flight;
+  return flight.promise;
 }
 
 /** Starts the data request from the static map shell, before the GL chunk mounts. */
@@ -60,5 +73,7 @@ export function warmMapPlaces(): void {
 
 /** Test/retry hook; never needed during a successful map session. */
 export function resetMapPlacesRequest(): void {
+  const retired = pending;
   pending = null;
+  retired?.cancel();
 }

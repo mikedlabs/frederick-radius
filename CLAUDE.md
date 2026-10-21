@@ -4,7 +4,22 @@ A current local information app for Frederick County, MD (12 incorporated munici
 plus Urbana). Next.js App Router on Vercel · Supabase · Mapbox GL ·
 Google Places. Production: https://frederickradius.app
 
+## Start from the reviewed code
+
+Before editing, inspect the checkout's branch, revision and local changes, then
+compare it with current `origin/main`. Several preserved worktrees contain older
+unfinished designs. Declare one release checkout and branch for the task;
+reconcile useful patches from older work without resetting unrelated changes.
+An edit in another folder or an open PR is not a live update. Verify the exact
+merged revision, ready deployment and public behavior before calling it live.
+
 ## Design system — this is the truth, not older specs
+
+These describe the currently approved design. When the owner authorizes a
+design change, update its tokens, guide and relevant visual contracts together.
+Preserve contrast, usable touch targets, focus, Back continuity and reduced
+motion while changing the appearance; old implementation details are not a
+reason to abandon an approved improvement.
 
 The canonical brand guide is `docs/brand/BRAND_GUIDE.md`; the printable visual
 guide is `docs/brand/Frederick-Radius-Brand-Guide.html`, which is
@@ -126,12 +141,13 @@ Back behavior when adding or changing tools.
   `src/lib/format/placeName.ts`. Surfaces render what loaders hand them.
 - **Human corrections** live in `src/data/places-overrides.json`
   (fold/remove/patch). Patches win over automated normalizers by design.
-- **One unified event set:** `src/lib/loaders/unifiedEvents.ts` is THE
-  assembly (curated + iCal + Ticketmaster + Bandsintown + venue lineups,
-  deduped, classified, time-sanity-guarded). /today and /events both call
-  it; never count events from a different query. During application builds it
-  deliberately reads only promoted curated + venue snapshots; publisher feeds
-  rejoin through the same assembly at runtime.
+- **One canonical event pipeline:** `src/lib/loaders/unifiedEvents.ts` assembles
+  curated, iCal, Ticketmaster, Bandsintown and venue records for the owned
+  warm/archive jobs. Public Today and Events use the bounded canonical archive
+  readers in `src/lib/loaders/todayEventSnapshot.ts`, with honest degraded
+  states and promoted fallback records. Keep live publisher fanout out of the
+  visitor path. Application builds use reviewed promoted artifacts, validate
+  them and never refresh live sources.
 - **After changing place data or its cleaning:** regenerate the client
   dataset — `npm run build:client-places` (search/map/funnel read
   `places-client.json`, not the loaders), run its gates, then update the
@@ -141,18 +157,15 @@ Back behavior when adding or changing tools.
 - **After changing how CACHED data is cleaned/shaped:** bump the
   `unstable_cache` key (e.g. `ingested-series-vN`) — the cache persists
   across deploys. Lesson of PR #509.
-- **The Postgres `places` and `events` tables are NOT the catalog.** Do
-  not read them. `schema.places` is write-only — seeded once by
-  `src/lib/db/seed.ts` and read by nothing at runtime — and it holds
-  a stale partial copy (1,479 rows at the July 2026 audit) with no
-  overrides applied, against a file catalog that moves with every data run
-  (1,570 as of 2026-09-16).
-  `schema.events` is likewise vestigial (44 rows); the live event
-  pipeline is `ingested_events` via `unifiedEvents.ts`. Places come from
-  `src/data/places-client.json` (client surfaces) or
-  `src/lib/loaders/places.ts` (server). Querying the tables looks
-  perfectly reasonable and silently returns a stale, incomplete catalog,
-  which is exactly why this warning exists. Audited July 2026.
+- **The generic Postgres `places` and `events` tables are not the public
+  catalog.** Seed code and retained legacy ingestion endpoints can write these
+  tables without publishing a place or event to the app. Do not wire a public
+  catalog reader to them or report those writes as a public update. Places
+  come from the reviewed committed files through `places-client.json` (client)
+  and `src/lib/loaders/places.ts` (server). Event jobs assemble normalized
+  records and publish the canonical archive; public readers use
+  `event_canonical_records` through the bounded archive loader. Operational
+  audits may inspect the legacy tables to diagnose or retire old writers.
 - **The local search index must never depend on memory.**
   `radius_search_documents` is filled incrementally by the gated
   `/api/cron/radius-search` job and can be bootstrapped immediately with
@@ -231,7 +244,7 @@ Back behavior when adding or changing tools.
 
 ## Branch & PR conventions
 
-Work on `claude/<topic>` branches off CURRENT `origin/main` (fetch first
+Work on `codex/<topic>` branches off CURRENT `origin/main` (fetch first
 — deploy-wait scripts often leave the checkout on a stale branch). One
 concern per PR. Commit messages explain the WHY and cite the audit/issue
 they close.

@@ -1,6 +1,7 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
 
 // Controlled transport fixtures exercise the real Today page and its consumer
 // styles. They do not assert that this venue's hours or photo are current.
@@ -195,3 +196,5 @@ test("Today keeps the owned place visual separate from a real answer without an 
   await testInfo.attach("separate-owned-place-and-uncredited-answer", { contentType: "application/json", body: JSON.stringify({ metadataRequests, uncreditedPhotoRequests, hierarchy, proof: "Real Today composition and owned image; a declared answer/failed credit transport tests honest fallback, not live venue hours or current image availability." }) });
   await page.screenshot({ path: testInfo.outputPath("today-county-no-attributable-photo.png"), fullPage: true });
 });
+
+registerWebkitLoopbackDocumentSeam();

@@ -154,7 +154,7 @@ export default async function HomePage() {
   // assembly here therefore let one pathological feed parser hold /today open
   // for the full 300-second platform timeout. The durable archive is the
   // last-known-good copy of that same unified set. Its read cancels after
-  // 650ms, falls back to curated rows, and carries an honest degraded signal.
+  // one second, falls back to curated rows, and carries an honest degraded signal.
   const eventsPromise = loadTodayEventSnapshot(now);
 
   // WEATHER-CONDITIONAL COMPOSITION — a wet hour leads the daypart shelf with
