@@ -25,6 +25,7 @@ concurrency:
 
 jobs:
   chromium:
+    name: Provider-free Chromium (10 cases; styled map excluded)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -46,10 +47,25 @@ jobs:
         timeout-minutes: 10
         run: npx playwright install --with-deps chromium
 
-      - name: Run visual contracts
-        run: npm run test:visual:${{ inputs.mode }}
+      - name: Run 10 provider-free cases (working styled map excluded)
+        id: visual-contract
+        run: >-
+          npm run test:visual:${{ inputs.mode }} --
+          --grep-invert 'the map chooser preserves the map while revealing one command layer$'
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Record provider-free scope and renderer exclusion
+        if: always()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'SUMMARY'
+          ## Provider-free visual contracts
+          Mode: ${{ inputs.mode }}. Test step outcome: ${{ steps.visual-contract.outcome }}.
+
+          This run covers 10 cases: Find, Ask empty/working, the bus sheet, and Compass at two viewports.
+          The working styled-map chooser reference is excluded. This is not a full visual-suite pass or proof of a loaded map, rendered marks, or map attribution.
+          Styled-map references require a separate approved renderer-enabled run with actual loaded-map and rendered-marks proof. See docs/VISUAL_CONTRACT.md.
+          SUMMARY
 
       - name: Upload review images and pixel diffs
         if: always()
