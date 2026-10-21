@@ -278,7 +278,8 @@ import LiveMarcTrains from "./LiveMarcTrains";
 import WeatherRadar from "./WeatherRadar";
 import LightningDensity from "./LightningDensity";
 import MapboxTraffic from "./MapboxTraffic";
-import { isFatalMapboxError } from "./mapboxFailure";
+import { useMapRendererLifecycle } from "./useMapRendererLifecycle";
+import { shouldApplyInitialMapSelection } from "./mapInitialSelection";
 import LiveIncidents from "./LiveIncidents";
 import LiveRotorcraft, {
   type RotorcraftLayerStatus,
@@ -992,47 +993,23 @@ export default function AppMap({
   // prefs are ignored (and cleared on the next write) so no invisible
   // filter can survive without UI to show or clear it.
   const wantsOsmInitially = (initialAmenityGroups ?? []).length > 0;
-  // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
-  // must degrade to a stable branded state, never a blank rectangle. Missing
-  // build-time credentials are known synchronously, so never mount an empty-
-  // token canvas and wait for an avoidable provider/network failure.
-  const [mapError, setMapError] = useState(() => !MAP_RENDERER_CONFIGURED);
-  // A visible canvas is not proof that Mapbox has loaded its style and sources.
-  // This flag deliberately promises only that the load handler ran. Initial
-  // amenity/selection camera work may still follow, so do not call it settled.
-  const [mapLoaded, setMapLoaded] = useState(false);
-  const mapLoadedRef = useRef(false);
-  // A DNS stall or intercepted style request can fail without dispatching a
-  // useful GL error. Never leave the branded loading scene covering the app
-  // forever; after a generous cold-load window, reveal the existing readable
-  // fallback and keep every non-map result available.
-  useEffect(() => {
-    if (mapLoaded || mapError) return;
-    const timeout = window.setTimeout(() => {
-      setMapError(true);
-      onVisualReady?.();
-    }, 10_000);
-    return () => window.clearTimeout(timeout);
-  }, [mapError, mapLoaded, onVisualReady]);
-  useEffect(() => {
-    if (MAP_RENDERER_CONFIGURED) return;
-    onVisualReady?.();
-  }, [onVisualReady]);
-  // A browser with no WebGL (locked-down corporate profile, a headless/bot
-  // client, GPU blocklisted) can never paint the GL canvas — react-map-gl just
-  // renders an empty rectangle, which is exactly the "map failed to load" a
-  // reviewer hit. Distinguish it from a transient token/network error so the
-  // fallback copy is honest: "reload" won't fix an unsupported browser. Checked
-  // once on mount (client only); the same branded overlay covers the dead canvas.
-  const [mapUnsupported, setMapUnsupported] = useState(false);
-  useEffect(() => {
-    if (!MAP_RENDERER_CONFIGURED) return;
-    if (!hasWebGL()) {
-      setMapUnsupported(true);
-      setMapError(true);
-      onVisualReady?.();
-    }
-  }, [onVisualReady]);
+  // Missing config, unsupported WebGL and hard renderer failures are terminal.
+  // A delayed load exposes the same useful list without destroying its map.
+  // Loaded still means only the load handler ran; rendered marks have their
+  // own health probe below and must not inherit that weaker readiness claim.
+  const {
+    mapError,
+    mapLoaded,
+    mapUnsupported,
+    failureKind: mapFailureKind,
+    mountRenderer,
+    markLoaded: markRendererLoaded,
+    reportError: reportRendererError,
+  } = useMapRendererLifecycle({
+    configured: MAP_RENDERER_CONFIGURED,
+    supportsWebGL: hasWebGL,
+    onVisualReady,
+  });
   // P0-10: a graceful note when the user denies (or we cannot get)
   // geolocation, instead of the "Near me" button silently doing nothing.
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
@@ -1876,6 +1853,9 @@ export default function AppMap({
 
   const dismissMapSelection = useCallback(() => {
     if (selectionHistoryDismissRequestedRef.current) return;
+    // Consume initial intent before an asynchronous Back can update the URL.
+    deepLinkPlaceAppliedRef.current = true;
+    deepLinkEventAppliedRef.current = true;
     const shouldCloseHistory =
       selectionHistoryEntryRef.current ||
       isMapSelectionHistoryState(window.history.state);
@@ -2166,6 +2146,9 @@ export default function AppMap({
         );
         return;
       }
+      // A newer explicit pick owns selection even before React/URL settle.
+      deepLinkPlaceAppliedRef.current = true;
+      deepLinkEventAppliedRef.current = true;
       rememberMapSelectionOpener();
       if (addHistory) {
         // Non-entity data lives only in the bounded session store. Browser
@@ -4641,6 +4624,7 @@ export default function AppMap({
       data-dock-pane={dock ? (dockPaneOpen ? "open" : "closed") : undefined}
       data-map-peek={dock && selectionOpen ? "open" : undefined}
       data-map-error={mapError || undefined}
+      data-map-failure-kind={mapFailureKind ?? undefined}
       data-map-loaded={dock && mapLoaded ? "true" : undefined}
       data-map-location-accuracy={
         dock && userLoc && clampedAccuracyM ? clampedAccuracyM : undefined
@@ -4976,7 +4960,8 @@ export default function AppMap({
           nearby places, current events, travel details, or local conditions.
         </p>
 
-        {!mapError && (
+        {mountRenderer && (
+        <div className="h-full w-full" inert={mapFailureKind === "soft"} aria-hidden={mapFailureKind === "soft" || undefined}>
         <Map
           ref={attachMapRef}
           aria-label="Interactive map of Frederick County"
@@ -5080,6 +5065,9 @@ export default function AppMap({
           }}
           onClick={onClick}
           onLoad={(e) => {
+            // A late callback must not revive a terminal renderer or mutate
+            // its removed camera. Accepted loads clear only soft fallback.
+            if (!markRendererLoaded()) return;
             // `touchPitch={false}` prevents two-finger tilting, but MapLibre's
             // combined pinch handler can still rotate unless it is disabled
             // directly. Pinch zoom remains available.
@@ -5119,8 +5107,6 @@ export default function AppMap({
             installCountySpotlight(e.target);
             markMapOnLoad();
             commitResultViewport(e.target);
-            setMapLoaded(true);
-            mapLoadedRef.current = true;
             // `load` means Mapbox has a renderable style. Waiting for a later
             // network-idle event kept the decorative loading cover over an
             // already usable map, especially on slow live feeds. Two paint
@@ -5162,7 +5148,10 @@ export default function AppMap({
             }
             if (!deepLinkPlaceAppliedRef.current && initialPlaceSlug) {
               deepLinkPlaceAppliedRef.current = true;
-              const place = places.find((candidate) => candidate.slug === initialPlaceSlug);
+              const place = shouldApplyInitialMapSelection(
+                "place", initialPlaceSlug, window.location.search,
+                peekPlace?.slug === selectedSlug ? selectedSlug : null,
+              ) ? places.find((candidate) => candidate.slug === initialPlaceSlug) : null;
               if (place) {
                 openMapSelection(
                   { kind: "place", value: place },
@@ -5176,9 +5165,12 @@ export default function AppMap({
               !initialPlaceSlug
             ) {
               deepLinkEventAppliedRef.current = true;
-              const event = events.find(
+              const event = shouldApplyInitialMapSelection(
+                "event", initialEventSlug, window.location.search,
+                selectedEvent?.slug ?? null,
+              ) ? events.find(
                 (candidate) => candidate.slug === initialEventSlug,
-              );
+              ) : null;
               if (event) {
                 openMapSelection(
                   { kind: "event", value: event },
@@ -5392,10 +5384,7 @@ export default function AppMap({
           }}
           onError={(e) => {
             const msg = String(e?.error?.message ?? "");
-            if (isFatalMapboxError(msg, mapLoadedRef.current)) {
-              setMapError(true);
-              onVisualReady?.();
-            }
+            reportRendererError(msg);
           }}
           onMouseMove={onHover}
           onMouseLeave={() => setHover(null)}
@@ -7253,6 +7242,7 @@ export default function AppMap({
             <GeolocateControl position="bottom-right" trackUserLocation />
           )}
         </Map>
+        </div>
         )}
 
         <p
