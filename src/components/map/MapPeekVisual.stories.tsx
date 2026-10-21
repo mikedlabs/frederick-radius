@@ -62,6 +62,18 @@ async function reachable(target: HTMLElement) {
   });
 }
 
+/** Summary activation needs native input: Storybook's synthetic focus
+ * selector treats this real control as its focusable parent instead. */
+async function clickPhotoEdits(summary: HTMLElement) {
+  if ((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) {
+    const browser = await import("vitest/browser");
+    let trusted = false;
+    summary.addEventListener("pointerdown", event => { trusted = event.isTrusted; }, { once: true });
+    await browser.userEvent.click(summary);
+    await expect(trusted).toBe(true);
+  } else summary.click();
+}
+
 const checkPreview: NonNullable<Story["play"]> = async ({ canvasElement, args }) => {
   const canvas = within(canvasElement);
   const surface = canvasElement.querySelector<HTMLElement>("[data-map-result-surface]")!;
@@ -174,12 +186,15 @@ export const LicensedPlace: Story = {
     await expect(fullEdits).not.toBeVisible();
     for (const target of [sourceLink, licenseLink, editSummary]) await reachable(target);
     editSummary.focus();
-    await userEvent.click(editSummary);
+    await clickPhotoEdits(editSummary);
+    await expect(editSummary.closest("details")).toHaveAttribute("open");
     await expect(fullEdits).toBeVisible();
     await expect(editSummary).toHaveFocus();
     for (const target of [sourceLink, licenseLink, editSummary, canvas.getByRole("link", { name: /^Directions$/ }), canvas.getByRole("button", { name: `Close ${context.args.place.name}` })]) await reachable(target);
-    await userEvent.click(editSummary);
+    await clickPhotoEdits(editSummary);
+    await expect(editSummary.closest("details")).not.toHaveAttribute("open");
     await expect(fullEdits).not.toBeVisible();
+    await expect(editSummary).toHaveFocus();
     await expect(context.args.onDetails).toHaveBeenCalledOnce();
   },
 };

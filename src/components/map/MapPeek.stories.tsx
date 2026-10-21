@@ -33,6 +33,18 @@ async function expectDecodedImage(image: HTMLImageElement) {
   }, { timeout: 5000 });
 }
 
+/** Storybook's synthetic focus selector omits summary. Exercise the native
+ * pointer in browser tests without repairing focus after the interaction. */
+async function clickPhotoEdits(summary: HTMLElement) {
+  if ((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) {
+    const browser = await import("vitest/browser");
+    let trusted = false;
+    summary.addEventListener("pointerdown", event => { trusted = event.isTrusted; }, { once: true });
+    await browser.userEvent.click(summary);
+    await expect(trusted).toBe(true);
+  } else summary.click();
+}
+
 const plan: PlaceCardPhotoPlan = {
   key: "map-peek-source-transition-component-fixture",
   sources: [
@@ -131,12 +143,15 @@ export const FallbackAndExhaustionAt320: Story = {
     await expect(canvas.getByRole("link", { name: "CC BY-SA 4.0" })).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0");
     await expect(details).toHaveFocus();
     editSummary.focus();
-    await userEvent.click(editSummary);
+    await clickPhotoEdits(editSummary);
+    await expect(editSummary.closest("details")).toHaveAttribute("open");
     await expect(fullEdits).toBeVisible();
     await expect(canvas.getByText("The photo is by Component Commons fixture on Wikimedia Commons.")).toBeVisible();
     await expect(editSummary).toHaveFocus();
-    await userEvent.click(editSummary);
+    await clickPhotoEdits(editSummary);
+    await expect(editSummary.closest("details")).not.toHaveAttribute("open");
     await expect(fullEdits).not.toBeVisible();
+    await expect(editSummary).toHaveFocus();
     details.focus();
     await expect(canvas.getByText("Hours not confirmed")).toBeVisible();
     await expect(root.querySelectorAll("img")).toHaveLength(1);

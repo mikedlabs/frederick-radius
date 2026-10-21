@@ -100,6 +100,33 @@ describe("photo-forward discovery card contracts", () => {
     factsSurvive();
   });
 
+  it("gives a long discovery title its own heading row and prints the complete date only with timing", () => {
+    const title = "Fictional community performance, artist conversation and neighborhood gathering at Baker Park";
+    render({ ...owned, title }, "free-reviewed", "discovery");
+    const heading = host.querySelector("[data-event-card-heading]")!;
+    expect(heading.querySelector("h3")?.textContent).toBe(title);
+    expect(heading.querySelector("h3")?.parentElement).toBe(heading);
+    expect(heading.textContent).not.toContain("OCT");
+    expect(host.querySelector("[data-event-card-time]")?.textContent).toBe("Wed OCT 10 · 7:00 PM–9:00 PM");
+    expect(host.querySelectorAll("[data-event-card-time]")).toHaveLength(1);
+    expect(host.querySelector("img")?.getAttribute("src")).toBe("/images/seasons/fall/018.jpg");
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: "all-day", patch: { is_all_day: true }, expected: "Wed OCT 10 · All day" },
+    { label: "unknown end", patch: { ends_at: candidate.starts_at }, expected: "Wed OCT 10 · 7:00 PM · end time not listed" },
+    { label: "cancelled", patch: { status: "cancelled" as const }, expected: "Wed OCT 10 · 7:00 PM–9:00 PM" },
+    { label: "postponed", patch: { status: "postponed" as const }, expected: "Wed OCT 10 · 7:00 PM–9:00 PM" },
+  ])("retains exact discovery timing for $label events without a live claim", ({ patch, expected }) => {
+    render({ ...owned, ...patch }, "free-reviewed", "discovery");
+    expect(host.querySelector("[data-event-card-time]")?.textContent).toBe(expected);
+    if (patch.status) expect(host.textContent).toContain(patch.status === "cancelled" ? "Cancelled" : "Postponed");
+    expect(host.textContent).not.toContain("Happening now");
+    expect(host.querySelector(".live-dot")).toBeNull();
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it("keeps approved publisher artwork source-specific and outside the factual open-event target", () => {
     render({ ...candidate, source: "dfp", hero_image: "https://ik.imagekit.io/vibemap/offline-publisher-layout.jpg",
       source_url: "https://downtownfrederick.org/vm-event/offline-publisher-layout/", hero_image_attribution: undefined }, "free-reviewed", "discovery");

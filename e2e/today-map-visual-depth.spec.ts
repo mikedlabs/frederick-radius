@@ -259,8 +259,10 @@ test("Today shows a real photograph on arrival while weather and Find lead at 39
     const box = (selector: string) => { const r = document.querySelector(selector)!.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
     const weather = box("[data-today-weather]"), find = box('[data-surface-row="find"]'), entry = box("[data-today-entry-controls]");
     const photo = box("[data-today-photo-lead]"), quick = box('[role="group"][aria-label="Quick needs"]');
+    const events = box('[role="group"][aria-label="Follow the day"]'), places = box('[aria-label="Places for your area"]');
+    const news = box('section[aria-label="Local news"]'), explore = box('section[aria-labelledby="today-explore-heading"]');
     const nav = box('[data-bottom-nav-shell] nav[aria-label="Primary"]');
-    return { scrollY, weather, find, entry, photo, quick, nav, visiblePhoto: Math.max(0, Math.min(photo.bottom, nav.top) - Math.max(photo.top, weather.top)) };
+    return { scrollY, weather, find, entry, photo, events, places, news, explore, quick, nav, visiblePhoto: Math.max(0, Math.min(photo.bottom, nav.top) - Math.max(photo.top, weather.top)) };
   });
   evidence.measurements.arrival = geometry;
   expect(geometry.scrollY).toBe(0);
@@ -270,8 +272,14 @@ test("Today shows a real photograph on arrival while weather and Find lead at 39
   expect(geometry.find.bottom).toBeLessThanOrEqual(geometry.nav.top);
   expect(geometry.visiblePhoto, "a substantial decoded image is visible before the fixed tabs without scrolling").toBeGreaterThanOrEqual(120);
   expect(geometry.entry.height, "Find+scope do not grow into another full card before photography").toBeLessThanOrEqual(160);
-  expect(geometry.photo.bottom).toBeLessThanOrEqual(geometry.quick.top);
+  expect(geometry.photo.bottom).toBeLessThanOrEqual(geometry.events.top);
+  expect(geometry.events.bottom).toBeLessThanOrEqual(geometry.places.top);
+  expect(geometry.places.bottom).toBeLessThanOrEqual(geometry.news.top);
+  expect(geometry.news.bottom).toBeLessThanOrEqual(geometry.explore.top);
+  expect(geometry.quick.top).toBeGreaterThanOrEqual(geometry.explore.top);
   const quick = page.getByRole("group", { name: "Quick needs", exact: true });
+  await expect(quick).toHaveCount(1);
+  await expect(page.getByRole("region", { name: "More ways to explore", exact: true }).getByRole("group", { name: "Quick needs", exact: true })).toHaveCount(1);
   await expect(quick.getByRole("link")).toHaveCount(4);
   const targets = [];
   for (const control of [page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }), page.getByRole("combobox", { name: "Choose your area", exact: true }), ...await quick.getByRole("link").all()]) targets.push(await target44(control));

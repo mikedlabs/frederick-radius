@@ -64,10 +64,11 @@ import {
  *   1. Identity       → active alerts and the time-aware masthead
  *   2. Conditions     → one verified weather glance before browsing
  *   3. Find and see   → one Find doorway, then an exact scoped place photograph
- *                       and four practical shortcuts
+ *                       before the current local answers
  *   4. Follow the day → a short event program and one location-aware place answer
- *   5. Plan the rest  → scheduled utilities, sports, light, and tomorrow
- *   6. Keep exploring → local guides and saved places, collapsed
+ *   5. Keep exploring → four practical shortcuts and the category index
+ *   6. Plan the rest  → scheduled utilities, sports, light, and tomorrow
+ *   7. Local guides   → local guides and saved places, collapsed
  *
  * (The old generated "best move now" card was removed 2026-06-18 because it
  *  promoted ideas without enough evidence. Today may recommend carefully when
@@ -282,18 +283,13 @@ export default async function HomePage() {
           </div>
         </div>
 
-      {/* Put an actual place photograph on arrival, before the utility grid
-          and event program. This owned Frederick doorway stays hidden for
+      {/* Put an actual place photograph on arrival, before the local answers.
+          This owned Frederick doorway stays hidden for
           other town and Near me lenses; it makes no current-conditions claim.
           Until the URL lens is known, its fallback is deliberately neutral. */}
       <Suspense fallback={<TodayGeographicDoorwayPending />}>
         <TodayGeographicDoorway />
       </Suspense>
-
-      {/* All four practical actions remain together below the first visual. */}
-      <div className={styles.quickNeeds}>
-        <TodayQuickNeeds />
-      </div>
 
       <div data-today-current-content className={styles.currentContent}>
       <PageChapter
@@ -329,9 +325,11 @@ export default async function HomePage() {
         <LocalNewsBrief />
       </Suspense>
 
-      <section aria-labelledby="today-explore-heading">
+      <section aria-labelledby="today-explore-heading" className={styles.quickNeeds}>
         <h2 id="today-explore-heading" className={styles.utilityHeading}>More ways to explore</h2>
-        <TodayQuickNeeds showShortcuts={false}><CravingStrip /></TodayQuickNeeds>
+        {/* Keep all four utility doors together once, after the current local
+            answers, with the existing category disclosure below them. */}
+        <TodayQuickNeeds><CravingStrip /></TodayQuickNeeds>
         <div className={styles.planLink}>
           <Suspense fallback={null}><TodayPlanTonightLink /></Suspense>
         </div>

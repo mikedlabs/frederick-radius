@@ -44,14 +44,14 @@ describe("Today decision hierarchy", () => {
     expect(events).toBeGreaterThan(weather);
   });
 
-  it("puts the owned scene before four quick needs, events and one area answer, with categories after news", () => {
+  it("lets the owned scene and current local answers lead one utility deck after news", () => {
     const find = renderedPage.indexOf("<TodayAsk embedded showQuickNeeds={false}");
     const doorway = renderedPage.indexOf("<TodayGeographicDoorway />");
-    const shortcuts = renderedPage.indexOf("<TodayQuickNeeds />");
     const lead = renderedPage.indexOf("{decisionLead}");
     const events = renderedPage.indexOf("{whatsOn}");
     const news = renderedPage.indexOf("<LocalNewsBrief");
-    const categories = renderedPage.indexOf("<TodayQuickNeeds showShortcuts={false}><CravingStrip /></TodayQuickNeeds>");
+    const explore = renderedPage.indexOf('aria-labelledby="today-explore-heading"');
+    const shortcuts = renderedPage.indexOf("<TodayQuickNeeds><CravingStrip /></TodayQuickNeeds>");
 
     expect(find).toBeGreaterThan(-1);
     expect(doorway).toBeGreaterThan(find);
@@ -59,15 +59,15 @@ describe("Today decision hierarchy", () => {
     expect(doorway).toBeLessThan(shortcuts);
     expect(doorway).toBeLessThan(events);
     expect(doorway).toBeLessThan(lead);
-    expect(shortcuts).toBeGreaterThan(find);
-    expect(shortcuts).toBeLessThan(events);
     expect(events).toBeGreaterThan(find);
     expect(events).toBeLessThan(lead);
     expect(news).toBeGreaterThan(lead);
-    expect(categories).toBeGreaterThan(news);
-    expect(renderedPage.match(/<TodayQuickNeeds\s*\/>/g)).toHaveLength(1);
-    expect(renderedPage.match(/<TodayQuickNeeds showShortcuts=\{false\}/g)).toHaveLength(1);
-    expect(renderedPage.match(/<TodayQuickNeeds\b/g)).toHaveLength(2);
+    expect(explore).toBeGreaterThan(news);
+    expect(shortcuts).toBeGreaterThan(explore);
+    expect(renderedPage.match(/<TodayQuickNeeds\b/g)).toHaveLength(1);
+    expect(renderedPage.slice(explore, renderedPage.indexOf("</section>", explore))).toContain(
+      "<TodayQuickNeeds><CravingStrip /></TodayQuickNeeds>",
+    );
     expect(renderedPage.match(/<CravingStrip\b/g)).toHaveLength(1);
 
     const utilityDoors = todayAsk.slice(todayAsk.indexOf("export function TodayQuickNeeds"));

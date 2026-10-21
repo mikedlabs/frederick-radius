@@ -38,6 +38,10 @@ function planForSource(source?: string, googlePhoto = true): PlaceCardPhotoPlan 
   };
 }
 
+function planForCandidates(sources: PlaceCardPhotoPlan["sources"]): PlaceCardPhotoPlan {
+  return { key: JSON.stringify(sources), sources };
+}
+
 describe("MapPeek selected photo and source identity", () => {
   let root: Root;
   let host: HTMLDivElement;
@@ -45,6 +49,7 @@ describe("MapPeek selected photo and source identity", () => {
   afterEach(() => { act(() => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
   const openDetails = vi.fn();
   const render = async (source = src, googlePhoto = true) => act(async () => root.render(<MapPeekPhoto key="fixture-venue" plan={planForSource(source, googlePhoto)} placeName="Fixture venue" glyph="F" color="var(--app-brand)" onOpenDetails={openDetails} />));
+  const renderPlan = async (plan: PlaceCardPhotoPlan) => act(async () => root.render(<MapPeekPhoto key="fixture-venue" plan={plan} placeName="Fixture venue" glyph="F" color="var(--app-brand)" onOpenDetails={openDetails}><button type="button">Details</button></MapPeekPhoto>));
   const load = async (width: number, height: number) => {
     const image = host.querySelector("img")!;
     Object.defineProperty(image, "naturalWidth", { configurable: true, value: width });
@@ -376,6 +381,147 @@ describe("MapPeek selected photo and source identity", () => {
     expect(host.querySelector(".map-peek-source-credit")).toBeNull();
     expect(host.querySelector("img")?.alt).toBe(getOwnedPlacePhoto(slug)!.alt);
     expect(fetchCard).toHaveBeenCalledOnce();
+  });
+
+  it.each(["before", "after"])("keeps the exact licensed local image when Google metadata arrives %s decoding", async timing => {
+    const slug = "brewers-alley-frederick";
+    const place: MapPinPlace = {
+      slug, name: "Brewer's Alley", category: "restaurant", municipality: "frederick",
+      geom: { lat: 39.4143, lng: -77.4105 }, source: "manual", is_verified: true,
+      open_status: { state: "unknown" }, short_blurb: "A selected-card continuity fixture.",
+    };
+    let resolve!: (value: Response) => void;
+    const fetchCard = vi.fn(() => new Promise<Response>(done => { resolve = done; }));
+    vi.stubGlobal("fetch", fetchCard);
+    await act(async () => root.render(<MapPeek place={place} distanceOrigin={null} distanceOriginLabel="from you" onClose={vi.fn()} onDetails={openDetails} />));
+    const image = host.querySelector("img")!;
+    const landmark = getLandmarkPhoto(slug)!;
+    expect(image.getAttribute("src")).toBe(landmark.localSrc);
+    if (timing === "after") await load(1280, 900);
+    const details = host.querySelector<HTMLButtonElement>(".map-peek-details-link")!;
+    details.focus();
+    await act(async () => resolve(Response.json({ place: {
+      slug, google_photo_url: src, google_photo_attribution: credit,
+    } })));
+    expect(host.querySelector("img")).toBe(image);
+    expect(image.dataset.mapPeekPhotoState).toBe(timing === "after" ? "ready" : "loading");
+    expect([...imageCallbacks.keys()].some(value => value.startsWith("/api/place-photo"))).toBe(false);
+    expect(document.activeElement).toBe(details);
+    if (timing === "before") await load(1280, 900);
+    expect(image.alt).toBe(landmark.alt);
+    expect(host.querySelector(`a[href="${landmark.source_url}"]`)?.textContent).toBe(landmark.author);
+    expect(host.textContent).toContain("2004");
+    expect(host.textContent).not.toContain("Fixture Photographer");
+    expect(fetchCard).toHaveBeenCalledOnce();
+  });
+
+  it("uses late eligible Google metadata only after the local file fails and never retries exhausted sources", async () => {
+    const slug = "brewers-alley-frederick";
+    const place: MapPinPlace = {
+      slug, name: "Brewer's Alley", category: "restaurant", municipality: "frederick",
+      geom: { lat: 39.4143, lng: -77.4105 }, source: "manual", is_verified: true,
+      open_status: { state: "unknown" }, short_blurb: "A selected-card fallback fixture.",
+    };
+    let resolve!: (value: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(done => { resolve = done; })));
+    const update = () => act(async () => root.render(<MapPeek place={place} distanceOrigin={null} distanceOriginLabel="from you" onClose={vi.fn()} onDetails={openDetails} />));
+    await update();
+    const localImage = host.querySelector("img")!;
+    const localCallbacks = imageCallbacks.get(localImage.getAttribute("src")!)!;
+    await act(async () => localImage.dispatchEvent(new Event("error")));
+    expect(host.querySelector("img")).toBeNull();
+    await act(async () => resolve(Response.json({ place: {
+      slug, google_photo_url: src, google_photo_attribution: credit,
+    } })));
+    expect(host.querySelector("img")?.dataset.mapPeekPhotoSource).toBe("google");
+    await load(800, 600);
+    const googleImage = host.querySelector("img")!;
+    expect(host.textContent).toContain("Fixture Photographer");
+    await act(async () => {
+      localCallbacks.load({ currentTarget: localImage } as React.SyntheticEvent<HTMLImageElement>);
+      localCallbacks.error({ currentTarget: localImage } as React.SyntheticEvent<HTMLImageElement>);
+    });
+    expect(host.querySelector("img")).toBe(googleImage);
+    await act(async () => googleImage.dispatchEvent(new Event("error")));
+    await update();
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector(".map-peek-source-credit")).toBeNull();
+  });
+
+  it("requires changed local credit to settle again and immediately removes a revoked local candidate", async () => {
+    const local = placeCardPhotoPlan({ slug: "brewers-alley-frederick" }, 104).sources[0];
+    if (local.kind !== "curated") throw new Error("Expected the licensed local fixture");
+    const google = planForSource(src).sources[0];
+    await renderPlan(planForCandidates([local, google]));
+    await load(1280, 900);
+    const oldImage = host.querySelector("img")!;
+    const oldCallbacks = imageCallbacks.get(local.src)!;
+    const changed = { ...local, photo: { ...local.photo, author: "Updated reviewed creator" } };
+    await renderPlan(planForCandidates([changed, google]));
+    expect(host.querySelector("img")?.dataset.mapPeekPhotoState).toBe("loading");
+    expect(host.querySelector(".map-peek-source-credit")).toBeNull();
+    await act(async () => oldCallbacks.load({ currentTarget: oldImage } as React.SyntheticEvent<HTMLImageElement>));
+    expect(host.querySelector("img")?.dataset.mapPeekPhotoState).toBe("loading");
+    await load(1280, 900);
+    expect(host.textContent).toContain("Updated reviewed creator");
+    await renderPlan(planForCandidates([google]));
+    expect(host.querySelector("img")?.dataset.mapPeekPhotoSource).toBe("google");
+    expect(host.querySelector(".map-peek-source-credit")).toBeNull();
+    await renderPlan(planForCandidates([]));
+    expect(host.querySelector("img")).toBeNull();
+    await renderPlan(planForCandidates([local]));
+    await act(async () => {
+      oldCallbacks.load({ currentTarget: oldImage } as React.SyntheticEvent<HTMLImageElement>);
+      oldCallbacks.error({ currentTarget: oldImage } as React.SyntheticEvent<HTMLImageElement>);
+    });
+    expect(host.querySelector("img")?.dataset.mapPeekPhotoState).toBe("loading");
+    await load(1280, 900);
+    expect(host.querySelector("img")?.dataset.mapPeekPhotoState).toBe("ready");
+  });
+
+  it("updates a Google fallback's credit and resource without retrying its failed local candidate", async () => {
+    const local = placeCardPhotoPlan({ slug: "brewers-alley-frederick" }, 104).sources[0];
+    const google = planForSource(src).sources[0];
+    if (google.kind !== "google") throw new Error("Expected the Google fixture");
+    await renderPlan(planForCandidates([local, google]));
+    await act(async () => host.querySelector("img")!.dispatchEvent(new Event("error")));
+    await load(800, 600);
+    const oldImage = host.querySelector("img")!;
+    const oldCallbacks = imageCallbacks.get(google.src)!;
+    const changed = { ...google, attribution: { ...google.attribution, authors: [{ display_name: "New exact photographer" }] } };
+    await renderPlan(planForCandidates([local, changed]));
+    expect(host.querySelector("img")?.dataset.mapPeekPhotoSource).toBe("google");
+    expect(host.querySelector("img")?.dataset.mapPeekPhotoState).toBe("loading");
+    expect(host.querySelector(".map-peek-source-credit")).toBeNull();
+    await act(async () => oldCallbacks.load({ currentTarget: oldImage } as React.SyntheticEvent<HTMLImageElement>));
+    expect(host.querySelector("img")?.dataset.mapPeekPhotoState).toBe("loading");
+    await load(800, 600);
+    expect(host.textContent).toContain("New exact photographer");
+    const replacement = planForSource("/api/place-photo?name=places%2Ffixture-venue%2Fphotos%2Ffixture-side&w=800").sources[0];
+    await renderPlan(planForCandidates([local, replacement]));
+    expect(host.querySelector("img")?.src).toContain("fixture-side");
+    expect(host.querySelector("img")?.dataset.mapPeekPhotoState).toBe("loading");
+    await renderPlan(planForCandidates([local]));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector(".map-peek-source-credit")).toBeNull();
+  });
+
+  it("does not restore an unsuitable Google photo when a preferred local landmark image fails", async () => {
+    const slug = "catoctin-furnace-thurmont";
+    const place: MapPinPlace = {
+      slug, name: "Catoctin Furnace", category: "outdoors", municipality: "thurmont",
+      geom: { lat: 39.4143, lng: -77.4105 }, source: "manual", is_verified: true,
+      open_status: { state: "unknown" }, short_blurb: "A selected-card exclusion fixture.",
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ place: {
+      slug, google_photo_url: src, google_photo_attribution: credit,
+    } })));
+    await act(async () => root.render(<MapPeek place={place} distanceOrigin={null} distanceOriginLabel="from you" onClose={vi.fn()} onDetails={openDetails} />));
+    expect(host.querySelector("img")?.getAttribute("src")).toBe(getLandmarkPhoto(slug)!.localSrc);
+    await act(async () => host.querySelector("img")!.dispatchEvent(new Event("error")));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector(".map-peek-source-credit")).toBeNull();
+    expect([...imageCallbacks.keys()].some(value => value.startsWith("/api/place-photo"))).toBe(false);
   });
 
 });

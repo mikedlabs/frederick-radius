@@ -171,9 +171,7 @@ export default function EventCard({
   if (variant === "discovery") {
     return <EventGlanceCard eventSlug={event.slug} visual={cardVisual} accent={accent}
       cancelled={isCancelled} layout="discovery" compactCredit={false}>
-      <div className="flex min-w-0 items-start gap-3" data-event-card-heading>
-        <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent="var(--app-brand)" size="sm" />
-        <div className="min-w-0 flex-1">
+      <div className="min-w-0" data-event-card-heading>
           <p className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold" style={{ color: "var(--app-ink-2)" }}>
             <span>{categoryLabel}</span>
             {confirmedLive && <span className="inline-flex items-center gap-1.5" style={{ color: "var(--app-live-text)" }}>
@@ -182,7 +180,6 @@ export default function EventCard({
             {statusText && <span style={{ color: statusForeground }}>{statusText}</span>}
           </p>
           <h3 className={`break-words text-lg font-semibold leading-snug tracking-tight ${isCancelled ? "line-through" : ""}`}>{displayTitle}</h3>
-        </div>
       </div>
       <p data-event-card-time className="mt-3 flex min-w-0 items-start gap-2 text-sm font-semibold leading-snug tabular-nums">
         <Clock3 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
