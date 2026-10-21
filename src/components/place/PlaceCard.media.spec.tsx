@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { mapListPhotoLoader } from "@/components/map/map-list-photo-loader";
 import { curatedPhotoUrl, LANDMARK_PHOTOS } from "@/lib/integrations/wikimedia";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 
 const actions = vi.hoisted(() => ({ openSheet: vi.fn(), save: vi.fn() }));
 const imageLoads = vi.hoisted(() => new Map<string, ImgHTMLAttributes<HTMLImageElement>["onLoad"]>());
@@ -105,6 +106,23 @@ describe("PlaceCard selected media and credit", () => {
     expect(actions.openSheet).toHaveBeenCalledWith(nearbyPlace, { returnFocus: open });
   });
 
+  it.each(["baker-park-frederick", "baker-park-bandshell"])("shows the reviewed owned Nearby photo for %s without metadata hydration or Google credits", async slug => {
+    const hydrate = vi.spyOn(mapListPhotoLoader, "loadData");
+    const nearbyPlace = { ...place, slug, name: slug === "baker-park-bandshell" ? "Baker Park Bandshell" : "Baker Park",
+      google_photo_url: undefined, google_photo_attribution: undefined };
+    await act(async () => root.render(<PlaceCard place={nearbyPlace} variant="discovery" discoverySurface="nearby" lazyPhoto />));
+    const image = photo()!;
+    expect(image.getAttribute("src")).toBe("/images/seasons/fall/018.jpg");
+    expect(image.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("owned");
+    await load(image);
+    expect(hydrate).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(container.querySelector(".place-card-photo-credit")).toBeNull();
+    expect(container.querySelector('button[aria-label^="View "]')).not.toBeNull();
+    expect(container.querySelector("[data-save-ref]")).not.toBeNull();
+    expect(container.querySelector('a[aria-label^="Directions to "]')).not.toBeNull();
+  });
+
   it("does not borrow the owned Creek image for a nearby place with a similar name", async () => {
     const promenade = { ...place, slug: "carroll-creek-promenade", name: "Carroll Creek Promenade",
       address: "38 S Market St", google_photo_url: undefined, google_photo_attribution: undefined };
@@ -126,10 +144,11 @@ describe("PlaceCard selected media and credit", () => {
       google_photo_url: localFirst ? place.google_photo_url : undefined,
       google_photo_attribution: localFirst ? place.google_photo_attribution : undefined };
     await render(cardPlace);
-    if (slug === "carroll-creek-linear-park-frederick") {
+    const owned = getOwnedPlacePhoto(slug);
+    if (owned) {
       const ownedImage = photo()!;
-      expect(ownedImage.getAttribute("src")).toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
-      expect(ownedImage.alt).toBe("Carroll Creek in Frederick.");
+      expect(ownedImage.getAttribute("src")).toBe(owned.src);
+      expect(ownedImage.alt).toBe(owned.alt);
       expect(ownedImage.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("owned");
       expect(container.querySelector(".place-card-photo-credit")).toBeNull();
       await load(ownedImage);

@@ -7,11 +7,11 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-10-20 — 1571 places._
+_Generated 2026-10-21 — 1571 places._
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick | 854 | 680 (80%) | 11 (1%) | 710 (83%) | 711 (83%) | 50 | 296 |
+| Frederick | 854 | 680 (80%) | 12 (1%) | 710 (83%) | 711 (83%) | 50 | 296 |
 | Thurmont | 110 | 75 (68%) | 1 (1%) | 100 (91%) | 99 (90%) | 3 | 30 |
 | Brunswick | 97 | 65 (67%) | 3 (3%) | 84 (87%) | 77 (79%) | 2 | 24 |
 | Walkersville | 86 | 66 (77%) | 1 (1%) | 81 (94%) | 78 (91%) | 2 | 29 |
@@ -24,7 +24,7 @@ _Generated 2026-10-20 — 1571 places._
 | Urbana | 30 | 21 (70%) | 1 (3%) | 24 (80%) | 25 (83%) | 2 | 10 |
 | Burkittsville | 30 | 15 (50%) | 0 (0%) | 28 (93%) | 30 (100%) | 2 | 8 |
 | Rosemont | 2 | 0 (0%) | 0 (0%) | 1 (50%) | 1 (50%) | 0 | 1 |
-| **Total** | **1571** | 1165 (74%) | 20 (1%) | 1342 (85%) | 1330 (85%) | **79** | **502** |
+| **Total** | **1571** | 1165 (74%) | 21 (1%) | 1342 (85%) | 1330 (85%) | **79** | **502** |
 
 ## Coverage by category
 
@@ -73,7 +73,7 @@ successful image loading is a separate browser check.
 | Tours & rides | 2 | 0 (0%) | 1 (50%) | 2 (100%) | 2 (100%) |
 | Transit | 1 | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) |
 | Ice cream & treats | 28 | 1 (3.6%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
-| Restaurants | 177 | 7 (4%) | 161 (91%) | 42 (23.7%) | 170 (96%) |
+| Restaurants | 177 | 8 (4.5%) | 161 (91%) | 42 (23.7%) | 170 (96%) |
 | Coffee | 39 | 2 (5.1%) | 35 (89.7%) | 6 (15.4%) | 33 (84.6%) |
 | Book stores | 12 | 1 (8.3%) | 11 (91.7%) | 1 (8.3%) | 12 (100%) |
 | Libraries | 15 | 9 (60%) | 12 (80%) | 2 (13.3%) | 14 (93.3%) |

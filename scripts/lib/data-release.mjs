@@ -54,6 +54,7 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
   "public/history-photos/mount-st-marys-founded.jpg",
   "public/history-photos/barbara-fritchie-flag.jpg",
   "src/lib/owned-place-photos.ts",
+  "public/images/seasons/fall/018.jpg",
   "public/images/seasons/spring/aerial-view-baseball-field.jpg",
   "public/images/fair/fairgrounds-night-mike-d-1920.jpg",
   // Additional immutable facts rendered by the place detail route.

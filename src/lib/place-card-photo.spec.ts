@@ -68,7 +68,7 @@ describe("place card photo source contract", () => {
 
 describe("new exact destination fallback continuity", () => {
   it.each([
-    ["baker-park-frederick", "Acroterion"],
+    ["francis-scott-key-grave-and-monument", "Engineerchange"],
     ["rose-hill-manor-park-museums-frederick", "LittleLuckyMd"],
     ["historic-utica-covered-bridge-thurmont", "Acroterion"],
   ])("retains Google priority and credited bounded fallback for %s", (slug, author) => {
@@ -152,6 +152,30 @@ describe("exact owned place photo continuity", () => {
       google_photos: [place.google_photo_url.replace("w=800", "w=1200")],
     }, 360);
     expect(sources.map((source) => source.kind)).toEqual(["curated"]);
+  });
+});
+
+
+describe("reviewed owned Baker Park photograph", () => {
+  it.each(["baker-park-frederick", "baker-park-bandshell"])("uses the exact park photograph before eligible provider media for %s", (slug) => {
+    const input = { ...place, slug };
+    const plan = placeCardPhotoPlan(input, 360);
+    const owned = selectedPlaceCardPhoto(plan, null)!;
+    expect(owned).toMatchObject({ kind: "owned", src: "/images/seasons/fall/018.jpg",
+      width: 1920, height: 1079, objectPosition: "right" });
+    expect(owned.alt).toContain(slug === "baker-park-bandshell" ? "Baker Park Bandshell" : "Baker Park");
+    expect(owned).not.toHaveProperty("attribution");
+    expect(owned).not.toHaveProperty("photo");
+    expect(plan.sources.map(source => source.kind)).toEqual(slug === "baker-park-frederick"
+      ? ["owned", "google", "curated"] : ["owned", "google"]);
+    let state = recordPlaceCardPhotoResult(plan, null, owned.src, "failed");
+    expect(selectedPlaceCardPhoto(plan, state)?.kind).toBe("google");
+    expect(recordPlaceCardPhotoResult(plan, state, owned.src, "loaded")).toEqual(state);
+    for (const source of plan.sources.slice(1)) state = recordPlaceCardPhotoResult(plan, state, source.src, "failed");
+    expect(selectedPlaceCardPhoto(plan, state)).toBeNull();
+    expect(state.failedSources).toHaveLength(plan.sources.length);
+    expect(recordPlaceCardPhotoResult(plan, state, owned.src, "loaded")).toEqual(state);
+    expect(placePhotoGallerySources(input, 360)[0]).toEqual(owned);
   });
 });
 

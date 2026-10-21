@@ -37,7 +37,25 @@ describe("free exact place photography in Find", () => {
     expect(result?.thumbnailSource).toEqual(photo);
   });
 
-  it.each(["cunningham-falls-state-park-thurmont", "baker-park-frederick", "barbara-fritchie-house-frederick", "catoctin-furnace-thurmont"])("preserves the exact reviewed Commons source and credit for %s", (slug) => {
+  it.each([
+    ["Baker Park", "baker-park-frederick", "An aerial view of Baker Park and its bandshell seating in Frederick."],
+    ["Baker Park Bandshell", "baker-park-bandshell", "The Baker Park Bandshell and outdoor seating in Frederick."],
+  ])("carries the reviewed owned photo through the real Find place result for %s", (query, slug, alt) => {
+    const input = place(slug);
+    const photo = freeSearchPlaceVisual(input);
+    expect(photo).toMatchObject({ kind: "owned", src: "/images/seasons/fall/018.jpg", alt, objectPosition: "right" });
+    expect(photo).not.toHaveProperty("attribution");
+    expect(isPaidGooglePhotoUrl(photo!.src)).toBe(false);
+    expect(placeCardPhotoPlan(input, 360).sources[0]).toEqual(photo);
+    // Existing intent results may lead a broad park query; inspect its exact
+    // place result without changing or asserting a new ranking contract.
+    const result = searchIndex(query, 20, []).find(row => row.id === `place:${slug}`);
+    expect(result).toBeDefined();
+    expect(result?.thumbnail).toBe(photo!.src);
+    expect(result?.thumbnailSource).toEqual(photo);
+  });
+
+  it.each(["cunningham-falls-state-park-thurmont", "historic-utica-covered-bridge-thurmont", "barbara-fritchie-house-frederick", "catoctin-furnace-thurmont"])("preserves the exact reviewed Commons source and credit for %s", (slug) => {
     const photo = freeSearchPlaceVisual(place(slug));
     expect(photo?.kind).toBe("curated");
     if (photo?.kind !== "curated") throw new Error("Expected a reviewed landmark source.");

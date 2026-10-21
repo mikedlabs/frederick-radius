@@ -11,3 +11,34 @@ export function shouldApplyInitialMapSelection(
   if (kind === "place") return params.get("place") === slug;
   return !params.get("place") && params.get("event") === slug;
 }
+
+/** Consume a cold-place camera request once. Generated `c` parameters are not
+ * entry intent; a saved entry camera, newer selection or deliberate camera
+ * owner always wins. Call only after the renderer and selected card mount. */
+export function consumeInitialPlaceCameraFocus(
+  pending: { current: string | null },
+  {
+    selectedSlug,
+    liveSearch,
+    hasEntryCamera,
+    hasUserCameraIntent,
+    hasOtherCameraOwner,
+  }: {
+    selectedSlug: string | null;
+    liveSearch: string;
+    hasEntryCamera: boolean;
+    hasUserCameraIntent: boolean;
+    hasOtherCameraOwner: boolean;
+  },
+): boolean {
+  const slug = pending.current;
+  pending.current = null;
+  return Boolean(
+    slug &&
+      selectedSlug === slug &&
+      new URLSearchParams(liveSearch).get("place") === slug &&
+      !hasEntryCamera &&
+      !hasUserCameraIntent &&
+      !hasOtherCameraOwner,
+  );
+}

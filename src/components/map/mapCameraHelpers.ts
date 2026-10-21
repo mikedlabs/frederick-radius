@@ -86,7 +86,7 @@ export function scrubInstant(scrubHour: number): Date {
 /** Keep the county outline clear of whichever edge owns the map instrument.
  * Mobile is bottom-mounted; desktop is top-mounted. A manual refit measures
  * the live controls while first paint uses the same responsive fallback. */
-export function countyFitPadding(measureDock = true): { top: number; right: number; bottom: number; left: number } {
+export function countyFitPadding(measureDock = true, selectionTop?: number): { top: number; right: number; bottom: number; left: number } {
   if (typeof window === "undefined") {
     return { top: 96, right: 32, bottom: 64, left: 32 };
   }
@@ -119,6 +119,7 @@ export function countyFitPadding(measureDock = true): { top: number; right: numb
     dockBottom: dockRect?.bottom,
     contextRailBottom: contextRailRect?.bottom,
     paneTop: paneRect?.top,
+    selectionTop,
   });
 }
 

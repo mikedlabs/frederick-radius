@@ -12,6 +12,8 @@
 
 import {
   qualifiedSearch,
+  isExactPlaceNameQuery,
+  isEventSearchIntent,
   search,
   type QualifiedSearchContext,
   type QualifiedSearchMeta,
@@ -792,6 +794,14 @@ function hitToResult(h: SearchHit): SearchResult {
   };
 }
 
+/** An incidental layer keyword cannot replace an exact eligible place.
+ * Explicit map actions and official/guide doors keep their existing priority. */
+function exactPlaceBeforeGenericLayers(query: string, head: SearchResult[], ranked: SearchResult[]): SearchResult[] | null {
+  if (isEventSearchIntent(query) || head.length === 0 || head.some((result) => !result.id.startsWith("layer:"))) return null;
+  const exact = ranked.find((result) => result.type === "place" && isExactPlaceNameQuery(query, result.title));
+  return exact ? [exact, ...head, ...ranked.filter((result) => result.id !== exact.id)] : null;
+}
+
 export function searchIndex(
   query: string,
   limit = 12,
@@ -814,7 +824,7 @@ export function searchIndex(
   const hits = search(canonicalSearchQuery(query), Math.max(1, limit - head.length), eventPool)
     .map(hitToResult)
     .filter((r) => !headHrefs.has(r.href));
-  return dedupeByHref([...head, ...hits], limit);
+  return dedupeByHref(exactPlaceBeforeGenericLayers(query, head, hits) ?? [...head, ...hits], limit);
 }
 
 /** The same verified civic corpus used by full Search and Ask must also
@@ -1013,7 +1023,7 @@ export function qualifiedSearchIndex(
   const firstPlaceIndex = supportiveMapAction
     ? ranked.findIndex((result) => result.type === "place")
     : -1;
-  const merged = hasPlaceFeatureRequest && ranked.length > 0
+  const merged = exactPlaceBeforeGenericLayers(query, head, ranked) ?? (hasPlaceFeatureRequest && ranked.length > 0
     ? [ranked[0], ...head, ...ranked.slice(1)]
     : firstPlaceIndex >= 0
     ? [
@@ -1026,7 +1036,7 @@ export function qualifiedSearchIndex(
       ? ranked.length > 0
         ? [ranked[0], ...head, ...ranked.slice(1)]
         : head
-      : [...head, ...ranked];
+      : [...head, ...ranked]);
   return {
     results: dedupeByHref(merged, limit),
     meta: qualified.meta,

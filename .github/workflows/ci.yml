@@ -113,6 +113,18 @@ jobs:
       - name: Validate automated data artifacts
         if: ${{ env.AUTOMATED_DATA_PR == '1' }}
         run: npm run test:data-artifacts
+      - name: Install browsers
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        timeout-minutes: 10
+        run: npx playwright install --with-deps chromium webkit
+      - name: Component workshop tests
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        run: npm run test:storybook
+      - name: WebKit native Today controls
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        run: npm run test:storybook -- src/components/today/TodayEntryControls.stories.tsx --maxWorkers=1 --no-file-parallelism
+        env:
+          RADIUS_STORYBOOK_WEBKIT: "1"
       - name: Unit tests
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run test:all
@@ -127,18 +139,6 @@ jobs:
           # Next's route/type analysis crosses Node's ~2 GB default heap on a
           # cold Linux runner. Keep enough headroom for the OS and Chromium.
           NODE_OPTIONS: "--max-old-space-size=4096"
-      - name: Install browsers
-        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
-        timeout-minutes: 10
-        run: npx playwright install --with-deps chromium webkit
-      - name: Component workshop tests
-        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
-        run: npm run test:storybook
-      - name: WebKit native Today controls
-        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
-        run: npm run test:storybook -- src/components/today/TodayEntryControls.stories.tsx --maxWorkers=1 --no-file-parallelism
-        env:
-          RADIUS_STORYBOOK_WEBKIT: "1"
       - name: Transit map interaction geometry
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run test:transit:geometry
@@ -150,6 +150,19 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           PW_PRODUCTION: "1"
+      - name: Prepare chromium fixture PNGs
+        if: ${{ success() && env.AUTOMATED_DATA_PR != '1' }}
+        run: node scripts/lib/visual-fixture-artifact.mjs chromium
+      - name: Keep chromium fixture PNGs
+        if: ${{ success() && env.AUTOMATED_DATA_PR != '1' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ui-fixture-pngs-chromium-${{ github.sha }}-${{ github.run_attempt }}
+          path: ci-visual-fixtures/chromium
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
       - name: WebKit visual discovery and map continuity
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: >-
@@ -159,11 +172,27 @@ jobs:
           e2e/safari-back-readiness.spec.ts
           e2e/map-place-response-deadline.spec.ts
           e2e/search-scope-quality.spec.ts
+          e2e/find-place-media.spec.ts
+          e2e/nearby-place-media.spec.ts
+          e2e/map-selected-photo-continuity.spec.ts
           --project=webkit-mobile --workers=1 --retries=1
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           PW_PRODUCTION: "1"
           PW_WEBKIT: "1"
+      - name: Prepare webkit-mobile fixture PNGs
+        if: ${{ success() && env.AUTOMATED_DATA_PR != '1' }}
+        run: node scripts/lib/visual-fixture-artifact.mjs webkit-mobile
+      - name: Keep webkit-mobile fixture PNGs
+        if: ${{ success() && env.AUTOMATED_DATA_PR != '1' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ui-fixture-pngs-webkit-mobile-${{ github.sha }}-${{ github.run_attempt }}
+          path: ci-visual-fixtures/webkit-mobile
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
       - name: Exercise combined dependency failures and app upgrades
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: >-

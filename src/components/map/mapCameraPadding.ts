@@ -14,6 +14,7 @@ export type MapCameraPaddingInput = {
   dockBottom?: number;
   contextRailBottom?: number;
   paneTop?: number;
+  selectionTop?: number;
 };
 
 /**
@@ -31,13 +32,14 @@ export function mapCameraPadding({
   dockBottom,
   contextRailBottom,
   paneTop,
+  selectionTop,
 }: MapCameraPaddingInput): MapCameraPadding {
   const compact = viewportWidth < 1024;
   const shortLandscape =
     viewportHeight < 520 && viewportWidth > viewportHeight;
 
   if (compact) {
-    const obstructionTops = [dockTop, paneTop].filter(
+    const obstructionTops = [dockTop, paneTop, selectionTop].filter(
       (value): value is number => Number.isFinite(value),
     );
     const obstructionTop =
@@ -68,6 +70,10 @@ export function mapCameraPadding({
     };
   }
 
+  const measuredSelectionBottom =
+    selectionTop !== undefined && Number.isFinite(selectionTop)
+      ? Math.max(56, Math.ceil(mapBottom - selectionTop + 16))
+      : null;
   const measuredTop =
     dockBottom === undefined
       ? 0
@@ -76,7 +82,10 @@ export function mapCameraPadding({
   return {
     top: Math.max(96, measuredTop),
     right: 40,
-    bottom: 56,
+    bottom: measuredSelectionBottom === null ? 56 : Math.min(
+      Math.max(56, Math.floor(Math.max(0, mapBottom - mapTop) - 64)),
+      measuredSelectionBottom,
+    ),
     left: 40,
   };
 }

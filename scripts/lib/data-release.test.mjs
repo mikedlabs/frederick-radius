@@ -87,6 +87,7 @@ test("the place release covers canonical server and place-page inputs", () => {
     "src/data/credited-local-place-photos.ts",
     "public/place-photos/brewers-alley-2004.jpg",
     "src/lib/owned-place-photos.ts",
+    "public/images/seasons/fall/018.jpg",
     "public/images/seasons/spring/aerial-view-baseball-field.jpg",
     "public/images/fair/fairgrounds-night-mike-d-1920.jpg",
     "src/data/business-info.json",

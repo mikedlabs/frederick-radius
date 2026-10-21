@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  splitBestMatch,
   firstSafeOfficialAnswerHref,
   isCompoundLookup,
   isNaturalLanguageRequest,
@@ -8,6 +9,8 @@ import {
   unifiedRequestDestination,
 } from "./SearchOverlay";
 import { searchCivicActions } from "@/lib/search/civic";
+import { qualifiedSearchIndex } from "@/lib/search/index";
+import { findQuickAnswers } from "@/lib/answers/intents";
 
 describe("one Find doorway", () => {
   it("keeps names and categories in deterministic search", () => {
@@ -177,5 +180,21 @@ describe("global search responsive chrome", () => {
     expect(source).toContain("openOfficialAnswer(destination)");
     expect(source).toContain("openOfficialAnswer(website)");
     expect(source).toContain("openOfficialAnswer(officialHref)");
+  });
+});
+
+
+describe("Find exact place Enter destination", () => {
+  it.each([
+    ["Baker Park", "baker-park-frederick"],
+    ["Baker Park Bandshell", "baker-park-bandshell"],
+  ])("opens the same exact %s that leads the visible list", (query, slug) => {
+    const { best } = splitBestMatch(qualifiedSearchIndex(query, 12, []).results);
+    const quick = findQuickAnswers(query)[0];
+    expect(quick).toBeUndefined();
+    expect(isNaturalLanguageRequest(query)).toBe(false);
+    expect(best?.id).toBe(`place:${slug}`);
+    expect(unifiedRequestDestination({ query, quickHref: quick?.href, quickKey: quick?.key,
+      bestHref: best?.href, status: "done" })).toBe(`/places/${slug}`);
   });
 });

@@ -455,3 +455,42 @@ it("serializes compact canonical event evidence without a photo or fabricated pl
   const unresolved = searchIndex(candidate.title, 12, [{ ...candidate, placement: "needs_review" }]).find(result => result.id === `event:${candidate.slug}`);
   if (unresolved) expect(unresolved.event).not.toHaveProperty("point");
 });
+
+
+describe("exact eligible places before incidental map layers", () => {
+  it.each([
+    ["Baker Park", "baker-park-frederick"],
+    ["Baker Park Bandshell", "baker-park-bandshell"],
+  ])("leads %s with its own canonical destination at normal and one-result limits", (query, slug) => {
+    for (const limit of [1, 12]) {
+      for (const results of [searchIndex(query, limit, []), qualifiedSearchIndex(query, limit, []).results]) {
+        expect(results[0]).toMatchObject({ id: `place:${slug}`, href: `/places/${slug}` });
+        expect(results.length).toBeLessThanOrEqual(limit);
+        expect(new Set(results.map((row) => row.href)).size).toBe(results.length);
+        if (limit > 1) expect(results.some((row) => row.id === "layer:parks")).toBe(true);
+      }
+    }
+  });
+
+  it("does not move a filtered-out Frederick place into Brunswick results", () => {
+    const { results, meta } = qualifiedSearchIndex("Baker Park Bandshell", 12, [], { municipality: "brunswick" });
+    expect(meta.scopeMunicipality).toBe("brunswick");
+    expect(results.some((row) => row.id === "place:baker-park-bandshell")).toBe(false);
+    expect(results[0]?.id).toBe("layer:parks");
+  });
+
+  it("retains an explicit event-kind search and a same-named scheduled event", () => {
+    const event: Event = {
+      slug: "baker-park-bandshell-event", title: "Baker Park Bandshell", description: "A scheduled community gathering.",
+      starts_at: "2099-07-15T23:00:00Z", ends_at: "2099-07-16T01:00:00Z", timezone: "America/New_York",
+      venue_name: "Baker Park Bandshell", address: "Frederick, MD", geom: { lng: -77.417, lat: 39.416 },
+      municipality: "frederick", category: "community", audience: [], is_free: true, source: "manual", is_verified: true,
+    };
+    const explicit = qualifiedSearchIndex(event.title, 12, [event], { resultKind: "event" }).results;
+    expect(explicit.some((row) => row.type === "place")).toBe(false);
+    expect(explicit).toContainEqual(expect.objectContaining({ id: `event:${event.slug}` }));
+    const mixed = qualifiedSearchIndex(event.title, 12, [event]).results;
+    expect(mixed[0]?.id).toBe("place:baker-park-bandshell");
+    expect(mixed).toContainEqual(expect.objectContaining({ id: `event:${event.slug}` }));
+  });
+});

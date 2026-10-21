@@ -131,7 +131,11 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   const since = new Date(Date.now() - 6 * 3600_000).toISOString();
   // Operational failures must reject inside the cache. An empty successful
   // query is real data; a failed query is not evidence that events vanished.
-  let rows = (await sql<Row[]>`
+  let rows = (await sql.begin(async (transaction) => {
+    // Bound the SQL on its reserved connection without changing another pool
+    // borrower's settings. A rejected statement must stay rejected in the cache.
+    await transaction`select set_config('statement_timeout', '5000ms', true)`;
+    return transaction<Row[]>`
       select e.id, e.raw_event_id, e.tzid, e.source_uid, e.source_domain, e.source_url, e.title, e.description,
              e.starts_at_utc, e.ends_at_utc, e.all_day, e.venue_name, e.address,
              e.lat, e.lng, e.municipality, e.category,
@@ -147,7 +151,8 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
          or ends_at_utc >= ${since}
       order by starts_at_utc asc
       limit ${limit}
-    `) as unknown as Row[];
+    `;
+  })) as unknown as Row[];
 
   // Sanitize the venue at the SOURCE row so BOTH the series key and the
   // displayed venue use clean values — a feed that dumped its description
