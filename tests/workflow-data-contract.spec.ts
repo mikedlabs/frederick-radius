@@ -850,30 +850,20 @@ describe("scheduled data workflow contracts", () => {
     expect(bridgeText).not.toContain("workflow_run:");
     expect(bridgeText).toContain('cron: "23 */6 * * *"');
     expect(bridgeText).toContain("context.ref !== 'refs/heads/main'");
-    expect(bridgeText).toContain("candidate.head_sha !== headSha");
-    expect(bridgeText).toContain("candidate.head_branch !== branch");
-    expect(bridgeText).toContain("candidate.id !== spec.runId");
-    expect(bridgeText).toContain(
-      "candidate.path?.split('@')[0] !== `.github/workflows/${spec.workflowId}`",
-    );
-    expect(bridgeText).not.toContain("candidate.name !== spec.workflowName");
-    expect(bridgeText).toContain("candidate.display_title !== spec.displayTitle");
-    expect(bridgeText).toContain("github.rest.actions.getWorkflowRun");
+    // The dependency-free runtime is loaded only from the exact trusted main
+    // workflow revision. Its mutable GitHub behavior is covered offline by the
+    // mocked API tests, rather than source-substring substitutes for that proof.
+    expect(bridgeText).toContain("path: helperPath, ref: context.sha");
+    expect(bridgeText).toContain("file.size > 65536");
+    expect(bridgeText).toContain("source.length !== file.size");
+    expect(bridgeText).toContain("scripts/lib/automated-pr-status-bridge.cjs");
+    expect(bridgeText).toContain("trusted.exports.attachAutomatedPrStatuses");
+    expect(bridgeText).toContain("trusted.exports.reconcileStaleAutomatedPrStatuses");
+    expect(bridgeText).toContain("core.summary.addHeading");
     expect(bridgeText).not.toContain("acceptedAfter");
-    expect(bridgeText).toContain("comparison.data.behind_by !== 0");
-    expect(bridgeText).toContain("latestMain.data.object.sha !== mainSha");
-    expect(bridgeText).toContain("latestBot.data.object.sha !== headSha");
-    expect(bridgeText).toContain("writeAllStatuses('pending'");
-    expect(bridgeText).toContain("contexts: ['verify']");
-    expect(bridgeText).toContain("contexts: ['style-lint']");
-    expect(bridge.jobs?.attach?.["timeout-minutes"]).toBe(8);
-    expect(bridgeText).toContain(
-      "const completionDeadline = Date.now() + 5 * 60_000",
-    );
-    expect(bridgeText).toContain("Fail stale automated PR checks closed");
-    expect(bridgeText).toContain("Date.now() - 90 * 60_000");
-    expect(bridgeText).toContain("latest.state !== 'pending'");
     expect(bridgeText).not.toContain("actions/checkout");
+    expect(bridge.jobs?.attach?.["timeout-minutes"]).toBe(8);
+    expect(bridgeText).toContain("Fail stale automated PR checks closed");
 
     // Validation attachment does not broaden the publication policy: only a
     // caller that deliberately passes auto_merge may queue a reviewed-safe PR.
