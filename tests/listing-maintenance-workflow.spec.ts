@@ -72,7 +72,11 @@ describe("daily full-catalog upkeep and exception boundary", () => {
       const block = text.match(/'bot\/venue-native-refresh':\s*\[([^\]]+)\]/);
       expect(block).not.toBeNull();
       expect([...block![1].matchAll(/'([^']+)'/g)].map((match) => match[1]).sort()).toEqual(expected);
-      expect(text).toContain("comparison.data.behind_by !== 0");
+      if (file === "automated-pr-status-bridge.yml") {
+        expect(text).toContain("trusted.exports.attachAutomatedPrStatuses");
+      } else {
+        expect(text).toContain("comparison.data.behind_by !== 0");
+      }
     }
   });
 });
