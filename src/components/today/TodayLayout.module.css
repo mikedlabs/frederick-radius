@@ -159,7 +159,7 @@
   min-width: 0;
 }
 
-/* Keep the four utilities easy to scan after the arrival photograph. Text may
+/* Keep the four utilities easy to scan after the first local answers. Text may
    grow the controls at enlarged sizes; the touch owners never shrink below 56px. */
 .quickNeeds :global([role="group"][aria-label="Quick needs"]) > a {
   min-height: 56px;

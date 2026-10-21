@@ -75,11 +75,13 @@ export default function PlaceCardPhoto({ source, onResult, width = 360, frame = 
 }
 
 /** Keep source links outside the card's open button, avoiding nested actions. */
-export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false, compact = false }: {
+export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false, compact = false, discloseModifications = false }: {
   source: PlaceCardPhotoSource | null;
   loaded: boolean;
   touchTarget?: boolean;
   compact?: boolean;
+  /** Map preview only: keep linked creator/license visible and disclose full edits. */
+  discloseModifications?: boolean;
 }) {
   if (!source || source.kind === "owned") return null;
   const licenseLinks: Record<string, string> = { "CC BY-SA 4.0": "https://creativecommons.org/licenses/by-sa/4.0", "CC BY 2.0": "https://creativecommons.org/licenses/by/2.0" };
@@ -90,19 +92,29 @@ export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false, comp
   return (
     <div aria-hidden={!loaded || undefined} inert={!loaded || undefined}
       className="place-card-photo-credit border-t px-3 py-1 text-xs leading-snug [&_a]:inline-flex [&_a]:min-h-[44px] [&_a]:min-w-[44px] [&_a]:items-center"
+      data-photo-modifications-disclosure={discloseModifications && source.kind === "curated" || undefined}
       style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)", visibility: loaded ? undefined : "hidden" }}>
       {source.kind === "google" ? (
         <GooglePhotoAttributionLine attribution={source.attribution} compact touchTarget={touchTarget} />
       ) : (
         <>
-          <span className="block pt-1">Photo by {source.photo.author}.{compact && !source.photo.modifications ? " Cropped for display." : ""}</span>
-          {source.photo.modifications
+          {!discloseModifications && <span className="block pt-1">Photo by {source.photo.author}.{compact && !source.photo.modifications ? " Cropped for display." : ""}</span>}
+          {!discloseModifications && (source.photo.modifications
             ? <span className="block">{source.photo.modifications}</span>
-            : !compact && <span className="block">The image is resized for display; previews may be cropped.</span>}
-          <span className="flex flex-wrap gap-x-3">
-            <a href={source.photo.source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Wikimedia Commons</a>
+            : !compact && <span className="block">The image is resized for display; previews may be cropped.</span>)}
+          <div className="place-card-photo-credit-row flex flex-wrap gap-x-3">
+            <a href={source.photo.source_url} aria-label={discloseModifications ? `Photo by ${source.photo.author}. Wikimedia Commons` : undefined} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{discloseModifications ? source.photo.author : "Wikimedia Commons"}</a>
             <a href={licenseHref!} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{source.photo.license}</a>
-          </span>
+            {discloseModifications && (
+              <details className="place-card-photo-edits">
+                <summary>Edited photo</summary>
+                <div className="place-card-photo-credit-details">
+                  <p>The photo is by {source.photo.author} on Wikimedia Commons.</p>
+                  <p>{source.photo.modifications ?? "The image is resized for display; previews may be cropped."}</p>
+                </div>
+              </details>
+            )}
+          </div>
         </>
       )}
     </div>

@@ -6,7 +6,7 @@ import EventCard from "./EventCard";
 
 const nowISO = "2029-10-10T16:00:00-04:00";
 const fixture: EventWithMeta = {
-  slug: "offline-photo-discovery", title: "Fictional community performance at Baker Park",
+  slug: "offline-photo-discovery", title: "Fictional community performance, artist conversation and neighborhood gathering at Baker Park",
   description: "This fictional event is only for component acceptance.",
   starts_at: "2029-10-10T19:00:00-04:00", ends_at: "2029-10-10T21:00:00-04:00", timezone: "America/New_York",
   venue_name: "Baker Park", venue_place_slug: "baker-park-frederick", address: "",
@@ -98,7 +98,13 @@ async function card(context: Context, expectedSource: string) {
   const title = article.querySelector<HTMLElement>("h3")!, time = article.querySelector<HTMLElement>("[data-event-card-time]")!, venue = article.querySelector<HTMLElement>("[data-event-card-venue]")!;
   expect(frame.bottom).toBeLessThanOrEqual(title.getBoundingClientRect().top);
   expect(article.textContent).toContain(context.args.event.title);
-  expect(time.textContent).toContain("7:00"); expect(time.textContent).toContain("9:00");
+  expect(time.textContent).toBe("Wed OCT 10 · 7:00 PM–9:00 PM");
+  const heading = article.querySelector<HTMLElement>("[data-event-card-heading]")!;
+  expect(title.parentElement).toBe(heading);
+  const titleBounds = title.getBoundingClientRect(), headingBounds = heading.getBoundingClientRect();
+  expect(titleBounds.left).toBeCloseTo(headingBounds.left, 1);
+  expect(titleBounds.width).toBeCloseTo(headingBounds.width, 1);
+  expect(heading.textContent).not.toContain("OCT");
   expect(venue.textContent).toContain(context.args.event.venue_name);
   const credit = article.querySelector<HTMLElement>("[data-event-photo-credit]")!;
   expect(credit).not.toBeNull(); expect(link.contains(credit)).toBe(false);

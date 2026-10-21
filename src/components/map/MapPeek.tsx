@@ -11,6 +11,7 @@ import {
   recordPlaceCardPhotoResult,
   selectedPlaceCardPhoto,
   type PlaceCardPhotoPlan,
+  type PlaceCardPhotoSource,
   type PlaceCardPhotoState,
 } from "@/lib/place-card-photo";
 import {
@@ -59,8 +60,14 @@ type MapCardDetails = {
   hours_updated_at?: string;
 };
 
-/** Only the selected-place identity is keyed. Source changes reset image and
- * credit readiness while retaining the heading/actions and keyboard focus.
+function isBundledPlacePhoto(source: PlaceCardPhotoSource): boolean {
+  return source.kind === "owned" ||
+    (source.kind === "curated" && Boolean(source.photo.localSrc?.startsWith("/")));
+}
+
+/** Only the selected-place identity is keyed. An unchanged local source keeps
+ * its decoded bytes when fallback metadata arrives; changed source/credit
+ * identities reset readiness without replacing the heading or actions.
  * Credits follow the heading row without overlapping its details hit target. */
 export function MapPeekPhoto({
   plan, placeName, glyph, color,
@@ -75,21 +82,29 @@ export function MapPeekPhoto({
   onOpenDetails: (event: MouseEvent<HTMLButtonElement>) => void;
   children?: React.ReactNode;
 }) {
-  const [photo, setPhoto] = useState<PlaceCardPhotoState & { generation: number }>(() => ({
-    planKey: plan.key, failedSources: [], loadedSrc: null, generation: 0,
+  const [photo, setPhoto] = useState<PlaceCardPhotoState & { generation: number; plan: PlaceCardPhotoPlan }>(() => ({
+    planKey: plan.key, failedSources: [], loadedSrc: null, generation: 0, plan,
   }));
   if (photo.planKey !== plan.key) {
-    // Keep heading/actions mounted while resetting this plan's readiness.
-    // A→B→A receives a new generation, so A's late callbacks cannot mark
-    // the new A ready or discard its image.
-    setPhoto({ planKey: plan.key, failedSources: [], loadedSrc: null, generation: photo.generation + 1 });
+    // A late fallback must not retry an exhausted URL. Only candidates in the
+    // current approved plan survive; a removed local image cannot stay sticky.
+    const failedSources = photo.failedSources.filter(src => plan.sources.some(source => source.src === src));
+    const next = { ...photo, planKey: plan.key, failedSources, plan };
+    const previousSource = selectedPlaceCardPhoto(photo.plan, photo);
+    const nextSource = selectedPlaceCardPhoto(plan, next);
+    const keepLocal = previousSource && isBundledPlacePhoto(previousSource) &&
+      JSON.stringify(previousSource) === JSON.stringify(nextSource);
+    // Changed credit, resources and A→B→A selections receive a new generation
+    // so an old load/error callback cannot settle the replacement image.
+    setPhoto({ ...next, loadedSrc: keepLocal ? photo.loadedSrc : null,
+      generation: photo.generation + (keepLocal ? 0 : 1) });
   }
   const source = selectedPlaceCardPhoto(plan, photo);
   const ready = Boolean(source && photo.planKey === plan.key && photo.loadedSrc === source.src);
   const reportState = (result: "loaded" | "failed") => {
     if (!source) return;
     setPhoto(current => current.planKey === plan.key && current.generation === photo.generation
-      ? { ...recordPlaceCardPhotoResult(plan, current, source.src, result), generation: current.generation }
+      ? { ...current, ...recordPlaceCardPhotoResult(plan, current, source.src, result) }
       : current);
   };
   return (
@@ -138,7 +153,7 @@ export function MapPeekPhoto({
       </div>
       {ready && source && source.kind !== "owned" && (
         <div className="map-peek-source-credit">
-          <PlaceCardPhotoCredit source={source} loaded touchTarget />
+          <PlaceCardPhotoCredit source={source} loaded touchTarget discloseModifications />
         </div>
       )}
     </>
@@ -279,14 +294,18 @@ export default function MapPeek({
     ? selectedPhotoPlan.sources
     : selectedPhotoPlan.sources.filter(source => source.kind === "owned" ||
       (source.kind === "curated" && source.photo.localSrc));
-  const photoSources = eligibleSources.map(source => source.kind === "curated"
+  // Reuse only free files already admitted by the shared policy. Map can show
+  // those exact bytes immediately without buying a replacement on metadata load.
+  const photoSources = [
+    ...eligibleSources.filter(isBundledPlacePhoto),
+    ...eligibleSources.filter(source => !isBundledPlacePhoto(source)),
+  ].map(source => source.kind === "curated"
     ? { ...source, src: curatedPhotoUrl(source.photo, 720) }
     : source);
   const photoPlan: PlaceCardPhotoPlan = {
-    // Adding selected metadata cannot replace an already decoded owned image.
-    key: photoSources[0]?.kind === "owned"
-      ? JSON.stringify([place.slug, photoSources[0]])
-      : JSON.stringify([selectedPhotoPlan.key, photoSources.map(source => source.src)]),
+    // Include every active source and its credit so policy/identity changes
+    // reach the display boundary even when the first local URL is unchanged.
+    key: JSON.stringify([place.slug, photoSources]),
     sources: photoSources,
   };
   const photoPending = photoPlan.sources.length === 0 && !activeDetails && detailsResolvedSlug !== place.slug;

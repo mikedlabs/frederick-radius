@@ -33,6 +33,18 @@ async function expectDecodedImage(image: HTMLImageElement) {
   }, { timeout: 5000 });
 }
 
+/** Storybook's synthetic focus selector omits summary. Exercise the native
+ * pointer in browser tests without repairing focus after the interaction. */
+async function clickPhotoEdits(summary: HTMLElement) {
+  if ((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) {
+    const browser = await import("vitest/browser");
+    let trusted = false;
+    summary.addEventListener("pointerdown", event => { trusted = event.isTrusted; }, { once: true });
+    await browser.userEvent.click(summary);
+    await expect(trusted).toBe(true);
+  } else summary.click();
+}
+
 const plan: PlaceCardPhotoPlan = {
   key: "map-peek-source-transition-component-fixture",
   sources: [
@@ -121,18 +133,33 @@ export const FallbackAndExhaustionAt320: Story = {
       await expect(image?.naturalHeight).toBeGreaterThan(1);
     }, { timeout: 5000 });
     await expect(canvas.queryByText("Component Google fixture")).not.toBeInTheDocument();
-    await expect(canvas.getByText("Photo by Component Commons fixture.")).toBeVisible();
-    await expect(canvas.getByText("The image is resized for display; previews may be cropped.")).toBeVisible();
-    await expect(canvas.getByRole("link", { name: "Wikimedia Commons" })).toHaveAttribute("href", "https://commons.wikimedia.org/wiki/File:Component_fixture.jpg");
+    const sourceLink = canvas.getByRole("link", { name: "Photo by Component Commons fixture. Wikimedia Commons" });
+    await expect(sourceLink).toHaveTextContent("Component Commons fixture");
+    const editSummary = canvas.getByText("Edited photo", { exact: true });
+    const fullEdits = canvas.getByText("The image is resized for display; previews may be cropped.");
+    await expect(editSummary).toBeVisible();
+    await expect(fullEdits).not.toBeVisible();
+    await expect(sourceLink).toHaveAttribute("href", "https://commons.wikimedia.org/wiki/File:Component_fixture.jpg");
     await expect(canvas.getByRole("link", { name: "CC BY-SA 4.0" })).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0");
     await expect(details).toHaveFocus();
+    editSummary.focus();
+    await clickPhotoEdits(editSummary);
+    await expect(editSummary.closest("details")).toHaveAttribute("open");
+    await expect(fullEdits).toBeVisible();
+    await expect(canvas.getByText("The photo is by Component Commons fixture on Wikimedia Commons.")).toBeVisible();
+    await expect(editSummary).toHaveFocus();
+    await clickPhotoEdits(editSummary);
+    await expect(editSummary.closest("details")).not.toHaveAttribute("open");
+    await expect(fullEdits).not.toBeVisible();
+    await expect(editSummary).toHaveFocus();
+    details.focus();
     await expect(canvas.getByText("Hours not confirmed")).toBeVisible();
     await expect(root.querySelectorAll("img")).toHaveLength(1);
     const document = canvasElement.ownerDocument;
     await document.fonts.ready;
     await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
-    for (const target of [details, ...root.querySelectorAll<HTMLAnchorElement>(".map-peek-source-credit a")]) {
+    for (const target of [details, editSummary, ...root.querySelectorAll<HTMLAnchorElement>(".map-peek-source-credit a")]) {
       target.scrollIntoView({ block: "nearest" });
       const box = target.getBoundingClientRect();
       await expect(box.width).toBeGreaterThanOrEqual(44);

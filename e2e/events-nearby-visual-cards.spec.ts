@@ -2,6 +2,8 @@ import { writeFile } from "node:fs/promises";
 import { expect, test, type BrowserContext, type Locator, type Page, type TestInfo } from "@playwright/test";
 import type { EventWithMeta } from "../src/lib/loaders/events";
 import { eventCardVisual } from "../src/components/event/eventVisuals";
+import { eventDateBlock } from "../src/lib/events/format";
+import { eventDecisionTime } from "../src/lib/events/decision-facts";
 import { placeCardPhotoPlan } from "../src/lib/place-card-photo";
 import { dismissReturnBridge, emptyReturnBridgeState, RETURN_BRIDGE_STORAGE_KEY } from "../src/lib/return-bridge";
 import { EVENTS } from "../src/data/events";
@@ -56,7 +58,7 @@ test.afterEach(async ({ page }, info) => {
 function declaredEvents(): EventWithMeta[] {
   const now = Date.now();
   return VENUES.map((venue, index) => ({
-    slug: `declared-visual-card-${index}`, title: `Declared visual fixture at ${venue.name}`,
+    slug: `declared-visual-card-${index}`, title: `Declared community performance and artist conversation at ${venue.name}`,
     description: "Fictional acceptance event at a real named venue; not a public event listing.",
     starts_at: new Date(now - 15 * 60_000 + index * 60_000).toISOString(),
     ends_at: new Date(now + 2 * 3_600_000).toISOString(), timezone: "America/New_York",
@@ -320,7 +322,16 @@ for (const width of [390, 320]) {
       await expect(card).toHaveAttribute("data-event-media", "photo");
       await exactImage(card, venue.image, 16 / 10);
       await expect(card.getByRole("heading", { name: event.title, exact: true })).toBeVisible();
-      await expect(card.locator("[data-event-card-time]")).not.toBeEmpty();
+      const date = eventDateBlock(event);
+      await expect(card.locator("[data-event-card-time]")).toHaveText(`${date.weekday} ${date.month} ${date.day} · ${eventDecisionTime(event)}`);
+      const titleWidth = await card.locator("h3").evaluate((title) => {
+        const box = title.getBoundingClientRect(), row = title.closest("[data-event-card-heading]")!.getBoundingClientRect();
+        return { titleLeft: box.left, rowLeft: row.left, titleWidth: box.width, rowWidth: row.width,
+          scrollWidth: title.scrollWidth, clientWidth: title.clientWidth };
+      });
+      expect(titleWidth.titleLeft).toBeCloseTo(titleWidth.rowLeft, 1);
+      expect(titleWidth.titleWidth).toBeCloseTo(titleWidth.rowWidth, 1);
+      expect(titleWidth.scrollWidth).toBeLessThanOrEqual(titleWidth.clientWidth + 1);
       await expect(card.locator("[data-event-card-venue]")).toContainText(venue.name);
       await expect(card).toContainText("Free");
       const link = card.locator('a[data-decision-action="open"]');
@@ -590,7 +601,8 @@ test("declared Events image failure keeps the real card facts and actions at 320
   const slug = (await card.getAttribute("data-decision-id"))!;
   const event = events.find((item) => item.slug === slug)!;
   await expect(card.getByRole("heading", { name: event.title, exact: true })).toBeVisible();
-  await expect(card.locator("[data-event-card-time]")).not.toBeEmpty();
+  const date = eventDateBlock(event);
+  await expect(card.locator("[data-event-card-time]")).toHaveText(`${date.weekday} ${date.month} ${date.day} · ${eventDecisionTime(event)}`);
   await expect(card.locator("[data-event-card-venue]")).toContainText(event.venue_name!);
   await expect(card.locator("img,[data-event-photo-credit]")).toHaveCount(0);
   const open = card.locator('a[data-decision-action="open"]');

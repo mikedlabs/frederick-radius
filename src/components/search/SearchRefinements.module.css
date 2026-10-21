@@ -1,0 +1,50 @@
+.control {
+  position: relative;
+  flex: 1 1 10rem;
+  min-width: min(100%, 10rem);
+  max-width: 100%;
+}
+
+.select {
+  /* Keep the native select/menu while avoiding WebKit's fixed-size face.
+   * This class also outranks the global coarse-pointer 16px font floor. */
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  height: max(44px, calc(1.25em + 18px));
+  padding: 8px 28px 8px 8px;
+  border: 1px solid var(--app-control-border);
+  border-radius: 999px;
+  background: var(--app-bg);
+  color: var(--app-ink);
+  font-family: inherit;
+  font-size: max(16px, 1rem);
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: 2px;
+}
+
+.select:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.chevron {
+  position: absolute;
+  top: 50%;
+  inset-inline-end: 8px;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  color: var(--app-ink-2);
+  pointer-events: none;
+}

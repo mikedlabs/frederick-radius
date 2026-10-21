@@ -19,11 +19,6 @@ vi.mock("@/data/departments", () => ({
   formatPhone: (phone: string) => phone,
   jurisdictionLabel: () => "",
 }));
-vi.mock("@/lib/search/civic", () => ({
-  isHighConfidenceCivicIntent: () => false,
-  searchCivicActions: () => [],
-  shouldShowDepartmentAnswers: () => false,
-}));
 vi.mock("@/components/search/SearchInput", () => ({
   default: () => <div data-search-input />,
 }));
@@ -130,6 +125,40 @@ describe("submitted search photo budget", () => {
     await SearchPage({ searchParams: Promise.resolve({ q: "Radius Investor Showcase" }) });
     expect(mocks.eventSnapshot).toHaveBeenCalledOnce();
     expect(mocks.search).toHaveBeenCalledWith("Radius Investor Showcase", 80, eventPool, expect.objectContaining({ resultKind: "all" }));
+  });
+
+  it("answers a complete civic task without waiting for a stalled event archive", async () => {
+    mocks.eventSnapshot.mockImplementation(() => new Promise(() => {}));
+    mocks.search.mockReturnValue([paidPlaceHit(1)]);
+
+    const html = renderToStaticMarkup(await SearchPage({
+      searchParams: Promise.resolve({ q: "report a pothole", in: "brunswick" }),
+    }));
+
+    expect(mocks.eventSnapshot).not.toHaveBeenCalled();
+    expect(mocks.search).toHaveBeenCalledWith("report a pothole", 80, [],
+      expect.objectContaining({ municipality: "brunswick", resultKind: "all" }));
+    expect(html).toContain("https://www.frederickcountymd.gov/8235/FCG-FixIT");
+    expect(html).toContain("Official county and city answers");
+    expect(html).not.toContain("Paid place 1");
+    expect(html).not.toContain("The current event schedule is unavailable");
+  }, 1_000);
+
+  it("keeps mixed retrieval for a weak civic overlap", async () => {
+    mocks.search.mockReturnValue([paidPlaceHit(1)]);
+    const html = renderToStaticMarkup(await SearchPage({
+      searchParams: Promise.resolve({ q: "water park" }),
+    }));
+    expect(mocks.eventSnapshot).toHaveBeenCalledOnce();
+    expect(html).toContain("Paid place 1");
+    expect(html).not.toContain("Official county and city answers");
+  });
+
+  it("preserves an explicit event retrieval even for a civic-shaped query", async () => {
+    await SearchPage({ searchParams: Promise.resolve({ q: "report a pothole", kind: "event" }) });
+    expect(mocks.eventSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.search).toHaveBeenCalledWith("report a pothole", 80, [],
+      expect.objectContaining({ resultKind: "event" }));
   });
 
   it("passes an explicit Events selection into retrieval", async () => {

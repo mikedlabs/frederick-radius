@@ -287,22 +287,41 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 375, height: 667 }
       await expect(details).toBeFocused();
       await expect(card.locator("img")).toHaveCount(1);
       const credits = card.locator(".map-peek-source-credit");
-      await expect(credits).toContainText(`Photo by ${boundary.curated.author}.`);
+      await expect(credits).toContainText(`The photo is by ${boundary.curated.author} on Wikimedia Commons.`);
       await expect(credits).toContainText("The image is resized for display; previews may be cropped.");
       await expect(credits).not.toContainText("LAYOUT FIXTURE author");
-      const sourceLink = credits.getByRole("link", { name: "Wikimedia Commons", exact: true });
+      const sourceLink = credits.getByRole("link", { name: `Photo by ${boundary.curated.author}. Wikimedia Commons`, exact: true });
       const licenseLink = credits.getByRole("link", { name: boundary.curated.license, exact: true });
       await expect(sourceLink).toHaveAttribute("href", boundary.curated.source_url);
+      await expect(sourceLink).toHaveText(boundary.curated.author);
       await expect(licenseLink).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0");
-      const initialGeometry = await assertFullCard(card, baker.name, [sourceLink, licenseLink]);
+      const edits = credits.locator("details");
+      const editSummary = edits.locator("summary");
+      const fullEdits = edits.getByText("The image is resized for display; previews may be cropped.", { exact: true });
+      await expect(edits).toHaveJSProperty("open", false);
+      await expect(editSummary).toHaveText("Edited photo");
+      await expect(fullEdits).not.toBeVisible();
+      const initialGeometry = await assertFullCard(card, baker.name, [sourceLink, licenseLink, editSummary]);
       await testInfo.attach("full-selected-card-geometry", { body: JSON.stringify(initialGeometry), contentType: "application/json" });
+      await editSummary.focus();
+      await page.keyboard.press("Enter");
+      await expect(edits).toHaveJSProperty("open", true);
+      await expect(fullEdits).toBeVisible();
+      await expect(editSummary).toBeFocused();
+      await expect(edits).toContainText(`The photo is by ${boundary.curated.author} on Wikimedia Commons.`);
+      const expandedGeometry = await assertFullCard(card, baker.name, [sourceLink, licenseLink, editSummary]);
+      await testInfo.attach("expanded-photo-credit-geometry", { body: JSON.stringify(expandedGeometry), contentType: "application/json" });
+      await editSummary.focus();
+      await page.keyboard.press("Enter");
+      await expect(edits).toHaveJSProperty("open", false);
+      await expect(fullEdits).not.toBeVisible();
 
       // A short mobile viewport forces the actual card to scroll, including
       // its real Close/Share/header topology and loaded source-credit block.
       await page.setViewportSize({ width: viewport.width, height: 480 });
       await expect.poll(() => page.evaluate(() => innerHeight)).toBe(480);
       await expect.poll(() => card.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
-      const compactGeometry = await assertFullCard(card, baker.name, [sourceLink, licenseLink]);
+      const compactGeometry = await assertFullCard(card, baker.name, [sourceLink, licenseLink, editSummary]);
       expect(compactGeometry.scrollTop).toBeGreaterThan(0);
       await testInfo.attach("compact-selected-card-geometry", { body: JSON.stringify(compactGeometry), contentType: "application/json" });
       await testInfo.attach("controlled-commons-layout-bytes", { body: await page.screenshot(), contentType: "image/png" });
