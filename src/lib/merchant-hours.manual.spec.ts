@@ -39,6 +39,7 @@ const nativeFixtures: Record<string, string> = {
   "kulfi-ice-creams-frederick": "kulfi-ice-creams-frederick",
   // Representative Aleko facts use this harness clock only, never public evidence.
   "alekos-middletown": "alekos-middletown",
+  "common-market-frederick": "common-market", "common-market": "common-market",
 };
 const native = MERCHANT_HOURS_SOURCES.filter((source) => !("collection" in source && source.collection === "manual"));
 function baseline() {
@@ -142,7 +143,7 @@ describe("manually reviewed first-party merchant evidence", () => {
   it("never requests manual sources or freshens their approved rows during native upkeep", async () => {
     const previous = baseline(); const fetcher = nativeFetcher();
     const result = await collectMerchantOfficialHours(previous, fetcher, NOW);
-    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(native.map((source) => source.url));
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([...new Set(native.map((source) => source.url))]);
     for (const source of manual) expect(result.artifact.places.find((row) => row.slug === source.slug)).toEqual(previous.places.find((row) => row.slug === source.slug));
     expect(result.artifact.review).toEqual([]); expect(result.reviewRequired).toBe(false);
   });

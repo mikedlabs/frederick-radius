@@ -219,19 +219,30 @@ describe("existing licensed local place photographs", () => {
     }
   });
 
-  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).filter(([slug]) => !LANDMARK_PHOTOS[slug]?.preferCurated && !LANDMARK_PHOTOS[slug]?.preferLocal))("retains eligible Google priority, then tries the local %s source only once", (slug, { image }) => {
+  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).filter(([slug]) => !LANDMARK_PHOTOS[slug]?.preferCurated))("prefers reviewed bundled %s bytes over eligible Google and retains its exact fallback", (slug, { image }) => {
     const input = { ...place, slug };
-    const plan = placeCardPhotoPlan(input, 360);
-    expect(plan.sources.map((source) => source.kind)).toEqual(["google", "curated"]);
-    const google = selectedPlaceCardPhoto(plan, null)!;
-    let state = recordPlaceCardPhotoResult(plan, null, google.src, "failed");
-    expect(selectedPlaceCardPhoto(plan, state)?.src).toBe(image.src);
-    state = recordPlaceCardPhotoResult(plan, state, google.src, "loaded");
-    expect(state.loadedSrc).toBeNull();
-    state = recordPlaceCardPhotoResult(plan, state, image.src, "failed");
-    expect(selectedPlaceCardPhoto(plan, state)).toBeNull();
-    expect(recordPlaceCardPhotoResult(plan, state, image.src, "loaded")).toEqual(state);
-    expect(state.failedSources).toHaveLength(2);
+    for (const width of [88, 128, 360, 1200]) {
+      const plan = placeCardPhotoPlan(input, width);
+      expect(LANDMARK_PHOTOS[slug].preferLocal).toBe(true);
+      expect(plan.sources.map(source => source.kind)).toEqual(["curated", "google"]);
+      const local = selectedPlaceCardPhoto(plan, null)!;
+      expect(local).toMatchObject({ kind: "curated", src: image.src, alt: image.alt,
+        photo: { author: image.creator, source_url: image.source_url,
+          license: image.license.label, licenseUrl: image.license.url, modifications: image.modifications } });
+      expect(placePhotoGallerySources(input, width)[0]).toEqual(local);
+      const failed = recordPlaceCardPhotoResult(plan, null, local.src, "failed");
+      const google = selectedPlaceCardPhoto(plan, failed)!;
+      expect(google.kind).toBe("google");
+      if (google.kind !== "google") throw new Error("Expected the existing individually credited fallback.");
+      expect(google.attribution).toEqual(place.google_photo_attribution);
+      expect(recordPlaceCardPhotoResult(plan, failed, local.src, "loaded")).toEqual(failed);
+      const exhausted = recordPlaceCardPhotoResult(plan, failed, google.src, "failed");
+      expect(selectedPlaceCardPhoto(plan, exhausted)).toBeNull();
+      expect(exhausted.failedSources).toHaveLength(2);
+      expect(recordPlaceCardPhotoResult(plan, exhausted, local.src, "loaded")).toEqual(exhausted);
+      expect(placeCardPhotoPlan({ slug, google_photo_url: place.google_photo_url }, width).sources.map(source => source.kind))
+        .toEqual(["curated"]);
+    }
   });
 
   it.each(["city-hall-8", "mount-st-marys-university-emmitsburg"] as const)("uses the reviewed local %s photo before requesting a provider fallback", (slug) => {
@@ -255,5 +266,28 @@ describe("existing licensed local place photographs", () => {
 
   it.each(["schifferstadt", "hessian-barracks", "co-canal", "brunswick", "town:frederick", "__proto__"])("does not broaden exact-place imagery to a history, town or inherited identity: %s", (slug) => {
     expect(placeCardPhotoPlan({ slug }, 360).sources).toEqual([]);
+  });
+});
+
+
+describe("reviewed owned carillon photograph", () => {
+  it("keeps the exact carillon ahead of eligible Google, with a bounded fallback and detail gallery identity", () => {
+    const slug = "joseph-dill-baker-memorial-carillon-bell-tower";
+    const input = { ...place, slug };
+    const plan = placeCardPhotoPlan(input, 360);
+    const owned = selectedPlaceCardPhoto(plan, null)!;
+    expect(owned).toMatchObject({ kind: "owned", src: "/images/seasons/fall/021.jpg",
+      width: 1920, height: 1279, objectPosition: "left" });
+    expect(owned.alt).toBe("The Joseph Dill Baker Memorial Carillon in Baker Park, Frederick.");
+    expect(owned).not.toHaveProperty("photo");
+    expect(owned).not.toHaveProperty("attribution");
+    expect(placePhotoGallerySources(input, 360)[0]).toEqual(owned);
+    expect(plan.sources.map(source => source.kind)).toEqual(["owned", "google"]);
+    const failed = recordPlaceCardPhotoResult(plan, null, owned.src, "failed");
+    expect(selectedPlaceCardPhoto(plan, failed)?.kind).toBe("google");
+    expect(recordPlaceCardPhotoResult(plan, failed, owned.src, "loaded")).toEqual(failed);
+    const exhausted = recordPlaceCardPhotoResult(plan, failed, plan.sources[1].src, "failed");
+    expect(selectedPlaceCardPhoto(plan, exhausted)).toBeNull();
+    expect(getOwnedPlacePhoto("bell-tower-baker-park")).toBeNull();
   });
 });

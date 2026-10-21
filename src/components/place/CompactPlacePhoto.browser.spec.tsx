@@ -112,20 +112,63 @@ describe("compact place photo continuity", () => {
     expect(metadata).not.toHaveBeenCalled(); expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("narrows an exactly credited Google thumbnail then falls through to the exact local park image", async () => {
-    const place = { ...row("catoctin-mountain-park"), ...google };
-    await render(<MapList places={[place]} events={[]} userLoc={null} onPick={() => {}} onPickEvent={() => {}} />);
-    expect(image().getAttribute("src")).toContain("w=144");
-    expect(image().getAttribute("src")).toContain("fallback=signal");
-    await load();
-    expect(host.textContent).toContain("Actual photographer");
-    await fail();
-    expect(image().getAttribute("src")).toBe("/history-photos/catoctin-mountain-park.jpg");
+  it("leads with the exact local park photo and retains a narrowed, individually credited Google fallback", async () => {
+    const slug = "catoctin-mountain-park";
+    const source = CREDITED_LOCAL_PLACE_PHOTOS[slug].image;
+    const place = { ...row(slug), name: "Catoctin Mountain Park", ...google };
+    const onPick = vi.fn();
+    const metadata = vi.spyOn(mapListPhotoLoader, "loadData");
+    await render(<MapList places={[place]} events={[]} userLoc={null} onPick={onPick} onPickEvent={() => {}} />);
+    const localImage = image();
+    const lateLocalLoad = imageEvents.get(source.src)!;
+    expect(localImage.getAttribute("src")).toBe(source.src);
     expect(host.querySelector(".place-card-photo-credit")).toBeNull();
     await load();
-    expect(host.textContent).toContain("Vegemighty");
-    expect(host.textContent).not.toContain("Actual photographer");
-    expect(host.querySelector('a[href="https://creativecommons.org/publicdomain/zero/1.0/"]')).not.toBeNull();
+    const localCredit = host.querySelector(".place-card-photo-credit")!;
+    expect(localCredit.textContent).toContain(source.creator);
+    expect(localCredit.textContent).toContain(source.modifications);
+    expect(localCredit.textContent).not.toContain("Actual photographer");
+    expect(localCredit.querySelector(`a[href="${source.source_url}"]`)).not.toBeNull();
+    expect(localCredit.querySelector(`a[href="${source.license.url}"]`)?.textContent).toBe(source.license.label);
+    expect(localCredit.closest("button")).toBeNull();
+    expect(metadata).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+
+    await fail(localImage);
+    const googleImage = image();
+    const googleSrc = googleImage.getAttribute("src")!;
+    const googleUrl = new URL(googleSrc, "https://frederickradius.app");
+    const lateGoogleLoad = imageEvents.get(googleSrc)!;
+    expect(googleImage).not.toBe(localImage);
+    expect(googleUrl.pathname).toBe("/api/place-photo");
+    expect(googleUrl.searchParams.get("w")).toBe("144");
+    expect(googleUrl.searchParams.get("fallback")).toBe("signal");
+    expect(googleUrl.searchParams.get("name")).toBe(google.google_photo_attribution.photo_name);
+    expect(host.querySelector(".place-card-photo-credit")).toBeNull();
+    await act(async () => lateLocalLoad({ currentTarget: { naturalWidth: 600, naturalHeight: 400 } } as never));
+    expect(image()).toBe(googleImage);
+    expect(host.querySelector(".place-card-photo-credit")).toBeNull();
+    await load(googleImage);
+    const googleCredit = host.querySelector(".place-card-photo-credit")!;
+    expect(googleCredit.textContent).toContain("Actual photographer");
+    expect(googleCredit.textContent).not.toContain(source.creator);
+    expect(googleCredit.querySelector(`a[href="${google.google_photo_attribution.google_maps_uri}"]`)).not.toBeNull();
+    expect(googleCredit.querySelector(`a[href="${source.source_url}"]`)).toBeNull();
+    expect(googleCredit.closest("button")).toBeNull();
+
+    await fail(googleImage);
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector(".place-card-photo-credit")).toBeNull();
+    await act(async () => lateGoogleLoad({ currentTarget: { naturalWidth: 600, naturalHeight: 400 } } as never));
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector(".place-card-photo-credit")).toBeNull();
+    expect(host.querySelector("[data-photo-state]")?.getAttribute("data-photo-state")).toBe("fallback");
+    expect(host.textContent).toContain(place.name);
+    expect(host.textContent).toContain("Hours not confirmed");
+    await act(async () => host.querySelector<HTMLButtonElement>("[data-map-place-slug]")!.click());
+    expect(onPick).toHaveBeenCalledExactlyOnceWith(place);
+    expect(metadata).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("does not render an unpaired Google URL or borrow local scenery for a similarly named place", async () => {

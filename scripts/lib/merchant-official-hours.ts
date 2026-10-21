@@ -172,6 +172,55 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
     const range = `\\s*[-–—]\\s*${CLOCK}`;
     const match = oneVisibleSchedule(text, new RegExp(`Hours Monday\\s*[-–—]\\s*Tuesday ${CLOCK}${range} Wednesday\\s*[-–—]\\s*Saturday ${CLOCK}${range} Sunday ${CLOCK}${range} Contact`, "i"));
     set(hours, ["mon", "tue"], match[1], match[2]); set(hours, ["wed", "thu", "fri", "sat"], match[3], match[4]); set(hours, ["sun"], match[5], match[6]);
+  } else if (source.slug === "common-market-frederick" || source.slug === "common-market") {
+    // The official Organization contact card explicitly shares one store
+    // schedule across these two grocery addresses. Cafe contacts are separate.
+    const cards = [...document.querySelectorAll("address.vcard")];
+    if (cards.length !== 1) throw new Error("Missing or duplicated Common Market contact identity.");
+    const card = cards[0];
+    const label = card.querySelector(".org[itemprop='name']");
+    const addresses = [...card.querySelectorAll(".adr[itemprop='address']")];
+    const expected = [
+      { street: "5728 Buckeystown Pike, Unit B1", zip: "21704" },
+      { street: "927 W 7th Street", zip: "21701" },
+    ];
+    const exactAddress = (node: Element, identity: typeof expected[number]) =>
+      compact(node.querySelector("[itemprop='streetAddress']")?.textContent ?? "") === compact(identity.street) &&
+      node.querySelector("[itemprop='addressLocality']")?.textContent?.trim() === "Frederick" &&
+      node.querySelector("[itemprop='addressRegion']")?.textContent?.trim() === "MD" &&
+      node.querySelector("[itemprop='postalCode']")?.textContent?.trim() === identity.zip;
+    const phones = [...card.querySelectorAll(".tel .value")];
+    if (label?.textContent?.trim() !== "Common Market" || addresses.length !== 2 ||
+        expected.some((identity) => addresses.filter((node) => exactAddress(node, identity)).length !== 1) ||
+        phones.filter((node) => phoneNumber(node.textContent ?? "") === "3016633416").length !== 1) {
+      throw new Error("Missing exact Common Market grocery identities.");
+    }
+    const ranges = [...card.querySelectorAll(".hours .open")];
+    const hidden = (node: Element) => {
+      for (let current: Element | null = node; current; current = current.parentElement) {
+        if (current.hasAttribute("hidden") || current.getAttribute("aria-hidden") === "true" ||
+            /display\s*:\s*none|visibility\s*:\s*hidden/i.test(current.getAttribute("style") ?? "")) return true;
+      }
+      return false;
+    };
+    if (ranges.length !== 1 || [card, ...addresses, ...ranges].some(hidden)) throw new Error("Missing visible Common Market store schedule.");
+    const storeSchedule = (ranges[0].textContent ?? "").replace(/\s+/g, " ").trim();
+    const match = storeSchedule.match(new RegExp(`^${CLOCK}\\s*[-–—]\\s*${CLOCK} Daily$`, "i"));
+    if (!match || card.querySelectorAll(".hours").length !== 1) throw new Error("Unqualified seven-day Common Market store hours required.");
+    const outside = document.body.cloneNode(true) as HTMLElement;
+    outside.querySelectorAll("address.vcard,script").forEach((node) => node.remove());
+    const otherText = (outside.textContent ?? "").replace(/\s+/g, " ").trim();
+    const extraHoursBlock = [...document.querySelectorAll(".hours,.store-hours,.business-hours,[itemprop='openingHours'],[itemprop='openingHoursSpecification']")].some((node) => !card.contains(node));
+    // An unrelated event clock is not a change to business hours. Additional
+    // store/service-hour labels or blocks still need separate source review.
+    if (extraHoursBlock || /\b(?:store|grocery|business|opening|holiday|special|seasonal|café|cafe)\s+hours\b/i.test(otherText) ||
+        new RegExp(`\\bhours\\s*:?\\s*${CLOCK}`, "i").test(otherText) ||
+        /\b(?:reduced|limited|extended|shortened|revised|changed|updated)\s+(?:(?:store|business)\s+)?hours\b/i.test(otherText) ||
+        /\b(?:seasonal|summer|winter|pickup|pick-up|delivery|takeout|take-out|online)(?:\s+only)?\s+hours\b|\bhours (?:vary|may|subject to)|by appointment/i.test(text)) {
+      throw new Error("Unresolved Common Market notice or extra schedule.");
+    }
+    if (time(match[1]) >= time(match[2])) throw new Error("Unreviewed Common Market overnight store hours.");
+    setWindows(hours, [...WEEKDAYS], match.slice(1, 3));
   } else if (source.slug === "dublin-roasters-frederick") {
     if (!/Dublin Roasters/i.test(text)
       || !/1780 N\.? Market (?:Street|St\.?)\s*[●·,]?\s*Frederick,?\s*MD\s*21701/i.test(text)
@@ -347,6 +396,13 @@ export async function collectMerchantOfficialHours(previous: unknown, fetchPage:
   // Losing or corrupting the approved baseline is not permission to re-enroll sources.
   validateMerchantHoursArtifact(previous);
   const artifact: MerchantHoursArtifact = { schema_version: 1, places: [], review: [] };
+  // Share only this run's immutable actual receipt. Each slug still parses,
+  // compares and retains its own approval/hold. Release bodies after last use.
+  const receipts = new Map<string, Promise<OfficialPageReceipt>>();
+  const usesLeft = new Map<string, number>();
+  for (const source of MERCHANT_HOURS_SOURCES) {
+    if (!("collection" in source && source.collection === "manual")) usesLeft.set(source.url, (usesLeft.get(source.url) ?? 0) + 1);
+  }
   for (const source of MERCHANT_HOURS_SOURCES) {
     const approved = previous.places.find((row) => row.slug === source.slug);
     const held = previous.review.find((row) => row.slug === source.slug);
@@ -362,7 +418,19 @@ export async function collectMerchantOfficialHours(previous: unknown, fetchPage:
       artifact.review.push({ slug: source.slug, checked_at: now.toISOString(), reason, ...(candidate ? { candidate } : {}) });
     };
     let page: OfficialPageReceipt;
-    try { page = await fetchPage(source.url); } catch { hold("source_unavailable"); continue; }
+    try {
+      let receipt = receipts.get(source.url);
+      if (!receipt) {
+        receipt = Promise.resolve().then(() => fetchPage(source.url)).then((value) => Object.freeze({ ...value }));
+        receipts.set(source.url, receipt);
+      }
+      page = await receipt;
+    } catch { hold("source_unavailable"); continue; }
+    finally {
+      const remaining = usesLeft.get(source.url)! - 1;
+      usesLeft.set(source.url, remaining);
+      if (remaining === 0) receipts.delete(source.url);
+    }
     let candidate: MerchantHoursRecord;
     try { candidate = parseMerchantOfficialHours(source, page, now); } catch { hold("unparseable_or_conflicted"); continue; }
     if (approved && !held && approvedFacts(approved) === approvedFacts(candidate)) {

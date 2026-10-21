@@ -613,6 +613,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "common_market_hours",
+    "name": "Common Market — First-party Grocery Hours",
+    "owner": "Common Market",
+    "url": "https://www.commonmarket.coop/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "common_market_hours",
+      "https://www.commonmarket.coop/"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "curious_iguana_hours",
     "name": "Curious Iguana — First-party Hours",
     "owner": "Curious Iguana",

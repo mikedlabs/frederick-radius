@@ -21,6 +21,9 @@ export const MERCHANT_HOURS_SOURCES = [
   { slug: "kulfi-ice-creams-frederick", name: "Kulfi Ice Creams", ledger_id: "kulfi_hours", category: "ice-cream", url: "https://kulfi-icecream.com/", kind: "weekly" },
   // This exact reviewed Wix page exceeds the ordinary 512000-byte transport cap.
   { slug: "alekos-middletown", name: "Aleko's Village Cafe", ledger_id: "alekos_hours", category: "restaurant", url: "https://www.alekosvillagecafe.com/", kind: "weekly", max_response_bytes: 1_048_576 },
+  // One reviewed official page, with independent exact grocery identities.
+  { slug: "common-market-frederick", name: "Common Market Co-op (Route 85)", ledger_id: "common_market_hours", category: "market", url: "https://www.commonmarket.coop/", kind: "weekly" },
+  { slug: "common-market", name: "Common Market (7th Street)", ledger_id: "common_market_hours", category: "market", url: "https://www.commonmarket.coop/", kind: "weekly" },
 ] as const;
 export type MerchantHoursSource = typeof MERCHANT_HOURS_SOURCES[number];
 export type MerchantHoursRecord = {

@@ -7,7 +7,7 @@ export type OwnedPlacePhoto = {
   width: number;
   height: number;
   /** Retain the reviewed subject when a card needs a narrower crop. */
-  objectPosition?: "center" | "right";
+  objectPosition?: "center" | "left" | "right";
 };
 
 export const OWNED_PLACE_PHOTOS: Readonly<Record<string, OwnedPlacePhoto>> = {
@@ -37,6 +37,17 @@ export const OWNED_PLACE_PHOTOS: Readonly<Record<string, OwnedPlacePhoto>> = {
     width: 1920,
     height: 1079,
     objectPosition: "right",
+  },
+  // Existing owner-permitted Seasons photo: the exact Baker Park carillon,
+  // visually reviewed against its canonical place. It is an establishing view,
+  // not a current activity or weather claim; left framing retains the tower.
+  "joseph-dill-baker-memorial-carillon-bell-tower": {
+    kind: "owned",
+    src: "/images/seasons/fall/021.jpg",
+    alt: "The Joseph Dill Baker Memorial Carillon in Baker Park, Frederick.",
+    width: 1920,
+    height: 1279,
+    objectPosition: "left",
   },
   // Existing owner-supplied Seasons photo already identified on Sports.
   "mccurdy-field": {

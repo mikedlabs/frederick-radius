@@ -4,6 +4,7 @@ import { MERCHANT_HOURS_SOURCES, type MerchantHoursArtifact } from "@/lib/mercha
 import { parseMerchantOfficialHours } from "../../../scripts/lib/merchant-official-hours";
 import type { SourceEvidence } from "./source-ledger";
 import BUSINESS_INFO_RAW from "@/data/business-info.json" with { type: "json" };
+import MERCHANT_HOURS_RAW from "@/data/places-merchant-hours.json" with { type: "json" };
 import {
   businessInfoRowEvidenceTimestamp,
   buildSourceArtifactEvidence,
@@ -172,6 +173,7 @@ describe("bundled source artifact evidence", () => {
       "alekos_hours",      "beans_belfry_hours",
       "brewers_alley_hours",
       "business_info_extraction",
+      "common_market_hours",
       "curious_iguana_hours",
       "dublin_roasters_hours",
       "fcpl_branch_hours",
@@ -200,6 +202,27 @@ describe("bundled source artifact evidence", () => {
 
 
 describe("merchant source publication evidence", () => {
+  it("counts both accepted Common Market store bindings under one canonical source owner", () => {
+    const artifact = MERCHANT_HOURS_RAW as MerchantHoursArtifact;
+    const slugs = ["common-market-frederick", "common-market"];
+    const rows = slugs.map((slug) => {
+      const row = artifact.places.find((item) => item.slug === slug);
+      expect(row).toBeDefined();
+      return row!;
+    });
+    expect(artifact.review.some((row) => slugs.includes(row.slug))).toBe(false);
+    const expected = rows.map((row) => ({ sourceKey: "common_market_hours", kind: "artifact", attemptedAt: row.observed_at,
+      outcome: "success", succeededAt: row.observed_at, publishedAt: row.observed_at, expiresAt: row.expires_at, recordCount: 1 }));
+    for (const [index, row] of rows.entries()) {
+      expect(merchantSourceArtifactEvidence({ schema_version: 1, places: [row], review: [] })).toEqual([expected[index]]);
+    }
+    const combined = merchantSourceArtifactEvidence(artifact).filter((row) => row.sourceKey === "common_market_hours");
+    expect(combined).toEqual(expected);
+    expect([...new Set(combined.map((row) => row.sourceKey))]).toEqual(["common_market_hours"]);
+    expect(combined.reduce((count, row) => count + (row.recordCount ?? 0), 0)).toBe(2);
+    expectHonestArtifactOutcomes(combined);
+  });
+
   it("preserves the original source observations, expiry, and newer failed review attempt", () => {
     const original = merchantFixture();
     const artifact = structuredClone(original);

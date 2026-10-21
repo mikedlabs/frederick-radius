@@ -172,62 +172,110 @@ for (const width of [320, 375, 390, 430]) {
   });
 }
 
-test("exact named venue leads with its owned photo and native Enter survives Back at 390px", async ({ page }, info) => {
-  test.setTimeout(90_000);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await imageTransport(page);
-  await page.goto("/contacts", { waitUntil: "domcontentloaded" });
-  let dialog = await openFind(page);
-  const paidFindRequests: string[] = [];
-  let observeFind = true;
-  page.on("request", request => {
-    if (observeFind && new URL(request.url()).pathname === "/api/place-photo") paidFindRequests.push(request.url());
+for (const entry of ["/contacts", "/today?in=county"]) {
+  test(`exact named venue photo and native Enter survive Back from ${entry} at 390px`, async ({ page }, info) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await imageTransport(page);
+    const launcher = entry.startsWith("/today")
+      ? page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true })
+      : page.locator("header").getByRole("button", { name: "Ask or find across Frederick County", exact: true }).filter({ visible: true });
+    async function openEntryFind() {
+      await expect(launcher).toHaveCount(1);
+      await expect(launcher).toBeVisible();
+      await expect(launcher).toBeEnabled();
+      await expect(launcher).toHaveAttribute("data-find-interaction-ready", "true");
+      await launcher.click();
+      const dialog = page.getByRole("dialog", { name: "What do you need?", exact: true });
+      await expect(dialog).toBeVisible();
+      return dialog;
+    }
+    await page.goto(entry, { waitUntil: "domcontentloaded" });
+    if (entry.startsWith("/today")) await expect(page.getByRole("combobox", { name: "Choose your area", exact: true })).toHaveValue("county");
+    let dialog = await openEntryFind();
+    const paidFindRequests: string[] = [];
+    let observeFind = true;
+    page.on("request", request => {
+      if (observeFind && new URL(request.url()).pathname === "/api/place-photo") paidFindRequests.push(request.url());
+    });
+    const query = "Baker Park Bandshell";
+    const slug = "baker-park-bandshell";
+    const responsePending = page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return url.pathname === "/api/search" && url.searchParams.get("q") === query;
+    });
+    const input = dialog.getByRole("searchbox");
+    await input.fill(query);
+    const response = await responsePending;
+    expect(response.status()).toBe(200);
+    const answer = await response.json();
+    expect(answer.results[0]).toMatchObject({
+      id: `place:${slug}`, title: query, href: `/places/${slug}`,
+      thumbnailSource: { kind: "owned", src: "/images/seasons/fall/018.jpg" },
+    });
+    const first = dialog.locator("#search-opt-0");
+    await expect(first.getByRole("heading", { name: query, exact: true })).toBeVisible();
+    await expect(first.getByRole("link", { name: "View place", exact: true })).toHaveAttribute("href", `/places/${slug}`);
+    const photo = first.locator('[data-search-place-visual="owned"] img');
+    await photo.scrollIntoViewIfNeeded();
+    await expect.poll(() => photo.evaluate(async node => {
+      const image = node as HTMLImageElement;
+      try { await image.decode(); } catch { return false; }
+      const url = new URL(image.currentSrc);
+      return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1
+        && url.origin === location.origin && url.pathname === "/_next/image"
+        && url.searchParams.get("url") === "/images/seasons/fall/018.jpg";
+    })).toBe(true);
+    await expect(first.locator(".place-card-photo-credit")).toHaveCount(0);
+    const isPaidPhoto = (raw: string | undefined) => {
+      if (!raw) return false;
+      const outer = new URL(raw, page.url());
+      const actual = outer.pathname === "/_next/image" ? new URL(outer.searchParams.get("url") ?? "", outer.origin) : outer;
+      return actual.pathname === "/api/place-photo"
+        || /(^|\.)places\.googleapis\.com$|(^|\.)googleusercontent\.com$/i.test(actual.hostname);
+    };
+    for (const result of answer.results) {
+      expect(result.thumbnailSource?.kind).not.toBe("google");
+      expect(isPaidPhoto(result.thumbnail) || isPaidPhoto(result.thumbnailSource?.src)).toBe(false);
+    }
+    const actualFindImages = await dialog.locator("img").evaluateAll(nodes => nodes.map(node => (node as HTMLImageElement).currentSrc || (node as HTMLImageElement).src));
+    expect(actualFindImages.some(isPaidPhoto)).toBe(false);
+    // Contacts has no background discovery cards. Today does; timing alone
+    // cannot attribute their independently blocked photo attempts to Find.
+    if (entry === "/contacts") expect(paidFindRequests).toEqual([]);
+    else await info.attach("today-blocked-photo-attempts-not-attributed-to-find", {
+      contentType: "application/json",
+      body: JSON.stringify({ count: paidFindRequests.length, sample: paidFindRequests.slice(0, 32),
+        boundary: "All photo proxies blocked. Actual Find API and dialog sources checked separately; background request causality not inferred." }),
+    });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    await page.screenshot({ path: info.outputPath("find-exact-bandshell-owned-390.png") });
+    observeFind = false;
+    await input.press("Enter");
+    await expect(page).toHaveURL(new RegExp(`/places/${slug}$`));
+    await expect(page.getByRole("heading", { level: 1, name: query, exact: true })).toBeVisible();
+    await expect(dialog).toHaveCount(0);
+    await page.goBack();
+    await expect(page).toHaveURL(new URL(entry, test.info().project.use.baseURL as string).href);
+    if (entry.startsWith("/today")) await expect(page.getByRole("combobox", { name: "Choose your area", exact: true })).toHaveValue("county");
+    dialog = await openEntryFind();
+    await expect(dialog.getByRole("searchbox")).toHaveValue(query);
+    await expect(dialog.locator("#search-opt-0").getByRole("heading", { name: query, exact: true })).toBeVisible();
+    const restoredPhoto = dialog.locator('#search-opt-0 [data-search-place-visual="owned"] img');
+    await restoredPhoto.scrollIntoViewIfNeeded();
+    await expect.poll(() => restoredPhoto.evaluate(async node => {
+      const image = node as HTMLImageElement;
+      try { await image.decode(); } catch { return false; }
+      const url = new URL(image.currentSrc);
+      return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1
+        && url.origin === location.origin && url.pathname === "/_next/image"
+        && url.searchParams.get("url") === "/images/seasons/fall/018.jpg";
+    })).toBe(true);
+    await dialog.getByRole("button", { name: "Close Find", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(launcher).toBeFocused();
   });
-  const query = "Baker Park Bandshell";
-  const slug = "baker-park-bandshell";
-  const responsePending = page.waitForResponse(response => {
-    const url = new URL(response.url());
-    return url.pathname === "/api/search" && url.searchParams.get("q") === query;
-  });
-  const input = dialog.getByRole("searchbox");
-  await input.fill(query);
-  const response = await responsePending;
-  expect(response.status()).toBe(200);
-  expect((await response.json()).results[0]).toMatchObject({
-    id: `place:${slug}`, title: query, href: `/places/${slug}`,
-    thumbnailSource: { kind: "owned", src: "/images/seasons/fall/018.jpg" },
-  });
-  const first = dialog.locator("#search-opt-0");
-  await expect(first.getByRole("heading", { name: query, exact: true })).toBeVisible();
-  await expect(first.getByRole("link", { name: "View place", exact: true })).toHaveAttribute("href", `/places/${slug}`);
-  const photo = first.locator('[data-search-place-visual="owned"] img');
-  await photo.scrollIntoViewIfNeeded();
-  await expect.poll(() => photo.evaluate(async node => {
-    const image = node as HTMLImageElement;
-    try { await image.decode(); } catch { return false; }
-    const url = new URL(image.currentSrc);
-    return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1
-      && url.origin === location.origin && url.pathname === "/_next/image"
-      && url.searchParams.get("url") === "/images/seasons/fall/018.jpg";
-  })).toBe(true);
-  await expect(first.locator(".place-card-photo-credit")).toHaveCount(0);
-  expect(paidFindRequests).toEqual([]);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
-  await page.screenshot({ path: info.outputPath("find-exact-bandshell-owned-390.png") });
-  observeFind = false;
-  await input.press("Enter");
-  await expect(page).toHaveURL(new RegExp(`/places/${slug}$`));
-  await expect(page.getByRole("heading", { level: 1, name: query, exact: true })).toBeVisible();
-  await expect(dialog).toHaveCount(0);
-  await page.goBack();
-  await expect(page).toHaveURL(/\/contacts$/);
-  dialog = await openFind(page);
-  await expect(dialog.getByRole("searchbox")).toHaveValue(query);
-  await expect(dialog.locator("#search-opt-0").getByRole("heading", { name: query, exact: true })).toBeVisible();
-  await dialog.getByRole("button", { name: "Close Find", exact: true }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect(page.locator("header").getByRole("button", { name: "Ask or find across Frederick County", exact: true }).filter({ visible: true })).toBeFocused();
-});
+}
 
 for (const failure of ["error", "transparent"] as const) {
   test(`submitted Search keeps the real result and removes failed photo credit after ${failure}`, async ({ page }) => {
