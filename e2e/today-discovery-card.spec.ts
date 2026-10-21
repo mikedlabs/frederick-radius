@@ -179,18 +179,27 @@ test("Today keeps the owned place visual separate from a real answer without an 
     const events = document.querySelector('[role="group"][aria-label="Follow the day"]')!;
     const scene = document.querySelector("[data-today-geographic-doorway]")!;
     const answerRegion = document.querySelector('[aria-label="Places for your area"]')!;
+    const news = document.querySelector('section[aria-label="Local news"]')!;
+    const explore = document.querySelector('section[aria-labelledby="today-explore-heading"]')!;
     const sceneBox = scene.getBoundingClientRect(), quickBox = quick.getBoundingClientRect();
     const eventsBox = events.getBoundingClientRect(), answerBox = element.getBoundingClientRect();
+    const newsBox = news.getBoundingClientRect();
     return {
       ownedSceneBeforeQuickNeeds: Boolean(scene.compareDocumentPosition(quick) & Node.DOCUMENT_POSITION_FOLLOWING),
-      quickNeedsBeforeEvents: Boolean(quick.compareDocumentPosition(events) & Node.DOCUMENT_POSITION_FOLLOWING),
+      ownedSceneBeforeEvents: Boolean(scene.compareDocumentPosition(events) & Node.DOCUMENT_POSITION_FOLLOWING),
       eventsBeforeAreaAnswer: Boolean(events.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
+      areaAnswerBeforeNews: Boolean(element.compareDocumentPosition(news) & Node.DOCUMENT_POSITION_FOLLOWING),
+      newsBeforeQuickNeeds: Boolean(news.compareDocumentPosition(quick) & Node.DOCUMENT_POSITION_FOLLOWING),
+      quickNeedsInExplore: explore.contains(quick),
       ownedSceneOutsideAreaAnswer: !answerRegion.contains(scene),
-      verticalOrder: sceneBox.bottom <= quickBox.top && quickBox.bottom <= eventsBox.top && eventsBox.bottom <= answerBox.top,
+      verticalOrder: sceneBox.bottom <= eventsBox.top && eventsBox.bottom <= answerBox.top
+        && answerBox.bottom <= newsBox.top && newsBox.bottom <= quickBox.top,
     };
   });
-  expect(hierarchy).toEqual({ ownedSceneBeforeQuickNeeds: true, quickNeedsBeforeEvents: true,
-    eventsBeforeAreaAnswer: true, ownedSceneOutsideAreaAnswer: true, verticalOrder: true });
+  expect(hierarchy).toEqual({ ownedSceneBeforeQuickNeeds: true, ownedSceneBeforeEvents: true,
+    eventsBeforeAreaAnswer: true, areaAnswerBeforeNews: true, newsBeforeQuickNeeds: true,
+    quickNeedsInExplore: true, ownedSceneOutsideAreaAnswer: true, verticalOrder: true });
+  await expect(quickNeeds).toHaveCount(1);
   await expect(quickNeeds.getByRole("link")).toHaveCount(4);
   expect(uncreditedPhotoRequests).toBe(0);
   await testInfo.attach("separate-owned-place-and-uncredited-answer", { contentType: "application/json", body: JSON.stringify({ metadataRequests, uncreditedPhotoRequests, hierarchy, proof: "Real Today composition and owned image; a declared answer/failed credit transport tests honest fallback, not live venue hours or current image availability." }) });

@@ -66,10 +66,38 @@ for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 844 });
     await page.route("**/api/place-photo?**", (route) => route.abort());
     await page.goto("/search?q=Schifferstadt&in=county&kind=place", { waitUntil: "domcontentloaded" });
-    await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
     const area = page.getByRole("combobox", { name: "Search area", exact: true });
     await expect(area).toBeEnabled();
     await expect(area).toHaveValue("county");
+    // Hydration can reconcile the root style after DOMContentLoaded. Set the
+    // external text-size probe only once the real control is interactive, then
+    // require actual computed growth rather than assuming the mutation stuck.
+    await page.evaluate(() => document.fonts.ready);
+    const paint = () => page.evaluate(() => new Promise<void>(resolve =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    const textSize = () => area.evaluate(node => ({
+      root: parseFloat(getComputedStyle(document.documentElement).fontSize),
+      control: parseFloat(getComputedStyle(node).fontSize),
+    }));
+    await paint();
+    const baseline = await textSize();
+    const growthSamples: Awaited<ReturnType<typeof textSize>>[] = [];
+    await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+    let consecutiveGrowth = 0;
+    try {
+      await expect.poll(async () => {
+        await paint();
+        const sample = await textSize();
+        growthSamples.push(sample);
+        const grown = sample.root >= baseline.root * 2 - 0.25
+          && sample.control >= baseline.control * 2 - 0.25;
+        consecutiveGrowth = grown ? consecutiveGrowth + 1 : 0;
+        return consecutiveGrowth;
+      }, { message: "Root and native area text actually grow to 200% after hydration" }).toBeGreaterThanOrEqual(2);
+    } finally {
+      await info.attach("native-search-text-growth", { contentType: "application/json",
+        body: JSON.stringify({ baseline, growthSamples }) });
+    }
     const bounds = (await area.boundingBox())!;
     const sizing = await area.evaluate(element => {
       const style = getComputedStyle(element);
