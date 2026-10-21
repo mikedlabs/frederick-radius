@@ -49,6 +49,32 @@ export const OWNED_PLACE_PHOTOS: Readonly<Record<string, OwnedPlacePhoto>> = {
     height: 1279,
     objectPosition: "left",
   },
+  // Existing owner-permitted Seasons photographs, visually reviewed against
+  // these exact Church Street / East Second Street landmarks. They show the
+  // named tower or spires, not current services, opening hours or activity.
+  "st-john-the-evangelist-catholic-church-frederick": {
+    kind: "owned",
+    src: "/images/seasons/winter/PG134 Replacement.jpg",
+    alt: "The clock tower and cross of St. John the Evangelist Catholic Church in Frederick.",
+    width: 1920,
+    height: 1080,
+  },
+  "evangelical-lutheran-church": {
+    kind: "owned",
+    src: "/images/seasons/spring/016.jpg",
+    alt: "The twin spires of Evangelical Lutheran Church on Church Street in Frederick.",
+    width: 1920,
+    height: 1080,
+    objectPosition: "left",
+  },
+  "trinity-chapel": {
+    kind: "owned",
+    src: "/images/seasons/winter/WINTER NEW 7.jpg",
+    alt: "The spire and fish weather vane of Trinity Chapel on Church Street in Frederick.",
+    width: 1920,
+    height: 1079,
+    objectPosition: "left",
+  },
   // Existing owner-supplied Seasons photo already identified on Sports.
   "mccurdy-field": {
     kind: "owned",

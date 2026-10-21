@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:2e6223ea35aef92b307173331e7a028342163b93fd0d3469c03468423f8b4db6",
+  "data_version": "sha256:999c62672d0d3bf2b18d3f66d99290204707d42dee051504b71c613d31d3c2c9",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-21T11:51:05.949Z",
+      "promoted_at": "2026-10-21T21:36:32.266Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -72,9 +72,9 @@
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "8e23a8c97b598ae48953346eb7db4e7fe6a64ed852656e3cc202a677d7ea49dc",
+          "sha256": "d94baba8154929f8949dc929f0d763b9a23f6d25befe29ee6a303723207641d9",
           "records": 16,
-          "bytes": 20687
+          "bytes": 20546
         },
         {
           "path": "src/data/business-status.json",
@@ -258,9 +258,9 @@
         },
         {
           "path": "src/lib/owned-place-photos.ts",
-          "sha256": "45d4f57dcf75ccaf8e473ff19e6cd63b8fb86f8f1d054d494b8c8208d06ceed8",
+          "sha256": "02c77ebc1b5decb76d57e4da472b9cf21acbd903c988f4214cab8892bdb65247",
           "records": null,
-          "bytes": 2784
+          "bytes": 3791
         },
         {
           "path": "public/images/seasons/fall/018.jpg",
@@ -273,6 +273,24 @@
           "sha256": "32eecff2e02913ad7b0093ef599318936b8a6694cdacda39623c393399732967",
           "records": null,
           "bytes": 409846
+        },
+        {
+          "path": "public/images/seasons/winter/PG134 Replacement.jpg",
+          "sha256": "0bb200d81c80ba948bd0407b67e9a91c4d81bc0c4fe4566617844078d3d3c627",
+          "records": null,
+          "bytes": 235065
+        },
+        {
+          "path": "public/images/seasons/spring/016.jpg",
+          "sha256": "a20beee8a0129ba4f59cec2913e6b298c52110a05530a008c9ed3761e7aa6602",
+          "records": null,
+          "bytes": 212315
+        },
+        {
+          "path": "public/images/seasons/winter/WINTER NEW 7.jpg",
+          "sha256": "a828148c8d16dca6dafa62c9cabe87b9911faef2a86f4afcb200139e9dc37183",
+          "records": null,
+          "bytes": 233126
         },
         {
           "path": "public/images/seasons/spring/aerial-view-baseball-field.jpg",
@@ -336,15 +354,15 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "4b214bcbe5b56d6a288b5d560148e08b953809252fcf4cdcf69eeefc630986a6",
+          "sha256": "696ae2971f9925e4182ce85c0d9e5176b9174ba48fd50671d61c4db3aad9522c",
           "records": 1571,
-          "bytes": 2301782
+          "bytes": 2302449
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "8f62adffb6e94fc127000891938559a29a0858a8c5f97e10d6c536f79b4124ce",
-          "records": 24,
-          "bytes": 35658
+          "sha256": "550b25c184df91257efa00a63fac8cd200a5905e18b8a9e88787eda93d8512f2",
+          "records": 25,
+          "bytes": 36410
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
