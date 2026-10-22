@@ -7,6 +7,7 @@ import {
   isNaturalLanguageRequest,
   safeOfficialAnswerHref,
   unifiedRequestDestination,
+  visibleFindQuickAnswers,
 } from "./SearchOverlay";
 import { searchCivicActions } from "@/lib/search/civic";
 import { qualifiedSearchIndex } from "@/lib/search/index";
@@ -196,5 +197,27 @@ describe("Find exact place Enter destination", () => {
     expect(best?.id).toBe(`place:${slug}`);
     expect(unifiedRequestDestination({ query, quickHref: quick?.href, quickKey: quick?.key,
       bestHref: best?.href, status: "done" })).toBe(`/places/${slug}`);
+  });
+
+  it.each(["National Museum of Civil War Medicine", "Schifferstadt Architectural Museum", "Frederick Coffee Company"])("lets the complete %s name own its visible answer and Enter", (query) => {
+    const { best } = splitBestMatch(qualifiedSearchIndex(query, 12, []).results);
+    expect(best?.type).toBe("place");
+    const visible = visibleFindQuickAnswers(query, "done", best);
+    expect(visible).toEqual([]);
+    expect(unifiedRequestDestination({ query, quickHref: visible[0]?.href, quickKey: visible[0]?.key,
+      bestHref: best?.href, status: "done" })).toBe(best?.href);
+  });
+
+  it("does not guess a category while a new name is still loading", () => {
+    const query = "National Museum of Civil War Medicine";
+    const visible = visibleFindQuickAnswers(query, "loading");
+    expect(visible).toEqual([]);
+    expect(unifiedRequestDestination({ query, status: "loading" })).toBe(`/search?q=${encodeURIComponent(query)}`);
+  });
+
+  it("retains category discovery and immediate utility answers when no exact place owns the words", () => {
+    expect(visibleFindQuickAnswers("museums", "done")[0]?.key).toBe("craving:art");
+    expect(visibleFindQuickAnswers("bus", "loading")[0]?.key).toBe("transit");
+    expect(visibleFindQuickAnswers("what's open now?", "done")[0]?.key).toBe("open-now");
   });
 });

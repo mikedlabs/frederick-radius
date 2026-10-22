@@ -52,6 +52,7 @@ import TrustChip from "@/components/ui/TrustChip";
 import { TRUST_COLOR, type TrustSignal } from "@/lib/trust";
 import { useRecentSearches, usePushRecentSearch, useClearRecentSearches, useRecentSearchStatus, type RecentSearchStatus } from "@/hooks/useRecentSearches";
 import { frederickHour } from "@/lib/search-suggestions";
+import { isExactPlaceNameQuery } from "@/lib/search/place-name";
 
 const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
   place: MapPin,
@@ -159,6 +160,17 @@ const DIRECT_NATURAL_LANGUAGE_INTENTS = new Set([
 export function isCompoundLookup(value: string): boolean {
   const normalized = value.trim().toLocaleLowerCase();
   return /\b(?:and|with|under|within|for)\b/.test(normalized);
+}
+
+/** The visible shortcut and Enter always use the same settled decision.
+ * A category guess cannot outrank an exact place or win during retrieval. */
+export function visibleFindQuickAnswers(query: string, status: "idle" | "loading" | "done" | "error", best?: SearchResult | null) {
+  if (status === "done" && best?.type === "place" && isExactPlaceNameQuery(query, best.title)) return [];
+  const directOnly = isNaturalLanguageRequest(query) || isCompoundLookup(query);
+  return findQuickAnswers(query).filter((answer) =>
+    (!directOnly || DIRECT_NATURAL_LANGUAGE_INTENTS.has(answer.key)) &&
+    (status === "done" || !answer.key.startsWith("craving:")),
+  );
 }
 
 /** Only authoritative HTTPS destinations may bypass Radius navigation. */
@@ -589,14 +601,9 @@ export default function SearchOverlay({
   // (open-now, events, transit, parking) + buried-gov departments +
   // the county's own How-Do-I actions (voter registration, FixIT,
   // marriage licenses, burn permits…). Cheap synchronous lookups; no fetch.
-  const quickAnswers = findQuickAnswers(query);
+  const { best, rest } = splitBestMatch(results);
   const reasoningRequest = isNaturalLanguageRequest(query);
-  const compoundLookup = isCompoundLookup(query);
-  const visibleQuickAnswers = reasoningRequest || compoundLookup
-    ? quickAnswers.filter((answer) =>
-        DIRECT_NATURAL_LANGUAGE_INTENTS.has(answer.key),
-      )
-    : quickAnswers;
+  const visibleQuickAnswers = visibleFindQuickAnswers(query, status, best);
   const civicCandidates = searchCivicActions(query, 2);
   const govAnswers = shouldShowDepartmentAnswers(query, civicCandidates)
     ? findDepartments(query)
@@ -611,7 +618,6 @@ export default function SearchOverlay({
     govAnswers[0]?.website,
     civicAnswers[0]?.href,
   );
-  const { best, rest } = splitBestMatch(results);
   const rankedResults = best ? [{ r: best, idx: 0 }, ...rest] : [];
   const submitCommand = () => {
     const destination = unifiedRequestDestination({

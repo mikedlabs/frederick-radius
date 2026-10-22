@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import SearchOverlay from "./SearchOverlay";
 import { usePushRecentSearch } from "@/hooks/useRecentSearches";
+import { freeSearchPlaceVisual } from "@/lib/search/place-visual";
+import type { QualifiedSearchIndexResult } from "@/lib/search/index";
 
 /** Query-only parent state matches the overlay's real lazy-mount contract.
  * Full header/session/history behavior is covered by the interactive specs. */
@@ -44,7 +46,7 @@ function FindWorkshop({ initialQuery = "coffee", sampleRecentQuery }: { initialQ
   );
 }
 
-function sampleSearch(state: "ready" | "loading" | "error") {
+function sampleSearch(state: "ready" | "loading" | "error", readyResponse?: QualifiedSearchIndexResult) {
   const originalFetch = window.fetch;
   const cancelPending = new Set<() => void>();
   let reads = 0;
@@ -68,7 +70,7 @@ function sampleSearch(state: "ready" | "loading" | "error") {
       });
     }
     if (state === "error") return Promise.resolve(new Response("Sample service unavailable", { status: 503 }));
-    return Promise.resolve(Response.json({
+    return Promise.resolve(Response.json(readyResponse ?? {
       results: [{
         type: "place",
         id: "sample-coffee",
@@ -82,6 +84,52 @@ function sampleSearch(state: "ready" | "loading" | "error") {
   return () => {
     if (window.fetch === fixtureFetch) window.fetch = originalFetch;
     for (const cancel of cancelPending) cancel();
+  };
+}
+
+const MUSEUM_NAME = "National Museum of Civil War Medicine";
+const MUSEUM_SLUG = "national-museum-civil-war-medicine-frederick";
+
+/** A labeled response fixture reuses only the already reviewed local image.
+ * No live search, place status, provider, or hours observation is simulated. */
+function sampleMuseumResponse(): QualifiedSearchIndexResult {
+  const source = freeSearchPlaceVisual({ slug: MUSEUM_SLUG });
+  if (source?.kind !== "curated") throw new Error("The sample requires the existing licensed museum image.");
+  return {
+    results: [{
+      type: "place",
+      id: `place:${MUSEUM_SLUG}`,
+      title: MUSEUM_NAME,
+      subtitle: "Sample result for component review · Frederick City",
+      href: `/places/${MUSEUM_SLUG}`,
+      thumbnailSource: source,
+      // Existing catalog point permits review of the real Map action.
+      lat: 39.4139408,
+      lng: -77.4092991,
+      trust: { level: "unconfirmed", label: "Sample hours not confirmed", basis: "This component fixture does not check current hours." },
+    }],
+    meta: {
+      qualifiers: {
+        namedPlaceSlug: null,
+        compoundIntent: null,
+        strictPlaceKind: null,
+        categoryKey: null,
+        categoryLabel: null,
+        openNow: false,
+        nearMe: false,
+        downtown: false,
+        regions: [],
+        requestedFeatures: [],
+        negatedFeatures: [],
+        cleanedQuery: MUSEUM_NAME.toLowerCase(),
+        includeAllCategoryMatches: false,
+        constrained: false,
+      },
+      contextLabel: "Whole county",
+      nearMeApplied: false,
+      fallbackReason: null,
+      scopeMunicipality: null,
+    },
   };
 }
 
@@ -262,5 +310,118 @@ export const UnavailableRestoredQuery: Story = {
     await expect(dialog.getByRole("searchbox")).toHaveValue("coffee");
     await expect(await dialog.findByText("Search is unavailable right now.")).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Try again" })).toBeEnabled();
+  },
+};
+
+const exactMuseumFirst: NonNullable<Story["play"]> = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  await userEvent.click(canvas.getByRole("button", { name: "Open sample Find" }));
+  const dialogElement = await canvas.findByRole("dialog", { name: "What do you need?" });
+  const dialog = within(dialogElement);
+  const heading = await dialog.findByRole("heading", { name: MUSEUM_NAME });
+  await expect(dialog.getByRole("searchbox")).toHaveValue(MUSEUM_NAME);
+  await expect(dialog.getByText("Sample result for component review · Frederick City")).toBeVisible();
+  await expect(dialog.queryByText("Direct answer", { exact: true })).not.toBeInTheDocument();
+  await expect(dialog.queryByText("Art", { exact: true })).not.toBeInTheDocument();
+  await expect(dialog.queryByText(/Art\s*·\s*Whole county/)).not.toBeInTheDocument();
+
+  const results = dialog.getByRole("list", { name: "Search results" });
+  await expect(results.firstElementChild).toContainElement(heading);
+  await expect(results.children).toHaveLength(1);
+  const lead = heading.closest("[data-search-place-lead]")!;
+  const image = lead.querySelector<HTMLImageElement>("[data-search-place-photo-frame='lead'] img");
+  if (!image) throw new Error("The exact place must lead with its existing local photograph.");
+  const source = freeSearchPlaceVisual({ slug: MUSEUM_SLUG });
+  if (source?.kind !== "curated") throw new Error("The story requires the reviewed licensed local image.");
+  await waitFor(async () => {
+    await image.decode();
+    expect(image.naturalWidth).toBeGreaterThan(1);
+    expect(image.naturalHeight).toBeGreaterThan(1);
+  }, { timeout: 5000 });
+  const imageUrl = new URL(image.currentSrc, window.location.href);
+  await expect(imageUrl.pathname === source.src || imageUrl.searchParams.get("url") === source.src).toBe(true);
+  await expect(getComputedStyle(image).objectPosition).toBe("50% 100%");
+  await expect(image.parentElement!.getBoundingClientRect().bottom).toBeLessThanOrEqual(heading.getBoundingClientRect().top);
+
+  const attribution = await dialog.findByRole("link", { name: /Wikimedia Commons/ });
+  const credit = attribution.closest<HTMLElement>(".place-card-photo-credit")!;
+  await expect(credit).toHaveTextContent(source.photo.author);
+  await expect(attribution).toBeVisible();
+  await expect(attribution).toHaveAttribute("href", source.photo.source_url);
+  const license = dialog.getByRole("link", { name: source.photo.license });
+  await expect(license).toBeVisible();
+  await expect(license).toHaveAttribute("href", source.photo.licenseUrl);
+  const viewPlace = dialog.getByRole("link", { name: "View place" });
+  const map = dialog.getByRole("link", { name: /^Map$/ });
+  await expect(viewPlace).toHaveAttribute("href", `/places/${MUSEUM_SLUG}`);
+  await expect(map).toHaveAttribute("href", expect.stringContaining(`place=${MUSEUM_SLUG}`));
+  for (const control of [viewPlace, map, attribution, license]) {
+    control.scrollIntoView({ block: "nearest" });
+    const bounds = control.getBoundingClientRect();
+    await expect(bounds.width).toBeGreaterThanOrEqual(44);
+    await expect(bounds.height).toBeGreaterThanOrEqual(44);
+  }
+  // Close uses the shared invisible hit extender. Verify real hit testing,
+  // rather than mistaking its smaller visual label for its effective target.
+  const close = dialog.getByRole("button", { name: "Close Find" });
+  close.scrollIntoView({ block: "nearest" });
+  const closeBox = close.getBoundingClientRect();
+  for (const [dx, dy] of [[-21.5, -21.5], [-21.5, 21.5], [21.5, -21.5], [21.5, 21.5]]) {
+    const hit = close.ownerDocument.elementFromPoint(closeBox.x + closeBox.width / 2 + dx, closeBox.y + closeBox.height / 2 + dy);
+    await expect(hit !== null && close.contains(hit)).toBe(true);
+  }
+  await expect(dialogElement.querySelector("a a")).toBeNull();
+  for (const element of [dialogElement, results, heading.closest("li")!]) {
+    await expect(element.scrollWidth).toBeLessThanOrEqual(element.clientWidth);
+  }
+  // Enter uses native navigation and is proved in the dedicated browser flow,
+  // so the workshop retains its own document for mobile visual review.
+  image.scrollIntoView({ block: "nearest" });
+};
+
+const museumStory: Story = {
+  args: { initialQuery: MUSEUM_NAME },
+  beforeEach: () => sampleSearch("ready", sampleMuseumResponse()),
+  parameters: { docs: { description: { story: "A labeled sample search response with the existing licensed museum photo. The mounted Find surface keeps the exact place above category shortcuts, retains creator/source/license links and uses native-size actions. It does not verify current hours or make a provider request." } } },
+  play: exactMuseumFirst,
+};
+
+export const ExactMuseum320: Story = {
+  ...museumStory,
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+};
+export const ExactMuseum375: Story = {
+  ...museumStory,
+  globals: { viewport: { value: "radiusMobileCompact", isRotated: false } },
+};
+export const ExactMuseum390: Story = {
+  ...museumStory,
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+};
+export const ExactMuseum430: Story = {
+  ...museumStory,
+  globals: { viewport: { value: "radiusMobileLarge", isRotated: false } },
+};
+
+export const PendingExactPlaceKeepsTransitImmediate: Story = {
+  args: { initialQuery: MUSEUM_NAME },
+  beforeEach: () => sampleSearch("loading"),
+  parameters: { docs: { description: { story: "The sample search request stays pending. No guessed Art shortcut appears for the museum; replacing the draft with buses still exposes the deterministic transit answer immediately." } } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Open sample Find" }));
+    const dialog = within(await canvas.findByRole("dialog", { name: "What do you need?" }));
+    await expect(dialog.getByRole("searchbox")).toHaveValue(MUSEUM_NAME);
+    await expect(dialog.getByText("Searching…", { exact: true })).toBeVisible();
+    await expect(dialog.queryByText("Direct answer", { exact: true })).not.toBeInTheDocument();
+    await expect(dialog.queryByText("Art", { exact: true })).not.toBeInTheDocument();
+    await expect(dialog.queryByRole("link", { name: "View place" })).not.toBeInTheDocument();
+    const input = dialog.getByRole("searchbox");
+    await userEvent.clear(input);
+    await userEvent.type(input, "buses");
+    await expect(await dialog.findByRole("link", { name: /MARC & transit times/ })).toHaveAttribute("href", "/transit");
+    await expect(dialog.getByText("Searching…", { exact: true })).toBeVisible();
+    await expect(dialog.queryByRole("heading", { name: MUSEUM_NAME })).not.toBeInTheDocument();
+    await expect(dialog.queryByText("Art", { exact: true })).not.toBeInTheDocument();
   },
 };

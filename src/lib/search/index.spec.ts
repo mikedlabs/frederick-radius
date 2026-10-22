@@ -459,6 +459,32 @@ it("serializes compact canonical event evidence without a photo or fabricated pl
 
 describe("exact eligible places before incidental map layers", () => {
   it.each([
+    ["National Museum of Civil War Medicine", "national-museum-civil-war-medicine-frederick"],
+    ["Schifferstadt Architectural Museum", "schifferstadt-architectural-museum-frederick"],
+  ])("does not turn the complete %s name into an art-category expansion", (query, slug) => {
+    const { results, meta } = qualifiedSearchIndex(query, 12, []);
+    expect(results[0]?.id).toBe(`place:${slug}`);
+    expect(meta.qualifiers).toMatchObject({ categoryKey: null, categoryLabel: null, constrained: false });
+    expect(qualifiedSearchIndex(query, 12, [], { municipality: "brunswick" }).results.some(row => row.id === `place:${slug}`)).toBe(false);
+  });
+
+  it("keeps same-name branches available and scoped instead of arbitrarily pinning the first slug", () => {
+    const base = placeLoader.clientPlaces()[0];
+    const branches = ["frederick", "brunswick"].map(municipality => ({ ...base,
+      slug: `sample-cafe-${municipality}`, name: "Sample Cafe", municipality, category: "coffee",
+    }));
+    const mock = vi.spyOn(placeLoader, "clientPlaces").mockReturnValue(branches);
+    try {
+      const county = qualifiedSearchIndex("Sample Cafe", 12, []);
+      expect(county.meta.qualifiers.namedPlaceSlug).toBeNull();
+      expect(county.results.filter(row => row.type === "place").map(row => row.id).sort())
+        .toEqual(branches.map(place => `place:${place.slug}`).sort());
+      const town = qualifiedSearchIndex("Sample Cafe", 12, [], { municipality: "brunswick" });
+      expect(town.results.filter(row => row.type === "place").map(row => row.id)).toEqual(["place:sample-cafe-brunswick"]);
+    } finally { mock.mockRestore(); }
+  });
+
+  it.each([
     ["Baker Park", "baker-park-frederick"],
     ["Baker Park Bandshell", "baker-park-bandshell"],
   ])("leads %s with its own canonical destination at normal and one-result limits", (query, slug) => {

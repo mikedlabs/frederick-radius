@@ -31,6 +31,8 @@ import { isTimedActivityRequest } from "@/lib/ask/intent";
 import { expandQuery, type QueryExpansion } from "@/lib/search/synonyms";
 import { searchEventWindow, type SearchEventWindow } from "@/lib/search/eventWindow";
 import { isNamedFairVendorPlace, namedFairVendorMatches } from "@/lib/search/fair-vendors";
+import { isExactPlaceNameQuery } from "@/lib/search/place-name";
+export { isExactPlaceNameQuery } from "@/lib/search/place-name";
 
 export type SearchHit =
   | {
@@ -83,15 +85,6 @@ const STOP = new Set([
 // also contains a more specific term. Otherwise nonsense such as "zxqv quux
 // near Frederick" can rank every business with Frederick in its name.
 const LOCAL_CONTEXT = new Set(["frederick", "maryland", "county", "md"]);
-
-/** A complete canonical name, never a prefix, fuzzy match, or alias. */
-export function isExactPlaceNameQuery(query: string, name: string): boolean {
-  const key = (value: string) => value.toLowerCase().normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "").replace(/['’]/g, "")
-    .replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-  const queryKey = key(query);
-  return queryKey.length > 0 && queryKey === key(name);
-}
 
 function normalize(s: string): string[] {
   const terms = s
@@ -1192,11 +1185,13 @@ export function qualifiedSearch(
 ): { hits: SearchHit[]; meta: QualifiedSearchMeta } {
   const namedMunicipality = namedMunicipalityScope(query);
   const scopedQuery = withoutMunicipalityScope(query, namedMunicipality);
-  const needsLiteralPlaceLookup = hasSearchFeatureTerms(query) &&
-    context.resultKind !== "event" && context.resultKind !== "page" &&
+  const allowLiteralPlaceLookup = context.resultKind !== "event" && context.resultKind !== "page" &&
     !(detectEventIntent(query) && searchEventWindow(query, context.now).meta.label);
-  const placePool = needsLiteralPlaceLookup ? clientPlaces() : undefined;
-  const literalPlace = (placePool ?? [])
+  // Reuse this decorated pool in search below: detecting a complete name must
+  // not decorate the full catalog twice or freeze its live hours in a cache.
+  const placePool = allowLiteralPlaceLookup ? clientPlaces() : undefined;
+  const exactName = placePool?.find((place) => isExactPlaceNameQuery(query, place.name))?.name;
+  const literalPlace = (hasSearchFeatureTerms(query) ? placePool ?? [] : [])
     .map((place) => ({ place, match: place.name.length >= 4
       ? new RegExp(`(?:^|\\s)${place.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|\\s|[,.!?])`, "i").exec(query)
       : null }))
@@ -1207,7 +1202,7 @@ export function qualifiedSearch(
     new Set(["", "please", "find", "show", "me", "i", "want", "need", "a", "an", "the", "looking", "for", "does", "do", "is", "can", "could", "would", "you", "tell", "us", "if"]).has(word),
   );
   const qualifiers = parseSearchQualifiers(query, {
-    literalPlaceName: literalPlace?.place.name,
+    literalPlaceName: exactName ?? literalPlace?.place.name,
     namedPlaceSlug: primaryNamedPlace ? literalPlace?.place.slug : undefined,
   });
   if (!qualifiers.constrained) {
