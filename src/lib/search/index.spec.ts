@@ -459,6 +459,48 @@ it("serializes compact canonical event evidence without a photo or fabricated pl
 
 describe("exact eligible places before incidental map layers", () => {
   it.each([
+    ["Sophie & Madigan's Playground", "sophie-madigans-playground-frederick"],
+    ["Sophie & Madigan’s Playground", "sophie-madigans-playground-frederick"],
+    ["Edward P Thomas Memorial Pool Playground", "edward-p-thomas-memorial-pool-playground"],
+  ])("leads a complete %s name before generic park doors at one-result and normal limits", (query, slug) => {
+    for (const limit of [1, 12]) {
+      for (const results of [searchIndex(query, limit, []), qualifiedSearchIndex(query, limit, [], { municipality: "frederick" }).results]) {
+        expect(results[0]).toMatchObject({ type: "place", id: `place:${slug}`, href: `/places/${slug}` });
+        expect(results.length).toBeLessThanOrEqual(limit);
+        expect(new Set(results.map((result) => result.href)).size).toBe(results.length);
+        if (limit > 1) expect(results.some((result) => result.id === "action:map-parks")).toBe(true);
+      }
+    }
+  });
+
+  it.each(["park", "parks", "playground", "playgrounds", "dog park", "public parks", "county parks"])("keeps the generic %s map shortcut even when a listing has that generic name", (query) => {
+    for (const results of [searchIndex(query, 12, []), qualifiedSearchIndex(query, 12, []).results]) {
+      expect(results[0]?.id).toBe("action:map-parks");
+    }
+  });
+
+  it("cannot restore an out-of-scope, hours-filtered or event-kind playground result", () => {
+    const name = "Sophie & Madigan's Playground", id = "place:sophie-madigans-playground-frederick";
+    const town = qualifiedSearchIndex(name, 12, [], { municipality: "brunswick" });
+    expect(town.results.some((result) => result.id === id)).toBe(false);
+    expect(town.results[0]?.href).toContain("in=brunswick");
+    const playground = placeLoader.clientPlaces().find((place) => `place:${place.slug}` === id)!;
+    for (const state of ["unknown", "closed"] as const) {
+      const mock = vi.spyOn(placeLoader, "clientPlaces").mockReturnValue([
+        { ...playground, hours: undefined, hours_verified: false, open_status: { state } },
+      ]);
+      try {
+        const open = qualifiedSearchIndex(`${name} open now`, 12, []);
+        expect(open.meta.qualifiers.openNow).toBe(true);
+        expect(open.results.some((result) => result.id === id)).toBe(false);
+      } finally { mock.mockRestore(); }
+    }
+    const events = qualifiedSearchIndex(name, 12, [], { resultKind: "event" });
+    expect(events.results.some((result) => result.type === "place")).toBe(false);
+    expect(searchIndex(`show ${name} on the map`, 12, [])[0]?.id).toBe("action:map-parks");
+  });
+
+  it.each([
     ["National Museum of Civil War Medicine", "national-museum-civil-war-medicine-frederick"],
     ["Schifferstadt Architectural Museum", "schifferstadt-architectural-museum-frederick"],
   ])("does not turn the complete %s name into an art-category expansion", (query, slug) => {

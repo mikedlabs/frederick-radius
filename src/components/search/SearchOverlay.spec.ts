@@ -199,7 +199,7 @@ describe("Find exact place Enter destination", () => {
       bestHref: best?.href, status: "done" })).toBe(`/places/${slug}`);
   });
 
-  it.each(["National Museum of Civil War Medicine", "Schifferstadt Architectural Museum", "Frederick Coffee Company"])("lets the complete %s name own its visible answer and Enter", (query) => {
+  it.each(["National Museum of Civil War Medicine", "Schifferstadt Architectural Museum", "Frederick Coffee Company", "Sophie & Madigan's Playground"])("lets the complete %s name own its visible answer and Enter", (query) => {
     const { best } = splitBestMatch(qualifiedSearchIndex(query, 12, []).results);
     expect(best?.type).toBe("place");
     const visible = visibleFindQuickAnswers(query, "done", best);

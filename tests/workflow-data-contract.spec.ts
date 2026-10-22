@@ -1,4 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
@@ -1004,6 +1005,39 @@ describe("scheduled data workflow contracts", () => {
     expect(style).toContain(
       "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
     );
+  });
+
+  it("repairs only the runner's exact Azure HTTP mirror while keeping signed browser setup and its bounds", () => {
+    const ci = parse(workflowText("ci.yml")) as WorkflowDocument;
+    const job = ci.jobs!.verify;
+    const step = job.steps!.find((candidate) => candidate.name === "Install browsers") as {
+      run: string;
+      if: string;
+      "timeout-minutes": number;
+    };
+    expect(job["timeout-minutes"]).toBe(45);
+    expect(step["timeout-minutes"]).toBe(10);
+    expect(step.if).toBe("${{ env.AUTOMATED_DATA_PR != '1' }}");
+    expect(step.run).toContain("if [ -f /etc/apt/apt-mirrors.txt ]; then");
+    expect(step.run.trim().endsWith("npx playwright install --with-deps chromium webkit")).toBe(true);
+    expect(step.run).not.toMatch(/trusted=yes|allow-unauthenticated|AllowInsecure|sources\.list|keyrings|curl|wget|\bwhile\b|\buntil\b/);
+    const expression = step.run.match(/sudo sed -E -i '([^']+)' \/etc\/apt\/apt-mirrors\.txt/)?.[1];
+    expect(expression).toBeDefined();
+    const input = "# CI\nhttp://azure.archive.ubuntu.com/ubuntu priority:1\nhttp://archive.ubuntu.com/ubuntu priority:2\nhttp://security.ubuntu.com/ubuntu priority:3\n";
+    expect(Buffer.byteLength(input)).toBe(144);
+    const transform = (value: string) => execFileSync("sed", ["-E", expression!], { input: value, encoding: "utf8" });
+    const expected = input.replace("http://azure.archive.ubuntu.com/ubuntu", "https://archive.ubuntu.com/ubuntu");
+    expect(transform(input)).toBe(expected);
+    expect(transform(expected)).toBe(expected);
+    const edgeCases = [
+      "  http://azure.archive.ubuntu.com/ubuntu/\tpriority:5",
+      "https://azure.archive.ubuntu.com/ubuntu priority:1",
+      "http://azureXarchiveXubuntuXcom/ubuntu priority:1",
+      "http://azure.archive.ubuntu.com/ubuntu-other priority:1",
+      "# http://azure.archive.ubuntu.com/ubuntu priority:1",
+      "http://security.ubuntu.com/ubuntu priority:3",
+    ].join("\n") + "\n";
+    expect(transform(edgeCases)).toBe(edgeCases.replace("  http://azure.archive.ubuntu.com/ubuntu/", "  https://archive.ubuntu.com/ubuntu/"));
   });
 
   it("pins the scheduled discovery boundary and does not persist credentials", () => {
