@@ -17,6 +17,25 @@ describe("free exact place photography in Find", () => {
     });
   });
 
+  it("carries exact museum entrance framing and source rights through the real Find result", () => {
+    const slug = "national-museum-civil-war-medicine-frederick";
+    const photo = freeSearchPlaceVisual(place(slug));
+    expect(photo).toMatchObject({ kind: "curated", src: "/place-photos/civil-war-medicine-frontage.jpg", objectPosition: "bottom",
+      photo: { author: "NatMuseCivMed", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/" } });
+    const result = searchIndex("National Museum of Civil War Medicine", 20, []).find(row => row.id === `place:${slug}`);
+    expect(result?.thumbnailSource).toEqual(photo);
+    expect(result?.thumbnail).toBe(photo?.src);
+    expect(isPaidGooglePhotoUrl(photo!.src)).toBe(false);
+  });
+
+  it("uses the owned City Hall view for the same canonical Find identity without inventing a credit", () => {
+    const photo = freeSearchPlaceVisual(place("city-hall-8"));
+    expect(photo).toMatchObject({ kind: "owned", src: "/images/seasons/winter/013.jpg", objectPosition: "center" });
+    expect(photo).not.toHaveProperty("photo");
+    const result = searchIndex("City Hall", 20, []).find(row => row.id === "place:city-hall-8");
+    expect(result?.thumbnailSource).toEqual(photo);
+  });
+
   it.each([
     ["McCurdy Field", "mccurdy-field", "/images/seasons/spring/aerial-view-baseball-field.jpg",
       "An aerial view of McCurdy Field and the surrounding Frederick neighborhood."],

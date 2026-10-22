@@ -13,7 +13,7 @@ be delayed by GitHub; these are windows, not guaranteed publication deadlines.
 | Owner | Window | Scope and publication rule |
 | --- | --- | --- |
 | `transit-steward.yml` | Daily 07:23 | Public Frederick GTFS. Existing review and release checks remain. |
-| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus thirteen exact reviewed native merchant URLs for fourteen listing identities. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. |
+| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus fourteen exact reviewed native merchant URLs for fifteen listing identities. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. |
 | Existing Codex data upkeep, manual merchant cohort | Review before evidence expires | Sumittra and Curious Iguana only. Read their official pages through the existing Firecrawl connection when evidence is within 48 hours of expiry. A private preflight reserves each attempt before a read, capped at two attempts per UTC day and 30 per UTC month. No automatic paid GitHub job. |
 | `ingest-venues.yml` native job | Daily 11:07 | Banyan, Weinberg and New Spire native sources. No model, Firecrawl key, browser or paid-review prerequisite. Future changes need review. Failed/unselected sources retain their rows and dates. |
 | `refresh-commerce-links.yml` native mode | Daily 12:37 | At most 20 eligible official business sites and one same-host follow page each. Static HTML only, finite body/deadline, no retries, redirects or destination probes. New/changed actions need review. |
@@ -70,6 +70,13 @@ collection run, those bindings reuse the same immutable response, observation
 and hash. Each listing retains its own review/acceptance state. There is no
 persistent page cache and no reused receipt receives a new observation.
 Both bindings retain the ordinary 512000-byte limit and seven-day expiry.
+
+Delaplaine's exact homepage supplies public gallery hours only. Its Plan Your
+Visit and footer schedules must both be complete and agree with the exact
+Frederick address and contact. Class and event times cannot fill a missing
+gallery day. Conflicting copies, hidden hours, closure notices or an unreviewed
+admission cutoff require review. This source uses the ordinary 512000-byte
+native limit and seven-day evidence window; no holiday hours are inferred.
 
 ## Bounded manual hours evidence
 

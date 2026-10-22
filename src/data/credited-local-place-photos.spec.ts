@@ -16,6 +16,23 @@ const identities = [
 ] as const;
 
 describe("reviewed local licensed place identity", () => {
+  it("binds the unchanged museum frontage rendition, bottom framing and full reuse rights to the exact destination", () => {
+    const slug = "national-museum-civil-war-medicine-frederick";
+    const record = CREDITED_LOCAL_PLACE_PHOTOS[slug];
+    expect(clientPlaceBySlug(slug)).toMatchObject({ name: "National Museum of Civil War Medicine", address: "48 E Patrick St", municipality: "frederick" });
+    const bytes = readFileSync(path.join(process.cwd(), "public", record.image.src));
+    expect(bytes.byteLength).toBe(511207);
+    expect(createHash("sha256").update(bytes).digest("hex")).toBe("dc82253150252d479cd61b150b9a6498053aa7c7a1ecbeb8ad6bc032776d17c9");
+    expect(record.review).toEqual({ reviewed_on: "2026-10-22", sha256: createHash("sha256").update(bytes).digest("hex") });
+    expect(getLandmarkPhoto(slug)).toMatchObject({ file: "National_Museum_of_Civil_War_Medicine_frontage.jpg",
+      localSrc: "/place-photos/civil-war-medicine-frontage.jpg", objectPosition: "bottom", preferLocal: true,
+      author: "NatMuseCivMed", source_url: "https://commons.wikimedia.org/wiki/File:National_Museum_of_Civil_War_Medicine_frontage.jpg",
+      license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      modifications: "Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop." });
+    expect(curatedPhotoUrl(getLandmarkPhoto(slug)!, 128)).toBe(record.image.src);
+    expect(getLandmarkPhoto("national-museum-of-civil-war-medicine")).toBeNull();
+  });
+
   it.each([
     ["delaplaine-arts-center-frederick", "Delaplaine Arts Center", "40 S Carroll St"],
     ["weinberg-center-for-the-arts-frederick", "Weinberg Center for the Arts", "20 W Patrick St"],

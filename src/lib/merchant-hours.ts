@@ -19,6 +19,7 @@ export const MERCHANT_HOURS_SOURCES = [
   { slug: "sumittra-thai-cuisine", name: "Sumittra Thai Cuisine", ledger_id: "sumittra_hours", category: "restaurant", url: "https://www.sumittra.com/", kind: "weekly", collection: "manual" },
   { slug: "the-curious-iguana-frederick", name: "Curious Iguana", ledger_id: "curious_iguana_hours", category: "book-store", url: "https://curiousiguana.com/", kind: "weekly", collection: "manual" },
   { slug: "kulfi-ice-creams-frederick", name: "Kulfi Ice Creams", ledger_id: "kulfi_hours", category: "ice-cream", url: "https://kulfi-icecream.com/", kind: "weekly" },
+  { slug: "delaplaine-arts-center-frederick", name: "Delaplaine Arts Center", ledger_id: "delaplaine_hours", category: "gallery", url: "https://delaplaine.org/", kind: "weekly" },
   // This exact reviewed Wix page exceeds the ordinary 512000-byte transport cap.
   { slug: "alekos-middletown", name: "Aleko's Village Cafe", ledger_id: "alekos_hours", category: "restaurant", url: "https://www.alekosvillagecafe.com/", kind: "weekly", max_response_bytes: 1_048_576 },
   // One reviewed official page, with independent exact grocery identities.

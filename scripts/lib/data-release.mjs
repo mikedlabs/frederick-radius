@@ -49,6 +49,7 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
   "src/lib/integrations/wikimedia.ts",
   // Exact local-image records and reviewed source bytes are promoted together.
   "src/data/credited-local-place-photos.ts",
+  "public/place-photos/civil-war-medicine-frontage.jpg",
   "public/history-photos/schifferstadt.jpg",
   "public/history-photos/hessian-barracks.jpg",
   "public/history-photos/co-canal.jpg",
@@ -64,6 +65,7 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
   "src/lib/owned-place-photos.ts",
   "public/images/seasons/fall/018.jpg",
   "public/images/seasons/fall/021.jpg",
+  "public/images/seasons/winter/013.jpg",
   "public/images/seasons/winter/PG134 Replacement.jpg",
   "public/images/seasons/spring/016.jpg",
   "public/images/seasons/winter/WINTER NEW 7.jpg",

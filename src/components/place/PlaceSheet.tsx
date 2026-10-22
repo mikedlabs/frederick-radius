@@ -366,6 +366,7 @@ function PlaceSheetContent({
                   fill unoptimized={heroPhoto.kind === "google"} priority
                   sizes="(max-width: 720px) 100vw, 720px" placeholder="blur"
                   blurDataURL={PAPER_CREAM_BLUR} className="object-cover"
+                  style={heroPhoto.kind !== "google" ? { objectPosition: heroPhoto.objectPosition } : undefined}
                   onLoad={(event) => {
                     if (isPlacePhotoFailureSignal(event.currentTarget)) markPhotoFailed(heroPhoto.src);
                     else setLoadedPhotos((current) => new Set([...current, heroPhoto.src]));
@@ -608,6 +609,7 @@ function PlaceSheetContent({
                   style={{ borderColor: "var(--app-border)" }}>
                   <Image src={source.src} alt="" fill unoptimized={source.kind === "google"}
                     loading="lazy" sizes="128px" placeholder="blur" blurDataURL={PAPER_CREAM_BLUR} className="object-cover"
+                    style={source.kind !== "google" ? { objectPosition: source.objectPosition } : undefined}
                     onLoad={(event) => {
                       if (isPlacePhotoFailureSignal(event.currentTarget)) markPhotoFailed(source.src);
                       else setLoadedPhotos((current) => new Set([...current, source.src]));

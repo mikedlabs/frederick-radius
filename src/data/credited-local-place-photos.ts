@@ -2,6 +2,24 @@
  * Keep their public source, license and change records when reusing local bytes.
  * This small module is client-safe; it does not import the History collection. */
 export const CREDITED_LOCAL_PLACE_PHOTOS = {
+  "national-museum-civil-war-medicine-frederick": {
+    file: "National_Museum_of_Civil_War_Medicine_frontage.jpg",
+    preferLocal: true,
+    // The portrait's lower facade contains the museum entrance and sign.
+    objectPosition: "bottom",
+    review: {
+      reviewed_on: "2026-10-22",
+      sha256: "dc82253150252d479cd61b150b9a6498053aa7c7a1ecbeb8ad6bc032776d17c9",
+    },
+    image: {
+      src: "/place-photos/civil-war-medicine-frontage.jpg",
+      alt: "The National Museum of Civil War Medicine facade and entrance at 48 East Patrick Street in Frederick.",
+      creator: "NatMuseCivMed",
+      source_url: "https://commons.wikimedia.org/wiki/File:National_Museum_of_Civil_War_Medicine_frontage.jpg",
+      license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
+      modifications: "Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+    },
+  },
   "schifferstadt-architectural-museum-frederick": {
     preferLocal: true,
     file: "Schifferstadt_House_and_Architectural_Museum.JPG",

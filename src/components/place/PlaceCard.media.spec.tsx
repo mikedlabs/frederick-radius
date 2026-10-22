@@ -111,6 +111,15 @@ describe("PlaceCard selected media and credit", () => {
     const hydrate = vi.spyOn(mapListPhotoLoader, "loadData");
     const nearbyPlace = { ...place, slug };
     await act(async () => root.render(<PlaceCard place={nearbyPlace} variant="discovery" discoverySurface="nearby" lazyPhoto />));
+    const owned = getOwnedPlacePhoto(slug);
+    if (owned) {
+      const first = photo()!;
+      expect(first.getAttribute("src")).toBe(owned.src);
+      await load(first);
+      expect(loadedCredit()).toBeNull();
+      expect(fetch).not.toHaveBeenCalled();
+      await fail(first);
+    }
     const local = photo()!;
     expect(local.getAttribute("src")).toBe(metadata.src);
     expect(local.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("curated");

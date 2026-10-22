@@ -9,6 +9,7 @@ const destinations = {
   schifferstadt: { slug: "schifferstadt-architectural-museum-frederick", name: "Schifferstadt Architectural Museum", where: "Museums · Frederick City" },
   lock30: { slug: "co-canal-lock-30-brunswick", name: "C&O Canal Lock 30", where: "Parks · Brunswick" },
   barracks: { slug: "hessian-barracks-frederick-maryland", name: "Hessian Barracks Frederick Maryland", where: "Civic · Frederick City" },
+  museum: { slug: "national-museum-civil-war-medicine-frederick", name: "National Museum of Civil War Medicine", where: "Museums · Frederick City" },
 };
 function LeadWorkshop({ destination = "schifferstadt", width = 358 }: { destination?: keyof typeof destinations; width?: number }) {
   const place = destinations[destination];
@@ -110,6 +111,13 @@ export const WidePlace900: Story = {
   play: usableLead,
 };
 export const ExactPlace320: Story = { args: { width: 288, destination: "lock30" }, play: usableLead };
+export const MuseumEntrance320: Story = {
+  args: { width: 288, destination: "museum" },
+  play: async context => {
+    await usableLead(context);
+    await expect(getComputedStyle(context.canvasElement.querySelector("img")!).objectPosition).toBe("50% 100%");
+  },
+};
 export const EnlargedText320: Story = {
   args: { width: 288, destination: "barracks" },
   beforeEach: () => {

@@ -3095,3 +3095,24 @@ sources:
     notes: >-
       Two independent exact grocery bindings at 5728 Buckeystown Pike, Unit B1, Frederick MD 21704 and 927 W 7th Street, Frederick MD 21701 share this one source owner. The official Organization contact card lists both addresses and one unqualified Daily store schedule, separately from cafe contacts.
       One bounded 512000-byte native GET per unique URL per daily run, reused immutably for the two independent bindings. No credentials, provider, redirect or retry. Seven-day expiry; independent changed-fact and acceptance holds remain blocking. No cafe hours or image reuse rights inferred.
+
+  - id: delaplaine_hours
+    name: "Delaplaine Arts Center - First-party Gallery Hours"
+    owner: Delaplaine Arts Center
+    url: https://delaplaine.org/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party visiting hours facts; no page or image reuse
+    contact: Delaplaine Arts Center
+    status: active
+    collection: workflow
+    evidence_aliases: [delaplaine_hours, https://delaplaine.org/]
+    last_validated: 2026-10-22
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact public gallery at 40 S Carroll Street, Frederick MD 21701, phone 301-698-0656. The two visible OPEN DAILY blocks publish one consistent visiting schedule, separate from individual class and event times.
+      One bounded 512000-byte native GET per daily run with no credentials, provider, redirect or retry. Evidence expires within seven days. Changed, missing or conflicted facts remain held for explicit review; a collection success is not publication.

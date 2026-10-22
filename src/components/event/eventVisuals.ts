@@ -1,7 +1,8 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { Event, EventHeroImageAttribution } from "@/data/events";
 import { approvedVenueFeedImage, STEINHARDT_EVENT_ART } from "@/lib/events/feed-image";
-import { getOwnedPlacePhoto, type OwnedPlacePhoto } from "@/lib/owned-place-photos";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
+import type { WikimediaPhoto } from "@/lib/integrations/wikimedia";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 
 export type EventPhotoLicenseCredit = {
@@ -30,8 +31,8 @@ export type EventCardVisual = {
   caption: string;
   /** Unclassified publisher art stays intact; only verified photos may crop. */
   presentation: "artwork" | "photo";
-  /** Exact reviewed owned-photo framing; never inferred from event artwork. */
-  objectPosition?: NonNullable<OwnedPlacePhoto["objectPosition"]>;
+  /** Exact reviewed photo framing; never inferred from event artwork. */
+  objectPosition?: NonNullable<WikimediaPhoto["objectPosition"]>;
   /** Stable identity used to avoid repeating the same photograph in a group. */
   key: string;
   /** Present when the image is a credited Google Maps photograph of a venue. */
@@ -89,6 +90,7 @@ function ownedEventVenueVisual(venueSlug: string | undefined): EventCardVisual |
 }
 
 const LICENSED_EVENT_VENUE_LABELS: Readonly<Record<keyof typeof CREDITED_LOCAL_PLACE_PHOTOS, string>> = {
+  "national-museum-civil-war-medicine-frederick": "National Museum of Civil War Medicine exterior",
   "schifferstadt-architectural-museum-frederick": "Schifferstadt Architectural Museum",
   "hessian-barracks-frederick-maryland": "Hessian Barracks",
   "co-canal-lock-30-brunswick": "C&O Canal Lock 30 in Brunswick",
@@ -113,7 +115,7 @@ function licensedEventVenueVisual(venueSlug: string | undefined): EventCardVisua
     caption: `Venue · ${LICENSED_EVENT_VENUE_LABELS[slug]}`,
     key: `licensed-venue:${slug}`,
     presentation: "photo",
-    objectPosition: "center",
+    objectPosition: "objectPosition" in photo ? photo.objectPosition : "center",
     licensedCredit: { creator: image.creator, source_url: image.source_url,
       license: { ...image.license }, modifications: image.modifications,
       ...("provenance" in photo ? { original_source_url: photo.provenance.original_source_url } : {}) },

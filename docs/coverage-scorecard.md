@@ -7,11 +7,11 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-10-21 — 1571 places._
+_Generated 2026-10-22 — 1571 places._
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick | 854 | 680 (80%) | 15 (2%) | 710 (83%) | 712 (83%) | 50 | 296 |
+| Frederick | 854 | 680 (80%) | 16 (2%) | 710 (83%) | 712 (83%) | 50 | 296 |
 | Thurmont | 110 | 75 (68%) | 1 (1%) | 100 (91%) | 99 (90%) | 3 | 30 |
 | Brunswick | 97 | 65 (67%) | 3 (3%) | 84 (87%) | 77 (79%) | 2 | 24 |
 | Walkersville | 86 | 66 (77%) | 1 (1%) | 81 (94%) | 78 (91%) | 2 | 29 |
@@ -24,7 +24,7 @@ _Generated 2026-10-21 — 1571 places._
 | Urbana | 30 | 21 (70%) | 1 (3%) | 24 (80%) | 25 (83%) | 2 | 10 |
 | Burkittsville | 30 | 15 (50%) | 0 (0%) | 28 (93%) | 30 (100%) | 2 | 8 |
 | Rosemont | 2 | 0 (0%) | 0 (0%) | 1 (50%) | 1 (50%) | 0 | 1 |
-| **Total** | **1571** | 1165 (74%) | 25 (2%) | 1342 (85%) | 1331 (85%) | **79** | **502** |
+| **Total** | **1571** | 1165 (74%) | 26 (2%) | 1342 (85%) | 1331 (85%) | **79** | **502** |
 
 ## Coverage by category
 
@@ -47,7 +47,6 @@ successful image loading is a separate browser check.
 | Bakeries | 36 | 0 (0%) | 33 (91.7%) | 4 (11.1%) | 33 (91.7%) |
 | Lodging | 34 | 0 (0%) | 31 (91.2%) | 2 (5.9%) | 34 (100%) |
 | Salon & barber | 28 | 0 (0%) | 22 (78.6%) | 0 (0%) | 27 (96.4%) |
-| Galleries | 27 | 0 (0%) | 23 (85.2%) | 1 (3.7%) | 26 (96.3%) |
 | Bars | 23 | 0 (0%) | 22 (95.7%) | 2 (8.7%) | 22 (95.7%) |
 | Live music | 23 | 0 (0%) | 20 (87%) | 1 (4.3%) | 21 (91.3%) |
 | Farms & pick-your-own | 22 | 0 (0%) | 19 (86.4%) | 1 (4.5%) | 21 (95.5%) |
@@ -73,6 +72,7 @@ successful image loading is a separate browser check.
 | Transit | 1 | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) |
 | Markets | 57 | 2 (3.5%) | 53 (93%) | 21 (36.8%) | 56 (98.2%) |
 | Ice cream & treats | 28 | 1 (3.6%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
+| Galleries | 27 | 1 (3.7%) | 23 (85.2%) | 1 (3.7%) | 26 (96.3%) |
 | Restaurants | 178 | 9 (5.1%) | 162 (91%) | 42 (23.6%) | 171 (96.1%) |
 | Coffee | 38 | 3 (7.9%) | 34 (89.5%) | 6 (15.8%) | 32 (84.2%) |
 | Book stores | 12 | 1 (8.3%) | 11 (91.7%) | 1 (8.3%) | 12 (100%) |

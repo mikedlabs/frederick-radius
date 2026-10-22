@@ -207,7 +207,7 @@ describe("shared media failure signal", () => {
 
 
 describe("existing licensed local place photographs", () => {
-  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS))("uses exact local bytes with the existing credit for %s at every consumer width", (slug, { image }) => {
+  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).filter(([slug]) => !getOwnedPlacePhoto(slug)))("uses exact local bytes with the existing credit for %s at every consumer width", (slug, { image }) => {
     for (const width of [88, 128, 360, 1200]) {
       const plan = placeCardPhotoPlan({ slug }, width);
       expect(plan.sources).toHaveLength(1);
@@ -219,7 +219,7 @@ describe("existing licensed local place photographs", () => {
     }
   });
 
-  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).filter(([slug]) => !LANDMARK_PHOTOS[slug]?.preferCurated))("prefers reviewed bundled %s bytes over eligible Google and retains its exact fallback", (slug, { image }) => {
+  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).filter(([slug]) => !getOwnedPlacePhoto(slug) && !LANDMARK_PHOTOS[slug]?.preferCurated))("prefers reviewed bundled %s bytes over eligible Google and retains its exact fallback", (slug, { image }) => {
     const input = { ...place, slug };
     for (const width of [88, 128, 360, 1200]) {
       const plan = placeCardPhotoPlan(input, width);
@@ -245,7 +245,7 @@ describe("existing licensed local place photographs", () => {
     }
   });
 
-  it.each(["city-hall-8", "mount-st-marys-university-emmitsburg"] as const)("uses the reviewed local %s photo before requesting a provider fallback", (slug) => {
+  it.each(["mount-st-marys-university-emmitsburg"] as const)("uses the reviewed local %s photo before requesting a provider fallback", (slug) => {
     const plan = placeCardPhotoPlan({ ...place, slug }, 360);
     expect(plan.sources.map((source) => source.kind)).toEqual(["curated", "google"]);
     expect(selectedPlaceCardPhoto(plan, null)?.src).toBe(CREDITED_LOCAL_PLACE_PHOTOS[slug].image.src);
@@ -266,6 +266,41 @@ describe("existing licensed local place photographs", () => {
 
   it.each(["schifferstadt", "hessian-barracks", "co-canal", "brunswick", "town:frederick", "__proto__"])("does not broaden exact-place imagery to a history, town or inherited identity: %s", (slug) => {
     expect(placeCardPhotoPlan({ slug }, 360).sources).toEqual([]);
+  });
+});
+
+describe("owned City Hall alternative and licensed fallback", () => {
+  it("uses the central owned view first while preserving the complete licensed source and provider gates after failure", () => {
+    const slug = "city-hall-8";
+    const plan = placeCardPhotoPlan({ ...place, slug }, 360);
+    expect(plan.sources.map(source => source.kind)).toEqual(["owned", "curated", "google"]);
+    const owned = selectedPlaceCardPhoto(plan, null)!;
+    expect(owned).toMatchObject({ kind: "owned", src: "/images/seasons/winter/013.jpg", width: 1920, height: 1440,
+      objectPosition: "center", alt: "Frederick City Hall and its courtyard in winter." });
+    expect(owned).not.toHaveProperty("photo");
+    let state = recordPlaceCardPhotoResult(plan, null, owned.src, "failed");
+    const licensed = selectedPlaceCardPhoto(plan, state)!;
+    expect(licensed).toMatchObject({ kind: "curated", src: "/history-photos/frederick-county-established.jpg",
+      photo: { author: "Acroterion", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+        source_url: "https://commons.wikimedia.org/wiki/File:Frederick_City_Hall_MD4.jpg" } });
+    expect(recordPlaceCardPhotoResult(plan, state, owned.src, "loaded")).toEqual(state);
+    state = recordPlaceCardPhotoResult(plan, state, licensed.src, "failed");
+    expect(selectedPlaceCardPhoto(plan, state)?.kind).toBe("google");
+    const google = selectedPlaceCardPhoto(plan, state)!;
+    state = recordPlaceCardPhotoResult(plan, state, google.src, "failed");
+    expect(selectedPlaceCardPhoto(plan, state)).toBeNull();
+    expect(placePhotoGallerySources({ slug }, 360)).toEqual([getOwnedPlacePhoto(slug)]);
+    expect(getOwnedPlacePhoto("the-city-of-frederick")).toBeNull();
+    expect(getOwnedPlacePhoto("all-saints-episcopal-church-frederick-md")).toBeNull();
+  });
+
+  it("preserves bottom framing and the full licensed museum record through every source-plan width", () => {
+    for (const width of [88, 128, 360, 1200]) {
+      const plan = placeCardPhotoPlan({ ...place, slug: "national-museum-civil-war-medicine-frederick" }, width);
+      expect(plan.sources.map(source => source.kind)).toEqual(["curated", "google"]);
+      expect(plan.sources[0]).toMatchObject({ kind: "curated", src: "/place-photos/civil-war-medicine-frontage.jpg", objectPosition: "bottom",
+        photo: { author: "NatMuseCivMed", objectPosition: "bottom", license: "CC BY-SA 4.0" } });
+    }
   });
 });
 

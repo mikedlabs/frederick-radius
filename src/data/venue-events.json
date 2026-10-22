@@ -127,51 +127,6 @@
     }
   },
   {
-    "title": "Halloween Bash",
-    "starts_at": "2026-10-25T01:00:00.186Z",
-    "ends_at": "2026-10-25T03:59:00.186Z",
-    "ticket_url": "https://www.thebanyanmd.com/livemusic/halloween-bash",
-    "venue_slug": "banyan",
-    "venue_name": "The Banyan",
-    "category": "music",
-    "source": {
-      "url": "https://www.thebanyanmd.com/livemusic",
-      "requestedUrl": "https://www.thebanyanmd.com/livemusic",
-      "finalUrl": "https://www.thebanyanmd.com/livemusic",
-      "fetchedAt": "2026-10-20T05:01:42.027Z"
-    }
-  },
-  {
-    "title": "Pilates in the Clouds",
-    "starts_at": "2026-10-25T14:00:00.807Z",
-    "ends_at": "2026-10-25T15:00:00.807Z",
-    "ticket_url": "https://www.thebanyanmd.com/livemusic/pilates-in-the-clouds-grldk",
-    "venue_slug": "banyan",
-    "venue_name": "The Banyan",
-    "category": "community",
-    "source": {
-      "url": "https://www.thebanyanmd.com/livemusic",
-      "requestedUrl": "https://www.thebanyanmd.com/livemusic",
-      "finalUrl": "https://www.thebanyanmd.com/livemusic",
-      "fetchedAt": "2026-10-20T05:01:42.027Z"
-    }
-  },
-  {
-    "title": "Fall Market",
-    "starts_at": "2026-11-12T23:00:00.148Z",
-    "ends_at": "2026-11-13T02:00:00.148Z",
-    "ticket_url": "https://www.thebanyanmd.com/livemusic/fall-market",
-    "venue_slug": "banyan",
-    "venue_name": "The Banyan",
-    "category": "market",
-    "source": {
-      "url": "https://www.thebanyanmd.com/livemusic",
-      "requestedUrl": "https://www.thebanyanmd.com/livemusic",
-      "finalUrl": "https://www.thebanyanmd.com/livemusic",
-      "fetchedAt": "2026-10-20T05:01:42.027Z"
-    }
-  },
-  {
     "title": "Gold Diggers of 1933 (1933)",
     "starts_at": "2026-10-22T19:30-04:00",
     "ticket_url": "https://weinbergcenter.org/shows/gold-diggers-of-1933/",
@@ -1376,6 +1331,81 @@
     }
   },
   {
+    "title": "Halloween Bash",
+    "starts_at": "2026-10-25T01:00:00.186Z",
+    "ends_at": "2026-10-25T03:59:00.186Z",
+    "ticket_url": "https://www.thebanyanmd.com/livemusic/halloween-bash",
+    "venue_slug": "banyan",
+    "venue_name": "The Banyan",
+    "category": "music",
+    "source": {
+      "url": "https://www.thebanyanmd.com/livemusic",
+      "requestedUrl": "https://www.thebanyanmd.com/livemusic",
+      "finalUrl": "https://www.thebanyanmd.com/livemusic",
+      "fetchedAt": "2026-10-22T11:22:42.398Z"
+    }
+  },
+  {
+    "title": "Pilates in the Clouds",
+    "starts_at": "2026-10-25T14:00:00.807Z",
+    "ends_at": "2026-10-25T15:00:00.807Z",
+    "ticket_url": "https://www.thebanyanmd.com/livemusic/pilates-in-the-clouds-grldk",
+    "venue_slug": "banyan",
+    "venue_name": "The Banyan",
+    "category": "community",
+    "source": {
+      "url": "https://www.thebanyanmd.com/livemusic",
+      "requestedUrl": "https://www.thebanyanmd.com/livemusic",
+      "finalUrl": "https://www.thebanyanmd.com/livemusic",
+      "fetchedAt": "2026-10-22T11:22:42.398Z"
+    }
+  },
+  {
+    "title": "Sky High Barre",
+    "starts_at": "2026-11-01T15:00:00.907Z",
+    "ends_at": "2026-11-01T16:00:00.907Z",
+    "ticket_url": "https://www.thebanyanmd.com/livemusic/green-haven-on-main-barre-class",
+    "venue_slug": "banyan",
+    "venue_name": "The Banyan",
+    "category": "community",
+    "source": {
+      "url": "https://www.thebanyanmd.com/livemusic",
+      "requestedUrl": "https://www.thebanyanmd.com/livemusic",
+      "finalUrl": "https://www.thebanyanmd.com/livemusic",
+      "fetchedAt": "2026-10-22T11:22:42.398Z"
+    }
+  },
+  {
+    "title": "Fall Market",
+    "starts_at": "2026-11-12T23:00:00.148Z",
+    "ends_at": "2026-11-13T02:00:00.148Z",
+    "ticket_url": "https://www.thebanyanmd.com/livemusic/fall-market",
+    "venue_slug": "banyan",
+    "venue_name": "The Banyan",
+    "category": "market",
+    "source": {
+      "url": "https://www.thebanyanmd.com/livemusic",
+      "requestedUrl": "https://www.thebanyanmd.com/livemusic",
+      "finalUrl": "https://www.thebanyanmd.com/livemusic",
+      "fetchedAt": "2026-10-22T11:22:42.398Z"
+    }
+  },
+  {
+    "title": "Friendsgiving Concert",
+    "starts_at": "2026-11-26T02:00:00.104Z",
+    "ends_at": "2026-11-26T04:59:00.104Z",
+    "ticket_url": "https://www.thebanyanmd.com/livemusic/friendsgiving-concert",
+    "venue_slug": "banyan",
+    "venue_name": "The Banyan",
+    "category": "music",
+    "source": {
+      "url": "https://www.thebanyanmd.com/livemusic",
+      "requestedUrl": "https://www.thebanyanmd.com/livemusic",
+      "finalUrl": "https://www.thebanyanmd.com/livemusic",
+      "fetchedAt": "2026-10-22T11:22:42.398Z"
+    }
+  },
+  {
     "title": "FJS Allstars",
     "starts_at": "2026-10-22T19:30-04:00",
     "ticket_url": "https://weinbergcenter.org/shows/fjs-all-stars/",
@@ -1386,7 +1416,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1400,7 +1430,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1414,7 +1444,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1428,7 +1458,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1442,7 +1472,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1456,7 +1486,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1470,7 +1500,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1484,7 +1514,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1498,7 +1528,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1512,7 +1542,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1526,7 +1556,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1540,7 +1570,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1554,7 +1584,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1568,7 +1598,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1582,7 +1612,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1596,7 +1626,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1610,7 +1640,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1624,7 +1654,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1638,7 +1668,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1652,7 +1682,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1666,7 +1696,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1680,7 +1710,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1694,7 +1724,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1708,7 +1738,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1722,7 +1752,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1736,7 +1766,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1750,7 +1780,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1764,7 +1794,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1778,7 +1808,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1792,7 +1822,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1806,7 +1836,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1820,7 +1850,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1834,7 +1864,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1848,7 +1878,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1862,7 +1892,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1876,7 +1906,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1890,7 +1920,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1904,7 +1934,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1918,7 +1948,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1932,7 +1962,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1946,7 +1976,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1960,7 +1990,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1974,7 +2004,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   },
   {
@@ -1988,7 +2018,7 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-20T05:01:52.792Z"
+      "fetchedAt": "2026-10-22T11:22:46.538Z"
     }
   }
 ]

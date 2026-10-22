@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:999c62672d0d3bf2b18d3f66d99290204707d42dee051504b71c613d31d3c2c9",
+  "data_version": "sha256:94ac59b7310e1b00e949c4865a67b5b317b15bbe96262b59858a44f9b9a2bd43",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-21T21:36:32.266Z",
+      "promoted_at": "2026-10-22T15:14:14.359Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -66,15 +66,15 @@
         },
         {
           "path": "src/data/places-official-hours.json",
-          "sha256": "10a0e240d97398f37776f67ab5bafb7dbc6d9c8891c0712c8fa2a81cb16bd2d7",
+          "sha256": "463e5b8e01291af86951bccf794a9f3f8ca68a541f493a05bbccf02f520cb799",
           "records": 9,
           "bytes": 12142
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "d94baba8154929f8949dc929f0d763b9a23f6d25befe29ee6a303723207641d9",
-          "records": 16,
-          "bytes": 20546
+          "sha256": "342e26ab0f479037a276908d3513fbf7eb4177a985553f8cbaab4d3f9ec26de4",
+          "records": 17,
+          "bytes": 21786
         },
         {
           "path": "src/data/business-status.json",
@@ -174,15 +174,21 @@
         },
         {
           "path": "src/lib/integrations/wikimedia.ts",
-          "sha256": "2f6973e8b0dfb63422e398840e3909d34bd199e0e2b764a9624322850ab04069",
+          "sha256": "e55e54e8016cff770dad27b5b439f594d574138e7bf0151644e8c340d36cfb7e",
           "records": null,
-          "bytes": 11514
+          "bytes": 11748
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
-          "sha256": "af80921c0c02b0c27111793f8406ff3ca876c9358c79458ad0a15e38b29835c5",
+          "sha256": "781fc904fde8a18dc71848c29da916d371e603493d3a58260fe8abdb2d616c45",
           "records": null,
-          "bytes": 10825
+          "bytes": 11748
+        },
+        {
+          "path": "public/place-photos/civil-war-medicine-frontage.jpg",
+          "sha256": "dc82253150252d479cd61b150b9a6498053aa7c7a1ecbeb8ad6bc032776d17c9",
+          "records": null,
+          "bytes": 511207
         },
         {
           "path": "public/history-photos/schifferstadt.jpg",
@@ -258,9 +264,9 @@
         },
         {
           "path": "src/lib/owned-place-photos.ts",
-          "sha256": "02c77ebc1b5decb76d57e4da472b9cf21acbd903c988f4214cab8892bdb65247",
+          "sha256": "0884cb8ff4b41e99f07dca29f5d40c50fb35597da29f4e0e908ea1e2c8437c77",
           "records": null,
-          "bytes": 3791
+          "bytes": 4158
         },
         {
           "path": "public/images/seasons/fall/018.jpg",
@@ -273,6 +279,12 @@
           "sha256": "32eecff2e02913ad7b0093ef599318936b8a6694cdacda39623c393399732967",
           "records": null,
           "bytes": 409846
+        },
+        {
+          "path": "public/images/seasons/winter/013.jpg",
+          "sha256": "9cc3ee90f95c47d5f20428b9d5ffc8812a17497117902657dd8bf8d725664984",
+          "records": null,
+          "bytes": 713746
         },
         {
           "path": "public/images/seasons/winter/PG134 Replacement.jpg",
@@ -354,15 +366,15 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "696ae2971f9925e4182ce85c0d9e5176b9174ba48fd50671d61c4db3aad9522c",
+          "sha256": "c0b957e0b1d982d1c49c916ff6f3be837eac4ea7b696584a74d294dd9d34ac90",
           "records": 1571,
-          "bytes": 2302449
+          "bytes": 2303109
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "550b25c184df91257efa00a63fac8cd200a5905e18b8a9e88787eda93d8512f2",
-          "records": 25,
-          "bytes": 36410
+          "sha256": "864095979d0047b1f957ce7bb6e2db836adbd03e731e23b8d9501cf027311ee2",
+          "records": 26,
+          "bytes": 37181
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
@@ -373,13 +385,13 @@
       ]
     },
     "sources": {
-      "promoted_at": "2026-10-21T11:51:05.949Z",
+      "promoted_at": "2026-10-22T15:14:14.359Z",
       "artifacts": [
         {
           "path": "src/data/source-registry.generated.json",
-          "sha256": "9c07029312e21ea3a832b013e11f024ab9e663c84dfbdd61941c3f9392e4dc8f",
-          "records": 143,
-          "bytes": 94386
+          "sha256": "bc46c3121b3dce1f927c59a8185d510fb3e7f1f93654daeaf75e8e727d28f9e5",
+          "records": 144,
+          "bytes": 95097
         }
       ]
     },
@@ -407,13 +419,13 @@
       ]
     },
     "venue-events": {
-      "promoted_at": "2026-10-20T05:16:37.533Z",
+      "promoted_at": "2026-10-22T15:14:14.359Z",
       "artifacts": [
         {
           "path": "src/data/venue-event-source-inventory.json",
-          "sha256": "9e7db8aa194a843abc3b739ba0f304166c97655c937258597c338bc3ecd564f0",
-          "records": 142,
-          "bytes": 84353
+          "sha256": "d1a399fe776f628c9b552a633bd8d2c36621d0404c3dbe306996095b129f3818",
+          "records": 144,
+          "bytes": 85450
         },
         {
           "path": "src/data/venue-event-source-state.json",
@@ -423,9 +435,9 @@
         },
         {
           "path": "src/data/venue-events.json",
-          "sha256": "9e7db8aa194a843abc3b739ba0f304166c97655c937258597c338bc3ecd564f0",
-          "records": 142,
-          "bytes": 84353
+          "sha256": "d1a399fe776f628c9b552a633bd8d2c36621d0404c3dbe306996095b129f3818",
+          "records": 144,
+          "bytes": 85450
         }
       ]
     },

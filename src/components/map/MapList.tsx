@@ -106,7 +106,7 @@ function MapListPlaceRow({ p, userLoc, onPick }: {
             style={{ "--map-list-place-color": color, width: 72, height: 72 } as CSSProperties}>
             <CategoryIcon slug={p.category} className="h-5 w-5" strokeWidth={1.8} />
             {photo && <CompactPlacePhoto src={photo.src} size={72} onResult={onPhotoResult}
-              objectPosition={photo.kind === "owned" ? photo.objectPosition : undefined} />}
+              objectPosition={photo.kind !== "google" ? photo.objectPosition : undefined} />}
           </span>
           <span className="map-list-main">
             <span className="map-list-name">{p.name}</span>

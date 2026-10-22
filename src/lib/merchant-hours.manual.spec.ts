@@ -37,6 +37,7 @@ const nativeFixtures: Record<string, string> = {
   "thai-meric-eatery-bar-frederick": "thai-meric-eatery-bar-frederick", "white-rabbit-gastropub": "white-rabbit-gastropub",
   "il-porto-restaurant": "il-porto-restaurant",
   "kulfi-ice-creams-frederick": "kulfi-ice-creams-frederick",
+  "delaplaine-arts-center-frederick": "delaplaine-arts-center",
   // Representative Aleko facts use this harness clock only, never public evidence.
   "alekos-middletown": "alekos-middletown",
   "common-market-frederick": "common-market", "common-market": "common-market",

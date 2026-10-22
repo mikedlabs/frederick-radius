@@ -211,6 +211,14 @@ describe("eventCardVisual", () => {
 });
 
 describe("exact licensed event venue photographs", () => {
+  it("retains museum entrance framing and rejects a changed crop in a recovery tuple", () => {
+    const visual = eventCardVisual(event({ venue_place_slug: "national-museum-civil-war-medicine-frederick" }))!;
+    expect(visual).toMatchObject({ objectPosition: "bottom", caption: "Venue · National Museum of Civil War Medicine exterior",
+      licensedCredit: { creator: "NatMuseCivMed", license: { label: "CC BY-SA 4.0" } } });
+    expect(parseRecoveryEventVisual(visual)).toEqual(visual);
+    expect(parseRecoveryEventVisual({ ...visual, objectPosition: "center" })).toBeNull();
+  });
+
   it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS))("retains the complete local credit for %s without a paid fallback", (venue_place_slug, photo) => {
     const visual = eventCardVisual(event({ venue_place_slug,
       hero_image: "/api/place-photo?name=unused-google&w=800" }), { venuePhotos: "free-reviewed" })!;

@@ -73,7 +73,7 @@ export function SearchPlaceVisualImage({ fallback, size = 56, className = "", fr
       ) : <Image key={visual.identity.key} src={src} alt="" fill
         sizes={frame === "lead" ? "(max-width: 640px) calc(100vw - 24px), 600px" : `${size}px`}
         unoptimized={source.kind === "google"} className="object-cover" loading="lazy"
-        style={source.kind === "owned" ? { objectPosition: source.objectPosition } : undefined}
+        style={source.kind !== "google" ? { objectPosition: source.objectPosition } : undefined}
         onError={() => visual.resolve("failed")} onLoad={(event) => reportLoad(event.currentTarget)} />)}
     </span>
   );

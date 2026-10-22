@@ -655,6 +655,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "delaplaine_hours",
+    "name": "Delaplaine Arts Center - First-party Gallery Hours",
+    "owner": "Delaplaine Arts Center",
+    "url": "https://delaplaine.org/",
+    "license": "public first-party visiting hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "delaplaine_hours",
+      "https://delaplaine.org/"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "delaplaine_calendar",
     "name": "Delaplaine Arts Center Events",
     "owner": "Delaplaine Arts Center",
