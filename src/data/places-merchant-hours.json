@@ -858,6 +858,116 @@
       }
     },
     {
+      "slug": "safeway-middletown",
+      "source_url": "https://local.safeway.com/safeway/md/middletown/815-e-main-st.html",
+      "source_name": "Safeway Middletown",
+      "source_sha256": "b0bc290a9eca99d381a1efb03a47d8c640411e7676bc27a7335eed51696b3411",
+      "observed_at": "2026-10-22T20:09:54.149Z",
+      "expires_at": "2026-10-29T20:09:54.149Z",
+      "coverage_from": "2026-10-22",
+      "coverage_through": "2026-10-29",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "06:00",
+            "close": "23:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "06:00",
+            "close": "23:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "06:00",
+            "close": "23:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "06:00",
+            "close": "23:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "06:00",
+            "close": "23:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "06:00",
+            "close": "23:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "06:00",
+            "close": "23:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "safeway-walkersville",
+      "source_url": "https://local.safeway.com/safeway/md/walkersville/151-walkers-village-way.html",
+      "source_name": "Safeway Walkersville",
+      "source_sha256": "84d82e15c35c1bebab027c2d585a78b466779dad43a958619ef7c179f9856441",
+      "observed_at": "2026-10-22T20:09:54.237Z",
+      "expires_at": "2026-10-29T20:09:54.237Z",
+      "coverage_from": "2026-10-22",
+      "coverage_through": "2026-10-29",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "06:00",
+            "close": "23:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "06:00",
+            "close": "23:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "06:00",
+            "close": "23:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "06:00",
+            "close": "23:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "06:00",
+            "close": "23:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "06:00",
+            "close": "23:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "06:00",
+            "close": "23:00"
+          }
+        ]
+      }
+    },
+    {
       "slug": "common-market-frederick",
       "source_url": "https://www.commonmarket.coop/",
       "source_name": "Common Market Co-op (Route 85)",

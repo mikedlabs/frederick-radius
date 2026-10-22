@@ -20,7 +20,7 @@ function set(hours: Hours, days: DayOfWeek[], open: string, close: string) {
 }
 function textPage(html: string): { text: string; document: Document } {
   const document = new JSDOM(html).window.document;
-  document.querySelectorAll("script:not([type='application/ld+json']),style,noscript,template").forEach((node) => node.remove());
+  document.querySelectorAll("script:not([type='application/ld+json']):not([type='text/data'].js-hours-config),style,noscript,template").forEach((node) => node.remove());
   // Block boundaries preserve visible source order without executing scripts/resources.
   document.querySelectorAll("p,div,li,br,h1,h2,h3,h4,section,footer").forEach((node) => node.appendChild(document.createTextNode(" ")));
   const clone = document.body.cloneNode(true) as HTMLElement;

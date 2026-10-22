@@ -7,6 +7,7 @@ import { FCPL_HOURS_URL, FCPL_CLOSURES_URL, validateOfficialHoursArtifact, type 
 import { fetchOfficialHoursPage, parseFcplOfficialHours, officialHoursNeedsReview } from "./lib/fcpl-official-hours";
 import { createOfficialHoursReviewEvidence } from "./lib/official-hours-review-evidence";
 import { commitMerchantHours } from "./lib/commit-merchant-hours";
+import { MERCHANT_HOURS_SOURCES } from "../src/lib/merchant-hours";
 
 export async function refreshOfficialHours(args = process.argv.slice(2), options: {
   /** Dependency injection for offline failure/atomicity tests, never URL selection. */
@@ -56,6 +57,9 @@ export async function refreshOfficialHours(args = process.argv.slice(2), options
   const capture = reviewEvidence ? createOfficialHoursReviewEvidence(reviewEvidence, { now: options.now, sourceRevision: process.env.GITHUB_SHA }) : undefined;
   const merchantFetcher = capture ? (url: string) => capture(url, baseMerchantFetcher) : baseMerchantFetcher;
   const merchants = evidence || (options.fetchPage && !options.fetchMerchantPage) ? undefined : await collectMerchantOfficialHours(previousMerchant, merchantFetcher, options.now);
+  const nativeSources = MERCHANT_HOURS_SOURCES.filter((source) => !("collection" in source && source.collection === "manual"));
+  const cohortCounts = { native_source_count: new Set(nativeSources.map((source) => source.url)).size,
+    native_listing_count: nativeSources.length, manual_listing_count: MERCHANT_HOURS_SOURCES.length - nativeSources.length };
   const reviewRequired = officialHoursNeedsReview(previous, artifact) || (merchants?.reviewRequired ?? false);
   if (!args.includes("--dry-run")) {
     if (libraryStatus === "current") {
@@ -68,11 +72,11 @@ export async function refreshOfficialHours(args = process.argv.slice(2), options
       commitMerchantHours(merchantOutput, previousMerchantBytes, merchants.artifact);
     }
   }
-  console.log(JSON.stringify({ status: libraryStatus === "current" ? "complete" : "partial", libraryStatus, ...(libraryError ? { libraryError } : {}), reviewRequired, dryRun: args.includes("--dry-run"), source: artifact.source_id, places: artifact.places.length, dateExceptions: artifact.closures.exceptions.length, observedAt: [artifact.weekly.observed_at, artifact.closures.observed_at], expiresAt: artifact.expires_at, merchantSchedules: merchants?.artifact.places.length ?? "unchanged-offline", merchantPendingCount: merchants?.artifact.review.length ?? 0, merchantReview: merchants?.artifact.review.map(({ slug, reason }) => ({ slug, reason })) ?? [] }));
-  return { reviewRequired, artifact, merchants, libraryStatus, libraryError };
+  console.log(JSON.stringify({ status: libraryStatus === "current" ? "complete" : "partial", libraryStatus, ...(libraryError ? { libraryError } : {}), reviewRequired, dryRun: args.includes("--dry-run"), source: artifact.source_id, places: artifact.places.length, dateExceptions: artifact.closures.exceptions.length, observedAt: [artifact.weekly.observed_at, artifact.closures.observed_at], expiresAt: artifact.expires_at, ...cohortCounts, merchantSchedules: merchants?.artifact.places.length ?? "unchanged-offline", merchantPendingCount: merchants?.artifact.review.length ?? 0, merchantReview: merchants?.artifact.review.map(({ slug, reason }) => ({ slug, reason })) ?? [] }));
+  return { reviewRequired, artifact, merchants, libraryStatus, libraryError, cohortCounts };
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  refreshOfficialHours().then(({ reviewRequired, merchants, libraryStatus }) => {
-    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `review_required=${reviewRequired}\nlibrary_status=${libraryStatus}\nmerchant_pending_count=${merchants?.artifact.review.length ?? 0}\nmerchant_pending_summary=${merchants?.artifact.review.map(({ slug, reason }) => `${slug}: ${reason}`).join(", ") || "none"}\n`);
+  refreshOfficialHours().then(({ reviewRequired, merchants, libraryStatus, cohortCounts }) => {
+    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `review_required=${reviewRequired}\nlibrary_status=${libraryStatus}\nmerchant_pending_count=${merchants?.artifact.review.length ?? 0}\nmerchant_pending_summary=${merchants?.artifact.review.map(({ slug, reason }) => `${slug}: ${reason}`).join(", ") || "none"}\n${Object.entries(cohortCounts).map(([name, count]) => `${name}=${count}`).join("\n")}\n`);
   }).catch((error) => { console.error(error instanceof Error ? error.message : error); process.exitCode = 1; });
 }

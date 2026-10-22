@@ -13,7 +13,7 @@ be delayed by GitHub; these are windows, not guaranteed publication deadlines.
 | Owner | Window | Scope and publication rule |
 | --- | --- | --- |
 | `transit-steward.yml` | Daily 07:23 | Public Frederick GTFS. Existing review and release checks remain. |
-| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus fourteen exact reviewed native merchant URLs for fifteen listing identities. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. |
+| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus sixteen exact reviewed native merchant URLs for seventeen listing identities. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. Run summaries derive their source/binding counts from the current registry. |
 | Existing Codex data upkeep, manual merchant cohort | Review before evidence expires | Sumittra and Curious Iguana only. Read their official pages through the existing Firecrawl connection when evidence is within 48 hours of expiry. A private preflight reserves each attempt before a read, capped at two attempts per UTC day and 30 per UTC month. No automatic paid GitHub job. |
 | `ingest-venues.yml` native job | Daily 11:07 | Banyan, Weinberg and New Spire native sources. No model, Firecrawl key, browser or paid-review prerequisite. Future changes need review. Failed/unselected sources retain their rows and dates. |
 | `refresh-commerce-links.yml` native mode | Daily 12:37 | At most 20 eligible official business sites and one same-host follow page each. Static HTML only, finite body/deadline, no retries, redirects or destination probes. New/changed actions need review. |
@@ -71,7 +71,24 @@ and hash. Each listing retains its own review/acceptance state. There is no
 persistent page cache and no reused receipt receives a new observation.
 Both bindings retain the ordinary 512000-byte limit and seven-day expiry.
 
+Safeway's two exact Middletown and Walkersville pages use a reviewed grocery
+disclosure shape. Require the primary GroceryStore identity, exact address and
+phone, the labeled Store Hours button/wrapper relationship, seven complete
+weekday rows, microdata and agreeing table/hero schedules. The complete week
+starts collapsed behind the publisher's own disclosure. This is an explicit
+source shape, not permission to trust arbitrary hidden fields. Pharmacy hours
+are a separate service and never supply grocery days. Both sources retain the
+ordinary native transport limits and seven-day expiry; no holiday calendar or
+image reuse rights are inferred.
+
 ## Reviewing groups of official listings
+
+Source-expansion review may read at most 30 additional official public pages
+and enroll eight carefully reviewed sources per day, as authorized on October
+22, 2026. These limits are separate from existing scheduled native refreshes.
+Failed reads and each separately reviewed redirect destination still count;
+they do not authorize retries or transparent redirect following. Paid-provider
+budgets, manual ledger limits and policy holds remain unchanged.
 
 The existing native merchant owner supports reviewed cohort declarations in
 `scripts/lib/merchant-hours-cohorts.ts`. Each binding names an exact slug,

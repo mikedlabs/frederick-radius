@@ -22,6 +22,8 @@ export const MERCHANT_HOURS_SOURCES = [
   { slug: "delaplaine-arts-center-frederick", name: "Delaplaine Arts Center", ledger_id: "delaplaine_hours", category: "gallery", url: "https://delaplaine.org/", kind: "weekly" },
   // This exact reviewed Wix page exceeds the ordinary 512000-byte transport cap.
   { slug: "alekos-middletown", name: "Aleko's Village Cafe", ledger_id: "alekos_hours", category: "restaurant", url: "https://www.alekosvillagecafe.com/", kind: "weekly", max_response_bytes: 1_048_576 },
+  { slug: "safeway-middletown", name: "Safeway Middletown", ledger_id: "safeway_middletown_hours", category: "market", url: "https://local.safeway.com/safeway/md/middletown/815-e-main-st.html", kind: "weekly" },
+  { slug: "safeway-walkersville", name: "Safeway Walkersville", ledger_id: "safeway_walkersville_hours", category: "market", url: "https://local.safeway.com/safeway/md/walkersville/151-walkers-village-way.html", kind: "weekly" },
   // One reviewed official page, with independent exact grocery identities.
   { slug: "common-market-frederick", name: "Common Market Co-op (Route 85)", ledger_id: "common_market_hours", category: "market", url: "https://www.commonmarket.coop/", kind: "weekly" },
   { slug: "common-market", name: "Common Market (7th Street)", ledger_id: "common_market_hours", category: "market", url: "https://www.commonmarket.coop/", kind: "weekly" },

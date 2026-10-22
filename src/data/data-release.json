@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:22cf6a7932fbf2510dec75b3efe53978ed8a37c4889d1c9e93e778db9f187b52",
+  "data_version": "sha256:9339eaf3649521015b5c2feb8ad75cbd00eab8058558038102a7037fc5959950",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-22T19:57:08.918Z",
+      "promoted_at": "2026-10-22T20:21:07.562Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -72,9 +72,9 @@
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "342e26ab0f479037a276908d3513fbf7eb4177a985553f8cbaab4d3f9ec26de4",
-          "records": 17,
-          "bytes": 21786
+          "sha256": "769b9c4736b149294c10565165e96dc1d04670f089c8f1bfb8a8c296c33cfda6",
+          "records": 19,
+          "bytes": 24332
         },
         {
           "path": "src/data/business-status.json",
@@ -384,15 +384,15 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "c0b957e0b1d982d1c49c916ff6f3be837eac4ea7b696584a74d294dd9d34ac90",
+          "sha256": "5999bf98acb3b160814735fe784094d474927abe08dedb6232e4ea036bc38d73",
           "records": 1571,
-          "bytes": 2303109
+          "bytes": 2304495
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "864095979d0047b1f957ce7bb6e2db836adbd03e731e23b8d9501cf027311ee2",
-          "records": 26,
-          "bytes": 37181
+          "sha256": "a342fd4dbd5129da535b9bee11200edb644bfbd4de5e92dfd3318ce16123959e",
+          "records": 28,
+          "bytes": 38763
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
@@ -403,13 +403,13 @@
       ]
     },
     "sources": {
-      "promoted_at": "2026-10-22T15:14:14.359Z",
+      "promoted_at": "2026-10-22T20:21:07.562Z",
       "artifacts": [
         {
           "path": "src/data/source-registry.generated.json",
-          "sha256": "bc46c3121b3dce1f927c59a8185d510fb3e7f1f93654daeaf75e8e727d28f9e5",
-          "records": 144,
-          "bytes": 95097
+          "sha256": "fcd3d74a3acdea3aeadc6a143c8a733108c86cd27738e0ad4ce2fdd7f3242a31",
+          "records": 146,
+          "bytes": 96715
         }
       ]
     },

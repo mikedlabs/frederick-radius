@@ -41,6 +41,22 @@ export type OfficialHoursCohort = CohortBase & ({
   schedule_row: string;
   entity_urls: Readonly<Record<string, string>>;
   closed_representation?: "midnight_equal";
+} | {
+  /** Reviewed store disclosure with independently corroborated public week. */
+  shape: "microdata_store_week";
+  schema_type: string;
+  entity_ids: Readonly<Record<string, string>>;
+  hours_section: string;
+  toggle: string;
+  panel: string;
+  toggle_labels: readonly string[];
+  store_label: string;
+  independent_offer_names: readonly string[];
+  hero_schedule: string;
+  panel_schedule: string;
+  schedule_row: string;
+  day: string;
+  periods: string;
 });
 
 const compact = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -82,6 +98,13 @@ function validateCohort(cohort: OfficialHoursCohort, binding: OfficialHoursCohor
     || new Set(cohort.bindings.map((row) => row.slug)).size !== cohort.bindings.length
     || !cohort.bindings.includes(binding)
     || cohort.bindings.some((row) => !row.slug || !row.source_name || Object.values(row.identity).some((value) => !value))) throw new Error("Invalid reviewed cohort bindings.");
+  if (cohort.shape === "microdata_store_week") {
+    const ids = Object.keys(cohort.entity_ids);
+    if (cohort.bindings.length !== 1 || ids.length !== 1 || ids[0] !== binding.slug
+      || !cohort.entity_ids[binding.slug]?.startsWith(`${url.origin}/#`)
+      || !cohort.toggle_labels.length || new Set(cohort.toggle_labels).size !== cohort.toggle_labels.length
+      || !cohort.toggle_labels.includes(cohort.store_label)) throw new Error("Invalid reviewed store disclosure binding.");
+  }
   if (cohort.shape === "jsonld_weekly_location_cards") {
     const urls = Object.values(cohort.entity_urls);
     if (urls.length !== cohort.bindings.length || new Set(urls).size !== urls.length || cohort.bindings.some((row) => {
@@ -222,8 +245,110 @@ function jsonldWeek(document: Document, pageText: string, cohort: Extract<Offici
   return visibleHours;
 }
 
+function machineWeek(raw: string | null): Hours {
+  let rows: unknown;
+  try { rows = JSON.parse(raw ?? ""); } catch { throw new Error("Invalid store machine week."); }
+  if (!Array.isArray(rows) || rows.length !== 7) throw new Error("Incomplete store machine week.");
+  const hours: Hours = {};
+  const numericClock = (value: unknown) => {
+    if (!Number.isInteger(value) || (value as number) < 0 || (value as number) > 2359 || (value as number) % 100 > 59) throw new Error("Invalid store machine clock.");
+    return `${String(Math.floor((value as number) / 100)).padStart(2, "0")}:${String((value as number) % 100).padStart(2, "0")}`;
+  };
+  for (const value of rows) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid store machine weekday.");
+    const row = value as Record<string, unknown>;
+    const index = FULL_DAYS.findIndex((day) => day.toUpperCase() === row.day);
+    if (index < 0 || hours[WEEKDAYS[index]] || Object.keys(row).some((key) => !["day", "intervals", "isClosed"].includes(key))
+      || row.isClosed !== false || !Array.isArray(row.intervals) || row.intervals.length !== 1) throw new Error("Unreviewed store machine weekday.");
+    const interval = row.intervals[0] as Record<string, unknown>;
+    if (!interval || Object.keys(interval).some((key) => !["start", "end"].includes(key))) throw new Error("Unreviewed store interval qualifier.");
+    const open = numericClock(interval.start), close = numericClock(interval.end);
+    if (open >= close) throw new Error("Overnight or all-day store schedule needs review.");
+    hours[WEEKDAYS[index]] = [{ open, close }];
+  }
+  return hours;
+}
+function microdataStoreWeek(document: Document, pageText: string, cohort: Extract<OfficialHoursCohort, { shape: "microdata_store_week" }>, binding: OfficialHoursCohortBinding): Hours {
+  const canonical = [...document.querySelectorAll("link[rel='canonical']")];
+  const cards = [...document.querySelectorAll(cohort.selectors.card)];
+  if (canonical.length !== 1 || canonical[0].getAttribute("href") !== cohort.source_url || cards.length !== 1 || !visible(cards[0])) throw new Error("Missing exact store page identity.");
+  const card = cards[0], identity = binding.identity;
+  // Separately typed service offers describe delivery/floral services, not the
+  // grocery's public store schedule. Never remove contact or hours containers.
+  if (/temporarily closed|closed (?:today|tomorrow|for)|closing early|special hours|holiday hours|last admission|last admittance/i.test(pageText)) throw new Error("Unresolved store closure notice.");
+  const noticeCopy = document.body.cloneNode(true) as HTMLElement;
+  noticeCopy.querySelectorAll("[itemprop='makesOffer'][itemtype='http://schema.org/Offer']").forEach((offer) => {
+    const names = [...offer.querySelectorAll("[itemprop='name']")];
+    if (names.length === 1 && cohort.independent_offer_names.includes(text(names[0]))
+      && !offer.querySelector(`${cohort.selectors.address},${cohort.hours_section},${cohort.hero_schedule}`)) offer.remove();
+  });
+  noticeCopy.querySelectorAll("script").forEach((node) => node.remove());
+  const noticeText = text(noticeCopy);
+  if (notices(noticeText) || /\b(?:reduced|limited|extended|shortened|revised|changed|updated)\s+(?:(?:store|business)\s+)?hours\b|\bstore\s+(?:is\s+)?clos(?:ed|es|ing|ure)\b/i.test(noticeText)) throw new Error("Unresolved store notice or service qualifier.");
+  if (card.getAttribute("itemtype") !== cohort.schema_type || card.getAttribute("itemid") !== cohort.entity_ids[binding.slug]
+    || compact(one(card, cohort.selectors.name).getAttribute("content") ?? "") !== compact(identity.name)
+    || !addressMatches(one(card, cohort.selectors.address), identity, cohort.selectors)
+    || phone(text(one(card, cohort.selectors.phone))) !== identity.phone) throw new Error("Mismatched exact store microdata identity.");
+  const address = one(card, cohort.selectors.address);
+  if (compact(one(address, "meta[itemprop='streetAddress']").getAttribute("content") ?? "") !== compact(identity.street)
+    || one(address, "meta[itemprop='addressLocality']").getAttribute("content") !== identity.locality
+    || text(one(address, "[itemprop='addressCountry']")) !== "US") throw new Error("Conflicting structured store address or country.");
+  const qualified = (node: Element) => [...node.attributes].some((attribute) => /(?:holiday|special|validfrom|validthrough|valid-from|valid-through|seasonal|closure)/i.test(attribute.name));
+  if (qualified(card) || card.querySelector("[itemprop='validFrom'],[itemprop='validThrough'],[itemprop='specialOpeningHoursSpecification'],[itemprop='openingHoursSpecification']")) throw new Error("Unreviewed dated store schedule.");
+  const section = one(card, cohort.hours_section);
+  const toggles = [...section.querySelectorAll(cohort.toggle)];
+  const panels = [...section.querySelectorAll(cohort.panel)];
+  const labels = toggles.map((node) => text(node));
+  if (!labels.length || labels.length > cohort.toggle_labels.length || labels.some((label, index) => label !== cohort.toggle_labels[index])
+    || labels.filter((label) => label === cohort.store_label).length !== 1 || toggles.some((node) => !visible(node)) || panels.length !== toggles.length
+    || panels.some((node) => !visible(node))) throw new Error("Unreviewed store versus service disclosure.");
+  // The source's is-hidden class is its reviewed user-expandable disclosure.
+  // Actual hidden/inert/aria-hidden attributes and hidden descendants still fail.
+  const storeIndex = labels.indexOf(cohort.store_label);
+  const closureCopy = noticeCopy.cloneNode(true) as HTMLElement;
+  [...closureCopy.querySelectorAll(cohort.panel)].forEach((node, index) => { if (index !== storeIndex) node.remove(); });
+  // A computed today-status may say Closed before the next normal opening.
+  // Remove only the reviewed status-only fields; weekly clocks remain checked.
+  closureCopy.querySelectorAll(".RedesignHero-hours .c-hours-today-day-status,.js-intent-core-hours .c-hours-today-day-status").forEach((node) => node.remove());
+  if (/\b(?:closed|closing|closures?)\b/i.test(text(closureCopy))) throw new Error("Unreviewed store closure wording.");
+  const panel = panels[storeIndex];
+  const table = one(panel, cohort.selectors.schedule);
+  const rows = [...table.querySelectorAll(cohort.schedule_row)];
+  if (rows.length !== 7 || rows.some((row) => !visible(row))) throw new Error("Incomplete disclosed store week.");
+  const hours: Hours = {};
+  const shortDays = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+  for (const row of rows) {
+    const index = FULL_DAYS.indexOf(text(one(row, cohort.day)));
+    const period = text(one(row, cohort.periods)).match(new RegExp(`^${CLOCK}\\s*[-–—]\\s*${CLOCK}$`, "i"));
+    if (index < 0 || hours[WEEKDAYS[index]] || !period || row.getAttribute("data-day-of-week-start-index") !== String((index + 1) % 7)
+      || row.getAttribute("data-day-of-week-end-index") !== String((index + 1) % 7)) throw new Error("Incomplete or ambiguous disclosed store weekday.");
+    const open = clock(period[1]), close = clock(period[2]);
+    if (open >= close || row.getAttribute("itemprop") !== "openingHours" || row.getAttribute("content") !== `${shortDays[index]} ${open}-${close}`) throw new Error("Conflicting store visible and microdata hours.");
+    hours[WEEKDAYS[index]] = [{ open, close }];
+  }
+  if (qualified(table) || qualified(panel)) throw new Error("Unreviewed store schedule qualifier.");
+  const configs = [...table.querySelectorAll("script.js-hours-config[type='text/data']")];
+  let config: Record<string, unknown>;
+  try { config = JSON.parse(configs[0]?.textContent ?? ""); } catch { throw new Error("Missing store hours configuration."); }
+  const configKeys = ["collapseDays", "dayOfWeekMap", "disableOpenUntil", "disableTodayFirst", "hideSchema", "highlightToday", "highlightTodayBackground", "hours", "open24HoursMessage", "showOpenToday", "twentyFourHourClock", "utcOffsets", "wholeWeekMessage"];
+  if (configs.length !== 1 || !config || typeof config !== "object" || Array.isArray(config) || Object.keys(config).some((key) => !configKeys.includes(key))
+    || configKeys.filter((key) => !["hours", "utcOffsets"].includes(key)).some((key) => config[key] !== null)) throw new Error("Unreviewed store configuration qualifier.");
+  const configured = machineWeek(JSON.stringify(config.hours));
+  for (const day of WEEKDAYS) if (JSON.stringify(configured[day]) !== JSON.stringify(hours[day])) throw new Error("Conflicting store configuration hours.");
+  const hero = one(card, cohort.hero_schedule);
+  const schedules = [table, one(panel, cohort.panel_schedule), hero];
+  if (schedules.some(qualified) || (hero.parentElement && qualified(hero.parentElement))) throw new Error("Unreviewed store schedule date qualifier.");
+  for (const schedule of schedules) {
+    const machine = machineWeek(schedule.getAttribute("data-days"));
+    for (const day of WEEKDAYS) if (JSON.stringify(machine[day]) !== JSON.stringify(hours[day])) throw new Error("Conflicting store schedule copies.");
+  }
+  if ([...card.querySelectorAll(cohort.selectors.schedule)].some((node) => !panels.some((candidate) => candidate.contains(node)))
+    || [...card.querySelectorAll("[itemprop='openingHours']")].some((node) => !hero.contains(node) && !panels.some((candidate) => candidate.contains(node)))) throw new Error("Unreviewed extra store schedule.");
+  return hours;
+}
+
 /** One already bounded source receipt, separate exact listing facts. No I/O. */
 export function parseOfficialHoursCohort(document: Document, pageText: string, cohort: OfficialHoursCohort, binding: OfficialHoursCohortBinding): Hours {
   validateCohort(cohort, binding);
-  return cohort.shape === "shared_daily_contact_card" ? sharedDaily(document, pageText, cohort) : jsonldWeek(document, pageText, cohort, binding);
+  return cohort.shape === "shared_daily_contact_card" ? sharedDaily(document, pageText, cohort) : cohort.shape === "microdata_store_week" ? microdataStoreWeek(document, pageText, cohort, binding) : jsonldWeek(document, pageText, cohort, binding);
 }
