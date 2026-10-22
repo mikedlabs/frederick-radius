@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:94ac59b7310e1b00e949c4865a67b5b317b15bbe96262b59858a44f9b9a2bd43",
+  "data_version": "sha256:22cf6a7932fbf2510dec75b3efe53978ed8a37c4889d1c9e93e778db9f187b52",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-22T15:14:14.359Z",
+      "promoted_at": "2026-10-22T19:57:08.918Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -264,9 +264,27 @@
         },
         {
           "path": "src/lib/owned-place-photos.ts",
-          "sha256": "0884cb8ff4b41e99f07dca29f5d40c50fb35597da29f4e0e908ea1e2c8437c77",
+          "sha256": "fff220c8eb8ed44f48081a45c6fe32c2f95351cd600efbe65f5eeb9d66d518b0",
           "records": null,
-          "bytes": 4158
+          "bytes": 5344
+        },
+        {
+          "path": "public/images/seasons/winter/IMG_2732.jpg",
+          "sha256": "784d12b622f5ad4ccd4e7160c863f7511eface0ae7a936a1dc4cf89ce198ea97",
+          "records": null,
+          "bytes": 733997
+        },
+        {
+          "path": "public/images/seasons/spring/010.jpg",
+          "sha256": "5f14890de91e95ae044b6daf15b26d96f7fafd4fd9b43bdee79e247b96882b6b",
+          "records": null,
+          "bytes": 397653
+        },
+        {
+          "path": "public/images/seasons/fall/001.jpg",
+          "sha256": "b34a2a727b290a25dba3b68a39baf2f083103c0938f3f8ad133cc38efc794365",
+          "records": null,
+          "bytes": 1386462
         },
         {
           "path": "public/images/seasons/fall/018.jpg",

@@ -71,6 +71,58 @@ and hash. Each listing retains its own review/acceptance state. There is no
 persistent page cache and no reused receipt receives a new observation.
 Both bindings retain the ordinary 512000-byte limit and seven-day expiry.
 
+## Reviewing groups of official listings
+
+The existing native merchant owner supports reviewed cohort declarations in
+`scripts/lib/merchant-hours-cohorts.ts`. Each binding names an exact slug,
+source owner, official URL, name, address and phone. Shared daily contact cards
+and location cards with agreeing visible and JSON-LD weekly hours are supported.
+The latter has an offline twenty-branch regression; it does not enroll those
+synthetic branches or grant authority to other websites. A source still needs
+an exact entry in `MERCHANT_HOURS_SOURCES` and source-ledger review. Unknown
+dates, admission cutoffs, service qualifiers, missing weekdays and conflicts
+remain held. Common Market is the currently enrolled shared-page cohort;
+FCPL retains its independently reviewed nine-branch adapter.
+
+The scheduled native run preserves original merchant HTML and an index of
+actual observations, hashes, exact member slugs and failed/manual-skipped
+outcomes in the separate authenticated
+`official-hours-review-evidence-<run>-<attempt>` artifact, retained seven days.
+The index records the exact source revision when available. Its
+`collection_complete` flag means every registered native URL has an attempt
+outcome, not that reads succeeded or facts were approved. It is false for an
+incomplete collection. No new requests or retries are made to create evidence.
+Raw pages never enter Git, generated client datasets or the publication
+allowlist. Preserve useful older pending evidence privately before expiry.
+
+Review multiple pending candidates offline from a current artifact:
+
+```sh
+npm run --silent review:official-hours-batch -- --template > /private/path/review-plan.json
+npm run review:official-hours-batch -- --plan=/private/path/review-plan.json
+npm run review:official-hours-batch -- --plan=/private/path/review-plan.json --apply
+```
+
+The template starts every candidate at `hold`. For each accepted member,
+substantively review its identity, complete schedule and notices, then set
+`decision` to `accept`, supply the original local HTML `evidence_file`
+(relative to the plan or absolute), and write a `review_note`. The plan pins the
+exact input artifact hash plus each candidate's source URL, hash and actual
+observation. Execution replays the source parser against the original bytes;
+it never fetches a page or alters the observation. A stale, mismatched,
+incomplete or expired accepted member rejects the whole batch. Held and
+unselected records retain their complete prior evidence. Apply is explicit;
+dry-run is the default. The collector and batch reviewer share an exclusive
+commit lock and refuse a changed baseline, existing lock or older staged file.
+Do not reset a lock to make a run succeed.
+
+This command changes only the merchant evidence artifact. Reconcile onto current
+main, rebuild affected client artifacts, promote only the places release stream,
+and use the normal required review, GitHub checks and production verification.
+It does not merge a PR, run a provider or bypass a release gate. Batches reduce
+repeated code and review operations; they do not turn unverified candidates
+into verified schedules or expand any source/request/provider budget.
+
 Delaplaine's exact homepage supplies public gallery hours only. Its Plan Your
 Visit and footer schedules must both be complete and agree with the exact
 Frederick address and contact. Class and event times cannot fill a missing

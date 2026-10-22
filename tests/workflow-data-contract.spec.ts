@@ -727,10 +727,16 @@ describe("scheduled data workflow contracts", () => {
       ).toBe(publishers.length);
       // Venue native/paid producers are mutually exclusive. Commerce adds one
       // private diagnostic artifact that the exact publisher never receives.
+      // Official hours separately retain original pages for offline review;
+      // their artifact name is not an input to either exact publisher.
       expect(
         artifactUploads.length,
         `${name} must stage every producer through its exact artifact`,
-      ).toBe(["ingest-venues.yml", "refresh-commerce-links.yml"].includes(name) ? 2 : publishers.length);
+      ).toBe(name === "data-steward.yml" ? publishers.length + 1 : ["ingest-venues.yml", "refresh-commerce-links.yml"].includes(name) ? 2 : publishers.length);
+      if (name === "data-steward.yml") {
+        expect(text).not.toMatch(/artifact:\s+official-hours-review-evidence/);
+        expect(text).not.toMatch(/allowed_paths:[\s\S]*?\n\s+official-hours-review-evidence\//);
+      }
       expect(
         exactHeads.length,
         `${name} must dispatch checks for the exact published head`,

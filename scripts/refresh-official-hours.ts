@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import { collectMerchantOfficialHours, fetchMerchantHoursPage } from "./lib/merchant-official-hours";
 import { FCPL_HOURS_URL, FCPL_CLOSURES_URL, validateOfficialHoursArtifact, type OfficialHoursArtifact } from "../src/lib/official-hours";
 import { fetchOfficialHoursPage, parseFcplOfficialHours, officialHoursNeedsReview } from "./lib/fcpl-official-hours";
+import { createOfficialHoursReviewEvidence } from "./lib/official-hours-review-evidence";
+import { commitMerchantHours } from "./lib/commit-merchant-hours";
 
 export async function refreshOfficialHours(args = process.argv.slice(2), options: {
   /** Dependency injection for offline failure/atomicity tests, never URL selection. */
@@ -14,12 +16,14 @@ export async function refreshOfficialHours(args = process.argv.slice(2), options
   merchantOutputPath?: string;
   fetchMerchantPage?: typeof fetchMerchantHoursPage;
 } = {}) {
-  for (const arg of args) if (!/^--(?:dry-run$|evidence-dir=|weekly-observed-at=|closures-observed-at=)/.test(arg)) throw new Error(`Unknown option: ${arg}`);
+  for (const arg of args) if (!/^--(?:dry-run$|evidence-dir=|review-evidence-dir=|weekly-observed-at=|closures-observed-at=)/.test(arg)) throw new Error(`Unknown option: ${arg}`);
   const fetchPage = options.fetchPage ?? fetchOfficialHoursPage;
   const value = (name: string) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
   const evidence = value("evidence-dir");
   const weeklyObserved = value("weekly-observed-at");
   const closuresObserved = value("closures-observed-at");
+  const reviewEvidence = value("review-evidence-dir");
+  if (reviewEvidence && evidence) throw new Error("Historical library replay cannot create a native merchant capture bundle.");
   if (evidence && (!weeklyObserved || !closuresObserved)) throw new Error("Offline evidence requires both actual observation timestamps.");
   if (!evidence && (weeklyObserved || closuresObserved)) throw new Error("Live observations are recorded only after each successful response.");
   const output = options.outputPath ?? resolve("src/data/places-official-hours.json");
@@ -44,10 +48,13 @@ export async function refreshOfficialHours(args = process.argv.slice(2), options
   }
   const merchantOutput = options.merchantOutputPath ?? (options.outputPath ? resolve(dirname(output), "merchant-hours.json") : resolve("src/data/places-merchant-hours.json"));
   let previousMerchant: unknown;
-  try { previousMerchant = JSON.parse(readFileSync(merchantOutput, "utf8")); } catch { previousMerchant = undefined; }
+  let previousMerchantBytes: string | undefined;
+  try { previousMerchantBytes = readFileSync(merchantOutput, "utf8"); previousMerchant = JSON.parse(previousMerchantBytes); } catch { previousMerchant = undefined; }
   // Historical FCPL replay never makes fresh merchant requests or advances merchant evidence.
   // Injected FCPL-only tests likewise cannot accidentally use a live transport.
-  const merchantFetcher = options.fetchMerchantPage ?? (options.fetchPage ? async () => { throw new Error("No merchant test receipt supplied."); } : fetchMerchantHoursPage);
+  const baseMerchantFetcher = options.fetchMerchantPage ?? (options.fetchPage ? async () => { throw new Error("No merchant test receipt supplied."); } : fetchMerchantHoursPage);
+  const capture = reviewEvidence ? createOfficialHoursReviewEvidence(reviewEvidence, { now: options.now, sourceRevision: process.env.GITHUB_SHA }) : undefined;
+  const merchantFetcher = capture ? (url: string) => capture(url, baseMerchantFetcher) : baseMerchantFetcher;
   const merchants = evidence || (options.fetchPage && !options.fetchMerchantPage) ? undefined : await collectMerchantOfficialHours(previousMerchant, merchantFetcher, options.now);
   const reviewRequired = officialHoursNeedsReview(previous, artifact) || (merchants?.reviewRequired ?? false);
   if (!args.includes("--dry-run")) {
@@ -57,8 +64,8 @@ export async function refreshOfficialHours(args = process.argv.slice(2), options
       renameSync(temporary, output);
     }
     if (merchants) {
-      writeFileSync(`${merchantOutput}.tmp`, JSON.stringify(merchants.artifact, null, 2) + "\n");
-      renameSync(`${merchantOutput}.tmp`, merchantOutput);
+      if (previousMerchantBytes === undefined) throw new Error("Missing approved merchant baseline.");
+      commitMerchantHours(merchantOutput, previousMerchantBytes, merchants.artifact);
     }
   }
   console.log(JSON.stringify({ status: libraryStatus === "current" ? "complete" : "partial", libraryStatus, ...(libraryError ? { libraryError } : {}), reviewRequired, dryRun: args.includes("--dry-run"), source: artifact.source_id, places: artifact.places.length, dateExceptions: artifact.closures.exceptions.length, observedAt: [artifact.weekly.observed_at, artifact.closures.observed_at], expiresAt: artifact.expires_at, merchantSchedules: merchants?.artifact.places.length ?? "unchanged-offline", merchantPendingCount: merchants?.artifact.review.length ?? 0, merchantReview: merchants?.artifact.review.map(({ slug, reason }) => ({ slug, reason })) ?? [] }));
