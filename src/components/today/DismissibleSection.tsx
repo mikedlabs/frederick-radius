@@ -16,6 +16,7 @@ export default function DismissibleSection({
   id,
   title,
   href,
+  prefetch,
   cta = "See all",
   meta,
   eyebrow,
@@ -26,6 +27,7 @@ export default function DismissibleSection({
   id: string;
   title: string;
   href?: string;
+  prefetch?: false | "auto";
   cta?: string;
   meta?: React.ReactNode;
   /** Field-guide eyebrow — a small tracked plate label above the title
@@ -58,6 +60,7 @@ export default function DismissibleSection({
         eyebrow={eyebrow}
         plateNo={plateNo}
         href={href}
+        prefetch={prefetch}
         cta={cta}
       />
       {children}

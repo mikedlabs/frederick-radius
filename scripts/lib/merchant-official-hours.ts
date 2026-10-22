@@ -6,6 +6,8 @@ import { WEEKDAYS, isCalendarDate } from "../../src/lib/official-hours";
 import { isHoursFresh } from "../../src/lib/hours-freshness";
 import { easternDayKey } from "../../src/lib/tz";
 import type { OfficialPageReceipt } from "./fcpl-official-hours";
+import { merchantHoursCohort } from "./merchant-hours-cohorts";
+import { parseOfficialHoursCohort } from "./official-hours-cohort";
 const { JSDOM } = createRequire(import.meta.url)("jsdom") as { JSDOM: new (html: string) => { window: { document: Document } } };
 const CLOCK = "(\\d{1,2}(?::\\d{2})?\\s*[ap]m)";
 function time(raw: string): string {
@@ -18,7 +20,7 @@ function set(hours: Hours, days: DayOfWeek[], open: string, close: string) {
 }
 function textPage(html: string): { text: string; document: Document } {
   const document = new JSDOM(html).window.document;
-  document.querySelectorAll("script:not([type='application/ld+json']),style,noscript,template").forEach((node) => node.remove());
+  document.querySelectorAll("script:not([type='application/ld+json']):not([type='text/data'].js-hours-config),style,noscript,template").forEach((node) => node.remove());
   // Block boundaries preserve visible source order without executing scripts/resources.
   document.querySelectorAll("p,div,li,br,h1,h2,h3,h4,section,footer").forEach((node) => node.appendChild(document.createTextNode(" ")));
   const clone = document.body.cloneNode(true) as HTMLElement;
@@ -147,11 +149,14 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
   if (!MERCHANT_HOURS_SOURCES.some((item) => item.slug === source.slug && item.url === source.url) || page.url !== source.url || !isHoursFresh(page.observedAt, now)) throw new Error("Unapproved merchant source or observation.");
   const { text, document } = textPage(page.html);
   if (/temporarily closed|closed (?:today|tomorrow|for)|closing early|special hours|holiday hours|until sold out|drinks only|kitchen hours/i.test(text)) throw new Error("Unresolved merchant notice or service qualifier.");
-  const structured = structuredOpeningHours(document, source);
+  const cohort = merchantHoursCohort(source);
+  const structured = cohort?.cohort.shape === "jsonld_weekly_location_cards" ? [] : structuredOpeningHours(document, source);
   const hours: Hours = {};
   let from = easternDayKey(new Date(page.observedAt));
   let through: string | undefined;
-  if (source.kind === "dated_week") {
+  if (cohort) {
+    Object.assign(hours, parseOfficialHoursCohort(document, text, cohort.cohort, cohort.binding));
+  } else if (source.kind === "dated_week") {
     if (!/Brewer[’']?s Alley/i.test(text)) throw new Error("Missing Brewer's Alley identity.");
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
     const pattern = new RegExp(`(${days.join("|")}) (\\d{1,2})/(\\d{1,2})/(\\d{2}|\\d{4}): ${CLOCK} to ${CLOCK}`, "gi");
@@ -206,55 +211,6 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
     if (time(match[1]) >= time(match[2]) || time(match[3]) >= time(match[4])) throw new Error("Unreviewed Delaplaine overnight gallery hours.");
     setWindows(hours, ["mon", "tue", "wed", "thu", "fri", "sat"], match.slice(1, 3));
     setWindows(hours, ["sun"], match.slice(3, 5));
-  } else if (source.slug === "common-market-frederick" || source.slug === "common-market") {
-    // The official Organization contact card explicitly shares one store
-    // schedule across these two grocery addresses. Cafe contacts are separate.
-    const cards = [...document.querySelectorAll("address.vcard")];
-    if (cards.length !== 1) throw new Error("Missing or duplicated Common Market contact identity.");
-    const card = cards[0];
-    const label = card.querySelector(".org[itemprop='name']");
-    const addresses = [...card.querySelectorAll(".adr[itemprop='address']")];
-    const expected = [
-      { street: "5728 Buckeystown Pike, Unit B1", zip: "21704" },
-      { street: "927 W 7th Street", zip: "21701" },
-    ];
-    const exactAddress = (node: Element, identity: typeof expected[number]) =>
-      compact(node.querySelector("[itemprop='streetAddress']")?.textContent ?? "") === compact(identity.street) &&
-      node.querySelector("[itemprop='addressLocality']")?.textContent?.trim() === "Frederick" &&
-      node.querySelector("[itemprop='addressRegion']")?.textContent?.trim() === "MD" &&
-      node.querySelector("[itemprop='postalCode']")?.textContent?.trim() === identity.zip;
-    const phones = [...card.querySelectorAll(".tel .value")];
-    if (label?.textContent?.trim() !== "Common Market" || addresses.length !== 2 ||
-        expected.some((identity) => addresses.filter((node) => exactAddress(node, identity)).length !== 1) ||
-        phones.filter((node) => phoneNumber(node.textContent ?? "") === "3016633416").length !== 1) {
-      throw new Error("Missing exact Common Market grocery identities.");
-    }
-    const ranges = [...card.querySelectorAll(".hours .open")];
-    const hidden = (node: Element) => {
-      for (let current: Element | null = node; current; current = current.parentElement) {
-        if (current.hasAttribute("hidden") || current.getAttribute("aria-hidden") === "true" ||
-            /display\s*:\s*none|visibility\s*:\s*hidden/i.test(current.getAttribute("style") ?? "")) return true;
-      }
-      return false;
-    };
-    if (ranges.length !== 1 || [card, ...addresses, ...ranges].some(hidden)) throw new Error("Missing visible Common Market store schedule.");
-    const storeSchedule = (ranges[0].textContent ?? "").replace(/\s+/g, " ").trim();
-    const match = storeSchedule.match(new RegExp(`^${CLOCK}\\s*[-–—]\\s*${CLOCK} Daily$`, "i"));
-    if (!match || card.querySelectorAll(".hours").length !== 1) throw new Error("Unqualified seven-day Common Market store hours required.");
-    const outside = document.body.cloneNode(true) as HTMLElement;
-    outside.querySelectorAll("address.vcard,script").forEach((node) => node.remove());
-    const otherText = (outside.textContent ?? "").replace(/\s+/g, " ").trim();
-    const extraHoursBlock = [...document.querySelectorAll(".hours,.store-hours,.business-hours,[itemprop='openingHours'],[itemprop='openingHoursSpecification']")].some((node) => !card.contains(node));
-    // An unrelated event clock is not a change to business hours. Additional
-    // store/service-hour labels or blocks still need separate source review.
-    if (extraHoursBlock || /\b(?:store|grocery|business|opening|holiday|special|seasonal|café|cafe)\s+hours\b/i.test(otherText) ||
-        new RegExp(`\\bhours\\s*:?\\s*${CLOCK}`, "i").test(otherText) ||
-        /\b(?:reduced|limited|extended|shortened|revised|changed|updated)\s+(?:(?:store|business)\s+)?hours\b/i.test(otherText) ||
-        /\b(?:seasonal|summer|winter|pickup|pick-up|delivery|takeout|take-out|online)(?:\s+only)?\s+hours\b|\bhours (?:vary|may|subject to)|by appointment/i.test(text)) {
-      throw new Error("Unresolved Common Market notice or extra schedule.");
-    }
-    if (time(match[1]) >= time(match[2])) throw new Error("Unreviewed Common Market overnight store hours.");
-    setWindows(hours, [...WEEKDAYS], match.slice(1, 3));
   } else if (source.slug === "dublin-roasters-frederick") {
     if (!/Dublin Roasters/i.test(text)
       || !/1780 N\.? Market (?:Street|St\.?)\s*[●·,]?\s*Frederick,?\s*MD\s*21701/i.test(text)

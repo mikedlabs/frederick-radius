@@ -7,10 +7,38 @@ export type OwnedPlacePhoto = {
   width: number;
   height: number;
   /** Retain the reviewed subject when a card needs a narrower crop. */
-  objectPosition?: "center" | "left" | "right";
+  objectPosition?: "center" | "left" | "right" | "top" | "bottom";
 };
 
 export const OWNED_PLACE_PHOTOS: Readonly<Record<string, OwnedPlacePhoto>> = {
+  // Existing owner-permitted Seasons photographs, individually inspected for
+  // the named storefront, distinctive playground and church facade. Camera
+  // coordinates alone do not establish a place match. These are establishing
+  // views, not current weather, activity, services or opening-hours evidence.
+  "zoes-chocolate-company": {
+    kind: "owned",
+    src: "/images/seasons/winter/IMG_2732.jpg",
+    alt: "The red storefront and entrance of Zoe's Chocolate Company on North Market Street in winter.",
+    width: 1920,
+    height: 2400,
+    objectPosition: "center",
+  },
+  "sophie-madigans-playground-frederick": {
+    kind: "owned",
+    src: "/images/seasons/spring/010.jpg",
+    alt: "An aerial view of the rainbow paths and play equipment at Sophie & Madigan's Playground in Frederick.",
+    width: 1920,
+    height: 1079,
+    objectPosition: "center",
+  },
+  "calvary-united-methodist-church-of-frederick-maryland": {
+    kind: "owned",
+    src: "/images/seasons/fall/001.jpg",
+    alt: "The stone facade and tower of Calvary United Methodist Church beside Baker Park in Frederick.",
+    width: 1920,
+    height: 3413,
+    objectPosition: "top",
+  },
   // Existing owner-permitted Seasons view, visually matched to the central
   // City Hall facade and courtyard. It does not establish current conditions.
   "city-hall-8": {

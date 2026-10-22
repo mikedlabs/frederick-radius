@@ -2359,6 +2359,48 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "safeway_middletown_hours",
+    "name": "Safeway Middletown - First-party Grocery Hours",
+    "owner": "Safeway",
+    "url": "https://local.safeway.com/safeway/md/middletown/815-e-main-st.html",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://local.safeway.com/safeway/md/middletown/815-e-main-st.html",
+      "safeway_middletown_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "safeway_walkersville_hours",
+    "name": "Safeway Walkersville - First-party Grocery Hours",
+    "owner": "Safeway",
+    "url": "https://local.safeway.com/safeway/md/walkersville/151-walkers-village-way.html",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://local.safeway.com/safeway/md/walkersville/151-walkers-village-way.html",
+      "safeway_walkersville_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "seatgeek",
     "name": "SeatGeek Events",
     "owner": "SeatGeek",

@@ -204,6 +204,7 @@ export function TodayEventsRecoveryView({
           </div>
           <Link
             href={eventsHref}
+            prefetch={false}
             aria-label="Open the full events board"
             className="tap-44-y inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-semibold"
             style={{ color: "var(--app-link)" }}
@@ -227,6 +228,7 @@ export function TodayEventsRecoveryView({
         id="upcoming"
         title="Events today"
         href={eventsHref}
+        prefetch={false}
         cta="See all"
         flat
         meta={meta}

@@ -184,6 +184,8 @@ describe("bundled source artifact evidence", () => {
       "kulfi_hours",
       "municipal_civic_extraction",
       "pistarros_hours",
+      "safeway_middletown_hours",
+      "safeway_walkersville_hours",
       "sumittra_hours",
       "thai_meric_hours",
       "thai_table_hours",

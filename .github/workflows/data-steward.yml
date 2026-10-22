@@ -329,6 +329,9 @@ jobs:
       library_status: ${{ steps.refresh.outputs.library_status }}
       merchant_pending_count: ${{ steps.refresh.outputs.merchant_pending_count }}
       merchant_pending_summary: ${{ steps.refresh.outputs.merchant_pending_summary }}
+      native_source_count: ${{ steps.refresh.outputs.native_source_count }}
+      native_listing_count: ${{ steps.refresh.outputs.native_listing_count }}
+      manual_listing_count: ${{ steps.refresh.outputs.manual_listing_count }}
       review_required: ${{ steps.refresh.outputs.review_required != 'false' || steps.catalog-review.outputs.review_required != 'false' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -342,7 +345,15 @@ jobs:
       - run: npm ci
       - name: Refresh required library pages and reviewed merchant sources
         id: refresh
-        run: npm run refresh:official-hours
+        run: npm run refresh:official-hours -- --review-evidence-dir="${{ runner.temp }}/official-hours-review-evidence"
+      - name: Preserve original native pages for offline batch review
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: official-hours-review-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/official-hours-review-evidence
+          if-no-files-found: warn
+          retention-days: 7
       - name: Rebuild the public place snapshot
         run: npm run build:client-places
       - name: Check catalog status changes
@@ -352,7 +363,7 @@ jobs:
         run: |
           npm run coverage:scorecard
           npm run gates
-          npx vitest run src/lib/merchant-hours.spec.ts src/lib/merchant-hours.expansion.spec.ts src/lib/merchant-hours.manual.spec.ts src/lib/quality/source-artifact-evidence.spec.ts src/lib/quality/source-ledger.spec.ts src/lib/official-hours.spec.ts src/lib/quality/fcpl-official-hours.spec.ts src/lib/official-hours-integration.spec.ts tests/official-hours-workflow.spec.ts tests/client-place-parity.spec.ts
+          npx vitest run src/lib/merchant-hours.spec.ts src/lib/merchant-hours.expansion.spec.ts src/lib/merchant-hours.manual.spec.ts src/lib/merchant-hours.cohorts.spec.ts src/lib/merchant-hours.common-market.spec.ts src/lib/quality/source-artifact-evidence.spec.ts src/lib/quality/source-ledger.spec.ts src/lib/official-hours.spec.ts src/lib/quality/fcpl-official-hours.spec.ts src/lib/official-hours-integration.spec.ts tests/official-hours-workflow.spec.ts tests/official-hours-batch-review.spec.ts tests/official-hours-review-evidence.spec.ts tests/merchant-hours-commit.spec.ts tests/client-place-parity.spec.ts
           npm run data:release:write -- --stream places
       - name: Stage bounded hours outputs
         env:
@@ -387,7 +398,7 @@ jobs:
         if: ${{ always() }}
         run: |
           echo "Library source status: ${{ steps.refresh.outputs.library_status }}. A failed FCPL cohort retains its original bytes and evidence dates while unrelated merchant sources may refresh." >> "$GITHUB_STEP_SUMMARY"
-          echo "Nine library schedules require both FCPL pages. Fourteen reviewed native merchant URLs cover fifteen listing identities and retain their own observations and dated coverage; failed or conflicted reads stage review. Two manual merchant sources are carried unchanged without provider calls or new observation dates. A successful workflow is not publication: inspect the reviewed PR and production deployment before claiming current hours." >> "$GITHUB_STEP_SUMMARY"
+          echo "Nine library schedules require both FCPL pages. Reviewed native URLs: ${{ steps.refresh.outputs.native_source_count }}; independent listing bindings: ${{ steps.refresh.outputs.native_listing_count }}. They retain their own observations and dated coverage; failed or conflicted reads stage review. Manual-owned sources carried unchanged: ${{ steps.refresh.outputs.manual_listing_count }}, without provider calls or new observation dates. A successful workflow is not publication: inspect the reviewed PR and production deployment before claiming current hours." >> "$GITHUB_STEP_SUMMARY"
           echo "Pending merchant sources: ${{ steps.refresh.outputs.merchant_pending_count }}. Source reasons: ${{ steps.refresh.outputs.merchant_pending_summary }}." >> "$GITHUB_STEP_SUMMARY"
 
   official-hours-publish:
@@ -416,8 +427,8 @@ jobs:
       auto_merge: ${{ needs.official-hours.outputs.review_required == 'false' }}
       body: |
         Refreshes the bounded free first-party cohort: nine FCPL libraries from
-        both required official pages, plus fourteen reviewed native merchant URLs
-        for fifteen listing identities. Two manual merchant schedules retain their exact prior evidence
+        both required official pages, plus ${{ needs.official-hours.outputs.native_source_count }} reviewed native merchant URLs
+        for ${{ needs.official-hours.outputs.native_listing_count }} listing identities. The ${{ needs.official-hours.outputs.manual_listing_count }} manual merchant schedules retain their exact prior evidence
         and expiry; this workflow never fetches them or starts a paid provider.
         No paid providers, private database access, redirects or source retries.
         Review each changed weekly window, source hash, observation, expiry and
@@ -434,7 +445,11 @@ jobs:
         observation and a source-specific hold. Candidate proof stays in the
         review queue, outside the public schedule; it cannot accept itself on
         repeated reads. These holds do not block the other sources' routine
-        refreshes. Approve an exact candidate in a separate reviewed change to
+        refreshes. Original native pages are retained in the separate authenticated
+        official-hours-review-evidence artifact for offline batch review. This
+        evidence artifact is never passed to the publication allowlist. Use the
+        held batch template and explicitly review each identity, schedule, notice,
+        original hash and observation before applying a group. Approve an exact candidate in a separate reviewed change to
         restore only that source. No new or changed public hours auto-promote.
         Semantic source changes require review: ${{ needs.official-hours.outputs.review_required }}.
         Only unchanged approved facts, fresh observations and restrictive

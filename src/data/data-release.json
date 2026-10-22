@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:94ac59b7310e1b00e949c4865a67b5b317b15bbe96262b59858a44f9b9a2bd43",
+  "data_version": "sha256:9339eaf3649521015b5c2feb8ad75cbd00eab8058558038102a7037fc5959950",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-22T15:14:14.359Z",
+      "promoted_at": "2026-10-22T20:21:07.562Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -72,9 +72,9 @@
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "342e26ab0f479037a276908d3513fbf7eb4177a985553f8cbaab4d3f9ec26de4",
-          "records": 17,
-          "bytes": 21786
+          "sha256": "769b9c4736b149294c10565165e96dc1d04670f089c8f1bfb8a8c296c33cfda6",
+          "records": 19,
+          "bytes": 24332
         },
         {
           "path": "src/data/business-status.json",
@@ -264,9 +264,27 @@
         },
         {
           "path": "src/lib/owned-place-photos.ts",
-          "sha256": "0884cb8ff4b41e99f07dca29f5d40c50fb35597da29f4e0e908ea1e2c8437c77",
+          "sha256": "fff220c8eb8ed44f48081a45c6fe32c2f95351cd600efbe65f5eeb9d66d518b0",
           "records": null,
-          "bytes": 4158
+          "bytes": 5344
+        },
+        {
+          "path": "public/images/seasons/winter/IMG_2732.jpg",
+          "sha256": "784d12b622f5ad4ccd4e7160c863f7511eface0ae7a936a1dc4cf89ce198ea97",
+          "records": null,
+          "bytes": 733997
+        },
+        {
+          "path": "public/images/seasons/spring/010.jpg",
+          "sha256": "5f14890de91e95ae044b6daf15b26d96f7fafd4fd9b43bdee79e247b96882b6b",
+          "records": null,
+          "bytes": 397653
+        },
+        {
+          "path": "public/images/seasons/fall/001.jpg",
+          "sha256": "b34a2a727b290a25dba3b68a39baf2f083103c0938f3f8ad133cc38efc794365",
+          "records": null,
+          "bytes": 1386462
         },
         {
           "path": "public/images/seasons/fall/018.jpg",
@@ -366,15 +384,15 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "c0b957e0b1d982d1c49c916ff6f3be837eac4ea7b696584a74d294dd9d34ac90",
+          "sha256": "5999bf98acb3b160814735fe784094d474927abe08dedb6232e4ea036bc38d73",
           "records": 1571,
-          "bytes": 2303109
+          "bytes": 2304495
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "864095979d0047b1f957ce7bb6e2db836adbd03e731e23b8d9501cf027311ee2",
-          "records": 26,
-          "bytes": 37181
+          "sha256": "a342fd4dbd5129da535b9bee11200edb644bfbd4de5e92dfd3318ce16123959e",
+          "records": 28,
+          "bytes": 38763
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
@@ -385,13 +403,13 @@
       ]
     },
     "sources": {
-      "promoted_at": "2026-10-22T15:14:14.359Z",
+      "promoted_at": "2026-10-22T20:21:07.562Z",
       "artifacts": [
         {
           "path": "src/data/source-registry.generated.json",
-          "sha256": "bc46c3121b3dce1f927c59a8185d510fb3e7f1f93654daeaf75e8e727d28f9e5",
-          "records": 144,
-          "bytes": 95097
+          "sha256": "fcd3d74a3acdea3aeadc6a143c8a733108c86cd27738e0ad4ce2fdd7f3242a31",
+          "records": 146,
+          "bytes": 96715
         }
       ]
     },

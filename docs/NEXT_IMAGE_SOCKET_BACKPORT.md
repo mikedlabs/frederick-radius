@@ -1,41 +1,54 @@
 # Internal image response cancellation
 
-Next16.3.8 can leave an internal image response pending when its requesting
-client socket closes. Later requests for the same optimization key can then
-wait on the unfinished shared work. A bounded local experiment reproduced
-this before the image encoder; the exact originating cancellation in the
-hosted WebKit failure remains unproved.
+Next16.4.2 includes the internal image response fix upstream in both its
+CommonJS and ESM distributions. The temporary Next16.3.8 backport and its npm
+postinstall hook have been removed. Install the exact reviewed package and
+lockfile normally; this application no longer modifies Next's vendor files.
 
-`scripts/backport-next-image-socket.cjs` applies the image-local change from
-[merged Next.js PR98168](https://github.com/vercel/next.js/pull/98168/files)
-(patch476f5dd). The internal request retains the real request socket. Its
-response is a separate mock response without the client socket. The shared mock factory, body limits,
-encoding formats, cache keys and image assertions remain unchanged.
+The released image optimizer contains the image-local change from
+[merged Next.js PR98168](https://github.com/vercel/next.js/pull/98168/files).
+Its internal request retains the requesting socket for connection metadata.
+Its response is a separate mock response without that socket. A disconnected
+client therefore cannot terminate the internal file stream while leaving
+shared image work pending. The shared mock factory remains unchanged.
 
-The npm postinstall hook accepts only Next16.3.8 and the full known original
-or patched SHA256 pair for its CommonJS and ESM image optimizers. Unknown
-versions, unknown bytes, linked files and mixed original/patched pairs fail
-installation. Both files are validated and staged before either is replaced;
-handled replacement failures roll back completed replacements. Replacement is
-atomic per file, not across both files. An abrupt process or power failure
-between replacements can leave a mixed pair. Reinstall the exact locked
-package to recover; do not reset the guards to accept unknown bytes.
+A bounded local experiment reproduced the original Next16.3.8 hang before
+the image encoder. The exact originating cancellation in the hosted WebKit
+failure remains unproved; the upstream repair is not evidence that every
+browser loading failure has the same cause.
 
 The focused regression runs with:
 
 ```sh
-node --test scripts/lib/next-image-socket-backport.test.mjs
+node --test scripts/lib/next-image-socket.test.mjs
 ```
 
-It compiles pinned old and patched sources in memory and uses Next's real
-static sender with a destroyed client socket. The old response stays pending
-within the negative-control deadline; the repaired response must return the
-exact committed local image bytes. It also exercises concurrent same-key
-batching, request semantics, body limits, errors, both distribution hashes,
-ESM syntax, idempotence, refusal guards and rollback. ESM runtime bundling and
-the full public mobile flow require their normal application release gates.
+It tests the actual installed, unmodified Next image optimizer with Next's
+real static sender and the exact committed local image bytes. Its strict
+negative control changes only the response/socket coupling in memory to
+reproduce the old pending response; it does not replace the static sender or
+manufacture stream completion. The released implementation must finish that
+same request and concurrent same-key work, then serve a subsequent request.
 
-Retire the lifecycle hook and backport after reviewing a released Next
-package that contains this fix and running the regression with that package.
-Update the lockfile using npm10. Do not bypass an unknown-version refusal by
-silently skipping the repair or widening its hashes.
+The regression also checks that the internal request uses empty headers,
+never reads private outer headers or the outer response, and preserves its
+connection metadata even when other socket accessors throw. Method handling,
+body limits, empty/missing files and non-success statuses remain covered.
+It compares the CJS and ESM response construction and checks ESM syntax.
+Vendor integrity comes from the exact dependency lockfile rather than a
+second application-owned hash or patch system. ESM runtime bundling and the
+public mobile flow still require their normal application release gates.
+
+The runtime security update is separate from a lint-analyzer migration.
+Development uses the previously reviewed eslint-config-next16.3.8 and pins
+eslint-plugin-react-hooks7.0.1, its prior resolved version. The application
+ESLint configuration and enabled rules are unchanged. Newer analyzer
+diagnostics affecting existing components need a separate reviewed migration;
+they do not require holding back the patched Next runtime. Production audit
+and the normal complete lint check remain required release checks.
+
+The installed Storybook framework still supplies the older App Router layout
+context. Its exact workshop-only boundary alias adapts that context before
+calling Next's real boundary; production imports and navigation hooks stay
+unchanged. The compatibility test reproduces the unadapted crash. Review or
+remove this version-specific bridge when changing either dependency.

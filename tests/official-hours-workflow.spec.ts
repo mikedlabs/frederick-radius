@@ -12,7 +12,11 @@ describe("official library hours delivery boundary", () => {
     expect(producer.permissions).toEqual({ contents: "read" });
     expect(producer.steps.some((step: { with?: Record<string, unknown> }) => step.with?.["node-version"] === 24)).toBe(true);
     const refresh = producer.steps.find((step: { id?: string }) => step.id === "refresh");
-    expect(refresh.run).toBe("npm run refresh:official-hours");
+    expect(refresh.run).toBe('npm run refresh:official-hours -- --review-evidence-dir="${{ runner.temp }}/official-hours-review-evidence"');
+    const evidence = producer.steps.find((step: { name?: string }) => step.name === "Preserve original native pages for offline batch review");
+    expect(evidence.if).toBe("${{ always() }}");
+    expect(evidence.with["retention-days"]).toBe(7);
+    expect(evidence.with.path).toBe("${{ runner.temp }}/official-hours-review-evidence");
     expect(refresh["continue-on-error"]).toBeUndefined();
     expect(producer.outputs.review_required).toBe("${{ steps.refresh.outputs.review_required != 'false' || steps.catalog-review.outputs.review_required != 'false' }}");
     expect(producer.steps.find((step: { id?: string }) => step.id === "catalog-review").run).toBe("npm run review:hours-refresh");

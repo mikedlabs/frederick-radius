@@ -701,6 +701,34 @@ test("native Event full-document Back restores its actual opener after a BFCache
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
   const evidence = await prepare(context, page, baseURL);
+  const appOrigin = new URL(baseURL ?? "http://localhost:3010").origin;
+  const optionalBoardPrefetches: Array<Record<string, unknown>> = [];
+  const optionalBoardNavigations: Array<Record<string, unknown>> = [];
+  const nullModalPagePrefetches: Array<Record<string, unknown>> = [];
+  evidence.measurements.unclickedBoardPrefetchRequests = optionalBoardPrefetches;
+  evidence.measurements.unclickedBoardNavigations = optionalBoardNavigations;
+  evidence.measurements.nullModalCatchAllPrefetchRequests = nullModalPagePrefetches;
+  context.on("request", request => {
+    const url = new URL(request.url()), headers = request.headers();
+    if (url.origin !== appOrigin || request.method() !== "GET") return;
+    const segment = headers["next-router-segment-prefetch"] ?? "";
+    // The null modal-clear page never needs speculative server work, whatever
+    // normal destination caused Next to discover the slot. All ordinary tree,
+    // layout and actual clicked navigations remain observed but unrestricted.
+    if (headers["next-router-prefetch"] && segment.includes("/@modal/")
+      && segment.includes("catchAll") && segment.includes("/__PAGE__")) {
+      nullModalPagePrefetches.push({ href: url.pathname + url.search, at: new Date().toISOString(),
+        prefetch: headers["next-router-prefetch"], segment, referrer: headers.referer ?? null });
+    }
+    if (!["/events", "/today"].includes(url.pathname)) return;
+    url.searchParams.delete("_rsc"); url.searchParams.sort();
+    if (!["/events?in=frederick", "/events?lens=today", "/today"].includes(url.pathname + url.search)) return;
+    const entry = { href: url.pathname + url.search, at: new Date().toISOString(),
+      referrer: headers.referer ?? null, nextUrl: headers["next-url"] ?? null,
+      segment: headers["next-router-segment-prefetch"] ?? null };
+    if (request.isNavigationRequest()) optionalBoardNavigations.push(entry);
+    else optionalBoardPrefetches.push(entry);
+  });
   const seed = EVENTS.find((event) => event.slug === "snallyfest-2026-kickoff")!;
   expect(seed).toBeDefined();
   evidence.fixtureBoundary = "Loopback-only declared Today transport fixture exposes an unchanged historical bundled event solely for native return acceptance; actual summary and full SSR are NOT replaced, no dates or source verification shifted. It is not a current recommendation proof. Supported automatic-return opt-out remains active.";
@@ -716,7 +744,6 @@ test("native Event full-document Back restores its actual opener after a BFCache
   });
   // This exact free seed resolver stays real; neither its DTO nor the actual
   // blocking canonical document is replaced by the declared presentation seam.
-  const appOrigin = new URL(baseURL ?? "http://localhost:3010").origin;
   await context.route(url => url.origin === appOrigin && url.pathname === `/api/events/${seed.slug}/summary`, route => {
     expect(route.request().method()).toBe("GET");
     return route.continue();
@@ -760,6 +787,9 @@ test("native Event full-document Back restores its actual opener after a BFCache
   await expect.poll(async () => Math.abs(await page.evaluate(() => scrollY) - before.scrollY)).toBeLessThan(80);
   expect(await page.evaluate(key => sessionStorage.getItem(key), BROWSE_FOCUS_RETURN_KEY)).toBeNull();
   evidence.measurements.width = await noOverflow(page); await screenshot(page, info, "event-native-document-return-focus");
+  expect(optionalBoardPrefetches, "The unchosen board exits and exact current Today tab must not launch repeated segment prefetches during the real native event journey").toEqual([]);
+  expect(optionalBoardNavigations, "No optional calendar or current-tab exit was chosen; the canonical event page and native Back remain the real navigations").toEqual([]);
+  expect(nullModalPagePrefetches, "The null modal-clear catch-all page must never enter repeated speculative fetches for any destination").toEqual([]);
   expect(evidence.errors).toEqual([]);
 });
 

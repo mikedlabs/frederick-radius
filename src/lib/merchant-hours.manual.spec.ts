@@ -41,6 +41,7 @@ const nativeFixtures: Record<string, string> = {
   // Representative Aleko facts use this harness clock only, never public evidence.
   "alekos-middletown": "alekos-middletown",
   "common-market-frederick": "common-market", "common-market": "common-market",
+  "safeway-middletown": "safeway-middletown", "safeway-walkersville": "safeway-walkersville",
 };
 const native = MERCHANT_HOURS_SOURCES.filter((source) => !("collection" in source && source.collection === "manual"));
 function baseline() {

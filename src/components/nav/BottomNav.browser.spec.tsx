@@ -52,6 +52,27 @@ describe("BottomNav destination truth", () => {
   expect(link("/map").getAttribute("data-pending")).toBe("true");
   expect(selected()).toEqual(["Today"]);
  });
+ it.each([["mobile", BottomNav], ["desktop", SideRail]] as const)("does not prefetch the exact current %s tab and preserves other destinations", async (_name, Component) => {
+  Object.defineProperty(document, "startViewTransition", { configurable:true, value:(callback:()=>void)=>callback() });
+  for (const pathname of ["/today", "/events", "/my-radius"]) {
+   state.pathname=pathname; state.prefetches.clear();
+   await act(async () => root.render(<Component />));
+   expect(link(pathname).getAttribute("href")).toBe(pathname);
+   expect(link(pathname).getAttribute("aria-current")).toBe("page");
+   expect(state.prefetches.get(pathname)).toBe(false);
+   for (const destination of ["/today", "/events", "/my-radius"].filter(href => href !== pathname)) expect(state.prefetches.get(destination)).toBe("auto");
+   expect(state.prefetches.get("/map")).toBe(false);
+   const destination = pathname === "/events" ? "/today" : "/events";
+   await act(async () => link(destination).click());
+   expect(state.push).toHaveBeenLastCalledWith(destination);
+  }
+  state.pathname="/today/tonight"; state.prefetches.clear();
+  await act(async () => root.render(<Component />));
+  expect(state.prefetches.get("/today")).toBe("auto");
+  state.pathname="/events/calendar"; state.prefetches.clear();
+  await act(async () => root.render(<Component />));
+  expect(state.prefetches.get("/events")).toBe("auto");
+ });
  it.each([["mobile", BottomNav], ["desktop", SideRail]] as const)("keeps %s detail tabs navigable without automatically warming destinations", async (_name, Component) => {
   Object.defineProperty(document, "startViewTransition", { configurable:true, value:(callback:()=>void)=>callback() });
   for (const pathname of ["/events/evening-concert", "/places/brewers-alley-frederick"]) {

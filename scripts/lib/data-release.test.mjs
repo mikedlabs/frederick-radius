@@ -96,6 +96,9 @@ test("the place release covers canonical server and place-page inputs", () => {
     "public/history-photos/catoctin-mountain-park.jpg",
     "public/place-photos/brewers-alley-2004.jpg",
     "src/lib/owned-place-photos.ts",
+    "public/images/seasons/winter/IMG_2732.jpg",
+    "public/images/seasons/spring/010.jpg",
+    "public/images/seasons/fall/001.jpg",
     "public/images/seasons/fall/018.jpg",
     "public/images/seasons/fall/021.jpg",
     "public/images/seasons/winter/013.jpg",
@@ -283,6 +286,9 @@ for (const imagePath of [
   "public/history-photos/catoctin-mountain-park.jpg",
   "public/images/seasons/fall/021.jpg",
   "public/images/seasons/winter/013.jpg",
+  "public/images/seasons/winter/IMG_2732.jpg",
+  "public/images/seasons/spring/010.jpg",
+  "public/images/seasons/fall/001.jpg",
   "public/place-photos/civil-war-medicine-frontage.jpg"
 ]) {
   test(`reviewed local photo bytes ${imagePath} require their own places promotion`, () => {

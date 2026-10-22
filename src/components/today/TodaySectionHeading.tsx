@@ -15,6 +15,7 @@ export default function TodaySectionHeading({
   eyebrow,
   plateNo,
   href,
+  prefetch,
   cta = "See all",
   live = false,
 }: {
@@ -23,6 +24,8 @@ export default function TodaySectionHeading({
   eyebrow?: string;
   plateNo?: string;
   href?: string;
+  /** Optional navigation should load only after the user chooses it. */
+  prefetch?: false | "auto";
   cta?: string;
   live?: boolean;
 }) {
@@ -62,6 +65,7 @@ export default function TodaySectionHeading({
         {href && (
           <Link
             href={href}
+            prefetch={prefetch}
             aria-label={`${cta}: ${title}`}
             className="today-section-heading__cta tap-44-y inline-flex min-h-11 min-w-0 max-w-full shrink-0 items-center gap-1 rounded-[var(--app-radius-sm)] px-1.5 text-sm font-semibold tracking-tight outline-none"
             style={{
