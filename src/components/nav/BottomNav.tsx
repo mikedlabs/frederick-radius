@@ -105,7 +105,7 @@ export default function BottomNav() {
                 <li key={href} className="flex">
                   <Link
                     href={href}
-                    prefetch={allowPrefetch ? prefetch : false}
+                    prefetch={allowPrefetch && pathname !== href ? prefetch : false}
                     onPointerDown={(event) => {
                       if (
                         !isAtDestination

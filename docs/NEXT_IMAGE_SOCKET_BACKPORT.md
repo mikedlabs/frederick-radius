@@ -46,3 +46,9 @@ ESLint configuration and enabled rules are unchanged. Newer analyzer
 diagnostics affecting existing components need a separate reviewed migration;
 they do not require holding back the patched Next runtime. Production audit
 and the normal complete lint check remain required release checks.
+
+The installed Storybook framework still supplies the older App Router layout
+context. Its exact workshop-only boundary alias adapts that context before
+calling Next's real boundary; production imports and navigation hooks stay
+unchanged. The compatibility test reproduces the unadapted crash. Review or
+remove this version-specific bridge when changing either dependency.

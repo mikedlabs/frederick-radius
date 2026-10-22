@@ -40,7 +40,7 @@ export default function SideRail() {
               <li key={href} className="flex">
                 <Link
                   href={href}
-                  prefetch={allowPrefetch ? prefetch : false}
+                  prefetch={allowPrefetch && pathname !== href ? prefetch : false}
                   onPointerDown={() => {
                     if (!isAtDestination) setPendingIdx(idx);
                   }}
