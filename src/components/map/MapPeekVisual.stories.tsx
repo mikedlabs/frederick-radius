@@ -205,6 +205,18 @@ export const CatoctinAt390: Story = {
   args: { place: { ...creek, slug: "catoctin-furnace-thurmont", name: "Catoctin Furnace", municipality: "thurmont" } },
 };
 
+export const MuseumEntranceAt375: Story = {
+  ...LicensedPlace,
+  args: { place: { ...creek, slug: "national-museum-civil-war-medicine-frederick", name: "National Museum of Civil War Medicine", category: "museum" } },
+  play: async context => {
+    await LicensedPlace.play!(context);
+    const image = context.canvasElement.querySelector<HTMLImageElement>("[data-map-result-surface] img")!;
+    const url = new URL(image.currentSrc, window.location.href);
+    await expect(url.pathname === "/place-photos/civil-war-medicine-frontage.jpg" || url.searchParams.get("url") === "/place-photos/civil-war-medicine-frontage.jpg").toBe(true);
+    await expect(getComputedStyle(image).objectPosition).toBe("50% 100%");
+  },
+};
+
 export const ShortScreenAt320: Story = {
   ...OwnedAt320,
   play: async context => {

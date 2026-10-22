@@ -175,6 +175,7 @@ describe("bundled source artifact evidence", () => {
       "business_info_extraction",
       "common_market_hours",
       "curious_iguana_hours",
+      "delaplaine_hours",
       "dublin_roasters_hours",
       "fcpl_branch_hours",
       "gravel_grind_hours",

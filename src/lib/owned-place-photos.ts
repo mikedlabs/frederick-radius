@@ -11,6 +11,16 @@ export type OwnedPlacePhoto = {
 };
 
 export const OWNED_PLACE_PHOTOS: Readonly<Record<string, OwnedPlacePhoto>> = {
+  // Existing owner-permitted Seasons view, visually matched to the central
+  // City Hall facade and courtyard. It does not establish current conditions.
+  "city-hall-8": {
+    kind: "owned",
+    src: "/images/seasons/winter/013.jpg",
+    alt: "Frederick City Hall and its courtyard in winter.",
+    width: 1920,
+    height: 1440,
+    objectPosition: "center",
+  },
   // Same verified Creek scene already used by Today's exact-place doorway.
   // Owner permits this photograph without a public credit or capture date.
   "carroll-creek-linear-park-frederick": {

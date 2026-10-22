@@ -28,6 +28,8 @@ export type WikimediaPhoto = {
   localSrc?: string;
   licenseUrl?: string;
   modifications?: string;
+  /** Retain the reviewed subject when a card or hero crops the photograph. */
+  objectPosition?: "center" | "left" | "right" | "top" | "bottom";
   /** Prefer reviewed bundled bytes without claiming the provider image is wrong. */
   preferLocal?: boolean;
   /** When true, this curated photo WINS over the place's Google photo in
@@ -52,6 +54,7 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
       source_url: image.source_url, verified: true, localSrc: image.src,
       licenseUrl: image.license.url, modifications: image.modifications,
       ...("preferLocal" in record ? { preferLocal: record.preferLocal } : {}),
+      ...("objectPosition" in record ? { objectPosition: record.objectPosition } : {}),
     } satisfies WikimediaPhoto];
   })),
   "carroll-creek-linear-park-frederick": {

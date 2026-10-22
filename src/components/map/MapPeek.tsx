@@ -133,7 +133,7 @@ export function MapPeekPhoto({
               placeholder="blur"
               blurDataURL={PAPER_CREAM_BLUR}
               className="absolute inset-0 h-full w-full object-cover"
-              style={source.kind === "owned" ? { objectPosition: source.objectPosition } : undefined}
+              style={source.kind !== "google" ? { objectPosition: source.objectPosition } : undefined}
               onLoad={(event) => reportState(isPlacePhotoFailureSignal(event.currentTarget) ? "failed" : "loaded")}
               onError={() => reportState("failed")}
             />

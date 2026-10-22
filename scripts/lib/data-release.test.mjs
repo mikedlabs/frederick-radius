@@ -85,6 +85,7 @@ test("the place release covers canonical server and place-page inputs", () => {
     "src/lib/integrations/closures.ts",
     "src/lib/integrations/wikimedia.ts",
     "src/data/credited-local-place-photos.ts",
+    "public/place-photos/civil-war-medicine-frontage.jpg",
     "public/history-photos/schifferstadt.jpg",
     "public/history-photos/hessian-barracks.jpg",
     "public/history-photos/co-canal.jpg",
@@ -97,6 +98,7 @@ test("the place release covers canonical server and place-page inputs", () => {
     "src/lib/owned-place-photos.ts",
     "public/images/seasons/fall/018.jpg",
     "public/images/seasons/fall/021.jpg",
+    "public/images/seasons/winter/013.jpg",
     "public/images/seasons/winter/PG134 Replacement.jpg",
     "public/images/seasons/spring/016.jpg",
     "public/images/seasons/winter/WINTER NEW 7.jpg",
@@ -279,7 +281,9 @@ for (const imagePath of [
   "public/place-photos/c-burr-artz-exterior.jpg",
   "public/history-photos/new-market-antiques.jpg",
   "public/history-photos/catoctin-mountain-park.jpg",
-  "public/images/seasons/fall/021.jpg"
+  "public/images/seasons/fall/021.jpg",
+  "public/images/seasons/winter/013.jpg",
+  "public/place-photos/civil-war-medicine-frontage.jpg"
 ]) {
   test(`reviewed local photo bytes ${imagePath} require their own places promotion`, () => {
     const root = fixtureRoot();

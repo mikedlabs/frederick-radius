@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, waitFor, within } from "storybook/test";
-import type { PlaceCardPhotoSource } from "@/lib/place-card-photo";
+import { placeCardPhotoPlan, type PlaceCardPhotoSource } from "@/lib/place-card-photo";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "./PlaceCardPhoto";
 
 // Explicitly synthetic workshop transport. No provider requests or venue claims.
@@ -121,5 +121,40 @@ export const ReplacementCreditReusesDecodedResponse: Story = {
     await waitFor(() => expect(canvas.getByText("Updated workshop photographer")).toBeVisible());
     await expect(newImage.src).toBe(responseUrl);
     await expect(requests).toHaveLength(1);
+  },
+};
+
+function MuseumFramingFixture() {
+  const photo = placeCardPhotoPlan({ slug: "national-museum-civil-war-medicine-frederick" }, 360).sources[0];
+  const [status, setStatus] = useState("pending");
+  const shown = status === "failed" ? null : photo;
+  return <article style={{ width: "min(358px, calc(100vw - 32px))" }}>
+    <h2>National Museum of Civil War Medicine</h2>
+    <PlaceCardPhoto source={shown} onResult={(_src, result) => setStatus(result)} />
+    <PlaceCardPhotoCredit source={shown} loaded={status === "loaded"} />
+    <p>Visit the museum at 48 East Patrick Street in Frederick.</p>
+  </article>;
+}
+
+export const MuseumEntranceFraming: Story = {
+  render: () => <MuseumFramingFixture />,
+  play: async ({ canvasElement }) => {
+    const image = canvasElement.querySelector<HTMLImageElement>("img")!;
+    await waitFor(async () => {
+      await image.decode();
+      await expect(image.naturalWidth).toBeGreaterThan(1);
+      await expect(image.naturalHeight).toBeGreaterThan(1);
+    }, { timeout: 5000 });
+    const url = new URL(image.currentSrc, window.location.href);
+    await expect(url.pathname === "/place-photos/civil-war-medicine-frontage.jpg" || url.searchParams.get("url") === "/place-photos/civil-war-medicine-frontage.jpg").toBe(true);
+    await expect(getComputedStyle(image).objectPosition).toBe("50% 100%");
+    await waitFor(() => expect(within(canvasElement).getByText("Photo by NatMuseCivMed.")).toBeVisible());
+    await expect(within(canvasElement).getByRole("link", { name: "CC BY-SA 4.0" })).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0/");
+    await expect(within(canvasElement).getByRole("link", { name: "Wikimedia Commons" })).toHaveAttribute("href", "https://commons.wikimedia.org/wiki/File:National_Museum_of_Civil_War_Medicine_frontage.jpg");
+    image.dispatchEvent(new Event("error"));
+    await waitFor(() => expect(canvasElement.querySelector("img")).toBeNull());
+    await expect(canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
+    await expect(within(canvasElement).getByRole("heading", { name: "National Museum of Civil War Medicine" })).toBeVisible();
+    await expect(requests).toHaveLength(0);
   },
 };

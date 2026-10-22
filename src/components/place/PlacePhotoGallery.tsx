@@ -107,6 +107,7 @@ export function PlacePhotoGalleryView({ sources, name }: {
                     placeholder="blur"
                     blurDataURL={PAPER_CREAM_BLUR}
                     className="object-cover"
+                    style={source.kind !== "google" ? { objectPosition: source.objectPosition } : undefined}
                     onLoad={(event) => {
                       if (isPlacePhotoFailureSignal(event.currentTarget)) {
                         markFailed(url);

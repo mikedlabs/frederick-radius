@@ -39,10 +39,12 @@ describe("Place detail hero selects reviewed local licensed bytes", () => {
       photoSrc: `/api/place-photo?name=${encodeURIComponent(photoName)}&w=1200`,
       photoAttribution: { photo_name: photoName, google_maps_uri: `https://www.google.com/maps/place/${slug}/data=!3m1!1e3`, authors: [] } });
     const plan = hero.props.plan;
-    expect(plan.sources[0]).toMatchObject({ kind: "curated", src: image.src, alt: image.alt,
+    const owned = selectedPlaceCardPhoto(plan, null);
+    const state = owned?.kind === "owned" ? recordPlaceCardPhotoResult(plan, null, owned.src, "failed") : null;
+    expect(selectedPlaceCardPhoto(plan, state)).toMatchObject({ kind: "curated", src: image.src, alt: image.alt,
       photo: { author: image.creator, source_url: image.source_url, license: image.license.label,
         licenseUrl: image.license.url, modifications: image.modifications } });
-    const failed = recordPlaceCardPhotoResult(plan, null, image.src, "failed");
+    const failed = recordPlaceCardPhotoResult(plan, state, image.src, "failed");
     expect(selectedPlaceCardPhoto(plan, failed)?.kind).toBe(slug === "barbara-fritchie-house-frederick" ? undefined : "google");
   });
 });

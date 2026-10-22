@@ -172,6 +172,40 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
     const range = `\\s*[-–—]\\s*${CLOCK}`;
     const match = oneVisibleSchedule(text, new RegExp(`Hours Monday\\s*[-–—]\\s*Tuesday ${CLOCK}${range} Wednesday\\s*[-–—]\\s*Saturday ${CLOCK}${range} Sunday ${CLOCK}${range} Contact`, "i"));
     set(hours, ["mon", "tue"], match[1], match[2]); set(hours, ["wed", "thu", "fri", "sat"], match[3], match[4]); set(hours, ["sun"], match[5], match[6]);
+  } else if (source.slug === "delaplaine-arts-center-frederick") {
+    // Public visit and footer copies must agree. Class/event clocks elsewhere
+    // on this exact homepage cannot supply missing public gallery hours.
+    const footer = document.querySelector("footer");
+    const footerText = (footer?.textContent ?? "").replace(/\s+/g, " ").trim();
+    if (!footer || !/\b(?:The )?Delaplaine Arts Center\b/i.test(footerText)
+      || !/\b40 S Carroll St,? Frederick,? MD 21701\b/i.test(footerText)
+      || !/(?<!\d)301[ .-]698[ .-]0656(?!\d)/.test(footerText)) throw new Error("Missing exact Delaplaine gallery identity.");
+    if (/\b(?:closed|closing|closures?|holiday hours|special hours|last admission|last admittance|by appointment|hours\s+(?:vary|may|subject to))\b/i.test(text)
+      || /\b(?:class(?:es)?|workshop|studio|office|rental)\s+(?:hours|open daily)\b/i.test(text)) throw new Error("Unresolved Delaplaine notice or service qualifier.");
+    const blocks = [...document.querySelectorAll(".elementor-widget-text-editor .elementor-widget-container")]
+      .filter((node) => /\bOPEN DAILY\b/i.test(node.textContent ?? ""));
+    const hidden = (node: Element) => {
+      for (let current: Element | null = node; current; current = current.parentElement) {
+        if (current.hasAttribute("hidden") || current.hasAttribute("inert") || current.getAttribute("aria-hidden") === "true"
+          || /display\s*:\s*none|visibility\s*:\s*(?:hidden|collapse)/i.test(current.getAttribute("style") ?? "")) return true;
+      }
+      return false;
+    };
+    const range = `${CLOCK}\\s*[-–—]\\s*${CLOCK}`;
+    const pattern = new RegExp(`\\bOPEN DAILY Monday\\s*[-–—]\\s*Saturday,?\\s*${range} Sunday,?\\s*${range}\\.?`, "i");
+    const matches = [...text.matchAll(new RegExp(pattern.source, "gi"))];
+    const markers = [...text.matchAll(/\bOPEN DAILY\b/gi)];
+    if (blocks.length < 2 || !blocks.some((node) => footer.contains(node)) || blocks.some(hidden)
+      || !/\bPlan Your VISIT OPEN DAILY\b/i.test(text) || matches.length !== blocks.length || markers.length !== matches.length
+      || blocks.some((node) => [...(node.textContent ?? "").replace(/\s+/g, " ").matchAll(new RegExp(pattern.source, "gi"))].length !== 1)) throw new Error("Missing or conflicting visible Delaplaine gallery schedules.");
+    const outsideSchedule = text.replace(new RegExp(pattern.source, "gi"), " ");
+    const day = "(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)";
+    if (/\bhours\b/i.test(outsideSchedule)
+      || new RegExp(`\\b${day}(?:\\s*[-–—]\\s*${day})?\\s*[:,]?\\s*(?:${CLOCK}|closed\\b)`, "i").test(outsideSchedule)) throw new Error("Unreviewed additional Delaplaine schedule.");
+    const match = oneVisibleSchedule(text, pattern);
+    if (time(match[1]) >= time(match[2]) || time(match[3]) >= time(match[4])) throw new Error("Unreviewed Delaplaine overnight gallery hours.");
+    setWindows(hours, ["mon", "tue", "wed", "thu", "fri", "sat"], match.slice(1, 3));
+    setWindows(hours, ["sun"], match.slice(3, 5));
   } else if (source.slug === "common-market-frederick" || source.slug === "common-market") {
     // The official Organization contact card explicitly shares one store
     // schedule across these two grocery addresses. Cafe contacts are separate.

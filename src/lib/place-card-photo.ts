@@ -6,7 +6,7 @@ import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import { getOwnedPlacePhoto, type OwnedPlacePhoto } from "@/lib/owned-place-photos";
 
 export type PlaceCardPhotoSource =
-  | { kind: "curated"; src: string; alt: string; photo: WikimediaPhoto }
+  | { kind: "curated"; src: string; alt: string; photo: WikimediaPhoto; objectPosition?: WikimediaPhoto["objectPosition"] }
   | { kind: "google"; src: string; alt: string; attribution: GooglePhotoAttribution }
   | Pick<OwnedPlacePhoto, "kind" | "src" | "alt" | "objectPosition">;
 export type PlaceCardPhotoPlan = { key: string; sources: readonly PlaceCardPhotoSource[] };
@@ -61,7 +61,7 @@ export function placeCardPhotoPlan(
   const curated = getLandmarkPhoto(place.slug);
   const owned = getOwnedPlacePhoto(place.slug);
   const curatedSource: PlaceCardPhotoSource | null = curated
-    ? { kind: "curated", src: curatedPhotoUrl(curated, width * 2), alt: curated.alt, photo: curated }
+    ? { kind: "curated", src: curatedPhotoUrl(curated, width * 2), alt: curated.alt, photo: curated, objectPosition: curated.objectPosition }
     : null;
   const suppliedSource = suppliedPhotoSource(place.google_photo_url, width,
     [place.google_photo_attribution, ...(place.google_photo_attributions ?? [])]
