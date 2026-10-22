@@ -116,7 +116,14 @@ jobs:
       - name: Install browsers
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         timeout-minutes: 10
-        run: npx playwright install --with-deps chromium webkit
+        run: |
+          set -euo pipefail
+          # The runner's Azure HTTP mirror can stall before tests begin.
+          # Keep the same signed Ubuntu archive and mirror priorities over HTTPS.
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -E -i 's@^([[:space:]]*)http://azure\.archive\.ubuntu\.com/ubuntu(/?)([[:space:]].*|$)@\1https://archive.ubuntu.com/ubuntu\2\3@' /etc/apt/apt-mirrors.txt
+          fi
+          npx playwright install --with-deps chromium webkit
       - name: Component workshop tests
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run test:storybook
