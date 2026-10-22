@@ -484,9 +484,17 @@ describe("exact eligible places before incidental map layers", () => {
     const town = qualifiedSearchIndex(name, 12, [], { municipality: "brunswick" });
     expect(town.results.some((result) => result.id === id)).toBe(false);
     expect(town.results[0]?.href).toContain("in=brunswick");
-    const open = qualifiedSearchIndex(`${name} open now`, 12, []);
-    expect(open.meta.qualifiers.openNow).toBe(true);
-    expect(open.results.some((result) => result.id === id)).toBe(false);
+    const playground = placeLoader.clientPlaces().find((place) => `place:${place.slug}` === id)!;
+    for (const state of ["unknown", "closed"] as const) {
+      const mock = vi.spyOn(placeLoader, "clientPlaces").mockReturnValue([
+        { ...playground, hours: undefined, hours_verified: false, open_status: { state } },
+      ]);
+      try {
+        const open = qualifiedSearchIndex(`${name} open now`, 12, []);
+        expect(open.meta.qualifiers.openNow).toBe(true);
+        expect(open.results.some((result) => result.id === id)).toBe(false);
+      } finally { mock.mockRestore(); }
+    }
     const events = qualifiedSearchIndex(name, 12, [], { resultKind: "event" });
     expect(events.results.some((result) => result.type === "place")).toBe(false);
     expect(searchIndex(`show ${name} on the map`, 12, [])[0]?.id).toBe("action:map-parks");
