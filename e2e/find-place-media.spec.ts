@@ -172,8 +172,12 @@ for (const width of [320, 375, 390, 430]) {
   });
 }
 
-for (const entry of ["/contacts", "/today?in=county"]) {
-  test(`exact named venue photo and native Enter survive Back from ${entry} at 390px`, async ({ page }, info) => {
+for (const { entry, query, slug, photoSource } of [
+  { entry: "/contacts", query: "Baker Park Bandshell", slug: "baker-park-bandshell", photoSource: "/images/seasons/fall/018.jpg" },
+  { entry: "/today?in=county", query: "Baker Park Bandshell", slug: "baker-park-bandshell", photoSource: "/images/seasons/fall/018.jpg" },
+  { entry: "/contacts", query: "Sophie & Madigan's Playground", slug: "sophie-madigans-playground-frederick", photoSource: "/images/seasons/spring/010.jpg" },
+]) {
+  test(`exact named venue photo and native Enter survive Back from ${entry} at 390px (${query})`, async ({ page }, info) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ width: 390, height: 844 });
     await imageTransport(page);
@@ -198,8 +202,6 @@ for (const entry of ["/contacts", "/today?in=county"]) {
     page.on("request", request => {
       if (observeFind && new URL(request.url()).pathname === "/api/place-photo") paidFindRequests.push(request.url());
     });
-    const query = "Baker Park Bandshell";
-    const slug = "baker-park-bandshell";
     const responsePending = page.waitForResponse(response => {
       const url = new URL(response.url());
       return url.pathname === "/api/search" && url.searchParams.get("q") === query;
@@ -211,21 +213,21 @@ for (const entry of ["/contacts", "/today?in=county"]) {
     const answer = await response.json();
     expect(answer.results[0]).toMatchObject({
       id: `place:${slug}`, title: query, href: `/places/${slug}`,
-      thumbnailSource: { kind: "owned", src: "/images/seasons/fall/018.jpg" },
+      thumbnailSource: { kind: "owned", src: photoSource },
     });
     const first = dialog.locator("#search-opt-0");
     await expect(first.getByRole("heading", { name: query, exact: true })).toBeVisible();
     await expect(first.getByRole("link", { name: "View place", exact: true })).toHaveAttribute("href", `/places/${slug}`);
     const photo = first.locator('[data-search-place-visual="owned"] img');
     await photo.scrollIntoViewIfNeeded();
-    await expect.poll(() => photo.evaluate(async node => {
+    await expect.poll(() => photo.evaluate(async (node, expectedSource) => {
       const image = node as HTMLImageElement;
       try { await image.decode(); } catch { return false; }
       const url = new URL(image.currentSrc);
       return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1
         && url.origin === location.origin && url.pathname === "/_next/image"
-        && url.searchParams.get("url") === "/images/seasons/fall/018.jpg";
-    })).toBe(true);
+        && url.searchParams.get("url") === expectedSource;
+    }, photoSource)).toBe(true);
     await expect(first.locator(".place-card-photo-credit")).toHaveCount(0);
     const isPaidPhoto = (raw: string | undefined) => {
       if (!raw) return false;
@@ -249,7 +251,7 @@ for (const entry of ["/contacts", "/today?in=county"]) {
         boundary: "All photo proxies blocked. Actual Find API and dialog sources checked separately; background request causality not inferred." }),
     });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
-    await page.screenshot({ path: info.outputPath("find-exact-bandshell-owned-390.png") });
+    await page.screenshot({ path: info.outputPath(`find-exact-${slug}-owned-390.png`) });
     observeFind = false;
     await input.press("Enter");
     await expect(page).toHaveURL(new RegExp(`/places/${slug}$`));
@@ -263,14 +265,14 @@ for (const entry of ["/contacts", "/today?in=county"]) {
     await expect(dialog.locator("#search-opt-0").getByRole("heading", { name: query, exact: true })).toBeVisible();
     const restoredPhoto = dialog.locator('#search-opt-0 [data-search-place-visual="owned"] img');
     await restoredPhoto.scrollIntoViewIfNeeded();
-    await expect.poll(() => restoredPhoto.evaluate(async node => {
+    await expect.poll(() => restoredPhoto.evaluate(async (node, expectedSource) => {
       const image = node as HTMLImageElement;
       try { await image.decode(); } catch { return false; }
       const url = new URL(image.currentSrc);
       return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1
         && url.origin === location.origin && url.pathname === "/_next/image"
-        && url.searchParams.get("url") === "/images/seasons/fall/018.jpg";
-    })).toBe(true);
+        && url.searchParams.get("url") === expectedSource;
+    }, photoSource)).toBe(true);
     await dialog.getByRole("button", { name: "Close Find", exact: true }).click();
     await expect(dialog).toHaveCount(0);
     await expect(launcher).toBeFocused();
