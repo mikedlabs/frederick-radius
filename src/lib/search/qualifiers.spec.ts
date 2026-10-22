@@ -15,6 +15,18 @@ const openCoffee: SearchQualifierPlace = {
 };
 
 describe("search qualifiers", () => {
+  it.each(["National Museum of Civil War Medicine", "Quiet Wi-Fi Cafe", "Open Door Cafe"])("treats the complete %s name as identity without claiming features or open hours", (name) => {
+    expect(parseSearchQualifiers(name, { literalPlaceName: name })).toMatchObject({
+      namedPlaceSlug: null, categoryKey: null, categoryLabel: null,
+      strictPlaceKind: null, openNow: false, requestedFeatures: [], constrained: false,
+    });
+  });
+
+  it("does not erase added operating constraints from a name", () => {
+    expect(parseSearchQualifiers("Quiet Wi-Fi Cafe open now", { literalPlaceName: "Quiet Wi-Fi Cafe" }))
+      .toMatchObject({ openNow: true, constrained: true });
+  });
+
   it("separates requested place facts without dropping the category or town", () => {
     const qualifiers = parseSearchQualifiers("quiet coffee with Wi-Fi in Brunswick");
     expect(qualifiers).toMatchObject({

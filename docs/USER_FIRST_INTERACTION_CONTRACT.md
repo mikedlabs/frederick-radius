@@ -17,6 +17,11 @@ Ask, search, category matching, and tool routing share one request doorway.
 The system decides which capability handles the request. The person does not
 choose between "search" and "AI" first.
 
+A confirmed complete place name leads with that place and its actions.
+Incidental words inside the name must not add a category shortcut above it or
+change what Enter opens after retrieval. Same-name branches retain their normal location scope and ranking;
+requested features, hours and event searches keep their own constraints.
+
 ## Location
 
 Every location-aware answer states its scope as **Near me**, **Whole county**,

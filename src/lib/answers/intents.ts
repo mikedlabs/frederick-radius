@@ -24,7 +24,7 @@ export const QUICK_INTENTS: QuickIntent[] = [
   },
   {
     key: "tonight",
-    terms: ["tonight", "this evening", "live music", "music tonight", "show tonight", "concert"],
+    terms: ["tonight", "this evening", "live music", "music tonight", "show tonight", "concert", "concerts"],
     title: "Happening tonight",
     sub: "Events & music starting soon",
     chip: "Tonight",
@@ -34,7 +34,7 @@ export const QUICK_INTENTS: QuickIntent[] = [
   },
   {
     key: "weekend",
-    terms: ["weekend", "this weekend", "saturday", "sunday", "things to do"],
+    terms: ["weekend", "weekends", "this weekend", "saturday", "saturdays", "sunday", "sundays", "things to do"],
     title: "This weekend",
     sub: "Events across the county",
     chip: "This weekend",
@@ -44,7 +44,7 @@ export const QUICK_INTENTS: QuickIntent[] = [
   },
   {
     key: "transit",
-    terms: ["train", "marc", "transit", "commute", "bus", "next train"],
+    terms: ["train", "trains", "marc", "transit", "commute", "commutes", "bus", "buses", "next train"],
     title: "MARC & transit times",
     sub: "Next departures and routes",
     chip: "Transit",
@@ -54,7 +54,7 @@ export const QUICK_INTENTS: QuickIntent[] = [
   },
   {
     key: "parking",
-    terms: ["parking", "park the car", "garage", "where to park", "meter"],
+    terms: ["parking", "park the car", "garage", "garages", "where to park", "meter", "meters"],
     title: "Parking",
     sub: "Garages, lots & street parking",
     chip: "Parking",
@@ -64,7 +64,7 @@ export const QUICK_INTENTS: QuickIntent[] = [
   },
   {
     key: "restrooms",
-    terms: ["restroom", "bathroom", "public toilet"],
+    terms: ["restroom", "restrooms", "bathroom", "bathrooms", "public toilet", "public toilets"],
     title: "Closest mapped restroom",
     sub: "Use your location, then get walking directions",
     chip: "Restrooms",
@@ -74,7 +74,7 @@ export const QUICK_INTENTS: QuickIntent[] = [
   },
   {
     key: "drinking-water",
-    terms: ["drinking water", "water fountain", "bottle fill", "bottle refill"],
+    terms: ["drinking water", "water fountain", "water fountains", "bottle fill", "bottle fills", "bottle filling", "bottle refill", "bottle refills", "bottle refilling"],
     title: "Closest mapped water point",
     sub: "Use your location, then get walking directions",
     chip: "Drinking water",
@@ -84,7 +84,7 @@ export const QUICK_INTENTS: QuickIntent[] = [
   },
   {
     key: "trash",
-    terms: ["trash can", "waste basket", "public trash", "garbage can"],
+    terms: ["trash can", "trash cans", "waste basket", "waste baskets", "public trash", "garbage can", "garbage cans"],
     title: "Closest mapped trash can",
     sub: "Use your location, then get walking directions",
     chip: "Trash",
@@ -94,7 +94,7 @@ export const QUICK_INTENTS: QuickIntent[] = [
   },
   {
     key: "dog-bags",
-    terms: ["dog bag", "dog bags", "dog waste", "poop bag"],
+    terms: ["dog bag", "dog bags", "dog waste", "poop bag", "poop bags"],
     title: "Closest mapped dog-bag station",
     sub: "Use your location, then get walking directions",
     chip: "Dog bags",
@@ -104,7 +104,7 @@ export const QUICK_INTENTS: QuickIntent[] = [
   },
   {
     key: "seating",
-    terms: ["public bench", "place to sit", "public seating", "nearest bench"],
+    terms: ["public bench", "public benches", "place to sit", "public seating", "nearest bench", "nearest benches"],
     title: "Closest mapped public seat",
     sub: "Use your location, then get walking directions",
     chip: "Seating",
@@ -114,7 +114,7 @@ export const QUICK_INTENTS: QuickIntent[] = [
   },
   {
     key: "power",
-    terms: ["power outlet", "charge my phone", "charge a phone", "phone charger", "laptop charger"],
+    terms: ["power outlet", "power outlets", "charge my phone", "charge a phone", "phone charger", "phone chargers", "laptop charger", "laptop chargers"],
     title: "Closest mapped public outlet",
     sub: "Use your location, then get walking directions",
     chip: "Power",
@@ -124,7 +124,7 @@ export const QUICK_INTENTS: QuickIntent[] = [
   },
   {
     key: "shipping",
-    terms: ["post office", "blue mailbox", "collection box", "ups store", "fedex", "ship a package"],
+    terms: ["post office", "post offices", "blue mailbox", "blue mailboxes", "collection box", "collection boxes", "ups store", "ups stores", "fedex", "ship a package"],
     title: "Post & shipping",
     sub: "Post offices, counters, and blue mailboxes",
     chip: "Shipping",
@@ -134,7 +134,7 @@ export const QUICK_INTENTS: QuickIntent[] = [
   },
   {
     key: "brunch",
-    terms: ["brunch"],
+    terms: ["brunch", "brunches"],
     title: "Verified brunch",
     sub: "Venue-confirmed days and service windows",
     chip: "Brunch",
@@ -154,7 +154,7 @@ export const QUICK_INTENTS: QuickIntent[] = [
   },
   {
     key: "events",
-    terms: ["event", "events", "happening", "calendar"],
+    terms: ["event", "events", "happening", "happenings", "calendar", "calendars"],
     title: "Events",
     sub: "What's on across Frederick",
     chip: "Events",
@@ -164,13 +164,19 @@ export const QUICK_INTENTS: QuickIntent[] = [
   },
 ];
 
+/** Match complete words or phrases, never "bus" in a business name or
+ * "meter" inside "cemetery". Plurals are explicit in the intent terms. */
+function matchesIntentTerm(query: string, term: string): boolean {
+  const phrase = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}])${phrase}(?=$|[^\\p{L}\\p{N}])`, "u").test(query);
+}
+
 /**
- * Match a free-text query to quick intents. Identical behavior to the
- * old SearchOverlay-local version (now the single source). Cheap,
- * synchronous, no fetch.
+ * Match a free-text query to quick intents with complete word or phrase
+ * boundaries. Cheap, synchronous, no fetch.
  */
 export function findQuickAnswers(query: string, limit = 2): QuickIntent[] {
-  const lq = query.toLowerCase().trim();
+  const lq = query.toLowerCase().replace(/[’]/g, "'").trim();
   if (lq.length < 3) return [];
   const out: QuickIntent[] = [];
   const seen = new Set<string>();
@@ -202,7 +208,7 @@ export function findQuickAnswers(query: string, limit = 2): QuickIntent[] {
   if (specialty) {
     const direct = QUICK_INTENTS.find((intent) =>
       (intent.key === "brunch" || intent.key === "food-trucks") &&
-      intent.terms.some((term) => lq.includes(term)),
+      intent.terms.some((term) => matchesIntentTerm(lq, term)),
     );
     if (direct) {
       seen.add(direct.href);
@@ -211,7 +217,7 @@ export function findQuickAnswers(query: string, limit = 2): QuickIntent[] {
   }
 
   for (const intent of QUICK_INTENTS) {
-    if (intent.terms.some((t) => lq.includes(t)) && !seen.has(intent.href)) {
+    if (intent.terms.some((term) => matchesIntentTerm(lq, term)) && !seen.has(intent.href)) {
       seen.add(intent.href);
       out.push(intent);
     }
