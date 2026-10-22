@@ -38,3 +38,11 @@ It compares the CJS and ESM response construction and checks ESM syntax.
 Vendor integrity comes from the exact dependency lockfile rather than a
 second application-owned hash or patch system. ESM runtime bundling and the
 public mobile flow still require their normal application release gates.
+
+The runtime security update is separate from a lint-analyzer migration.
+Development uses the previously reviewed eslint-config-next16.3.8 and pins
+eslint-plugin-react-hooks7.0.1, its prior resolved version. The application
+ESLint configuration and enabled rules are unchanged. Newer analyzer
+diagnostics affecting existing components need a separate reviewed migration;
+they do not require holding back the patched Next runtime. Production audit
+and the normal complete lint check remain required release checks.
