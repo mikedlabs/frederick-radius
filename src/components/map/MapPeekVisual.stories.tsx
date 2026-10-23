@@ -217,6 +217,40 @@ export const MuseumEntranceAt375: Story = {
   },
 };
 
+export const ChappelleWithMetadataAt320: Story = {
+  ...LicensedPlace,
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { place: { ...creek, slug: "chappelle-co", name: "Chappelle Co", category: "shopping" } },
+  beforeEach: () => {
+    const original = window.fetch;
+    window.fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, window.location.href);
+      if (url.pathname === "/api/places/map-card/chappelle-co") return Response.json({ place: {
+        slug: "chappelle-co",
+        google_photo_url: "/api/place-photo?name=places%2Fworkshop%2Fphotos%2Ffallback&w=800",
+        google_photo_attribution: { photo_name: "places/workshop/photos/fallback",
+          google_maps_uri: "https://www.google.com/maps/contrib/123/photo/456",
+          authors: [{ display_name: "Workshop fallback fixture", uri: "https://www.google.com/maps/contrib/123" }] },
+      } });
+      return original(input, init);
+    };
+    return () => { window.fetch = original; };
+  },
+  play: async context => {
+    await LicensedPlace.play!(context);
+    const image = context.canvasElement.querySelector<HTMLImageElement>("[data-map-result-surface] img")!;
+    await expect(image.dataset.mapPeekPhotoSource).toBe("curated");
+    await expect(image.alt).toContain("November 2022");
+    await expect(getComputedStyle(image).objectPosition).toBe("100% 50%");
+    await expect(context.canvasElement.textContent).not.toContain("Workshop fallback fixture");
+  },
+};
+
+export const ChappelleWithMetadataAt390: Story = {
+  ...ChappelleWithMetadataAt320,
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+};
+
 export const ShortScreenAt320: Story = {
   ...OwnedAt320,
   play: async context => {
