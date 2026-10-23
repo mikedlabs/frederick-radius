@@ -1,44 +1,35 @@
 name: Attach automated PR checks
 
-# Data publishers create review PRs with the repository token. GitHub holds
-# their native pull_request workflows for approval, so the publisher dispatches
-# the same secret-free CI and style workflows on the exact bot commit, then
-# CI explicitly dispatches this bridge on main after its expensive verify job
-# finishes. It supplies the exact CI and style run IDs plus a one-time token,
-# so the bridge never selects a run by a broad wall-clock window. A low-cost
-# six-hour reconciliation pass fails stale synthetic statuses closed if an
-# entire CI workflow was force-cancelled before it could dispatch the bridge.
-#
-# No generated code is checked out or executed here. Before a status is
-# written, the bot branch, head SHA, changed paths, current main revision, and
-# open PR are all revalidated through the API.
-
+# Historical synthetic-check recovery is manual only. These receipts preserve
+# exact past transports; copied results have not proven native ruleset eligibility.
+# The normal publisher now approves eligible native PR runs without this bridge.
 on:
-  schedule:
-    # Cheap fail-closed recovery for a whole-workflow cancellation. It does not
-    # run application code or convert a missing check into success.
-    - cron: "23 */6 * * *"
   workflow_dispatch:
     inputs:
+      mode:
+        description: Explicit historical recovery operation (never a publication proof)
+        type: choice
+        options: [attach, reconcile-stale]
+        required: true
       branch:
         description: Validated bot PR branch
-        required: true
+        required: false
         type: string
       head_sha:
         description: Exact validated bot PR head
-        required: true
+        required: false
         type: string
       ci_run_id:
         description: Exact CI workflow run containing the completed verify job
-        required: true
+        required: false
         type: string
       style_run_id:
         description: Exact style workflow run paired by the dispatcher
-        required: true
+        required: false
         type: string
       dispatch_token:
         description: One-time token shared by the paired workflow run names
-        required: true
+        required: false
         type: string
 
 permissions:
@@ -50,7 +41,7 @@ permissions:
 
 jobs:
   attach:
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'attach' }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -191,7 +182,7 @@ jobs:
           retention-days: 14
 
   reconcile-stale:
-    if: ${{ github.event_name == 'schedule' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'reconcile-stale' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

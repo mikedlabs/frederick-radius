@@ -37,12 +37,14 @@ type WorkflowDocument = {
     string,
     {
       if?: string;
+      uses?: string;
       "timeout-minutes"?: number | string;
       "runs-on"?: string | string[];
       env?: Record<string, unknown>;
       secrets?: unknown;
       steps?: Array<{
         name?: string;
+        if?: string;
         uses?: string;
         run?: string;
         with?: Record<string, unknown>;
@@ -147,7 +149,6 @@ describe("scheduled data workflow contracts", () => {
       ["publish-automated-pr.yml", "publish"],
       ["automated-pr-checks.yml", "dispatch"],
       ["ci.yml", "verify"],
-      ["ci.yml", "attach-automated-pr-checks"],
       ["style.yml", "style-lint"],
     ] as const;
     for (const [name, jobName] of hostedJobs) {
@@ -157,6 +158,25 @@ describe("scheduled data workflow contracts", () => {
         `${name}:${jobName} must stay on an isolated hosted runner`,
       ).toBe(name === "ci.yml" && jobName === "verify" ? "ubuntu-24.04" : "ubuntu-latest");
     }
+  });
+
+  it("passes only existing actions-write plus read-only PR identity permission through every native-gate caller", () => {
+    const callers: string[] = [];
+    for (const name of readdirSync(WORKFLOW_DIR).filter((name) => name.endsWith(".yml"))) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
+        if (job.uses !== "./.github/workflows/automated-pr-checks.yml") continue;
+        callers.push(`${name}:${jobName}`);
+        expect(job.permissions, `${name}:${jobName} cannot raise its caller token permissions`).toEqual({ actions: "write", contents: "read", "pull-requests": "read" });
+        expect(job.secrets).toBeUndefined();
+      }
+    }
+    expect(callers.sort()).toEqual([
+      "build-marc-schedule.yml:checks", "data-steward.yml:official-hours-checks",
+      "data-steward.yml:steward-checks", "enrich-places.yml:checks",
+      "ingest-business-info.yml:checks", "ingest-civic.yml:checks", "ingest-venues.yml:checks",
+      "photo-attribution-backfill.yml:checks", "refresh-commerce-links.yml:checks", "transit-steward.yml:transit-checks",
+    ].sort());
   });
 
   it("keeps hosted public GTFS generation main-only, keyless, bounded and review-gated", () => {
@@ -204,7 +224,7 @@ describe("scheduled data workflow contracts", () => {
       actions: "read", contents: "write", "pull-requests": "write",
     });
     expect(workflow.jobs?.["transit-checks"]?.permissions).toEqual({
-      actions: "write", contents: "read",
+      actions: "write", contents: "read", "pull-requests": "read",
     });
   });
 
@@ -813,15 +833,34 @@ describe("scheduled data workflow contracts", () => {
     expect(ciText).toContain("automated_pr_head_sha:");
     expect(ciText).toContain("automated_pr_style_run_id:");
     expect(ciText).toContain("automated_pr_token:");
-    expect(ciText).toContain("ci_run_id: String(context.runId)");
     expect(ciText).not.toContain("\n  push:");
     expect(ciText).toContain("e2e/critical-dependency-chaos.spec.ts");
     expect(ciText).toContain("e2e/service-worker-upgrade-contract.spec.ts");
-    expect(ciText).not.toContain("\n  browser-chaos:");
-    expect(ciText).toContain("needs: verify");
-    expect(ciText).toContain(
-      "workflow_id: 'automated-pr-status-bridge.yml'",
-    );
+    expect(ciText).not.toContain("attach-automated-pr-checks:");
+    expect(ciText).not.toContain("createWorkflowDispatch");
+    const ci = parse(ciText) as WorkflowDocument;
+    expect(ci.permissions).toEqual({ actions: "read", contents: "read", "pull-requests": "read" });
+    expect(ci.jobs?.verify?.env?.AUTOMATED_DATA_PR).toBe("0");
+    const ciSteps = ci.jobs?.verify?.steps ?? [];
+    const preflightIndex = ciSteps.findIndex((step) => step.name === "Classify native automated data PR before repository execution");
+    const checkoutIndex = ciSteps.findIndex((step) => step.uses?.startsWith("actions/checkout@"));
+    const installIndex = ciSteps.findIndex((step) => step.run === "npm ci");
+    expect(preflightIndex).toBe(0);
+    expect(checkoutIndex).toBeGreaterThan(preflightIndex);
+    expect(installIndex).toBeGreaterThan(checkoutIndex);
+    const preflight = ciSteps[preflightIndex];
+    expect(preflight).toMatchObject({ if: "${{ github.event_name == 'pull_request' }}" });
+    expect(preflight.with?.script).toContain("classifyNativeAutomatedPr");
+    expect(preflight.with?.script).toContain("receipt.verified === true && receipt.mode === 'data-only'");
+    expect(preflight.with?.script).toContain("else if (candidateHint || receipt.mode === 'held')");
+    expect(preflight.with?.script).toContain("ref: trustedMainSha");
+    expect(ciText).not.toContain("github.event_name == 'workflow_dispatch' && inputs.automated_pr_branch");
+    const finalIndex = ciSteps.findIndex((step) => step.name === "Revalidate native automated data PR after artifact gates");
+    const artifactGateIndex = ciSteps.findIndex((step) => step.run === "npm run test:data-artifacts");
+    expect(finalIndex).toBeGreaterThan(artifactGateIndex);
+    expect(ciSteps[finalIndex]).toMatchObject({ if: "${{ env.AUTOMATED_DATA_PR == '1' }}" });
+    expect(ciSteps[finalIndex].with?.script).toContain("classifyNativeAutomatedPr");
+
     const uxText = workflowText("ux-audit.yml");
     expect(uxText).toContain("workflow_dispatch:");
     expect(uxText).not.toContain("\n  schedule:");
@@ -829,59 +868,33 @@ describe("scheduled data workflow contracts", () => {
     expect(uxText).not.toContain("matrix:");
     expect(uxText).not.toContain("--shard=");
     expect(workflowText("style.yml")).not.toContain("\n  push:");
-    expect(workflowText("style.yml")).toContain("style / automated {0}");
-    const dispatcher = workflowText("automated-pr-checks.yml");
-    expect(dispatcher).toContain("actions: write");
-    expect(dispatcher).toContain("contents: read");
-    expect(dispatcher).toContain("workflow_id: 'ci.yml'");
-    expect(dispatcher).toContain("workflow_id: 'style.yml'");
-    expect(dispatcher).toContain(
-      "actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3",
-    );
-    expect(dispatcher).toContain("ref.data.object.sha !== expectedHead");
-    expect(dispatcher).toContain("compareCommitsWithBasehead");
-    expect(dispatcher).toContain("comparison.data.behind_by !== 0");
-    expect(dispatcher).toContain("allowedByBranch");
-    expect(dispatcher).toContain("automated_pr_head_sha: expectedHead");
-    expect(dispatcher).toContain("automated_pr_style_run_id: String(styleRun.id)");
-    expect(dispatcher).toContain("run.display_title === `style / automated ${dispatchToken}`");
-    expect(dispatcher).not.toContain(
-      "workflow_id: 'automated-pr-status-bridge.yml'",
-    );
-    expect(dispatcher).not.toContain("actions/checkout");
-
-    // GITHUB_TOKEN can start workflow_dispatch runs, but their completion does
-    // not reliably create another workflow_run hop. The bridge must therefore
-    // be explicitly dispatched on trusted main after CI finishes. The bridge
-    // receives the exact paired run IDs and a one-time run-name token, while a
-    // cheap schedule fails a whole-workflow cancellation closed.
+    const dispatcherText = workflowText("automated-pr-checks.yml");
+    const dispatcher = parse(dispatcherText) as WorkflowDocument;
+    expect(dispatcher.permissions).toEqual({ actions: "write", contents: "read", "pull-requests": "read" });
+    expect(dispatcherText).toContain("actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3");
+    expect(dispatcherText).toContain("approveNativeAutomatedPrRuns");
+    expect(dispatcherText).toContain("context.sha !== trustedMainSha");
+    expect(dispatcherText).toContain("ref: trustedMainSha");
+    expect(dispatcherText).not.toMatch(/createWorkflowDispatch|createCommitStatus|checks\.(?:create|update)|actions\/checkout/);
+    expect(dispatcherText).not.toContain("npm ci");
+    // Synthetic transport remains explicit historical recovery, never scheduled
+    // or called after native CI. The saved bootstrap tests still exercise both modes.
     const bridgeText = workflowText("automated-pr-status-bridge.yml");
     const bridge = parse(bridgeText) as WorkflowDocument;
-    expect(bridge.permissions).toEqual({
-      actions: "read",
-      contents: "read",
-      "pull-requests": "read",
-      statuses: "write",
-      checks: "write",
-    });
-    expect(bridgeText).toContain("workflow_dispatch:");
+    expect(bridge.permissions).toEqual({ actions: "read", contents: "read", "pull-requests": "read", statuses: "write", checks: "write" });
+    expect(Object.keys(bridge.on ?? {})).toEqual(["workflow_dispatch"]);
     expect(bridgeText).not.toContain("workflow_run:");
-    expect(bridgeText).toContain('cron: "23 */6 * * *"');
-    expect(bridgeText).toContain("context.ref !== 'refs/heads/main'");
-    // The dependency-free runtime is loaded only from the exact trusted main
-    // workflow revision. Its mutable GitHub behavior is covered offline by the
-    // mocked API tests, rather than source-substring substitutes for that proof.
+    expect(bridgeText).not.toContain("schedule:");
+    expect(bridgeText).not.toContain("default: attach");
+    expect(bridge.jobs?.attach?.if).toBe("${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'attach' }}");
+    expect(bridge.jobs?.["reconcile-stale"]?.if).toBe("${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'reconcile-stale' }}");
     expect(bridgeText).toContain("path: helperPath, ref: context.sha");
     expect(bridgeText).toContain("file.size > 65536");
     expect(bridgeText).toContain("source.length !== file.size");
-    expect(bridgeText).toContain("scripts/lib/automated-pr-status-bridge.cjs");
     expect(bridgeText).toContain("trusted.exports.attachAutomatedPrStatuses");
     expect(bridgeText).toContain("trusted.exports.reconcileStaleAutomatedPrStatuses");
-    expect(bridgeText).toContain("core.summary.addHeading");
-    expect(bridgeText).not.toContain("acceptedAfter");
     expect(bridgeText).not.toContain("actions/checkout");
     expect(bridge.jobs?.attach?.["timeout-minutes"]).toBe(8);
-    expect(bridgeText).toContain("Fail stale automated PR checks closed");
 
     // Validation attachment does not broaden the publication policy: only a
     // caller that deliberately passes auto_merge may queue a reviewed-safe PR.

@@ -311,6 +311,7 @@ jobs:
     permissions:
       actions: write
       contents: read
+      pull-requests: read
     uses: ./.github/workflows/automated-pr-checks.yml
     with:
       branch: ${{ needs.steward-publish.outputs.pr_branch }}
@@ -464,6 +465,7 @@ jobs:
     permissions:
       actions: write
       contents: read
+      pull-requests: read
     uses: ./.github/workflows/automated-pr-checks.yml
     with:
       branch: ${{ needs.official-hours-publish.outputs.pr_branch }}

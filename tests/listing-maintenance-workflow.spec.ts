@@ -78,19 +78,18 @@ describe("daily full-catalog upkeep and exception boundary", () => {
     expect(alert.with.script).toContain("Coverage is unknown");
     expect(alert.with.script).not.toMatch(/createComment|fetch\(/);
   });
-  it("adds only the four reviewed native venue output paths to both trusted check boundaries", () => {
+  it("keeps the four reviewed native venue paths in the shared native gate policy", () => {
     const expected = ["src/data/data-release.json", "src/data/venue-event-source-inventory.json", "src/data/venue-event-source-state.json", "src/data/venue-events.json"].sort();
-    for (const file of ["automated-pr-checks.yml", "automated-pr-status-bridge.yml"]) {
-      const text = readFileSync(`.github/workflows/${file}`, "utf8");
-      const block = text.match(/'bot\/venue-native-refresh':\s*\[([^\]]+)\]/);
-      expect(block).not.toBeNull();
-      expect([...block![1].matchAll(/'([^']+)'/g)].map((match) => match[1]).sort()).toEqual(expected);
-      if (file === "automated-pr-status-bridge.yml") {
-        expect(text).toContain("trusted.exports.attachAutomatedPrStatuses");
-      } else {
-        expect(text).toContain("comparison.data.behind_by !== 0");
-      }
+    const { AUTOMATED_PR_ALLOWED_PATHS } = require("../scripts/lib/native-automated-pr-gates.cjs");
+    expect([...AUTOMATED_PR_ALLOWED_PATHS["bot/venue-native-refresh"]].sort()).toEqual(expected);
+    for (const file of ["ci.yml", "automated-pr-checks.yml"]) {
+      expect(readFileSync(`.github/workflows/${file}`, "utf8")).toContain("scripts/lib/native-automated-pr-gates.cjs");
     }
+    const bridge = readFileSync(".github/workflows/automated-pr-status-bridge.yml", "utf8");
+    const block = bridge.match(/'bot\/venue-native-refresh':\s*\[([^\]]+)\]/);
+    expect(block).not.toBeNull();
+    expect([...block![1].matchAll(/'([^']+)'/g)].map((match) => match[1]).sort()).toEqual(expected);
+    expect(bridge).not.toContain("schedule:");
   });
 });
 
