@@ -7,11 +7,15 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-10-22 — 1571 places._
+_Generated 2026-10-23 — 1571 places._
+
+Current checked schedules: 31. Current qualified schedules: 3.
+Qualified venue or service tables retain their conditions and expiry. They
+are counted separately and cannot support generic Open now claims.
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick | 854 | 680 (80%) | 16 (2%) | 710 (83%) | 712 (83%) | 50 | 296 |
+| Frederick | 854 | 680 (80%) | 16 (2%) | 710 (83%) | 714 (84%) | 50 | 296 |
 | Thurmont | 110 | 75 (68%) | 1 (1%) | 100 (91%) | 99 (90%) | 3 | 30 |
 | Brunswick | 97 | 65 (67%) | 3 (3%) | 84 (87%) | 77 (79%) | 2 | 24 |
 | Walkersville | 86 | 66 (77%) | 2 (2%) | 81 (94%) | 78 (91%) | 2 | 29 |
@@ -24,7 +28,7 @@ _Generated 2026-10-22 — 1571 places._
 | Urbana | 30 | 21 (70%) | 1 (3%) | 24 (80%) | 25 (83%) | 2 | 10 |
 | Burkittsville | 30 | 15 (50%) | 0 (0%) | 28 (93%) | 30 (100%) | 2 | 8 |
 | Rosemont | 2 | 0 (0%) | 0 (0%) | 1 (50%) | 1 (50%) | 0 | 1 |
-| **Total** | **1571** | 1165 (74%) | 28 (2%) | 1342 (85%) | 1331 (85%) | **79** | **502** |
+| **Total** | **1571** | 1165 (74%) | 28 (2%) | 1342 (85%) | 1333 (85%) | **79** | **502** |
 
 ## Coverage by category
 
@@ -52,7 +56,7 @@ successful image loading is a separate browser check.
 | Farms & pick-your-own | 22 | 0 (0%) | 19 (86.4%) | 1 (4.5%) | 21 (95.5%) |
 | Trails | 22 | 0 (0%) | 17 (77.3%) | 4 (18.2%) | 11 (50%) |
 | Massage | 19 | 0 (0%) | 15 (78.9%) | 0 (0%) | 19 (100%) |
-| Museums | 18 | 0 (0%) | 14 (77.8%) | 4 (22.2%) | 16 (88.9%) |
+| Museums | 18 | 0 (0%) | 15 (83.3%) | 4 (22.2%) | 16 (88.9%) |
 | Pizza | 18 | 0 (0%) | 18 (100%) | 3 (16.7%) | 16 (88.9%) |
 | Auto care | 16 | 0 (0%) | 9 (56.3%) | 7 (43.8%) | 16 (100%) |
 | Breweries | 16 | 0 (0%) | 12 (75%) | 5 (31.3%) | 16 (100%) |
@@ -69,7 +73,7 @@ successful image loading is a separate browser check.
 | Pharmacies | 3 | 0 (0%) | 3 (100%) | 0 (0%) | 3 (100%) |
 | Community | 2 | 0 (0%) | 0 (0%) | 2 (100%) | 2 (100%) |
 | Tours & rides | 2 | 0 (0%) | 1 (50%) | 2 (100%) | 2 (100%) |
-| Transit | 1 | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) |
+| Transit | 1 | 0 (0%) | 1 (100%) | 0 (0%) | 0 (0%) |
 | Ice cream & treats | 28 | 1 (3.6%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
 | Galleries | 27 | 1 (3.7%) | 23 (85.2%) | 1 (3.7%) | 26 (96.3%) |
 | Restaurants | 178 | 9 (5.1%) | 162 (91%) | 42 (23.6%) | 171 (96.1%) |

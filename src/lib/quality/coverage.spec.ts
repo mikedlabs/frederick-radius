@@ -5,6 +5,7 @@ import {
   decisionCopyCounts,
   hasActionableContact,
   hasPublishedFreshHours,
+  hasPublishedQualifiedHours,
   hasUsefulDecisionCopy,
   hasUsefulPhoto,
   summarizeCoverage,
@@ -73,6 +74,24 @@ describe("coverage quality metrics", () => {
     expect(hasPublishedFreshHours(datedPlace, new Date("2026-10-19T17:00:00Z"))).toBe(false);
     expect(hasPublishedFreshHours(datedPlace, new Date("2026-10-20T16:00:00Z"))).toBe(true);
     expect(hasPublishedFreshHours(datedPlace, new Date("2026-10-21T04:00:00Z"))).toBe(false);
+  });
+
+  it("separates current qualified tables and never revives registered owners as generic hours when metadata is absent", () => {
+    const observedAt = "2026-10-22T23:54:54.110Z";
+    const now = new Date("2026-10-23T12:00:00.000Z");
+    const qualified = place({ slug: "the-tasting-room-frederick", hours_verified: true, hours_updated_at: observedAt,
+      hours: { mon: [{ open: "16:00", close: "21:00" }], _official: { slug: "the-tasting-room-frederick", kind: "merchant", source_url: "https://trrestaurant.com/", observed_at: observedAt, expires_at: "2026-10-29T23:54:54.110Z", coverage_from: "2026-10-22", coverage_through: "2026-10-29", exceptions: [], qualification: { scope: "kitchen", label: "Dinner hours", note: "Dinner service does not establish whole-venue hours.", usage: "display_only" } } } });
+    expect(hasPublishedFreshHours(qualified, now)).toBe(false);
+    expect(hasPublishedQualifiedHours(qualified, now)).toBe(true);
+    for (const slug of ["the-tasting-room-frederick", "hootch-and-banter-frederick", "national-museum-civil-war-medicine-frederick"]) {
+      const stripped = place({ slug, hours: { mon: [{ open: "09:00", close: "17:00" }] }, hours_verified: true, hours_updated_at: observedAt });
+      expect(hasPublishedFreshHours(stripped, now)).toBe(false);
+      expect(hasPublishedQualifiedHours(stripped, now)).toBe(false);
+    }
+    expect(hasPublishedQualifiedHours(qualified, new Date("2026-10-29T23:54:54.110Z"))).toBe(false);
+    expect(hasPublishedQualifiedHours({ ...qualified, hours_verified: false }, now)).toBe(false);
+    expect(hasPublishedFreshHours({ ...qualified, slug: "unregistered-qualified-claim" }, now)).toBe(false);
+    expect(hasPublishedQualifiedHours({ ...qualified, slug: "unregistered-qualified-claim" }, now)).toBe(false);
   });
 
   it("counts only a publishable card photo field", () => {

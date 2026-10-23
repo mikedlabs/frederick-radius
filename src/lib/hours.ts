@@ -91,6 +91,11 @@ export function isOpenNow(status: OpenStatus): boolean {
   return status.state === "open" || status.state === "closing-soon";
 }
 
+/** These hours describe their named service/qualification, not general access. */
+export function isDisplayOnlyHours(hours: Hours | undefined): boolean {
+  return hours?._official?.qualification?.usage === "display_only";
+}
+
 /**
  * "Definitively closed right now" — true ONLY when the venue has verified
  * hours that place `now` outside every window. Unknown or unverified hours
@@ -171,6 +176,7 @@ export function getOpenStatus(
   now: Date = new Date(),
 ): OpenStatus {
   if (!hours) return { state: "unknown" };
+  if (isDisplayOnlyHours(hours)) return { state: "unknown" };
   if (!hours._official) return getWeeklyOpenStatus(hours, options, now);
   if (!options.verified) return { state: "unverified" };
   if (!Number.isFinite(now.getTime()) || !isScheduleEvidenceCurrent(hours, now)) return { state: "unknown" };

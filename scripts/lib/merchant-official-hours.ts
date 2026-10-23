@@ -8,6 +8,7 @@ import { easternDayKey } from "../../src/lib/tz";
 import type { OfficialPageReceipt } from "./fcpl-official-hours";
 import { merchantHoursCohort } from "./merchant-hours-cohorts";
 import { parseOfficialHoursCohort } from "./official-hours-cohort";
+import { parseQualifiedMerchantHours } from "./qualified-merchant-hours";
 const { JSDOM } = createRequire(import.meta.url)("jsdom") as { JSDOM: new (html: string) => { window: { document: Document } } };
 const CLOCK = "(\\d{1,2}(?::\\d{2})?\\s*[ap]m)";
 function time(raw: string): string {
@@ -148,13 +149,17 @@ function structuredOpeningHours(document: Document, source: MerchantHoursSource)
 export function parseMerchantOfficialHours(source: MerchantHoursSource, page: OfficialPageReceipt, now = new Date()): MerchantHoursRecord {
   if (!MERCHANT_HOURS_SOURCES.some((item) => item.slug === source.slug && item.url === source.url) || page.url !== source.url || !isHoursFresh(page.observedAt, now)) throw new Error("Unapproved merchant source or observation.");
   const { text, document } = textPage(page.html);
-  if (/temporarily closed|closed (?:today|tomorrow|for)|closing early|special hours|holiday hours|until sold out|drinks only|kitchen hours/i.test(text)) throw new Error("Unresolved merchant notice or service qualifier.");
+  const defaultWindow = source.kind === "weekly" ? merchantWeeklyHoursWindow(source.slug, page.observedAt) : undefined;
+  const qualified = parseQualifiedMerchantHours(source, page, document, text, easternDayKey(new Date(page.observedAt)), defaultWindow?.coverage_through ?? easternDayKey(new Date(page.observedAt)));
+  if (!qualified && /temporarily closed|closed (?:today|tomorrow|for)|closing early|special hours|holiday hours|until sold out|drinks only|kitchen hours/i.test(text)) throw new Error("Unresolved merchant notice or service qualifier.");
   const cohort = merchantHoursCohort(source);
-  const structured = cohort?.cohort.shape === "jsonld_weekly_location_cards" ? [] : structuredOpeningHours(document, source);
+  const structured = qualified || cohort?.cohort.shape === "jsonld_weekly_location_cards" ? [] : structuredOpeningHours(document, source);
   const hours: Hours = {};
   let from = easternDayKey(new Date(page.observedAt));
   let through: string | undefined;
-  if (cohort) {
+  if (qualified) {
+    Object.assign(hours, qualified.hours);
+  } else if (cohort) {
     Object.assign(hours, parseOfficialHoursCohort(document, text, cohort.cohort, cohort.binding));
   } else if (source.kind === "dated_week") {
     if (!/Brewer[’']?s Alley/i.test(text)) throw new Error("Missing Brewer's Alley identity.");
@@ -335,7 +340,7 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
   const observedAt = new Date(page.observedAt).toISOString();
   const window = source.kind === "weekly" ? merchantWeeklyHoursWindow(source.slug, observedAt) : undefined;
   const expires = window?.expires_at ?? merchantHoursExpiry(observedAt, through);
-  const record: MerchantHoursRecord = { slug: source.slug, source_url: source.url, source_name: source.name, source_sha256: createHash("sha256").update(page.html).digest("hex"), observed_at: observedAt, expires_at: expires, coverage_from: from, coverage_through: through ?? window!.coverage_through, kind: source.kind, hours };
+  const record: MerchantHoursRecord = { slug: source.slug, source_url: source.url, source_name: source.name, source_sha256: createHash("sha256").update(page.html).digest("hex"), observed_at: observedAt, expires_at: expires, coverage_from: from, coverage_through: through ?? window!.coverage_through, kind: source.kind, hours, ...(qualified ? { qualification: qualified.qualification, ...(qualified.exceptions ? { exceptions: qualified.exceptions } : {}) } : {}) };
   validateMerchantHoursArtifact({ schema_version: 1, places: [record], review: [] });
   return record;
 }
@@ -372,7 +377,7 @@ export async function fetchMerchantHoursPage(url: string, fetchImpl: typeof fetc
   } finally { controller.abort(); if (reader) void reader.cancel().catch(() => {}); }
 }
 function approvedFacts(row: MerchantHoursRecord): string {
-  return JSON.stringify({ slug: row.slug, source_url: row.source_url, source_name: row.source_name, kind: row.kind, hours: Object.fromEntries(WEEKDAYS.map((day) => [day, row.hours[day]])), ...(row.kind === "dated_week" ? { coverage_from: row.coverage_from, coverage_through: row.coverage_through } : {}) });
+  return JSON.stringify({ slug: row.slug, source_url: row.source_url, source_name: row.source_name, kind: row.kind, hours: Object.fromEntries(WEEKDAYS.map((day) => [day, row.hours[day]])), qualification: row.qualification ?? null, exceptions: row.exceptions ?? [], ...(row.kind === "dated_week" ? { coverage_from: row.coverage_from, coverage_through: row.coverage_through } : {}) });
 }
 /** Gate accepted/public changes, not candidates held out of those public rows. */
 export function merchantHoursNeedsReview(previous: unknown, next: MerchantHoursArtifact): boolean {

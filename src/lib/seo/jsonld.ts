@@ -8,7 +8,7 @@
  * into a <script type="application/ld+json"> themselves.
  */
 
-import { hoursForDate } from "@/lib/hours";
+import { hoursForDate, isDisplayOnlyHours } from "@/lib/hours";
 import { easternDayKey, easternWallToUtcISO } from "@/lib/tz";
 import type { DayOfWeek, Hours } from "@/data/places";
 
@@ -40,7 +40,7 @@ export function absoluteSiteUrl(value: string | null | undefined): string | unde
  * the decorated loader removes stale or unreviewed schedules first.
  */
 export function openingHoursJsonLd(hours: Hours | undefined) {
-  if (!hours) return undefined;
+  if (!hours || isDisplayOnlyHours(hours)) return undefined;
   const official = hours._official;
   // A calendar-day schema cannot express a mid-day evidence expiry. End on
   // the previous complete day rather than promise the whole expiry date.
@@ -61,7 +61,7 @@ export function openingHoursJsonLd(hours: Hours | undefined) {
 /** Date-specific closure facts override normal weekday schema hours. */
 export function specialOpeningHoursJsonLd(hours: Hours | undefined) {
   const evidence = hours?._official;
-  if (!hours || !evidence) return undefined;
+  if (!hours || !evidence || isDisplayOnlyHours(hours)) return undefined;
   const expiryDay = easternDayKey(new Date(evidence.expires_at));
   const rows = evidence.exceptions.flatMap((exception) => {
     if (exception.date < evidence.coverage_from || exception.date >= expiryDay || exception.date > evidence.coverage_through) return [];

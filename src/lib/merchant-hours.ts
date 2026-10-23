@@ -1,8 +1,9 @@
-import type { Hours, Place } from "@/data/places";
+import type { Hours, HoursDateException, HoursQualification, Place } from "@/data/places";
 import { HOURS_MAX_AGE_DAYS, isHoursFresh } from "@/lib/hours-freshness";
 import { isCalendarDate, WEEKDAYS } from "@/lib/official-hours";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import { easternDayKey, easternWallToUtcISO } from "@/lib/tz";
+import { hasQualifiedHoursOwner, QUALIFIED_HOURS_SOURCES } from "@/lib/qualified-hours-sources";
 
 /** Reviewed exact identities. Adding a source requires code and source review. */
 export const MERCHANT_HOURS_SOURCES = [
@@ -27,6 +28,7 @@ export const MERCHANT_HOURS_SOURCES = [
   // One reviewed official page, with independent exact grocery identities.
   { slug: "common-market-frederick", name: "Common Market Co-op (Route 85)", ledger_id: "common_market_hours", category: "market", url: "https://www.commonmarket.coop/", kind: "weekly" },
   { slug: "common-market", name: "Common Market (7th Street)", ledger_id: "common_market_hours", category: "market", url: "https://www.commonmarket.coop/", kind: "weekly" },
+  ...QUALIFIED_HOURS_SOURCES,
 ] as const;
 export type MerchantHoursSource = typeof MERCHANT_HOURS_SOURCES[number];
 export type MerchantHoursRecord = {
@@ -40,6 +42,9 @@ export type MerchantHoursRecord = {
   coverage_through: string;
   kind: "weekly" | "dated_week";
   hours: Hours;
+  qualification?: HoursQualification;
+  /** Actual dated source notices; absent preserves the ordinary weekly schedule. */
+  exceptions?: HoursDateException[];
 };
 export type MerchantHoursArtifact = {
   schema_version: 1;
@@ -54,6 +59,27 @@ export type MerchantHoursArtifact = {
 };
 const validStamp = (value: string) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) && Number.isFinite(Date.parse(value));
 const clock = (value: string) => typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+const plainText = (value: unknown, limit: number): value is string => typeof value === "string" && value === value.trim() && value.length > 0 && value.length <= limit && !/[<>\u0000-\u001f\u007f]/.test(value);
+function validateQualification(value: unknown): asserts value is HoursQualification {
+  const q = value as HoursQualification;
+  if (!q || typeof q !== "object" || Array.isArray(q)
+    || Object.keys(q).some((key) => !["scope", "label", "note", "usage"].includes(key))
+    || !["venue", "kitchen", "bar", "brunch", "admission"].includes(q.scope)
+    || q.usage !== "display_only" || !plainText(q.label, 80) || !plainText(q.note, 500)) throw new Error("Invalid merchant hours qualification.");
+}
+function validateExceptions(value: unknown): asserts value is HoursDateException[] {
+  if (!Array.isArray(value) || value.length > 80) throw new Error("Invalid merchant date exceptions.");
+  let previous = "";
+  for (const exception of value) {
+    if (!exception || typeof exception !== "object" || Array.isArray(exception)
+      || Object.keys(exception).some((key) => !["date", "reason", "closed", "closes_at"].includes(key))
+      || !isCalendarDate(exception.date) || exception.date <= previous || !plainText(exception.reason, 160)
+      || (exception.closed !== undefined && exception.closed !== true)
+      || (exception.closed === true) === (exception.closes_at !== undefined)
+      || (exception.closes_at !== undefined && !clock(exception.closes_at))) throw new Error("Invalid or ambiguous merchant date exception.");
+    previous = exception.date;
+  }
+}
 export function merchantHoursExpiry(observedAt: string, coverageThrough?: string): string {
   const limit = Date.parse(observedAt) + HOURS_MAX_AGE_DAYS * 86_400_000;
   if (!coverageThrough) return new Date(limit).toISOString();
@@ -93,6 +119,9 @@ export function validateMerchantHoursArtifact(value: unknown): asserts value is 
     const source = MERCHANT_HOURS_SOURCES.find((item) => item.slug === row.slug);
     if (!source || seen.has(row.slug) || row.source_url !== source.url || row.source_name !== source.name || row.kind !== source.kind || !/^[a-f0-9]{64}$/.test(row.source_sha256) || !validStamp(row.observed_at) || !validStamp(row.expires_at) || !isCalendarDate(row.coverage_from) || !isCalendarDate(row.coverage_through) || row.coverage_from > row.coverage_through || !row.hours || Object.keys(row.hours).length !== 7) throw new Error("Mismatched merchant source, week or observation.");
     seen.add(row.slug);
+    if (hasQualifiedHoursOwner(row.slug) && row.qualification === undefined) throw new Error("Qualified source hours must retain their display-only qualification.");
+    if (row.qualification !== undefined) validateQualification(row.qualification);
+    if (row.exceptions !== undefined) validateExceptions(row.exceptions);
     if (row.kind === "dated_week") {
       if (Date.parse(row.coverage_through) - Date.parse(row.coverage_from) !== 6 * 86_400_000 || row.expires_at !== merchantHoursExpiry(row.observed_at, row.coverage_through)) throw new Error("A dated merchant week cannot renew beyond its actual dates.");
     } else {
@@ -105,7 +134,7 @@ export function validateMerchantHoursArtifact(value: unknown): asserts value is 
       const slots = row.hours[day];
       if (!Array.isArray(slots) || slots.length > 2 || slots.some((slot) => !clock(slot.open) || !clock(slot.close) || slot.open === slot.close)) throw new Error("Incomplete or invalid merchant schedule.");
     }
-    if (!mayPublishVisitabilityHours(row.slug, row.hours, new Date(row.observed_at))) throw new Error("Merchant hours require separate visitability review.");
+    if (!row.qualification && !mayPublishVisitabilityHours(row.slug, row.hours, new Date(row.observed_at))) throw new Error("Merchant hours require separate visitability review.");
   }
   const reviewSeen = new Set<string>();
   for (const item of artifact.review) {
@@ -128,7 +157,7 @@ export function merchantHoursForPlace(place: Pick<Place, "slug" | "website" | "c
   const row = value.places.find((item) => item.slug === source.slug);
   const date = easternDayKey(now);
   if (!row || value.review.some((item) => item.slug === source.slug) || place.category !== source.category || host(place.website) !== host(source.url) || !isHoursFresh(row.observed_at, now) || now.getTime() >= Date.parse(row.expires_at) || date < row.coverage_from || date > row.coverage_through) return { enrolled: true };
-  return { enrolled: true, observedAt: row.observed_at, hours: { ...row.hours, _official: { slug: row.slug, kind: "merchant", schedule_kind: row.kind, source_name: row.source_name, source_url: row.source_url, observed_at: row.observed_at, expires_at: row.expires_at, coverage_from: row.coverage_from, coverage_through: row.coverage_through, exceptions: [] } } };
+  return { enrolled: true, observedAt: row.observed_at, hours: { ...row.hours, _official: { slug: row.slug, kind: "merchant", schedule_kind: row.kind, source_name: row.source_name, source_url: row.source_url, observed_at: row.observed_at, expires_at: row.expires_at, coverage_from: row.coverage_from, coverage_through: row.coverage_through, exceptions: row.exceptions ?? [], ...(row.qualification ? { qualification: row.qualification } : {}) } } };
 }
 
 /** Manual review operation only. The scheduled collector never calls this.

@@ -33,6 +33,21 @@ function artifact(
 }
 
 describe("hours refresh review manifest", () => {
+  it("keeps checked qualified tables separate from general opening-hours coverage", () => {
+    const ordinary = place("cafe", { hours_verified: true, hours: OPEN_HOURS });
+    const dinner = place("dinner-service", { hours_verified: true, hours: {
+      ...OPEN_HOURS, _official: { qualification: { usage: "display_only", scope: "kitchen" } },
+    } });
+    const analysis = analyzeHoursRefreshChange({ beforeArtifact: artifact({}), afterArtifact: artifact({}),
+      beforePlaces: [ordinary], afterPlaces: [ordinary, dinner] });
+    expect(analysis.before_published_hours).toBe(1);
+    expect(analysis.after_published_hours).toBe(1);
+    expect(analysis.before_published_qualified_hours).toBe(0);
+    expect(analysis.after_published_qualified_hours).toBe(1);
+    const report = renderHoursRefreshReview(analysis);
+    expect(report).toContain("| Public places with qualified schedules | 0 | 1 | +1 |");
+    expect(report).toContain("excluded from the general verified-hours total and Open now coverage");
+  });
   it("validates real calendar dates instead of accepting shape alone", () => {
     expect(isIsoCalendarDate("2026-02-28")).toBe(true);
     expect(isIsoCalendarDate("2026-02-30")).toBe(false);

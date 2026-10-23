@@ -1076,6 +1076,184 @@
           }
         ]
       }
+    },
+    {
+      "slug": "national-museum-civil-war-medicine-frederick",
+      "source_url": "https://www.civilwarmed.org/",
+      "source_name": "National Museum of Civil War Medicine",
+      "source_sha256": "de9806362d778bf849d91881becb17735a18030a785faf9c1f141c60e3b00bd5",
+      "observed_at": "2026-10-22T14:53:26.300Z",
+      "expires_at": "2026-10-29T14:53:26.300Z",
+      "coverage_from": "2026-10-22",
+      "coverage_through": "2026-10-29",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "17:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "11:00",
+            "close": "17:00"
+          }
+        ]
+      },
+      "qualification": {
+        "scope": "venue",
+        "label": "Museum hours",
+        "note": "Gallery admission ends at 4 p.m. The museum closes at 5 p.m. The museum closes on New Year’s Day, Easter, Thanksgiving, Christmas Eve and Christmas Day.",
+        "usage": "display_only"
+      }
+    },
+    {
+      "slug": "the-tasting-room-frederick",
+      "source_url": "https://trrestaurant.com/",
+      "source_name": "The Tasting Room",
+      "source_sha256": "f45f8506acee4a1f5ed1444f805093f953c45aa7b95669553b99f26520ef8742",
+      "observed_at": "2026-10-22T23:54:54.110Z",
+      "expires_at": "2026-10-29T23:54:54.110Z",
+      "coverage_from": "2026-10-22",
+      "coverage_through": "2026-10-29",
+      "kind": "weekly",
+      "hours": {
+        "sun": [],
+        "mon": [
+          {
+            "open": "16:00",
+            "close": "21:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "16:00",
+            "close": "21:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "16:00",
+            "close": "21:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "16:00",
+            "close": "21:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "16:00",
+            "close": "22:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "16:00",
+            "close": "22:00"
+          }
+        ]
+      },
+      "qualification": {
+        "scope": "kitchen",
+        "label": "Dinner hours",
+        "note": "These are dinner service hours. Bar and happy-hour times differ.",
+        "usage": "display_only"
+      }
+    },
+    {
+      "slug": "hootch-and-banter-frederick",
+      "source_url": "https://hootchandbanter.com",
+      "source_name": "Hootch & Banter",
+      "source_sha256": "aff1859b1506ffbe9eb7016acf7e1ea62b9534f6f86ecc8c65efbb5153cd1ebd",
+      "observed_at": "2026-10-22T23:55:03.072Z",
+      "expires_at": "2026-10-29T23:55:03.072Z",
+      "coverage_from": "2026-10-22",
+      "coverage_through": "2026-10-29",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "16:00",
+            "close": "21:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "16:00",
+            "close": "21:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "16:00",
+            "close": "21:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "16:00",
+            "close": "21:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "16:00",
+            "close": "22:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "16:00",
+            "close": "22:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "16:00",
+            "close": "20:00"
+          }
+        ]
+      },
+      "qualification": {
+        "scope": "kitchen",
+        "label": "Dinner hours",
+        "note": "These are dinner service hours. Weekend brunch runs from 11 a.m. to 2:45 p.m. The kitchen closes between brunch and dinner. Bar hours differ. Closed on Memorial Day, July 4, Labor Day, Thanksgiving, Christmas Eve, Christmas Day and New Year’s Day.",
+        "usage": "display_only"
+      }
     }
   ],
   "review": []

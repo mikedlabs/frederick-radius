@@ -13,7 +13,8 @@
  * beats impressive.
  */
 
-import type { OpenStatus } from "@/lib/hours";
+import type { Hours } from "@/data/places";
+import { isDisplayOnlyHours, isScheduleEvidenceCurrent, type OpenStatus } from "@/lib/hours";
 
 export type TrustLevel = "verified" | "likely" | "unconfirmed";
 
@@ -122,9 +123,29 @@ export function eventTrust(e: EventTrustInput): TrustSignal {
 /**
  * Trust for a place's hours. "Verified" only when hours are confirmed
  * against a live source; curated-but-unconfirmed hours are honestly
- * "Likely"; no hours at all is "Unconfirmed". Mirrors getOpenStatus.
+ * "Likely"; no hours at all is "Unconfirmed". A supplied display-only
+ * schedule is checked for freshness separately from the venue opening state.
  */
-export function placeHoursTrust(status: OpenStatus): TrustSignal {
+export function placeHoursTrust(
+  status: OpenStatus,
+  evidence?: { hours?: Hours; verified?: boolean; now?: Date },
+): TrustSignal {
+  // A checked kitchen, museum or admission schedule can be useful without
+  // establishing whether the whole venue is open. Keep those two facts apart.
+  if (isDisplayOnlyHours(evidence?.hours)) {
+    if (evidence?.verified && evidence.hours && isScheduleEvidenceCurrent(evidence.hours, evidence.now ?? new Date())) {
+      return {
+        level: "verified",
+        label: "Checked at source",
+        basis: "Official schedule checked. This schedule does not confirm whether the venue is open.",
+      };
+    }
+    return {
+      level: "unconfirmed",
+      label: "Needs a new check",
+      basis: "This posted schedule needs a new source check. Check the official source before going.",
+    };
+  }
   switch (status.state) {
     case "open":
     case "closing-soon":

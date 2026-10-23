@@ -1595,6 +1595,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "hootch_banter_hours",
+    "name": "Hootch & Banter - First-party Qualified Dinner Hours",
+    "owner": "Hootch & Banter",
+    "url": "https://hootchandbanter.com",
+    "license": "public first-party dinner hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/qualified-merchant-hours.ts",
+    "evidenceAliases": [
+      "hootch_banter_hours",
+      "https://hootchandbanter.com"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "il_porto_frederick_hours",
     "name": "Il Porto Frederick — First-party Hours",
     "owner": "Il Porto Frederick",
@@ -2102,6 +2123,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "museum_civil_war_medicine_hours",
+    "name": "National Museum of Civil War Medicine - First-party Qualified Venue Hours",
+    "owner": "National Museum of Civil War Medicine",
+    "url": "https://www.civilwarmed.org/",
+    "license": "public first-party visiting hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/qualified-merchant-hours.ts",
+    "evidenceAliases": [
+      "https://www.civilwarmed.org/",
+      "museum_civil_war_medicine_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "civil_war_medicine_events",
     "name": "National Museum of Civil War Medicine Events",
     "owner": "National Museum of Civil War Medicine",
@@ -2513,6 +2555,27 @@
     "evidenceAliases": [
       "https://thaitablecuisine.com/",
       "thai_table_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "tasting_room_hours",
+    "name": "The Tasting Room - First-party Qualified Dinner Hours",
+    "owner": "The Tasting Room",
+    "url": "https://trrestaurant.com/",
+    "license": "public first-party dinner hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/qualified-merchant-hours.ts",
+    "evidenceAliases": [
+      "https://trrestaurant.com/",
+      "tasting_room_hours"
     ],
     "rowsRequired": false,
     "publicationApplicability": "required"

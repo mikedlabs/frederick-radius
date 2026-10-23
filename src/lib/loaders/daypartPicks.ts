@@ -112,7 +112,7 @@ export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRo
       ? null
       : intentRanked
           .map((place, index) => {
-            if (!mayUseLikelyOpenFallback(place.open_status)) return null;
+            if (!mayUseLikelyOpenFallback(place.open_status, place)) return null;
             const timing = reliableOpeningSoon(place.slug, now);
             return timing ? { place, index, ...timing } : null;
           })
@@ -172,7 +172,7 @@ export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRo
     // near-term closed exception and labels it explicitly.
     const unconfirmed = intentRanked.filter(
       (place) =>
-        mayUseLikelyOpenFallback(place.open_status) &&
+        (place.open_status.state === "unknown" || place.open_status.state === "unverified") &&
         place.slug !== openingSoonSlug,
     );
     const confidence: DaypartPick["confidence"] =

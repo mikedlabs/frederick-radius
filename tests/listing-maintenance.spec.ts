@@ -66,7 +66,7 @@ describe("listing maintenance hours truth", () => {
     expect(firstHours(p)).toMatchObject({ state: "unknown", applicability: "unknown" });
     const reviewed = report(p, { hoursNotApplicable: { [p.slug]: { reason: "Reviewed path, no opening schedule applies." } } });
     expect(reviewed.rows[0].hours).toMatchObject({ state: "unknown", applicability: "not_applicable" });
-    expect(reviewed.summary.hours).toEqual({ current: 0, stale: 0, needs_review: 0, unknown: 1 });
+    expect(reviewed.summary.hours).toEqual({ current: 0, qualified_current: 0, stale: 0, needs_review: 0, unknown: 1 });
     expect(reviewed.summary.hours_not_applicable_reviewed).toBe(1);
     expect(reviewed.candidate_queue).toEqual([]);
   });
@@ -83,6 +83,29 @@ describe("listing maintenance hours truth", () => {
     expect(firstHours(shipped, { merchantHours: MERCHANT })).toMatchObject({ state: "current", expires_at: "2026-10-26T04:00:00.000Z", source_url: raw.source_url });
     expect(firstHours(shipped, { merchantHours: MERCHANT, asOf: new Date(raw.expires_at) })).toMatchObject({ state: "stale", reason: "first_party_evidence_expired" });
     expect(firstHours(shipped, { merchantHours: MERCHANT, asOf: new Date("2026-10-25T12:00:00Z") }).expiring_within_48h).toBe(true);
+  });
+  it("separates a checked qualified schedule from current venue hours and keeps its expiry actionable", () => {
+    const artifact = structuredClone(MERCHANT);
+    const raw = artifact.places[1];
+    raw.qualification = { scope: "kitchen", label: "Kitchen hours", note: "This table does not confirm the venue's opening hours.", usage: "display_only" };
+    const source = MERCHANT_HOURS_SOURCES.find(item => item.slug === raw.slug)!;
+    const p = base({ slug: raw.slug, name: raw.source_name, category: source.category, website: raw.source_url });
+    const approved = merchantHoursForPlace(p, artifact, AS_OF);
+    const shipped = { ...p, hours: approved.hours, hours_verified: true, hours_updated_at: approved.observedAt };
+    const r = report(shipped, { merchantHours: artifact });
+    expect(r.schema_version).toBe(2);
+    expect(r.summary.hours.current).toBe(0);
+    expect(r.summary.hours.qualified_current).toBe(1);
+    expect(r.rows[0].hours).toMatchObject({ state: "qualified_current", reason: "current_checked_schedule_venue_opening_unconfirmed" });
+    expect(r.candidate_queue).toEqual([]);
+    expect(HOURS_STATES.reduce((sum, state) => sum + r.summary.hours[state], 0)).toBe(1);
+    expect(firstHours(shipped, { merchantHours: artifact, asOf: new Date(Date.parse(raw.expires_at) - 86_400_000) }).expiring_within_48h).toBe(true);
+    expect(firstHours(shipped, { merchantHours: artifact, asOf: new Date(raw.expires_at) }).state).toBe("stale");
+    expect(renderListingMaintenanceMarkdown(r)).toContain("excluded from generic Open now coverage");
+    const absentNote = structuredClone(shipped); delete absentNote.hours!._official!.qualification;
+    expect(firstHours(absentNote, { merchantHours: artifact })).toMatchObject({ state: "needs_review", reason: "first_party_snapshot_evidence_mismatch" });
+    const missingException = structuredClone(shipped); missingException.hours!._official!.exceptions = [{ date: "2026-10-21", closed: true, reason: "An unreviewed closure." }];
+    expect(firstHours(missingException, { merchantHours: artifact }).reason).toBe("first_party_snapshot_evidence_mismatch");
   });
   it.each(["source_unavailable", "unparseable_or_conflicted", "changed_facts", "pending_acceptance"])("keeps merchant %s as a hold even while approved old evidence is young", (reason) => {
     const raw = MERCHANT.places[0];

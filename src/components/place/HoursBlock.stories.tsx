@@ -3,6 +3,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 import type { Hours } from "@/data/places";
 import { easternDayKey } from "@/lib/tz";
 import HoursBlock from "./HoursBlock";
+import LiveOpenStatus from "./LiveOpenStatus";
 
 const now = new Date();
 const today = easternDayKey(now);
@@ -107,5 +108,115 @@ export const MerchantWeek: Story = {
     await userEvent.click(canvas.getByText(/Hours today/));
     await expect(canvas.getByRole("link", { name: "Official business hours" })).toBeVisible();
     await expect(canvas.queryByRole("link", { name: "FCPL holiday closures" })).not.toBeInTheDocument();
+  },
+};
+
+const qualifiedMuseum: Hours = {
+  mon: [{ open: "10:00", close: "17:00" }], tue: [{ open: "10:00", close: "17:00" }],
+  wed: [{ open: "10:00", close: "17:00" }], thu: [{ open: "10:00", close: "17:00" }],
+  fri: [{ open: "10:00", close: "17:00" }], sat: [{ open: "10:00", close: "17:00" }], sun: [{ open: "10:00", close: "17:00" }],
+  _official: {
+    ...hours._official!, kind: "merchant", schedule_kind: "weekly", slug: "demonstration-museum",
+    source_name: "Demonstration museum", source_url: "https://example.org/museum-hours", closures_url: undefined, exceptions: [],
+    qualification: {
+      scope: "venue", label: "Museum hours", usage: "display_only",
+      note: "Last admission is at 4:30pm. The museum closes at 5pm.",
+    },
+  },
+};
+
+export const QualifiedMuseum: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { hours: qualifiedMuseum, provenance: "Demonstration of a checked museum schedule with a separate admission cutoff." },
+  render: (args) => <>
+    <div className="mb-3"><LiveOpenStatus hours={args.hours} verified={Boolean(args.verified)} initial={{ state: "unknown" }} /></div>
+    <HoursBlock {...args} />
+  </>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const note = canvas.getByText("Last admission is at 4:30pm. The museum closes at 5pm.");
+    await expect(note).toBeVisible();
+    await expect(note.closest("details")).toBeNull();
+    await expect(canvas.getByText("Venue opening not confirmed")).toBeVisible();
+    await expect(canvas.getByText("Checked at source")).toBeVisible();
+    await expect(canvas.queryByText("Unconfirmed")).not.toBeInTheDocument();
+    const label = canvas.getByText("Museum hours today · 10am–5pm");
+    await expectTouchDisclosure(label);
+    const summary = label.closest("summary")!;
+    const browser = (globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__
+      ? await import("vitest/browser") : undefined;
+    if (browser) {
+      // Synthetic key events do not invoke a browser's native <summary>
+      // activation. Establish the current story frame with trusted input,
+      // then prove the real Enter default action without app key handlers.
+      let trustedPointer = false;
+      note.addEventListener("pointerdown", (event) => { trustedPointer = event.isTrusted; }, { once: true });
+      await browser.userEvent.click(note);
+      await expect(trustedPointer).toBe(true);
+      summary.focus();
+      await expect(summary).toHaveFocus();
+      await browser.userEvent.keyboard("{Enter}");
+    } else {
+      await userEvent.click(summary);
+    }
+    await waitFor(async () => expect(canvas.getByRole("list", { name: "Museum hours by day" })).toBeVisible());
+    await expectTouchLink(canvas.getByRole("link", { name: "Official museum hours" }));
+    await expect(canvas.queryByText(/not current enough/)).not.toBeInTheDocument();
+    const section = canvas.getByRole("region", { name: "Museum hours" });
+    const root = canvasElement.ownerDocument.documentElement;
+    const fontSize = root.style.getPropertyValue("font-size");
+    try {
+      root.style.setProperty("font-size", "200%");
+      await expect(note).toBeVisible();
+      await expect(section.scrollWidth).toBeLessThanOrEqual(section.clientWidth);
+    } finally {
+      if (fontSize) root.style.setProperty("font-size", fontSize);
+      else root.style.removeProperty("font-size");
+    }
+    summary.focus();
+    if (browser) await browser.userEvent.keyboard(" ");
+    else await userEvent.click(summary);
+    await waitFor(async () => expect(summary.closest("details")).not.toHaveAttribute("open"));
+    await expect(summary).toHaveFocus();
+    await expect(note).toBeVisible();
+  },
+};
+
+export const QualifiedKitchen: Story = {
+  globals: { viewport: { value: "radiusMobileLarge", isRotated: false } },
+  args: {
+    hours: { ...qualifiedMuseum, _official: { ...qualifiedMuseum._official!, qualification: {
+      scope: "kitchen", label: "Kitchen hours", usage: "display_only", note: "These are kitchen hours. Bar hours may differ.",
+    } } },
+    provenance: "Demonstration of checked kitchen hours.",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("These are kitchen hours. Bar hours may differ.")).toBeVisible();
+    await expectTouchDisclosure(canvas.getByText("Kitchen hours today · 10am–5pm"));
+    await expect(canvas.getByText("Checked at source")).toBeVisible();
+  },
+};
+
+export const ExpiredQualifiedMuseum: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: {
+    hours: { ...qualifiedMuseum, _official: {
+      ...qualifiedMuseum._official!, observed_at: new Date(+now - 8 * 86_400_000).toISOString(),
+      expires_at: new Date(+now - 86_400_000).toISOString(),
+    } },
+    provenance: "Demonstration of a retained schedule that needs a new source check.",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("Last admission is at 4:30pm. The museum closes at 5pm.")).toBeVisible();
+    await expect(canvas.getByText("Needs a new check")).toBeVisible();
+    await expect(canvas.queryByText("Checked at source")).not.toBeInTheDocument();
+    const label = canvas.getByText("Museum hours today · Hours not confirmed");
+    await expectTouchDisclosure(label);
+    await userEvent.click(label);
+    await expect(canvas.getByText("This posted schedule needs a new source check. Check the official source before going.")).toBeVisible();
+    await expect(canvas.getByRole("list", { name: "Museum hours by day" })).toBeVisible();
+    await expectTouchLink(canvas.getByRole("link", { name: "Official museum hours" }));
   },
 };

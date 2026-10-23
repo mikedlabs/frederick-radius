@@ -1,5 +1,6 @@
 import { isHoursFresh } from "@/lib/hours-freshness";
-import { isScheduleEvidenceCurrent } from "@/lib/hours";
+import { isDisplayOnlyHours, isScheduleEvidenceCurrent } from "@/lib/hours";
+import { hasQualifiedHoursOwner } from "@/lib/qualified-hours-sources";
 import type { Hours } from "@/data/places";
 import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
@@ -96,8 +97,7 @@ export function hasUsefulPhoto(place: CoveragePlace): boolean {
     || Object.hasOwn(CREDITED_LOCAL_PLACE_PHOTOS, place.slug);
 }
 
-/** Count only a schedule that the public app may use for an open-now claim. */
-export function hasPublishedFreshHours(
+function hasPublishedCurrentSchedule(
   place: CoveragePlace,
   now = new Date(),
 ): boolean {
@@ -108,6 +108,18 @@ export function hasPublishedFreshHours(
       isHoursFresh(place.hours_updated_at, now) &&
       isScheduleEvidenceCurrent(place.hours as Hours, now),
   );
+}
+
+/** Count only a schedule that the public app may use for an open-now claim. */
+export function hasPublishedFreshHours(place: CoveragePlace, now = new Date()): boolean {
+  return !hasQualifiedHoursOwner(place.slug) && !isDisplayOnlyHours(place.hours as Hours | undefined)
+    && hasPublishedCurrentSchedule(place, now);
+}
+
+/** A checked display-only table is useful coverage, separate from visitability. */
+export function hasPublishedQualifiedHours(place: CoveragePlace, now = new Date()): boolean {
+  return hasQualifiedHoursOwner(place.slug) && isDisplayOnlyHours(place.hours as Hours | undefined)
+    && hasPublishedCurrentSchedule(place, now);
 }
 
 /**

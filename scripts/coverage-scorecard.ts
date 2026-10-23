@@ -27,6 +27,7 @@ import { isGooglePlaceId } from "@/lib/provenance";
 import {
   COVERAGE_TARGETS,
   hasPublishedFreshHours,
+  hasPublishedQualifiedHours,
   hasUsefulPhoto,
   summarizeCoverageByCategory,
   type CoveragePlace,
@@ -163,6 +164,7 @@ const total = rows.reduce(
     favorites: 0,
   },
 );
+const qualifiedScheduleCount = PLACES.filter((place) => hasPublishedQualifiedHours(place)).length;
 
 const pct = (n: number, d: number) => (d === 0 ? "—" : `${Math.round((n / d) * 100)}%`);
 const line = (r: Row) =>
@@ -241,6 +243,10 @@ const md = [
   "(BACKLOG Cluster A) is the share of the dataset in the first row.",
   "",
   `_Generated ${new Date().toISOString().slice(0, 10)} — ${total.places} places._`,
+  "",
+  `Current checked schedules: ${total.withFreshHours + qualifiedScheduleCount}. Current qualified schedules: ${qualifiedScheduleCount}.`,
+  "Qualified venue or service tables retain their conditions and expiry. They",
+  "are counted separately and cannot support generic Open now claims.",
   "",
   "| Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |",
   "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",

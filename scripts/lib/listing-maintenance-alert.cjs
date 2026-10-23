@@ -5,15 +5,16 @@ const { createHash } = require("node:crypto");
 /** Only a complete reviewed-bundle report may close this monitor's own issue.
  * Existing unknown inventory is product debt, not a newly failed collection. */
 function listingMaintenanceOutcome(report) {
-  if (!report || report.schema_version !== 1 || report.read_model_state !== "committed" || !/^[a-f0-9]{40}$/.test(report.git_sha || "") || !Number.isFinite(Date.parse(report.as_of || "")) || !Array.isArray(report.rows) || !report.rows.length || report.rows.length > 20000 || !/^sha256:[a-f0-9]{64}$/.test(report.data_version || "") || report.scope?.inventory !== "promoted_public_client" || report.scope.decoded_photos !== "not_checked" || report.scope.served_deployment !== "not_checked" || report.scope.provider_requests !== 0 || report.summary?.listings !== report.rows.length) {
+  if (!report || ![1, 2].includes(report.schema_version) || report.read_model_state !== "committed" || !/^[a-f0-9]{40}$/.test(report.git_sha || "") || !Number.isFinite(Date.parse(report.as_of || "")) || !Array.isArray(report.rows) || !report.rows.length || report.rows.length > 20000 || !/^sha256:[a-f0-9]{64}$/.test(report.data_version || "") || report.scope?.inventory !== "promoted_public_client" || report.scope.decoded_photos !== "not_checked" || report.scope.served_deployment !== "not_checked" || report.scope.provider_requests !== 0 || report.summary?.listings !== report.rows.length) {
     throw new Error("Incomplete listing maintenance report.");
   }
-  const states = new Set(["current", "stale", "needs_review", "unknown"]);
+  const qualifiedTracked = report.schema_version === 2;
+  const states = new Set(["current", ...(qualifiedTracked ? ["qualified_current"] : []), "stale", "needs_review", "unknown"]);
   const photoStates = new Set(["owned", "licensed_local", "licensed_remote", "provider_eligible", "missing"]);
   const photos = { owned: 0, licensed_local: 0, licensed_remote: 0, provider_eligible: 0, missing: 0 };
   const seen = new Set();
   const problems = [];
-  const count = { current: 0, stale: 0, needs_review: 0, unknown: 0 };
+  const count = { current: 0, ...(qualifiedTracked ? { qualified_current: 0 } : {}), stale: 0, needs_review: 0, unknown: 0 };
   let expiredOfficial = 0; let heldOfficial = 0; let missingLocalPhoto = 0;
   for (const row of report.rows) {
     if (typeof row.slug !== "string" || !/^[a-z0-9][a-z0-9-]*$/.test(row.slug) || seen.has(row.slug) || !states.has(row.hours?.state)) throw new Error("Invalid listing maintenance row.");
@@ -32,6 +33,9 @@ function listingMaintenanceOutcome(report) {
     `Reviewed main bundle: \`${report.git_sha}\`. Evaluated ${report.as_of}.`,
     "",
     `Listings reconciled: ${report.rows.length}. Current schedules: ${count.current}; stale inventory: ${count.stale}; review-required: ${count.needs_review}; unknown: ${count.unknown}.`,
+    qualifiedTracked
+      ? `Current qualified schedules: ${count.qualified_current}. These checked tables do not establish venue opening and are excluded from generic Open now coverage.`
+      : "Qualified schedule coverage was not tracked by this older report; it is unknown, not zero.",
     `Accepted official schedules expired: ${expiredOfficial}; official source holds or missing promotion: ${heldOfficial}; missing bundled image files: ${missingLocalPhoto}.`,
     "",
     "This is an offline inventory of reviewed main artifacts. It does not certify the served deployment, decoded remote images, physical devices or every live feed. Unknown coverage remains visible in the report and does not create a fresh emergency every day.",
