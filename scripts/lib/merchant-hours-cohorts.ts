@@ -22,6 +22,21 @@ const SAFEWAY_COHORTS: readonly OfficialHoursCohort[] = SAFEWAY_LOCATIONS.map((l
   bindings: [{ slug: location.slug, source_name: location.source_name, identity: { name: "Safeway", street: location.street, locality: location.locality, region: "MD", postalCode: location.postalCode, phone: location.phone } }],
 }));
 
+const FOOD_LION_LOCATIONS = [
+  { slug: "food-lion-crestwood-frederick", source_name: "Food Lion Crestwood", ledger_id: "food_lion_crestwood_hours", source_url: "https://stores.foodlion.com/md/frederick/6920-crestwood-blvd", entity_id: "https://stores.foodlion.com/#5046692", name: "Food Lion Grocery Store of Crestwood Plaza", street: "6920 Crestwood Blvd", locality: "Frederick", postalCode: "21703", phone: "3018464704" },
+  { slug: "food-lion-yellow-springs-frederick", source_name: "Food Lion Yellow Springs", ledger_id: "food_lion_yellow_springs_hours", source_url: "https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd.", entity_id: "https://stores.foodlion.com/#5046537", name: "Food Lion Grocery Store of Frederick", street: "2060 Yellow Springs Rd.", locality: "Frederick", postalCode: "21702", phone: "3018464623" },
+  { slug: "food-lion-thurmont", source_name: "Food Lion Thurmont", ledger_id: "food_lion_thurmont_hours", source_url: "https://stores.foodlion.com/md/thurmont/231-tippin-dr", entity_id: "https://stores.foodlion.com/#5046567", name: "Food Lion Grocery Store of Thurmont", street: "231 Tippin Dr", locality: "Thurmont", postalCode: "21788", phone: "3012719949" },
+] as const;
+/** Three exact reviewed primary grocery identities, not host-wide enrollment. */
+const FOOD_LION_COHORTS: readonly OfficialHoursCohort[] = FOOD_LION_LOCATIONS.map(location => ({
+  ledger_id: location.ledger_id, source_url: location.source_url, shape: "microdata_primary_store_week",
+  schema_type: "https://schema.org/GroceryStore", entity_ids: { [location.slug]: location.entity_id },
+  selectors: { card: "main#main[itemscope]", name: "#location-name[itemprop='name']", address: "address.Address-content[itemprop='address']", street: ".Address-line1", locality: ".Address-city", region: "[itemprop='addressRegion']", postalCode: "[itemprop='postalCode']", phone: "[itemprop='telephone']", schedule: ".Core-storeHours .js-hours-table" },
+  hero_schedule: ".Hero-hoursTodayRow > .js-hours-today[data-days]", panel_schedule: ".Core-storeToday > .js-hours-today[data-days]",
+  schedule_row: ".c-hours-details > tbody > tr", day: ".c-hours-details-row-day", periods: ".c-hours-details-row-intervals",
+  bindings: [{ slug: location.slug, source_name: location.source_name, identity: { name: location.name, street: location.street, locality: location.locality, region: "MD", postalCode: location.postalCode, phone: location.phone } }],
+}));
+
 /** Reviewed enrollment only. Shared hosts never enroll additional listings. */
 export const MERCHANT_HOURS_COHORTS: readonly OfficialHoursCohort[] = [{
   ledger_id: "common_market_hours",
@@ -38,7 +53,7 @@ export const MERCHANT_HOURS_COHORTS: readonly OfficialHoursCohort[] = [{
     { slug: "common-market-frederick", source_name: "Common Market Co-op (Route 85)", identity: { name: "Common Market", street: "5728 Buckeystown Pike, Unit B1", locality: "Frederick", region: "MD", postalCode: "21704", phone: "3016633416" } },
     { slug: "common-market", source_name: "Common Market (7th Street)", identity: { name: "Common Market", street: "927 W 7th Street", locality: "Frederick", region: "MD", postalCode: "21701", phone: "3016633416" } },
   ],
-}, ...SAFEWAY_COHORTS];
+}, ...SAFEWAY_COHORTS, ...FOOD_LION_COHORTS];
 
 export function merchantHoursCohort(source: MerchantHoursSource) {
   const matches = MERCHANT_HOURS_COHORTS.flatMap((cohort) => cohort.bindings.filter((binding) => binding.slug === source.slug).map((binding) => ({ cohort, binding })));

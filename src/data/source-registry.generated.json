@@ -794,6 +794,69 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "food_lion_crestwood_hours",
+    "name": "Food Lion Crestwood - First-party Grocery Hours",
+    "owner": "Food Lion",
+    "url": "https://stores.foodlion.com/md/frederick/6920-crestwood-blvd",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "food_lion_crestwood_hours",
+      "https://stores.foodlion.com/md/frederick/6920-crestwood-blvd"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "food_lion_thurmont_hours",
+    "name": "Food Lion Thurmont - First-party Grocery Hours",
+    "owner": "Food Lion",
+    "url": "https://stores.foodlion.com/md/thurmont/231-tippin-dr",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "food_lion_thurmont_hours",
+      "https://stores.foodlion.com/md/thurmont/231-tippin-dr"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "food_lion_yellow_springs_hours",
+    "name": "Food Lion Yellow Springs - First-party Grocery Hours",
+    "owner": "Food Lion",
+    "url": "https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd.",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "food_lion_yellow_springs_hours",
+      "https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd."
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "fcc_athletics",
     "name": "Frederick Community College Athletics",
     "owner": "Frederick Community College",

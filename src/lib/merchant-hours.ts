@@ -29,6 +29,9 @@ export const MERCHANT_HOURS_SOURCES = [
   { slug: "common-market-frederick", name: "Common Market Co-op (Route 85)", ledger_id: "common_market_hours", category: "market", url: "https://www.commonmarket.coop/", kind: "weekly" },
   { slug: "common-market", name: "Common Market (7th Street)", ledger_id: "common_market_hours", category: "market", url: "https://www.commonmarket.coop/", kind: "weekly" },
   ...QUALIFIED_HOURS_SOURCES,
+  { slug: "food-lion-crestwood-frederick", name: "Food Lion Crestwood", ledger_id: "food_lion_crestwood_hours", category: "market", url: "https://stores.foodlion.com/md/frederick/6920-crestwood-blvd", kind: "weekly" },
+  { slug: "food-lion-yellow-springs-frederick", name: "Food Lion Yellow Springs", ledger_id: "food_lion_yellow_springs_hours", category: "market", url: "https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd.", kind: "weekly" },
+  { slug: "food-lion-thurmont", name: "Food Lion Thurmont", ledger_id: "food_lion_thurmont_hours", category: "market", url: "https://stores.foodlion.com/md/thurmont/231-tippin-dr", kind: "weekly" },
 ] as const;
 export type MerchantHoursSource = typeof MERCHANT_HOURS_SOURCES[number];
 export type MerchantHoursRecord = {

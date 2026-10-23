@@ -42,6 +42,10 @@ const nativeFixtures: Record<string, string> = {
   "alekos-middletown": "alekos-middletown",
   "common-market-frederick": "common-market", "common-market": "common-market",
   "safeway-middletown": "safeway-middletown", "safeway-walkersville": "safeway-walkersville",
+  // Synthetic Food Lion facts use only the harness clock, never source evidence.
+  "food-lion-crestwood-frederick": "food-lion-crestwood",
+  "food-lion-yellow-springs-frederick": "food-lion-yellow-springs",
+  "food-lion-thurmont": "food-lion-thurmont",
   // These source excerpts use the harness clock only; their actual reviewed
   // observations remain in the separate source-replay evidence.
   "national-museum-civil-war-medicine-frederick": "qualified-museum",

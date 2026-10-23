@@ -2,6 +2,27 @@
  * Keep their public source, license and change records when reusing local bytes.
  * This small module is client-safe; it does not import the History collection. */
 export const CREDITED_LOCAL_PLACE_PHOTOS = {
+  // The exact 223 storefront is visible on the right of this dated row view.
+  // Its current Commons credit and date were checked on October 23; this does
+  // not establish current business operations, opening hours or access.
+  "chappelle-co": {
+    file: "209-225 N. Market St. Frederick MD1.jpg",
+    preferLocal: true,
+    objectPosition: "right",
+    review: {
+      captured_on: "2022-11-18",
+      reviewed_on: "2026-10-23",
+      sha256: "c2aa53508b566d5c377636c22d06a787e350613ab0d28178d6f0ec665081fc8f",
+    },
+    image: {
+      src: "/history-photos/ransom-of-frederick.jpg",
+      alt: "Chappelle & Co's storefront at 223 North Market Street, on the right of the photographed row, in November 2022.",
+      creator: "Acroterion",
+      source_url: "https://commons.wikimedia.org/wiki/File:209-225_N._Market_St._Frederick_MD1.jpg",
+      license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
+      modifications: "November 18, 2022 storefront reference. Existing local rendition stored unchanged; display may resize or crop.",
+    },
+  },
   // One bounded Commons metadata batch and the original rendition bytes were
   // reviewed together on October 22. These are dated establishing views, not
   // evidence of current opening hours, service, access or weather.

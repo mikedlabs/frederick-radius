@@ -42,6 +42,16 @@ export type OfficialHoursCohort = CohortBase & ({
   entity_urls: Readonly<Record<string, string>>;
   closed_representation?: "midnight_equal";
 } | {
+  /** Reviewed primary-store Yext family, independent from the Safeway tabs. */
+  shape: "microdata_primary_store_week";
+  schema_type: string;
+  entity_ids: Readonly<Record<string, string>>;
+  hero_schedule: string;
+  panel_schedule: string;
+  schedule_row: string;
+  day: string;
+  periods: string;
+} | {
   /** Reviewed store disclosure with independently corroborated public week. */
   shape: "microdata_store_week";
   schema_type: string;
@@ -98,12 +108,12 @@ function validateCohort(cohort: OfficialHoursCohort, binding: OfficialHoursCohor
     || new Set(cohort.bindings.map((row) => row.slug)).size !== cohort.bindings.length
     || !cohort.bindings.includes(binding)
     || cohort.bindings.some((row) => !row.slug || !row.source_name || Object.values(row.identity).some((value) => !value))) throw new Error("Invalid reviewed cohort bindings.");
-  if (cohort.shape === "microdata_store_week") {
+  if (cohort.shape === "microdata_store_week" || cohort.shape === "microdata_primary_store_week") {
     const ids = Object.keys(cohort.entity_ids);
     if (cohort.bindings.length !== 1 || ids.length !== 1 || ids[0] !== binding.slug
       || !cohort.entity_ids[binding.slug]?.startsWith(`${url.origin}/#`)
-      || !cohort.toggle_labels.length || new Set(cohort.toggle_labels).size !== cohort.toggle_labels.length
-      || !cohort.toggle_labels.includes(cohort.store_label)) throw new Error("Invalid reviewed store disclosure binding.");
+      || (cohort.shape === "microdata_store_week" && (!cohort.toggle_labels.length || new Set(cohort.toggle_labels).size !== cohort.toggle_labels.length
+      || !cohort.toggle_labels.includes(cohort.store_label)))) throw new Error("Invalid reviewed store disclosure binding.");
   }
   if (cohort.shape === "jsonld_weekly_location_cards") {
     const urls = Object.values(cohort.entity_urls);
@@ -347,8 +357,109 @@ function microdataStoreWeek(document: Document, pageText: string, cohort: Extrac
   return hours;
 }
 
+function microdataPrimaryStoreWeek(document: Document, pageText: string, cohort: Extract<OfficialHoursCohort, { shape: "microdata_primary_store_week" }>, binding: OfficialHoursCohortBinding): Hours {
+  const canonical = [...document.querySelectorAll("link[rel='canonical']")];
+  const cards = [...document.querySelectorAll(cohort.selectors.card)];
+  if (canonical.length !== 1 || canonical[0].getAttribute("href") !== cohort.source_url || cards.length !== 1 || !visible(cards[0])) throw new Error("Missing exact primary store page identity.");
+  const card = cards[0], identity = binding.identity;
+  // The reviewed family has no JSON-LD; new structured claims need review.
+  if (document.querySelector("script[type='application/ld+json']")) throw new Error("Unreviewed additional primary store structured claims.");
+  if (card.getAttribute("itemtype") !== cohort.schema_type || card.getAttribute("itemid") !== cohort.entity_ids[binding.slug]
+    || compact(text(one(card, cohort.selectors.name))) !== compact(identity.name)
+    || !addressMatches(one(card, cohort.selectors.address), identity, cohort.selectors)
+    || phone(text(one(card, cohort.selectors.phone))) !== identity.phone) throw new Error("Mismatched exact primary store identity.");
+  const address = one(card, cohort.selectors.address);
+  if (compact(one(address, "meta[itemprop='streetAddress']").getAttribute("content") ?? "") !== compact(identity.street)) throw new Error("Conflicting primary store street microdata.");
+  const country = [...address.querySelectorAll("[itemprop='addressCountry']")];
+  if (country.length > 1 || country.some(node => text(node) !== "US")) throw new Error("Conflicting primary store country.");
+  const noticeCopy = document.body.cloneNode(true) as HTMLElement;
+  noticeCopy.querySelectorAll("script,style,noscript").forEach(node => node.remove());
+  const noticeText = `${pageText} ${text(noticeCopy)}`;
+  if (/\bclosed\s+(?:on|from|until|through|during|this|every|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|\d)\b/i.test(noticeText)) throw new Error("Unreviewed dated primary store closure.");
+  if (notices(noticeText) || /\b(?:reduced|limited|extended|shortened|revised|changed|updated)\s+(?:(?:store|business)\s+)?hours\b|\bstore\s+(?:is\s+)?clos(?:ed|es|ing|ure)\b/i.test(noticeText)) throw new Error("Unresolved primary store notice or service qualifier.");
+  const qualified = (node: Element) => [...node.attributes].some(attr => /holiday|special|validfrom|validthrough|valid-from|valid-through|seasonal|closure/i.test(attr.name));
+  const qualifiedSchedulePart = (node: Element) => qualified(node) || [...node.attributes].some(attr =>
+    /(?:date|service|pharmacy|deli|pickup|pick-up|delivery|takeout|take-out|kitchen|brunch|admission)/i.test(attr.name)
+    || (/(?:hours|scope|schedule|type)/i.test(attr.name) && /(?:holiday|special|seasonal|closure|service|pharmacy|deli|pickup|pick-up|delivery|takeout|take-out|kitchen|brunch|admission)/i.test(attr.value)));
+  const qualifiedScheduleTree = (node: Element) => [node, ...node.querySelectorAll("*")].some(qualifiedSchedulePart);
+
+  if (qualified(card) || card.querySelector("[itemprop='validFrom'],[itemprop='validThrough'],[itemprop='specialOpeningHoursSpecification'],[itemprop='openingHoursSpecification']")) throw new Error("Unreviewed dated primary store schedule.");
+  const store = one(card, ".Core-storeHours");
+  const toggle = one(card, ".Core-toggleHoursBtn");
+  const labels = [...card.querySelectorAll(".Core-sectionTitle")].filter(node => text(node) === "Store Hours");
+  if (labels.length !== 1 || !visible(labels[0])) throw new Error("Missing or duplicate Store Hours label.");
+  const label = labels[0];
+  if (text(label) !== "Store Hours" || text(toggle) !== "Toggle store hours" || toggle.getAttribute("data-hours") !== "js-store-hours" || !store.classList.contains("js-store-hours") || [store, toggle, label].some(qualified)) throw new Error("Unreviewed primary Store Hours disclosure.");
+  const outside = document.body.cloneNode(true) as HTMLElement;
+  outside.querySelectorAll("script,style,noscript,.Core-storeHours,.Hero-hoursTodayRow,.Core-storeToday").forEach(node => node.remove());
+  [...outside.querySelectorAll(".Core-sectionTitle")].filter(node => text(node) === "Store Hours").forEach(node => node.remove());
+  if (/\b(?:store|grocery|business|opening|holiday|special|seasonal|pharmacy|deli)\s+hours\b/i.test(text(outside))
+    || new RegExp(`\\bhours\\s*:?\\s*(?:${CLOCK}|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)`, "i").test(text(outside))) throw new Error("Unreviewed unbound primary store or service timetable.");
+  const table = one(card, cohort.selectors.schedule);
+  if (!store.contains(table) || card.querySelectorAll(".js-hours-table").length !== 1) throw new Error("Extra or unbound primary store schedule.");
+  if (qualifiedScheduleTree(table)) throw new Error("Unreviewed primary store table date or service qualifier.");
+  const rows = [...table.querySelectorAll(cohort.schedule_row)], hours: Hours = {};
+  if (rows.length !== 7 || rows.some(row => !visible(row))) throw new Error("Incomplete visible primary store week.");
+  const short = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+  for (const row of rows) {
+    if (qualifiedScheduleTree(row)) throw new Error("Unreviewed primary store weekday date or service qualifier.");
+    const index = FULL_DAYS.indexOf(text(one(row, cohort.day)));
+    const range = text(one(row, cohort.periods)).match(new RegExp(`^${CLOCK}\\s*[-–—]\\s*${CLOCK}$`, "i"));
+    if (index < 0 || hours[WEEKDAYS[index]] || !range || row.getAttribute("data-day-of-week-start-index") !== String((index + 1) % 7) || row.getAttribute("data-day-of-week-end-index") !== String((index + 1) % 7)) throw new Error("Incomplete or duplicate primary store weekday.");
+    const open = clock(range[1]), close = clock(range[2]);
+    if (open >= close || row.getAttribute("itemprop") !== "openingHours" || row.getAttribute("content") !== `${short[index]} ${open}-${close}`) throw new Error("Conflicting primary store visible and microdata hours.");
+    hours[WEEKDAYS[index]] = [{ open, close }];
+  }
+  const hero = one(card, cohort.hero_schedule), panel = one(card, cohort.panel_schedule);
+  for (const schedule of [table, hero, panel]) {
+    if (qualified(schedule) || (schedule.parentElement && qualified(schedule.parentElement))) throw new Error("Unreviewed primary store date qualifier.");
+    const machine = machineWeek(schedule.getAttribute("data-days"));
+    for (const day of WEEKDAYS) if (JSON.stringify(machine[day]) !== JSON.stringify(hours[day])) throw new Error("Conflicting primary store schedule copies.");
+  }
+  // Both repeated today widgets contain their own full seven-day microdata.
+  // A changed visible or structured copy must not hide behind a matching array.
+  for (const widget of [hero, panel]) {
+    const repeated = [...widget.querySelectorAll("[itemprop='openingHours']")], seen = new Set<number>();
+    if (repeated.length !== 7) throw new Error("Incomplete repeated primary store week.");
+    for (const row of repeated) {
+      const claim = (row.getAttribute("content") ?? "").match(/^(Mo|Tu|We|Th|Fr|Sa|Su) (\d{2}:\d{2})-(\d{2}:\d{2})$/);
+      const index = claim ? short.indexOf(claim[1]) : -1;
+      const range = text(row).match(new RegExp(`^${CLOCK}\\s*[-–—]\\s*${CLOCK}$`, "i"));
+      if (index < 0 || seen.has(index) || !range || !visible(row) || qualifiedScheduleTree(row)
+        || claim![2] !== hours[WEEKDAYS[index]]![0].open || claim![3] !== hours[WEEKDAYS[index]]![0].close
+        || clock(range[1]) !== claim![2] || clock(range[2]) !== claim![3]) throw new Error("Conflicting repeated primary store hours.");
+      seen.add(index);
+    }
+  }
+  const configs = [...table.querySelectorAll("script.js-hours-config[type='application/json']")];
+  let config: Record<string, unknown>;
+  try { config = JSON.parse(configs[0]?.textContent ?? ""); } catch { throw new Error("Missing primary store hours configuration."); }
+  // These known controls only select grouping, ordering or decoration. They
+  // cannot change the required full visible week or any corroborating clock.
+  const booleanPresentationKeys = ["collapseDays", "disableOpenUntil", "disableTodayFirst", "hideSchema", "highlightToday", "showOpenToday", "twentyFourHourClock"];
+  const nullableBoolean = (value: unknown) => value == null || typeof value === "boolean";
+  const background = config?.highlightTodayBackground;
+  const start = config?.weekStartsOn;
+  // Mapping/format/message overrides can relabel weekdays or replace factual
+  // time/status wording, so they retain their reviewed null state.
+  const semanticNullKeys = ["dayOfWeekMap", "open24HoursMessage", "timeFormatString", "wholeWeekMessage"];
+  const knownKeys = [...booleanPresentationKeys, ...semanticNullKeys, "highlightTodayBackground", "weekStartsOn", "hours", "utcOffsets"];
+  if (configs.length !== 1 || !config || typeof config !== "object" || Array.isArray(config)
+    || booleanPresentationKeys.some(key => !nullableBoolean(config[key]))
+    || !(background == null || typeof background === "boolean" || (typeof background === "string" && background.length > 0 && background.length <= 120 && !/[\u0000-\u001f]/.test(background)))
+    || !(start == null || (typeof start === "number" && Number.isInteger(start) && start >= 0 && start <= 6))
+    || semanticNullKeys.some(key => config[key] !== null)
+    || Object.keys(config).some(key => !knownKeys.includes(key))) throw new Error("Unreviewed primary store configuration qualifier.");
+  const configured = machineWeek(JSON.stringify(config.hours));
+  for (const day of WEEKDAYS) if (JSON.stringify(configured[day]) !== JSON.stringify(hours[day])) throw new Error("Conflicting primary store configuration hours.");
+  // Corporate gift-card support and nearby teasers are not grocery timetables.
+  // Any additional structured store/service week remains blocking.
+  if ([...card.querySelectorAll("[itemprop='openingHours']")].some(node => ![table, hero, panel].some(scope => scope.contains(node)))) throw new Error("Unreviewed extra primary store or service schedule.");
+  return hours;
+}
+
 /** One already bounded source receipt, separate exact listing facts. No I/O. */
 export function parseOfficialHoursCohort(document: Document, pageText: string, cohort: OfficialHoursCohort, binding: OfficialHoursCohortBinding): Hours {
   validateCohort(cohort, binding);
-  return cohort.shape === "shared_daily_contact_card" ? sharedDaily(document, pageText, cohort) : cohort.shape === "microdata_store_week" ? microdataStoreWeek(document, pageText, cohort, binding) : jsonldWeek(document, pageText, cohort, binding);
+  return cohort.shape === "shared_daily_contact_card" ? sharedDaily(document, pageText, cohort) : cohort.shape === "microdata_store_week" ? microdataStoreWeek(document, pageText, cohort, binding) : cohort.shape === "microdata_primary_store_week" ? microdataPrimaryStoreWeek(document, pageText, cohort, binding) : jsonldWeek(document, pageText, cohort, binding);
 }

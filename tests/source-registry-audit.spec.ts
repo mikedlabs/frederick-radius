@@ -66,6 +66,23 @@ describe("source registry audit", () => {
     }
   });
 
+  it("binds each Food Lion grocery to its exact daily native owner without claiming publication", () => {
+    const registry = buildSourceRegistryArtifact(readFileSync(resolve("data/sources.yaml"), "utf8"));
+    const bindings = [
+      { slug: "food-lion-crestwood-frederick", name: "Food Lion Crestwood", ledger_id: "food_lion_crestwood_hours", category: "market", url: "https://stores.foodlion.com/md/frederick/6920-crestwood-blvd", kind: "weekly" },
+      { slug: "food-lion-yellow-springs-frederick", name: "Food Lion Yellow Springs", ledger_id: "food_lion_yellow_springs_hours", category: "market", url: "https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd.", kind: "weekly" },
+      { slug: "food-lion-thurmont", name: "Food Lion Thurmont", ledger_id: "food_lion_thurmont_hours", category: "market", url: "https://stores.foodlion.com/md/thurmont/231-tippin-dr", kind: "weekly" },
+    ];
+    for (const expected of bindings) {
+      const binding = MERCHANT_HOURS_SOURCES.find(source => source.slug === expected.slug);
+      expect(binding).toEqual(expected);
+      const owners = registry.filter(row => row.evidenceAliases.includes(expected.url));
+      expect(owners).toHaveLength(1);
+      expect(owners[0]).toMatchObject({ id: expected.ledger_id, url: expected.url, collection: "workflow", status: "active", refreshCadence: "daily", snapshotCadence: "daily", manifestLastSuccess: null, schemaFile: "src/lib/merchant-hours.ts", transformFile: "scripts/lib/merchant-official-hours.ts", evidenceAliases: [expected.ledger_id, expected.url].sort(), publicationApplicability: "required" });
+      expect("max_response_bytes" in binding!).toBe(false);
+    }
+  });
+
   it("fails closed on unsupported snapshot and change cadences", () => {
     const rows = manifestRows();
     rows[0] = {
