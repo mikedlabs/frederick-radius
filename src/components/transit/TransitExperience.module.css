@@ -10,6 +10,7 @@
 .stopFinder { min-width: 0; padding: 1.25rem; border: 1px solid var(--app-border); border-radius: 1.5rem; background: var(--app-bg-elevated-solid); box-shadow: 0 12px 36px -26px color-mix(in srgb, var(--app-ink) 24%, transparent); }
 .finderHeader { display: flex; align-items: flex-start; gap: .875rem; margin-bottom: 1rem; }
 .finderIcon { display: grid; place-items: center; flex-shrink: 0; width: 2.75rem; height: 2.75rem; border-radius: .875rem; background: var(--app-brand-tint-6); color: var(--app-link); }
+.finderHeader h2, .liveNetwork { scroll-margin-block-start: calc(var(--app-topbar-h, 56px) + env(safe-area-inset-top, 0px) + 8px); }
 .finderHeader h2 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -.04em; line-height: 1.2; }
 .finderHeader p { margin-top: .375rem; font-size: .875rem; line-height: 1.5; color: var(--app-ink-2); }
 .searchArea { min-width: 0; }

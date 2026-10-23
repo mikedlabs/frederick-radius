@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 
 const STOP = {
   id: "162950",
@@ -8,6 +8,18 @@ const STOP = {
 };
 const ROUTE_ID = "6154";
 const VEHICLE_ID = "bus-15";
+
+async function expectHeadingClearOfHeader(heading: Locator) {
+  await expect.poll(() => heading.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    const header = document.querySelector("[data-app-topbar-row]")?.closest("header");
+    if (!header || rect.width <= 0 || rect.height <= 0) return false;
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return rect.top >= header.getBoundingClientRect().bottom
+      && rect.bottom <= window.innerHeight
+      && (hit === node || (hit !== null && node.contains(hit)));
+  })).toBe(true);
+}
 
 test.use({
   viewport: { width: 390, height: 844 },
@@ -130,6 +142,9 @@ test("a rider can find, save, and track the exact inbound bus without mobile ove
   // Selecting a search result reveals departures first and returns focus from
   // the now-collapsed search to its stable rider heading.
   await expect(commandCenter.locator("#my-stop-heading")).toBeFocused();
+  // Focus must remain visible beneath the real sticky header, without a
+  // helper scroll that would hide a broken selection handoff.
+  await expectHeadingClearOfHeader(commandCenter.locator("#my-stop-heading"));
   await expect(commandCenter.getByRole("searchbox", { name: "Search bus stops by name" })).toBeHidden();
   const changeStop = commandCenter.locator("summary").filter({ hasText: "Change stop" });
   await expect(changeStop).toBeVisible();
@@ -229,6 +244,7 @@ test("a rider can find, save, and track the exact inbound bus without mobile ove
       stopName: STOP.name,
     });
   await expect(page.locator("#live-network-heading")).toBeInViewport();
+  await expectHeadingClearOfHeader(page.locator("#live-network-heading"));
   await expect(page.getByLabel("Bus route")).toHaveValue(ROUTE_ID);
   await expect(
     page.getByRole("status").filter({
