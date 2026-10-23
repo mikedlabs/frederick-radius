@@ -150,6 +150,7 @@
     "steward:holdback": "node scripts/steward-holdback.mjs",
     "refresh:official-hours": "tsx --tsconfig tsconfig.json scripts/refresh-official-hours.ts",
     "review:official-hours-batch": "tsx --tsconfig tsconfig.json scripts/review-official-hours-batch.ts",
+    "stage:official-listing-hours": "tsx --tsconfig tsconfig.json scripts/stage-official-listing-hours.ts",
     "test:transit:geometry": "vitest run --config vitest.transit-geometry.config.ts"
   },
   "dependencies": {

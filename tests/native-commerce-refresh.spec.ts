@@ -1,17 +1,20 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { classifyOfficialCommerceLinks } from "../scripts/lib/official-commerce-links";
 import { mergeCommerceRefresh } from "../scripts/lib/official-commerce-refresh";
 import {
-  commerceSemanticValue, fetchNativeCommercePage, nativeCommerceUrl, parseNativeCommerceOptions,
-  runNativeCommerceRefresh, selectNativeCommerceRoster, type NativeCommercePlace,
+  commerceSemanticValue, createNativeCommerceEvidenceWriter, fetchNativeCommercePage, nativeCommerceUrl, parseNativeCommerceOptions,
+  runNativeCommerceRefresh, selectNativeCommerceRoster, type NativeCommerceEvidence, type NativeCommercePlace,
 } from "../scripts/lib/native-commerce-refresh";
 import { main } from "../scripts/refresh-official-commerce-links";
+import { intakeOfficialListingEvidence } from "../scripts/lib/official-listing-intake";
 import { resolveCommerceLinks, selectCardCommerceActions } from "@/lib/commerce/links";
 
 const NOW = new Date("2026-10-20T12:00:00.000Z");
+const REVISION = "a".repeat(40);
 const place = (slug = "declared-coffee"): NativeCommercePlace => ({ slug, name: "Declared Coffee", category: "coffee", website: "https://declaredcoffee.com/", postal_code: "21701" });
 const html = (body = '<a href="/menu">View menu</a>') => new Response(body, { headers: { "content-type": "text/html; charset=utf-8" } });
 const options = { limit: 20, followPages: 0 as const, plan: false };
@@ -128,6 +131,143 @@ describe("native free HTTP budget", () => {
   });
 });
 
+describe("private evidence from the existing native GETs", () => {
+  it("preserves an exact complete no-anchor response before retaining the commerce failure", async () => {
+    const parent = mkdtempSync(join(tmpdir(), "radius-commerce-evidence-"));
+    const directory = join(parent, "originals");
+    const body = '<html><script type="application/ld+json">{"name":"Declared Café"}</script></html>';
+    const original = Buffer.from(body);
+    const intake = vi.fn<(evidence: NativeCommerceEvidence) => unknown>(() => ({ schema_version: 1, status: "held", reason_codes: ["review_required"] }));
+    const writer = createNativeCommerceEvidenceWriter(directory, REVISION, intake);
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => html(body));
+    const p = { ...place(), address: "1 Market Street", city: "Frederick", state: "MD", phone: "3015550100", google_photo_url: "must not enter canonical identity" };
+    try {
+      const result = await run({ places: [p], sourceRevision: REVISION, onEvidence: writer.capture, fetchImpl: fetch });
+      writer.finish(result);
+      expect(result).toMatchObject({ requests: 1, checked_count: 0, failed_count: 1, evidence_capture_failed: false });
+      expect(result.results[0].reason).toContain("No static source anchors");
+      expect(result.results[0].pages_read).toBe(1);
+      expect(result.records[p.slug]).toBeUndefined();
+      expect(fetch).toHaveBeenCalledTimes(1);
+      const index = JSON.parse(readFileSync(join(directory, "index.json"), "utf8"));
+      expect(index).toMatchObject({ source_revision: REVISION, collection_complete: true, selected: [p.slug] });
+      expect(index.records).toHaveLength(1);
+      const receipt = index.records[0];
+      expect(receipt).toMatchObject({ source_url: p.website, observed_at: NOW.toISOString(), source_sha256: createHash("sha256").update(original).digest("hex"), bytes: original.byteLength,
+        content_type: "text/html; charset=utf-8", status: 200, source_revision: REVISION,
+        identity: { slug: p.slug, name: p.name, address: p.address, city: p.city, state: p.state, phone: p.phone } });
+      expect(receipt.identity).not.toHaveProperty("google_photo_url");
+      expect(receipt).not.toHaveProperty("html");
+      expect(readFileSync(join(directory, receipt.evidence_file))).toEqual(original);
+      expect(JSON.parse(readFileSync(join(directory, receipt.intake_file), "utf8"))).toMatchObject({ status: "held" });
+      expect(intake).toHaveBeenCalledTimes(1);
+      expect(intake.mock.calls[0][0]).toMatchObject({ html: body, source_sha256: receipt.source_sha256 });
+      expect(JSON.stringify(result)).not.toContain(body);
+      expect(statSync(directory).mode & 0o777).toBe(0o700);
+      for (const file of readdirSync(directory)) expect(statSync(join(directory, file)).mode & 0o777).toBe(0o600);
+      expect(() => createNativeCommerceEvidenceWriter(directory, REVISION)).toThrow();
+      expect(readFileSync(join(directory, receipt.evidence_file))).toEqual(original);
+    } finally { rmSync(parent, { recursive: true, force: true }); }
+  });
+  it("retains successful home evidence and its own observation when the follow fails", async () => {
+    const captures: Parameters<NonNullable<Parameters<typeof runNativeCommerceRefresh>[0]["onEvidence"]>>[0][] = [];
+    const old = { name: place().name, description: "Keep approved facts." };
+    const observed = new Date("2026-10-20T12:00:09.000Z");
+    const fetch = vi.fn<typeof globalThis.fetch>(async (url) => String(url).endsWith("/dining") ? new Response("failed", { status: 503 }) : html('<a href="/dining">Dining</a><a href="/menu">Menu</a>'));
+    const result = await run({ existing: { [place().slug]: old }, options: { ...options, followPages: 1 }, sourceRevision: REVISION,
+      observationClock: () => observed, onEvidence: (receipt) => { captures.push(receipt); }, fetchImpl: fetch });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result.requests).toBe(2); expect(result.failed_count).toBe(1);
+    expect(result.records[place().slug]).toBe(old);
+    expect(result.results[0]).toMatchObject({ source_url: place().website, failed_url: "https://declaredcoffee.com/dining" });
+    expect(captures).toHaveLength(1);
+    expect(captures[0]).toMatchObject({ source_url: place().website, observed_at: observed.toISOString(), source_revision: REVISION });
+    expect(Object.isFrozen(captures[0])).toBe(true); expect(Object.isFrozen(captures[0].identity)).toBe(true);
+  });
+  it("keeps a complete original even if the decoded UTF8 cannot reproduce its byte hash", async () => {
+    const parent = mkdtempSync(join(tmpdir(), "radius-commerce-byte-evidence-"));
+    const directory = join(parent, "originals");
+    const original = Buffer.concat([Buffer.from("<html>"), Buffer.from([0xff]), Buffer.from("</html>")]);
+    const writer = createNativeCommerceEvidenceWriter(directory, REVISION);
+    try {
+      const result = await run({ sourceRevision: REVISION, onEvidence: writer.capture,
+        fetchImpl: vi.fn<typeof globalThis.fetch>(async () => new Response(original, { headers: { "content-type": "text/html" } })) });
+      writer.finish(result);
+      const index = JSON.parse(readFileSync(join(directory, "index.json"), "utf8"));
+      const receipt = index.records[0];
+      const saved = readFileSync(join(directory, receipt.evidence_file));
+      expect(saved).toEqual(original);
+      expect(receipt.source_sha256).toBe(createHash("sha256").update(original).digest("hex"));
+      expect(createHash("sha256").update(saved.toString("utf8")).digest("hex")).not.toBe(receipt.source_sha256);
+      expect(result.records[place().slug]).toBeUndefined();
+    } finally { rmSync(parent, { recursive: true, force: true }); }
+  });
+  it("holds an exceptional listing extractor without blocking valid commerce or losing the original", async () => {
+    const parent = mkdtempSync(join(tmpdir(), "radius-commerce-intake-failure-"));
+    const directory = join(parent, "originals");
+    const original = '<a href="/menu">Menu</a>';
+    const writer = createNativeCommerceEvidenceWriter(directory, REVISION, () => { throw new Error("extractor failed"); });
+    try {
+      const result = await run({ sourceRevision: REVISION, onEvidence: writer.capture, fetchImpl: vi.fn<typeof globalThis.fetch>(async () => html(original)) });
+      writer.finish(result);
+      expect(result).toMatchObject({ evidence_capture_failed: false, requests: 1, checked_count: 1, failed_count: 0 });
+      const index = JSON.parse(readFileSync(join(directory, "index.json"), "utf8"));
+      expect(index.collection_complete).toBe(true);
+      expect(index.records).toHaveLength(1);
+      expect(readFileSync(join(directory, index.records[0].evidence_file), "utf8")).toBe(original);
+      const held = JSON.parse(readFileSync(join(directory, index.records[0].intake_file), "utf8"));
+      expect(held).toMatchObject({ status: "held", reasons: ["intake_exception"], candidates: {} });
+      expect(result.records[place().slug].commerce_links?.[0]).toMatchObject({ type: "menu", url: "https://declaredcoffee.com/menu" });
+      expect(writer.summary().held_candidates).toEqual([held]);
+      expect(JSON.stringify(writer.summary())).not.toContain(original);
+    } finally { rmSync(parent, { recursive: true, force: true }); }
+  });
+  it("keeps real commerce usable when the listing intake has no structured identity or hours", async () => {
+    const parent = mkdtempSync(join(tmpdir(), "radius-commerce-held-intake-"));
+    const directory = join(parent, "originals");
+    const writer = createNativeCommerceEvidenceWriter(directory, REVISION, (receipt) => intakeOfficialListingEvidence(receipt, NOW));
+    try {
+      const result = await run({ sourceRevision: REVISION, onEvidence: writer.capture,
+        fetchImpl: vi.fn<typeof globalThis.fetch>(async () => html('<a href="/menu">View menu</a><p>Call us for current hours.</p>')) });
+      writer.finish(result);
+      expect(result).toMatchObject({ checked_count: 1, failed_count: 0, requests: 1, evidence_capture_failed: false });
+      expect(result.records[place().slug].commerce_links?.[0].url).toBe("https://declaredcoffee.com/menu");
+      expect(writer.summary().held_candidates[0]).toMatchObject({ status: "held", candidates: {} });
+      expect(result.records[place().slug]).not.toHaveProperty("hours");
+      expect(result.records[place().slug]).not.toHaveProperty("phone");
+    } finally { rmSync(parent, { recursive: true, force: true }); }
+  });
+  it("holds only the source whose original evidence sink fails and continues unrelated records", async () => {
+    const old = { description: "Keep approved facts.", commerce_source: { url: place().website!, checkedAt: "2026-08-01T00:00:00Z" } };
+    const capture = vi.fn((evidence: NativeCommerceEvidence) => { if (evidence.identity.slug === "a-bad") throw new Error("unavailable original sink"); });
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => html());
+    const result = await run({ places: [place("a-bad"), place("b-good"), place("c-tail")], existing: { "a-bad": old },
+      sourceRevision: REVISION, onEvidence: capture, fetchImpl: fetch });
+    expect(result).toMatchObject({ evidence_capture_failed: true, requests: 3, checked_count: 2, failed_count: 1 });
+    expect(fetch).toHaveBeenCalledTimes(3); expect(capture).toHaveBeenCalledTimes(3);
+    expect(result.records["a-bad"]).toBe(old);
+    expect(result.results.find((row) => row.slug === "a-bad")?.reason).toContain("this source is held");
+    for (const slug of ["b-good", "c-tail"]) expect(result.records[slug].commerce_links?.[0].url).toBe("https://declaredcoffee.com/menu");
+  });
+  it("does not retain a failed status or a partial oversized response as complete evidence", async () => {
+    const capture = vi.fn();
+    for (const response of [new Response("bad", { status: 503 }), html("x".repeat(524289))]) {
+      const result = await run({ sourceRevision: REVISION, onEvidence: capture, fetchImpl: vi.fn<typeof globalThis.fetch>(async () => response) });
+      expect(result.requests).toBe(1); expect(result.failed_count).toBe(1);
+    }
+    expect(capture).not.toHaveBeenCalled();
+  });
+  it("uploads private originals separately without adding them to the public publisher allowlist", () => {
+    const workflow = readFileSync(".github/workflows/refresh-commerce-links.yml", "utf8");
+    expect(workflow).toContain("NATIVE_COMMERCE_EVIDENCE_DIR: ${{ runner.temp }}/native-commerce-evidence");
+    expect(workflow).toContain("name: official-commerce-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}");
+    expect(workflow).toContain("path: ${{ runner.temp }}/native-commerce-evidence");
+    const publishing = workflow.slice(workflow.indexOf("      - name: Stage exact commerce-link output"));
+    expect(publishing).not.toContain("native-commerce-evidence");
+    expect(workflow).toContain("--native-daily --limit=20 --max-follow=1");
+  });
+});
+
 describe("daily records and review handoff", () => {
   it.each([
     { name: "Thai Meric Eatery & Bar", slug: "thai-meric-eatery-bar-frederick", website: "https://www.thaimeric.com/", category: "restaurant", html: '<a href="/menu/khao-soi">Khao Soi</a><a href="/menu">Menu</a><a href="/menu/pad-thai">Pad Thai</a>', expected: "https://www.thaimeric.com/menu" },
@@ -144,12 +284,15 @@ describe("daily records and review handoff", () => {
     const p = { ...place("tempo-di-pasta"), name: "Tempo Di Pasta", category: "restaurant", website: "https://www.tempodipasta.com/" };
     const old = { name: p.name, description: "Previously reviewed prose.", source: { url: p.website, fetchedAt: "2026-08-01T00:00:00Z" }, commerce_source: { url: p.website, checkedAt: "2026-08-01T00:00:00Z" }, commerce_links: [{ type: "menu" as const, url: "https://www.tempodipasta.com/_files/ugd/accepted-menu.pdf", anchor_text: "Menu", source_url: p.website }] };
     const before = JSON.stringify(old);
-    const result = await run({ places: [p], existing: { [p.slug]: old }, fetchImpl: vi.fn<typeof globalThis.fetch>(async () => html('<a href="/menu">Menu</a>')) });
+    const capture = vi.fn();
+    const result = await run({ places: [p], existing: { [p.slug]: old }, onEvidence: capture, fetchImpl: vi.fn<typeof globalThis.fetch>(async () => html('<a href="/menu">Menu</a>')) });
     expect(result.records[p.slug]).toBe(old); expect(JSON.stringify(result.records[p.slug])).toBe(before);
     expect(result).toMatchObject({ review_required: true, safe_hold_count: 1, checked_count: 1, failed_count: 0 });
     expect(result.results[0]).toMatchObject({ safe_hold: "prior_destinations_not_reobserved", missing_prior_links: [{ type: "menu", url: old.commerce_links[0].url }], candidate: { name: p.name, commerce_source: { url: p.website, checkedAt: NOW.toISOString() }, commerce_links: [{ type: "menu", url: "https://www.tempodipasta.com/menu", source_url: p.website }] } });
     expect(result.results[0].candidate).not.toHaveProperty("description");
     expect(result.results[0].candidate).not.toHaveProperty("source");
+    expect(capture).toHaveBeenCalledTimes(1);
+    expect(capture.mock.calls[0][0]).toMatchObject({ source_url: p.website, observed_at: NOW.toISOString(), html: '<a href="/menu">Menu</a>' });
   });
   it("renews a commerce observation only when every sanitized prior destination was reobserved", async () => {
     const p = place(); const url = "https://declaredcoffee.com/files/menu.pdf";
@@ -211,6 +354,7 @@ describe("daily records and review handoff", () => {
     const output = join(dir, "github-output");
     const receiptPath = join(dir, "private-native-receipt.json");
     vi.stubEnv("NATIVE_COMMERCE_RECEIPT_PATH", receiptPath);
+    vi.stubEnv("NATIVE_COMMERCE_EVIDENCE_DIR", join(dir, "originals"));
     vi.stubEnv("GITHUB_OUTPUT", output); vi.stubEnv("GITHUB_STEP_SUMMARY", join(dir, "summary"));
     const fetch = vi.fn(); vi.stubGlobal("fetch", fetch); vi.spyOn(console, "log").mockImplementation(() => {});
     const before = readFileSync("src/data/business-info.json", "utf8");
@@ -227,6 +371,7 @@ describe("daily records and review handoff", () => {
       expect(receipt).toMatchObject({ native_daily: true, plan: true, requests: 0, checked_count: 0, failed_count: 0, results: [] });
       expect(receipt).not.toHaveProperty("records");
       expect(readFileSync("src/data/business-info.json", "utf8")).toBe(before);
+      expect(readdirSync(dir)).not.toContain("originals");
       expect(fetch).not.toHaveBeenCalled();
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });

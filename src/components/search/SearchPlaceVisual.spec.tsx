@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlaceCardPhotoSource } from "@/lib/place-card-photo";
 import { freeSearchPlaceVisual } from "@/lib/search/place-visual";
+import { wikimediaUrl } from "@/lib/integrations/wikimedia";
 import Link from "next/link";
 
 const pendingLoads = vi.hoisted(() => new Map<string, ImgHTMLAttributes<HTMLImageElement>["onLoad"]>());
@@ -122,17 +123,22 @@ describe("Find source identity and failure recovery", () => {
   });
 
   it("uses a single sharper width of the same free Commons source without changing its record", async () => {
-    const remote = freeSearchPlaceVisual({ slug: "francis-scott-key-grave-and-monument" })!;
+    // This rendering contract is independent of whether any real destination
+    // later gains a preferred, bundled photograph.
+    const photo = { file: "Controlled remote search fixture.jpg", alt: "A controlled remote search venue.",
+      author: "Controlled search photographer", license: "CC BY-SA 4.0", verified: true,
+      source_url: "https://commons.wikimedia.org/wiki/File:Controlled_remote_search_fixture.jpg" };
+    const remote: PlaceCardPhotoSource = { kind: "curated", src: wikimediaUrl(photo.file, 256), alt: photo.alt, photo };
     const original = remote.src;
-    await renderLead(remote, "Francis Scott Key Grave and Monument");
+    await renderLead(remote, "Controlled search venue");
     expect(host.querySelectorAll("img")).toHaveLength(1);
     const src = host.querySelector("img")!.getAttribute("src")!;
     expect(new URL(src).searchParams.get("width")).toBe("720");
     expect(new URL(src).pathname).toBe(new URL(original).pathname);
     expect(remote.src).toBe(original);
     await load(host.querySelector("img")!);
-    expect(host.textContent).toContain("Engineerchange");
-    expect(host.querySelector('a[href="https://commons.wikimedia.org/wiki/File:Francis_Scott_Key_Monument_(March_2024).jpg"]')).not.toBeNull();
+    expect(host.textContent).toContain("Controlled search photographer");
+    expect(host.querySelector(`a[href="${photo.source_url}"]`)).not.toBeNull();
     expect(host.querySelector('a[href="https://creativecommons.org/licenses/by-sa/4.0"]')).not.toBeNull();
   });
 

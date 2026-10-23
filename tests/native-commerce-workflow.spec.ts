@@ -39,12 +39,19 @@ describe("bounded daily commerce delivery", () => {
   });
   it("keeps private observation diagnostics outside the public publisher artifact", () => {
     const uploads = workflow.jobs.refresh.steps.filter((step: { uses?: string }) => step.uses?.startsWith("actions/upload-artifact@"));
-    expect(uploads).toHaveLength(2);
+    expect(uploads).toHaveLength(3);
     const diagnostics = uploads.find((step: { with?: { name?: string } }) => step.with?.name?.startsWith("official-commerce-observations-"));
     expect(diagnostics.with.path).toBe("${{ runner.temp }}/native-commerce-receipt.json");
     expect(diagnostics.with["retention-days"]).toBe(30);
+    const originals = uploads.find((step: { with?: { name?: string } }) => step.with?.name?.startsWith("official-commerce-source-evidence-"));
+    expect(originals.with.path).toBe("${{ runner.temp }}/native-commerce-evidence");
+    expect(originals.with["retention-days"]).toBe(7);
+    expect(originals.with["if-no-files-found"]).toBe("error");
     expect(workflow.jobs.publish.with.artifact).toBe("${{ needs.refresh.outputs.artifact_name }}");
     expect(workflow.jobs.publish.with.allowed_paths).not.toContain("receipt");
+    expect(workflow.jobs.publish.with.allowed_paths).not.toMatch(/evidence|\.html|intake/);
+    const publicOutput = uploads.find((step: { name?: string }) => step.name === "Upload exact commerce-link output");
+    expect(publicOutput.with.path).not.toMatch(/native-commerce|\.html|held-intake/);
   });
   it("marks a fully unreadable selected batch as failure without penalizing a fresh no-op cohort", () => {
     const step = workflow.jobs.refresh.steps.find((s: { name?: string }) => s.name === "Report a completely unreadable native batch");

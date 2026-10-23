@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:9339eaf3649521015b5c2feb8ad75cbd00eab8058558038102a7037fc5959950",
+  "data_version": "sha256:817f63f280e810973c639ae744d04e8631f27d288c2228db0f8fde53df51c72e",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-22T20:21:07.562Z",
+      "promoted_at": "2026-10-23T00:08:51.185Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -174,15 +174,63 @@
         },
         {
           "path": "src/lib/integrations/wikimedia.ts",
-          "sha256": "e55e54e8016cff770dad27b5b439f594d574138e7bf0151644e8c340d36cfb7e",
+          "sha256": "2ceceb61279695f017a9bedc5f52100f30ce07ed9f51f85c7d0f7cf1e68a39c5",
           "records": null,
-          "bytes": 11748
+          "bytes": 10726
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
-          "sha256": "781fc904fde8a18dc71848c29da916d371e603493d3a58260fe8abdb2d616c45",
+          "sha256": "aa0ab3b4f059a3d79329d8a95584058bce8649952f646043149eadce9c3ff4fb",
           "records": null,
-          "bytes": 11748
+          "bytes": 18958
+        },
+        {
+          "path": "public/place-photos/frederick-marc-station-2015.jpg",
+          "sha256": "bbf2d77adbcb5ddb7049661f77582806b9159469da7b341231afa88f5bddeca6",
+          "records": null,
+          "bytes": 526603
+        },
+        {
+          "path": "public/place-photos/heritage-frederick-exterior-2009.jpg",
+          "sha256": "e78293fb6ad0966b1a6ff80fd2716ce81d51a73be132d4bae5d29e2a4b10321c",
+          "records": null,
+          "bytes": 383963
+        },
+        {
+          "path": "public/place-photos/thurmont-square-park-2012.jpg",
+          "sha256": "600544504046f04b67ae20f2a6078d7bb17cf3947f4c06610397a6a30696b4fe",
+          "records": null,
+          "bytes": 330516
+        },
+        {
+          "path": "public/place-photos/heritage-farm-park-harris-farmhouse-2010.jpg",
+          "sha256": "420a43367dc690e4fc320149b342ebf45fa969ef5e9211d94e3d8dfdb0924a71",
+          "records": null,
+          "bytes": 495793
+        },
+        {
+          "path": "public/place-photos/sabor-de-cuba-entrance-2018.jpg",
+          "sha256": "fc0d9af140bc841b50961d89aadb46cbdf1c037ec46df625bdadda3ca180d114",
+          "records": null,
+          "bytes": 752989
+        },
+        {
+          "path": "public/place-photos/francis-scott-key-monument-2024.jpg",
+          "sha256": "138b07aebb5e16aca7ccf428c84b70c1475a874fc7ed882363b0231c4a3f7f82",
+          "records": null,
+          "bytes": 348832
+        },
+        {
+          "path": "public/place-photos/rose-hill-manor-exterior-2019.jpg",
+          "sha256": "34f8b85edc496cdfcd765968c639d5c3a03b175127ff0db582b0da1943f09089",
+          "records": null,
+          "bytes": 286166
+        },
+        {
+          "path": "public/place-photos/utica-covered-bridge-2022.jpg",
+          "sha256": "b794b20d7cf3444786ebe4bdcaf451b9b9ef6608975617035966eee892b2c0a1",
+          "records": null,
+          "bytes": 463387
         },
         {
           "path": "public/place-photos/civil-war-medicine-frontage.jpg",

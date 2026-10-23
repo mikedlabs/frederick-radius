@@ -11,6 +11,15 @@ import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos"
 
 const actions = vi.hoisted(() => ({ openSheet: vi.fn(), save: vi.fn() }));
 const imageLoads = vi.hoisted(() => new Map<string, ImgHTMLAttributes<HTMLImageElement>["onLoad"]>());
+vi.mock("@/lib/integrations/wikimedia", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/integrations/wikimedia")>();
+  // Generic provider/fallback behavior must not depend on a real place
+  // remaining without preferred local imagery as the catalog improves.
+  const remoteFixture = { file: "Controlled remote landmark fixture.jpg", alt: "A controlled remote landmark fixture.",
+    author: "Controlled Commons photographer", license: "CC BY-SA 4.0", verified: true,
+    source_url: "https://commons.wikimedia.org/wiki/File:Controlled_remote_landmark_fixture.jpg" };
+  return { ...actual, getLandmarkPhoto: (slug: string) => slug === "media-remote-landmark-fixture" ? remoteFixture : actual.getLandmarkPhoto(slug) };
+});
 vi.mock("next/image", () => ({
   // A native image lets the mounted test deliver load/error without a network request.
   default: ({ src, alt, onLoad, onError, sizes }: ImgHTMLAttributes<HTMLImageElement>) => {
@@ -34,12 +43,12 @@ import PlaceCard from "./PlaceCard";
 const photoName = "places/test-place/photos/test-photo";
 const googleSource = "https://www.google.com/maps/place/test/data=!3m1!1e3";
 const place: PlaceCardData = {
-  // An unowned, non-preferred landmark keeps Google → exact Commons coverage.
-  slug: "francis-scott-key-grave-and-monument", name: "Francis Scott Key Grave and Monument",
-  category: "park", city: "Frederick", address: "515 S Market St",
+  // Controlled unowned, non-preferred landmark for Google → Commons coverage.
+  slug: "media-remote-landmark-fixture", name: "Controlled remote landmark",
+  category: "park", city: "Frederick", address: "100 Fixture Way",
   state: "MD", postal_code: "21701", municipality: "frederick", is_verified: false,
   feature_score: 0, source: "manual", updated_at: "2026-09-01",
-  source_id: "media-test:francis-scott-key", source_url: null,
+  source_id: "media-test:remote-landmark", source_url: null,
   license: "Demonstration fixture", confidence: "curated",
   first_seen_at: "2026-09-01T12:00:00Z", last_verified_at: "2026-09-01T12:00:00Z",
   geom: { lng: -77.4127627, lat: 39.4062196 },
@@ -290,14 +299,14 @@ describe("PlaceCard selected media and credit", () => {
     await load(googleImage, 1, 1);
     const curatedImage = photo()!;
     expect(curatedImage).not.toBe(googleImage);
-    expect(curatedImage.getAttribute("src")).toContain("Francis%20Scott%20Key%20Monument%20(March%202024).jpg");
+    expect(curatedImage.getAttribute("src")).toContain("Controlled%20remote%20landmark%20fixture.jpg");
     expect(loadedCredit()).toBeNull();
     // A detached old source cannot put its credit beside the new image.
     await load(googleImage);
     expect(loadedCredit()).toBeNull();
     await load(curatedImage);
     const credit = container.querySelector(".place-card-photo-credit")!;
-    expect(credit.textContent).toContain("Engineerchange");
+    expect(credit.textContent).toContain("Controlled Commons photographer");
     expect(credit.textContent).toContain("CC BY-SA 4.0");
     expect(credit.textContent).not.toContain("Photo contributor");
     expect(credit.closest("button")).toBeNull();
@@ -364,9 +373,9 @@ describe("PlaceCard selected media and credit", () => {
 
   it("does not promote an uncredited Google image when exact photo metadata is missing", async () => {
     await render({ ...place, google_photo_attribution: undefined, google_maps_uri: googleSource });
-    expect(photo()?.getAttribute("src")).toContain("Francis%20Scott%20Key%20Monument%20(March%202024).jpg");
+    expect(photo()?.getAttribute("src")).toContain("Controlled%20remote%20landmark%20fixture.jpg");
     await load(photo()!);
-    expect(loadedCredit()?.textContent).toContain("Engineerchange");
+    expect(loadedCredit()?.textContent).toContain("Controlled Commons photographer");
     expect(loadedCredit()?.textContent).not.toContain("Google Maps");
     await fail(photo()!);
     expect(photo()).toBeNull();
@@ -546,7 +555,7 @@ describe("PlaceCard selected media and credit", () => {
     await fail(first);
     expect(loadedCredit()).toBeNull();
     await load(photo()!);
-    expect(loadedCredit()?.textContent).toContain("Engineerchange");
+    expect(loadedCredit()?.textContent).toContain("Controlled Commons photographer");
     expect(loadedCredit()?.textContent).not.toContain("Photo contributor");
     await fail(photo()!);
     expect(container.querySelector("[data-place-card-photo]")).toBeNull();

@@ -77,14 +77,6 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
     preferLocal: true,
     verified: true,
   },
-  "francis-scott-key-grave-and-monument": {
-    file: "Francis Scott Key Monument (March 2024).jpg",
-    alt: "The Francis Scott Key Monument at Mount Olivet Cemetery in Frederick.",
-    author: "Engineerchange",
-    license: "CC BY-SA 4.0",
-    source_url: "https://commons.wikimedia.org/wiki/File:Francis_Scott_Key_Monument_(March_2024).jpg",
-    verified: true,
-  },
   "historic-roddy-road-covered-bridge-thurmont": {
     file: "Roddy Road covered bridge near Thurmont in Frederick County, Maryland, built about 1850.jpg",
     alt: "The 1850 Roddy Road Covered Bridge at Roddy Road Park near Thurmont.",
@@ -104,22 +96,6 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
     author: "Acroterion",
     license: "CC BY-SA 4.0",
     source_url: "https://commons.wikimedia.org/wiki/File:Baker_Park_Swinging_Bridge_Frederick_MD2.jpg",
-    verified: true,
-  },
-  "rose-hill-manor-park-museums-frederick": {
-    file: "Rose Hill Manor - Front of Mansion.jpg",
-    alt: "The front of Rose Hill Manor in Frederick.",
-    author: "LittleLuckyMd",
-    license: "CC BY-SA 4.0",
-    source_url: "https://commons.wikimedia.org/wiki/File:Rose_Hill_Manor_-_Front_of_Mansion.jpg",
-    verified: true,
-  },
-  "historic-utica-covered-bridge-thurmont": {
-    file: "Utica covered bridge MD1.jpg",
-    alt: "The red Utica Covered Bridge in Frederick County.",
-    author: "Acroterion",
-    license: "CC BY-SA 4.0",
-    source_url: "https://commons.wikimedia.org/wiki/File:Utica_covered_bridge_MD1.jpg",
     verified: true,
   },
 

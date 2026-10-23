@@ -726,14 +726,24 @@ describe("scheduled data workflow contracts", () => {
         baseShas.length,
         `${name} must bind every artifact to its generation commit`,
       ).toBe(publishers.length);
-      // Venue native/paid producers are mutually exclusive. Commerce adds one
-      // private diagnostic artifact that the exact publisher never receives.
+      // Venue native/paid producers are mutually exclusive. Commerce retains
+      // compact outcomes plus private originals, separate from its publisher.
       // Official hours separately retain original pages for offline review;
       // their artifact name is not an input to either exact publisher.
       expect(
         artifactUploads.length,
         `${name} must stage every producer through its exact artifact`,
-      ).toBe(name === "data-steward.yml" ? publishers.length + 1 : ["ingest-venues.yml", "refresh-commerce-links.yml"].includes(name) ? 2 : publishers.length);
+      ).toBe(name === "data-steward.yml" ? publishers.length + 1 : name === "refresh-commerce-links.yml" ? publishers.length + 2 : name === "ingest-venues.yml" ? 2 : publishers.length);
+      if (name === "refresh-commerce-links.yml") {
+        const commerce = parse(text) as WorkflowDocument;
+        const steps = commerce.jobs?.refresh.steps ?? [];
+        const originals = steps.find((step) => step.name === "Preserve original native pages and held listing candidates");
+        const outcomes = steps.find((step) => step.name === "Preserve source-specific collection outcomes");
+        expect(originals?.with).toMatchObject({ name: "official-commerce-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}", path: "${{ runner.temp }}/native-commerce-evidence", "retention-days": 7 });
+        expect(outcomes?.with?.["retention-days"]).toBe(30);
+        expect(text).not.toMatch(/artifact:\s+official-commerce-source-evidence/);
+        expect(text).not.toMatch(/allowed_paths:[\s\S]*?\n\s+native-commerce-evidence\//);
+      }
       if (name === "data-steward.yml") {
         expect(text).not.toMatch(/artifact:\s+official-hours-review-evidence/);
         expect(text).not.toMatch(/allowed_paths:[\s\S]*?\n\s+official-hours-review-evidence\//);
