@@ -10,7 +10,7 @@ import MERCHANT_HOURS_RAW from "@/data/places-merchant-hours.json" with { type: 
 import { merchantHoursForPlace } from "@/lib/merchant-hours";
 import OFFICIAL_HOURS_RAW from "@/data/places-official-hours.json" with { type: "json" };
 import { officialHoursForPlace } from "@/lib/official-hours";
-import { isScheduleEvidenceCurrent } from "@/lib/hours";
+import { isDisplayOnlyHours, isScheduleEvidenceCurrent } from "@/lib/hours";
 import { PLACES, type Place } from "@/data/places";
 import { CATEGORY_BY_SLUG, CATEGORIES } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -1146,7 +1146,7 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   const hoursVerifiedAt = official.enrolled ? official.observedAt : refreshedHours ? refresh?.refreshed_at : hours_updated_at;
   const mayAssertHours =
     mayAssertOpenState(hoursVerified, hoursVerifiedAt, now) &&
-    mayPublishVisitabilityHours(p.slug, hours, now) &&
+    ((official.enrolled && isDisplayOnlyHours(hours)) || mayPublishVisitabilityHours(p.slug, hours, now)) &&
     (!hours || isScheduleEvidenceCurrent(hours, now));
   const manualStatus = activeManualPlaceStatusOverride(p.slug, now);
   const refreshedStatus = refreshedBusinessStatus(
@@ -1785,7 +1785,7 @@ export function likelyOpenPlaces(
     originSource: ranking.originSource,
   })
     .filter((p) => p.slug in RELIABLE_OPEN_WINDOWS && isLikelyOpenNow(p.slug, now))
-    .filter((p) => mayUseLikelyOpenFallback(p.open_status))
+    .filter((p) => mayUseLikelyOpenFallback(p.open_status, p))
     .map((p) => ({ ...p, open_confidence: "likely" as const }));
 }
 

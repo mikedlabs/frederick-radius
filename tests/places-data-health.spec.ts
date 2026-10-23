@@ -8,6 +8,8 @@ import overrides from "@/data/places-overrides.json" with { type: "json" };
 import fieldNotes from "@/data/field-notes.json" with { type: "json" };
 import { isValidCoord } from "@/lib/geo";
 import { LANDMARK_PHOTOS } from "@/lib/integrations/wikimedia";
+import { isDisplayOnlyHours } from "@/lib/hours";
+import type { Hours } from "@/data/places";
 
 /**
  * Data-health guard — locks the invariants the 2026-06-20 all-business audit
@@ -41,7 +43,9 @@ type Place = {
 };
 
 const PLACES = places as unknown as Place[];
-const CLIENT_HOURS = clientHours as unknown[];
+const CLIENT_HOURS = clientHours as unknown as { hours: Hours }[];
+const GENERAL_CLIENT_HOURS = CLIENT_HOURS.filter((row) => !isDisplayOnlyHours(row.hours));
+const QUALIFIED_CLIENT_HOURS = CLIENT_HOURS.filter((row) => isDisplayOnlyHours(row.hours));
 const HOURS_REFRESH = hoursRefresh as unknown as {
   _meta?: { fresh_schedule_rows?: number };
   [slug: string]: unknown;
@@ -214,7 +218,9 @@ describe("generated place report parity", () => {
     );
     expect(totalRow, "Missing coverage scorecard total row").not.toBeNull();
     expect(Number(totalRow?.[1])).toBe(PLACES.length);
-    expect(Number(totalRow?.[2])).toBe(CLIENT_HOURS.length);
+    expect(Number(totalRow?.[2])).toBe(GENERAL_CLIENT_HOURS.length);
+    expect(capturedNumber(coverageScorecard, /Current checked schedules: (\d+)\./)).toBe(CLIENT_HOURS.length);
+    expect(capturedNumber(coverageScorecard, /Current qualified schedules: (\d+)\./)).toBe(QUALIFIED_CLIENT_HOURS.length);
 
     const snapshotRows = Object.keys(HOURS_REFRESH).filter(
       (key) => !key.startsWith("_"),
@@ -239,7 +245,10 @@ describe("generated place report parity", () => {
         hoursRefreshReview,
         /\| Public places with publishable verified hours \| \d+ \| (\d+) \|/,
       ),
-    ).toBe(CLIENT_HOURS.length);
+    ).toBe(GENERAL_CLIENT_HOURS.length);
+    expect(capturedNumber(hoursRefreshReview,
+      /\| Public places with qualified schedules \| \d+ \| (\d+) \|/,
+    )).toBe(QUALIFIED_CLIENT_HOURS.length);
 
     const snapshotRows = Object.keys(HOURS_REFRESH).filter(
       (key) => !key.startsWith("_"),

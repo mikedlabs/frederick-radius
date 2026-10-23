@@ -53,6 +53,19 @@ describe("source registry audit", () => {
       .toThrow("https://www.commonmarket.coop/: evidence alias belongs to both common_market_hours and other_owner.");
   });
 
+  it("gives each qualified hours identity one daily native owner without claiming a collection success", () => {
+    const registry = buildSourceRegistryArtifact(readFileSync(resolve("data/sources.yaml"), "utf8"));
+    const ids = ["museum_civil_war_medicine_hours", "tasting_room_hours", "hootch_banter_hours"];
+    for (const id of ids) {
+      const binding = MERCHANT_HOURS_SOURCES.find(source => source.ledger_id === id)!;
+      expect(binding).toBeDefined();
+      const owners = registry.filter(row => row.id === id);
+      expect(owners).toHaveLength(1);
+      expect(owners[0]).toMatchObject({ url: binding.url, collection: "workflow", status: "active", refreshCadence: "daily", snapshotCadence: "daily", manifestLastSuccess: null, schemaFile: "src/lib/merchant-hours.ts", transformFile: "scripts/lib/qualified-merchant-hours.ts", evidenceAliases: [id, binding.url].sort(), publicationApplicability: "required" });
+      expect("max_response_bytes" in binding).toBe(false);
+    }
+  });
+
   it("fails closed on unsupported snapshot and change cadences", () => {
     const rows = manifestRows();
     rows[0] = {

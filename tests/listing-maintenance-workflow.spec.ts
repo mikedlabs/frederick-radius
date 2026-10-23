@@ -17,6 +17,19 @@ describe("daily full-catalog upkeep and exception boundary", () => {
     expect(result.detail).toContain("Current schedules: 1");
     expect(result.detail).toContain("unknown: 1");
     expect(result.detail).toContain("does not certify the served deployment");
+    expect(result.detail).toContain("unknown, not zero");
+  });
+  it("reconciles qualified schedules separately in the new report without treating them as broken sources", () => {
+    const value = report();
+    const current = { ...value, schema_version: 2,
+      summary: { ...value.summary, hours: { ...value.summary.hours, current: 0, qualified_current: 1 } },
+      rows: [{ ...value.rows[0], hours: { state: "qualified_current", source_kind: "first_party" } }, value.rows[1]] };
+    expect(listingMaintenanceOutcome(current)).toMatchObject({ healthy: true, counts: { current: 0, qualified_current: 1, unknown: 1 } });
+    expect(listingMaintenanceOutcome(current).detail).toContain("excluded from generic Open now coverage");
+    const missing = structuredClone(current); delete (missing.summary.hours as Partial<typeof missing.summary.hours>).qualified_current;
+    expect(() => listingMaintenanceOutcome(missing)).toThrow("totals do not reconcile");
+    const oldMislabelled = { ...current, schema_version: 1 };
+    expect(() => listingMaintenanceOutcome(oldMislabelled)).toThrow("Invalid listing maintenance row");
   });
   it.each(["stale", "needs_review"])("alerts for accepted official evidence that becomes %s", (state) => {
     const value = report(); value.rows[0].hours.state = state;

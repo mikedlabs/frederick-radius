@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Hours } from "@/data/places";
-import { formatFullHours, formatWindows, getOpenStatus, hoursForDate } from "@/lib/hours";
+import { formatFullHours, formatWindows, getOpenStatus, hoursForDate, isDisplayOnlyHours, isScheduleEvidenceCurrent } from "@/lib/hours";
 import { easternDayKey } from "@/lib/tz";
 import { placeHoursTrust } from "@/lib/trust";
 import TrustChip from "@/components/ui/TrustChip";
@@ -45,26 +45,29 @@ export default function HoursBlock({
   const today = hoursForDate(hours, now);
   const exception = hours._official?.exceptions.find((item) => item.date === easternDayKey(now));
   const week = formatFullHours(hours);
+  const qualification = isDisplayOnlyHours(hours) ? hours._official?.qualification : undefined;
+  const scheduleCurrent = verified && isScheduleEvidenceCurrent(hours, now);
+  const needsNewCheck = qualification ? !scheduleCurrent : (!verified || status.state === "unknown");
 
-  return (
+  const disclosure = (
     <details
       className="group rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
       style={{ borderColor: "var(--app-border)" }}
       onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}
     >
-      <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-3 py-2.5 list-none">
-        <span className="flex min-w-0 items-center gap-2">
+      <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-[var(--app-radius-md)] px-3 py-2.5 list-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-focus)]">
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           {/* The SCHEDULE fact, not open/closed: the header's LiveOpenStatus
               is the page's one status voice, and this summary used to
               restate it (the duplicate the July 2026 review flagged). */}
-          <span className="truncate text-sm font-medium" style={{ color: "var(--app-ink)" }}>
-            Hours today · {today ? formatWindows(today) : "Hours not confirmed"}
+          <span className="text-sm font-medium" style={{ color: "var(--app-ink)" }}>
+            {qualification ? `${qualification.label} today` : "Hours today"} · {today ? formatWindows(today) : "Hours not confirmed"}
           </span>
-          <TrustChip signal={placeHoursTrust(status)} className="shrink-0" />
+          <TrustChip signal={placeHoursTrust(status, { hours, verified, now })} className="shrink-0" />
         </span>
         <ChevronDown
           aria-hidden
-          className="h-4 w-4 transition-transform"
+          className="h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none"
           style={{
             color: "var(--app-ink-3)",
             transform: open ? "rotate(180deg)" : "rotate(0)",
@@ -72,14 +75,16 @@ export default function HoursBlock({
         />
       </summary>
       <div className="px-3 pb-3 pt-1">
-        {(!verified || status.state === "unknown") && (
+        {needsNewCheck && (
           <p
             className="mb-2 flex items-start gap-1.5 text-[11px] leading-relaxed"
             style={{ color: "var(--app-ink-2)" }}
           >
             <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-warning)" }} />
             <span>
-              These stored weekly hours are not current enough to confirm a visit. Check the official source before going.
+              {qualification
+                ? "This posted schedule needs a new source check. Check the official source before going."
+                : "These stored weekly hours are not current enough to confirm a visit. Check the official source before going."}
             </span>
           </p>
         )}
@@ -88,15 +93,17 @@ export default function HoursBlock({
             {hours._official.kind === "merchant"
               ? hours._official.schedule_kind === "dated_week"
                 ? `The business published this schedule for ${hours._official.coverage_from} through ${hours._official.coverage_through}.`
+                : qualification
+                  ? "Special-date changes may not be included in this posted schedule. Check the official website before going."
                 : "The table shows the business's posted weekly hours. Special-date changes may not be included. Check the official website before going."
               : <>{exception && today ? `${exception.reason}. ` : ""}The table shows normal weekly hours. Dated closures take priority.</>}
           </p>
         )}
-        <ul className="divide-y border-t text-sm" style={{ borderColor: "var(--app-border)" }}>
+        <ul aria-label={qualification ? `${qualification.label} by day` : "Weekly hours"} className="divide-y border-t text-sm" style={{ borderColor: "var(--app-border)" }}>
           {week.map((row) => (
-            <li key={row.day} className="flex items-center justify-between py-1.5">
+            <li key={row.day} className="flex items-center justify-between gap-3 py-1.5">
               <span style={{ color: "var(--app-ink-2)" }}>{row.label}</span>
-              <span className="tabular-nums" style={{ color: "var(--app-ink)" }}>
+              <span className="text-right tabular-nums" style={{ color: "var(--app-ink)" }}>
                 {formatWindows(row.windows)}
               </span>
             </li>
@@ -104,7 +111,7 @@ export default function HoursBlock({
         </ul>
         {hours._official && (
           <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-            <a href={hours._official.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline">{hours._official.kind === "merchant" ? "Official business hours" : "Official branch hours"}</a>
+            <a href={hours._official.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline">{qualification ? `Official ${qualification.label.toLowerCase()}` : hours._official.kind === "merchant" ? "Official business hours" : "Official branch hours"}</a>
             {hours._official.closures_url && <a href={hours._official.closures_url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline">FCPL holiday closures</a>}
           </p>
         )}
@@ -115,5 +122,15 @@ export default function HoursBlock({
         )}
       </div>
     </details>
+  );
+  if (!qualification) return disclosure;
+  return (
+    <section aria-label={qualification.label} className="space-y-2">
+      <p className="text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+        {!scheduleCurrent && <span className="font-medium">Previously posted: </span>}
+        {qualification.note}
+      </p>
+      {disclosure}
+    </section>
   );
 }

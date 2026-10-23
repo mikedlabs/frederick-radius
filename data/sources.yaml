@@ -3158,3 +3158,69 @@ sources:
     notes: >-
       Exact grocery at 151 Walkers Village Way, Walkersville MD 21793, phone 301-845-2844. Its primary GroceryStore identity and labeled Store Hours disclosure must agree with all seven weekday rows, their microdata, table configuration and hero schedule. The separately labeled Pharmacy Hours wrapper has different periods and is never a grocery schedule.
       One bounded 512000-byte native GET per daily run, no credentials, provider, redirect or retry. Seven-day evidence expiry. The source's own collapsed Store Hours disclosure is explicitly reviewed, not a general hidden-content exception. Missing, conflicting or changed facts stay held. No source images are licensed by this registration.
+
+  - id: museum_civil_war_medicine_hours
+    name: "National Museum of Civil War Medicine - First-party Qualified Venue Hours"
+    owner: National Museum of Civil War Medicine
+    url: https://www.civilwarmed.org/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party visiting hours facts; no page or image reuse
+    contact: National Museum of Civil War Medicine
+    status: active
+    collection: workflow
+    evidence_aliases: [museum_civil_war_medicine_hours, https://www.civilwarmed.org/]
+    last_validated: 2026-10-23
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/qualified-merchant-hours.ts
+    notes: >-
+      Exact museum at 48 East Patrick Street, Frederick MD 21701, phone 301-695-1864. Its location card supplies a complete weekly venue schedule and a distinct gallery admission cutoff. The Clara Barton museum card in Washington is not this source identity.
+      Display-only qualified venue hours retain the last-admission and named holiday conditions. They never establish generic Open now, admission availability or SEO openingHoursSpecification. A coverage window spanning a named annual closure is held for explicit dated review; calendar calculations never create observed exceptions.
+      One bounded 512000-byte native GET per daily run with no credentials, provider, redirect or retry. Seven-day expiry, actual observation and original response hash remain mandatory. Changed, missing, hidden, additional or conflicting evidence stays held. No image rights are inferred.
+
+  - id: tasting_room_hours
+    name: "The Tasting Room - First-party Qualified Dinner Hours"
+    owner: The Tasting Room
+    url: https://trrestaurant.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party dinner hours facts; no page or image reuse
+    contact: The Tasting Room
+    status: active
+    collection: workflow
+    evidence_aliases: [tasting_room_hours, https://trrestaurant.com/]
+    last_validated: 2026-10-23
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/qualified-merchant-hours.ts
+    notes: >-
+      Exact restaurant at 101 N. Market Street, Frederick MD 21701, phone 240-379-7772. The contact section labels dinner separately from happy hour and bar times; Sunday is explicitly closed. Other promotional clocks do not supply restaurant weekdays.
+      The complete dinner week is qualified scope kitchen, label Dinner hours, usage display_only. It never establishes generic Open now or SEO openingHoursSpecification. Bar or happy-hour times cannot extend dinner or become whole-venue hours.
+      One bounded 512000-byte native GET per daily run, no credentials, provider, redirect or retry. Seven-day expiry and exact original evidence remain mandatory. Changed service qualifiers, notices, identities, missing days or additional schedules require review. No page or image reuse is licensed.
+
+  - id: hootch_banter_hours
+    name: "Hootch & Banter - First-party Qualified Dinner Hours"
+    owner: Hootch & Banter
+    url: https://hootchandbanter.com
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party dinner hours facts; no page or image reuse
+    contact: Hootch & Banter
+    status: active
+    collection: workflow
+    evidence_aliases: [hootch_banter_hours, https://hootchandbanter.com]
+    last_validated: 2026-10-23
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/qualified-merchant-hours.ts
+    notes: >-
+      Exact restaurant at 49 S Market St, Frederick MD 21701, phone 301-732-4971. Its labeled dinner week is separate from weekend brunch, the drinks-only kitchen gap, late bar service and occasional upstairs private events.
+      Qualified scope kitchen, label Dinner hours, usage display_only never establishes generic Open now or SEO openingHoursSpecification. Preserve the brunch gap and named holiday closures. A coverage window spanning a named annual closure is held for explicit dated review; never infer a closing time from open late or publish calculated holiday exceptions.
+      One bounded 512000-byte native GET per daily run, no credentials, provider, redirect or retry. Seven-day expiry and exact source hash and actual observation remain mandatory. Changed, missing, hidden, duplicated or conflicting schedules and notices remain held. No image rights are inferred.

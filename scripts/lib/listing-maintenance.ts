@@ -2,14 +2,14 @@ import type { Hours } from "@/data/places";
 import type { PlaceCardPhotoPlan } from "@/lib/place-card-photo";
 import { placeCardPhotoPlan } from "@/lib/place-card-photo";
 import { isHoursFresh, HOURS_MAX_AGE_DAYS } from "@/lib/hours-freshness";
-import { isScheduleEvidenceCurrent } from "@/lib/hours";
+import { isDisplayOnlyHours, isScheduleEvidenceCurrent } from "@/lib/hours";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import { officialHoursForPlace, validateOfficialHoursArtifact } from "@/lib/official-hours";
 import { merchantHoursForPlace, validateMerchantHoursArtifact } from "@/lib/merchant-hours";
 import { publishablePlaceWebsite } from "@/lib/place-website-policy";
 import { businessInfoSourceKind } from "./business-info-source-policy";
 
-export const HOURS_STATES = ["current", "stale", "needs_review", "unknown"] as const;
+export const HOURS_STATES = ["current", "qualified_current", "stale", "needs_review", "unknown"] as const;
 export const PHOTO_STATES = ["owned", "licensed_local", "licensed_remote", "provider_eligible", "missing"] as const;
 export type HoursState = typeof HOURS_STATES[number];
 export type PhotoState = typeof PHOTO_STATES[number];
@@ -74,7 +74,7 @@ export type MaintenanceCounts = {
   local_photo_missing_bytes: number;
 };
 export type MaintenanceReport = {
-  schema_version: 1;
+  schema_version: 2;
   as_of: string;
   git_sha: string;
   data_version: string;
@@ -104,6 +104,20 @@ const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 const hasSchedule = (hours?: Hours) => Boolean(hours && WEEKDAYS.some((day) => Array.isArray(hours[day])));
 const stamp = (value?: string) => value && Number.isFinite(Date.parse(value)) ? new Date(value).toISOString() : null;
 
+/** Compare the complete public claim, independently of object-key order. */
+function officialSnapshot(hours?: Hours) {
+  const e = hours?._official;
+  if (!e) return null;
+  return { slug: e.slug, kind: e.kind ?? null, schedule_kind: e.schedule_kind ?? null,
+    source_name: e.source_name ?? null, source_url: e.source_url, closures_url: e.closures_url ?? null,
+    observed_at: e.observed_at, expires_at: e.expires_at,
+    coverage_from: e.coverage_from, coverage_through: e.coverage_through,
+    qualification: e.qualification ? { scope: e.qualification.scope, label: e.qualification.label,
+      note: e.qualification.note, usage: e.qualification.usage } : null,
+    exceptions: e.exceptions.map(item => ({ date: item.date, reason: item.reason,
+      closed: item.closed ?? null, closes_at: item.closes_at ?? null })).sort((a, b) => a.date.localeCompare(b.date)) };
+}
+
 function hoursMaintenance(place: MaintenancePlace, input: MaintenanceInput): HoursMaintenance {
   const now = input.asOf;
   let observed = place.hours_updated_at;
@@ -114,7 +128,7 @@ function hoursMaintenance(place: MaintenancePlace, input: MaintenanceInput): Hou
     const expiresAt = stamp(expiry) ?? (stamp(observed) ? new Date(Date.parse(observed!) + HOURS_MAX_AGE_DAYS * DAY_MS).toISOString() : null);
     return { state, reason, applicability, observed_at: stamp(observed), expires_at: expiresAt,
       source_url: sourceUrl ?? null, source_kind: sourceKind ?? null,
-      expiring_within_48h: state === "current" && expiresAt !== null && Date.parse(expiresAt) > now.getTime() && Date.parse(expiresAt) - now.getTime() <= 2 * DAY_MS };
+      expiring_within_48h: ["current", "qualified_current"].includes(state) && expiresAt !== null && Date.parse(expiresAt) > now.getTime() && Date.parse(expiresAt) - now.getTime() <= 2 * DAY_MS };
   };
   const library = officialHoursForPlace(place, input.officialHours, now);
   const merchant = library.enrolled ? null : merchantHoursForPlace(place, input.merchantHours, now);
@@ -142,8 +156,7 @@ function hoursMaintenance(place: MaintenancePlace, input: MaintenanceInput): Hou
     if (!isScheduleEvidenceCurrent(approved, now)) return result("stale", "outside_first_party_date_coverage");
     // An accepted source candidate is not a shipped discovery schedule.
     if (!place.hours_verified || !hasSchedule(place.hours)) return result("needs_review", "source_current_not_in_promoted_snapshot");
-    if (place.hours?._official?.observed_at !== approved._official?.observed_at ||
-      place.hours?._official?.source_url !== approved._official?.source_url ||
+    if (JSON.stringify(officialSnapshot(place.hours)) !== JSON.stringify(officialSnapshot(approved)) ||
       WEEKDAYS.some((day) => JSON.stringify(place.hours?.[day] ?? []) !== JSON.stringify(approved[day] ?? []))) return result("needs_review", "first_party_snapshot_evidence_mismatch");
   }
   const inventory = input.hoursInventory?.[place.slug];
@@ -153,8 +166,13 @@ function hoursMaintenance(place: MaintenancePlace, input: MaintenanceInput): Hou
     if (!isHoursFresh(observed, now)) return result("stale", "schedule_observation_expired");
     if (place.hours?._official && place.hours._official.slug !== place.slug) return result("needs_review", "schedule_identity_mismatch");
     if (!isScheduleEvidenceCurrent(place.hours!, now)) return result("stale", "outside_schedule_date_coverage");
-    if (!mayPublishVisitabilityHours(place.slug, place.hours, now)) return result("needs_review", "visitability_requires_review");
     if (place.hours_verified !== true) return result("unknown", "stored_schedule_not_verified");
+    if (isDisplayOnlyHours(place.hours)) {
+      // A table in a client snapshot alone cannot enroll a qualified claim.
+      if (!enrolled) return result("needs_review", "qualified_schedule_without_accepted_source");
+      return result("qualified_current", "current_checked_schedule_venue_opening_unconfirmed");
+    }
+    if (!mayPublishVisitabilityHours(place.slug, place.hours, now)) return result("needs_review", "visitability_requires_review");
     return result("current", "current_publishable_schedule");
   }
   if (place.hours_verified) return result("needs_review", "verified_flag_without_schedule");
@@ -193,7 +211,7 @@ function sourceCandidate(website: string | undefined, name: string): Maintenance
   return kind ? { url: website, kind, status: "candidate_only", approval: "requires_identity_and_fact_review" } : null;
 }
 function blankCounts(): MaintenanceCounts {
-  return { listings: 0, hours: { current: 0, stale: 0, needs_review: 0, unknown: 0 },
+  return { listings: 0, hours: { current: 0, qualified_current: 0, stale: 0, needs_review: 0, unknown: 0 },
     photos: { owned: 0, licensed_local: 0, licensed_remote: 0, provider_eligible: 0, missing: 0 },
     expiring_hours_48h: 0, hours_not_applicable_reviewed: 0,
     missing_website: 0, missing_phone: 0, missing_all_contact: 0, local_photo_missing_bytes: 0 };
@@ -246,23 +264,24 @@ export function buildListingMaintenanceReport(input: MaintenanceInput): Maintena
       if (!map.has(key)) map.set(key, blankCounts()); add(map.get(key)!, row);
     }
   }
-  return { schema_version: 1, as_of: input.asOf.toISOString(), git_sha: input.gitSha, data_version: input.dataVersion,
+  return { schema_version: 2, as_of: input.asOf.toISOString(), git_sha: input.gitSha, data_version: input.dataVersion,
     scope: { inventory: "promoted_public_client", decoded_photos: "not_checked", served_deployment: "not_checked", provider_requests: 0 }, summary,
     by_town: Object.fromEntries([...towns].sort(([a], [b]) => a.localeCompare(b))),
     by_category: Object.fromEntries([...categories].sort(([a], [b]) => a.localeCompare(b))), rows,
-    candidate_queue: rows.filter((row) => row.source_candidate && row.hours.state !== "current" && row.hours.applicability !== "not_applicable")
+    candidate_queue: rows.filter((row) => row.source_candidate && !["current", "qualified_current"].includes(row.hours.state) && row.hours.applicability !== "not_applicable")
       .sort((a, b) => priority(b) - priority(a) || a.slug.localeCompare(b.slug)).slice(0, limit)
       .map((row) => ({ slug: row.slug, url: row.source_candidate!.url, kind: row.source_candidate!.kind, hours_state: row.hours.state, priority: priority(row), status: "candidate_only" })) };
 }
 
 export function renderListingMaintenanceMarkdown(report: MaintenanceReport): string {
   const s = report.summary;
-  const line = (name: string, value: MaintenanceCounts) => `| ${name.replaceAll("|", "\\|")} | ${value.listings} | ${value.hours.current} | ${value.hours.stale} | ${value.hours.needs_review} | ${value.hours.unknown} | ${value.photos.owned + value.photos.licensed_local} | ${value.photos.provider_eligible} | ${value.photos.missing} |`;
+  const line = (name: string, value: MaintenanceCounts) => `| ${name.replaceAll("|", "\\|")} | ${value.listings} | ${value.hours.current} | ${value.hours.qualified_current} | ${value.hours.stale} | ${value.hours.needs_review} | ${value.hours.unknown} | ${value.photos.owned + value.photos.licensed_local} | ${value.photos.provider_eligible} | ${value.photos.missing} |`;
   return ["# Listing maintenance", "", `As of ${report.as_of}. Git ${report.git_sha}. Data ${report.data_version}.`, "",
-    `All ${s.listings} promoted public listings accounted for once. Hours: ${s.hours.current} current, ${s.hours.stale} stale, ${s.hours.needs_review} need review, ${s.hours.unknown} unknown.`,
+    `All ${s.listings} promoted public listings accounted for once. Hours: ${s.hours.current} current venue schedules, ${s.hours.qualified_current} current qualified schedules, ${s.hours.stale} stale, ${s.hours.needs_review} need review, ${s.hours.unknown} unknown.`,
+    "Qualified schedules retain their reviewed service or admission conditions. They do not establish that the venue is open and are excluded from generic Open now coverage.",
     `${s.expiring_hours_48h} current schedules expire within 48 hours. ${s.missing_all_contact} listings have neither a published website nor phone.`,
     "Photo categories are eligible plans, not decoded or recently reverified images. Contact links are stored destinations, not verified live. This report does not prove a deployment is serving these artifacts.", "",
-    "| Town | Listings | Current hours | Stale | Review | Unknown | Owned/local licensed | Provider eligible | Missing photo |", "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    "| Town | Listings | Current venue hours | Qualified hours | Stale | Review | Unknown | Owned/local licensed | Provider eligible | Missing photo |", "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ...Object.entries(report.by_town).map(([name, value]) => line(name, value)), "", "## Bounded source candidates", "",
     "Candidates pass existing host/source policy only. No page was fetched; identity and facts still require review.", "",
     ...report.candidate_queue.map((row) => `- ${row.slug}: ${row.hours_state}; ${row.url}`), ""].join("\n");

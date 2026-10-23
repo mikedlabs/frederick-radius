@@ -5,7 +5,9 @@ import {
   easternOffsetIso,
   itemListJsonLd,
   openingHoursJsonLd,
+  specialOpeningHoursJsonLd,
 } from "./jsonld";
+import type { Hours } from "@/data/places";
 
 describe("easternOffsetIso", () => {
   it("re-expresses a UTC instant in Eastern wall time with offset (EDT)", () => {
@@ -56,6 +58,24 @@ describe("builders", () => {
       },
     ]);
     expect(openingHoursJsonLd(undefined)).toBeUndefined();
+  });
+
+  it("does not advertise a qualified service or admission schedule as whole-venue opening hours", () => {
+    const hours: Hours = {
+      mon: [{ open: "16:00", close: "21:00" }],
+      _official: {
+        slug: "reviewed-dinner", source_url: "https://example.test/",
+        observed_at: "2026-10-19T14:00:00.000Z", expires_at: "2026-10-26T14:00:00.000Z",
+        coverage_from: "2026-10-19", coverage_through: "2026-10-26",
+        exceptions: [{ date: "2026-10-20", reason: "Dinner service closes early.", closes_at: "20:00" }],
+        qualification: { scope: "kitchen", label: "Dinner hours", note: "Bar hours differ.", usage: "display_only" },
+      },
+    };
+    expect(openingHoursJsonLd(hours)).toBeUndefined();
+    expect(specialOpeningHoursJsonLd(hours)).toBeUndefined();
+    delete hours._official!.qualification;
+    expect(openingHoursJsonLd(hours)).toHaveLength(1);
+    expect(specialOpeningHoursJsonLd(hours)).toBeDefined();
   });
 
   it("turns app-relative image paths into absolute structured-data URLs", () => {

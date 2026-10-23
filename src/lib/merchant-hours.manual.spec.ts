@@ -42,6 +42,11 @@ const nativeFixtures: Record<string, string> = {
   "alekos-middletown": "alekos-middletown",
   "common-market-frederick": "common-market", "common-market": "common-market",
   "safeway-middletown": "safeway-middletown", "safeway-walkersville": "safeway-walkersville",
+  // These source excerpts use the harness clock only; their actual reviewed
+  // observations remain in the separate source-replay evidence.
+  "national-museum-civil-war-medicine-frederick": "qualified-museum",
+  "the-tasting-room-frederick": "qualified-tasting-room",
+  "hootch-and-banter-frederick": "qualified-hootch",
 };
 const native = MERCHANT_HOURS_SOURCES.filter((source) => !("collection" in source && source.collection === "manual"));
 function baseline() {

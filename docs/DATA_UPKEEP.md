@@ -13,7 +13,7 @@ be delayed by GitHub; these are windows, not guaranteed publication deadlines.
 | Owner | Window | Scope and publication rule |
 | --- | --- | --- |
 | `transit-steward.yml` | Daily 07:23 | Public Frederick GTFS. Existing review and release checks remain. |
-| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus sixteen exact reviewed native merchant URLs for seventeen listing identities. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. Run summaries derive their source/binding counts from the current registry. |
+| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus nineteen exact reviewed native merchant URLs for twenty listing identities. Three identities retain display-only venue or dinner qualifications. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. Run summaries derive their source/binding counts from the current registry. |
 | Existing Codex data upkeep, manual merchant cohort | Review before evidence expires | Sumittra and Curious Iguana only. Read their official pages through the existing Firecrawl connection when evidence is within 48 hours of expiry. A private preflight reserves each attempt before a read, capped at two attempts per UTC day and 30 per UTC month. No automatic paid GitHub job. |
 | `ingest-venues.yml` native job | Daily 11:07 | Banyan, Weinberg and New Spire native sources. No model, Firecrawl key, browser or paid-review prerequisite. Future changes need review. Failed/unselected sources retain their rows and dates. |
 | `refresh-commerce-links.yml` native mode | Daily 12:37 | At most 20 eligible official business sites and one same-host follow page each. The same static responses supply private listing-intake evidence as well as commerce links. Finite body/deadline, no retries, redirects or destination probes. New/changed facts need review. |
@@ -98,7 +98,9 @@ The latter has an offline twenty-branch regression; it does not enroll those
 synthetic branches or grant authority to other websites. A source still needs
 an exact entry in `MERCHANT_HOURS_SOURCES` and source-ledger review. Unknown
 dates, admission cutoffs, service qualifiers, missing weekdays and conflicts
-remain held. Common Market is the currently enrolled shared-page cohort;
+remain held unless their exact source adapter preserves an explicitly reviewed
+display-only qualification. That qualification never establishes generic
+Open now. Common Market is the currently enrolled shared-page cohort;
 FCPL retains its independently reviewed nine-branch adapter.
 
 The scheduled native run preserves original merchant HTML and an index of
@@ -146,6 +148,40 @@ Frederick address and contact. Class and event times cannot fill a missing
 gallery day. Conflicting copies, hidden hours, closure notices or an unreviewed
 admission cutoff require review. This source uses the ordinary 512000-byte
 native limit and seven-day evidence window; no holiday hours are inferred.
+
+### Qualified venue and dinner schedules
+
+The National Museum of Civil War Medicine, The Tasting Room and Hootch & Banter
+have exact daily source owners in the same native collector. Their complete
+weeks carry `qualification` with an explicit `scope`, readable `label` and
+condition `note`, and `usage: display_only`. These schedules are useful visit
+information, but never drive generic Open now, open-only search or recommendation
+eligibility, admission availability, or SEO opening hours. Report this coverage
+separately from schedules that can establish current visitability.
+
+The museum adapter binds only the Frederick location card at 48 East Patrick
+Street. It keeps gallery last admission at 4 p.m. separate from the 5 p.m.
+closing time and never borrows the Washington museum's schedule. The Tasting
+Room adapter reads labeled dinner periods and explicit Sunday closure; happy
+hour and bar times cannot extend that week. Hootch & Banter retains dinner
+periods separately from weekend brunch, the kitchen gap, late bar service and
+upstairs private events. Neither restaurant's dinner schedule becomes a claim
+that its whole venue is open or closed.
+
+Museum and Hootch source conditions name annual closures without observed
+calendar dates. A weekly evidence window spanning one of those boundaries is
+held for a separate dated review. Calendar calculations only detect that hold;
+they never publish a fabricated exception. Unknown notices, changed conditions,
+duplicate or hidden disclosures, incomplete weeks and conflicting source facts
+remain blocking. No qualification may launder unresolved contradictions into
+verified hours.
+
+Every qualification travels with the exact original source bytes, hash, actual
+observation and seven-day expiry through candidate replay, explicit acceptance,
+public client rebuilding and production verification. An old capture never
+receives a new observation. These three source enrollments use the existing
+512000-byte native cap and transport policy. Paid budgets, source-review limits,
+provider holds and image licensing rules remain unchanged.
 
 ## Bounded manual hours evidence
 

@@ -112,14 +112,15 @@ function placeIndex(places) {
   );
 }
 
-function publishedHoursCount(places) {
+function publishedHoursCount(places, qualified = false) {
   return (Array.isArray(places) ? places : []).filter(
     (place) =>
       place?.hours_verified === true &&
       place.hours &&
       typeof place.hours === "object" &&
       !Array.isArray(place.hours) &&
-      Object.keys(place.hours).length > 0,
+      Object.keys(place.hours).length > 0 &&
+      (place.hours._official?.qualification?.usage === "display_only") === qualified,
   ).length;
 }
 
@@ -281,6 +282,8 @@ export function analyzeHoursRefreshChange({
     after_public_places: after.size,
     before_published_hours: publishedHoursCount(beforePlaces),
     after_published_hours: publishedHoursCount(afterPlaces),
+    before_published_qualified_hours: publishedHoursCount(beforePlaces, true),
+    after_published_qualified_hours: publishedHoursCount(afterPlaces, true),
     before_snapshot_rows: dataKeys(beforeArtifact).length,
     after_snapshot_rows: dataKeys(afterArtifact).length,
     before_snapshot_fresh_schedules: artifactNumber(
@@ -409,9 +412,12 @@ export function renderHoursRefreshReview(analysis, holdback = null) {
     "| --- | ---: | ---: | ---: |",
     `| Public places | ${analysis.before_public_places} | ${analysis.after_public_places} | ${signed(analysis.after_public_places - analysis.before_public_places)} |`,
     `| Public places with publishable verified hours | ${analysis.before_published_hours} | ${analysis.after_published_hours} | ${signed(analysis.after_published_hours - analysis.before_published_hours)} |`,
+    `| Public places with qualified schedules | ${analysis.before_published_qualified_hours} | ${analysis.after_published_qualified_hours} | ${signed(analysis.after_published_qualified_hours - analysis.before_published_qualified_hours)} |`,
     `| Hours snapshot rows | ${analysis.before_snapshot_rows} | ${analysis.after_snapshot_rows} | ${signed(analysis.after_snapshot_rows - analysis.before_snapshot_rows)} |`,
     `| Fresh schedule rows in snapshot | ${analysis.before_snapshot_fresh_schedules} | ${analysis.after_snapshot_fresh_schedules} | ${signed(analysis.after_snapshot_fresh_schedules - analysis.before_snapshot_fresh_schedules)} |`,
     `| Unmatched database rows ignored | — | ${analysis.unmatched_rows} | — |`,
+    "",
+    "Qualified schedules retain their service or admission conditions and do not establish venue opening. They are excluded from the general verified-hours total and Open now coverage.",
     "",
     "## Public catalog changes",
     "",

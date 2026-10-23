@@ -1,12 +1,16 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { Hours } from "@/data/places";
 import HoursBlock from "./HoursBlock";
+import LiveOpenStatus from "./LiveOpenStatus";
 import { parseFcplOfficialHours } from "../../../scripts/lib/fcpl-official-hours";
 import { FCPL_HOURS_URL, FCPL_CLOSURES_URL, officialHoursForPlace } from "@/lib/official-hours";
 import { placeHoursProvenance } from "@/lib/place-hours-provenance";
 import { merchantHoursForPlace, MERCHANT_HOURS_SOURCES, type MerchantHoursArtifact } from "@/lib/merchant-hours";
 import { parseMerchantOfficialHours } from "../../../scripts/lib/merchant-official-hours";
+const { JSDOM } = createRequire(import.meta.url)("jsdom") as { JSDOM: new (html: string) => { window: { document: Document } } };
 const now = new Date("2026-10-12T16:00:00Z");
 const artifact = parseFcplOfficialHours(
   { url: FCPL_HOURS_URL, observedAt: "2026-10-12T09:13:00.000Z", html: readFileSync("tests/fixtures/fcpl-hours-index.html", "utf8") },
@@ -108,5 +112,80 @@ describe("missing and merchant hours", () => {
     expect(html).toContain('href="tel:3015550100"');
     expect(html).not.toContain("Hours not posted");
     expect(html).not.toContain("FCPL");
+  });
+});
+
+describe("qualified official schedules", () => {
+  const checkedAt = new Date("2026-10-23T16:00:00Z");
+  const museum: Hours = {
+    mon: [], tue: [], wed: [{ open: "10:00", close: "17:00" }],
+    thu: [{ open: "10:00", close: "17:00" }], fri: [{ open: "10:00", close: "17:00" }],
+    sat: [{ open: "10:00", close: "17:00" }], sun: [{ open: "11:00", close: "17:00" }],
+    _official: {
+      kind: "merchant", schedule_kind: "weekly", slug: "demonstration-museum",
+      source_name: "Demonstration museum", source_url: "https://example.org/museum-hours",
+      observed_at: "2026-10-23T11:00:00Z", expires_at: "2026-10-30T11:00:00Z",
+      coverage_from: "2026-10-23", coverage_through: "2026-10-29", exceptions: [],
+      qualification: {
+        scope: "venue", label: "Museum hours", usage: "display_only",
+        note: "Last admission is at 4:30pm. The museum closes at 5pm.",
+      },
+    },
+  };
+
+  it("keeps the admission qualification visible before expansion and separates it from the closing time", () => {
+    vi.useFakeTimers(); vi.setSystemTime(checkedAt);
+    const html = renderToStaticMarkup(<HoursBlock hours={museum} verified />);
+    const doc = new JSDOM(html).window.document;
+    const section = doc.querySelector('section[aria-label="Museum hours"]')!;
+    const note = section.querySelector("p")!;
+    expect(note.textContent).toBe("Last admission is at 4:30pm. The museum closes at 5pm.");
+    expect(note.closest("details")).toBeNull();
+    expect(doc.querySelector("details")?.hasAttribute("open")).toBe(false);
+    expect(doc.querySelector("summary")?.textContent).toContain("Museum hours today · 10am–5pm");
+    expect(html).toContain("Checked at source");
+    expect(html).not.toContain("Unconfirmed");
+    expect(html).not.toContain("not current enough");
+    expect(html).not.toContain("needs a new source check");
+    expect(html).not.toContain("10am–4:30pm");
+    expect(doc.querySelector('ul[aria-label="Museum hours by day"]')?.children).toHaveLength(7);
+  });
+
+  it("keeps scoped kitchen hours checked without claiming the restaurant is closed outside those hours", () => {
+    vi.useFakeTimers(); vi.setSystemTime(checkedAt);
+    const kitchen: Hours = {
+      ...museum, fri: [{ open: "16:00", close: "21:00" }],
+      _official: { ...museum._official!, qualification: {
+        scope: "kitchen", label: "Kitchen hours", usage: "display_only",
+        note: "The kitchen follows this schedule. Bar hours may differ.",
+      } },
+    };
+    const html = renderToStaticMarkup(<HoursBlock hours={kitchen} verified />);
+    expect(html).toContain("Kitchen hours today · 4pm–9pm");
+    expect(html).toContain("Checked at source");
+    expect(new JSDOM(html).window.document.querySelector("summary")?.textContent).not.toContain("Closed");
+    const hero = renderToStaticMarkup(<LiveOpenStatus hours={kitchen} verified initial={{ state: "closed" }} />);
+    expect(hero).toContain("Venue opening not confirmed");
+    expect(hero).not.toContain("Hours not recently confirmed");
+    expect(hero).not.toContain("Closed");
+  });
+
+  it("withholds an expired today's schedule without hiding its qualification or erasing the posted week", () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-30T16:00:00Z"));
+    const html = renderToStaticMarkup(<HoursBlock hours={museum} verified />);
+    expect(html).toContain("Museum hours today · Hours not confirmed");
+    expect(html).toContain("Needs a new check");
+    expect(html).toContain("This posted schedule needs a new source check.");
+    expect(html).toContain("Last admission is at 4:30pm. The museum closes at 5pm.");
+    expect(html).toContain("10am–5pm");
+    expect(html).not.toContain("Checked at source");
+    expect(html).not.toContain("No posted hours");
+  });
+
+  it("does not expose a stale server open claim before hydration for display-only schedules", () => {
+    const html = renderToStaticMarkup(<LiveOpenStatus hours={museum} verified initial={{ state: "open", closesAt: "17:00", closingSoon: false }} />);
+    expect(html).toContain("Venue opening not confirmed");
+    expect(html).not.toContain("Open now");
+    expect(html).not.toContain("Closes");
   });
 });
