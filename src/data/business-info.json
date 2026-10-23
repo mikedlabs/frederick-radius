@@ -752,7 +752,7 @@
     "name": "ChocoSombra",
     "commerce_source": {
       "url": "https://chocosombra.com/",
-      "checkedAt": "2026-07-29T12:31:45.836Z"
+      "checkedAt": "2026-10-23T12:53:35.026Z"
     }
   },
   "mariachi-restaurant-frederick": {
@@ -807,7 +807,7 @@
     "name": "Catoctin Breeze Vineyard",
     "commerce_source": {
       "url": "https://www.catoctinbreeze.com/",
-      "checkedAt": "2026-07-29T12:31:45.836Z"
+      "checkedAt": "2026-10-23T12:53:33.272Z"
     }
   },
   "springfield-manor-thurmont": {
@@ -1839,7 +1839,7 @@
     "name": "Cucina Massi",
     "commerce_source": {
       "url": "https://www.cucinamassi.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-10-23T12:53:35.356Z"
     },
     "commerce_links": [
       {
@@ -2942,6 +2942,86 @@
         "url": "https://www.thebanyanmd.com/rooftop-bar-drink-menu",
         "anchor_text": "Rooftop Bar Drink menu",
         "source_url": "https://www.thebanyanmd.com/"
+      }
+    ]
+  },
+  "crybaby-cafe-middletown": {
+    "name": "Crybaby Café",
+    "commerce_source": {
+      "url": "https://crybabycafefrederick.com/",
+      "checkedAt": "2026-10-23T12:53:35.327Z"
+    }
+  },
+  "elk-run-winery-mount-airy": {
+    "name": "Elk Run Winery",
+    "commerce_source": {
+      "url": "https://elkrun.com/",
+      "checkedAt": "2026-10-23T12:53:38.818Z"
+    }
+  },
+  "el-rancho-restaurant-walkersville": {
+    "name": "El Rancho Restaurant",
+    "commerce_source": {
+      "url": "https://elrancho-restaurant.com/",
+      "checkedAt": "2026-10-23T12:53:37.167Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://elrancho-restaurant.com/menu/",
+        "anchor_text": "Menu",
+        "source_url": "https://elrancho-restaurant.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://elrancho-restaurant.com/order-online/",
+        "anchor_text": "Order Online",
+        "source_url": "https://elrancho-restaurant.com/"
+      }
+    ]
+  },
+  "carriage-house-inn-restaurant-catering-emmitsburg": {
+    "name": "Carriage House Inn Restaurant & Catering",
+    "commerce_source": {
+      "url": "https://chouseinn.com/",
+      "checkedAt": "2026-10-23T12:53:33.654Z"
+    },
+    "commerce_links": [
+      {
+        "type": "reservation",
+        "url": "https://tables.toasttab.com/restaurants/27ed63c1-4599-41c3-82c9-88b960358420/findTime",
+        "anchor_text": "Reservations",
+        "source_url": "https://chouseinn.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://chouseinn.com/menu-2/",
+        "anchor_text": "Restaurant Menu",
+        "source_url": "https://chouseinn.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.toasttab.com/carriage-house-inn-200-s-seton-ave/v3/?mode=fulfillment",
+        "anchor_text": "Order Online",
+        "source_url": "https://chouseinn.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://chouseinn.com/on-site-catering/",
+        "anchor_text": "On Site Catering",
+        "source_url": "https://chouseinn.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://chouseinn.com/catering_off_site/",
+        "anchor_text": "Off Site Catering",
+        "source_url": "https://chouseinn.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/carriage-house-inn-200-s-seton-ave/giftcards?utmCampaign=onlineOrdering",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://chouseinn.com/"
       }
     ]
   }
