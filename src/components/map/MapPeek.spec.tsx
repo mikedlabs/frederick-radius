@@ -464,6 +464,50 @@ describe("MapPeek selected photo and source identity", () => {
     expect(fetchCard).toHaveBeenCalledOnce();
   });
 
+  it.each(["loaded", "failed"] as const)("settles a retained local image callback after metadata changes the fallback plan: %s", async result => {
+    const slug = "chappelle-co";
+    const place: MapPinPlace = {
+      slug, name: "Chappelle Co", category: "shopping", municipality: "frederick",
+      geom: { lat: 39.418, lng: -77.4105 }, source: "manual", is_verified: true,
+      open_status: { state: "unknown" }, short_blurb: "A selected-card callback continuity fixture.",
+    };
+    let resolve!: (value: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(done => { resolve = done; })));
+    await act(async () => root.render(<MapPeek place={place} distanceOrigin={null} distanceOriginLabel="from you" onClose={vi.fn()} onDetails={openDetails} />));
+    const landmark = getLandmarkPhoto(slug)!;
+    const image = host.querySelector("img")!;
+    // Next Image can retain a callback while decode() is in flight. A DOM
+    // dispatch after rerender would use the latest callback and miss this race.
+    const retained = imageCallbacks.get(landmark.localSrc!)!;
+    const details = host.querySelector<HTMLButtonElement>(".map-peek-details-link")!;
+    details.focus();
+    await act(async () => resolve(Response.json({ place: {
+      slug, google_photo_url: src, google_photo_attribution: credit,
+    } })));
+    expect(host.querySelector("img")).toBe(image);
+    expect(image.dataset.mapPeekPhotoState).toBe("loading");
+    Object.defineProperties(image, {
+      naturalWidth: { configurable: true, value: 1280 },
+      naturalHeight: { configurable: true, value: 879 },
+    });
+    const event = { currentTarget: image } as React.SyntheticEvent<HTMLImageElement>;
+    await act(async () => retained[result === "loaded" ? "load" : "error"](event));
+    expect(document.activeElement).toBe(details);
+    if (result === "loaded") {
+      expect(host.querySelector("img")).toBe(image);
+      expect(image.dataset.mapPeekPhotoState).toBe("ready");
+      expect(image.alt).toBe(landmark.alt);
+      expect(host.querySelector(`a[href="${landmark.source_url}"]`)?.textContent).toBe("Acroterion");
+      expect(host.textContent).toContain("November 18, 2022");
+    } else {
+      expect(host.querySelector("img")?.dataset.mapPeekPhotoSource).toBe("google");
+      expect(host.querySelector(".map-peek-source-credit")).toBeNull();
+      await act(async () => retained.load(event));
+      expect(host.querySelector("img")?.dataset.mapPeekPhotoSource).toBe("google");
+      expect(host.querySelector(".map-peek-source-credit")).toBeNull();
+    }
+  });
+
   it("uses late eligible Google metadata only after the local file fails and never retries exhausted sources", async () => {
     const slug = "brewers-alley-frederick";
     const place: MapPinPlace = {

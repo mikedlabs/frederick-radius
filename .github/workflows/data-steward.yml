@@ -363,7 +363,7 @@ jobs:
         run: |
           npm run coverage:scorecard
           npm run gates
-          npx vitest run src/lib/merchant-hours.spec.ts src/lib/merchant-hours.expansion.spec.ts src/lib/merchant-hours.manual.spec.ts src/lib/merchant-hours.cohorts.spec.ts src/lib/merchant-hours.common-market.spec.ts src/lib/quality/source-artifact-evidence.spec.ts src/lib/quality/source-ledger.spec.ts src/lib/official-hours.spec.ts src/lib/quality/fcpl-official-hours.spec.ts src/lib/official-hours-integration.spec.ts tests/official-hours-workflow.spec.ts tests/official-hours-batch-review.spec.ts tests/official-hours-review-evidence.spec.ts tests/merchant-hours-commit.spec.ts tests/client-place-parity.spec.ts
+          npx vitest run tests/food-lion-cohort.spec.ts src/lib/merchant-hours.spec.ts src/lib/merchant-hours.expansion.spec.ts src/lib/merchant-hours.manual.spec.ts src/lib/merchant-hours.cohorts.spec.ts src/lib/merchant-hours.common-market.spec.ts src/lib/quality/source-artifact-evidence.spec.ts src/lib/quality/source-ledger.spec.ts src/lib/official-hours.spec.ts src/lib/quality/fcpl-official-hours.spec.ts src/lib/official-hours-integration.spec.ts tests/official-hours-workflow.spec.ts tests/official-hours-batch-review.spec.ts tests/official-hours-review-evidence.spec.ts tests/merchant-hours-commit.spec.ts tests/client-place-parity.spec.ts
           npm run data:release:write -- --stream places
       - name: Stage bounded hours outputs
         env:

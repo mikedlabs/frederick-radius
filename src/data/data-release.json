@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:78c10da68a8959021a9fc4a663c9f943e9fc576d46debcb8466daa4becd1eca1",
+  "data_version": "sha256:49760d82191f0bfe2c7828d1c8a4b61c58d455089788f34288e7fb3657b8b148",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-23T08:08:40.169Z",
+      "promoted_at": "2026-10-23T09:59:37.179Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -72,9 +72,9 @@
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "e391fc51b95a9203c68e5ce599170bd60479a24aabb5af1dfd5dc61019547f27",
-          "records": 22,
-          "bytes": 28881
+          "sha256": "c2b2e8932c514f4a3178a6e69421655c721f90df7fbe50c5e1d9be8ea6aaefac",
+          "records": 25,
+          "bytes": 32689
         },
         {
           "path": "src/data/business-status.json",
@@ -180,9 +180,9 @@
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
-          "sha256": "aa0ab3b4f059a3d79329d8a95584058bce8649952f646043149eadce9c3ff4fb",
+          "sha256": "40ef53792b12cf9e03fa559eb202bb59376f068a59e87329c18ef5563476bf5c",
           "records": null,
-          "bytes": 18958
+          "bytes": 20050
         },
         {
           "path": "public/place-photos/frederick-marc-station-2015.jpg",
@@ -311,6 +311,12 @@
           "bytes": 489737
         },
         {
+          "path": "public/history-photos/ransom-of-frederick.jpg",
+          "sha256": "c2aa53508b566d5c377636c22d06a787e350613ab0d28178d6f0ec665081fc8f",
+          "records": null,
+          "bytes": 482899
+        },
+        {
           "path": "src/lib/owned-place-photos.ts",
           "sha256": "fff220c8eb8ed44f48081a45c6fe32c2f95351cd600efbe65f5eeb9d66d518b0",
           "records": null,
@@ -432,15 +438,15 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "5bbcd7e33fb233a475399fff125c2eb4ef5149442c2e91b05af62ed977a1b34c",
+          "sha256": "c95e36c747294d8786a506dac9460acd9cb05e9cd473a232656e378f542c51d3",
           "records": 1571,
-          "bytes": 2307198
+          "bytes": 2309266
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "fc582deda14d2ab02e7ad03e0f6212ff5a07a89273e1928fc51dbe04f625b34d",
-          "records": 31,
-          "bytes": 41800
+          "sha256": "de5bff4980a56f555245769efd45515be4092ec34581bcc565f4ff85211f0426",
+          "records": 34,
+          "bytes": 44186
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
@@ -451,13 +457,13 @@
       ]
     },
     "sources": {
-      "promoted_at": "2026-10-23T08:09:08.591Z",
+      "promoted_at": "2026-10-23T09:59:37.179Z",
       "artifacts": [
         {
           "path": "src/data/source-registry.generated.json",
-          "sha256": "1fc2f98038fb7e49b23932c96329cddb5c80bc62634eeca2a5654816df1bb63e",
-          "records": 149,
-          "bytes": 98939
+          "sha256": "3b893901cad590a7666095ccf2c555b604ecbac88f6547138cfcb82bbcbb6c1c",
+          "records": 152,
+          "bytes": 101306
         }
       ]
     },

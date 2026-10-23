@@ -1254,6 +1254,171 @@
         "note": "These are dinner service hours. Weekend brunch runs from 11 a.m. to 2:45 p.m. The kitchen closes between brunch and dinner. Bar hours differ. Closed on Memorial Day, July 4, Labor Day, Thanksgiving, Christmas Eve, Christmas Day and New Year’s Day.",
         "usage": "display_only"
       }
+    },
+    {
+      "slug": "food-lion-crestwood-frederick",
+      "source_url": "https://stores.foodlion.com/md/frederick/6920-crestwood-blvd",
+      "source_name": "Food Lion Crestwood",
+      "source_sha256": "db312c26ab10dbaabaa7dbf6bb08cba1b5f64f6209cf9c4be9174983419a4497",
+      "observed_at": "2026-10-23T09:09:06.137Z",
+      "expires_at": "2026-10-30T09:09:06.137Z",
+      "coverage_from": "2026-10-23",
+      "coverage_through": "2026-10-30",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "food-lion-yellow-springs-frederick",
+      "source_url": "https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd.",
+      "source_name": "Food Lion Yellow Springs",
+      "source_sha256": "6603b6d4cfdc7b23063757d8236ad37a004564a17e82f981f38fad804ac48ecc",
+      "observed_at": "2026-10-23T09:12:19.914Z",
+      "expires_at": "2026-10-30T09:12:19.914Z",
+      "coverage_from": "2026-10-23",
+      "coverage_through": "2026-10-30",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "food-lion-thurmont",
+      "source_url": "https://stores.foodlion.com/md/thurmont/231-tippin-dr",
+      "source_name": "Food Lion Thurmont",
+      "source_sha256": "044ae315fc5267a6744169144c97d0136ef2cac6593763d29659c86fa4955a3e",
+      "observed_at": "2026-10-23T09:12:29.612Z",
+      "expires_at": "2026-10-30T09:12:29.612Z",
+      "coverage_from": "2026-10-23",
+      "coverage_through": "2026-10-30",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "07:00",
+            "close": "23:00"
+          }
+        ]
+      }
     }
   ],
   "review": []

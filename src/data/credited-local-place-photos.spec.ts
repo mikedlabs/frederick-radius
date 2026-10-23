@@ -18,6 +18,44 @@ const identities = [
 ] as const;
 
 describe("reviewed local licensed place identity", () => {
+  it("reuses the dated 223 North Market storefront with its actual source, credit and right-hand framing", async () => {
+    const slug = "chappelle-co";
+    const place = clientPlaceBySlug(slug)!;
+    const record = CREDITED_LOCAL_PLACE_PHOTOS[slug];
+    expect(place).toMatchObject({ name: "Chappelle Co", address: "223 N Market St", municipality: "frederick",
+      website: "https://chappelleandco.com/", phone: "(301) 800-9149" });
+    expect(record).toMatchObject({ file: "209-225 N. Market St. Frederick MD1.jpg", preferLocal: true,
+      objectPosition: "right", review: { captured_on: "2022-11-18", reviewed_on: "2026-10-23",
+        sha256: "c2aa53508b566d5c377636c22d06a787e350613ab0d28178d6f0ec665081fc8f" },
+      image: { src: "/history-photos/ransom-of-frederick.jpg", creator: "Acroterion",
+        source_url: "https://commons.wikimedia.org/wiki/File:209-225_N._Market_St._Frederick_MD1.jpg",
+        license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" } } });
+    const history = HISTORY.find((entry) => entry.slug === "ransom-of-frederick")!;
+    // The History event's 1864 date must never become the photograph's date.
+    expect(history.year).toBe(1864);
+    expect(history.image?.src).toBe(record.image.src);
+    expect(record.image.alt).toContain("223 North Market Street");
+    expect(record.image.alt).toContain("November 2022");
+    expect(record.image.modifications).toContain("November 18, 2022 storefront reference");
+    expect(record.image.modifications).toContain("rendition stored unchanged");
+    const bytes = readFileSync(path.join(process.cwd(), "public", record.image.src));
+    expect(bytes.byteLength).toBe(482899);
+    expect(createHash("sha256").update(bytes).digest("hex")).toBe(record.review.sha256);
+    expect(await sharp(bytes).metadata()).toMatchObject({ format: "jpeg", width: 1280, height: 879 });
+    const photo = getLandmarkPhoto(slug)!;
+    expect(photo).toMatchObject({ file: record.file, localSrc: record.image.src, preferLocal: true,
+      objectPosition: "right", author: record.image.creator, source_url: record.image.source_url,
+      license: record.image.license.label, licenseUrl: record.image.license.url,
+      modifications: record.image.modifications, verified: true });
+    for (const width of [320, 375, 390, 430]) {
+      const plan = placeCardPhotoPlan(place, width);
+      expect(selectedPlaceCardPhoto(plan, null)).toMatchObject({ kind: "curated", src: record.image.src,
+        objectPosition: "right", photo });
+      expect(curatedPhotoUrl(photo, width * 2)).toBe(record.image.src);
+    }
+    expect(getLandmarkPhoto("chappelle-and-co")).toBeNull();
+  });
+
   it.each([
     { slug: "frederick-station", name: "Frederick Station", address: "Frederick", municipality: "frederick", file: "Frederick MARC station, July 2015.jpg", src: "/place-photos/frederick-marc-station-2015.jpg", creator: "Art Anderson", captured: "2015-07-19", license: "CC BY-SA 3.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/", width: 1280, height: 948, bytes: 526603, sha256: "bbf2d77adbcb5ddb7049661f77582806b9159469da7b341231afa88f5bddeca6", objectPosition: "center" },
     { slug: "heritage-frederick", name: "Heritage Frederick", address: "24 E Church St Frederick", municipality: "frederick", file: "Loats Orphanage.jpg", src: "/place-photos/heritage-frederick-exterior-2009.jpg", creator: "ZeWrestler", captured: "2009-09-28", license: "CC BY 3.0", licenseUrl: "https://creativecommons.org/licenses/by/3.0/", width: 1280, height: 960, bytes: 383963, sha256: "e78293fb6ad0966b1a6ff80fd2716ce81d51a73be132d4bae5d29e2a4b10321c", objectPosition: "center" },

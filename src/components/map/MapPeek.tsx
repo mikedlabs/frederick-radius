@@ -103,9 +103,15 @@ export function MapPeekPhoto({
   const ready = Boolean(source && photo.planKey === plan.key && photo.loadedSrc === source.src);
   const reportState = (result: "loaded" | "failed") => {
     if (!source) return;
-    setPhoto(current => current.planKey === plan.key && current.generation === photo.generation
-      ? { ...current, ...recordPlaceCardPhotoResult(plan, current, source.src, result) }
-      : current);
+    setPhoto(current => {
+      if (current.generation !== photo.generation) return current;
+      // Next Image can finish decode with a retained callback before its
+      // callback ref updates. A new fallback plan must not strand the exact
+      // same bundled image; changed sources, credits and generations stay out.
+      if (current.planKey !== plan.key && !(isBundledPlacePhoto(source) &&
+        JSON.stringify(selectedPlaceCardPhoto(current.plan, current)) === JSON.stringify(source))) return current;
+      return { ...current, ...recordPlaceCardPhotoResult(current.plan, current, source.src, result) };
+    });
   };
   return (
     <>

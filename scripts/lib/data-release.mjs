@@ -70,6 +70,7 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
   "public/history-photos/frederick-county-established.jpg",
   "public/history-photos/mount-st-marys-founded.jpg",
   "public/history-photos/barbara-fritchie-flag.jpg",
+  "public/history-photos/ransom-of-frederick.jpg",
   "src/lib/owned-place-photos.ts",
   "public/images/seasons/winter/IMG_2732.jpg",
   "public/images/seasons/spring/010.jpg",

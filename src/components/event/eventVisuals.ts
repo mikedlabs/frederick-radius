@@ -90,6 +90,7 @@ function ownedEventVenueVisual(venueSlug: string | undefined): EventCardVisual |
 }
 
 const LICENSED_EVENT_VENUE_LABELS: Readonly<Record<keyof typeof CREDITED_LOCAL_PLACE_PHOTOS, string>> = {
+  "chappelle-co": "North Market Street storefront row with Chappelle & Co, photographed in November 2022",
   "frederick-station": "Frederick MARC station, photographed in 2015",
   "heritage-frederick": "Heritage Frederick exterior, photographed in 2009",
   "thurmont-square-park-thurmont": "Thurmont Square Park, photographed in 2012",

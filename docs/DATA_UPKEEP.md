@@ -13,7 +13,7 @@ be delayed by GitHub; these are windows, not guaranteed publication deadlines.
 | Owner | Window | Scope and publication rule |
 | --- | --- | --- |
 | `transit-steward.yml` | Daily 07:23 | Public Frederick GTFS. Existing review and release checks remain. |
-| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus nineteen exact reviewed native merchant URLs for twenty listing identities. Three identities retain display-only venue or dinner qualifications. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. Run summaries derive their source/binding counts from the current registry. |
+| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus twenty-two exact reviewed native merchant URLs for twenty-three listing identities. Three identities retain display-only venue or dinner qualifications. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. Run summaries derive their source/binding counts from the current registry. |
 | Existing Codex data upkeep, manual merchant cohort | Review before evidence expires | Sumittra and Curious Iguana only. Read their official pages through the existing Firecrawl connection when evidence is within 48 hours of expiry. A private preflight reserves each attempt before a read, capped at two attempts per UTC day and 30 per UTC month. No automatic paid GitHub job. |
 | `ingest-venues.yml` native job | Daily 11:07 | Banyan, Weinberg and New Spire native sources. No model, Firecrawl key, browser or paid-review prerequisite. Future changes need review. Failed/unselected sources retain their rows and dates. |
 | `refresh-commerce-links.yml` native mode | Daily 12:37 | At most 20 eligible official business sites and one same-host follow page each. The same static responses supply private listing-intake evidence as well as commerce links. Finite body/deadline, no retries, redirects or destination probes. New/changed facts need review. |
@@ -80,6 +80,17 @@ source shape, not permission to trust arbitrary hidden fields. Pharmacy hours
 are a separate service and never supply grocery days. Both sources retain the
 ordinary native transport limits and seven-day expiry; no holiday calendar or
 image reuse rights are inferred.
+
+Food Lion's three exact Crestwood, Yellow Springs and Thurmont pages bind only
+their primary GroceryStore identities and labeled Store Hours. Require the
+reviewed exact name, address and phone, seven visible weekday rows, GroceryStore
+microdata, and agreement with the table configuration and hero/core schedules.
+The corporate Gift Card Sales Department FAQ week is support service and never
+supplies grocery hours. Nearby teasers, pharmacy and deli schedules cannot fill
+grocery days. These sources retain the ordinary 512000-byte cap and seven-day
+expiry. No holiday changes or page/image reuse rights are inferred. Preserve
+the original response hash and actual observation through review; registration
+or successful collection does not accept evidence or establish publication.
 
 ## Reviewing groups of official listings
 
