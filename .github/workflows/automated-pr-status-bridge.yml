@@ -46,6 +46,7 @@ permissions:
   contents: read
   pull-requests: read
   statuses: write
+  checks: write
 
 jobs:
   attach:
@@ -61,102 +62,106 @@ jobs:
           AUTOMATED_PR_CI_RUN_ID: ${{ inputs.ci_run_id }}
           AUTOMATED_PR_STYLE_RUN_ID: ${{ inputs.style_run_id }}
           AUTOMATED_PR_TOKEN: ${{ inputs.dispatch_token }}
+          BRIDGE_RECEIPT_PATH: ${{ runner.temp }}/automated-pr-bridge-receipt.json
         with:
           script: |
-            if (context.ref !== 'refs/heads/main') throw new Error('The automated status bridge must run from main.');
-            // Fetch only this dependency-free helper from the exact trusted
-            // workflow revision. Never checkout or execute the bot's files.
-            const helperPath = 'scripts/lib/automated-pr-status-bridge.cjs';
-            const response = await github.rest.repos.getContent({
-              ...context.repo, path: helperPath, ref: context.sha,
-            });
-            const file = response.data;
-            if (file.type !== 'file' || file.path !== helperPath || file.encoding !== 'base64'
-              || !Number.isSafeInteger(file.size) || file.size <= 0 || file.size > 65536) {
-              throw new Error('Invalid bounded trusted-main bridge helper.');
-            }
-            const source = Buffer.from(file.content, 'base64');
-            if (source.length !== file.size) throw new Error('Bridge helper size mismatch.');
-            const trusted = { exports: {} };
-            new Function('module', 'exports', source.toString('utf8'))(trusted, trusted.exports);
-            const allowedByBranch = {
-              'bot/marc-schedule-refresh': ['src/data/marc-schedule.json'],
-              'bot/official-library-hours': [
-                'docs/coverage-scorecard.md',
-                'docs/hours-refresh-review.md',
-                'src/data/data-release.json',
-                'src/data/event-venue-photo-credits.json',
-                'src/data/place-refresh-identities.json',
-                'src/data/places-client-hours.json',
-                'src/data/places-client.json',
-                'src/data/places-official-hours.json',
-                'src/data/places-merchant-hours.json',
-              ],
-              'bot/data-steward': [
-                'docs/coverage-scorecard.md',
-                'docs/hours-refresh-review.md',
-                'src/data/data-release.json',
-                'src/data/event-venue-photo-credits.json',
-                'src/data/place-refresh-identities.json',
-                'src/data/places-client-hours.json',
-                'src/data/places-client.json',
-                'src/data/places-hours-refresh.json',
-              ],
-              'bot/transit-steward': [
-                'src/data/data-release.json',
-                'src/data/transit-network.json',
-                'src/data/transit-trips.json',
-                'src/data/transit.json',
-              ],
-              'bot/curated-place-enrichment': [
-                'audit/google-enrichment-attempts.json',
-                'src/data/data-release.json',
-                'src/data/event-venue-photo-credits.json',
-                'src/data/place-refresh-identities.json',
-                'src/data/places-client-hours.json',
-                'src/data/places-client.json',
-                'src/data/places-enrichment.json',
-              ],
-              'bot/business-info-refresh': [
-                'src/data/business-info.json',
-                'src/data/data-release.json',
-                'src/data/descriptions.json',
-                'src/data/event-venue-photo-credits.json',
-                'src/data/places-client-hours.json',
-                'src/data/places-client.json',
-              ],
-              'bot/municipal-civic-refresh': ['src/data/municipal-civic.json'],
-              'bot/venue-event-refresh': [
-                'src/data/data-release.json',
-                'src/data/venue-event-source-inventory.json',
-                'src/data/venue-event-source-state.json',
-                'src/data/venue-events.json',
-              ],
-              'bot/venue-native-refresh': [
-                'src/data/data-release.json',
-                'src/data/venue-event-source-inventory.json',
-                'src/data/venue-event-source-state.json',
-                'src/data/venue-events.json',
-              ],
-              'bot/google-photo-attribution-backfill': [
-                'docs/coverage-scorecard.md',
-                'src/data/data-release.json',
-                'src/data/event-venue-photo-credits.json',
-                'src/data/place-refresh-identities.json',
-                'src/data/places-client-hours.json',
-                'src/data/places-client.json',
-                'src/data/places-enrichment.json',
-              ],
-              'bot/official-commerce-link-refresh': [
-                'src/data/business-info.json',
-                'src/data/data-release.json',
-                'src/data/event-venue-photo-credits.json',
-                'src/data/places-client-hours.json',
-                'src/data/places-client.json',
-              ],
-            };
-            let receipt;
+            let receipt = { schema_version: 2, mode: 'attach', phase: 'preflight', verified: false,
+              workflow: { sha: context.sha, runId: context.runId,
+                runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT) || null } };
             try {
+              if (context.ref !== 'refs/heads/main') throw new Error('The automated status bridge must run from main.');
+              // Fetch only this dependency-free helper from the exact trusted
+              // workflow revision. Never checkout or execute the bot's files.
+              const helperPath = 'scripts/lib/automated-pr-status-bridge.cjs';
+              const response = await github.rest.repos.getContent({
+                ...context.repo, path: helperPath, ref: context.sha,
+              });
+              const file = response.data;
+              if (file.type !== 'file' || file.path !== helperPath || file.encoding !== 'base64'
+                || !Number.isSafeInteger(file.size) || file.size <= 0 || file.size > 65536) {
+                throw new Error('Invalid bounded trusted-main bridge helper.');
+              }
+              const source = Buffer.from(file.content, 'base64');
+              if (source.length !== file.size) throw new Error('Bridge helper size mismatch.');
+              const trusted = { exports: {} };
+              new Function('module', 'exports', source.toString('utf8'))(trusted, trusted.exports);
+              const allowedByBranch = {
+                'bot/marc-schedule-refresh': ['src/data/marc-schedule.json'],
+                'bot/official-library-hours': [
+                  'docs/coverage-scorecard.md',
+                  'docs/hours-refresh-review.md',
+                  'src/data/data-release.json',
+                  'src/data/event-venue-photo-credits.json',
+                  'src/data/place-refresh-identities.json',
+                  'src/data/places-client-hours.json',
+                  'src/data/places-client.json',
+                  'src/data/places-official-hours.json',
+                  'src/data/places-merchant-hours.json',
+                ],
+                'bot/data-steward': [
+                  'docs/coverage-scorecard.md',
+                  'docs/hours-refresh-review.md',
+                  'src/data/data-release.json',
+                  'src/data/event-venue-photo-credits.json',
+                  'src/data/place-refresh-identities.json',
+                  'src/data/places-client-hours.json',
+                  'src/data/places-client.json',
+                  'src/data/places-hours-refresh.json',
+                ],
+                'bot/transit-steward': [
+                  'src/data/data-release.json',
+                  'src/data/transit-network.json',
+                  'src/data/transit-trips.json',
+                  'src/data/transit.json',
+                ],
+                'bot/curated-place-enrichment': [
+                  'audit/google-enrichment-attempts.json',
+                  'src/data/data-release.json',
+                  'src/data/event-venue-photo-credits.json',
+                  'src/data/place-refresh-identities.json',
+                  'src/data/places-client-hours.json',
+                  'src/data/places-client.json',
+                  'src/data/places-enrichment.json',
+                ],
+                'bot/business-info-refresh': [
+                  'src/data/business-info.json',
+                  'src/data/data-release.json',
+                  'src/data/descriptions.json',
+                  'src/data/event-venue-photo-credits.json',
+                  'src/data/places-client-hours.json',
+                  'src/data/places-client.json',
+                ],
+                'bot/municipal-civic-refresh': ['src/data/municipal-civic.json'],
+                'bot/venue-event-refresh': [
+                  'src/data/data-release.json',
+                  'src/data/venue-event-source-inventory.json',
+                  'src/data/venue-event-source-state.json',
+                  'src/data/venue-events.json',
+                ],
+                'bot/venue-native-refresh': [
+                  'src/data/data-release.json',
+                  'src/data/venue-event-source-inventory.json',
+                  'src/data/venue-event-source-state.json',
+                  'src/data/venue-events.json',
+                ],
+                'bot/google-photo-attribution-backfill': [
+                  'docs/coverage-scorecard.md',
+                  'src/data/data-release.json',
+                  'src/data/event-venue-photo-credits.json',
+                  'src/data/place-refresh-identities.json',
+                  'src/data/places-client-hours.json',
+                  'src/data/places-client.json',
+                  'src/data/places-enrichment.json',
+                ],
+                'bot/official-commerce-link-refresh': [
+                  'src/data/business-info.json',
+                  'src/data/data-release.json',
+                  'src/data/event-venue-photo-credits.json',
+                  'src/data/places-client-hours.json',
+                  'src/data/places-client.json',
+                ],
+              };
+              receipt.phase = 'attachment';
               receipt = await trusted.exports.attachAutomatedPrStatuses({
                 github, context, allowedByBranch,
                 branch: process.env.AUTOMATED_PR_BRANCH,
@@ -166,13 +171,24 @@ jobs:
                 dispatchToken: process.env.AUTOMATED_PR_TOKEN,
               });
             } catch (error) {
-              receipt = error.receipt || { verified: false, failure: error.message };
+              receipt = error.receipt || { ...receipt, verified: false, failure: error.message };
               core.setFailed(error.message);
             } finally {
+              require('fs').writeFileSync(process.env.BRIDGE_RECEIPT_PATH,
+                JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600 });
               core.info(JSON.stringify(receipt));
               await core.summary.addHeading('Automated PR status attachment')
                 .addCodeBlock(JSON.stringify(receipt), 'json').write();
             }
+
+      - name: Preserve the exact check attachment receipt
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: automated-pr-bridge-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/automated-pr-bridge-receipt.json
+          if-no-files-found: error
+          retention-days: 14
 
   reconcile-stale:
     if: ${{ github.event_name == 'schedule' }}
@@ -181,108 +197,124 @@ jobs:
     steps:
       - name: Fail stale automated PR checks closed
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          BRIDGE_RECEIPT_PATH: ${{ runner.temp }}/automated-pr-reconciliation-receipt.json
         with:
           script: |
-            if (context.ref !== 'refs/heads/main') throw new Error('The automated status bridge must run from main.');
-            // Fetch only this dependency-free helper from the exact trusted
-            // workflow revision. Never checkout or execute the bot's files.
-            const helperPath = 'scripts/lib/automated-pr-status-bridge.cjs';
-            const response = await github.rest.repos.getContent({
-              ...context.repo, path: helperPath, ref: context.sha,
-            });
-            const file = response.data;
-            if (file.type !== 'file' || file.path !== helperPath || file.encoding !== 'base64'
-              || !Number.isSafeInteger(file.size) || file.size <= 0 || file.size > 65536) {
-              throw new Error('Invalid bounded trusted-main bridge helper.');
-            }
-            const source = Buffer.from(file.content, 'base64');
-            if (source.length !== file.size) throw new Error('Bridge helper size mismatch.');
-            const trusted = { exports: {} };
-            new Function('module', 'exports', source.toString('utf8'))(trusted, trusted.exports);
-            const allowedByBranch = {
-              'bot/marc-schedule-refresh': ['src/data/marc-schedule.json'],
-              'bot/official-library-hours': [
-                'docs/coverage-scorecard.md',
-                'docs/hours-refresh-review.md',
-                'src/data/data-release.json',
-                'src/data/event-venue-photo-credits.json',
-                'src/data/place-refresh-identities.json',
-                'src/data/places-client-hours.json',
-                'src/data/places-client.json',
-                'src/data/places-official-hours.json',
-                'src/data/places-merchant-hours.json',
-              ],
-              'bot/data-steward': [
-                'docs/coverage-scorecard.md',
-                'docs/hours-refresh-review.md',
-                'src/data/data-release.json',
-                'src/data/event-venue-photo-credits.json',
-                'src/data/place-refresh-identities.json',
-                'src/data/places-client-hours.json',
-                'src/data/places-client.json',
-                'src/data/places-hours-refresh.json',
-              ],
-              'bot/transit-steward': [
-                'src/data/data-release.json',
-                'src/data/transit-network.json',
-                'src/data/transit-trips.json',
-                'src/data/transit.json',
-              ],
-              'bot/curated-place-enrichment': [
-                'audit/google-enrichment-attempts.json',
-                'src/data/data-release.json',
-                'src/data/event-venue-photo-credits.json',
-                'src/data/place-refresh-identities.json',
-                'src/data/places-client-hours.json',
-                'src/data/places-client.json',
-                'src/data/places-enrichment.json',
-              ],
-              'bot/business-info-refresh': [
-                'src/data/business-info.json',
-                'src/data/data-release.json',
-                'src/data/descriptions.json',
-                'src/data/event-venue-photo-credits.json',
-                'src/data/places-client-hours.json',
-                'src/data/places-client.json',
-              ],
-              'bot/municipal-civic-refresh': ['src/data/municipal-civic.json'],
-              'bot/venue-event-refresh': [
-                'src/data/data-release.json',
-                'src/data/venue-event-source-inventory.json',
-                'src/data/venue-event-source-state.json',
-                'src/data/venue-events.json',
-              ],
-              'bot/venue-native-refresh': [
-                'src/data/data-release.json',
-                'src/data/venue-event-source-inventory.json',
-                'src/data/venue-event-source-state.json',
-                'src/data/venue-events.json',
-              ],
-              'bot/google-photo-attribution-backfill': [
-                'docs/coverage-scorecard.md',
-                'src/data/data-release.json',
-                'src/data/event-venue-photo-credits.json',
-                'src/data/place-refresh-identities.json',
-                'src/data/places-client-hours.json',
-                'src/data/places-client.json',
-                'src/data/places-enrichment.json',
-              ],
-              'bot/official-commerce-link-refresh': [
-                'src/data/business-info.json',
-                'src/data/data-release.json',
-                'src/data/event-venue-photo-credits.json',
-                'src/data/places-client-hours.json',
-                'src/data/places-client.json',
-              ],
-            };
-            let receipt;
+            let receipt = { schema_version: 2, mode: 'reconcile-stale', phase: 'preflight', verified: false,
+              workflow: { sha: context.sha, runId: context.runId,
+                runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT) || null } };
             try {
+              if (context.ref !== 'refs/heads/main') throw new Error('The automated status bridge must run from main.');
+              // Fetch only this dependency-free helper from the exact trusted
+              // workflow revision. Never checkout or execute the bot's files.
+              const helperPath = 'scripts/lib/automated-pr-status-bridge.cjs';
+              const response = await github.rest.repos.getContent({
+                ...context.repo, path: helperPath, ref: context.sha,
+              });
+              const file = response.data;
+              if (file.type !== 'file' || file.path !== helperPath || file.encoding !== 'base64'
+                || !Number.isSafeInteger(file.size) || file.size <= 0 || file.size > 65536) {
+                throw new Error('Invalid bounded trusted-main bridge helper.');
+              }
+              const source = Buffer.from(file.content, 'base64');
+              if (source.length !== file.size) throw new Error('Bridge helper size mismatch.');
+              const trusted = { exports: {} };
+              new Function('module', 'exports', source.toString('utf8'))(trusted, trusted.exports);
+              const allowedByBranch = {
+                'bot/marc-schedule-refresh': ['src/data/marc-schedule.json'],
+                'bot/official-library-hours': [
+                  'docs/coverage-scorecard.md',
+                  'docs/hours-refresh-review.md',
+                  'src/data/data-release.json',
+                  'src/data/event-venue-photo-credits.json',
+                  'src/data/place-refresh-identities.json',
+                  'src/data/places-client-hours.json',
+                  'src/data/places-client.json',
+                  'src/data/places-official-hours.json',
+                  'src/data/places-merchant-hours.json',
+                ],
+                'bot/data-steward': [
+                  'docs/coverage-scorecard.md',
+                  'docs/hours-refresh-review.md',
+                  'src/data/data-release.json',
+                  'src/data/event-venue-photo-credits.json',
+                  'src/data/place-refresh-identities.json',
+                  'src/data/places-client-hours.json',
+                  'src/data/places-client.json',
+                  'src/data/places-hours-refresh.json',
+                ],
+                'bot/transit-steward': [
+                  'src/data/data-release.json',
+                  'src/data/transit-network.json',
+                  'src/data/transit-trips.json',
+                  'src/data/transit.json',
+                ],
+                'bot/curated-place-enrichment': [
+                  'audit/google-enrichment-attempts.json',
+                  'src/data/data-release.json',
+                  'src/data/event-venue-photo-credits.json',
+                  'src/data/place-refresh-identities.json',
+                  'src/data/places-client-hours.json',
+                  'src/data/places-client.json',
+                  'src/data/places-enrichment.json',
+                ],
+                'bot/business-info-refresh': [
+                  'src/data/business-info.json',
+                  'src/data/data-release.json',
+                  'src/data/descriptions.json',
+                  'src/data/event-venue-photo-credits.json',
+                  'src/data/places-client-hours.json',
+                  'src/data/places-client.json',
+                ],
+                'bot/municipal-civic-refresh': ['src/data/municipal-civic.json'],
+                'bot/venue-event-refresh': [
+                  'src/data/data-release.json',
+                  'src/data/venue-event-source-inventory.json',
+                  'src/data/venue-event-source-state.json',
+                  'src/data/venue-events.json',
+                ],
+                'bot/venue-native-refresh': [
+                  'src/data/data-release.json',
+                  'src/data/venue-event-source-inventory.json',
+                  'src/data/venue-event-source-state.json',
+                  'src/data/venue-events.json',
+                ],
+                'bot/google-photo-attribution-backfill': [
+                  'docs/coverage-scorecard.md',
+                  'src/data/data-release.json',
+                  'src/data/event-venue-photo-credits.json',
+                  'src/data/place-refresh-identities.json',
+                  'src/data/places-client-hours.json',
+                  'src/data/places-client.json',
+                  'src/data/places-enrichment.json',
+                ],
+                'bot/official-commerce-link-refresh': [
+                  'src/data/business-info.json',
+                  'src/data/data-release.json',
+                  'src/data/event-venue-photo-credits.json',
+                  'src/data/places-client-hours.json',
+                  'src/data/places-client.json',
+                ],
+              };
+              receipt.phase = 'reconciliation';
               receipt = await trusted.exports.reconcileStaleAutomatedPrStatuses({ github, context, allowedByBranch });
             } catch (error) {
-              receipt = error.receipt || { verified: false, failure: error.message };
+              receipt = error.receipt || { ...receipt, verified: false, failure: error.message };
               core.setFailed(error.message);
             } finally {
+              require('fs').writeFileSync(process.env.BRIDGE_RECEIPT_PATH,
+                JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600 });
               core.info(JSON.stringify(receipt));
               await core.summary.addHeading('Automated PR status attachment')
                 .addCodeBlock(JSON.stringify(receipt), 'json').write();
             }
+
+      - name: Preserve the stale-check reconciliation receipt
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: automated-pr-reconciliation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/automated-pr-reconciliation-receipt.json
+          if-no-files-found: error
+          retention-days: 14
