@@ -155,7 +155,7 @@ describe("scheduled data workflow contracts", () => {
       expect(
         workflow.jobs?.[jobName]?.["runs-on"],
         `${name}:${jobName} must stay on an isolated hosted runner`,
-      ).toBe("ubuntu-latest");
+      ).toBe(name === "ci.yml" && jobName === "verify" ? "ubuntu-24.04" : "ubuntu-latest");
     }
   });
 
@@ -1048,6 +1048,27 @@ describe("scheduled data workflow contracts", () => {
       "http://security.ubuntu.com/ubuntu priority:3",
     ].join("\n") + "\n";
     expect(transform(edgeCases)).toBe(edgeCases.replace("  http://azure.archive.ubuntu.com/ubuntu/", "  https://archive.ubuntu.com/ubuntu/"));
+  });
+
+  it("pins the six direct Playwright installer jobs to supported Ubuntu without changing other hosted jobs", () => {
+    const expected = ["ci.yml:verify", "ux-audit.yml:mobile-ux", "ingest-business-info.yml:ingest", "refresh-commerce-links.yml:refresh", "visual-contract.yml:chromium", "ingest-venues.yml:ingest"].sort();
+    const browserJobs: string[] = [];
+    for (const name of readdirSync(WORKFLOW_DIR).filter((name) => /\.ya?ml$/.test(name))) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
+        if (!job.steps?.some((step) => typeof step.run === "string" && /\bnpx playwright install\b/.test(step.run))) continue;
+        browserJobs.push(`${name}:${jobName}`);
+        expect(job["runs-on"], `${name}:${jobName} must use a Playwright-supported browser image`).toBe("ubuntu-24.04");
+        expect(job.env ?? {}).not.toHaveProperty("PLAYWRIGHT_HOST_PLATFORM_OVERRIDE");
+      }
+    }
+    expect(browserJobs.sort()).toEqual(expected);
+    for (const name of new Set(expected.map((entry) => entry.split(":")[0]))) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
+        if (job["runs-on"] && !expected.includes(`${name}:${jobName}`)) expect(job["runs-on"]).toBe("ubuntu-latest");
+      }
+    }
   });
 
   it("pins the scheduled discovery boundary and does not persist credentials", () => {

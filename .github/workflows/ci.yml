@@ -47,7 +47,8 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    # Match the installed Playwright browser and native-dependency support.
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       # Automated publishers are already constrained to exact JSON/Markdown

@@ -90,7 +90,7 @@ jobs:
   ingest:
     needs: review-gate
     if: ${{ needs.review-gate.outputs.should_run == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Healthy runs finish in 8–12 minutes. A 30-minute ceiling leaves more
     # than twice that range while stopping a stalled runner long before the
     # two-hour incident observed on 2026-08-19.

@@ -37,7 +37,7 @@ concurrency:
 jobs:
   refresh:
     if: ${{ github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: ${{ (github.event_name == 'schedule' || inputs.native_daily != false) && 15 || 40 }}
     permissions:
       contents: read
