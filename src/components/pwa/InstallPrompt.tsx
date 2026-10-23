@@ -46,8 +46,9 @@ async function copyLink(url: string): Promise<boolean> {
 }
 
 /**
- * One non-blocking return path. Automatic offers stay out of focused map and
- * detail work; a deliberate Saved/Compass/Settings action can always open it.
+ * One non-blocking return path. Automatic offers are a slim banner above the
+ * tab bar after a second visit or a save. A deliberate Saved/Compass/Settings
+ * action still opens the full Home Screen instructions, including iOS steps.
  */
 export default function InstallPrompt() {
   const pathname = usePathname();
@@ -55,6 +56,7 @@ export default function InstallPrompt() {
   const panelRef = useRef<HTMLElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const [blockingModalOpen, setBlockingModalOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const {
     show,
     surface,
@@ -70,6 +72,8 @@ export default function InstallPrompt() {
 
   const suppressed = isInstallPromptSuppressedPath(pathname) && !manual;
   const visible = show && !suppressed && !blockingModalOpen;
+  if (!visible && expanded) setExpanded(false);
+  const showPanel = visible && (manual || expanded);
 
   useEffect(() => {
     document.documentElement.dataset.returnBridgeReady = "true";
@@ -100,7 +104,7 @@ export default function InstallPrompt() {
   }, []);
 
   useEffect(() => {
-    if (!visible || !manual) return;
+    if (!showPanel) return;
     const active = document.activeElement;
     returnFocusRef.current =
       active instanceof HTMLElement && active !== document.body ? active : null;
@@ -123,7 +127,7 @@ export default function InstallPrompt() {
         returnTo.focus({ preventScroll: true });
       }
     };
-  }, [dismiss, manual, visible]);
+  }, [dismiss, showPanel]);
 
   if (!visible) return null;
 
@@ -139,6 +143,71 @@ export default function InstallPrompt() {
     completeAlternative("copy");
   };
 
+  const title = surface === "desktop"
+    ? "Put Radius on your phone"
+    : "Add Radius to your Home Screen";
+  const closeLabel = manual || expanded ? "Close Keep Radius" : "Dismiss Keep Radius";
+
+  if (!showPanel) {
+    return (
+      <aside
+        ref={panelRef}
+        aria-labelledby="keep-radius-title"
+        aria-live="polite"
+        data-return-bridge
+        data-presentation="banner"
+        data-surface={surface}
+        className="install-home-banner fixed z-[var(--z-prompt)] mx-auto max-w-lg overflow-hidden rounded-[var(--app-radius-lg)] border"
+        style={{
+          left: "max(0.75rem, env(safe-area-inset-left, 0px))",
+          right: "max(0.75rem, env(safe-area-inset-right, 0px))",
+          bottom: "calc(env(safe-area-inset-bottom, 0px) + var(--app-bottomnav-reserve, 0px) + 8px)",
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-elevated-solid)",
+          boxShadow: "var(--app-elev-2), var(--app-hi)",
+        }}
+      >
+        <div className="flex items-center gap-3 py-2 pl-3 pr-1">
+          <RippleMark size={32} tile detail="compact" className="shrink-0" />
+          <p
+            id="keep-radius-title"
+            className="min-w-0 flex-1 font-sans text-[14px] font-semibold leading-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            {title}
+          </p>
+          {surface === "native" ? (
+            <Button
+              onClick={promptInstall}
+              loading={prompting}
+              size="sm"
+              className="shrink-0"
+            >
+              {prompting ? "Opening…" : "Add"}
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setExpanded(true)}
+              size="sm"
+              className="shrink-0"
+            >
+              Add
+            </Button>
+          )}
+          <button
+            type="button"
+            onClick={dismiss}
+            aria-label={closeLabel}
+            className="tactile-interactive grid h-11 w-11 shrink-0 place-items-center rounded-full"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            <X className="h-4 w-4" strokeWidth={2} aria-hidden />
+          </button>
+        </div>
+      </aside>
+    );
+  }
+
   const embedded = surface === "embedded-ios" || surface === "embedded-android";
   const showCopyFallback = embedded || surface === "desktop";
   const manualInstall =
@@ -153,13 +222,14 @@ export default function InstallPrompt() {
       aria-labelledby="keep-radius-title"
       aria-live="polite"
       data-return-bridge
+      data-presentation="panel"
       data-surface={surface}
       className="pop-in fixed z-[var(--z-prompt)] mx-auto max-w-sm overflow-y-auto overscroll-contain rounded-[var(--app-radius-xl)] border backdrop-blur-md"
       style={{
         left: "max(0.75rem, env(safe-area-inset-left, 0px))",
         right: "max(0.75rem, env(safe-area-inset-right, 0px))",
-        bottom: "calc(env(safe-area-inset-bottom, 0px) + var(--app-bottomnav-reserve, 0px) + 68px)",
-        maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--app-bottomnav-reserve, 0px) - 80px)",
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + var(--app-bottomnav-reserve, 0px) + 8px)",
+        maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--app-bottomnav-reserve, 0px) - 24px)",
         borderColor: "var(--app-border)",
         background: "var(--app-bg-elevated-solid)",
         boxShadow: "var(--app-elev-3), var(--app-hi)",
@@ -169,7 +239,7 @@ export default function InstallPrompt() {
         ref={closeButtonRef}
         type="button"
         onClick={dismiss}
-        aria-label={manual ? "Close Keep Radius" : "Dismiss Keep Radius"}
+        aria-label={closeLabel}
         className="tactile-interactive absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full transition active:scale-[0.9]"
         style={{ color: "var(--app-ink-3)" }}
       >
@@ -184,9 +254,7 @@ export default function InstallPrompt() {
             className="min-w-0 font-sans text-[17px] font-semibold leading-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            {surface === "desktop"
-              ? "Put Radius on your phone"
-              : "Add Radius to your Home Screen"}
+            {title}
           </p>
         </div>
 

@@ -46,12 +46,10 @@ describe("install prompt policy", () => {
     expect(isInstallPromptSuppressedPath("/about")).toBe(false);
   });
 
-  it("stays off focused routes and pages with persistent action docks", () => {
+  it("stays off focused map, Ask, Fair, and the dedicated setup page", () => {
     expect(isInstallPromptSuppressedPath("/map")).toBe(true);
     expect(isInstallPromptSuppressedPath("/ask")).toBe(true);
     expect(isInstallPromptSuppressedPath("/ask/breakfast")).toBe(true);
-    expect(isInstallPromptSuppressedPath("/places/gravel-and-grind-frederick")).toBe(true);
-    expect(isInstallPromptSuppressedPath("/events/alive-at-five")).toBe(true);
     expect(isInstallPromptSuppressedPath("/fair")).toBe(true);
     expect(
       isInstallPromptSuppressedPath(
@@ -59,11 +57,10 @@ describe("install prompt policy", () => {
       ),
     ).toBe(true);
     expect(isInstallPromptSuppressedPath("/places")).toBe(false);
-    // /today flipped to suppressed. It was the ONLY focused surface left
-    // unprotected, so the panel opened over the landing shelf ten seconds into
-    // a first visit, while the person was reading the answer they came for.
-    // Installing is still reachable from Saved, Compass and Settings, so what
-    // this removes is the interruption, not the capability.
-    expect(isInstallPromptSuppressedPath("/today")).toBe(true);
+    expect(isInstallPromptSuppressedPath("/places/gravel-and-grind-frederick")).toBe(false);
+    expect(isInstallPromptSuppressedPath("/events/alive-at-five")).toBe(false);
+    // Today can show the quiet return/save banner. First visits never
+    // qualify, so the landing shelf stays clear without path suppression.
+    expect(isInstallPromptSuppressedPath("/today")).toBe(false);
   });
 });

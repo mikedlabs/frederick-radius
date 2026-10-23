@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  RETURN_BRIDGE_SESSION_GAP_MS,
+  RETURN_BRIDGE_DISMISS_MS,
   beginReturnBridgeSession,
   clearPendingReturnBridgeValue,
   completeReturnBridge,
   dismissReturnBridge,
   emptyReturnBridgeState,
   isReturnBridgeValueKind,
+  isSameLocalCalendarDay,
   isSocialEntry,
   markReturnBridgeOfferShown,
   parseReturnBridgeState,
@@ -39,60 +40,75 @@ describe("Return Bridge state", () => {
       sessions: 3,
       valueKind: null,
       valueAt: 0,
-      dismissals: 1,
-      autoDisabled: true,
+      dismissals: 99,
+      autoDisabled: false,
     }));
   });
 
-  it("counts a new visit only after the session gap", () => {
-    const first = beginReturnBridgeSession(emptyReturnBridgeState(), NOW);
-    const sameVisit = beginReturnBridgeSession(first, NOW + 60_000);
-    const returnVisit = beginReturnBridgeSession(
-      sameVisit,
-      NOW + RETURN_BRIDGE_SESSION_GAP_MS + 60_001,
-    );
+  it("keeps an older permanent dismissal as a hard stop", () => {
+    expect(
+      parseReturnBridgeState(JSON.stringify({
+        sessions: 2,
+        autoDisabled: true,
+        dismissals: 1,
+      })),
+    ).toEqual(expect.objectContaining({ autoDisabled: true }));
+  });
+
+  it("counts a new visit at most once per local calendar day", () => {
+    const evening = new Date(2026, 6, 31, 23, 0, 0).getTime();
+    const laterSameNight = new Date(2026, 6, 31, 23, 45, 0).getTime();
+    const nextMorning = new Date(2026, 7, 1, 1, 0, 0).getTime();
+
+    expect(isSameLocalCalendarDay(evening, laterSameNight)).toBe(true);
+    expect(isSameLocalCalendarDay(evening, nextMorning)).toBe(false);
+
+    const first = beginReturnBridgeSession(emptyReturnBridgeState(), evening);
+    const sameVisit = beginReturnBridgeSession(first, laterSameNight);
+    const returnVisit = beginReturnBridgeSession(sameVisit, nextMorning);
 
     expect(first.sessions).toBe(1);
     expect(sameVisit.sessions).toBe(1);
     expect(returnVisit.sessions).toBe(2);
   });
 
-  it("offers one quiet Home Screen path after a first visitor has stayed", () => {
+  it("does not offer a Home Screen path on a first visit", () => {
     const firstVisit = beginReturnBridgeSession(emptyReturnBridgeState(), NOW);
     expect(
       returnBridgeOfferReason(firstVisit, { socialEntry: false, now: NOW }),
-    ).toBe("visit");
+    ).toBeNull();
+    expect(
+      returnBridgeOfferReason(firstVisit, { socialEntry: true, now: NOW }),
+    ).toBeNull();
+  });
 
+  it("offers a quiet banner after a save, including on a first visit", () => {
+    const firstVisit = beginReturnBridgeSession(emptyReturnBridgeState(), NOW);
     const saved = recordReturnBridgeValue(firstVisit, "event", NOW + 1);
     expect(
       returnBridgeOfferReason(saved, { socialEntry: false, now: NOW + 1 }),
     ).toBe("value");
   });
 
-  it("offers a quiet recovery path for social and returning visitors", () => {
+  it("offers a quiet banner on the second visit", () => {
     const firstVisit = beginReturnBridgeSession(emptyReturnBridgeState(), NOW);
-    expect(
-      returnBridgeOfferReason(firstVisit, { socialEntry: true, now: NOW }),
-    ).toBe("social");
-
     const returnVisit = { ...firstVisit, sessions: 2 };
     expect(
       returnBridgeOfferReason(returnVisit, { socialEntry: false, now: NOW }),
     ).toBe("return");
   });
 
-  it("permanently stops automatic offers after the first dismissal", () => {
+  it("hides automatic offers for 30 days after dismissal", () => {
     const active = recordReturnBridgeValue(
       beginReturnBridgeSession(emptyReturnBridgeState(), NOW),
       "transit-stop",
       NOW,
     );
-    const firstDismissal = dismissReturnBridge(
-      markReturnBridgeOfferShown(active, NOW),
-    );
+    const shown = markReturnBridgeOfferShown(active, NOW);
+    const firstDismissal = dismissReturnBridge(shown, NOW);
 
-    expect(firstDismissal.snoozedUntil).toBe(0);
-    expect(firstDismissal.autoDisabled).toBe(true);
+    expect(firstDismissal.snoozedUntil).toBe(NOW + RETURN_BRIDGE_DISMISS_MS);
+    expect(firstDismissal.autoDisabled).toBe(false);
     expect(
       returnBridgeOfferReason(firstDismissal, {
         socialEntry: false,
@@ -100,13 +116,21 @@ describe("Return Bridge state", () => {
       }),
     ).toBeNull();
 
-    const eligibleAgain = { ...firstDismissal, sessions: 2 };
+    const day29 = NOW + RETURN_BRIDGE_DISMISS_MS - 1;
     expect(
-      returnBridgeOfferReason(eligibleAgain, {
+      returnBridgeOfferReason({ ...firstDismissal, sessions: 2 }, {
         socialEntry: false,
-        now: NOW + 30 * 24 * 60 * 60 * 1000,
+        now: day29,
       }),
     ).toBeNull();
+
+    const day30 = NOW + RETURN_BRIDGE_DISMISS_MS;
+    expect(
+      returnBridgeOfferReason({ ...firstDismissal, sessions: 2 }, {
+        socialEntry: false,
+        now: day30,
+      }),
+    ).toBe("return");
   });
 
   it("treats a completed return path as final for automatic prompting", () => {
@@ -157,7 +181,7 @@ describe("Return Bridge state", () => {
     expect(
       returnBridgeOfferReason(returnVisit, {
         socialEntry: false,
-        now: NOW + RETURN_BRIDGE_SESSION_GAP_MS + 20_000,
+        now: NOW + 24 * 60 * 60 * 1000,
       }),
     ).toBeNull();
   });
