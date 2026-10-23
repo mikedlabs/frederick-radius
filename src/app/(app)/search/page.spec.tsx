@@ -105,7 +105,7 @@ describe("submitted search photo budget", () => {
     expect(html).toContain('aria-label="Map: Schifferstadt Architectural Museum"');
     expect(html).toContain("returnTo=%2Fsearch%3Fq%3DSchifferstadt%26in%3Dfrederick%26kind%3Dplace");
     expect(html).toContain("in=frederick");
-    expect(html).toContain("Hours not posted");
+    expect(html).toContain("Hours not confirmed");
   });
 
   it("does not promote a photographic place above the actual first ranked tool", async () => {

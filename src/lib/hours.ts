@@ -285,7 +285,9 @@ export function formatHoursLine(status: OpenStatus): string {
   }
   if (status.state === "closed") return "Closed";
   if (status.state === "unverified") return "Hours not confirmed";
-  return "Hours not posted";
+  // Unknown includes a posted scoped schedule whose venue opening cannot
+  // be asserted; it never proves that the source did not publish hours.
+  return "Hours not confirmed";
 }
 
 export function formatFullHours(hours: Hours | undefined): { day: DayOfWeek; label: string; windows: HoursWindow[] }[] {

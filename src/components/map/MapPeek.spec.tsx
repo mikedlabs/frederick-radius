@@ -287,15 +287,55 @@ describe("MapPeek selected photo and source identity", () => {
     } }) }));
     const google = host.querySelector("img")!;
     expect(google.getAttribute("data-map-peek-photo-source")).toBe("google");
-    expect(new URL(google.getAttribute("src")!, "https://frederickradius.app").searchParams.get("w")).toBe("208");
+    expect(new URL(google.getAttribute("src")!, "https://frederickradius.app").searchParams.get("w")).toBe("720");
     await load(1, 1);
     expect(host.querySelector("img")?.getAttribute("src")).toBe(wikimediaUrl(getLandmarkPhoto(slug)!.file, 720));
     await load(1280, 891);
     expect(host.querySelector(`a[href="${getLandmarkPhoto(slug)!.source_url}"]`)?.textContent).toBe("Controlled map photographer");
     expect(fetchCard).toHaveBeenCalledOnce();
-    expect(host.textContent).toContain("Hours not posted");
+    expect(host.textContent).toContain("Hours not confirmed");
     expect(host.textContent).toContain("Directions");
     expect(host.textContent).toContain("Save");
+  });
+
+  it("keeps one selected Google image and its credit when the same card rerenders", async () => {
+    const slug = "map-google-full-photo-fixture";
+    const place: MapPinPlace = {
+      slug, name: "Selected Google photo fixture", category: "shops", municipality: "frederick",
+      geom: { lat: 39.4143, lng: -77.4105 }, source: "manual", is_verified: true,
+      open_status: { state: "unknown" }, short_blurb: "Controlled image transport only.",
+    };
+    const fetchCard = vi.fn(async () => Response.json({ place: {
+      slug, google_photo_url: src + `&slug=${slug}`, google_photo_attribution: credit,
+    } }));
+    vi.stubGlobal("fetch", fetchCard);
+    const update = () => act(async () => root.render(<MapPeek place={place} distanceOrigin={null} distanceOriginLabel="from you" onClose={vi.fn()} onDetails={openDetails} />));
+    await update();
+    const image = host.querySelector("img")!;
+    const selected = new URL(image.getAttribute("src")!, "https://frederickradius.app");
+    expect(selected.pathname).toBe("/api/place-photo");
+    expect(selected.searchParams.get("name")).toBe(photoName);
+    expect(selected.searchParams.get("w")).toBe("720");
+    expect(selected.searchParams.get("fallback")).toBe("signal");
+    await load(720, 480);
+    const details = host.querySelector<HTMLButtonElement>(".map-peek-details-link")!;
+    details.focus();
+    await update();
+    expect(host.querySelectorAll("img")).toHaveLength(1);
+    expect(host.querySelector("img")).toBe(image);
+    expect(image.dataset.mapPeekPhotoState).toBe("ready");
+    expect(host.textContent).toContain("Fixture Photographer");
+    expect(document.activeElement).toBe(details);
+    expect(fetchCard).toHaveBeenCalledOnce();
+    await act(async () => image.dispatchEvent(new Event("error")));
+    await update();
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector(".map-peek-source-credit")).toBeNull();
+    expect(host.textContent).toContain(place.name);
+    expect(host.textContent).toContain("Directions");
+    expect(host.textContent).toContain("Save");
+    expect(document.activeElement).toBe(details);
+    expect(fetchCard).toHaveBeenCalledOnce();
   });
 
   it.each([".map-peek-visual", ".map-peek-title-button", ".map-peek-details-link"])("hands the actual %s opener to the sheet callback without relying on pointer focus", async selector => {

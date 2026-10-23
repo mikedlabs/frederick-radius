@@ -33,6 +33,20 @@ async function expectDecodedImage(image: HTMLImageElement) {
   }, { timeout: 5000 });
 }
 
+/** Healthy selected photos use the same frame regardless of source kind.
+ * These are decoded local transport fixtures, not claims about a provider. */
+async function expectFullWidthPhoto(root: HTMLElement, image: HTMLImageElement) {
+  const body = root.querySelector<HTMLElement>(".map-peek-body")!;
+  const frame = root.querySelector<HTMLElement>(".map-peek-visual")!;
+  const text = root.querySelector<HTMLElement>(".map-peek-text")!;
+  const frameBox = frame.getBoundingClientRect();
+  await expect(frameBox.width).toBeGreaterThan(body.clientWidth - 1);
+  await expect(frameBox.height).toBeGreaterThanOrEqual(132);
+  await expect(text.getBoundingClientRect().top).toBeGreaterThanOrEqual(frameBox.bottom);
+  await expect(image.getBoundingClientRect().width).toBeGreaterThan(frameBox.width - 2);
+  await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
+}
+
 /** Storybook's synthetic focus selector omits summary. Exercise the native
  * pointer in browser tests without repairing focus after the interaction. */
 async function clickPhotoEdits(summary: HTMLElement) {
@@ -116,6 +130,7 @@ export const FallbackAndExhaustionAt320: Story = {
       await expect(image?.naturalWidth).toBeGreaterThan(1);
       await expect(image?.naturalHeight).toBeGreaterThan(1);
     }, { timeout: 5000 });
+    await expectFullWidthPhoto(root, currentImage()!);
     await expect(canvas.getByText("Component Google fixture")).toBeVisible();
     await expect(root.querySelector("button a, a button")).toBeNull();
     await expect(root.querySelectorAll("img")).toHaveLength(1);
@@ -132,6 +147,7 @@ export const FallbackAndExhaustionAt320: Story = {
       await expect(image?.naturalWidth).toBeGreaterThan(1);
       await expect(image?.naturalHeight).toBeGreaterThan(1);
     }, { timeout: 5000 });
+    await expectFullWidthPhoto(root, currentImage()!);
     await expect(canvas.queryByText("Component Google fixture")).not.toBeInTheDocument();
     const sourceLink = canvas.getByRole("link", { name: "Photo by Component Commons fixture. Wikimedia Commons" });
     await expect(sourceLink).toHaveTextContent("Component Commons fixture");
@@ -182,6 +198,16 @@ export const FallbackAndExhaustionAt320: Story = {
 export const FallbackAndExhaustionAt375: Story = {
   ...FallbackAndExhaustionAt320,
   globals: { viewport: { value: "radiusMobileCompact", isRotated: false } },
+};
+
+export const FallbackAndExhaustionAt390: Story = {
+  ...FallbackAndExhaustionAt320,
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+};
+
+export const FallbackAndExhaustionAt430: Story = {
+  ...FallbackAndExhaustionAt320,
+  globals: { viewport: { value: "radiusMobileLarge", isRotated: false } },
 };
 
 export const OwnedPhotoAt390: Story = {
