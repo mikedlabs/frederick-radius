@@ -169,9 +169,9 @@ jobs:
       - name: Component workshop tests
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run test:storybook
-      - name: WebKit native Today controls
+      - name: WebKit native Today and commerce controls
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
-        run: npm run test:storybook -- src/components/today/TodayEntryControls.stories.tsx --maxWorkers=1 --no-file-parallelism
+        run: npm run test:storybook -- src/components/today/TodayEntryControls.stories.tsx src/components/place/CommerceActions.stories.tsx --maxWorkers=1 --no-file-parallelism
         env:
           RADIUS_STORYBOOK_WEBKIT: "1"
       - name: Unit tests
