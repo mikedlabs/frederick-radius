@@ -86,6 +86,13 @@ export const CIVIC_ACTIONS: CivicAction[] = [
   { id: "ordinances", verb: "view", label: "Council resolutions & ordinances", url: "https://frederickcountymd.gov/6455/Council-Ordinances-and-Resolutions", keywords: ["law", "code"] },
   { id: "holidays", verb: "view", label: "County government holidays", url: "https://www.frederickcountymd.gov/4367/County-Government-Holidays", keywords: ["closed", "hours"] },
   { id: "road-closures", verb: "view", label: "Road closures", url: "https://www.frederickcountymd.gov/5052/Roads-Closed", keywords: ["traffic", "detour"] },
+  // The resident asking "when is trash day" wants the SCHEDULE, not the
+  // "report a missed collection" form the query used to land on. This is a
+  // "view" action on purpose: an explicit "find a trash CAN" stays a
+  // physical-amenity query (the verb contract in matchCivicAction excludes a
+  // view action), while "trash day" / "recycling pickup" / "collection
+  // schedule" (no explicit verb) resolve here. URL verified 2026-09-22.
+  { id: "collection-schedule", verb: "view", label: "Curbside collection schedule", url: "https://www.frederickcountymd.gov/3447/Curbside-Collection-Schedule", keywords: ["trash day", "garbage day", "recycling day", "collection day", "trash pickup", "garbage pickup", "recycling pickup", "trash collection", "recycling collection", "trash schedule", "recycling schedule", "garbage schedule", "pickup schedule", "collection schedule", "when is trash", "when is recycling", "when is garbage", "curbside collection", "curbside"] },
   { id: "stray-animals", verb: "view", label: "Found stray animals", url: "https://frederickcountymd.gov/1995/Stray-Animals", keywords: ["lost pet"] },
   { id: "schools", verb: "view", label: "Schools (FCPS)", url: "https://www.fcps.org/", keywords: ["closings", "school"] },
   { id: "zoning", verb: "view", label: "Property zoning", url: "https://www.frederickcountymd.gov/7949/Zoning", keywords: ["parcel", "land use"] },
