@@ -15,6 +15,7 @@ vi.mock("@/lib/db/client", () => ({
 import {
   finalizeIdempotentDailyUsage,
   meterUsage,
+  releaseDailyUsage,
   reserveDailyUsage,
   reserveIdempotentDailyUsage,
   reserveIdempotentDailyUsageBatch,
@@ -237,6 +238,35 @@ describe("daily paid-usage reservations", () => {
       reserveDailyUsage("firecrawl_visit_frederick", 12),
     ).resolves.toBeNull();
   });
+
+  it("atomically releases one reserved unit without going below zero", async () => {
+    mocks.sql.mockResolvedValue([{ count: "6" }]);
+
+    await expect(releaseDailyUsage("google_photo")).resolves.toBe(true);
+
+    const [strings, ...values] = mocks.sql.mock.calls[0] ?? [];
+    const statement = Array.from(strings as TemplateStringsArray).join("?");
+    expect(values).toEqual([1, "google_photo", 1]);
+    expect(statement).toContain("usage_counters.count - ?");
+    expect(statement).toContain("usage_counters.count >= ?");
+    expect(statement).toContain("America/New_York");
+    expect(statement).toContain("returning count");
+  });
+
+  it("reports no release when the counter row is missing or already zero", async () => {
+    mocks.sql.mockResolvedValue([]);
+
+    await expect(releaseDailyUsage("google_photo")).resolves.toBe(false);
+  });
+
+  it.each([0, -1, 1.5, Number.NaN])(
+    "fails soft before touching the database for an invalid release increment (%s)",
+    async (increment) => {
+      await expect(releaseDailyUsage("google_photo", increment)).resolves.toBe(false);
+      expect(mocks.getSql).not.toHaveBeenCalled();
+      expect(mocks.sql).not.toHaveBeenCalled();
+    },
+  );
 
 });
 
