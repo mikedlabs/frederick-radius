@@ -132,6 +132,7 @@ jobs:
     permissions:
       actions: write
       contents: read
+      pull-requests: read
     uses: ./.github/workflows/automated-pr-checks.yml
     with:
       branch: ${{ needs.transit-publish.outputs.pr_branch }}

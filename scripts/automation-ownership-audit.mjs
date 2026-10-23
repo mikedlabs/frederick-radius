@@ -36,6 +36,7 @@ export function auditAutomationOwnership({
     "feed-health.yml",
     "freshness-check.yml",
     "production-canary.yml",
+    "automated-pr-status-bridge.yml",
   ]) {
     if (hasScheduledTrigger(workflows[name] ?? "")) {
       failures.push(`${name} must remain event-driven or manual, not scheduled`);

@@ -14,9 +14,8 @@ run-name: >-
 
 on:
   pull_request:
-  # Bot-created pull requests use the repository token. GitHub holds their
-  # pull_request runs for manual approval, so the creating workflow explicitly
-  # dispatches these same secret-free gates on the allowlisted bot branch.
+  # Eligible held native PR runs are approved by the trusted publisher helper.
+  # Manual dispatch remains a full diagnostic run; it cannot select data-only.
   workflow_dispatch:
     inputs:
       automated_pr_branch:
@@ -43,7 +42,9 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  actions: read
   contents: read
+  pull-requests: read
 
 jobs:
   verify:
@@ -51,12 +52,65 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
-      # Automated publishers are already constrained to exact JSON/Markdown
-      # allowlists by automated-pr-checks and the status bridge. They need a
-      # data-release gate, not another full application/browser build. Vercel
-      # still builds the merged revision before it can reach Production.
-      AUTOMATED_DATA_PR: ${{ github.event_name == 'workflow_dispatch' && inputs.automated_pr_branch != '' && inputs.automated_pr_head_sha != '' && '1' || '0' }}
+      # Only the pre-checkout protected-main helper may opt into the focused
+      # data gate after exact current PR/base/head/tree/path validation.
+      # Ordinary code PRs and workflow_dispatch keep full checks; uncertain publishers are held.
+      AUTOMATED_DATA_PR: "0"
     steps:
+      - name: Classify native automated data PR before repository execution
+        id: native_pr
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          NATIVE_PR_RECEIPT_PATH: ${{ runner.temp }}/native-pr-preflight.json
+        with:
+          script: |
+            const pull = context.payload.pull_request;
+            const candidateHint = pull?.head?.repo?.full_name === `${context.repo.owner}/${context.repo.repo}`
+              && /^bot\//.test(pull?.head?.ref || '');
+            let receipt = { schema_version: 1, mode: candidateHint ? 'held' : 'full', verified: false, phase: 'bootstrap' };
+            core.setOutput('data_only', 'false');
+            try {
+              const main = await github.rest.git.getRef({ ...context.repo, ref: 'heads/main' });
+              const trustedMainSha = main.data.object.sha;
+              if (!/^[0-9a-f]{40}$/.test(trustedMainSha || '')) throw new Error('Invalid protected main revision.');
+              const helperPath = 'scripts/lib/native-automated-pr-gates.cjs';
+              const response = await github.rest.repos.getContent({ ...context.repo, path: helperPath, ref: trustedMainSha });
+              const file = response.data;
+              if (file.type !== 'file' || file.path !== helperPath || file.encoding !== 'base64'
+                || !Number.isSafeInteger(file.size) || file.size <= 0 || file.size > 65536) {
+                throw new Error('Invalid bounded protected-main native gate helper.');
+              }
+              const source = Buffer.from(file.content, 'base64');
+              if (source.length !== file.size) throw new Error('Native gate helper size mismatch.');
+              const trusted = { exports: {} };
+              new Function('module', 'exports', source.toString('utf8'))(trusted, trusted.exports);
+              receipt = await trusted.exports.classifyNativeAutomatedPr({ github, context, trustedMainSha });
+              const dataOnly = candidateHint && receipt.verified === true && receipt.mode === 'data-only';
+              core.setOutput('data_only', String(dataOnly));
+              if (dataOnly) core.exportVariable('AUTOMATED_DATA_PR', '1');
+              else if (candidateHint || receipt.mode === 'held') {
+                core.setFailed('Native publisher identity is unverified. Reconcile the exact data PR against current main before execution.');
+              }
+            } catch (error) {
+              receipt = { schema_version: 1, mode: candidateHint ? 'held' : 'full', verified: false, phase: 'bootstrap', failure: error.message };
+              if (candidateHint) core.setFailed('Native publisher preflight unavailable; execution is held with its identity unverified.');
+              else core.warning('Native data-only classification unavailable; all application gates remain required.');
+            } finally {
+              require('fs').writeFileSync(process.env.NATIVE_PR_RECEIPT_PATH,
+                JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600 });
+              core.info(JSON.stringify(receipt));
+              await core.summary.addHeading('Native PR gate classification')
+                .addCodeBlock(JSON.stringify(receipt), 'json').write();
+            }
+      - name: Preserve native PR classification receipt
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-pr-preflight-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/native-pr-preflight.json
+          if-no-files-found: error
+          retention-days: 14
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -66,19 +120,6 @@ jobs:
           cache: "npm"
       - name: Install dependencies
         run: npm ci
-      - name: Validate automated data dispatch identity
-        if: ${{ env.AUTOMATED_DATA_PR == '1' }}
-        env:
-          AUTOMATED_PR_BRANCH: ${{ inputs.automated_pr_branch }}
-          AUTOMATED_PR_HEAD_SHA: ${{ inputs.automated_pr_head_sha }}
-        run: |
-          set -euo pipefail
-          case "$AUTOMATED_PR_BRANCH" in
-            bot/*) ;;
-            *) echo "Refusing non-bot automated data branch: $AUTOMATED_PR_BRANCH"; exit 1 ;;
-          esac
-          test "$GITHUB_SHA" = "$AUTOMATED_PR_HEAD_SHA"
-          test "$GITHUB_REF" = "refs/heads/$AUTOMATED_PR_BRANCH"
       - name: Enforce tracked-file size budget
         run: npm run audit:repo-size
       - name: Audit production dependencies
@@ -213,6 +254,60 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           PW_PRODUCTION: "1"
+      - name: Revalidate native automated data PR after artifact gates
+        id: native_pr_recheck
+        if: ${{ env.AUTOMATED_DATA_PR == '1' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          NATIVE_PR_RECEIPT_PATH: ${{ runner.temp }}/native-pr-final-check.json
+        with:
+          script: |
+            const pull = context.payload.pull_request;
+            const candidateHint = pull?.head?.repo?.full_name === `${context.repo.owner}/${context.repo.repo}`
+              && /^bot\//.test(pull?.head?.ref || '');
+            let receipt = { schema_version: 1, mode: candidateHint ? 'held' : 'full', verified: false, phase: 'bootstrap' };
+            core.setOutput('data_only', 'false');
+            try {
+              const main = await github.rest.git.getRef({ ...context.repo, ref: 'heads/main' });
+              const trustedMainSha = main.data.object.sha;
+              if (!/^[0-9a-f]{40}$/.test(trustedMainSha || '')) throw new Error('Invalid protected main revision.');
+              const helperPath = 'scripts/lib/native-automated-pr-gates.cjs';
+              const response = await github.rest.repos.getContent({ ...context.repo, path: helperPath, ref: trustedMainSha });
+              const file = response.data;
+              if (file.type !== 'file' || file.path !== helperPath || file.encoding !== 'base64'
+                || !Number.isSafeInteger(file.size) || file.size <= 0 || file.size > 65536) {
+                throw new Error('Invalid bounded protected-main native gate helper.');
+              }
+              const source = Buffer.from(file.content, 'base64');
+              if (source.length !== file.size) throw new Error('Native gate helper size mismatch.');
+              const trusted = { exports: {} };
+              new Function('module', 'exports', source.toString('utf8'))(trusted, trusted.exports);
+              receipt = await trusted.exports.classifyNativeAutomatedPr({ github, context, trustedMainSha });
+              const dataOnly = candidateHint && receipt.verified === true && receipt.mode === 'data-only';
+              core.setOutput('data_only', String(dataOnly));
+              if (dataOnly) core.exportVariable('AUTOMATED_DATA_PR', '1');
+              else if (candidateHint || receipt.mode === 'held') {
+                core.setFailed('Native publisher identity is unverified. Reconcile the exact data PR against current main before execution.');
+              }
+            } catch (error) {
+              receipt = { schema_version: 1, mode: candidateHint ? 'held' : 'full', verified: false, phase: 'bootstrap', failure: error.message };
+              if (candidateHint) core.setFailed('Native publisher preflight unavailable; execution is held with its identity unverified.');
+              else core.warning('Native data-only classification unavailable; all application gates remain required.');
+            } finally {
+              require('fs').writeFileSync(process.env.NATIVE_PR_RECEIPT_PATH,
+                JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600 });
+              core.info(JSON.stringify(receipt));
+              await core.summary.addHeading('Native PR final publication identity')
+                .addCodeBlock(JSON.stringify(receipt), 'json').write();
+            }
+      - name: Preserve final native PR identity receipt
+        if: ${{ always() && env.AUTOMATED_DATA_PR == '1' && steps.native_pr_recheck.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-pr-final-check-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/native-pr-final-check.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Keep browser failure traces
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -221,52 +316,3 @@ jobs:
           path: test-results
           if-no-files-found: ignore
           retention-days: 7
-
-  attach-automated-pr-checks:
-    # Start the trusted status bridge only after the expensive CI gate ends.
-    # Style normally finishes before CI, so this short runner observes
-    # completed work instead of polling for the full production build.
-    needs: verify
-    if: >-
-      always() &&
-      github.event_name == 'workflow_dispatch' &&
-      inputs.automated_pr_branch != '' &&
-      inputs.automated_pr_head_sha != '' &&
-      inputs.automated_pr_style_run_id != '' &&
-      inputs.automated_pr_token != ''
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - name: Attach completed bot checks to the merge revision
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          AUTOMATED_PR_BRANCH: ${{ inputs.automated_pr_branch }}
-          AUTOMATED_PR_HEAD_SHA: ${{ inputs.automated_pr_head_sha }}
-          AUTOMATED_PR_STYLE_RUN_ID: ${{ inputs.automated_pr_style_run_id }}
-          AUTOMATED_PR_TOKEN: ${{ inputs.automated_pr_token }}
-        with:
-          script: |
-            const branch = process.env.AUTOMATED_PR_BRANCH;
-            const headSha = process.env.AUTOMATED_PR_HEAD_SHA;
-            const styleRunId = process.env.AUTOMATED_PR_STYLE_RUN_ID;
-            const dispatchToken = process.env.AUTOMATED_PR_TOKEN;
-            if (context.sha !== headSha) {
-              core.setFailed(`The dispatched CI revision moved: expected ${headSha}, got ${context.sha}.`);
-              return;
-            }
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'automated-pr-status-bridge.yml',
-              ref: 'main',
-              inputs: {
-                branch,
-                head_sha: headSha,
-                ci_run_id: String(context.runId),
-                style_run_id: styleRunId,
-                dispatch_token: dispatchToken,
-              },
-            });

@@ -26,19 +26,43 @@ verification can still require reconciliation.
 
 ## Protected publication evidence
 
-A dispatched data gate can pass without satisfying GitHub's branch ruleset.
-GitHub excludes job checks from `workflow_dispatch` from that evaluation.
-The trusted-main bridge therefore attaches explicit Checks API records as well
-as legacy statuses to the exact content-validated synthetic merge. It verifies
-the required GitHub Actions app (15368), check IDs, conclusions, tested source
-run attempts and current base/head/tree before reporting attachment complete.
-It does not execute the bot branch or approve changed facts.
+Native `pull_request` runs supply the required `verify` and `style-lint`
+checks. The existing `automated-pr-checks.yml` caller loads a bounded helper
+from the exact current protected-main revision. It revalidates the same-repository
+open PR, exact current main/base/head/content-proven merge and complete unchanged
+branch-specific path allowlist before approving only the exact existing eligible
+held CI/style runs. Already running or completed native runs are observed, never
+rerun. Old, moved, forked, ambiguous, missing or otherwise ineligible runs stay
+held. A failed approval, including HTTP 403, requires an owner to inspect and
+approve the recorded exact native run IDs in GitHub; it does not fall back to a
+manual dispatch, copied check, new token, service, ruleset change or relaxed gate.
 
-Attachment is not publication. Require a successful protected merge, its rule
-evaluation, and the exact ready production deployment before reporting a daily
-update live. The saved bridge artifact records the attachment target and source
-run identities even when a subsequent merge fails. Do not clear an approval,
-change the ruleset, or replay old generated client files to recover publication.
+CI classifies native PRs through the same protected-main helper before checkout
+or dependency installation. Only a positively verified data-only result may use
+the focused artifact gate. Ordinary code PRs and manual dispatches retain the full application gate.
+Recognized same-repository publisher bot PRs with stale, moved, missing or
+uncertain identity/bootstrap/API evidence fail preflight and remain held; a
+full application pass cannot replace current-main data publication authority. Both classification and
+execution approval retain exact private receipts even when their preflight fails.
+The data-only job repeats the same current-main/PR proof after its artifact
+gates; main/head/base movement during execution remains held. No publisher
+source credentials are exposed to PR code.
+
+Execution approval starts tests; it does not accept source facts, remove review
+holds, renew timestamps or add auto-merge authority. The caller's existing review
+and auto-merge policy remains separate. Passing native tests is still not
+publication: require the protected merge and its rule evaluation, then the exact
+ready Vercel deployment and relevant public checks before saying an update is live.
+
+The historical `automated-pr-status-bridge.yml` is manual recovery only. Its
+explicit attach and stale-failure modes and saved transport receipts remain
+available, but it has no schedule or automatic CI caller. Synthetic API/legacy
+greens did not establish eligibility: an earlier proof was rejected with
+`required checks cancelled` after the native current-head runs were cancelled.
+`workflow_dispatch` jobs cannot stand in for eligible native PR jobs. This native
+path remains **unproven until one genuine eligible data-only protected merge**
+succeeds; workflow/helper tests and an approval transport alone do not prove it.
+Do not replay old generated client files to recover publication.
 
 See [GitHub's required-check guidance](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks#checks-from-some-workflow-jobs-are-not-evaluated).
 

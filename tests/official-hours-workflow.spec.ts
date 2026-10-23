@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
+const require = createRequire(import.meta.url);
 const read = (name: string) => readFileSync(`.github/workflows/${name}`, "utf8");
 const expectedPaths = ["docs/coverage-scorecard.md", "docs/hours-refresh-review.md", "src/data/data-release.json", "src/data/event-venue-photo-credits.json", "src/data/place-refresh-identities.json", "src/data/places-client-hours.json", "src/data/places-client.json", "src/data/places-official-hours.json", "src/data/places-merchant-hours.json"].sort();
 describe("official library hours delivery boundary", () => {
@@ -30,15 +32,17 @@ describe("official library hours delivery boundary", () => {
     expect(checks.with.head_sha).toBe("${{ needs.official-hours-publish.outputs.pr_head_sha }}");
     expect(JSON.stringify(producer)).not.toMatch(/secrets\.|DATABASE_URL|GOOGLE_PLACES|self-hosted/);
   });
-  it("permits exactly the same bounded output paths in both existing trusted check boundaries", () => {
-    for (const name of ["automated-pr-checks.yml", "automated-pr-status-bridge.yml"]) {
-      const text = read(name);
-      const match = text.match(/'bot\/official-library-hours':\s*\[([^\]]+)\]/);
-      expect(match, name).not.toBeNull();
-      const paths = [...match![1].matchAll(/'([^']+)'/g)].map((part) => part[1]).sort();
-      expect(paths, name).toEqual(expectedPaths);
+  it("uses the unchanged exact output policy for native classification and approval", () => {
+    const { AUTOMATED_PR_ALLOWED_PATHS } = require("../scripts/lib/native-automated-pr-gates.cjs");
+    expect([...AUTOMATED_PR_ALLOWED_PATHS["bot/official-library-hours"]].sort()).toEqual(expectedPaths);
+    expect(read("ci.yml")).toContain("scripts/lib/native-automated-pr-gates.cjs");
+    expect(read("automated-pr-checks.yml")).toContain("scripts/lib/native-automated-pr-gates.cjs");
+    // Historical manual recovery keeps its exact older allowlist and tests.
+    const bridge = read("automated-pr-status-bridge.yml");
+    for (const match of bridge.matchAll(/'bot\/official-library-hours':\s*\[([^\]]+)\]/g)) {
+      expect([...match[1].matchAll(/'([^']+)'/g)].map((part) => part[1]).sort()).toEqual(expectedPaths);
     }
-    expect(read("automated-pr-status-bridge.yml").match(/'bot\/official-library-hours'/g)).toHaveLength(2);
+    expect(bridge.match(/'bot\/official-library-hours'/g)).toHaveLength(2);
   });
 });
 
