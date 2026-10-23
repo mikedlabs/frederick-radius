@@ -139,7 +139,10 @@ describe("Transit stop-to-map continuity", () => {
       const show = button("Show stop on map") as HTMLButtonElement;
       expect(show?.disabled).toBe(false);
       await click(show);
-      expect(observed).toHaveBeenCalledOnce();
+      expect(observed).toHaveBeenCalled();
+      expect(observed.mock.calls.at(-1)?.[0]).toMatchObject({
+        detail: { stopId: STOP.id },
+      });
       expect(takePendingTransitStopFocus()).toMatchObject({ stopId: STOP.id });
       expect(new URL(location.href).searchParams.get("stop")).toBe(STOP.id);
     } finally { window.removeEventListener(TRANSIT_STOP_FOCUS_EVENT, observed); }
@@ -179,6 +182,18 @@ describe("Transit stop-to-map continuity", () => {
     expect(Number(marker?.getAttribute("data-lng"))).toBe(OTHER_STOP.lng);
     const payload = JSON.parse(container.querySelector('[data-map-source="transit-stops"]')!.getAttribute("data-source-payload")!);
     expect(payload.features).toHaveLength(CURRENT_TRANSIT_STOPS.length);
+  });
+
+  it("names the selected stop on the live network card instead of the empty picker prompt", async () => {
+    await render(<><TransitStopFinder />{map()}</>);
+    const context = container.querySelector("#transit-route-context");
+    expect(context?.textContent).toBe(`${STOP.name} is selected.`);
+    expect(context?.getAttribute("data-live-network-stop")).toBe(STOP.id);
+    expect(container.textContent).not.toContain("Choose a route or select a stop to check arrivals.");
+    expect(container.querySelector(`[data-transit-active-stop="${STOP.id}"]`)).not.toBeNull();
+    await act(async () => { requestTransitStopFocus({ stopId: OTHER_STOP.id }); });
+    expect(container.querySelector("#transit-route-context")?.textContent).toBe(`${OTHER_STOP.name} is selected.`);
+    expect(container.querySelector("#transit-route-context")?.getAttribute("data-live-network-stop")).toBe(OTHER_STOP.id);
   });
 
   it("replays a valid pending stop through canonical coordinates without selecting it for the rider", async () => {

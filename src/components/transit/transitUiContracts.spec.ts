@@ -49,6 +49,12 @@ describe("transit UI interaction contracts", () => {
     expect(source).toContain("Bus route");
     expect(source).toContain("All routes");
     expect(source).toContain("fitBounds(");
+    expect(source).toContain("data-live-network-stop={activeStop?.id}");
+    expect(source).toContain("${activeStop.name} is selected.");
+    expect(source).toContain("Choose a route or select a stop to check arrivals.");
+    expect(source.indexOf("activeStop")).toBeLessThan(
+      source.indexOf("Choose a route or select a stop to check arrivals."),
+    );
   });
 
   it("keeps transit controls readable when the basemap cannot load", () => {
@@ -93,6 +99,8 @@ describe("transit UI interaction contracts", () => {
     );
 
     expect(page).toContain("<TransitStopFinder");
+    expect(source).toContain("requestTransitStopFocus({ stopId: requested.id })");
+    expect(source).toContain("requestTransitStopFocus({ stopId: stop.id })");
     expect(source).toContain("Search bus stops by name");
     expect(source).toContain("Show the nearest bus stops");
     expect(source).toContain("haversineMeters");

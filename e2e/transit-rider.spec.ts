@@ -124,6 +124,10 @@ test("a rider can find, save, and track the exact inbound bus without mobile ove
   await expect(
     commandCenter.getByRole("heading", { level: 3, name: STOP.name }),
   ).toBeVisible();
+  const liveNetwork = page.locator("#transit-route-context");
+  await expect(liveNetwork).toHaveText(`${STOP.name} is selected.`);
+  await expect(liveNetwork).toHaveAttribute("data-live-network-stop", STOP.id);
+  await expect(liveNetwork).not.toHaveText("Choose a route or select a stop");
   await expect(commandCenter.getByText("To Downtown Frederick")).toBeVisible();
   await expect(commandCenter.getByText("Live estimate")).toBeVisible();
   await expect(commandCenter.getByText(/^(9|10) min$/)).toBeVisible();
