@@ -46,6 +46,27 @@ The map is an answer surface, not a layer manager.
 - Camera, scope, filters, and query survive the close and return journey.
 - Empty coverage says what Radius knows and offers the nearest useful fallback.
 
+## Transit
+
+The rider's selected stop and next arrival lead the screen. Saved stops remain
+easy to switch; changing a stop is a deliberate disclosure once one is selected.
+Following departures stay compact, with bus-specific actions available inline.
+
+The stop shell uses the committed official GTFS network and does not wait for
+secondary train information. Arrival detail shares the selected-stop snapshot.
+Freshness expires against the source clock even while a refresh is pending;
+stale estimates cannot imply that a bus is catchable.
+
+The live map opens deliberately or through a validated Track, Show stop, or
+route action. Its static preview is clearly a route diagram, without invented
+vehicles. The latest exact intent survives a deferred map load when device
+storage is unavailable. Opening the map does not alter the rider's URL or
+history. Other existing map consumers keep their normal loading policy.
+
+A representative route schematic is not a directional itinerary or an exact
+remaining-stop count. Delayed or unavailable vehicle reports lose live cues
+and estimates; official schedules remain available.
+
 ## Progressive disclosure
 
 Only one overlay may own the screen. Sheets do not open another sheet for the

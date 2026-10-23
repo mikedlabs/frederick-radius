@@ -127,6 +127,19 @@ test("a rider can find, save, and track the exact inbound bus without mobile ove
   await expect(commandCenter.getByText("To Downtown Frederick")).toBeVisible();
   await expect(commandCenter.getByText("Live estimate")).toBeVisible();
   await expect(commandCenter.getByText(/^(9|10) min$/)).toBeVisible();
+  // Selecting a search result reveals departures first and returns focus from
+  // the now-collapsed search to its stable rider heading.
+  await expect(commandCenter.locator("#my-stop-heading")).toBeFocused();
+  await expect(commandCenter.getByRole("searchbox", { name: "Search bus stops by name" })).toBeHidden();
+  const changeStop = commandCenter.locator("summary").filter({ hasText: "Change stop" });
+  await expect(changeStop).toBeVisible();
+  await changeStop.click();
+  await expect(stopSearch).toBeVisible();
+  await stopSearch.fill("10th Street at Motter");
+  await commandCenter.getByRole("button", { name: STOP.name, exact: true }).click();
+  await expect(stopSearch).toBeHidden();
+  await expect(commandCenter.locator("#my-stop-heading")).toBeFocused();
+  await expect.poll(() => new URL(page.url()).searchParams.get("stop")).toBe(STOP.id);
 
   await commandCenter
     .getByRole("button", { name: "Save stop", exact: true })
