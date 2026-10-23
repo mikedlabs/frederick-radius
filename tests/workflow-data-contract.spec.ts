@@ -862,6 +862,7 @@ describe("scheduled data workflow contracts", () => {
       contents: "read",
       "pull-requests": "read",
       statuses: "write",
+      checks: "write",
     });
     expect(bridgeText).toContain("workflow_dispatch:");
     expect(bridgeText).not.toContain("workflow_run:");
