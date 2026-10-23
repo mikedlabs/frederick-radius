@@ -4,6 +4,7 @@ import { expect, waitFor, within } from "storybook/test";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 import PlaceCard from "./PlaceCard";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 
 const creek: PlaceCardData = {
   slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park",
@@ -60,7 +61,7 @@ async function realOwnedPhoto(canvasElement: HTMLElement) {
     expect(image.naturalWidth).toBeGreaterThan(1);
     expect(image.naturalHeight).toBeGreaterThan(1);
   }, { timeout: 5000 });
-  expect(decodeURIComponent(new URL(image.currentSrc).pathname)).toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+  expect(localImagePath(image)).toBe(getOwnedPlacePhoto(creek.slug)!.src);
   expect(canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
   const photoBox = image.closest("[data-place-card-photo]")!.getBoundingClientRect();
   const articleBox = image.closest("article")!.getBoundingClientRect();

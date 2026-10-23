@@ -4,6 +4,7 @@ import { expect, waitFor, within } from "storybook/test";
 import type { EventCardVisual } from "@/components/event/eventVisuals";
 import type { TodayEvent, TodayEventResponse } from "@/lib/today-events";
 import { TodayEventBriefCard, TodayEventsRecoveryView } from "./TodayEventsRecovery";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 
 const fullTitle = "Offline Layout Ensemble: Live Theatre Production";
 const eventFixture: TodayEvent = {
@@ -29,7 +30,7 @@ const artworkFixture: EventCardVisual = {
   sourceHref: "https://example.test/offline-artwork-fixture",
 };
 const ownedPhoto: EventCardVisual = {
-  src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
+  src: getOwnedPlacePhoto("carroll-creek-linear-park-frederick")!.src,
   key: "radius-carroll-creek-summer",
   presentation: "photo",
   caption: "Venue · Carroll Creek Linear Park",
@@ -270,7 +271,8 @@ export const OwnedPhotoFullView390: Story = {
       await expect(image.naturalHeight).toBeGreaterThan(1);
     });
     await expect(getComputedStyle(image).objectFit).toBe("cover");
-    await expect(image.getAttribute("src")).toContain("SUMMER");
+    const source = new URL(image.currentSrc || image.src, document.baseURI);
+    await expect(decodeURIComponent(source.searchParams.get("url") ?? source.pathname)).toBe(ownedPhoto.src);
     await expect(canvas.getByText(ownedPhoto.caption, { exact: true })).toBeVisible();
     await expect(canvas.getByRole("link", { name: "See all: Events today" })).toHaveAttribute("href", "/events");
     await expect(canvasElement.querySelectorAll("[data-event-photo-credit]")).toHaveLength(1);

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, within } from "storybook/test";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import EventCard from "./EventCard";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 
 const sample = {
   slug: "story-concert", title: "Community concert at Memorial Park", description: "",
@@ -71,7 +72,7 @@ export const FreeReviewedOwnedVenuePreview: Story = {
     const image = canvasElement.querySelector("img");
     expect(image).not.toBeNull();
     const url = new URL(image!.getAttribute("src")!, document.baseURI);
-    expect(url.searchParams.get("url") ?? url.pathname).toBe("/images/seasons/fall/018.jpg");
+    expect(url.searchParams.get("url") ?? url.pathname).toBe(getOwnedPlacePhoto("baker-park-frederick")!.src);
     expect(canvasElement.innerHTML).not.toContain("/api/place-photo");
   },
 };

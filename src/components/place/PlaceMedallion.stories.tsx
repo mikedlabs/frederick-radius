@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, waitFor, within } from "storybook/test";
 import { PlaceMedallion } from "./PlaceMedallion";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 
 const meta = {
   title: "Places/Compact owned photo",
@@ -21,7 +22,7 @@ export const OwnedCreekWithoutMetadata: Story = {
     await image.decode();
     await expect(image.naturalWidth).toBeGreaterThan(1);
     await expect(new URL(image.currentSrc).searchParams.get("url") ?? decodeURIComponent(new URL(image.currentSrc).pathname))
-      .toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+      .toBe(getOwnedPlacePhoto("carroll-creek-linear-park-frederick")!.src);
     await waitFor(() => expect(canvasElement.querySelector("[data-photo-state]")).toHaveAttribute("data-photo-state", "ready"));
     await expect(within(canvasElement).getByRole("link", { name: "Carroll Creek Linear Park" })).toHaveAttribute("href", "/places/carroll-creek-linear-park-frederick");
     await expect(canvasElement.querySelector("a a")).toBeNull();
