@@ -150,6 +150,7 @@ export default function BusesReveal() {
     tone: "current",
   });
   const requestRef = useRef<AbortController | null>(null);
+  const launcherRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -210,6 +211,7 @@ export default function BusesReveal() {
   return (
     <section className={styles.reveal} aria-label="Live TransIT buses">
       <button
+        ref={launcherRef}
         type="button"
         onClick={toggleOpen}
         aria-label={open ? "Hide current buses" : "Show current buses"}
@@ -247,6 +249,7 @@ export default function BusesReveal() {
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
+        returnFocusRef={launcherRef}
         title="Buses right now"
         subtitle="Frederick County TransIT"
         maxHeight="78dvh"

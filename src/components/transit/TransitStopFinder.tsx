@@ -548,7 +548,6 @@ export default function TransitStopFinder() {
   const [selected, setSelected] = useState<SelectedStop | null>(null);
   const [notice, setNotice] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
   const noticeTimer = useRef<number | null>(null);
   const normalized = query.trim().toLocaleLowerCase();
   const position = geoState.status === "granted" ? geoState.position : null;
@@ -614,8 +613,7 @@ export default function TransitStopFinder() {
       .slice(0, MAX_RESULTS);
   }, [normalized, position, showNearby]);
 
-  const chooseStop = useCallback((stop: SelectedStop) => {
-    const fromSearch = searchRef.current?.contains(document.activeElement);
+  const chooseStop = useCallback((stop: SelectedStop, fromSearch = false) => {
     setSelected(stop);
     setSearchOpen(false);
     setQuery("");
@@ -629,8 +627,9 @@ export default function TransitStopFinder() {
     );
     haptic("light");
     announce(`${stop.name} selected.`);
-    // A selected result is hidden when Change stop closes. Keep keyboard and
-    // screen-reader focus on the selected-stop heading, not the hidden result.
+    // A selected result is hidden when Change stop closes. Safari pointer
+    // clicks need not focus buttons, so use the action's origin rather than
+    // document.activeElement to restore focus to the stable rider heading.
     if (fromSearch) window.requestAnimationFrame(() => {
       const heading = document.getElementById("my-stop-heading");
       const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
@@ -865,7 +864,7 @@ export default function TransitStopFinder() {
               <li key={stop.id}>
                 <button
                   type="button"
-                  onClick={() => chooseStop(stop)}
+                  onClick={() => chooseStop(stop, true)}
                   className={styles.result}
                 >
                   <MapPin
@@ -936,7 +935,7 @@ export default function TransitStopFinder() {
         />
       )}
 
-      <div ref={searchRef} data-transit-stop-search>
+      <div data-transit-stop-search>
         {activeStop ? (
           <details className={styles.changeStop} open={searchOpen}
             onToggle={(event) => setSearchOpen(event.currentTarget.open)}>

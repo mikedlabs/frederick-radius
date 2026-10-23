@@ -229,9 +229,12 @@
     "vite": "^7.3.6",
     "vitest": "^4.1.11",
     "yaml": "^2.9.0",
-    "zod": "^4.4.3"
+    "zod": "4.6.6"
   },
   "overrides": {
+    "@vercel/cli-config": {
+      "zod": "4.6.6"
+    },
     "aria-query": "5.3.2",
     "browserslist": "4.28.7",
     "fast-uri": "3.1.8",

@@ -219,6 +219,27 @@ describe("Transit stop-to-map continuity", () => {
     expect(container.querySelectorAll("input[type=search]")).toHaveLength(1);
   });
 
+  it("returns focus from a selected search result even when a pointer click leaves the body active", async () => {
+    await render(<TransitStopFinder />);
+    const details = container.querySelector<HTMLDetailsElement>("[data-transit-stop-search] details")!;
+    await act(async () => { details.open = true; details.dispatchEvent(new Event("toggle")); });
+    const input = container.querySelector<HTMLInputElement>("input[type=search]")!;
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => {
+      setValue.call(input, OTHER_STOP.name);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    // Safari need not focus a button on a pointer click. Do not depend on the
+    // departing search input still owning document.activeElement.
+    input.blur();
+    expect(document.activeElement).toBe(document.body);
+    await click(button(OTHER_STOP.name));
+    expect(container.querySelector("h3")?.textContent).toBe(OTHER_STOP.name);
+    expect(container.querySelector<HTMLDetailsElement>("[data-transit-stop-search] details")?.open).toBe(false);
+    expect(document.activeElement).toBe(container.querySelector("#my-stop-heading"));
+    expect(new URL(location.href).searchParams.get("stop")).toBe(OTHER_STOP.id);
+  });
+
   it.each(["unavailable", "stale", "live"])("keeps My stop’s map action available with %s empty arrivals, including offline", async (status) => {
     mocked.arrivalsStatus = status;
     Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
