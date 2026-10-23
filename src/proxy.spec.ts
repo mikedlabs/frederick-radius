@@ -98,4 +98,34 @@ describe("proxy auth routing", () => {
     expect(response.headers.get("www-authenticate")).toContain("Basic");
     expect(updateSessionMock).not.toHaveBeenCalled();
   });
+
+  it("accepts matching Basic credentials without consulting Supabase", async () => {
+    process.env.ADMIN_USER = "radius-admin";
+    process.env.ADMIN_PASSWORD = "test-admin-password";
+    const req = new NextRequest("https://frederickradius.app/admin/claims", {
+      headers: {
+        authorization: `Basic ${btoa("radius-admin:test-admin-password")}`,
+      },
+    });
+
+    const response = await proxy(req);
+
+    expect(response.status).toBe(200);
+    expect(updateSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a wrong admin password", async () => {
+    process.env.ADMIN_USER = "radius-admin";
+    process.env.ADMIN_PASSWORD = "test-admin-password";
+    const req = new NextRequest("https://frederickradius.app/admin/claims", {
+      headers: {
+        authorization: `Basic ${btoa("radius-admin:other-password")}`,
+      },
+    });
+
+    const response = await proxy(req);
+
+    expect(response.status).toBe(401);
+    expect(updateSessionMock).not.toHaveBeenCalled();
+  });
 });

@@ -1,6 +1,16 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { isProtectedPath, loginUrlFor } from "@/lib/auth-routing";
 import { updateSession, type SessionUpdate } from "@/lib/supabase/proxy";
+
+/** Same constant-time compare cron auth already uses. Length mismatch
+ *  returns false without calling timingSafeEqual (which throws). */
+function safeEqual(a: string, b: string): boolean {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
+}
 
 /** Keep the existing fail-closed Basic Auth boundary around the admin tools. */
 function unauthorized(): NextResponse {
@@ -35,8 +45,8 @@ function adminBasicAuth(request: NextRequest): NextResponse | null {
   const separator = decoded.indexOf(":");
   if (separator < 0) return unauthorized();
   if (
-    decoded.slice(0, separator) !== expectedUser ||
-    decoded.slice(separator + 1) !== expectedPassword
+    !safeEqual(decoded.slice(0, separator), expectedUser) ||
+    !safeEqual(decoded.slice(separator + 1), expectedPassword)
   ) {
     return unauthorized();
   }

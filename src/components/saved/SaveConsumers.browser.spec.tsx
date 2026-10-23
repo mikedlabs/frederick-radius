@@ -29,7 +29,6 @@ vi.mock("@/hooks/useFollows", () => ({
 vi.mock("@/hooks/useSaved", () => ({ savedChangeDescription: () => "We could not confirm this change. Please try again.", useMounted: () => true, useSavedList: () => mocks.local, useIsSaved: () => mocks.saved, useToggleSave: () => mocks.toggleLocal, addSaved: (...args: unknown[]) => mocks.add(...args) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace }), useSearchParams: () => mocks.query }));
 vi.mock("@/components/place/PlaceMedallion", () => ({ PlaceMedallion: () => <span /> }));
-vi.mock("@/components/place/PlacePhoto", () => ({ default: () => <span /> }));
 vi.mock("@/components/beer/BreweryLogo", () => ({ BreweryLogo: () => <span /> }));
 vi.mock("@/components/beer/BreweryPhoto", () => ({ BreweryPhoto: () => <span /> }));
 vi.mock("@/components/ui/BottomDrawer", () => ({ default: ({ children }: { children: ReactElement }) => children }));
