@@ -110,7 +110,7 @@ const checkPreview: NonNullable<Story["play"]> = async ({ canvasElement, args })
   // The name and Details form one row, with current status below it. The
   // primary destination action gets more space than secondary Save/Share.
   await expect(Math.abs(details.getBoundingClientRect().top - heading.getBoundingClientRect().top)).toBeLessThanOrEqual(1);
-  await expect(surface.querySelector("[data-map-place-status]")).toHaveTextContent("Hours not posted");
+  await expect(surface.querySelector("[data-map-place-status]")).toHaveTextContent("Hours not confirmed");
   await expect(surface.querySelector(".map-peek-cat")).toBeNull();
   await expect(directions.getBoundingClientRect().width).toBeGreaterThan(save.getBoundingClientRect().width);
   // The legacy narrow-screen selector hides direct span children. The new
@@ -135,7 +135,7 @@ const checkPreview: NonNullable<Story["play"]> = async ({ canvasElement, args })
   } else await userEvent.click(details);
   await expect(args.onDetails).toHaveBeenCalledOnce();
   await expect(details).toHaveFocus();
-  await expect(canvas.getByText("Hours not posted")).toBeVisible();
+  await expect(canvas.getByText("Hours not confirmed")).toBeVisible();
 };
 
 export const OwnedAt320: Story = { globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } }, play: checkPreview };
@@ -154,7 +154,7 @@ export const UnknownPhotoAt320: Story = {
     const frame = canvasElement.querySelector<HTMLElement>(".map-peek-visual")!;
     await expect(frame.getBoundingClientRect().width).toBe(64);
     await expect(frame.getBoundingClientRect().height).toBe(64);
-    await expect(canvas.getByText("Hours not posted")).toBeVisible();
+    await expect(canvas.getByText("Hours not confirmed")).toBeVisible();
     await expect(canvasElement.querySelector(".map-peek-source-credit")).toBeNull();
     for (const target of [canvas.getByRole("button", { name: /^Details$/ }), canvas.getByRole("link", { name: /^Directions$/ }), canvas.getByRole("button", { name: `Close ${args.place.name}` })]) await reachable(target);
     await userEvent.click(canvas.getByRole("button", { name: /^Details$/ }));
@@ -236,7 +236,7 @@ export const FailedLicensedPhoto: Story = {
     await waitFor(() => expect(context.canvasElement.querySelector("img")).toBeNull());
     await expect(context.canvasElement.querySelector(".map-peek-source-credit")).toBeNull();
     await expect(canvas.getByText("Brewer's Alley")).toBeVisible();
-    await expect(canvas.getByText("Hours not posted")).toBeVisible();
+    await expect(canvas.getByText("Hours not confirmed")).toBeVisible();
     for (const target of [canvas.getByRole("button", { name: /^Details$/ }), canvas.getByRole("link", { name: /^Directions$/ }), canvas.getByRole("button", { name: /^Save$/ })]) await reachable(target);
     await expect(context.args.onDetails).toHaveBeenCalledOnce();
   },

@@ -41,6 +41,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER, formatDistance, haversineMeters } from "@/lib/geo";
 import { formatHoursLine } from "@/lib/hours";
+import { askScopedSchedule } from "@/lib/ask/scoped-schedule";
 import { isChainName } from "@/lib/category-ranking";
 import type { Event } from "@/data/events";
 import {
@@ -734,7 +735,7 @@ function answerStrictUtilityPlaceRequest(
     const distance = top.distance ? ` It is ${top.distance} away.` : "";
     answer = asksOpenNow
       ? `${top.name} is the closest ${request.singular} Radius can confirm open now${scope}.${distance}`
-      : `${top.name} is the nearest cataloged ${request.singular}${scope}.${distance} ${top.status === "Hours not posted" ? "Radius does not have fresh hours for it, so check before you go." : ""}`.trim();
+      : `${top.name} is the nearest cataloged ${request.singular}${scope}.${distance} ${top.status === "Hours not posted" || top.status === "Hours not confirmed" ? "Radius does not have fresh hours for it, so check before you go." : ""}`.trim();
   } else if (asksOpenNow && ranked.length > 0) {
     answer = `Radius has ${ranked.length} cataloged ${ranked.length === 1 ? request.singular : request.plural}${scope}, but none has fresh hours confirming it is open right now. I will not substitute an unrelated business.`;
   } else {
@@ -1872,6 +1873,7 @@ Rules you must follow:
 - If you advise the user to call or confirm by phone, include the phone number supplied in the data. Never invent one.
 - The CURRENT DATE & TIME is always provided. Use it: "tonight", "today", and "this weekend" questions are answered directly from the EVENTS block. Never say you don't know today's date.
 - Place lines may carry a LIVE open state ("Open until 9pm", "Closed · Opens Thu 8am") computed for the current time. Trust that state. A line with no open state means the hours are unconfirmed, so say so rather than guessing. For "open now" questions, recommend only places marked Open.
+- A scoped_schedule is display_only. Identify it by its label and scope, and retain its note. Its service periods never establish general venue opening or admission availability. Do not extend the evidence past expires_at.
 - If the data doesn't answer the question, say so plainly in one sentence and suggest searching or checking the map. Do not guess.
 - LOCAL NOTE fields are this guide's own verified field research, including parking details and posted specials. Weave the relevant note into your answer because it is the detail a local friend would add.
 - A RANKED PICKS block, when present, is this guide's own ranked answer for that exact craving, strongest first with live open state. Recommend from it, in its order, before anything in the numbered search list.
@@ -3171,6 +3173,7 @@ export async function askFrederick(
       // place pages use. Unknown stays silent; unverified is stated only
       // when the question is about being open (honesty without noise).
       const status = placeStatus(p);
+      const scopedSchedule = askScopedSchedule(p, now);
       const openBit =
         status.state === "unknown"
           ? ""
@@ -3187,7 +3190,7 @@ export async function askFrederick(
       const note = localNoteFor(p.slug);
       const accessNote = askFitAccessNote(p, fit);
       lines.push(
-        `${lines.length + 1}. ${p.name}: ${p.category}${where ? `, ${where}` : ""}${openBit}${p.email ? `; Email: ${p.email}` : ""}${p.phone ? `; Phone: ${p.phone}` : ""}${note || (blurb ? `; ${blurb}` : "")}${accessNote ? `; ACCESS: ${accessNote}` : ""}`,
+        `${lines.length + 1}. ${p.name}: ${p.category}${where ? `, ${where}` : ""}${openBit}${p.email ? `; Email: ${p.email}` : ""}${p.phone ? `; Phone: ${p.phone}` : ""}${note || (blurb ? `; ${blurb}` : "")}${accessNote ? `; ACCESS: ${accessNote}` : ""}${scopedSchedule ? `; scoped_schedule: ${JSON.stringify(scopedSchedule)}` : ""}`,
       );
       if (sources.length < answerSourceLimit) {
         const lead = sources.filter((source) => source.category !== "civic").length === 0;

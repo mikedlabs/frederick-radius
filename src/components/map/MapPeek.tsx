@@ -281,13 +281,14 @@ export default function MapPeek({
   const address = activeDetails?.address?.trim();
   const locationLine = address || town;
   // Exact owned or locally bundled licensed images need no metadata trip. The
-  // selected route remains the only Google URL/credit transport, with the
-  // existing proxy size unchanged. Only free reviewed sources gain detail.
+  // selected route remains the only Google URL/credit transport. One selected
+  // image uses a bounded 360 CSS px target (at most 720 provider pixels),
+  // without adding requests to browse lists or changing provider allowances.
   const selectedPhotoPlan = placeCardPhotoPlan({
     slug: place.slug,
     google_photo_url: activeDetails?.google_photo_url ?? activeDetails?.hero_image,
     google_photo_attribution: activeDetails?.google_photo_attribution,
-  }, 104);
+  }, 360);
   // Avoid starting a remote Commons request before the selected route can
   // provide its preferred Google photo. Local reviewed bytes have no such wait.
   const eligibleSources = activeDetails || detailsResolvedSlug === place.slug

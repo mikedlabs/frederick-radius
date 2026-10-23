@@ -12,7 +12,7 @@ const mapUrl = `/map?q=park&in=frederick&returnTo=${encodeURIComponent(returnTo)
 const photoName = "places/ChIJlayoutFixture/photos/layout-fixture-rose-hill";
 const authorUri = "https://www.google.com/maps/contrib/000000000000000000000";
 const googleFixture = {
-  google_photo_url: `/api/place-photo?${new URLSearchParams({ name: photoName, w: "208" })}`,
+  google_photo_url: `/api/place-photo?${new URLSearchParams({ name: photoName, w: "800" })}`,
   google_photo_attribution: {
     photo_name: photoName,
     google_maps_uri: `${authorUri}/photo/layout-fixture-rose-hill`,
@@ -24,7 +24,7 @@ const signal = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIB
  * history are real. Local licensed/owned transport reads the exact reviewed
  * Rose Hill/Creek bytes. Only metadata, decode timing and the Google failure
  * signal are controlled; no paid image or upstream availability is tested. */
-async function installSelectedBoundary(page: Page, baseURL: string | undefined) {
+async function installSelectedBoundary(page: Page, baseURL: string | undefined, googleTransport: "signal" | "decoded" = "signal") {
   if (!baseURL || !["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname)) {
     throw new Error("Selected-photo geometry checks require a loopback server.");
   }
@@ -42,12 +42,13 @@ async function installSelectedBoundary(page: Page, baseURL: string | undefined) 
   expect(commonsSrc.startsWith("/place-photos/")).toBe(true);
   const metadataRequests: string[] = [];
   const googleRequests: string[] = [];
+  const googleOutcomes = new Map<Request, { url: string; completed: boolean; failed?: string }>();
   const allCommonsRequests: string[] = [];
   const commonsOutcomes = new Map<Request, { url: string; completed: boolean; failed?: string; afterFault: boolean; afterViewportResize: boolean }>();
   let localFaultInjected = false;
   let viewportResized = false;
-  page.on("requestfinished", request => { const outcome = commonsOutcomes.get(request); if (outcome) outcome.completed = true; });
-  page.on("requestfailed", request => { const outcome = commonsOutcomes.get(request); if (outcome) outcome.failed = request.failure()?.errorText ?? "unknown"; });
+  page.on("requestfinished", request => { for (const outcomes of [commonsOutcomes, googleOutcomes]) { const outcome = outcomes.get(request); if (outcome) outcome.completed = true; } });
+  page.on("requestfailed", request => { for (const outcomes of [commonsOutcomes, googleOutcomes]) { const outcome = outcomes.get(request); if (outcome) outcome.failed = request.failure()?.errorText ?? "unknown"; } });
   let browseCommonsUrl: string | undefined;
   const declareCommonsBrowseRequest = (url: string) => {
     expect(allCommonsRequests).toContain(url);
@@ -121,11 +122,14 @@ async function installSelectedBoundary(page: Page, baseURL: string | undefined) 
     }
     if (url.pathname === "/api/place-photo") {
       googleRequests.push(url.href);
+      googleOutcomes.set(request, { url: url.href, completed: false });
       expect(url.searchParams.get("name")).toBe(photoName);
       expect(url.searchParams.get("fallback")).toBe("signal");
-      expect(url.searchParams.get("w")).toBe("208");
+      expect(url.searchParams.get("w")).toBe("720");
       await googleReady;
-      return route.fulfill({ contentType: "image/gif", body: signal });
+      return googleTransport === "decoded"
+        ? route.fulfill({ contentType: "image/jpeg", body: await readFile(`public${owned.src}`), headers: { "Cache-Control": "private, no-store, max-age=0" } })
+        : route.fulfill({ contentType: "image/gif", body: signal, headers: { "Cache-Control": "public, max-age=300", "X-Photo-Fallback": "controlled-signal" } });
     }
     if (url.pathname === "/_next/image") {
       const underlying = new URL(url.searchParams.get("url") ?? "", baseURL);
@@ -154,6 +158,7 @@ async function installSelectedBoundary(page: Page, baseURL: string | undefined) 
     return route.abort("blockedbyclient");
   });
   return { curated, owned, commonsSrc, browseCommonsSrc, metadataRequests, googleRequests,
+    get googleOutcomes() { return [...googleOutcomes.values()]; },
     declareCommonsBrowseRequest, declareOwnedBrowseRequest, localCspAdjustments,
     get commonsRequests() {
       if (!browseCommonsUrl) throw new Error("The decoded licensed browse source must be identified first.");
@@ -461,5 +466,97 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 375, height: 667 }
         scope: "Exact reviewed local licensed/owned bytes decode separately for browse and selected sizes. Google receives one controlled transparent response only after local failure; no upstream media request occurs.",
       }), contentType: "application/json" });
     });
+  });
+}
+
+
+for (const width of [320, 375, 390, 430]) {
+  test(`one selected Google image receives a full-width frame and exhausts safely at ${width}px`, async ({ page, baseURL }, testInfo) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const boundary = await installSelectedBoundary(page, baseURL, "decoded");
+    await page.goto(mapUrl, { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".dock-host")).toHaveAttribute("data-map-error", "true", { timeout: 30_000 });
+    const list = page.getByRole("region", { name: "Available results without the map" });
+    const browseRow = list.locator(`[data-map-list-place-row="${fallbackSlug}"]`);
+    await browseRow.scrollIntoViewIfNeeded();
+    const browseImage = browseRow.locator("img");
+    await expect(browseRow.locator("[data-map-list-photo]")).toHaveAttribute("data-photo-state", "ready");
+    const browseSrc = await browseImage.evaluate(node => (node as HTMLImageElement).currentSrc);
+    boundary.declareCommonsBrowseRequest(browseSrc);
+    // The overview list has no paid photo request. The one existing selected
+    // metadata action, not the number of visible pins, owns the source below.
+    expect(boundary.metadataRequests).toEqual([]);
+    expect(boundary.googleRequests).toEqual([]);
+    await list.locator(`[data-map-list-place="${fallbackSlug}"]`).click();
+    const card = page.locator(".map-peek[data-map-result-surface]");
+    const localImage = card.locator('img[data-map-peek-photo-source="curated"]');
+    boundary.releaseCommons();
+    await assertRealImage(localImage, "curated");
+    // Only the preferred local transport is faulted to exercise the admitted
+    // Google fallback. Its decoded response is labelled local fixture bytes,
+    // not proof of Google's live media or a new photograph of Rose Hill.
+    const details = card.getByRole("button", { name: "Details", exact: true });
+    await details.focus();
+    await localImage.evaluate(node => node.dispatchEvent(new Event("error")));
+    await expect.poll(() => boundary.googleRequests.length).toBe(1);
+    const googleImage = card.locator('img[data-map-peek-photo-source="google"]');
+    await expect(googleImage).toHaveAttribute("data-map-peek-photo-state", "loading");
+    await expect(card.locator(".map-peek-source-credit")).toHaveCount(0);
+    const selectedSrc = await googleImage.getAttribute("src");
+    expect(selectedSrc).not.toBeNull();
+    const transport = new URL(selectedSrc!, baseURL);
+    expect(transport.pathname).toBe("/api/place-photo");
+    expect(transport.searchParams.get("name")).toBe(photoName);
+    expect(transport.searchParams.get("w")).toBe("720");
+    expect(transport.searchParams.get("fallback")).toBe("signal");
+    boundary.releaseGoogle();
+    await expect(googleImage).toHaveAttribute("data-map-peek-photo-state", "ready");
+    await expect.poll(() => googleImage.evaluate(node => {
+      const image = node as HTMLImageElement;
+      return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1;
+    })).toBe(true);
+    await expect.poll(() => boundary.googleOutcomes).toEqual([{ url: transport.href, completed: true }]);
+    await expect(card.locator("img")).toHaveCount(1);
+    const credits = card.locator(".map-peek-source-credit");
+    await expect(credits).toContainText("LAYOUT FIXTURE author");
+    await expect(credits.locator(`a[href="${googleFixture.google_photo_attribution.google_maps_uri}"]`)).toHaveCount(1);
+    await expect(details).toBeFocused();
+    const layout = await card.evaluate(element => {
+      const body = element.querySelector<HTMLElement>(".map-peek-body")!;
+      const frame = element.querySelector<HTMLElement>(".map-peek-visual")!;
+      const text = element.querySelector<HTMLElement>(".map-peek-text")!;
+      const imageBox = frame.getBoundingClientRect(), textBox = text.getBoundingClientRect();
+      return { width: imageBox.width, height: imageBox.height, bodyWidth: body.clientWidth,
+        textBelow: textBox.top >= imageBox.bottom, photoKind: body.dataset.photoKind };
+    });
+    expect(layout.photoKind).toBe("google");
+    expect(layout.width).toBeGreaterThan(layout.bodyWidth - 1);
+    expect(layout.height).toBeGreaterThanOrEqual(132);
+    expect(layout.textBelow).toBe(true);
+    await assertFullCard(card, places[0].name, await credits.getByRole("link").all());
+    expect(boundary.metadataRequests).toEqual([fallbackSlug]);
+    expect(boundary.googleRequests).toEqual([transport.href]);
+    await googleImage.scrollIntoViewIfNeeded();
+    await card.screenshot({ path: testInfo.outputPath(`selected-google-full-width-${width}.png`) });
+    await details.focus();
+    await googleImage.evaluate(node => node.dispatchEvent(new Event("error")));
+    await expect(card.locator("img")).toHaveCount(0);
+    await expect(card.locator(".map-peek-source-credit")).toHaveCount(0);
+    await expect(card.locator("[data-map-peek-photo-state=failed]")).toHaveCount(1);
+    await expect(details).toBeFocused();
+    await expect(card.locator(".map-peek-name")).toHaveText(places[0].name);
+    await assertFullCard(card, places[0].name);
+    expect(boundary.metadataRequests).toEqual([fallbackSlug]);
+    expect(boundary.googleRequests).toEqual([transport.href]);
+    expect(boundary.googleOutcomes).toEqual([{ url: transport.href, completed: true }]);
+    await testInfo.attach("selected-google-frame-and-request-budget", { contentType: "application/json", body: JSON.stringify({
+      width, layout, metadataRequests: boundary.metadataRequests.length,
+      selectedPhotoRequests: boundary.googleRequests.length, googleOutcomes: boundary.googleOutcomes,
+      requestedMaxWidth: transport.searchParams.get("w"), decodedLocalFixture: boundary.owned.src,
+      providerAvailabilityProven: false, paidProviderRequestsForwarded: 0,
+      gridPaidRequestsBeforeSelection: 0, retainedFactsAndActionsAfterFailure: true,
+    }) });
   });
 }

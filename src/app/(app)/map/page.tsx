@@ -5,8 +5,6 @@ import BrowseMapClient from "@/components/map/BrowseMapClient";
 import MapModeGate from "@/components/map/MapModeGate";
 import MapWarmup from "@/components/map/MapWarmup";
 import MapLoadingScene from "@/components/map/MapLoadingScene";
-import DeferredRadiusBuilder from "@/components/radius/DeferredRadiusBuilder";
-import PageBloom from "@/components/ui/PageBloom";
 import { todaysDeals } from "@/lib/loaders/todaysDeals";
 import { CURRENT_TRANSIT_STOPS } from "@/lib/transit-static";
 import { MARC_STATIONS } from "@/data/marc-stations";
@@ -45,8 +43,8 @@ export const maxDuration = 10;
  *   - Core geography and schedules are param-independent and happen here at
  *     build/revalidate time. Optional provider layers hydrate after the
  *     committed place snapshot is usable.
- *   - BOTH mode branches render server-side; MapModeGate (client) picks
- *     one from the live URL. Only the chosen branch mounts.
+ *   - MapModeGate chooses from the live URL. The legacy radius interface
+ *     loads only after that mode is selected, outside the browse entry bundle.
  *   - The URL-driven browse view (intent/sub/open/t/at/amenity) moved
  *     into BrowseMapClient, which reads useSearchParams — the map was
  *     always a client-only canvas (`ssr: false`), so nothing visual left
@@ -76,7 +74,7 @@ export default function MapPage() {
           HTML carries the map-shaped skeleton below — which is exactly
           what the dynamic page showed while its data streamed anyway. */}
       <Suspense fallback={<MapShellFallback />}>
-        <MapModeGate browse={<BrowseMode />} radius={<RadiusMode />} />
+        <MapModeGate browse={<BrowseMode />} />
       </Suspense>
     </>
   );
@@ -105,17 +103,6 @@ function MapLoadingSurface() {
   );
 }
 
-/** Radius ("Nearby") mode — no UI entry point (owner call 2026-07-08),
- * reachable via /map?mode=radius. The reach controls and committed places
- * render immediately; optional amenities and events hydrate client-side. */
-function RadiusMode() {
-  return (
-    <div className="relative mx-auto max-w-screen-md space-y-3 lg:max-w-screen-lg">
-      <PageBloom variant="cool" />
-      <DeferredRadiusBuilder />
-    </div>
-  );
-}
 /** Browse mode — the clean whole-county default surface. */
 function BrowseMode() {
   return (

@@ -14,7 +14,7 @@
   padding-right: 40px;
 }
 
-.body.body[data-has-photo]:not([data-photo-kind="google"]) {
+.body.body[data-has-photo] {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 10px;
@@ -30,17 +30,10 @@
   border-radius: 14px;
 }
 
-.body.body[data-has-photo]:not([data-photo-kind="google"]) :global(.map-peek-visual) {
+.body.body[data-has-photo] :global(.map-peek-visual) {
   width: 100%;
   height: clamp(132px, 42vw, 184px);
   border-radius: var(--app-radius-lg);
-}
-
-/* Keep the existing small provider transport at a matching display size. */
-.body.body[data-photo-kind="google"] :global(.map-peek-visual) {
-  width: 88px;
-  height: 104px;
-  flex-basis: 88px;
 }
 
 .photoFace {
@@ -235,13 +228,13 @@
 }
 
 @media (max-height: 540px) {
-  .body.body[data-has-photo]:not([data-photo-kind="google"]) :global(.map-peek-visual) {
+  .body.body[data-has-photo] :global(.map-peek-visual) {
     height: 104px;
   }
 
   /* A short scrollport can bring the heading alongside sticky Close. Keep
    * the entire Details hit area outside that control's physical column. */
-  .body.body[data-has-photo]:not([data-photo-kind="google"]) .heading {
+  .body.body[data-has-photo] .heading {
     padding-inline-end: 52px;
   }
 }
@@ -255,13 +248,11 @@
     font-size: 1.25rem;
   }
 
-  .body.body:not([data-has-photo]),
-  .body.body[data-photo-kind="google"] {
+  .body.body:not([data-has-photo]) {
     padding-right: 32px;
   }
 
-  .body.body:not([data-has-photo]) .heading,
-  .body.body[data-photo-kind="google"] .heading {
+  .body.body:not([data-has-photo]) .heading {
     flex-wrap: wrap;
     gap: 0;
   }
