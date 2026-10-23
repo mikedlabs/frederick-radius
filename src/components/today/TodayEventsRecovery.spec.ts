@@ -379,7 +379,7 @@ describe("Today recovery optional visual compatibility", () => {
   });
 
   it("keeps pick order and renders approved imagery on a later row", () => {
-    const later = { ...event, slug: "later-event", visual: { src: "/images/seasons/fall/018.jpg",
+    const later = { ...event, slug: "later-event", visual: { src: "/images/places/baker-park-detail.jpg",
       key: "radius-baker-park-bandshell", caption: "Venue · Baker Park", presentation: "photo" as const } };
     const html = renderToStaticMarkup(createElement(TodayEventsRecoveryView, {
       response: { partial: false, events: [event, later] },

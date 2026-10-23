@@ -43,7 +43,7 @@ describe("PlaceMedallion", () => {
     }));
     const src = html.match(/<img[^>]*src="([^"]+)"/)?.[1];
     expect(new URL(src!, "https://frederickradius.local").searchParams.get("url"))
-      .toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+      .toBe("/images/places/carroll-creek-aerial.jpg");
     expect(html).toContain('data-place-photo-source="owned"');
     expect(html).not.toContain("/api/place-photo");
   });

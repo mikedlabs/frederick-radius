@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { TodayGeographicDoorwayView } from "./TodayGeographicDoorway";
 
 const todayPage = readFileSync("src/app/(app)/today/page.tsx", "utf8");
 const todayAsk = readFileSync("src/components/today/TodayAsk.tsx", "utf8");
@@ -102,9 +105,16 @@ describe("Today decision hierarchy", () => {
   });
 
   it("uses the exact owned scene as an earlier geographic action separate from one unchanged decision lead", () => {
-    expect(geographicDoorway).toContain('src="/images/seasons/summer/SUMMER CARROL CREEK.jpg"');
-    expect(geographicDoorway).toContain('alt="Carroll Creek in Frederick."');
-    expect(geographicDoorway).toContain('href="/places/carroll-creek-linear-park-frederick"');
+    const photos = renderToStaticMarkup(createElement(TodayGeographicDoorwayView));
+    for (const [slug, file] of [
+      ["carroll-creek-linear-park-frederick", "carroll-creek-aerial"],
+      ["baker-park-frederick", "baker-park-detail"],
+      ["visitation-hotel", "visitation-hotel-detail"],
+    ]) {
+      expect(photos).toContain(encodeURIComponent(`/images/places/${file}.jpg`));
+      expect(photos).toContain(`href="/places/${slug}"`);
+    }
+    expect(photos).not.toContain("/api/place-photo");
     expect(geographicDoorway).toContain("if (!todayShowsFrederickDoorway(scope)) return null");
     expect(geographicDoorway).not.toContain("June 2023");
     expect(geographicDoorway).not.toContain("Mike D");

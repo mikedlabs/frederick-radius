@@ -63,7 +63,7 @@ import {
  *
  *   1. Identity       → active alerts and the time-aware masthead
  *   2. Conditions     → one verified weather glance before browsing
- *   3. Find and see   → one Find doorway, then an exact scoped place photograph
+ *   3. Find and see   → one Find doorway, then exact scoped place photographs
  *                       before the current local answers
  *   4. Follow the day → a short event program and one location-aware place answer
  *   5. Keep exploring → four practical shortcuts and the category index

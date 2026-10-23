@@ -17,7 +17,7 @@ import { BROWSE_FOCUS_RETURN_KEY } from "../src/lib/browse-focus-return";
  * Nearby uses the actual catalog and its real public place detail document. */
 const CREEK = "carroll-creek-linear-park-frederick";
 const CREEK_NAME = "Carroll Creek Linear Park";
-const CREEK_IMAGE = "/images/seasons/summer/SUMMER CARROL CREEK.jpg";
+const CREEK_IMAGE = "/images/places/carroll-creek-aerial.jpg";
 const SAVED_KEY = "fr:saved:v1";
 const CREEK_FAILURE_SOURCES = placeCardPhotoPlan({ slug: CREEK }, 360).sources.map(({ src }) => decodeURIComponent(src));
 const ONE_PIXEL = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jZ6kAAAAASUVORK5CYII=", "base64");

@@ -18,7 +18,7 @@ import type { MapPinPlace } from "@/components/map/types";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-const owned = "/images/seasons/summer/SUMMER CARROL CREEK.jpg";
+const owned = "/images/places/carroll-creek-aerial.jpg";
 const row = (slug: string): MapPinPlace => ({ slug, name: slug === "new-market-historic-district-new-market" ? "New Market Historic District" : "Carroll Creek Linear Park",
   category: "park", subcategories: [], geom: { lat: 39.4, lng: -77.4 }, municipality: "frederick", source: "manual", is_verified: true, short_blurb: "",
   open_status: { state: "unknown" } });

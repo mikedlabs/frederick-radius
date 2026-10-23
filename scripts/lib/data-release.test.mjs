@@ -3,6 +3,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
+import ts from "typescript";
 
 import {
   DATA_RELEASE_STREAMS,
@@ -16,6 +17,24 @@ import {
 } from "./data-release.mjs";
 
 const FIXED_PROMOTION = "2026-08-12T12:00:00Z";
+
+test("every primary and gallery-only owned photograph is protected by the places release", () => {
+  const source = readFileSync(new URL("../../src/lib/owned-place-photos.ts", import.meta.url), "utf8");
+  const file = ts.createSourceFile("owned-place-photos.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const photos = new Set();
+  const visit = node => {
+    if (ts.isPropertyAssignment(node) && node.name.getText(file).replace(/['"]/g, "") === "src") {
+      assert.ok(ts.isStringLiteral(node.initializer), "Owned photo src must be a reviewable literal local path.");
+      const src = node.initializer.text;
+      assert.ok(src.startsWith("/images/") && !src.includes("..") && !src.includes("?"));
+      photos.add(`public${src}`);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  assert.ok(photos.size > 0);
+  assert.deepEqual([...photos].filter(path => !PLACE_RELEASE_ARTIFACTS.includes(path)), []);
+});
 
 function fixtureRoot() {
   const root = mkdtempSync(join(tmpdir(), "radius-data-release-"));
@@ -96,6 +115,14 @@ test("the place release covers canonical server and place-page inputs", () => {
     "public/history-photos/catoctin-mountain-park.jpg",
     "public/place-photos/brewers-alley-2004.jpg",
     "src/lib/owned-place-photos.ts",
+    "public/images/places/visitation-hotel-sunset.jpg",
+    "public/images/places/visitation-hotel-detail.jpg",
+    "public/images/places/carroll-creek-aerial.jpg",
+    "public/images/places/baker-park-sunset.jpg",
+    "public/images/places/baker-park-detail.jpg",
+    "public/images/places/carillon-sunset.jpg",
+    "public/images/places/church-street-sunset.jpg",
+    "public/images/places/weinberg-patrick-street.jpg",
     "public/images/seasons/winter/IMG_2732.jpg",
     "public/images/seasons/spring/010.jpg",
     "public/images/seasons/fall/001.jpg",

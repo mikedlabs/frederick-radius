@@ -152,7 +152,7 @@ describe("listing maintenance hours truth", () => {
 describe("photo eligibility and bounded source candidates", () => {
   it("uses the actual exact-owned resolver without claiming decoded image success", () => {
     const r = report(base({ slug: "carroll-creek-linear-park-frederick" }));
-    expect(r.rows[0].photo).toMatchObject({ eligibility: "owned", availability: "not_checked", selected_src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg" });
+    expect(r.rows[0].photo).toMatchObject({ eligibility: "owned", availability: "not_checked", selected_src: "/images/places/carroll-creek-aerial.jpg" });
     expect(r.scope.decoded_photos).toBe("not_checked");
     expect(r.scope.served_deployment).toBe("not_checked");
   });

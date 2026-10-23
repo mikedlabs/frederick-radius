@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getScope, parseScope, scopeTownSlug, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { getOwnedPlacePhoto, type OwnedPlacePhoto } from "@/lib/owned-place-photos";
 import styles from "./TodayLayout.module.css";
 
 const subscribe = (listener: () => void) => subscribeScopeChange(() => listener());
@@ -27,28 +28,37 @@ export function TodayGeographicDoorwayPending() {
   );
 }
 
-/** A geographic browsing action, never a claim that the park is open or safe now. */
-export function TodayGeographicDoorwayView({ scope = null }: { scope?: Scope | null }) {
-  const [imageState, setImageState] = useState<"pending" | "loaded" | "failed">("pending");
-  if (!todayShowsFrederickDoorway(scope)) return null;
+const GEOGRAPHIC_PLACES = [
+  { slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek", actionName: "Carroll Creek Linear Park", primary: true },
+  { slug: "baker-park-frederick", name: "Baker Park", actionName: "Baker Park", primary: false },
+  { slug: "visitation-hotel", name: "Visitation Hotel", actionName: "Visitation Hotel", primary: false },
+] as const;
 
+/** Each real photograph can appear or fail independently of its neighbors. */
+function GeographicPlaceAnchor({ place, photo }: {
+  place: typeof GEOGRAPHIC_PLACES[number];
+  photo: OwnedPlacePhoto | null;
+}) {
+  const [imageState, setImageState] = useState<"pending" | "loaded" | "failed">(photo ? "pending" : "failed");
   return (
     <Link
-      href="/places/carroll-creek-linear-park-frederick"
+      href={`/places/${place.slug}`}
       prefetch={false}
-      aria-label="View Carroll Creek Linear Park in Frederick"
-      data-today-geographic-doorway
+      aria-label={`View ${place.actionName} in Frederick`}
+      data-today-geographic-doorway={place.primary || undefined}
+      data-today-geographic-place={place.slug}
       data-photo-state={imageState}
-      className={styles.geographicDoorway}
+      className={`${styles.geographicDoorway} ${place.primary ? styles.geographicMain : styles.geographicSupporting}`}
     >
-      {imageState !== "failed" && (
-        <figure className={styles.geographicPhoto} data-today-photo-lead>
+      {photo && imageState !== "failed" && (
+        <figure className={styles.geographicPhoto} data-today-photo-lead={place.primary || undefined}>
           <Image
-            src="/images/seasons/summer/SUMMER CARROL CREEK.jpg"
-            alt="Carroll Creek in Frederick."
+            src={photo.src}
+            alt={photo.alt}
             fill
-            sizes="(min-width: 640px) 520px, calc(100vw - 32px)"
+            sizes={place.primary ? "(min-width: 640px) 320px, 62vw" : "(min-width: 640px) 200px, 38vw"}
             loading="eager"
+            style={{ objectPosition: photo.objectPosition ?? "center" }}
             onLoad={(event) => {
               const image = event.currentTarget;
               const usable = image.naturalWidth > 1 && image.naturalHeight > 1;
@@ -60,12 +70,25 @@ export function TodayGeographicDoorwayView({ scope = null }: { scope?: Scope | n
       )}
       <div className={styles.geographicCaption} data-today-geographic-caption>
         <div>
-          <h2>Carroll Creek</h2>
-          <p>Frederick</p>
+          {place.primary ? <h2>{place.name}</h2> : <h3>{place.name}</h3>}
+          {place.primary && <p>Frederick</p>}
         </div>
-        <span className={styles.geographicAction}>View place <ArrowRight aria-hidden className="h-4 w-4" /></span>
+        <span aria-hidden className={styles.geographicAction}><ArrowRight className="h-4 w-4" /></span>
       </div>
     </Link>
+  );
+}
+
+/** Exact Frederick places, never a claim of present weather or availability. */
+export function TodayGeographicDoorwayView({ scope = null }: { scope?: Scope | null }) {
+  if (!todayShowsFrederickDoorway(scope)) return null;
+  return (
+    <div data-today-geographic-mosaic className={styles.geographicMosaic}>
+      {GEOGRAPHIC_PLACES.map((place) => {
+        const photo = getOwnedPlacePhoto(place.slug);
+        return <GeographicPlaceAnchor key={`${place.slug}:${photo?.src ?? "no-photo"}`} place={place} photo={photo} />;
+      })}
+    </div>
   );
 }
 

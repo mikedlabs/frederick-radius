@@ -47,26 +47,32 @@ type EventVisualSource = Pick<Event,
   "source" | "source_url" | "hero_image" | "hero_image_attribution" | "venue_place_slug"
 >;
 
-const VENUE_VISUALS: Readonly<Record<string, EventCardVisual>> = {
+// Preserve the established recovery keys and venue labels while the reviewed
+// owned registry remains the only source of image bytes for these venues.
+const VENUE_VISUALS: Readonly<Record<string, Pick<EventCardVisual, "caption" | "key" | "presentation">>> = {
   "carroll-creek-linear-park-frederick": {
-    src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
     caption: "Venue · Carroll Creek Linear Park",
     key: "radius-carroll-creek-summer",
     presentation: "photo",
   },
   "baker-park-frederick": {
-    src: "/images/seasons/fall/018.jpg",
     caption: "Venue · Baker Park",
     key: "radius-baker-park-bandshell",
     presentation: "photo",
   },
   "baker-park-bandshell": {
-    src: "/images/seasons/fall/018.jpg",
     caption: "Venue · Baker Park Bandshell",
     key: "radius-baker-park-bandshell",
     presentation: "photo",
   },
 };
+
+function legacyEventVenueVisual(venueSlug: string | undefined): EventCardVisual | null {
+  if (!venueSlug || !Object.hasOwn(VENUE_VISUALS, venueSlug)) return null;
+  const photo = getOwnedPlacePhoto(venueSlug);
+  if (!photo) return null;
+  return { src: photo.src, ...VENUE_VISUALS[venueSlug] };
+}
 
 // Only these existing canonical place identities join the event visual path.
 // Reuse the owned registry for bytes and framing; do not guess from event names
@@ -74,6 +80,7 @@ const VENUE_VISUALS: Readonly<Record<string, EventCardVisual>> = {
 const OWNED_EVENT_VENUE_LABELS: Readonly<Record<string, string>> = {
   "frederick-fairgrounds-home-of-the-great-frederick-fair-frederick": "Frederick Fairgrounds during The Great Frederick Fair",
   "mccurdy-field": "McCurdy Field",
+  "visitation-hotel": "Visitation Hotel",
 };
 
 function ownedEventVenueVisual(venueSlug: string | undefined): EventCardVisual | null {
@@ -253,7 +260,7 @@ export function eventCardVisual(
   if (providerVisual) return providerVisual;
 
   // Event-specific publisher art stays first. Exact owned venue photographs
-  // avoid activating the existing Google path for these two reviewed places.
+  // avoid activating the existing Google path for these reviewed places.
   const ownedVisual = ownedEventVenueVisual(event.venue_place_slug);
   if (ownedVisual) return ownedVisual;
 
@@ -263,9 +270,7 @@ export function eventCardVisual(
   const venueVisual = venuePhotos === "all-approved" ? approvedVenueVisual(event) : null;
   if (venueVisual) return venueVisual;
 
-  if (!event.venue_place_slug) return null;
-  return Object.hasOwn(VENUE_VISUALS, event.venue_place_slug)
-    ? VENUE_VISUALS[event.venue_place_slug] : null;
+  return legacyEventVenueVisual(event.venue_place_slug);
 }
 
 /** Slim recovery payloads may carry existing owned, licensed or publisher visuals.
@@ -289,8 +294,9 @@ export function parseRecoveryEventVisual(value: unknown): EventCardVisual | null
     const known = ownedEventVenueVisual(slug);
     if (known && sameTuple(known) && visual.sourceHref === undefined) return { ...known };
   }
-  for (const known of Object.values(VENUE_VISUALS)) {
-    if (sameTuple(known) && visual.sourceHref === undefined) return { ...known };
+  for (const slug of Object.keys(VENUE_VISUALS)) {
+    const known = legacyEventVenueVisual(slug);
+    if (known && sameTuple(known) && visual.sourceHref === undefined) return { ...known };
   }
   if (visual.presentation !== "artwork" || typeof visual.sourceHref !== "string") return null;
   try {

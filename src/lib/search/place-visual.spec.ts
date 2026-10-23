@@ -13,7 +13,8 @@ const place = (slug: string) => clientPlaceBySlug(slug)!;
 describe("free exact place photography in Find", () => {
   it("uses the owner's exact Creek photograph without a credit requirement", () => {
     expect(freeSearchPlaceVisual(place("carroll-creek-linear-park-frederick"))).toMatchObject({
-      kind: "owned", src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg", alt: "Carroll Creek in Frederick.",
+      kind: "owned", src: "/images/places/carroll-creek-aerial.jpg",
+      alt: "An aerial view of Carroll Creek, its bridges and tree-lined paths in Frederick.",
     });
   });
 
@@ -57,12 +58,14 @@ describe("free exact place photography in Find", () => {
   });
 
   it.each([
-    ["Baker Park", "baker-park-frederick", "An aerial view of Baker Park and its bandshell seating in Frederick."],
+    ["Baker Park", "baker-park-frederick", "An aerial view of Baker Park's lawns, carillon and bandshell in Frederick at dusk."],
     ["Baker Park Bandshell", "baker-park-bandshell", "The Baker Park Bandshell and outdoor seating in Frederick."],
   ])("carries the reviewed owned photo through the real Find place result for %s", (query, slug, alt) => {
     const input = place(slug);
     const photo = freeSearchPlaceVisual(input);
-    expect(photo).toMatchObject({ kind: "owned", src: "/images/seasons/fall/018.jpg", alt, objectPosition: "right" });
+    expect(photo).toMatchObject({ kind: "owned", src: slug === "baker-park-bandshell"
+      ? "/images/seasons/fall/018.jpg" : "/images/places/baker-park-detail.jpg", alt,
+      objectPosition: slug === "baker-park-bandshell" ? "right" : "center" });
     expect(photo).not.toHaveProperty("attribution");
     expect(isPaidGooglePhotoUrl(photo!.src)).toBe(false);
     expect(placeCardPhotoPlan(input, 360).sources[0]).toEqual(photo);
@@ -79,7 +82,7 @@ describe("free exact place photography in Find", () => {
     const input = place(slug);
     expect(input).toBeDefined();
     const photo = freeSearchPlaceVisual(input);
-    expect(photo).toMatchObject({ kind: "owned", src: "/images/seasons/fall/021.jpg", objectPosition: "left" });
+    expect(photo).toMatchObject({ kind: "owned", src: "/images/places/carillon-sunset.jpg", objectPosition: "right" });
     expect(photo).not.toHaveProperty("attribution");
     const result = searchIndex(input.name, 20, []).find(row => row.id === `place:${slug}`);
     expect(result?.thumbnailSource).toEqual(photo);

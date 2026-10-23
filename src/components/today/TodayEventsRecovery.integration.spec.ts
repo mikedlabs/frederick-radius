@@ -115,7 +115,7 @@ it("hydrates a degraded empty brief from the real archive reader and API without
     const image = container.querySelector("img");
     expect(image, "the approved exact-venue visual survives archive to API to hydration").not.toBeNull();
     const source = new URL(image!.getAttribute("src")!, "https://frederickradius.app");
-    expect(source.searchParams.get("url") ?? source.pathname).toBe("/images/seasons/fall/018.jpg");
+    expect(source.searchParams.get("url") ?? source.pathname).toBe("/images/places/baker-park-detail.jpg");
     expect(container.textContent).toContain("Venue · Baker Park");
     expect(link?.querySelector("[data-event-photo-credit]")).toBeNull();
     expect(container.querySelector("a a")).toBeNull();
@@ -127,7 +127,7 @@ it("hydrates a degraded empty brief from the real archive reader and API without
       cache: "public, s-maxage=300, stale-while-revalidate=900",
       body: expect.objectContaining({ partial: false, issues: [], unavailable: [],
         events: [expect.objectContaining({ slug: concert.slug, title: concert.title, presenter: concert.presenter, free: true,
-          visual: { src: "/images/seasons/fall/018.jpg", key: "radius-baker-park-bandshell",
+          visual: { src: "/images/places/baker-park-detail.jpg", key: "radius-baker-park-bandshell",
             caption: "Venue · Baker Park", presentation: "photo" } })] }),
     })]);
   } finally {

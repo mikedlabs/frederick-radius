@@ -65,7 +65,7 @@ describe("bounded event preview photo policy", () => {
 
   it("shows the exact bundled venue image with free media rather than its paid candidate", () => {
     render({ ...candidate, venue_name: "Baker Park", venue_place_slug: "baker-park-frederick" }, "free-reviewed");
-    expect(host.querySelector("img")?.getAttribute("src")).toBe("/images/seasons/fall/018.jpg");
+    expect(host.querySelector("img")?.getAttribute("src")).toBe("/images/places/baker-park-detail.jpg");
     expect(host.innerHTML).not.toContain("/api/place-photo");
     expect(host.textContent).toContain("Venue · Baker Park");
     factsSurvive();
@@ -90,7 +90,7 @@ describe("photo-forward discovery card contracts", () => {
     const link = host.querySelector('a[href="/events/offline-preview-policy"]')!;
     const figure = host.querySelector("figure")!;
     expect(host.querySelector('[data-event-media="photo"]')).not.toBeNull();
-    expect(host.querySelector("img")?.getAttribute("src")).toBe("/images/seasons/fall/018.jpg");
+    expect(host.querySelector("img")?.getAttribute("src")).toBe("/images/places/baker-park-detail.jpg");
     expect(figure.compareDocumentPosition(host.querySelector("h3")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(figure.textContent).not.toContain(candidate.title);
     expect(link.textContent).toContain("Baker Park");
@@ -109,7 +109,7 @@ describe("photo-forward discovery card contracts", () => {
     expect(heading.textContent).not.toContain("OCT");
     expect(host.querySelector("[data-event-card-time]")?.textContent).toBe("Wed OCT 10 · 7:00 PM–9:00 PM");
     expect(host.querySelectorAll("[data-event-card-time]")).toHaveLength(1);
-    expect(host.querySelector("img")?.getAttribute("src")).toBe("/images/seasons/fall/018.jpg");
+    expect(host.querySelector("img")?.getAttribute("src")).toBe("/images/places/baker-park-detail.jpg");
     expect(request).not.toHaveBeenCalled();
   });
 

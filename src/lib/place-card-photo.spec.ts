@@ -108,12 +108,13 @@ describe("bundled exact destination fallback continuity", () => {
 
 describe("exact owned place photo continuity", () => {
   const slug = "carroll-creek-linear-park-frederick";
-  const src = "/images/seasons/summer/SUMMER CARROL CREEK.jpg";
+  const src = "/images/places/carroll-creek-aerial.jpg";
 
   it("uses the verified Creek photo without any Google data or invented credit", () => {
     const input = { slug };
     const source = selectedPlaceCardPhoto(placeCardPhotoPlan(input, 360), null);
-    expect(source).toMatchObject({ kind: "owned", src, alt: "Carroll Creek in Frederick." });
+    expect(source).toMatchObject({ kind: "owned", src,
+      alt: "An aerial view of Carroll Creek, its bridges and tree-lined paths in Frederick." });
     expect(source).not.toHaveProperty("attribution");
     expect(input).toEqual({ slug });
   });
@@ -168,8 +169,11 @@ describe("reviewed owned Baker Park photograph", () => {
     const input = { ...place, slug };
     const plan = placeCardPhotoPlan(input, 360);
     const owned = selectedPlaceCardPhoto(plan, null)!;
-    expect(owned).toMatchObject({ kind: "owned", src: "/images/seasons/fall/018.jpg",
-      width: 1920, height: 1079, objectPosition: "right" });
+    expect(owned).toMatchObject({ kind: "owned", src: slug === "baker-park-bandshell"
+      ? "/images/seasons/fall/018.jpg" : "/images/places/baker-park-detail.jpg",
+      width: slug === "baker-park-bandshell" ? 1920 : 1439,
+      height: slug === "baker-park-bandshell" ? 1079 : 561,
+      objectPosition: slug === "baker-park-bandshell" ? "right" : "center" });
     expect(owned.alt).toContain(slug === "baker-park-bandshell" ? "Baker Park Bandshell" : "Baker Park");
     expect(owned).not.toHaveProperty("attribution");
     expect(owned).not.toHaveProperty("photo");
@@ -222,7 +226,14 @@ describe("existing licensed local place photographs", () => {
         photo: { author: image.creator, source_url: image.source_url, license: image.license.label,
           licenseUrl: image.license.url, modifications: image.modifications } });
       expect(getOwnedPlacePhoto(slug)).toBeNull();
-      expect(placePhotoGallerySources({ slug }, width)).toEqual(plan.sources);
+      const gallery = placePhotoGallerySources({ slug }, width);
+      expect(gallery[0]).toEqual(plan.sources[0]);
+      if (slug === "weinberg-center-for-the-arts-frederick") {
+        expect(gallery).toHaveLength(2);
+        expect(gallery[1]).toMatchObject({ kind: "owned", src: "/images/places/weinberg-patrick-street.jpg" });
+      } else {
+        expect(gallery).toEqual(plan.sources);
+      }
     }
   });
 
@@ -318,9 +329,9 @@ describe("reviewed owned carillon photograph", () => {
     const input = { ...place, slug };
     const plan = placeCardPhotoPlan(input, 360);
     const owned = selectedPlaceCardPhoto(plan, null)!;
-    expect(owned).toMatchObject({ kind: "owned", src: "/images/seasons/fall/021.jpg",
-      width: 1920, height: 1279, objectPosition: "left" });
-    expect(owned.alt).toBe("The Joseph Dill Baker Memorial Carillon in Baker Park, Frederick.");
+    expect(owned).toMatchObject({ kind: "owned", src: "/images/places/carillon-sunset.jpg",
+      width: 1920, height: 1079, objectPosition: "right" });
+    expect(owned.alt).toBe("The Joseph Dill Baker Memorial Carillon beside the creek and lawns of Baker Park at sunset.");
     expect(owned).not.toHaveProperty("photo");
     expect(owned).not.toHaveProperty("attribution");
     expect(placePhotoGallerySources(input, 360)[0]).toEqual(owned);

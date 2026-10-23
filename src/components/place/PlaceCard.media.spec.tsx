@@ -177,7 +177,8 @@ describe("PlaceCard selected media and credit", () => {
       google_photo_url: undefined, google_photo_attribution: undefined };
     await act(async () => root.render(<PlaceCard place={nearbyPlace} variant="discovery" discoverySurface="nearby" lazyPhoto />));
     const image = photo()!;
-    expect(image.getAttribute("src")).toBe("/images/seasons/fall/018.jpg");
+    expect(image.getAttribute("src")).toBe(slug === "baker-park-bandshell"
+      ? "/images/seasons/fall/018.jpg" : "/images/places/baker-park-detail.jpg");
     expect(image.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("owned");
     await load(image);
     expect(hydrate).not.toHaveBeenCalled();
@@ -395,7 +396,7 @@ describe("PlaceCard selected media and credit", () => {
   it("gives a row the exact owned photograph without an owner caption", async () => {
     await render({ ...place, slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park",
       google_photo_url: undefined, google_photo_attribution: undefined }, "row");
-    expect(photo()?.getAttribute("src")).toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+    expect(photo()?.getAttribute("src")).toBe("/images/places/carroll-creek-aerial.jpg");
     expect(photo()?.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("owned");
     await load(photo()!);
     expect(container.querySelector(".place-card-photo-credit")).toBeNull();
@@ -500,7 +501,7 @@ describe("PlaceCard selected media and credit", () => {
     const owned = { ...place, slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park",
       google_photo_url: undefined, google_photo_attribution: undefined };
     await render(owned, "discovery");
-    expect(photo()?.getAttribute("src")).toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+    expect(photo()?.getAttribute("src")).toBe("/images/places/carroll-creek-aerial.jpg");
     expect(photo()?.getAttribute("sizes")).toBe("(max-width: 640px) calc(100vw - 32px), 600px");
     expect(container.querySelector('article[data-place-card-has-photo="true"]')).not.toBeNull();
     await load(photo()!);

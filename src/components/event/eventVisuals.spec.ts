@@ -3,6 +3,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventCardVisual, parseRecoveryEventVisual, planHorizonVisual } from "./eventVisuals";
 import fixture from "../../../tests/fixtures/steinhardt-squarespace.json" with { type: "json" };
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
   return {
@@ -30,15 +31,17 @@ function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
 }
 
 describe("eventCardVisual", () => {
-  it("uses an exact Carroll Creek Linear Park match and labels it as venue photography", () => {
-    expect(
-      eventCardVisual(
-        event({ venue_place_slug: "carroll-creek-linear-park-frederick" }),
-      ),
-    ).toEqual({
-      src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
-      caption: "Venue · Carroll Creek Linear Park",
-      key: "radius-carroll-creek-summer",
+  it.each([
+    ["carroll-creek-linear-park-frederick", "Carroll Creek Linear Park", "radius-carroll-creek-summer"],
+    ["baker-park-frederick", "Baker Park", "radius-baker-park-bandshell"],
+    ["baker-park-bandshell", "Baker Park Bandshell", "radius-baker-park-bandshell"],
+  ])("uses the registered %s primary with its stable legacy venue label and key", (venue_place_slug, venue, key) => {
+    const photo = getOwnedPlacePhoto(venue_place_slug);
+    expect(photo).not.toBeNull();
+    expect(eventCardVisual(event({ venue_place_slug }))).toEqual({
+      src: photo!.src,
+      caption: `Venue · ${venue}`,
+      key,
       presentation: "photo",
     });
   });
@@ -332,6 +335,17 @@ describe("recovery event visual boundary", () => {
   });
 
   it.each([
+    ["carroll-creek-linear-park-frederick", "/images/seasons/summer/SUMMER CARROL CREEK.jpg"],
+    ["baker-park-frederick", "/images/seasons/fall/018.jpg"],
+    ["baker-park-bandshell", getOwnedPlacePhoto("baker-park-frederick")!.src],
+  ])("rejects a stale or different-place source in the legacy %s recovery tuple", (venue_place_slug, wrongSrc) => {
+    const visual = eventCardVisual(event({ venue_place_slug }))!;
+    expect(visual.src).not.toBe(wrongSrc);
+    expect(parseRecoveryEventVisual(visual)).toEqual(visual);
+    expect(parseRecoveryEventVisual({ ...visual, src: wrongSrc })).toBeNull();
+  });
+
+  it.each([
     ["dfp", "https://ik.imagekit.io/vibemap/events/program.jpg", "Event image · Downtown Frederick Partnership"],
     ["visit-frederick", "https://assets.simpleviewinc.com/sv-frederick-county/image/fetch/program.jpg", "Event image · Visit Frederick"],
     ["fcpl", "https://frederick.librarycalendar.com/sites/default/files/program.jpg", "Event image · Frederick County Public Libraries"],
@@ -468,6 +482,7 @@ describe("exact owned event venue photographs", () => {
   it.each([
     [fairgrounds, "/images/fair/fairgrounds-night-mike-d-1920.jpg", "Frederick Fairgrounds during The Great Frederick Fair", "right"],
     ["mccurdy-field", "/images/seasons/spring/aerial-view-baseball-field.jpg", "McCurdy Field", "center"],
+    ["visitation-hotel", getOwnedPlacePhoto("visitation-hotel")!.src, "Visitation Hotel", "right"],
   ] as const)("prefers the exact owned venue over already-eligible Google media for %s", (venue_place_slug, src, venue, objectPosition) => {
     const input = event({ ...suppliedGoogle, venue_place_slug });
     const normal = eventCardVisual(input);
@@ -481,8 +496,8 @@ describe("exact owned event venue photographs", () => {
     expect(input.hero_image_attribution).toBe(suppliedGoogle.hero_image_attribution);
   });
 
-  it("retains event-specific publisher artwork ahead of the owned venue without photo framing", () => {
-    const approved = eventCardVisual(event({ venue_place_slug: fairgrounds, source: "ticketmaster",
+  it.each([fairgrounds, "visitation-hotel"])("retains event-specific publisher artwork ahead of %s without photo framing", venue_place_slug => {
+    const approved = eventCardVisual(event({ venue_place_slug, source: "ticketmaster",
       source_url: "https://www.ticketmaster.com/offline-fixture", hero_image: "https://s1.ticketm.net/dam/a/offline-fixture.jpg" }));
     expect(approved).toMatchObject({ src: "https://s1.ticketm.net/dam/a/offline-fixture.jpg",
       caption: "Event image · Ticketmaster", presentation: "artwork" });
@@ -501,6 +516,12 @@ describe("exact owned event venue photographs", () => {
       { venuePhotos: "owned-only" })).toBeNull();
   });
 
+  it.each([undefined, "visitation", "Visitation-Hotel", "visitation-hotel-reception", "wye-oak-tavern-frederick"])(
+    "does not infer Visitation imagery from a name, nearby business or alias %s", venue_place_slug => {
+      expect(eventCardVisual(event({ venue_place_slug, venue_name: "Visitation Hotel" }),
+        { venuePhotos: "owned-only" })).toBeNull();
+    });
+
   it("keeps legacy Baker Park Google precedence and its owned-only fallback unchanged", () => {
     const input = event({ ...suppliedGoogle, venue_place_slug: "baker-park-bandshell" });
     expect(eventCardVisual(input)?.attribution).toBe(suppliedGoogle.hero_image_attribution);
@@ -510,7 +531,7 @@ describe("exact owned event venue photographs", () => {
     });
   });
 
-  it.each([fairgrounds, "mccurdy-field"])("round-trips %s through recovery using its exact canonical framing", venue_place_slug => {
+  it.each([fairgrounds, "mccurdy-field", "visitation-hotel"])("round-trips %s through recovery using its exact canonical framing", venue_place_slug => {
     const approved = eventCardVisual(event({ venue_place_slug }), { venuePhotos: "owned-only" })!;
     const packet = Object.freeze({ ...approved, ignored: "not part of the visual contract" });
     const parsed = parseRecoveryEventVisual(packet);
@@ -524,6 +545,25 @@ describe("exact owned event venue photographs", () => {
     expect(parseRecoveryEventVisual({ ...approved, caption: "Event image · current performance" })).toBeNull();
     expect(parseRecoveryEventVisual({ ...approved, sourceHref: "https://example.test/not-this-photo" })).toBeNull();
     expect(parseRecoveryEventVisual({ ...approved, src: "/api/place-photo?name=unapproved" })).toBeNull();
+  });
+
+  it.each([
+    "/images/seasons/fall/018.jpg",
+    "/images/places/unreviewed-hotel.jpg",
+    "https://example.test/images/places/visitation-hotel-sunset.jpg",
+    "//example.test/images/places/visitation-hotel-sunset.jpg",
+  ])("rejects unregistered or substituted Visitation recovery bytes %s", src => {
+    const visual = eventCardVisual(event({ venue_place_slug: "visitation-hotel" }))!;
+    expect(parseRecoveryEventVisual({ ...visual, src })).toBeNull();
+  });
+
+  it("cannot relabel an owned hotel as another venue or inherit an unrelated image license", () => {
+    const visual = eventCardVisual(event({ venue_place_slug: "visitation-hotel" }))!;
+    const licensed = eventCardVisual(event({ venue_place_slug: "weinberg-center-for-the-arts-frederick" }))!;
+    expect(licensed.licensedCredit).toBeDefined();
+    expect(parseRecoveryEventVisual({ ...visual, caption: "Venue · Wye Oak Tavern" })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...visual, key: "owned-venue:wye-oak-tavern-frederick" })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...visual, licensedCredit: licensed.licensedCredit })).toBeNull();
   });
 
   it("does not let a recovery packet add owned framing to publisher art or a legacy venue tuple", () => {

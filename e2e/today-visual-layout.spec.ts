@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
+import { getOwnedPlacePhoto } from "../src/lib/owned-place-photos";
 import {
   dismissReturnBridge,
   emptyReturnBridgeState,
@@ -6,6 +7,13 @@ import {
 } from "../src/lib/return-bridge";
 
 test.use({ serviceWorkers: "block" });
+
+const geographicSubjects = [
+  { slug: "carroll-creek-linear-park-frederick", title: "Carroll Creek", action: "Carroll Creek Linear Park" },
+  { slug: "baker-park-frederick", title: "Baker Park", action: "Baker Park" },
+  { slug: "visitation-hotel", title: "Visitation Hotel", action: "Visitation Hotel" },
+] as const;
+const geographicPhotoPaths = new Set(geographicSubjects.map(subject => getOwnedPlacePhoto(subject.slug)!.src));
 
 /** Root-font text resizing is not browser page zoom. These probes must prove
  * actual computed growth of the compact weather before geometry is accepted. */
@@ -236,11 +244,23 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await expect(find).toHaveCount(1);
     const doorway = page.locator("[data-today-geographic-doorway]");
     await expect(doorway).toHaveAttribute("data-photo-state", "loaded");
-    await expect(doorway).toHaveAttribute("href", "/places/carroll-creek-linear-park-frederick");
-    await expect.poll(() => doorway.locator("img").evaluate(async (image: HTMLImageElement) => {
-      try { await image.decode(); } catch { return false; }
-      return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1;
-    })).toBe(true);
+    const mosaic = page.locator("[data-today-geographic-mosaic]");
+    await expect(mosaic.getByRole("link")).toHaveCount(3);
+    await expect(mosaic.getByRole("img")).toHaveCount(3);
+    for (const subject of geographicSubjects) {
+      const link = mosaic.getByRole("link", { name: `View ${subject.action} in Frederick`, exact: true });
+      const photo = getOwnedPlacePhoto(subject.slug)!;
+      await expect(link).toHaveAttribute("href", `/places/${subject.slug}`);
+      await expect(link).toHaveAttribute("data-photo-state", "loaded");
+      await expect(link.locator("img")).toHaveAttribute("alt", photo.alt);
+      await expect.poll(() => link.locator("img").evaluate(async (image: HTMLImageElement, src) => {
+        try { await image.decode(); } catch { return false; }
+        return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1
+          && decodeURIComponent(image.currentSrc || image.src).includes(src);
+      }, photo.src)).toBe(true);
+      await expect(link.getByRole("heading", { name: subject.title, exact: true })).toBeVisible();
+      await expect(link.locator("a, button, input, select")).toHaveCount(0);
+    }
     // Header hydration and a decoded photo can move the document between
     // separate protocol calls. Compare all actual layout boxes in one paint.
     const geometry = await page.evaluate(() => {
@@ -255,14 +275,23 @@ for (const width of [320, 375, 390, 430, 1366]) {
         weatherBox: bounds("[data-today-weather]"),
         photoBox: bounds("[data-today-geographic-doorway] figure"),
         doorwayBox: bounds("[data-today-geographic-doorway]"),
+        mosaicBox: bounds("[data-today-geographic-mosaic]"),
         captionBox: bounds("[data-today-geographic-caption]"),
+        subjects: Array.from(document.querySelectorAll("[data-today-geographic-place]")).map(link => {
+          const box = link.getBoundingClientRect(), caption = link.querySelector("[data-today-geographic-caption]")!.getBoundingClientRect();
+          const range = document.createRange(); range.selectNodeContents(link.querySelector("h2, h3")!);
+          return { slug: link.getAttribute("data-today-geographic-place"),
+            box: { x: box.x, y: box.y, width: box.width, height: box.height },
+            caption: { x: caption.x, y: caption.y, width: caption.width, height: caption.height },
+            lines: Array.from(range.getClientRects()).map(line => ({ x: line.x, y: line.y, width: line.width, height: line.height })) };
+        }),
         headingBox: bounds("main .scroll-masthead h1"),
       };
     });
     await testInfo.attach("today-first-screen-geometry", {
       contentType: "application/json", body: JSON.stringify(geometry),
     });
-    const { mastheadBox, findBox, entryControlsBox, weatherBox, photoBox, doorwayBox, captionBox, headingBox } = geometry;
+    const { mastheadBox, findBox, entryControlsBox, weatherBox, photoBox, doorwayBox, mosaicBox, captionBox, headingBox } = geometry;
     expect(findBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height);
     // The arrival action now has a deliberate phone density; neither weather
     // facts nor the photograph are subtracted from an artificial height budget.
@@ -278,15 +307,36 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(captionBox.y).toBeGreaterThanOrEqual(photoBox.y - 1);
     expect(captionBox.y + captionBox.height).toBeLessThanOrEqual(photoBox.y + photoBox.height + 1);
     expect(Math.abs(captionBox.y + captionBox.height - photoBox.y - photoBox.height)).toBeLessThanOrEqual(1);
-    expect(photoBox.width).toBeGreaterThan(photoBox.height);
-    expect(photoBox.height).toBeGreaterThanOrEqual(160);
-    expect(photoBox.height).toBeLessThanOrEqual(190);
+    // The whole mosaic stays landscape; its main image deliberately uses a
+    // taller crop beside two separately actionable supporting photographs.
+    expect(mosaicBox.width).toBeGreaterThan(mosaicBox.height);
+    expect(mosaicBox.height).toBeGreaterThanOrEqual(208);
+    expect(mosaicBox.height).toBeLessThanOrEqual(260);
+    expect(photoBox.height).toBeGreaterThanOrEqual(208);
+    expect(photoBox.height).toBeLessThanOrEqual(260);
+    expect(geometry.subjects).toHaveLength(3);
+    for (const subject of geometry.subjects) {
+      expect(subject.box.width).toBeGreaterThanOrEqual(44);
+      expect(subject.box.height).toBeGreaterThanOrEqual(44);
+      expect(subject.caption.x).toBeGreaterThanOrEqual(subject.box.x);
+      expect(subject.caption.y).toBeGreaterThanOrEqual(subject.box.y);
+      expect(subject.caption.x + subject.caption.width).toBeLessThanOrEqual(subject.box.x + subject.box.width + 1);
+      expect(subject.caption.y + subject.caption.height).toBeLessThanOrEqual(subject.box.y + subject.box.height + 1);
+      for (const line of subject.lines) {
+        expect(line.x).toBeGreaterThanOrEqual(subject.caption.x);
+        expect(line.y).toBeGreaterThanOrEqual(subject.caption.y);
+        expect(line.x + line.width).toBeLessThanOrEqual(subject.caption.x + subject.caption.width + 1);
+        expect(line.y + line.height).toBeLessThanOrEqual(subject.caption.y + subject.caption.height + 1);
+      }
+    }
+    expect(geometry.subjects[1].box.x).toBeGreaterThan(geometry.subjects[0].box.x + geometry.subjects[0].box.width);
+    expect(geometry.subjects[2].box.y).toBeGreaterThan(geometry.subjects[1].box.y + geometry.subjects[1].box.height);
     expect(photoBox.width).toBeGreaterThanOrEqual(doorwayBox.width * 0.95);
     expect(photoBox.height).toBeGreaterThan(130);
-    await expect(doorway.locator("img")).toHaveAttribute("alt", "Carroll Creek in Frederick.");
+    await expect(doorway.locator("img")).toHaveAttribute("alt", getOwnedPlacePhoto(geographicSubjects[0].slug)!.alt);
     await expect(doorway.getByRole("heading", { name: "Carroll Creek", exact: true })).toBeVisible();
     await expect(doorway).toContainText("Frederick");
-    await expect(doorway).toContainText("View place");
+    await expect(mosaic).toHaveText("Carroll CreekFrederickBaker ParkVisitation Hotel");
     await expect(doorway).not.toContainText(/best|open now|safe now|current conditions|Mike D|June 2023/i);
     await expect(doorway.locator("a, button, input, select")).toHaveCount(0);
     const quickNeeds = page.getByRole("group", { name: "Quick needs", exact: true });
@@ -396,7 +446,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     // retain the same vertical and document order at every viewport width.
     await expect.poll(() => page.evaluate(() => {
       const entry = document.querySelector("[data-today-entry-controls]")?.getBoundingClientRect();
-      const photo = document.querySelector("[data-today-geographic-doorway]")?.getBoundingClientRect();
+      const photo = document.querySelector("[data-today-geographic-mosaic]")?.getBoundingClientRect();
       const quick = document.querySelector('[role="group"][aria-label="Quick needs"]')?.getBoundingClientRect();
       const events = document.querySelector('[role="group"][aria-label="Follow the day"]')?.getBoundingClientRect();
       const places = document.querySelector('[aria-label="Places for your area"]')?.getBoundingClientRect();
@@ -415,7 +465,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
       const events = document.querySelector('[role="group"][aria-label="Follow the day"]')!;
       const quick = document.querySelector('[role="group"][aria-label="Quick needs"]')!;
       const decision = places.querySelector(":scope > section")!;
-      const photo = document.querySelector("[data-today-geographic-doorway]")!;
+      const photo = document.querySelector("[data-today-geographic-mosaic]")!;
       const entry = document.querySelector("[data-today-entry-controls]")!;
       const news = document.querySelector('section[aria-label="Local news"]')!;
       const explore = document.querySelector('section[aria-labelledby="today-explore-heading"]')!;
@@ -484,7 +534,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     )).toBe(true);
     await testInfo.attach("today-arrival-geometry", {
       contentType: "application/json",
-      body: JSON.stringify({ width, mastheadBox, weatherBox, findBox, entryControlsBox, captionBox, photoBox, doorwayBox, quickNeedsBox, decisionBox, primaryNavBox, currentLayout,
+      body: JSON.stringify({ width, mastheadBox, weatherBox, findBox, entryControlsBox, captionBox, photoBox, doorwayBox, mosaicBox, subjects: geometry.subjects, quickNeedsBox, decisionBox, primaryNavBox, currentLayout,
         note: "Weather and Find with scope lead the exact decoded owned place scene, Follow the day, one scoped area answer and news. More ways to explore owns the single four-shortcut deck afterward. DOM and vertical visual order match at phone and desktop widths. Event facts retain the existing bounded native-scroll requirement; utility reachability is measured from its own heading." }),
     });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}.png`), fullPage: true });
@@ -521,7 +571,7 @@ for (const town of ["brunswick", "thurmont"]) {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 375, height: 844 });
     await page.emulateMedia({ reducedMotion: "reduce" });
-    const creekRequests: string[] = [];
+    const geographicPhotoRequests: string[] = [];
     const heldBootstrapRequests: string[] = [];
     const scriptFailures: Array<{ path: string; error: string | null }> = [];
     const pageErrors: string[] = [];
@@ -534,7 +584,7 @@ for (const town of ["brunswick", "thurmont"]) {
     page.on("request", (request) => {
       const url = new URL(request.url());
       const source = url.pathname === "/_next/image" ? url.searchParams.get("url") : url.pathname;
-      if (source && decodeURIComponent(source).includes("SUMMER CARROL CREEK.jpg")) creekRequests.push(request.url());
+      if (source && geographicPhotoPaths.has(decodeURIComponent(source))) geographicPhotoRequests.push(request.url());
     });
     // Hold real external bootstrap requests, then hydrate this same document.
     // Inline streaming scripts remain real; this is not JavaScript disabled.
@@ -556,10 +606,10 @@ for (const town of ["brunswick", "thurmont"]) {
         const pending = page.locator("[data-today-geographic-pending]");
         await expect(pending).toBeAttached();
         await expect(pending).toHaveAttribute("aria-hidden", "true");
-        await expect(pending.locator("a, img, h2, button")).toHaveCount(0);
+        await expect(pending.locator("a, img, h2, h3, button")).toHaveCount(0);
         await expect(page.locator("[data-today-geographic-doorway]")).toHaveCount(0);
         await expect.poll(() => heldBootstrapRequests.length).toBeGreaterThan(0);
-        expect(creekRequests).toEqual([]);
+        expect(geographicPhotoRequests).toEqual([]);
         initialTimeOrigin = await page.evaluate(() => performance.timeOrigin);
         // WebKit screenshot capture waits for font readiness, which cannot
         // settle while bootstrap is deliberately held. Preserve the actual
@@ -582,16 +632,17 @@ for (const town of ["brunswick", "thurmont"]) {
       await expect(area).toHaveValue(`town:${town}`);
       await expect(page.locator("[data-today-geographic-pending]")).toHaveCount(0);
       await expect(page.locator("[data-today-geographic-doorway]")).toHaveCount(0);
+      await expect(page.locator("[data-today-geographic-mosaic], [data-today-geographic-place]")).toHaveCount(0);
       await expect(page.getByTestId("today-scope-status")).toContainText(`${town === "brunswick" ? "Brunswick" : "Thurmont"} picks · Countywide weather`);
       await expect(page.locator('[aria-label="Places for your area"] > section')).toHaveCount(1);
-      expect(creekRequests).toEqual([]);
+      expect(geographicPhotoRequests).toEqual([]);
       expect(await page.evaluate(() => performance.timeOrigin)).toBe(initialTimeOrigin);
       await page.screenshot({ path: testInfo.outputPath(`today-${town}-hydrated-viewport.png`), fullPage: false });
     } finally {
       holdBootstrap = false;
       releaseBootstrap();
       await testInfo.attach("town-arrival-photo-requests", {
-        contentType: "application/json", body: JSON.stringify({ town, creekRequests, heldBootstrapRequests,
+        contentType: "application/json", body: JSON.stringify({ town, geographicPhotoRequests, guardedPhotoPaths: [...geographicPhotoPaths], heldBootstrapRequests,
           scriptFailures, pageErrors, initialTimeOrigin,
           finalTimeOrigin: await page.evaluate(() => performance.timeOrigin).catch(() => null),
           serverPaint: "Bootstrap scripts gated; actual scope-neutral paint and same-document hydration checked." }),

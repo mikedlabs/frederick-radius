@@ -60,9 +60,12 @@ available, but it has no schedule or automatic CI caller. Synthetic API/legacy
 greens did not establish eligibility: an earlier proof was rejected with
 `required checks cancelled` after the native current-head runs were cancelled.
 `workflow_dispatch` jobs cannot stand in for eligible native PR jobs. This native
-path remains **unproven until one genuine eligible data-only protected merge**
-succeeds; workflow/helper tests and an approval transport alone do not prove it.
-Do not replay old generated client files to recover publication.
+path supplied genuine native required checks for the protected data-only merge
+of PR #1544 on October 23, 2026 (`75cd522df1159d5530105a5ad4544232839e0c09`).
+That release passed its rule evaluation and reached the public aliases. This
+does not prove the approval API for a future held bot run: retain the exact
+run evidence and owner-approval boundary above. Do not replay old generated
+client files to recover publication.
 
 See [GitHub's required-check guidance](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks#checks-from-some-workflow-jobs-are-not-evaluated).
 
@@ -92,6 +95,13 @@ policy authority, raise provider budgets or provision services.
 - Images need exact place identity and owner permission or a supported license.
   Provider eligibility is not a successfully decoded image. Missing local bytes
   and remote availability are different states.
+- Owner-library imports are selected and visually reviewed, never a bulk
+  assignment by camera GPS, search keywords or a nearby building. Keep rendered
+  export/master hashes and source identifiers privately; ship optimized,
+  metadata-stripped bytes with the exact owned place registry and places release
+  stream. Preserve useful older frames in the existing detail gallery. Archive
+  scenery does not establish current weather, events, services or opening hours.
+  The owner permits these photographs without public credit or capture dates.
 - Reviewed bundled City Hall and Mount St. Mary's photographs load before a
   provider fallback. Barbara Fritchie House retains its preferred accurate
   image policy using existing local licensed bytes. Source and license credits
