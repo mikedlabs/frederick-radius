@@ -3,32 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import TRANSIT from "@/data/transit.json";
-import { useLiveVehicles, type LiveNextStop } from "./useLiveVehicles";
+import { findCurrentTransitVehicle } from "@/lib/transit-focus";
+import { useLiveVehicles, type LiveNextStop, type LiveVehicle } from "./useLiveVehicles";
 import { fractionAlong, pearlsFor, stopSequenceFor, type Pearl } from "./routeGeometry";
 
 /**
- * RoutePearls — every ACTIVE route as a string of pearls: the stop sequence
- * flattened to one horizontal line, with the live bus dot sitting where the
- * bus actually is along it.
+ * RoutePearls — a schematic overview of reported buses on their routes.
+ * Geometry positions are approximate: representative shapes merge directions
+ * and nearby stops, so this is not a trip's stop sequence or timetable.
  *
- * The map shows WHERE the buses are in space; this shows where each one is
- * along its RUN — no WebGL, no tiles, just the pulse board's instrument
- * language (mono labels, cream ground, route-colored dots). It's the
- * transit answer a rider actually wants at a glance: "the 20 is about
- * two-thirds through its loop."
- *
- * GLIDE: between the feed's ~15 s refreshes each dot eases linearly toward
- * its new fix instead of teleporting. Interpolation only, never
- * extrapolation — the tween clamps at the last reported position, so the
- * dot is always at or behind truth, never guessed ahead of it. A jump
- * bigger than a third of the line (a loop route crossing its seam, or a
- * data hiccup) snaps discretely rather than sweeping the whole diagram.
- * Reduced-motion users get discrete jumps always.
- *
- * Honest by construction: rows exist only for routes with a bus on the
- * road; zero buses reads as a quiet line, not an empty grid; a bus the feed
- * doesn't tie to a route is counted in a footnote instead of being pinned
- * somewhere invented.
+ * Fresh reports retain the existing bounded glide toward the last position;
+ * there is no extrapolation. Delayed reports remain visible without movement,
+ * live cues or countdowns. Reduced motion continues to use discrete updates.
  */
 
 type TransitRoute = { id: string; short: string; name: string; color: string };
@@ -47,7 +33,10 @@ const GLIDE_MS = 1200;
 // loop route wrapping past its seam or a bad fix. Snap instead of sweeping.
 const SNAP_FRAC = 0.35;
 
-type BusOnLine = { id: string; frac: number; nextStop?: LiveNextStop };
+type BusOnLine = { id: string; frac: number; nextStop?: LiveNextStop; vehicle: LiveVehicle; freshAtSnapshot: boolean };
+function busPositionCurrent(bus: BusOnLine, feedCurrent: boolean, nowMs: number): boolean {
+  return findCurrentTransitVehicle({ vehicles: [bus.vehicle], vehicleId: bus.id, feedCurrent, nowMs }) !== null;
+}
 type Row = { route: TransitRoute; pearls: Pearl[]; buses: BusOnLine[] };
 
 /** Minutes-to-arrival from state nowMs (never Date.now() in render); null when
@@ -76,52 +65,18 @@ function leadNextStop(buses: BusOnLine[], nowMs: number): { name: string; mins: 
   return best;
 }
 
-/** A finger this close to a bus (as a fraction of the line) reads as "the
- *  bus is here" rather than N stops away — matches the bead-merge gap. */
-const AT_BUS_FRAC = 0.012;
-
 type Scrub = { routeId: string; frac: number };
 
-/**
- * The scrub readout for one route line: nearest real stop (from the FULL
- * sequence, not the thinned beads), its position in the run, and how far
- * the closest live bus is in stops. Loop routes have no single "toward"
- * direction in this feed, so distance is "~N stops", never a promise of
- * approach.
- */
-function scrubReadout(
-  routeId: string,
-  frac: number,
-  buses: BusOnLine[],
-): { name: string; index: number; count: number; busLine: string | null } | null {
+/** Name a mapped stop near the finger, without inferring service order or
+ * how many stops a bus has left from a projected, collapsed route shape. */
+function scrubReadout(routeId: string, frac: number): { name: string } | null {
   const seq = stopSequenceFor(routeId);
   if (seq.length === 0) return null;
   let index = 0;
   for (let i = 1; i < seq.length; i++) {
     if (Math.abs(seq[i].frac - frac) < Math.abs(seq[index].frac - frac)) index = i;
   }
-  let busLine: string | null = null;
-  if (buses.length > 0) {
-    const stopFrac = seq[index].frac;
-    let best = Infinity;
-    let between = 0;
-    for (const b of buses) {
-      const d = Math.abs(b.frac - stopFrac);
-      if (d < best) {
-        best = d;
-        const lo = Math.min(b.frac, stopFrac);
-        const hi = Math.max(b.frac, stopFrac);
-        between = seq.filter((p) => p.frac > lo && p.frac < hi).length;
-      }
-    }
-    if (best < AT_BUS_FRAC) {
-      busLine = "bus here now";
-    } else {
-      const n = between + 1;
-      busLine = `bus ~${n} ${n === 1 ? "stop" : "stops"} away`;
-    }
-  }
-  return { name: seq[index].name, index, count: seq.length, busLine };
+  return { name: seq[index].name };
 }
 
 /** Numeric routes first in numeric order (10, 20, 40…), lettered shuttles
@@ -136,7 +91,10 @@ function routeOrder(a: Row, b: Row): number {
 }
 
 export default function RoutePearls() {
-  const { vehicles, loaded } = useLiveVehicles();
+  const { vehicles, loaded, available, status, stale, predictionsAvailable, fetchedAt } = useLiveVehicles();
+  const positionsCurrent = available && !stale && status !== "unavailable";
+  const predictionsCurrent = positionsCurrent && status === "ok" && predictionsAvailable;
+  const unavailable = !available || status === "unavailable";
   // Computed once on the client; rows only render after the first poll, so
   // there's no hydration mismatch (same pattern as the map's LiveBuses).
   const [reduced] = useState(
@@ -163,10 +121,15 @@ export default function RoutePearls() {
         row = { route, pearls: pearlsFor(route.id), buses: [] };
         byRoute.set(route.id, row);
       }
-      row.buses.push({ id: v.vehicleId, frac, nextStop: v.nextStop });
+      row.buses.push({
+        id: v.vehicleId, frac, nextStop: v.nextStop, vehicle: v,
+        freshAtSnapshot: findCurrentTransitVehicle({
+          vehicles: [v], vehicleId: v.vehicleId, feedCurrent: positionsCurrent, nowMs: fetchedAt,
+        }) !== null,
+      });
     }
     return { rows: [...byRoute.values()].sort(routeOrder), unplaced: missing };
-  }, [vehicles]);
+  }, [vehicles, positionsCurrent, fetchedAt]);
 
   // Ticks each second between the shared poller's 15 s refreshes so the header
   // ETA counts down live. Starts 0 so etaMins suppresses ETAs until the first
@@ -191,13 +154,13 @@ export default function RoutePearls() {
     const tweens = rows.flatMap((row) =>
       row.buses.map((b) => {
         let start = from[b.id] ?? b.frac; // new bus appears in place, no sweep-in
-        if (Math.abs(b.frac - start) > SNAP_FRAC) start = b.frac; // seam wrap / bad fix
+        if (!b.freshAtSnapshot || Math.abs(b.frac - start) > SNAP_FRAC) start = b.frac; // seam wrap / bad fix
         return { id: b.id, from: start, to: b.frac };
       }),
     );
     // Duration 0 under reduced-motion: one frame, straight to the new fix.
     // Driving even the snap through rAF keeps setState out of the effect body.
-    const dur = reduced ? 0 : GLIDE_MS;
+    const dur = reduced || !positionsCurrent ? 0 : GLIDE_MS;
     const t0 = performance.now();
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     const step = (now: number) => {
@@ -212,7 +175,7 @@ export default function RoutePearls() {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [rows, reduced]);
+  }, [rows, reduced, positionsCurrent]);
 
   // Quiet before the first answer; the map below carries the loading beat.
   if (!loaded) return null;
@@ -232,26 +195,44 @@ export default function RoutePearls() {
         >
           <span
             aria-hidden
-            className="pulse-dot inline-block h-1.5 w-1.5 rounded-full"
-            style={{ background: "var(--app-cool)" }}
+            className={`${positionsCurrent && !reduced ? "pulse-dot " : ""}inline-block h-1.5 w-1.5 rounded-full`}
+            style={{ background: positionsCurrent ? "var(--app-cool)" : "var(--app-warning)" }}
           />
-          On the road
+          Route schematic
         </span>
         <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-          {rows.length} of {ROUTES.length} routes
+          {positionsCurrent ? `${rows.length} ${rows.length === 1 ? "route" : "routes"} with reports` : "Last reports"}
         </span>
       </div>
 
+      {(!positionsCurrent || !predictionsCurrent) && (
+        <p className="px-3 py-2 text-[12px]" style={{ color: "var(--app-ink-2)" }} role="status">
+          {unavailable
+            ? "Live bus positions are unavailable. Check the official schedule before you leave."
+            : stale
+              ? "Bus reports are delayed. Showing last reported positions without live arrival estimates."
+              : "Bus positions are reporting. Arrival estimates are unavailable."}
+        </p>
+      )}
+      <p className="px-3 pt-2 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+        Schematic overview, not a stop-by-stop timetable. Faded dots are older reports.
+      </p>
       {rows.length === 0 ? (
         <p className="px-3 py-3 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          No buses are on the road right now.
+          {!positionsCurrent
+            ? "No current bus position can be confirmed."
+            : vehicles.length > 0
+              ? "Bus reports are available, but their routes cannot be drawn."
+              : "No buses are reporting right now. Check the official schedule for service."}
         </p>
       ) : (
         <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
           {rows.map((row) => (
             <li key={row.route.id} className="px-3 py-2.5">
               {(() => {
-                const lead = leadNextStop(row.buses, nowMs);
+                const lead = predictionsCurrent
+                  ? leadNextStop(row.buses.filter((bus) => busPositionCurrent(bus, positionsCurrent, nowMs)), nowMs)
+                  : null;
                 return (
                   <div className="flex items-start justify-between gap-2">
                     <span className="flex min-w-0 flex-col gap-0.5">
@@ -288,7 +269,7 @@ export default function RoutePearls() {
                     </span>
                     {row.buses.length > 1 && (
                       <span className="shrink-0 font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                        {row.buses.length} buses
+                        {row.buses.length} bus reports
                       </span>
                     )}
                   </div>
@@ -298,11 +279,12 @@ export default function RoutePearls() {
               {/* The string of pearls. Decorative to a screen reader — the
                   row header above already says which route is running.
                   SCRUB: riding the line with a finger or the mouse names the
-                  stop underneath (full sequence, not just the drawn beads)
-                  plus how far the live bus is. touch-action pan-y keeps
+                  mapped stop underneath, without claiming trip order or
+                  distance in stops. touch-action pan-y keeps
                   vertical page scroll working mid-gesture. */}
               <div
                 aria-hidden
+                data-route-schematic={row.route.id}
                 className="relative mt-2 h-5"
                 style={{ touchAction: "pan-y" }}
                 onPointerDown={(e) => {
@@ -341,7 +323,8 @@ export default function RoutePearls() {
                 {row.buses.map((b) => (
                   <span
                     key={b.id}
-                    className="live-dot"
+                    data-reported-bus={b.id}
+                    className={busPositionCurrent(b, positionsCurrent, nowMs) && !reduced ? "live-dot" : undefined}
                     style={{
                       // Inline position: the .live-dot class declares
                       // `position: relative` (it's built for inline eyebrow
@@ -354,12 +337,13 @@ export default function RoutePearls() {
                       margin: 0,
                       transform: "translate(-50%,-50%)",
                       background: row.route.color,
+                      opacity: busPositionCurrent(b, positionsCurrent, nowMs) ? 1 : 0.5,
                       boxShadow: "0 0 0 2px var(--app-bg-elevated-solid), 0 1px 3px rgba(22,20,14,0.25)",
                     }}
                   />
                 ))}
                 {scrub?.routeId === row.route.id && (() => {
-                  const r = scrubReadout(row.route.id, scrub.frac, row.buses);
+                  const r = scrubReadout(row.route.id, scrub.frac);
                   if (!r) return null;
                   return (
                     <>
@@ -385,8 +369,7 @@ export default function RoutePearls() {
                           {r.name}
                         </p>
                         <p className="font-mono text-[9.5px] tabular-nums leading-tight" style={{ color: "var(--app-ink-3)" }}>
-                          stop {r.index + 1} of {r.count}
-                          {r.busLine ? ` · ${r.busLine}` : ""}
+                          Mapped stop · schematic
                         </p>
                       </div>
                     </>
@@ -403,7 +386,7 @@ export default function RoutePearls() {
           className="px-3 py-1.5 text-[10.5px]"
           style={{ color: "var(--app-ink-3)", borderTop: "1px solid var(--app-border)" }}
         >
-          +{unplaced} more {unplaced === 1 ? "bus" : "buses"}, route not reported
+          +{unplaced} {unplaced === 1 ? "bus report" : "bus reports"} without a drawable route
         </p>
       )}
     </div>

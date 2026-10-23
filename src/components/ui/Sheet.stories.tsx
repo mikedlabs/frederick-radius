@@ -172,6 +172,60 @@ export const ReducedMotion: Story = {
   render: () => <SheetFixture />,
 };
 
+function ExplicitReturnFocusFixture() {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  return (
+    <main className="min-h-screen space-y-4 p-4" style={{ background: "var(--app-bg)" }}>
+      <label className="block">
+        Other task
+        <input className="block min-h-11 rounded-lg border px-3" />
+      </label>
+      <button ref={triggerRef} type="button" className="min-h-11 rounded-xl px-4 font-semibold" onClick={() => setOpen(true)}>
+        Open pointer details
+      </button>
+      <Sheet open={open} onClose={() => setOpen(false)} title="Pointer details" returnFocusRef={triggerRef}>
+        <p>Closing returns to the control that opened these details.</p>
+      </Sheet>
+    </main>
+  );
+}
+
+export const ExplicitPointerReturn: Story = {
+  globals: {
+    viewport: { value: "radiusMobileNarrow", isRotated: false },
+    motion: "reduce",
+  },
+  render: () => <ExplicitReturnFocusFixture />,
+  play: async ({ canvasElement, userEvent }) => {
+    const page = within(canvasElement.ownerDocument.body);
+    const previousTask = page.getByRole("textbox", { name: "Other task" });
+    const trigger = page.getByRole("button", { name: "Open pointer details" });
+    const expectReturned = async () => {
+      await waitFor(() => {
+        expect(page.queryByRole("dialog", { name: "Pointer details" })).toBeNull();
+        expect(trigger).toHaveFocus();
+      });
+    };
+
+    previousTask.focus();
+    expect(previousTask).toHaveFocus();
+    // Safari pointer activation can preserve another control's focus. A
+    // native click deliberately opens without a test helper focusing it.
+    trigger.click();
+    const dialog = await page.findByRole("dialog", { name: "Pointer details" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Close Pointer details" }));
+    await expectReturned();
+
+    previousTask.focus();
+    expect(previousTask).toHaveFocus();
+    trigger.click();
+    await page.findByRole("dialog", { name: "Pointer details" });
+    await userEvent.keyboard("{Escape}");
+    await expectReturned();
+  },
+};
+
 
 function GuardedSheetFixture() {
   const [open, setOpen] = useState(false);

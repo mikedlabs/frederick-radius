@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   findCurrentTransitVehicle,
+  peekPendingTransitFocus,
+  clearPendingTransitRouteFocus,
+  clearPendingTransitStopFocus,
+  clearPendingTransitVehicleFocus,
   requestTransitRouteFocus,
   requestTransitStopFocus,
   isTransitStopFocusDetail,
@@ -236,7 +240,7 @@ describe("typed stop focus and latest rider intent", () => {
     expect(takePendingTransitRouteFocus()).toBe("6154");
   });
 
-  it("still dispatches the valid handoff when session storage is blocked", () => {
+  it("retains the valid handoff when session storage is blocked", () => {
     vi.stubGlobal("window", {
       sessionStorage: {
         getItem: () => { throw new DOMException("Blocked", "SecurityError"); },
@@ -246,6 +250,7 @@ describe("typed stop focus and latest rider intent", () => {
     });
     expect(requestTransitStopFocus(stop)).toBe(true);
     expect(dispatchEvent.mock.calls.at(-1)?.[0]).toMatchObject({ type: TRANSIT_STOP_FOCUS_EVENT, detail: stop });
+    expect(takePendingTransitStopFocus()).toEqual(stop);
     expect(takePendingTransitStopFocus()).toBeNull();
   });
 
@@ -254,5 +259,78 @@ describe("typed stop focus and latest rider intent", () => {
     expect(takePendingTransitStopFocus()).toBeNull();
     expect(values.has("fr:transit-stop-focus:v1")).toBe(false);
     expect(dispatchEvent).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("in-memory deferred focus ownership", () => {
+  const vehicle = { vehicleId: "declared-bus", routeId: "6154", bus: { lng: -77.41, lat: 39.42 }, stop: { lng: -77.42, lat: 39.43 }, stopId: "162950" };
+  const stop = { stopId: "162950" };
+  const requests = { route: () => requestTransitRouteFocus("6154"), stop: () => requestTransitStopFocus(stop), vehicle: () => requestTransitVehicleFocus(vehicle) };
+  const take = { route: takePendingTransitRouteFocus, stop: takePendingTransitStopFocus, vehicle: takePendingTransitVehicleFocus };
+  let stored: Map<string, string>;
+  const dispatchEvent = vi.fn();
+  beforeEach(() => {
+    stored = new Map();
+    dispatchEvent.mockReset();
+    vi.stubGlobal("CustomEvent", class { constructor(public type: string, public init: { detail: unknown }) {} get detail() { return this.init.detail; } });
+    vi.stubGlobal("window", { sessionStorage: {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: () => { throw new Error("Storage blocked"); },
+      removeItem: () => { throw new Error("Storage blocked"); },
+    }, dispatchEvent });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each(["route", "stop", "vehicle"] as const)("peeks then consumes %s once with blocked storage", (kind) => {
+    requests[kind]();
+    expect(peekPendingTransitFocus()?.kind).toBe(kind);
+    expect(peekPendingTransitFocus()?.kind).toBe(kind);
+    expect(take[kind]()).not.toBeNull();
+    expect(take[kind]()).toBeNull();
+    expect(peekPendingTransitFocus()).toBeNull();
+    expect(dispatchEvent).toHaveBeenCalledOnce();
+  });
+
+  it.each([["route", "stop"], ["vehicle", "stop"], ["stop", "route"], ["vehicle", "route"], ["stop", "vehicle"], ["route", "vehicle"]] as const)("keeps only %s → %s during a blocked-storage chunk gap", (first, last) => {
+    requests[first](); requests[last]();
+    expect(peekPendingTransitFocus()?.kind).toBe(last);
+    expect(take[first]()).toBeNull();
+    expect(take[last]()).not.toBeNull();
+    expect(peekPendingTransitFocus()).toBeNull();
+  });
+
+  it("never resurrects an older vehicle when storage removal fails", () => {
+    stored.set("fr:transit-vehicle-focus:v1", JSON.stringify(vehicle));
+    requestTransitStopFocus(stop);
+    expect(takePendingTransitVehicleFocus()).toBeNull();
+    expect(takePendingTransitStopFocus()).toEqual(stop);
+    expect(peekPendingTransitFocus()).toBeNull();
+    expect(takePendingTransitVehicleFocus()).toBeNull();
+    expect(stored.has("fr:transit-vehicle-focus:v1")).toBe(true);
+  });
+
+  it("copies coordinates and strips caller extras before retaining a vehicle", () => {
+    const mutable = { ...vehicle, bus: { ...vehicle.bus }, stop: { ...vehicle.stop }, extra: "untrusted" };
+    requestTransitVehicleFocus(mutable);
+    mutable.bus.lat = 0; mutable.stop.lng = 0;
+    const peek = peekPendingTransitFocus();
+    expect(peek).toEqual({ kind: "vehicle", detail: vehicle });
+    if (peek?.kind === "vehicle") peek.detail.bus.lng = 0;
+    expect(takePendingTransitVehicleFocus()).toEqual(vehicle);
+  });
+
+  it.each(["route", "stop", "vehicle"] as const)("clears an in-memory %s without depending on device storage", (kind) => {
+    requests[kind]();
+    ({ route: clearPendingTransitRouteFocus, stop: clearPendingTransitStopFocus, vehicle: clearPendingTransitVehicleFocus })[kind]();
+    expect(peekPendingTransitFocus()).toBeNull();
+  });
+
+  it("reads a hard-navigation session request without consuming it during launcher activation", () => {
+    stored.set("fr:transit-stop-focus:v1", JSON.stringify(stop));
+    expect(peekPendingTransitFocus()).toEqual({ kind: "stop", detail: stop });
+    expect(peekPendingTransitFocus()).toEqual({ kind: "stop", detail: stop });
+    expect(takePendingTransitStopFocus()).toEqual(stop);
+    expect(peekPendingTransitFocus()).toBeNull();
   });
 });

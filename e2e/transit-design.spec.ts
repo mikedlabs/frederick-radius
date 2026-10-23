@@ -174,6 +174,20 @@ for (const { width, appearance } of [{ width: 320, appearance: "dark" }, { width
     const arrival = stop.getByText(/^(9|10) min$/);
     await expect(stop.getByText("Live", { exact: true })).toBeVisible();
     await expect(stop.getByText(/Live estimate/)).toBeVisible();
+    const primary = stop.locator("[data-transit-primary-departure]");
+    await expect(primary).toHaveCount(1);
+    await expect(primary.getByText(/^(9|10) min$/)).toBeVisible();
+    // Native arrival deep-link only: no helper or test scroll has run yet.
+    // At normal390px the primary ETA must be fully in the initial viewport.
+    if (width === 390) await expect(primary.locator("[data-transit-arrival-time]")).toBeInViewport({ ratio: 1 });
+    await expect(stop.getByRole("searchbox", { name: "Search bus stops by name" })).toBeHidden();
+    const changeStop = stop.locator("summary").filter({ hasText: "Change stop" });
+    await expectReachableTarget(changeStop);
+    await changeStop.click();
+    await expect(stop.getByRole("searchbox", { name: "Search bus stops by name" })).toBeVisible();
+    await expectReachableTarget(stop.getByRole("button", { name: "Show the nearest bus stops" }));
+    await changeStop.click();
+    await expect(stop.getByRole("searchbox", { name: "Search bus stops by name" })).toBeHidden();
     await expectTextUnclipped(heading);
     await expectTextUnclipped(destination);
     await expectTextUnclipped(arrival);
@@ -199,6 +213,13 @@ for (const { width, appearance } of [{ width: 320, appearance: "dark" }, { width
     await page.screenshot({ path: info.outputPath(`transit-HTTP-fixture-${width}-${appearance}.png`) });
     await info.attach("declared-transit-fixture", { contentType: "application/json", body: JSON.stringify({ stop: STOP.id, route: ROUTE_ID, vehicle: VEHICLE_ID, scenario: "live", width, appearance, reducedMotion: true, proof: "Actual app/catalog and layout with HTTP fixture arrivals; not proof of current bus service or a working remote map." }) });
     if (width === 390) {
+      const network = page.getByRole("region", { name: "Transit network map", exact: true });
+      await expect(network).toHaveAttribute("data-transit-map-state", "closed");
+      await expect(network.getByText("Official route diagram · not live", { exact: true })).toBeVisible();
+      const openMap = network.getByRole("button", { name: "Open live map", exact: true });
+      await expectReachableTarget(openMap);
+      await openMap.click();
+      await expect(network).toHaveAttribute("data-transit-map-state", "open");
       const fallback = page.getByRole("alert", { name: "Transit map unavailable", exact: true });
       await expect(fallback).toBeVisible({ timeout: 25_000 });
       await expect(fallback).toContainText("The route and arrival information on this page is still available.");

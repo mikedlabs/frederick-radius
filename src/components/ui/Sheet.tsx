@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 
 /**
@@ -21,6 +21,7 @@ export default function Sheet({
   children,
   maxHeight = "85dvh",
   historyLayerId,
+  returnFocusRef,
 }: {
   open: boolean;
   onClose: () => void;
@@ -32,6 +33,8 @@ export default function Sheet({
   maxHeight?: string;
   /** Optional native Back-button layer for route-owned temporary surfaces. */
   historyLayerId?: string;
+  /** Explicit launcher for pointer openings that do not move browser focus. */
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const label = title?.trim() || "Details";
 
@@ -41,6 +44,7 @@ export default function Sheet({
       onClose={onClose}
       ariaLabel={label}
       historyLayerId={historyLayerId}
+      returnFocusRef={returnFocusRef}
       maxHeight={maxHeight}
     >
       {(dismiss) => (

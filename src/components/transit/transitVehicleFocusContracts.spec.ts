@@ -11,7 +11,11 @@ describe("stop-to-bus map focus contracts", () => {
     expect(source).toContain("useLiveVehicles()");
     expect(source).toContain("findCurrentTransitVehicle");
     expect(source).toContain("prediction.vehicleId");
-    expect(source).toContain("Track on map");
+    const board = readFileSync("src/components/transit/TransitDepartureBoard.tsx", "utf8");
+    expect(source).toContain("<TransitDepartureBoard");
+    expect(source).toContain("onTrack={onTrackVehicle}");
+    expect(board).toContain("Track on map");
+    expect(board).toContain("onTrack(focus)");
     expect(source).toContain("requestTransitVehicleFocus");
     expect(source).toContain('"live-network-heading"');
   });

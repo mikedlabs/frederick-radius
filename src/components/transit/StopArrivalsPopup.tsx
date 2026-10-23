@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import TRANSIT from "@/data/transit.json";
 import { formatMapTimestamp } from "@/components/map/mapContent";
 import { readableTextOn } from "@/lib/color/readableText";
+import type { StopArrivalsSnapshot } from "./useStopArrivals";
 
 /**
  * StopArrivalsPopup — the tap detail for a bus stop on the transit map.
@@ -126,21 +127,42 @@ export default function StopArrivalsPopup({
   stop,
   showName = true,
   onUseStop,
+  existingSnapshot,
 }: {
   stop: SelectedStop;
   showName?: boolean;
   onUseStop?: (stop: SelectedStop) => void;
+  /** The expanded rider board already owns this selected stop's poll/clock.
+   * Standalone map popups omit it and retain their existing polling mode. */
+  existingSnapshot?: { snapshot: StopArrivalsSnapshot; nowMs: number };
 }) {
-  const [preds, setPreds] = useState<StopPrediction[] | null>(null);
-  const [feedAvailable, setFeedAvailable] = useState<boolean | null>(null);
-  const [feedFresh, setFeedFresh] = useState<boolean | null>(null);
-  const [nowMs, setNowMs] = useState(0);
-  const [checkedAt, setCheckedAt] = useState<number | null>(null);
+  const [localPreds, setPreds] = useState<StopPrediction[] | null>(null);
+  const [localFeedAvailable, setFeedAvailable] = useState<boolean | null>(null);
+  const [localFeedFresh, setFeedFresh] = useState<boolean | null>(null);
+  const [localNowMs, setNowMs] = useState(0);
+  const [localCheckedAt, setCheckedAt] = useState<number | null>(null);
+  const hasExistingSnapshot = existingSnapshot !== undefined;
+  const shared = existingSnapshot?.snapshot;
+  const nowMs = existingSnapshot?.nowMs ?? localNowMs;
+  const preds = shared
+    ? shared.status === "loading"
+      ? null
+      : shared.predictions.filter((prediction) => prediction.stopId === stop.id)
+    : localPreds;
+  const feedAvailable = shared
+    ? shared.status === "loading" ? null : shared.status !== "unavailable"
+    : localFeedAvailable;
+  const feedFresh = shared
+    ? shared.status === "live" && nowMs > 0 && shared.providerUpdatedAt != null
+      && Math.abs(nowMs - shared.providerUpdatedAt) <= PROVIDER_STALE_MS
+    : localFeedFresh;
+  const checkedAt = shared ? shared.providerUpdatedAt : localCheckedAt;
 
   // The caller remounts this per stop (key=stop.id), so preds starts null
   // (loading). Keep polling while the detail is open so the countdown is
   // backed by fresh provider data instead of a one-time snapshot.
   useEffect(() => {
+    if (hasExistingSnapshot) return;
     let alive = true;
     const load = () => {
       void fetch(`/api/transit/stop-predictions?stop=${encodeURIComponent(stop.id)}`, { cache: "no-store" })
@@ -185,13 +207,14 @@ export default function StopArrivalsPopup({
       alive = false;
       clearInterval(poll);
     };
-  }, [stop.id]);
+  }, [stop.id, hasExistingSnapshot]);
 
   // Ticks the countdown between fetches; seeded on fetch so ETAs show at once.
   useEffect(() => {
+    if (hasExistingSnapshot) return;
     const tick = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(tick);
-  }, []);
+  }, [hasExistingSnapshot]);
 
   // A route shape passing near a stop does not establish stop service. Only
   // show unique routes named by a healthy, current prediction response.
@@ -213,6 +236,14 @@ export default function StopArrivalsPopup({
     .filter((r): r is TransitRoute => Boolean(r));
 
   const arrivals = (preds ?? [])
+    // Withdrawn trips, skipped stops and NO_DATA have no usable inbound
+    // estimate. Preserve raw predictions, but never recast these as delayed.
+    .filter((prediction) =>
+      prediction.tripScheduleRelationship !== "CANCELED" &&
+      prediction.tripScheduleRelationship !== "DELETED" &&
+      prediction.scheduleRelationship !== "SKIPPED" &&
+      prediction.scheduleRelationship !== "NO_DATA",
+    )
     .map((prediction) => ({
       prediction,
       route: prediction.routeId

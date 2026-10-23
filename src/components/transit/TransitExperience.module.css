@@ -10,6 +10,7 @@
 .stopFinder { min-width: 0; padding: 1.25rem; border: 1px solid var(--app-border); border-radius: 1.5rem; background: var(--app-bg-elevated-solid); box-shadow: 0 12px 36px -26px color-mix(in srgb, var(--app-ink) 24%, transparent); }
 .finderHeader { display: flex; align-items: flex-start; gap: .875rem; margin-bottom: 1rem; }
 .finderIcon { display: grid; place-items: center; flex-shrink: 0; width: 2.75rem; height: 2.75rem; border-radius: .875rem; background: var(--app-brand-tint-6); color: var(--app-link); }
+.finderHeader h2, .liveNetwork { scroll-margin-block-start: calc(var(--app-topbar-h, 56px) + env(safe-area-inset-top, 0px) + 8px); }
 .finderHeader h2 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -.04em; line-height: 1.2; }
 .finderHeader p { margin-top: .375rem; font-size: .875rem; line-height: 1.5; color: var(--app-ink-2); }
 .searchArea { min-width: 0; }
@@ -22,12 +23,12 @@
 .resultList { margin-top: .75rem; border-top: 1px solid var(--app-border); }
 .result { display: flex; min-width: 0; min-height: 3.25rem; width: 100%; align-items: center; gap: .75rem; padding: .75rem .25rem; text-align: left; border-bottom: 1px solid var(--app-border); }
 .resultName { flex: 1; min-width: 0; font-size: .9375rem; line-height: 1.4; overflow-wrap: anywhere; }
-.savedRail { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--app-border); }
+.savedRail { margin-bottom: 1rem; }
 .savedRailHeader { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: .5rem; }
 .savedRailHeader p { font-size: .8125rem; }
 .savedStops { display: flex; gap: .5rem; overflow-x: auto; padding: .25rem 0; }
 .savedStop { flex-shrink: 0; min-height: 2.75rem; max-width: 100%; padding: .6rem .875rem; border: 1px solid var(--app-control-border); border-radius: .75rem; font-size: .875rem; line-height: 1.4; text-align: left; white-space: normal; overflow-wrap: anywhere; }
-.boardingCard { position: relative; min-width: 0; margin-top: 1.25rem; border: 1px solid var(--app-border); border-top: 3px solid var(--app-brand); border-radius: 1.125rem; background: var(--app-bg); }
+.boardingCard { position: relative; min-width: 0; border: 1px solid var(--app-border); border-radius: 1.125rem; background: var(--app-bg); }
 .boardingBody { min-width: 0; padding: 1rem; }
 .stopHeading { display: flex; flex-wrap: wrap; gap: .875rem; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
 .stopIdentity { flex: 1 1 12rem; min-width: 0; }
@@ -37,18 +38,35 @@
 .feedBadge strong { font-size: .8125rem; line-height: 1.4; }
 .feedBadge small { display: block; font-size: .75rem; line-height: 1.5; color: var(--app-ink-2); }
 .routeBadge { display: inline-grid; place-items: center; min-width: 2.25rem; min-height: 2rem; flex-shrink: 0; border-radius: .5rem; padding: .25rem .5rem; font-size: .8125rem; font-weight: 750; line-height: 1.25; font-variant-numeric: tabular-nums; }
-.servedRoutes { display: flex; flex-wrap: wrap; gap: .625rem 1rem; }
-.servedRoute { display: inline-flex; min-width: 0; align-items: center; gap: .5rem; font-size: .8125rem; line-height: 1.4; }
-.arrivalList { margin-top: .5rem; }
-.arrivalRow { position: relative; display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); column-gap: .75rem; row-gap: .75rem; min-width: 0; padding: 1.125rem 0; border-top: 1px solid var(--app-border); }
-.arrivalRow::before { content: ""; position: absolute; z-index: 0; top: 3.25rem; bottom: 1.25rem; left: 1.0625rem; width: 1px; background: var(--app-border); pointer-events: none; }
-.arrivalDestination { min-width: 0; align-self: center; }
-.arrivalDestination > span:first-child { font-size: .9375rem; line-height: 1.4; font-weight: 650; overflow-wrap: anywhere; }
-.arrivalDestination > span:last-child { font-size: .8125rem; line-height: 1.5; }
-.arrivalEta { grid-column: 2; min-width: 0; text-align: left; }
-.arrivalTime { display: block; font-size: 2rem; font-weight: 750; line-height: 1.05; letter-spacing: -.045em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+/* Departures use agency color as identity, never service progress. */
+.departureBoard, .departureList { min-width: 0; }
+.departureHeading { margin-bottom: .625rem; color: var(--app-ink-2); font-size: .8125rem; font-weight: 650; line-height: 1.4; }
+.departureList { margin: 0; padding: 0; list-style: none; }
+.departurePrimary { min-width: 0; padding: 1rem; border: 1px solid var(--app-border); border-top: 4px solid var(--app-cool); border-radius: 1rem; background: var(--app-bg-elevated-solid); }
+.departureFollowing { min-width: 0; padding: 1rem 0; border-bottom: 1px solid var(--app-border); }
+.departureTop { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .625rem 1rem; min-width: 0; }
+.departureRoute { display: inline-flex; flex: 1 1 8rem; min-width: 0; align-items: center; gap: .625rem; }
+.departureRouteName { min-width: 0; color: var(--app-ink-2); font-size: .875rem; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.departurePrimaryTime, .departureFollowingTime { display: block; min-width: 0; max-width: 100%; color: var(--app-ink); font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -.045em; line-height: 1.1; overflow-wrap: anywhere; }
+.departurePrimaryTime { font-size: clamp(2.75rem, 11vw, 4rem); }
+.departureFollowingTime { font-size: 1.5rem; }
+.departureDestination { margin-top: .75rem; color: var(--app-ink); font-size: 1.125rem; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+.departureFollowing .departureDestination { margin-top: .375rem; font-size: .9375rem; }
+.departureMeta { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .75rem; margin-top: .375rem; color: var(--app-ink-3); font-size: .8125rem; line-height: 1.4; }
+.departureMeta .catchability { margin-top: 0; }
+.departurePrimary > .arrivalActions { margin-top: 1rem; background: transparent; }
+.departureOptions { margin-top: .5rem; }
+.departureOptions > summary, .changeStopSummary { display: flex; min-height: 2.75rem; min-width: 0; justify-content: space-between; align-items: center; gap: .75rem; padding: .625rem 0; color: var(--app-link); font-size: .875rem; font-weight: 650; line-height: 1.4; cursor: pointer; list-style: none; }
+.departureOptions > summary::-webkit-details-marker, .changeStopSummary::-webkit-details-marker { display: none; }
+.departureOptions[open] > summary > svg, .changeStop[open] > summary > svg { transform: rotate(180deg); }
+.departureOptions .arrivalActions { margin-top: .375rem; }
+.departureEmpty { padding: 1rem; border-radius: .75rem; color: var(--app-ink-2); background: var(--app-bg-sunken); font-size: .875rem; line-height: 1.5; }
+.scheduleAction { display: inline-flex; min-height: 2.75rem; align-items: center; gap: .5rem; margin-top: .5rem; color: var(--app-link); font-size: .875rem; font-weight: 650; line-height: 1.4; }
+.changeStop { margin-top: 1rem; padding-top: .25rem; border-top: 1px solid var(--app-border); }
+.changeStop .searchArea { padding: .5rem 0; }
+.changeStopSummary:focus-visible, .departureOptions > summary:focus-visible, .scheduleAction:focus-visible, .trackAction:focus-visible, .saveAction:focus-visible, .walkAction:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 3px; border-radius: .5rem; }
 .catchability { display: block; margin-top: .375rem; font-size: .8125rem; font-weight: 600; line-height: 1.4; }
-/* Keep the decorative route line behind actions, including wrapped or enlarged controls. */
+/* Real in-flow targets keep following rows and enlarged controls independent. */
 .arrivalActions { position: relative; z-index: 1; background: var(--app-bg); grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.75rem), 1fr)); gap: .5rem; min-width: 0; }
 .trackAction, .saveAction, .walkAction { display: inline-flex; min-width: 0; min-height: 2.75rem; justify-content: center; align-items: center; gap: .4rem; padding: .65rem .75rem; border: 1px solid var(--app-control-border); border-radius: .75rem; font-size: .8125rem; font-weight: 650; line-height: 1.4; text-align: center; overflow-wrap: anywhere; }
 .trackAction { color: var(--app-bg); background: var(--app-ink); border-color: var(--app-ink); }
