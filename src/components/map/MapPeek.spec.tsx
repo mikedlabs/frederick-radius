@@ -7,6 +7,15 @@ import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import { placeCardPhotoPlan, placePhotoFailureSignalSrc, type PlaceCardPhotoPlan } from "@/lib/place-card-photo";
 import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 const imageCallbacks = vi.hoisted(() => new Map<string, { load: React.ReactEventHandler<HTMLImageElement>; error: React.ReactEventHandler<HTMLImageElement> }>());
+vi.mock("@/lib/integrations/wikimedia", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/integrations/wikimedia")>();
+  // Keep generic Google → remote Commons tests independent of real places
+  // gaining preferred local bytes; exact production bindings have their own tests.
+  const remoteFixture = { file: "Controlled remote map fixture.jpg", alt: "A controlled remote map venue.",
+    author: "Controlled map photographer", license: "CC BY-SA 4.0", verified: true,
+    source_url: "https://commons.wikimedia.org/wiki/File:Controlled_remote_map_fixture.jpg" };
+  return { ...actual, getLandmarkPhoto: (slug: string) => slug === "map-remote-venue-fixture" ? remoteFixture : actual.getLandmarkPhoto(slug) };
+});
 vi.mock("next/image", () => ({ default: ({ src, alt, onLoad, onError, ...props }: { src: string; alt: string; onLoad: React.ReactEventHandler<HTMLImageElement>; onError: React.ReactEventHandler<HTMLImageElement>; "aria-hidden"?: boolean; "data-map-peek-photo-state"?: string; "data-map-peek-photo-source"?: string; style?: React.CSSProperties }) => {
   imageCallbacks.set(src, { load: onLoad, error: onError });
   return <img src={src} alt={alt} aria-hidden={props["aria-hidden"]} data-map-peek-photo-state={props["data-map-peek-photo-state"]} data-map-peek-photo-source={props["data-map-peek-photo-source"]} onLoad={onLoad} onError={onError} style={props.style as React.CSSProperties | undefined} />;
@@ -151,7 +160,7 @@ describe("MapPeek selected photo and source identity", () => {
     expect(host.querySelector("a")).toBeNull();
   });
   it("keeps an exact Commons fallback visible after the selected Google image fails", async () => {
-    const slug = "rose-hill-manor-park-museums-frederick";
+    const slug = "map-remote-venue-fixture";
     const plan = placeCardPhotoPlan({ slug, google_photo_url: src, google_photo_attribution: credit }, 78);
     const landmark = getLandmarkPhoto(slug)!;
     expect(plan.sources.map(source => source.kind)).toEqual(["google", "curated"]);
@@ -160,7 +169,7 @@ describe("MapPeek selected photo and source identity", () => {
     // and incorrectly stops at a letter. The production caller passes plan.
     const props = {
       plan, src, googlePhoto: true, attribution: credit,
-      placeName: "Rose Hill Manor", glyph: "R", color: "var(--app-brand)", onOpenDetails: openDetails,
+      placeName: "Controlled map venue", glyph: "R", color: "var(--app-brand)", onOpenDetails: openDetails,
     };
     await act(async () => root.render(<MapPeekPhoto {...props}><button type="button">Details</button></MapPeekPhoto>));
     const details = host.querySelectorAll("button")[1];
@@ -259,9 +268,9 @@ describe("MapPeek selected photo and source identity", () => {
   });
 
   it("hydrates one selected map card and uses its existing URL/credit payload without an API plan field", async () => {
-    const slug = "rose-hill-manor-park-museums-frederick";
+    const slug = "map-remote-venue-fixture";
     const place: MapPinPlace = {
-      slug, name: "Rose Hill Manor", category: "outdoors", municipality: "frederick",
+      slug, name: "Controlled map venue", category: "outdoors", municipality: "frederick",
       geom: { lat: 39.418, lng: -77.415 }, source: "manual", is_verified: true,
       open_status: { state: "unknown" }, short_blurb: "A selected-card test fixture.",
     };
@@ -282,7 +291,7 @@ describe("MapPeek selected photo and source identity", () => {
     await load(1, 1);
     expect(host.querySelector("img")?.getAttribute("src")).toBe(wikimediaUrl(getLandmarkPhoto(slug)!.file, 720));
     await load(1280, 891);
-    expect(host.querySelector(`a[href="${getLandmarkPhoto(slug)!.source_url}"]`)?.textContent).toBe("LittleLuckyMd");
+    expect(host.querySelector(`a[href="${getLandmarkPhoto(slug)!.source_url}"]`)?.textContent).toBe("Controlled map photographer");
     expect(fetchCard).toHaveBeenCalledOnce();
     expect(host.textContent).toContain("Hours not posted");
     expect(host.textContent).toContain("Directions");

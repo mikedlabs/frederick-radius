@@ -155,7 +155,7 @@ describe("scheduled data workflow contracts", () => {
       expect(
         workflow.jobs?.[jobName]?.["runs-on"],
         `${name}:${jobName} must stay on an isolated hosted runner`,
-      ).toBe("ubuntu-latest");
+      ).toBe(name === "ci.yml" && jobName === "verify" ? "ubuntu-24.04" : "ubuntu-latest");
     }
   });
 
@@ -726,14 +726,24 @@ describe("scheduled data workflow contracts", () => {
         baseShas.length,
         `${name} must bind every artifact to its generation commit`,
       ).toBe(publishers.length);
-      // Venue native/paid producers are mutually exclusive. Commerce adds one
-      // private diagnostic artifact that the exact publisher never receives.
+      // Venue native/paid producers are mutually exclusive. Commerce retains
+      // compact outcomes plus private originals, separate from its publisher.
       // Official hours separately retain original pages for offline review;
       // their artifact name is not an input to either exact publisher.
       expect(
         artifactUploads.length,
         `${name} must stage every producer through its exact artifact`,
-      ).toBe(name === "data-steward.yml" ? publishers.length + 1 : ["ingest-venues.yml", "refresh-commerce-links.yml"].includes(name) ? 2 : publishers.length);
+      ).toBe(name === "data-steward.yml" ? publishers.length + 1 : name === "refresh-commerce-links.yml" ? publishers.length + 2 : name === "ingest-venues.yml" ? 2 : publishers.length);
+      if (name === "refresh-commerce-links.yml") {
+        const commerce = parse(text) as WorkflowDocument;
+        const steps = commerce.jobs?.refresh.steps ?? [];
+        const originals = steps.find((step) => step.name === "Preserve original native pages and held listing candidates");
+        const outcomes = steps.find((step) => step.name === "Preserve source-specific collection outcomes");
+        expect(originals?.with).toMatchObject({ name: "official-commerce-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}", path: "${{ runner.temp }}/native-commerce-evidence", "retention-days": 7 });
+        expect(outcomes?.with?.["retention-days"]).toBe(30);
+        expect(text).not.toMatch(/artifact:\s+official-commerce-source-evidence/);
+        expect(text).not.toMatch(/allowed_paths:[\s\S]*?\n\s+native-commerce-evidence\//);
+      }
       if (name === "data-steward.yml") {
         expect(text).not.toMatch(/artifact:\s+official-hours-review-evidence/);
         expect(text).not.toMatch(/allowed_paths:[\s\S]*?\n\s+official-hours-review-evidence\//);
@@ -1038,6 +1048,27 @@ describe("scheduled data workflow contracts", () => {
       "http://security.ubuntu.com/ubuntu priority:3",
     ].join("\n") + "\n";
     expect(transform(edgeCases)).toBe(edgeCases.replace("  http://azure.archive.ubuntu.com/ubuntu/", "  https://archive.ubuntu.com/ubuntu/"));
+  });
+
+  it("pins the six direct Playwright installer jobs to supported Ubuntu without changing other hosted jobs", () => {
+    const expected = ["ci.yml:verify", "ux-audit.yml:mobile-ux", "ingest-business-info.yml:ingest", "refresh-commerce-links.yml:refresh", "visual-contract.yml:chromium", "ingest-venues.yml:ingest"].sort();
+    const browserJobs: string[] = [];
+    for (const name of readdirSync(WORKFLOW_DIR).filter((name) => /\.ya?ml$/.test(name))) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
+        if (!job.steps?.some((step) => typeof step.run === "string" && /\bnpx playwright install\b/.test(step.run))) continue;
+        browserJobs.push(`${name}:${jobName}`);
+        expect(job["runs-on"], `${name}:${jobName} must use a Playwright-supported browser image`).toBe("ubuntu-24.04");
+        expect(job.env ?? {}).not.toHaveProperty("PLAYWRIGHT_HOST_PLATFORM_OVERRIDE");
+      }
+    }
+    expect(browserJobs.sort()).toEqual(expected);
+    for (const name of new Set(expected.map((entry) => entry.split(":")[0]))) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
+        if (job["runs-on"] && !expected.includes(`${name}:${jobName}`)) expect(job["runs-on"]).toBe("ubuntu-latest");
+      }
+    }
   });
 
   it("pins the scheduled discovery boundary and does not persist credentials", () => {

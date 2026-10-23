@@ -37,7 +37,7 @@ concurrency:
 jobs:
   refresh:
     if: ${{ github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: ${{ (github.event_name == 'schedule' || inputs.native_daily != false) && 15 || 40 }}
     permissions:
       contents: read
@@ -64,6 +64,7 @@ jobs:
         run: >-
           npx vitest run
           tests/native-commerce-refresh.spec.ts
+          tests/official-listing-intake.spec.ts
           tests/official-commerce-links.spec.ts
           tests/official-commerce-refresh.spec.ts
           tests/business-info-source.spec.ts
@@ -72,6 +73,7 @@ jobs:
         id: refresh
         env:
           NATIVE_COMMERCE_RECEIPT_PATH: ${{ runner.temp }}/native-commerce-receipt.json
+          NATIVE_COMMERCE_EVIDENCE_DIR: ${{ runner.temp }}/native-commerce-evidence
           NATIVE_DAILY: ${{ github.event_name == 'schedule' || inputs.native_daily != false }}
           REFRESH_LIMIT: ${{ github.event.inputs.limit || '80' }}
           REFRESH_SLUG: ${{ github.event.inputs.slug }}
@@ -106,13 +108,21 @@ jobs:
           fi
           npm run refresh:commerce-links -- "${args[@]}"
       - name: Preserve source-specific collection outcomes
-        if: ${{ always() && steps.refresh.outputs.native_daily == 'true' }}
+        if: ${{ always() && steps.refresh.outcome != 'skipped' && (github.event_name == 'schedule' || inputs.native_daily != false) }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: official-commerce-observations-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/native-commerce-receipt.json
           if-no-files-found: error
           retention-days: 30
+      - name: Preserve original native pages and held listing candidates
+        if: ${{ always() && steps.refresh.outcome != 'skipped' && (github.event_name == 'schedule' || inputs.native_daily != false) }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: official-commerce-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/native-commerce-evidence
+          if-no-files-found: error
+          retention-days: 7
       - name: Identify actual candidate changes
         id: changed
         run: |

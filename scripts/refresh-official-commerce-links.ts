@@ -15,7 +15,8 @@ import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { clientPlaces } from "@/lib/loaders/places-client";
-import { parseNativeCommerceOptions, runNativeCommerceRefresh } from "./lib/native-commerce-refresh";
+import { createNativeCommerceEvidenceWriter, parseNativeCommerceOptions, runNativeCommerceRefresh } from "./lib/native-commerce-refresh";
+import { intakeOfficialListingEvidence } from "./lib/official-listing-intake";
 import { publicPlaces } from "@/lib/loaders/places";
 import type { PageSnapshot } from "./lib/extract-agent";
 import {
@@ -264,9 +265,14 @@ export async function main(args = process.argv.slice(2)) {
   if (args.includes("--native-daily")) {
     const nativeOptions = parseNativeCommerceOptions(args);
     const existing = JSON.parse(readFileSync(OUT, "utf8")) as Record<string, CommerceRefreshRecord>;
-    const result = await runNativeCommerceRefresh({ places: clientPlaces(), existing, excludedDomains: cfg.excludeDomains, options: nativeOptions });
-    if (!nativeOptions.plan && result.checked_count > 0) writeFileSync(OUT, `${JSON.stringify(result.records, null, 2)}\n`);
-    const { records: _records, ...receipt } = result;
+    const sourceRevision = /^[a-f0-9]{40}$/.test(process.env.GITHUB_SHA ?? "") ? process.env.GITHUB_SHA! : "unknown";
+    const evidenceDirectory = process.env.NATIVE_COMMERCE_EVIDENCE_DIR;
+    const evidence = !nativeOptions.plan && evidenceDirectory ? createNativeCommerceEvidenceWriter(evidenceDirectory, sourceRevision, intakeOfficialListingEvidence) : undefined;
+    const result = await runNativeCommerceRefresh({ places: clientPlaces(), existing, excludedDomains: cfg.excludeDomains, options: nativeOptions,
+      sourceRevision, onEvidence: evidence?.capture });
+    evidence?.finish(result);
+    const { records: _records, ...outcomes } = result;
+    const receipt = { ...outcomes, ...(evidence ? { listing_intake: evidence.summary() } : {}) };
     void _records;
     // Private run diagnostics are separate from the bounded publisher artifact.
     // Only an explicit trusted operator path creates a receipt file.
@@ -276,6 +282,7 @@ export async function main(args = process.argv.slice(2)) {
     const output = process.env.GITHUB_OUTPUT;
     if (output) appendFileSync(output, [`native_daily=true`, `review_required=${result.review_required}`, `selected_count=${result.selected_count}`, `checked_count=${result.checked_count}`, `failed_count=${result.failed_count}`, `safe_hold_count=${result.safe_hold_count}`, ""].join("\n"));
     if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Native daily commerce links\n\n${result.selected_count} selected from a ${result.roster.length}-site rotating roster; ${result.checked_count} checked, ${result.safe_hold_count} held for prior destinations not reobserved, ${result.failed_count} failed; ${result.requests} free GETs. Review required: ${result.review_required}. No destination verification, providers, rendering, retries or redirects.\n`);
+    if (!nativeOptions.plan && result.checked_count > 0) writeFileSync(OUT, `${JSON.stringify(result.records, null, 2)}\n`);
     return result;
   }
   const options = parseOptions(args, cfg);

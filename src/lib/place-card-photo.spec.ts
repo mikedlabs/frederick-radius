@@ -14,7 +14,7 @@ const place = {
 
 describe("place card photo source contract", () => {
   it("prefers the canonical individually attributable Google photo and requests a bounded failure signal", () => {
-    const source = selectedPlaceCardPhoto(placeCardPhotoPlan(place, 180), null)!;
+    const source = selectedPlaceCardPhoto(placeCardPhotoPlan({ ...place, slug: "historic-roddy-road-covered-bridge-thurmont" }, 180), null)!;
     expect(source.kind).toBe("google");
     const url = new URL(source.src, "https://frederickradius.app");
     expect(url.searchParams.get("name")).toBe(name);
@@ -36,12 +36,12 @@ describe("place card photo source contract", () => {
   });
 
   it("tries the exact curated image once after Google failure, then remains exhausted despite late load/error events", () => {
-    const plan = placeCardPhotoPlan(place, 360);
+    const plan = placeCardPhotoPlan({ ...place, slug: "historic-roddy-road-covered-bridge-thurmont" }, 360);
     const google = selectedPlaceCardPhoto(plan, null)!;
     let state = recordPlaceCardPhotoResult(plan, null, google.src, "failed");
     const curated = selectedPlaceCardPhoto(plan, state)!;
     expect(curated.kind).toBe("curated");
-    expect(curated.src).toContain("Francis%20Scott%20Key%20Monument%20(March%202024).jpg");
+    expect(curated.src).toContain("Roddy%20Road%20covered%20bridge");
     state = recordPlaceCardPhotoResult(plan, state, google.src, "loaded");
     expect(state.loadedSrc).toBeNull();
     state = recordPlaceCardPhotoResult(plan, state, curated.src, "failed");
@@ -66,12 +66,12 @@ describe("place card photo source contract", () => {
 });
 
 
-describe("new exact destination fallback continuity", () => {
+describe("bundled exact destination fallback continuity", () => {
   it.each([
     ["francis-scott-key-grave-and-monument", "Engineerchange"],
     ["rose-hill-manor-park-museums-frederick", "LittleLuckyMd"],
     ["historic-utica-covered-bridge-thurmont", "Acroterion"],
-  ])("retains Google priority and credited bounded fallback for %s", (slug, author) => {
+  ])("prefers reviewed local bytes and retains eligible Google fallback for %s", (slug, author) => {
     const photoName = `places/${slug}/photos/approved`;
     const plan = placeCardPhotoPlan({
       slug,
@@ -82,19 +82,26 @@ describe("new exact destination fallback continuity", () => {
         authors: [],
       },
     }, 180);
-    const google = selectedPlaceCardPhoto(plan, null)!;
+    const local = selectedPlaceCardPhoto(plan, null)!;
+    expect(local.kind).toBe("curated");
+    if (local.kind !== "curated") throw new Error("Expected exact local destination photo");
+    expect(local.src).toBe(CREDITED_LOCAL_PLACE_PHOTOS[slug as keyof typeof CREDITED_LOCAL_PLACE_PHOTOS].image.src);
+    expect(local.photo.author).toBe(author);
+    expect(local.photo.license).toBe("CC BY-SA 4.0");
+    expect(local.photo.source_url).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
+    expect(local.photo.preferLocal).toBe(true);
+    const state = recordPlaceCardPhotoResult(plan, null, local.src, "failed");
+    const google = selectedPlaceCardPhoto(plan, state)!;
     expect(google.kind).toBe("google");
-    const state = recordPlaceCardPhotoResult(plan, null, google.src, "failed");
-    const fallback = selectedPlaceCardPhoto(plan, state)!;
-    expect(fallback.kind).toBe("curated");
-    if (fallback.kind !== "curated") throw new Error("Expected exact destination fallback");
-    expect(fallback.photo.author).toBe(author);
-    expect(fallback.photo.license).toBe("CC BY-SA 4.0");
-    expect(fallback.photo.source_url).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
-    expect(new URL(fallback.src).searchParams.get("width")).toBe("360");
-    const exhausted = recordPlaceCardPhotoResult(plan, state, fallback.src, "failed");
+    const url = new URL(google.src, "https://frederickradius.app");
+    expect(url.searchParams.get("name")).toBe(photoName);
+    expect(url.searchParams.get("w")).toBe("360");
+    expect(url.searchParams.get("fallback")).toBe("signal");
+    expect(recordPlaceCardPhotoResult(plan, state, local.src, "loaded")).toEqual(state);
+    const exhausted = recordPlaceCardPhotoResult(plan, state, google.src, "failed");
     expect(selectedPlaceCardPhoto(plan, exhausted)).toBeNull();
     expect(recordPlaceCardPhotoResult(plan, exhausted, google.src, "loaded")).toEqual(exhausted);
+    expect(exhausted.failedSources).toHaveLength(2);
   });
 });
 

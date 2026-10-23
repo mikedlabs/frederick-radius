@@ -16,7 +16,7 @@ be delayed by GitHub; these are windows, not guaranteed publication deadlines.
 | `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus sixteen exact reviewed native merchant URLs for seventeen listing identities. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. Run summaries derive their source/binding counts from the current registry. |
 | Existing Codex data upkeep, manual merchant cohort | Review before evidence expires | Sumittra and Curious Iguana only. Read their official pages through the existing Firecrawl connection when evidence is within 48 hours of expiry. A private preflight reserves each attempt before a read, capped at two attempts per UTC day and 30 per UTC month. No automatic paid GitHub job. |
 | `ingest-venues.yml` native job | Daily 11:07 | Banyan, Weinberg and New Spire native sources. No model, Firecrawl key, browser or paid-review prerequisite. Future changes need review. Failed/unselected sources retain their rows and dates. |
-| `refresh-commerce-links.yml` native mode | Daily 12:37 | At most 20 eligible official business sites and one same-host follow page each. Static HTML only, finite body/deadline, no retries, redirects or destination probes. New/changed actions need review. |
+| `refresh-commerce-links.yml` native mode | Daily 12:37 | At most 20 eligible official business sites and one same-host follow page each. The same static responses supply private listing-intake evidence as well as commerce links. Finite body/deadline, no retries, redirects or destination probes. New/changed facts need review. |
 | `listing-maintenance.yml` | Daily 14:07 | Offline reconciliation of every promoted public listing, per-field states, town/category totals and bounded source candidates. No merchant or provider requests. |
 | `build-marc-schedule.yml` | Monthly, day 1 at 08:00 | Existing public MARC GTFS cadence, hosted runtime capped at 15 minutes, isolated review publisher. No dependency on an unregistered NAS. |
 
@@ -207,6 +207,55 @@ Native commerce observations also have a separate 30-day artifact with selected
 slugs, successes, failures and held candidates. It contains no secrets or raw
 page bodies. The public publisher accepts only its established allowlist;
 diagnostics never become a public fact by being uploaded.
+
+### Reuse captured official pages before requesting more
+
+The commerce owner preserves each complete original response before extracting
+anchors. Its separate authenticated
+`official-commerce-source-evidence-<run>-<attempt>` artifact lasts seven days
+and contains the original bytes, exact source URL, actual per-page observation,
+SHA-256, source revision and canonical identity context. Successful originals
+survive a missing-anchor response, failed follow page or prior-destination hold.
+The compact outcomes and held intake candidates remain in the 30-day diagnostic
+artifact. Preserve useful pending evidence privately before raw-artifact expiry.
+These artifacts add no page requests, rendering, models or paid providers.
+
+Intake is a candidate extractor, not a second publication owner. An exact
+JSON-LD identity, complete week or image URL is still held for review. Missing
+weekdays do not mean closed; corporate, dinner, brunch, bar and holiday hours
+cannot be substituted for the business's complete schedule. A scraped image
+URL supplies no reuse rights. Expected held intake states do not block valid
+commerce work for that source, and a failed source must not erase another
+source's accepted record.
+
+Review already-captured evidence before spending additional source reads. For a
+new identity, inspect the original page and enroll only a supported reviewed
+source shape with its exact identity and source ledger. Existing
+`jsonld_weekly_location_cards` cohort declarations reuse one parser across
+independent bindings; they still require agreeing visible hours and JSON-LD.
+Replay the original bytes through that enrolled parser, then use the existing
+held batch plan and explicit acceptance procedure above. A new enrollment must
+join the daily official-hours owner. Commerce's 30-day rotation cannot renew
+seven-day accepted hours, and intake must not silently change that cadence.
+
+The offline connector pins the original index revision and explicitly selects
+one response hash per listing. Its default is a read-only preview:
+
+```sh
+npm run stage:official-listing-hours -- --index=/private/path/index.json --source-revision=<captured-full-sha> --select=<slug>@<original-response-sha256>
+```
+
+After reviewing that preview, the same command with
+`--output-dir=/private/new-handoff --write` creates a new private directory with
+selected original pages, `pending-merchant-hours.json` and `review-plan.json`.
+It never edits the approved repository artifact. Use the existing
+`review:official-hours-batch` command with `--artifact` pointing at that private
+pending artifact and `--plan` at the held plan. Existing enrolled parsers remain
+the authority for their reviewed formats, including visible-only and microdata
+sources; generic JSON-LD discovery is not an additional gate. Older captures
+and equal-time conflicting hashes cannot replace newer accepted, pending or
+failed-source observations. A captured revision may differ from current main,
+but must match its own index and selected original records.
 
 ## Serialized review and publication
 

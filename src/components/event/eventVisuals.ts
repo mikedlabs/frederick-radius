@@ -90,6 +90,14 @@ function ownedEventVenueVisual(venueSlug: string | undefined): EventCardVisual |
 }
 
 const LICENSED_EVENT_VENUE_LABELS: Readonly<Record<keyof typeof CREDITED_LOCAL_PLACE_PHOTOS, string>> = {
+  "frederick-station": "Frederick MARC station, photographed in 2015",
+  "heritage-frederick": "Heritage Frederick exterior, photographed in 2009",
+  "thurmont-square-park-thurmont": "Thurmont Square Park, photographed in 2012",
+  "heritage-farm-park-walkersville": "Harris farmhouse at Heritage Farm Park, photographed in 2010",
+  "sabor-de-cuba-restaurant-frederick": "Sabor de Cuba entrance, photographed in 2018",
+  "francis-scott-key-grave-and-monument": "Francis Scott Key Monument, photographed in 2024",
+  "rose-hill-manor-park-museums-frederick": "Rose Hill Manor exterior, photographed in 2019",
+  "historic-utica-covered-bridge-thurmont": "Utica Covered Bridge, photographed in 2022",
   "national-museum-civil-war-medicine-frederick": "National Museum of Civil War Medicine exterior",
   "schifferstadt-architectural-museum-frederick": "Schifferstadt Architectural Museum",
   "hessian-barracks-frederick-maryland": "Hessian Barracks",
