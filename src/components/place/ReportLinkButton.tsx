@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Flag } from "lucide-react";
 import {
   commerceCardLabel,
   providerLabel,
 } from "@/lib/commerce/links";
 import type { CommerceLink } from "@/lib/commerce/types";
+
+const subscribeReady = () => () => {};
 
 /**
  * A quiet "Report a broken link" affordance for the commerce section. Click to
@@ -23,6 +25,8 @@ export default function ReportLinkButton({
   placeName?: string;
   links?: CommerceLink[];
 }) {
+  // The server preview must not invite a tap before its handler is attached.
+  const interactionReady = useSyncExternalStore(subscribeReady, () => true, () => false);
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -42,6 +46,8 @@ export default function ReportLinkButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
+        disabled={!interactionReady}
+        data-report-interaction-ready={interactionReady ? "true" : "false"}
         className="inline-flex min-h-11 min-w-11 items-center gap-1.5 text-[12px] font-medium"
         style={{ color: "var(--app-ink-3)" }}
       >
