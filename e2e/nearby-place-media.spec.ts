@@ -3,6 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
 
 const creek = "carroll-creek-linear-park-frederick";
+const creekPhoto = "/images/places/carroll-creek-aerial.jpg";
 
 test.use({ serviceWorkers: "block" });
 test.beforeEach(async ({ page }) => {
@@ -49,9 +50,8 @@ for (const width of [320, 375, 390, 430]) {
     };
     const isOwnedImage = (raw: string) => {
       const url = new URL(raw);
-      return url.pathname === "/images/seasons/summer/SUMMER%20CARROL%20CREEK.jpg"
-        || decodeURIComponent(url.pathname) === "/images/seasons/summer/SUMMER CARROL CREEK.jpg"
-        || (url.pathname === "/_next/image" && (url.searchParams.get("url") ?? "").includes("/images/seasons/summer/SUMMER CARROL CREEK.jpg"));
+      return decodeURIComponent(url.pathname) === creekPhoto
+        || (url.pathname === "/_next/image" && url.searchParams.get("url") === creekPhoto);
     };
     page.on("request", (request) => {
       if (isOwnedImage(request.url())) mediaDiagnostics.requests.push({ url: request.url(), resourceType: request.resourceType() });
@@ -115,7 +115,7 @@ for (const width of [320, 375, 390, 430]) {
       const url = new URL((node as HTMLImageElement).currentSrc);
       return decodeURIComponent(url.searchParams.get("url") ?? url.pathname);
     });
-    expect(actualSource).toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+    expect(actualSource).toBe(creekPhoto);
     await expect(card.locator(".place-card-photo-credit")).toHaveCount(0);
     await expect(card).toHaveAttribute("data-place-card-variant", "discovery");
     const dimensions = await image.evaluate((node) => {

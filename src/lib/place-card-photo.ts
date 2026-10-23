@@ -3,7 +3,7 @@ import { getLandmarkPhoto, curatedPhotoUrl, type WikimediaPhoto } from "@/lib/in
 import { googlePhotoNameFromProxyUrl, publishableGooglePhotoAttribution } from "@/lib/google-photo-policy";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
-import { getOwnedPlacePhoto, type OwnedPlacePhoto } from "@/lib/owned-place-photos";
+import { getOwnedPlacePhoto, getOwnedPlacePhotos, type OwnedPlacePhoto } from "@/lib/owned-place-photos";
 
 export type PlaceCardPhotoSource =
   | { kind: "curated"; src: string; alt: string; photo: WikimediaPhoto; objectPosition?: WikimediaPhoto["objectPosition"] }
@@ -91,7 +91,8 @@ export function placePhotoGallerySources(place: PlacePhotoInput, width: number):
     (!unsuitableName || googlePhotoNameFromProxyUrl(url) !== unsuitableName))
     .map((url) => suppliedPhotoSource(url, width, attributions))
     .filter((source): source is PlaceCardPhotoSource => source !== null);
-  return [...hero, ...extra].filter((source, index, all) => all.findIndex((item) => sourceIdentity(item) === sourceIdentity(source)) === index);
+  return [...hero, ...getOwnedPlacePhotos(place.slug), ...extra]
+    .filter((source, index, all) => all.findIndex((item) => sourceIdentity(item) === sourceIdentity(source)) === index);
 }
 
 export function selectedPlaceCardPhoto(plan: PlaceCardPhotoPlan, state: PlaceCardPhotoState | null): PlaceCardPhotoSource | null {

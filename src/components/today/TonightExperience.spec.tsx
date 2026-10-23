@@ -3,7 +3,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { TonightPick, TonightPreviewData } from "@/lib/today/tonight-preview";
 import TonightExperience from "./TonightExperience";
-import AERIAL_MANIFEST from "@/../public/images/seasons/aerial-manifest.json";
 
 function pick(overrides: Partial<TonightPick> = {}): TonightPick {
   return {
@@ -107,16 +106,14 @@ describe("TonightExperience", () => {
       data: data({ town: null, scope: "county", scopeLabel: "Frederick County", title: "Tonight in Frederick County" }),
     }));
 
-    expect(townHtml).not.toContain("SUMMER%20CARROL%20CREEK");
+    expect(townHtml).not.toContain("carroll-creek-aerial.jpg");
     expect(townHtml).not.toContain("<figure");
-    expect(countyHtml).toContain('alt="Carroll Creek in Frederick."');
+    expect(countyHtml).toContain('alt="An aerial view of Carroll Creek, its bridges and tree-lined paths in Frederick."');
+    expect(countyHtml).toContain(encodeURIComponent("/images/places/carroll-creek-aerial.jpg"));
     expect(countyHtml).not.toContain("Archive photograph");
     expect(countyHtml).not.toContain("Mike D");
     expect(countyHtml).not.toContain("June 2023");
     expect(countyHtml).not.toContain("<figcaption");
-    const archivePhoto = AERIAL_MANIFEST.find((photo) =>
-      photo.src === "/images/seasons/summer/SUMMER CARROL CREEK.jpg");
-    expect(archivePhoto?.takenAt?.slice(0, 7)).toBe("2023-06");
     expect(countyHtml.indexOf("data-tonight-area-photo")).toBeLessThan(countyHtml.indexOf("</header>"));
     expect(countyHtml.indexOf("data-tonight-area-photo")).toBeLessThan(countyHtml.indexOf("data-tonight-lead"));
     expect(countyHtml).not.toContain("Pick a place for the evening.");

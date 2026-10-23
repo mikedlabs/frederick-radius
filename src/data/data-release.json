@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:14dd8b6f1368f7a4153d6f304ad0d1e2673351f50beaa3dd724da8525f55c21a",
+  "data_version": "sha256:1fcb9eacf0eb9eee86a40decfb23b4cc504bede476cc9496b176ffcab328fa15",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-23T13:50:48.755Z",
+      "promoted_at": "2026-10-23T18:37:19.517Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -318,9 +318,63 @@
         },
         {
           "path": "src/lib/owned-place-photos.ts",
-          "sha256": "fff220c8eb8ed44f48081a45c6fe32c2f95351cd600efbe65f5eeb9d66d518b0",
+          "sha256": "0b614d33a3d2187a512c4891ca7c2ee24cca00ce2225f83144ea3977c09d7914",
           "records": null,
-          "bytes": 5344
+          "bytes": 8439
+        },
+        {
+          "path": "public/images/seasons/summer/SUMMER CARROL CREEK.jpg",
+          "sha256": "df942f4735a8684176e95da0a29dbc0a62788bf1818bd3851418b98faeba8bbc",
+          "records": null,
+          "bytes": 339748
+        },
+        {
+          "path": "public/images/places/visitation-hotel-sunset.jpg",
+          "sha256": "167b0ccf0e41173cc3b932348bb0e509a3b73a616ca6d46ab4cf833c59a8122d",
+          "records": null,
+          "bytes": 228207
+        },
+        {
+          "path": "public/images/places/visitation-hotel-detail.jpg",
+          "sha256": "740c911739a7ae4192d3fbbd18f3bc5961069ef9d7b0c0dd06c1b44ba954497a",
+          "records": null,
+          "bytes": 86194
+        },
+        {
+          "path": "public/images/places/carroll-creek-aerial.jpg",
+          "sha256": "20116f94967b675ddb8748468f130c0ba48dac581113a536ac191fb98b301e5c",
+          "records": null,
+          "bytes": 509553
+        },
+        {
+          "path": "public/images/places/baker-park-sunset.jpg",
+          "sha256": "3514a04022be1bcfdfe439b3352e7a74b02b0bbeb38a5ec5f8fee5ecfdd9bd91",
+          "records": null,
+          "bytes": 240937
+        },
+        {
+          "path": "public/images/places/baker-park-detail.jpg",
+          "sha256": "1e93286116404984c6ab447256a414ed469db3869dfb592267de5def016f6b77",
+          "records": null,
+          "bytes": 136923
+        },
+        {
+          "path": "public/images/places/carillon-sunset.jpg",
+          "sha256": "4ea55ecfc68ac8e08fc2f8aa05973935b763108144b48261bd8916669935f80a",
+          "records": null,
+          "bytes": 329527
+        },
+        {
+          "path": "public/images/places/church-street-sunset.jpg",
+          "sha256": "d9b7687faed484d5d688f27a2827c8072ff04285a86ddcefbde665762076f316",
+          "records": null,
+          "bytes": 189674
+        },
+        {
+          "path": "public/images/places/weinberg-patrick-street.jpg",
+          "sha256": "e6bdd6c64f55411a2e77886e4e6684fe7533a0f72dee6573c0d3457c14e7e440",
+          "records": null,
+          "bytes": 358053
         },
         {
           "path": "public/images/seasons/winter/IMG_2732.jpg",

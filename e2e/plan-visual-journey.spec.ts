@@ -506,7 +506,7 @@ for (const outcome of ["loaded", "unavailable"] as const) {
       throw new Error("Controlled photo transport requires a loopback-only test app.");
     }
     await page.setViewportSize({ width: 390, height: 844 });
-    const ownedPhoto = await readFile("public/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+    const ownedPhoto = await readFile("public/images/places/carroll-creek-aerial.jpg");
     const failureSignal = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=", "base64");
     type Metadata = { place: { slug: string; google_photo_url: string; google_photo_attribution: {
       photo_name: string; google_maps_uri: string; authors: Array<{ display_name: string }>;

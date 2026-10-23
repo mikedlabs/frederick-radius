@@ -229,7 +229,7 @@ describe("Today approved media lifecycle", () => {
     const next = { ...first, venue_place_slug: "carroll-creek-linear-park-frederick" };
     act(() => root.render(<TonightHeadline event={first} now={new Date("2029-10-10T12:00:00-04:00")} embedded />));
     const oldImage = host.querySelector("img")!;
-    const oldCallbacks = imageCallbacks.get("/images/seasons/fall/018.jpg")!;
+    const oldCallbacks = imageCallbacks.get("/images/places/baker-park-detail.jpg")!;
     act(() => root.render(<TonightHeadline event={next} now={new Date("2029-10-10T12:00:00-04:00")} embedded />));
     const image = host.querySelector("img")!;
     act(() => oldCallbacks.onError?.({ currentTarget: oldImage } as Parameters<NonNullable<typeof oldCallbacks.onError>>[0]));
@@ -247,7 +247,7 @@ describe("Today approved media lifecycle", () => {
   it("retains the recovered pick after a failed approved thumbnail and removes its credit", () => {
     const pick = { slug: event.slug, title: event.title, presenter: "Fixture presenter", venue: event.venue_name,
       municipality: "frederick", time: "2:00 PM", moment: "Later" as const, image: null, free: true,
-      visual: { src: "/images/seasons/fall/018.jpg", key: "radius-baker-park-bandshell",
+      visual: { src: "/images/places/baker-park-detail.jpg", key: "radius-baker-park-bandshell",
         caption: "Venue · Baker Park", presentation: "photo" as const } };
     act(() => root.render(<TodayEventsRecoveryView response={{ events: [pick], partial: false }} />));
     const link = host.querySelector('a[href="/events/component-event"]')!;

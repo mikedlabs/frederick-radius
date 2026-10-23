@@ -3,8 +3,10 @@ import { expect, waitFor, within } from "storybook/test";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 import EventCard from "./EventCard";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 
 const nowISO = "2029-10-10T16:00:00-04:00";
+const ownedVenueSrc = getOwnedPlacePhoto("baker-park-frederick")!.src;
 const fixture: EventWithMeta = {
   slug: "offline-photo-discovery", title: "Fictional community performance, artist conversation and neighborhood gathering at Baker Park",
   description: "This fictional event is only for component acceptance.",
@@ -119,18 +121,18 @@ async function card(context: Context, expectedSource: string) {
 }
 
 export const OwnedVenue390: Story = {
-  play: async context => { await viewport(390); await card(context, "/images/seasons/fall/018.jpg"); },
+  play: async context => { await viewport(390); await card(context, ownedVenueSrc); },
 };
 export const OwnedVenue320Reading200: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false }, motion: "reduce" },
   play: async context => {
     await viewport(320);
-    const p = await card(context, "/images/seasons/fall/018.jpg");
+    const p = await card(context, ownedVenueSrc);
     const reading = [p.title, p.time, p.venue, p.credit];
     const normal = reading.map(node => parseFloat(getComputedStyle(node).fontSize));
     document.documentElement.style.fontSize = "200%";
     await waitFor(() => reading.forEach((node, index) => expect(parseFloat(getComputedStyle(node).fontSize) / normal[index]).toBeCloseTo(2, 2)));
-    await card(context, "/images/seasons/fall/018.jpg");
+    await card(context, ownedVenueSrc);
   },
 };
 export const LicensedVenue390: Story = {
@@ -148,7 +150,7 @@ export const LicensedVenue390: Story = {
 };
 export const DeclaredPhotoFailure: Story = {
   play: async context => {
-    await viewport(390); const p = await card(context, "/images/seasons/fall/018.jpg");
+    await viewport(390); const p = await card(context, ownedVenueSrc);
     p.image.dispatchEvent(new Event("error"));
     await waitFor(() => expect(p.article).toHaveAttribute("data-event-media", "none"));
     expect(p.article.querySelector("figure, img, [data-event-photo-credit]")).toBeNull();

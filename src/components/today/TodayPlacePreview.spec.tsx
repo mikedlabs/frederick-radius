@@ -199,8 +199,8 @@ describe("Today place preview exact media and actions", () => {
     vi.stubGlobal("fetch", request);
     const place = pick({ slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park", photo: rawPhoto });
     await render(place, true);
-    expect(image()?.getAttribute("src")).toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
-    expect(image()?.alt).toBe("Carroll Creek in Frederick.");
+    expect(image()?.getAttribute("src")).toBe("/images/places/carroll-creek-aerial.jpg");
+    expect(image()?.alt).toBe("An aerial view of Carroll Creek, its bridges and tree-lined paths in Frederick.");
     await decode(image()!);
     expect(credit()).toBeNull();
     expect(request).not.toHaveBeenCalled();

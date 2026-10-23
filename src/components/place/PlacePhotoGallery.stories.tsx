@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PlaceCardPhotoCredit } from "./PlaceCardPhoto";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
-import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
+import { getOwnedPlacePhoto, getOwnedPlacePhotos } from "@/lib/owned-place-photos";
 import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import type { PlaceCardPhotoSource } from "@/lib/place-card-photo";
 import { PlacePhotoGalleryView } from "./PlacePhotoGallery";
@@ -45,6 +45,34 @@ const meta = {
 } satisfies Meta<typeof PlacePhotoGalleryView>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const ReviewedOwnerLibraryPhotos: Story = {
+  args: { sources: getOwnedPlacePhotos("visitation-hotel"), name: "Visitation Hotel" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(document.body);
+    const opener = canvas.getByRole("button", { name: "View Visitation Hotel photo 2" });
+    const thumbnail = opener.querySelector<HTMLImageElement>("img")!;
+    await thumbnail.decode();
+    await expect(thumbnail.naturalWidth).toBeGreaterThan(1);
+    const box = opener.getBoundingClientRect();
+    await expect(box.width).toBeGreaterThanOrEqual(44);
+    await expect(box.height).toBeGreaterThanOrEqual(44);
+    const previousState = window.history.state;
+    await userEvent.click(opener);
+    const viewer = await body.findByRole("dialog", { name: "Photo viewer" });
+    await waitFor(() => expect(viewer).toHaveFocus());
+    await expect(viewer).toHaveAttribute("data-lightbox-photo-source", "owned");
+    const image = within(viewer).getByRole("img") as HTMLImageElement;
+    await image.decode();
+    await expect(image.naturalWidth).toBeGreaterThan(1);
+    await expect(viewer.querySelector("[data-lightbox-photo-credit]")).toBeNull();
+    await userEvent.click(within(viewer).getByRole("button", { name: "Close photo" }));
+    await waitFor(() => expect(body.queryByRole("dialog", { name: "Photo viewer" })).toBeNull());
+    await waitFor(() => expect(window.history.state).toEqual(previousState));
+    await waitFor(() => expect(opener).toHaveFocus());
+  },
+};
 
 export const LateThumbnailFailureKeepsViewerAndNativeBack: Story = {
   render: () => <GalleryFixture />,

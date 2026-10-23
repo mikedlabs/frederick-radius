@@ -232,7 +232,7 @@ describe("MapListPeek reviewed place media", () => {
 
   it.each([
     ["mccurdy-field", "McCurdy Field", "/images/seasons/spring/aerial-view-baseball-field.jpg"],
-    ["carroll-creek-linear-park-frederick", "Carroll Creek Linear Park", "/images/seasons/summer/SUMMER CARROL CREEK.jpg"],
+    ["carroll-creek-linear-park-frederick", "Carroll Creek Linear Park", "/images/places/carroll-creek-aerial.jpg"],
   ])("paints exact owned %s without metadata or a licensed footer and retains its actions after failure", async (slug, name, src) => {
     const selected = place(0, { slug, name, category: "park" });
     const onPick = vi.fn();

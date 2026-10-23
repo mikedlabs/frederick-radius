@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
+import { getOwnedPlacePhoto } from "../src/lib/owned-place-photos";
 
 const fair = "/moments/great-frederick-fair-2026";
 
@@ -36,9 +37,23 @@ for (const width of [320, 390, 430, 1440]) {
 test("Today uses the owned collection without moving search behind the Fair campaign", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/today");
-  const photo = page.getByAltText("Carroll Creek in Frederick.");
+  const slug = "carroll-creek-linear-park-frederick";
+  const reviewed = getOwnedPlacePhoto(slug)!;
+  const doorway = page.locator(`[data-today-geographic-place="${slug}"]`);
+  const photo = doorway.locator("img");
+  await expect(doorway).toHaveAttribute("href", `/places/${slug}`);
+  await expect(photo).toHaveAttribute("alt", reviewed.alt);
+  await expect(photo).toHaveAccessibleName(/Carroll Creek/);
   await expect(photo).toBeVisible();
+  await expect(doorway).toHaveAttribute("data-photo-state", "loaded");
   await expect.poll(() => photo.evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  const actualSource = await photo.evaluate((node) => {
+    const image = node as HTMLImageElement;
+    const url = new URL(image.currentSrc || image.src, document.baseURI);
+    return decodeURIComponent(url.searchParams.get("url") ?? url.pathname);
+  });
+  expect(actualSource).toBe(reviewed.src);
+  await expect.poll(() => photo.evaluate((img) => getComputedStyle(img).opacity)).toBe("1");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await mkdir("output/playwright/visual-journey", { recursive: true });
   await page.screenshot({ path: "output/playwright/visual-journey/today-390.png" });
