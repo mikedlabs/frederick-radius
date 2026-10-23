@@ -155,6 +155,21 @@ function makeBridge({ github, identity, readRuns, now, sleep, dispatchToken }) {
         // An error can settle only a check this delivery already owns. Never
         // add a completion-only run after an uncertain create response.
         if (stage === "error" && !previous) writeCheck = false;
+        const publishStatus = async () => {
+          const response = await github.rest.repos.createCommitStatus({ owner, repo, sha: before.sha, state, context: contextName,
+            description: detail, target_url: stage === "final" ? job.html_url : before.pullUrl });
+          requireThat(Number.isSafeInteger(response.data.id) && response.data.id > 0, "Status publication returned no receipt ID.");
+          receipt.writes.push({ id: response.data.id, sha: before.sha, context: contextName, stage, state,
+            runs: before.runs.map((run) => ({ id: run.id, attempt: run.attempt })) });
+          written.set(contextName, { id: response.data.id, state });
+        };
+        // Record the legacy final proof before the app-bound check can admit
+        // an immediate protected merge. Pending/error remain failure-first.
+        if (stage === "final" && writeStatus) {
+          await publishStatus();
+          before = await target(stage);
+          if (before.sha !== expected) continue publishRound;
+        }
         if (writeCheck && previous) {
           const current = await latestCheck(before.sha, contextName);
           if (!matchesCheck(current, previous)) {
@@ -196,16 +211,7 @@ function makeBridge({ github, identity, readRuns, now, sleep, dispatchToken }) {
           before = await target(stage);
           if (before.sha !== expected) continue publishRound;
         }
-        // Both same-name forms must pass when legacy statuses already exist.
-        // Never drop or silently bypass the old status during migration.
-        if (writeStatus) {
-          const response = await github.rest.repos.createCommitStatus({ owner, repo, sha: before.sha, state, context: contextName,
-            description: detail, target_url: stage === "final" ? job.html_url : before.pullUrl });
-          requireThat(Number.isSafeInteger(response.data.id) && response.data.id > 0, "Status publication returned no receipt ID.");
-          receipt.writes.push({ id: response.data.id, sha: before.sha, context: contextName, stage, state,
-            runs: before.runs.map((run) => ({ id: run.id, attempt: run.attempt })) });
-          written.set(contextName, { id: response.data.id, state });
-        }
+        if (stage !== "final" && writeStatus) await publishStatus();
         const after = await target(stage);
         if (after.sha !== before.sha) continue publishRound;
       }
@@ -231,7 +237,7 @@ function makeBridge({ github, identity, readRuns, now, sleep, dispatchToken }) {
       || successes[0].sha !== successes[1].sha
       || !checkSuccesses.every((write) => write?.accepted && write.stage === "final" && write.conclusion === "success" && write.sha === successes[0].sha)) return false;
     try {
-      // Auto-squash can complete as soon as the second required status lands.
+      // Auto-squash can complete as soon as the second required app-bound check lands.
       // Recognize only that exact tested delivery, never arbitrary PR closure
       // or an unrelated main advance. No status is written on this path.
       const mergedIdentity = async () => {

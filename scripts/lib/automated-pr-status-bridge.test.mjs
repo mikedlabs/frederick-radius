@@ -22,6 +22,7 @@ function harness() {
     base: { ref: "main", sha: state.base, repo: { full_name: "owner/radius" } } });
   const api = (name, fn) => async (args) => {
     state.calls.push({ name, args: clone(args) });
+    state.evaluateRules?.();
     state.onRead?.(name, args);
     return { data: clone(await fn(args)) };
   };
@@ -104,23 +105,61 @@ test("reattaches both final contexts when the synthetic merge rotates after a su
 });
 
 function autoSquashOnSecondSuccess(state, mutate = () => {}) {
+  let statusTriggered = false;
   state.onStatus = (status) => {
-    if (status.state !== "success" || state.writes.filter((write) => write.state === "success").length !== 2) return;
+    if (status.state === "success" && state.writes.filter((write) => write.state === "success").length === 2) statusTriggered = true;
+  };
+  // A legacy status can trigger rules evaluation, but the same-name app-bound
+  // checks must also pass. Do not model an impossible protected merge while
+  // the second existing check is still in progress.
+  state.evaluateRules = () => {
+    if (!statusTriggered || state.merged || !["verify", "style-lint"].every((name) => {
+      const check = state.checks.filter((row) => row.head_sha === MERGE && row.name === name && row.app.id === 15368).sort((a, b) => b.id - a.id)[0];
+      return check?.status === "completed" && check.conclusion === "success";
+    })) return;
     state.main = SQUASH; state.merge = SQUASH; state.pullState = "closed"; state.merged = true; state.parents[SQUASH] = [MAIN];
     mutate();
   };
 }
 
-test("recognizes exact auto-squash immediately after the second final status instead of falsely failing delivery", async () => {
+test("recognizes exact status-triggered auto-squash once both required forms pass instead of falsely failing delivery", async () => {
   const { state, options } = harness();
   autoSquashOnSecondSuccess(state);
-  state.onRead = (name, args) => { if (state.merged && name === "getRef" && args.ref.startsWith("heads/bot/")) throw Error("Auto-deleted branch"); };
+  state.onRead = (name, args) => {
+    if (!state.merged) return;
+    if (name === "getRef" && args.ref.startsWith("heads/bot/")) throw Error("Auto-deleted branch");
+    assert.ok(!["write", "writeCheck", "updateCheck"].includes(name), "No write is allowed after the protected squash");
+  };
   const receipt = await attachAutomatedPrStatuses(options);
   assert.equal(receipt.verified, true);
   assert.deepEqual(receipt.delivery, { state: "merged-exact-tested-squash", sha: SQUASH, parent: MAIN, tree: TREE,
     statusIds: [3, 4], checkIds: [1001, 1002], appId: 15368, runs: [{ id: 11, attempt: 1 }, { id: 22, attempt: 1 }] });
   assert.equal(state.writes.length, 4);
   assert.ok(state.writes.every((write) => write.sha === MERGE));
+});
+
+test("recognizes immediate app-bound auto-squash before the bot ref is auto-deleted without post-merge writes", async () => {
+  const { state, options } = harness();
+  let mergedWriteCounts;
+  state.onCheck = (check) => {
+    if (check.conclusion !== "success" || state.checkUpdates.filter((row) => row.conclusion === "success").length !== 2) return;
+    state.main = SQUASH; state.merge = SQUASH; state.pullState = "closed"; state.merged = true; state.parents[SQUASH] = [MAIN];
+    mergedWriteCounts = { statuses: state.writes.length, checks: state.checkWrites.length };
+  };
+  state.onRead = (name, args) => {
+    if (!state.merged) return;
+    if (name === "getRef" && args.ref.startsWith("heads/bot/")) throw Error("Auto-deleted branch");
+    assert.ok(!["write", "writeCheck", "updateCheck"].includes(name), "No write is allowed after the protected squash");
+  };
+  const receipt = await attachAutomatedPrStatuses(options);
+  assert.equal(receipt.verified, true);
+  assert.deepEqual(receipt.delivery, { state: "merged-exact-tested-squash", sha: SQUASH, parent: MAIN, tree: TREE,
+    statusIds: [3, 4], checkIds: [1001, 1002], appId: 15368, runs: [{ id: 11, attempt: 1 }, { id: 22, attempt: 1 }] });
+  assert.deepEqual(mergedWriteCounts, { statuses: 4, checks: 4 });
+  assert.equal(state.writes.length, mergedWriteCounts.statuses);
+  assert.equal(state.checkWrites.length, mergedWriteCounts.checks);
+  assert.ok(state.writes.every((write) => write.sha === MERGE));
+  assert.ok(state.checkWrites.every((check) => check.head_sha === MERGE));
 });
 
 for (const invalid of ["closed-not-merged", "later-main", "wrong-parent", "different-tree", "changed-head", "changed-attempt", "replaced-status"]) {
@@ -323,10 +362,36 @@ test("rejects superseded check IDs even when the replacement says success", asyn
 
 test("cannot transfer an attestation after the exact source attempt changes between its two transports", async () => {
   const { state, options } = harness();
+  state.onStatus = (status) => { if (status.state === "success") state.attempts[11] = 2; };
+  await assert.rejects(attachAutomatedPrStatuses(options), /attempt changed/);
+  assert.ok(state.checkWrites.every((row) => row.conclusion !== "success"));
+  for (const name of ["verify", "style-lint"]) assert.equal(state.statuses.find((row) => row.context === name).state, "error");
+  assert.ok(state.checkWrites.filter((row) => row.conclusion === "failure").every((row) => row.external_id.includes("11.2")));
+});
+
+test("an attempt changing after an API success invalidates both transports before the other context can pass", async () => {
+  const { state, options, latest } = harness();
   state.onCheck = (check) => { if (check.conclusion === "success") state.attempts[11] = 2; };
   await assert.rejects(attachAutomatedPrStatuses(options), /attempt changed/);
-  assert.ok(state.writes.every((row) => row.state !== "success"));
-  assert.ok(state.checkWrites.filter((row) => row.conclusion === "failure").every((row) => row.external_id.includes("11.2")));
+  assert.equal(state.checkWrites.filter((row) => row.conclusion === "success").length, 1);
+  for (const name of ["verify", "style-lint"]) {
+    assert.equal(latest(MERGE, name).state, "error");
+    assert.equal(state.checks.find((row) => row.name === name).conclusion, "failure");
+  }
+});
+
+test("rechecks exact latest ownership after the final legacy write before updating its app-bound check", async () => {
+  const { state, options, latest } = harness();
+  state.onStatus = (status) => {
+    if (status.state !== "success") return;
+    const check = state.checks.find((row) => row.name === status.context);
+    state.checks.unshift({ ...check, id: 9001, external_id: "unrelated-newer-check" });
+  };
+  await assert.rejects(attachAutomatedPrStatuses(options), /owned check changed/);
+  assert.ok(state.checkUpdates.every((row) => row.conclusion !== "success"));
+  assert.equal(latest(MERGE, "verify").state, "error");
+  assert.equal(state.checks.find((row) => row.id === 9001).status, "in_progress");
+  assert.ok(state.checkUpdates.every((row) => row.id !== 9001));
 });
 
 test("checks-source failure remains a failed check and legacy status", async () => {
@@ -367,11 +432,9 @@ for (const invalid of ["app", "external_id", "head_sha", "id"]) {
 
 test("detects a completed check edited in place after its API receipt", async () => {
   const { state, options } = harness();
-  state.onStatus = (status) => {
-    if (status.state === "success") {
-      const check = state.checks.find((row) => row.name === status.context);
-      check.completed_at = "2026-10-21T12:01:00Z";
-    }
+  state.onRead = (name, args) => {
+    const check = state.checks.find((row) => row.name === "verify" && row.conclusion === "success");
+    if (name === "getChecks" && args.check_name === "verify" && check) check.completed_at = "2026-10-21T12:01:00Z";
   };
   await assert.rejects(attachAutomatedPrStatuses(options), /latest attestations/);
   assert.ok(state.writes.some((row) => row.state === "error"));
