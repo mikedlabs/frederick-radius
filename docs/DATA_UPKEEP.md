@@ -24,6 +24,24 @@ Staggering leaves room for protected checks between publishers. It reduces
 collisions but does not waive the current-main guard. An app merge or a long
 verification can still require reconciliation.
 
+## Protected publication evidence
+
+A dispatched data gate can pass without satisfying GitHub's branch ruleset.
+GitHub excludes job checks from `workflow_dispatch` from that evaluation.
+The trusted-main bridge therefore attaches explicit Checks API records as well
+as legacy statuses to the exact content-validated synthetic merge. It verifies
+the required GitHub Actions app (15368), check IDs, conclusions, tested source
+run attempts and current base/head/tree before reporting attachment complete.
+It does not execute the bot branch or approve changed facts.
+
+Attachment is not publication. Require a successful protected merge, its rule
+evaluation, and the exact ready production deployment before reporting a daily
+update live. The saved bridge artifact records the attachment target and source
+run identities even when a subsequent merge fails. Do not clear an approval,
+change the ruleset, or replay old generated client files to recover publication.
+
+See [GitHub's required-check guidance](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks#checks-from-some-workflow-jobs-are-not-evaluated).
+
 `bot/venue-native-refresh` is distinct from the old paid venue review branch.
 Model-assisted venue work requires explicit manual `include_model_sources`.
 Other pre-existing paid adapters retain their current caps, approval and
