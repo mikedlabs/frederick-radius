@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:1fcb9eacf0eb9eee86a40decfb23b4cc504bede476cc9496b176ffcab328fa15",
+  "data_version": "sha256:1badb37fe887efc3a44d3ac86193da6eff9e21fc046cf781ee2a14dfa40c6b3e",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-23T18:37:19.517Z",
+      "promoted_at": "2026-10-24T12:50:12.132Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -450,9 +450,9 @@
         },
         {
           "path": "src/data/business-info.json",
-          "sha256": "4b9d4d4e700404027eec369ed9f1a113744c002d9d571b132d2e246611b8f95b",
-          "records": 148,
-          "bytes": 120048
+          "sha256": "35cc97466fb756526f3405d849e30d14a3d73f68d34371152544a2341e367f85",
+          "records": 151,
+          "bytes": 124066
         },
         {
           "path": "src/data/field-notes.json",
@@ -492,9 +492,9 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "c398f3f934b3039794e2fc3eeda40a6ed647b5e31f567160b828641643ee8e6f",
+          "sha256": "da8c137263e285de00c1f01cfe95cd5eb7113644719a23ec6724c76edb2b6da9",
           "records": 1571,
-          "bytes": 2310511
+          "bytes": 2312701
         },
         {
           "path": "src/data/places-client-hours.json",
