@@ -22,6 +22,9 @@ import "@/app/globals.css";
 // The non-credential value satisfies the app's explicit configuration guard.
 // The fixture constructor adapter supplies no account token to the engine.
 vi.mock("@/lib/mapbox", () => ({ MAPBOX_TOKEN: "declared-local-geometry-fixture" }));
+// This isolated browser has no Next router. The real phone sheet only reads
+// the current pathname; native history, focus and its actual modal stay real.
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname }));
 vi.mock("@/components/map/mapboxFieldGuideStyle", () => ({
   MAPBOX_FIELD_GUIDE_STYLE: {
     version: 8,
@@ -67,9 +70,11 @@ const shapes: LineFC = {
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
 let originalUrl = "";
+let originalHistoryState: unknown = null;
 let evidenceName = "uninitialized";
 let fixture: Fixture | null = null;
 let stopSelectionAction: ReturnType<typeof markerGeometry> | null = null;
+let stopPreviewGeometry: Record<string, unknown> | null = null;
 let emittedStopSelections: TransitStopFocusDetail[] = [];
 const captureStopSelection = (event: Event) => {
   emittedStopSelections.push((event as CustomEvent<TransitStopFocusDetail>).detail);
@@ -99,9 +104,10 @@ function assertTarget(node: HTMLButtonElement) {
 
 beforeEach(() => {
   engine.map = null; engine.errors = []; engine.testModeApplied = false;
-  stopSelectionAction = null; emittedStopSelections = [];
+  stopSelectionAction = null; stopPreviewGeometry = null; emittedStopSelections = [];
   window.addEventListener(TRANSIT_STOP_FOCUS_EVENT, captureStopSelection);
   originalUrl = location.href;
+  originalHistoryState = history.state;
   const url = new URL(originalUrl);
   url.searchParams.set("stop", STOP.id);
   history.replaceState(history.state, "", url);
@@ -118,6 +124,7 @@ afterEach(async () => {
     viewport: { width: innerWidth, height: innerHeight },
     fixture,
     stopSelectionAction,
+    stopPreviewGeometry,
     emittedStopSelections,
     mapErrors: [...engine.errors],
     mapReady: Boolean(map?.isStyleLoaded()),
@@ -132,7 +139,7 @@ afterEach(async () => {
     window.removeEventListener(TRANSIT_STOP_FOCUS_EVENT, captureStopSelection);
     root?.unmount();
     root = null; container?.remove(); container = null;
-    history.replaceState(history.state, "", originalUrl);
+    history.replaceState(originalHistoryState, "", originalUrl);
   }
   const network = await transport.readTransitGeometryLedger();
   expect(network.rejectedExternal, "Any attempted provider request invalidates this offline fixture harness.").toEqual([]);
@@ -207,27 +214,62 @@ for (const width of [320, 390]) {
         expect(document.querySelector(".mapboxgl-popup")?.textContent).toContain("Save this bus");
         await userEvent.keyboard("{Escape}");
         await expect.poll(() => document.querySelectorAll(".mapboxgl-popup").length).toBe(0);
-        stop.focus();
-        await userEvent.keyboard("{Enter}");
-        await expect.poll(() => document.querySelectorAll(".mapboxgl-popup").length).toBe(1);
-        expect(document.querySelector(".mapboxgl-popup")?.textContent).toContain(STOP.name);
-        const useStop = Array.from(document.querySelectorAll<HTMLButtonElement>(".mapboxgl-popup button"))
+        const baseHistory = { state: history.state, href: location.href, length: history.length };
+        let openedHistoryLength: number | null = null;
+        const stopDialog = () => document.querySelector<HTMLElement>(`[role="dialog"][aria-label="Arrivals at ${STOP.name}"]`);
+        const openStop = async () => {
+          stop.focus(); await userEvent.keyboard("{Enter}");
+          await expect.poll(() => Boolean(stopDialog())).toBe(true);
+          expect(document.querySelectorAll("[role=dialog]")).toHaveLength(1);
+          expect(document.querySelectorAll(".mapboxgl-popup")).toHaveLength(0);
+          expect(stopDialog()?.querySelector("h2")?.textContent).toBe(STOP.name);
+          expect(history.state?.__frederickRadiusLayer).toBe("transit-stop-preview");
+          expect(location.href).toBe(baseHistory.href);
+          if (openedHistoryLength === null) {
+            // The prior case may leave one native forward entry. pushState
+            // replaces that entry rather than increasing history.length.
+            expect(history.length).toBeGreaterThanOrEqual(baseHistory.length);
+            expect(history.length).toBeLessThanOrEqual(baseHistory.length + 1);
+            openedHistoryLength = history.length;
+          }
+          expect(history.length).toBe(openedHistoryLength);
+          return stopDialog()!;
+        };
+        const closedStop = async () => {
+          await expect.poll(() => Boolean(stopDialog())).toBe(false);
+          await expect.poll(() => JSON.stringify(history.state)).toBe(JSON.stringify(baseHistory.state));
+          expect(location.href).toBe(baseHistory.href);
+          expect(history.length).toBe(openedHistoryLength);
+          await expect.poll(() => document.activeElement === stop).toBe(true);
+        };
+        const dialog = await openStop();
+        const useStop = Array.from(dialog.querySelectorAll<HTMLButtonElement>("button"))
           .find((button) => button.textContent?.trim() === "Use this stop")!;
         expect(useStop).toBeDefined();
         stopSelectionAction = markerGeometry(useStop);
         assertTarget(useStop);
+        const closeStop = dialog.querySelector<HTMLButtonElement>(`button[aria-label="Close arrivals at ${STOP.name}"]`)!;
+        assertTarget(closeStop);
+        const panel = dialog.querySelector<HTMLElement>("[data-bottom-sheet-panel]")!.getBoundingClientRect();
+        expect(panel.left).toBeGreaterThanOrEqual(0); expect(panel.right).toBeLessThanOrEqual(innerWidth);
+        expect(panel.top).toBeGreaterThanOrEqual(0); expect(panel.bottom).toBeLessThanOrEqual(innerHeight);
+        expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(innerWidth);
+        stopPreviewGeometry = { title: dialog.querySelector("h2")?.textContent, close: markerGeometry(closeStop), useStop: stopSelectionAction,
+          panel: { x: panel.x, y: panel.y, width: panel.width, height: panel.height }, history: { layer: history.state?.__frederickRadiusLayer, sameUrl: location.href === baseHistory.href },
+          readers: dialog.querySelectorAll("[data-transit-stop-sheet-body]").length };
+        expect(stopPreviewGeometry.readers).toBe(1);
+        await transport.recordTransitGeometryEvidence(`${evidenceName}-stop-sheet`, { scope: "Real phone sheet and declared unavailable-arrivals fixture; not current service or public basemap proof.", viewport: { width: innerWidth, height: innerHeight }, fixture, stopPreviewGeometry });
         await page.elementLocator(useStop).click();
         await expect.poll(() => emittedStopSelections.length).toBe(1);
         expect(emittedStopSelections[0]).toMatchObject({ stopId: STOP.id, selectForRider: true });
-        await expect.poll(() => document.querySelectorAll(".mapboxgl-popup").length).toBe(0);
+        await closedStop();
         // Selecting a stop hands off to My stop in the full app. Reopen here
         // so the independent Escape/focus contract remains covered as before.
-        stop.focus();
-        await userEvent.keyboard("{Enter}");
-        await expect.poll(() => document.querySelectorAll(".mapboxgl-popup").length).toBe(1);
-        await userEvent.keyboard("{Escape}");
-        await expect.poll(() => document.querySelectorAll(".mapboxgl-popup").length).toBe(0);
-        await expect.poll(() => document.activeElement === stop).toBe(true);
+        await openStop(); await userEvent.keyboard("{Escape}"); await closedStop();
+        await openStop(); history.back(); await closedStop();
+        const closing = await openStop();
+        await page.elementLocator(closing.querySelector<HTMLButtonElement>(`button[aria-label="Close arrivals at ${STOP.name}"]`)!).click();
+        await closedStop(); expect(emittedStopSelections).toHaveLength(1);
       });
     }
   });

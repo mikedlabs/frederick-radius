@@ -121,10 +121,12 @@ export default defineConfig({
           return ledger;
         }),
         recordTransitGeometryEvidence: defineBrowserCommand(async ({ frame, sessionId }, name: string, proof: Record<string, unknown>) => {
-          if (!/^(320|390)-(separated|colocated)$/.test(name)) throw new Error("Invalid geometry proof name.");
+          if (!/^(320|390)-(separated|colocated)(-stop-sheet)?$/.test(name)) throw new Error("Invalid geometry proof name.");
           await mkdir(proofDirectory, { recursive: true });
           const activeFrame = await frame();
-          const target = activeFrame.locator("[data-transit-geometry-frame]");
+          const target = activeFrame.locator(name.endsWith("-stop-sheet")
+            ? '[role="dialog"]:has([data-transit-stop-sheet-body])'
+            : "[data-transit-geometry-frame]");
           if (await target.count()) await target.screenshot({ path: resolve(proofDirectory, `${name}.png`) });
           const output = resolve(proofDirectory, `${name}.json`);
           await writeFile(output, JSON.stringify({ ...proof, network: ledgers.get(sessionId) }, null, 2));
