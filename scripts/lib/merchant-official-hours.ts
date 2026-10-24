@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import type { DayOfWeek, Hours } from "../../src/data/places";
-import { MERCHANT_HOURS_SOURCES, merchantHoursExpiry, merchantWeeklyHoursWindow, validateMerchantHoursArtifact, type MerchantHoursArtifact, type MerchantHoursRecord, type MerchantHoursSource } from "../../src/lib/merchant-hours";
+import { MERCHANT_HOURS_SOURCES, merchantHoursExpiry, merchantHoursForPlace, merchantWeeklyHoursWindow, validateMerchantHoursArtifact, type MerchantHoursArtifact, type MerchantHoursRecord, type MerchantHoursSource } from "../../src/lib/merchant-hours";
 import { WEEKDAYS, isCalendarDate } from "../../src/lib/official-hours";
 import { isHoursFresh } from "../../src/lib/hours-freshness";
 import { easternDayKey } from "../../src/lib/tz";
@@ -384,6 +384,13 @@ export function merchantHoursNeedsReview(previous: unknown, next: MerchantHoursA
   try { validateMerchantHoursArtifact(previous); validateMerchantHoursArtifact(next); } catch { return true; }
   if (previous.places.length !== next.places.length) return true;
   if (next.places.some((row) => { const before = previous.places.find((item) => item.slug === row.slug); return !before || approvedFacts(before) !== approvedFacts(row); })) return true;
+  // A new hold can suppress current accepted hours just as removing a hold
+  // restores them. An already expired row has no public claim to suppress.
+  if (next.review.some((held) => {
+    const source = MERCHANT_HOURS_SOURCES.find((item) => item.slug === held.slug);
+    return source && !previous.review.some((item) => item.slug === held.slug)
+      && merchantHoursForPlace({ slug: source.slug, category: source.category, website: source.url }, previous, new Date(held.checked_at)).hours !== undefined;
+  })) return true;
   // Removing a hold restores a public claim and always needs explicit review.
   return previous.review.some((held) => !next.review.some((item) => item.slug === held.slug));
 }

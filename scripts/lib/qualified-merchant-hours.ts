@@ -57,7 +57,7 @@ function rejectStructuredHours(document: Document) {
   }
 }
 function rejectNotices(text: string) {
-  const unreviewed = text.replace(/Please note: our kitchen is closed on Saturday & Sunday from 2:45 p\.m\.\s*[-–—]\s*4:00 p\.m\. The restaurant is open for drinks only during this time\./g, "");
+  const unreviewed = text.replace(/Please note(?::| that) our kitchen is closed on Saturday & Sunday from 2:45 p\.m\.\s*[-–—]\s*4:00 p\.m\. The restaurant is open for drinks only during this time\./g, "");
   if (/temporarily closed|closed (?:today|tomorrow|for\b|this\b|next\b|on (?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday))|closing early|special hours|holiday hours|reduced hours|hours (?:vary|may vary|subject to)|until sold out|by appointment/i.test(unreviewed)) throw Error("Unreviewed qualified closure or service notice.");
 }
 function gregorianEaster(year: number) {
@@ -141,13 +141,18 @@ function hootch(document: Document): QualifiedSchedule {
   const match = exact(dinner, new RegExp(`^DINNER HOURS MONDAY\\s*[-–—]\\s*THURSDAY ${RANGE} FRIDAY\\s*[-–—]\\s*SATURDAY ${RANGE} SUNDAY ${RANGE}$`, "i"));
   exact(brunch, /^BRUNCH HOURS SATURDAY & SUNDAY 11:00 AM\s*[-–—]\s*2:45 PM$/i);
   const text = visibleText(document.body);
-  if (!text.includes("Our bar is open late Friday & Saturday night.") || !/Please note: our kitchen is closed on Saturday & Sunday from 2:45 p\.m\.\s*[-–—]\s*4:00 p\.m\. The restaurant is open for drinks only during this time\./.test(text)) throw Error("Changed Hootch service qualification.");
-  const closure = "We are closed on the following holidays: Memorial Day, July 4th, Labor Day, Thanksgiving, Christmas Eve, Christmas Day and New Years Day.";
+  if (!text.includes("Our bar is open late Friday & Saturday night.") || !/Please note(?::| that) our kitchen is closed on Saturday & Sunday from 2:45 p\.m\.\s*[-–—]\s*4:00 p\.m\. The restaurant is open for drinks only during this time\./.test(text)) throw Error("Changed Hootch service qualification.");
+  const closurePrefix = "We are closed on the following holidays: Memorial Day, July 4th, Labor Day, Thanksgiving, Christmas Eve, Christmas Day";
+  const reviewedClosures = [`${closurePrefix} and New Years Day.`, `${closurePrefix}.`];
   const closures = [...document.querySelectorAll("p")].filter(node => /^We are closed on the following holidays:/.test(visibleText(node)));
-  if (!closures.length || closures.some(node => visibleText(node) !== closure)) throw Error("Missing or conflicting reviewed Hootch closure qualifier.");
+  const closure = closures[0] ? visibleText(closures[0]) : "";
+  if (!reviewedClosures.includes(closure) || closures.some(node => visibleText(node) !== closure)) throw Error("Missing or conflicting reviewed Hootch closure qualifier.");
+  const closureNote = closure === reviewedClosures[0]
+    ? "Closed on Memorial Day, July 4, Labor Day, Thanksgiving, Christmas Eve, Christmas Day and New Year’s Day."
+    : "Closed on Memorial Day, July 4, Labor Day, Thanksgiving, Christmas Eve and Christmas Day.";
   const hours: Hours = {};
   assign(hours, DAYS.slice(0, 4), match[1], match[2]); assign(hours, ["fri", "sat"], match[3], match[4]); assign(hours, ["sun"], match[5], match[6]);
-  return { hours, qualification: { scope: "kitchen", label: "Dinner hours", note: "These are dinner service hours. Weekend brunch runs from 11 a.m. to 2:45 p.m. The kitchen closes between brunch and dinner. Bar hours differ. Closed on Memorial Day, July 4, Labor Day, Thanksgiving, Christmas Eve, Christmas Day and New Year’s Day.", usage: "display_only" } };
+  return { hours, qualification: { scope: "kitchen", label: "Dinner hours", note: `These are dinner service hours. Weekend brunch runs from 11 a.m. to 2:45 p.m. The kitchen closes between brunch and dinner. Bar hours differ. ${closureNote}`, usage: "display_only" } };
 }
 
 /** Three reviewed exact sources only. A qualified schedule is useful display

@@ -342,7 +342,9 @@ function microdataStoreWeek(document: Document, pageText: string, cohort: Extrac
   try { config = JSON.parse(configs[0]?.textContent ?? ""); } catch { throw new Error("Missing store hours configuration."); }
   const configKeys = ["collapseDays", "dayOfWeekMap", "disableOpenUntil", "disableTodayFirst", "hideSchema", "highlightToday", "highlightTodayBackground", "hours", "open24HoursMessage", "showOpenToday", "twentyFourHourClock", "utcOffsets", "wholeWeekMessage"];
   if (configs.length !== 1 || !config || typeof config !== "object" || Array.isArray(config) || Object.keys(config).some((key) => !configKeys.includes(key))
-    || configKeys.filter((key) => !["hours", "utcOffsets"].includes(key)).some((key) => config[key] !== null)) throw new Error("Unreviewed store configuration qualifier.");
+    // The reviewed source now explicitly keeps schema visible. This does not
+    // change any clock; the visible, microdata and machine weeks still agree.
+    || configKeys.filter((key) => !["hours", "utcOffsets"].includes(key)).some((key) => config[key] !== null && !(key === "hideSchema" && config[key] === false))) throw new Error("Unreviewed store configuration qualifier.");
   const configured = machineWeek(JSON.stringify(config.hours));
   for (const day of WEEKDAYS) if (JSON.stringify(configured[day]) !== JSON.stringify(hours[day])) throw new Error("Conflicting store configuration hours.");
   const hero = one(card, cohort.hero_schedule);

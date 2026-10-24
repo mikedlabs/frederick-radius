@@ -32,6 +32,23 @@ describe("reviewed microdata store-hours cohort", () => {
     expect(record.source_name).toBe(source(town).name);
   });
 
+  it.each(["middletown", "walkersville"])("accepts %s's explicit false schema-display flag without changing its proven store week", (town) => {
+    const record = parse((d) => {
+      const node = storePanel(d).querySelector("script.js-hours-config")!;
+      const config = JSON.parse(node.textContent!); config.hideSchema = false;
+      node.textContent = JSON.stringify(config);
+    }, town);
+    for (const day of WEEKDAYS) expect(record.hours[day]).toEqual([{ open: "06:00", close: "23:00" }]);
+  });
+
+  it.each([["hideSchema", true], ["hideSchema", "false"], ["showOpenToday", false]])("holds an unreviewed %s configuration value %s", (key, value) => {
+    expect(() => parse((d) => {
+      const node = storePanel(d).querySelector("script.js-hours-config")!;
+      const config = JSON.parse(node.textContent!); config[key as string] = value;
+      node.textContent = JSON.stringify(config);
+    })).toThrow(/configuration qualifier/);
+  });
+
   it.each([
     ["wrong primary street", (d: Document) => { d.querySelector("#address .c-address-street-1")!.textContent = "999 Wrong St"; }],
     ["conflicting structured street", (d: Document) => { d.querySelector("#address meta[itemprop='streetAddress']")!.setAttribute("content", "999 Wrong St"); }],

@@ -47,6 +47,19 @@ describe("reviewed qualified official source adapters", () => {
     expect(row.qualification).toMatchObject({ scope: "kitchen", label: "Dinner hours", usage: "display_only" });
     expect(row.qualification.note).toContain("Weekend brunch runs from 11 a.m. to 2:45 p.m.");
   });
+  it("retains only the closures actually disclosed by Hootch's current wording", () => {
+    const slug = cases[2][0];
+    const html = fixtures[slug].replace("Please note: our kitchen", "Please note that our kitchen")
+      .replace("Christmas Day and New Years Day.", "Christmas Day.");
+    const row = parse(slug, html)!;
+    expect(row.hours).toEqual(parse(slug)!.hours);
+    expect(row.qualification).toMatchObject({ scope: "kitchen", usage: "display_only" });
+    expect(row.qualification.note).toContain("Closed on Memorial Day, July 4, Labor Day, Thanksgiving, Christmas Eve and Christmas Day.");
+    expect(row.qualification.note).not.toContain("New Year");
+    expect(() => parse(slug, html.replace("2:45 p.m. – 4:00 p.m.", "3:00 p.m. – 4:00 p.m."))).toThrow();
+    expect(() => parse(slug, html.replace("Please note that", "Please note whether"))).toThrow();
+    expect(() => parse(slug, html.replace("</body>", "<p>We are closed on the following holidays: Memorial Day, July 4th, Labor Day, Thanksgiving, Christmas Eve, Christmas Day and New Years Day.</p></body>"))).toThrow(/conflicting/);
+  });
   it.each([
     [cases[0][0], "48 East Patrick Street", "148 East Patrick Street"],
     [cases[0][0], "21701", "21702"],

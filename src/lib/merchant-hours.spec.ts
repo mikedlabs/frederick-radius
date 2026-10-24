@@ -127,7 +127,7 @@ describe("reviewed merchant hours", () => {
     expect(result.artifact.places[0]).toEqual(previous.places[0]);
     expect(result.artifact.places[1]).toEqual(previous.places[1]);
     expect(legacyReviews(result.artifact).map((row) => row.reason)).toEqual(["source_unavailable", "unparseable_or_conflicted"]);
-    expect(result.reviewRequired).toBe(false);
+    expect(result.reviewRequired).toBe(true);
     expect(merchantHoursForPlace(place(0), result.artifact, now).hours).toBeUndefined();
     expect(merchantHoursForPlace(place(2), result.artifact, now).hours).toBeDefined();
   });
@@ -148,6 +148,27 @@ describe("reviewed merchant hours", () => {
     expect(accepted.places.find((row) => row.slug === candidate.slug)).toEqual(candidate);
     const next = await collectMerchantOfficialHours(accepted, vi.fn(async (url) => fixturePage(url)), now);
     expect(legacyReviews(next.artifact)).toEqual([]); expect(next.reviewRequired).toBe(false);
+  });
+  it.each(["source_unavailable", "unparseable_or_conflicted", "changed_facts", "pending_acceptance"] as const)("requires review before a new %s hold suppresses an accepted schedule", (reason) => {
+    const before = parsed(); const next = structuredClone(before);
+    next.review.push({ slug: place(0).slug, checked_at: now.toISOString(), reason });
+    expect(merchantHoursForPlace(place(0), before, now).hours).toBeDefined();
+    expect(merchantHoursForPlace(place(0), next, now).hours).toBeUndefined();
+    expect(merchantHoursNeedsReview(before, next)).toBe(true);
+    const renewedHold = structuredClone(next); renewedHold.review[0].checked_at = "2026-10-20T06:00:00.000Z";
+    expect(merchantHoursNeedsReview(next, renewedHold)).toBe(false);
+  });
+  it("does not require public-change review for an unavailable source without an accepted schedule", () => {
+    const before = parsed(); const next = structuredClone(before);
+    next.review.push({ slug: "pistarros", checked_at: now.toISOString(), reason: "source_unavailable" });
+    expect(merchantHoursNeedsReview(before, next)).toBe(false);
+  });
+  it("does not treat holding an already expired dated week as suppression of current hours", () => {
+    const before = parsed(); const next = structuredClone(before);
+    const expiredAt = before.places[0].expires_at;
+    next.review.push({ slug: place(0).slug, checked_at: expiredAt, reason: "source_unavailable" });
+    expect(merchantHoursForPlace(place(0), before, new Date(expiredAt)).hours).toBeUndefined();
+    expect(merchantHoursNeedsReview(before, next)).toBe(false);
   });
   it("holds only a new dated week while nine libraries and three unchanged merchants remain refreshable", async () => {
     const nextAt = new Date("2026-10-26T23:30:00.000Z");
