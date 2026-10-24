@@ -53,16 +53,16 @@ export function isIosSafari(): boolean {
 
 /** Keep acquisition UI away from focused work and persistent mobile action docks. */
 export function isInstallPromptSuppressedPath(pathname: string): boolean {
-  // /today included: every OTHER focused surface was suppressed, which left
-  // the panel opening over the landing shelf 10 seconds into a first visit,
-  // while the person is reading the thing they came for. The manual doors in
-  // Saved, Compass and Settings are untouched, so this removes an interruption
-  // rather than the ability to install.
+  // Automatic offers stay out of focused journeys. Deliberate actions in
+  // Saved, Compass and Settings bypass this policy and keep installation open.
   return isFairDayPath(pathname)
     || pathname === "/map"
     || pathname === "/today"
+    // Route/stop and event discovery are focused journeys too. In particular,
+    // a timed offer must not surface when a rider closes a temporary sheet.
+    || /^\/(transit|events)(?:\/|$)/.test(pathname)
     // The setup page already has a deliberate Add action.
     || pathname === "/install"
     || pathname.startsWith("/ask")
-    || /^\/(places|events)\/[^/]+$/.test(pathname);
+    || /^\/places\/[^/]+$/.test(pathname);
 }
