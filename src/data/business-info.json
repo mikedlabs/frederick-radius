@@ -172,7 +172,31 @@
     "source": {
       "url": "http://fredcoffeeco.com/",
       "fetchedAt": "2026-05-31T18:16:53.715Z"
-    }
+    },
+    "commerce_source": {
+      "url": "https://fredcoffeeco.com/",
+      "checkedAt": "2026-10-24T12:49:55.343Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/the-frederick-coffee-company-cafe-100-n-east-st",
+        "anchor_text": "Order Online",
+        "source_url": "https://fredcoffeeco.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://fredcoffeeco.com/menu",
+        "anchor_text": "Our Menu",
+        "source_url": "https://fredcoffeeco.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://fredcoffeeco.com/catering",
+        "anchor_text": "Catering",
+        "source_url": "https://fredcoffeeco.com/"
+      }
+    ]
   },
   "isabellas-taverna-tapas-bar-frederick": {
     "known_for": "Isabella's serves Spanish tapas and taverna food in downtown Frederick.",
@@ -185,7 +209,7 @@
     },
     "commerce_source": {
       "url": "https://isabellas-tavern.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-10-24T12:49:58.611Z"
     },
     "commerce_links": [
       {
@@ -398,15 +422,15 @@
       "fetchedAt": "2026-05-31T18:17:38.135Z"
     },
     "commerce_source": {
-      "url": "https://www.ilportorestaurant.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "url": "https://www.ilportorestaurant.com/location-frederick/",
+      "checkedAt": "2026-10-24T12:50:00.388Z"
     },
     "commerce_links": [
       {
         "type": "menu",
         "url": "https://www.ilportorestaurant.com/dinner-menu/",
         "anchor_text": "Dinner",
-        "source_url": "https://www.ilportorestaurant.com/"
+        "source_url": "https://www.ilportorestaurant.com/location-frederick/"
       }
     ]
   },
@@ -435,7 +459,19 @@
     "source": {
       "url": "http://www.fredericksoups.com/",
       "fetchedAt": "2026-05-31T18:17:49.863Z"
-    }
+    },
+    "commerce_source": {
+      "url": "https://www.fredericksoups.com/",
+      "checkedAt": "2026-10-24T12:49:57.163Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.fredericksoups.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://www.fredericksoups.com/"
+      }
+    ]
   },
   "manoushe": {
     "known_for": "Bakehouse makes croissants and other baked goods, including cruffins, scones, and specialty cakes.",
@@ -570,7 +606,7 @@
     },
     "commerce_source": {
       "url": "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-10-24T12:49:58.036Z"
     }
   },
   "tin-corner": {
@@ -945,15 +981,9 @@
     "name": "Hootch & Banter",
     "commerce_source": {
       "url": "https://hootchandbanter.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-10-24T12:49:58.124Z"
     },
     "commerce_links": [
-      {
-        "type": "menu",
-        "url": "https://hootchandbanter.com/brunch-menu/",
-        "anchor_text": "BRUNCH",
-        "source_url": "https://hootchandbanter.com/"
-      },
       {
         "type": "menu",
         "url": "https://hootchandbanter.com/dinner-menu/",
@@ -962,8 +992,20 @@
       },
       {
         "type": "menu",
+        "url": "https://hootchandbanter.com/brunch-menu/",
+        "anchor_text": "BRUNCH",
+        "source_url": "https://hootchandbanter.com/"
+      },
+      {
+        "type": "menu",
         "url": "https://hootchandbanter.com/kids-menu/",
         "anchor_text": "KIDS",
+        "source_url": "https://hootchandbanter.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://hootchandbanter.com/giftcards/",
+        "anchor_text": "Gift Cards",
         "source_url": "https://hootchandbanter.com/"
       }
     ]
@@ -1692,7 +1734,7 @@
     "name": "Frederick Fudge Ice Cream",
     "commerce_source": {
       "url": "https://fredicecream.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-10-24T12:49:56.776Z"
     },
     "commerce_links": [
       {
@@ -3022,6 +3064,48 @@
         "url": "https://www.toasttab.com/carriage-house-inn-200-s-seton-ave/giftcards?utmCampaign=onlineOrdering",
         "anchor_text": "Gift Cards",
         "source_url": "https://chouseinn.com/"
+      }
+    ]
+  },
+  "firebirds-wood-fired-grill-frederick": {
+    "name": "Firebirds Wood Fired Grill",
+    "commerce_source": {
+      "url": "https://firebirdsrestaurants.com/frederick",
+      "checkedAt": "2026-10-24T12:49:52.227Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://firebirdsrestaurants.com/frederick/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://firebirdsrestaurants.com/frederick"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://firebirdsrestaurants.com/gift-cards",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://firebirdsrestaurants.com/frederick"
+      },
+      {
+        "type": "order",
+        "url": "https://firebirdsrestaurants.com/order-online/menu/order/205958",
+        "anchor_text": "Order Online",
+        "source_url": "https://firebirdsrestaurants.com/frederick"
+      }
+    ]
+  },
+  "ggs-pastry-shop-mount-airy": {
+    "name": "GG's Pastry Shop",
+    "commerce_source": {
+      "url": "https://ggspastryshop.com/",
+      "checkedAt": "2026-10-24T12:49:57.353Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://ggspastryshop.com/menu/",
+        "anchor_text": "Menu",
+        "source_url": "https://ggspastryshop.com/"
       }
     ]
   }
