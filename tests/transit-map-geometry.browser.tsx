@@ -243,20 +243,40 @@ for (const width of [320, 390]) {
           await expect.poll(() => document.activeElement === stop).toBe(true);
         };
         const dialog = await openStop();
-        const useStop = Array.from(dialog.querySelectorAll<HTMLButtonElement>("button"))
+        // Match a rider resizing the open phone sheet before dismissing it.
+        // The same marker, renderer and temporary history entry must survive.
+        if (width === 390 && !colocated) {
+          const canvas = map.getCanvas();
+          for (const phoneWidth of [320, 430]) {
+            await page.viewport(phoneWidth, 844);
+            await expect.poll(() => innerWidth).toBe(phoneWidth);
+            expect(stopDialog()).toBe(dialog);
+            expect(engine.map).toBe(map);
+            expect(canvas.isConnected).toBe(true);
+            expect(map.getCanvas()).toBe(canvas);
+            expect(history.state?.__frederickRadiusLayer).toBe("transit-stop-preview");
+            expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(phoneWidth);
+          }
+          await page.elementLocator(dialog.querySelector<HTMLButtonElement>(`button[aria-label="Close arrivals at ${STOP.name}"]`)!).click();
+          await closedStop();
+          await page.viewport(width, 844);
+          await openStop();
+        }
+        const currentDialog = stopDialog()!;
+        const useStop = Array.from(currentDialog.querySelectorAll<HTMLButtonElement>("button"))
           .find((button) => button.textContent?.trim() === "Use this stop")!;
         expect(useStop).toBeDefined();
         stopSelectionAction = markerGeometry(useStop);
         assertTarget(useStop);
-        const closeStop = dialog.querySelector<HTMLButtonElement>(`button[aria-label="Close arrivals at ${STOP.name}"]`)!;
+        const closeStop = currentDialog.querySelector<HTMLButtonElement>(`button[aria-label="Close arrivals at ${STOP.name}"]`)!;
         assertTarget(closeStop);
-        const panel = dialog.querySelector<HTMLElement>("[data-bottom-sheet-panel]")!.getBoundingClientRect();
+        const panel = currentDialog.querySelector<HTMLElement>("[data-bottom-sheet-panel]")!.getBoundingClientRect();
         expect(panel.left).toBeGreaterThanOrEqual(0); expect(panel.right).toBeLessThanOrEqual(innerWidth);
         expect(panel.top).toBeGreaterThanOrEqual(0); expect(panel.bottom).toBeLessThanOrEqual(innerHeight);
         expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(innerWidth);
-        stopPreviewGeometry = { title: dialog.querySelector("h2")?.textContent, close: markerGeometry(closeStop), useStop: stopSelectionAction,
+        stopPreviewGeometry = { title: currentDialog.querySelector("h2")?.textContent, close: markerGeometry(closeStop), useStop: stopSelectionAction,
           panel: { x: panel.x, y: panel.y, width: panel.width, height: panel.height }, history: { layer: history.state?.__frederickRadiusLayer, sameUrl: location.href === baseHistory.href },
-          readers: dialog.querySelectorAll("[data-transit-stop-sheet-body]").length };
+          readers: currentDialog.querySelectorAll("[data-transit-stop-sheet-body]").length };
         expect(stopPreviewGeometry.readers).toBe(1);
         await transport.recordTransitGeometryEvidence(`${evidenceName}-stop-sheet`, { scope: "Real phone sheet and declared unavailable-arrivals fixture; not current service or public basemap proof.", viewport: { width: innerWidth, height: innerHeight }, fixture, stopPreviewGeometry });
         await page.elementLocator(useStop).click();
