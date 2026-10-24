@@ -30,6 +30,8 @@ const mocked = vi.hoisted(() => ({
   chunkGate: null as Promise<void> | null,
   fitBounds: vi.fn(),
   flyTo: vi.fn(),
+  zoomIn: vi.fn(),
+  zoomOut: vi.fn(),
   arrivalsStatus: "unavailable",
   arrivalPredictions: [] as Record<string, unknown>[],
   arrivalObservedAt: null as number | null,
@@ -56,7 +58,7 @@ vi.mock("next/dynamic", async () => {
 });
 vi.mock("react-map-gl/mapbox", async () => {
   const { createElement, forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef } = await import("react");
-  const map = { fitBounds: mocked.fitBounds, flyTo: mocked.flyTo, easeTo: mocked.flyTo, jumpTo: vi.fn(), getZoom: () => 15, project: ([lng, lat]: number[]) => ({ x: lng, y: lat }) };
+  const map = { fitBounds: mocked.fitBounds, flyTo: mocked.flyTo, easeTo: mocked.flyTo, zoomIn: mocked.zoomIn, zoomOut: mocked.zoomOut, jumpTo: vi.fn(), getZoom: () => 15, project: ([lng, lat]: number[]) => ({ x: lng, y: lat }) };
   return {
     default: forwardRef(function TestMap(props: MapCallbacks & { children?: ReactNode }, ref) {
       useLayoutEffect(() => { mocked.mapProps = props; }, [props]);
@@ -114,7 +116,7 @@ let fetcher: ReturnType<typeof vi.fn<typeof fetch>>;
 
 beforeEach(() => {
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-  mocked.fitBounds.mockReset(); mocked.flyTo.mockReset(); mocked.mapProps = null;
+  mocked.fitBounds.mockReset(); mocked.flyTo.mockReset(); mocked.zoomIn.mockReset(); mocked.zoomOut.mockReset(); mocked.mapProps = null;
   mocked.arrivalsStatus = "unavailable";
   mocked.arrivalPredictions = []; mocked.arrivalObservedAt = null; mocked.nowMs = 0;
   sessionStorage.clear(); localStorage.clear();
@@ -122,7 +124,7 @@ beforeEach(() => {
   mocked.imports = 0; mocked.chunkGate = null;
   history.replaceState({ retainedNextState: { key: "preserve" } }, "", `/transit?stop=${STOP.id}&in=county#my-stop-heading`);
   Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
-  vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(prefers-reduced-motion: reduce)", addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, writable: true, value: vi.fn() });
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()), 0));
   vi.stubGlobal("cancelAnimationFrame", (id: number) => window.clearTimeout(id));
@@ -162,6 +164,33 @@ function map(liveBuses = false) { return <TransitMap shapes={shapes} zoom={15} i
 // declared fixture. These tests establish interaction contracts, not WebGL,
 // Mapbox availability, current bus service or actual 44px painted geometry.
 describe("Transit stop-to-map continuity", () => {
+  it("uses one-handed controls on the existing renderer without changing the rider stop or URL", async () => {
+    await render(map());
+    const beforeUrl = location.href;
+    const beforeReads = fetcher.mock.calls.length;
+    await click(button("Zoom in"));
+    await click(button("Zoom out"));
+    expect(mocked.zoomIn).toHaveBeenCalledExactlyOnceWith({ duration: 0 });
+    expect(mocked.zoomOut).toHaveBeenCalledExactlyOnceWith({ duration: 0 });
+    await click(button("Reset transit map view"));
+    expect(mocked.flyTo).toHaveBeenLastCalledWith({ center: [STOP.lng, STOP.lat], zoom: 14.5, duration: 0 });
+    expect(location.href).toBe(beforeUrl);
+    expect(container.querySelector(`[data-transit-active-stop="${STOP.id}"]`)).not.toBeNull();
+    expect(fetcher.mock.calls).toHaveLength(beforeReads);
+  });
+
+  it("resets the selected route using all published variants instead of losing route context", async () => {
+    await render(map());
+    await act(async () => { requestTransitRouteFocus(ROUTE_ID); });
+    const focusedBounds = mocked.fitBounds.mock.calls.at(-1)!;
+    expect(focusedBounds).toBeDefined();
+    mocked.fitBounds.mockClear();
+    await click(button("Reset transit map view"));
+    expect(mocked.fitBounds).toHaveBeenCalledExactlyOnceWith(...focusedBounds);
+    expect(container.querySelector("select")?.value).toBe(ROUTE_ID);
+    expect(new URL(location.href).searchParams.get("stop")).toBe(STOP.id);
+  });
+
   it.each([
     { tripScheduleRelationship: "CANCELED" }, { tripScheduleRelationship: "DELETED" },
     { scheduleRelationship: "SKIPPED" }, { scheduleRelationship: "NO_DATA" },

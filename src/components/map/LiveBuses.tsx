@@ -1018,10 +1018,6 @@ function VisibleLiveBuses({
           hasUsableEta
             ? Math.max(0, Math.ceil(etaDeltaMinutes))
             : null;
-        const approachProgress =
-          etaMinutes === null
-            ? null
-            : Math.max(8, Math.min(100, ((12 - etaMinutes) / 12) * 100));
         const isWatching = watching === v.vehicleId;
         const targetStop = v.nextStop
           ? SELECTABLE_STOP_BY_ID.get(v.nextStop.id)
@@ -1091,34 +1087,6 @@ function VisibleLiveBuses({
                       )}
                     </span>
                   </div>
-                  {approachProgress !== null && (
-                    <div
-                      role="progressbar"
-                      aria-label={`Approach to ${v.nextStop.name}`}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={Math.round(approachProgress)}
-                      style={{
-                        height: 4,
-                        marginTop: 7,
-                        overflow: "hidden",
-                        borderRadius: 999,
-                        background: "var(--app-border, #D9D2C3)",
-                      }}
-                    >
-                      <span
-                        aria-hidden
-                        style={{
-                          display: "block",
-                          width: `${approachProgress}%`,
-                          height: "100%",
-                          borderRadius: 999,
-                          background: color,
-                          transition: reduced ? "none" : "width 500ms ease",
-                        }}
-                      />
-                    </div>
-                  )}
                 </div>
               )}
               {v.nextStop?.etaEpoch &&

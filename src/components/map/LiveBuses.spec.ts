@@ -205,6 +205,52 @@ describe("LiveBuses feed sessions", () => {
     );
   });
 
+  it("keeps the reported ETA and foreground Watch cue without implying measured approach progress", async () => {
+    const now = Date.UTC(2026, 9, 23, 18);
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(() =>
+        response(
+          currentFeed({
+            vehicles: [{
+              ...VEHICLE,
+              nextStop: {
+                id: "test-stop",
+                name: "Test transfer stop",
+                lat: VEHICLE.lat,
+                lng: VEHICLE.lng,
+                etaEpoch: now / 1_000 + 60,
+              },
+            }],
+          }),
+        ),
+      ),
+    );
+
+    await act(async () => {
+      root.render(createElement(LiveBuses, { show: true }));
+    });
+    await settle();
+    const marker = container.querySelector<HTMLButtonElement>("[data-live-bus-marker]");
+    expect(marker).not.toBeNull();
+    act(() => marker?.click());
+
+    const popup = container.querySelector('[data-testid="popup"]');
+    expect(popup?.textContent).toContain("Test transfer stop · 1 min");
+    expect(popup?.querySelector('[role="progressbar"]')).toBeNull();
+    const watch = [...(popup?.querySelectorAll<HTMLButtonElement>("button") ?? [])]
+      .find((button) => button.textContent === "Watch next stop");
+    expect(watch).toBeDefined();
+    act(() => watch?.click());
+
+    expect(watch?.getAttribute("aria-pressed")).toBe("true");
+    expect(watch?.textContent).toBe("Watching next stop");
+    expect(popup?.textContent).toContain("The reported arrival is within about two minutes.");
+    expect(popup?.textContent).toContain("Test transfer stop · 1 min");
+    expect(popup?.querySelector('[role="progressbar"]')).toBeNull();
+  });
+
   it("lets the browse context rail own feed status and groups buses at county zoom", async () => {
     vi.stubGlobal(
       "fetch",

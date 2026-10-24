@@ -63,6 +63,18 @@ vehicles. The latest exact intent survives a deferred map load when device
 storage is unavailable. Opening the map does not alter the rider's URL or
 history. Other existing map consumers keep their normal loading policy.
 
+On a phone, a stop preview uses the shared bottom sheet and one arrival reader
+instead of a bubble clipped by the map. Its presentation stays stable through
+rotation. Close, Escape and native Back dismiss its single temporary history
+layer and return focus to the stop marker. Use this stop waits for history and
+sheet focus cleanup before selecting the exact stop and returning to My stop.
+Desktop stop previews retain the map popup.
+
+Zoom and contextual reset operate on the existing map instance and keep the
+selected route, stop and rider URL. No second location control or automatic map
+reload is needed. Vehicle detail shows the reported ETA without inventing a
+percentage of the journey completed.
+
 A representative route schematic is not a directional itinerary or an exact
 remaining-stop count. Delayed or unavailable vehicle reports lose live cues
 and estimates; official schedules remain available.

@@ -2,14 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BusFront,
   Map as MapIcon,
   MapPin,
+  Minus,
+  Plus,
+  Scan,
 } from "lucide-react";
 import Map, {
   Source,
   Layer,
   AttributionControl,
-  Popup,
   Marker,
   type MapMouseEvent,
   type MapRef,
@@ -34,7 +37,8 @@ import {
   type LiveLayerGate,
 } from "@/components/map/liveLayerGate";
 import LiveMarcTrains from "@/components/map/LiveMarcTrains";
-import StopArrivalsPopup, { type SelectedStop } from "./StopArrivalsPopup";
+import type { SelectedStop } from "./StopArrivalsPopup";
+import TransitStopPreview from "./TransitStopPreview";
 import { haptic } from "@/lib/haptics";
 import type { LineFC, TransitStop } from "@/lib/integrations/transitFrederick";
 import {
@@ -60,6 +64,7 @@ import TRANSIT_NETWORK from "@/data/transit-network.json";
 import { CURRENT_TRANSIT_STOPS } from "@/lib/transit-static";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { isFatalMapboxError } from "@/components/map/mapboxFailure";
+import { readableTextOn } from "@/lib/color/readableText";
 
 type TRoute = { id: string; short: string; name: string; color: string };
 const ROUTES = TRANSIT.routes as TRoute[];
@@ -108,6 +113,20 @@ type ActiveVehicleFocus = TransitVehicleFocusDetail & {
 };
 
 type TransitMapInstance = ReturnType<MapRef["getMap"]>;
+
+function frameRoute(map: TransitMapInstance, routeId: string, hasStop: boolean): void {
+  const points = SHAPE_LINES_BY_ROUTE[routeId]?.flat().filter(
+    ([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng),
+  );
+  if (!points?.length) return;
+  const latitudes = points.map(([lat]) => lat);
+  const longitudes = points.map(([, lng]) => lng);
+  const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  map.fitBounds(
+    [[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]],
+    { padding: hasStop ? { top: 120, right: 54, bottom: 54, left: 54 } : 54, duration: reduced ? 0 : 500 },
+  );
+}
 
 function frameVehicleAndStop(
   map: TransitMapInstance,
@@ -334,13 +353,16 @@ export default function TransitMap({
   useEffect(() => {
     if (!foregroundOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
+      // The phone dialog owns Escape and its history layer, including the
+      // brief interval when browser focus leaves the panel during dismissal.
+      if (stopPreviewOpen && document.querySelector("[data-transit-stop-sheet-body]")) return;
       event.preventDefault();
       closeForeground(true);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [foregroundOpen, closeForeground]);
+  }, [foregroundOpen, closeForeground, stopPreviewOpen]);
   useEffect(() => {
     const map = mapRef.current?.getMap();
     if (!map || !mapLoaded || !stopFocusRequest) return;
@@ -373,30 +395,30 @@ export default function TransitMap({
   useEffect(() => {
     const map = mapRef.current?.getMap();
     if (!map || !mapLoaded || !routeFocusRequest) return;
-    const routeLines = SHAPE_LINES_BY_ROUTE[routeFocusRequest.routeId];
-    if (!routeLines || routeLines.length === 0) return;
-
-    let west = Infinity;
-    let south = Infinity;
-    let east = -Infinity;
-    let north = -Infinity;
-    for (const points of routeLines) {
-      for (const [lat, lng] of points) {
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-        west = Math.min(west, lng);
-        east = Math.max(east, lng);
-        south = Math.min(south, lat);
-        north = Math.max(north, lat);
-      }
-    }
-    if (![west, south, east, north].every(Number.isFinite)) return;
-
-    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    map.fitBounds(
-      [[west, south], [east, north]],
-      { padding: activeStop ? { top: 120, right: 54, bottom: 54, left: 54 } : 54, duration: reduced ? 0 : 500 },
-    );
+    frameRoute(map, routeFocusRequest.routeId, Boolean(activeStop));
   }, [activeStop, mapLoaded, routeFocusRequest]);
+
+  const resetCamera = () => {
+    const map = mapRef.current?.getMap();
+    if (!map || !mapLoaded) return;
+    if (vehicleFocus) frameVehicleAndStop(map, vehicleFocus, Boolean(activeStop));
+    else if (route) frameRoute(map, route, Boolean(activeStop));
+    else if (activeStop) {
+      const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      map.flyTo({ center: [activeStop.lng, activeStop.lat], zoom: 14.5, duration: reduced ? 0 : 500 });
+    } else {
+      const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      map.fitBounds(SERVICE_BOUNDS, { padding: 32, duration: reduced ? 0 : 500 });
+    }
+  };
+
+  const zoomCamera = (direction: "in" | "out") => {
+    const map = mapRef.current?.getMap();
+    if (!map || !mapLoaded) return;
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (direction === "in") map.zoomIn({ duration: reduced ? 0 : 250 });
+    else map.zoomOut({ duration: reduced ? 0 : 250 });
+  };
 
   useEffect(() => {
     const map = mapRef.current?.getMap();
@@ -555,11 +577,20 @@ export default function TransitMap({
     <div className={styles.mapShell}>
       {highlightRoutes && (
         <div className={styles.mapPicker}>
-          <p id="transit-route-context" className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            {selMeta
-              ? `Route ${selMeta.short} shows published stops. Choose one to check arrivals.`
-              : "Choose a route or select a stop to check arrivals."}
-          </p>
+          <div className={styles.mapRouteIdentity}>
+            <span className={styles.mapRouteBadge} aria-hidden
+              style={{ background: selMeta?.color ?? "var(--app-cool)", color: selMeta ? readableTextOn(selMeta.color) : "var(--app-on-brand)" }}>
+              {selMeta ? selMeta.short : <BusFront size={22} />}
+            </span>
+            <div>
+              <strong>{selMeta?.name ?? "Explore the network"}</strong>
+              <p id="transit-route-context">
+                {selMeta
+                  ? `Route ${selMeta.short} shows published stops. Choose one to check arrivals.`
+                  : "Choose a route or select a stop to check arrivals."}
+              </p>
+            </div>
+          </div>
           <label>
             <span className="sr-only">Bus route</span>
             <select
@@ -592,6 +623,8 @@ export default function TransitMap({
       <div
         className={`transit-map-canvas ${styles.mapFrame}`}
         style={{ height }}
+        data-transit-renderer-state={mapFailed ? "failed" : mapLoaded ? "loaded" : "loading"}
+        data-transit-map-route={route ?? ""}
       >
       {mapFailed ? (
         <div
@@ -865,23 +898,21 @@ export default function TransitMap({
 
         {/* Stop-tap detail — name, routes here, and live inbound arrivals. */}
         {activeStop && stopPreviewOpen && (
-          <Popup
-            longitude={activeStop.lng}
-            latitude={activeStop.lat}
-            anchor="bottom"
-            offset={14}
-            closeOnClick={false}
-            onClose={() => closeForeground(true)}
-            maxWidth="250px"
-          >
-            <StopArrivalsPopup
-              key={activeStop.id}
-              stop={activeStop}
-              onUseStop={(stop) => requestTransitStopFocus({ stopId: stop.id, selectForRider: true })}
-            />
-          </Popup>
+          <TransitStopPreview key={activeStop.id} stop={activeStop}
+            returnFocusRef={activeStopButtonRef}
+            onClose={closeForeground}
+            onUseStop={(stop) => requestTransitStopFocus({ stopId: stop.id, selectForRider: true })} />
         )}
       </Map>
+      )}
+
+      {!mapFailed && (
+        <div className={styles.mapControls} role="group" aria-label="Transit map controls">
+          <button type="button" disabled={!mapLoaded} onClick={() => zoomCamera("in")} aria-label="Zoom in" title="Zoom in"><Plus size={20} aria-hidden /></button>
+          <button type="button" disabled={!mapLoaded} onClick={() => zoomCamera("out")} aria-label="Zoom out" title="Zoom out"><Minus size={20} aria-hidden /></button>
+          <button type="button" disabled={!mapLoaded} onClick={resetCamera} aria-label="Reset transit map view"
+            title={vehicleFocus ? "Show the bus and stop" : route ? "Show the selected route" : activeStop ? "Return to your stop" : "Show the network"}><Scan size={19} aria-hidden /></button>
+        </div>
       )}
 
       {/* Editorial badge — top-left. Tells the user what the painted
