@@ -1,0 +1,34 @@
+{
+  "candidate": "49aa28ca3135a561601e23b7e101e433475838fc",
+  "buildId": "-OpsyG-ZplTq6jnIokvMZ",
+  "peerReviewMarkdownFileSha256": "237f33ecc460a4cb66ab9f490440b5b83ead633596cd3ec8a7c91880f656071d",
+  "sourceFreezeSha256": "8f31ad51e273beda18402fc2351d21c0e8994db4a8fd5a9af180b16ec3c65581",
+  "reviewedSourceFiles": 100,
+  "reviewedInventories": 14,
+  "reviewedUnchangedColorAndGrayscaleImages": 28,
+  "originalEmbeddedAttachmentBodyHashesVerified": 130,
+  "formattedExtractedJsonFilesSemanticallyVerified": 130,
+  "publishedIssueNumbers": [
+    1766,
+    1767,
+    1768,
+    1769,
+    1770,
+    1771,
+    1772,
+    1773
+  ],
+  "classification": "Completed bounded local verification with eight qualified follow-ups; no additional untracked finding supported within reviewed coverage.",
+  "primaryNavigationCssPixels": {
+    "height": 48,
+    "mapWidth": 95.5,
+    "otherPrimaryTabWidth": 91
+  },
+  "coverageLimits": [
+    "Not complete WCAG AA; axe incomplete records retained.",
+    "Five-point target samples are not every-point area proof.",
+    "Find/detail inner scrolling not exhaustively sampled.",
+    "Anonymous provider-disabled environment does not prove account persistence or live-provider behavior."
+  ],
+  "release": "Not live; required application verify is blocked by dependency security audit."
+}
