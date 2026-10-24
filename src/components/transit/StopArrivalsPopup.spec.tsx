@@ -90,4 +90,42 @@ describe("StopArrivalsPopup existing selected-stop snapshot", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     text = await render(); expect(text).toContain("Live arrivals"); expect(fetchMock).toHaveBeenCalledTimes(3);
   });
+
+  it("does not turn an unavailable API receipt time into a provider observation", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ predictions: [], available: false, status: "unavailable", updatedAt: NOW })));
+    const text = await render();
+    expect(text).toContain("Live arrivals are unavailable.");
+    expect(text).not.toContain("Feed updated"); expect(text).not.toContain("original provider time");
+  });
+
+  it.each([undefined, null, 0, -1, "invalid", NOW / 1000 + 91])("does not treat an unknown or invalid source clock as live (%s)", async (feedTimestamp) => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ predictions: shared().predictions, available: true, status: "ok", updatedAt: NOW, feedTimestamp })));
+    const text = await render();
+    expect(text).toContain("The live arrival feed is delayed.");
+    expect(text).not.toContain("5 min"); expect(text).not.toContain("Feed updated");
+  });
+
+  it("preserves a genuine older provider observation without renewing it", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ predictions: shared().predictions, available: true, status: "ok", updatedAt: NOW, feedTimestamp: NOW / 1000 - 120 })));
+    const text = await render();
+    expect(text).toContain("The live arrival feed is delayed.");
+    expect(text).toContain("Feed updated original provider time"); expect(text).not.toContain("5 min");
+  });
+
+  it("ages standalone freshness while the next refresh remains pending", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ predictions: shared().predictions, available: true, status: "ok", feedTimestamp: NOW / 1000 })));
+    fetchMock.mockImplementation(() => new Promise<Response>(() => undefined));
+    expect(await render()).toContain("5 min");
+    await act(async () => { await vi.advanceTimersByTimeAsync(91_000); });
+    expect(host.textContent).toContain("The live arrival feed is delayed.");
+    expect(host.textContent).toContain("Feed updated original provider time");
+    expect(host.textContent).not.toContain("Live arrivals"); expect(host.textContent).not.toContain("5 min");
+  });
+
+  it.each([NaN, Infinity, -1, NOW + 91_000])("also suppresses an invalid shared provider label without starting a second reader (%s)", async (providerUpdatedAt) => {
+    const text = await render(shared({ providerUpdatedAt }));
+    expect(text).toContain("The live arrival feed is delayed.");
+    expect(text).not.toContain("Feed updated"); expect(text).not.toContain("5 min");
+    expect(fetchMock).not.toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(0);
+  });
 });

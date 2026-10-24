@@ -95,7 +95,10 @@ vi.mock("@/hooks/useGeolocation", () => ({ useGeolocation: () => ({ state: { sta
 vi.mock("./useSavedTransitStops", () => ({ useSavedTransitStops: () => ({ stops: mocked.savedStops, toggle: vi.fn() }) }));
 vi.mock("./useSavedTransitBuses", () => ({ useSavedTransitBuses: () => ({ buses: mocked.savedBuses, toggle: vi.fn() }) }));
 vi.mock("./useLiveVehicles", () => ({ useLiveVehicles: () => ({ vehicles: [], loaded: true, available: false, status: "unavailable", stale: false }) }));
-vi.mock("./useStopArrivals", () => ({ useStopArrivals: () => ({ snapshot: { predictions: mocked.arrivalPredictions, status: mocked.arrivalsStatus, providerUpdatedAt: mocked.arrivalObservedAt, checkedAt: mocked.arrivalObservedAt }, nowMs: mocked.nowMs || Date.now() }) }));
+vi.mock("./useStopArrivals", async (importOriginal) => ({
+  ...await importOriginal<typeof import("./useStopArrivals")>(),
+  useStopArrivals: () => ({ snapshot: { predictions: mocked.arrivalPredictions, status: mocked.arrivalsStatus, providerUpdatedAt: mocked.arrivalObservedAt, checkedAt: mocked.arrivalObservedAt }, nowMs: mocked.nowMs || Date.now() }),
+}));
 
 import TransitMap from "./TransitMap";
 import TransitStopFinder from "./TransitStopFinder";

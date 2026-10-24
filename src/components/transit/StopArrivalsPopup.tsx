@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import TRANSIT from "@/data/transit.json";
 import { formatMapTimestamp } from "@/components/map/mapContent";
 import { readableTextOn } from "@/lib/color/readableText";
-import type { StopArrivalsSnapshot } from "./useStopArrivals";
+import { providerTimeFrom, type StopArrivalsSnapshot } from "./useStopArrivals";
 import styles from "./TransitExperience.module.css";
 
 /**
@@ -122,7 +122,6 @@ export default function StopArrivalsPopup({
 }) {
   const [localPreds, setPreds] = useState<StopPrediction[] | null>(null);
   const [localFeedAvailable, setFeedAvailable] = useState<boolean | null>(null);
-  const [localFeedFresh, setFeedFresh] = useState<boolean | null>(null);
   const [localNowMs, setNowMs] = useState(0);
   const [localCheckedAt, setCheckedAt] = useState<number | null>(null);
   const hasExistingSnapshot = existingSnapshot !== undefined;
@@ -136,11 +135,14 @@ export default function StopArrivalsPopup({
   const feedAvailable = shared
     ? shared.status === "loading" ? null : shared.status !== "unavailable"
     : localFeedAvailable;
-  const feedFresh = shared
-    ? shared.status === "live" && nowMs > 0 && shared.providerUpdatedAt != null
-      && Math.abs(nowMs - shared.providerUpdatedAt) <= PROVIDER_STALE_MS
-    : localFeedFresh;
-  const checkedAt = shared ? shared.providerUpdatedAt : localCheckedAt;
+  const providerClock = shared ? shared.providerUpdatedAt : localCheckedAt;
+  const checkedAt = providerClock != null && Number.isFinite(providerClock) &&
+    providerClock > 0 && providerClock <= nowMs + PROVIDER_STALE_MS
+    ? providerClock
+    : null;
+  const feedFresh = (shared ? shared.status === "live" : localFeedAvailable === true) &&
+    nowMs > 0 && checkedAt != null &&
+    Math.abs(nowMs - checkedAt) <= PROVIDER_STALE_MS;
 
   // The caller remounts this per stop (key=stop.id), so preds starts null
   // (loading). Keep polling while the detail is open so the countdown is
@@ -164,24 +166,16 @@ export default function StopArrivalsPopup({
           if (!alive) return;
           setPreds(Array.isArray(d.predictions) ? d.predictions : []);
           const available = d.available !== false && d.status !== "unavailable";
-          const providerTime =
-            typeof d.feedTimestamp === "number" && d.feedTimestamp > 0
-              ? d.feedTimestamp * 1000
-              : typeof d.updatedAt === "number"
-                ? d.updatedAt
-                : Date.now();
+          const receivedAt = Date.now();
           setFeedAvailable(available);
-          setFeedFresh(
-            available && Date.now() - providerTime <= PROVIDER_STALE_MS,
-          );
-          setNowMs(Date.now());
-          setCheckedAt(providerTime);
+          setNowMs(receivedAt);
+          setCheckedAt(available ? providerTimeFrom(d, receivedAt) : null);
         })
         .catch(() => {
           if (alive) {
             setPreds([]);
             setFeedAvailable(false);
-            setFeedFresh(false);
+            setCheckedAt(null);
           }
         });
     };
