@@ -32,8 +32,15 @@ from the exact current protected-main revision. It revalidates the same-reposito
 open PR, exact current main/base/head/content-proven merge and complete unchanged
 branch-specific path allowlist before approving only the exact existing eligible
 held CI/style runs. Already running or completed native runs are observed, never
-rerun. Old, moved, forked, ambiguous, missing or otherwise ineligible runs stay
-held. A failed approval, including HTTP 403, requires an owner to inspect and
+rerun. During initial discovery only, an explicitly empty PR-association array
+may be read at most four times for the same run IDs, attempts and check suites,
+with four-second gaps (at most twelve seconds per workflow). Main, head and
+content-proven merge are revalidated before and after each wait. This only lets
+metadata settle: both workflows must provide exact current PR associations
+before any approval. Missing fields, non-array or populated mismatched
+associations fail immediately. The private receipt records each association
+state, count and read. Old, moved, forked, ambiguous, missing or otherwise
+ineligible runs stay held. A failed approval, including HTTP 403, requires an owner to inspect and
 approve the recorded exact native run IDs in GitHub; it does not fall back to a
 manual dispatch, copied check, new token, service, ruleset change or relaxed gate.
 

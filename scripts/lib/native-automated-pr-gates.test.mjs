@@ -80,9 +80,103 @@ test("approves only the two existing exact held native runs and records their at
   const result = await approveNativeAutomatedPrRuns(approvalOptions);
   assert.equal(result.verified, true); assert.equal(result.state, "approved");
   assert.deepEqual(state.approvals, [101, 202]); assert.equal(result.approvalWrites.length, 2);
-  assert.ok(result.approvalWrites.every((write) => write.responseStatus === 201 && write.attempt === 1));
+  assert.ok(result.approvalWrites.every((write) => write.responseStatus === 201 && write.attempt === 1 && write.suiteId === write.id + 1000));
   assert.equal(result.semanticAcceptance, false); assert.equal(result.changesAutoMerge, false);
   assert.ok(result.runs.every((run) => run.event === "pull_request" && run.action === "approved"));
+});
+
+test("empty discovery metadata may settle into the same exact association before any approval", async () => {
+  const { state, approvalOptions } = harness();
+  const exact = structuredClone(state.runs[0].pull_requests); let reads = 0;
+  state.onRead = (name, args) => {
+    if (name === "listRuns" && args.workflow_id === 11) {
+      state.runs[0].pull_requests = ++reads < 3 ? [] : exact;
+    }
+  };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "approved"); assert.equal(result.verified, true);
+  assert.deepEqual(state.approvals, [101, 202]); assert.deepEqual(state.waits, [4000, 4000]);
+  const discovery = result.associationReads.filter((row) => row.workflow === "ci.yml" && row.phase === "discovery");
+  assert.deepEqual(discovery.map((row) => row.runs[0].associationState), ["empty-array", "empty-array", "exact"]);
+  assert.ok(result.approvalWrites.every((row) => row.transitionVerified));
+});
+
+test("permanent empty discovery stays held after four reads without an approval write", async () => {
+  const { state, approvalOptions } = harness(); state.runs[0].pull_requests = [];
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.equal(result.verified, false);
+  assert.deepEqual(state.approvals, []); assert.deepEqual(result.approvalWrites, []);
+  assert.deepEqual(state.waits, [4000, 4000, 4000]);
+  assert.equal(state.calls.filter((row) => row.name === "listRuns").length, 4);
+  assert.deepEqual(result.associationReads.map((row) => row.runs[0].associationState), Array(4).fill("empty-array"));
+  assert.match(result.failure, /metadata remains empty/);
+});
+
+for (const [name, mutate] of Object.entries({
+  "missing field": (run) => { delete run.pull_requests; },
+  "non-array": (run) => { run.pull_requests = null; },
+  "wrong populated association": (run) => { run.pull_requests[0].number = 8; },
+})) test(`discovery ${name} is not retried`, async () => {
+  const { state, approvalOptions } = harness(); mutate(state.runs[0]);
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, []); assert.deepEqual(state.waits, []);
+  assert.equal(state.calls.filter((row) => row.name === "listRuns").length, 1);
+  assert.notEqual(result.associationReads[0].runs[0].associationState, "empty-array");
+});
+
+test("foreign association appearing during the discovery wait stays held immediately", async () => {
+  const { state, approvalOptions } = harness();
+  const foreign = structuredClone(state.runs[0].pull_requests); foreign[0].head.repo.url = "https://api.github.com/repos/fork/radius";
+  let reads = 0;
+  state.onRead = (name, args) => {
+    if (name === "listRuns" && args.workflow_id === 11) state.runs[0].pull_requests = ++reads === 1 ? [] : foreign;
+  };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, []); assert.deepEqual(state.waits, [4000]);
+  assert.equal(reads, 2); assert.equal(result.associationReads[1].runs[0].associationState, "mismatched-association");
+});
+
+for (const field of ["main", "head", "merge"]) test(`${field} movement during an empty-association wait stays held`, async () => {
+  const { state, approvalOptions } = harness(); state.runs[0].pull_requests = [];
+  approvalOptions.sleep = async (ms) => { state.waits.push(ms); state[field] = OTHER; };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, []); assert.deepEqual(state.waits, [4000]);
+  assert.equal(state.calls.filter((row) => row.name === "listRuns").length, 1);
+});
+
+test("an attempt change while discovery metadata settles cannot inherit the selected identity", async () => {
+  const { state, approvalOptions } = harness(); const exact = structuredClone(state.runs[0].pull_requests);
+  state.runs[0].pull_requests = [];
+  approvalOptions.sleep = async (ms) => {
+    state.waits.push(ms); state.runs[0].run_attempt = 2; state.runs[0].pull_requests = exact;
+  };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, []); assert.deepEqual(state.waits, [4000]);
+  assert.match(result.failure, /IDs, attempts or check suites changed/);
+});
+
+for (const [field, value] of [["id", 303], ["check_suite_id", 9999]]) test(`a discovery ${field} replacement stays held`, async () => {
+  const { state, approvalOptions } = harness(); const exact = structuredClone(state.runs[0].pull_requests);
+  state.runs[0].pull_requests = [];
+  approvalOptions.sleep = async (ms) => {
+    state.waits.push(ms); state.runs[0][field] = value; state.runs[0].pull_requests = exact;
+  };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, []); assert.deepEqual(state.waits, [4000]);
+  assert.match(result.failure, /IDs, attempts or check suites changed/);
+});
+
+test("settled discovery never retries a denied approval", async () => {
+  const { state, approvalOptions } = harness(); const exact = structuredClone(state.runs[0].pull_requests); let reads = 0;
+  state.approveStatus = 403;
+  state.onRead = (name, args) => {
+    if (name === "listRuns" && args.workflow_id === 11) state.runs[0].pull_requests = ++reads === 1 ? [] : exact;
+  };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.equal(result.manualApprovalRequired, true);
+  assert.deepEqual(state.waits, [4000]); assert.deepEqual(state.approvals, [101]);
+  assert.equal(state.calls.filter((row) => row.name === "approve").length, 1);
+  assert.equal(result.approvalWrites.length, 1); assert.equal(result.approvalWrites[0].responseStatus, 403);
 });
 
 for (const status of ["queued", "in_progress", "success"]) test(`observes existing ${status} native runs without approving, dispatching or rerunning them`, async () => {
@@ -198,6 +292,35 @@ test("a run attempt change at its independent pre-approval read stays held", asy
   const { state, approvalOptions } = harness(); state.attemptOverride = 2;
   const result = await approveNativeAutomatedPrRuns(approvalOptions);
   assert.equal(result.state, "held"); assert.deepEqual(state.approvals, []);
+});
+
+test("a valid check suite replacement between discovery and pre-approval stays held", async () => {
+  const { state, approvalOptions } = harness(); let reads = 0;
+  state.onRead = (name) => {
+    if (name === "listRuns" && ++reads === 3) state.runs[0].check_suite_id = 9999;
+  };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, []); assert.deepEqual(result.approvalWrites, []);
+  assert.match(result.failure, /latest native run ID, attempt or check suite changed/);
+});
+
+test("an independent run read cannot replace the originally selected check suite", async () => {
+  const { state, approvalOptions } = harness();
+  state.onRead = (name) => { if (name === "getRun") state.runs[0].check_suite_id = 9999; };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, []); assert.deepEqual(result.approvalWrites, []);
+  assert.match(result.failure, /Independent native run ID, attempt or check suite changed/);
+});
+
+test("a post-approval suite replacement preserves the one original write and remains held", async () => {
+  const { state, approvalOptions } = harness();
+  state.onApprove = () => { state.runs[0].check_suite_id = 9999; };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.equal(result.manualApprovalRequired, true);
+  assert.deepEqual(state.approvals, [101]); assert.equal(result.approvalWrites.length, 1);
+  assert.equal(result.approvalWrites[0].suiteId, 1101); assert.equal(result.approvalWrites[0].transitionVerified, false);
+  assert.equal(state.calls.filter((row) => row.name === "approve").length, 1);
+  assert.match(result.failure, /exact native run ID, attempt or check suite changed/);
 });
 
 test("a current-main race after discovery stops before the first approval", async () => {
