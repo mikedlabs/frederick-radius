@@ -38,6 +38,9 @@ type WorkflowDocument = {
     {
       if?: string;
       uses?: string;
+      needs?: string | string[];
+      outputs?: Record<string, string>;
+      with?: Record<string, unknown>;
       "timeout-minutes"?: number | string;
       "runs-on"?: string | string[];
       env?: Record<string, unknown>;
@@ -746,14 +749,120 @@ describe("scheduled data workflow contracts", () => {
         baseShas.length,
         `${name} must bind every artifact to its generation commit`,
       ).toBe(publishers.length);
-      // Venue native/paid producers are mutually exclusive. Commerce retains
-      // compact outcomes plus private originals, separate from its publisher.
+      // Commerce retains compact outcomes plus private originals, separate
+      // from its publisher.
       // Official hours separately retain original pages for offline review;
       // their artifact name is not an input to either exact publisher.
-      expect(
-        artifactUploads.length,
-        `${name} must stage every producer through its exact artifact`,
-      ).toBe(name === "data-steward.yml" ? publishers.length + 1 : name === "refresh-commerce-links.yml" ? publishers.length + 2 : name === "ingest-venues.yml" ? 2 : publishers.length);
+      if (name === "transit-steward.yml") {
+        const transit = workflow.jobs?.transit;
+        const uploads = transit?.steps?.filter((step) => step.uses === "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a") ?? [];
+        expect(uploads).toHaveLength(2);
+        expect(artifactUploads).toHaveLength(2);
+        const rawReview = uploads.filter((step) => step.name === "Preserve original transit source evidence");
+        expect(rawReview).toHaveLength(1);
+        expect(rawReview[0].if).toBe("always()");
+        expect(rawReview[0].with).toEqual({
+          name: "transit-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}",
+          path: "${{ runner.temp }}/transit-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}",
+          "if-no-files-found": "warn",
+          "retention-days": 7,
+        });
+        const publicationUploads = uploads.filter((step) => step !== rawReview[0]);
+        expect(publicationUploads).toHaveLength(1);
+        expect(publicationUploads[0].if).toBeUndefined();
+        expect(publicationUploads[0].with).toEqual({
+          name: "${{ steps.artifact-name.outputs.name }}",
+          path: "${{ runner.temp }}/data-steward-transit-output",
+          "if-no-files-found": "error",
+          "retention-days": 1,
+        });
+        expect(transit?.outputs?.artifact_name).toBe("${{ steps.artifact-name.outputs.name }}");
+        expect(transit?.steps?.find((step) => step.env?.ARTIFACT_NAME)?.env?.ARTIFACT_NAME)
+          .toBe("data-steward-transit-output-${{ github.run_id }}-${{ github.run_attempt }}");
+        const publish = workflow.jobs?.["transit-publish"];
+        expect(publish?.needs).toBe("transit");
+        expect(publish?.with?.artifact).toBe("${{ needs.transit.outputs.artifact_name }}");
+        expect(String(publish?.with?.allowed_paths).trim().split(/\s+/)).toEqual([
+          "src/data/transit.json",
+          "src/data/transit-network.json",
+          "src/data/transit-trips.json",
+          "src/data/data-release.json",
+        ]);
+        expect(text).not.toMatch(/artifact:\s+transit-source-evidence/);
+        const checks = workflow.jobs?.["transit-checks"];
+        expect(checks?.needs).toBe("transit-publish");
+        expect(checks?.uses).toBe("./.github/workflows/automated-pr-checks.yml");
+        expect(checks?.if).toBe("${{ needs.transit-publish.outputs.pr_operation == 'created' || needs.transit-publish.outputs.pr_operation == 'updated' }}");
+        expect(checks?.with).toEqual({
+          branch: "${{ needs.transit-publish.outputs.pr_branch }}",
+          head_sha: "${{ needs.transit-publish.outputs.pr_head_sha }}",
+        });
+      } else if (name !== "ingest-venues.yml") {
+        expect(
+          artifactUploads.length,
+          `${name} must stage every producer through its exact artifact`,
+        ).toBe(name === "data-steward.yml" ? publishers.length + 1 : name === "refresh-commerce-links.yml" ? publishers.length + 2 : publishers.length);
+      } else {
+        // Native and paid venue generation are mutually exclusive producers.
+        // Their two exact publication artifacts must not be confused with
+        // the separately retained raw responses used only for source review.
+        const uploadAction = "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
+        const uploads = Object.entries(workflow.jobs ?? {}).flatMap(([job, value]) =>
+          (value.steps ?? []).filter((step) => step.uses === uploadAction).map((step) => ({ job, step })),
+        );
+        const rawReview = uploads.filter(({ step }) => step.name === "Preserve original native venue responses");
+        expect(rawReview).toHaveLength(1);
+        expect(rawReview[0].job).toBe("native");
+        expect(rawReview[0].step.if).toBe("always()");
+        expect(rawReview[0].step.with).toEqual({
+          name: "native-venue-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}",
+          path: "${{ runner.temp }}/native-venue-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}",
+          "if-no-files-found": "warn",
+          "retention-days": 7,
+        });
+        const publicationUploads = uploads.filter(({ step }) => step !== rawReview[0].step);
+        expect(publicationUploads).toHaveLength(2);
+        expect(publicationUploads.map(({ job }) => job).sort()).toEqual(["ingest", "native"]);
+        for (const [job, artifact, directory, retention] of [
+          ["native", "native-venue-review", "native-venue-output", 7],
+          ["ingest", "venue-event-review", "automated-pr-output", 1],
+        ] as const) {
+          const producer = workflow.jobs?.[job];
+          expect(producer?.outputs?.artifact_name).toBe("${{ steps.artifact-name.outputs.name }}");
+          expect(producer?.steps?.find((step) => step.env?.ARTIFACT_NAME)?.env?.ARTIFACT_NAME)
+            .toBe(`${artifact}-` + "${{ github.run_id }}-${{ github.run_attempt }}");
+          const upload = publicationUploads.find((value) => value.job === job)?.step;
+          expect(upload?.with).toEqual({
+            name: "${{ steps.artifact-name.outputs.name }}",
+            path: "${{ runner.temp }}/" + directory,
+            "if-no-files-found": "error",
+            "retention-days": retention,
+          });
+          if (job === "ingest") {
+            expect(upload?.if).toBe("${{ always() && steps.extract.outcome == 'success' && steps.verify.outcome == 'success' }}");
+          } else {
+            expect(upload?.if).toBeUndefined();
+          }
+        }
+        const publish = workflow.jobs?.publish;
+        expect(publish?.needs).toEqual(["native", "ingest"]);
+        expect(publish?.with?.artifact).toBe("${{ needs.native.outputs.artifact_name || needs.ingest.outputs.artifact_name }}");
+        expect(String(publish?.with?.allowed_paths).trim().split(/\s+/)).toEqual([
+          "src/data/venue-event-source-inventory.json",
+          "src/data/venue-events.json",
+          "src/data/venue-event-source-state.json",
+          "src/data/data-release.json",
+        ]);
+        expect(text).not.toMatch(/artifact:\s+native-venue-source-evidence/);
+        const checks = workflow.jobs?.checks;
+        expect(checks?.needs).toBe("publish");
+        expect(checks?.uses).toBe("./.github/workflows/automated-pr-checks.yml");
+        expect(checks?.if).toBe("${{ needs.publish.outputs.pr_operation == 'created' || needs.publish.outputs.pr_operation == 'updated' }}");
+        expect(checks?.with).toEqual({
+          branch: "${{ needs.publish.outputs.pr_branch }}",
+          head_sha: "${{ needs.publish.outputs.pr_head_sha }}",
+        });
+      }
       if (name === "refresh-commerce-links.yml") {
         const commerce = parse(text) as WorkflowDocument;
         const steps = commerce.jobs?.refresh.steps ?? [];

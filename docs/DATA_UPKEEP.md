@@ -152,6 +152,9 @@ policy authority, raise provider budgets or provision services.
   changing pixels or color profiles. Capture dates are unknown. This accepts
   only those photo bindings: the broad adapter, remaining images and amenity
   facts retain their existing source gates and substantive review requirements.
+  Every added local photograph must also pass `tests/wikimedia-image-host.spec.ts`
+  against the actual Next image configuration. A bundled file or raw image
+  decode alone does not prove that the app's optimized image can render.
 
 The native merchant fetcher normally accepts at most 512,000 HTML bytes. The
 exact enrolled Aleko's URL has a reviewed 1 MiB exception because its complete

@@ -171,6 +171,22 @@ const nextConfig: NextConfig = {
       { pathname: "/place-photos/civil-war-medicine-frontage.jpg", search: "" },
       { pathname: "/place-photos/cunningham-falls.jpg", search: "" },
       { pathname: "/place-photos/catoctin-furnace.jpg", search: "" },
+      // Exact County attachments individually reviewed and bundled locally.
+      // This admits neither other local files nor the remote ArcGIS source.
+      { pathname: "/place-photos/county-ballenger-creek-park-frederick.jpg", search: "" },
+      { pathname: "/place-photos/county-buckeystown-park-frederick.jpg", search: "" },
+      { pathname: "/place-photos/county-catoctin-creek-park-nature-center-burkittsville.jpg", search: "" },
+      { pathname: "/place-photos/county-kemptown-park-new-market.jpg", search: "" },
+      { pathname: "/place-photos/county-loys-station-park-thurmont.jpg", search: "" },
+      { pathname: "/place-photos/county-middletown-park-middletown.jpg", search: "" },
+      { pathname: "/place-photos/county-othello-regional-park-brunswick.jpg", search: "" },
+      { pathname: "/place-photos/county-pinecliff-park-frederick.jpg", search: "" },
+      { pathname: "/place-photos/county-point-of-rocks-community-commons-park-brunswick.jpg", search: "" },
+      { pathname: "/place-photos/county-utica-park-walkersville.jpg", search: "" },
+      { pathname: "/place-photos/county-fountain-rock-nature-center-walkersville.jpg", search: "" },
+      { pathname: "/place-photos/county-thurmont-recreation-center-thurmont.jpg", search: "" },
+      { pathname: "/place-photos/county-walkersville-recreation-center-walkersville.jpg", search: "" },
+      { pathname: "/place-photos/county-brunswick-recreation-center-brunswick.jpg", search: "" },
       // Brewery logo marks (the breweries' own site icons, committed with
       // provenance in src/data/brewery-marks.json) — the /beer passport.
       { pathname: "/brewery-marks/**", search: "" },

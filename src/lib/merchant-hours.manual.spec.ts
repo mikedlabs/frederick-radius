@@ -53,15 +53,23 @@ const nativeFixtures: Record<string, string> = {
   "hootch-and-banter-frederick": "qualified-hootch",
 };
 const native = MERCHANT_HOURS_SOURCES.filter((source) => !("collection" in source && source.collection === "manual"));
+const unmodeledNative = native.filter((source) => !Object.hasOwn(nativeFixtures, source.slug));
 function baseline() {
-  return artifact(...MERCHANT_HOURS_SOURCES.map((source) => manual.some((item) => item.slug === source.slug)
+  // This is an explicit approved fixture cohort, not evidence for newly enrolled
+  // sources. Manual ownership tests must not manufacture their approved rows.
+  return artifact(...MERCHANT_HOURS_SOURCES.filter((source) => manual.some((item) => item.slug === source.slug)
+    || Object.hasOwn(nativeFixtures, source.slug)).map((source) => manual.some((item) => item.slug === source.slug)
     ? parse(source)
     : parse(source, fixture(nativeFixtures[source.slug]), source.slug === "kulfi-ice-creams-frederick" ? "2026-10-20T23:40:48.409Z" : "2026-10-20T11:56:00.000Z")));
 }
 const nativeFetcher = () => vi.fn(async (url: string) => {
   const source = native.find((item) => item.url === url);
   if (!source) throw new Error("A manual source must never reach native transport.");
-  return { url, html: fixture(nativeFixtures[source.slug]), observedAt: NOW.toISOString() };
+  // Bounded in-memory transport for native owners without a source fixture. It
+  // deliberately cannot establish hours; native failures must not affect manual
+  // preservation or turn into guessed fixture facts.
+  const html = Object.hasOwn(nativeFixtures, source.slug) ? fixture(nativeFixtures[source.slug]) : "<p>Declared unparseable native test response.</p>";
+  return { url, html, observedAt: NOW.toISOString() };
 });
 
 describe("manually reviewed first-party merchant evidence", () => {
@@ -156,20 +164,25 @@ describe("manually reviewed first-party merchant evidence", () => {
     const result = await collectMerchantOfficialHours(previous, fetcher, NOW);
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([...new Set(native.map((source) => source.url))]);
     for (const source of manual) expect(result.artifact.places.find((row) => row.slug === source.slug)).toEqual(previous.places.find((row) => row.slug === source.slug));
-    expect(result.artifact.review).toEqual([]); expect(result.reviewRequired).toBe(false);
+    expect(result.artifact.review).toEqual(unmodeledNative.map((source) => ({ slug: source.slug, checked_at: NOW.toISOString(), reason: "unparseable_or_conflicted" })));
+    expect(result.reviewRequired).toBe(false);
   });
   it("preserves an existing manual hold, candidate, and checked_at exactly, including after accepted proof expires", async () => {
     const previous = baseline(); const row = previous.places.find((item) => item.slug === sumittra.slug)!;
     previous.review.push({ slug: sumittra.slug, checked_at: "2026-10-20T11:52:00.000Z", reason: "changed_facts", candidate: { ...row, observed_at: "2026-10-20T11:52:00.000Z", expires_at: "2026-10-27T11:52:00.000Z" } });
-    const result = await collectMerchantOfficialHours(previous, nativeFetcher(), new Date("2026-10-28T12:00:00.000Z"));
+    const fetcher = nativeFetcher();
+    const result = await collectMerchantOfficialHours(previous, fetcher, new Date("2026-10-28T12:00:00.000Z"));
+    for (const source of manual) expect(fetcher).not.toHaveBeenCalledWith(source.url);
     expect(result.artifact.places.find((item) => item.slug === sumittra.slug)).toEqual(row);
     expect(result.artifact.review.find((item) => item.slug === sumittra.slug)).toEqual(previous.review[0]);
     expect(merchantHoursForPlace(place(sumittra), result.artifact, NOW).hours).toBeUndefined();
   });
   it("does not enroll, timestamp or hold an absent manual record merely because native upkeep ran", async () => {
     const previous = baseline(); previous.places = previous.places.filter((row) => !manual.some((source) => source.slug === row.slug));
-    const result = await collectMerchantOfficialHours(previous, nativeFetcher(), NOW);
+    const fetcher = nativeFetcher();
+    const result = await collectMerchantOfficialHours(previous, fetcher, NOW);
     for (const source of manual) {
+      expect(fetcher).not.toHaveBeenCalledWith(source.url);
       expect(result.artifact.places.some((row) => row.slug === source.slug)).toBe(false);
       expect(result.artifact.review.some((row) => row.slug === source.slug)).toBe(false);
       expect(merchantHoursForPlace(place(source), result.artifact, NOW).hours).toBeUndefined();

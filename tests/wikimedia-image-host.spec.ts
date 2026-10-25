@@ -59,6 +59,26 @@ describe("exact local photo optimizer admission", () => {
   ])("keeps unreviewed paths and query-bearing sources outside optimizer policy: %s", (src) => {
     expect(hasLocalMatch(config.images?.localPatterns, src)).toBe(false);
   });
+
+  it("admits exactly fourteen reviewed County local files without a County wildcard", () => {
+    const reviewed = Object.values(CREDITED_LOCAL_PLACE_PHOTOS)
+      .filter(({ image }) => image.src.startsWith("/place-photos/county-"))
+      .map(({ image }) => image.src).sort();
+    const configured = config.images?.localPatterns
+      ?.filter(pattern => pattern.pathname?.startsWith("/place-photos/county-"));
+    expect(reviewed).toHaveLength(14);
+    expect(configured?.map(pattern => pattern.pathname).sort()).toEqual(reviewed);
+    expect(configured?.every(pattern => pattern.search === "" && !pattern.pathname?.includes("*"))).toBe(true);
+  });
+
+  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).filter(([, { image }]) => image.src.startsWith("/place-photos/county-")))
+    ("keeps the %s permission record separate from remote image optimization", (_slug, { image }) => {
+      expect(image.license.label).toBe("Used with permission");
+      expect(hasRemoteMatch(config.images?.domains ?? [], config.images?.remotePatterns ?? [], new URL(image.source_url))).toBe(false);
+      expect(hasLocalMatch(config.images?.localPatterns, `${image.src}/../unreviewed.jpg`)).toBe(false);
+      expect(hasLocalMatch(config.images?.localPatterns, image.src.replace("/place-photos/", "/place-photos/%2e%2e/"))).toBe(false);
+      expect(hasLocalMatch(config.images?.localPatterns, image.src.replace("/county-", "/%2Fcounty-"))).toBe(false);
+    });
 });
 
 
