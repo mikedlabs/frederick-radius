@@ -4,39 +4,51 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const isProduction = process.env.NODE_ENV === "production";
 
-// Next limits localPatterns to 25 entries. A finite brace union keeps every
-// reviewed filename explicit while using one pattern; no unreviewed sibling,
-// query string or remote source gains admission when this list grows.
-const REVIEWED_LOCAL_PLACE_PHOTO_FILES = [
-  "brewers-alley-2004.jpg",
-  "delaplaine-exterior.jpg",
-  "weinberg-exterior.jpg",
-  "c-burr-artz-exterior.jpg",
-  "frederick-marc-station-2015.jpg",
-  "heritage-frederick-exterior-2009.jpg",
-  "thurmont-square-park-2012.jpg",
-  "heritage-farm-park-harris-farmhouse-2010.jpg",
-  "sabor-de-cuba-entrance-2018.jpg",
-  "francis-scott-key-monument-2024.jpg",
-  "rose-hill-manor-exterior-2019.jpg",
-  "utica-covered-bridge-2022.jpg",
-  "civil-war-medicine-frontage.jpg",
-  "cunningham-falls.jpg",
-  "catoctin-furnace.jpg",
-  "county-ballenger-creek-park-frederick.jpg",
-  "county-buckeystown-park-frederick.jpg",
-  "county-catoctin-creek-park-nature-center-burkittsville.jpg",
-  "county-kemptown-park-new-market.jpg",
-  "county-loys-station-park-thurmont.jpg",
-  "county-middletown-park-middletown.jpg",
-  "county-othello-regional-park-brunswick.jpg",
-  "county-pinecliff-park-frederick.jpg",
-  "county-point-of-rocks-community-commons-park-brunswick.jpg",
-  "county-utica-park-walkersville.jpg",
-  "county-fountain-rock-nature-center-walkersville.jpg",
-  "county-thurmont-recreation-center-thurmont.jpg",
-  "county-walkersville-recreation-center-walkersville.jpg",
-  "county-brunswick-recreation-center-brunswick.jpg",
+// Next permits at most 25 local patterns; Vercel also limits each compiled
+// pathname regex to 256 characters. Keep these exact reviewed files in small
+// closed unions, preserving the same filenames without wildcards or queries.
+const REVIEWED_LOCAL_PLACE_PHOTO_GROUPS = [
+  [
+    "brewers-alley-2004.jpg",
+    "delaplaine-exterior.jpg",
+    "weinberg-exterior.jpg",
+    "c-burr-artz-exterior.jpg",
+    "frederick-marc-station-2015.jpg",
+    "heritage-frederick-exterior-2009.jpg",
+    "thurmont-square-park-2012.jpg",
+  ],
+  [
+    "heritage-farm-park-harris-farmhouse-2010.jpg",
+    "sabor-de-cuba-entrance-2018.jpg",
+    "francis-scott-key-monument-2024.jpg",
+    "rose-hill-manor-exterior-2019.jpg",
+    "utica-covered-bridge-2022.jpg",
+    "civil-war-medicine-frontage.jpg",
+  ],
+  [
+    "cunningham-falls.jpg",
+    "catoctin-furnace.jpg",
+    "county-ballenger-creek-park-frederick.jpg",
+    "county-buckeystown-park-frederick.jpg",
+    "county-catoctin-creek-park-nature-center-burkittsville.jpg",
+    "county-kemptown-park-new-market.jpg",
+  ],
+  [
+    "county-loys-station-park-thurmont.jpg",
+    "county-middletown-park-middletown.jpg",
+    "county-othello-regional-park-brunswick.jpg",
+    "county-pinecliff-park-frederick.jpg",
+    "county-point-of-rocks-community-commons-park-brunswick.jpg",
+  ],
+  [
+    "county-utica-park-walkersville.jpg",
+    "county-fountain-rock-nature-center-walkersville.jpg",
+    "county-thurmont-recreation-center-thurmont.jpg",
+  ],
+  [
+    "county-walkersville-recreation-center-walkersville.jpg",
+    "county-brunswick-recreation-center-brunswick.jpg",
+  ],
 ] as const;
 
 // Enforcing baseline CSP. Next currently needs inline boot scripts and the app
@@ -191,8 +203,10 @@ const nextConfig: NextConfig = {
       { pathname: "/from-above/**", search: "" },
       { pathname: "/history-photos/**", search: "" },
       // Next's installed picomatch matcher supports this closed brace union.
-      // Only these 29 reviewed local files are admitted, without query variants.
-      { pathname: `/place-photos/{${REVIEWED_LOCAL_PLACE_PHOTO_FILES.join(",")}}`, search: "" },
+      // Only these 29 reviewed files are admitted, within both platform bounds.
+      ...REVIEWED_LOCAL_PLACE_PHOTO_GROUPS.map(files => ({
+        pathname: `/place-photos/{${files.join(",")}}`, search: "",
+      })),
       // Brewery logo marks (the breweries' own site icons, committed with
       // provenance in src/data/brewery-marks.json) — the /beer passport.
       { pathname: "/brewery-marks/**", search: "" },
