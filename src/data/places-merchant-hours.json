@@ -576,11 +576,11 @@
       "slug": "sumittra-thai-cuisine",
       "source_url": "https://www.sumittra.com/",
       "source_name": "Sumittra Thai Cuisine",
-      "source_sha256": "03058ab1ee05f5bea3f1f761d9bc9da031b86241ecdcc5705e1b52a355809d21",
-      "observed_at": "2026-10-20T11:49:26.851Z",
-      "expires_at": "2026-10-27T11:49:26.851Z",
-      "coverage_from": "2026-10-20",
-      "coverage_through": "2026-10-27",
+      "source_sha256": "3e8aa0bad02c20d52067e9a4305f87923e6c7a32696dba50dc8fadc03d0543d7",
+      "observed_at": "2026-10-25T14:38:34.226Z",
+      "expires_at": "2026-11-01T14:38:34.226Z",
+      "coverage_from": "2026-10-25",
+      "coverage_through": "2026-11-01",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -651,11 +651,11 @@
       "slug": "the-curious-iguana-frederick",
       "source_url": "https://curiousiguana.com/",
       "source_name": "Curious Iguana",
-      "source_sha256": "5ec16523f886677fc82ce4c8339a048e0f82339eced7780172cdb6d17bcfb6e7",
-      "observed_at": "2026-10-20T11:50:31.369Z",
-      "expires_at": "2026-10-27T11:50:31.369Z",
-      "coverage_from": "2026-10-20",
-      "coverage_through": "2026-10-27",
+      "source_sha256": "1ce181854448d09ce0f913c1e4a2e18ae889951c8a13868d3a5bb6f568b7bb6b",
+      "observed_at": "2026-10-25T14:39:19.059Z",
+      "expires_at": "2026-11-01T14:39:19.059Z",
+      "coverage_from": "2026-10-25",
+      "coverage_through": "2026-11-01",
       "kind": "weekly",
       "hours": {
         "sun": [
