@@ -20,6 +20,7 @@ import {
   validateFrederickTransitArtifacts,
 } from "./lib/transit-data-validation";
 import { fetchValidatedZip } from "./lib/fetch-validated-zip";
+import { createNativeSourceReviewEvidence } from "./lib/native-source-review-evidence";
 
 const GTFS_URL = "https://passio3.com/frederick/passioTransit/gtfs/google_transit.zip";
 const OFFICIAL_SCHEDULE_URL =
@@ -60,8 +61,17 @@ function gtfsDate(value: string | undefined): string | undefined {
 }
 
 async function main() {
+  const evidence = process.env.TRANSIT_REVIEW_EVIDENCE_DIR ? createNativeSourceReviewEvidence(process.env.TRANSIT_REVIEW_EVIDENCE_DIR, {
+    publisher: "frederick-transit", sourceRevision: process.env.GITHUB_SHA ?? "unknown",
+    sourceRun: process.env.GITHUB_RUN_ID, sourceAttempt: process.env.GITHUB_RUN_ATTEMPT,
+    sources: [{ id: "frederick-transit", urls: [GTFS_URL], selected: true }],
+    maxResponses: 3, maxResponseBytes: 20_000_000, maxTotalBytes: 60_000_000,
+  }) : undefined;
+  let completed = false;
+  try {
   const archivePath = `${TMP}/gtfs.zip`;
   const archive = await fetchValidatedZip(GTFS_URL, {
+    onResponse: response => evidence?.capture("frederick-transit", response),
     onRetry: (message) => console.warn(`  ${message}`),
     validateArchive(candidate) {
       writeFileSync(archivePath, candidate);
@@ -214,6 +224,8 @@ async function main() {
     "Frederick TransIT generated artifacts",
     validateFrederickTransitArtifacts({ transit: out, network, trips }),
   );
+  evidence?.finish([{ sourceId: "frederick-transit", status: "complete", observedAt: new Date().toISOString() }]);
+  completed = true;
   writeFileSync(OUT, JSON.stringify(out));
   // These richer indexes are split from transit.json so the many small client
   // components that only need route colors or stop coordinates do not all
@@ -224,7 +236,7 @@ async function main() {
     JSON.stringify(network),
   );
   writeFileSync(TRIPS_OUT, JSON.stringify(trips));
-  rmSync(TMP, { recursive: true, force: true });
+  evidence?.bindOutputs(["src/data/transit.json", "src/data/transit-network.json", "src/data/transit-trips.json"]);
   const variantCount = Object.values(shapeVariants).reduce(
     (sum, variants) => sum + variants.length,
     0,
@@ -232,6 +244,10 @@ async function main() {
   console.log(
     `  transit.json: ${routes.length} routes · ${stops.length} stops · ${variantCount} shape variants · ${Object.keys(trips).length} trips`,
   );
+  } catch (error) {
+    if (!completed) evidence?.finish([{ sourceId: "frederick-transit", status: "failed", observedAt: new Date().toISOString() }]);
+    throw error;
+  } finally { rmSync(TMP, { recursive: true, force: true }); }
 }
 
-main();
+main().catch(error => { console.error(error); process.exitCode = 1; });

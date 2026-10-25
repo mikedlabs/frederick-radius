@@ -64,6 +64,7 @@ import { inferredNonMusicCategory } from "../src/lib/events/live-music";
 import { lintSourceText } from "./style-lint";
 import { parseVenueCollectionArgs, selectVenueCollectionSources } from "./lib/venue-collection-mode";
 import { isExpiredVenueEvent, reviewVenueCollection } from "./lib/venue-collection-review";
+import { createNativeSourceReviewEvidence, NativeEvidenceError } from "./lib/native-source-review-evidence";
 
 const OUT = resolve("src/data/venue-events.json");
 const SOURCE_INVENTORY_OUT = resolve(
@@ -587,6 +588,13 @@ export async function ingestVenueEvents(args: readonly string[] = process.argv.s
   const sources = injected.sources ?? (JSON.parse(readFileSync(CONFIG, "utf8")) as { venues: VenueSource[] }).venues;
   // Reject a mistaken selector before collection or any artifact write.
   const venues = selectVenueCollectionSources(sources, options);
+  if (process.env.NATIVE_VENUE_REVIEW_EVIDENCE_DIR && !options.deterministicOnly) throw new Error("Native review capture cannot admit model sources.");
+  const evidence = process.env.NATIVE_VENUE_REVIEW_EVIDENCE_DIR ? createNativeSourceReviewEvidence(process.env.NATIVE_VENUE_REVIEW_EVIDENCE_DIR, {
+    publisher: "native-venues", sourceRevision: process.env.GITHUB_SHA ?? "unknown",
+    sourceRun: process.env.GITHUB_RUN_ID, sourceAttempt: process.env.GITHUB_RUN_ATTEMPT,
+    sources: sources.filter(source => source.urls.length).map(source => ({ id: source.slug, urls: source.urls, selected: venues.some(venue => venue.slug === source.slug) })),
+    maxResponses: 48, maxResponseBytes: 8_000_000, maxTotalBytes: 96_000_000,
+  }) : undefined;
   // The public artifact intentionally omits exact duplicates from the known
   // Weinberg/New Spire pair. Seed promotion from the unsuppressed source
   // inventory when available so a hidden Weinberg row remains recoverable if
@@ -621,6 +629,7 @@ export async function ingestVenueEvents(args: readonly string[] = process.argv.s
   const runStartedAt = now.getTime();
   if (!Number.isFinite(runStartedAt)) throw new Error("Venue collection requires a valid observation clock.");
   const outcomes: { slug: string; status: VenueCollectionStatus }[] = [];
+  const evidenceOutcomes: { sourceId: string; status: "complete" | "failed"; observedAt: string }[] = [];
   for (const venue of venues) {
     const hasSource = venue.urls?.length || venue.imageUrl;
     if (!hasSource) {
@@ -637,9 +646,16 @@ export async function ingestVenueEvents(args: readonly string[] = process.argv.s
     });
     let result: CollectResult;
     try {
+      const dependencies = injected.collectDependencies ?? DEFAULT_COLLECT_DEPENDENCIES;
+      const observedDependencies: VenueCollectDependencies | undefined = evidence ? {
+        ...dependencies,
+        fetchSquarespaceEventsResult: (url, opts) => dependencies.fetchSquarespaceEventsResult(url, { ...opts, onResponse: response => evidence.capture(venue.slug, response) }),
+        fetchWeinbergEventsResult: (url, opts) => dependencies.fetchWeinbergEventsResult(url, { ...opts, onResponse: response => evidence.capture(venue.slug, response) }),
+      } : injected.collectDependencies;
       result = await collect(venue, sourceState, ensureModelReady,
-        hasRetainedVenueEvents, injected.collectDependencies);
+        hasRetainedVenueEvents, observedDependencies);
     } catch (error) {
+      if (error instanceof NativeEvidenceError) throw error;
       if (!options.deterministicOnly) throw error;
       console.error(`Native source ${venue.slug} failed; prior rows retained.`, error);
       result = { events: [], source: directSource(venue.urls[0] ?? ""), status: "failed" };
@@ -647,6 +663,7 @@ export async function ingestVenueEvents(args: readonly string[] = process.argv.s
     const { events, source, status, modelUnavailable: sourceModelUnavailable } = result;
     outcomes.push({ slug: venue.slug, status });
     const fetchedAt = injected.now?.toISOString() ?? nowISO();
+    evidenceOutcomes.push({ sourceId: venue.slug, status: status === "failed" ? "failed" : "complete", observedAt: fetchedAt });
     if (sourceModelUnavailable) {
       modelUnavailable = true;
       console.log(`  – model unavailable; prior venue data retained`);
@@ -704,10 +721,12 @@ export async function ingestVenueEvents(args: readonly string[] = process.argv.s
   } = buildRecoverableVenuePublication(futureish);
 
   const sourceStateAfter = serializeVenueSourceState(sourceState);
+  evidence?.finish(evidenceOutcomes);
   if (injected.persist !== false) {
     writeFileSync(SOURCE_INVENTORY_OUT, JSON.stringify(sourceInventory, null, 2) + "\n");
     writeFileSync(OUT, JSON.stringify(kept, null, 2) + "\n");
     if (sourceStateAfter !== sourceStateBefore) writeFileSync(SOURCE_STATE, sourceStateAfter);
+    evidence?.bindOutputs(["src/data/venue-event-source-inventory.json", "src/data/venue-events.json", "src/data/venue-event-source-state.json"]);
   }
   const review = reviewVenueCollection(existing, sourceInventory, now);
   const failedSources = outcomes.filter((item) => item.status === "failed").map((item) => item.slug);

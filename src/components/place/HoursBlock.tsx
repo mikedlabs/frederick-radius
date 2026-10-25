@@ -25,7 +25,6 @@ export default function HoursBlock({
   website?: string;
   phone?: string;
 }) {
-  const [open, setOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
@@ -51,9 +50,8 @@ export default function HoursBlock({
 
   const disclosure = (
     <details
-      className="group rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
+      className="group/hours rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
       style={{ borderColor: "var(--app-border)" }}
-      onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}
     >
       <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-[var(--app-radius-md)] px-3 py-2.5 list-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-focus)]">
         <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -67,10 +65,9 @@ export default function HoursBlock({
         </span>
         <ChevronDown
           aria-hidden
-          className="h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none"
+          className="h-4 w-4 shrink-0 transition-transform group-open/hours:rotate-180 motion-reduce:transition-none"
           style={{
             color: "var(--app-ink-3)",
-            transform: open ? "rotate(180deg)" : "rotate(0)",
           }}
         />
       </summary>

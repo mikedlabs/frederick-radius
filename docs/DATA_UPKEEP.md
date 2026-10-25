@@ -61,6 +61,37 @@ and auto-merge policy remains separate. Passing native tests is still not
 publication: require the protected merge and its rule evaluation, then the exact
 ready Vercel deployment and relevant public checks before saying an update is live.
 
+### Preserve the native source originals
+
+Native venue and Frederick transit jobs retain a separate authenticated
+`native-venue-source-evidence-<run>-<attempt>` or
+`transit-source-evidence-<run>-<attempt>` artifact for seven days. These wrap the
+existing responses; they add no requests, retries, models or providers. Raw
+bytes never enter Git, generated client datasets or publication allowlists.
+
+Each index pins the source revision, native run/attempt, exact source identity,
+request method and URL, actual response observation, original byte count and
+SHA-256. Venue pagination records its filter and offset without copying the
+request nonce into the index. The original landing page and pagination JSON
+remain available for authoritative offline replay. Transit retains every read
+response from its existing three-attempt ZIP policy, including unsuccessful
+archive candidates. A retention failure cannot initiate another source retry.
+
+`collection_complete` means every selected source has an outcome, not that every
+source succeeded or any changed fact was accepted. Failed and unselected source
+outcomes remain separate; unselected sources get no new observation. Missing,
+over-limit or timed-out bodies have no invented hash or zero-byte original.
+Completed indexes also bind the exact generated source output hashes. Missing
+originals from older runs remain unknown; these hooks do not reconstruct them.
+
+Bodies retain finite limits: Weinberg responses stay at 2 MB, the Squarespace
+JSON feed is bounded at 8 MB, and Frederick GTFS archives at 20 MB. The private
+venue batch is bounded at 48 responses/96 MB and transit at three responses/60 MB.
+Body reads retain a deadline as well as the existing request deadline. These
+are storage/transport bounds, not extra source calls or publication authority.
+Review changed events, separate performances, school-show conditions, stop
+coordinates and accessibility against their actual originals before publishing.
+
 The historical `automated-pr-status-bridge.yml` is manual recovery only. Its
 explicit attach and stale-failure modes and saved transport receipts remain
 available, but it has no schedule or automatic CI caller. Synthetic API/legacy
@@ -113,6 +144,14 @@ policy authority, raise provider budgets or provision services.
   provider fallback. Barbara Fritchie House retains its preferred accurate
   image policy using existing local licensed bytes. Source and license credits
   travel with the selected photograph; no new merchant image rights are inferred.
+- The owner confirmed written data and attachment-photo reuse permission for
+  `fc_recreation_locations`. Fourteen exact-place County attachments reviewed
+  on October 24 are bundled with County credit and `Used with permission`.
+  Private originals, attachment/parent identities, hashes and acceptance remain
+  in the release evidence. Embedded private metadata was removed without
+  changing pixels or color profiles. Capture dates are unknown. This accepts
+  only those photo bindings: the broad adapter, remaining images and amenity
+  facts retain their existing source gates and substantive review requirements.
 
 The native merchant fetcher normally accepts at most 512,000 HTML bytes. The
 exact enrolled Aleko's URL has a reviewed 1 MiB exception because its complete
@@ -172,6 +211,22 @@ remain held unless their exact source adapter preserves an explicitly reviewed
 display-only qualification. That qualification never establishes generic
 Open now. Common Market is the currently enrolled shared-page cohort;
 FCPL retains its independently reviewed nine-branch adapter.
+
+Seven additional exact identities use the declarative `visible_weekly_contact_card`
+shape: Firebirds Frederick, Fratelli's Middletown, Hinzi's Frederick, Hoffman
+Brothers, Frederick Fudge & Ice Cream, Carriage House Inn and El Rancho
+Walkersville. The native owner now has 29 unique URLs for 30 native identities;
+two manual identities retain their existing observations and provider holds.
+Registration alone does not accept or publish facts. Complete primary weekdays,
+exact canonical/name/address/telephone and agreeing repeated or matching
+structured claims are required. Missing JSON-LD alone is not a rejection.
+
+Carriage's lunch/dinner partitions must exactly cover public restaurant hours.
+Hinzi's Germantown sections cannot supply Frederick facts. Fudge's five archived
+posts pin each id, timestamp, href and normalized-text hash; changed entries and
+old permanent, seasonal, recurring or ongoing closure wording stay held. These
+bounds never discard an unknown closure merely because a post is old. The
+existing native request/byte limits and seven-day expiry remain unchanged.
 
 The scheduled native run preserves original merchant HTML and an index of
 actual observations, hashes, exact member slugs and failed/manual-skipped

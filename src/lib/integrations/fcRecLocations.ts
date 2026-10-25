@@ -22,9 +22,12 @@
  *    the stable download URL is `<layer>/<objectId>/attachments/<id>`.
  *    We surface that URL with provenance; mirroring to blob is a separate
  *    step (see scripts/ingest-rec-locations.ts).
- * Anonymous readability is not a commercial reuse grant. Runtime and build
- * pulls remain dark until written permission activates this exact source id
- * and specifies attachment-photo reuse.
+ * Anonymous readability is not a commercial reuse grant. The owner has since
+ * confirmed written data and attachment-photo reuse permission for this exact
+ * source. Individually reviewed local photographs are published separately in
+ * credited-local-place-photos.ts. This broad runtime/build adapter remains
+ * gated pending substantive review of the remaining facts and attachments;
+ * permission or photo acceptance alone never enables it.
  */
 import { frederickCountySourceEnabled } from "@/lib/integrations/fcCountySource";
 

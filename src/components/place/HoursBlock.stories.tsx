@@ -100,6 +100,51 @@ export const Unconfirmed: Story = {
     await expect(canvas.queryByText(/Hours today/)).not.toBeInTheDocument();
   },
 };
+
+export const NativeBeforeClientListeners: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  parameters: { docs: { description: { story: "The real HoursBlock markup is copied without React listeners, representing native interaction before its JavaScript is ready. Its arrow follows the actual disclosure instead of waiting for a missed client toggle event." } } },
+  render: (args) => <>
+    <div hidden data-hours-markup-reference><HoursBlock {...args} /></div>
+    <div data-hours-native-surface />
+  </>,
+  play: async ({ canvasElement }) => {
+    const original = canvasElement.querySelector("[data-hours-markup-reference] details");
+    const surface = canvasElement.querySelector("[data-hours-native-surface]");
+    if (!original || !surface) throw new Error("The actual hours markup is required for the native disclosure regression.");
+    // cloneNode copies actual markup, but never React's listeners or state.
+    const disclosure = original.cloneNode(true) as HTMLDetailsElement;
+    surface.replaceChildren(disclosure);
+    const summary = disclosure.querySelector("summary")!;
+    const arrow = summary.querySelector("svg")!;
+    const rotated = () => {
+      const style = getComputedStyle(arrow);
+      return style.rotate === "180deg" || style.transform === "matrix(-1, 0, 0, -1, 0, 0)";
+    };
+    await expectTouchDisclosure(summary);
+    await expect(disclosure).not.toHaveAttribute("open");
+    await expect(rotated()).toBe(false);
+    const browser = (globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__
+      ? await import("vitest/browser") : undefined;
+    let trustedPointer = false;
+    summary.addEventListener("pointerdown", event => { trustedPointer = event.isTrusted; }, { once: true });
+    if (browser) await browser.userEvent.click(summary);
+    else await userEvent.click(summary);
+    if (browser) await expect(trustedPointer).toBe(true);
+    await waitFor(async () => {
+      await expect(disclosure).toHaveAttribute("open", "");
+      await expect(rotated()).toBe(true);
+    });
+    await expect(surface.querySelector("details")).toBe(disclosure);
+    summary.focus();
+    if (browser) await browser.userEvent.keyboard("{Enter}");
+    else await userEvent.click(summary);
+    await waitFor(async () => {
+      await expect(disclosure).not.toHaveAttribute("open");
+      await expect(rotated()).toBe(false);
+    });
+  },
+};
 export const MerchantWeek: Story = {
   args: { hours: { ...hours, _official: { ...hours._official!, kind: "merchant", schedule_kind: "weekly", source_name: "Demonstration cafe", source_url: "https://example.org/", closures_url: undefined, exceptions: [] } }, provenance: "Hours from the demonstration cafe." },
   play: async ({ canvasElement }) => {

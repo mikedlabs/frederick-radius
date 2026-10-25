@@ -1,4 +1,6 @@
-type FetchResponse = Pick<Response, "ok" | "status" | "arrayBuffer">;
+import { NativeEvidenceError, readNativeResponseBytes, type NativeResponseObserver } from "./native-source-review-evidence";
+
+type FetchResponse = Pick<Response, "ok" | "status" | "arrayBuffer"> & Partial<Pick<Response, "url" | "body" | "headers">>;
 
 type FetchImpl = (
   input: string,
@@ -12,6 +14,8 @@ type FetchValidatedZipOptions = {
   validateArchive?: (archive: Buffer) => void | Promise<void>;
   onRetry?: (message: string) => void;
   sleepImpl?: (ms: number) => Promise<void>;
+  onResponse?: NativeResponseObserver;
+  maxBytes?: number;
 };
 
 const DEFAULT_ATTEMPTS = 3;
@@ -49,6 +53,10 @@ export async function fetchValidatedZip(
     options.sleepImpl ??
     ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   let lastError = "unknown download failure";
+  const observe: NativeResponseObserver = (response) => {
+    try { options.onResponse?.(response); }
+    catch (error) { throw new NativeEvidenceError(errorMessage(error)); }
+  };
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
@@ -57,16 +65,27 @@ export async function fetchValidatedZip(
         headers: { Accept: "application/zip, application/octet-stream;q=0.9" },
       });
       if (!response.ok) {
+        observe({ requestedUrl: url, finalUrl: response.url || url, method: "GET", status: response.status,
+          observedAt: new Date().toISOString(), body: null, context: { phase: "gtfs-archive", attempt } });
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const archive = Buffer.from(await response.arrayBuffer());
+      let archive: Buffer;
+      try { archive = await readNativeResponseBytes(response, options.maxBytes ?? 20_000_000, deadlineMs); }
+      catch (error) {
+        observe({ requestedUrl: url, finalUrl: response.url || url, method: "GET", status: response.status,
+          observedAt: new Date().toISOString(), body: null, bodyState: "read_failed", context: { phase: "gtfs-archive", attempt } });
+        throw error;
+      }
+      observe({ requestedUrl: url, finalUrl: response.url || url, method: "GET", status: response.status,
+        observedAt: new Date().toISOString(), body: archive, context: { phase: "gtfs-archive", attempt } });
       if (!hasZipSignature(archive)) {
         throw new Error(`response is not a ZIP archive (${archive.length} bytes)`);
       }
       await options.validateArchive?.(archive);
       return archive;
     } catch (error) {
+      if (error instanceof NativeEvidenceError) throw error;
       lastError = errorMessage(error);
       if (attempt === attempts) break;
       options.onRetry?.(

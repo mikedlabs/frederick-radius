@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:885934082915308ba5f38437b513f094922366208e89b0b58b70a711091eba69",
+  "data_version": "sha256:4a546e3f95e4667c1a52e5e8ce67c5351f0eda5ede9290b3a968724a621a28e7",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-24T22:03:27.086Z",
+      "promoted_at": "2026-10-25T00:34:49.093Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -72,9 +72,9 @@
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "dab02004c916fdaa9cc5d262c5647873f6deefc6ad000200319ffd696b8b1216",
-          "records": 25,
-          "bytes": 32671
+          "sha256": "5aa4ddb778dc942610d5bc0eddc5b042e24b8614c200adf8e9cd31538ef5195b",
+          "records": 32,
+          "bytes": 41284
         },
         {
           "path": "src/data/business-status.json",
@@ -174,15 +174,99 @@
         },
         {
           "path": "src/lib/integrations/wikimedia.ts",
-          "sha256": "2ceceb61279695f017a9bedc5f52100f30ce07ed9f51f85c7d0f7cf1e68a39c5",
+          "sha256": "036ffc22ed83fd79fcd9a1548823743cf6f83af6763976c33700458f9de1e857",
           "records": null,
-          "bytes": 10726
+          "bytes": 10752
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
-          "sha256": "40ef53792b12cf9e03fa559eb202bb59376f068a59e87329c18ef5563476bf5c",
+          "sha256": "82aebdd9655e5a30269884a3c504d8974b535d3c20e34f3440c6eb85b0bfb206",
           "records": null,
-          "bytes": 20050
+          "bytes": 33521
+        },
+        {
+          "path": "public/place-photos/county-ballenger-creek-park-frederick.jpg",
+          "sha256": "59bd22ff0b19abb8161050e84f044ded3dc02afc97ce659db19207a851c596b7",
+          "records": null,
+          "bytes": 171527
+        },
+        {
+          "path": "public/place-photos/county-buckeystown-park-frederick.jpg",
+          "sha256": "a5a9bb7740e334f1fe73815fb6c1af7dce526ca64033420c4981552c9f2bd881",
+          "records": null,
+          "bytes": 209678
+        },
+        {
+          "path": "public/place-photos/county-catoctin-creek-park-nature-center-burkittsville.jpg",
+          "sha256": "9fab2d0a2fc32a9ba13bd364428736f0af161d5623f6f2b82999d33e7257cbcc",
+          "records": null,
+          "bytes": 195172
+        },
+        {
+          "path": "public/place-photos/county-kemptown-park-new-market.jpg",
+          "sha256": "79d1c89c81bf7284c9b61d9b331083ae7027731fca26823f2e8ae6c6269cd17c",
+          "records": null,
+          "bytes": 156626
+        },
+        {
+          "path": "public/place-photos/county-loys-station-park-thurmont.jpg",
+          "sha256": "d92c89cc5572bdfe2d00eb2d0622e1599066f8e877ec8c64c50836a576370cc9",
+          "records": null,
+          "bytes": 231981
+        },
+        {
+          "path": "public/place-photos/county-middletown-park-middletown.jpg",
+          "sha256": "130e058963bcc74c0842919b06751ee751aeafd678d9c9202d01c46247114d1e",
+          "records": null,
+          "bytes": 222537
+        },
+        {
+          "path": "public/place-photos/county-othello-regional-park-brunswick.jpg",
+          "sha256": "291b671dc03040e50da4c3eec81a6de7610213d5e30108a7051e592407cb5d77",
+          "records": null,
+          "bytes": 97654
+        },
+        {
+          "path": "public/place-photos/county-pinecliff-park-frederick.jpg",
+          "sha256": "2ee6aea289ed41989b0710c31272003b56b791b6aa694827d82068ce5e3476e9",
+          "records": null,
+          "bytes": 175207
+        },
+        {
+          "path": "public/place-photos/county-point-of-rocks-community-commons-park-brunswick.jpg",
+          "sha256": "8a4230b49673af46462fc231e8809f12fcd0da401402eb3ebf43de17c80bc573",
+          "records": null,
+          "bytes": 313981
+        },
+        {
+          "path": "public/place-photos/county-utica-park-walkersville.jpg",
+          "sha256": "3d9270db8f9dc5bcdd2e1ceaa9d7993bf89aa27e83c9f8b7dc61ea026cb3c4b0",
+          "records": null,
+          "bytes": 133586
+        },
+        {
+          "path": "public/place-photos/county-fountain-rock-nature-center-walkersville.jpg",
+          "sha256": "cf9ac28dbb56ea8bb04f33d9a0d44c64bd8fc1378e717169130c2b22807b3378",
+          "records": null,
+          "bytes": 211742
+        },
+        {
+          "path": "public/place-photos/county-thurmont-recreation-center-thurmont.jpg",
+          "sha256": "215d5947c6b252fe92be02e986253b0e505e7355bc5b594f40290e619dc4e01e",
+          "records": null,
+          "bytes": 97383
+        },
+        {
+          "path": "public/place-photos/county-walkersville-recreation-center-walkersville.jpg",
+          "sha256": "27d3ec60654a371746a7658883850cc6f4845943e9669ac7176c91b91f575eaa",
+          "records": null,
+          "bytes": 113128
+        },
+        {
+          "path": "public/place-photos/county-brunswick-recreation-center-brunswick.jpg",
+          "sha256": "d66f657b972e9f62f11e1b1beb668229f7f20a97447637462ee852feb61e10d0",
+          "records": null,
+          "bytes": 486108
         },
         {
           "path": "public/place-photos/frederick-marc-station-2015.jpg",
@@ -492,15 +576,15 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "7cac6b30d714de394299e311e4d11b618fd2ccd2b946daa1b6190e57a09d167c",
+          "sha256": "47d88f9dd02670f6edb41a2a7068528ce20c5d7b89b1d153083621a9f23e56e0",
           "records": 1571,
-          "bytes": 2311972
+          "bytes": 2316643
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "3e090fe4d8262fe6269b9634c9abf5fa63cd0439275c53a5b9ba45508146e1b3",
-          "records": 34,
-          "bytes": 44168
+          "sha256": "a78be296529e6a79ed3b90169c1f5857aa7615c92ed39e496ec426dde0d180b7",
+          "records": 41,
+          "bytes": 49611
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
@@ -511,13 +595,13 @@
       ]
     },
     "sources": {
-      "promoted_at": "2026-10-23T09:59:37.179Z",
+      "promoted_at": "2026-10-25T00:34:49.349Z",
       "artifacts": [
         {
           "path": "src/data/source-registry.generated.json",
-          "sha256": "3b893901cad590a7666095ccf2c555b604ecbac88f6547138cfcb82bbcbb6c1c",
-          "records": 152,
-          "bytes": 101306
+          "sha256": "011459d23f647600d89ea433b9662165aa88290f0bdb865c881d63ce376becbf",
+          "records": 159,
+          "bytes": 106840
         }
       ]
     },

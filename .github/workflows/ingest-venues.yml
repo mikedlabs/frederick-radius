@@ -108,10 +108,22 @@ jobs:
           tests/venue-collection-review.spec.ts tests/venue-native-collection.spec.ts
           tests/venue-native-workflow.spec.ts tests/venue-event-alternatives.spec.ts
           tests/venue-event-promotion.spec.ts tests/squarespace-events.spec.ts
-          tests/weinberg-events.spec.ts --maxWorkers=2 --no-file-parallelism
+          tests/weinberg-events.spec.ts
+          tests/native-source-review-evidence.spec.ts
+          tests/native-venue-review-evidence.spec.ts --maxWorkers=2 --no-file-parallelism
       - name: Collect three reviewed native venue sources
         id: extract
+        env:
+          NATIVE_VENUE_REVIEW_EVIDENCE_DIR: ${{ runner.temp }}/native-venue-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}
         run: npm run ingest:venues -- --deterministic-only
+      - name: Preserve original native venue responses
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-venue-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/native-venue-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          retention-days: 7
       - name: Verify native event provenance and voice
         run: |
           npm run style:lint

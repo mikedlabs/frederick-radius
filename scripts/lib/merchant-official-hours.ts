@@ -151,16 +151,19 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
   const { text, document } = textPage(page.html);
   const defaultWindow = source.kind === "weekly" ? merchantWeeklyHoursWindow(source.slug, page.observedAt) : undefined;
   const qualified = parseQualifiedMerchantHours(source, page, document, text, easternDayKey(new Date(page.observedAt)), defaultWindow?.coverage_through ?? easternDayKey(new Date(page.observedAt)));
-  if (!qualified && /temporarily closed|closed (?:today|tomorrow|for)|closing early|special hours|holiday hours|until sold out|drinks only|kitchen hours/i.test(text)) throw new Error("Unresolved merchant notice or service qualifier.");
   const cohort = merchantHoursCohort(source);
-  const structured = qualified || cohort?.cohort.shape === "jsonld_weekly_location_cards" ? [] : structuredOpeningHours(document, source);
+  const contactCohort = cohort?.cohort.shape === "visible_weekly_contact_card";
+  // Reviewed contact cohorts own their scoped notice/structured checks, including
+  // original dated archives. Other adapters retain the existing whole-page gate.
+  if (!qualified && !contactCohort && /temporarily closed|closed (?:today|tomorrow|for)|closing early|special hours|holiday hours|until sold out|drinks only|kitchen hours/i.test(text)) throw new Error("Unresolved merchant notice or service qualifier.");
+  const structured = qualified || cohort?.cohort.shape === "jsonld_weekly_location_cards" || contactCohort ? [] : structuredOpeningHours(document, source);
   const hours: Hours = {};
   let from = easternDayKey(new Date(page.observedAt));
   let through: string | undefined;
   if (qualified) {
     Object.assign(hours, qualified.hours);
   } else if (cohort) {
-    Object.assign(hours, parseOfficialHoursCohort(document, text, cohort.cohort, cohort.binding));
+    Object.assign(hours, parseOfficialHoursCohort(document, text, cohort.cohort, cohort.binding, { coverage_from: from, coverage_through: defaultWindow?.coverage_through ?? from }));
   } else if (source.kind === "dated_week") {
     if (!/Brewer[’']?s Alley/i.test(text)) throw new Error("Missing Brewer's Alley identity.");
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];

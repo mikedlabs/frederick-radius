@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { curatedPhotoSourceLabel } from "@/lib/curated-photo-source";
 import type { PlaceCardPhotoResult, PlaceCardPhotoSource } from "@/lib/place-card-photo";
 import { GooglePhotoAttributionLine } from "./GoogleAttribution";
 import { useVisibleGooglePhoto } from "./useVisibleGooglePhoto";
@@ -84,6 +85,9 @@ export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false, comp
   discloseModifications?: boolean;
 }) {
   if (!source || source.kind === "owned") return null;
+  const sourceLabel = source.kind === "curated" ? curatedPhotoSourceLabel(source.photo.source_url) : "";
+  const countyProvided = sourceLabel === "Frederick County";
+  const creditPrefix = countyProvided ? "Photo provided by" : "Photo by";
   const licenseLinks: Record<string, string> = { "CC BY-SA 4.0": "https://creativecommons.org/licenses/by-sa/4.0", "CC BY 2.0": "https://creativecommons.org/licenses/by/2.0" };
   const licenseHref = source.kind === "curated"
     ? (source.photo.licenseUrl ?? licenseLinks[source.photo.license]
@@ -98,18 +102,18 @@ export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false, comp
         <GooglePhotoAttributionLine attribution={source.attribution} compact touchTarget={touchTarget} />
       ) : (
         <>
-          {!discloseModifications && <span className="block pt-1">Photo by {source.photo.author}.{compact && !source.photo.modifications ? " Cropped for display." : ""}</span>}
+          {!discloseModifications && <span className="block pt-1">{creditPrefix} {source.photo.author}.{compact && !source.photo.modifications ? " Cropped for display." : ""}</span>}
           {!discloseModifications && (source.photo.modifications
             ? <span className="block">{source.photo.modifications}</span>
             : !compact && <span className="block">The image is resized for display; previews may be cropped.</span>)}
           <div className="place-card-photo-credit-row flex flex-wrap gap-x-3">
-            <a href={source.photo.source_url} aria-label={discloseModifications ? `Photo by ${source.photo.author}. Wikimedia Commons` : undefined} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{discloseModifications ? source.photo.author : "Wikimedia Commons"}</a>
+            <a href={source.photo.source_url} aria-label={discloseModifications ? `${creditPrefix} ${source.photo.author}. ${sourceLabel}` : undefined} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{discloseModifications ? source.photo.author : sourceLabel}</a>
             <a href={licenseHref!} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{source.photo.license}</a>
             {discloseModifications && (
               <details className="place-card-photo-edits">
-                <summary>Edited photo</summary>
+                <summary>{countyProvided ? "Photo details" : "Edited photo"}</summary>
                 <div className="place-card-photo-credit-details">
-                  <p>The photo is by {source.photo.author} on Wikimedia Commons.</p>
+                  <p>{countyProvided ? `The photo was provided by ${source.photo.author}. Source: ${sourceLabel}.` : `The photo is by ${source.photo.author} on ${sourceLabel}.`}</p>
                   <p>{source.photo.modifications ?? "The image is resized for display; previews may be cropped."}</p>
                 </div>
               </details>

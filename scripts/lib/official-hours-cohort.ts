@@ -1,5 +1,7 @@
+import { createHash } from "node:crypto";
 import type { DayOfWeek, Hours } from "../../src/data/places";
-import { WEEKDAYS } from "../../src/lib/official-hours";
+import { WEEKDAYS, isCalendarDate } from "../../src/lib/official-hours";
+import { easternDayKey } from "../../src/lib/tz";
 
 type Identity = {
   name: string;
@@ -29,8 +31,54 @@ type CohortBase = {
   bindings: readonly OfficialHoursCohortBinding[];
   selectors: IdentitySelectors & { card: string; schedule: string };
 };
+type ExactContactField = {
+  selector: string;
+  expected: string;
+  attribute?: "href" | "content" | "alt" | "title";
+};
+type VisibleWeekSection = {
+  selector: string;
+  count: number;
+  label?: string;
+  suffix?: string;
+  /** A corroborating service copy cannot supply missing primary weekdays. */
+  partial?: true;
+  partitions?: { labels: readonly string[]; days: readonly DayOfWeek[] };
+};
+export type VisibleWeeklyContactLocation = {
+  name: ExactContactField;
+  address: ExactContactField;
+  phone: ExactContactField;
+  weeks: readonly VisibleWeekSection[];
+  headings?: readonly string[];
+  structured?: {
+    schema_type: string;
+    entity_url: string;
+    name: string;
+    closed_representation?: "midnight_equal";
+  };
+  /** Only individually timestamped archived entries may be excluded. */
+  social_archive?: {
+    selector: string;
+    item_selector: string;
+    timestamp_attribute: "data-date";
+    posts: readonly { id: string; timestamp: string; href: string; text_sha256: string }[];
+  };
+  /** Independently identified, unselected locations are neither fact sources nor
+   * public cohort members. Their exact visible bytes must remain reviewed. */
+  other_locations?: readonly { selector: string; expected_text: string; identity: Identity }[];
+};
+type VisibleContactCohort = {
+  shape: "visible_weekly_contact_card";
+  ledger_id: string;
+  source_url: string;
+  canonical_url: string;
+  bindings: readonly OfficialHoursCohortBinding[];
+  locations: Readonly<Record<string, VisibleWeeklyContactLocation>>;
+};
+export type OfficialHoursCohortWindow = { coverage_from: string; coverage_through: string };
 /** Shapes are reviewed code, not selectors accepted from a fetched page or CLI. */
-export type OfficialHoursCohort = CohortBase & ({
+export type OfficialHoursCohort = VisibleContactCohort | (CohortBase & ({
   shape: "shared_daily_contact_card";
   organization_name: string;
   schedule_container: string;
@@ -67,10 +115,11 @@ export type OfficialHoursCohort = CohortBase & ({
   schedule_row: string;
   day: string;
   periods: string;
-});
+}));
 
 const compact = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
 const phone = (value: string) => value.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
+const contactPhone = (value: string) => phone(decodeURIComponent(value.replace(/^tel:/i, "")));
 const text = (node: Element): string => [...node.childNodes].map((child) => child.nodeType === 3 ? child.textContent ?? "" : child.nodeType === 1 ? text(child as Element) : "").join(" ").replace(/\s+/g, " ").trim();
 const CLOCK = "(\\d{1,2}(?::\\d{2})?\\s*[ap]m)";
 const FULL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -108,6 +157,29 @@ function validateCohort(cohort: OfficialHoursCohort, binding: OfficialHoursCohor
     || new Set(cohort.bindings.map((row) => row.slug)).size !== cohort.bindings.length
     || !cohort.bindings.includes(binding)
     || cohort.bindings.some((row) => !row.slug || !row.source_name || Object.values(row.identity).some((value) => !value))) throw new Error("Invalid reviewed cohort bindings.");
+  if (cohort.shape === "visible_weekly_contact_card") {
+    const canonical = new URL(cohort.canonical_url);
+    if (canonical.protocol !== "https:" || canonical.origin !== url.origin || canonical.username || canonical.password || canonical.hash
+      || Object.keys(cohort.locations).length !== cohort.bindings.length || cohort.bindings.some(row => !cohort.locations[row.slug])) throw new Error("Invalid exact visible contact ownership.");
+    for (const row of cohort.bindings) {
+      const location = cohort.locations[row.slug];
+      if (![location.name, location.address, location.phone].every(field => field?.selector && field.expected)
+        || !compact(location.name.expected).includes(compact(row.identity.name))
+        || compact(location.address.expected.replace(/,?\s*(?:USA|US|United States)\.?$/, "")) !== compact(`${row.identity.street} ${row.identity.locality} ${row.identity.region} ${row.identity.postalCode}`)
+        || contactPhone(location.phone.expected) !== row.identity.phone
+        || !location.weeks.length || location.weeks.length > 12 || !location.weeks.some(section => !section.partial)
+        || location.weeks.some(section => !section.selector || !Number.isInteger(section.count) || section.count < 1 || section.count > 20
+          || (section.partitions && (section.partitions.labels.length < 2 || section.partitions.labels.length > 4
+            || new Set(section.partitions.labels).size !== section.partitions.labels.length
+            || section.partitions.labels.some(label => !/^[A-Za-z]+$/.test(label))
+            || section.partitions.days.some(day => !WEEKDAYS.includes(day)))))) throw new Error("Invalid exact visible contact or week declaration.");
+      if (location.structured) {
+        const entityUrl = new URL(location.structured.entity_url);
+        if (entityUrl.protocol !== "https:" || entityUrl.origin !== url.origin || entityUrl.username || entityUrl.password || entityUrl.hash
+          || !location.structured.name || !location.structured.schema_type) throw new Error("Invalid structured corroboration ownership.");
+      }
+    }
+  }
   if (cohort.shape === "microdata_store_week" || cohort.shape === "microdata_primary_store_week") {
     const ids = Object.keys(cohort.entity_ids);
     if (cohort.bindings.length !== 1 || ids.length !== 1 || ids[0] !== binding.slug
@@ -179,7 +251,7 @@ function visibleWeek(card: Element, cohort: Extract<OfficialHoursCohort, { shape
   }
   return hours;
 }
-function specifications(entity: Record<string, unknown>, cohort: Extract<OfficialHoursCohort, { shape: "jsonld_weekly_location_cards" }>): Hours {
+function specifications(entity: Record<string, unknown>, cohort: Pick<Extract<OfficialHoursCohort, { shape: "jsonld_weekly_location_cards" }>, "closed_representation">): Hours {
   if (["specialOpeningHoursSpecification", "openingHours", "validFrom", "validThrough", "temporalCoverage"].some((key) => key in entity)
     || !Array.isArray(entity.openingHoursSpecification) || !entity.openingHoursSpecification.length || entity.openingHoursSpecification.length > 14) throw new Error("Unreviewed structured cohort schedule.");
   const hours: Hours = {};
@@ -460,8 +532,184 @@ function microdataPrimaryStoreWeek(document: Document, pageText: string, cohort:
   return hours;
 }
 
+const VISIBLE_DAY = "(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tues?|Wed|Thurs?|Thu|Fri|Sat|Sun)\\.?";
+const VISIBLE_DAYS = `${VISIBLE_DAY}(?:\\s*(?:[-–—,&]|and|to)\\s*${VISIBLE_DAY})*`;
+const VISIBLE_CLOCK = "(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm|a|p))";
+const VISIBLE_RANGE = `${VISIBLE_CLOCK}\\s*[-–—]\\s*${VISIBLE_CLOCK}`;
+const dayAliases = [["monday", "mon"], ["tuesday", "tue", "tues"], ["wednesday", "wed"], ["thursday", "thu", "thur", "thurs"], ["friday", "fri"], ["saturday", "sat"], ["sunday", "sun"]];
+function expandedVisibleDays(value: string): DayOfWeek[] {
+  const pieces = value.toLowerCase().replace(/\./g, "").split(/\s*([-–—,&]|\band\b|\bto\b)\s*/);
+  const day = (raw: string) => {
+    const index = dayAliases.findIndex(aliases => aliases.includes(raw.trim()));
+    if (index < 0) throw new Error("Unknown visible cohort weekday.");
+    return index;
+  };
+  const result: DayOfWeek[] = [WEEKDAYS[day(pieces[0])]];
+  for (let i = 1; i < pieces.length; i += 2) {
+    const end = day(pieces[i + 1]);
+    if (/^[-–—]|^to$/.test(pieces[i])) {
+      const start = WEEKDAYS.indexOf(result[result.length - 1]);
+      if (start === end) throw new Error("Ambiguous same-day cohort range.");
+      for (let next = (start + 1) % 7; ; next = (next + 1) % 7) { result.push(WEEKDAYS[next]); if (next === end) break; }
+    } else result.push(WEEKDAYS[end]);
+  }
+  if (new Set(result).size !== result.length) throw new Error("Duplicate visible cohort weekday.");
+  return result;
+}
+const visibleClock = (raw: string) => clock(raw.replace(/([ap])$/i, "$1m"));
+function visibleSectionWeek(node: Element, section: VisibleWeekSection): Hours {
+  let remaining = text(node), rows = 0;
+  if (section.label) {
+    if (!remaining.startsWith(section.label + " ")) throw new Error("Missing exact visible hours label.");
+    remaining = remaining.slice(section.label.length).trim();
+  }
+  if (section.suffix) {
+    if (!remaining.endsWith(" " + section.suffix)) throw new Error("Changed trailing contact or service text.");
+    remaining = remaining.slice(0, -section.suffix.length).trim();
+  }
+  const hours: Hours = {};
+  const separator = () => { remaining = remaining.replace(/^[\s|·]+/, ""); };
+  while (remaining) {
+    separator(); if (!remaining) break;
+    const row = remaining.match(new RegExp(`^(${VISIBLE_DAYS})\\s*(?:[:|.\\-–—]\\s*)*(Closed|${VISIBLE_RANGE})(?:\\s+(?:EDT|EST))?(?=\\s|$)`, "i"));
+    if (!row || ++rows > 7) throw new Error("Unknown visible week text or service condition.");
+    const days = expandedVisibleDays(row[1]);
+    const slots = /^closed$/i.test(row[2]) ? [] : [{ open: visibleClock(row[3]), close: visibleClock(row[4]) }];
+    if (slots.some(slot => slot.open >= slot.close)) throw new Error("Overnight or all-day visible hours need separate review.");
+    for (const day of days) { if (hours[day]) throw new Error("Duplicate visible cohort weekday."); hours[day] = slots.map(slot => ({ ...slot })); }
+    remaining = remaining.slice(row[0].length); separator();
+    const partitioned = section.partitions && days.some(day => section.partitions!.days.includes(day));
+    if (partitioned) {
+      if (!slots.length || days.some(day => !section.partitions!.days.includes(day))) throw new Error("Unreviewed service partition days.");
+      let previous = slots[0].open;
+      for (const label of section.partitions!.labels) {
+        const part = remaining.match(new RegExp(`^${label}\\s+${VISIBLE_RANGE}(?=\\s|$)`, "i"));
+        if (!part || visibleClock(part[1]) !== previous || visibleClock(part[1]) >= visibleClock(part[2])) throw new Error("Conflicting visible service partition.");
+        previous = visibleClock(part[2]); remaining = remaining.slice(part[0].length); separator();
+      }
+      if (previous !== slots[0].close) throw new Error("Service periods cannot extend or shorten public hours.");
+    }
+  }
+  if (!rows || (!section.partial && WEEKDAYS.some(day => !hours[day]))) throw new Error("Incomplete primary visible cohort week.");
+  return hours;
+}
+function exactContactField(document: Document, field: ExactContactField, allowTitle = false): string {
+  const nodes = [...document.querySelectorAll(field.selector)];
+  const node = nodes[0];
+  if (nodes.length !== 1 || !node || (!(allowTitle && node.tagName === "TITLE") && (!visible(node)
+    || [...node.querySelectorAll("*")].some(child => !visible(child))))) throw new Error("Missing, hidden or ambiguous exact contact field.");
+  const value = field.attribute ? node.getAttribute(field.attribute) ?? "" : text(node);
+  if (value.replace(/\s+/g, " ").trim() !== field.expected) throw new Error("Changed exact visible contact identity.");
+  return value;
+}
+function visibleStructuredWeek(document: Document, cohort: VisibleContactCohort, binding: OfficialHoursCohortBinding, location: VisibleWeeklyContactLocation): Hours | undefined {
+  const entities: Record<string, unknown>[] = [];
+  const visit = (value: unknown) => {
+    if (Array.isArray(value)) { value.forEach(visit); return; }
+    if (!value || typeof value !== "object") return;
+    const entity = value as Record<string, unknown>;
+    if (["openingHours", "openingHoursSpecification", "specialOpeningHoursSpecification"].some(key => key in entity)) entities.push(entity);
+    Object.values(entity).filter(child => child && typeof child === "object").forEach(visit);
+  };
+  for (const script of document.querySelectorAll("script[type='application/ld+json']")) {
+    let value: unknown; try { value = JSON.parse(script.textContent ?? ""); } catch { throw new Error("Invalid structured contact evidence."); }
+    visit(value);
+  }
+  const candidates = entities.filter(entity => {
+    const address = entity.address as Record<string, unknown> | undefined;
+    return entity.url === location.structured?.entity_url || entity.url === cohort.canonical_url
+      || (typeof address?.streetAddress === "string" && compact(address.streetAddress) === compact(binding.identity.street));
+  });
+  if (!location.structured) { if (candidates.length) throw new Error("New structured hours require independent review."); return; }
+  if (candidates.length !== 1) throw new Error("Missing or ambiguous corroborating structured week.");
+  const entity = candidates[0], spec = location.structured, identity = binding.identity;
+  const address = entity.address as Record<string, unknown> | undefined, types = Array.isArray(entity["@type"]) ? entity["@type"] : [entity["@type"]];
+  if (!types.includes(spec.schema_type) || entity.url !== spec.entity_url || entity.name !== spec.name
+    || typeof entity.telephone !== "string" || phone(entity.telephone) !== identity.phone
+    || !address || typeof address.streetAddress !== "string" || compact(address.streetAddress) !== compact(identity.street)
+    || address.addressLocality !== identity.locality || address.addressRegion !== identity.region || address.postalCode !== identity.postalCode
+    || address.addressCountry !== "US" || !Array.isArray(entity.openingHoursSpecification)) throw new Error("Conflicting structured contact identity.");
+  // Dated and qualified rows retain the existing strict specification gate.
+  // A future holiday claim cannot be ignored merely because this week ends first.
+  return specifications(entity, spec);
+}
+function visibleContactWeek(document: Document, cohort: VisibleContactCohort, binding: OfficialHoursCohortBinding, window?: OfficialHoursCohortWindow): Hours {
+  const canonical = [...document.querySelectorAll("link[rel='canonical']")];
+  if (canonical.length !== 1 || canonical[0].getAttribute("href") !== cohort.canonical_url) throw new Error("Missing exact official location canonical.");
+  if (window && (!isCalendarDate(window.coverage_from) || !isCalendarDate(window.coverage_through) || window.coverage_from > window.coverage_through)) throw new Error("Invalid actual evidence window.");
+  // Every declared location must independently prove its contact and complete
+  // primary week before its timetable can be distinguished from an extra one.
+  // This validates evidence; each member still needs its own acceptance.
+  const profiles = cohort.bindings.map(member => {
+    const location = cohort.locations[member.slug];
+    exactContactField(document, location.name, true); exactContactField(document, location.address); exactContactField(document, location.phone);
+    const parsed = location.weeks.flatMap(section => {
+      const nodes = [...document.querySelectorAll(section.selector)];
+      if (nodes.length !== section.count || nodes.some(node => !visible(node) || [...node.querySelectorAll("*")].some(child => !visible(child)))) throw new Error("Missing, hidden or duplicated public week.");
+      return nodes.map(node => ({ section, hours: visibleSectionWeek(node, section) }));
+    });
+    const hours = parsed.find(row => !row.section.partial)!.hours;
+    for (const row of parsed) for (const day of WEEKDAYS) {
+      if (row.hours[day] && JSON.stringify(row.hours[day]) !== JSON.stringify(hours[day])) throw new Error("Conflicting repeated visible weeks or service periods.");
+    }
+    const structured = visibleStructuredWeek(document, cohort, member, location);
+    if (structured && WEEKDAYS.some(day => JSON.stringify(structured[day]) !== JSON.stringify(hours[day]))) throw new Error("Conflicting visible and structured public week.");
+    return { slug: member.slug, location, hours };
+  });
+  const { location, hours } = profiles.find(profile => profile.slug === binding.slug)!;
+  const outside = document.body.cloneNode(true) as HTMLElement;
+  for (const selector of location.headings ?? []) {
+    const heading = one(document.body, selector);
+    if (!/^(?:Hours|Opening Hours|Restaurant Hours|Store Hours)$/.test(text(heading))
+      || !location.weeks.some(section => [...document.querySelectorAll(section.selector)].some(node => heading.parentElement?.contains(node)))) throw new Error("Unbound or changed public hours heading.");
+    // Removing a week must not manufacture an 'online hours' notice by joining
+    // an unrelated Order Online button to its now-empty Hours heading.
+    outside.querySelectorAll(selector).forEach(node => node.remove());
+  }
+  for (const other of location.other_locations ?? []) {
+    const nodes = [...outside.querySelectorAll(other.selector)];
+    const value = nodes[0] ? text(nodes[0]) : "";
+    if (nodes.length !== 1 || !visible(nodes[0]) || value !== other.expected_text
+      || [other.identity.name, other.identity.street, other.identity.locality, other.identity.region, other.identity.postalCode].some(part => !compact(value).includes(compact(part)))
+      || [...nodes[0].querySelectorAll("a[href^='tel:']")].filter(node => phone(node.getAttribute("href") ?? "") === other.identity.phone).length !== 1) throw new Error("Changed or ambiguous unselected location identity.");
+    nodes[0].remove();
+  }
+  if (location.social_archive) {
+    const archive = location.social_archive, containers = [...outside.querySelectorAll(archive.selector)];
+    if (!window || containers.length !== 1) throw new Error("Missing bounded social archive evidence.");
+    const items = [...containers[0].querySelectorAll(archive.item_selector)];
+    if (!archive.posts.length || archive.posts.length > 50 || items.length !== archive.posts.length
+      || new Set(archive.posts.map(post => post.id)).size !== archive.posts.length || new Set(items.map(item => item.id)).size !== items.length
+      || archive.timestamp_attribute !== "data-date") throw new Error("Changed or unreviewed social archive.");
+    for (const item of items) {
+      const post = archive.posts.find(post => post.id === item.id);
+      const raw = item.getAttribute(archive.timestamp_attribute) ?? "", stamp = /^\d{10}$/.test(raw) ? Number(raw) * 1000 : NaN;
+      const link = [...item.querySelectorAll("a[href]")], caption = text(item);
+      if (!post || post.timestamp !== raw || !/^[a-f0-9]{64}$/.test(post.text_sha256)
+        || createHash("sha256").update(caption).digest("hex") !== post.text_sha256
+        || !Number.isFinite(stamp) || link.length !== 1 || link[0].getAttribute("href") !== post.href
+        || !/^https:\/\/www\.instagram\.com\/p\/[A-Za-z0-9_-]+\/$/.test(post.href)
+        || easternDayKey(new Date(stamp)) >= window.coverage_from) throw new Error("Current, undated or ambiguous social notice needs review.");
+      if (/\b(?:permanent(?:ly)?|seasonal|temporarily closed|until further notice|for the season|closed (?:for|until|indefinitely))\b|\bclosed\s+(?:(?:every|on)\s+)?(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)s?\b/i.test(caption)) throw new Error("An old post may describe an ongoing closure; separate review is required.");
+      item.remove();
+    }
+  }
+  outside.querySelectorAll(`script,style,noscript,${profiles.flatMap(profile => profile.location.weeks.map(section => section.selector)).join(",")}`).forEach(node => node.remove());
+  let outsideText = text(outside);
+  // A repeated ordinary closure corroborates the complete primary week. An
+  // added date or changed closed weekday cannot be silently selected around.
+  outsideText = outsideText.replace(/\bclosed\s+(?:on\s+|every\s+)?(Mondays?|Tuesdays?|Wednesdays?|Thursdays?|Fridays?|Saturdays?|Sundays?)\b(?!\s+(?:\d|January|February|March|April|May|June|July|August|September|October|November|December|from|until|through|for)\b)/gi, (whole, rawDay: string) => {
+    const index = FULL_DAYS.findIndex(day => rawDay.toLowerCase().replace(/s$/, "") === day.toLowerCase());
+    return index >= 0 && hours[WEEKDAYS[index]]?.length === 0 ? " " : whole;
+  });
+  if (notices(outsideText) || /\bclos(?:ed|ing|ures?)\s+(?:on|from|until|through|during|this|every|at)\b|\b(?:reduced|limited|extended|shortened|revised|changed|updated)\s+(?:(?:store|business)\s+)?hours\b/i.test(outsideText)
+    || new RegExp(`\\b${VISIBLE_DAYS}\\s*[:|.\\-–—]*\\s*(?:Closed|${VISIBLE_CLOCK})`, "i").test(outsideText)) throw new Error("Unreviewed outside schedule, closure or service condition.");
+  return hours;
+}
+
 /** One already bounded source receipt, separate exact listing facts. No I/O. */
-export function parseOfficialHoursCohort(document: Document, pageText: string, cohort: OfficialHoursCohort, binding: OfficialHoursCohortBinding): Hours {
+export function parseOfficialHoursCohort(document: Document, pageText: string, cohort: OfficialHoursCohort, binding: OfficialHoursCohortBinding, window?: OfficialHoursCohortWindow): Hours {
   validateCohort(cohort, binding);
+  if (cohort.shape === "visible_weekly_contact_card") return visibleContactWeek(document, cohort, binding, window);
   return cohort.shape === "shared_daily_contact_card" ? sharedDaily(document, pageText, cohort) : cohort.shape === "microdata_store_week" ? microdataStoreWeek(document, pageText, cohort, binding) : cohort.shape === "microdata_primary_store_week" ? microdataPrimaryStoreWeek(document, pageText, cohort, binding) : jsonldWeek(document, pageText, cohort, binding);
 }
