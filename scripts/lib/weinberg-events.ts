@@ -1,4 +1,5 @@
 import { normalizeVenueEventDateTime } from "./venue-event-time";
+import { observeNativeResponse, readNativeResponseBytes, type NativeResponseObserver } from "./native-source-review-evidence";
 
 const OFFICIAL_HOST = "weinbergcenter.org";
 const AJAX_PATH = "/wp-admin/admin-ajax.php";
@@ -59,6 +60,7 @@ type WeinbergFetchOptions = {
   fetchImpl?: typeof fetch;
   maxPages?: number;
   timeoutMs?: number;
+  onResponse?: NativeResponseObserver;
 };
 
 function cleanText(value: string | null | undefined): string {
@@ -246,11 +248,17 @@ export function parseWeinbergEventPage(
   return { events, cardCount: cards.length, foundCards, invalidCards };
 }
 
-async function readBoundedText(response: Response): Promise<string | null> {
-  const declared = Number(response.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES) return null;
-  const text = await response.text();
-  return Buffer.byteLength(text, "utf8") <= MAX_RESPONSE_BYTES ? text : null;
+async function readBoundedText(response: Response, requestedUrl: string, method: "GET" | "POST", context: Record<string, string | number>, options: WeinbergFetchOptions): Promise<string | null> {
+  const identity = { requestedUrl, finalUrl: response.url || requestedUrl, method, status: response.status, context };
+  let bytes: Buffer;
+  try {
+    bytes = await readNativeResponseBytes(response, MAX_RESPONSE_BYTES, options.timeoutMs ?? REQUEST_TIMEOUT_MS);
+  } catch {
+    observeNativeResponse(options.onResponse, { ...identity, observedAt: new Date().toISOString(), body: null, bodyState: "read_failed" });
+    return null;
+  }
+  observeNativeResponse(options.onResponse, { ...identity, observedAt: new Date().toISOString(), body: bytes });
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { return null; }
 }
 
 async function boundedFetch(
@@ -296,10 +304,14 @@ export async function fetchWeinbergEventsResult(
     { headers: { "User-Agent": UA }, redirect: "follow" },
     timeoutMs,
   );
-  if (!landing?.ok) return failure(canonicalSource, "landing page unavailable");
+  if (!landing?.ok) {
+    if (landing) observeNativeResponse(options.onResponse, { requestedUrl: canonicalSource, finalUrl: landing.url || canonicalSource, method: "GET", status: landing.status,
+      observedAt: new Date().toISOString(), body: null, context: { phase: "landing", venue_filter: options.venueFilter } });
+    return failure(canonicalSource, "landing page unavailable");
+  }
   const finalSource = officialUrl(landing.url || canonicalSource, canonicalSource);
   if (!finalSource) return failure(canonicalSource, "landing page redirected off source");
-  const landingHtml = await readBoundedText(landing);
+  const landingHtml = await readBoundedText(landing, canonicalSource, "GET", { phase: "landing", venue_filter: options.venueFilter }, options);
   if (!landingHtml) return failure(finalSource, "landing page exceeded safety limit");
 
   const nonceTag = firstTagWithId(landingHtml, "more_posts_nonce");
@@ -342,10 +354,14 @@ export async function fetchWeinbergEventsResult(
       },
       timeoutMs,
     );
-    if (!response?.ok) return failure(finalSource, "pagination request failed");
+    if (!response?.ok) {
+      if (response) observeNativeResponse(options.onResponse, { requestedUrl: endpoint, finalUrl: response.url || endpoint, method: "POST", status: response.status,
+        observedAt: new Date().toISOString(), body: null, context: { phase: "pagination", venue_filter: options.venueFilter, offset: collectedCards, page_size: pageSize } });
+      return failure(finalSource, "pagination request failed");
+    }
     const responseUrl = officialUrl(response.url || endpoint, endpoint);
     if (!responseUrl) return failure(finalSource, "pagination redirected off source");
-    const raw = await readBoundedText(response);
+    const raw = await readBoundedText(response, endpoint, "POST", { phase: "pagination", venue_filter: options.venueFilter, offset: collectedCards, page_size: pageSize }, options);
     if (!raw) return failure(finalSource, "pagination response exceeded safety limit");
 
     let payload: unknown;

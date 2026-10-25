@@ -97,6 +97,20 @@ function ownedEventVenueVisual(venueSlug: string | undefined): EventCardVisual |
 }
 
 const LICENSED_EVENT_VENUE_LABELS: Readonly<Record<keyof typeof CREDITED_LOCAL_PLACE_PHOTOS, string>> = {
+  "ballenger-creek-park-frederick": "Ballenger Creek Park entrance",
+  "buckeystown-park-frederick": "Buckeystown Park entrance",
+  "catoctin-creek-park-nature-center-burkittsville": "Catoctin Creek Park entrance",
+  "kemptown-park-new-market": "Kemptown Park entrance",
+  "loys-station-park-thurmont": "Loy\u2019s Station Park entrance",
+  "middletown-park-middletown": "Middletown Park entrance",
+  "othello-regional-park-brunswick": "Othello Regional Park entrance",
+  "pinecliff-park-frederick": "Pinecliff Park entrance",
+  "point-of-rocks-community-commons-park-brunswick": "Point of Rocks Community Commons Park entrance",
+  "utica-park-walkersville": "Utica District Park entrance",
+  "fountain-rock-nature-center-walkersville": "Fountain Rock Nature Center exterior",
+  "thurmont-recreation-center-thurmont": "Thurmont Rec Center exterior",
+  "walkersville-recreation-center-walkersville": "Walkersville Rec Center exterior",
+  "brunswick-recreation-center-brunswick": "Brunswick Recreation Center exterior",
   "chappelle-co": "North Market Street storefront row with Chappelle & Co, photographed in November 2022",
   "frederick-station": "Frederick MARC station, photographed in 2015",
   "heritage-frederick": "Heritage Frederick exterior, photographed in 2009",

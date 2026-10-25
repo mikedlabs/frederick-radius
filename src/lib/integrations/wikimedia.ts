@@ -29,7 +29,7 @@ export type WikimediaPhoto = {
   licenseUrl?: string;
   modifications?: string;
   /** Retain the reviewed subject when a card or hero crops the photograph. */
-  objectPosition?: "center" | "left" | "right" | "top" | "bottom";
+  objectPosition?: "center" | "left" | "right" | "top" | "bottom" | `${number}% ${number}%`;
   /** Prefer reviewed bundled bytes without claiming the provider image is wrong. */
   preferLocal?: boolean;
   /** When true, this curated photo WINS over the place's Google photo in

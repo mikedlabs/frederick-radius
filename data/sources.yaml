@@ -1439,18 +1439,24 @@ sources:
     endpoint_type: arcgis_rest
     format: json
     refresh_cadence: weekly
-    license: publicly readable; written data and attachment-photo reuse approval required
+    license: written data and attachment-photo reuse permission confirmed by owner; not an open license
     contact: https://www.recreater.com
-    status: pending_approval
+    status: pending_review
     last_validated: 2026-07-28
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/fcRecLocations.ts
     notes: |
-      The County dashboard exposes amenity points and attached images, but the
-      exact item carries no recorded reuse grant. Runtime and build pulls
-      require the two-step approval gate. Old committed staging files,
-      attachment URLs, amenity rollups, and GIS-only place rows were removed.
+      The owner explicitly confirmed written permission for this exact County
+      recreation dataset and its attached photographs. On October 24, fourteen
+      exact catalog-place attachments passed individual identity, pixel,
+      privacy and quality review. Those local files retain County credit and
+      the Used with permission label in credited-local-place-photos.ts.
+      Permission alone does not accept remaining source facts or attachments.
+      Runtime and build pulls retain the two-step source gate; the broad source
+      stays pending review. Old staging files, raw attachment URL rollups and
+      GIS-only place rows remain removed. Photo review does not refresh any
+      source observation, hours, amenities, access or coordinates.
 
   - id: fc_county_facilities
     name: Frederick County Facilities Legacy Ingest
@@ -3293,3 +3299,150 @@ sources:
       The corporate Gift Card Sales Department FAQ schedule is separate support service, never grocery hours. Pharmacy, deli and nearby teaser schedules cannot supply grocery days. No holiday changes or image reuse rights are inferred.
       Original private source review observed at 2026-10-23T09:12:29.612Z with SHA-256 044ae315fc5267a6744169144c97d0136ef2cac6593763d29659c86fa4955a3e; registration does not accept or publish that evidence and must never restamp it.
       One bounded 512000-byte native GET per daily run, with no credentials, paid provider, redirect or retry. Seven-day evidence expiry. Missing, additional, conflicting or changed facts remain held for explicit review; collection success is not publication.
+
+  - id: firebirds_wood_fired_grill_frederick_hours
+    name: "Firebirds Wood Fired Grill — First-party Public Hours"
+    owner: "Firebirds Wood Fired Grill"
+    url: "https://firebirdsrestaurants.com/frederick"
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Firebirds Wood Fired Grill"
+    status: active
+    collection: workflow
+    evidence_aliases: ["firebirds_wood_fired_grill_frederick_hours", "https://firebirdsrestaurants.com/frederick"]
+    last_validated: 2026-10-24
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact independently reviewed official identity and complete visible public week, using the shared visible weekly contact-card adapter. All repeated public and matching structured weeks must agree.
+      One bounded 512000-byte native GET per exact URL per daily run; no provider, credential, redirect or retry. Seven-day expiry and explicit changed-fact/candidate acceptance remain required. Contact actions and scraped image URLs establish no new image reuse rights.
+
+  - id: fratellis_italian_seafood_middletown_hours
+    name: "Fratelli's Italian & Seafood — First-party Public Hours"
+    owner: "Fratelli's Italian & Seafood"
+    url: "https://www.fratellispasta.com/location/fratellis-middletown/"
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Fratelli's Italian & Seafood"
+    status: active
+    collection: workflow
+    evidence_aliases: ["fratellis_italian_seafood_middletown_hours", "https://www.fratellispasta.com/location/fratellis-middletown/"]
+    last_validated: 2026-10-24
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact independently reviewed official identity and complete visible public week, using the shared visible weekly contact-card adapter. All repeated public and matching structured weeks must agree.
+      One bounded 512000-byte native GET per exact URL per daily run; no provider, credential, redirect or retry. Seven-day expiry and explicit changed-fact/candidate acceptance remain required. Contact actions and scraped image URLs establish no new image reuse rights.
+
+  - id: hinzis_kitchen_hours
+    name: "Hinzi's Kitchen — First-party Public Hours"
+    owner: "Hinzi's Kitchen"
+    url: "https://hinzis.com/"
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Hinzi's Kitchen"
+    status: active
+    collection: workflow
+    evidence_aliases: ["hinzis_kitchen_hours", "https://hinzis.com/"]
+    last_validated: 2026-10-24
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact independently reviewed official identity and complete visible public week, using the shared visible weekly contact-card adapter. All repeated public and matching structured weeks must agree.
+      One bounded 512000-byte native GET per exact URL per daily run; no provider, credential, redirect or retry. Seven-day expiry and explicit changed-fact/candidate acceptance remain required. Contact actions and scraped image URLs establish no new image reuse rights.
+
+  - id: hoffman_brothers_ice_cream_hours
+    name: "Hoffman Brothers Ice Cream — First-party Public Hours"
+    owner: "Hoffman Brothers Ice Cream"
+    url: "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr"
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Hoffman Brothers Ice Cream"
+    status: active
+    collection: workflow
+    evidence_aliases: ["hoffman_brothers_ice_cream_hours", "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr"]
+    last_validated: 2026-10-24
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact independently reviewed official identity and complete visible public week, using the shared visible weekly contact-card adapter. All repeated public and matching structured weeks must agree.
+      One bounded 512000-byte native GET per exact URL per daily run; no provider, credential, redirect or retry. Seven-day expiry and explicit changed-fact/candidate acceptance remain required. Contact actions and scraped image URLs establish no new image reuse rights.
+
+  - id: frederick_fudge_ice_cream_hours
+    name: "Frederick Fudge Ice Cream — First-party Public Hours"
+    owner: "Frederick Fudge Ice Cream"
+    url: "https://fredicecream.com/"
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Frederick Fudge Ice Cream"
+    status: active
+    collection: workflow
+    evidence_aliases: ["frederick_fudge_ice_cream_hours", "https://fredicecream.com/"]
+    last_validated: 2026-10-24
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact independently reviewed official identity and complete visible public week, using the shared visible weekly contact-card adapter. All repeated public and matching structured weeks must agree.
+      One bounded 512000-byte native GET per exact URL per daily run; no provider, credential, redirect or retry. Seven-day expiry and explicit changed-fact/candidate acceptance remain required. Contact actions and scraped image URLs establish no new image reuse rights.
+
+  - id: carriage_house_inn_restaurant_catering_emmitsburg_hours
+    name: "Carriage House Inn Restaurant & Catering — First-party Public Hours"
+    owner: "Carriage House Inn Restaurant & Catering"
+    url: "https://chouseinn.com/"
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Carriage House Inn Restaurant & Catering"
+    status: active
+    collection: workflow
+    evidence_aliases: ["carriage_house_inn_restaurant_catering_emmitsburg_hours", "https://chouseinn.com/"]
+    last_validated: 2026-10-24
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact independently reviewed official identity and complete visible public week, using the shared visible weekly contact-card adapter. All repeated public and matching structured weeks must agree.
+      One bounded 512000-byte native GET per exact URL per daily run; no provider, credential, redirect or retry. Seven-day expiry and explicit changed-fact/candidate acceptance remain required. Contact actions and scraped image URLs establish no new image reuse rights.
+
+  - id: el_rancho_restaurant_walkersville_hours
+    name: "El Rancho Restaurant — First-party Public Hours"
+    owner: "El Rancho Restaurant"
+    url: "https://elrancho-restaurant.com/"
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "El Rancho Restaurant"
+    status: active
+    collection: workflow
+    evidence_aliases: ["el_rancho_restaurant_walkersville_hours", "https://elrancho-restaurant.com/"]
+    last_validated: 2026-10-24
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact independently reviewed official identity and complete visible public week, using the shared visible weekly contact-card adapter. All repeated public and matching structured weeks must agree.
+      One bounded 512000-byte native GET per exact URL per daily run; no provider, credential, redirect or retry. Seven-day expiry and explicit changed-fact/candidate acceptance remain required. Contact actions and scraped image URLs establish no new image reuse rights.

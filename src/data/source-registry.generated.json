@@ -138,6 +138,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "carriage_house_inn_restaurant_catering_emmitsburg_hours",
+    "name": "Carriage House Inn Restaurant & Catering — First-party Public Hours",
+    "owner": "Carriage House Inn Restaurant & Catering",
+    "url": "https://chouseinn.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "carriage_house_inn_restaurant_catering_emmitsburg_hours",
+      "https://chouseinn.com/"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "catoctin_land_trust_events",
     "name": "Catoctin Land Trust Events",
     "owner": "Catoctin Land Trust",
@@ -738,6 +759,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "el_rancho_restaurant_walkersville_hours",
+    "name": "El Rancho Restaurant — First-party Public Hours",
+    "owner": "El Rancho Restaurant",
+    "url": "https://elrancho-restaurant.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "el_rancho_restaurant_walkersville_hours",
+      "https://elrancho-restaurant.com/"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "evangelical_lutheran_calendar",
     "name": "Evangelical Lutheran Church Calendar",
     "owner": "Evangelical Lutheran Church, Frederick",
@@ -772,6 +814,27 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/eventbrite.ts",
     "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "firebirds_wood_fired_grill_frederick_hours",
+    "name": "Firebirds Wood Fired Grill — First-party Public Hours",
+    "owner": "Firebirds Wood Fired Grill",
+    "url": "https://firebirdsrestaurants.com/frederick",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "firebirds_wood_fired_grill_frederick_hours",
+      "https://firebirdsrestaurants.com/frederick"
+    ],
     "rowsRequired": false,
     "publicationApplicability": "required"
   },
@@ -852,6 +915,27 @@
     "evidenceAliases": [
       "food_lion_yellow_springs_hours",
       "https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd."
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "fratellis_italian_seafood_middletown_hours",
+    "name": "Fratelli's Italian & Seafood — First-party Public Hours",
+    "owner": "Fratelli's Italian & Seafood",
+    "url": "https://www.fratellispasta.com/location/fratellis-middletown/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "fratellis_italian_seafood_middletown_hours",
+      "https://www.fratellispasta.com/location/fratellis-middletown/"
     ],
     "rowsRequired": false,
     "publicationApplicability": "required"
@@ -1192,8 +1276,8 @@
     "name": "Frederick County Parks and Recreation Locations",
     "owner": "Frederick County Government",
     "url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0",
-    "license": "publicly readable; written data and attachment-photo reuse approval required",
-    "status": "pending_approval",
+    "license": "written data and attachment-photo reuse permission confirmed by owner; not an open license",
+    "status": "pending_review",
     "collection": null,
     "refreshCadence": "weekly",
     "snapshotCadence": null,
@@ -1335,6 +1419,27 @@
     "transformFile": "src/lib/ingest/fcvfra.ts",
     "evidenceAliases": [
       "fcvfra.com"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "frederick_fudge_ice_cream_hours",
+    "name": "Frederick Fudge Ice Cream — First-party Public Hours",
+    "owner": "Frederick Fudge Ice Cream",
+    "url": "https://fredicecream.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "frederick_fudge_ice_cream_hours",
+      "https://fredicecream.com/"
     ],
     "rowsRequired": false,
     "publicationApplicability": "required"
@@ -1602,6 +1707,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "hinzis_kitchen_hours",
+    "name": "Hinzi's Kitchen — First-party Public Hours",
+    "owner": "Hinzi's Kitchen",
+    "url": "https://hinzis.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "hinzis_kitchen_hours",
+      "https://hinzis.com/"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "fc_historic_cemeteries",
     "name": "Historic Cemeteries of Frederick County",
     "owner": "Frederick County Government",
@@ -1616,6 +1742,27 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/fcCemeteries.ts",
     "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "hoffman_brothers_ice_cream_hours",
+    "name": "Hoffman Brothers Ice Cream — First-party Public Hours",
+    "owner": "Hoffman Brothers Ice Cream",
+    "url": "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "hoffman_brothers_ice_cream_hours",
+      "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr"
+    ],
     "rowsRequired": false,
     "publicationApplicability": "required"
   },

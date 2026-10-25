@@ -1419,6 +1419,381 @@
           }
         ]
       }
+    },
+    {
+      "slug": "firebirds-wood-fired-grill-frederick",
+      "source_url": "https://firebirdsrestaurants.com/frederick",
+      "source_name": "Firebirds Wood Fired Grill",
+      "source_sha256": "47e9a92281e8543c2d7033622f46b7da2e2ec56f7d0e71a6bb8b7d2a9cacfb1b",
+      "observed_at": "2026-10-24T12:49:51.867Z",
+      "expires_at": "2026-10-31T12:49:51.867Z",
+      "coverage_from": "2026-10-24",
+      "coverage_through": "2026-10-31",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "11:00",
+            "close": "23:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "23:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "10:00",
+            "close": "22:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "fratellis-italian-seafood-middletown",
+      "source_url": "https://www.fratellispasta.com/location/fratellis-middletown/",
+      "source_name": "Fratelli's Italian & Seafood",
+      "source_sha256": "f300b417b0443d7f7abc25b84062c5b4fa805f45c9f30bcdd018c5efcf37f2ae",
+      "observed_at": "2026-10-24T12:49:53.051Z",
+      "expires_at": "2026-10-31T12:49:53.051Z",
+      "coverage_from": "2026-10-24",
+      "coverage_through": "2026-10-31",
+      "kind": "weekly",
+      "hours": {
+        "sun": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "mon": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "11:00",
+            "close": "22:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "11:00",
+            "close": "23:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "11:00",
+            "close": "23:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "hinzis-kitchen",
+      "source_url": "https://hinzis.com/",
+      "source_name": "Hinzi's Kitchen",
+      "source_sha256": "9b7e55a73a502a37be2ae2afea4bbef12cdd33001a3aa0b71149176dd2f0323c",
+      "observed_at": "2026-10-24T12:49:57.707Z",
+      "expires_at": "2026-10-31T12:49:57.707Z",
+      "coverage_from": "2026-10-24",
+      "coverage_through": "2026-10-31",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "11:00",
+            "close": "21:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "11:00",
+            "close": "21:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "11:00",
+            "close": "21:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "11:00",
+            "close": "21:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "11:00",
+            "close": "21:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "11:00",
+            "close": "21:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "12:00",
+            "close": "20:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "hoffman-brothers-ice-cream",
+      "source_url": "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr",
+      "source_name": "Hoffman Brothers Ice Cream",
+      "source_sha256": "ea2cf2ec0404920f72ead285367aac8fffbe796b47c801c8c6bee409c9195791",
+      "observed_at": "2026-10-24T12:49:57.907Z",
+      "expires_at": "2026-10-31T12:49:57.907Z",
+      "coverage_from": "2026-10-24",
+      "coverage_through": "2026-10-31",
+      "kind": "weekly",
+      "hours": {
+        "mon": [],
+        "tue": [
+          {
+            "open": "15:00",
+            "close": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "15:00",
+            "close": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "15:00",
+            "close": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "15:00",
+            "close": "21:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "15:00",
+            "close": "21:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "15:00",
+            "close": "20:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "frederick-fudge-ice-cream",
+      "source_url": "https://fredicecream.com/",
+      "source_name": "Frederick Fudge Ice Cream",
+      "source_sha256": "f9a8137ccd9dd09742892a030010650c88c79c85898ffd3139d8e9fb13b2c539",
+      "observed_at": "2026-10-24T12:49:56.688Z",
+      "expires_at": "2026-10-31T12:49:56.688Z",
+      "coverage_from": "2026-10-24",
+      "coverage_through": "2026-10-31",
+      "kind": "weekly",
+      "hours": {
+        "mon": [
+          {
+            "open": "12:00",
+            "close": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "12:00",
+            "close": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "12:00",
+            "close": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "12:00",
+            "close": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "12:00",
+            "close": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "12:00",
+            "close": "20:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "12:00",
+            "close": "20:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "carriage-house-inn-restaurant-catering-emmitsburg",
+      "source_url": "https://chouseinn.com/",
+      "source_name": "Carriage House Inn Restaurant & Catering",
+      "source_sha256": "6861aa1aca22a5921dc9b1d388a32682d81560defdb77d14d62635b0210baa38",
+      "observed_at": "2026-10-23T12:53:33.362Z",
+      "expires_at": "2026-10-30T12:53:33.362Z",
+      "coverage_from": "2026-10-23",
+      "coverage_through": "2026-10-30",
+      "kind": "weekly",
+      "hours": {
+        "mon": [],
+        "tue": [
+          {
+            "open": "11:00",
+            "close": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "11:00",
+            "close": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "11:00",
+            "close": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "11:00",
+            "close": "21:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "11:00",
+            "close": "21:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "11:00",
+            "close": "17:00"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "el-rancho-restaurant-walkersville",
+      "source_url": "https://elrancho-restaurant.com/",
+      "source_name": "El Rancho Restaurant",
+      "source_sha256": "dbd52ca498c40b6a47c1575f3b64cb5acb96aa03537512252b98bfd14496ae28",
+      "observed_at": "2026-10-23T12:53:37.141Z",
+      "expires_at": "2026-10-30T12:53:37.141Z",
+      "coverage_from": "2026-10-23",
+      "coverage_through": "2026-10-30",
+      "kind": "weekly",
+      "hours": {
+        "sun": [
+          {
+            "open": "07:00",
+            "close": "20:00"
+          }
+        ],
+        "mon": [
+          {
+            "open": "07:00",
+            "close": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "07:00",
+            "close": "20:00"
+          }
+        ],
+        "wed": [
+          {
+            "open": "07:00",
+            "close": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "07:00",
+            "close": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "07:00",
+            "close": "21:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "07:00",
+            "close": "21:00"
+          }
+        ]
+      }
     }
   ],
   "review": []

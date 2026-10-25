@@ -1,4 +1,5 @@
 import { cleanFeedText } from "../../src/lib/format/text";
+import { NativeEvidenceError, observeNativeResponse, readNativeResponseBytes } from "./native-source-review-evidence";
 import { clampDescription } from "../../src/lib/events/normalize";
 import { squarespaceItemImage, type SquarespaceImageItem } from "../../src/lib/events/feed-image";
 import {
@@ -506,6 +507,7 @@ export async function fetchSquarespaceEventsResult(
   opts: {
     fetchImpl?: typeof fetch;
     timeoutMs?: number;
+    onResponse?: import("./native-source-review-evidence").NativeResponseObserver;
   } = {},
 ): Promise<SquarespaceEventsFetchResult> {
   const sep = collectionUrl.includes("?") ? "&" : "?";
@@ -519,10 +521,21 @@ export async function fetchSquarespaceEventsResult(
       signal: ctrl.signal,
     });
     if (!r.ok) {
+      observeNativeResponse(opts.onResponse, { requestedUrl: url, finalUrl: r.url || url, method: "GET", status: r.status,
+        observedAt: new Date().toISOString(), body: null, context: { phase: "squarespace-feed" } });
       console.log(`  ✗ ${url} → HTTP ${r.status}`);
       return { status: "failure", events: [] };
     }
-    const json = JSON.parse(await r.text()) as { upcoming?: unknown } | null;
+    let bytes: Buffer;
+    try { bytes = await readNativeResponseBytes(r, 8_000_000, opts.timeoutMs ?? 20_000); }
+    catch {
+      observeNativeResponse(opts.onResponse, { requestedUrl: url, finalUrl: r.url || url, method: "GET", status: r.status,
+        observedAt: new Date().toISOString(), body: null, bodyState: "read_failed", context: { phase: "squarespace-feed" } });
+      return { status: "failure", events: [] };
+    }
+    observeNativeResponse(opts.onResponse, { requestedUrl: url, finalUrl: r.url || url, method: "GET", status: r.status,
+      observedAt: new Date().toISOString(), body: bytes, context: { phase: "squarespace-feed" } });
+    const json = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as { upcoming?: unknown } | null;
     if (!json || !Array.isArray(json.upcoming)) {
       console.log(`  ✗ ${url} (feed) → missing upcoming[]`);
       return { status: "failure", events: [] };
@@ -534,6 +547,7 @@ export async function fetchSquarespaceEventsResult(
     }
     return { status: "success", events };
   } catch (err) {
+    if (err instanceof NativeEvidenceError) throw err;
     console.log(`  ✗ ${url} (feed) → ${(err as Error).message}`);
     return { status: "failure", events: [] };
   } finally {

@@ -383,4 +383,286 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       modifications: "Resized and converted for display; cards may crop the image responsively.",
     },
   },
+  // Individually reviewed County-provided images. Written reuse permission was
+  // confirmed by the owner; remaining attachments and source facts stay held.
+  "ballenger-creek-park-frederick": {
+    "file": "county-ballenger-creek-park-frederick.jpg",
+    "preferLocal": true,
+    "objectPosition": "50% 54%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "59bd22ff0b19abb8161050e84f044ded3dc02afc97ce659db19207a851c596b7"
+    },
+    "image": {
+      "src": "/place-photos/county-ballenger-creek-park-frederick.jpg",
+      "alt": "The Ballenger Creek Park entrance sign and landscaped lawn.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/229/attachments/1",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/200/Ballenger-Creek-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "buckeystown-park-frederick": {
+    "file": "county-buckeystown-park-frederick.jpg",
+    "preferLocal": true,
+    "objectPosition": "50% 50%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "a5a9bb7740e334f1fe73815fb6c1af7dce526ca64033420c4981552c9f2bd881"
+    },
+    "image": {
+      "src": "/place-photos/county-buckeystown-park-frederick.jpg",
+      "alt": "The Buckeystown Park entrance sign at 7221 Michaels Mill Road.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/230/attachments/2",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/204/Buckeystown-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "catoctin-creek-park-nature-center-burkittsville": {
+    "file": "county-catoctin-creek-park-nature-center-burkittsville.jpg",
+    "preferLocal": true,
+    "objectPosition": "46% 55%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "9fab2d0a2fc32a9ba13bd364428736f0af161d5623f6f2b82999d33e7257cbcc"
+    },
+    "image": {
+      "src": "/place-photos/county-catoctin-creek-park-nature-center-burkittsville.jpg",
+      "alt": "The entrance sign for Catoctin Creek Park and Nature Center.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/231/attachments/3",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/151/Catoctin-Creek-Nature-Center"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "kemptown-park-new-market": {
+    "file": "county-kemptown-park-new-market.jpg",
+    "preferLocal": true,
+    "objectPosition": "48% 52%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "79d1c89c81bf7284c9b61d9b331083ae7027731fca26823f2e8ae6c6269cd17c"
+    },
+    "image": {
+      "src": "/place-photos/county-kemptown-park-new-market.jpg",
+      "alt": "The Kemptown Park entrance sign at 3456-B Kemptown Church Road.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/237/attachments/9",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/229/Kemptown-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "loys-station-park-thurmont": {
+    "file": "county-loys-station-park-thurmont.jpg",
+    "preferLocal": true,
+    "objectPosition": "65% 50%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "d92c89cc5572bdfe2d00eb2d0622e1599066f8e877ec8c64c50836a576370cc9"
+    },
+    "image": {
+      "src": "/place-photos/county-loys-station-park-thurmont.jpg",
+      "alt": "The Loys Station Park entrance sign with its red covered bridge behind it.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/239/attachments/11",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/234/Loys-Station-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "middletown-park-middletown": {
+    "file": "county-middletown-park-middletown.jpg",
+    "preferLocal": true,
+    "objectPosition": "50% 52%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "130e058963bcc74c0842919b06751ee751aeafd678d9c9202d01c46247114d1e"
+    },
+    "image": {
+      "src": "/place-photos/county-middletown-park-middletown.jpg",
+      "alt": "The Middletown Park entrance sign beside a tree-lined path.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/240/attachments/12",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/240/Middletown-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "othello-regional-park-brunswick": {
+    "file": "county-othello-regional-park-brunswick.jpg",
+    "preferLocal": true,
+    "objectPosition": "50% 50%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "291b671dc03040e50da4c3eec81a6de7610213d5e30108a7051e592407cb5d77"
+    },
+    "image": {
+      "src": "/place-photos/county-othello-regional-park-brunswick.jpg",
+      "alt": "The Othello Regional Park entrance sign at 1901A Jefferson Pike.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/242/attachments/14",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/705/Othello-Regional-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "pinecliff-park-frederick": {
+    "file": "county-pinecliff-park-frederick.jpg",
+    "preferLocal": true,
+    "objectPosition": "50% 50%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "2ee6aea289ed41989b0710c31272003b56b791b6aa694827d82068ce5e3476e9"
+    },
+    "image": {
+      "src": "/place-photos/county-pinecliff-park-frederick.jpg",
+      "alt": "The Pinecliff Park entrance sign among trees and lawn.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/243/attachments/15",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/255/Pinecliff-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "point-of-rocks-community-commons-park-brunswick": {
+    "file": "county-point-of-rocks-community-commons-park-brunswick.jpg",
+    "preferLocal": true,
+    "objectPosition": "50% 53%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "8a4230b49673af46462fc231e8809f12fcd0da401402eb3ebf43de17c80bc573"
+    },
+    "image": {
+      "src": "/place-photos/county-point-of-rocks-community-commons-park-brunswick.jpg",
+      "alt": "The Point of Rocks Community Commons Park sign at 3700 Commerce Street.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/245/attachments/17",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/704/Point-of-Rocks-Community-Commons-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "utica-park-walkersville": {
+    "file": "county-utica-park-walkersville.jpg",
+    "preferLocal": true,
+    "objectPosition": "50% 52%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "3d9270db8f9dc5bcdd2e1ceaa9d7993bf89aa27e83c9f8b7dc61ea026cb3c4b0"
+    },
+    "image": {
+      "src": "/place-photos/county-utica-park-walkersville.jpg",
+      "alt": "The Utica District Park entrance sign and roadside planting.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/251/attachments/23",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/276/Utica-District-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "fountain-rock-nature-center-walkersville": {
+    "file": "county-fountain-rock-nature-center-walkersville.jpg",
+    "preferLocal": true,
+    "objectPosition": "52% 48%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "cf9ac28dbb56ea8bb04f33d9a0d44c64bd8fc1378e717169130c2b22807b3378"
+    },
+    "image": {
+      "src": "/place-photos/county-fountain-rock-nature-center-walkersville.jpg",
+      "alt": "The Fountain Rock Nature Center entrance, brick walkway and surrounding trees.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/258/attachments/30",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/294/Fountain-Rock-Park-Nature-Center"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "thurmont-recreation-center-thurmont": {
+    "file": "county-thurmont-recreation-center-thurmont.jpg",
+    "preferLocal": true,
+    "objectPosition": "right",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "215d5947c6b252fe92be02e986253b0e505e7355bc5b594f40290e619dc4e01e"
+    },
+    "image": {
+      "src": "/place-photos/county-thurmont-recreation-center-thurmont.jpg",
+      "alt": "The blue-canopied entrance to Thurmont Recreation Center.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/265/attachments/37",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/398/Thurmont-Recreation-Center"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "walkersville-recreation-center-walkersville": {
+    "file": "county-walkersville-recreation-center-walkersville.jpg",
+    "preferLocal": true,
+    "objectPosition": "right",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "27d3ec60654a371746a7658883850cc6f4845943e9669ac7176c91b91f575eaa"
+    },
+    "image": {
+      "src": "/place-photos/county-walkersville-recreation-center-walkersville.jpg",
+      "alt": "The Walkersville Recreation Center entrance and wall sign.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/268/attachments/40",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/274/Walkersville-Recreation-Center"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "brunswick-recreation-center-brunswick": {
+    "file": "county-brunswick-recreation-center-brunswick.jpg",
+    "preferLocal": true,
+    "objectPosition": "35% 55%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "d66f657b972e9f62f11e1b1beb668229f7f20a97447637462ee852feb61e10d0"
+    },
+    "image": {
+      "src": "/place-photos/county-brunswick-recreation-center-brunswick.jpg",
+      "alt": "The Brunswick Recreation Center sign and entrance at Door 2.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/430/attachments/207",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://recreater.com/951/Brunswick-Recreation-Center"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
 } as const;

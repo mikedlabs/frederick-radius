@@ -32,6 +32,13 @@ export const MERCHANT_HOURS_SOURCES = [
   { slug: "food-lion-crestwood-frederick", name: "Food Lion Crestwood", ledger_id: "food_lion_crestwood_hours", category: "market", url: "https://stores.foodlion.com/md/frederick/6920-crestwood-blvd", kind: "weekly" },
   { slug: "food-lion-yellow-springs-frederick", name: "Food Lion Yellow Springs", ledger_id: "food_lion_yellow_springs_hours", category: "market", url: "https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd.", kind: "weekly" },
   { slug: "food-lion-thurmont", name: "Food Lion Thurmont", ledger_id: "food_lion_thurmont_hours", category: "market", url: "https://stores.foodlion.com/md/thurmont/231-tippin-dr", kind: "weekly" },
+  {"slug": "firebirds-wood-fired-grill-frederick", "name": "Firebirds Wood Fired Grill", "ledger_id": "firebirds_wood_fired_grill_frederick_hours", "category": "restaurant", "url": "https://firebirdsrestaurants.com/frederick", "kind": "weekly"},
+  {"slug": "fratellis-italian-seafood-middletown", "name": "Fratelli's Italian & Seafood", "ledger_id": "fratellis_italian_seafood_middletown_hours", "category": "restaurant", "url": "https://www.fratellispasta.com/location/fratellis-middletown/", "kind": "weekly"},
+  {"slug": "hinzis-kitchen", "name": "Hinzi's Kitchen", "ledger_id": "hinzis_kitchen_hours", "category": "restaurant", "url": "https://hinzis.com/", "kind": "weekly"},
+  {"slug": "hoffman-brothers-ice-cream", "name": "Hoffman Brothers Ice Cream", "ledger_id": "hoffman_brothers_ice_cream_hours", "category": "ice-cream", "url": "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr", "kind": "weekly"},
+  {"slug": "frederick-fudge-ice-cream", "name": "Frederick Fudge Ice Cream", "ledger_id": "frederick_fudge_ice_cream_hours", "category": "ice-cream", "url": "https://fredicecream.com/", "kind": "weekly"},
+  {"slug": "carriage-house-inn-restaurant-catering-emmitsburg", "name": "Carriage House Inn Restaurant & Catering", "ledger_id": "carriage_house_inn_restaurant_catering_emmitsburg_hours", "category": "restaurant", "url": "https://chouseinn.com/", "kind": "weekly"},
+  {"slug": "el-rancho-restaurant-walkersville", "name": "El Rancho Restaurant", "ledger_id": "el_rancho_restaurant_walkersville_hours", "category": "restaurant", "url": "https://elrancho-restaurant.com/", "kind": "weekly"},
 ] as const;
 export type MerchantHoursSource = typeof MERCHANT_HOURS_SOURCES[number];
 export type MerchantHoursRecord = {
