@@ -9,7 +9,7 @@ const unknownPlace: DaypartPick = {
 };
 const meta = {
   title: "Today/Place preview", component: TodayPlacePreview,
-  parameters: { layout: "centered", a11y: { test: "error" }, docs: { description: { component: "The shared Today lead preview. Hours and rankings are isolated fixtures; existing exact-place owned/Commons assets retain their source records." } } },
+  parameters: { layout: "centered", a11y: { test: "error" }, docs: { description: { component: "The shared Today lead preview. Hours and rankings are isolated fixtures. Owned or licensed reference images stay held until an exact current-appearance review is accepted." } } },
   decorators: [(Story) => <div style={{ width: "min(520px, calc(100vw - 32px))" }}><Story /></div>],
   args: { place: unknownPlace, category: "coffee" },
 } satisfies Meta<typeof TodayPlacePreview>;
@@ -99,34 +99,24 @@ export const EnlargedText320: Story = {
     await expect(parseFloat(getComputedStyle(fact).fontSize)).toBeGreaterThanOrEqual(30);
   },
 };
-export const OwnedExactPlace: Story = {
+export const OwnedReferenceNeedsAppearanceReview: Story = {
   args: { place: { ...unknownPlace, slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park", where: "Frederick", distance: null }, category: "outdoors" },
   play: async (context) => {
     await usablePreview(context);
-    const frame = context.canvasElement.querySelector("[data-place-card-photo]")!;
-    await expect(frame.getAttribute("data-place-card-photo-source")).toBe("owned");
+    const card = context.canvasElement.querySelector("[data-today-place-preview]")!;
+    await expect(card).toHaveAttribute("data-has-photo", "false");
+    await expect(card.querySelector("img, [data-place-card-photo]")).toBeNull();
     await expect(context.canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
   },
 };
-export const LicensedExactPlace: Story = {
+export const LicensedReferenceNeedsAppearanceReview: Story = {
   args: { place: { ...unknownPlace, slug: "schifferstadt-architectural-museum-frederick", name: "Schifferstadt Architectural Museum", where: "Frederick", distance: null }, category: "museum" },
   play: async (context) => {
     await usablePreview(context);
-    const canvas = within(context.canvasElement);
-    // Browser decoding can finish before Next's onLoad and React's credit
-    // commit. Require the real accessible credit state, not just DOM text.
-    await waitFor(async () => {
-      const credit = context.canvasElement.querySelector(".place-card-photo-credit");
-      await expect(credit).toBeVisible();
-      await expect(credit).not.toHaveAttribute("aria-hidden", "true");
-      await expect(credit).not.toHaveAttribute("inert");
-      await expect(canvas.getByText("Photo by Pete Giove-Fourwinds.", { exact: true })).toBeVisible();
-    });
-    await expect(canvas.getByText("Resized and converted for display; cards may crop the image responsively.")).toBeVisible();
-    for (const control of [canvas.getByRole("link", { name: "Wikimedia Commons" }), canvas.getByRole("link", { name: "CC BY-SA 3.0" })]) {
-      control.scrollIntoView({ block: "center" });
-      await expect(control.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
-      await expect(control.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
-    }
+    // Identity and a license do not establish current appearance. The shared
+    // source/credit components retain positive browser coverage elsewhere.
+    const card = context.canvasElement.querySelector("[data-today-place-preview]")!;
+    await expect(card).toHaveAttribute("data-has-photo", "false");
+    await expect(card.querySelector("img, [data-place-card-photo], .place-card-photo-credit")).toBeNull();
   },
 };
