@@ -8,7 +8,7 @@ import { getOwnedPlacePhoto, getOwnedPlacePhotos, type OwnedPlacePhoto } from "@
 export type PlaceCardPhotoSource =
   | { kind: "curated"; src: string; alt: string; photo: WikimediaPhoto; objectPosition?: WikimediaPhoto["objectPosition"] }
   | { kind: "google"; src: string; alt: string; attribution: GooglePhotoAttribution }
-  | Pick<OwnedPlacePhoto, "kind" | "src" | "alt" | "objectPosition">;
+  | Pick<OwnedPlacePhoto, "kind" | "src" | "alt" | "objectPosition" | "referenceContext">;
 export type PlaceCardPhotoPlan = { key: string; sources: readonly PlaceCardPhotoSource[] };
 export type PlaceCardPhotoState = { planKey: string; failedSources: readonly string[]; loadedSrc: string | null };
 export type PlaceCardPhotoResult = "loaded" | "failed";

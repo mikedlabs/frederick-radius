@@ -133,6 +133,21 @@ policy authority, raise provider budgets or provision services.
 - Images need exact place identity and owner permission or a supported license.
   Provider eligibility is not a successfully decoded image. Missing local bytes
   and remote availability are different states.
+- Image rights, place identity and current appearance are separate checks.
+  A catalog `reviewed_on` date, a successful download or fresh provider metadata
+  does not establish when the photograph was taken or how the business looks
+  today. Preserve known capture dates; missing capture or appearance evidence
+  stays unknown. Do not copy a rights-review date into an appearance review.
+  Today's business recommendation photographs require an explicit review of
+  the exact place and image as a current representation. A held archive image
+  must not unlock an unreviewed provider or inline-image fallback. Keep the
+  useful business facts and category actions available without a photograph.
+  Dated reference photographs used elsewhere retain visible reference context
+  and their required source credits. Generic category artwork must not imply
+  that a particular restaurant serves the pictured dish. Existing owned-photo
+  permission does not itself verify present appearance. Known undated merchant
+  reference images retain an appearance-unverified context without adding an
+  owner credit or inventing a capture date.
 - Owner-library imports are selected and visually reviewed, never a bulk
   assignment by camera GPS, search keywords or a nearby building. Keep rendered
   export/master hashes and source identifiers privately; ship optimized,

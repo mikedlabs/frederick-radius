@@ -6,15 +6,35 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DaypartNeeds from "./DaypartNeeds";
 import TodayScopeStatus from "./TodayScopeStatus";
 import { getScope, setScope, type Scope } from "@/lib/scope";
+import type { DaypartRow } from "@/lib/loaders/daypartPicks";
+
+// Explicit offline source approval for the synthetic local-place media
+// lifecycle below; it does not add a production business appearance review.
+vi.mock("@/lib/today/place-photo-appearance", async importOriginal => {
+  const actual = await importOriginal<typeof import("@/lib/today/place-photo-appearance")>();
+  const asOf = new Date("2026-10-26T16:00:00.000Z");
+  const reviews = [{ slug: "local-place", src: `/api/place-photo?name=${encodeURIComponent("places/local-id/photos/exact-photo")}&w=720&fallback=signal`,
+    appearance: "current" as const, reviewedOn: "2026-10-26", validUntil: "2026-10-31", evidence: "Offline hydrated-source fixture only, not production evidence." }];
+  return { ...actual,
+    hasTodayPhotoAppearanceReview: (slug: string, src: string | null) => actual.hasTodayPhotoAppearanceReview(slug, src, reviews, asOf),
+    todayAppearancePhotoPlan: (slug: string, plan: Parameters<typeof actual.todayAppearancePhotoPlan>[1]) => actual.todayAppearancePhotoPlan(slug, plan, reviews, asOf),
+  };
+});
 
 const state = vi.hoisted(() => ({
   request: vi.fn(),
   requestIfGranted: vi.fn(),
   answer: vi.fn(),
+  snapshot: vi.fn(async () => {}),
+  paramsPending: false,
+  paramsSuspension: new Promise<never>(() => {}),
 }));
 vi.mock("next/image", () => ({ default: ({ src, onLoad, onError }: { src: string; onLoad?: React.ReactEventHandler<HTMLImageElement>; onError?: React.ReactEventHandler<HTMLImageElement> }) => <img src={src} alt="" onLoad={onLoad} onError={onError} /> }));
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(window.location.search),
+  useSearchParams: () => {
+    if (state.paramsPending) throw state.paramsSuspension;
+    return new URLSearchParams(window.location.search);
+  },
 }));
 vi.mock("@/hooks/useGeolocation", () => ({
   GEOLOCATION_CHANGE_EVENT: "fr:geolocation-change",
@@ -22,7 +42,7 @@ vi.mock("@/hooks/useGeolocation", () => ({
   useGeolocation: () => ({ state: { status: "idle" }, request: state.request, requestIfGranted: state.requestIfGranted }),
 }));
 vi.mock("@/lib/want-cache", () => ({ getWantAnswer: state.answer }));
-vi.mock("@/lib/offline-snapshot", () => ({ persistOfflineTodaySnapshot: async () => {} }));
+vi.mock("@/lib/offline-snapshot", () => ({ persistOfflineTodaySnapshot: state.snapshot }));
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root;
@@ -41,6 +61,8 @@ beforeEach(() => {
   window.history.replaceState(null, "", "/today");
   Object.defineProperty(HTMLElement.prototype, "scrollTo", { configurable: true, value: vi.fn() });
   state.answer.mockReset();
+  state.snapshot.mockClear();
+  state.paramsPending = false;
   state.request.mockClear();
   state.requestIfGranted.mockClear();
   state.answer.mockImplementation(async (_category: string, _facet: null, scope: Scope) => ({
@@ -99,6 +121,163 @@ describe("Today hydrated scope agrees with its area control", () => {
   });
 });
 
+
+const countyRows: DaypartRow[] = [{
+  category: "restaurant", label: "Lunch", href: "/nearby?c=lunch",
+  picks: [{ slug: "white-rabbit-frederick", name: "White Rabbit Gastropub", rating: null,
+    where: "Frederick", confidence: "confirmed", fact: "Open until 10pm" }],
+  openingSoon: { slug: "county-opening", name: "County opening place", rating: null,
+    where: "Frederick", confidence: "confirmed", fact: "Opens soon · 4pm" },
+}];
+const townAnswer = {
+  hero: { slug: "thurmont-place", name: "Thurmont place", photo: null, where: "Thurmont",
+    distance: null, fact: "Open until 8pm", confidence: "confirmed" },
+  also: [], soon: null, browseHref: "/nearby?c=lunch", contextSource: "town", contextLabel: "Thurmont",
+};
+async function renderCountyFallback() {
+  await act(async () => root.render(<><TodayScopeStatus /><DaypartNeeds rows={countyRows} variant="brief" /></>));
+}
+
+describe("Today names county fallbacks without presenting them as town results", () => {
+  it("labels confirmed county cards and county browse links while the URL town loads", async () => {
+    storage.set("fr:scope:v1", "town:frederick");
+    window.history.replaceState(null, "", "/today?in=thurmont");
+    state.answer.mockImplementation(() => new Promise(() => {}));
+    await renderCountyFallback();
+    expect(state.answer.mock.calls.every((call) => call[2] === "town:thurmont")).toBe(true);
+    expect(state.answer).toHaveBeenCalledTimes(1);
+    expect(container.querySelector("select")?.value).toBe("town:thurmont");
+    expect(container.textContent).toContain("Countywide picks · Checking Thurmont");
+    expect(container.textContent).toContain("White Rabbit Gastropub");
+    expect(container.querySelector('a[href="/nearby?c=lunch&in=county"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/nearby?c=lunch&in=thurmont"]')).toBeNull();
+  });
+
+  it("retains a labeled county fallback after a failed town enhancement without retrying", async () => {
+    window.history.replaceState(null, "", "/today?in=thurmont");
+    state.answer.mockRejectedValue(new Error("Place answer deadline exceeded"));
+    await renderCountyFallback();
+    expect(container.textContent).toContain("Countywide picks · Thurmont results unavailable");
+    expect(container.textContent).toContain("White Rabbit Gastropub");
+    expect(container.querySelector('a[href="/nearby?c=lunch&in=county"]')).not.toBeNull();
+    expect(container.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(state.answer).toHaveBeenCalledTimes(1);
+  });
+
+  it("replaces the county card, geography and browse scope with the successful town answer", async () => {
+    window.history.replaceState(null, "", "/today?in=thurmont");
+    let release!: (value: typeof townAnswer) => void;
+    state.answer.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    await renderCountyFallback();
+    await act(async () => release(townAnswer));
+    expect(container.textContent).toContain("Thurmont place");
+    expect(container.textContent).not.toContain("White Rabbit Gastropub");
+    expect(container.textContent).not.toContain("Countywide picks");
+    expect(container.querySelector('[data-today-section-heading]')?.textContent).toContain("Thurmont");
+    expect(container.querySelector('a[href="/nearby?c=lunch&in=thurmont"]')).not.toBeNull();
+  });
+
+  it("keeps a successful town zero authoritative, including a missing legacy soon field", async () => {
+    window.history.replaceState(null, "", "/today?in=thurmont");
+    state.answer.mockResolvedValue({ ...townAnswer, hero: null, soon: undefined });
+    await renderCountyFallback();
+    expect(container.textContent).not.toContain("White Rabbit Gastropub");
+    expect(container.textContent).not.toContain("County opening place");
+    expect(container.textContent).not.toContain("Countywide picks");
+    expect(container.textContent).toContain("Current hours do not confirm an open match for lunch in Thurmont.");
+    expect(container.querySelector('[data-today-place-preview]')).toBeNull();
+    expect(container.querySelector('a[href="/nearby?c=lunch&in=county"]')).not.toBeNull();
+  });
+
+  it("responds to a cross-tab stored town and rejects the previous pending county response", async () => {
+    let releaseOld!: (value: typeof townAnswer) => void;
+    state.answer.mockImplementation((_category: string, _facet: null, scope: Scope) => scope === "county"
+      ? new Promise((resolve) => { releaseOld = resolve; }) : Promise.resolve(townAnswer));
+    await renderCountyFallback();
+    await act(async () => {
+      storage.set("fr:scope:v1", "town:thurmont");
+      window.dispatchEvent(new StorageEvent("storage", { key: "fr:scope:v1", newValue: "town:thurmont" }));
+    });
+    expect(state.answer.mock.calls.map((call) => call[2])).toEqual(["county", "town:thurmont"]);
+    expect(container.querySelector("select")?.value).toBe("town:thurmont");
+    expect(container.textContent).toContain("Thurmont place");
+    await act(async () => releaseOld({ ...townAnswer, hero: { ...townAnswer.hero, name: "Old county response" }, contextSource: "county", contextLabel: "Whole county" }));
+    expect(container.textContent).not.toContain("Old county response");
+    expect(container.textContent).not.toContain("White Rabbit Gastropub");
+  });
+
+  it("retains an explicit county URL when another tab changes saved scope", async () => {
+    window.history.replaceState(null, "", "/today?in=county");
+    state.answer.mockResolvedValue({ ...townAnswer, contextSource: "county", contextLabel: "Whole county" });
+    await renderCountyFallback();
+    await act(async () => {
+      storage.set("fr:scope:v1", "town:thurmont");
+      window.dispatchEvent(new StorageEvent("storage", { key: "fr:scope:v1", newValue: "town:thurmont" }));
+    });
+    expect(state.answer.mock.calls.every((call) => call[2] === "county")).toBe(true);
+    expect(container.querySelector("select")?.value).toBe("county");
+    expect(container.querySelector('a[href="/nearby?c=lunch&in=county"]')).not.toBeNull();
+    expect(container.textContent).not.toContain("Checking Thurmont");
+  });
+
+  it.each(["replace", "back"] as const)("rekeys a URL-only %s when storage already matches the new town", async (navigation) => {
+    window.history.replaceState(null, "", "/today?in=thurmont");
+    window.history.pushState(null, "", "/today?in=brunswick");
+    let releaseOld!: (value: typeof townAnswer) => void;
+    let releaseTown!: (value: typeof townAnswer) => void;
+    state.answer.mockImplementation((_category: string, _facet: null, scope: Scope) =>
+      new Promise((resolve) => {
+        if (scope === "town:brunswick") releaseOld = resolve;
+        else releaseTown = resolve;
+      }));
+    await renderCountyFallback();
+    expect(state.answer.mock.calls.map((call) => call[2])).toEqual(["town:brunswick"]);
+    storage.set("fr:scope:v1", "town:thurmont");
+    const scopeEvents = vi.fn();
+    window.addEventListener("fr:scope-change", scopeEvents);
+    try {
+      await act(async () => {
+        if (navigation === "back") {
+          const returned = new Promise((resolve) => window.addEventListener("popstate", resolve, { once: true }));
+          window.history.back();
+          await returned;
+        } else {
+          window.history.replaceState(null, "", "/today?in=thurmont");
+        }
+        // Next's search-parameter context re-renders this retained tree after
+        // native URL navigation, even when no shared scope event is needed.
+        root.render(<><TodayScopeStatus /><DaypartNeeds rows={countyRows} variant="brief" /></>);
+      });
+      expect(scopeEvents).not.toHaveBeenCalled();
+      expect(container.querySelector("select")?.value).toBe("town:thurmont");
+      expect(container.textContent).toContain("Countywide picks · Checking Thurmont");
+      expect(state.answer.mock.calls.map((call) => call[2])).toEqual(["town:brunswick", "town:thurmont"]);
+      await act(async () => releaseOld({ ...townAnswer, hero: { ...townAnswer.hero, name: "Old Brunswick response" }, contextLabel: "Brunswick" }));
+      expect(container.textContent).not.toContain("Old Brunswick response");
+      await act(async () => releaseTown(townAnswer));
+      expect(container.textContent).toContain("Thurmont place");
+      expect(container.querySelector('a[href="/nearby?c=lunch&in=thurmont"]')).not.toBeNull();
+      expect(state.answer).toHaveBeenCalledTimes(2);
+    } finally {
+      window.removeEventListener("fr:scope-change", scopeEvents);
+    }
+  });
+
+  it("keeps the local Suspense county shelf useful but inert until URL state is available", async () => {
+    state.paramsPending = true;
+    const fetch = vi.fn(async () => { throw new Error("Unexpected metadata request"); });
+    vi.stubGlobal("fetch", fetch);
+    const photoRows = countyRows.map((row) => ({ ...row, picks: row.picks.map((pick) => ({ ...pick,
+      photo: "/api/place-photo?name=places%2Fcounty%2Fphotos%2Fexact&w=720" })) }));
+    await act(async () => root.render(<DaypartNeeds rows={photoRows} variant="brief" />));
+    expect(container.textContent).toContain("White Rabbit Gastropub");
+    expect(container.textContent).toContain("Across Frederick County");
+    expect(container.querySelector('a[href="/nearby?c=lunch&in=county"]')).not.toBeNull();
+    expect(state.answer).not.toHaveBeenCalled();
+    expect(state.snapshot).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});
 
 describe("Today place photo preserves the decision and exact source", () => {
   it.each(["load", "error"])("keeps paid bytes deferred and preserves facts after image %s failure", async (failure) => {

@@ -10,6 +10,7 @@ import { isClosedNow } from "@/lib/hours";
 import { dealQuality } from "@/lib/happyHourDeal";
 import DealLines from "@/components/happy/DealLines";
 import { PlaceMedallion } from "@/components/place/PlaceMedallion";
+import { hasTodayPhotoAppearanceReview } from "@/lib/today/place-photo-appearance";
 
 /**
  * HappyHourWallet — the happy hours ON NOW, on /today.
@@ -135,7 +136,8 @@ export default function HappyHourWallet({ now }: { now: Date }) {
       slug: v.slug,
       name: p.name,
       town: p.municipality ? (MUNICIPALITY_BY_SLUG[p.municipality]?.name ?? undefined) : undefined,
-      photo: p.google_photo_url,
+      photo: hasTodayPhotoAppearanceReview(v.slug, p.google_photo_url ?? null, undefined, now)
+        ? p.google_photo_url : undefined,
       rating: p.google_rating,
       deal: v.happy_hour.details || "",
       endsAt: live.end,
@@ -168,6 +170,8 @@ export default function HappyHourWallet({ now }: { now: Date }) {
           }}
         >
           <PlaceMedallion
+            requireCurrentAppearance
+            appearanceAsOf={now}
             place={{
               slug: next.slug,
               name: next.name,

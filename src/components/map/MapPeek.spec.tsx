@@ -65,6 +65,19 @@ describe("MapPeek selected photo and source identity", () => {
     Object.defineProperty(image, "naturalHeight", { configurable: true, value: height });
     await act(async () => image.dispatchEvent(new Event("load")));
   };
+  it.each(["zoes-chocolate-company", "visitation-hotel"])("keeps %s reference context with its exact decoded owned photo", async (slug) => {
+    const plan = placeCardPhotoPlan({ slug }, 360);
+    await renderPlan(plan);
+    expect(host.querySelector("img")?.getAttribute("src")).toBe(getOwnedPlacePhoto(slug)?.src);
+    expect(host.querySelector("[data-place-photo-reference-context]")).toBeNull();
+    await load(900, 600);
+    const context = host.querySelector("[data-place-photo-reference-context]")!;
+    expect(context.textContent).toBe("Reference photo · Appearance unverified");
+    expect(context.closest("button, a")).toBeNull();
+    expect(context.querySelector("a")).toBeNull();
+    await act(async () => host.querySelector("img")!.dispatchEvent(new Event("error")));
+    expect(host.querySelector("[data-place-photo-reference-context]")).toBeNull();
+  });
   it("requests the transparent proxy signal and withholds venue alt and credit until genuine image bytes load", async () => {
     await render();
     expect(host.querySelector(".map-peek-body")?.getAttribute("data-photo-kind")).toBe("google");

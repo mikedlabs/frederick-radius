@@ -231,6 +231,36 @@ describe("MapListPeek reviewed place media", () => {
   };
 
   it.each([
+    ["zoes-chocolate-company", "Zoe's Chocolate Company"],
+    ["visitation-hotel", "Visitation Hotel"],
+  ])("shows honest owned-photo reference context for %s without provider hydration", async (slug, name) => {
+    const selected = place(0, { slug, name });
+    const onPick = vi.fn();
+    await mount(selected, onPick);
+    const pending = host.querySelector<HTMLElement>("[data-place-photo-reference-context]")!.closest<HTMLElement>(".place-card-photo-credit")!;
+    expect(pending.getAttribute("aria-hidden")).toBe("true");
+    expect(pending.style.visibility).toBe("hidden");
+    const image = host.querySelector<HTMLImageElement>("img")!;
+    await load(image);
+    const context = host.querySelector<HTMLElement>("[data-place-photo-reference-context]")!;
+    expect(context.textContent).toBe("Reference photo · Appearance unverified");
+    expect(context.closest(".place-card-photo-credit")!.getAttribute("aria-hidden")).toBeNull();
+    expect(context.closest("button, a")).toBeNull();
+    expect(context.querySelector("a")).toBeNull();
+    const details = host.querySelector<HTMLButtonElement>(`[data-map-list-place="${slug}"]`)!;
+    await act(async () => details.click());
+    expect(onPick).toHaveBeenCalledExactlyOnceWith(selected);
+    await act(async () => image.dispatchEvent(new Event("error")));
+    const failedContext = host.querySelector<HTMLElement>("[data-place-photo-reference-context]")?.closest<HTMLElement>(".place-card-photo-credit");
+    if (failedContext) {
+      expect(failedContext.getAttribute("aria-hidden")).toBe("true");
+      expect(failedContext.style.visibility).toBe("hidden");
+    }
+    expect(host.querySelector("img")).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ["mccurdy-field", "McCurdy Field", "/images/seasons/spring/aerial-view-baseball-field.jpg"],
     ["carroll-creek-linear-park-frederick", "Carroll Creek Linear Park", "/images/places/carroll-creek-aerial.jpg"],
   ])("paints exact owned %s without metadata or a licensed footer and retains its actions after failure", async (slug, name, src) => {

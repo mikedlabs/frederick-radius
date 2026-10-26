@@ -24,6 +24,8 @@ export type WikimediaPhoto = {
   license: string;
   source_url: string;
   verified: boolean;
+  /** Actual capture date from reviewed source metadata, never its review date. */
+  capturedOn?: string;
   /** Existing reviewed local copy; retain the Commons source and attribution. */
   localSrc?: string;
   licenseUrl?: string;
@@ -49,10 +51,13 @@ export type WikimediaPhoto = {
 export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
   ...Object.fromEntries(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).map(([slug, record]) => {
     const { file, image } = record;
+    const capturedOn = "review" in record && "captured_on" in record.review ? record.review.captured_on
+      : "provenance" in record && "captured_on" in record.provenance ? record.provenance.captured_on : undefined;
     return [slug, {
       file, alt: image.alt, author: image.creator, license: image.license.label,
       source_url: image.source_url, verified: true, localSrc: image.src,
       licenseUrl: image.license.url, modifications: image.modifications,
+      ...(capturedOn === undefined ? {} : { capturedOn }),
       ...("preferLocal" in record ? { preferLocal: record.preferLocal } : {}),
       ...("objectPosition" in record ? { objectPosition: record.objectPosition } : {}),
     } satisfies WikimediaPhoto];

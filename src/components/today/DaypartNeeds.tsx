@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useSearchParams } from "next/navigation";
 import styles from "./DaypartNeeds.module.css";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
 import TodayPlacePreview from "./TodayPlacePreview";
@@ -12,7 +13,7 @@ import type { DaypartPick, DaypartRow } from "@/lib/loaders/daypartPicks";
 import { getWantAnswer } from "@/lib/want-cache";
 import { GEOLOCATION_CHANGE_EVENT } from "@/hooks/useGeolocation";
 import { daypartBrowseHref } from "@/lib/today/daypart-needs";
-import { getScope, parseScope, SCOPE_CHANGE_EVENT, type Scope } from "@/lib/scope";
+import { getScope, parseScope, scopeLabel, scopeTownSlug, subscribeScopeChange, type Scope } from "@/lib/scope";
 import Skeleton from "@/components/ui/Skeleton";
 import { persistOfflineTodaySnapshot } from "@/lib/offline-snapshot";
 import { easternDayKey } from "@/lib/tz";
@@ -48,6 +49,9 @@ export type LiveShelf = {
 };
 
 export type DaypartNeedsVariant = "full" | "brief";
+
+const subscribeDaypartScope = (listener: () => void) => subscribeScopeChange(() => listener());
+const readStoredDaypartScope = (): Scope => getScope() ?? "county";
 
 export function daypartUsablePickCount(
   shelf: {
@@ -152,11 +156,12 @@ export function liveShelfFromWantAnswer(
     confidence: candidate.confidence ?? "unconfirmed",
   });
   // `undefined` supports one rollout boundary: an older cached response did
-  // not know this field, so retain the server-rendered transition. An explicit
-  // null is a successful scoped answer and clears the countywide fallback.
+  // not know this field, so retain the countywide transition only without
+  // a hard town boundary. An omitted field cannot import a foreign-town place.
+  // An explicit null is a successful answer and clears the fallback.
   const openingSoon =
     answer.soon === undefined
-      ? row.openingSoon ?? null
+      ? scopeTownSlug(scope) ? null : row.openingSoon ?? null
       : answer.soon
         ? toPick(answer.soon)
         : null;
@@ -521,15 +526,35 @@ function OpeningSoonComparisonPick({ place, category, hydratePhoto = false }: Op
  * layer only lets the reader switch shelves without stacking several rails
  * down the page.
  */
-export default function DaypartNeeds({
-  rows,
-  note,
-  variant = "full",
-}: {
+type DaypartNeedsProps = {
   rows: DaypartRow[];
   note?: string | null;
   variant?: DaypartNeedsVariant;
-}) {
+};
+
+/** Only this resolver reads request-specific URL state. The local boundary
+ * keeps useful county cards in the cached HTML instead of a page-wide bailout. */
+function ScopedDaypartNeeds(props: DaypartNeedsProps) {
+  const storedScope = useSyncExternalStore(subscribeDaypartScope, readStoredDaypartScope, () => null);
+  const params = useSearchParams();
+  const requestedScope = storedScope === null ? "county" : parseScope(params?.get("in")) ?? storedScope;
+  return <DaypartNeedsShelf key={storedScope === null ? "server" : requestedScope} {...props}
+    requestedScope={requestedScope} enhance={storedScope !== null} />;
+}
+
+export default function DaypartNeeds(props: DaypartNeedsProps) {
+  return <Suspense fallback={<DaypartNeedsShelf {...props} requestedScope="county" enhance={false} />}>
+    <ScopedDaypartNeeds {...props} />
+  </Suspense>;
+}
+
+function DaypartNeedsShelf({
+  rows,
+  note,
+  variant = "full",
+  requestedScope,
+  enhance,
+}: DaypartNeedsProps & { requestedScope: Scope; enhance: boolean }) {
   const [selectedCategory, setSelectedCategory] = useState(() =>
     initialDaypartCategory(rows, variant),
   );
@@ -541,6 +566,12 @@ export default function DaypartNeeds({
   const liveShelves = liveSnapshot.revision === dataRevision ? liveSnapshot.shelves : {};
   const resolvedCategories = resolvedSnapshot.revision === dataRevision ? resolvedSnapshot.categories : {};
   const [contextRevision, setContextRevision] = useState(0);
+  const [requestSnapshot, setRequestSnapshot] = useState<{
+    revision: typeof dataRevision;
+    category: string;
+    scope: Scope;
+    status: "failed";
+  } | null>(null);
   const cacheRevisionRef = useRef(dataRevision);
   const resolvedCategoriesRef = useRef<Record<string, boolean>>({});
   const liveShelvesRef = useRef<Record<string, LiveShelf>>({});
@@ -566,6 +597,17 @@ export default function DaypartNeeds({
   );
   const contextLabel = liveActive?.contextLabel ?? "Across Frederick County";
   const contextSource = liveActive?.contextSource ?? "county";
+  const activeRequest = requestSnapshot?.revision === dataRevision && requestSnapshot.category === activeCategory
+    ? requestSnapshot : null;
+  const requestedTown = scopeTownSlug(requestedScope) ? scopeLabel(requestedScope) : null;
+  // Server rows are deliberately countywide. A confirmed card still needs
+  // that geography while a town answer loads or its enhancement fails.
+  const shelfContextLabel = !liveActive && requestedTown
+    ? `Countywide picks · ${activeRequest?.scope === requestedScope ? `${requestedTown} results unavailable` : `Checking ${requestedTown}`}`
+    : contextLabel;
+  const browseHref = active && !liveActive
+    ? daypartBrowseHref(active.category, active.label, "county") || active.href
+    : active?.href;
   const awaitingLive =
     Boolean(activeCategory) &&
     active?.picks.length === 0 &&
@@ -593,6 +635,7 @@ export default function DaypartNeeds({
   // hours, chain penalties, and category matching cannot drift between the two
   // sections.
   useEffect(() => {
+    if (!enhance) return;
     if (cacheRevisionRef.current !== dataRevision) {
       cacheRevisionRef.current = dataRevision;
       contextEpochRef.current += 1;
@@ -630,13 +673,13 @@ export default function DaypartNeeds({
     // Today labels an unset lens as the whole county. Send that default
     // explicitly so the API cannot substitute a home/IP origin or old cookie.
     // Capture one scope for both the request and its eventual browse link.
-    const scope = parseScope(new URLSearchParams(window.location.search).get("in"))
-      ?? getScope() ?? "county";
+    const scope = requestedScope;
     getWantAnswer(`cat:${baseActive.category}`, null, scope)
       .then((raw) => {
         if (!belongsToContext()) return;
         const answer = raw as WantAnswer;
         const shelf = liveShelfFromWantAnswer(answer, baseActive, scope);
+        setRequestSnapshot(null);
         liveShelvesRef.current = { ...liveShelvesRef.current, [baseActive.category]: shelf };
         setLiveSnapshot((previous) => ({ revision: dataRevision, shelves: {
           ...(previous.revision === dataRevision ? previous.shelves : {}),
@@ -648,23 +691,26 @@ export default function DaypartNeeds({
         if (!belongsToContext()) return;
         // Keep the already-rendered countywide shelf. A live refresh is an
         // enhancement, never a reason to replace useful content with an error.
+        setRequestSnapshot({ revision: dataRevision, category: baseActive.category, scope, status: "failed" });
         settleCategory(daypartUsablePickCount(baseActive, variant));
       });
     return () => {
       current = false;
     };
-  }, [activeCategory, activeHref, baseActive, contextRevision, dataRevision, rows, variant]);
+  }, [activeCategory, activeHref, baseActive, contextRevision, dataRevision, enhance, requestedScope, rows, variant]);
 
   // A visitor can grant location from the header after this component mounts.
-  // Same-tab storage changes are otherwise invisible, so listen to the
-  // explicit location and scope signals and ask the shared ranker again.
+  // Scope changes remount the keyed shelf above, so only a new device fix
+  // needs this additional context revision. Do not fetch twice for one lens.
   useEffect(() => {
+    if (!enhance) return;
     const refresh = () => {
       // Invalidate promises synchronously; React's old effect cleanup may not
       // run until after an already queued response microtask.
       contextEpochRef.current += 1;
       liveShelvesRef.current = {};
       setLiveSnapshot({ revision: dataRevision, shelves: {} });
+      setRequestSnapshot(null);
       setResolvedSnapshot({ revision: dataRevision, categories: {} });
       resolvedCategoriesRef.current = {};
       setSelectedCategory(initialDaypartCategory(rows, variant));
@@ -672,18 +718,16 @@ export default function DaypartNeeds({
       setContextRevision((revision) => revision + 1);
     };
     window.addEventListener(GEOLOCATION_CHANGE_EVENT, refresh);
-    window.addEventListener(SCOPE_CHANGE_EVENT, refresh);
     return () => {
       window.removeEventListener(GEOLOCATION_CHANGE_EVENT, refresh);
-      window.removeEventListener(SCOPE_CHANGE_EVENT, refresh);
     };
-  }, [dataRevision, rows, variant]);
+  }, [dataRevision, enhance, rows, variant]);
 
   // Keep one public, actionable place as the offline Today handoff. This never
   // stores the user's coordinates or distance; the offline page labels the
   // entire read as a saved, potentially changed snapshot.
   useEffect(() => {
-    if (navigator.onLine === false) return;
+    if (!enhance || navigator.onLine === false) return;
     const first = active?.picks[0] ?? active?.openingSoon;
     if (!first) return;
     void persistOfflineTodaySnapshot({
@@ -695,7 +739,7 @@ export default function DaypartNeeds({
         href: `/places/${first.slug}`,
       },
     }).catch(() => {});
-  }, [active]);
+  }, [active, enhance]);
 
   if (!active) return null;
 
@@ -713,9 +757,9 @@ export default function DaypartNeeds({
       daypartBrowseHref(active.category, active.label, "county") || active.href;
     return (
       <DaypartEmptyState
-        href={countywide ? active.href : countyHref}
+        href={countywide ? browseHref : countyHref}
         label="Places open now"
-        contextLabel={contextLabel}
+        contextLabel={shelfContextLabel}
         countywide={countywide}
         mayReportNoneOpen={liveActive?.mayAssertNoneOpen === true}
         groupLabel={active.label}
@@ -777,8 +821,8 @@ export default function DaypartNeeds({
     >
       <TodaySectionHeading
         title={shelfHeading.title}
-        meta={variant === "brief" ? undefined : contextLabel}
-        href={active.href}
+        meta={shelfContextLabel}
+        href={browseHref}
         cta={variant === "brief" ? "Browse places" : "See all"}
       />
       {note ? (
@@ -895,7 +939,7 @@ export default function DaypartNeeds({
                 place={active.openingSoon}
                 category={active.category}
                 brief={variant === "brief"}
-                hydratePhoto={variant === "brief"}
+                hydratePhoto={enhance && variant === "brief"}
               />
             ) : null}
             {/* Phones get an edited grid, not a hidden horizontal rail. One
@@ -923,7 +967,7 @@ export default function DaypartNeeds({
                       place={place}
                       category={active.category}
                       lead={index === 0}
-                      hydratePhoto={variant === "brief" && index === 0}
+                      hydratePhoto={enhance && variant === "brief" && index === 0}
                     />
                   </li>
                 ))}
@@ -936,7 +980,7 @@ export default function DaypartNeeds({
                 place={active.openingSoon}
                 category={active.category}
                 brief={variant === "brief"}
-                hydratePhoto={variant === "brief"}
+                hydratePhoto={enhance && variant === "brief"}
               />
             ) : null}
             {leadReason ? (

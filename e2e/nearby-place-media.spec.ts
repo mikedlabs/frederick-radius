@@ -121,16 +121,23 @@ for (const width of [320, 375, 390, 430]) {
     const dimensions = await image.evaluate((node) => {
       const box = node.getBoundingClientRect();
       const card = node.closest("article")!.getBoundingClientRect();
-      return { width: box.width, height: box.height, cardWidth: card.width };
+      const item = node.closest('[data-nearby-parks-row]');
+      const grid = item?.parentElement;
+      const columns = grid ? getComputedStyle(grid).gridTemplateColumns.trim().split(/\s+/).length : 1;
+      const paired = columns === 2 && item?.getAttribute('data-nearby-parks-row') === 'pair'
+        && getComputedStyle(item).gridColumnEnd !== '-1';
+      return { width: box.width, height: box.height, cardWidth: card.width, paired };
     });
     expect(dimensions.width).toBeGreaterThan(dimensions.cardWidth * 0.95);
-    expect(dimensions.width / dimensions.height).toBeCloseTo(16 / 9, 1);
+    await expect(card).toHaveAttribute("data-nearby-parks-card", "true");
+    expect(dimensions.width / dimensions.height).toBeCloseTo(dimensions.paired ? 4 / 3 : 16 / 9, 1);
     const directions = card.getByRole("link", { name: /^Directions to Carroll Creek Linear Park / });
     await expectReachableTarget(directions);
     await expect(directions).toHaveAttribute("href", /^https:\/\/(?:www\.google\.com|maps\.apple\.com)\//);
     await expect(directions).toHaveAttribute("href", /[?&](?:destination|daddr)=39\.412[^&]*,-77\.408/);
     const browsingMetadataForOwnedPlace = metadataSlugs.includes(creek);
     expect(browsingMetadataForOwnedPlace).toBe(false);
+    expect(metadataSlugs, "Parks browse never hydrates provider metadata for missing photos").toEqual([]);
     expect(await card.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const save = card.locator(`[data-save-ref="place:${creek}"]`);

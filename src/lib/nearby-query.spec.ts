@@ -5,6 +5,7 @@ import {
   NEARBY_CATEGORY_HISTORY_KEY,
   nearbyHistoryState,
   nearbyQueryHref,
+  nearbySupportsHours,
   readNearbyQuery,
 } from "./nearby-query";
 
@@ -80,6 +81,30 @@ describe("Nearby return state", () => {
   it("ignores invalid flags/sort and inapplicable lodging hours filters", () => {
     expect(read("c=shops&open=true&closing=yes&sort=constructor")).toMatchObject({ openOnly: false, closingSoonOnly: false, sort: "smart" });
     expect(read("c=stay&open=1&closing=1&sort=rated")).toMatchObject({ openOnly: false, closingSoonOnly: false, sort: "rated" });
+  });
+
+  it("offers hours refinements only when they apply to a new intent", () => {
+    for (const key of ["outside", "stay", "missing-craving", "constructor", null]) expect(nearbySupportsHours(key)).toBe(false);
+    for (const key of ["food", "coffee", "dinner", "golf"]) expect(nearbySupportsHours(key)).toBe(true);
+  });
+
+  it("preserves an old explicit Parks hours URL until the person clears it", () => {
+    const before = read("c=outside&facet=playground&open=1&closing=1&sort=rated&in=brunswick");
+    expect(before).toMatchObject({ openOnly: true, closingSoonOnly: true, scope: "town:brunswick" });
+    const unchanged = nearbyQueryHref("/nearby?returnTo=%2Ftoday%3Fin%3Dbrunswick#results", before)!;
+    expect(readNearbyQuery(new URL(unchanged, "https://radius.test").searchParams)).toEqual(before);
+    const cleared = changeNearbyQuery(before, { openOnly: false, closingSoonOnly: false });
+    expect(cleared).toEqual({ ...before, openOnly: false, closingSoonOnly: false });
+    const next = new URL(nearbyQueryHref(unchanged, cleared)!, "https://radius.test");
+    expect(next.searchParams.get("returnTo")).toBe("/today?in=brunswick");
+    expect(next.hash).toBe("#results");
+  });
+
+  it("does not carry Food urgency into a newly chosen Parks category", () => {
+    const before = read("c=food&open=1&closing=1&sort=rated&in=thurmont");
+    expect(changeNearbyQuery(before, { cravingKey: "outside" })).toMatchObject({
+      cravingKey: "outside", openOnly: false, closingSoonOnly: false, sort: "rated", scope: "town:thurmont",
+    });
   });
 
   it("reads repeated Next query values consistently with URLSearchParams", () => {

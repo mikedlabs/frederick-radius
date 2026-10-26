@@ -11,6 +11,24 @@ import TodayPlacePreview, { type TodayPlaceAvailability } from "./TodayPlacePrev
 type PhotoHandlers = Pick<ImgHTMLAttributes<HTMLImageElement>, "onLoad" | "onError">;
 const photoHandlers = vi.hoisted(() => new Map<string, PhotoHandlers>());
 const routing = vi.hoisted(() => ({ suspend: false }));
+// Explicit OFFLINE approvals isolate existing decode/credit/state tests from
+// the real empty production review list. These are not appearance evidence.
+vi.mock("@/lib/today/place-photo-appearance", async importOriginal => {
+  const actual = await importOriginal<typeof import("@/lib/today/place-photo-appearance")>();
+  const asOf = new Date("2026-10-26T16:00:00.000Z");
+  const provider = `/api/place-photo?name=${encodeURIComponent("places/today-preview/photos/exact-photo")}&w=720&fallback=signal`;
+  const reviews = [
+    ["schifferstadt-architectural-museum-frederick", "/history-photos/schifferstadt.jpg"],
+    ["carroll-creek-linear-park-frederick", "/images/places/carroll-creek-aerial.jpg"],
+    ["hessian-barracks-frederick-maryland", "/history-photos/hessian-barracks.jpg"],
+    ...["unregistered-preview-place", "replacement-selection", "schifferstadt-architectural-museum-frederick"].map(slug => [slug, provider]),
+  ].map(([slug, src]) => ({ slug, src, appearance: "current" as const, reviewedOn: "2026-10-26", validUntil: "2026-10-31",
+    evidence: "Offline media-lifecycle approval fixture only, not production evidence." }));
+  return { ...actual,
+    hasTodayPhotoAppearanceReview: (slug: string, src: string | null) => actual.hasTodayPhotoAppearanceReview(slug, src, reviews, asOf),
+    todayAppearancePhotoPlan: (slug: string, plan: Parameters<typeof actual.todayAppearancePhotoPlan>[1]) => actual.todayAppearancePhotoPlan(slug, plan, reviews, asOf),
+  };
+});
 vi.mock("next/image", () => ({
   default: ({ src, alt = "", onLoad, onError }: { src: string; alt?: string } & PhotoHandlers) => {
     photoHandlers.set(src, { onLoad, onError });

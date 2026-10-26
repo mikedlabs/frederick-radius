@@ -4,7 +4,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
-import { getOwnedPlacePhoto } from "./owned-place-photos";
+import { OWNED_PLACE_PHOTOS, getOwnedPlacePhoto } from "./owned-place-photos";
 import { placeCardPhotoPlan, placePhotoGallerySources, recordPlaceCardPhotoResult, selectedPlaceCardPhoto } from "./place-card-photo";
 import { freeSearchPlaceVisual } from "./search/place-visual";
 
@@ -72,5 +72,29 @@ describe("reviewed owned photo batch", () => {
     "__proto__",
   ])("does not spread owned imagery to another name, neighbor or congregation: %s", (slug) => {
     expect(getOwnedPlacePhoto(slug)).toBeNull();
+  });
+});
+
+describe("reviewed owned merchant reference context", () => {
+  const flagged = ["visitation-hotel", "zoes-chocolate-company"];
+  it("flags only the two explicitly reviewed undated primary business references", () => {
+    expect(Object.entries(OWNED_PLACE_PHOTOS).filter(([, photo]) => photo.referenceContext)
+      .map(([slug]) => slug).sort()).toEqual([...flagged].sort());
+    for (const slug of flagged) {
+      const photo = getOwnedPlacePhoto(slug)!;
+      expect(photo.referenceContext).toBe("appearance-unverified");
+      expect("capturedOn" in photo).toBe(false);
+    }
+  });
+  it("preserves exact image identity and reference context through the shared plan", () => {
+    for (const slug of flagged) {
+      const expected = getOwnedPlacePhoto(slug)!;
+      const source = placeCardPhotoPlan({ slug }, 360).sources[0];
+      expect(source.kind).toBe("owned"); expect(source.src).toBe(expected.src); expect(source.alt).toBe(expected.alt);
+      expect(source.kind === "owned" && source.referenceContext).toBe("appearance-unverified");
+    }
+    const creek = placeCardPhotoPlan({ slug: "carroll-creek-linear-park-frederick" }, 360).sources[0];
+    expect(creek.kind).toBe("owned");
+    expect(creek.kind === "owned" && creek.referenceContext).toBeUndefined();
   });
 });

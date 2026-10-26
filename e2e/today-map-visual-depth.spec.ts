@@ -256,12 +256,11 @@ test("Today shows a real photograph on arrival while weather and Find lead at 39
   const doorway = page.locator("[data-today-geographic-doorway]");
   await expect(doorway).toHaveAttribute("data-photo-state", "loaded");
   await decoded(doorway.locator("img"), pizzaPhoto.src);
-  const licensed = page.locator('[data-today-geographic-place="sabor-de-cuba-restaurant-frederick"]');
-  await decoded(licensed.locator("img"), "/place-photos/sabor-de-cuba-entrance-2018.jpg");
-  const credit = page.locator("[data-today-discovery-credit]");
-  await expect(credit.getByRole("link", { name: "CC BY-SA 4.0", exact: true })).toBeVisible();
-  await expect(credit.locator('a[href="https://commons.wikimedia.org/wiki/File:Sabor_de_Cuba_02.jpg"]')).toBeVisible();
-  await expect(licensed.locator("a")).toHaveCount(0);
+  await expect(page.locator("[data-today-geographic-place]")).toHaveCount(0);
+  await expect(page.locator("[data-today-discovery-credit]")).toHaveCount(0);
+  await expect(page.locator("[data-today-discovery-grid]")).not.toHaveAttribute("data-local-businesses");
+  expect(evidence.images).not.toContain("/place-photos/sabor-de-cuba-entrance-2018.jpg");
+  expect(evidence.metadataReads).toEqual([]);
   const geometry = await page.evaluate(() => {
     const box = (selector: string) => { const r = document.querySelector(selector)!.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
     const weather = box("[data-today-weather]"), find = box('[data-surface-row="find"]'), entry = box("[data-today-entry-controls]");
@@ -414,7 +413,7 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
   }
 });
 
-test("Today keeps exact Brunswick imagery through a scope round trip and a fresh failed-image leg", async ({ browser, context, page, baseURL }, info) => {
+test("Today keeps Brunswick facts and actions through a scope round trip without hydrating unreviewed imagery", async ({ browser, context, page, baseURL }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   const healthy = await prepare(context, page, baseURL);
@@ -429,24 +428,25 @@ test("Today keeps exact Brunswick imagery through a scope round trip and a fresh
   await expect(page.locator("[data-today-geographic-doorway]")).toHaveCount(1);
   await expect(page.locator("[data-today-geographic-place]")).toHaveCount(0);
   await expect(lockCard).toHaveCount(1);
-  await decoded(lockCard.locator("img"), lockPhoto.src);
+  await expect(lockCard.locator("img")).toHaveCount(0);
+  await expect(lockCard).toHaveAttribute("data-has-photo", "false");
   await expect(lockCard).toContainText(lock.name);
-  await expect(lockCard.getByRole("link", { name: "Wikimedia Commons", exact: true })).toHaveAttribute("href", lockPhoto.source_url);
-  await expect(lockCard.getByRole("link", { name: lockPhoto.license.label, exact: true })).toHaveAttribute("href", lockPhoto.license.url);
+  await expect(lockCard.locator(".place-card-photo-credit")).toHaveCount(0);
+  await target44(lockCard.getByRole("link", { name: `Map: ${lock.name}`, exact: true }));
+  expect(healthy.evidence.images).not.toContain(lockPhoto.src);
+  expect(healthy.evidence.metadataReads).toEqual([]);
   await expect(lockCard).not.toContainText("Carroll Creek");
   await picker.selectOption("county");
   await expect(lockCard).toHaveCount(0);
   await expect(page.locator("[data-today-geographic-doorway]")).toHaveAttribute("data-photo-state", "loaded");
-  await attach(info, "healthy-exact-town-roundtrip", { source: lockPhoto.src, slug: lockSlug,
-    credit: lockPhoto.creator, sequence: ["county", "brunswick", "county"],
+  await attach(info, "unreviewed-town-photo-held-roundtrip", { heldSource: lockPhoto.src, slug: lockSlug,
+    appearanceReview: "absent", sequence: ["county", "brunswick", "county"],
     wantScopes: healthy.evidence.wantScopes, widths: await assertWidth(page) });
   expect(healthy.evidence.errors).toEqual([]);
 
-  // WebKit demonstrably reuses a previously decoded exact image without a
-  // second request, even with routing and no-store. Preserve that healthy
-  // roundtrip proof above. A fresh isolated context makes this failure leg's
-  // FIRST exact Lock30 transport actually receive the declared1x1 signal.
-  // Do not alter image URLs, clear a cache, or mutate component DOM/source.
+  // A fresh context must keep the same appearance hold before any image
+  // transport. The declared1x1 responder is armed, but must never be called;
+  // actual category-image transport failure is covered separately below.
   const environment = await page.evaluate(() => ({ userAgent: navigator.userAgent, deviceScaleFactor: devicePixelRatio }));
   const fresh = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 },
     ...environment, isMobile: true, hasTouch: true, reducedMotion: "reduce", colorScheme: "light",
@@ -461,8 +461,9 @@ test("Today keeps exact Brunswick imagery through a scope round trip and a fresh
     await expect(failurePage.getByTestId("today-scope-status")).toContainText("Brunswick picks · Countywide weather");
     const failedCard = cardForLock(failurePage);
     await expect(failedCard).toHaveCount(1);
-    await expect.poll(() => failure.evidence.failedImages.filter((path) => path === lockPhoto.src).length,
-      { message: "The declared1x1 failure must actually be served; decoded-cache reuse is not failure coverage" }).toBe(1);
+    expect(failure.evidence.failedImages).not.toContain(lockPhoto.src);
+    expect(failure.evidence.images).not.toContain(lockPhoto.src);
+    expect(failure.evidence.metadataReads).toEqual([]);
     await expect(failedCard).toHaveAttribute("data-has-photo", "false");
     await expect(failedCard.locator("img")).toHaveCount(0);
     await expect(failedCard.locator(".place-card-photo-credit")).toHaveCount(0);
@@ -475,9 +476,9 @@ test("Today keeps exact Brunswick imagery through a scope round trip and a fresh
     await assertWidth(failurePage);
     expect(failure.evidence.errors).toEqual([]);
   } finally {
-    await attach(info, "fresh-exact-town-failure-leg", { ...failure.evidence,
+    await attach(info, "fresh-unreviewed-town-photo-held", { ...failure.evidence,
       sequence: ["county", "brunswick"], freshIsolatedContext: true,
-      sameDecodedImageRefreshClaim: false, actualFailedSource: lockPhoto.src });
+      imageTransportFailureClaim: false, heldSource: lockPhoto.src });
     await fresh.close();
   }
 });

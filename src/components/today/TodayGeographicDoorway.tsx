@@ -74,16 +74,19 @@ function DiningMosaic({ scope, returnTo, categoryPhoto }: { scope: Scope; return
   const sabor = useTodayPlacePhoto({ slug: BUSINESSES[1].slug }, 360, false);
   const showBusinesses = todayShowsFrederickDoorway(scope);
   const sources = [zoes, sabor];
+  const visibleBusinesses = showBusinesses ? BUSINESSES.flatMap((place, index) => {
+    const photo = sources[index];
+    return photo.source ? [{ place, photo }] : [];
+  }) : [];
   return (
     <div data-today-geographic-mosaic className={styles.geographicMosaic}>
-      <div data-today-discovery-grid data-local-businesses={showBusinesses || undefined} className={styles.geographicTileGrid}>
+      <div data-today-discovery-grid data-local-businesses={visibleBusinesses.length > 0 || undefined} className={styles.geographicTileGrid}>
         <DiningPhotoTile title="Find pizza" label="Find pizza" primary
           href={todayPizzaHref(scope, returnTo)} source={pizza} loaded={categoryState === "loaded"}
           onResult={(src, result) => {
             if (src === categoryPhoto?.src) setCategoryState(current => current === "failed" ? current : result);
           }} />
-        {showBusinesses && BUSINESSES.map((place, index) => {
-          const photo = sources[index];
+        {visibleBusinesses.map(({ place, photo }) => {
           const params = new URLSearchParams({ in: scopeToParam(scope) });
           return <DiningPhotoTile key={place.slug} title={place.name} slug={place.slug}
             label={`View ${place.actionName} in Frederick`}
@@ -91,15 +94,16 @@ function DiningMosaic({ scope, returnTo, categoryPhoto }: { scope: Scope; return
             source={photo.source} loaded={photo.loaded} onResult={photo.onResult} />;
         })}
       </div>
-      {showBusinesses && sabor.source && <div className={styles.geographicCredit} data-today-discovery-credit>
-        <PlaceCardPhotoCredit source={sabor.source} loaded={sabor.loaded} touchTarget compact discloseModifications />
-      </div>}
+      {visibleBusinesses.map(({ place, photo }) => photo.source && photo.source.kind !== "owned" &&
+        <div key={place.slug} className={styles.geographicCredit} data-today-discovery-credit>
+          <PlaceCardPhotoCredit source={photo.source} loaded={photo.loaded} touchTarget compact discloseModifications />
+        </div>)}
     </div>
   );
 }
 
-/** Photography opens a useful category or exact place, without implying that
- * either business is open, available or recommended at the present moment. */
+/** Category art is unlocated. A named business needs its own exact
+ * current-appearance review before it can occupy a prominent photo tile. */
 export function TodayGeographicDoorwayView({ scope = null, returnTo, categoryPhoto = TODAY_PIZZA_CATEGORY_PHOTO }: {
   scope?: Scope | null; returnTo?: string; categoryPhoto?: CategoryPhoto | null;
 }) {

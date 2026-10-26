@@ -10,3 +10,11 @@ export function curatedPhotoSourceLabel(sourceUrl: string): string {
   } catch { /* Unknown source identity stays generic. */ }
   return "Photo source";
 }
+
+/** Capture dates describe the photograph, not current business appearance. */
+export function curatedPhotoReferenceLabel(capturedOn: unknown): string | null {
+  if (typeof capturedOn !== "string" || !/^[1-9]\d{3}-\d{2}-\d{2}$/.test(capturedOn)) return null;
+  const date = new Date(`${capturedOn}T00:00:00Z`);
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== capturedOn) return null;
+  return `Reference photo · ${capturedOn.slice(0, 4)}`;
+}

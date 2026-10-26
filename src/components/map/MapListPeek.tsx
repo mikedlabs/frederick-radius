@@ -89,7 +89,8 @@ function PlaceRow({
   // of an invisible licensed-alternative footer. Failure retains the category.
   const owned = registryPlan.sources.find((source) => source.kind === "owned");
   const plan = { ...registryPlan, sources: owned ? [owned] : registryPlan.sources.filter((source) => source.kind === "curated") };
-  const creditSource = plan.sources.find((source) => source.kind === "curated") ?? null;
+  const creditSource = plan.sources.find((source) => source.kind === "curated" ||
+    source.kind === "owned" && source.referenceContext === "appearance-unverified") ?? null;
   const currentPlan = useRef(plan.key);
   useLayoutEffect(() => { currentPlan.current = plan.key; }, [plan.key]);
   const [photoState, setPhotoState] = useState<PlaceCardPhotoState | null>(null);

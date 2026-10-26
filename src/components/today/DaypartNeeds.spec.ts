@@ -1,6 +1,18 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+// One explicit test-only source approval preserves the existing deferred-byte
+// transport contract. The production current-appearance review list is empty.
+vi.mock("@/lib/today/place-photo-appearance", async importOriginal => {
+  const actual = await importOriginal<typeof import("@/lib/today/place-photo-appearance")>();
+  const asOf = new Date("2026-10-26T16:00:00.000Z");
+  const reviews = [{ slug: "gravel-and-grind", src: "/api/place-photo?name=places%2FChIJtest%2Fphotos%2Ffront&w=720&fallback=signal",
+    appearance: "current" as const, reviewedOn: "2026-10-26", validUntil: "2026-10-31", evidence: "Offline deferred-byte fixture only, not business appearance evidence." }];
+  return { ...actual,
+    hasTodayPhotoAppearanceReview: (slug: string, src: string | null) => actual.hasTodayPhotoAppearanceReview(slug, src, reviews, asOf),
+    todayAppearancePhotoPlan: (slug: string, plan: Parameters<typeof actual.todayAppearancePhotoPlan>[1]) => actual.todayAppearancePhotoPlan(slug, plan, reviews, asOf),
+  };
+});
 import DaypartNeeds, {
   DaypartEmptyState,
   daypartBrowseHref,
@@ -887,8 +899,22 @@ describe("DaypartNeeds", () => {
     expect(html).not.toContain("Third");
     expect(html).not.toContain("Opening Next");
     expect(html).not.toContain('role="tablist"');
-    expect(html).toContain('href="/category/coffee"');
+    expect(html).toContain('href="/nearby?c=coffee&amp;in=county"');
+    expect(html).toContain("Across Frederick County");
     expect(html).toContain("Browse places");
+  });
+
+  it("names county geography for the confirmed opening-soon briefing before hydration", () => {
+    const html = renderToStaticMarkup(createElement(DaypartNeeds, {
+      variant: "brief",
+      rows: [{ category: "coffee", label: "Coffee", href: "/nearby?c=coffee", picks: [],
+        openingSoon: { slug: "county-opening", name: "County opening place", rating: null,
+          where: "Frederick", confidence: "confirmed", fact: "Opens soon · 4pm" } }],
+    }));
+    expect(html).toContain("Across Frederick County");
+    expect(html).toContain('href="/nearby?c=coffee&amp;in=county"');
+    expect(html).toContain('aria-label="Place opening soon"');
+    expect(html).not.toContain('aria-label="Open places right now"');
   });
 
   it("lets an opening-soon transition replace an uncertain briefing pick", () => {
@@ -956,8 +982,8 @@ describe("DaypartNeeds", () => {
     expect(html).toContain('data-today-place-lead="true"');
     expect(html).toContain("Places to try");
     expect(html).toContain("Hours not confirmed");
-    expect(html).toContain('href="/category/museum"');
-    expect(html.match(/href="\/category\/museum"/g)).toHaveLength(1);
+    expect(html).toContain('href="/nearby?c=art&amp;facet=museum&amp;in=county"');
+    expect(html.match(/href="\/nearby\?c=art&amp;facet=museum&amp;in=county"/g)).toHaveLength(1);
     expect(html).toContain("Browse places");
   });
 

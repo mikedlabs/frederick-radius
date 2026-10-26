@@ -585,3 +585,68 @@ for (const dismissal of ["Escape", "Close"] as const) {
 }
 
 registerWebkitLoopbackDocumentSeam();
+
+
+test("Parks keeps an old explicit hours filter understandable and clears only its hours flags", async ({ page }) => {
+  const path = "/nearby?c=outside&facet=park&open=1&closing=1&sort=rated&in=frederick&returnTo=%2Ftoday%3Fin%3Dfrederick#results";
+  await page.goto(path, { waitUntil: "domcontentloaded" });
+  const notice = page.locator("[data-nearby-legacy-hours-filter]");
+  await expect(notice).toContainText("This link filters for confirmed hours");
+  expect(new URL(page.url()).searchParams.get("open")).toBe("1");
+  const clear = notice.getByRole("button", { name: "Show all matching parks", exact: true });
+  await expectReachableTarget(clear);
+  await clear.click();
+  await expect(notice).toHaveCount(0);
+  const url = new URL(page.url());
+  expect(url.searchParams.get("open")).toBeNull(); expect(url.searchParams.get("closing")).toBeNull();
+  expect(url.searchParams.get("facet")).toBe("park"); expect(url.searchParams.get("sort")).toBe("rated");
+  expect(url.searchParams.get("in")).toBe("frederick");
+  expect(url.searchParams.get("returnTo")).toBe("/today?in=frederick"); expect(url.hash).toBe("#results");
+  const filters = await openFilters(page);
+  await expect(filters.dialog.getByRole("button", { name: "Open now", exact: true })).toHaveCount(0);
+  await expect(filters.dialog.getByRole("button", { name: "Closing soon", exact: true })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(filters.trigger).toBeFocused();
+});
+
+test("Parks photo discovery retains result order, scope, native Back and every action", async ({ page }, info) => {
+  await page.goto("/nearby?c=outside&facet=park&sort=rated&in=frederick", { waitUntil: "domcontentloaded" });
+  const grid = page.locator("[data-nearby-parks-grid]"); await expect(grid).toBeVisible();
+  const slug = "carroll-creek-linear-park-frederick";
+  const card = grid.locator(`[data-place-card-slug="${slug}"]`);
+  const open = card.getByRole("button", { name: /^View Carroll Creek Linear Park .*details$/ });
+  await expectReachableTarget(open);
+  const before = { url: page.url(), order: await grid.locator("article").evaluateAll(cards => cards.map(card => card.getAttribute("data-place-card-slug"))) };
+  await expectReachableTarget(card.locator(`[data-save-ref="place:${slug}"]`));
+  const directions = card.getByRole("link", { name: /^Directions to Carroll Creek Linear Park / });
+  await expectReachableTarget(directions);
+  await expect(directions).toHaveAttribute("href", /[?&](?:destination|daddr)=39\.412[^&]*,-77\.408/);
+  await expectReachableTarget(open);
+  await startReopenDiagnostics(open);
+  try {
+    await open.click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "Carroll Creek Linear Park", exact: true })).toBeVisible();
+    await page.goBack(); await expect(dialog).toHaveCount(0);
+    await expect(page).toHaveURL(before.url); await expect(open).toBeFocused();
+    expect(await grid.locator("article").evaluateAll(cards => cards.map(card => card.getAttribute("data-place-card-slug")))).toEqual(before.order);
+    await expectRestoredOpeningPosition(page, open);
+    await expectReachableTarget(open);
+    await expectNoOverflow(page);
+    await info.attach("parks-result-return", { contentType: "application/json", body: JSON.stringify(before) });
+  } finally { await attachReopenDiagnostics(page, info); }
+});
+
+
+test("an unrefined Outdoors hours link keeps the broad collection when cleared", async ({ page }) => {
+  await page.goto("/nearby?c=outside&open=1&sort=rated&in=frederick#results", { waitUntil: "domcontentloaded" });
+  const notice = page.locator("[data-nearby-legacy-hours-filter]");
+  await expect(notice).toContainText("Visiting hours are not listed for every outdoor place.");
+  const clear = notice.getByRole("button", { name: "Show all matching outdoor places", exact: true });
+  await expectReachableTarget(clear); await clear.click();
+  await expect(notice).toHaveCount(0);
+  const url = new URL(page.url());
+  expect(url.searchParams.get("c")).toBe("outside"); expect(url.searchParams.has("facet")).toBe(false);
+  expect(url.searchParams.has("open")).toBe(false); expect(url.searchParams.get("sort")).toBe("rated");
+  expect(url.searchParams.get("in")).toBe("frederick"); expect(url.hash).toBe("#results");
+});

@@ -41,6 +41,7 @@ import PlaceCard from "@/components/place/PlaceCard";
 import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 import { navigateAfterHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import styles from "./RightNow.module.css";
+import { nearbyParksRows } from "@/lib/nearby-parks-layout";
 import {
   CRAVINGS,
   CRAVING_BY_KEY,
@@ -74,6 +75,7 @@ import {
   NEARBY_CATEGORY_HISTORY_KEY,
   nearbyHistoryState,
   nearbyQueryHref,
+  nearbySupportsHours,
   NEARBY_FOOD_FACET_EXCLUDE,
   readNearbyQuery,
   type NearbyQueryState,
@@ -209,6 +211,7 @@ export default function RightNow({
   const filterId = useId();
   const filterHistoryId = `nearby-filters:${filterId}`;
   const filterOpenerRef = useRef<HTMLButtonElement | null>(null);
+  const answerHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const applyPendingRef = useRef(false);
   const [filterDraft, setFilterDraft] = useState<NearbyQueryState | null>(null);
   const [applyingFilters, setApplyingFilters] = useState(false);
@@ -244,6 +247,12 @@ export default function RightNow({
   function updateQuery(patch: Partial<NearbyQueryState>, mode: "push" | "replace" = "replace") {
     const current = readNearbyQuery(new URLSearchParams(window.location.search), storedScope);
     writeNearbyQuery(changeNearbyQuery(current, patch), mode);
+  }
+
+  function clearLegacyHours() {
+    updateQuery({ openOnly: false, closingSoonOnly: false });
+    const trigger = filterOpenerRef.current;
+    (trigger && trigger.getClientRects().length ? trigger : answerHeadingRef.current)?.focus({ preventScroll: true });
   }
 
   useEffect(() => {
@@ -321,6 +330,9 @@ export default function RightNow({
   const meal = cravingKey ? mealForKey(cravingKey) : null;
   const craving = cravingKey && !meal ? CRAVING_BY_KEY[cravingKey] : null;
   const active = meal ?? craving;
+  const parksExplorer = cravingKey === "outside";
+  const supportsHours = nearbySupportsHours(cravingKey);
+  const legacyHoursFilter = !supportsHours && (openOnly || closingSoonOnly);
 
   // Every place matching the craving/meal with NO facet yet — the basis for
   // the facet chips (which cuisines are actually nearby) and the open count.
@@ -363,6 +375,7 @@ export default function RightNow({
   // The narrowest active noun for copy: the chosen facet ("pizza") if set, else
   // the craving/meal label ("food").
   const activeNoun = (facetDefs.find((f) => f.key === facetKey)?.label ?? active?.label ?? "").toLowerCase();
+  const clearHoursNoun = parksExplorer && !facetKey ? "outdoor places" : activeNoun;
 
   // The requested policy comes from the craving vocabulary. Existing intents
   // without an explicit policy retain their established required-hours
@@ -506,6 +519,8 @@ export default function RightNow({
     );
   }, [matched, openOnly, closingSoonOnly, hasFix]);
 
+  const parksRows = useMemo(() => parksExplorer ? nearbyParksRows(results) : [], [parksExplorer, results]);
+
   function pick(key: string) {
     haptic("light");
     // Category choices are Back destinations; refinements replace that entry.
@@ -612,7 +627,8 @@ export default function RightNow({
           : "approximately within Frederick County"
         : "across Frederick County";
   return (
-    <div className="space-y-4" data-nearby-interaction-ready={interactionReady ? "true" : "false"}>
+    <div className={`space-y-4 ${parksExplorer ? styles.parksExplorer : ""}`}
+      data-nearby-interaction-ready={interactionReady ? "true" : "false"}>
       <header className={styles.answerHeader}>
         {/* The cravings live on /today now (the "I want…" grid), so the
             answer's back affordance returns there rather than swapping to a
@@ -644,6 +660,8 @@ export default function RightNow({
         </button>
         <div className={styles.answerHeading}>
           <h1
+            ref={answerHeadingRef}
+            tabIndex={-1}
             className={styles.answerTitle}
             style={{ color: "var(--app-ink)" }}
           >
@@ -654,6 +672,8 @@ export default function RightNow({
           <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
             {matched.length === 0
               ? `No matching places ${townName ? `in ${townName}` : "in the county"} · ${sortLabel}`
+              : legacyHoursFilter
+                ? `${closingSoonOnly ? closingSoonCount : openCount} places match this hours filter · ${sortLabel}`
               : requestedAvailability === "not-applicable"
                 ? `${matched.length} ${matched.length === 1 ? "place" : "places"} ${origin ? "nearby" : "in the county"} · ${sortLabel}`
               : meal
@@ -672,6 +692,15 @@ export default function RightNow({
           </p>
         </div>
       </header>
+
+      {legacyHoursFilter && <aside className={styles.legacyHours} data-nearby-legacy-hours-filter role="status">
+        <p>This link filters for confirmed hours. {parksExplorer
+          ? "Visiting hours are not listed for every outdoor place."
+          : "Hours are not listed for every place."}</p>
+        <button type="button" onClick={clearLegacyHours}>
+          Show all matching {clearHoursNoun}
+        </button>
+      </aside>}
 
       <div className={styles.mobileFilters} data-nearby-filter-dock>
         <p className={styles.filterSummary}>
@@ -703,7 +732,7 @@ export default function RightNow({
         <NearbyRefinementControls
           value={preferences}
           facets={craving ? facetDefs : []}
-          supportsHours={!craving?.alwaysOpen}
+          supportsHours={supportsHours}
           closingSoonCount={closingSoonCount}
           hasRankingOrigin={hasRankingOrigin}
           onChange={updateQuery}
@@ -735,7 +764,7 @@ export default function RightNow({
                 <NearbyRefinementControls
                   value={filterDraft}
                   facets={craving ? facetDefs : []}
-                  supportsHours={!craving?.alwaysOpen}
+                  supportsHours={supportsHours}
                   closingSoonCount={draftClosingSoonCount}
                   hasRankingOrigin={hasRankingOrigin}
                   onChange={(patch) => setFilterDraft((draft) => draft ? changeNearbyQuery(draft, patch) : draft)}
@@ -844,7 +873,8 @@ export default function RightNow({
                   {MUNICIPALITY_BY_SLUG[place.municipality ?? ""]?.name ?? place.city}
                   {` · ${(distance / 1609).toFixed(distance < 16090 ? 1 : 0)} mi from ${townName}`}
                 </p>
-                <PlaceCard place={place} variant="discovery" discoverySurface="nearby" lazyPhoto />
+                <PlaceCard place={place} variant="discovery" discoverySurface="nearby" lazyPhoto={!parksExplorer}
+                  discoveryIntent={parksExplorer ? "parks" : undefined} />
               </li>
             ))}
           </ul>
@@ -915,16 +945,18 @@ export default function RightNow({
           )}
         </div>
       ) : (
-        <ul className="space-y-2">
+        parksExplorer ? <ul className={styles.parksGrid} data-nearby-parks-grid aria-label="Parks and outdoor places">
+          {parksRows.flatMap(row => row.places.map((place, index) => <li key={place.slug}
+            className={styles.parkResult} data-nearby-parks-row={row.places.length === 2 ? "pair" : "single"}
+            data-parks-pair-start={row.places.length === 2 ? index === 0 : undefined}>
+            <PlaceCard place={place} variant="discovery" discoverySurface="nearby" discoveryIntent="parks" />
+            {place.distance_m !== undefined && <span className="sr-only">{walkLabel(place.distance_m)}</span>}
+          </li>))}
+        </ul> : <ul className="space-y-2">
           {results.map((p) => (
             <li key={p.slug}>
-              {/* Business decision card — the place's photo leads (category
-                  glyph fallback), then name, open status, walk time, one tap
-                  to details + directions. */}
               <PlaceCard place={p} variant="discovery" discoverySurface="nearby" lazyPhoto />
-              {p.distance_m !== undefined && (
-                <span className="sr-only">{walkLabel(p.distance_m)}</span>
-              )}
+              {p.distance_m !== undefined && <span className="sr-only">{walkLabel(p.distance_m)}</span>}
             </li>
           ))}
         </ul>
@@ -949,6 +981,7 @@ function NearbyRefinementControls({
   hasRankingOrigin: boolean;
   onChange: (patch: Partial<NearbyQueryState>) => void;
 }) {
+  const sortGroupRef = useRef<HTMLFieldSetElement | null>(null);
   return (
     <div className={styles.controlGroups}>
       {facets.length > 0 && (
@@ -960,6 +993,17 @@ function NearbyRefinementControls({
               <FacetChip key={facet.key} label={facet.label} active={value.facetKey === facet.key} color="var(--app-brand)" onClick={() => onChange({ facetKey: facet.key })} />
             ))}
           </div>
+        </fieldset>
+      )}
+      {!supportsHours && (value.openOnly || value.closingSoonOnly) && (
+        <fieldset className={styles.controlSection}>
+          <legend className={styles.controlTitle}>Hours filter from this link</legend>
+          <p className={styles.controlHelp}>Only places with confirmed matching hours are shown. You can remove this filter.</p>
+          <button type="button" className={styles.clearLegacyHours}
+            onClick={() => {
+              onChange({ openOnly: false, closingSoonOnly: false });
+              sortGroupRef.current?.focus({ preventScroll: true });
+            }}>Show all matches</button>
         </fieldset>
       )}
       {supportsHours && (
@@ -974,7 +1018,7 @@ function NearbyRefinementControls({
           <p className={styles.controlHelp}>Open now includes places with confirmed current hours.</p>
         </fieldset>
       )}
-      <fieldset className={styles.controlSection}>
+      <fieldset ref={sortGroupRef} tabIndex={-1} className={styles.controlSection}>
         <legend className={styles.controlTitle}>Sort</legend>
         <div className={styles.controlChoices}>
           <FacetChip label="Smart" active={value.sort === "smart"} color="var(--app-brand)" onClick={() => onChange({ sort: "smart" })} />
