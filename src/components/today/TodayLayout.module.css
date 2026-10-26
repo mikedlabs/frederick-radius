@@ -231,7 +231,8 @@
   grid-area: 1 / 1;
   align-self: stretch;
   position: relative;
-  min-height: clamp(208px, calc(16.6667vw + 155px), 260px);
+  /* Leave room for the tile's two one-pixel borders inside the mosaic. */
+  min-height: clamp(208px, calc(16.6667vw + 153px), 258px);
   background: var(--app-media-ink);
 }
 

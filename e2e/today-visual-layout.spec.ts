@@ -283,7 +283,9 @@ for (const width of [320, 375, 390, 430, 1366]) {
     // separate protocol calls. Compare all actual layout boxes in one paint.
     const geometry = await page.evaluate(() => {
       const bounds = (selector: string) => {
-        const rect = document.querySelector(selector)!.getBoundingClientRect();
+        const target = document.querySelector(selector);
+        if (!target) throw new Error(`Missing required Today layout target: ${selector}`);
+        const rect = target.getBoundingClientRect();
         return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
       };
       return {
@@ -291,7 +293,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
         findBox: bounds('[data-find-density="arrival"] a[aria-label="Find a place, service, event, or answer"]'),
         entryControlsBox: bounds("[data-today-entry-controls]"),
         weatherBox: bounds("[data-today-weather]"),
-        photoBox: bounds("[data-today-geographic-doorway] figure"),
+        photoBox: bounds("[data-today-geographic-doorway] [data-place-card-photo]"),
         doorwayBox: bounds("[data-today-geographic-doorway]"),
         mosaicBox: bounds("[data-today-discovery-grid]"),
         captionBox: bounds("[data-today-geographic-caption]"),

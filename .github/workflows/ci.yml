@@ -155,6 +155,20 @@ jobs:
       - name: Validate automated data artifacts
         if: ${{ env.AUTOMATED_DATA_PR == '1' }}
         run: npm run test:data-artifacts
+      - name: Unit tests
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        run: npm run test:all
+      - name: Build
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        run: npm run build
+        env:
+          # Build must not require real secrets; the app is written to
+          # degrade when these are absent. Provide empty defaults so the
+          # build exercises the real code paths without external calls.
+          NEXT_TELEMETRY_DISABLED: "1"
+          # Next's route/type analysis crosses Node's ~2 GB default heap on a
+          # cold Linux runner. Keep enough headroom for the OS and Chromium.
+          NODE_OPTIONS: "--max-old-space-size=4096"
       - name: Install browsers
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         timeout-minutes: 10
@@ -174,20 +188,6 @@ jobs:
         run: npm run test:storybook -- src/components/today/TodayEntryControls.stories.tsx src/components/place/CommerceActions.stories.tsx --maxWorkers=1 --no-file-parallelism
         env:
           RADIUS_STORYBOOK_WEBKIT: "1"
-      - name: Unit tests
-        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
-        run: npm run test:all
-      - name: Build
-        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
-        run: npm run build
-        env:
-          # Build must not require real secrets; the app is written to
-          # degrade when these are absent. Provide empty defaults so the
-          # build exercises the real code paths without external calls.
-          NEXT_TELEMETRY_DISABLED: "1"
-          # Next's route/type analysis crosses Node's ~2 GB default heap on a
-          # cold Linux runner. Keep enough headroom for the OS and Chromium.
-          NODE_OPTIONS: "--max-old-space-size=4096"
       - name: Transit map interaction geometry
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run test:transit:geometry
