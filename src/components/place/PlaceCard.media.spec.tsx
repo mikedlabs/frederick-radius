@@ -85,6 +85,67 @@ describe("PlaceCard selected media and credit", () => {
   }
   async function fail(image: HTMLImageElement) { await act(async () => image.dispatchEvent(new Event("error"))); }
 
+  it("keeps Parks browse local-only even with supplied provider imagery or a remote landmark", async () => {
+    const hydrate = vi.spyOn(mapListPhotoLoader, "loadData");
+    await act(async () => root.render(<PlaceCard place={place} variant="discovery" discoverySurface="nearby" discoveryIntent="parks" lazyPhoto />));
+    expect(photo()).toBeNull();
+    expect(loadedCredit()).toBeNull();
+    expect(hydrate).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(container.textContent).not.toContain("Hours not confirmed");
+    expect(container.querySelector('[data-nearby-parks-card]')?.getAttribute("data-place-card-has-photo")).toBe("false");
+    expect(container.querySelector("[data-save-ref]")).not.toBeNull();
+    expect(container.querySelector('a[aria-label^="Directions to "]')?.getAttribute("href")).toContain("39.4062196");
+  });
+
+  it("collapses a failed licensed Parks image without provider recovery or lost actions", async () => {
+    const hydrate = vi.spyOn(mapListPhotoLoader, "loadData");
+    const park = { ...place, slug: "ballenger-creek-park-frederick", name: "Ballenger Creek Park" };
+    await act(async () => root.render(<PlaceCard place={park} variant="discovery" discoverySurface="nearby" discoveryIntent="parks" lazyPhoto />));
+    const image = photo()!;
+    expect(image.getAttribute("src")).toBe(CREDITED_LOCAL_PLACE_PHOTOS["ballenger-creek-park-frederick"].image.src);
+    expect(image.getAttribute("sizes")).toMatch(/^auto,/);
+    const lateLoad = imageLoads.get(image.getAttribute("src")!)!;
+    await load(image);
+    const credit = loadedCredit()!;
+    expect(credit.querySelector("summary")?.textContent).toBe("Photo details");
+    expect(credit.closest("button, a")).toBeNull();
+    const directions = container.querySelector<HTMLAnchorElement>('a[aria-label^="Directions to "]')!;
+    expect(directions.compareDocumentPosition(credit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(directions.textContent).toContain("Directions");
+    expect(directions.querySelector("svg")).toBeNull();
+    await fail(image);
+    await act(async () => lateLoad({ currentTarget: image } as SyntheticEvent<HTMLImageElement>));
+    expect(photo()).toBeNull();
+    expect(loadedCredit()).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(hydrate).not.toHaveBeenCalled();
+    const open = container.querySelector<HTMLButtonElement>('button[aria-label^="View "]')!;
+    const save = container.querySelector<HTMLButtonElement>("[data-save-ref]")!;
+    expect(open.contains(save)).toBe(false);
+    expect(open.contains(directions)).toBe(false);
+    await act(async () => save.click());
+    expect(actions.openSheet).not.toHaveBeenCalled();
+    await act(async () => open.click());
+    expect(actions.openSheet).toHaveBeenCalledWith(park, { returnFocus: open });
+  });
+
+  it("keeps confirmed closure information while removing repetitive unknown Parks hours copy", async () => {
+    const park = { ...place, slug: "carroll-creek-promenade", open_status: { state: "closed" as const } };
+    await act(async () => root.render(<PlaceCard place={park} variant="discovery" discoverySurface="nearby" discoveryIntent="parks" />));
+    expect(container.textContent).toContain("Closed");
+    expect(container.textContent).not.toContain(park.address);
+    expect(container.textContent).not.toContain("Hours not confirmed");
+  });
+
+  it("drops an earlier provider selection when the same mounted card becomes Parks", async () => {
+    await render(place, "discovery", true);
+    expect(photo()).not.toBeNull();
+    await act(async () => root.render(<PlaceCard place={place} variant="discovery" discoverySurface="nearby" discoveryIntent="parks" lazyPhoto />));
+    expect(photo()).toBeNull();
+    expect(loadedCredit()).toBeNull();
+  });
+
   it("keeps a Nearby place's address, honest hours, and independent actions after its real photo plan fails", async () => {
     const nearbyPlace = { ...place, slug: "schifferstadt-architectural-museum-frederick", name: "Schifferstadt Architectural Museum",
       address: "1110 Rosemont Ave, Frederick, MD", google_photo_url: undefined, google_photo_attribution: undefined };

@@ -4,7 +4,7 @@ import type { EventWithMeta } from "../src/lib/loaders/events";
 import { eventCardVisual } from "../src/components/event/eventVisuals";
 import { eventDateBlock } from "../src/lib/events/format";
 import { eventDecisionTime } from "../src/lib/events/decision-facts";
-import { placeCardPhotoPlan } from "../src/lib/place-card-photo";
+import { nearbyParksPhotoPlan } from "../src/lib/nearby-parks-layout";
 import { dismissReturnBridge, emptyReturnBridgeState, RETURN_BRIDGE_STORAGE_KEY } from "../src/lib/return-bridge";
 import { EVENTS } from "../src/data/events";
 import { MUNICIPALITY_BY_SLUG } from "../src/data/municipalities";
@@ -20,7 +20,7 @@ const CREEK = "carroll-creek-linear-park-frederick";
 const CREEK_NAME = "Carroll Creek Linear Park";
 const CREEK_IMAGE = "/images/places/carroll-creek-aerial.jpg";
 const SAVED_KEY = "fr:saved:v1";
-const CREEK_FAILURE_SOURCES = placeCardPhotoPlan({ slug: CREEK }, 360).sources.map(({ src }) => decodeURIComponent(src));
+const CREEK_FAILURE_SOURCES = nearbyParksPhotoPlan(CREEK, 360).sources.map(({ src }) => decodeURIComponent(src));
 const ONE_PIXEL = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jZ6kAAAAASUVORK5CYII=", "base64");
 const VENUES = [
   { slug: "delaplaine-arts-center-frederick", name: "Delaplaine Arts Center", image: "/place-photos/delaplaine-exterior.jpg" },
@@ -490,7 +490,12 @@ for (const width of [390, 320]) {
     await expect(page.locator('[data-nearby-interaction-ready="true"]')).toBeVisible();
     const filters = await nearbyFilters(page);
     const { card, open, save, directions } = await creekCard(page);
-    const image = await exactImage(card, CREEK_IMAGE, 16 / 9);
+    const parksGrid = page.locator("[data-nearby-parks-grid]");
+    await expect(parksGrid).toBeVisible();
+    expect(await parksGrid.evaluate(node => getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/).length))
+      .toBe(width === 390 ? 2 : 1);
+    if (width === 390) expect(await card.evaluate(node => node.closest("[data-nearby-parks-row]")?.getAttribute("data-nearby-parks-row"))).toBe("pair");
+    const image = await exactImage(card, CREEK_IMAGE, width === 390 ? 4 / 3 : 16 / 9);
     await expect(card).toHaveAttribute("data-place-card-has-photo", "true");
     await expect(card.locator(".place-card-photo-credit")).toHaveCount(0);
     // Creek is the first Top rated park and can fit without any implicit
@@ -574,14 +579,14 @@ for (const width of [390, 320]) {
     await expect(page.locator('[data-nearby-interaction-ready="true"]')).toBeVisible();
     await expect(save).toHaveAttribute("aria-pressed", "true");
     await expect.poll(async () => Math.abs(await page.evaluate(() => scrollY) - before.scrollY)).toBeLessThan(80);
-    await exactImage(card, CREEK_IMAGE, 16 / 9);
+    await exactImage(card, CREEK_IMAGE, width === 390 ? 4 / 3 : 16 / 9);
     if (context.browser()?.browserType().name() === "webkit") await page.waitForLoadState("networkidle", { timeout: 10_000 });
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.locator('[data-nearby-interaction-ready="true"]')).toBeVisible();
     await expect(page).toHaveURL(before.url);
     await expect(save).toHaveAttribute("aria-pressed", "true");
     expect(await page.evaluate((key) => localStorage.getItem(key), SAVED_KEY)).toBe(persisted);
-    await exactImage(card, CREEK_IMAGE, 16 / 9);
+    await exactImage(card, CREEK_IMAGE, width === 390 ? 4 / 3 : 16 / 9);
     evidence.measurements.width = await noOverflow(page);
     evidence.measurements.photoAlt = await image.getAttribute("alt");
     expect(evidence.targetPrefetches, "Native-owned detail transitions must not launch unused Next prefetches").toEqual([]);

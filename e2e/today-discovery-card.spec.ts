@@ -1,7 +1,8 @@
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Request } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
+import { dismissReturnBridge, emptyReturnBridgeState, RETURN_BRIDGE_STORAGE_KEY } from "../src/lib/return-bridge";
 
 // Controlled transport fixtures exercise the real Today page and its consumer
 // styles. They do not assert that this venue's hours or photo are current.
@@ -205,6 +206,163 @@ test("Today keeps the category illustration separate from a real answer without 
   expect(uncreditedPhotoRequests).toBe(0);
   await testInfo.attach("separate-owned-place-and-uncredited-answer", { contentType: "application/json", body: JSON.stringify({ metadataRequests, uncreditedPhotoRequests, hierarchy, proof: "Real Today composition and owner-approved category illustration; a declared answer/failed credit transport tests honest fallback, not live venue hours or current image availability." }) });
   await page.screenshot({ path: testInfo.outputPath("today-county-no-attributable-photo.png"), fullPage: true });
+});
+
+test("Today keeps real county fallback honest through URL-only town navigation", async ({ page, context, baseURL }, info) => {
+  test.setTimeout(60_000);
+  if (!baseURL) throw new Error("The scope transport fixture requires the owned loopback production server.");
+  const origin = new URL(baseURL);
+  if (!["http:", "https:"].includes(origin.protocol) || !["localhost", "127.0.0.1"].includes(origin.hostname)) {
+    throw new Error("The scope transport fixture must never run against a public deployment.");
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.addInitScript(({ key, bridge }) => {
+    localStorage.setItem(key, JSON.stringify(bridge));
+    localStorage.setItem("fr:scope:v1", "town:brunswick");
+    document.cookie = "fr_scope=town:brunswick; path=/";
+    document.cookie = "fr_onboarded=1; path=/";
+  }, { key: RETURN_BRIDGE_STORAGE_KEY, bridge: dismissReturnBridge(emptyReturnBridgeState()) });
+
+  // Only transport changes: the real county SSR HTML and its card facts are
+  // untouched. No replacement place, successful scoped answer, clock or
+  // geolocation is supplied. The initial town answer is held, then fails503.
+  const entries = ["brunswick", "thurmont", "brunswick"] as const;
+  let entry = 0;
+  let releaseInitial!: () => void;
+  const initialGate = new Promise<void>(resolve => { releaseInitial = resolve; });
+  const requests: Array<{ entry: number; scope: string | null; category: string | null; delivered: boolean }> = [];
+  let initialWantRequest: Request | undefined;
+  const blocked: Record<string, number> = {};
+  const deliveryErrors: string[] = [], pageErrors: string[] = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+  await context.routeWebSocket("**/*", socket => { blocked.websocket = (blocked.websocket ?? 0) + 1; socket.close(); });
+  await page.route("**/*", async route => {
+    const request = route.request(), url = new URL(request.url());
+    const deny = (reason: string) => { blocked[reason] = (blocked[reason] ?? 0) + 1; return route.abort("blockedbyclient"); };
+    if (url.origin !== origin.origin) return deny("external");
+    if (request.method() !== "GET") return deny("write");
+    if (url.pathname === "/api/want") {
+      const observed = { entry, scope: url.searchParams.get("scope"), category: url.searchParams.get("c"), delivered: false };
+      requests.push(observed);
+      if (observed.entry === 0) {
+        initialWantRequest ??= request;
+        await initialGate;
+      }
+      try {
+        await route.fulfill({ status: 503, json: { error: "Declared local scoped-answer transport unavailable" } });
+        observed.delivered = true;
+      } catch (error) { deliveryErrors.push(String(error)); }
+      return;
+    }
+    if (url.pathname.startsWith("/api/")) return deny("auxiliary-api");
+    if (request.resourceType() === "image" || url.pathname === "/_next/image") return deny("image-or-provider-proxy");
+    // Preserve the existing WebKit helper's narrow real-document CSP seam.
+    if (url.pathname === "/today" && request.isNavigationRequest() && request.resourceType() === "document") return route.fallback();
+    if (url.pathname === "/today" || url.pathname.startsWith("/_next/static/")
+      || /^\/(?:brand\/)?fonts\//.test(url.pathname)) return route.continue();
+    return deny("auxiliary-or-telemetry");
+  });
+
+  const brief = page.locator('[data-today-decision-density="brief"]');
+  const contextLine = brief.locator('header[data-today-section-heading] p');
+  const browse = brief.getByRole("link", { name: /^Browse places:/ });
+  const countyBrowse = async () => {
+    await expect(browse).toHaveCount(1);
+    const url = new URL((await browse.getAttribute("href"))!, origin);
+    expect(url.origin).toBe(origin.origin); expect(url.searchParams.get("in")).toBe("county");
+    expect(url.searchParams.get("town")).toBeNull();
+    return url.pathname + url.search;
+  };
+  const assertOneRequestPerEnteredCategory = (phase: number) => {
+    const actual = requests.filter(request => request.entry === phase);
+    expect(actual.length).toBeGreaterThan(0);
+    const keys = actual.map(request => `${request.scope}|${request.category}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    for (const request of actual) {
+      expect(request.scope).toBe(entries[phase]);
+      expect(request.category).toMatch(/^cat:.+/);
+    }
+  };
+  const afterNativePaints = () => page.evaluate(() => new Promise<void>(resolve =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  const phases: Array<Record<string, unknown>> = [];
+  try {
+    const response = await page.goto("/today?in=brunswick", { waitUntil: "domcontentloaded" });
+    expect(response?.status()).toBe(200);
+    const ssrHtml = await response!.text();
+    // Read the already received original HTML in a detached document only;
+    // these identities are not inserted into or substituted for the live DOM.
+    const ssrIds = await page.evaluate(html => Array.from(new DOMParser().parseFromString(html, "text/html")
+      .querySelectorAll('[data-today-decision-density="brief"] [data-today-place-lead], [data-today-decision-density="brief"] [data-today-opening-soon]'))
+      .map(node => node.getAttribute("data-decision-id")).filter((slug): slug is string => Boolean(slug)), ssrHtml);
+    expect(ssrIds.length, "The actual server HTML must contain a real county briefing card").toBeGreaterThan(0);
+    // Scope behavior begins on the actual enhanced surface, after the
+    // internal server-fallback handoff. This is not a cold-first-input proof.
+    await expect.poll(() => page.locator('[data-find-interaction-ready="true"]').evaluateAll(controls => controls.some(control => {
+      const box = control.getBoundingClientRect();
+      return box.width > 0 && box.height > 0 && getComputedStyle(control).visibility === "visible"
+        && !control.closest('[hidden], [inert], [aria-hidden="true"]');
+    }))).toBe(true);
+    await expect.poll(() => requests.filter(request => request.entry === 0).length).toBe(1);
+    await expect(contextLine).toHaveText("Countywide picks · Checking Brunswick");
+    await expect(brief).toBeVisible(); await brief.scrollIntoViewIfNeeded();
+    const firstVisibleId = await brief.locator('[data-today-place-lead], [data-today-opening-soon]').getAttribute("data-decision-id");
+    expect(ssrIds).toContain(firstVisibleId);
+    assertOneRequestPerEnteredCategory(0);
+    phases.push({ scope: "brunswick", status: "pending", label: await contextLine.innerText(), browse: await countyBrowse(), ssrIds });
+    const initialTimeOrigin = await page.evaluate(() => performance.timeOrigin);
+
+    // The store ALREADY equals the destination. Only Next's real patched
+    // native-history adapter/useSearchParams can announce this URL change;
+    // no setScope, custom event, synthetic popstate or scripted focus occurs.
+    entry = 1;
+    expect(await page.evaluate(() => {
+      localStorage.setItem("fr:scope:v1", "town:thurmont");
+      const stored = localStorage.getItem("fr:scope:v1");
+      window.history.pushState(null, "", "/today?in=thurmont");
+      return stored;
+    })).toBe("town:thurmont");
+    await expect(page).toHaveURL(url => url.pathname === "/today" && url.searchParams.get("in") === "thurmont");
+    await expect(contextLine).toHaveText("Countywide picks · Thurmont results unavailable");
+    assertOneRequestPerEnteredCategory(1);
+    phases.push({ scope: "thurmont", status: "failed503", label: await contextLine.innerText(), browse: await countyBrowse() });
+
+    const heldRequest = initialWantRequest;
+    const heldObservation = requests.find(request => request.entry === 0)!;
+    expect(heldRequest).toBeDefined();
+    const oldFailure = page.waitForResponse(response => response.request() === heldRequest && response.status() === 503);
+    releaseInitial();
+    const oldResponse = await oldFailure;
+    expect(oldResponse.request()).toBe(heldRequest); expect(oldResponse.status()).toBe(503);
+    // The real consumer rejects/cancels non-OK bodies. Header observation and
+    // this exact fixture's fulfilment are the relevant delivery boundary.
+    await expect.poll(() => heldObservation.delivered).toBe(true);
+    await afterNativePaints();
+    await expect(contextLine).toHaveText("Countywide picks · Thurmont results unavailable");
+    expect(requests.filter(request => request.entry === 0)).toHaveLength(1);
+    phases.push({ lateBrunswick503Ignored: true, currentLabel: await contextLine.innerText(), browse: await countyBrowse() });
+
+    entry = 2;
+    expect(await page.evaluate(() => {
+      localStorage.setItem("fr:scope:v1", "town:brunswick");
+      return localStorage.getItem("fr:scope:v1");
+    })).toBe("town:brunswick");
+    await page.goBack({ waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(url => url.pathname === "/today" && url.searchParams.get("in") === "brunswick");
+    await expect(contextLine).toHaveText("Countywide picks · Brunswick results unavailable");
+    await afterNativePaints();
+    assertOneRequestPerEnteredCategory(2);
+    expect(await page.evaluate(() => performance.timeOrigin)).toBe(initialTimeOrigin);
+    phases.push({ scope: "brunswick", status: "nativeBack-failed503", label: await contextLine.innerText(), browse: await countyBrowse() });
+    expect(deliveryErrors).toEqual([]); expect(pageErrors).toEqual([]);
+  } finally {
+    releaseInitial();
+    await info.attach("real-county-url-only-scope-transport", { contentType: "application/json", body: JSON.stringify({
+      fixtureBoundary: "Owned loopback real Today SSR/cards. Only /api/want is held/failed503; auxiliary/external/provider/telemetry/write/WS transport blocked. No fabricated places, successful scoped facts, clock, geolocation, scope event or focus. URL-only push and real native Back share one document. Counts are per entered scope/category; returning after a rejected request is a new entry, not a permitted duplicate within one entry.",
+      entries, requests, blocked, deliveryErrors, pageErrors, phases,
+    }) });
+  }
 });
 
 registerWebkitLoopbackDocumentSeam();

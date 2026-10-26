@@ -142,3 +142,106 @@
 .actions > button:not(:disabled):active {
   box-shadow: inset 0 0 0 2px var(--app-link);
 }
+
+/* This opt-in is used only by the Parks intent, not every discovery caller. */
+.parksCard .body {
+  padding: var(--app-space-3);
+}
+
+.parksCard .title {
+  margin-top: 0;
+  font-size: 1.0625rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.parkTown {
+  margin: var(--spacing) 0 0;
+  color: var(--app-ink-2);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.parksCard :global([data-place-card-photo] img) {
+  opacity: 0.65;
+  transition: opacity var(--app-dur-med) var(--app-ease-out);
+}
+
+.parksCard[data-place-card-photo-ready="true"] :global([data-place-card-photo] img) {
+  opacity: 1;
+}
+
+.parksActions {
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: var(--app-space-2);
+  padding: 0 var(--app-space-3) var(--app-space-3);
+}
+
+.parksActions > button,
+.parksActions > a {
+  min-width: 48px;
+  min-height: 48px;
+  padding: var(--app-space-2) var(--spacing);
+  font-size: 0.8125rem;
+  line-height: 1.3;
+}
+
+/* Full credits stay linked, outside every destination/control, after actions. */
+.parksCard > :global(.place-card-photo-credit) {
+  padding-inline: var(--app-space-3);
+}
+
+.parksCard :global(.place-card-photo-credit-row) {
+  align-items: center;
+  gap: var(--spacing) var(--app-space-2);
+}
+
+.parksCard :global(.place-card-photo-edits) {
+  min-width: 44px;
+  margin-inline-start: auto;
+}
+
+.parksCard :global(.place-card-photo-edits > summary) {
+  min-width: 44px;
+  min-height: 48px;
+  align-content: center;
+  list-style-position: inside;
+  cursor: pointer;
+  border-radius: var(--app-radius-sm);
+}
+
+.parksCard :global(.place-card-photo-edits > summary:focus-visible) {
+  outline: 2px solid var(--app-ink);
+  outline-offset: -2px;
+}
+
+.parksCard :global(.place-card-photo-edits[open]) {
+  flex-basis: 100%;
+  margin-inline-start: 0;
+}
+
+.parksCard :global(.place-card-photo-credit-details) {
+  display: grid;
+  gap: var(--spacing);
+  padding-block: var(--spacing) var(--app-space-2);
+  overflow-wrap: anywhere;
+}
+
+@container nearby-parks (min-width: 22rem) {
+  .parksCard[data-place-card-has-photo="false"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 148px;
+    align-items: center;
+  }
+
+  .parksCard[data-place-card-has-photo="false"] .parksActions {
+    padding: var(--app-space-3) var(--app-space-3) var(--app-space-3) 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parksCard :global([data-place-card-photo] img) {
+    transition: none;
+  }
+}

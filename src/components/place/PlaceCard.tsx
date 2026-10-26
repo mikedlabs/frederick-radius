@@ -18,6 +18,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { directionsHref } from "@/lib/map/directionsHref";
 import SourceBadge from "./SourceBadge";
 import discoveryStyles from "./NearbyDiscoveryCard.module.css";
+import { nearbyParksPhotoPlan } from "@/lib/nearby-parks-layout";
 import FieldNoteTag, { DealHookTag } from "./FieldNoteTag";
 import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
 import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
@@ -156,6 +157,7 @@ export default function PlaceCard({
   neutral = false,
   lazyPhoto = false,
   discoverySurface,
+  discoveryIntent,
 }: {
   place: PlaceCardData;
   compact?: boolean;
@@ -165,6 +167,8 @@ export default function PlaceCard({
   lazyPhoto?: boolean;
   /** Nearby alone uses a compact address-led layout; other discovery callers keep their existing cards. */
   discoverySurface?: "nearby";
+  /** Parks uses only exact bundled imagery and a compact contextual card. */
+  discoveryIntent?: "parks";
   /** Show the source/trust badge. Defaults by variant (off in dense lists,
    *  on for the lead); the full trust tier still lives on the detail sheet. */
   showSource?: boolean;
@@ -178,14 +182,15 @@ export default function PlaceCard({
   galleryPhotos?: string[];
 }) {
   const photoWidth = variant === "row" ? (compact ? 56 : 88) : variant === "grid" ? 180 : variant === "tile" ? 244 : 360;
-  const inlinePlan = placeCardPhotoPlan(place, photoWidth);
+  const parksDiscovery = variant === "discovery" && discoverySurface === "nearby" && discoveryIntent === "parks";
+  const inlinePlan = parksDiscovery ? nearbyParksPhotoPlan(place.slug, photoWidth) : placeCardPhotoPlan(place, photoWidth);
   // Reviewed owner/landmark images are already available locally. Hydrate
   // only rows with no eligible inline source, keeping the county payload slim
   // and the existing viewport/batch limits intact.
   const { photoData, anchorRef: photoAnchorRef } = usePlacePhotoData(
-    place.slug, (variant === "row" || variant === "discovery") && lazyPhoto && inlinePlan.sources.length === 0,
+    place.slug, !parksDiscovery && (variant === "row" || variant === "discovery") && lazyPhoto && inlinePlan.sources.length === 0,
   );
-  const photoPlan = photoData ? placeCardPhotoPlan({ ...place, ...photoData }, photoWidth) : inlinePlan;
+  const photoPlan = !parksDiscovery && photoData ? placeCardPhotoPlan({ ...place, ...photoData }, photoWidth) : inlinePlan;
   const mountedPhotoPlanKey = useRef(photoPlan.key);
   useLayoutEffect(() => { mountedPhotoPlanKey.current = photoPlan.key; }, [photoPlan.key]);
   const [photoState, setPhotoState] = useState<PlaceCardPhotoState | null>(null);
@@ -233,6 +238,7 @@ export default function PlaceCard({
   // the destination. A missing/exhausted plan keeps a compact, factual card.
   if (variant === "discovery") {
     const nearby = discoverySurface === "nearby";
+    const credit = <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} touchTarget compact discloseModifications={parksDiscovery} />;
     const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? place.city;
     const repeatedFacts = new Set([place.name, cat?.name, place.category, town, "Hours not confirmed"]
       .filter((value): value is string => Boolean(value))
@@ -250,8 +256,11 @@ export default function PlaceCard({
         ref={photoAnchorRef}
         data-place-card-variant="discovery"
         data-place-card-surface={discoverySurface}
+        data-place-card-slug={place.slug}
+        data-nearby-parks-card={parksDiscovery || undefined}
+        data-place-card-photo-ready={parksDiscovery ? photoLoaded : undefined}
         data-place-card-has-photo={photo ? "true" : "false"}
-        className={nearby ? discoveryStyles.card : "relative mx-auto w-full min-w-0 max-w-[600px] overflow-hidden rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated-solid)]"}
+        className={nearby ? `${discoveryStyles.card} ${parksDiscovery ? discoveryStyles.parksCard : ""}` : "relative mx-auto w-full min-w-0 max-w-[600px] overflow-hidden rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated-solid)]"}
         style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1)" }}
       >
         <button
@@ -263,21 +272,23 @@ export default function PlaceCard({
         >
           <span data-press-face className="block">
           {photo && <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={360}
-            sizes="(max-width: 640px) calc(100vw - 32px), 600px" deferGoogleBytes={lazyPhoto} />}
+            sizes={parksDiscovery ? "auto, (max-width: 640px) calc(100vw - 32px), 600px" : "(max-width: 640px) calc(100vw - 32px), 600px"}
+            deferGoogleBytes={!parksDiscovery && lazyPhoto} />}
           {nearby ? <div className={`${discoveryStyles.body} ${photo ? "" : discoveryStyles.withoutPhoto}`}>
             {!photo && <CategoryMark category={place.category} color="var(--app-ink-2)" size={36} />}
             <div className={discoveryStyles.copy}>
-              <p className={discoveryStyles.eyebrow}>
+              {!parksDiscovery && <p className={discoveryStyles.eyebrow}>
                 <span>{cat?.name ?? place.category}</span>
                 {town && <><span aria-hidden>·</span><span>{town}</span></>}
-              </p>
+              </p>}
               <h3 className={discoveryStyles.title}>{place.name}</h3>
-              {place.address && <p className={discoveryStyles.address}>{place.address}</p>}
-              <div className={discoveryStyles.facts}>
-                {hoursUnknown ? <span>Hours not confirmed</span> : <PlaceStatus status={place.open_status} />}
+              {parksDiscovery ? town && <p className={discoveryStyles.parkTown}>{town}</p>
+                : place.address && <p className={discoveryStyles.address}>{place.address}</p>}
+              {(!parksDiscovery || !hoursUnknown || place.distance_m !== undefined) && <div className={discoveryStyles.facts}>
+                {parksDiscovery ? <PlaceStatus status={place.open_status} /> : hoursUnknown ? <span>Hours not confirmed</span> : <PlaceStatus status={place.open_status} />}
                 {place.distance_m !== undefined && <span className={discoveryStyles.distance}>{formatDistance(place.distance_m)}</span>}
-              </div>
-              {photo && fact && <p className={discoveryStyles.note}>{fact}</p>}
+              </div>}
+              {!parksDiscovery && photo && fact && <p className={discoveryStyles.note}>{fact}</p>}
             </div>
           </div> : <div className={photo ? "p-4" : "flex items-start gap-3 p-3"}>
             {!photo && <CategoryMark category={place.category} color="var(--app-ink-2)" size={44} />}
@@ -298,9 +309,9 @@ export default function PlaceCard({
           </div>}
           </span>
         </button>
-        <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} touchTarget compact />
-        <div className={nearby ? discoveryStyles.actions : "grid grid-cols-2 gap-2 px-4 pb-4 [&_button]:flex-row [&_button]:gap-2 [&_button]:border [&_button]:border-[var(--app-control-border)] [&_button]:text-[13px]"}>
-          <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} barLabel="Save" />
+        {!parksDiscovery && credit}
+        <div className={nearby ? `${discoveryStyles.actions} ${parksDiscovery ? discoveryStyles.parksActions : ""}` : "grid grid-cols-2 gap-2 px-4 pb-4 [&_button]:flex-row [&_button]:gap-2 [&_button]:border [&_button]:border-[var(--app-control-border)] [&_button]:text-[13px]"}>
+          <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} barLabel={parksDiscovery ? undefined : "Save"} />
           <a
             href={directions}
             target="_blank"
@@ -312,10 +323,11 @@ export default function PlaceCard({
           >
             <span data-press-face={nearby ? "" : undefined} className="inline-flex items-center justify-center gap-2">
               Directions
-              <ArrowUpRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} aria-hidden />
+              {!parksDiscovery && <ArrowUpRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} aria-hidden />}
             </span>
           </a>
         </div>
+        {parksDiscovery && credit}
       </article>
     );
   }

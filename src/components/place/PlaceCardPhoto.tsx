@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { curatedPhotoSourceLabel } from "@/lib/curated-photo-source";
@@ -24,6 +24,7 @@ export default function PlaceCardPhoto({ source, onResult, width = 360, frame = 
 }) {
   const defer = Boolean(deferGoogleBytes && source?.kind === "google");
   const sourceSrc = source?.src ?? null;
+  const awaitingNativeLoad = useRef<HTMLImageElement | null>(null);
   const { frameRef, bytes } = useVisibleGooglePhoto(defer ? sourceSrc : null, defer);
   useEffect(() => {
     if (defer && sourceSrc && bytes.status === "fallback") onResult(sourceSrc, "failed");
@@ -64,11 +65,32 @@ export default function PlaceCardPhoto({ source, onResult, width = 360, frame = 
           blurDataURL={PAPER_CREAM_BLUR}
           className="object-cover"
           style={source.kind !== "google" ? { objectPosition: source.objectPosition } : undefined}
-          onLoad={(event) => {
-            const failed = event.currentTarget.naturalWidth <= 1 || event.currentTarget.naturalHeight <= 1;
+          onLoadCapture={(event) => {
+            const image = event.currentTarget;
+            if (awaitingNativeLoad.current !== image) return;
+            awaitingNativeLoad.current = null;
+            const failed = image.naturalWidth <= 1 || image.naturalHeight <= 1;
             onResult(source.src, failed ? "failed" : "loaded");
           }}
-          onError={() => onResult(source.src, "failed")}
+          onLoad={(event) => {
+            const image = event.currentTarget;
+            if (!image.isConnected) return;
+            // Next can synthesize onLoad after a lazy mount-time decode rejects
+            // before WebKit has selected a source. It also deduplicates the
+            // later load callback, so retain this image for the real native
+            // load capture rather than dropping it or retrying its bytes.
+            if (image.currentSrc === "" && image.naturalWidth === 0 && image.naturalHeight === 0) {
+              awaitingNativeLoad.current = image;
+              return;
+            }
+            if (awaitingNativeLoad.current === image) awaitingNativeLoad.current = null;
+            const failed = image.naturalWidth <= 1 || image.naturalHeight <= 1;
+            onResult(source.src, failed ? "failed" : "loaded");
+          }}
+          onError={(event) => {
+            if (awaitingNativeLoad.current === event.currentTarget) awaitingNativeLoad.current = null;
+            onResult(source.src, "failed");
+          }}
         />
       )}
     </span>
