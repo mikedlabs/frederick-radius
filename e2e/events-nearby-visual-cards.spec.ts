@@ -10,6 +10,7 @@ import { EVENTS } from "../src/data/events";
 import { MUNICIPALITY_BY_SLUG } from "../src/data/municipalities";
 import { getPlaceBySlug } from "../src/lib/loaders/places";
 import { BROWSE_FOCUS_RETURN_KEY } from "../src/lib/browse-focus-return";
+import { TABS } from "../src/components/nav/tabs";
 
 /** Declared event DTOs travel through the existing browse/summary APIs and real
  * production components. Their photographs are the actual licensed local bytes.
@@ -697,6 +698,24 @@ async function documentReturnGeometry(open: Locator) {
   });
 }
 
+async function documentPrefetchState(page: Page) {
+  return page.evaluate(autoPrefetchHrefs => ({
+    url: location.href,
+    timeOrigin: performance.timeOrigin,
+    ordinaryDestinations: [...new Set(Array.from(document.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Primary"] a[href]'))
+      .filter(link => {
+        const box = link.getBoundingClientRect(), current = link.getAttribute("aria-current");
+        return !link.closest('[hidden], [inert], [aria-hidden="true"]') && (!current || current === "false")
+          && getComputedStyle(link).visibility === "visible" && box.width > 0 && box.height > 0
+          && box.right > 0 && box.left < innerWidth && box.bottom > 0 && box.top < innerHeight;
+      })
+      .map(link => new URL(link.href))
+      .filter(url => url.origin === location.origin && url.pathname !== location.pathname)
+      .map(url => { url.searchParams.sort(); return url.pathname + url.search; })
+      .filter(href => autoPrefetchHrefs.includes(href)))],
+  }), TABS.filter(tab => tab.prefetch === "auto").map(tab => tab.href));
+}
+
 test("native Event full-document Back restores its actual opener after a BFCache miss", async ({ page, context, baseURL }, info) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -704,7 +723,7 @@ test("native Event full-document Back restores its actual opener after a BFCache
   const appOrigin = new URL(baseURL ?? "http://localhost:3010").origin;
   const optionalBoardPrefetches: Array<Record<string, unknown>> = [];
   const optionalBoardNavigations: Array<Record<string, unknown>> = [];
-  const nullModalPagePrefetches: Array<Record<string, unknown>> = [];
+  const nullModalPagePrefetches: Array<{ href: string; at: string; observedAt: number; prefetch: string; segment: string; referrer: string | null }> = [];
   evidence.measurements.unclickedBoardPrefetchRequests = optionalBoardPrefetches;
   evidence.measurements.unclickedBoardNavigations = optionalBoardNavigations;
   evidence.measurements.nullModalCatchAllPrefetchRequests = nullModalPagePrefetches;
@@ -712,12 +731,13 @@ test("native Event full-document Back restores its actual opener after a BFCache
     const url = new URL(request.url()), headers = request.headers();
     if (url.origin !== appOrigin || request.method() !== "GET") return;
     const segment = headers["next-router-segment-prefetch"] ?? "";
-    // The null modal-clear page never needs speculative server work, whatever
-    // normal destination caused Next to discover the slot. All ordinary tree,
-    // layout and actual clicked navigations remain observed but unrestricted.
+    // A config-free null reset follows normal visible-destination prefetching.
+    // Record its actual clocks so a fresh document after Back is not mistaken
+    // for a loop in the original document merely because the URL is the same.
     if (headers["next-router-prefetch"] && segment.includes("/@modal/")
       && segment.includes("catchAll") && segment.includes("/__PAGE__")) {
-      nullModalPagePrefetches.push({ href: url.pathname + url.search, at: new Date().toISOString(),
+      const observedAt = Date.now();
+      nullModalPagePrefetches.push({ href: url.pathname + url.search, at: new Date(observedAt).toISOString(), observedAt,
         prefetch: headers["next-router-prefetch"], segment, referrer: headers.referer ?? null });
     }
     if (!["/events", "/today"].includes(url.pathname)) return;
@@ -753,6 +773,8 @@ test("native Event full-document Back restores its actual opener after a BFCache
   const open = page.locator(`[data-today-event-shortlist] a[href="/events/${seed.slug}"]`);
   await expect(open).toHaveCount(1); await target(open);
   const before = await documentReturnGeometry(open); evidence.measurements.beforeHistoricalEventDocument = before;
+  const initialDocument = await documentPrefetchState(page);
+  expect(initialDocument.timeOrigin).toBe(before.timeOrigin);
   const summaryRead = page.waitForResponse(response => new URL(response.url()).pathname === `/api/events/${seed.slug}/summary`);
   await open.tap();
   const dialog = page.getByRole("dialog"); await expect(dialog.getByRole("heading", { name: seed.title, exact: true })).toBeVisible();
@@ -777,6 +799,9 @@ test("native Event full-document Back restores its actual opener after a BFCache
   expect(new Date(eventData!.startDate!).toISOString()).toBe(new Date(seed.starts_at).toISOString());
   expect(new Date(eventData!.endDate!).toISOString()).toBe(new Date(seed.ends_at).toISOString());
   evidence.measurements.settledDetailBoundary = await settleLocalWebKitDetail(page, context, appOrigin);
+  const eventDocument = await documentPrefetchState(page);
+  evidence.measurements.historicalEventDetailDocument = eventDocument;
+  expect(eventDocument.timeOrigin).toBeGreaterThan(initialDocument.timeOrigin);
   await page.goBack({ waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(before.url); await expect(dialog).toHaveCount(0); await expect(open).toHaveCount(1);
   evidence.measurements.afterHistoricalEventDocument = await documentReturnGeometry(open);
@@ -784,12 +809,31 @@ test("native Event full-document Back restores its actual opener after a BFCache
   const after = await documentReturnGeometry(open); evidence.measurements.afterHistoricalEventDocument = after;
   expect(after.navigationType).toBe("back_forward");
   expect(after.timeOrigin, "This deliberately covers a fresh document, not retained BFCache refs").not.toBe(before.timeOrigin);
+  const returnedDocument = await documentPrefetchState(page);
+  expect(returnedDocument.timeOrigin).toBe(after.timeOrigin);
+  expect(returnedDocument.timeOrigin).toBeGreaterThan(eventDocument.timeOrigin);
   await expect.poll(async () => Math.abs(await page.evaluate(() => scrollY) - before.scrollY)).toBeLessThan(80);
   expect(await page.evaluate(key => sessionStorage.getItem(key), BROWSE_FOCUS_RETURN_KEY)).toBeNull();
   evidence.measurements.width = await noOverflow(page); await screenshot(page, info, "event-native-document-return-focus");
   expect(optionalBoardPrefetches, "The unchosen board exits and exact current Today tab must not launch repeated segment prefetches during the real native event journey").toEqual([]);
   expect(optionalBoardNavigations, "No optional calendar or current-tab exit was chosen; the canonical event page and native Back remain the real navigations").toEqual([]);
-  expect(nullModalPagePrefetches, "The null modal-clear catch-all page must never enter repeated speculative fetches for any destination").toEqual([]);
+  const documents = [initialDocument, eventDocument, returnedDocument];
+  const perDocument = documents.map(document => ({ ...document, destinationCounts: {} as Record<string, number> }));
+  evidence.measurements.nullModalCatchAllDocumentPrefetches = perDocument;
+  for (const request of nullModalPagePrefetches) {
+    const document = [...perDocument].reverse().find(document => request.observedAt >= document.timeOrigin);
+    expect(document, `Null-reset request has no observed document owner: ${JSON.stringify(request)}`).toBeDefined();
+    const destination = new URL(request.href, appOrigin);
+    destination.searchParams.delete("_rsc"); destination.searchParams.sort();
+    const href = destination.pathname + destination.search;
+    expect(request.prefetch).toBe("1");
+    expect(document!.ordinaryDestinations, `Null-reset prefetch is not an ordinary visible destination in its real document: ${JSON.stringify(request)}`).toContain(href);
+    const ownerUrl = new URL(document!.url); ownerUrl.hash = "";
+    expect(request.referrer, "A null-reset request must belong to its clock-selected document").toBe(ownerUrl.href);
+    const count = (document!.destinationCounts[href] ?? 0) + 1;
+    document!.destinationCounts[href] = count;
+    expect(count, `Null-reset prefetch repeated within one real document: ${JSON.stringify({ timeOrigin: document!.timeOrigin, href, request })}`).toBe(1);
+  }
   expect(evidence.errors).toEqual([]);
 });
 

@@ -104,18 +104,27 @@ describe("Today decision hierarchy", () => {
     expect(doorway).toBeGreaterThan(scope);
   });
 
-  it("uses the exact owned scene as an earlier geographic action separate from one unchanged decision lead", () => {
+  it("uses dining photos as earlier scoped actions separate from one unchanged decision lead", () => {
     const photos = renderToStaticMarkup(createElement(TodayGeographicDoorwayView));
-    for (const [slug, file] of [
-      ["carroll-creek-linear-park-frederick", "carroll-creek-aerial"],
-      ["baker-park-frederick", "baker-park-detail"],
-      ["visitation-hotel", "visitation-hotel-detail"],
-    ]) {
-      expect(photos).toContain(encodeURIComponent(`/images/places/${file}.jpg`));
-      expect(photos).toContain(`href="/places/${slug}"`);
+    for (const path of ["/images/discovery/pizza-preparation.jpg", "/images/seasons/winter/IMG_2732.jpg", "/place-photos/sabor-de-cuba-entrance-2018.jpg"]) {
+      expect(photos).toContain(encodeURIComponent(path));
     }
+    expect(photos.match(/data-today-discovery-action=/g)).toHaveLength(3);
+    expect(photos).toContain('href="/nearby?c=food&amp;facet=pizza&amp;in=county&amp;returnTo=%2Ftoday%3Fin%3Dcounty"');
+    for (const slug of ["zoes-chocolate-company", "sabor-de-cuba-restaurant-frederick"]) {
+      expect(photos).toContain(`href="/places/${slug}?in=county&amp;returnTo=%2Ftoday%3Fin%3Dcounty"`);
+    }
+    expect(photos).toContain("Photo by Bohemian Baltimore. Wikimedia Commons");
+    expect(photos).toContain("CC BY-SA 4.0");
+    expect(photos).toContain("Edited photo");
     expect(photos).not.toContain("/api/place-photo");
-    expect(geographicDoorway).toContain("if (!todayShowsFrederickDoorway(scope)) return null");
+    for (const scope of ["town:brunswick", "nearme"] as const) {
+      const scoped = renderToStaticMarkup(createElement(TodayGeographicDoorwayView, { scope }));
+      expect(scoped.match(/data-today-discovery-action=/g)).toHaveLength(1);
+      expect(scoped).toContain(`in=${scope === "nearme" ? "nearme" : "brunswick"}`);
+      expect(scoped).not.toContain("data-today-geographic-place");
+      expect(scoped).not.toContain("place-card-photo-credit");
+    }
     expect(geographicDoorway).not.toContain("June 2023");
     expect(geographicDoorway).not.toContain("Mike D");
     expect(todayMasthead).not.toContain("<Image");

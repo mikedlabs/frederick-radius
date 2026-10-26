@@ -3,31 +3,25 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import TodayGeographicDoorway, { TodayGeographicDoorwayPending, TodayGeographicDoorwayView, todayShowsFrederickDoorway } from "./TodayGeographicDoorway";
+import TodayGeographicDoorway, { TODAY_PIZZA_CATEGORY_PHOTO, TodayGeographicDoorwayPending, TodayGeographicDoorwayView, todayPizzaHref, todayShowsFrederickDoorway } from "./TodayGeographicDoorway";
 import { setScope } from "@/lib/scope";
 import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
+import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 
 type ImageLoad = (event: { currentTarget: HTMLImageElement }) => void;
-const imageCallbacks = vi.hoisted(() => ({ onLoads: new Map<string, ImageLoad>() }));
+const callbacks = vi.hoisted(() => ({ loads: new Map<string, ImageLoad>() }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(window.location.search) }));
-vi.mock("next/image", () => ({
-  default: ({ src, alt, loading, onLoad, onError }: { src: string | Blob; alt: string; loading: "eager"; onLoad: ImageLoad; onError: () => void }) => {
-    if (typeof src === "string") imageCallbacks.onLoads.set(src, onLoad);
-    return createElement("img", { src: typeof src === "string" ? src : undefined, alt, loading, onLoad, onError });
-  },
-}));
+vi.mock("next/image", () => ({ default: ({ src, alt, onLoad, onError }: { src: string; alt: string; onLoad: ImageLoad; onError: () => void }) => {
+  callbacks.loads.set(src, onLoad);
+  return createElement("img", { src, alt, onLoad, onError });
+} }));
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-const places = [
-  { slug: "carroll-creek-linear-park-frederick", action: "Carroll Creek Linear Park", title: "Carroll Creek", src: "/images/places/carroll-creek-aerial.jpg" },
-  { slug: "baker-park-frederick", action: "Baker Park", title: "Baker Park", src: "/images/places/baker-park-detail.jpg" },
-  { slug: "visitation-hotel", action: "Visitation Hotel", title: "Visitation Hotel", src: "/images/places/visitation-hotel-detail.jpg" },
-] as const;
+const zoes = "zoes-chocolate-company", sabor = "sabor-de-cuba-restaurant-frederick";
 
-describe("Today exact geographic doorway", () => {
-  let root: Root;
-  let container: HTMLDivElement;
+describe("Today dining photo doorway", () => {
+  let root: Root, container: HTMLDivElement;
   beforeEach(() => {
-    imageCallbacks.onLoads.clear();
+    callbacks.loads.clear();
     const store = new Map<string, string>();
     Object.defineProperty(window, "localStorage", { configurable: true, value: {
       getItem: (key: string) => store.get(key) ?? null,
@@ -36,120 +30,161 @@ describe("Today exact geographic doorway", () => {
     } });
     window.history.replaceState(null, "", "/today");
     setScope(null);
-    container = document.createElement("div");
-    document.body.append(container);
-    root = createRoot(container);
+    container = document.createElement("div"); document.body.append(container); root = createRoot(container);
   });
-  afterEach(async () => {
-    await act(async () => root.unmount());
-    container.remove();
-    setScope(null);
-  });
+  afterEach(async () => { await act(async () => root.unmount()); container.remove(); setScope(null); });
   const render = async () => { await act(async () => root.render(createElement(TodayGeographicDoorway))); };
-  const anchor = (slug = places[0].slug as string) => container.querySelector<HTMLAnchorElement>(`[data-today-geographic-place="${slug}"]`)!;
+  const pizza = () => container.querySelector<HTMLAnchorElement>('[data-today-discovery-action="pizza"]')!;
+  const business = (slug: string) => container.querySelector<HTMLAnchorElement>(`[data-today-geographic-place="${slug}"]`)!;
+  const imageAt = (tile: HTMLElement) => tile.querySelector("img")!;
   const decode = async (image: HTMLImageElement) => {
-    Object.defineProperties(image, { naturalWidth: { configurable: true, value: 1280 }, naturalHeight: { configurable: true, value: 720 } });
+    Object.defineProperties(image, { naturalWidth: { configurable: true, value: 1200 }, naturalHeight: { configurable: true, value: 800 } });
     await act(async () => image.dispatchEvent(new Event("load")));
   };
 
-  it("keeps the server fallback inert and scope-neutral instead of showing a Frederick scene", () => {
-    const html = renderToStaticMarkup(createElement(TodayGeographicDoorwayPending));
-    expect(html).toContain('data-today-geographic-pending');
-    expect(html).toContain('aria-hidden="true"');
-    expect(html).not.toMatch(/<(?:a|img|h2|h3|button)\b/);
-    expect(html).not.toMatch(/Frederick|Carroll|Creek|Baker|Visitation|\/places\/|\/images\//);
+  it("keeps server and Suspense fallbacks inert and scope-neutral", () => {
+    for (const Component of [TodayGeographicDoorwayPending, TodayGeographicDoorway]) {
+      const html = renderToStaticMarkup(createElement(Component));
+      expect(html).toContain('data-today-geographic-pending');
+      expect(html).toContain('aria-hidden="true"');
+      expect(html).not.toMatch(/<(?:a|img|h2|h3|button)\b/);
+      expect(html).not.toMatch(/Frederick|Zoe|Sabor|pizza|\/places\/|\/images\//i);
+    }
   });
 
-  it("allows only county/no-town or the actual Frederick lens", () => {
+  it("uses the accepted owner image only as an unlocated category illustration", async () => {
+    await render();
+    expect(imageAt(pizza()).getAttribute("src")).toBe(TODAY_PIZZA_CATEGORY_PHOTO.src);
+    expect(imageAt(pizza()).getAttribute("alt")).toBe("Rectangular pizzas with cheese and herbs on a preparation counter.");
+    expect(pizza().getAttribute("aria-label")).toBe("Find pizza");
+    expect(pizza().textContent).toBe("Find pizza");
+    expect(pizza().hasAttribute("data-today-geographic-place")).toBe(false);
+    expect(pizza().querySelectorAll("a, button, input, select")).toHaveLength(0);
+    expect(pizza().getAttribute("data-photo-state")).toBe("pending");
+  });
+
+  it("features exact accepted storefronts and preserves an explicit Today return", async () => {
+    window.history.replaceState(null, "", "/today?in=county&intent=coffee#find-radius");
+    await render();
+    expect(container.querySelectorAll("[data-today-discovery-action]")).toHaveLength(3);
+    const image = imageAt(business(zoes));
+    expect(image.getAttribute("src")).toBe(getOwnedPlacePhoto(zoes)?.src);
+    expect(image.getAttribute("alt")).toBe(getOwnedPlacePhoto(zoes)?.alt);
+    expect(business(zoes).getAttribute("aria-label")).toBe("View Zoe's Chocolate Company in Frederick");
+    expect(imageAt(business(sabor)).getAttribute("alt")).toBe(getLandmarkPhoto(sabor)?.alt);
+    for (const slug of [zoes, sabor]) {
+      const url = new URL(business(slug).href);
+      expect(url.pathname).toBe(`/places/${slug}`);
+      expect(url.searchParams.get("in")).toBe("county");
+      expect(url.searchParams.get("returnTo")).toBe("/today?in=county&intent=coffee#find-radius");
+      expect(business(slug).querySelectorAll("a, button, input, select")).toHaveLength(0);
+    }
+  });
+
+  it("keeps linked creator/license and full modifications outside the place action", async () => {
+    await render();
+    const credit = container.querySelector<HTMLElement>(".place-card-photo-credit")!;
+    expect(credit.getAttribute("aria-hidden")).toBe("true");
+    await decode(imageAt(business(sabor)));
+    expect(credit.getAttribute("aria-hidden")).toBeNull();
+    expect(credit.hasAttribute("inert")).toBe(false);
+    const source = getLandmarkPhoto(sabor)!;
+    expect(credit.querySelector(`a[href="${source.source_url}"]`)?.textContent).toBe(source.author);
+    expect(credit.textContent).toContain("CC BY-SA 4.0");
+    expect(credit.textContent).toContain(source.modifications);
+    expect(credit.querySelector("details summary")?.textContent).toBe("Edited photo");
+    expect(business(sabor).contains(credit)).toBe(false);
+    expect(container.querySelectorAll("a a")).toHaveLength(0);
+    expect(business(zoes).querySelector(".place-card-photo-credit")).toBeNull();
+  });
+
+  it("allows these named businesses only for county and Frederick lenses", () => {
     for (const scope of [null, "county", "town:frederick"] as const) expect(todayShowsFrederickDoorway(scope)).toBe(true);
     for (const scope of ["nearme", "town:brunswick", "town:thurmont", "town:mount-airy"] as const) expect(todayShowsFrederickDoorway(scope)).toBe(false);
   });
 
-  it("shows three distinct exact owned subjects as independent canonical place actions", async () => {
+  it.each(["town:brunswick", "town:thurmont", "town:mount-airy", "nearme"] as const)("keeps generic pizza within %s without foreign businesses or location prompts", async scope => {
+    const request = vi.fn();
+    Object.defineProperty(navigator, "geolocation", { configurable: true, value: { getCurrentPosition: request, watchPosition: request } });
+    await act(async () => root.render(createElement(TodayGeographicDoorwayView, { scope })));
+    expect(container.querySelectorAll("[data-today-discovery-action]")).toHaveLength(1);
+    expect(container.querySelector("[data-today-geographic-place], .place-card-photo-credit")).toBeNull();
+    expect(container.textContent).toBe("Find pizza");
+    const url = new URL(pizza().href);
+    expect(url.pathname).toBe("/nearby"); expect(url.searchParams.get("c")).toBe("food"); expect(url.searchParams.get("facet")).toBe("pizza");
+    expect(url.searchParams.get("in")).toBe(scope === "nearme" ? scope : scope.slice(5));
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("lets validated URL scope win over saved scope and preserves intent/hash on both routes", async () => {
+    setScope("town:frederick"); window.history.replaceState(null, "", "/today?in=brunswick&intent=coffee#find-radius"); await render();
+    expect(container.querySelector("[data-today-geographic-place]")).toBeNull();
+    const url = new URL(pizza().href);
+    expect(url.searchParams.get("in")).toBe("brunswick");
+    expect(url.searchParams.get("returnTo")).toBe("/today?in=brunswick&intent=coffee#find-radius");
+    expect(window.location.search).toBe("?in=brunswick&intent=coffee"); expect(window.location.hash).toBe("#find-radius");
+  });
+
+  it.each(["", "unknown-town"])("treats present invalid scope %s as county rather than restoring a saved town", async raw => {
+    setScope("town:brunswick");
+    window.history.replaceState(null, "", `/today?in=${raw}&intent=coffee#find-radius`);
     await render();
-    expect(container.querySelectorAll("a")).toHaveLength(3);
-    expect(container.querySelectorAll("img")).toHaveLength(3);
-    for (const place of places) {
-      const link = anchor(place.slug), image = link.querySelector("img")!;
-      expect(link.getAttribute("href")).toBe(`/places/${place.slug}`);
-      expect(link.getAttribute("aria-label")).toBe(`View ${place.action} in Frederick`);
-      expect(image.getAttribute("src")).toBe(place.src);
-      expect(image.getAttribute("alt")).toBe(getOwnedPlacePhoto(place.slug)?.alt);
-      expect(image.getAttribute("loading")).toBe("eager");
-      expect(link.querySelectorAll("a, button, input, select")).toHaveLength(0);
-      expect(link.querySelector("h2, h3")?.textContent).toBe(place.title);
-      expect(link.getAttribute("data-photo-state")).toBe("pending");
-      expect(link.querySelector("figure")!.compareDocumentPosition(link.querySelector("[data-today-geographic-caption]")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(new URL(pizza().href).searchParams.get("in")).toBe("county");
+    expect(new URL(pizza().href).searchParams.get("returnTo")).toBe("/today?in=county&intent=coffee#find-radius");
+    for (const slug of [zoes, sabor]) {
+      const url = new URL(business(slug).href);
+      expect(url.searchParams.get("in")).toBe("county");
+      expect(url.searchParams.get("returnTo")).toBe("/today?in=county&intent=coffee#find-radius");
     }
-    expect(container.querySelectorAll("[data-today-photo-lead]")).toHaveLength(1);
-    expect(container.querySelectorAll("[data-today-geographic-doorway]")).toHaveLength(1);
-    expect(container.textContent).toBe("Carroll CreekFrederickBaker ParkVisitation Hotel");
-    expect(container.textContent).not.toMatch(/open|safe|best|today|Mike|2023|View place/i);
-  });
-
-  it("paints a healthy supporting photograph while the main image and other tile are still pending", async () => {
-    await render();
-    await decode(anchor(places[1].slug).querySelector("img")!);
-    expect(anchor(places[1].slug).getAttribute("data-photo-state")).toBe("loaded");
-    expect(anchor().getAttribute("data-photo-state")).toBe("pending");
-    expect(anchor(places[2].slug).getAttribute("data-photo-state")).toBe("pending");
-  });
-
-  it("does not resurrect failed main media when a detached image decodes late", async () => {
-    await render();
-    const oldImage = anchor().querySelector("img")!;
-    const lateLoad = imageCallbacks.onLoads.get(places[0].src)!;
-    await act(async () => oldImage.dispatchEvent(new Event("error")));
-    Object.defineProperties(oldImage, { naturalWidth: { value: 1280 }, naturalHeight: { value: 720 } });
-    await act(async () => lateLoad({ currentTarget: oldImage }));
-    expect(anchor().querySelector("img")).toBeNull();
-    expect(anchor().getAttribute("data-photo-state")).toBe("failed");
-    expect(anchor().textContent).toBe("Carroll CreekFrederick");
-    expect(container.querySelectorAll("img")).toHaveLength(2);
-  });
-
-  it.each(["error", "pixel"])("retains each named action and healthy neighbors when one photo fails as %s", async (failure) => {
-    await render();
-    await decode(anchor().querySelector("img")!);
-    const link = anchor(places[2].slug), image = link.querySelector("img")!;
-    if (failure === "pixel") Object.defineProperties(image, { naturalWidth: { value: 1 }, naturalHeight: { value: 1 } });
-    await act(async () => image.dispatchEvent(new Event(failure === "pixel" ? "load" : "error")));
-    expect(link.querySelector("img, figure")).toBeNull();
-    expect(link.getAttribute("href")).toBe("/places/visitation-hotel");
-    expect(link.textContent).toBe("Visitation Hotel");
-    expect(link.getAttribute("data-photo-state")).toBe("failed");
-    expect(anchor().getAttribute("data-photo-state")).toBe("loaded");
-    expect(container.querySelectorAll("a")).toHaveLength(3);
-    expect(container.querySelectorAll("img")).toHaveLength(2);
-  });
-
-  it("uses an explicit Brunswick URL over saved Frederick and never requests location", async () => {
-    setScope("town:frederick");
-    window.history.replaceState(null, "", "/today?in=brunswick&intent=coffee#find-radius");
-    const locationRequest = vi.fn();
-    Object.defineProperty(navigator, "geolocation", { configurable: true, value: { getCurrentPosition: locationRequest } });
-    await render();
-    expect(container.querySelector("a, img")).toBeNull();
-    expect(locationRequest).not.toHaveBeenCalled();
-    expect(window.location.search).toBe("?in=brunswick&intent=coffee");
+    expect(window.location.search).toBe(`?in=${raw}&intent=coffee`);
     expect(window.location.hash).toBe("#find-radius");
   });
 
-  it("tracks saved scope changes and restores the actual county mosaic without relabeling its photos", async () => {
+  it("tracks saved scope and actual hash changes without resetting the browsing lens", async () => {
     await render();
     await act(async () => setScope("town:thurmont"));
-    expect(container.querySelector("a, img")).toBeNull();
-    window.history.replaceState(null, "", "/today?in=county");
-    await render();
-    expect(container.querySelectorAll("a")).toHaveLength(3);
-    for (const place of places) expect(anchor(place.slug).querySelector("img")?.getAttribute("alt")).toBe(getOwnedPlacePhoto(place.slug)?.alt);
+    expect(container.querySelector("[data-today-geographic-place]")).toBeNull();
+    expect(new URL(pizza().href).searchParams.get("in")).toBe("thurmont");
+    await act(async () => { window.history.replaceState(null, "", "/today#find-radius"); window.dispatchEvent(new HashChangeEvent("hashchange")); });
+    expect(new URL(pizza().href).searchParams.get("returnTo")).toBe("/today?in=thurmont#find-radius");
+    await act(async () => setScope("county"));
+    expect(container.querySelectorAll("[data-today-geographic-place]")).toHaveLength(2);
+    expect(new URL(business(sabor).href).searchParams.get("in")).toBe("county");
   });
 
-  it("suppresses the whole actual view when the town changes", async () => {
-    await act(async () => root.render(createElement(TodayGeographicDoorwayView, { scope: "town:frederick" })));
-    expect(container.querySelectorAll("img")).toHaveLength(3);
-    await act(async () => root.render(createElement(TodayGeographicDoorwayView, { scope: "town:brunswick" })));
-    expect(container.textContent).toBe("");
-    expect(container.querySelector("a, img")).toBeNull();
+  it("keeps source failures independent and never revives a failed category photo", async () => {
+    await render(); await decode(imageAt(business(zoes))); await decode(imageAt(business(sabor)));
+    const old = imageAt(pizza()), lateLoad = callbacks.loads.get(TODAY_PIZZA_CATEGORY_PHOTO.src)!;
+    await act(async () => old.dispatchEvent(new Event("error")));
+    Object.defineProperties(old, { naturalWidth: { value: 1200 }, naturalHeight: { value: 800 } });
+    await act(async () => lateLoad({ currentTarget: old }));
+    expect(pizza().querySelector("img")).toBeNull(); expect(pizza().getAttribute("data-photo-state")).toBe("failed");
+    expect(pizza().textContent).toBe("Find pizza");
+    expect(business(zoes).getAttribute("data-photo-state")).toBe("loaded"); expect(business(sabor).getAttribute("data-photo-state")).toBe("loaded");
+  });
+
+  it.each(["error", "pixel"])("hides a failed licensed image/credit while preserving its action and healthy neighbors (%s)", async failure => {
+    await render(); await decode(imageAt(pizza())); await decode(imageAt(business(zoes)));
+    const link = business(sabor), image = imageAt(link), lateLoad = callbacks.loads.get(image.getAttribute("src")!)!;
+    if (failure === "pixel") Object.defineProperties(image, { naturalWidth: { value: 1 }, naturalHeight: { value: 1 } });
+    await act(async () => image.dispatchEvent(new Event(failure === "pixel" ? "load" : "error")));
+    await act(async () => lateLoad({ currentTarget: image }));
+    expect(link.querySelector("img")).toBeNull(); expect(link.getAttribute("data-photo-state")).toBe("failed");
+    expect(container.querySelector(".place-card-photo-credit")).toBeNull();
+    expect(new URL(link.href).pathname).toBe(`/places/${sabor}`);
+    expect(pizza().getAttribute("data-photo-state")).toBe("loaded"); expect(business(zoes).getAttribute("data-photo-state")).toBe("loaded");
+  });
+
+  it("retains the category action without any photo and makes no availability claim", async () => {
+    await act(async () => root.render(createElement(TodayGeographicDoorwayView, { scope: "county", categoryPhoto: null })));
+    expect(pizza().querySelector("img")).toBeNull(); expect(pizza().textContent).toBe("Find pizza");
+    expect(container.textContent).not.toMatch(/open now|available now|recommended|best|made in Frederick|hours confirmed/i);
+    expect(container.querySelector('[role="combobox"], input, form')).toBeNull();
+    expect(container.querySelectorAll('[aria-label="Find pizza"]')).toHaveLength(1);
+  });
+
+  it("drops unsafe external return origins rather than leaking them to navigation", () => {
+    const url = new URL(todayPizzaHref("county", "https://evil.example/today"), "https://radius.example");
+    expect(url.searchParams.has("returnTo")).toBe(false); expect(url.pathname).toBe("/nearby");
   });
 });

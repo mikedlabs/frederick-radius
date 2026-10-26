@@ -17,6 +17,7 @@ const lock = catalog.find((place) => place.slug === lockSlug)!;
 const otherMapPlace = catalog.find((place) => place.slug === "baker-park-frederick")!;
 const creekPhoto = getOwnedPlacePhoto(creekSlug)!;
 const lockPhoto = CREDITED_LOCAL_PLACE_PHOTOS[lockSlug].image;
+const pizzaPhoto = { src: "/images/discovery/pizza-preparation.jpg" };
 const failureSignal = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
 const returnTo = "/search?q=Creek&in=frederick&kind=place";
 const mapPath = `/map?${new URLSearchParams({ q: "Creek", in: "frederick", c: "-77.4100,39.4150,12.4", show: "transit", layers: "parks", returnTo })}`;
@@ -54,7 +55,7 @@ function imageSource(requestUrl: URL, origin: string) {
     : requestUrl;
 }
 
-async function prepare(context: BrowserContext, page: Page, baseURL: string | undefined, options: { map?: boolean; failCreek?: boolean; holdMetadata?: boolean; holdScopedSearch?: boolean } = {}) {
+async function prepare(context: BrowserContext, page: Page, baseURL: string | undefined, options: { map?: boolean; failCreek?: boolean; failPizza?: boolean; holdMetadata?: boolean; holdScopedSearch?: boolean } = {}) {
   if (!baseURL || !["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname)) {
     throw new Error("Declared visual-depth acceptance may run only against the owned loopback compiled server.");
   }
@@ -171,11 +172,11 @@ async function prepare(context: BrowserContext, page: Page, baseURL: string | un
         return route.abort("blockedbyclient");
       }
       evidence.images.push(imagePath);
-      if ((options.failCreek && imagePath === creekPhoto.src) || (lockFails && imagePath === lockPhoto.src)) {
+      if ((options.failCreek && imagePath === creekPhoto.src) || (options.failPizza && imagePath === pizzaPhoto.src) || (lockFails && imagePath === lockPhoto.src)) {
         evidence.failedImages.push(imagePath);
         return route.fulfill({ headers: { "Cache-Control": "no-store" }, contentType: "image/gif", body: failureSignal });
       }
-      if (imagePath === creekPhoto.src || imagePath === lockPhoto.src) {
+      if (imagePath === creekPhoto.src || imagePath === lockPhoto.src || imagePath === pizzaPhoto.src) {
         return route.fulfill({ headers: { "Cache-Control": "no-store" }, contentType: "image/jpeg", body: await readFile(`public${imagePath}`) });
       }
       return route.continue();
@@ -254,7 +255,13 @@ test("Today shows a real photograph on arrival while weather and Find lead at 39
   await todayReady(page);
   const doorway = page.locator("[data-today-geographic-doorway]");
   await expect(doorway).toHaveAttribute("data-photo-state", "loaded");
-  await decoded(doorway.locator("img"), creekPhoto.src);
+  await decoded(doorway.locator("img"), pizzaPhoto.src);
+  const licensed = page.locator('[data-today-geographic-place="sabor-de-cuba-restaurant-frederick"]');
+  await decoded(licensed.locator("img"), "/place-photos/sabor-de-cuba-entrance-2018.jpg");
+  const credit = page.locator("[data-today-discovery-credit]");
+  await expect(credit.getByRole("link", { name: "CC BY-SA 4.0", exact: true })).toBeVisible();
+  await expect(credit.locator('a[href="https://commons.wikimedia.org/wiki/File:Sabor_de_Cuba_02.jpg"]')).toBeVisible();
+  await expect(licensed.locator("a")).toHaveCount(0);
   const geometry = await page.evaluate(() => {
     const box = (selector: string) => { const r = document.querySelector(selector)!.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
     const weather = box("[data-today-weather]"), find = box('[data-surface-row="find"]'), entry = box("[data-today-entry-controls]");
@@ -298,7 +305,7 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
   const { evidence } = await prepare(context, page, baseURL);
   await todayReady(page);
   const image = page.locator("[data-today-photo-lead] img");
-  await decoded(image, creekPhoto.src);
+  await decoded(image, pizzaPhoto.src);
   const textProbes = [
     { name: "Find words", control: page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }).getByText("Find what you need", { exact: true }) },
     { name: "Area picker", control: page.getByRole("combobox", { name: "Choose your area", exact: true }) },
@@ -412,14 +419,15 @@ test("Today keeps exact Brunswick imagery through a scope round trip and a fresh
   await page.emulateMedia({ reducedMotion: "reduce" });
   const healthy = await prepare(context, page, baseURL);
   await todayReady(page);
-  await decoded(page.locator("[data-today-geographic-doorway] img"), creekPhoto.src);
+  await decoded(page.locator("[data-today-geographic-doorway] img"), pizzaPhoto.src);
   const picker = page.getByRole("combobox", { name: "Choose your area", exact: true });
   const cardForLock = (targetPage: Page) => targetPage.locator("article[data-today-place-preview]")
     .filter({ has: targetPage.locator(`[data-today-place-lead][data-decision-id="${lockSlug}"]`) });
   const lockCard = cardForLock(page);
   await picker.selectOption("town:brunswick");
   await expect(page.getByTestId("today-scope-status")).toContainText("Brunswick picks · Countywide weather");
-  await expect(page.locator("[data-today-geographic-doorway]")).toHaveCount(0);
+  await expect(page.locator("[data-today-geographic-doorway]")).toHaveCount(1);
+  await expect(page.locator("[data-today-geographic-place]")).toHaveCount(0);
   await expect(lockCard).toHaveCount(1);
   await decoded(lockCard.locator("img"), lockPhoto.src);
   await expect(lockCard).toContainText(lock.name);
@@ -448,7 +456,7 @@ test("Today keeps exact Brunswick imagery through a scope round trip and a fresh
   failure.failLock();
   try {
     await todayReady(failurePage);
-    await decoded(failurePage.locator("[data-today-geographic-doorway] img"), creekPhoto.src);
+    await decoded(failurePage.locator("[data-today-geographic-doorway] img"), pizzaPhoto.src);
     await failurePage.getByRole("combobox", { name: "Choose your area", exact: true }).selectOption("town:brunswick");
     await expect(failurePage.getByTestId("today-scope-status")).toContainText("Brunswick picks · Countywide weather");
     const failedCard = cardForLock(failurePage);
@@ -461,7 +469,8 @@ test("Today keeps exact Brunswick imagery through a scope round trip and a fresh
     await expect(failedCard).toContainText("Hours not confirmed");
     await expect(failedCard).toContainText("Brunswick");
     await expect(failedCard).not.toContainText("Carroll Creek");
-    await expect(failurePage.locator("[data-today-geographic-doorway]")).toHaveCount(0);
+    await expect(failurePage.locator("[data-today-geographic-doorway]")).toHaveCount(1);
+    await expect(failurePage.locator("[data-today-geographic-place]")).toHaveCount(0);
     await expect(failedCard.getByRole("link", { name: `Map: ${lock.name}`, exact: true })).toHaveAttribute("href", new RegExp(`place=${lockSlug}.*in=brunswick`));
     await assertWidth(failurePage);
     expect(failure.evidence.errors).toEqual([]);
@@ -473,20 +482,47 @@ test("Today keeps exact Brunswick imagery through a scope round trip and a fresh
   }
 });
 
-test("Today keeps a named place doorway after its owned photograph fails", async ({ context, page, baseURL }, info) => {
+test("Today keeps a scoped category action after its owner-approved photograph fails", async ({ context, page, baseURL }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const { evidence } = await prepare(context, page, baseURL, { failCreek: true });
+  const { evidence } = await prepare(context, page, baseURL, { failPizza: true });
   await todayReady(page);
   const doorway = page.locator("[data-today-geographic-doorway]");
   await expect(doorway).toHaveAttribute("data-photo-state", "failed");
   await expect(doorway.locator("figure, img")).toHaveCount(0);
-  await expect(doorway).toHaveAccessibleName("View Carroll Creek Linear Park in Frederick");
-  await expect(doorway).toHaveAttribute("href", `/places/${creekSlug}`);
-  await expect(doorway).toContainText("Carroll Creek");
+  await expect(doorway).toHaveAccessibleName("Find pizza");
+  await expect(doorway).toHaveAttribute("href", `/nearby?${new URLSearchParams({ c: "food", facet: "pizza", in: "county", returnTo: "/today?in=county" })}`);
+  await expect(doorway).toContainText("Find pizza");
   await expect(doorway).not.toContainText(/open now|safe now|current conditions/i);
   const target = await target44(doorway);
-  await attach(info, "honest-owned-photo-failure", { target, failedSource: creekPhoto.src, widths: await assertWidth(page) });
+  await attach(info, "honest-category-photo-failure", { target, failedSource: pizzaPhoto.src, widths: await assertWidth(page) });
   expect(evidence.errors).toEqual([]);
+});
+
+test("Today pizza navigation preserves the town, intent and native Back location", async ({ context, page, baseURL }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const { evidence } = await prepare(context, page, baseURL);
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, "geolocation", { configurable: true, value: {
+      getCurrentPosition: () => { throw new Error("An explicit town must not request geolocation."); },
+      watchPosition: () => { throw new Error("An explicit town must not watch geolocation."); },
+    } });
+  });
+  const origin = "/today?in=brunswick&intent=coffee#find-radius";
+  await todayReady(page, origin);
+  const action = page.getByRole("link", { name: "Find pizza", exact: true });
+  await decoded(action.locator("img"), pizzaPhoto.src);
+  await expect(page.locator("[data-today-geographic-place]")).toHaveCount(0);
+  const href = new URL((await action.getAttribute("href"))!, "https://radius.test");
+  expect(href.pathname).toBe("/nearby"); expect(href.searchParams.get("c")).toBe("food"); expect(href.searchParams.get("facet")).toBe("pizza");
+  expect(href.searchParams.get("in")).toBe("brunswick"); expect(href.searchParams.get("returnTo")).toBe(origin);
+  await action.click();
+  await expect(page).toHaveURL(url => url.pathname === "/nearby" && url.searchParams.get("facet") === "pizza" && url.searchParams.get("in") === "brunswick");
+  await page.goBack({ waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(url => `${url.pathname}${url.search}${url.hash}` === origin);
+  await expect(page.getByRole("link", { name: "Find pizza", exact: true })).toBeVisible();
+  await expect(page.locator("[data-today-geographic-place]")).toHaveCount(0);
+  expect(evidence.errors).toEqual([]);
+  await attach(info, "pizza-scope-back-continuity", { origin, destination: href.pathname + href.search, image: pizzaPhoto.src, widths: await assertWidth(page) });
 });
 
 test("Map makes the exact owned image prominent before metadata and keeps real Details Back focus at 320px", async ({ context, page, baseURL }, info) => {
