@@ -5,11 +5,11 @@
       "slug": "brewers-alley-frederick",
       "source_url": "https://brewers-alley.com/",
       "source_name": "Brewer's Alley",
-      "source_sha256": "16ba231b0d6db203fa5e98eab92257823c3c52bd2830839fb692b92d6039797c",
-      "observed_at": "2026-10-24T21:20:24.266Z",
-      "expires_at": "2026-10-26T04:00:00.000Z",
-      "coverage_from": "2026-10-19",
-      "coverage_through": "2026-10-25",
+      "source_sha256": "8ce1bcea17bb9d2266747c49d501ce101be4451156e16d8e519c0c45547f2792",
+      "observed_at": "2026-10-26T14:30:57.916Z",
+      "expires_at": "2026-11-02T05:00:00.000Z",
+      "coverage_from": "2026-10-26",
+      "coverage_through": "2026-11-01",
       "kind": "dated_week",
       "hours": {
         "mon": [
@@ -1797,11 +1797,6 @@
     }
   ],
   "review": [
-    {
-      "slug": "brewers-alley-frederick",
-      "checked_at": "2026-10-26T09:43:43.818Z",
-      "reason": "source_unavailable"
-    },
     {
       "slug": "gravel-and-grind-frederick",
       "checked_at": "2026-10-26T09:43:43.818Z",
