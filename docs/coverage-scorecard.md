@@ -7,7 +7,7 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-10-25 — 1571 places._
+_Generated 2026-10-26 — 1571 places._
 
 Current checked schedules: 39. Current qualified schedules: 3.
 Qualified venue or service tables retain their conditions and expiry. They
