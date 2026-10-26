@@ -8,6 +8,19 @@ import TodayScopeStatus from "./TodayScopeStatus";
 import { getScope, setScope, type Scope } from "@/lib/scope";
 import type { DaypartRow } from "@/lib/loaders/daypartPicks";
 
+// Explicit offline source approval for the synthetic local-place media
+// lifecycle below; it does not add a production business appearance review.
+vi.mock("@/lib/today/place-photo-appearance", async importOriginal => {
+  const actual = await importOriginal<typeof import("@/lib/today/place-photo-appearance")>();
+  const asOf = new Date("2026-10-26T16:00:00.000Z");
+  const reviews = [{ slug: "local-place", src: `/api/place-photo?name=${encodeURIComponent("places/local-id/photos/exact-photo")}&w=720&fallback=signal`,
+    appearance: "current" as const, reviewedOn: "2026-10-26", validUntil: "2026-10-31", evidence: "Offline hydrated-source fixture only, not production evidence." }];
+  return { ...actual,
+    hasTodayPhotoAppearanceReview: (slug: string, src: string | null) => actual.hasTodayPhotoAppearanceReview(slug, src, reviews, asOf),
+    todayAppearancePhotoPlan: (slug: string, plan: Parameters<typeof actual.todayAppearancePhotoPlan>[1]) => actual.todayAppearancePhotoPlan(slug, plan, reviews, asOf),
+  };
+});
+
 const state = vi.hoisted(() => ({
   request: vi.fn(),
   requestIfGranted: vi.fn(),

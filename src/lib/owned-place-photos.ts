@@ -6,6 +6,8 @@ export type OwnedPlacePhoto = {
   alt: string;
   width: number;
   height: number;
+  /** Exact place identity is known; present appearance has not been verified. */
+  referenceContext?: "appearance-unverified";
   /** Retain the reviewed subject when a card needs a narrower crop. */
   objectPosition?: "center" | "left" | "right" | "top" | "bottom";
 };
@@ -20,6 +22,7 @@ export const OWNED_PLACE_PHOTOS: Readonly<Record<string, OwnedPlacePhoto>> = {
     width: 1123,
     height: 626,
     objectPosition: "right",
+    referenceContext: "appearance-unverified",
   },
   // Existing owner-permitted Seasons photographs, individually inspected for
   // the named storefront, distinctive playground and church facade. Camera
@@ -32,6 +35,7 @@ export const OWNED_PLACE_PHOTOS: Readonly<Record<string, OwnedPlacePhoto>> = {
     width: 1920,
     height: 2400,
     objectPosition: "center",
+    referenceContext: "appearance-unverified",
   },
   "sophie-madigans-playground-frederick": {
     kind: "owned",

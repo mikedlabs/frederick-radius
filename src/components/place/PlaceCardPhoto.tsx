@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
-import { curatedPhotoSourceLabel } from "@/lib/curated-photo-source";
+import { curatedPhotoReferenceLabel, curatedPhotoSourceLabel } from "@/lib/curated-photo-source";
 import type { PlaceCardPhotoResult, PlaceCardPhotoSource } from "@/lib/place-card-photo";
 import { GooglePhotoAttributionLine } from "./GoogleAttribution";
 import { useVisibleGooglePhoto } from "./useVisibleGooglePhoto";
@@ -106,10 +106,11 @@ export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false, comp
   /** Map preview only: keep linked creator/license visible and disclose full edits. */
   discloseModifications?: boolean;
 }) {
-  if (!source || source.kind === "owned") return null;
+  if (!source || (source.kind === "owned" && source.referenceContext !== "appearance-unverified")) return null;
   const sourceLabel = source.kind === "curated" ? curatedPhotoSourceLabel(source.photo.source_url) : "";
   const countyProvided = sourceLabel === "Frederick County";
   const creditPrefix = countyProvided ? "Photo provided by" : "Photo by";
+  const referenceLabel = source.kind === "curated" ? curatedPhotoReferenceLabel(source.photo.capturedOn) : null;
   const licenseLinks: Record<string, string> = { "CC BY-SA 4.0": "https://creativecommons.org/licenses/by-sa/4.0", "CC BY 2.0": "https://creativecommons.org/licenses/by/2.0" };
   const licenseHref = source.kind === "curated"
     ? (source.photo.licenseUrl ?? licenseLinks[source.photo.license]
@@ -120,10 +121,13 @@ export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false, comp
       className="place-card-photo-credit border-t px-3 py-1 text-xs leading-snug [&_a]:inline-flex [&_a]:min-h-[44px] [&_a]:min-w-[44px] [&_a]:items-center"
       data-photo-modifications-disclosure={discloseModifications && source.kind === "curated" || undefined}
       style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)", visibility: loaded ? undefined : "hidden" }}>
-      {source.kind === "google" ? (
+      {source.kind === "owned" ? (
+        <span className="block" data-place-photo-reference-context>Reference photo · Appearance unverified</span>
+      ) : source.kind === "google" ? (
         <GooglePhotoAttributionLine attribution={source.attribution} compact touchTarget={touchTarget} />
       ) : (
         <>
+          {referenceLabel && <span className="block pt-1" data-photo-reference>{referenceLabel}</span>}
           {!discloseModifications && <span className="block pt-1">{creditPrefix} {source.photo.author}.{compact && !source.photo.modifications ? " Cropped for display." : ""}</span>}
           {!discloseModifications && (source.photo.modifications
             ? <span className="block">{source.photo.modifications}</span>

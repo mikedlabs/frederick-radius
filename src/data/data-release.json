@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:783ed5e7026ffd5598f8a554470162e397291b49b3915dc10716f9b21acea0bc",
+  "data_version": "sha256:a747fcd19b9301ca80a3f7897462611613f70ec8113eea33ae81f528bd92cd79",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-26T15:21:12.053Z",
+      "promoted_at": "2026-10-26T21:54:36.956Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -174,9 +174,9 @@
         },
         {
           "path": "src/lib/integrations/wikimedia.ts",
-          "sha256": "036ffc22ed83fd79fcd9a1548823743cf6f83af6763976c33700458f9de1e857",
+          "sha256": "12631b45e07cbb2ec3fc711563325428b2fc1b3e1347524de34bba3ec4ca57c4",
           "records": null,
-          "bytes": 10752
+          "bytes": 11135
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
@@ -402,9 +402,9 @@
         },
         {
           "path": "src/lib/owned-place-photos.ts",
-          "sha256": "0b614d33a3d2187a512c4891ca7c2ee24cca00ce2225f83144ea3977c09d7914",
+          "sha256": "3fa17c971271cee91399781bdeb3f2eef8ad0223eda6493659947cd79c6ab677",
           "records": null,
-          "bytes": 8439
+          "bytes": 8661
         },
         {
           "path": "public/images/seasons/summer/SUMMER CARROL CREEK.jpg",

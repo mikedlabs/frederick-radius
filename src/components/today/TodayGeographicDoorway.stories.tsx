@@ -1,15 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
-import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
-import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 import { TODAY_PIZZA_CATEGORY_PHOTO, TodayGeographicDoorwayPending, TodayGeographicDoorwayView } from "./TodayGeographicDoorway";
 
-const zoes = getOwnedPlacePhoto("zoes-chocolate-company")!;
-const sabor = getLandmarkPhoto("sabor-de-cuba-restaurant-frederick")!;
 const subjects = [
   { label: "Find pizza", title: "Find pizza", src: TODAY_PIZZA_CATEGORY_PHOTO.src, alt: TODAY_PIZZA_CATEGORY_PHOTO.alt },
-  { label: "View Zoe's Chocolate Company in Frederick", title: "Zoe's Chocolate Company", src: zoes.src, alt: zoes.alt },
-  { label: "View Sabor de Cuba Restaurant in Frederick", title: "Sabor de Cuba", src: "/place-photos/sabor-de-cuba-entrance-2018.jpg", alt: sabor.alt },
 ];
 const meta = {
   title: "Today/Dining photo doorway", component: TodayGeographicDoorwayView,
@@ -52,8 +46,8 @@ async function decoded(link: HTMLElement, subject: typeof subjects[number]) {
 }
 async function checkMosaic({ canvasElement }: Parameters<NonNullable<Story["play"]>>[0], enlarged = false) {
   const canvas = within(canvasElement), links = subjects.map(s => canvas.getByRole("link", { name: s.label }));
-  await expect(canvasElement.querySelectorAll("[data-today-discovery-action]")).toHaveLength(3);
-  await expect(canvas.getAllByRole("img")).toHaveLength(3);
+  await expect(canvasElement.querySelectorAll("[data-today-discovery-action]")).toHaveLength(1);
+  await expect(canvas.getAllByRole("img")).toHaveLength(1);
   for (const [index, subject] of subjects.entries()) {
     const link = links[index]; await decoded(link, subject); await expect(within(link).getByRole("heading", { name: subject.title })).toBeVisible();
     const url = new URL(link.getAttribute("href")!, "https://radius.test");
@@ -63,33 +57,22 @@ async function checkMosaic({ canvasElement }: Parameters<NonNullable<Story["play
   }
   const pizza = new URL(links[0].getAttribute("href")!, "https://radius.test");
   await expect(pizza.pathname).toBe("/nearby"); await expect(pizza.searchParams.get("c")).toBe("food"); await expect(pizza.searchParams.get("facet")).toBe("pizza");
-  const grid = canvasElement.querySelector<HTMLElement>("[data-today-discovery-grid]")!, main = links[0].getBoundingClientRect(), support = links.slice(1).map(link => link.getBoundingClientRect());
+  const grid = canvasElement.querySelector<HTMLElement>("[data-today-discovery-grid]")!, main = links[0].getBoundingClientRect();
   await expect(grid.getBoundingClientRect().height).toBeGreaterThanOrEqual(208);
   if (!enlarged) await expect(grid.getBoundingClientRect().height).toBeLessThanOrEqual(260);
   else {
     await expect(parseFloat(getComputedStyle(document.documentElement).fontSize)).toBe(32);
     await expect(parseFloat(getComputedStyle(links[0].querySelector("h2")!).fontSize)).toBeGreaterThanOrEqual(44);
-    for (const link of links.slice(1)) await expect(parseFloat(getComputedStyle(link.querySelector("h3")!).fontSize)).toBeGreaterThanOrEqual(28);
   }
-  await expect(main.height).toBeGreaterThan(support[0].height); await expect(support[0].left).toBeGreaterThan(main.right); await expect(support[1].top).toBeGreaterThan(support[0].bottom);
-  const credit = canvasElement.querySelector<HTMLElement>(".place-card-photo-credit")!;
-  await expect(credit).toBeVisible(); await expect(links[2].contains(credit)).toBe(false);
-  const creator = within(credit).getByRole("link", { name: `Photo by ${sabor.author}. Wikimedia Commons` });
-  const license = within(credit).getByRole("link", { name: sabor.license });
-  const disclosure = within(credit).getByText("Edited photo", { selector: "summary" });
-  await expect(creator).toHaveAttribute("href", sabor.source_url);
-  await expect(license).toBeVisible();
-  for (const target of [creator, license, disclosure]) await physicalLink(target);
-  await expect(disclosure.parentElement).not.toHaveAttribute("open");
-  await userEvent.click(disclosure);
-  await expect(disclosure.parentElement).toHaveAttribute("open");
-  await expect(within(credit).getByText(sabor.modifications!, { exact: true })).toBeVisible();
-  for (const target of [creator, license, disclosure]) await physicalLink(target);
-  await userEvent.click(disclosure);
-  await expect(disclosure.parentElement).not.toHaveAttribute("open");
+  await expect(main.width).toBeGreaterThanOrEqual(grid.getBoundingClientRect().width * 0.99);
+  await expect(grid).not.toHaveAttribute("data-local-businesses");
+  await expect(canvasElement.querySelectorAll("[data-today-geographic-place]")).toHaveLength(0);
+  await expect(canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
+  await expect(canvasElement.querySelector("[data-today-discovery-credit]")).toBeNull();
+  await expect(canvasElement.textContent).not.toMatch(/Zoe|Sabor/);
   await expect(canvasElement.textContent).not.toMatch(/open now|recommended|made in Frederick|available now/i);
   await expect(grid.scrollWidth).toBeLessThanOrEqual(grid.clientWidth); await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
-  links[0].focus(); await expect(links[0]).toHaveFocus(); await userEvent.tab(); await expect(links[1]).toHaveFocus(); await userEvent.tab(); await expect(links[2]).toHaveFocus();
+  links[0].focus(); await expect(links[0]).toHaveFocus(); await userEvent.tab(); await expect(links[0]).not.toHaveFocus(); await userEvent.tab({ shift: true }); await expect(links[0]).toHaveFocus();
 }
 export const Dining320: Story = { globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } }, play: checkMosaic };
 export const Dining375: Story = { globals: { viewport: { value: "radiusMobileCompact", isRotated: false } }, play: checkMosaic };
@@ -120,15 +103,21 @@ export const ScopePending: Story = { render: () => <TodayGeographicDoorwayPendin
   const canvas = within(canvasElement); await expect(canvas.queryByRole("link")).not.toBeInTheDocument(); await expect(canvas.queryByRole("img")).not.toBeInTheDocument(); await expect(canvas.queryByRole("heading")).not.toBeInTheDocument();
   await expect(canvasElement.querySelector("[data-today-geographic-pending]")).toHaveAttribute("aria-hidden", "true");
 } };
-export const OneFailedLicensedImageKeepsEveryAction: Story = {
+export const FailedCategoryImageKeepsScopedAction: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement), failed = canvas.getByRole("link", { name: subjects[2].label });
+    const canvas = within(canvasElement), failed = canvas.getByRole("link", { name: subjects[0].label });
+    await decoded(failed, subjects[0]);
     failed.querySelector("img")!.dispatchEvent(new Event("error"));
     await waitFor(async () => { await expect(failed.querySelector("img")).toBeNull(); });
     await expect(failed).toHaveAttribute("data-photo-state", "failed"); await physicalLink(failed);
+    const href = new URL(failed.getAttribute("href")!, "https://radius.test");
+    await expect(href.pathname).toBe("/nearby"); await expect(href.searchParams.get("facet")).toBe("pizza");
+    await expect(href.searchParams.get("in")).toBe("county");
+    await expect(href.searchParams.get("returnTo")).toBe("/today?in=county&intent=coffee#find-radius");
     await expect(canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
-    for (const subject of subjects.slice(0, 2)) { const link = canvas.getByRole("link", { name: subject.label }); await decoded(link, subject); await physicalLink(link); }
-    await expect(canvasElement.querySelectorAll("[data-today-discovery-action]")).toHaveLength(3);
+    await expect(canvasElement.querySelectorAll("[data-today-geographic-place]")).toHaveLength(0);
+    await expect(canvasElement.querySelectorAll("[data-today-discovery-action]")).toHaveLength(1);
+    await expect(canvas.queryAllByRole("img")).toHaveLength(0);
   },
 };

@@ -35,7 +35,10 @@ Recenter, scope, and the location readout must agree.
 Today's arrival photographs lead directly to a scoped category or an exact
 place. A category illustration never implies that a named business serves the
 pictured food. Frederick storefronts appear only in the county or Frederick
-lens; other town and Near me lenses retain their own category destination.
+lens and require an exact-image current-appearance review; permission or a
+dated reference image alone is insufficient. Unreviewed business photographs
+do not lead Today recommendations or trigger a provider fallback. Other town
+and Near me lenses retain their own category destination.
 The URL scope wins over a saved scope, and Back preserves the original query
 and section. Image failures keep the named action usable. Required photograph
 credits remain outside the destination link, with usable touch targets.

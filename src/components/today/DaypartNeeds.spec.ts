@@ -1,6 +1,18 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+// One explicit test-only source approval preserves the existing deferred-byte
+// transport contract. The production current-appearance review list is empty.
+vi.mock("@/lib/today/place-photo-appearance", async importOriginal => {
+  const actual = await importOriginal<typeof import("@/lib/today/place-photo-appearance")>();
+  const asOf = new Date("2026-10-26T16:00:00.000Z");
+  const reviews = [{ slug: "gravel-and-grind", src: "/api/place-photo?name=places%2FChIJtest%2Fphotos%2Ffront&w=720&fallback=signal",
+    appearance: "current" as const, reviewedOn: "2026-10-26", validUntil: "2026-10-31", evidence: "Offline deferred-byte fixture only, not business appearance evidence." }];
+  return { ...actual,
+    hasTodayPhotoAppearanceReview: (slug: string, src: string | null) => actual.hasTodayPhotoAppearanceReview(slug, src, reviews, asOf),
+    todayAppearancePhotoPlan: (slug: string, plan: Parameters<typeof actual.todayAppearancePhotoPlan>[1]) => actual.todayAppearancePhotoPlan(slug, plan, reviews, asOf),
+  };
+});
 import DaypartNeeds, {
   DaypartEmptyState,
   daypartBrowseHref,

@@ -10,6 +10,19 @@ const PLACE = {
 };
 
 describe("PlaceMedallion", () => {
+  it.each(["zoes-chocolate-company", "visitation-hotel", "gravel-and-grind"])("withholds unreviewed owned and supplied %s photos for current-appearance decisions", (slug) => {
+    const html = renderToStaticMarkup(createElement(PlaceMedallion, {
+      place: { ...PLACE, slug, google_photo_url: "/api/place-photo?name=places%2Funreviewed%2Fphotos%2Ffront&w=800" },
+      requireCurrentAppearance: true,
+      appearanceAsOf: new Date("2026-10-26T16:00:00.000Z"),
+    }));
+    expect(html).toContain('data-place-media="fallback"');
+    expect(html).toContain(`<span aria-hidden="true"`);
+    expect(html).toContain("<svg");
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("/api/place-photo");
+    expect(html).not.toContain("IMG_2732.jpg");
+  });
   it("renders an approved place photo as a compact lazy image", () => {
     const html = renderToStaticMarkup(
       createElement(PlaceMedallion, {

@@ -93,12 +93,15 @@ describe("TodaysDealsStack footer denominator", () => {
 });
 
 describe("TodaysDealsStack business media", () => {
-  it("renders the venue photo carried by the deal row", () => {
+  it("keeps an unreviewed venue photo off a current special without hiding its action or facts", () => {
     const html = render("/api/place-photo?name=test-special");
 
-    expect(html).toContain('data-place-media="photo"');
+    expect(html).toContain('data-place-media="fallback"');
     expect(html).toContain('data-place-slug="test-special"');
-    expect(html).toContain("/api/place-photo?name=test-special");
+    expect(html).not.toContain("/api/place-photo?name=test-special");
+    expect(html).not.toContain("<img");
+    expect(html).toContain("/places/test-special");
+    expect(html).toContain("$5 special");
   });
 
   it("keeps a category fallback when the venue has no approved photo", () => {
