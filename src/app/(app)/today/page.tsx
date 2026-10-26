@@ -283,9 +283,9 @@ export default async function HomePage() {
           </div>
         </div>
 
-      {/* Put an actual place photograph on arrival, before the local answers.
-          This owned Frederick doorway stays hidden for
-          other town and Near me lenses; it makes no current-conditions claim.
+      {/* Food photography opens scoped discovery before the local answers.
+          Exact Frederick storefronts appear only in county/Frederick lenses;
+          the category photo implies no merchant, location or current menu.
           Until the URL lens is known, its fallback is deliberately neutral. */}
       <Suspense fallback={<TodayGeographicDoorwayPending />}>
         <TodayGeographicDoorway />

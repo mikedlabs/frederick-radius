@@ -174,12 +174,20 @@
 }
 
 .geographicMosaic {
+  min-width: 0;
+}
+
+.geographicTileGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
-  grid-template-rows: repeat(2, minmax(min-content, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--app-space-2);
   min-width: 0;
   min-height: clamp(208px, calc(16.6667vw + 155px), 260px);
+}
+
+.geographicTileGrid[data-local-businesses="true"] {
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(min-content, 1fr));
 }
 
 .geographicMain {
@@ -193,16 +201,15 @@
 
 .geographicDoorway {
   display: grid;
-  /* The overlay track must shrink with its tile at enlarged text sizes. */
   grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   min-height: 44px;
   overflow: hidden;
-  border: 0;
+  border: 1px solid var(--app-border);
   border-radius: var(--app-radius-xl);
-  /* The real image owns the visual emphasis after it has decoded. */
   background: var(--app-media-ink);
   color: var(--app-on-brand);
+  box-shadow: var(--app-shadow-1);
   outline-offset: 4px;
   transition: box-shadow var(--app-dur-fast) var(--app-ease-out), transform var(--app-dur-fast) var(--app-ease-out);
 }
@@ -224,42 +231,40 @@
   grid-area: 1 / 1;
   align-self: stretch;
   position: relative;
-  /* Keep a substantial landscape on ordinary phones. This is a minimum,
-     not a fixed crop box: enlarged caption text can grow the shared grid row. */
-  min-height: clamp(160px, calc(56.25vw - 18px), 190px);
-  margin: 0;
+  min-height: clamp(208px, calc(16.6667vw + 155px), 260px);
   background: var(--app-media-ink);
 }
 
+/* Shared image ownership and credit remain in PlaceCardPhoto. The surrounding
+   tile owns only this mosaic's responsive crop and decoded reveal. */
+.geographicPhoto > [data-place-card-photo] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
 .geographicPhoto img {
-  object-fit: cover;
-  object-position: 54% 52%;
   opacity: 0;
-  transition: opacity 180ms var(--app-ease-out);
+  transition: opacity var(--app-dur-med) var(--app-ease-out);
 }
 
 .geographicSupporting .geographicPhoto {
-  min-height: 96px;
+  min-height: 100px;
 }
 
 .geographicDoorway[data-photo-state="loaded"] .geographicPhoto img {
   opacity: 1;
 }
 
-.geographicDoorway[data-photo-state="pending"],
-.geographicDoorway[data-photo-state="pending"] .geographicPhoto {
+.geographicDoorway[data-photo-state="pending"] {
   background: var(--app-bg-sunken);
   color: var(--app-ink);
 }
 
 .geographicDoorway[data-photo-state="pending"] .geographicCaption {
-  background: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .geographicPhoto img {
-    transition: none;
-  }
+  background: var(--app-bg-sunken);
 }
 
 .geographicCaption {
@@ -270,34 +275,33 @@
   z-index: 1;
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--app-space-2) var(--app-space-3);
+  gap: var(--app-space-2);
   min-height: 68px;
   padding: var(--app-space-3);
-  /* In the shared grid row, large caption text grows the image area rather
-     than being clipped by an absolutely positioned overlay. */
   background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--app-media-ink) 88%, transparent) 12px, var(--app-media-ink));
-}
-
-.geographicCaption > div {
-  flex: 1 1 0;
-  min-width: 0;
 }
 
 .geographicCaption h2,
 .geographicCaption h3 {
+  flex: 1 1 0;
+  min-width: 0;
   margin: 0;
   color: inherit;
-  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  font-size: clamp(1.375rem, 3vw, 1.75rem);
   font-weight: 750;
   line-height: 1.12;
   letter-spacing: -0.035em;
   overflow-wrap: anywhere;
 }
 
+.geographicCaption h2 {
+  flex-basis: 7ch;
+}
+
 .geographicSupporting .geographicCaption {
-  gap: var(--app-space-1);
+  gap: var(--spacing);
   min-height: 44px;
   padding: var(--app-space-2);
 }
@@ -308,29 +312,20 @@
   letter-spacing: -0.02em;
 }
 
-/* The supporting tile is already one named link. Reserve its narrow caption
-   for the place name, including when the reader enlarges text. */
 .geographicSupporting .geographicAction {
   display: none;
-}
-
-.geographicCaption p {
-  margin: var(--spacing) 0 0;
-  color: inherit;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
 }
 
 .geographicAction {
   display: inline-flex;
   align-items: center;
-  gap: var(--app-space-2);
-  min-height: 28px;
+  justify-content: center;
+  width: 36px;
+  min-height: 36px;
   flex-shrink: 0;
+  border: 1px solid currentColor;
+  border-radius: var(--app-radius-xl);
   color: inherit;
-  font-size: 0.875rem;
-  font-weight: 600;
 }
 
 .geographicDoorway[data-photo-state="failed"] {
@@ -340,32 +335,73 @@
 
 .geographicDoorway[data-photo-state="failed"] .geographicCaption {
   min-height: 76px;
-  padding: var(--app-space-3) var(--app-space-4);
   background: none;
 }
 
 .geographicSupporting[data-photo-state="failed"] .geographicCaption {
   min-height: 44px;
-  padding: var(--app-space-2);
-}
-
-.geographicDoorway[data-photo-state="failed"] .geographicCaption p {
-  color: var(--app-ink-2);
 }
 
 .geographicDoorway[data-photo-state="failed"] .geographicAction {
   color: var(--app-link);
 }
 
-/* Reserve the same first-paint geometry without claiming any place or town. */
-.geographicDoorway[data-today-geographic-pending] {
-  min-height: clamp(208px, calc(16.6667vw + 155px), 260px);
+.geographicCredit {
+  margin-top: var(--spacing);
 }
 
-/* The unresolved URL lens is neutral and makes no photographic place claim. */
-.geographicDoorway[data-today-geographic-pending],
-.geographicDoorway[data-today-geographic-pending] .geographicPhoto {
+.geographicCredit > :global(.place-card-photo-credit) {
+  padding: 0;
+  border: 0;
+}
+
+.geographicCredit :global([data-photo-modifications-disclosure] .place-card-photo-credit-row) {
+  align-items: center;
+  gap: var(--spacing) var(--app-space-2);
+}
+
+.geographicCredit :global(.place-card-photo-edits) {
+  min-width: 44px;
+  margin-inline-start: auto;
+}
+
+.geographicCredit :global(.place-card-photo-edits > summary) {
+  min-width: 44px;
+  min-height: 48px;
+  align-content: center;
+  list-style-position: inside;
+  cursor: pointer;
+  border-radius: var(--app-radius-sm);
+}
+
+.geographicCredit :global(.place-card-photo-edits > summary:focus-visible) {
+  outline: 2px solid var(--app-ink);
+  outline-offset: -2px;
+}
+
+.geographicCredit :global(.place-card-photo-edits[open]) {
+  flex-basis: 100%;
+  margin-inline-start: 0;
+}
+
+.geographicCredit :global(.place-card-photo-credit-details) {
+  display: grid;
+  gap: var(--spacing);
+  padding-block: var(--spacing) var(--app-space-2);
+  overflow-wrap: anywhere;
+}
+
+/* The server reserves useful arrival space without any town or photo claim. */
+.geographicPending {
+  min-height: clamp(208px, calc(16.6667vw + 155px), 260px);
+  border-radius: var(--app-radius-xl);
   background: var(--app-bg-sunken);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .geographicPhoto img {
+    transition: none;
+  }
 }
 
 .places > section {

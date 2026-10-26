@@ -337,6 +337,51 @@ for (const viewport of VIEWPORTS) {
   });
 }
 
+test.describe("outside app route-group hard navigation", () => {
+  test.use({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+
+  test.beforeEach(async ({ context, baseURL }) => {
+    const origin = new URL(baseURL ?? "http://localhost:3010");
+    if (!["http:", "https:"].includes(origin.protocol)
+      || !["localhost", "127.0.0.1"].includes(origin.hostname)) {
+      throw new Error("Route-topology acceptance may run only against the owned loopback server.");
+    }
+    // This regression needs real local HTML, CSS and JavaScript only. Do not
+    // transmit telemetry, invoke APIs, proxy remote images or submit forms.
+    await context.route("**/*", route => {
+      const request = route.request(), url = new URL(request.url());
+      return url.origin === origin.origin
+        && ["GET", "HEAD"].includes(request.method())
+        && !url.pathname.startsWith("/api/")
+        && request.resourceType() !== "image"
+        ? route.continue() : route.abort("blockedbyclient");
+    });
+  });
+
+  for (const destination of [
+    { path: "/beta", heading: "Frederick, the way a local knows it." },
+    { path: "/concept/wlr", heading: "Car care, without the hunt." },
+  ]) {
+    test(`${destination.path} keeps its own page outside app chrome`, async ({ page }) => {
+      const response = await page.goto(destination.path, { waitUntil: "domcontentloaded" });
+      expect(response?.status()).toBe(200);
+      expect(new URL(page.url()).pathname).toBe(destination.path);
+      await expect(page.locator("main")).toHaveCount(1);
+      await expect(page.getByRole("heading", { level: 1, name: destination.heading, exact: true })).toBeVisible();
+      await expect(page.getByRole("navigation", { name: "Primary", exact: true })).toHaveCount(0);
+      await expect(page.getByRole("link", { name: "Open tools", exact: true })).toHaveCount(0);
+      await expect(page.locator(".app-paper-fx")).toHaveCount(0);
+    });
+  }
+
+  test("an unknown destination retains the actual 404 page", async ({ page }) => {
+    const response = await page.goto("/__radius_unknown_route__", { waitUntil: "domcontentloaded" });
+    expect(response?.status()).toBe(404);
+    await expect(page.locator("main")).toHaveCount(1);
+    await expect(page.getByRole("heading", { level: 1, name: "That page isn't here.", exact: true })).toBeVisible();
+  });
+});
+
 test.describe("Today hydration clock boundary", () => {
   test.use({
     viewport: { width: 390, height: 844 },

@@ -37,13 +37,13 @@ for (const width of [320, 390, 430, 1440]) {
 test("Today uses the owned collection without moving search behind the Fair campaign", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/today");
-  const slug = "carroll-creek-linear-park-frederick";
+  const slug = "zoes-chocolate-company";
   const reviewed = getOwnedPlacePhoto(slug)!;
   const doorway = page.locator(`[data-today-geographic-place="${slug}"]`);
   const photo = doorway.locator("img");
-  await expect(doorway).toHaveAttribute("href", `/places/${slug}`);
+  await expect(doorway).toHaveAttribute("href", `/places/${slug}?${new URLSearchParams({ in: "county", returnTo: "/today?in=county" })}`);
   await expect(photo).toHaveAttribute("alt", reviewed.alt);
-  await expect(photo).toHaveAccessibleName(/Carroll Creek/);
+  await expect(photo).toHaveAccessibleName(/Zoe/);
   await expect(photo).toBeVisible();
   await expect(doorway).toHaveAttribute("data-photo-state", "loaded");
   await expect.poll(() => photo.evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);

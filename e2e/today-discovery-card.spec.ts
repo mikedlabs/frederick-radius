@@ -134,7 +134,7 @@ for (const failure of ["pixel", "error"] as const) {
 }
 
 
-test("Today keeps the owned place visual separate from a real answer without an attributable photo", async ({ page }, testInfo) => {
+test("Today keeps the category illustration separate from a real answer without an attributable photo", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   const pickSlug = "ibiza-cafe";
@@ -166,12 +166,13 @@ test("Today keeps the owned place visual separate from a real answer without an 
   await expect(article).not.toContainText("Carroll Creek");
   await expect(article).toHaveAttribute("data-has-photo", "false");
   await expect(article.locator(".place-card-photo-credit")).toHaveCount(0);
-  const creek = page.getByRole("link", { name: "View Carroll Creek Linear Park in Frederick", exact: true });
-  await expect(creek).toHaveAttribute("href", "/places/carroll-creek-linear-park-frederick");
-  await expect(creek).toHaveAttribute("data-photo-state", "loaded");
-  await expect.poll(() => creek.locator("img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 1 && image.naturalHeight > 1)).toBe(true);
-  await expect(creek).toContainText("Carroll Creek");
-  await expect(creek).not.toContainText("Ibiza");
+  const category = page.getByRole("link", { name: "Find pizza", exact: true });
+  const categoryHref = new URL((await category.getAttribute("href"))!, "https://radius.test");
+  expect(categoryHref.pathname).toBe("/nearby"); expect(categoryHref.searchParams.get("facet")).toBe("pizza"); expect(categoryHref.searchParams.get("in")).toBe("county");
+  await expect(category).toHaveAttribute("data-photo-state", "loaded");
+  await expect.poll(() => category.locator("img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 1 && image.naturalHeight > 1)).toBe(true);
+  await expect(category).toContainText("Find pizza");
+  await expect(category).not.toContainText("Ibiza");
   await expect(page.getByRole("combobox", { name: "Choose your area", exact: true })).toHaveValue("county");
   const quickNeeds = page.getByRole("group", { name: "Quick needs", exact: true });
   const hierarchy = await article.evaluate((element) => {
@@ -202,7 +203,7 @@ test("Today keeps the owned place visual separate from a real answer without an 
   await expect(quickNeeds).toHaveCount(1);
   await expect(quickNeeds.getByRole("link")).toHaveCount(4);
   expect(uncreditedPhotoRequests).toBe(0);
-  await testInfo.attach("separate-owned-place-and-uncredited-answer", { contentType: "application/json", body: JSON.stringify({ metadataRequests, uncreditedPhotoRequests, hierarchy, proof: "Real Today composition and owned image; a declared answer/failed credit transport tests honest fallback, not live venue hours or current image availability." }) });
+  await testInfo.attach("separate-owned-place-and-uncredited-answer", { contentType: "application/json", body: JSON.stringify({ metadataRequests, uncreditedPhotoRequests, hierarchy, proof: "Real Today composition and owner-approved category illustration; a declared answer/failed credit transport tests honest fallback, not live venue hours or current image availability." }) });
   await page.screenshot({ path: testInfo.outputPath("today-county-no-attributable-photo.png"), fullPage: true });
 });
 

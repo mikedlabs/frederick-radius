@@ -5,7 +5,6 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 import PlaceHero from "./PlaceHero";
-import { TodayGeographicDoorwayView } from "@/components/today/TodayGeographicDoorway";
 import PlaceSheet from "./PlaceSheet";
 import PhotoLightbox from "@/components/ui/PhotoLightbox";
 
@@ -78,10 +77,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const OwnedFullHero: Story = {
-  render: (args) => <><TodayGeographicDoorwayView scope="county" /><PlaceHero {...args} /></>,
+  render: (args) => <PlaceHero {...args} />,
   play: async ({ canvasElement }) => {
     const images = within(canvasElement).getAllByRole("img", { name: owned.alt }) as HTMLImageElement[];
-    await expect(images).toHaveLength(2);
+    await expect(images).toHaveLength(1);
     for (const image of images) {
       await expectDecodedImage(image);
       const url = new URL(image.currentSrc, window.location.href);

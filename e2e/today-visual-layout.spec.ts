@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { getOwnedPlacePhoto } from "../src/lib/owned-place-photos";
+import { getLandmarkPhoto } from "../src/lib/integrations/wikimedia";
 import {
   dismissReturnBridge,
   emptyReturnBridgeState,
@@ -8,12 +9,15 @@ import {
 
 test.use({ serviceWorkers: "block" });
 
-const geographicSubjects = [
-  { slug: "carroll-creek-linear-park-frederick", title: "Carroll Creek", action: "Carroll Creek Linear Park" },
-  { slug: "baker-park-frederick", title: "Baker Park", action: "Baker Park" },
-  { slug: "visitation-hotel", title: "Visitation Hotel", action: "Visitation Hotel" },
+const zoesPhoto = getOwnedPlacePhoto("zoes-chocolate-company")!;
+const saborPhoto = getLandmarkPhoto("sabor-de-cuba-restaurant-frederick")!;
+const diningSubjects = [
+  { slug: null, title: "Find pizza", action: "Find pizza", path: "/nearby", src: "/images/discovery/pizza-preparation.jpg", alt: "Rectangular pizzas with cheese and herbs on a preparation counter." },
+  { slug: "zoes-chocolate-company", title: "Zoe's Chocolate Company", action: "View Zoe's Chocolate Company in Frederick", path: "/places/zoes-chocolate-company", src: zoesPhoto.src, alt: zoesPhoto.alt },
+  { slug: "sabor-de-cuba-restaurant-frederick", title: "Sabor de Cuba", action: "View Sabor de Cuba Restaurant in Frederick", path: "/places/sabor-de-cuba-restaurant-frederick", src: "/place-photos/sabor-de-cuba-entrance-2018.jpg", alt: saborPhoto.alt },
 ] as const;
-const geographicPhotoPaths = new Set(geographicSubjects.map(subject => getOwnedPlacePhoto(subject.slug)!.src));
+const geographicPhotoPaths = new Set<string>(diningSubjects.map(subject => subject.src));
+const businessPhotoPaths = new Set<string>(diningSubjects.slice(1).map(subject => subject.src));
 
 /** Root-font text resizing is not browser page zoom. These probes must prove
  * actual computed growth of the compact weather before geometry is accepted. */
@@ -163,7 +167,7 @@ async function scrollQuickNeedsWithNativeKeys(
 }
 
 /** Reach the first event's useful text through ordinary document scrolling.
- * The owned place photograph leads on arrival; it cannot cost more than the
+ * Dining photography leads on arrival; it cannot cost more than the
  * existing one-viewport budget to read the first event title and timing. */
 async function scrollFirstEventFactsWithNativeInput(
   page: Page, title: Locator, timing: Locator, primaryNav: Locator,
@@ -245,22 +249,36 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const doorway = page.locator("[data-today-geographic-doorway]");
     await expect(doorway).toHaveAttribute("data-photo-state", "loaded");
     const mosaic = page.locator("[data-today-geographic-mosaic]");
-    await expect(mosaic.getByRole("link")).toHaveCount(3);
-    await expect(mosaic.getByRole("img")).toHaveCount(3);
-    for (const subject of geographicSubjects) {
-      const link = mosaic.getByRole("link", { name: `View ${subject.action} in Frederick`, exact: true });
-      const photo = getOwnedPlacePhoto(subject.slug)!;
-      await expect(link).toHaveAttribute("href", `/places/${subject.slug}`);
+    const diningGrid = mosaic.locator("[data-today-discovery-grid]");
+    await expect(diningGrid.getByRole("link")).toHaveCount(3);
+    await expect(diningGrid.getByRole("img")).toHaveCount(3);
+    for (const subject of diningSubjects) {
+      const link = diningGrid.getByRole("link", { name: subject.action, exact: true });
+      const href = new URL((await link.getAttribute("href"))!, page.url());
+      expect(href.pathname).toBe(subject.path);
+      expect(href.searchParams.get("in")).toBe("county");
+      expect(href.searchParams.get("returnTo")).toBe("/today?in=county");
+      if (subject.slug === null) {
+        expect(href.searchParams.get("c")).toBe("food");
+        expect(href.searchParams.get("facet")).toBe("pizza");
+        await expect(link).not.toHaveAttribute("data-today-geographic-place");
+      } else await expect(link).toHaveAttribute("data-today-geographic-place", subject.slug);
       await expect(link).toHaveAttribute("data-photo-state", "loaded");
-      await expect(link.locator("img")).toHaveAttribute("alt", photo.alt);
+      await expect(link.locator("img")).toHaveAttribute("alt", subject.alt);
       await expect.poll(() => link.locator("img").evaluate(async (image: HTMLImageElement, src) => {
         try { await image.decode(); } catch { return false; }
         return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1
           && decodeURIComponent(image.currentSrc || image.src).includes(src);
-      }, photo.src)).toBe(true);
+      }, subject.src)).toBe(true);
       await expect(link.getByRole("heading", { name: subject.title, exact: true })).toBeVisible();
       await expect(link.locator("a, button, input, select")).toHaveCount(0);
     }
+    const photoCredit = mosaic.locator("[data-today-discovery-credit]");
+    await expect(photoCredit.getByRole("link", { name: `Photo by ${saborPhoto.author}. Wikimedia Commons`, exact: true })).toHaveAttribute("href", saborPhoto.source_url);
+    await expect(photoCredit.getByRole("link", { name: saborPhoto.license, exact: true })).toHaveAttribute("href", saborPhoto.licenseUrl!);
+    await expect(photoCredit.locator("summary")).toHaveText("Edited photo");
+    await expect(photoCredit).toContainText(saborPhoto.modifications!);
+    await expect(diningGrid.locator(".place-card-photo-credit")).toHaveCount(0);
     // Header hydration and a decoded photo can move the document between
     // separate protocol calls. Compare all actual layout boxes in one paint.
     const geometry = await page.evaluate(() => {
@@ -275,12 +293,12 @@ for (const width of [320, 375, 390, 430, 1366]) {
         weatherBox: bounds("[data-today-weather]"),
         photoBox: bounds("[data-today-geographic-doorway] figure"),
         doorwayBox: bounds("[data-today-geographic-doorway]"),
-        mosaicBox: bounds("[data-today-geographic-mosaic]"),
+        mosaicBox: bounds("[data-today-discovery-grid]"),
         captionBox: bounds("[data-today-geographic-caption]"),
-        subjects: Array.from(document.querySelectorAll("[data-today-geographic-place]")).map(link => {
+        subjects: Array.from(document.querySelectorAll("[data-today-discovery-action]")).map(link => {
           const box = link.getBoundingClientRect(), caption = link.querySelector("[data-today-geographic-caption]")!.getBoundingClientRect();
           const range = document.createRange(); range.selectNodeContents(link.querySelector("h2, h3")!);
-          return { slug: link.getAttribute("data-today-geographic-place"),
+          return { slug: link.getAttribute("data-today-geographic-place") ?? "pizza",
             box: { x: box.x, y: box.y, width: box.width, height: box.height },
             caption: { x: caption.x, y: caption.y, width: caption.width, height: caption.height },
             lines: Array.from(range.getClientRects()).map(line => ({ x: line.x, y: line.y, width: line.width, height: line.height })) };
@@ -333,11 +351,10 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(geometry.subjects[2].box.y).toBeGreaterThan(geometry.subjects[1].box.y + geometry.subjects[1].box.height);
     expect(photoBox.width).toBeGreaterThanOrEqual(doorwayBox.width * 0.95);
     expect(photoBox.height).toBeGreaterThan(130);
-    await expect(doorway.locator("img")).toHaveAttribute("alt", getOwnedPlacePhoto(geographicSubjects[0].slug)!.alt);
-    await expect(doorway.getByRole("heading", { name: "Carroll Creek", exact: true })).toBeVisible();
-    await expect(doorway).toContainText("Frederick");
-    await expect(mosaic).toHaveText("Carroll CreekFrederickBaker ParkVisitation Hotel");
-    await expect(doorway).not.toContainText(/best|open now|safe now|current conditions|Mike D|June 2023/i);
+    await expect(doorway.locator("img")).toHaveAttribute("alt", diningSubjects[0].alt);
+    await expect(doorway.getByRole("heading", { name: "Find pizza", exact: true })).toBeVisible();
+    await expect(diningGrid).toHaveText("Find pizzaZoe's Chocolate CompanySabor de Cuba");
+    await expect(mosaic).not.toContainText(/best|open now|safe now|current conditions|recommended|made in Frederick|Mike D|June 2023/i);
     await expect(doorway.locator("a, button, input, select")).toHaveCount(0);
     const quickNeeds = page.getByRole("group", { name: "Quick needs", exact: true });
     const explore = page.getByRole("region", { name: "More ways to explore", exact: true });
@@ -442,7 +459,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const decision = places.locator(":scope > section");
     await expect(decision).toHaveCount(1);
     // Read the live hierarchy in one frame. Runtime choices may hydrate after
-    // arrival, but the owned visual, events, area answer and later utilities
+    // arrival, but the dining visual, events, area answer and later utilities
     // retain the same vertical and document order at every viewport width.
     await expect.poll(() => page.evaluate(() => {
       const entry = document.querySelector("[data-today-entry-controls]")?.getBoundingClientRect();
@@ -501,8 +518,8 @@ for (const width of [320, 375, 390, 430, 1366]) {
       const activeAlert = page.getByRole("region", { name: "Heads up", exact: true });
       const specialDay = page.locator('[data-moment-spotlight-day-of="true"]');
       if (await activeAlert.count() === 0 && await specialDay.count() === 0) {
-        expect(photoBox.y, "the first owned place photograph begins in the ordinary arrival viewport").toBeGreaterThanOrEqual(0);
-        expect(photoBox.y + photoBox.height, "the decoded owned place photograph is above the fixed tabs on ordinary arrival").toBeLessThanOrEqual(primaryNavBox!.y);
+        expect(photoBox.y, "the first category photograph begins in the ordinary arrival viewport").toBeGreaterThanOrEqual(0);
+        expect(photoBox.y + photoBox.height, "the decoded category photograph is above the fixed tabs on ordinary arrival").toBeLessThanOrEqual(primaryNavBox!.y);
       }
       if (width >= 375 && await activeAlert.count() === 0 && await specialDay.count() === 0) {
         const firstChoice = events.locator('[data-today-event-shortlist] article[data-decision-entity="event"]').first();
@@ -535,7 +552,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await testInfo.attach("today-arrival-geometry", {
       contentType: "application/json",
       body: JSON.stringify({ width, mastheadBox, weatherBox, findBox, entryControlsBox, captionBox, photoBox, doorwayBox, mosaicBox, subjects: geometry.subjects, quickNeedsBox, decisionBox, primaryNavBox, currentLayout,
-        note: "Weather and Find with scope lead the exact decoded owned place scene, Follow the day, one scoped area answer and news. More ways to explore owns the single four-shortcut deck afterward. DOM and vertical visual order match at phone and desktop widths. Event facts retain the existing bounded native-scroll requirement; utility reachability is measured from its own heading." }),
+        note: "Weather and Find with scope lead the decoded generic pizza illustration and exact local business photographs, Follow the day, one scoped area answer and news. More ways to explore owns the single four-shortcut deck afterward. DOM and vertical visual order match at phone and desktop widths. Event facts retain the existing bounded native-scroll requirement; utility reachability is measured from its own heading." }),
     });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}.png`), fullPage: true });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}-viewport.png`), fullPage: false });
@@ -545,7 +562,10 @@ for (const width of [320, 375, 390, 430, 1366]) {
     );
     await expect(page.getByRole("link", { name: "Plan a few hours", exact: true }))
       .toHaveAttribute("href", /in=brunswick/);
-    await expect(page.locator("[data-today-geographic-doorway]")).toHaveCount(0);
+    const scopedPizza = page.getByRole("link", { name: "Find pizza", exact: true });
+    await expect(scopedPizza).toHaveAttribute("data-photo-state", "loaded");
+    expect(new URL((await scopedPizza.getAttribute("href"))!, page.url()).searchParams.get("in")).toBe("brunswick");
+    await expect(page.locator("[data-today-geographic-place], [data-today-discovery-credit]")).toHaveCount(0);
     await expect(places.locator(":scope > section")).toHaveCount(1);
     const categoryDisclosure = page.getByRole("button", { name: "Browse all categories", exact: true });
     await expect(categoryDisclosure).toHaveCount(1);
@@ -567,7 +587,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
 }
 
 for (const town of ["brunswick", "thurmont"]) {
-  test(`Today keeps the first ${town} paint free of a Frederick photo doorway`, async ({ page }, testInfo) => {
+  test(`Today keeps the first ${town} paint neutral and hydrates only scoped generic photography`, async ({ page }, testInfo) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 375, height: 844 });
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -631,11 +651,29 @@ for (const town of ["brunswick", "thurmont"]) {
       await expect(area).toBeEnabled();
       await expect(area).toHaveValue(`town:${town}`);
       await expect(page.locator("[data-today-geographic-pending]")).toHaveCount(0);
-      await expect(page.locator("[data-today-geographic-doorway]")).toHaveCount(0);
-      await expect(page.locator("[data-today-geographic-mosaic], [data-today-geographic-place]")).toHaveCount(0);
+      const scopedPizza = page.getByRole("link", { name: "Find pizza", exact: true });
+      await expect(scopedPizza).toHaveAttribute("data-photo-state", "loaded");
+      const pizzaHref = new URL((await scopedPizza.getAttribute("href"))!, page.url());
+      expect(pizzaHref.pathname).toBe("/nearby");
+      expect(pizzaHref.searchParams.get("c")).toBe("food");
+      expect(pizzaHref.searchParams.get("facet")).toBe("pizza");
+      expect(pizzaHref.searchParams.get("in")).toBe(town);
+      expect(pizzaHref.searchParams.get("returnTo")).toBe(`/today?in=${town}`);
+      await expect(page.locator("[data-today-geographic-mosaic]")).toHaveCount(1);
+      await expect(page.locator("[data-today-geographic-place], [data-today-discovery-credit]")).toHaveCount(0);
+      await expect(page.locator("[data-today-discovery-action]")).toHaveCount(1);
+      await expect(scopedPizza.locator("img")).toHaveAttribute("alt", diningSubjects[0].alt);
+      await expect.poll(() => scopedPizza.locator("img").evaluate(async (image: HTMLImageElement, source) => {
+        try { await image.decode(); } catch { return false; }
+        return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1 && decodeURIComponent(image.currentSrc || image.src).includes(source);
+      }, diningSubjects[0].src)).toBe(true);
       await expect(page.getByTestId("today-scope-status")).toContainText(`${town === "brunswick" ? "Brunswick" : "Thurmont"} picks · Countywide weather`);
       await expect(page.locator('[aria-label="Places for your area"] > section')).toHaveCount(1);
-      expect(geographicPhotoRequests).toEqual([]);
+      expect(geographicPhotoRequests.length).toBeGreaterThan(0);
+      expect(geographicPhotoRequests.some(request => {
+        const url = new URL(request);
+        return businessPhotoPaths.has(decodeURIComponent(url.pathname === "/_next/image" ? url.searchParams.get("url")! : url.pathname));
+      })).toBe(false);
       expect(await page.evaluate(() => performance.timeOrigin)).toBe(initialTimeOrigin);
       await page.screenshot({ path: testInfo.outputPath(`today-${town}-hydrated-viewport.png`), fullPage: false });
     } finally {
