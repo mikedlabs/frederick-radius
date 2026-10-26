@@ -68,7 +68,7 @@
     },
     "commerce_source": {
       "url": "https://monocacybrewing.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-10-26T14:19:44.487Z"
     },
     "commerce_links": [
       {
@@ -878,7 +878,7 @@
     "name": "Orchid Cellar Meadery & Winery",
     "commerce_source": {
       "url": "https://www.orchidcellar.com/",
-      "checkedAt": "2026-07-29T12:31:45.836Z"
+      "checkedAt": "2026-10-26T14:19:44.126Z"
     }
   },
   "mazzaroth-vineyard-middletown": {
@@ -938,7 +938,7 @@
     "name": "New Market Plains Vineyards",
     "commerce_source": {
       "url": "https://www.newmarketplains.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-10-26T14:19:43.494Z"
     }
   },
   "brewers-alley-frederick": {
@@ -1014,7 +1014,7 @@
     "name": "Manalu Italian Restaurant",
     "commerce_source": {
       "url": "https://manaluitalianrestaurant.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-10-26T14:19:39.595Z"
     },
     "commerce_links": [
       {
@@ -1027,12 +1027,6 @@
         "type": "menu",
         "url": "https://manaluitalianrestaurant.com/menu/",
         "anchor_text": "Menu",
-        "source_url": "https://manaluitalianrestaurant.com/"
-      },
-      {
-        "type": "menu",
-        "url": "http://manaluitalianrestaurant.com/menu/",
-        "anchor_text": "VIEW FULL MENU",
         "source_url": "https://manaluitalianrestaurant.com/"
       }
     ]
@@ -1119,7 +1113,7 @@
     "name": "Olde Mother Brewing",
     "commerce_source": {
       "url": "https://oldemother.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-10-26T14:19:43.954Z"
     },
     "commerce_links": [
       {
@@ -3106,6 +3100,71 @@
         "url": "https://ggspastryshop.com/menu/",
         "anchor_text": "Menu",
         "source_url": "https://ggspastryshop.com/"
+      }
+    ]
+  },
+  "mamma-angela-mount-airy": {
+    "name": "Mamma Angela",
+    "commerce_source": {
+      "url": "https://www.mammaangelamtairymd.com/",
+      "checkedAt": "2026-10-26T14:19:39.430Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.mammaangelamtairymd.com/_files/ugd/3c5d89_4464a45c84fc4eda92569f7a47da88da.pdf",
+        "anchor_text": "MENU",
+        "source_url": "https://www.mammaangelamtairymd.com/"
+      }
+    ]
+  },
+  "modern-asia-frederick": {
+    "name": "Modern Asia",
+    "commerce_source": {
+      "url": "https://modernasiaonline.com/",
+      "checkedAt": "2026-10-26T14:19:40.863Z"
+    }
+  },
+  "monkey-lala-frederick": {
+    "name": "Monkey Lala",
+    "commerce_source": {
+      "url": "https://themonkeylala.com/",
+      "checkedAt": "2026-10-26T14:19:40.992Z"
+    }
+  },
+  "kings-pizza-brunswick": {
+    "name": "King's Pizza",
+    "commerce_source": {
+      "url": "https://ilovekings.com/",
+      "checkedAt": "2026-10-25T12:50:08.265Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://ilovekings.com/menu",
+        "anchor_text": "Pizza",
+        "source_url": "https://ilovekings.com/"
+      }
+    ]
+  },
+  "ledo-pizza-ijamsville": {
+    "name": "Ledo Pizza",
+    "commerce_source": {
+      "url": "https://ledopizza.com/store/md-lake-linganore/",
+      "checkedAt": "2026-10-25T12:50:08.718Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://order.ledopizza.com/menu/ledo-pizza-lake-linganore",
+        "anchor_text": "Order Online",
+        "source_url": "https://ledopizza.com/store/md-lake-linganore/"
+      },
+      {
+        "type": "catering",
+        "url": "https://ledopizza.com/store/md-lake-linganore/room-rental/",
+        "anchor_text": "submit a party-room and catering inquiry",
+        "source_url": "https://ledopizza.com/store/md-lake-linganore/"
       }
     ]
   }

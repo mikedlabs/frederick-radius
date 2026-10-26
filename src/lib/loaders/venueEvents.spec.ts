@@ -4,6 +4,10 @@ import {
   type VenueEvent,
 } from "@/lib/loaders/venueEvents";
 import { prepareEventArchiveRows } from "@/lib/events/event-archive-batch";
+import { mergeUnifiedEventCards } from "@/lib/loaders/unifiedEvents";
+import { cleanEventSlug } from "@/lib/events/normalize";
+import { venueOccurrenceSlug } from "@/lib/events/venue-occurrence";
+import { archivedEventFromSnapshot } from "@/lib/events/event-identity";
 import { withVenueThumb } from "@/lib/loaders/eventThumb";
 import fixture from "../../../tests/fixtures/steinhardt-squarespace.json" with { type: "json" };
 
@@ -97,8 +101,8 @@ describe("venue event durable identity", () => {
     ]);
 
     expect(cards.map((card) => card.slug)).toEqual([
-      "bluegrass-jam-2026-08-05",
-      "bluegrass-jam-2026-08-12",
+      "bluegrass-jam-unmatched-test-venue-20260805230000000z-2026-08-05",
+      "bluegrass-jam-unmatched-test-venue-20260812230000000z-2026-08-12",
     ]);
     expect(cards.map((card) => card.source_id)).toEqual([
       "venue:unmatched-test-venue:2026-08-05T23:00:00.000Z",
@@ -151,5 +155,128 @@ describe("source-bound venue event art priority", () => {
       const [card] = venueEventsToCards([event({ venue_slug: "steinhardt-brewing-company-frederick", venue_name: "Steinhardt Brewing Company", hero_image: image, source, ...overrides })]);
       expect(card.hero_image).not.toBe(image);
     }
+  });
+});
+
+
+// Exact time pairs from the reviewed/retained October 26 native snapshot.
+// These fixtures are not new observations or permission to publish source facts.
+const SAME_DAY_PERFORMANCES = [
+  {"title": "Rosie Revere, Ada Twist and Iggy Peck: The Questioneers", "venue_slug": "weinberg-center", "starts": ["2026-11-04T10:00-05:00", "2026-11-04T12:15-05:00"]},
+  {"title": "The Snowy Day", "venue_slug": "weinberg-center", "starts": ["2026-11-19T10:00-05:00", "2026-11-19T12:15-05:00"]},
+  {"title": "The Nutcracker", "venue_slug": "weinberg-center", "starts": ["2026-11-29T14:00-05:00", "2026-11-29T18:00-05:00"]},
+  {"title": "The Nutcracker", "venue_slug": "weinberg-center", "starts": ["2026-12-05T14:00-05:00", "2026-12-05T19:00-05:00"]},
+  {"title": "A Christmas Carol", "venue_slug": "weinberg-center", "starts": ["2026-12-12T14:00-05:00", "2026-12-12T19:30-05:00"]},
+  {"title": "Cat Kid Comic Club: The Musical", "venue_slug": "weinberg-center", "starts": ["2027-03-09T10:00-05:00", "2027-03-09T12:15-05:00"]},
+  {"title": "Ellis Island: Gateway to a Dream FY27", "venue_slug": "weinberg-center", "starts": ["2027-03-19T10:00-04:00", "2027-03-19T12:15-04:00"]},
+  {"title": "Don’t Let the Pigeon Drive the Bus! The Musical!", "venue_slug": "weinberg-center", "starts": ["2027-04-06T10:00-04:00", "2027-04-06T12:15-04:00"]},
+  {"title": "GIRLS NIGHT: The Musical", "venue_slug": "new-spire", "starts": ["2026-11-21T15:00-05:00", "2026-11-21T19:30-05:00"]},
+  {"title": "Holiday Storytellers", "venue_slug": "new-spire", "starts": ["2026-12-13T15:00-05:00", "2026-12-13T18:00-05:00"]},
+  {"title": "Bah Humbug", "venue_slug": "new-spire", "starts": ["2026-12-20T14:00-05:00", "2026-12-20T18:00-05:00"]},
+  {"title": "Irish Christmas in America", "venue_slug": "new-spire", "starts": ["2026-12-19T14:00-05:00", "2026-12-19T19:30-05:00"]},
+  {"title": "Dracula", "venue_slug": "new-spire", "starts": ["2027-06-12T15:00-04:00", "2027-06-12T19:30-04:00"]},
+];
+const DRACULA_STARTS = [
+  "2027-06-11T19:30-04:00", "2027-06-12T15:00-04:00", "2027-06-12T19:30-04:00",
+  "2027-06-18T19:30-04:00", "2027-06-19T19:30-04:00", "2027-06-20T15:00-04:00",
+];
+function performance(title: string, venue: string, start: string): VenueEvent {
+  return event({ title, venue_slug: venue, venue_name: venue, starts_at: start, category: "theater" });
+}
+
+describe("official venue performance routes survive public assembly", () => {
+  it("retains all six Dracula starts through the real adapter, full merge and archive projection", () => {
+    const cards = venueEventsToCards(DRACULA_STARTS.map(start => performance("Dracula", "new-spire", start)));
+    const merged = mergeUnifiedEventCards([], [], cards, []);
+    expect(new Set(cards.map(card => card.slug)).size).toBe(6);
+    expect(merged.map(card => card.starts_at)).toEqual(DRACULA_STARTS);
+    expect(prepareEventArchiveRows(merged).rows.map(row => row.source_uid)).toEqual(
+      DRACULA_STARTS.map(start => `venue:new-spire:${new Date(start).toISOString()}`),
+    );
+  });
+
+  it.each(SAME_DAY_PERFORMANCES)("keeps each official $title performance at $venue_slug", ({ title, venue_slug, starts }) => {
+    const cards = venueEventsToCards(starts.map(start => performance(title, venue_slug, start)));
+    const merged = mergeUnifiedEventCards([], [], cards, []);
+    expect(merged.map(card => card.starts_at)).toEqual(starts);
+    expect(new Set(merged.map(card => card.slug)).size).toBe(starts.length);
+    expect(prepareEventArchiveRows(merged).rows.map(row => row.source_uid)).toEqual(cards.map(card => card.source_id));
+  });
+
+  it("keeps exact sibling identities through the adjacent one-hour duplicate window", () => {
+    const starts = ["2027-06-12T15:00-04:00", "2027-06-12T15:30-04:00"];
+    const cards = venueEventsToCards(starts.map(start => performance("A substantial theater program", "new-spire", start)));
+    expect(mergeUnifiedEventCards([], [], cards, []).map(card => card.starts_at)).toEqual(starts);
+  });
+
+  it("keeps an occurrence route when a sibling is absent or the input order changes", () => {
+    const pair = DRACULA_STARTS.slice(1, 3).map(start => performance("Dracula", "new-spire", start));
+    const together = venueEventsToCards(pair);
+    for (const input of [pair, [...pair].reverse(), ...pair.map(row => [row])]) {
+      for (const card of venueEventsToCards(input)) {
+        expect(card.slug).toBe(together.find(other => other.source_id === card.source_id)?.slug);
+      }
+    }
+  });
+
+  it("distinguishes the repeated Eastern clock at the adapter boundary during the DST fold", () => {
+    const cards = venueEventsToCards([
+      performance("A substantial theater program", "new-spire", "2026-11-01T01:30-04:00"),
+      performance("A substantial theater program", "new-spire", "2026-11-01T01:30-05:00"),
+    ]);
+    expect(new Set(cards.map(card => card.slug)).size).toBe(2);
+    // Existing discovery sanity rules independently hold overnight theater starts.
+    expect(cards.every(card => /-2026-11-01$/.test(card.slug))).toBe(true);
+  });
+
+  it("distinguishes equal UTC clock times on the same 25-hour Eastern day", () => {
+    const starts = ["2026-11-01T04:30:00.000Z", "2026-11-02T04:30:00.000Z"];
+    const cards = venueEventsToCards(starts.map(start => performance("Dracula", "new-spire", start)));
+    expect(new Set(cards.map(card => card.slug)).size).toBe(2);
+    expect(new Set(cards.map(card => card.source_id)).size).toBe(2);
+    expect(cards.every(card => /-2026-11-01$/.test(card.slug))).toBe(true);
+  });
+
+  it("retains seconds and milliseconds without changing stable source IDs", () => {
+    const starts = ["2027-06-12T19:30:00.001-04:00", "2027-06-12T19:30:00.002-04:00"];
+    const cards = venueEventsToCards(starts.map(start => performance("Dracula", "new-spire", start)));
+    expect(new Set(cards.map(card => card.slug)).size).toBe(2);
+    expect(cards.map(card => card.source_id)).toEqual(starts.map(start => `venue:new-spire:${new Date(start).toISOString()}`));
+  });
+
+  it("keeps normal same-occurrence and cross-source duplicates collapsed", () => {
+    const [card] = venueEventsToCards([performance("A substantial theater program", "new-spire", DRACULA_STARTS[0])]);
+    expect(mergeUnifiedEventCards([], [], [card, { ...card }], [])).toHaveLength(1);
+    expect(mergeUnifiedEventCards([], [{ ...card, slug: "external-program-2027-06-11", source: "ticketmaster", source_id: "official-ticket-id" }], [card], [])).toHaveLength(1);
+    // A mismatched claimed ID is not authoritative evidence of another slot.
+    expect(mergeUnifiedEventCards([], [], [card, { ...card, slug: "invalid-id-program-2027-06-11", starts_at: "2027-06-11T19:45-04:00", source_id: card.source_id }], [])).toHaveLength(1);
+  });
+
+  it("keeps non-venue public slugs and source IDs unchanged", () => {
+    const [sample] = venueEventsToCards([performance("Dracula", "new-spire", DRACULA_STARTS[0])]);
+    const card = { ...sample, title: "A different event", slug: cleanEventSlug({ title: "A different event", startsAt: DRACULA_STARTS[0] }), source: "ticketmaster" as const, source_id: "unchanged-external-id" };
+    const [merged] = mergeUnifiedEventCards([], [card], [], []);
+    expect(merged.slug).toBe("a-different-event-2027-06-11");
+    expect(merged.source_id).toBe("unchanged-external-id");
+  });
+
+  it("keeps archived canonical route ownership separate from the incoming snapshot slug", () => {
+    const [card] = venueEventsToCards([performance("Dracula", "new-spire", DRACULA_STARTS[1])]);
+    const old = archivedEventFromSnapshot(card, "dracula-2027-06-12");
+    expect(old?.slug).toBe("dracula-2027-06-12");
+    expect(old?.source_id).toBe(card.source_id);
+    expect(old?.starts_at).toBe(DRACULA_STARTS[1]);
+    const current = archivedEventFromSnapshot(card, card.slug);
+    expect(current?.slug).toBe(card.slug);
+    expect(current?.source_id).toBe(old?.source_id);
+  });
+
+  it("truncates only a long human prefix while retaining source, exact instant and trailing date", () => {
+    const base = `${"long-title-".repeat(30)}2027-06-12`;
+    const venue = "long-venue-".repeat(10).replace(/-$/, "");
+    const slug = venueOccurrenceSlug(base, venue, DRACULA_STARTS[1]);
+    expect(slug.length).toBeLessThanOrEqual(200);
+    expect(slug).toMatch(/^[a-z0-9][a-z0-9-]{0,199}$/);
+    expect(slug.endsWith(`-${venue}-20270612190000000z-2027-06-12`)).toBe(true);
   });
 });

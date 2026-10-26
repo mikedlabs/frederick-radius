@@ -11,6 +11,7 @@
  * mocking globals.
  */
 
+import { areDistinctVenuePerformances } from "@/lib/events/venue-occurrence";
 import { cleanFeedText, formatAddress } from "@/lib/format/text";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
@@ -642,7 +643,7 @@ export function dedupeCrossSourceShows(events: EventWithMeta[]): EventWithMeta[]
     if (stem.length >= CROSS_SOURCE_MIN_STEM && !e.is_recurring) {
       for (const i of idxs) {
         const other = kept[i];
-        if (other.is_recurring) continue;
+        if (other.is_recurring || areDistinctVenuePerformances(other, e)) continue;
         const otherStem = normLoose(seriesStem(other.title));
         if (otherStem.length < CROSS_SOURCE_MIN_STEM) continue;
         const va = normLoose(e.venue_name ?? "");
