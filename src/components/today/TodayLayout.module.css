@@ -50,15 +50,13 @@
   container-type: inline-size;
   min-width: 0;
   border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-xl);
-  background: var(--app-bg-elevated-solid);
-  box-shadow: var(--app-shadow-1);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-bg-sunken);
 }
 
 .scope {
   min-width: 0;
-  padding: 4px 4px 8px;
-  border-top: 1px solid var(--app-border);
+  padding: 0 4px 4px;
 }
 
 .scope > div {
@@ -92,7 +90,7 @@
   min-height: 44px;
   height: auto;
   max-width: 100%;
-  padding: 8px 10px;
+  padding: 6px 10px;
   font-size: 0.8125rem;
   overflow-wrap: anywhere;
 }
@@ -175,70 +173,68 @@
 
 .geographicMosaic {
   min-width: 0;
+  container-type: inline-size;
 }
 
-.geographicTileGrid {
+.discoveryPlaceGrid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--app-space-2);
+  gap: var(--app-space-3);
   min-width: 0;
-  min-height: clamp(208px, calc(16.6667vw + 155px), 260px);
 }
 
-.geographicTileGrid[data-local-businesses="true"] {
-  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
-  grid-template-rows: repeat(2, minmax(min-content, 1fr));
-}
-
-.geographicMain {
-  grid-column: 1;
-  grid-row: 1 / span 2;
-}
-
-.geographicSupporting {
-  grid-column: 2;
-}
-
-.geographicDoorway {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+.discoveryPlace {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  min-height: 44px;
+}
+
+.discoveryPlace:only-child {
+  grid-column: 1 / -1;
+}
+
+.discoveryPlace:only-child .discoveryPhoto {
+  aspect-ratio: 16 / 9;
+}
+
+.discoveryPlaceLink {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
   overflow: hidden;
   border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-xl);
-  background: var(--app-media-ink);
-  color: var(--app-on-brand);
-  box-shadow: var(--app-shadow-1);
-  outline-offset: 4px;
-  transition: box-shadow var(--app-dur-fast) var(--app-ease-out), transform var(--app-dur-fast) var(--app-ease-out);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-bg-elevated-solid);
+  color: var(--app-ink);
+  transition: transform var(--app-dur-fast) var(--app-ease-out), box-shadow var(--app-dur-fast) var(--app-ease-out);
 }
 
-.geographicDoorway:hover {
+.discoveryPlaceLink:hover {
+  color: var(--app-ink);
   box-shadow: var(--app-shadow-2);
 }
 
-.geographicDoorway:active {
-  transform: scale(0.985);
+.discoveryPlaceLink:active,
+.discoveryTask:active {
+  transform: scale(0.98);
 }
 
-.geographicDoorway:focus-visible {
-  outline: 3px solid var(--app-link);
-  outline-offset: 4px;
+.discoveryPlaceLink:focus-visible,
+.discoveryTask:focus-visible {
+  outline: 3px solid var(--app-focus);
+  outline-offset: 3px;
 }
 
-.geographicPhoto {
-  grid-area: 1 / 1;
-  align-self: stretch;
+.discoveryPhoto {
   position: relative;
-  /* Leave room for the tile's two one-pixel borders inside the mosaic. */
-  min-height: clamp(208px, calc(16.6667vw + 153px), 258px);
-  background: var(--app-media-ink);
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--app-bg-sunken);
 }
 
-/* Shared image ownership and credit remain in PlaceCardPhoto. The surrounding
-   tile owns only this mosaic's responsive crop and decoded reveal. */
-.geographicPhoto > [data-place-card-photo] {
+.discoveryPhoto > [data-place-card-photo] {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -246,127 +242,71 @@
   aspect-ratio: auto;
 }
 
-.geographicPhoto img {
+.discoveryPhoto img {
   opacity: 0;
   transition: opacity var(--app-dur-med) var(--app-ease-out);
 }
 
-.geographicSupporting .geographicPhoto {
-  min-height: 100px;
-}
-
-.geographicDoorway[data-photo-state="loaded"] .geographicPhoto img {
+.discoveryPlaceLink[data-photo-state="loaded"] .discoveryPhoto img {
   opacity: 1;
 }
 
-.geographicDoorway[data-photo-state="pending"] {
-  background: var(--app-bg-sunken);
-  color: var(--app-ink);
-}
-
-.geographicDoorway[data-photo-state="pending"] .geographicCaption {
-  background: var(--app-bg-sunken);
-}
-
-.geographicCaption {
-  grid-area: 1 / 1;
-  min-width: 0;
-  position: relative;
-  align-self: end;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--app-space-2);
-  min-height: 68px;
-  padding: var(--app-space-3);
-  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--app-media-ink) 88%, transparent) 12px, var(--app-media-ink));
-}
-
-.geographicCaption h2,
-.geographicCaption h3 {
-  flex: 1 1 0;
-  min-width: 0;
-  margin: 0;
-  color: inherit;
-  font-size: clamp(1.375rem, 3vw, 1.75rem);
-  font-weight: 750;
-  line-height: 1.12;
-  letter-spacing: -0.035em;
-  overflow-wrap: anywhere;
-}
-
-.geographicCaption h2 {
-  flex-basis: 7ch;
-}
-
-.geographicSupporting .geographicCaption {
-  gap: var(--spacing);
-  min-height: 44px;
-  padding: var(--app-space-2);
-}
-
-.geographicSupporting .geographicCaption h3 {
-  font-size: 0.875rem;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-}
-
-.geographicSupporting .geographicAction {
+.discoveryPlaceLink[data-photo-state="failed"] .discoveryPhoto {
   display: none;
 }
 
-.geographicAction {
-  display: inline-flex;
+.discoveryCaption {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: center;
-  width: 36px;
-  min-height: 36px;
+  gap: var(--app-space-2);
+  min-height: 72px;
+  padding: var(--app-space-3);
+}
+
+.discoveryName {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.discoveryTown {
+  margin: var(--spacing) 0 0;
+  color: var(--app-ink-2);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.discoveryAction {
+  display: grid;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
-  border: 1px solid currentColor;
-  border-radius: var(--app-radius-xl);
-  color: inherit;
-}
-
-.geographicDoorway[data-photo-state="failed"] {
-  background: var(--app-bg-elevated-solid);
-  color: var(--app-ink);
-}
-
-.geographicDoorway[data-photo-state="failed"] .geographicCaption {
-  min-height: 76px;
-  background: none;
-}
-
-.geographicSupporting[data-photo-state="failed"] .geographicCaption {
-  min-height: 44px;
-}
-
-.geographicDoorway[data-photo-state="failed"] .geographicAction {
+  place-items: center;
   color: var(--app-link);
 }
 
-.geographicCredit {
+.discoveryCredit {
   margin-top: var(--spacing);
+  overflow-wrap: anywhere;
 }
 
-.geographicCredit > :global(.place-card-photo-credit) {
+.discoveryCredit > :global(.place-card-photo-credit) {
   padding: 0;
   border: 0;
 }
 
-.geographicCredit :global([data-photo-modifications-disclosure] .place-card-photo-credit-row) {
+.discoveryCredit :global(.place-card-photo-credit-row) {
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--spacing) var(--app-space-2);
 }
 
-.geographicCredit :global(.place-card-photo-edits) {
-  min-width: 44px;
-  margin-inline-start: auto;
-}
-
-.geographicCredit :global(.place-card-photo-edits > summary) {
+.discoveryCredit :global(.place-card-photo-edits > summary) {
   min-width: 44px;
   min-height: 48px;
   align-content: center;
@@ -375,33 +315,94 @@
   border-radius: var(--app-radius-sm);
 }
 
-.geographicCredit :global(.place-card-photo-edits > summary:focus-visible) {
-  outline: 2px solid var(--app-ink);
+.discoveryCredit :global(.place-card-photo-edits > summary:focus-visible) {
+  outline: 2px solid var(--app-focus);
   outline-offset: -2px;
 }
 
-.geographicCredit :global(.place-card-photo-edits[open]) {
+.discoveryCredit :global(.place-card-photo-edits[open]) {
   flex-basis: 100%;
-  margin-inline-start: 0;
 }
 
-.geographicCredit :global(.place-card-photo-credit-details) {
+.discoveryCredit :global(.place-card-photo-credit-details) {
   display: grid;
   gap: var(--spacing);
   padding-block: var(--spacing) var(--app-space-2);
-  overflow-wrap: anywhere;
 }
 
-/* The server reserves useful arrival space without any town or photo claim. */
+.discoveryTasks {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--app-space-2);
+  margin-top: var(--app-space-3);
+}
+
+.discoveryTask {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-2);
+  min-width: 0;
+  min-height: 52px;
+  padding: var(--app-space-2) var(--app-space-3);
+  border-radius: var(--app-radius-md);
+  color: var(--app-ink);
+  background: var(--app-bg-sunken);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  transition: transform var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out);
+}
+
+.discoveryTask > span:not(.discoveryTaskIcon) {
+  flex: 1;
+  min-width: 0;
+}
+
+.discoveryTask:hover {
+  color: var(--app-ink);
+  background: var(--app-bg-elevated-solid);
+}
+
+.discoveryTaskIcon {
+  display: grid;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--app-link);
+}
+
+.discoveryTask[data-today-discovery-action="outside"] .discoveryTaskIcon {
+  color: var(--app-link);
+}
+
+/* Use available content width relative to actual text, not the device width.
+   At enlarged text sizes the same choices reflow into complete single cards. */
+@container (min-width: 18rem) {
+  .discoveryPlaceGrid,
+  .discoveryTasks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* No foreign town or photo claims before the browser's area is resolved. */
 .geographicPending {
-  min-height: clamp(208px, calc(16.6667vw + 155px), 260px);
-  border-radius: var(--app-radius-xl);
+  min-height: 180px;
+  border-radius: var(--app-radius-lg);
   background: var(--app-bg-sunken);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .geographicPhoto img {
+  .discoveryPhoto img,
+  .discoveryPlaceLink,
+  .discoveryTask {
     transition: none;
+  }
+
+  .discoveryPlaceLink:active,
+  .discoveryTask:active {
+    transform: none;
   }
 }
 
@@ -560,13 +561,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .eventRow,
-  .geographicDoorway {
+  .eventRow {
     transition: none;
-  }
-
-  .geographicDoorway:active {
-    transform: none;
   }
 }
 

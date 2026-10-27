@@ -104,26 +104,23 @@ describe("Today decision hierarchy", () => {
     expect(doorway).toBeGreaterThan(scope);
   });
 
-  it("keeps an earlier scoped category illustration while unreviewed merchant photographs stay off the decision surface", () => {
+  it("uses exact local scenes and scoped task links without promoting unreviewed merchants", () => {
     const photos = renderToStaticMarkup(createElement(TodayGeographicDoorwayView));
-    expect(photos).toContain(encodeURIComponent("/images/discovery/pizza-preparation.jpg"));
-    expect(photos.match(/data-today-discovery-action=/g)).toHaveLength(1);
-    expect(photos).toContain('href="/nearby?c=food&amp;facet=pizza&amp;in=county&amp;returnTo=%2Ftoday%3Fin%3Dcounty"');
-    for (const path of ["/images/seasons/winter/IMG_2732.jpg", "/place-photos/sabor-de-cuba-entrance-2018.jpg"]) {
-      expect(photos).not.toContain(encodeURIComponent(path));
+    expect(photos).toContain(encodeURIComponent("/images/places/carillon-sunset.jpg"));
+    expect(photos).toContain(encodeURIComponent("/images/seasons/spring/010.jpg"));
+    expect(photos.match(/data-today-geographic-place=/g)).toHaveLength(2);
+    for (const category of ["food", "outside"]) {
+      expect(photos).toContain(`href="/nearby?c=${category}&amp;in=county&amp;returnTo=%2Ftoday%3Fin%3Dcounty"`);
     }
-    expect(photos).not.toContain("data-today-geographic-place");
-    expect(photos).not.toContain("place-card-photo-credit");
-    expect(photos).not.toContain("/api/place-photo");
-    for (const scope of ["town:brunswick", "nearme"] as const) {
+    expect(photos).not.toMatch(/Find pizza|pizza-preparation|Zoe|Sabor|api\/place-photo/);
+    for (const scope of ["town:mount-airy", "nearme"] as const) {
       const scoped = renderToStaticMarkup(createElement(TodayGeographicDoorwayView, { scope }));
-      expect(scoped.match(/data-today-discovery-action=/g)).toHaveLength(1);
-      expect(scoped).toContain(`in=${scope === "nearme" ? "nearme" : "brunswick"}`);
       expect(scoped).not.toContain("data-today-geographic-place");
-      expect(scoped).not.toContain("place-card-photo-credit");
+      expect(scoped).not.toContain("<img");
+      expect(scoped.match(/data-today-discovery-action=/g)).toHaveLength(2);
+      expect(scoped).toContain(`in=${scope === "nearme" ? "nearme" : "mount-airy"}`);
     }
-    expect(geographicDoorway).not.toContain("June 2023");
-    expect(geographicDoorway).not.toContain("Mike D");
+    expect(geographicDoorway).not.toContain("useTodayPlacePhoto");
     expect(todayMasthead).not.toContain("<Image");
     expect(renderedPage.match(/\{decisionLead\}/g)).toHaveLength(1);
     expect(renderedPage).toContain("fallback={<TodayGeographicDoorwayPending />}");
@@ -135,9 +132,7 @@ describe("Today decision hierarchy", () => {
     );
     expect(placeAnswer).toContain("{decisionLead}");
     expect(placeAnswer).not.toContain("<TodayGeographicDoorway");
-    expect(renderedPage.indexOf("<TodayPlanTonightLink")).toBeGreaterThan(
-      renderedPage.indexOf("<TodayAsk embedded"),
-    );
+    expect(renderedPage.indexOf("<TodayPlanTonightLink")).toBeGreaterThan(renderedPage.indexOf("<TodayAsk embedded"));
     expect(renderedPage.match(/<TodayPlanTonightLink/g)).toHaveLength(1);
   });
 
@@ -179,12 +174,13 @@ describe("Today decision hierarchy", () => {
 
   it("gives each part of the briefing one purpose and preserves an overlapping civic moment", () => {
     const decide = renderedPage.indexOf("data-today-briefing");
-    const follow = renderedPage.indexOf('label="Follow the day"');
+    const follow = renderedPage.indexOf("data-today-events");
     const plan = renderedPage.indexOf('title="Plan the rest"');
     const more = renderedPage.indexOf('title="Local guides and saved places"');
 
     expect(decide).toBeGreaterThan(-1);
     expect(follow).toBeGreaterThan(decide);
+    expect(renderedPage).not.toContain('label="Follow the day"');
     expect(plan).toBeGreaterThan(follow);
     expect(more).toBeGreaterThan(plan);
     expect(renderedPage).toContain(

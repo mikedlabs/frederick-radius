@@ -32,16 +32,23 @@ working county or town fallback.
 The map must not expose two controls that change the same location state.
 Recenter, scope, and the location readout must agree.
 
-Today's arrival photographs lead directly to a scoped category or an exact
-place. A category illustration never implies that a named business serves the
-pictured food. Frederick storefronts appear only in the county or Frederick
-lens and require an exact-image current-appearance review; permission or a
-dated reference image alone is insufficient. Unreviewed business photographs
-do not lead Today recommendations or trigger a provider fallback. Other town
-and Near me lenses retain their own category destination.
-The URL scope wins over a saved scope, and Back preserves the original query
-and section. Image failures keep the named action usable. Required photograph
-credits remain outside the destination link, with usable touch targets.
+Today's arrival uses a small, explicit selection of reviewed local places,
+with the photograph above its place name and actual town. County and Frederick
+lenses can show the reviewed Frederick choices. Named town lenses show only
+places from that exact town; Near me and towns without reviewed imagery retain
+the two scoped task actions without borrowing another town's photograph.
+Eat & drink and Get outside lead to their selected-area directories. The layout
+reflows at enlarged text sizes and never rotates or hides the choices in a rail.
+Scenic photographs establish place identity, not current weather or activity.
+
+Named merchant photographs still require an exact-image current-appearance
+review; permission or a dated reference image alone is insufficient.
+Unreviewed business photographs do not lead Today recommendations or trigger
+a provider fallback. The URL scope wins over a saved scope, and Back preserves
+the original query and section. Image failures keep the named action usable.
+Required photograph credits remain outside the destination link, with usable
+touch targets. Today's events have one heading rather than an extra chapter
+label before the same results.
 
 ## Map
 
