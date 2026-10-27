@@ -6,7 +6,7 @@ import { prepareOfficialListingHoursHandoff, type OfficialListingIntakeEvidence 
 
 type EvidenceIndex = {
   schema_version: 1; source_revision: string; collection_complete: boolean;
-  records: (Omit<OfficialListingIntakeEvidence, "html"> & { evidence_file: string })[];
+  records: (Omit<OfficialListingIntakeEvidence, "html"> & { evidence_file: string; response_url?: string | null })[];
 };
 const digest = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 
@@ -32,6 +32,11 @@ export function stageOfficialListingHours(args = process.argv.slice(2), now = ne
     const matches = index.records.filter((record) => record.identity?.slug === slug && record.source_sha256 === sha);
     if (matches.length !== 1) throw new Error(`Selection must identify exactly one original response: ${slug}`);
     const record = matches[0];
+    // Older original indexes have no response URL. Preserve that uncertainty;
+    // an explicitly reported but different URL is not the captured source.
+    if (record.response_url !== undefined && record.response_url !== null && record.response_url !== record.source_url) {
+      throw new Error(`Original response URL does not match the selected source: ${slug}`);
+    }
     if (record.source_revision !== revision || typeof record.evidence_file !== "string" || !record.evidence_file
       || isAbsolute(record.evidence_file) || record.evidence_file.includes("/") || record.evidence_file.includes("\\") || record.evidence_file === "." || record.evidence_file === "..") throw new Error("Original record revision or local evidence path is invalid.");
     const path = resolve(dirname(indexPath), record.evidence_file), stat = lstatSync(path);
@@ -67,7 +72,8 @@ export function stageOfficialListingHours(args = process.argv.slice(2), now = ne
     writeJson("review-plan.json", result.plan);
     writeJson("review-handoff.json", { schema_version: 1, source_revision: revision, original_index_sha256: digest(indexBytes), collection_complete: index.collection_complete,
       approved_baseline_sha256: digest(artifactBytes), staged: result.staged, blocked: result.blocked,
-      selected: selected.map(({ evidence, evidence_file, original_file }) => ({ slug: evidence.identity.slug, source_url: evidence.source_url, observed_at: evidence.observed_at,
+      selected: selected.map(({ evidence, evidence_file, original_file }) => ({ slug: evidence.identity.slug, source_url: evidence.source_url, response_url: evidence.response_url ?? null,
+        response_url_status: evidence.response_url == null ? "unknown" : "reported_match", observed_at: evidence.observed_at,
         source_sha256: evidence.source_sha256, source_revision: evidence.source_revision, evidence_file, original_file })),
       accepted: [], publication_required: false, next_step: "Review every staged original and edit the held plan; use review:official-hours-batch against the private pending artifact. Reconcile approved results through the normal protected publication lane." });
   }

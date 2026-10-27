@@ -403,8 +403,10 @@ survive a missing-anchor response, failed follow page or prior-destination hold.
 New captures also retain the response URL reported by the transport; a missing
 value remains `null` and is not inferred from the requested URL. Earlier
 artifacts without this field are unchanged and do not gain a new observation.
-Reviewers must consult the original index for this field; the compact intake
-and hours handoff do not reproduce it. The URL alone does not approve facts.
+The private hours handoff includes the reported response URL when available
+and marks older or missing values `unknown`; the compact intake does not copy
+it. Reviewers still authenticate the original index and source bytes. A
+reported matching URL alone does not approve facts.
 The compact outcomes and held intake candidates remain in the 30-day diagnostic
 artifact. Preserve useful pending evidence privately before raw-artifact expiry.
 These artifacts add no page requests, rendering, models or paid providers.

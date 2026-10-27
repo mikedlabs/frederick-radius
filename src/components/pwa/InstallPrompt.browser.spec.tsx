@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FIRST_VISIT_INSTALL_DELAY_MS, type BeforeInstallPromptEvent } from "@/hooks/useInstallPrompt";
-import { RETURN_BRIDGE_OPEN_EVENT } from "@/lib/return-bridge";
+import { RETURN_BRIDGE_OPEN_EVENT, RETURN_BRIDGE_VALUE_EVENT } from "@/lib/return-bridge";
 
 vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname }));
 vi.mock("next/image", () => ({ default: () => null }));
@@ -45,9 +45,28 @@ afterEach(async () => {
 });
 
 describe("installation promotion preserves focused journeys", () => {
-  it.each(["/transit?stop=162950#my-stop-heading", "/map?place=carroll-creek-linear-park-frederick", "/events?in=county", "/ask"])("does not automatically interrupt %s after the real first-visit delay", async path => {
+  it.each(["/transit?stop=162950#my-stop-heading", "/map?place=carroll-creek-linear-park-frederick", "/events?in=county", "/ask", "/nearby?c=food&in=county", "/search?q=coffee"])("does not automatically interrupt %s after the real first-visit delay", async path => {
     await render(path); button("Rider task").focus();
     await advance(FIRST_VISIT_INSTALL_DELAY_MS + 1000);
+    expect(bridge()).toBeNull(); expect(document.activeElement).toBe(button("Rider task"));
+  });
+
+  it("keeps a first-visit offer hidden when moving from Today into Nearby and Search", async () => {
+    await render("/today?in=county");
+    await advance(FIRST_VISIT_INSTALL_DELAY_MS + 1000);
+    expect(bridge()).toBeNull();
+    await render("/nearby?c=food&in=county");
+    button("Rider task").focus();
+    expect(bridge()).toBeNull(); expect(document.activeElement).toBe(button("Rider task"));
+    await render("/search?q=coffee&in=county");
+    expect(bridge()).toBeNull(); expect(document.activeElement).toBe(button("Rider task"));
+  });
+
+  it.each(["/nearby?c=food", "/search?q=coffee"])("does not interrupt a saved-place action on %s", async path => {
+    await render(path);
+    await act(async () => window.dispatchEvent(new CustomEvent(RETURN_BRIDGE_VALUE_EVENT, { detail: "place" })));
+    button("Rider task").focus();
+    await advance(7000);
     expect(bridge()).toBeNull(); expect(document.activeElement).toBe(button("Rider task"));
   });
 
@@ -68,7 +87,7 @@ describe("installation promotion preserves focused journeys", () => {
     expect(bridge()).toBeNull(); expect(document.activeElement).toBe(button("Rider task"));
   });
 
-  it.each(["/transit?stop=162950", "/map", "/events", "/ask"])("retains deliberate native installation on %s without calling the browser until tapped", async path => {
+  it.each(["/transit?stop=162950", "/map", "/events", "/ask", "/nearby?c=food", "/search?q=coffee"])("retains deliberate native installation on %s without calling the browser until tapped", async path => {
     await render(path);
     const prompt = vi.fn(async () => undefined);
     const install = Object.assign(new Event("beforeinstallprompt", { cancelable: true }), { prompt, userChoice: Promise.resolve({ outcome: "accepted" as const, platform: "web" }) });
@@ -83,6 +102,18 @@ describe("installation promotion preserves focused journeys", () => {
 
   it("retains the existing one-modal priority for an explicitly requested install panel", async () => {
     await render("/transit");
+    const dialog = document.createElement("section"); dialog.setAttribute("role", "dialog"); dialog.setAttribute("aria-modal", "true");
+    await act(async () => document.body.append(dialog));
+    await act(async () => button("Install Radius deliberately").click()); await advance(16);
+    expect(bridge()).toBeNull();
+    await act(async () => dialog.remove()); await advance(16);
+    expect(bridge()).not.toBeNull();
+    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Close Keep Radius"]')!.click());
+    expect(bridge()).toBeNull();
+  });
+
+  it.each(["/nearby?c=food", "/search?q=coffee"])("keeps a deliberate install behind an active modal on %s", async path => {
+    await render(path);
     const dialog = document.createElement("section"); dialog.setAttribute("role", "dialog"); dialog.setAttribute("aria-modal", "true");
     await act(async () => document.body.append(dialog));
     await act(async () => button("Install Radius deliberately").click()); await advance(16);

@@ -58,6 +58,9 @@ export function isInstallPromptSuppressedPath(pathname: string): boolean {
   return isFairDayPath(pathname)
     || pathname === "/map"
     || pathname === "/today"
+    // Discovery results are focused work too: a queued first-visit offer
+    // must not appear as someone moves from Today into Nearby or Search.
+    || /^\/(nearby|search)(?:\/|$)/.test(pathname)
     // Route/stop and event discovery are focused journeys too. In particular,
     // a timed offer must not surface when a rider closes a temporary sheet.
     || /^\/(transit|events)(?:\/|$)/.test(pathname)

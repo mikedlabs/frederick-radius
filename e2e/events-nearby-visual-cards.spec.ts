@@ -504,7 +504,10 @@ for (const width of [390, 320]) {
       // Mobile WebKit does not implement Playwright mouse.wheel. Use real
       // native key scrolling and observe its actual smooth-scroll completion.
       const travel: number[] = [];
-      for (let key = 0; key < 4; key += 1) {
+      // Some early key presses may not move the document in local WebKit.
+      // Keep using real key input, but allow a few more presses to reach the
+      // same strict scroll threshold before measuring the sticky controls.
+      for (let key = 0; key < 8; key += 1) {
         await page.keyboard.press("ArrowDown");
         const deadline = Date.now() + 1500;
         let prior = await page.evaluate(() => scrollY), stable = 0;
@@ -515,6 +518,7 @@ for (const width of [390, 320]) {
           prior = current;
         }
         travel.push(prior);
+        if (prior > 80) break;
       }
       evidence.measurements.nativeArrowDownScroll = travel;
     } else {

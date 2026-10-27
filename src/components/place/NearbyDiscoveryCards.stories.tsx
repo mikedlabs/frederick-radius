@@ -112,8 +112,85 @@ export const NoReviewedPhoto: Story = {
   play: async ({ canvasElement }) => {
     await nearbyActions(canvasElement, "38 S Market St");
     expect(canvasElement.querySelector("[data-place-card-photo]")).toBeNull();
+    const art = canvasElement.querySelector<HTMLElement>("[data-nearby-category-art]")!;
+    expect(art.getAttribute("aria-hidden")).toBe("true");
+    expect(art.querySelector("svg")).not.toBeNull();
+    expect(art.getBoundingClientRect().width).toBeGreaterThanOrEqual(60);
     expect(canvasElement.querySelector("article")!.getBoundingClientRect().height).toBeLessThan(300);
     await expect(within(canvasElement).getByRole("heading", { name: "Carroll Creek Promenade" })).toBeVisible();
+  },
+};
+
+export const RestaurantWithoutPhoto320: Story = {
+  args: { lazyPhoto: false, place: { ...creek, slug: "olde-town-restaurant-mount-airy", name: "Olde Town Restaurant",
+    category: "restaurant", city: "Mount Airy", municipality: "mount-airy", postal_code: "21771",
+    address: "206 S Main St, Mt Airy, MD 21771", geom: { lng: -77.1552773, lat: 39.3761508 } } },
+  decorators: [(Story) => <div style={{ width: 288 }}><Story /></div>],
+  play: async ({ canvasElement }) => {
+    await nearbyActions(canvasElement, "206 S Main St, Mt Airy, MD 21771");
+    expect(canvasElement.querySelector("[data-place-card-photo]")).toBeNull();
+    expect(canvasElement.querySelector('[data-nearby-category-art][aria-hidden="true"]')).not.toBeNull();
+    const actions = canvasElement.querySelector<HTMLElement>("[data-save-ref]")!.parentElement!;
+    expect(getComputedStyle(actions).gridTemplateColumns.trim().split(/\s+/)).toHaveLength(2);
+  },
+};
+
+export const RestaurantWithoutPhoto390: Story = {
+  args: RestaurantWithoutPhoto320.args,
+  play: RestaurantWithoutPhoto320.play,
+};
+
+export const NoPhotoNarrowDoubledText: Story = {
+  args: NoReviewedPhoto.args,
+  decorators: [(Story) => <DoubledText><Story /></DoubledText>],
+  play: async ({ canvasElement }) => {
+    await nearbyActions(canvasElement, "38 S Market St");
+    const article = canvasElement.querySelector<HTMLElement>("article")!;
+    expect(article.querySelector("[data-nearby-category-art]")).not.toBeNull();
+    const actions = article.querySelector<HTMLElement>("[data-save-ref]")!.parentElement!;
+    expect(getComputedStyle(actions).gridTemplateColumns.trim().split(/\s+/)).toHaveLength(1);
+    for (const label of article.querySelectorAll<HTMLElement>("h3, p, [data-save-ref], a[aria-label^='Directions']")) {
+      expect(label.scrollWidth).toBeLessThanOrEqual(label.clientWidth + 1);
+      expect(label.scrollHeight).toBeLessThanOrEqual(label.clientHeight + 1);
+    }
+    for (const [control, label] of [[within(article).getByRole("button", { name: /^Save / }), "Save"],
+      [within(article).getByRole("link", { name: /^Directions to / }), "Directions"]] as const) {
+      const walker = document.createTreeWalker(control, NodeFilter.SHOW_TEXT);
+      let text: Node | null = walker.nextNode();
+      while (text && text.textContent?.trim() !== label) text = walker.nextNode();
+      expect(text).not.toBeNull();
+      const range = document.createRange();
+      range.selectNodeContents(text!);
+      // Also exercise wider text metrics, as system fonts differ by platform.
+      // Restore the inline value so this remains the actual shipped design.
+      const spacing = control.style.letterSpacing;
+      for (const candidate of [spacing, "0.08em"]) {
+        control.style.letterSpacing = candidate;
+        expect(range.getClientRects()).toHaveLength(1);
+        expect(control.scrollWidth).toBeLessThanOrEqual(control.clientWidth + 1);
+      }
+      control.style.letterSpacing = spacing;
+    }
+  },
+};
+
+function DarkAppearance({ children }: { children: ReactNode }) {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const previous = root.getAttribute("data-appearance");
+    root.setAttribute("data-appearance", "dark");
+    return () => { if (previous === null) root.removeAttribute("data-appearance"); else root.setAttribute("data-appearance", previous); };
+  }, []);
+  return <div style={{ width: 288 }}>{children}</div>;
+}
+
+export const NoPhotoDark: Story = {
+  args: NoReviewedPhoto.args,
+  decorators: [(Story) => <DarkAppearance><Story /></DarkAppearance>],
+  play: async ({ canvasElement }) => {
+    await nearbyActions(canvasElement, "38 S Market St");
+    const art = canvasElement.querySelector<HTMLElement>("[data-nearby-category-art]")!;
+    expect(getComputedStyle(art).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
   },
 };
 
@@ -147,6 +224,30 @@ export const LicensedLocalPhoto: Story = {
     expect(credit.textContent).toContain(source.modifications);
     expect(credit.querySelector(`a[href="${source.licenseUrl}"]`)).not.toBeNull();
     expect(credit.closest("button")).toBeNull();
+  },
+};
+
+/** A mixed result list: the fallback must never look like or replace the
+ * credited, exact-place photograph immediately above it. */
+export const MixedDiscoveryMobile: Story = {
+  decorators: [(Story) => <div style={{ width: 288 }}><Story /></div>],
+  render: (args) => <div style={{ display: "grid", gap: 12 }}>
+    <div data-mixed-photo><PlaceCard {...args} place={{ ...creek, slug: "schifferstadt-architectural-museum-frederick", name: "Schifferstadt Architectural Museum", category: "museum", address: "1110 Rosemont Ave, Frederick, MD 21701", geom: { lng: -77.4269867, lat: 39.4235725 } }} /></div>
+    <div data-mixed-fallback><PlaceCard {...args} {...RestaurantWithoutPhoto320.args} /></div>
+  </div>,
+  play: async ({ canvasElement }) => {
+    const photo = canvasElement.querySelector<HTMLElement>("[data-mixed-photo]")!;
+    const fallback = canvasElement.querySelector<HTMLElement>("[data-mixed-fallback]")!;
+    await nearbyActions(photo, "1110 Rosemont Ave, Frederick, MD 21701");
+    await nearbyActions(fallback, "206 S Main St, Mt Airy, MD 21771");
+    const image = photo.querySelector<HTMLImageElement>("[data-place-card-photo] img")!;
+    await image.decode();
+    const source = getLandmarkPhoto("schifferstadt-architectural-museum-frederick")!;
+    expect(localImagePath(image)).toBe(source.localSrc);
+    expect(photo.querySelector(".place-card-photo-credit")?.textContent).toContain(source.author);
+    expect(photo.querySelector(`.place-card-photo-credit a[href="${source.licenseUrl}"]`)).not.toBeNull();
+    expect(fallback.querySelector("[data-place-card-photo]")).toBeNull();
+    expect(fallback.querySelector('[data-nearby-category-art][aria-hidden="true"] [data-nearby-art-initial]')?.textContent).toBe("O");
   },
 };
 

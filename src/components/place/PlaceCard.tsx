@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type MouseEvent } from "react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "./PlaceCardPhoto";
 import { usePlacePhotoData } from "@/components/place/usePlacePhoto";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -240,6 +240,9 @@ export default function PlaceCard({
     const nearby = discoverySurface === "nearby";
     const credit = <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} touchTarget compact discloseModifications={parksDiscovery} />;
     const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? place.city;
+    // A decorative initial distinguishes no-photo results without presenting a
+    // graphic as the business's logo or asserting anything about its appearance.
+    const initial = place.name.match(/[\p{L}\p{N}]/u)?.[0]?.toLocaleUpperCase("en-US") ?? "";
     const repeatedFacts = new Set([place.name, cat?.name, place.category, town, "Hours not confirmed"]
       .filter((value): value is string => Boolean(value))
       .map((value) => value.trim().toLocaleLowerCase()));
@@ -274,14 +277,19 @@ export default function PlaceCard({
           {photo && <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={360}
             sizes={parksDiscovery ? "auto, (max-width: 640px) calc(100vw - 32px), 600px" : "(max-width: 640px) calc(100vw - 32px), 600px"}
             deferGoogleBytes={!parksDiscovery && lazyPhoto} />}
-          {nearby ? <div className={`${discoveryStyles.body} ${photo ? "" : discoveryStyles.withoutPhoto}`}>
-            {!photo && <CategoryMark category={place.category} color="var(--app-ink-2)" size={36} />}
+          {nearby ? <div className={`${discoveryStyles.body} ${photo ? "" : discoveryStyles.withoutPhoto} ${!photo && !parksDiscovery ? discoveryStyles.illustrated : ""}`}>
+            {!photo && (parksDiscovery ? <CategoryMark category={place.category} color="var(--app-ink-2)" size={36} />
+              : <span aria-hidden="true" data-nearby-category-art className={discoveryStyles.categoryArt}
+                style={{ "--nearby-category-color": color } as CSSProperties}>
+                <span data-nearby-art-initial className={discoveryStyles.categoryInitial}>{initial}</span>
+                <CategoryIcon slug={place.category} className={discoveryStyles.categoryArtIcon} strokeWidth={1.65} />
+              </span>)}
             <div className={discoveryStyles.copy}>
+              <h3 className={discoveryStyles.title}>{place.name}</h3>
               {!parksDiscovery && <p className={discoveryStyles.eyebrow}>
                 <span>{cat?.name ?? place.category}</span>
                 {town && <><span aria-hidden>·</span><span>{town}</span></>}
               </p>}
-              <h3 className={discoveryStyles.title}>{place.name}</h3>
               {parksDiscovery ? town && <p className={discoveryStyles.parkTown}>{town}</p>
                 : place.address && <p className={discoveryStyles.address}>{place.address}</p>}
               {(!parksDiscovery || !hoursUnknown || place.distance_m !== undefined) && <div className={discoveryStyles.facts}>
