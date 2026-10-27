@@ -158,6 +158,7 @@ describe("PlaceCard selected media and credit", () => {
     await fail(image);
     expect(photo()).toBeNull();
     expect(loadedCredit()).toBeNull();
+    expect(container.querySelector('[data-nearby-category-art][aria-hidden="true"] svg')).not.toBeNull();
     expect(container.querySelector("article")?.dataset.placeCardSurface).toBe("nearby");
     expect(container.textContent).toContain(nearbyPlace.address);
     expect(container.textContent?.match(/Hours not confirmed/g)).toHaveLength(1);
@@ -175,6 +176,28 @@ describe("PlaceCard selected media and credit", () => {
     expect(actions.save).toHaveBeenCalledWith("place", nearbyPlace.slug);
     await act(async () => open.click());
     expect(actions.openSheet).toHaveBeenCalledWith(nearbyPlace, { returnFocus: open });
+  });
+
+  it("uses decorative category art without inventing photos or changing Nearby actions", async () => {
+    const noPhoto = { ...place, slug: "unpictured-nearby-restaurant", name: "Test Restaurant", category: "restaurant",
+      google_photo_url: undefined, google_photo_attribution: undefined };
+    await render(noPhoto, "discovery", true);
+    expect(photo()).toBeNull();
+    const art = container.querySelector<HTMLElement>('[data-nearby-category-art][aria-hidden="true"]');
+    expect(art?.querySelector("svg")).not.toBeNull();
+    expect(art?.getAttribute("style")).toContain("--nearby-category-color");
+    expect(container.querySelector("[data-place-card-photo]")).toBeNull();
+    expect(container.textContent).toContain("Hours not confirmed");
+    expect(container.textContent).toContain(noPhoto.address);
+    const open = container.querySelector<HTMLButtonElement>('button[aria-label^="View "]')!;
+    const save = container.querySelector<HTMLButtonElement>("[data-save-ref]")!;
+    const directions = container.querySelector<HTMLAnchorElement>('a[aria-label^="Directions to "]')!;
+    expect(open.contains(save)).toBe(false);
+    expect(open.contains(directions)).toBe(false);
+    await act(async () => save.click());
+    expect(actions.save).toHaveBeenCalledWith("place", noPhoto.slug);
+    await act(async () => open.click());
+    expect(actions.openSheet).toHaveBeenCalledWith(noPhoto, { returnFocus: open });
   });
 
   it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS))("shows the exact licensed %s source before eligible Google on Nearby, with credit bound to decoded pixels", async (slug, { image: metadata }) => {

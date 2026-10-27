@@ -44,6 +44,8 @@ describe("offline source-to-existing-reviewer connector", () => {
       const artifactPath = join(output, "pending-merchant-hours.json"), planPath = join(output, "review-plan.json");
       for (const path of [artifactPath, planPath, join(output, `evidence-${hash}.html`), join(output, "review-handoff.json")]) expect(statSync(path).mode & 0o777).toBe(0o600);
       const pending = readFileSync(artifactPath, "utf8"), plan = JSON.parse(readFileSync(planPath, "utf8"));
+      const handoff = JSON.parse(readFileSync(join(output, "review-handoff.json"), "utf8"));
+      expect(handoff.selected[0]).toMatchObject({ source_url: "https://www.thaimeric.com/", response_url: null, response_url_status: "unknown" });
       expect(plan.decisions[0]).toMatchObject({ decision: "hold", source_sha256: hash, observed_at: observedAt, evidence_file: `evidence-${hash}.html`, review_note: "" });
       expect(readFileSync(join(output, plan.decisions[0].evidence_file), "utf8")).toBe(html);
       expect(reviewMerchantHoursBatch(pending, plan, () => { throw new Error("held plan cannot read"); }, now).accepted).toEqual([]);
@@ -60,6 +62,39 @@ describe("offline source-to-existing-reviewer connector", () => {
       expect(readFileSync(f.artifactPath, "utf8")).toBe(original);
       expect(() => stageOfficialListingHours([...f.args, `--output-dir=${output}`, "--write"], now)).toThrow();
       expect(readFileSync(artifactPath, "utf8")).toBe(pending);
+    } finally { rmSync(f.root, { recursive: true, force: true }); }
+  });
+  it("preserves a reported matching response URL for private review without accepting a fact", () => {
+    const f = fixture(); const output = join(f.root, "private-response-url");
+    try {
+      Object.assign(f.index.records[0], { response_url: "https://www.thaimeric.com/" });
+      writeFileSync(f.indexPath, JSON.stringify(f.index));
+      const result = stageOfficialListingHours([...f.args, `--output-dir=${output}`, "--write"], now);
+      const handoff = JSON.parse(readFileSync(join(output, "review-handoff.json"), "utf8"));
+      expect(handoff.selected[0]).toMatchObject({ response_url: "https://www.thaimeric.com/", response_url_status: "reported_match" });
+      expect(result).toMatchObject({ accepted: [], publication_required: false });
+      expect(JSON.parse(readFileSync(join(output, "review-plan.json"), "utf8")).decisions[0].decision).toBe("hold");
+    } finally { rmSync(f.root, { recursive: true, force: true }); }
+  });
+  it("keeps an explicitly missing response URL unknown in the private handoff", () => {
+    const f = fixture(); const output = join(f.root, "unknown-response-url");
+    try {
+      Object.assign(f.index.records[0], { response_url: null });
+      writeFileSync(f.indexPath, JSON.stringify(f.index));
+      stageOfficialListingHours([...f.args, `--output-dir=${output}`, "--write"], now);
+      const handoff = JSON.parse(readFileSync(join(output, "review-handoff.json"), "utf8"));
+      expect(handoff.selected[0]).toMatchObject({ response_url: null, response_url_status: "unknown" });
+      expect(handoff.accepted).toEqual([]);
+    } finally { rmSync(f.root, { recursive: true, force: true }); }
+  });
+  it("holds a selected response with a conflicting reported URL before creating a handoff", () => {
+    const f = fixture(); const output = join(f.root, "mismatched-response-url");
+    try {
+      Object.assign(f.index.records[0], { response_url: "https://elsewhere.example/" });
+      writeFileSync(f.indexPath, JSON.stringify(f.index));
+      expect(() => stageOfficialListingHours([...f.args, `--output-dir=${output}`, "--write"], now)).toThrow(/response URL does not match/);
+      expect(existsSync(output)).toBe(false);
+      expect(JSON.parse(readFileSync(f.artifactPath, "utf8"))).toEqual(f.baseline);
     } finally { rmSync(f.root, { recursive: true, force: true }); }
   });
   it.each(["revision", "record-revision", "hash", "ambiguous", "duplicate-selection", "other-page-same-slug", "missing-selection", "missing-write-directory", "dry-run-directory", "apply"])("rejects unsafe or ambiguous %s without modifying approved facts", (failure) => {

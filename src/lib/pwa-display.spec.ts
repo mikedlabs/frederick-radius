@@ -48,6 +48,10 @@ describe("install prompt policy", () => {
 
   it("stays off focused routes and pages with persistent action docks", () => {
     expect(isInstallPromptSuppressedPath("/map")).toBe(true);
+    expect(isInstallPromptSuppressedPath("/nearby")).toBe(true);
+    expect(isInstallPromptSuppressedPath("/nearby/places")).toBe(true);
+    expect(isInstallPromptSuppressedPath("/search")).toBe(true);
+    expect(isInstallPromptSuppressedPath("/search/places")).toBe(true);
     expect(isInstallPromptSuppressedPath("/transit")).toBe(true);
     expect(isInstallPromptSuppressedPath("/transit/stops/162950")).toBe(true);
     expect(isInstallPromptSuppressedPath("/events")).toBe(true);
@@ -64,6 +68,8 @@ describe("install prompt policy", () => {
     expect(isInstallPromptSuppressedPath("/places")).toBe(false);
     expect(isInstallPromptSuppressedPath("/transit-news")).toBe(false);
     expect(isInstallPromptSuppressedPath("/events-editorial")).toBe(false);
+    expect(isInstallPromptSuppressedPath("/nearby-guide")).toBe(false);
+    expect(isInstallPromptSuppressedPath("/searching")).toBe(false);
     // Landing discovery also retains its deliberate manual installation door.
     expect(isInstallPromptSuppressedPath("/today")).toBe(true);
   });

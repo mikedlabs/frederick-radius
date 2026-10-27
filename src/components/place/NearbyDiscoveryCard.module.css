@@ -8,6 +8,7 @@
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-xl);
   background: var(--app-bg-elevated-solid);
+  container: nearby-card / inline-size;
 }
 
 .body {
@@ -21,6 +22,67 @@
   gap: 0.75rem;
 }
 
+.illustrated {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
+.illustrated .copy {
+  padding: 0.875rem;
+}
+
+/* Decorative category artwork is not a photograph of this particular place. */
+.categoryArt {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 120px;
+  place-items: center;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--nearby-category-color) 38%, var(--app-bg-elevated-solid));
+  color: color-mix(in srgb, var(--nearby-category-color) 58%, var(--app-ink));
+  isolation: isolate;
+}
+
+.categoryArt::before,
+.categoryArt::after {
+  position: absolute;
+  z-index: -1;
+  width: 72px;
+  height: 72px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  content: "";
+  opacity: 0.14;
+}
+
+.categoryArt::before {
+  inset: -26px auto auto -28px;
+}
+
+.categoryArt::after {
+  inset: auto -34px -32px auto;
+}
+
+.categoryInitial {
+  font-family: var(--font-sans);
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  line-height: 1;
+}
+
+.categoryArtIcon {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 18px;
+  height: 18px;
+}
+
 .copy {
   min-width: 0;
   flex: 1;
@@ -31,7 +93,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.125rem 0.375rem;
-  margin: 0;
+  margin: 0.25rem 0 0;
   color: var(--app-ink-2);
   font-size: 0.75rem;
   font-weight: 600;
@@ -40,7 +102,7 @@
 }
 
 .title {
-  margin: 0.25rem 0 0;
+  margin: 0;
   color: var(--app-ink);
   font-family: var(--font-sans);
   font-size: 1.4375rem;
@@ -228,6 +290,23 @@
   overflow-wrap: anywhere;
 }
 
+/* At enlarged text the card has fewer effective rems to work with. Reflow the
+   illustration and controls instead of wrapping individual letters. */
+@container nearby-card (max-width: 12rem) {
+  .illustrated {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .categoryArt {
+    height: 64px;
+    min-height: 64px;
+  }
+
+  .actions:not(.parksActions) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @container nearby-parks (min-width: 22rem) {
   .parksCard[data-place-card-has-photo="false"] {
     display: grid;
@@ -243,5 +322,15 @@
 @media (prefers-reduced-motion: reduce) {
   .parksCard :global([data-place-card-photo] img) {
     transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .categoryArtIcon {
+    transition: transform var(--app-dur-fast) var(--app-ease-out);
+  }
+
+  .card button:active .categoryArtIcon {
+    transform: scale(0.94);
   }
 }
