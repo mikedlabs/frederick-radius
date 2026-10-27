@@ -32,14 +32,19 @@ from the exact current protected-main revision. It revalidates the same-reposito
 open PR, exact current main/base/head/content-proven merge and complete unchanged
 branch-specific path allowlist before approving only the exact existing eligible
 held CI/style runs. Already running or completed native runs are observed, never
-rerun. During initial discovery only, an explicitly empty PR-association array
-may be read at most four times for the same run IDs, attempts and check suites,
-with four-second gaps (at most twelve seconds per workflow). Main, head and
-content-proven merge are revalidated before and after each wait. This only lets
-metadata settle: both workflows must provide exact current PR associations
-before any approval. Missing fields, non-array or populated mismatched
-associations fail immediately. The private receipt records each association
-state, count and read. Old, moved, forked, ambiguous, missing or otherwise
+rerun. GitHub's workflow list may omit a PR association that is present in the
+individual run. An empty list association permits a detail-backed fallback only
+while auto-merge is explicitly disabled. The selected run's detail must still
+identify the exact PR, head, attempt and check suite; missing or mismatched
+fields remain held. The guard rechecks the unqueued state through approval.
+During initial discovery only, an explicitly empty detail association may be
+read at most four times for the same run IDs, attempts and check suites, with
+four-second gaps (at most twelve seconds per workflow). Main, head and the
+content-proven merge are revalidated around each wait and before approval.
+Already-queued runs with empty list associations remain held, so this is not a
+complete repair of automatic publishing. API reads and approval cannot be made
+atomic; source facts still require separate review. The private receipt records
+each association state, count and read. Old, moved, forked, ambiguous, missing or otherwise
 ineligible runs stay held. A failed approval, including HTTP 403, requires an owner to inspect and
 approve the recorded exact native run IDs in GitHub; it does not fall back to a
 manual dispatch, copied check, new token, service, ruleset change or relaxed gate.
@@ -395,6 +400,11 @@ anchors. Its separate authenticated
 and contains the original bytes, exact source URL, actual per-page observation,
 SHA-256, source revision and canonical identity context. Successful originals
 survive a missing-anchor response, failed follow page or prior-destination hold.
+New captures also retain the response URL reported by the transport; a missing
+value remains `null` and is not inferred from the requested URL. Earlier
+artifacts without this field are unchanged and do not gain a new observation.
+Reviewers must consult the original index for this field; the compact intake
+and hours handoff do not reproduce it. The URL alone does not approve facts.
 The compact outcomes and held intake candidates remain in the 30-day diagnostic
 artifact. Preserve useful pending evidence privately before raw-artifact expiry.
 These artifacts add no page requests, rendering, models or paid providers.

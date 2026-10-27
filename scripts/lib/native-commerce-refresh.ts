@@ -18,6 +18,8 @@ export type NativeCommerceOptions = { limit: number; followPages: 0 | 1; plan: b
 export type NativeCommerceResponseEvidence = Readonly<{
   source_url: string; observed_at: string; source_sha256: string; bytes: number;
   content_type: string; status: number; html: string;
+  /** Actual response URL when the transport provides one; absence is unknown. */
+  response_url?: string | null;
 }>;
 /** Canonical identity is context for review, not a claim that the page matches it. */
 export type NativeCommerceEvidence = NativeCommerceResponseEvidence & Readonly<{
@@ -202,7 +204,7 @@ export async function fetchNativeCommercePage(
     const html = original.toString("utf8");
     const observed = (options.observationClock ?? (() => new Date()))();
     if (!Number.isFinite(observed.getTime())) throw new Error("Invalid response observation clock.");
-    const evidence: NativeCommerceResponseEvidence = Object.freeze({ source_url: url, observed_at: observed.toISOString(),
+    const evidence: NativeCommerceResponseEvidence = Object.freeze({ source_url: url, response_url: response.url || null, observed_at: observed.toISOString(),
       source_sha256: createHash("sha256").update(original).digest("hex"), bytes,
       content_type: response.headers.get("content-type")!, status: response.status, html });
     // Capture first: a useful complete source may lack commerce anchors, or its

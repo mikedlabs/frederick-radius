@@ -112,6 +112,7 @@ async function prepare(options, native) {
     && eventPull.head.repo?.full_name === repository && eventPull.base?.repo?.full_name === repository
     && eventPull.base.ref === "main" && eventPull.base.sha === trustedMainSha,
   "Native PR event identity does not match the expected publisher.");
+  let requireUnqueuedFallback = false;
   const currentPull = async () => {
     const [main, bot, response] = await Promise.all([
       github.rest.git.getRef({ owner, repo, ref: "heads/main" }),
@@ -125,6 +126,10 @@ async function prepare(options, native) {
       && pull.head?.ref === branch && pull.head.sha === headSha && pull.head.repo?.full_name === repository
       && pull.base?.ref === "main" && pull.base.sha === trustedMainSha && pull.base.repo?.full_name === repository,
     "The publisher PR base, head, repository or state changed.");
+    // The new list/detail fallback is only for explicitly unqueued PRs. Once
+    // selected, recheck this condition through every subsequent approval read.
+    if (!native && requireUnqueuedFallback) requireThat(Object.hasOwn(pull, "auto_merge") && pull.auto_merge === null,
+      "Publisher auto-merge must be positively observed disabled before native run approval.");
     requireThat(pull.mergeable === true && pull.mergeable_state !== "dirty" && SHA.test(pull.merge_commit_sha || ""),
       "A current mergeable publisher target is unavailable.");
     return pull;
@@ -157,7 +162,10 @@ async function prepare(options, native) {
     if (native) requireThat(context.sha === identity.mergeSha, "Native CI is not checking the exact current content-proven merge.");
   };
   await revalidate();
-  return { identity, files: files.map(({ filename, status }) => ({ filename, status })), revalidate };
+  const enableUnqueuedFallback = async () => {
+    if (!requireUnqueuedFallback) { requireUnqueuedFallback = true; await revalidate(); }
+  };
+  return { identity, files: files.map(({ filename, status }) => ({ filename, status })), revalidate, enableUnqueuedFallback };
 }
 
 async function classifyNativeAutomatedPr(options) {
@@ -230,13 +238,15 @@ async function approveNativeAutomatedPrRuns(options) {
           associationState: associationState(run, candidate.identity),
           associationCount: Array.isArray(run.pull_requests) ? run.pull_requests.length : null })) });
     };
-    const latest = async (workflow, discovery = false) => {
+    const latest = async (workflow, discovery = false, batchGuard = false) => {
       let pinnedIdentity;
-      // Retry only an explicitly empty discovery association array. It is never
-      // approval evidence: both workflows must eventually provide exact PR
-      // associations, and every later independent read retains that requirement.
+      // Listing responses can omit PR associations even when the individual
+      // run response has them. The list discovers run identities; the newest
+      // run's detail must establish its exact PR. Both endpoints must agree on
+      // run, attempt, suite and source. Only a genuinely empty selected-run
+      // detail association gets the existing bounded wait.
       for (let read = 1; read <= (discovery ? 4 : 1); read += 1) {
-        await candidate.revalidate();
+        if (!batchGuard) await candidate.revalidate();
         const response = (await github.rest.actions.listWorkflowRuns({ owner, repo, workflow_id: workflow.id,
           branch, head_sha: headSha, event: "pull_request", exclude_pull_requests: false, per_page: 100 })).data;
         const rows = response.workflow_runs;
@@ -252,15 +262,38 @@ async function approveNativeAutomatedPrRuns(options) {
         const states = rows.map((run) => associationState(run, candidate.identity));
         requireThat(states.every((state) => state === "exact" || state === "empty-array"),
           "Native run does not have one exact current publisher PR association.");
-        if (states.every((state) => state === "exact")) {
-          rows.forEach((run) => validateRun(run, workflow, candidate.identity));
-          return rows.sort((a, b) => b.id - a.id)[0];
+        if (states.some((state) => state === "empty-array")) {
+          // Empty list metadata is not authority. Permit the detail-backed
+          // fallback only for a PR observed unqueued, and keep that guard on
+          // through all following reads and writes, even if the list settles.
+          await candidate.enableUnqueuedFallback();
+        }
+        // A superseded run cannot authorize the new run. Validate its list
+        // identity above, but require the independent PR association and
+        // state only from the newest run that could receive approval.
+        const latestList = rows.sort((a, b) => b.id - a.id)[0];
+        const latestDetail = (await github.rest.actions.getWorkflowRun({ owner, repo, run_id: latestList.id })).data;
+        noteAssociations(workflow, discovery ? "discovery-detail" : "pre-approval-detail", [latestDetail], read);
+        validateRunSource(latestDetail, workflow, candidate.identity);
+        requireThat(latestDetail.id === latestList.id && latestDetail.run_attempt === latestList.run_attempt
+          && latestDetail.check_suite_id === latestList.check_suite_id,
+        "Independent native run ID, attempt or check suite changed during discovery.");
+        const detailState = associationState(latestDetail, candidate.identity);
+        requireThat(detailState === "exact" || detailState === "empty-array",
+          "Independent native run does not have one exact current publisher PR association.");
+        if (!batchGuard) await candidate.revalidate();
+        if (detailState === "exact") {
+          validateRun(latestDetail, workflow, candidate.identity);
+          // An endpoint reporting a previously running/passed or failed state
+          // cannot silently become an eligible new approval through another.
+          if (!heldForApproval(latestList) && !alreadyRunningOrPassed(latestList)) return latestList;
+          requireThat(!(alreadyRunningOrPassed(latestList) && heldForApproval(latestDetail)),
+            "A previously running or passed native run cannot regress to a new approval.");
+          return latestDetail;
         }
         requireThat(discovery && read < 4,
           "Native run PR association metadata remains empty; exact owner-reviewed native runs remain held.");
-        await candidate.revalidate();
         await (options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms))))(4000);
-        await candidate.revalidate();
       }
     };
     const pinned = [];
@@ -273,21 +306,49 @@ async function approveNativeAutomatedPrRuns(options) {
     requireThat(new Set(pinned.map(({ run }) => run.id)).size === pinned.length, "Native gate IDs overlap.");
     for (const { run } of pinned) requireThat(heldForApproval(run) || alreadyRunningOrPassed(run),
       "An existing native gate failed, was cancelled, skipped or has an uncertain state. Owner attention is required.");
-    for (const [index, { workflow, run }] of pinned.entries()) {
+    const progressed = new Set(pinned.filter(({ run }) => alreadyRunningOrPassed(run)).map(({ run }) => run.id));
+    // Recheck both exact runs before each possible write and the final result.
+    // GitHub cannot atomically couple the checks to an approval operation;
+    // rechecking narrows but cannot eliminate cross-API races.
+    const confirmBoth = async () => {
+      // One PR/branch guard surrounds both workflow snapshots. This retains
+      // independent list + detail reads for each gate, without repeating the
+      // same three PR/ref reads around each individual workflow.
       await candidate.revalidate();
-      const current = await latest(workflow);
+      const checked = new Map();
+      for (const { workflow, run } of pinned) {
+        const current = await latest(workflow, false, true);
+        requireThat(current.id === run.id && current.run_attempt === run.run_attempt && current.check_suite_id === run.check_suite_id
+          && (heldForApproval(current) || alreadyRunningOrPassed(current)),
+        "A native gate changed identity or has failed before approval.");
+        requireThat(!(progressed.has(run.id) && heldForApproval(current)),
+          "A native gate regressed to held after running or passing.");
+        if (alreadyRunningOrPassed(current)) progressed.add(run.id);
+        checked.set(run.id, current);
+      }
+      await candidate.revalidate();
+      return checked;
+    };
+    for (const [index, { workflow, run }] of pinned.entries()) {
+      const current = (await confirmBoth()).get(run.id);
       requireThat(current.id === run.id && current.run_attempt === run.run_attempt && current.check_suite_id === run.check_suite_id,
         "The latest native run ID, attempt or check suite changed before approval.");
+      requireThat(heldForApproval(current) || alreadyRunningOrPassed(current),
+        "A current native gate failed or has uncertain state before approval.");
       const independent = (await github.rest.actions.getWorkflowRun({ owner, repo, run_id: run.id })).data;
       noteAssociations(workflow, "independent-pre-approval", [independent], 1);
       validateRun(independent, workflow, candidate.identity);
       requireThat(independent.id === run.id && independent.run_attempt === run.run_attempt && independent.check_suite_id === run.check_suite_id,
         "Independent native run ID, attempt or check suite changed before approval.");
-      await candidate.revalidate();
-      if (alreadyRunningOrPassed(independent)) {
-        receipt.runs[index] = { ...observeRun(independent, workflow.file), action: "observed" }; continue;
+      if (alreadyRunningOrPassed(independent)) progressed.add(run.id);
+      const finalCurrent = (await confirmBoth()).get(run.id);
+      // The run may start between the independent read and the final batch.
+      // Never send another approval based on the older held observation.
+      if (alreadyRunningOrPassed(finalCurrent)) {
+        receipt.runs[index] = { ...observeRun(finalCurrent, workflow.file), action: "observed" }; continue;
       }
-      requireThat(heldForApproval(run) && heldForApproval(current) && heldForApproval(independent), "The exact native run is no longer the originally selected held approval.");
+      requireThat(heldForApproval(run) && heldForApproval(current) && heldForApproval(independent)
+        && heldForApproval(finalCurrent), "The exact native run is no longer the originally selected held approval.");
       const write = { id: run.id, workflow: workflow.file, attempt: run.run_attempt, suiteId: run.check_suite_id,
         headSha, at: new Date((options.now || Date.now)()).toISOString(), responseStatus: null,
         observationReads: 0, transitionVerified: false };
@@ -314,8 +375,10 @@ async function approveNativeAutomatedPrRuns(options) {
         await (options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms))))(750);
       }
       write.transitionVerified = true;
+      progressed.add(run.id);
       receipt.runs[index] = { ...observeRun(after, workflow.file), action: "approved" };
     }
+    await confirmBoth();
     await candidate.revalidate();
     receipt.state = receipt.approvalWrites.length ? "approved" : "observed";
     receipt.manualApprovalRequired = false; receipt.verified = true;
