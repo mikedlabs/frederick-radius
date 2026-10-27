@@ -72,6 +72,16 @@ describe("native free HTTP budget", () => {
     expect(fetch.mock.calls[0][1]).toMatchObject({ method: "GET", credentials: "omit", redirect: "error", referrerPolicy: "no-referrer" });
     expect((globalThis as Record<string, unknown>).unwanted).toBeUndefined();
   });
+  it("holds a response whose reported URL differs from the requested source", async () => {
+    const response = html();
+    Object.defineProperty(response, "url", { value: "https://elsewhere.example/" });
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(response);
+    const capture = vi.fn();
+    await expect(fetchNativeCommercePage(place().website!, place().website!, { fetchImpl: fetch, onEvidence: capture }))
+      .rejects.toThrow("failed or redirected");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(capture).not.toHaveBeenCalled();
+  });
   it.each(["http://declaredcoffee.com/", "https://other.declaredcoffee.com/", "https://user:password@declaredcoffee.com/", "https://127.0.0.1/", "https://declaredcoffee.local/", "https://declaredcoffee.com:444/"])("rejects unsupported destination %s before fetch", async (url) => {
     const fetch = vi.fn();
     await expect(fetchNativeCommercePage(url, place().website!, { fetchImpl: fetch })).rejects.toThrow();
@@ -132,6 +142,28 @@ describe("native free HTTP budget", () => {
 });
 
 describe("private evidence from the existing native GETs", () => {
+  it("records the actual response URL without inventing one when transport omits it", async () => {
+    const parent = mkdtempSync(join(tmpdir(), "radius-commerce-response-url-"));
+    const directory = join(parent, "originals");
+    const writer = createNativeCommerceEvidenceWriter(directory, REVISION);
+    const p = place();
+    const responses = [html(), html()];
+    Object.defineProperty(responses[0], "url", { value: p.website });
+    const fetch = vi.fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(responses[0]).mockResolvedValueOnce(responses[1]);
+    try {
+      const capture = (evidence: Parameters<typeof writer.capture>[0], bytes: Uint8Array) => writer.capture(evidence, bytes);
+      for (let i = 0; i < 2; i++) {
+        await fetchNativeCommercePage(p.website!, p.website!, {
+          fetchImpl: fetch, observationClock: () => NOW,
+          onEvidence: (evidence, bytes) => capture({ ...evidence, source_revision: REVISION, identity: p }, bytes),
+        });
+      }
+      const index = JSON.parse(readFileSync(join(directory, "index.json"), "utf8"));
+      expect(index.records.map((record: { response_url: string | null }) => record.response_url)).toEqual([p.website, null]);
+      expect(fetch).toHaveBeenCalledTimes(2);
+    } finally { rmSync(parent, { recursive: true, force: true }); }
+  });
   it("preserves an exact complete no-anchor response before retaining the commerce failure", async () => {
     const parent = mkdtempSync(join(tmpdir(), "radius-commerce-evidence-"));
     const directory = join(parent, "originals");
