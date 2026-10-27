@@ -72,6 +72,7 @@ jobs:
       - name: Refresh links from official sites
         id: refresh
         env:
+          BUSINESS_INFO_CONFLICT_PARENT: ${{ runner.temp }}
           NATIVE_COMMERCE_RECEIPT_PATH: ${{ runner.temp }}/native-commerce-receipt.json
           NATIVE_COMMERCE_EVIDENCE_DIR: ${{ runner.temp }}/native-commerce-evidence
           NATIVE_DAILY: ${{ github.event_name == 'schedule' || inputs.native_daily != false }}
@@ -178,6 +179,15 @@ jobs:
         run: |
           echo "No selected official site could be read. Prior facts and observations were preserved; inspect the per-source outcomes."
           exit 1
+
+      - name: Preserve held business-info candidate after a write conflict
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: held-commerce-business-info-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/radius-business-info-hold-*/
+          if-no-files-found: ignore
+          retention-days: 7
 
   publish:
     needs: refresh

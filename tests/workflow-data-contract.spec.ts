@@ -797,11 +797,28 @@ describe("scheduled data workflow contracts", () => {
           branch: "${{ needs.transit-publish.outputs.pr_branch }}",
           head_sha: "${{ needs.transit-publish.outputs.pr_head_sha }}",
         });
+      } else if (name === "ingest-business-info.yml" || name === "refresh-commerce-links.yml") {
+        const uploads = Object.values(workflow.jobs ?? {}).flatMap((job) => (job.steps ?? []).filter((step) => step.uses === "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"));
+        const held = uploads.filter((step) => step.name === "Preserve held business-info candidate after a write conflict");
+        expect(held).toHaveLength(1);
+        const producer = workflow.jobs?.[name === "ingest-business-info.yml" ? "ingest" : "refresh"];
+        const runStep = producer?.steps?.find((step) => step.name === (name === "ingest-business-info.yml" ? "Extract business deep-info" : "Refresh links from official sites"));
+        expect(runStep?.env?.BUSINESS_INFO_CONFLICT_PARENT).toBe("${{ runner.temp }}");
+        expect(producer?.steps?.at(-1)).toEqual(held[0]);
+        expect(held[0].if).toBe("${{ failure() }}");
+        expect(held[0].with).toEqual({
+          name: (name === "ingest-business-info.yml" ? "held-business-info-" : "held-commerce-business-info-") + "${{ github.run_id }}-${{ github.run_attempt }}",
+          path: "${{ runner.temp }}/radius-business-info-hold-*/",
+          "if-no-files-found": "ignore",
+          "retention-days": 7,
+        });
+        expect(artifactUploads.length).toBe(publishers.length + (name === "refresh-commerce-links.yml" ? 3 : 1));
+        expect(text).not.toMatch(/artifact:\s+held-(?:commerce-)?business-info/);
       } else if (name !== "ingest-venues.yml") {
         expect(
           artifactUploads.length,
           `${name} must stage every producer through its exact artifact`,
-        ).toBe(name === "data-steward.yml" ? publishers.length + 1 : name === "refresh-commerce-links.yml" ? publishers.length + 2 : publishers.length);
+        ).toBe(name === "data-steward.yml" ? publishers.length + 1 : publishers.length);
       } else {
         // Native and paid venue generation are mutually exclusive producers.
         // Their two exact publication artifacts must not be confused with

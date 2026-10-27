@@ -12,6 +12,7 @@
  *   npm run refresh:commerce-links -- --limit=60 --concurrency=3
  */
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
+import { withBusinessInfoRunLock } from "./lib/business-info-run-lock";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { clientPlaces } from "@/lib/loaders/places-client";
@@ -260,7 +261,7 @@ async function mapConcurrent<T, R>(
   return results;
 }
 
-export async function main(args = process.argv.slice(2)) {
+async function mainUnlocked(args: string[], commit: ((value: unknown) => void) | null) {
   const cfg = JSON.parse(readFileSync(CFG, "utf8")) as Config;
   if (args.includes("--native-daily")) {
     const nativeOptions = parseNativeCommerceOptions(args);
@@ -282,7 +283,10 @@ export async function main(args = process.argv.slice(2)) {
     const output = process.env.GITHUB_OUTPUT;
     if (output) appendFileSync(output, [`native_daily=true`, `review_required=${result.review_required}`, `selected_count=${result.selected_count}`, `checked_count=${result.checked_count}`, `failed_count=${result.failed_count}`, `safe_hold_count=${result.safe_hold_count}`, ""].join("\n"));
     if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Native daily commerce links\n\n${result.selected_count} selected from a ${result.roster.length}-site rotating roster; ${result.checked_count} checked, ${result.safe_hold_count} held for prior destinations not reobserved, ${result.failed_count} failed; ${result.requests} free GETs. Review required: ${result.review_required}. No destination verification, providers, rendering, retries or redirects.\n`);
-    if (!nativeOptions.plan && result.checked_count > 0) writeFileSync(OUT, `${JSON.stringify(result.records, null, 2)}\n`);
+    if (!nativeOptions.plan && result.checked_count > 0) {
+      if (!commit) throw new Error("Business-info run lock is required before writing.");
+      commit(result.records);
+    }
     return result;
   }
   const options = parseOptions(args, cfg);
@@ -398,7 +402,8 @@ export async function main(args = process.argv.slice(2)) {
   }
 
   if (!options.dryRun) {
-    writeFileSync(OUT, `${JSON.stringify(existing, null, 2)}\n`);
+    if (!commit) throw new Error("Business-info run lock is required before writing.");
+    commit(existing);
   }
   const after = commerceCoverage(
     allFoodDrink.map((place) => place.slug),
@@ -440,6 +445,11 @@ export async function main(args = process.argv.slice(2)) {
       ].join("\n"),
     );
   }
+}
+
+export async function main(args = process.argv.slice(2)) {
+  if (args.includes("--native-daily") && args.includes("--plan")) return mainUnlocked(args, null);
+  return withBusinessInfoRunLock(OUT, (commit) => mainUnlocked(args, commit));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

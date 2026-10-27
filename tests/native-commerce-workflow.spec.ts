@@ -39,7 +39,7 @@ describe("bounded daily commerce delivery", () => {
   });
   it("keeps private observation diagnostics outside the public publisher artifact", () => {
     const uploads = workflow.jobs.refresh.steps.filter((step: { uses?: string }) => step.uses?.startsWith("actions/upload-artifact@"));
-    expect(uploads).toHaveLength(3);
+    expect(uploads).toHaveLength(4);
     const diagnostics = uploads.find((step: { with?: { name?: string } }) => step.with?.name?.startsWith("official-commerce-observations-"));
     expect(diagnostics.with.path).toBe("${{ runner.temp }}/native-commerce-receipt.json");
     expect(diagnostics.with["retention-days"]).toBe(30);
@@ -47,6 +47,10 @@ describe("bounded daily commerce delivery", () => {
     expect(originals.with.path).toBe("${{ runner.temp }}/native-commerce-evidence");
     expect(originals.with["retention-days"]).toBe(7);
     expect(originals.with["if-no-files-found"]).toBe("error");
+    const held = uploads.find((step: { name?: string }) => step.name === "Preserve held business-info candidate after a write conflict");
+    expect(held.if).toBe("${{ failure() }}");
+    expect(held.with.path).toBe("${{ runner.temp }}/radius-business-info-hold-*/");
+    expect(held.with["retention-days"]).toBe(7);
     expect(workflow.jobs.publish.with.artifact).toBe("${{ needs.refresh.outputs.artifact_name }}");
     expect(workflow.jobs.publish.with.allowed_paths).not.toContain("receipt");
     expect(workflow.jobs.publish.with.allowed_paths).not.toMatch(/evidence|\.html|intake/);
