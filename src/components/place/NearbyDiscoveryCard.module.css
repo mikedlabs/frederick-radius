@@ -304,6 +304,13 @@
 
   .actions:not(.parksActions) {
     grid-template-columns: minmax(0, 1fr);
+    padding-inline: 0.375rem;
+  }
+
+  .actions:not(.parksActions) > button,
+  .actions:not(.parksActions) > a,
+  .actions:not(.parksActions) > a [data-press-face] {
+    gap: 0.25rem;
   }
 }
 

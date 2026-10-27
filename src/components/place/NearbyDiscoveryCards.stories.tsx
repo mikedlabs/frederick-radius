@@ -130,6 +130,8 @@ export const RestaurantWithoutPhoto320: Story = {
     await nearbyActions(canvasElement, "206 S Main St, Mt Airy, MD 21771");
     expect(canvasElement.querySelector("[data-place-card-photo]")).toBeNull();
     expect(canvasElement.querySelector('[data-nearby-category-art][aria-hidden="true"]')).not.toBeNull();
+    const actions = canvasElement.querySelector<HTMLElement>("[data-save-ref]")!.parentElement!;
+    expect(getComputedStyle(actions).gridTemplateColumns.trim().split(/\s+/)).toHaveLength(2);
   },
 };
 
@@ -145,6 +147,8 @@ export const NoPhotoNarrowDoubledText: Story = {
     await nearbyActions(canvasElement, "38 S Market St");
     const article = canvasElement.querySelector<HTMLElement>("article")!;
     expect(article.querySelector("[data-nearby-category-art]")).not.toBeNull();
+    const actions = article.querySelector<HTMLElement>("[data-save-ref]")!.parentElement!;
+    expect(getComputedStyle(actions).gridTemplateColumns.trim().split(/\s+/)).toHaveLength(1);
     for (const label of article.querySelectorAll<HTMLElement>("h3, p, [data-save-ref], a[aria-label^='Directions']")) {
       expect(label.scrollWidth).toBeLessThanOrEqual(label.clientWidth + 1);
       expect(label.scrollHeight).toBeLessThanOrEqual(label.clientHeight + 1);
@@ -157,7 +161,15 @@ export const NoPhotoNarrowDoubledText: Story = {
       expect(text).not.toBeNull();
       const range = document.createRange();
       range.selectNodeContents(text!);
-      expect(range.getClientRects()).toHaveLength(1);
+      // Also exercise wider text metrics, as system fonts differ by platform.
+      // Restore the inline value so this remains the actual shipped design.
+      const spacing = control.style.letterSpacing;
+      for (const candidate of [spacing, "0.08em"]) {
+        control.style.letterSpacing = candidate;
+        expect(range.getClientRects()).toHaveLength(1);
+        expect(control.scrollWidth).toBeLessThanOrEqual(control.clientWidth + 1);
+      }
+      control.style.letterSpacing = spacing;
     }
   },
 };
