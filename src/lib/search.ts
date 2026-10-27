@@ -745,7 +745,7 @@ export function search(
 
   const hits: SearchHit[] = [];
   let livePlaces = options.placePool;
-  const getPlaces = () => livePlaces ??= clientPlaces();
+  const getPlaces = () => livePlaces ??= clientPlaces(options.now);
   const intent = detectIntent(query);
   const expansion = expandQuery(query);
   const shortIntent = recognizedShortIntent(query);
@@ -1189,7 +1189,7 @@ export function qualifiedSearch(
     !(detectEventIntent(query) && searchEventWindow(query, context.now).meta.label);
   // Reuse this decorated pool in search below: detecting a complete name must
   // not decorate the full catalog twice or freeze its live hours in a cache.
-  const placePool = allowLiteralPlaceLookup ? clientPlaces() : undefined;
+  const placePool = allowLiteralPlaceLookup ? clientPlaces(context.now) : undefined;
   const exactName = placePool?.find((place) => isExactPlaceNameQuery(query, place.name))?.name;
   const literalPlace = (hasSearchFeatureTerms(query) ? placePool ?? [] : [])
     .map((place) => ({ place, match: place.name.length >= 4

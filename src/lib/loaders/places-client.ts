@@ -77,8 +77,7 @@ const BY_SLUG: Record<string, PlaceCardData> = (() => {
  * few hundred bytes), not the heavy google_hours strings that were
  * dropped to keep this bundle small.
  */
-function withLiveStatus(p: ClientPlaceData): PlaceCardData {
-  const now = new Date();
+function withLiveStatus(p: ClientPlaceData, now: Date = new Date()): PlaceCardData {
   const mayAssertHours = Boolean(
     p.hours_verified &&
       p.hours &&
@@ -99,8 +98,8 @@ function withLiveStatus(p: ClientPlaceData): PlaceCardData {
   };
 }
 
-export function clientPlaces(): PlaceCardData[] {
-  return CLIENT_PLACES.map(withLiveStatus);
+export function clientPlaces(now: Date = new Date()): PlaceCardData[] {
+  return CLIENT_PLACES.map((place) => withLiveStatus(place, now));
 }
 
 export function clientPlaceBySlug(slug: string): PlaceCardData | undefined {

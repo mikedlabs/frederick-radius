@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Request } from "@playwright/test";
+import { CREDITED_LOCAL_PLACE_PHOTOS } from "../src/data/credited-local-place-photos";
 import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
 import { dismissReturnBridge, emptyReturnBridgeState, RETURN_BRIDGE_STORAGE_KEY } from "../src/lib/return-bridge";
 
@@ -9,7 +10,10 @@ const resource = "places/today-fixture/photos/exact-photo";
 const photo = `/api/place-photo?name=${encodeURIComponent(resource)}&w=800`;
 const author = "Fixture photographer with a longer credit name";
 const source = "https://www.google.com/maps/contrib/123/photo/456";
-const categoryPhoto = "/images/discovery/pizza-preparation.jpg";
+const scenicSlug = "co-canal-lock-30-brunswick";
+const scenicPhoto = CREDITED_LOCAL_PLACE_PHOTOS[scenicSlug].image.src;
+const primarySlug = "joseph-dill-baker-memorial-carillon-bell-tower";
+const primaryPhoto = "/images/places/carillon-sunset.jpg";
 const pixel = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=", "base64");
 
 test.use({ serviceWorkers: "block" });
@@ -54,15 +58,23 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await expect(article.locator("img")).toHaveCount(0);
     await expect(article).toHaveAttribute("data-has-photo", "false");
     await expect(article.locator(".place-card-photo-credit")).toHaveCount(0);
-    const category = page.getByRole("link", { name: "Find pizza", exact: true });
+    const category = page.locator(`[data-today-geographic-place="${scenicSlug}"]`);
     await expect(category).toHaveAttribute("data-photo-state", "loaded");
     await expect.poll(() => category.locator("img").evaluate((image: HTMLImageElement, expected) => {
       const url = new URL(image.currentSrc || image.src, document.baseURI);
       return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1
         && decodeURIComponent(url.searchParams.get("url") ?? url.pathname) === expected;
-    }, categoryPhoto)).toBe(true);
-    await expect(page.locator("[data-today-geographic-place]")).toHaveCount(0);
-    await expect(page.locator("[data-today-discovery-credit]")).toHaveCount(0);
+    }, scenicPhoto)).toBe(true);
+    await expect(page.locator("[data-today-geographic-place]")).toHaveCount(1);
+    await expect(page.locator("[data-today-local-discovery]")).not.toContainText(/Zoe|Sabor|Find pizza/);
+    const taskLinks = page.locator('[data-today-discovery-tasks] a');
+    await expect(taskLinks).toHaveCount(2);
+    for (const [index, kind] of ["food", "outside"].entries()) {
+      const target = new URL((await taskLinks.nth(index).getAttribute("href"))!, page.url());
+      expect(target.pathname).toBe("/nearby"); expect(target.searchParams.get("c")).toBe(kind);
+      expect(target.searchParams.get("in")).toBe("brunswick"); expect(target.searchParams.get("facet")).toBeNull();
+      expect(target.searchParams.get("returnTo")).toBe("/today?in=brunswick");
+    }
     await expect(article.locator("[data-today-pick-fact]")).toHaveText("Hours not confirmed");
     await expect(article.locator("[data-today-pick-location]")).toHaveText("Brunswick · 6 min walk");
     await page.evaluate(() => document.fonts.ready);
@@ -97,7 +109,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const order = await page.locator("[data-today-weather]").evaluate((weather) => Boolean(weather.compareDocumentPosition(document.querySelector('[data-surface-row="find"]')!) & Node.DOCUMENT_POSITION_FOLLOWING));
     expect(order).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
-    await testInfo.attach("local-fixture-proof", { contentType: "application/json", body: JSON.stringify({ width, metadataRequests, photoRequests, probes, fixture: "Declared venue facts and valid photo-credit metadata cannot authorize current appearance. No merchant photo or metadata read; the real generic category image decodes." }) });
+    await testInfo.attach("local-fixture-proof", { contentType: "application/json", body: JSON.stringify({ width, metadataRequests, photoRequests, probes, fixture: "Declared venue facts and valid photo-credit metadata cannot authorize current appearance. No merchant photo or metadata read; the separate exact local landmark image decodes without authorizing an unreviewed merchant appearance." }) });
     await article.scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath(`today-card-local-fixture-${width}.png`), fullPage: true });
     await article.screenshot({ path: testInfo.outputPath(`today-card-local-fixture-detail-${width}.png`) });
@@ -105,7 +117,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
 }
 
 for (const failure of ["pixel", "error"] as const) {
-  test(`Today retains useful place context and scoped action after the category photo ${failure}`, async ({ page }, testInfo) => {
+  test(`Today retains useful place context and scoped action after the exact scenic photo ${failure}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.route("**/api/want?**", (route) => route.fulfill({ json: {
       hero: { slug, name: "Beans in the Belfry", photo, where: "Brunswick", distance: "6 min walk", fact: "Hours not confirmed", confidence: "unconfirmed" },
@@ -119,7 +131,7 @@ for (const failure of ["pixel", "error"] as const) {
       } } } });
     });
     await page.route("**/api/place-photo?**", (route) => { providerRequests += 1; return route.abort("blockedbyclient"); });
-    await page.route(url => (url.pathname === "/_next/image" ? url.searchParams.get("url") : url.pathname) === categoryPhoto, route => {
+    await page.route(url => (url.pathname === "/_next/image" ? url.searchParams.get("url") : url.pathname) === scenicPhoto, route => {
       loads += 1;
       return failure === "pixel" ? route.fulfill({ status: 200, contentType: "image/png", body: pixel }) : route.abort("failed");
     });
@@ -130,13 +142,16 @@ for (const failure of ["pixel", "error"] as const) {
     await expectPreviewActions(article, place, slug, "Beans in the Belfry", "brunswick");
     await article.scrollIntoViewIfNeeded();
     await expect.poll(() => loads).toBeGreaterThan(0);
-    const category = page.getByRole("link", { name: "Find pizza", exact: true });
+    const category = page.locator(`[data-today-geographic-place="${scenicSlug}"]`);
     await expect(category).toHaveAttribute("data-photo-state", "failed");
     await expect(category.locator("img")).toHaveCount(0);
-    await expect(category).toHaveAttribute("href", `/nearby?${new URLSearchParams({ c: "food", facet: "pizza", in: "brunswick", returnTo: "/today?in=brunswick" })}`);
+    await expect(category).toHaveAttribute("href", `/places/${scenicSlug}?${new URLSearchParams({ in: "brunswick", returnTo: "/today?in=brunswick" })}`);
+    await expect(category).toContainText("Brunswick");
     const categoryBox = (await category.boundingBox())!;
     expect(categoryBox.width).toBeGreaterThanOrEqual(44); expect(categoryBox.height).toBeGreaterThanOrEqual(44);
-    await expect(page.locator("[data-today-geographic-place]")).toHaveCount(0);
+    await expect(page.locator("[data-today-geographic-place]")).toHaveCount(1);
+    await expect(page.locator('[data-today-discovery-action="food"]')).toHaveAttribute("href", `/nearby?${new URLSearchParams({ c: "food", in: "brunswick", returnTo: "/today?in=brunswick" })}`);
+    await expect(page.locator('[data-today-discovery-action="outside"]')).toHaveAttribute("href", `/nearby?${new URLSearchParams({ c: "outside", in: "brunswick", returnTo: "/today?in=brunswick" })}`);
     expect(metadataRequests).toBe(0); expect(providerRequests).toBe(0);
     await expect(article.locator("img")).toHaveCount(0);
     await expect(article).toContainText("Beans in the Belfry");
@@ -151,7 +166,7 @@ for (const failure of ["pixel", "error"] as const) {
 }
 
 
-test("Today keeps the category illustration separate from a real answer without an attributable photo", async ({ page }, testInfo) => {
+test("Today keeps exact scenic discovery separate from a real merchant answer without current appearance review", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   const pickSlug = "ibiza-cafe";
@@ -183,19 +198,25 @@ test("Today keeps the category illustration separate from a real answer without 
   await expect(article).not.toContainText("Carroll Creek");
   await expect(article).toHaveAttribute("data-has-photo", "false");
   await expect(article.locator(".place-card-photo-credit")).toHaveCount(0);
-  const category = page.getByRole("link", { name: "Find pizza", exact: true });
+  const category = page.locator(`[data-today-geographic-place="${primarySlug}"]`);
   const categoryHref = new URL((await category.getAttribute("href"))!, "https://radius.test");
-  expect(categoryHref.pathname).toBe("/nearby"); expect(categoryHref.searchParams.get("facet")).toBe("pizza"); expect(categoryHref.searchParams.get("in")).toBe("county");
+  expect(categoryHref.pathname).toBe(`/places/${primarySlug}`); expect(categoryHref.searchParams.get("in")).toBe("county");
   await expect(category).toHaveAttribute("data-photo-state", "loaded");
-  await expect.poll(() => category.locator("img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 1 && image.naturalHeight > 1)).toBe(true);
-  await expect(category).toContainText("Find pizza");
+  await expect.poll(() => category.locator("img").evaluate((image: HTMLImageElement, expected) => {
+    const url = new URL(image.currentSrc || image.src, document.baseURI);
+    return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1
+      && decodeURIComponent(url.searchParams.get("url") ?? url.pathname) === expected;
+  }, primaryPhoto)).toBe(true);
+  await expect(category).toContainText("Baker Park Carillon");
   await expect(category).not.toContainText("Ibiza");
+  await expect(page.locator("[data-today-geographic-place]")).toHaveCount(2);
+  await expect(page.locator('[data-today-discovery-action="food"]')).toHaveAttribute("href", `/nearby?${new URLSearchParams({ c: "food", in: "county", returnTo: "/today?in=county" })}`);
   await expect(page.getByRole("combobox", { name: "Choose your area", exact: true })).toHaveValue("county");
   const quickNeeds = page.getByRole("group", { name: "Quick needs", exact: true });
   const hierarchy = await article.evaluate((element) => {
     const quick = document.querySelector('[aria-label="Quick needs"]')!;
-    const events = document.querySelector('[role="group"][aria-label="Follow the day"]')!;
-    const scene = document.querySelector("[data-today-geographic-doorway]")!;
+    const events = document.querySelector("[data-today-events]")!;
+    const scene = document.querySelector("[data-today-local-discovery]")!;
     const answerRegion = document.querySelector('[aria-label="Places for your area"]')!;
     const news = document.querySelector('section[aria-label="Local news"]')!;
     const explore = document.querySelector('section[aria-labelledby="today-explore-heading"]')!;
@@ -220,7 +241,7 @@ test("Today keeps the category illustration separate from a real answer without 
   await expect(quickNeeds).toHaveCount(1);
   await expect(quickNeeds.getByRole("link")).toHaveCount(4);
   expect(uncreditedPhotoRequests).toBe(0);
-  await testInfo.attach("separate-owned-place-and-uncredited-answer", { contentType: "application/json", body: JSON.stringify({ metadataRequests, uncreditedPhotoRequests, hierarchy, proof: "Real Today composition and owner-approved category illustration; unreviewed merchant appearance prevents metadata and image hydration while venue facts remain usable." }) });
+  await testInfo.attach("separate-owned-place-and-uncredited-answer", { contentType: "application/json", body: JSON.stringify({ metadataRequests, uncreditedPhotoRequests, hierarchy, proof: "Real Today composition and independently accepted exact local landmark photography; unreviewed merchant appearance prevents metadata and image hydration while venue facts remain usable." }) });
   await page.screenshot({ path: testInfo.outputPath("today-county-no-attributable-photo.png"), fullPage: true });
 });
 

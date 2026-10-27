@@ -33,30 +33,44 @@ for (const width of [320, 390, 430, 1440]) {
   });
 }
 
-test("Today keeps a decoded category illustration and Find while unreviewed business photos stay held", async ({ page }) => {
+test("Today keeps decoded exact local photography and Find while unreviewed business photos stay held", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/today");
-  const doorway = page.getByRole("link", { name: "Find pizza", exact: true });
-  const photo = doorway.locator("img");
-  await expect(doorway).toHaveAttribute("href", `/nearby?${new URLSearchParams({ c: "food", facet: "pizza", in: "county", returnTo: "/today?in=county" })}`);
-  await expect(photo).toHaveAttribute("alt", "Rectangular pizzas with cheese and herbs on a preparation counter.");
-  await expect(photo).toBeVisible();
-  await expect(doorway).toHaveAttribute("data-photo-state", "loaded");
-  await expect.poll(() => photo.evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(1);
-  const actualSource = await photo.evaluate((node) => {
-    const image = node as HTMLImageElement;
-    const url = new URL(image.currentSrc || image.src, document.baseURI);
-    return decodeURIComponent(url.searchParams.get("url") ?? url.pathname);
-  });
-  expect(actualSource).toBe("/images/discovery/pizza-preparation.jpg");
-  await expect.poll(() => photo.evaluate((img) => getComputedStyle(img).opacity)).toBe("1");
-  await expect(page.locator("[data-today-geographic-place]")).toHaveCount(0);
+  await page.goto("/today?in=county");
+  const subjects = [
+    { slug: "joseph-dill-baker-memorial-carillon-bell-tower", src: "/images/places/carillon-sunset.jpg", title: "Baker Park Carillon" },
+    { slug: "sophie-madigans-playground-frederick", src: "/images/seasons/spring/010.jpg", title: "Sophie & Madigan's Playground" },
+  ];
+  for (const subject of subjects) {
+    const doorway = page.locator(`[data-today-geographic-place="${subject.slug}"]`);
+    const photo = doorway.locator("img");
+    await expect(doorway).toHaveAttribute("href", `/places/${subject.slug}?${new URLSearchParams({ in: "county", returnTo: "/today?in=county" })}`);
+    await expect(photo).toBeVisible();
+    await expect(doorway).toHaveAttribute("data-photo-state", "loaded");
+    await expect.poll(() => photo.evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(1);
+    const actualSource = await photo.evaluate((node) => {
+      const image = node as HTMLImageElement;
+      const url = new URL(image.currentSrc || image.src, document.baseURI);
+      return decodeURIComponent(url.searchParams.get("url") ?? url.pathname);
+    });
+    expect(actualSource).toBe(subject.src);
+    await expect.poll(() => photo.evaluate((img) => getComputedStyle(img).opacity)).toBe("1");
+    await expect(doorway).toContainText(subject.title);
+    const photoBox = (await doorway.boundingBox())!;
+    expect(photoBox.width).toBeGreaterThanOrEqual(44); expect(photoBox.height).toBeGreaterThanOrEqual(44);
+    await expect(doorway.locator("a, button")).toHaveCount(0);
+  }
+  await expect(page.locator("[data-today-geographic-place]")).toHaveCount(2);
   await expect(page.locator("[data-today-discovery-credit]")).toHaveCount(0);
+  const tasks = page.locator('[data-today-discovery-tasks] a');
+  await expect(tasks).toHaveCount(2);
+  for (const [index, kind] of ["food", "outside"].entries()) {
+    await expect(tasks.nth(index)).toHaveAttribute("href", `/nearby?${new URLSearchParams({ c: kind, in: "county", returnTo: "/today?in=county" })}`);
+  }
+  await expect(page.locator('[data-today-local-discovery]')).not.toContainText(/Find pizza|Zoe|Sabor/);
   const find = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
   await expect(find).toBeVisible();
-  const findBox = (await find.boundingBox())!, photoBox = (await doorway.boundingBox())!;
-  expect(findBox.y + findBox.height).toBeLessThanOrEqual(photoBox.y);
-  expect(photoBox.width).toBeGreaterThanOrEqual(44); expect(photoBox.height).toBeGreaterThanOrEqual(44);
+  const findBox = (await find.boundingBox())!, discoveryBox = (await page.locator("[data-today-local-discovery]").boundingBox())!;
+  expect(findBox.y + findBox.height).toBeLessThanOrEqual(discoveryBox.y);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await mkdir("output/playwright/visual-journey", { recursive: true });
   await page.screenshot({ path: "output/playwright/visual-journey/today-390.png" });

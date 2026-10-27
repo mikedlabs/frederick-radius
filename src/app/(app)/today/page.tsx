@@ -49,7 +49,6 @@ import {
 import { eventCardVisual, parseRecoveryEventVisual } from "@/components/event/eventVisuals";
 import TodayMasthead from "@/components/today/TodayMasthead";
 import TodayGeographicDoorway, { TodayGeographicDoorwayPending } from "@/components/today/TodayGeographicDoorway";
-import PageChapter from "@/components/ui/PageChapter";
 import styles from "@/components/today/TodayLayout.module.css";
 import {
   TODAY_FAIR_PROMOTION_SLUG,
@@ -65,7 +64,7 @@ import {
  *   2. Conditions     → one verified weather glance before browsing
  *   3. Find and see   → one Find doorway, then exact scoped place photographs
  *                       before the current local answers
- *   4. Follow the day → a short event program and one location-aware place answer
+ *   4. Current local answers → a short event program and one location-aware place answer
  *   5. Keep exploring → four practical shortcuts and the category index
  *   6. Plan the rest  → scheduled utilities, sports, light, and tomorrow
  *   7. Local guides   → local guides and saved places, collapsed
@@ -283,20 +282,15 @@ export default async function HomePage() {
           </div>
         </div>
 
-      {/* Food photography opens scoped discovery before the local answers.
-          Exact Frederick storefronts appear only in county/Frederick lenses;
-          the category photo implies no merchant, location or current menu.
+      {/* Reviewed local photographs lead to their actual places. Task links
+          retain the selected area; imagery never promises current conditions.
           Until the URL lens is known, its fallback is deliberately neutral. */}
       <Suspense fallback={<TodayGeographicDoorwayPending />}>
         <TodayGeographicDoorway />
       </Suspense>
 
       <div data-today-current-content className={styles.currentContent}>
-      <PageChapter
-        label="Follow the day"
-        variant="plain"
-        className={styles.events}
-      >
+      <div data-today-events className={styles.events}>
         {/* A second civic moment still matters during the Fair campaign. Keep
             it with the day's program so it survives without competing with
             the place choices below. */}
@@ -309,7 +303,7 @@ export default async function HomePage() {
           </div>
         ) : null}
         {whatsOn}
-      </PageChapter>
+      </div>
         <div aria-label="Places for your area" className={styles.places}>
           {/* Keep the real selected-area answer mounted once, including its
               existing scope and honest availability fallback. */}
@@ -339,7 +333,7 @@ export default async function HomePage() {
           Find and nearby choices remain ahead of the seasonal campaign.
           Fair Day owns this doorway
           from Sep 2–26, then retires itself on Sep 27. When another civic
-          moment overlaps the Fair campaign, it appears in Follow the day
+          moment overlaps the Fair campaign, it appears with today's events
           above instead of disappearing. */}
       {(fairPromotionPhase || civicMoment) && (
       <div className={styles.context}>

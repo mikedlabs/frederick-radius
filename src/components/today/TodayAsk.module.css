@@ -49,9 +49,10 @@
 }
 
 .arrival .launcher {
-  min-height: 56px;
-  padding: var(--app-space-2) var(--app-space-4);
-  border-radius: var(--app-radius-xl) var(--app-radius-xl) 0 0;
+  min-height: 52px;
+  padding: var(--app-space-2) var(--app-space-3);
+  gap: var(--app-space-2);
+  border-radius: var(--app-radius-lg);
   color: var(--app-ink);
   background: var(--app-bg-elevated-solid);
 }
@@ -66,21 +67,21 @@
 }
 
 .arrival .launcherArrow {
-  color: var(--app-on-brand);
-  background: var(--app-brand);
+  padding: 0;
+  color: var(--app-link);
+  background: transparent;
 }
 
 .arrival .prompt {
-  font-size: 1.125rem;
+  font-size: 1rem;
   line-height: 1.3;
 }
 
 .arrival .searchIcon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--app-radius-sm);
-  color: var(--app-link);
-  background: var(--app-brand-tint-6);
+  width: 24px;
+  height: 24px;
+  color: var(--app-ink-2);
+  background: transparent;
 }
 
 .arrival .searchIcon svg {

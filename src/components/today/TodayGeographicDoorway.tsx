@@ -3,113 +3,92 @@
 import { useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Trees, Utensils } from "lucide-react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
 import { withBrowseReturnTo } from "@/lib/browse-return";
-import type { PlaceCardPhotoResult, PlaceCardPhotoSource } from "@/lib/place-card-photo";
-import { getScope, parseScope, scopeToParam, scopeTownSlug, subscribeScopeChange, type Scope } from "@/lib/scope";
-import { useTodayPlacePhoto } from "./useTodayPlacePhoto";
+import { recordPlaceCardPhotoResult, selectedPlaceCardPhoto, type PlaceCardPhotoResult, type PlaceCardPhotoState } from "@/lib/place-card-photo";
+import { getScope, parseScope, scopeToParam, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { localDiscoveryPlaces, type LocalDiscoveryPlace } from "@/lib/today/discovery-places";
 import styles from "./TodayLayout.module.css";
 
-/** Owner-approved category illustration only. No restaurant, date or location
- * is known for this photograph, so it never enters an exact-place registry. */
-export const TODAY_PIZZA_CATEGORY_PHOTO = {
-  kind: "owned",
-  src: "/images/discovery/pizza-preparation.jpg",
-  alt: "Rectangular pizzas with cheese and herbs on a preparation counter.",
-  objectPosition: "left",
-} satisfies PlaceCardPhotoSource;
+export type TodayDiscoveryTask = "food" | "outside";
 
-type CategoryPhoto = Extract<PlaceCardPhotoSource, { kind: "owned" }>;
-const BUSINESSES = [
-  { slug: "zoes-chocolate-company", name: "Zoe's Chocolate Company", actionName: "Zoe's Chocolate Company" },
-  { slug: "sabor-de-cuba-restaurant-frederick", name: "Sabor de Cuba", actionName: "Sabor de Cuba Restaurant" },
-] as const;
-
-/** These are actual Frederick businesses, never a label for another town. */
-export function todayShowsFrederickDoorway(scope: Scope | null): boolean {
-  const parsed = parseScope(scope);
-  return parsed !== "nearme" && (!scopeTownSlug(parsed) || scopeTownSlug(parsed) === "frederick");
-}
-
-export function todayPizzaHref(scope: Scope | null, returnTo?: string): string {
+/** Both broad tasks retain the visitor's lens and exact origin. The old
+ * pizza-only shortcut did not represent the range of things people need. */
+export function todayDiscoveryTaskHref(task: TodayDiscoveryTask, scope: Scope | null, returnTo?: string): string {
   const active = parseScope(scope) ?? "county";
-  const params = new URLSearchParams({ c: "food", facet: "pizza", in: scopeToParam(active) });
+  const params = new URLSearchParams({ c: task, in: scopeToParam(active) });
   return withBrowseReturnTo(`/nearby?${params}`, returnTo);
 }
 
-/** Until the real browser lens is resolved, show no foreign town or photo. */
+/** No named place or photograph flashes before the actual browser lens is
+ * resolved. This fallback cannot request location, metadata or image bytes. */
 export function TodayGeographicDoorwayPending() {
   return <div data-today-geographic-pending aria-hidden="true" className={`${styles.geographicMosaic} ${styles.geographicPending}`} />;
 }
 
-function DiningPhotoTile({ title, href, label, primary = false, slug, source, loaded, onResult }: {
-  title: string; href: string; label: string; primary?: boolean; slug?: string;
-  source: PlaceCardPhotoSource | null; loaded: boolean;
-  onResult: (src: string, result: PlaceCardPhotoResult) => void;
-}) {
+function DiscoveryPlace({ place, scope, returnTo, lead }: { place: LocalDiscoveryPlace; scope: Scope; returnTo: string; lead: boolean }) {
+  const [state, setState] = useState<PlaceCardPhotoState | null>(null);
+  const source = selectedPlaceCardPhoto(place.photoPlan, state);
+  const loaded = Boolean(source && state?.planKey === place.photoPlan.key && state.loadedSrc === source.src);
+  const href = withBrowseReturnTo(`/places/${place.slug}?${new URLSearchParams({ in: scopeToParam(scope) })}`, returnTo);
+  const onResult = (src: string, result: PlaceCardPhotoResult) => {
+    setState(current => recordPlaceCardPhotoResult(place.photoPlan, current, src, result));
+  };
   return (
-    <Link href={href} prefetch={false} aria-label={label}
-      data-today-geographic-doorway={primary || undefined}
-      data-today-geographic-place={slug}
-      data-today-discovery-action={primary ? "pizza" : "place"}
-      data-photo-state={loaded ? "loaded" : source ? "pending" : "failed"}
-      className={`${styles.geographicDoorway} ${primary ? styles.geographicMain : styles.geographicSupporting}`}>
-      {source && <span className={styles.geographicPhoto} data-today-photo-lead={primary || undefined}>
-        <PlaceCardPhoto source={source} onResult={onResult}
-          sizes={primary ? "(min-width: 640px) 520px, 66vw" : "(min-width: 640px) 240px, 34vw"} />
-      </span>}
-      <div className={styles.geographicCaption} data-today-geographic-caption>
-        {primary ? <h2>{title}</h2> : <h3>{title}</h3>}
-        <span aria-hidden className={styles.geographicAction}><ArrowUpRight className="h-5 w-5" /></span>
-      </div>
-    </Link>
+    <article className={styles.discoveryPlace}>
+      <Link href={href} prefetch={false} aria-label={`View ${place.name} in ${place.town}`}
+        data-today-geographic-place={place.slug} data-today-discovery-action="place"
+        data-photo-state={loaded ? "loaded" : source ? "pending" : "failed"}
+        className={styles.discoveryPlaceLink}>
+        {source && <span className={styles.discoveryPhoto} data-today-photo-lead={lead || undefined}>
+          <PlaceCardPhoto key={source.src} source={source} onResult={onResult}
+            sizes="(min-width: 640px) 520px, calc(100vw - 32px)" />
+        </span>}
+        <div data-today-geographic-caption className={styles.discoveryCaption}>
+          <div className="min-w-0">
+            <h3 className={styles.discoveryName}>{place.shortName ?? place.name}</h3>
+            <p className={styles.discoveryTown}>{place.town}</p>
+          </div>
+          <span aria-hidden className={styles.discoveryAction}><ArrowUpRight className="h-4 w-4" /></span>
+        </div>
+      </Link>
+      {source?.kind === "curated" && <div className={styles.discoveryCredit} data-today-discovery-credit={place.slug}>
+        <PlaceCardPhotoCredit source={source} loaded={loaded} touchTarget compact discloseModifications />
+      </div>}
+    </article>
   );
 }
 
-function DiningMosaic({ scope, returnTo, categoryPhoto }: { scope: Scope; returnTo: string; categoryPhoto: CategoryPhoto | null }) {
-  const [categoryState, setCategoryState] = useState<PlaceCardPhotoResult | null>(null);
-  const pizza = categoryState === "failed" ? null : categoryPhoto;
-  const zoes = useTodayPlacePhoto({ slug: BUSINESSES[0].slug }, 360, false);
-  const sabor = useTodayPlacePhoto({ slug: BUSINESSES[1].slug }, 360, false);
-  const showBusinesses = todayShowsFrederickDoorway(scope);
-  const sources = [zoes, sabor];
-  const visibleBusinesses = showBusinesses ? BUSINESSES.flatMap((place, index) => {
-    const photo = sources[index];
-    return photo.source ? [{ place, photo }] : [];
-  }) : [];
-  return (
-    <div data-today-geographic-mosaic className={styles.geographicMosaic}>
-      <div data-today-discovery-grid data-local-businesses={visibleBusinesses.length > 0 || undefined} className={styles.geographicTileGrid}>
-        <DiningPhotoTile title="Find pizza" label="Find pizza" primary
-          href={todayPizzaHref(scope, returnTo)} source={pizza} loaded={categoryState === "loaded"}
-          onResult={(src, result) => {
-            if (src === categoryPhoto?.src) setCategoryState(current => current === "failed" ? current : result);
-          }} />
-        {visibleBusinesses.map(({ place, photo }) => {
-          const params = new URLSearchParams({ in: scopeToParam(scope) });
-          return <DiningPhotoTile key={place.slug} title={place.name} slug={place.slug}
-            label={`View ${place.actionName} in Frederick`}
-            href={withBrowseReturnTo(`/places/${place.slug}?${params}`, returnTo)}
-            source={photo.source} loaded={photo.loaded} onResult={photo.onResult} />;
-        })}
-      </div>
-      {visibleBusinesses.map(({ place, photo }) => photo.source && photo.source.kind !== "owned" &&
-        <div key={place.slug} className={styles.geographicCredit} data-today-discovery-credit>
-          <PlaceCardPhotoCredit source={photo.source} loaded={photo.loaded} touchTarget compact discloseModifications />
-        </div>)}
-    </div>
-  );
-}
-
-/** Category art is unlocated. A named business needs its own exact
- * current-appearance review before it can occupy a prominent photo tile. */
-export function TodayGeographicDoorwayView({ scope = null, returnTo, categoryPhoto = TODAY_PIZZA_CATEGORY_PHOTO }: {
-  scope?: Scope | null; returnTo?: string; categoryPhoto?: CategoryPhoto | null;
+/** The exact nonmerchant places are a small, reviewed editorial selection,
+ * never a replacement ranking or an assertion about current access/weather.
+ * Towns without accepted local imagery retain useful scoped tasks alone. */
+export function TodayGeographicDoorwayView({ scope = null, returnTo }: {
+  scope?: Scope | null; returnTo?: string;
 }) {
   const active = parseScope(scope) ?? "county";
   const origin = returnTo ?? `/today?in=${scopeToParam(active)}`;
-  return <DiningMosaic key={`${active}:${categoryPhoto?.src ?? "no-category-photo"}`} scope={active} returnTo={origin} categoryPhoto={categoryPhoto} />;
+  const places = localDiscoveryPlaces(active);
+  return (
+    <section id="today-discovery" data-today-local-discovery data-today-geographic-mosaic aria-labelledby="today-discovery-heading" className={styles.geographicMosaic}>
+      <h2 id="today-discovery-heading" className="sr-only">Explore local</h2>
+      {places.length > 0 && <div data-today-discovery-grid className={styles.discoveryPlaceGrid}>
+        {places.map((place, index) => <DiscoveryPlace key={`${active}:${place.photoPlan.key}`} place={place} scope={active} returnTo={origin} lead={index === 0} />)}
+      </div>}
+      <nav data-today-discovery-tasks aria-label="Browse by need" className={styles.discoveryTasks}>
+        <Link href={todayDiscoveryTaskHref("food", active, origin)} prefetch={false}
+          data-today-discovery-action="food" className={styles.discoveryTask}>
+          <span aria-hidden className={styles.discoveryTaskIcon}><Utensils className="h-5 w-5" /></span>
+          <span>Eat &amp; drink</span><ArrowUpRight aria-hidden className="h-4 w-4 shrink-0" />
+        </Link>
+        <Link href={todayDiscoveryTaskHref("outside", active, origin)} prefetch={false}
+          data-today-discovery-action="outside" className={styles.discoveryTask}>
+          <span aria-hidden className={styles.discoveryTaskIcon}><Trees className="h-5 w-5" /></span>
+          <span>Get outside</span><ArrowUpRight aria-hidden className="h-4 w-4 shrink-0" />
+        </Link>
+      </nav>
+    </section>
+  );
 }
 
 function subscribe(listener: () => void) {
@@ -118,15 +97,15 @@ function subscribe(listener: () => void) {
   window.addEventListener("popstate", listener);
   return () => { unsubscribe(); window.removeEventListener("hashchange", listener); window.removeEventListener("popstate", listener); };
 }
-const snapshot = () => JSON.stringify([getScope() ?? "county", window.location.hash]);
+const snapshot = () => JSON.stringify([getScope() ?? "county", window.location.search, window.location.hash]);
 
-/** A neutral server snapshot prevents saved-town hydration from briefly
- * displaying Frederick businesses. The validated URL always wins afterward. */
+/** The URL lens wins even when present but invalid; a saved town must not
+ * replace that explicit county fallback. Back retains intent and section. */
 export default function TodayGeographicDoorway() {
   const stored = useSyncExternalStore(subscribe, snapshot, () => null);
   const params = useSearchParams();
   if (stored === null) return <TodayGeographicDoorwayPending />;
-  const [storedScope, hash] = JSON.parse(stored) as [Scope, string];
+  const [storedScope, , hash] = JSON.parse(stored) as [Scope, string, string];
   const scope = params.has("in") ? parseScope(params.get("in")) ?? "county" : storedScope;
   const returnParams = new URLSearchParams(params.toString());
   returnParams.set("in", scopeToParam(scope));
