@@ -56,6 +56,8 @@ export type VisibleWeeklyContactLocation = {
     entity_url: string;
     name: string;
     closed_representation?: "midnight_equal";
+    /** Opt-in only for a reviewed single-location page with no entity URL. */
+    url_absent_single_location?: { street: string; country_object: true; zero_seconds: true; astro_hours_selector: string };
   };
   /** Only individually timestamped archived entries may be excluded. */
   social_archive?: {
@@ -118,6 +120,9 @@ export type OfficialHoursCohort = VisibleContactCohort | (CohortBase & ({
 }));
 
 const compact = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+// Limited postal spelling normalization for the explicitly reviewed URL-less
+// format; it does not conflate different streets or suite identities.
+const compactStreet = (value: string) => compact(value.replace(/\bst\.?(?=\s*(?:,|\s+(?:suite|ste|unit)\b|$))/gi, "street").replace(/\bste\.?\s+(?=[a-z0-9])/gi, "suite "));
 const phone = (value: string) => value.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
 const contactPhone = (value: string) => phone(decodeURIComponent(value.replace(/^tel:/i, "")));
 const text = (node: Element): string => [...node.childNodes].map((child) => child.nodeType === 3 ? child.textContent ?? "" : child.nodeType === 1 ? text(child as Element) : "").join(" ").replace(/\s+/g, " ").trim();
@@ -165,7 +170,7 @@ function validateCohort(cohort: OfficialHoursCohort, binding: OfficialHoursCohor
       const location = cohort.locations[row.slug];
       if (![location.name, location.address, location.phone].every(field => field?.selector && field.expected)
         || !compact(location.name.expected).includes(compact(row.identity.name))
-        || compact(location.address.expected.replace(/,?\s*(?:USA|US|United States)\.?$/, "")) !== compact(`${row.identity.street} ${row.identity.locality} ${row.identity.region} ${row.identity.postalCode}`)
+        || (location.structured?.url_absent_single_location ? compactStreet : compact)(location.address.expected.replace(/,?\s*(?:USA|US|United States)\.?$/, "")) !== (location.structured?.url_absent_single_location ? compactStreet : compact)(`${row.identity.street} ${row.identity.locality} ${row.identity.region} ${row.identity.postalCode}`)
         || contactPhone(location.phone.expected) !== row.identity.phone
         || !location.weeks.length || location.weeks.length > 12 || !location.weeks.some(section => !section.partial)
         || location.weeks.some(section => !section.selector || !Number.isInteger(section.count) || section.count < 1 || section.count > 20
@@ -177,6 +182,11 @@ function validateCohort(cohort: OfficialHoursCohort, binding: OfficialHoursCohor
         const entityUrl = new URL(location.structured.entity_url);
         if (entityUrl.protocol !== "https:" || entityUrl.origin !== url.origin || entityUrl.username || entityUrl.password || entityUrl.hash
           || !location.structured.name || !location.structured.schema_type) throw new Error("Invalid structured corroboration ownership.");
+        const absent = location.structured.url_absent_single_location;
+        if (absent && (location.structured.entity_url !== cohort.canonical_url || !absent.street || !absent.astro_hours_selector
+          || absent.country_object !== true || absent.zero_seconds !== true || cohort.bindings.length !== 1
+          || !compactStreet(row.identity.street).startsWith(compactStreet(absent.street))
+          || !/^(?:|suite[a-z0-9]+|unit[a-z0-9]+)$/.test(compactStreet(row.identity.street).slice(compactStreet(absent.street).length)))) throw new Error("Invalid URL-less structured ownership.");
       }
     }
   }
@@ -251,7 +261,7 @@ function visibleWeek(card: Element, cohort: Extract<OfficialHoursCohort, { shape
   }
   return hours;
 }
-function specifications(entity: Record<string, unknown>, cohort: Pick<Extract<OfficialHoursCohort, { shape: "jsonld_weekly_location_cards" }>, "closed_representation">): Hours {
+function specifications(entity: Record<string, unknown>, cohort: Pick<Extract<OfficialHoursCohort, { shape: "jsonld_weekly_location_cards" }>, "closed_representation">, zeroSeconds = false): Hours {
   if (["specialOpeningHoursSpecification", "openingHours", "validFrom", "validThrough", "temporalCoverage"].some((key) => key in entity)
     || !Array.isArray(entity.openingHoursSpecification) || !entity.openingHoursSpecification.length || entity.openingHoursSpecification.length > 14) throw new Error("Unreviewed structured cohort schedule.");
   const hours: Hours = {};
@@ -260,9 +270,9 @@ function specifications(entity: Record<string, unknown>, cohort: Pick<Extract<Of
     const row = value as Record<string, unknown>;
     if (row["@type"] !== "OpeningHoursSpecification" || Object.keys(row).some((key) => !["@type", "dayOfWeek", "opens", "closes"].includes(key))) throw new Error("Unreviewed cohort specification qualifier.");
     const days = Array.isArray(row.dayOfWeek) ? row.dayOfWeek : [row.dayOfWeek];
-    const validClock = (value: unknown) => typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+    const validClock = (value: unknown) => typeof value === "string" && (zeroSeconds ? /^(?:[01]\d|2[0-3]):[0-5]\d:00$/ : /^(?:[01]\d|2[0-3]):[0-5]\d$/).test(value);
     if (!days.length || days.length > 7 || new Set(days).size !== days.length || !validClock(row.opens) || !validClock(row.closes)) throw new Error("Invalid structured cohort days or clocks.");
-    const open = row.opens as string, close = row.closes as string;
+    const open = (row.opens as string).slice(0, 5), close = (row.closes as string).slice(0, 5);
     const closed = cohort.closed_representation === "midnight_equal" && open === "00:00" && close === "00:00";
     if (!closed && open >= close) throw new Error("Ambiguous all-day or overnight cohort specification.");
     for (const value of days) {
@@ -602,6 +612,56 @@ function exactContactField(document: Document, field: ExactContactField, allowTi
   if (value.replace(/\s+/g, " ").trim() !== field.expected) throw new Error("Changed exact visible contact identity.");
   return value;
 }
+/** Astro serializes a second schedule and special hours into element props.
+ * Reject unknown typed shapes rather than overlooking hidden exceptions. */
+function astroContactWeek(document: Document, selector: string): Hours {
+  const node = one(document.body, selector);
+  // This reviewed format has no other JSON data scripts. An added JSON or
+  // text/data script may carry a special schedule even if the visible week
+  // is unchanged; do not attempt to infer its ownership or ignore it.
+  for (const script of document.querySelectorAll("script[type]")) {
+    const type = (script.getAttribute("type") ?? "").trim().toLowerCase().split(";")[0];
+    if (type !== "application/ld+json" && (/(?:^|[+/])json$/.test(type) || type === "text/data" || type === "application/data")) throw new Error("Additional JSON data requires review.");
+  }
+  const hasScheduleKey = (value: unknown): boolean => {
+    if (Array.isArray(value)) return value.some(hasScheduleKey);
+    if (!value || typeof value !== "object") return false;
+    return Object.entries(value).some(([key, child]) => /hour|open|clos|holiday|exception|tempor|schedul|season/i.test(key) || hasScheduleKey(child));
+  };
+  for (const other of document.querySelectorAll("[props]")) {
+    if (other === node) continue;
+    let serialized: unknown;
+    try { serialized = JSON.parse(other.getAttribute("props") ?? ""); } catch { throw new Error("Unreviewed serialized page data."); }
+    if (hasScheduleKey(serialized)) throw new Error("Additional serialized schedule requires review.");
+  }
+  let props: Record<string, unknown>;
+  try { props = JSON.parse(node.getAttribute("props") ?? "") as Record<string, unknown>; }
+  catch { throw new Error("Invalid serialized contact schedule."); }
+  if (!props || typeof props !== "object" || Array.isArray(props)
+    || Object.keys(props).some(key => !["timezone", "hours", "specialHours"].includes(key) && !/^data-astro-cid-[a-z0-9]+$/.test(key))
+    || JSON.stringify(props.timezone) !== JSON.stringify([0, "America/New_York"])
+    || JSON.stringify(props.specialHours) !== JSON.stringify([1, []])
+    || Object.entries(props).some(([key, value]) => key.startsWith("data-astro-cid-") && JSON.stringify(value) !== JSON.stringify([0, true]))) throw new Error("Unknown serialized schedule or special hours.");
+  const tuple = props.hours;
+  if (!Array.isArray(tuple) || tuple.length !== 2 || tuple[0] !== 0 || !tuple[1] || typeof tuple[1] !== "object" || Array.isArray(tuple[1])) throw new Error("Invalid serialized hours.");
+  const days = tuple[1] as Record<string, unknown>;
+  if (Object.keys(days).length !== 7 || FULL_DAYS.some(day => !(day in days))) throw new Error("Incomplete serialized week.");
+  const result: Hours = {};
+  for (let i = 0; i < FULL_DAYS.length; i++) {
+    const value = days[FULL_DAYS[i]];
+    if (!Array.isArray(value) || value.length !== 2 || value[0] !== 0 || !value[1] || typeof value[1] !== "object" || Array.isArray(value[1])) throw new Error("Invalid serialized weekday.");
+    const day = value[1] as Record<string, unknown>;
+    if (Object.keys(day).sort().join(",") !== "blocks,status" || JSON.stringify(day.status) !== JSON.stringify([0, "Open"]) || !Array.isArray(day.blocks) || day.blocks.length !== 2 || day.blocks[0] !== 1 || !Array.isArray(day.blocks[1]) || day.blocks[1].length !== 1) throw new Error("Unknown serialized service condition.");
+    const block = day.blocks[1][0];
+    if (!Array.isArray(block) || block.length !== 2 || block[0] !== 0 || !block[1] || typeof block[1] !== "object" || Array.isArray(block[1])) throw new Error("Invalid serialized period.");
+    const period = block[1] as Record<string, unknown>;
+    const unpack = (value: unknown) => Array.isArray(value) && value.length === 2 && value[0] === 0 && typeof value[1] === "string" && /^(?:[01]\d|2[0-3])[0-5]\d$/.test(value[1]) ? `${value[1].slice(0, 2)}:${value[1].slice(2)}` : null;
+    const open = unpack(period.from), close = unpack(period.to);
+    if (Object.keys(period).sort().join(",") !== "from,to" || !open || !close || open >= close) throw new Error("Unreviewed serialized period.");
+    result[WEEKDAYS[i]] = [{ open, close }];
+  }
+  return result;
+}
 function visibleStructuredWeek(document: Document, cohort: VisibleContactCohort, binding: OfficialHoursCohortBinding, location: VisibleWeeklyContactLocation): Hours | undefined {
   const entities: Record<string, unknown>[] = [];
   const visit = (value: unknown) => {
@@ -615,7 +675,8 @@ function visibleStructuredWeek(document: Document, cohort: VisibleContactCohort,
     let value: unknown; try { value = JSON.parse(script.textContent ?? ""); } catch { throw new Error("Invalid structured contact evidence."); }
     visit(value);
   }
-  const candidates = entities.filter(entity => {
+  const urlAbsent = location.structured?.url_absent_single_location;
+  const candidates = urlAbsent ? entities : entities.filter(entity => {
     const address = entity.address as Record<string, unknown> | undefined;
     return entity.url === location.structured?.entity_url || entity.url === cohort.canonical_url
       || (typeof address?.streetAddress === "string" && compact(address.streetAddress) === compact(binding.identity.street));
@@ -624,14 +685,36 @@ function visibleStructuredWeek(document: Document, cohort: VisibleContactCohort,
   if (candidates.length !== 1) throw new Error("Missing or ambiguous corroborating structured week.");
   const entity = candidates[0], spec = location.structured, identity = binding.identity;
   const address = entity.address as Record<string, unknown> | undefined, types = Array.isArray(entity["@type"]) ? entity["@type"] : [entity["@type"]];
-  if (!types.includes(spec.schema_type) || entity.url !== spec.entity_url || entity.name !== spec.name
+  const countryObject = address?.addressCountry;
+  const country = urlAbsent ? Boolean(countryObject && typeof countryObject === "object" && !Array.isArray(countryObject)
+    && Object.keys(countryObject).sort().join(",") === "@type,name" && (countryObject as Record<string, unknown>)["@type"] === "Country"
+    && (countryObject as Record<string, unknown>).name === "US") : countryObject === "US";
+  if (!types.includes(spec.schema_type) || (urlAbsent ? ["url", "@id", "mainEntityOfPage"].some(key => key in entity) : entity.url !== spec.entity_url) || entity.name !== spec.name
     || typeof entity.telephone !== "string" || phone(entity.telephone) !== identity.phone
-    || !address || typeof address.streetAddress !== "string" || compact(address.streetAddress) !== compact(identity.street)
+    || !address || typeof address.streetAddress !== "string" || compact(address.streetAddress) !== compact(urlAbsent?.street ?? identity.street)
     || address.addressLocality !== identity.locality || address.addressRegion !== identity.region || address.postalCode !== identity.postalCode
-    || address.addressCountry !== "US" || !Array.isArray(entity.openingHoursSpecification)) throw new Error("Conflicting structured contact identity.");
+    || !country || !Array.isArray(entity.openingHoursSpecification)) throw new Error("Conflicting structured contact identity.");
   // Dated and qualified rows retain the existing strict specification gate.
   // A future holiday claim cannot be ignored merely because this week ends first.
-  return specifications(entity, spec);
+  const structured = specifications(entity, spec, Boolean(urlAbsent));
+  if (urlAbsent) {
+    // Visit all JSON-LD outside the recognized rows. The rows themselves are
+    // strictly parsed by specifications(); schedule-like aliases elsewhere
+    // could otherwise hide exceptions without creating another entity.
+    const rejectHiddenClaims = (value: unknown): void => {
+      if (Array.isArray(value)) { value.forEach(rejectHiddenClaims); return; }
+      if (!value || typeof value !== "object") return;
+      for (const [key, child] of Object.entries(value)) {
+        if (key === "openingHoursSpecification") continue;
+        if (/hour|open|clos|holiday|exception|tempor|schedul|season/i.test(key)) throw new Error("Additional structured schedule requires review.");
+        rejectHiddenClaims(child);
+      }
+    };
+    for (const script of document.querySelectorAll("script[type='application/ld+json']")) rejectHiddenClaims(JSON.parse(script.textContent ?? ""));
+    const serialized = astroContactWeek(document, urlAbsent.astro_hours_selector);
+    if (WEEKDAYS.some(day => JSON.stringify(serialized[day]) !== JSON.stringify(structured[day]))) throw new Error("Conflicting serialized and structured contact week.");
+  }
+  return structured;
 }
 function visibleContactWeek(document: Document, cohort: VisibleContactCohort, binding: OfficialHoursCohortBinding, window?: OfficialHoursCohortWindow): Hours {
   const canonical = [...document.querySelectorAll("link[rel='canonical']")];

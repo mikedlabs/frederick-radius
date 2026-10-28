@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { withBusinessInfoRunLock } from "../scripts/lib/business-info-run-lock";
 import { main as nativeMain } from "../scripts/refresh-official-commerce-links";
 
-function fixture() { const dir = mkdtempSync(join(tmpdir(), "radius-lock-test-")), root = join(dir, "checkout"), hold = join(dir, "hold"); mkdirSync(root); mkdirSync(join(root,"src")); mkdirSync(join(root,"src/data")); mkdirSync(hold); const target = join(root,"src/data/business-info.json"); writeFileSync(target,'{"old":{"name":"Kept","commerce_links":[{"url":"https://one.example/menu"}],"commerce_source":{"checkedAt":"2026-10-01"}}}\n'); return {dir,root,hold,target}; }
+function fixture() { const dir = mkdtempSync(join(tmpdir(), "radius-lock-test-")), root = join(dir, "checkout"), hold = join(dir, "hold"); mkdirSync(root); mkdirSync(join(root,"src")); mkdirSync(join(root,"src/data")); mkdirSync(hold); execFileSync("git",["init","-q",root]); const target = join(root,"src/data/business-info.json"); writeFileSync(target,'{"old":{"name":"Kept","commerce_links":[{"url":"https://one.example/menu"}],"commerce_source":{"checkedAt":"2026-10-01"}}}\n'); return {dir,root,hold,target}; }
 const candidate = { old: { name:"Kept", commerce_links:[{url:"https://one.example/menu"}], commerce_source:{checkedAt:"2026-10-01"} }, "new-place": {name:"New"} };
 test("lock serializes a whole run; the rejected second run makes no provider calls", async () => {
  const f=fixture(); const old=process.env.BUSINESS_INFO_CONFLICT_PARENT; process.env.BUSINESS_INFO_CONFLICT_PARENT=f.hold;
@@ -16,6 +16,30 @@ test("lock serializes a whole run; the rejected second run makes no provider cal
    await assert.rejects(withBusinessInfoRunLock(f.target,async()=>{rejectedProviderCalls++;}),/EEXIST/); assert.equal(rejectedProviderCalls,0); unblock();await first;
    assert.deepEqual(JSON.parse(readFileSync(f.target,"utf8")),candidate);assert.equal(existsSync(f.target+".review.lock"),false);const dirs=readdirSync(f.hold);assert.equal(dirs.length,1);const result=JSON.parse(readFileSync(join(f.hold,dirs[0],"commit-result.json"),"utf8"));assert.equal(result.state,"committed_local_not_published");assert.equal(result.original_provider_responses_retained,false);
  } finally {if(old===undefined)delete process.env.BUSINESS_INFO_CONFLICT_PARENT;else process.env.BUSINESS_INFO_CONFLICT_PARENT=old;rmSync(f.dir,{recursive:true,force:true});}
+});
+test("linked worktrees share a lock before either writer can call a provider", async () => {
+ const f=fixture();const other=join(f.dir,"other"),old=process.env.BUSINESS_INFO_CONFLICT_PARENT;process.env.BUSINESS_INFO_CONFLICT_PARENT=f.hold;
+ execFileSync("git",["-C",f.root,"add","src/data/business-info.json"]);
+ execFileSync("git",["-C",f.root,"-c","user.name=Test","-c","user.email=test@example.invalid","commit","-qm","fixture"]);
+ execFileSync("git",["-C",f.root,"worktree","add","-q","--detach",other,"HEAD"]);
+ const otherTarget=join(other,"src/data/business-info.json");let unblock!:()=>void,started!:()=>void;const waiting=new Promise<void>(r=>unblock=r),began=new Promise<void>(r=>started=r);let calls=0;
+ try{const first=withBusinessInfoRunLock(f.target,async()=>{started();await waiting;});await began;
+   await assert.rejects(withBusinessInfoRunLock(otherTarget,async()=>{calls++;}),/EEXIST/);assert.equal(calls,0);unblock();await first;
+   await withBusinessInfoRunLock(otherTarget,async()=>{calls++;});assert.equal(calls,1);
+ }finally{if(old===undefined)delete process.env.BUSINESS_INFO_CONFLICT_PARENT;else process.env.BUSINESS_INFO_CONFLICT_PARENT=old;rmSync(f.dir,{recursive:true,force:true});}
+});
+test("an interrupted writer leaves the shared lock held rather than silently retrying", async () => {
+ const f=fixture(),other=join(f.dir,"other"),loader=join(process.cwd(),"node_modules/tsx/dist/loader.mjs"),modulePath=join(process.cwd(),"scripts/lib/business-info-run-lock.ts");
+ execFileSync("git",["-C",f.root,"add","src/data/business-info.json"]);
+ execFileSync("git",["-C",f.root,"-c","user.name=Test","-c","user.email=test@example.invalid","commit","-qm","fixture"]);
+ execFileSync("git",["-C",f.root,"worktree","add","-q","--detach",other,"HEAD"]);
+ const script=`import {withBusinessInfoRunLock} from ${JSON.stringify(modulePath)}; await withBusinessInfoRunLock(${JSON.stringify(f.target)}, async()=>{setInterval(()=>{},1000); console.log('LOCKED'); await new Promise(()=>{});});`;
+ const child=spawn(process.execPath,["--import",loader,"--input-type=module","-e",script],{env:{...process.env,BUSINESS_INFO_CONFLICT_PARENT:f.hold},stdio:["ignore","pipe","pipe"]});
+ try{await new Promise<void>((resolve,reject)=>{let out="";const timer=setTimeout(()=>reject(new Error("writer did not acquire lock in time")),5000);child.stdout.on("data",chunk=>{out+=chunk;if(out.includes("LOCKED")){clearTimeout(timer);resolve();}});child.once("error",error=>{clearTimeout(timer);reject(error);});child.once("exit",code=>{clearTimeout(timer);reject(new Error(`child exited before locking: ${code}`));});});
+   const exited=new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error("writer did not exit in time")),5000);child.once("exit",()=>{clearTimeout(timer);resolve();});});
+   child.kill("SIGKILL");await exited;let calls=0;
+   const otherTarget=join(other,"src/data/business-info.json");await assert.rejects(withBusinessInfoRunLock(otherTarget,async()=>{calls++;}),/EEXIST/);assert.equal(calls,0);assert.equal(existsSync(otherTarget+".review.lock"),false);assert.equal(existsSync(join(f.root,".git","radius-business-info.review.lock")),true);
+ }finally{if(child.exitCode===null && child.signalCode===null)child.kill("SIGKILL");rmSync(f.dir,{recursive:true,force:true});}
 });
 test("a noncooperating change holds the complete derived candidate and keeps its old commerce action/clock", async()=>{
  const f=fixture();const old=process.env.BUSINESS_INFO_CONFLICT_PARENT;process.env.BUSINESS_INFO_CONFLICT_PARENT=f.hold;
