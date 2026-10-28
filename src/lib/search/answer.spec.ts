@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { primaryAnswerFor } from "./answer";
+import { primaryAnswerFor, simpleCategoryRequestQuery } from "./answer";
+import { readNearbyQuery } from "@/lib/nearby-query";
 
 describe("primaryAnswerFor", () => {
   it("answers 'coffee open now near me' with the nearest-open coffee surface", () => {
@@ -14,6 +15,13 @@ describe("primaryAnswerFor", () => {
     expect(primaryAnswerFor("pizza")?.key).toBe("food");
     expect(primaryAnswerFor("wineries near me")?.key).toBe("wineries");
     expect(primaryAnswerFor("a good hike")?.key).toBe("outside");
+  });
+
+  it.each(["pizza", "pizzeria", "I need pizza"])("retains the requested pizza filter for %s", query => {
+    const answer = primaryAnswerFor(query, { municipality: "brunswick" });
+    expect(answer).toMatchObject({ key: "food", label: "Pizza", href: "/nearby?c=food&facet=pizza&in=brunswick" });
+    expect(readNearbyQuery(new URL(answer!.href, "https://radius.test").searchParams))
+      .toMatchObject({ cravingKey: "food", facetKey: "pizza", scope: "town:brunswick" });
   });
 
   it("retains a named town in the category destination", () => {
@@ -47,5 +55,25 @@ describe("primaryAnswerFor", () => {
     expect(primaryAnswerFor("nearest auto repair shop")).toBeNull();
     expect(primaryAnswerFor("car wash near me")).toBeNull();
     expect(primaryAnswerFor("oil change")).toBeNull();
+  });
+});
+
+
+describe("simple category request vocabulary", () => {
+  it.each([
+    ["I need pizza", "pizza"], ["  I WANT   COFFEE?  ", "coffee"],
+    ["pizza?", "pizza"], ["coffee?", "coffee"], ["museums?", "museums"],
+    ["I’m looking for a museum", "museum"], ["I am looking for some ice cream?", "ice cream"],
+  ])("unwraps only the complete bare category in %s", (query, category) => {
+    expect(simpleCategoryRequestQuery(query)).toBe(category);
+  });
+  it.each([
+    "I need coffee and bikes", "I want coffee near me", "I need coffee open tonight",
+    "I need wheelchair accessible coffee", "I need a quiet museum", "I need pizza in Brunswick",
+    "I need pizza without cheese", "I want happy hour", "I need overnight", "I want live music",
+    "I need family friendly", "I need pizza? and coffee", "coffee", "I need zzxq",
+    "pizza open tonight?", "coffee and bikes?", "wheelchair accessible coffee?", "I need sauna",
+  ])("does not swallow constraints or unknown terms in %s", query => {
+    expect(simpleCategoryRequestQuery(query)).toBeNull();
   });
 });

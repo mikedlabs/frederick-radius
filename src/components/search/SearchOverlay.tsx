@@ -53,6 +53,7 @@ import { TRUST_COLOR, type TrustSignal } from "@/lib/trust";
 import { useRecentSearches, usePushRecentSearch, useClearRecentSearches, useRecentSearchStatus, type RecentSearchStatus } from "@/hooks/useRecentSearches";
 import { frederickHour } from "@/lib/search-suggestions";
 import { isExactPlaceNameQuery } from "@/lib/search/place-name";
+import { simpleCategoryAllowsCravingShortcut, simpleCategoryRequestQuery } from "@/lib/search/answer";
 
 const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
   place: MapPin,
@@ -120,7 +121,7 @@ export function isNaturalLanguageRequest(value: string): boolean {
     .replace(/[’]/g, "'")
     .replace(/\s+/g, " ");
 
-  if (!query) return false;
+  if (!query || simpleCategoryRequestQuery(query)) return false;
   if (/[?]\s*$/.test(query)) return true;
 
   if (
@@ -141,6 +142,23 @@ export function isNaturalLanguageRequest(value: string): boolean {
 
   const words = query.match(/[a-z0-9]+/g) ?? [];
   return words.length >= 3 && /\b(?:anything|something|somewhere)\b/.test(query);
+}
+
+/** A name followed by question punctuation can be an exact lookup. Probe
+ * the catalog without assuming a match or sending its corpus to this client.
+ * The original wording remains the reasoning fallback, including constraints.
+ */
+export function exactQuestionLookupQuery(value: string): string | null {
+  const query = value.trim();
+  if (!/[?]+$/.test(query) || simpleCategoryRequestQuery(query)) return null;
+  const candidate = query.replace(/[?]+$/, "").trim();
+  return candidate && !candidate.includes("?") && !isNaturalLanguageRequest(candidate)
+    ? candidate : null;
+}
+
+export function isExactQuestionPlaceResult(query: string, best?: SearchResult | null): boolean {
+  const lookup = exactQuestionLookupQuery(query);
+  return Boolean(lookup && best?.type === "place" && isExactPlaceNameQuery(lookup, best.title));
 }
 
 const DIRECT_NATURAL_LANGUAGE_INTENTS = new Set([
@@ -166,9 +184,11 @@ export function isCompoundLookup(value: string): boolean {
  * A category guess cannot outrank an exact place or win during retrieval. */
 export function visibleFindQuickAnswers(query: string, status: "idle" | "loading" | "done" | "error", best?: SearchResult | null) {
   if (status === "done" && best?.type === "place" && isExactPlaceNameQuery(query, best.title)) return [];
-  const directOnly = isNaturalLanguageRequest(query) || isCompoundLookup(query);
-  return findQuickAnswers(query).filter((answer) =>
+  const categoryQuery = simpleCategoryRequestQuery(query);
+  const directOnly = isNaturalLanguageRequest(query) || (!categoryQuery && isCompoundLookup(query));
+  return findQuickAnswers(categoryQuery ?? query).filter((answer) =>
     (!directOnly || DIRECT_NATURAL_LANGUAGE_INTENTS.has(answer.key)) &&
+    (!categoryQuery || !answer.key.startsWith("craving:") || simpleCategoryAllowsCravingShortcut(categoryQuery)) &&
     (status === "done" || !answer.key.startsWith("craving:")),
   );
 }
@@ -202,6 +222,7 @@ export function unifiedRequestDestination({
   quickKey,
   officialHref,
   bestHref,
+  bestResult,
   status,
 }: {
   query: string;
@@ -209,11 +230,13 @@ export function unifiedRequestDestination({
   quickKey?: string | null;
   officialHref?: string | null;
   bestHref?: string | null;
+  bestResult?: SearchResult | null;
   status: "idle" | "loading" | "done" | "error";
 }): string | null {
   const normalized = query.trim();
   if (!normalized) return null;
   const safeOfficialHref = safeOfficialAnswerHref(officialHref);
+  if (status === "done" && bestResult && isExactQuestionPlaceResult(normalized, bestResult)) return bestResult.href;
   if (isNaturalLanguageRequest(normalized)) {
     // Some plain-language requests are still exact utility lookups. Sending
     // "Where is the nearest trash can?" through a reasoning round trip only
@@ -230,13 +253,18 @@ export function unifiedRequestDestination({
     // the field must choose that same first card instead of ignoring what is
     // on screen and sending the words to Ask.
     if (safeOfficialHref) return safeOfficialHref;
+    // A pending/failed exact-name probe has not established a reasoning need.
+    // Submit the complete words to Search rather than guessing from old hits.
+    if (exactQuestionLookupQuery(normalized) && status !== "done") {
+      return `/search?q=${encodeURIComponent(normalized)}`;
+    }
     return `/ask?q=${encodeURIComponent(normalized)}`;
   }
   // A compound lookup can still have a strong deterministic match, such as
   // Gravel & Grind for "coffee and bikes." Prefer that ranked entity over a
   // broad single-keyword shortcut. If the index has no credible candidate,
   // preserve the full request for Radius instead of dropping half of it.
-  if (isCompoundLookup(normalized) && quickKey?.startsWith("craving:")) {
+  if (!simpleCategoryRequestQuery(normalized) && isCompoundLookup(normalized) && quickKey?.startsWith("craving:")) {
     return bestHref ?? `/ask?q=${encodeURIComponent(normalized)}`;
   }
   if (quickHref) return quickHref;
@@ -435,7 +463,8 @@ export default function SearchOverlay({
     // before it reaches the reasoning layer. Mark it ready immediately; the
     // synchronous direct-answer matchers below can still intercept civic and
     // urgent needs without paying for a search request.
-    if (isNaturalLanguageRequest(q)) {
+    const exactLookup = exactQuestionLookupQuery(q);
+    if (isNaturalLanguageRequest(q) && !exactLookup) {
       setResults([]);
       setSearchMeta(null);
       setStatus("done");
@@ -444,7 +473,8 @@ export default function SearchOverlay({
     const ctrl = new AbortController();
     const t = setTimeout(() => {
       setStatus("loading");
-      const params = new URLSearchParams({ q, limit: "12" });
+      const lookupQuery = simpleCategoryRequestQuery(q) ?? exactLookup ?? q;
+      const params = new URLSearchParams({ q: lookupQuery, limit: "12" });
       if (coords) {
         // About 11m precision: enough to rank nearby places without sending an
         // unnecessarily exact location to the search endpoint.
@@ -459,7 +489,12 @@ export default function SearchOverlay({
           // Some transports can finish body parsing after cancellation. A
           // dismissed or superseded query must never publish those results.
           if (ctrl.signal.aborted) return;
-          setResults(data.results ?? []);
+          // A punctuated question is a lookup only after exact identity is
+          // confirmed. Partial keyword hits cannot replace its full intent.
+          const received = data.results ?? [];
+          setResults(exactLookup
+            ? received.filter(result => result.type === "place" && isExactPlaceNameQuery(exactLookup, result.title))
+            : received);
           setSearchMeta(data.meta ?? null);
           setStatus("done");
         })
@@ -602,7 +637,7 @@ export default function SearchOverlay({
   // the county's own How-Do-I actions (voter registration, FixIT,
   // marriage licenses, burn permits…). Cheap synchronous lookups; no fetch.
   const { best, rest } = splitBestMatch(results);
-  const reasoningRequest = isNaturalLanguageRequest(query);
+  const reasoningRequest = isNaturalLanguageRequest(query) && !isExactQuestionPlaceResult(query, best);
   const visibleQuickAnswers = visibleFindQuickAnswers(query, status, best);
   const civicCandidates = searchCivicActions(query, 2);
   const govAnswers = shouldShowDepartmentAnswers(query, civicCandidates)
@@ -628,6 +663,7 @@ export default function SearchOverlay({
       quickKey: visibleQuickAnswers[0]?.key,
       officialHref: officialAnswerHref,
       bestHref: best?.href,
+      bestResult: best,
       status,
     });
     if (!destination) return;
@@ -1229,13 +1265,13 @@ export default function SearchOverlay({
                 ? ""
                 : hasAnswer
                   ? "Direct answer available"
-                : reasoningRequest
-                  ? "Ready for an answer"
                 : status === "error"
                   ? "Search unavailable"
                   : status === "loading"
                     ? "Searching"
-                    : "No matches"}
+                    : reasoningRequest
+                      ? "Ready for an answer"
+                      : "No matches"}
           </p>
         </div>
       </div>
