@@ -49,6 +49,23 @@ const CRAVING_TERMS: ReadonlyArray<readonly [string, readonly string[]]> = [
   ["food", ["food", "eat", "eaten", "ate", "restaurant", "restaurants", "dinner", "lunch", "brunch", "hungry", "pizza", "pizzeria", "taco", "tacos", "burger", "burgers", "sushi", "sandwich", "bbq"]],
 ];
 
+/** A polite prefix or question punctuation does not turn a bare category into a plan.
+ * Match the complete remainder against the shared vocabulary, never a keyword
+ * inside a request with additional constraints. Event, family and dated-service
+ * terms keep their reasoning path because their directory alone is not an answer.
+ */
+export function simpleCategoryRequestQuery(value: string): string | null {
+  const query = value.trim().toLocaleLowerCase().replace(/[’]/g, "'").replace(/\s+/g, " ");
+  const polite = query.match(/^(?:i need|i want|i(?:'m| am) looking for) (?:an? |some )?(.+?)[?]*$/);
+  const punctuated = query.match(/^([^?]+?)[?]+$/);
+  const term = (polite?.[1] ?? punctuated?.[1])?.trim();
+  if (!term) return null;
+  if (["happy hour", "overnight"].includes(term)) return null;
+  const category = CRAVING_TERMS.find(([key, terms]) =>
+    !["music", "movies", "family"].includes(key) && terms.includes(term));
+  return category ? term : null;
+}
+
 function hasTerm(q: string, term: string): boolean {
   if (term.includes(" ")) return q.includes(term);
   return new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(q);

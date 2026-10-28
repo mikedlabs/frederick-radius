@@ -21,6 +21,13 @@ A confirmed complete place name leads with that place and its actions.
 Incidental words inside the name must not add a category shortcut above it or
 change what Enter opens after retrieval. Same-name branches retain their normal location scope and ranking;
 requested features, hours and event searches keep their own constraints.
+A terminal question mark on a name may probe the same catalog, but only a
+confirmed exact place name can turn that question into a direct lookup.
+Pending or unavailable retrieval submits the complete question to Search; a
+completed nonexact lookup retains the complete question for Ask. Simple requests
+such as “I need pizza” use the existing category search without a reasoning round
+trip; extra time, access or compound constraints are
+never discarded to obtain that shortcut.
 
 ## Location
 

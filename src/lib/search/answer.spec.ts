@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { primaryAnswerFor } from "./answer";
+import { primaryAnswerFor, simpleCategoryRequestQuery } from "./answer";
 
 describe("primaryAnswerFor", () => {
   it("answers 'coffee open now near me' with the nearest-open coffee surface", () => {
@@ -47,5 +47,25 @@ describe("primaryAnswerFor", () => {
     expect(primaryAnswerFor("nearest auto repair shop")).toBeNull();
     expect(primaryAnswerFor("car wash near me")).toBeNull();
     expect(primaryAnswerFor("oil change")).toBeNull();
+  });
+});
+
+
+describe("simple category request vocabulary", () => {
+  it.each([
+    ["I need pizza", "pizza"], ["  I WANT   COFFEE?  ", "coffee"],
+    ["pizza?", "pizza"], ["coffee?", "coffee"], ["museums?", "museums"],
+    ["I’m looking for a museum", "museum"], ["I am looking for some ice cream?", "ice cream"],
+  ])("unwraps only the complete bare category in %s", (query, category) => {
+    expect(simpleCategoryRequestQuery(query)).toBe(category);
+  });
+  it.each([
+    "I need coffee and bikes", "I want coffee near me", "I need coffee open tonight",
+    "I need wheelchair accessible coffee", "I need a quiet museum", "I need pizza in Brunswick",
+    "I need pizza without cheese", "I want happy hour", "I need overnight", "I want live music",
+    "I need family friendly", "I need pizza? and coffee", "coffee", "I need zzxq",
+    "pizza open tonight?", "coffee and bikes?", "wheelchair accessible coffee?",
+  ])("does not swallow constraints or unknown terms in %s", query => {
+    expect(simpleCategoryRequestQuery(query)).toBeNull();
   });
 });

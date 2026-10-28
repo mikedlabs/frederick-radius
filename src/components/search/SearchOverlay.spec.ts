@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   splitBestMatch,
   firstSafeOfficialAnswerHref,
+  exactQuestionLookupQuery,
+  isExactQuestionPlaceResult,
   isCompoundLookup,
   isNaturalLanguageRequest,
   safeOfficialAnswerHref,
@@ -219,5 +221,59 @@ describe("Find exact place Enter destination", () => {
     expect(visibleFindQuickAnswers("museums", "done")[0]?.key).toBe("craving:art");
     expect(visibleFindQuickAnswers("bus", "loading")[0]?.key).toBe("transit");
     expect(visibleFindQuickAnswers("what's open now?", "done")[0]?.key).toBe("open-now");
+  });
+});
+
+
+describe("retrieval before reasoning for simple requests", () => {
+  it.each(["pizza?", "coffee?", "museums?", "I need pizza", "I want coffee", "I'm looking for pizza", "I am looking for coffee", "I'm looking for a museum", "I am looking for some ice cream?", "I need a bed and breakfast"])(
+    "uses the canonical category answer for %s without a reasoning round trip", (query) => {
+      expect(isNaturalLanguageRequest(query)).toBe(false);
+      expect(exactQuestionLookupQuery(query)).toBeNull();
+      const quick = visibleFindQuickAnswers(query, "done")[0];
+      expect(quick?.key).toMatch(/^craving:/);
+      expect(unifiedRequestDestination({ query, quickHref: quick?.href, quickKey: quick?.key,
+        status: "done" })).toBe(quick?.href);
+    },
+  );
+
+  it("retrieves the canonical business behind question punctuation without accepting partial matches", () => {
+    const query = "Gravel & Grind?";
+    const lookup = exactQuestionLookupQuery(query);
+    expect(lookup).toBe("Gravel & Grind");
+    const best = qualifiedSearchIndex(lookup!, 12, []).results[0];
+    expect(best?.type).toBe("place");
+    expect(isExactQuestionPlaceResult(query, best)).toBe(true);
+    expect(visibleFindQuickAnswers(query, "done", best)).toEqual([]);
+    expect(unifiedRequestDestination({ query, bestHref: best?.href, bestResult: best,
+      status: "done" })).toBe(best?.href);
+    expect(isExactQuestionPlaceResult("Gravel?", best)).toBe(false);
+    expect(unifiedRequestDestination({ query: "Gravel?", bestHref: best?.href, bestResult: best,
+      status: "done" })).toBe("/ask?q=Gravel%3F");
+  });
+
+  it.each(["idle", "loading", "error"] as const)("keeps %s Enter on full Search until exact retrieval settles", status => {
+    const query = "Gravel & Grind?";
+    const stale = qualifiedSearchIndex("Baker Park", 12, []).results[0];
+    expect(unifiedRequestDestination({ query, bestHref: stale?.href, bestResult: stale, status }))
+      .toBe(`/search?q=${encodeURIComponent(query)}`);
+  });
+
+  it.each([
+    "I want coffee and bikes", "I need coffee open tonight", "I need wheelchair accessible coffee",
+    "I want a quiet museum", "I need pizza without cheese", "I need food within 10 minutes",
+    "I want happy hour", "I need overnight", "Where should I get breakfast?", "Plan a coffee and lunch outing",
+  ])("keeps all constraints in the original reasoning request: %s", query => {
+    expect(isNaturalLanguageRequest(query)).toBe(true);
+    expect(unifiedRequestDestination({ query, quickHref: "/nearby?c=coffee", quickKey: "craving:coffee",
+      bestHref: "/places/unrelated", status: "done" })).toBe(`/ask?q=${encodeURIComponent(query)}`);
+  });
+
+  it("keeps compound retrieval and immediate utilities on their established routes", () => {
+    expect(unifiedRequestDestination({ query: "coffee and bikes", quickHref: "/nearby?c=coffee",
+      quickKey: "craving:coffee", bestHref: "/places/gravel-and-grind-frederick", status: "done" }))
+      .toBe("/places/gravel-and-grind-frederick");
+    expect(unifiedRequestDestination({ query: "where is the nearest trash can?", quickHref: "/amenities?need=trash",
+      quickKey: "trash", status: "loading" })).toBe("/amenities?need=trash");
   });
 });
