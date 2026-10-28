@@ -226,7 +226,7 @@ describe("Find exact place Enter destination", () => {
 
 
 describe("retrieval before reasoning for simple requests", () => {
-  it.each(["pizza?", "coffee?", "museums?", "I need pizza", "I want coffee", "I'm looking for pizza", "I am looking for coffee", "I'm looking for a museum", "I am looking for some ice cream?", "I need a bed and breakfast"])(
+  it.each(["pizza?", "coffee?", "I need pizza", "I want coffee", "I'm looking for pizza", "I am looking for coffee", "I am looking for some ice cream?"])(
     "uses the canonical category answer for %s without a reasoning round trip", (query) => {
       expect(isNaturalLanguageRequest(query)).toBe(false);
       expect(exactQuestionLookupQuery(query)).toBeNull();
@@ -236,6 +236,34 @@ describe("retrieval before reasoning for simple requests", () => {
         status: "done" })).toBe(quick?.href);
     },
   );
+
+  it.each([
+    ["museums?", "museums", "Bjorlee Museum"],
+    ["I'm looking for a museum", "museum", "Bjorlee Museum"],
+    ["I need tacos", "tacos", "Big Papi's Real Good Tacos"],
+    ["I need sushi", "sushi", "Sushi Nomu"],
+    ["I need a bed and breakfast", "bed and breakfast", "Hollerstown Hill Bed and Breakfast"],
+  ])("keeps %s on its actual subtype matches instead of a wider directory", (query, lookup, firstName) => {
+    const results = qualifiedSearchIndex(lookup, 12, []).results;
+    expect(results[0]?.title).toBe(firstName);
+    expect(visibleFindQuickAnswers(query, "done", results[0])).toEqual([]);
+    expect(unifiedRequestDestination({ query, bestHref: results[0]?.href, bestResult: results[0], status: "done" }))
+      .toBe(results[0]?.href);
+    expect(unifiedRequestDestination({ query, status: "done" })).toBe(`/ask?q=${encodeURIComponent(query)}`);
+  });
+
+  it.each(["I need gelato", "I need a cidery", "I need a meadery", "I want wine trail", "I need espresso"])(
+    "does not replace the subtype in %s with a wider directory", query => {
+      expect(visibleFindQuickAnswers(query, "done").filter(answer => answer.key.startsWith("craving:"))).toEqual([]);
+    },
+  );
+
+  it("keeps an unverified facility feature as the complete question", () => {
+    const query = "I need sauna";
+    expect(isNaturalLanguageRequest(query)).toBe(true);
+    expect(unifiedRequestDestination({ query, bestHref: "/places/odin-crossfit", status: "done" }))
+      .toBe(`/ask?q=${encodeURIComponent(query)}`);
+  });
 
   it("retrieves the canonical business behind question punctuation without accepting partial matches", () => {
     const query = "Gravel & Grind?";

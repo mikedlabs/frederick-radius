@@ -67,7 +67,7 @@ describe("Find retrieval-first interactions", () => {
     await render("I'm looking for pizza"); await tick();
     expect(new URL(requests[0].url, "https://test.local").searchParams.get("q")).toBe("pizza");
     await respond(0, []);
-    const answer = Array.from(host.querySelectorAll<HTMLAnchorElement>("a")).find(a => a.getAttribute("href") === "/nearby?c=food")!;
+    const answer = Array.from(host.querySelectorAll<HTMLAnchorElement>("a")).find(a => a.getAttribute("href") === "/nearby?c=food&facet=pizza")!;
     expect(answer).toBeDefined();
     await act(async () => answer.click());
     const cardDestination = navigation.leaveTo.mock.lastCall?.[0];
@@ -79,8 +79,11 @@ describe("Find retrieval-first interactions", () => {
   it("treats a bare category question as the same retrieval, not an exact business probe", async () => {
     await render("museums?"); await tick();
     expect(new URL(requests[0].url, "https://test.local").searchParams.get("q")).toBe("museums");
-    await respond(0, []); await enter();
-    expect(navigation.leaveTo).toHaveBeenLastCalledWith("/nearby?c=art");
+    const museum = { ...gravel, id: "place:bjorlee-museum", title: "Bjorlee Museum", href: "/places/bjorlee-museum" };
+    await respond(0, [museum]);
+    expect(host.querySelector('a[href="/nearby?c=art"]')).toBeNull();
+    await enter();
+    expect(navigation.leaveTo).toHaveBeenLastCalledWith(museum.href);
     expect(navigation.recent).toHaveBeenCalledWith("museums?");
   });
 

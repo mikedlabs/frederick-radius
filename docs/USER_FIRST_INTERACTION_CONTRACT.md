@@ -27,7 +27,9 @@ Pending or unavailable retrieval submits the complete question to Search; a
 completed nonexact lookup retains the complete question for Ask. Simple requests
 such as “I need pizza” use the existing category search without a reasoning round
 trip; extra time, access or compound constraints are
-never discarded to obtain that shortcut.
+never discarded to obtain that shortcut. Subtype requests keep their actual
+catalog matches instead of a broader directory shortcut. Pizza uses the existing
+pizza filter, including the selected town.
 
 ## Location
 

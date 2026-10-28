@@ -53,7 +53,7 @@ import { TRUST_COLOR, type TrustSignal } from "@/lib/trust";
 import { useRecentSearches, usePushRecentSearch, useClearRecentSearches, useRecentSearchStatus, type RecentSearchStatus } from "@/hooks/useRecentSearches";
 import { frederickHour } from "@/lib/search-suggestions";
 import { isExactPlaceNameQuery } from "@/lib/search/place-name";
-import { simpleCategoryRequestQuery } from "@/lib/search/answer";
+import { simpleCategoryAllowsCravingShortcut, simpleCategoryRequestQuery } from "@/lib/search/answer";
 
 const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
   place: MapPin,
@@ -188,6 +188,7 @@ export function visibleFindQuickAnswers(query: string, status: "idle" | "loading
   const directOnly = isNaturalLanguageRequest(query) || (!categoryQuery && isCompoundLookup(query));
   return findQuickAnswers(categoryQuery ?? query).filter((answer) =>
     (!directOnly || DIRECT_NATURAL_LANGUAGE_INTENTS.has(answer.key)) &&
+    (!categoryQuery || !answer.key.startsWith("craving:") || simpleCategoryAllowsCravingShortcut(categoryQuery)) &&
     (status === "done" || !answer.key.startsWith("craving:")),
   );
 }

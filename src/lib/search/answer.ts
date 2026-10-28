@@ -60,10 +60,20 @@ export function simpleCategoryRequestQuery(value: string): string | null {
   const punctuated = query.match(/^([^?]+?)[?]+$/);
   const term = (polite?.[1] ?? punctuated?.[1])?.trim();
   if (!term) return null;
-  if (["happy hour", "overnight"].includes(term)) return null;
+  if (["happy hour", "overnight", "sauna"].includes(term)) return null;
   const category = CRAVING_TERMS.find(([key, terms]) =>
     !["music", "movies", "family"].includes(key) && terms.includes(term));
   return category ? term : null;
+}
+
+/** Only the actual directory name/key can stand in for a complete request.
+ * Lexical subtypes still retrieve their own words; they cannot be replaced by
+ * a broader craving. Pizza's supported facet supplies its precise label.
+ */
+export function simpleCategoryAllowsCravingShortcut(term: string): boolean {
+  const answer = primaryAnswerFor(term);
+  const key = (value: string) => value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  return Boolean(answer && [answer.key, answer.label].some(label => key(label) === key(term)));
 }
 
 function hasTerm(q: string, term: string): boolean {
@@ -105,11 +115,13 @@ export function primaryAnswerFor(
       const town = namedTown ?? (context.municipality
         ? MUNICIPALITY_BY_SLUG[context.municipality]
         : undefined);
+      const pizza = key === "food" && ["pizza", "pizzeria"].some(term => hasTerm(q, term));
+      const label = pizza ? "Pizza" : craving.label;
       return {
         key,
-        label: craving.label,
-        href: `/nearby?c=${key}${town ? `&in=${town.slug}` : ""}`,
-        kicker: town ? `Browse ${craving.label.toLowerCase()} in ${town.name}.` : "Open picks; nearest when location is available",
+        label,
+        href: `/nearby?c=${key}${pizza ? "&facet=pizza" : ""}${town ? `&in=${town.slug}` : ""}`,
+        kicker: town ? `Browse ${label.toLowerCase()} in ${town.name}.` : "Open picks; nearest when location is available",
       };
     }
   }
