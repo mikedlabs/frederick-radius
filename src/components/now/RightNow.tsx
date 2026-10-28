@@ -215,8 +215,10 @@ export default function RightNow({
   const applyPendingRef = useRef(false);
   const [filterDraft, setFilterDraft] = useState<NearbyQueryState | null>(null);
   const [applyingFilters, setApplyingFilters] = useState(false);
+  const [filterFocusReturnHref, setFilterFocusReturnHref] = useState<string | undefined>();
 
   function openFilters() {
+    setFilterFocusReturnHref(undefined);
     applyPendingRef.current = false;
     setApplyingFilters(false);
     setFilterDraft(readNearbyQuery(new URLSearchParams(window.location.search), storedScope));
@@ -225,6 +227,19 @@ export default function RightNow({
   function applyFilters(dismiss: () => void) {
     if (!filterDraft || applyPendingRef.current) return;
     const draft = filterDraft;
+    const patch = {
+      facetKey: draft.facetKey,
+      openOnly: draft.openOnly,
+      closingSoonOnly: draft.closingSoonOnly,
+      sort: draft.sort,
+    };
+    const beforeClose = readNearbyQuery(new URLSearchParams(window.location.search), storedScope);
+    // Focus belongs to the applied selection, not the old sheet URL. Freeze
+    // the exact destination before traversal; later scope/category changes do
+    // not inherit permission to receive this deferred focus return.
+    setFilterFocusReturnHref(beforeClose.cravingKey === draft.cravingKey
+      ? nearbyQueryHref(window.location.href, changeNearbyQuery(beforeClose, patch)) ?? undefined
+      : undefined);
     applyPendingRef.current = true;
     setApplyingFilters(true);
     // The temporary sheet entry must leave first. Replacing its query would
@@ -232,12 +247,7 @@ export default function RightNow({
     navigateAfterHistoryLayer(filterHistoryId, () => {
       const current = readNearbyQuery(new URLSearchParams(window.location.search), storedScope);
       if (current.cravingKey === draft.cravingKey) {
-        writeNearbyQuery(changeNearbyQuery(current, {
-          facetKey: draft.facetKey,
-          openOnly: draft.openOnly,
-          closingSoonOnly: draft.closingSoonOnly,
-          sort: draft.sort,
-        }));
+        writeNearbyQuery(changeNearbyQuery(current, patch));
       }
       applyPendingRef.current = false;
       dismiss();
@@ -745,6 +755,7 @@ export default function RightNow({
           ariaLabel="Filters & sort"
           historyLayerId={filterHistoryId}
           returnFocusRef={filterOpenerRef}
+          focusReturnHref={filterFocusReturnHref}
           canDismiss={() => !applyPendingRef.current}
           maxHeight="90dvh"
           onClose={() => {

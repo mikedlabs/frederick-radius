@@ -558,29 +558,95 @@ test("empty-town recovery and denied Near me never reuse a former town as precis
 });
 
 for (const dismissal of ["Escape", "Close"] as const) {
-  test(`Done followed immediately by ${dismissal} applies once without skipping Nearby`, async ({ page }) => {
-    await page.goto("/nearby?in=frederick", { waitUntil: "domcontentloaded" });
-    await expect(page.locator('[data-nearby-interaction-ready="true"]')).toBeVisible();
-    const pickerUrl = page.url();
-    await page.getByRole("main").getByRole("button", { name: "Shops", exact: true }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Shops in Frederick City", exact: true })).toBeVisible();
-    const { dialog } = await openFilters(page);
-    await dialog.getByRole("button", { name: "Books", exact: true }).click();
-    await dialog.getByRole("button", { name: "Top rated", exact: true }).click();
-    // Deliberately issue both real UI handlers in one task before popstate can
-    // arrive. Sequential awaited clicks cannot reproduce this traversal race.
-    await dialog.evaluate((node, dismissal) => {
-      const buttons = Array.from(node.querySelectorAll("button"));
-      buttons.find((button) => button.textContent?.trim() === "Done")!.click();
-      if (dismissal === "Escape") window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-      else buttons.find((button) => button.getAttribute("aria-label") === "Close filters & sort")!.click();
-    }, dismissal);
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expectSelectedBooks(page, "frederick");
-    await expect(page.getByRole("main").getByRole("button", { name: /^Filters & sort/ })).toBeFocused();
-    await page.getByRole("main").getByRole("button", { name: "Back", exact: true }).click();
-    await expect(page).toHaveURL(pickerUrl);
-    await expect(page.getByRole("heading", { level: 1, name: "Find something nearby", exact: true })).toBeVisible();
+  test(`Done followed immediately by ${dismissal} applies once without skipping Nearby`, async ({ page }, info) => {
+    try {
+      await page.goto("/nearby?in=frederick", { waitUntil: "domcontentloaded" });
+      await expect(page.locator('[data-nearby-interaction-ready="true"]')).toBeVisible();
+      const pickerUrl = page.url();
+      await page.getByRole("main").getByRole("button", { name: "Shops", exact: true }).click();
+      await expect(page.getByRole("heading", { level: 1, name: "Shops in Frederick City", exact: true })).toBeVisible();
+      const { dialog } = await openFilters(page);
+      await dialog.getByRole("button", { name: "Books", exact: true }).click();
+      await dialog.getByRole("button", { name: "Top rated", exact: true }).click();
+      await page.evaluate(() => {
+        const records: unknown[] = [];
+        const describe = (element: Element | null) => element ? {
+          tag: element.tagName, label: element.getAttribute("aria-label"),
+          text: element.textContent?.trim().slice(0, 72), connected: element.isConnected,
+        } : null;
+        const capture = (stage: string, target: Element | null = null) => {
+          if (records.length >= 80) return;
+          records.push({ stage, at: performance.now(), url: location.pathname + location.search + location.hash,
+            layer: history.state?.__frederickRadiusLayer ?? null,
+            active: describe(document.activeElement), target: describe(target),
+            dialogs: [...document.querySelectorAll('[role="dialog"]')].map(describe).slice(0, 2) });
+        };
+        const nativeFocus = HTMLElement.prototype.focus;
+        const observedFocus: typeof nativeFocus = function (this: HTMLElement, ...args: Parameters<typeof nativeFocus>) {
+          capture("focus-call-before", this);
+          const result = nativeFocus.apply(this, args);
+          capture("focus-call-after", this);
+          return result;
+        };
+        HTMLElement.prototype.focus = observedFocus;
+        const focusIn = (event: FocusEvent) => capture("focusin", event.target instanceof Element ? event.target : null);
+        const popstate = () => capture("popstate");
+        document.addEventListener("focusin", focusIn, true);
+        window.addEventListener("popstate", popstate, true);
+        let paint = 0;
+        const frameIds: number[] = [];
+        const paints = () => {
+          if (paint >= 3) return;
+          frameIds.push(requestAnimationFrame(() => { capture(`paint-${++paint}`); paints(); }));
+        };
+        const cleanup = () => {
+          if (HTMLElement.prototype.focus === observedFocus) HTMLElement.prototype.focus = nativeFocus;
+          document.removeEventListener("focusin", focusIn, true);
+          window.removeEventListener("popstate", popstate, true);
+          frameIds.forEach(cancelAnimationFrame);
+        };
+        (window as unknown as { __nearbyFilterFocusDiagnostic: { records: unknown[]; capture: typeof capture; paints: typeof paints; cleanup: typeof cleanup } })
+          .__nearbyFilterFocusDiagnostic = { records, capture, paints, cleanup };
+        capture("before-done-and-dismissal");
+      });
+      // Deliberately issue both real UI handlers in one task before popstate can
+      // arrive. Sequential awaited clicks cannot reproduce this traversal race.
+      await dialog.evaluate((node, dismissal) => {
+        const buttons = Array.from(node.querySelectorAll("button"));
+        buttons.find((button) => button.textContent?.trim() === "Done")!.click();
+        if (dismissal === "Escape") window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        else buttons.find((button) => button.getAttribute("aria-label") === "Close filters & sort")!.click();
+        const diagnostic = (window as unknown as { __nearbyFilterFocusDiagnostic?: { capture: (stage: string) => void; paints: () => void } }).__nearbyFilterFocusDiagnostic;
+        diagnostic?.capture("after-done-and-dismissal");
+        diagnostic?.paints();
+      }, dismissal);
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expectSelectedBooks(page, "frederick");
+      await expect(page.getByRole("main").getByRole("button", { name: /^Filters & sort/ })).toBeFocused();
+      const appliedUrl = new URL(page.url());
+      const appliedHref = appliedUrl.pathname + appliedUrl.search + appliedUrl.hash;
+      const restorationCalls = await page.evaluate(() => {
+        const diagnostic = (window as unknown as { __nearbyFilterFocusDiagnostic?: { records: Array<{ stage: string; url: string; target: { label?: string | null } | null }> } }).__nearbyFilterFocusDiagnostic;
+        return diagnostic?.records.filter(record => record.stage === "focus-call-before" && record.target?.label === "Filters & sort") ?? [];
+      });
+      expect(restorationCalls.length, "The app must restore focus to the actual filter opener").toBeGreaterThan(0);
+      expect(restorationCalls.map(record => record.url), "Focus may return only after the exact applied Books and rated URL is committed")
+        .toEqual(restorationCalls.map(() => appliedHref));
+      await page.getByRole("main").getByRole("button", { name: "Back", exact: true }).click();
+      await expect(page).toHaveURL(pickerUrl);
+      await expect(page.getByRole("heading", { level: 1, name: "Find something nearby", exact: true })).toBeVisible();
+    } finally {
+      const records = await page.evaluate(() => {
+        const diagnostic = (window as unknown as { __nearbyFilterFocusDiagnostic?: { records: unknown[]; capture: (stage: string) => void; cleanup: () => void } }).__nearbyFilterFocusDiagnostic;
+        diagnostic?.capture("final-or-failed-assertion");
+        diagnostic?.cleanup();
+        return diagnostic?.records ?? null;
+      }).catch(() => null);
+      const label = `nearby-done-${dismissal.toLowerCase()}-focus-url`;
+      const path = info.outputPath(`${label}.json`);
+      await writeFile(path, JSON.stringify({ title: info.title, retry: info.retry, records }, null, 2));
+      await info.attach(label, { contentType: "application/json", path });
+    }
   });
 }
 

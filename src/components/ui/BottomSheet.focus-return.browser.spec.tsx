@@ -55,11 +55,12 @@ afterEach(async () => {
   document.body.replaceChildren(); frames.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 
-async function mount() {
+async function mount(options: { focusReturnHref?: string; onClose?: () => void; ownHistory?: boolean } = {}) {
   const returnFocusRef = createRef<HTMLElement>(); returnFocusRef.current = opener;
   function Fixture() {
     const [present, setPresent] = useState(true);
-    return present ? <BottomSheet present onClose={() => setPresent(false)} ariaLabel="Saved cafe" historyLayerId="saved-cafe" returnFocusRef={returnFocusRef}>
+    return present ? <BottomSheet present onClose={() => { options.onClose?.(); setPresent(false); }} ariaLabel="Saved cafe"
+      historyLayerId={options.ownHistory ? undefined : "saved-cafe"} returnFocusRef={returnFocusRef} focusReturnHref={options.focusReturnHref}>
       {dismiss => <button onClick={dismiss}>Close details</button>}
     </BottomSheet> : null;
   }
@@ -137,4 +138,56 @@ describe("reduced-motion sheet Back focus", () => {
     // The history hook's two scroll frames have also settled; no timer loop.
     expect(frames.size).toBe(0);
   });
+
+  it("preserves focus through an explicitly declared asynchronous caller-owned query close", async () => {
+    const closed = "/pulse?in=brunswick&view=morning#source-status";
+    window.history.replaceState({}, "", "/pulse?in=brunswick&view=morning&open=air#source-status");
+    await mount({ focusReturnHref: closed, ownHistory: true, onClose: () => {
+      window.requestAnimationFrame(() => {
+        window.history.replaceState({}, "", closed);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+        opener.blur(); // The caller's asynchronous Back completes after exit.
+      });
+    } });
+    const focus = vi.spyOn(opener, "focus");
+    await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(focus).not.toHaveBeenCalled();
+    await paint(); expect(window.location.pathname + window.location.search + window.location.hash).toBe(closed);
+    expect(focus).not.toHaveBeenCalled(); // No return on the pending open URL.
+    await paint(); expect(document.activeElement).toBe(opener); await paint();
+    expect(focus).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not focus early or wait indefinitely for a caller-owned close", async () => {
+    window.history.replaceState({}, "", "/pulse?in=brunswick&open=air#source-status");
+    await mount({ focusReturnHref: "/pulse?in=brunswick#source-status", ownHistory: true });
+    const focus = vi.spyOn(opener, "focus");
+    await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
+    await paint(); await paint(); await paint();
+    window.history.replaceState({}, "", "/pulse?in=brunswick#source-status");
+    await paint(); expect(focus).not.toHaveBeenCalled(); expect(frames.size).toBe(0);
+  });
+
+  it.each(["/pulse?in=county#source-status", "/pulse?in=brunswick#other-section", "/events?in=brunswick#source-status"])(
+    "rejects unrelated close navigation to %s even with one declared destination", async destination => {
+      window.history.replaceState({}, "", "/pulse?in=brunswick&open=air#source-status");
+      await mount({ focusReturnHref: "/pulse?in=brunswick#source-status", ownHistory: true });
+      const focus = vi.spyOn(opener, "focus");
+      await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
+      window.history.replaceState({}, "", destination);
+      await paint(); await paint(); expect(focus).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["https://elsewhere.invalid/pulse?in=brunswick", "/events?in=brunswick", "http://["])(
+    "never admits an unsafe or different-path declaration %s", async focusReturnHref => {
+      window.history.replaceState({}, "", "/pulse?in=brunswick&open=air");
+      await mount({ focusReturnHref, ownHistory: true });
+      const focus = vi.spyOn(opener, "focus");
+      await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
+      window.history.replaceState({}, "", focusReturnHref.startsWith("/events") ? focusReturnHref : "/pulse?in=brunswick");
+      await paint(); await paint(); expect(focus).not.toHaveBeenCalled();
+    },
+  );
 });
