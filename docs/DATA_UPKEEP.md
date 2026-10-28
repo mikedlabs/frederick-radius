@@ -450,14 +450,19 @@ but must match its own index and selected original records.
 
 ## Serialized review and publication
 
-The commerce and business-info collectors share a per-checkout business-info
-run lock before starting provider work. A held lock or prior staging file stops
+The commerce and business-info collectors share a business-info run lock in
+the Git common directory before starting provider work, so cooperating linked
+worktrees cannot run them simultaneously. They also keep the per-checkout
+lock, which protects against an older participating writer in the same checkout.
+A held lock or prior staging file stops
 the run; do not reset it to force a refresh. On a write conflict, the helper
 keeps an unaccepted derived candidate and its transaction receipt privately.
 The hosted producers make a best-effort upload on ordinary job failure; a
 cancelled or lost runner may not upload it. Successful local commits also keep
 a private transaction receipt. These receipts are not original paid-provider
-responses or source acceptance. The cooperative lock does not cover other
+responses or source acceptance. A crash can leave a shared lock behind; that is
+an unknown outcome requiring investigation, never an automatic reset. The
+cooperative lock does not cover independent clones, older writers in other
 worktrees, nonparticipating writers or GitHub; the protected current-main and
 publisher-day requirements remain separate.
 

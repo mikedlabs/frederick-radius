@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { closeSync, existsSync, fsyncSync, lstatSync, mkdtempSync, openSync, readFileSync, realpathSync, renameSync, rmdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { execFileSync } from "node:child_process";
 
 type Commit = (value: unknown) => void;
 const hash = (value: Buffer) => createHash("sha256").update(value).digest("hex");
@@ -12,9 +13,10 @@ function durableFile(path: string, bytes: Buffer) {
 function durableDirectory(path: string) {
   const fd = openSync(path, "r"); try { fsyncSync(fd); } finally { closeSync(fd); }
 }
-/** Cooperative lock for the SAME checkout only. A held lock is a visible error,
- * never a reason to skip work or start a provider. This does not lock GitHub,
- * other worktrees, or programs that do not participate. */
+/** All participating linked worktrees share this lock via Git's common dir.
+ * Keep the checkout lock too, so an older writer in this checkout still holds
+ * new code. Independent clones, hosted runners and nonparticipants are not
+ * serialized: protected current-main checks and daily authority remain required. */
 export async function withBusinessInfoRunLock<T>(target: string, callback: (commit: Commit) => Promise<T>): Promise<T> {
   const path = resolve(target), root = resolve(dirname(path), "../.."), lockPath = `${path}.review.lock`;
   if (basename(path) !== "business-info.json" || path !== join(root, "src/data/business-info.json")) throw new Error("Expected the exact business-info target.");
@@ -23,9 +25,19 @@ export async function withBusinessInfoRunLock<T>(target: string, callback: (comm
   }
   const targetStat = lstatSync(path);
   if (!targetStat.isFile() || targetStat.isSymbolicLink()) throw new Error("Business-info target must be a regular file.");
-  const lock = openSync(lockPath, "wx", 0o600), token = randomUUID();
+  // Ignore caller-selected Git repositories: the target's own checkout must
+  // decide its shared lock. An unreadable/missing Git directory fails closed.
+  const env = { ...process.env };
+  for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES"]) delete env[key];
+  const commonDir = realpathSync(execFileSync("git", ["-C", root, "rev-parse", "--path-format=absolute", "--git-common-dir"], { encoding: "utf8", env }).trim());
+  if (!lstatSync(commonDir).isDirectory()) throw new Error("Git common directory must be a directory.");
+  const sharedPath = join(commonDir, "radius-business-info.review.lock"), token = randomUUID();
+  const shared = openSync(sharedPath, "wx", 0o600);
+  let lock: number | undefined;
   let holdDir: string | undefined, held = false, renamed = false, committed = false;
   try {
+    writeFileSync(shared, token); fsyncSync(shared); durableDirectory(commonDir);
+    lock = openSync(lockPath, "wx", 0o600);
     writeFileSync(lock, token);
     // A previously staged candidate must be resolved before any source call.
     try { lstatSync(`${path}.review.tmp`); throw new Error("Existing staged business-info evidence requires review before collection."); }
@@ -44,12 +56,12 @@ export async function withBusinessInfoRunLock<T>(target: string, callback: (comm
       try {
         if (renamed) throw new Error("Business-info was already written; do not retry.");
         const stat = lstatSync(path);
-        if (readFileSync(lockPath, "utf8") !== token || !stat.isFile() || stat.isSymbolicLink() || !readFileSync(path).equals(baseline)) throw new Error("Business-info target or writer lock changed.");
+        if (readFileSync(sharedPath, "utf8") !== token || readFileSync(lockPath, "utf8") !== token || !stat.isFile() || stat.isSymbolicLink() || !readFileSync(path).equals(baseline)) throw new Error("Business-info target or writer lock changed.");
         const staged = `${path}.review.tmp`;
         durableFile(staged, next);
         // Repeat the baseline/lock check immediately before rename. This remains
         // cooperative, not a CAS against an editor that ignores the lock.
-        if (readFileSync(lockPath, "utf8") !== token || !readFileSync(path).equals(baseline)) throw new Error("Business-info changed before commit.");
+        if (readFileSync(sharedPath, "utf8") !== token || readFileSync(lockPath, "utf8") !== token || !readFileSync(path).equals(baseline)) throw new Error("Business-info changed before commit.");
         // Durably retain the candidate and an honestly uncertain receipt BEFORE
         // rename. A crash before the next receipt is not proof of success/failure.
         durableFile(join(holdDir!, "candidate.json"), next); held = true;
@@ -84,9 +96,11 @@ export async function withBusinessInfoRunLock<T>(target: string, callback: (comm
       throw new Error(`Business-info already committed; later work failed. Review ${holdDir} before retrying.`, { cause });
     }
   } finally {
-    closeSync(lock);
+    if (lock !== undefined) closeSync(lock);
     // Never delete a lock replaced by another actor.
     try { if (readFileSync(lockPath, "utf8") === token) unlinkSync(lockPath); } catch { /* Preserve uncertainty. */ }
+    closeSync(shared);
+    try { if (readFileSync(sharedPath, "utf8") === token) unlinkSync(sharedPath); } catch { /* Preserve uncertainty. */ }
     if (holdDir && !held && existsSync(holdDir)) rmdirSync(holdDir);
   }
 }
