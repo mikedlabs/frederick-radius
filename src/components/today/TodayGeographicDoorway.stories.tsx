@@ -71,8 +71,18 @@ async function checkDiscovery({ canvasElement }: Parameters<NonNullable<Story["p
     await expect(url.searchParams.get("returnTo")).toBe(origin);
     const photo = link.querySelector<HTMLElement>("[data-place-card-photo]")!.getBoundingClientRect();
     const caption = link.querySelector<HTMLElement>("[data-today-geographic-caption]")!.getBoundingClientRect();
-    await expect(caption.top).toBeGreaterThanOrEqual(photo.bottom - 1);
-    await expect(photo.width / photo.height).toBeCloseTo(4 / 3, 1);
+    if (index === 0) {
+      await expect(link.closest("article")).toHaveAttribute("data-today-discovery-role", "lead");
+      await expect(photo.height).toBeGreaterThanOrEqual(249);
+      await expect(caption.top).toBeGreaterThanOrEqual(photo.top - 1);
+      await expect(caption.bottom).toBeLessThanOrEqual(photo.bottom + 1);
+      await expect(getComputedStyle(link.querySelector("h3")!).color).toBe("rgb(255, 255, 255)");
+      await expect(getComputedStyle(link.querySelector("[data-today-geographic-caption]")!).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    } else {
+      await expect(link.closest("article")).toHaveAttribute("data-today-discovery-role", "secondary");
+      if (enlarged) await expect(caption.top).toBeGreaterThanOrEqual(photo.bottom - 1);
+      else await expect(photo.width).toBeLessThan(link.getBoundingClientRect().width * 0.5);
+    }
     await physicalLink(link, true);
   }
   const grid = canvasElement.querySelector<HTMLElement>("[data-today-discovery-grid]")!;
@@ -81,9 +91,15 @@ async function checkDiscovery({ canvasElement }: Parameters<NonNullable<Story["p
     await expect(parseFloat(getComputedStyle(document.documentElement).fontSize)).toBe(32);
     await expect(second.top).toBeGreaterThanOrEqual(first.bottom - 1);
   } else {
-    await expect(Math.abs(first.top - second.top)).toBeLessThanOrEqual(1);
-    await expect(Math.abs(first.bottom - second.bottom)).toBeLessThanOrEqual(1);
-    await expect(first.width).toBeLessThan(grid.getBoundingClientRect().width * 0.6);
+    await expect(second.top).toBeGreaterThanOrEqual(first.bottom - 1);
+    await expect(first.height).toBeGreaterThan(second.height * 1.1);
+  }
+  await expect(first.width).toBeGreaterThanOrEqual(grid.getBoundingClientRect().width - 2);
+  const saves = subjects.map(place => canvasElement.querySelector<HTMLButtonElement>(`button[data-save-ref="place:${place.slug}"]`)!);
+  for (const [index, save] of saves.entries()) {
+    await expect(save).not.toBeNull();
+    await expect(links[index].contains(save)).toBe(false);
+    await physicalLink(save);
   }
   for (const [name, category] of [["Eat & drink", "food"], ["Get outside", "outside"]]) {
     const link = canvas.getByRole("link", { name }); const url = new URL(link.getAttribute("href")!, "https://radius.test");
@@ -95,7 +111,10 @@ async function checkDiscovery({ canvasElement }: Parameters<NonNullable<Story["p
   await expect(canvasElement.querySelector("[data-today-discovery-credit], .place-card-photo-credit")).toBeNull();
   await expect(grid.scrollWidth).toBeLessThanOrEqual(grid.clientWidth + 1);
   await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth + 1);
-  links[0].focus(); await expect(links[0]).toHaveFocus(); await userEvent.tab(); await expect(links[1]).toHaveFocus();
+  links[0].focus(); await expect(links[0]).toHaveFocus();
+  await userEvent.tab(); await expect(saves[0]).toHaveFocus();
+  await userEvent.tab(); await expect(links[1]).toHaveFocus();
+  await userEvent.tab({ shift: true }); await expect(saves[0]).toHaveFocus();
   await userEvent.tab({ shift: true }); await expect(links[0]).toHaveFocus();
 }
 

@@ -6,6 +6,9 @@ import { useTodayPlacePhoto } from "./useTodayPlacePhoto";
 import TodayPlacePreview from "./TodayPlacePreview";
 
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams("in=county") }));
+// This suite isolates photo transport eligibility. The real Save control's
+// auth read is covered by its own tests and the connected mobile journey.
+vi.mock("@/components/saved/SaveButton", () => ({ default: () => null }));
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const photoName = "places/offline-business/photos/not-current-appearance-reviewed";

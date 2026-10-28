@@ -12,8 +12,11 @@ import MotionDisclosure from "@/components/ui/MotionDisclosure";
  * answer. The everyday search doorway and two urgent shortcuts should answer
  * most visits without exposing the product's entire taxonomy.
  *
- * Children ship in the HTML and open without a fetch. The reveal stays
- * visually attached to the row and the closed controls remain inert.
+ * The native directory link is useful before hydration. Detailed client
+ * content mounts only on first reveal or a restored answer URL, so a closed
+ * arrival does not start its saved-taste reads or account-import effects.
+ * Once revealed it stays mounted through close/reopen, with closed controls
+ * inert, preserving selections without repeating the initial reads.
  */
 export function shouldOpenBrowseFromSearch(search: string): boolean {
   const want = new URLSearchParams(search).get("want");
@@ -27,24 +30,27 @@ export default function BrowsePlacesDisclosure({
   children: ReactNode;
   embedded?: boolean;
 }) {
-  const [{ open, mounted }, setDisclosure] = useState({
+  const [{ open, mounted, revealed }, setDisclosure] = useState({
     open: false,
     mounted: false,
+    revealed: false,
   });
 
   useEffect(() => {
     // The server cannot inspect this client-owned query state. Restore it once
     // after hydration so a shared /today?want= link reveals its answer.
+    const restoreAnswer = shouldOpenBrowseFromSearch(window.location.search);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot URL restore plus honest hydration readiness
     setDisclosure({
-      open: shouldOpenBrowseFromSearch(window.location.search),
+      open: restoreAnswer,
       mounted: true,
+      revealed: restoreAnswer,
     });
   }, []);
 
   const toggle = () => {
     haptic("light");
-    setDisclosure((value) => ({ ...value, open: !value.open }));
+    setDisclosure((value) => ({ ...value, open: !value.open, revealed: value.revealed || !value.open }));
   };
 
   const panelId = "browse-places-panel";
@@ -117,7 +123,7 @@ export default function BrowsePlacesDisclosure({
         className={embedded ? "border-t border-[var(--app-border)]" : ""}
         innerClassName={embedded ? "px-3 pb-3 pt-3" : "mt-3"}
       >
-        {children}
+        {revealed ? children : null}
       </MotionDisclosure>
     </section>
   );

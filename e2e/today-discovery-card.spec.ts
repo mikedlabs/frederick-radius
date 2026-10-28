@@ -26,6 +26,9 @@ async function expectPreviewActions(article: Locator, place: Locator, placeSlug:
   await expect(map).toHaveAttribute("href", `/map?${new URLSearchParams({ place: placeSlug, in: scope, returnTo: origin })}`);
   await expect(place.locator("a")).toHaveCount(0);
   await expect(article.locator("a a")).toHaveCount(0);
+  const save = article.locator(`button[data-save-ref="place:${placeSlug}"]`);
+  await expect(save).toHaveCount(1);
+  expect(await save.evaluate(button => button.closest("a") === null)).toBe(true);
 }
 
 for (const width of [320, 375, 390, 430, 1366]) {
@@ -57,6 +60,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await article.scrollIntoViewIfNeeded();
     await expect(article.locator("img")).toHaveCount(0);
     await expect(article).toHaveAttribute("data-has-photo", "false");
+    await expect(article.locator('[data-place-category-art][aria-hidden="true"]')).toHaveCount(1);
     await expect(article.locator(".place-card-photo-credit")).toHaveCount(0);
     const category = page.locator(`[data-today-geographic-place="${scenicSlug}"]`);
     await expect(category).toHaveAttribute("data-photo-state", "loaded");
@@ -92,7 +96,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await expect(article.getByRole("link", { name: "Google Maps", exact: true })).toHaveCount(0);
     await expect(place.locator("a")).toHaveCount(0);
     const probes = [];
-    for (const link of [place, article.getByRole("link", { name: "Map: Beans in the Belfry", exact: true }), category]) {
+    for (const link of [place, article.getByRole("link", { name: "Map: Beans in the Belfry", exact: true }), article.locator(`button[data-save-ref="place:${slug}"]`), category]) {
       await link.evaluate((element) => element.scrollIntoView({ block: "center" }));
       const probe = await link.evaluate((element) => {
         const rect = element.getBoundingClientRect(), x = rect.x + rect.width / 2, y = rect.y + rect.height / 2;
@@ -158,6 +162,7 @@ for (const failure of ["pixel", "error"] as const) {
     await expect(article).toContainText("Hours not confirmed");
     await expect(article).toContainText("Brunswick · 6 min walk");
     await expect(article).toHaveAttribute("data-has-photo", "false");
+    await expect(article.locator('[data-place-category-art][aria-hidden="true"]')).toHaveCount(1);
     await expect(article.getByRole("link", { name: "Google Maps", exact: true })).toHaveCount(0);
     await expect(article.locator(".place-card-photo-credit")).toHaveCount(0);
     await place.scrollIntoViewIfNeeded();
@@ -213,7 +218,7 @@ test("Today keeps exact scenic discovery separate from a real merchant answer wi
   await expect(page.locator('[data-today-discovery-action="food"]')).toHaveAttribute("href", `/nearby?${new URLSearchParams({ c: "food", in: "county", returnTo: "/today?in=county" })}`);
   await expect(page.getByRole("combobox", { name: "Choose your area", exact: true })).toHaveValue("county");
   const quickNeeds = page.getByRole("group", { name: "Quick needs", exact: true });
-  const hierarchy = await article.evaluate((element) => {
+  const hierarchy = await article.evaluate(() => {
     const quick = document.querySelector('[aria-label="Quick needs"]')!;
     const events = document.querySelector("[data-today-events]")!;
     const scene = document.querySelector("[data-today-local-discovery]")!;
@@ -221,22 +226,23 @@ test("Today keeps exact scenic discovery separate from a real merchant answer wi
     const news = document.querySelector('section[aria-label="Local news"]')!;
     const explore = document.querySelector('section[aria-labelledby="today-explore-heading"]')!;
     const sceneBox = scene.getBoundingClientRect(), quickBox = quick.getBoundingClientRect();
-    const eventsBox = events.getBoundingClientRect(), answerBox = element.getBoundingClientRect();
+    const eventsBox = events.getBoundingClientRect(), answerBox = answerRegion.getBoundingClientRect();
     const newsBox = news.getBoundingClientRect();
     return {
       ownedSceneBeforeQuickNeeds: Boolean(scene.compareDocumentPosition(quick) & Node.DOCUMENT_POSITION_FOLLOWING),
       ownedSceneBeforeEvents: Boolean(scene.compareDocumentPosition(events) & Node.DOCUMENT_POSITION_FOLLOWING),
-      eventsBeforeAreaAnswer: Boolean(events.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
-      areaAnswerBeforeNews: Boolean(element.compareDocumentPosition(news) & Node.DOCUMENT_POSITION_FOLLOWING),
+      ownedSceneBeforeAreaAnswer: Boolean(scene.compareDocumentPosition(answerRegion) & Node.DOCUMENT_POSITION_FOLLOWING),
+      areaAnswerBeforeEvents: Boolean(answerRegion.compareDocumentPosition(events) & Node.DOCUMENT_POSITION_FOLLOWING),
+      eventsBeforeNews: Boolean(events.compareDocumentPosition(news) & Node.DOCUMENT_POSITION_FOLLOWING),
       newsBeforeQuickNeeds: Boolean(news.compareDocumentPosition(quick) & Node.DOCUMENT_POSITION_FOLLOWING),
       quickNeedsInExplore: explore.contains(quick),
       ownedSceneOutsideAreaAnswer: !answerRegion.contains(scene),
-      verticalOrder: sceneBox.bottom <= eventsBox.top && eventsBox.bottom <= answerBox.top
-        && answerBox.bottom <= newsBox.top && newsBox.bottom <= quickBox.top,
+      verticalOrder: sceneBox.bottom <= answerBox.top && answerBox.bottom <= eventsBox.top
+        && eventsBox.bottom <= newsBox.top && newsBox.bottom <= quickBox.top,
     };
   });
   expect(hierarchy).toEqual({ ownedSceneBeforeQuickNeeds: true, ownedSceneBeforeEvents: true,
-    eventsBeforeAreaAnswer: true, areaAnswerBeforeNews: true, newsBeforeQuickNeeds: true,
+    ownedSceneBeforeAreaAnswer: true, areaAnswerBeforeEvents: true, eventsBeforeNews: true, newsBeforeQuickNeeds: true,
     quickNeedsInExplore: true, ownedSceneOutsideAreaAnswer: true, verticalOrder: true });
   await expect(quickNeeds).toHaveCount(1);
   await expect(quickNeeds.getByRole("link")).toHaveCount(4);

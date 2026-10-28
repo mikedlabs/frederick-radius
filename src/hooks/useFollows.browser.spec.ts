@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   localSaved: [] as Array<{ type: "place"; id: string; saved_at: string }>,
   hasCompletedSync: true,
+  markSyncComplete: vi.fn(),
 }));
 
 vi.mock("@/hooks/useSaved", () => ({
@@ -25,20 +26,22 @@ vi.mock("@/lib/return-bridge", () => ({
 vi.mock("@/lib/follows-sync", () => ({
   clearFollowsSync: vi.fn(),
   hasCompletedFollowsSync: () => mocks.hasCompletedSync,
-  markFollowsSyncComplete: vi.fn(),
+  markFollowsSyncComplete: mocks.markSyncComplete,
 }));
 
 import {
   resetFollowsSyncFlag,
   useFollowedSlugs,
+  useToggleFollow,
   type FollowedSlugsBootstrap,
+  type FollowReadOptions,
 } from "./useFollows";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true;
 
-function Snapshot({ bootstrap }: { bootstrap?: FollowedSlugsBootstrap }) {
-  const state = useFollowedSlugs(bootstrap);
+function Snapshot({ bootstrap, options }: { bootstrap?: FollowedSlugsBootstrap; options?: FollowReadOptions }) {
+  const state = useFollowedSlugs(bootstrap, options);
   return createElement(
     "output",
     {
@@ -48,6 +51,11 @@ function Snapshot({ bootstrap }: { bootstrap?: FollowedSlugsBootstrap }) {
     },
     [...state.slugs].join(","),
   );
+}
+
+function FollowWriter({ slug }: { slug: string }) {
+  const follow = useToggleFollow(slug);
+  return createElement("button", { onClick: () => { void follow(true); } }, `Save ${slug}`);
 }
 
 function response(status: number, body?: unknown): Response {
@@ -77,6 +85,7 @@ describe("useFollowedSlugs browser account store", () => {
     vi.stubGlobal("cancelAnimationFrame", (id: number) => { frames.delete(id); });
     mocks.localSaved = [];
     mocks.hasCompletedSync = true;
+    mocks.markSyncComplete.mockClear();
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -364,6 +373,104 @@ describe("useFollowedSlugs browser account store", () => {
     await flushFrames();
     expect(container.textContent).toBe("");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([null, { id: "passive-account", email: null }])("reads passive memberships without importing device saves for %j", async (user) => {
+    mocks.localSaved = [{ type: "place", id: "local-only", saved_at: "2026-01-01" }];
+    mocks.hasCompletedSync = false;
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      if (String(input) === "/api/auth/me") return response(200, { user });
+      if (String(input) === "/api/follows") return response(200, { slugs: ["account-only"] });
+      throw new Error(`Unexpected passive request: ${String(input)}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await act(async () => root.render(createElement(Snapshot, { options: { importLocalSavesOnMount: false } })));
+    await flushFrames();
+    expect(container.textContent).toBe(user ? "account-only" : "local-only");
+    expect(container.querySelector("output")?.dataset.loading).toBe("false");
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(user ? ["/api/auth/me", "/api/follows"] : ["/api/auth/me"]);
+    expect(fetchMock.mock.calls.some(([, init]) => Boolean(init?.method))).toBe(false);
+    expect(mocks.markSyncComplete).not.toHaveBeenCalled();
+    await act(async () => window.dispatchEvent(new Event("pagehide")));
+    await act(async () => window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })));
+    await flushFrames();
+    expect(fetchMock.mock.calls.some(([url]) => String(url) === "/api/follows/sync")).toBe(false);
+    expect(mocks.markSyncComplete).not.toHaveBeenCalled();
+  });
+
+  it("keeps a failed passive follow read unknown and recovers without importing", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    mocks.localSaved = [{ type: "place", id: "local-only", saved_at: "2026-01-01" }];
+    mocks.hasCompletedSync = false;
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response(503))
+      .mockResolvedValueOnce(response(200, { slugs: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    await act(async () => root.render(createElement(Snapshot, {
+      bootstrap: { user: { id: "passive-retry-account", email: null } },
+      options: { importLocalSavesOnMount: false },
+    })));
+    expect(container.querySelector("output")?.dataset.loading).toBe("true");
+    await act(async () => vi.advanceTimersByTimeAsync(1_000));
+    expect(container.querySelector("output")?.dataset.loading).toBe("false");
+    expect(container.textContent).toBe("");
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(["/api/follows", "/api/follows"]);
+    expect(mocks.markSyncComplete).not.toHaveBeenCalled();
+  });
+
+  it.each(["during", "after"] as const)("retains the legacy reader's import policy when it joins %s passive hydration", async (join) => {
+    mocks.localSaved = [{ type: "place", id: "local-only", saved_at: "2026-01-01" }];
+    mocks.hasCompletedSync = false;
+    let finishRead!: (value: Response) => void;
+    const pendingRead = new Promise<Response>(resolve => { finishRead = resolve; });
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      if (String(input) === "/api/auth/me") return response(200, { user: { id: `passive-then-legacy-${join}`, email: null } });
+      if (String(input) === "/api/follows") return pendingRead;
+      if (String(input) === "/api/follows/sync") return response(200, { acceptedSlugs: ["local-only"] });
+      throw new Error(`Unexpected joined request: ${String(input)}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const passive = createElement(Snapshot, { key: "passive", options: { importLocalSavesOnMount: false } });
+    await act(async () => root.render([passive]));
+    await flushFrames();
+    if (join === "after") {
+      await act(async () => finishRead(response(200, { slugs: ["account-only"] })));
+      expect(mocks.markSyncComplete).not.toHaveBeenCalled();
+      expect(fetchMock.mock.calls.filter(([url]) => url === "/api/follows/sync")).toHaveLength(0);
+    }
+    await act(async () => root.render([passive, createElement(Snapshot, { key: "legacy" })]));
+    if (join === "during") await act(async () => finishRead(response(200, { slugs: ["account-only"] })));
+    expect(fetchMock.mock.calls.filter(([url]) => url === "/api/follows")).toHaveLength(1);
+    expect(fetchMock.mock.calls.filter(([url]) => url === "/api/follows/sync")).toHaveLength(1);
+    expect(fetchMock.mock.calls.find(([url]) => url === "/api/follows/sync")?.[1])
+      .toMatchObject({ method: "POST", body: JSON.stringify({ slugs: ["local-only"] }) });
+    expect(mocks.markSyncComplete).toHaveBeenCalledTimes(1);
+    expect([...container.querySelectorAll("output")].map(output => output.textContent))
+      .toEqual(["account-only,local-only", "account-only,local-only"]);
+  });
+
+  it("prepends only a new confirmed account membership and retains that read order after remount", async () => {
+    const bootstrap = { user: { id: "confirmed-order-account", email: null }, slugs: ["server-b", "server-a", "server-c", "server-d"] };
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      if (String(input) === "/api/follows" && init?.method === "POST") return response(200);
+      throw new Error(`Unexpected confirmation-order request: ${String(input)}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const controls = (slug: string) => createElement("div", null,
+      createElement(Snapshot, { key: "read", bootstrap, options: { importLocalSavesOnMount: false } }),
+      createElement(FollowWriter, { key: "write", slug }));
+    await act(async () => root.render(controls("confirmed-new")));
+    expect(container.querySelector("output")?.textContent).toBe("server-b,server-a,server-c,server-d");
+    await act(async () => container.querySelector("button")!.click());
+    expect(container.querySelector("output")?.textContent).toBe("confirmed-new,server-b,server-a,server-c,server-d");
+    await act(async () => root.render(controls("server-a")));
+    await act(async () => container.querySelector("button")!.click());
+    expect(container.querySelector("output")?.textContent).toBe("confirmed-new,server-b,server-a,server-c,server-d");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await act(async () => root.unmount()); root = createRoot(container);
+    await act(async () => root.render(createElement(Snapshot, { options: { importLocalSavesOnMount: false } })));
+    expect(container.querySelector("output")?.textContent).toBe("confirmed-new,server-b,server-a,server-c,server-d");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
 });

@@ -3,11 +3,11 @@ import { primaryAnswerFor, simpleCategoryRequestQuery } from "./answer";
 import { readNearbyQuery } from "@/lib/nearby-query";
 
 describe("primaryAnswerFor", () => {
-  it("answers 'coffee open now near me' with the nearest-open coffee surface", () => {
+  it("offers the coffee browse surface without promising every result is open", () => {
     const a = primaryAnswerFor("coffee open now near me");
     expect(a?.key).toBe("coffee");
     expect(a?.href).toBe("/nearby?c=coffee");
-    expect(a?.kicker).toBe("Open picks; nearest when location is available");
+    expect(a?.kicker).toBe("Browse local places; nearest when location is available");
   });
 
   it("resolves specific terms before the broad buckets", () => {

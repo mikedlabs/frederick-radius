@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, MapPin } from "lucide-react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
+import PlaceCategoryArtwork from "@/components/place/PlaceCategoryArtwork";
+import SaveButton from "@/components/saved/SaveButton";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { DaypartPick } from "@/lib/loaders/daypartPicks";
 import { withBrowseReturnTo } from "@/lib/browse-return";
@@ -14,7 +16,13 @@ import styles from "./TodayPlacePreview.module.css";
 
 export type TodayPlaceAvailability = "current" | "opening-soon";
 
-const subscribe = (listener: () => void) => subscribeScopeChange(() => listener());
+const subscribe = (listener: () => void) => {
+  const unsubscribe = subscribeScopeChange(() => listener());
+  window.addEventListener("hashchange", listener);
+  window.addEventListener("popstate", listener);
+  return () => { unsubscribe(); window.removeEventListener("hashchange", listener); window.removeEventListener("popstate", listener); };
+};
+const originSnapshot = () => JSON.stringify([getScope() ?? "county", window.location.hash]);
 
 /** The cached first paint has real native destinations, without inventing a
  * URL lens. Native browser Back retains the originating Today URL. */
@@ -35,6 +43,7 @@ function PreviewActions({ place, detailHref, mapHref, availability }: {
           View place <ArrowRight aria-hidden />
         </Link>
         <Link href={mapHref} prefetch={false} aria-label={`Map: ${place.name}`}><MapPin aria-hidden />Map</Link>
+        <div className={styles.saveControl}><SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} barLabel="Save" importLocalSavesOnMount={false} /></div>
       </div>
   );
 }
@@ -42,12 +51,15 @@ function PreviewActions({ place, detailHref, mapHref, availability }: {
 /** Only actions read request-specific parameters. Their own boundary lets the
  * surrounding exact image and factual card remain in the cached first paint. */
 function ScopedPreviewActions({ place, availability }: { place: DaypartPick; availability: TodayPlaceAvailability }) {
-  const storedScope = useSyncExternalStore(subscribe, getScope, () => null);
+  const origin = useSyncExternalStore(subscribe, originSnapshot, () => null);
   const params = useSearchParams();
-  const scope = parseScope(params?.get("in")) ?? storedScope ?? "county";
+  if (!params) return <PreviewActions place={place} availability={availability}
+    detailHref={`/places/${place.slug}`} mapHref={`/map?${new URLSearchParams({ place: place.slug })}`} />;
+  const [storedScope, hash] = origin ? JSON.parse(origin) : ["county", ""];
+  const scope = params.has("in") ? parseScope(params.get("in")) ?? "county" : parseScope(storedScope) ?? "county";
   const returnParams = new URLSearchParams(params?.toString() ?? "");
   returnParams.set("in", scopeToParam(scope));
-  const returnTo = `/today?${returnParams.toString()}`;
+  const returnTo = `/today?${returnParams.toString()}${hash}`;
   const detailHref = withBrowseReturnTo(`/places/${place.slug}`, returnTo);
   const mapParams = new URLSearchParams({ place: place.slug, in: scopeToParam(scope) });
   const mapHref = withBrowseReturnTo(`/map?${mapParams.toString()}`, returnTo);
@@ -55,7 +67,7 @@ function ScopedPreviewActions({ place, availability }: { place: DaypartPick; ava
 }
 
 /** One exact place, with facts and navigation useful even without imagery.
- * The selected source owns its credit; neither action wraps a credit link. */
+ * The selected source owns its credit; no action wraps a credit link. */
 export default function TodayPlacePreview({ place, category, hydratePhoto = false, className = "", availability = "current" }: {
   place: DaypartPick;
   category: string;
@@ -74,10 +86,11 @@ export default function TodayPlacePreview({ place, category, hydratePhoto = fals
       data-today-opening-soon-preview={availability === "opening-soon" ? true : undefined}
       data-place-availability={availability === "opening-soon" ? availability : undefined}
       data-has-photo={Boolean(photo.source)} className={`${styles.preview} ${className}`}>
-      {photo.source && <div className={styles.media}>
+      <div className={styles.content}>
+      {photo.source ? <div className={styles.media}>
         <PlaceCardPhoto key={photo.source.src} decodeIdentity={photo.sourceKey} source={photo.source} onResult={photo.onResult}
           width={360} deferGoogleBytes sizes="(min-width: 640px) 520px, calc(100vw - 32px)" />
-      </div>}
+      </div> : <div className={styles.artwork}><PlaceCategoryArtwork name={place.name} category={category} /></div>}
       <div className={styles.facts}>
         <p className={styles.category}>{CATEGORY_BY_SLUG[category]?.name ?? category.replace(/-/g, " ")}</p>
         <h3 data-today-pick-name className={styles.name}>{place.name}</h3>
@@ -85,6 +98,7 @@ export default function TodayPlacePreview({ place, category, hydratePhoto = fals
           <p data-today-pick-fact className={styles.fact}>{fact}</p>
           {location && <p data-today-pick-location className={styles.location}>{location}</p>}
         </div>
+      </div>
       </div>
       <Suspense fallback={<PreviewActions place={place} availability={availability} detailHref={`/places/${place.slug}`}
         mapHref={`/map?${new URLSearchParams({ place: place.slug }).toString()}`} />}>

@@ -42,13 +42,25 @@ The map must not expose two controls that change the same location state.
 Recenter, scope, and the location readout must agree.
 
 Today's arrival uses a small, explicit selection of reviewed local places,
-with the photograph above its place name and actual town. County and Frederick
+with a dominant photograph, readable place name and actual town. County and Frederick
 lenses can show the reviewed Frederick choices. Named town lenses show only
 places from that exact town; Near me and towns without reviewed imagery retain
 the two scoped task actions without borrowing another town's photograph.
 Eat & drink and Get outside lead to their selected-area directories. The layout
 reflows at enlarged text sizes and never rotates or hides the choices in a rail.
 Scenic photographs establish place identity, not current weather or activity.
+
+Photo choices, the current recommendation and saved places share one connected
+Today journey before the event list. Save is a separate control beside the
+destination, never nested inside its link. Confirmed additions become visible
+in the compact saved preview even when older saves exist; saving never removes
+the tapped photo. Saved membership does not imply that a place is open, and
+unknown or closed hours never hide a person's saved destination. The preview
+uses a bounded lookup and keeps the full Saved destination available. Passive
+Today arrival reads do not import unrelated device saves into an account.
+The closed category browser does not initialize its saved-taste readers until
+the person opens it or follows a link that explicitly restores a category.
+Closing it after that preserves the current selection.
 
 Named merchant photographs still require an exact-image current-appearance
 review; permission or a dated reference image alone is insufficient.

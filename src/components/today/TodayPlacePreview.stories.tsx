@@ -35,7 +35,10 @@ const usablePreview: NonNullable<Story["play"]> = async ({ canvasElement, args }
   }
   await expect(canvasElement.querySelector("a a")).toBeNull();
   await expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth + 1);
-  for (const control of [canvas.getByRole("link", { name: `View place: ${args.place.name}` }), canvas.getByRole("link", { name: `Map: ${args.place.name}` })]) {
+  const save = card.querySelector<HTMLButtonElement>(`button[data-save-ref="place:${args.place.slug}"]`)!;
+  await expect(save).not.toBeNull();
+  await expect(save.closest("a")).toBeNull();
+  for (const control of [canvas.getByRole("link", { name: `View place: ${args.place.name}` }), canvas.getByRole("link", { name: `Map: ${args.place.name}` }), save]) {
     control.scrollIntoView({ block: "center" });
     const bounds = control.getBoundingClientRect();
     await expect(bounds.width).toBeGreaterThanOrEqual(44);
@@ -49,6 +52,7 @@ const usablePreview: NonNullable<Story["play"]> = async ({ canvasElement, args }
   } else {
     await expect(card.querySelector("[data-place-card-photo]")).toBeNull();
     await expect(card.querySelector(".place-card-photo-credit")).toBeNull();
+    await expect(card.querySelector('[data-place-category-art][aria-hidden="true"]')).not.toBeNull();
   }
 };
 
@@ -60,20 +64,23 @@ export const ShortNameWithoutPhoto: Story = {
     await usablePreview(context);
     const card = context.canvasElement.querySelector<HTMLElement>("[data-today-place-preview]")!;
     await expect(card.getAttribute("data-has-photo")).toBe("false");
-    // A short factual recommendation should fit without becoming a tall panel.
+    // A short factual recommendation keeps its decorative category identity
+    // beside the facts and all three actions within one compact card.
     const bounds = card.getBoundingClientRect();
     await expect(bounds.width).toBeGreaterThanOrEqual(350);
     await expect(bounds.width).toBeLessThanOrEqual(360);
     const height = bounds.height;
     await expect(height).toBeGreaterThanOrEqual(140);
-    await expect(height).toBeLessThanOrEqual(190);
+    await expect(height).toBeLessThanOrEqual(240);
+    const art = card.querySelector<HTMLElement>("[data-place-category-art]")!;
+    await expect(art.getBoundingClientRect().width).toBeLessThan(bounds.width * 0.35);
     const name = card.querySelector<HTMLElement>("[data-today-pick-name]")!;
     const nameSize = parseFloat(getComputedStyle(name).fontSize);
     await expect(nameSize).toBeGreaterThanOrEqual(22);
     await expect(nameSize).toBeLessThanOrEqual(26);
     const fact = card.querySelector<HTMLElement>("[data-today-pick-fact]")!;
     const location = card.querySelector<HTMLElement>("[data-today-pick-location]")!;
-    await expect(Math.abs(fact.getBoundingClientRect().top - location.getBoundingClientRect().top)).toBeLessThanOrEqual(1);
+    await expect(location.getBoundingClientRect().top).toBeGreaterThanOrEqual(fact.getBoundingClientRect().bottom - 1);
   },
 };
 

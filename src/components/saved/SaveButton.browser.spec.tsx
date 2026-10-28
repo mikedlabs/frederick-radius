@@ -9,12 +9,13 @@ const mocks = vi.hoisted(() => ({
   saved: false,
   mounted: true,
   eventUnavailable: false,
+  isFollowedRead: vi.fn(),
   togglePlace: vi.fn<() => Promise<boolean>>(),
   toggleLocal: vi.fn<() => boolean>(),
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
 }));
 vi.mock("@/hooks/useSaved", () => ({ savedChangeDescription: () => "We could not confirm this change. Please try again.", useMounted: () => mocks.mounted, useIsSaved: () => mocks.saved, useToggleSave: () => mocks.toggleLocal, useSetEventSaved: () => mocks.toggleLocal, useEventSavedState: (id: string | null) => id === null ? false : mocks.eventUnavailable ? null : mocks.saved, useSavedList: () => [] }));
-vi.mock("@/hooks/useFollows", () => ({ useFollowMutationState: () => "idle", useIsFollowed: () => mocks.saved, useToggleFollow: () => mocks.togglePlace }));
+vi.mock("@/hooks/useFollows", () => ({ useFollowMutationState: () => "idle", useIsFollowed: (...args: unknown[]) => { mocks.isFollowedRead(...args); return mocks.saved; }, useToggleFollow: () => mocks.togglePlace }));
 vi.mock("@/lib/haptics", () => ({ haptic: vi.fn() }));
 vi.mock("@/lib/track", () => ({ track: vi.fn() }));
 vi.mock("@/lib/decision/telemetry", () => ({ decisionContextFromPath: () => ({ surface: "saved", position: "list" }), trackDecision: vi.fn() }));
@@ -68,6 +69,17 @@ describe("SaveButton truthful save feedback", () => {
     expect(button().disabled).toBe(false);
     expect(button().getAttribute("aria-label")).toBe("Save Test stop");
     expect(button().getAttribute("aria-hidden")).toBeNull();
+    await act(async () => button().click());
+    expect(mocks.togglePlace).toHaveBeenCalledTimes(1);
+    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(mocks.toast.success).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([undefined, false])("forwards the %s arrival-import policy without disabling an explicit Save", async (importLocalSavesOnMount) => {
+    mocks.togglePlace.mockImplementationOnce(async () => { mocks.saved = true; return true; });
+    act(() => root.render(<SaveButton refType="place" refId="test-stop" label="Save Test stop"
+      importLocalSavesOnMount={importLocalSavesOnMount} />));
+    expect(mocks.isFollowedRead).toHaveBeenLastCalledWith("test-stop", { importLocalSavesOnMount: importLocalSavesOnMount ?? true });
     await act(async () => button().click());
     expect(mocks.togglePlace).toHaveBeenCalledTimes(1);
     expect(button().getAttribute("aria-pressed")).toBe("true");

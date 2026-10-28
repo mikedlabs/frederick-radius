@@ -343,13 +343,22 @@ function invalidateAuthForUser(userId: string) {
 function ensureRemoteHydrated(
   localSlugs: Set<string>,
   userId: string,
+  importLocalSavesOnMount: boolean,
 ): Promise<HydrationResult> {
+  // The shared transport only reads memberships. Each caller owns whether it
+  // may import device saves, including a legacy reader joining a passive read.
+  const finish = (result: HydrationResult): HydrationResult => {
+    if (importLocalSavesOnMount && result === "hydrated"
+      && remoteStoreUserId === userId && remoteStore !== null) {
+      void maybeSync(localSlugs, remoteStore, userId);
+    }
+    return result;
+  };
   if (remoteStoreUserId === userId && remoteStore !== null) {
-    void maybeSync(localSlugs, remoteStore, userId);
-    return Promise.resolve("hydrated");
+    return Promise.resolve(finish("hydrated"));
   }
   if (hydratePromise && hydrateUserId === userId) {
-    return hydratePromise;
+    return hydratePromise.then(finish);
   }
 
   // Account changes must never reuse another account's memberships or an
@@ -371,8 +380,6 @@ function ensureRemoteHydrated(
       if (remoteStoreUserId !== userId) return "hydrated";
       const set = new Set(normalizeFollowSlugs(data.slugs));
       writeAccountRemote(userId, set, data.truncated === true);
-      // First-time sync: push any localStorage follows not yet remote.
-      void maybeSync(localSlugs, set, userId);
       return "hydrated";
     })
     .catch((): HydrationResult => {
@@ -387,17 +394,24 @@ function ensureRemoteHydrated(
       }
     });
   hydratePromise = request;
-  return hydratePromise;
+  return request.then(finish);
 }
+
+export type FollowReadOptions = {
+  /** Passive arrival surfaces read membership without importing device saves.
+   * Defaults to the existing import policy; explicit Save writes are unchanged. */
+  importLocalSavesOnMount?: boolean;
+};
 
 /** Hook-internal helper: list of slugs the user follows.
  *  Reads from the shared store when authed, localStorage when not. */
-export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap): {
+export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap, options?: FollowReadOptions): {
   slugs: Set<string>;
   loading: boolean;
   authed: boolean;
   truncated: boolean;
 } {
+  const importLocalSavesOnMount = options?.importLocalSavesOnMount ?? true;
   const localList = useSavedList();
   const localSlugs = useMemo(
     () => new Set(localList.filter((i) => i.type === "place").map((i) => i.id)),
@@ -452,7 +466,7 @@ export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap): {
       if (bootstrap?.slugs !== undefined && bootstrap.user?.id === a.user.id
         && remoteStoreUserId === a.user.id && remoteStore !== null) return;
       retryNeeded = true;
-      const result = await ensureRemoteHydrated(localSlugs, a.user.id);
+      const result = await ensureRemoteHydrated(localSlugs, a.user.id, importLocalSavesOnMount);
       if (cancelled) return;
       if (result === "transient-error") {
         scheduleTransientRetry();
@@ -471,7 +485,7 @@ export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap): {
       if (refreshed === "unknown") scheduleTransientRetry();
       else if (refreshed !== "anonymous") {
         retryNeeded = true;
-        const retry = await ensureRemoteHydrated(localSlugs, refreshed.user.id);
+        const retry = await ensureRemoteHydrated(localSlugs, refreshed.user.id, importLocalSavesOnMount);
         if (cancelled) return;
         retryNeeded = false;
         if (retry === "transient-error") scheduleTransientRetry();
@@ -517,7 +531,7 @@ export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap): {
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onResume);
     };
-  }, [bootstrap, bootstrapKey, localSlugs, retryAttempt]);
+  }, [bootstrap, bootstrapKey, importLocalSavesOnMount, localSlugs, retryAttempt]);
 
   // A newly arrived server payload wins immediately. Once that payload has
   // committed, live auth state wins so a later 401 can demote the tab instead
@@ -555,8 +569,8 @@ export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap): {
 }
 
 /** Lightweight "is this slug followed?" check. */
-export function useIsFollowed(slug: string): boolean {
-  const { slugs, authed } = useFollowedSlugs();
+export function useIsFollowed(slug: string, options?: FollowReadOptions): boolean {
+  const { slugs, authed } = useFollowedSlugs(undefined, options);
   // When anonymous, delegate to the existing useIsSaved to match the
   // legacy contract exactly (the localList read is identical, but
   // useIsSaved also handles the hydration window).
@@ -612,9 +626,14 @@ const CHECKING_WRITE = "Your saved list must be checked before another change to
 
 /** Set one confirmed membership without overwriting unrelated saves. */
 function writeFollowMembership(slug: string, followed: boolean) {
-  const next = new Set(remoteStore ?? []);
-  if (followed) next.add(slug);
-  else next.delete(slug);
+  const current = remoteStore ?? new Set<string>();
+  // Server snapshots are recent-first. A genuinely new confirmed membership
+  // leads the shared read order too, including after the Today view remounts.
+  // Reconfirming an existing membership never manufactures a new position.
+  const next = followed && !current.has(slug)
+    ? new Set([slug, ...current])
+    : new Set(current);
+  if (!followed) next.delete(slug);
   writeRemote(next);
 }
 

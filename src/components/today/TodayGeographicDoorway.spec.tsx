@@ -15,6 +15,10 @@ vi.mock("next/image", () => ({ default: ({ src, alt, onLoad, onError }: { src: s
   callbacks.loads.set(src, onLoad);
   return createElement("img", { src, alt, onLoad, onError });
 } }));
+vi.mock("@/components/saved/SaveButton", () => ({ default: ({ refId, label, barLabel, importLocalSavesOnMount }: {
+  refId: string; label: string; barLabel?: string; importLocalSavesOnMount?: boolean;
+}) => <button type="button" data-save-ref={`place:${refId}`} aria-label={label}
+  data-import-local-saves={String(importLocalSavesOnMount)}>{barLabel}</button> }));
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const carillon = "joseph-dill-baker-memorial-carillon-bell-tower";
 const sophie = "sophie-madigans-playground-frederick";
@@ -62,6 +66,10 @@ describe("Today local discovery", () => {
     expect(places().every(link => link.textContent!.endsWith("Frederick City"))).toBe(true);
     expect(container.querySelectorAll('[data-place-card-photo-source="owned"]')).toHaveLength(2);
     expect(container.querySelectorAll("[data-today-photo-lead]")).toHaveLength(1);
+    expect(Array.from(container.querySelectorAll("[data-today-discovery-role]")).map(card => card.getAttribute("data-today-discovery-role"))).toEqual(["lead", "secondary"]);
+    const saves = Array.from(container.querySelectorAll<HTMLButtonElement>("button[data-save-ref]"));
+    expect(saves.map(button => button.getAttribute("data-save-ref"))).toEqual([`place:${carillon}`, `place:${sophie}`]);
+    expect(saves.every(button => button.getAttribute("data-import-local-saves") === "false" && !button.closest("a"))).toBe(true);
     expect(tasks().map(link => link.textContent)).toEqual(["Eat & drink", "Get outside"]);
     expect(container.textContent).not.toMatch(/pizza|Zoe|Sabor|open now|recommended|available now/i);
     expect(container.querySelector("[data-today-discovery-credit], .place-card-photo-credit, input, select, form")).toBeNull();

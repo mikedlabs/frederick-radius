@@ -121,7 +121,7 @@ export function primaryAnswerFor(
         key,
         label,
         href: `/nearby?c=${key}${pizza ? "&facet=pizza" : ""}${town ? `&in=${town.slug}` : ""}`,
-        kicker: town ? `Browse ${label.toLowerCase()} in ${town.name}.` : "Open picks; nearest when location is available",
+        kicker: town ? `Browse ${label.toLowerCase()} in ${town.name}.` : "Browse local places; nearest when location is available",
       };
     }
   }

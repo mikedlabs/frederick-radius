@@ -25,6 +25,7 @@ export default function SaveButton({
   refId,
   label,
   barLabel,
+  importLocalSavesOnMount = true,
 }: {
   refType: "place" | "event" | "radius";
   refId: string;
@@ -32,13 +33,16 @@ export default function SaveButton({
   /** Render as a complete mobile action-bar cell so the visible label is
    *  inside the same button hit area as the bookmark icon. */
   barLabel?: string;
+  /** Read saved membership on arrival without importing unrelated device saves.
+   * Explicit Save/Remove still use the existing confirmed write queue. */
+  importLocalSavesOnMount?: boolean;
 }) {
   const mounted = useMounted();
   // For places, route through the auth-aware useFollows hook: writes
   // hit the DB when signed in, fall back to localStorage when signed
   // out. Events + radii stay on the legacy useSaved hook by design
   // (Phase 1 brief framed sync as "follow PLACES"; broader sync later).
-  const placeFollowed = useIsFollowed(refType === "place" ? refId : "");
+  const placeFollowed = useIsFollowed(refType === "place" ? refId : "", { importLocalSavesOnMount });
   const failureDescriptionRef = useRef<string | null>(null);
   const togglePlace = useToggleFollow(refId, "icon", (description) => { failureDescriptionRef.current = description; });
   const legacyIsSaved = useIsSaved(refType, refId, refType !== "event");
