@@ -59,6 +59,9 @@ type Props = {
    * removed as soon as the real chunk arrives and cannot receive focus later.
    */
   returnFocusRef?: RefObject<HTMLElement | null>;
+  /** One exact same-path destination owned by the caller's closing controller.
+   * Other URL changes still cancel the deferred focus return. */
+  focusReturnHref?: string;
   /** Optional synchronous guard while the caller completes one dismissal.
    * Native Back still owns the history layer and may complete its traversal. */
   canDismiss?: () => boolean;
@@ -91,14 +94,27 @@ function describeFocusReturn(element: HTMLElement): FocusReturn {
   };
 }
 
+function isVisibleFocusSurface(element: HTMLElement): boolean {
+  if (!element.isConnected || element.closest("[hidden],[inert],[aria-hidden='true']")
+    || element.getClientRects().length === 0) return false;
+  const style = window.getComputedStyle(element);
+  return style.display !== "none" && style.visibility !== "hidden" && style.visibility !== "collapse";
+}
+
+function isActionableFocusReturn(element: HTMLElement): boolean {
+  return isVisibleFocusSurface(element) && element.tabIndex >= 0
+    && element.matches("a[href],button,input,select,textarea,[tabindex],[contenteditable='true']")
+    && !element.matches(":disabled,[aria-disabled='true']");
+}
+
 function resolveFocusReturn(saved: FocusReturn): HTMLElement | null {
-  if (saved.element.isConnected) return saved.element;
+  if (isActionableFocusReturn(saved.element)) return saved.element;
   const candidates = Array.from(
     document.querySelectorAll<HTMLElement>(saved.tagName.toLowerCase()),
-  );
+  ).filter(isActionableFocusReturn);
   if (saved.id) {
     const byId = document.getElementById(saved.id);
-    if (byId instanceof HTMLElement) return byId;
+    if (byId instanceof HTMLElement && isActionableFocusReturn(byId)) return byId;
   }
   if (saved.ariaLabel) {
     const byLabel = candidates.find(
@@ -129,6 +145,7 @@ export default function BottomSheet({
   ariaLabel,
   historyLayerId,
   returnFocusRef,
+  focusReturnHref,
   canDismiss,
   maxHeight = "85dvh",
   children,
@@ -142,6 +159,7 @@ export default function BottomSheet({
   // Remember what was focused before opening so we can restore it on close —
   // a baseline dialog expectation.
   const lastFocused = useRef<FocusReturn | null>(null);
+  const focusReturnGeneration = useRef(0);
   const openPath = useRef(pathname);
   const onCloseRef = useRef(onClose);
   // A sheet that was already in the shell mounts closed and follows `present`
@@ -164,22 +182,49 @@ export default function BottomSheet({
     const saved = lastFocused.current;
     if (!saved) return;
     lastFocused.current = null;
+    const generation = ++focusReturnGeneration.current;
+    const returnUrl = window.location.href;
+    let expectedReturnUrl: string | null = null;
+    if (focusReturnHref) {
+      try {
+        const current = new URL(returnUrl);
+        const expected = new URL(focusReturnHref, current);
+        if (expected.origin === current.origin && expected.pathname === current.pathname) {
+          expectedReturnUrl = expected.href;
+        }
+      } catch { /* An invalid optional destination never broadens the return. */ }
+    }
+    const departingDialog = sheetRef.current?.closest('[role="dialog"]') ?? null;
 
-    // A same-URL Back traversal can make Map replace its peek node. Restore
-    // after the exit has completed, when the obscured surface is interactive
-    // again, and allow two paint frames for an equivalent trigger to settle.
+    // Reduced-motion native Back can complete the exit callback before its
+    // dialog DOM is removed; synchronous focus is then lost in that cleanup.
+    // Let the closed surface paint first and verify the result on the next
+    // frame. This bounded transaction must survive onClose unmounting us.
     const restore = (attempt = 0) => {
+      if (generation !== focusReturnGeneration.current
+        || (window.location.href !== returnUrl && window.location.href !== expectedReturnUrl)) return;
+      // A caller-owned async close has not traversed yet. Focusing its still
+      // open URL would be erased by the later traversal's DOM cleanup.
+      const waitingForClose = expectedReturnUrl !== null && expectedReturnUrl !== returnUrl
+        && window.location.href === returnUrl;
+      const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]'))
+        .filter(isVisibleFocusSurface);
+      if (dialogs.some(dialog => dialog !== departingDialog)) return;
       const target = resolveFocusReturn(saved);
-      if (target) {
+      const active = document.activeElement;
+      if (target && active === target) return;
+      // A newer deliberate focus wins over the old sheet's return intent.
+      if (active instanceof HTMLElement && active !== target
+        && !departingDialog?.contains(active) && isActionableFocusReturn(active)) return;
+      if (target && !waitingForClose && !dialogs.some(dialog => dialog === departingDialog)) {
         target.focus({ preventScroll: true });
-        return;
       }
       if (attempt < 2) {
         window.requestAnimationFrame(() => restore(attempt + 1));
       }
     };
-    restore();
-  }, []);
+    window.requestAnimationFrame(() => restore());
+  }, [focusReturnHref]);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -190,6 +235,7 @@ export default function BottomSheet({
 
   useEffect(() => {
     if (present) {
+      focusReturnGeneration.current++;
       openPath.current = window.location.pathname;
       const focusReturn =
         returnFocusRef?.current ??

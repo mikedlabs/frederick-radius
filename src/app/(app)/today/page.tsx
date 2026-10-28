@@ -64,10 +64,11 @@ import {
  *   2. Conditions     → one verified weather glance before browsing
  *   3. Find and see   → one Find doorway, then exact scoped place photographs
  *                       before the current local answers
- *   4. Current local answers → a short event program and one location-aware place answer
+ *   4. Current local answers → one location-aware place answer, saved choices,
+ *                             then a short event program
  *   5. Keep exploring → four practical shortcuts and the category index
  *   6. Plan the rest  → scheduled utilities, sports, light, and tomorrow
- *   7. Local guides   → local guides and saved places, collapsed
+ *   7. Local guides   → secondary local guides, collapsed
  *
  * (The old generated "best move now" card was removed 2026-06-18 because it
  *  promoted ideas without enough evidence. Today may recommend carefully when
@@ -290,6 +291,13 @@ export default async function HomePage() {
       </Suspense>
 
       <div data-today-current-content className={styles.currentContent}>
+        <div aria-label="Places for your area" className={styles.places}>
+          {/* The selected-area recommendation and personal saves are one
+              visible choice group. Saving a photo or recommendation uses the
+              same confirmed membership, independently of opening hours. */}
+          {decisionLead}
+          <Suspense fallback={null}><FromYourSaved /></Suspense>
+        </div>
       <div data-today-events className={styles.events}>
         {/* A second civic moment still matters during the Fair campaign. Keep
             it with the day's program so it survives without competing with
@@ -304,13 +312,6 @@ export default async function HomePage() {
         ) : null}
         {whatsOn}
       </div>
-        <div aria-label="Places for your area" className={styles.places}>
-          {/* Keep the real selected-area answer mounted once, including its
-              existing scope and honest availability fallback. */}
-          {decisionLead}
-        </div>
-
-
       </div>
 
       {/* News follows the first local answers. Feed work stays bounded and
@@ -380,7 +381,7 @@ export default async function HomePage() {
           nudge; those made the briefing feel endless without improving the
           immediate decision. Their dedicated routes remain available. */}
       <CollapsibleSection
-        title="Local guides and saved places"
+        title="Local guides"
         storageKey="fr.today.more-ideas"
         defaultOpen={false}
         mountOnOpen
@@ -397,7 +398,6 @@ export default async function HomePage() {
               </Suspense>
             }
           />
-          <FromYourSaved />
           <Suspense fallback={null}>
             <WeekendPreview now={now} eventsPromise={eventsPromise} />
           </Suspense>

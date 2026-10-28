@@ -33,7 +33,10 @@ describe("Today universal Find launcher", () => {
     expect(html).toContain('href="/amenities"');
     expect(html).toContain('href="/places"');
     expect(html).toContain("Browse all places");
-    expect(html).toContain("Category choices");
+    expect(html).toContain('data-state="closed"');
+    // The native browse destination remains available before hydration, but
+    // closed categories must not initialize their saved-taste readers.
+    expect(html).not.toContain("Category choices");
     expect(html).not.toContain('action="/ask"');
     expect(html).not.toContain("data-ask-composer");
   });
@@ -49,7 +52,8 @@ describe("Today universal Find launcher", () => {
       expect(html).toContain(`href="${href}"`);
     }
     expect(html).toContain("Plan a few hours");
-    expect(html).toContain("Category choices");
+    expect(html).toContain('data-state="closed"');
+    expect(html).not.toContain("Category choices");
   });
 
   it("keeps one unboxed section with all four useful shortcuts", () => {

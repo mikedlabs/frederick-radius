@@ -43,7 +43,7 @@ describe("Today decision hierarchy", () => {
     expect(lead).toBeGreaterThan(find);
     expect(lead).toBeGreaterThan(weather);
     expect(events).toBeGreaterThan(find);
-    expect(events).toBeLessThan(lead);
+    expect(events).toBeGreaterThan(lead);
     expect(events).toBeGreaterThan(weather);
   });
 
@@ -63,7 +63,7 @@ describe("Today decision hierarchy", () => {
     expect(doorway).toBeLessThan(events);
     expect(doorway).toBeLessThan(lead);
     expect(events).toBeGreaterThan(find);
-    expect(events).toBeLessThan(lead);
+    expect(events).toBeGreaterThan(lead);
     expect(news).toBeGreaterThan(lead);
     expect(explore).toBeGreaterThan(news);
     expect(shortcuts).toBeGreaterThan(explore);
@@ -136,6 +136,18 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage.match(/<TodayPlanTonightLink/g)).toHaveLength(1);
   });
 
+  it("keeps confirmed saved choices visible with the recommendation before events", () => {
+    const lead = renderedPage.indexOf("{decisionLead}");
+    const saved = renderedPage.indexOf("<FromYourSaved />");
+    const events = renderedPage.indexOf("{whatsOn}");
+    const secondaryGuides = renderedPage.indexOf('title="Local guides"');
+    expect(saved).toBeGreaterThan(lead);
+    expect(saved).toBeLessThan(events);
+    expect(saved).toBeLessThan(secondaryGuides);
+    expect(renderedPage.match(/<FromYourSaved\b/g)).toHaveLength(1);
+    expect(renderedPage.slice(secondaryGuides)).not.toContain("<FromYourSaved");
+  });
+
   it("does not stack a second weather-safety panel below the active alert", () => {
     expect(renderedPage).toContain("<CivicAlerts compact />");
     expect(renderedPage).not.toContain("<WeatherNeeds");
@@ -176,7 +188,7 @@ describe("Today decision hierarchy", () => {
     const decide = renderedPage.indexOf("data-today-briefing");
     const follow = renderedPage.indexOf("data-today-events");
     const plan = renderedPage.indexOf('title="Plan the rest"');
-    const more = renderedPage.indexOf('title="Local guides and saved places"');
+    const more = renderedPage.indexOf('title="Local guides"');
 
     expect(decide).toBeGreaterThan(-1);
     expect(follow).toBeGreaterThan(decide);
@@ -255,7 +267,7 @@ describe("Today decision hierarchy", () => {
 
   it("keeps low-value repeated discovery rails off the briefing", () => {
     const disclosureStart = todayPage.indexOf(
-      'title="Local guides and saved places"',
+      'title="Local guides"',
     );
     const disclosureEnd = todayPage.indexOf(
       "</CollapsibleSection>",
@@ -270,7 +282,7 @@ describe("Today decision hierarchy", () => {
     expect(disclosure).toContain("breweryCount={BREWERIES.length}");
     expect(disclosure).toContain("foodTruckCount={FOOD_TRUCKS.length}");
     expect(disclosure).toContain("<TodayFoodTruckGuideWithSchedule");
-    expect(disclosure).toContain("<FromYourSaved");
+    expect(disclosure).not.toContain("<FromYourSaved");
     expect(disclosure).toContain("<WeekendPreview");
     expect(disclosure).toContain("<PoolsToday");
     expect(disclosure).toContain("<MastheadNotes");

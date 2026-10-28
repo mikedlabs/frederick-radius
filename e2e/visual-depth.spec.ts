@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
 import {
   dismissReturnBridge,
   emptyReturnBridgeState,
@@ -290,3 +291,5 @@ test("reduced motion keeps Pulse and Today actions still on hover and navigation
   await expect(page).toHaveURL(origin);
   await expect(current).toHaveAttribute("aria-current", "page");
 });
+
+registerWebkitLoopbackDocumentSeam();

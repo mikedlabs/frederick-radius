@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowUpRight, Trees, Utensils } from "lucide-react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
+import SaveButton from "@/components/saved/SaveButton";
 import { withBrowseReturnTo } from "@/lib/browse-return";
 import { recordPlaceCardPhotoResult, selectedPlaceCardPhoto, type PlaceCardPhotoResult, type PlaceCardPhotoState } from "@/lib/place-card-photo";
 import { getScope, parseScope, scopeToParam, subscribeScopeChange, type Scope } from "@/lib/scope";
@@ -36,7 +37,8 @@ function DiscoveryPlace({ place, scope, returnTo, lead }: { place: LocalDiscover
     setState(current => recordPlaceCardPhotoResult(place.photoPlan, current, src, result));
   };
   return (
-    <article className={styles.discoveryPlace}>
+    <article className={styles.discoveryPlace} data-today-discovery-role={lead ? "lead" : "secondary"}>
+      <div className={styles.discoveryCard}>
       <Link href={href} prefetch={false} aria-label={`View ${place.name} in ${place.town}`}
         data-today-geographic-place={place.slug} data-today-discovery-action="place"
         data-photo-state={loaded ? "loaded" : source ? "pending" : "failed"}
@@ -53,6 +55,10 @@ function DiscoveryPlace({ place, scope, returnTo, lead }: { place: LocalDiscover
           <span aria-hidden className={styles.discoveryAction}><ArrowUpRight className="h-4 w-4" /></span>
         </div>
       </Link>
+      <div className={styles.discoverySave}>
+        <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} barLabel="Save" importLocalSavesOnMount={false} />
+      </div>
+      </div>
       {source?.kind === "curated" && <div className={styles.discoveryCredit} data-today-discovery-credit={place.slug}>
         <PlaceCardPhotoCredit source={source} loaded={loaded} touchTarget compact discloseModifications />
       </div>}

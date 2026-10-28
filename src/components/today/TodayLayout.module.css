@@ -189,47 +189,48 @@
   min-width: 0;
 }
 
-.discoveryPlace:only-child {
-  grid-column: 1 / -1;
+.discoveryCard {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-xl);
+  background: var(--app-bg-elevated-solid);
+  box-shadow: var(--app-shadow-1);
+  transition: box-shadow var(--app-dur-fast) var(--app-ease-out);
 }
 
-.discoveryPlace:only-child .discoveryPhoto {
-  aspect-ratio: 16 / 9;
+.discoveryCard:hover {
+  box-shadow: var(--app-shadow-2);
 }
 
 .discoveryPlaceLink {
   display: block;
-  flex: 1;
   min-width: 0;
   min-height: 48px;
-  overflow: hidden;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
-  background: var(--app-bg-elevated-solid);
   color: var(--app-ink);
-  transition: transform var(--app-dur-fast) var(--app-ease-out), box-shadow var(--app-dur-fast) var(--app-ease-out);
+  transition: transform var(--app-dur-fast) var(--app-ease-out);
 }
 
 .discoveryPlaceLink:hover {
   color: var(--app-ink);
-  box-shadow: var(--app-shadow-2);
 }
 
 .discoveryPlaceLink:active,
 .discoveryTask:active {
-  transform: scale(0.98);
+  transform: scale(0.99);
 }
 
 .discoveryPlaceLink:focus-visible,
 .discoveryTask:focus-visible {
   outline: 3px solid var(--app-focus);
-  outline-offset: 3px;
+  outline-offset: -3px;
 }
 
 .discoveryPhoto {
   position: relative;
   display: block;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   background: var(--app-bg-sunken);
 }
@@ -251,32 +252,29 @@
   opacity: 1;
 }
 
-.discoveryPlaceLink[data-photo-state="failed"] .discoveryPhoto {
-  display: none;
-}
-
 .discoveryCaption {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: end;
   gap: var(--app-space-2);
-  min-height: 72px;
+  min-width: 0;
+  min-height: 88px;
   padding: var(--app-space-3);
 }
 
 .discoveryName {
   margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 650;
-  line-height: 1.3;
-  letter-spacing: -0.02em;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: -0.025em;
   overflow-wrap: anywhere;
 }
 
 .discoveryTown {
   margin: var(--spacing) 0 0;
   color: var(--app-ink-2);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
@@ -287,6 +285,98 @@
   height: 24px;
   flex-shrink: 0;
   place-items: center;
+  color: var(--app-link);
+}
+
+/* The exact photograph and its caption share one grid cell. Caption growth
+   contributes to the track, so enlarged text cannot be clipped by a fixed hero. */
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPhoto {
+  grid-area: 1 / 1;
+  /* Grid's normal alignment preserves an aspect-ratio item's intrinsic
+     height. Explicit stretch lets enlarged captions grow their shared row. */
+  align-self: stretch;
+  min-height: 250px;
+  aspect-ratio: 8 / 5;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryCaption {
+  grid-area: 1 / 1;
+  align-self: end;
+  margin-top: 100px;
+  padding: var(--app-space-4);
+  color: var(--app-ink-inverse);
+  background: color-mix(in srgb, var(--app-media-ink) 94%, transparent);
+  z-index: 1;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryName {
+  font-size: clamp(1.5rem, 6cqi, 2rem);
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryTown,
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryAction {
+  color: var(--app-ink-inverse);
+}
+
+.discoverySave {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  min-width: 44px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: var(--app-bg-elevated-solid);
+  box-shadow: var(--app-shadow-1);
+}
+
+.discoverySave > button {
+  flex-direction: row;
+  gap: 5px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: inherit;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.discoveryPlace[data-today-discovery-role="secondary"] .discoverySave {
+  position: static;
+  width: max-content;
+  margin: 0 var(--app-space-2) var(--app-space-2) auto;
+}
+
+/* Exhausted images become complete factual links. The save control retains
+   its own space and no empty photographic panel remains. */
+.discoveryPlace[data-today-discovery-role] .discoveryPlaceLink[data-photo-state="failed"] {
+  display: block;
+}
+
+.discoveryPlaceLink[data-photo-state="failed"] .discoveryCaption {
+  margin-top: 0;
+  color: var(--app-ink);
+  background: var(--app-bg-elevated-solid);
+}
+
+.discoveryCard:has(.discoveryPlaceLink[data-photo-state="failed"]) .discoverySave {
+  position: static;
+  width: max-content;
+  margin: 0 var(--app-space-2) var(--app-space-2) auto;
+}
+
+.discoveryPlaceLink[data-photo-state="failed"] .discoveryTown {
+  color: var(--app-ink-2);
+}
+
+.discoveryPlaceLink[data-photo-state="failed"] .discoveryAction {
   color: var(--app-link);
 }
 
@@ -380,9 +470,40 @@
 /* Use available content width relative to actual text, not the device width.
    At enlarged text sizes the same choices reflow into complete single cards. */
 @container (min-width: 18rem) {
-  .discoveryPlaceGrid,
   .discoveryTasks {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryPhoto {
+    height: 100%;
+    min-height: 116px;
+    aspect-ratio: auto;
+  }
+}
+
+@container (min-width: 36rem) {
+  .discoveryPlaceGrid {
+    grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink {
+    display: block;
+  }
+
+  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryPhoto {
+    height: auto;
+    aspect-ratio: 4 / 3;
+  }
+
+  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryCaption {
+    padding-right: var(--app-space-3);
   }
 }
 
@@ -395,6 +516,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .discoveryPhoto img,
+  .discoveryCard,
   .discoveryPlaceLink,
   .discoveryTask {
     transition: none;

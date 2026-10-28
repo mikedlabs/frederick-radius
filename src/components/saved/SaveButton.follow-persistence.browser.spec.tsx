@@ -115,16 +115,35 @@ describe("SaveButton with the real follow persistence hook", () => {
     vi.unstubAllGlobals();
   });
 
-  async function render(slugs: string[] = [], ids = ["test-stop", "test-stop"]) {
+  async function render(slugs: string[] = [], ids = ["test-stop", "test-stop"], importLocalSavesOnMount?: boolean) {
     bootstrap = { ...bootstrap, slugs };
     serverSlugs = new Set(slugs);
     // Commit the verified account snapshot before mounting the save controls.
     await act(async () => root.render(<Snapshot bootstrap={bootstrap} />));
     await act(async () => root.render(<>
       <Snapshot bootstrap={bootstrap} />
-      {ids.map((id, index) => <SaveButton key={index} refType="place" refId={id} label={`Save ${id}`} />)}
+      {ids.map((id, index) => <SaveButton key={index} refType="place" refId={id} label={`Save ${id}`} importLocalSavesOnMount={importLocalSavesOnMount} />)}
     </>));
   }
+  it("keeps passive arrival read-only while an explicit Save uses the confirmed account queue", async () => {
+    mocks.hasSynced.mockReturnValue(false);
+    localStorage.setItem("fr:saved:v1", JSON.stringify([{ type: "place", id: "local-only", saved_at: "2026-10-01T12:00:00Z" }]));
+    await render([], ["test-stop"], false);
+    expect(imports).toHaveLength(0);
+    expect(writes).toHaveLength(0);
+    expect(mocks.markSynced).not.toHaveBeenCalled();
+    await click();
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toMatchObject({ method: "POST", slug: "test-stop" });
+    expect(button().getAttribute("aria-pressed")).toBe("false");
+    await settle(0);
+    expect(saved()).toBe("test-stop");
+    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(imports).toHaveLength(0);
+    expect(mocks.markSynced).not.toHaveBeenCalled();
+    expect(JSON.parse(localStorage.getItem("fr:saved:v1")!)[0].id).toBe("local-only");
+  });
+
   function button(index = 0) { return container.querySelectorAll("button")[index]; }
   function saved() { return container.querySelector("output")!.textContent; }
   async function click(index = 0) { await act(async () => button(index).click()); }

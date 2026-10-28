@@ -22,6 +22,7 @@ export default function Sheet({
   maxHeight = "85dvh",
   historyLayerId,
   returnFocusRef,
+  focusReturnHref,
 }: {
   open: boolean;
   onClose: () => void;
@@ -35,6 +36,8 @@ export default function Sheet({
   historyLayerId?: string;
   /** Explicit launcher for pointer openings that do not move browser focus. */
   returnFocusRef?: RefObject<HTMLElement | null>;
+  /** Exact same-path location restored by a caller-owned close controller. */
+  focusReturnHref?: string;
 }) {
   const label = title?.trim() || "Details";
 
@@ -45,6 +48,7 @@ export default function Sheet({
       ariaLabel={label}
       historyLayerId={historyLayerId}
       returnFocusRef={returnFocusRef}
+      focusReturnHref={focusReturnHref}
       maxHeight={maxHeight}
     >
       {(dismiss) => (

@@ -112,6 +112,32 @@ async function beginSave(canvasElement: HTMLElement) {
   return canvas;
 }
 
+function PassiveSaveControls() {
+  const { slugs } = useFollowedSlugs(bootstrap, { importLocalSavesOnMount: false });
+  const ready = useMounted();
+  if (!ready) return null;
+  return <div className="space-y-4 p-4">
+    <SaveButton refType="place" refId={SLUG} label="Save Workshop stop" barLabel="Save" importLocalSavesOnMount={false} />
+    <output aria-label="Confirmed saved places">{slugs.has(SLUG) ? "Workshop stop" : "No saved places"}</output>
+    <Toaster />
+  </div>;
+}
+
+export const PassiveArrivalStillAllowsSave: Story = {
+  beforeEach: () => sample(), render: () => <PassiveSaveControls />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const save = await canvas.findByRole("button", { name: "Save Workshop stop" });
+    await waitFor(() => expect(save).toBeEnabled());
+    await expect(save).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(save);
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Saving Workshop stop" })).toBeDisabled());
+    await finish(true);
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Remove Workshop stop from Saved" })).toHaveAttribute("aria-pressed", "true"));
+    await expect(canvas.getByLabelText("Confirmed saved places")).toHaveTextContent("Workshop stop");
+  },
+};
+
 export const Unsaved: Story = { beforeEach: () => sample(), play: async ({ canvasElement }) => { await confirmedControls(canvasElement, false); } };
 export const PendingSave: Story = { beforeEach: () => sample(), play: async ({ canvasElement }) => { await beginSave(canvasElement); } };
 export const ConfirmedSave: Story = { beforeEach: () => sample(), play: async ({ canvasElement }) => {

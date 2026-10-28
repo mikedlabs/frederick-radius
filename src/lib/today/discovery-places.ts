@@ -32,22 +32,27 @@ export type LocalDiscoveryPlace = Omit<DiscoveryIdentity, "countyLead"> & {
   photoPlan: PlaceCardPhotoPlan;
 };
 
+/** Resolve one independently accepted scenic identity. Saved places may
+ * reuse these exact photographs without borrowing another town's identity. */
+export function localDiscoveryPlace(slug: string): LocalDiscoveryPlace | null {
+  const place = LOCAL_DISCOVERY_IDENTITIES.find(candidate => candidate.slug === slug);
+  if (!place) return null;
+  const plan = placeCardPhotoPlan({ slug: place.slug }, 400);
+  const sources = plan.sources.filter(source => source.kind !== "google"
+    && source.src.startsWith("/") && !source.src.startsWith("//") && !source.src.startsWith("/api/")
+    && !(source.kind === "owned" && source.referenceContext === "appearance-unverified"));
+  if (!sources.length) return null;
+  return { slug: place.slug, name: place.name, shortName: place.shortName, municipality: place.municipality,
+    town: MUNICIPALITY_BY_SLUG[place.municipality].name,
+    photoPlan: { key: JSON.stringify([place.slug, sources.map(source => [source.kind, source.src])]), sources } };
+}
+
 /** Supplying only the exact slug keeps Google metadata outside this path.
- * Only already bundled owned/licensed bytes can enter this visual selection;
- * remote Commons URLs and appearance-unverified merchant references cannot. */
+ * Only already bundled owned/licensed bytes can enter this visual selection. */
 export function localDiscoveryPlaces(scope: Scope | null): LocalDiscoveryPlace[] {
   const active = parseScope(scope) ?? "county";
   if (active === "nearme") return [];
   const town = scopeTownSlug(active);
   return LOCAL_DISCOVERY_IDENTITIES.filter(place => town ? place.municipality === town : place.countyLead)
-    .flatMap(place => {
-      const plan = placeCardPhotoPlan({ slug: place.slug }, 400);
-      const sources = plan.sources.filter(source => source.kind !== "google"
-        && source.src.startsWith("/") && !source.src.startsWith("//") && !source.src.startsWith("/api/")
-        && !(source.kind === "owned" && source.referenceContext === "appearance-unverified"));
-      if (sources.length === 0) return [];
-      return [{ slug: place.slug, name: place.name, shortName: place.shortName, municipality: place.municipality,
-        town: MUNICIPALITY_BY_SLUG[place.municipality].name,
-        photoPlan: { key: JSON.stringify([place.slug, sources.map(source => [source.kind, source.src])]), sources } }];
-    });
+    .flatMap(place => { const resolved = localDiscoveryPlace(place.slug); return resolved ? [resolved] : []; });
 }

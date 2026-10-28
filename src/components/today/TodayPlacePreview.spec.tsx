@@ -42,6 +42,10 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
+vi.mock("@/components/saved/SaveButton", () => ({ default: ({ refId, label, barLabel, importLocalSavesOnMount }: {
+  refId: string; label: string; barLabel?: string; importLocalSavesOnMount?: boolean;
+}) => <button type="button" data-save-ref={`place:${refId}`} aria-label={label}
+  data-import-local-saves={String(importLocalSavesOnMount)}>{barLabel}</button> }));
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const photoName = "places/today-preview/photos/exact-photo";
 const rawPhoto = `/api/place-photo?name=${encodeURIComponent(photoName)}&w=800`;
@@ -132,6 +136,11 @@ describe("Today place preview exact media and actions", () => {
     expect(mapUrl.searchParams.get("returnTo")).toBe(origin);
     expect(detail.querySelector("a")).toBeNull();
     expect(map.querySelector("a")).toBeNull();
+    const save = container.querySelector<HTMLButtonElement>(`button[data-save-ref="place:${place.slug}"]`)!;
+    expect(save).not.toBeNull();
+    expect(save.getAttribute("data-import-local-saves")).toBe("false");
+    expect(save.getAttribute("aria-label")).toBe(`Save ${place.name}`);
+    expect(save.closest("a")).toBeNull();
   }
 
   it("keeps the full factual first paint and real native actions when URL parameters suspend", () => {
@@ -156,6 +165,21 @@ describe("Today place preview exact media and actions", () => {
     expect(html).toContain('aria-label="Map: Schifferstadt"');
     expect(html).not.toContain("returnTo=");
     expect(html).not.toContain("in=county");
+  });
+
+  it("retains the exact Today query and section for detail and map returns", async () => {
+    window.history.replaceState(null, "", "/today?in=brunswick&view=morning#today-saved");
+    const place = pick();
+    await render(place);
+    expectActions(place, "/today?in=brunswick&view=morning#today-saved");
+  });
+
+  it("keeps an explicit invalid URL scope at county instead of borrowing a stored town", async () => {
+    window.localStorage.setItem("fr:scope:v1", "town:brunswick");
+    window.history.replaceState(null, "", "/today?in=invalid#today-discovery");
+    const place = pick();
+    await render(place);
+    expectActions(place, "/today?in=county#today-discovery");
   });
 
   it("keeps a qualified opening transition distinct from a current recommendation and retains scoped native actions", async () => {

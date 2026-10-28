@@ -57,7 +57,10 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("6 min walk");
     expect(html).toContain("Hours not confirmed");
     expect(html).toContain("Places to try");
-    expect(html).toContain('href="/places/local-option?returnTo=%2Ftoday%3Fin%3Dcounty"');
+    // Cached first paint has no request-specific URL lens yet. Keep the
+    // native destination useful without inventing a county return URL.
+    expect(html).toContain('href="/places/local-option"');
+    expect(html).toContain('href="/map?place=local-option"');
     expect(html).toContain('aria-label="Map: Local option"');
     expect(html).not.toContain("Open now");
   });
