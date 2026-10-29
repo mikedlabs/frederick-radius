@@ -1165,7 +1165,9 @@ describe("scheduled data workflow contracts", () => {
       if: string;
       "timeout-minutes": number;
     };
-    expect(job["timeout-minutes"]).toBe(45);
+    // The complete protected pipeline needs room beyond its observed 45m run;
+    // the signed browser-install step retains its separate ten-minute bound.
+    expect(job["timeout-minutes"]).toBe(60);
     expect(step["timeout-minutes"]).toBe(10);
     expect(step.if).toBe("${{ env.AUTOMATED_DATA_PR != '1' }}");
     expect(step.run).toContain("if [ -f /etc/apt/apt-mirrors.txt ]; then");
