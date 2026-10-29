@@ -43,6 +43,7 @@ const INTENT_ICONS: Record<string, any> = {
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import EventWeekRibbon from "@/components/event/EventWeekRibbon";
 import { haptic } from "@/lib/haptics";
+import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import {
@@ -318,6 +319,12 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   const whenRibbonRef = useRef<HTMLDivElement>(null);
   const mobileDisplayRef = useRef<HTMLDetailsElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
+  const historyLayer = useReversibleHistoryLayer({
+    active: paneOpen,
+    id: "events-filters",
+    onDismiss: () => setPane(null),
+    preserveUrlOnDismiss: true,
+  });
 
   // ── Collapse the nameplate on scroll (window scroll). Under
   //    prefers-reduced-motion the masthead stays static — no fold, no
@@ -390,25 +397,34 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     };
   }, [paneOpen]);
 
-  const closePane = () => setPane(null);
+  const closePane = () => historyLayer.dismiss();
+  useEffect(() => {
+    if (!paneOpen) return;
+    // WebKit touch activation can leave focus on the document body. The
+    // owned modal still handles Escape even when no descendant has focus.
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.isComposing) return;
+      event.preventDefault();
+      event.stopPropagation();
+      historyLayer.dismiss();
+    };
+    document.addEventListener("keydown", onEscape, true);
+    return () => document.removeEventListener("keydown", onEscape, true);
+  }, [paneOpen, historyLayer]);
   const toggle = (p: Pane) => {
     haptic("light");
     if (pane === p) {
       closePane();
     } else {
+      if (historyLayer.isDismissing()) return;
       if (mobileDisplayRef.current) mobileDisplayRef.current.open = false;
       restoreRef.current = filterTriggerRef.current ?? document.activeElement as HTMLElement | null;
       setPane(p);
     }
   };
 
-  // Esc closes; Tab is trapped within the open pane.
+  // Tab is trapped within the open pane; its Escape owner is above.
   const onPaneKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      closePane();
-      return;
-    }
     if (e.key !== "Tab" || !paneRef.current) return;
     const nodes = Array.from(
       paneRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
@@ -964,7 +980,11 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
 
               <p className="dock-hint">
                 Planning an event of your own?{" "}
-                <Link href="/check-a-date" prefetch={false} style={{ color: "var(--app-link)", fontWeight: 600 }}>
+                <Link href="/check-a-date" prefetch={false} style={{ color: "var(--app-link)", fontWeight: 600 }} onClick={(event) => {
+                  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                  event.preventDefault();
+                  historyLayer.leaveTo("/check-a-date");
+                }}>
                   Check a date
                 </Link>{" "}
                 to see what&rsquo;s already scheduled.

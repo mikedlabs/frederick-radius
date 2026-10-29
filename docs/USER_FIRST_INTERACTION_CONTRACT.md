@@ -13,6 +13,14 @@ The mobile navigation keeps four stable destinations:
 - **Events** answers what is scheduled.
 - **Saved** holds what the person chose to keep.
 
+An ordinary primary-tab tap resumes that tab's last safe root URL and reading
+position in the current browser session. Reselecting an active root keeps the
+current task. Direct and shared links, modified clicks and new-tab navigation
+retain their explicit destination. Tab memory is bounded and does not store
+account details, notes or arbitrary return paths. Private Map search and Events
+search/view state stay in document memory and are restored only for an explicit
+tab return; they do not become a new persisted search history.
+
 Ask, search, category matching, and tool routing share one request doorway.
 The system decides which capability handles the request. The person does not
 choose between "search" and "AI" first.
@@ -71,6 +79,14 @@ Required photograph credits remain outside the destination link, with usable
 touch targets. Today's events have one heading rather than an extra chapter
 label before the same results.
 
+Place sheets keep Directions, an exact reviewed Menu when available, and one
+Save beside the place identity, ahead of optional galleries, aerial context and
+upcoming events. The existing validated action resolver still owns destinations
+and labels. The action row remains inside the sheet, with scrolling space for
+focused content beneath it. Short phone screens and enlarged text must retain
+usable actions and a separate reachable Close control. Source observations,
+photo identity and required attribution are unchanged by layout changes.
+
 ## Map
 
 The map is an answer surface, not a layer manager.
@@ -124,6 +140,12 @@ Only one overlay may own the screen. Sheets do not open another sheet for the
 same decision. Directories and raw inventories stay behind a deliberate
 secondary action. Unavailable readings and empty modules do not take primary
 space.
+
+Events filters own one reversible browser-history layer. Back first dismisses
+the filters and restores the trigger while preserving the edited selections,
+query and results context. Done, Escape and close controls consume that same
+temporary entry once. A subsequent Back can leave Events normally; an explicit
+different-page navigation must not be rewritten by a late filter dismissal.
 
 ## Mobile acceptance checks
 

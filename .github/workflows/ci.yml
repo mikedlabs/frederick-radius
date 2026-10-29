@@ -50,7 +50,10 @@ jobs:
   verify:
     # Match the installed Playwright browser and native-dependency support.
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    # The full build and both browser suites reached 45 minutes before the
+    # final upgrade gate. Keep every check and its per-test limits intact;
+    # allow one bounded hour instead of discarding completed verification.
+    timeout-minutes: 60
     env:
       # Only the pre-checkout protected-main helper may opt into the focused
       # data gate after exact current PR/base/head/tree/path validation.
@@ -224,6 +227,9 @@ jobs:
           e2e/find-place-media.spec.ts
           e2e/nearby-place-media.spec.ts
           e2e/map-selected-photo-continuity.spec.ts
+          e2e/primary-tab-resume.spec.ts
+          e2e/events-filter-back.spec.ts
+          e2e/place-sheet-quick-actions.spec.ts
           --project=webkit-mobile --workers=1 --retries=1
         env:
           NEXT_TELEMETRY_DISABLED: "1"

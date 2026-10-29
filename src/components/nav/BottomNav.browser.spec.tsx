@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import BottomNav from "./BottomNav";
 import SideRail from "./SideRail";
+import { cancelPrimaryTabResume, consumePrimaryTabResume, rememberPrimaryTab } from "@/lib/primary-tab-session";
 const state = vi.hoisted(() => ({ pathname: "/today", push: vi.fn(), prefetches: new Map<string, boolean | "auto" | undefined>() }));
 vi.mock("next/navigation", () => ({ usePathname: () => state.pathname, useRouter: () => ({ push: state.push }) }));
 vi.mock("next/link", () => ({ default: ({ prefetch, ...props }: AnchorHTMLAttributes<HTMLAnchorElement> & { prefetch?: boolean | "auto" }) => { if (props.href) state.prefetches.set(props.href, prefetch); return <a {...props} />; } }));
@@ -11,13 +12,42 @@ vi.mock("@/lib/haptics", () => ({ haptic: vi.fn() }));
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let container: HTMLDivElement;
 let root: Root;
-beforeEach(() => { state.pathname = "/today"; state.push.mockReset(); state.prefetches.clear(); container=document.createElement("div"); document.body.append(container); root=createRoot(container); });
+beforeEach(() => { state.pathname = "/today"; history.replaceState({}, "", "/today"); sessionStorage.clear(); cancelPrimaryTabResume(); state.push.mockReset(); state.prefetches.clear(); container=document.createElement("div"); document.body.append(container); root=createRoot(container); });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); Reflect.deleteProperty(document,"startViewTransition"); });
 const mount=async () => { await act(async () => root.render(<BottomNav />)); };
 const link=(href:string) => container.querySelector<HTMLAnchorElement>(`a[href="${href}"]`)!;
 const selected=() => [...container.querySelectorAll('[data-selected="true"]')].map(el => el.textContent?.trim());
 const busy=() => container.querySelector('[aria-label="Primary"]')?.getAttribute("aria-busy");
 describe("BottomNav destination truth", () => {
+ it.each([["mobile", BottomNav], ["desktop", SideRail]] as const)("resumes %s tabs from the actual window URL while leaving modified links canonical", async (_name, Component) => {
+  const events = "/events?in=brunswick&lens=weekend&kids=true";
+  rememberPrimaryTab(events, 612);
+  state.pathname = "/map"; history.replaceState({}, "", "/map?in=frederick&c=-77.4105%2C39.4143%2C13.40");
+  await act(async () => root.render(<Component />));
+  const modified = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, metaKey: true });
+  let preventedBeforeFixture = true;
+  document.addEventListener("click", event => { preventedBeforeFixture = event.defaultPrevented; event.preventDefault(); }, { once: true });
+  await act(async () => link("/events").dispatchEvent(modified));
+  expect(preventedBeforeFixture).toBe(false); expect(state.push).not.toHaveBeenCalled();
+  expect(link("/events").getAttribute("href")).toBe("/events");
+  await act(async () => link("/events").click());
+  expect(state.push).toHaveBeenLastCalledWith(events, { scroll: false });
+  expect(consumePrimaryTabResume(events)?.scrollY).toBe(612);
+  state.pathname = "/events"; history.replaceState({}, "", events);
+  await act(async () => root.render(<Component />));
+  await act(async () => link("/map").click());
+  expect(state.push).toHaveBeenLastCalledWith("/map?in=frederick&c=-77.4105%2C39.4143%2C13.40", { scroll: false });
+ });
+ it.each([["mobile", BottomNav], ["desktop", SideRail]] as const)("does not redirect direct %s arrivals or reset the active root on reselect", async (_name, Component) => {
+  rememberPrimaryTab("/events?in=brunswick", 612);
+  state.pathname = "/events"; history.replaceState({}, "", "/events?in=frederick&lens=today");
+  await act(async () => root.render(<Component />));
+  expect(state.push).not.toHaveBeenCalled();
+  const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+  await act(async () => link("/events").dispatchEvent(click));
+  expect(click.defaultPrevented).toBe(true); expect(state.push).not.toHaveBeenCalled();
+  expect(window.location.search).toBe("?in=frederick&lens=today");
+ });
  it("keeps only the current tab selected during an uncommitted touch", async () => {
   await mount();
   await act(async () => link("/map").dispatchEvent(new MouseEvent("pointerdown", {bubbles:true,button:0})));
@@ -55,6 +85,7 @@ describe("BottomNav destination truth", () => {
  it.each([["mobile", BottomNav], ["desktop", SideRail]] as const)("does not prefetch the exact current %s tab and preserves other destinations", async (_name, Component) => {
   Object.defineProperty(document, "startViewTransition", { configurable:true, value:(callback:()=>void)=>callback() });
   for (const pathname of ["/today", "/events", "/my-radius"]) {
+   sessionStorage.clear(); cancelPrimaryTabResume(); history.replaceState({}, "", pathname);
    state.pathname=pathname; state.prefetches.clear();
    await act(async () => root.render(<Component />));
    expect(link(pathname).getAttribute("href")).toBe(pathname);

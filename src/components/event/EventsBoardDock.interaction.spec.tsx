@@ -2,6 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { replaceHistoryLayerUrl } from "@/hooks/useReversibleHistoryLayer";
 import EventsBoardDock, { type EventsBoardDockProps } from "./EventsBoardDock";
 
 vi.mock("next/link", () => ({ default: "a" }));
@@ -24,19 +25,31 @@ const props: EventsBoardDockProps = {
 let root: Root;
 let container: HTMLDivElement;
 let oldOverflow: string;
+const frames = new Map<number, FrameRequestCallback>();
+let frame = 0;
+const initialUrl = "/events?in=thurmont&lens=weekend";
+function fixture(overrides: Partial<EventsBoardDockProps> = {}) {
+  return <><header><button>Global Find</button></header><main><EventsBoardDock {...props} {...overrides} /><section data-results><button>Open an event</button></section></main><aside inert data-kept-inert /></>;
+}
 beforeEach(async () => {
   oldOverflow = document.documentElement.style.overflowY;
+  window.history.replaceState({ __NA: true, tree: ["", "events"] }, "", initialUrl);
+  frames.clear(); frame = 0;
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { const id = ++frame; frames.set(id, callback); return id; });
+  vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+  vi.stubGlobal("scrollTo", vi.fn());
   vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener: noop, removeEventListener: noop }));
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
-  await act(async () => root.render(<><header><button>Global Find</button></header><main><EventsBoardDock {...props} /><section data-results><button>Open an event</button></section></main><aside inert data-kept-inert /></>));
+  await act(async () => root.render(fixture()));
 });
 afterEach(async () => {
   await act(async () => root.unmount());
   container.remove();
   document.documentElement.style.overflowY = oldOverflow;
-  vi.unstubAllGlobals();
+  frames.clear();
+  vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 function filters() { return container.querySelector<HTMLButtonElement>(".eb-filter-trigger")!; }
 function done() { return container.querySelector<HTMLButtonElement>(".dock-done")!; }
@@ -46,6 +59,55 @@ async function open() {
 }
 
 describe("Event filter ownership", () => {
+  it("native Back closes Filters first, retains edited URL/context and restores the trigger", async () => {
+    await open();
+    const edited = `${initialUrl}&free=true`;
+    await act(async () => { root.render(fixture({ freeOnly: true })); replaceHistoryLayerUrl(edited); });
+    await act(async () => {
+      const popped = new Promise(resolve => window.addEventListener("popstate", resolve, { once: true }));
+      window.history.back(); await popped;
+    });
+    expect(container.querySelector('[role="dialog"]')?.getAttribute("aria-hidden")).toBe("true");
+    expect(document.activeElement).toBe(filters());
+    expect(window.location.pathname + window.location.search).toBe(edited);
+    expect(window.history.state).toMatchObject({ __NA: true, tree: ["", "events"] });
+    expect(filters().getAttribute("aria-label") ?? filters().textContent).toContain(props.q);
+    expect(container.querySelector("[data-event-filter-time]")?.textContent).toBe("This weekend");
+    expect(container.querySelector("[data-event-filter-scope]")?.textContent).toBe("Thurmont");
+  });
+
+  it.each(["Done", "Escape", "scrim", "toggle"])("%s consumes exactly the same layer and restores filter focus", async (method) => {
+    await open();
+    const back = vi.spyOn(window.history, "back");
+    await act(async () => {
+      const popped = new Promise(resolve => window.addEventListener("popstate", resolve, { once: true }));
+      if (method === "Done") done().click();
+      else if (method === "Escape") done().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      else if (method === "scrim") container.querySelector<HTMLDivElement>(".eb-scrim")!.click();
+      else filters().click(); // Programmatic same-trigger toggle also owns one dismissal.
+      await popped;
+    });
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('[role="dialog"]')?.getAttribute("aria-hidden")).toBe("true");
+    expect(document.activeElement).toBe(filters());
+    expect(window.location.pathname + window.location.search).toBe(initialUrl);
+  });
+  it("Escape dismisses the owned pane after touch leaves focus on the body, then releases its listener", async () => {
+    await open();
+    const back = vi.spyOn(window.history, "back");
+    done().blur();
+    expect(document.activeElement).toBe(document.body);
+    await act(async () => {
+      const popped = new Promise(resolve => window.addEventListener("popstate", resolve, { once: true }));
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      await popped;
+    });
+    expect(container.querySelector('[role="dialog"]')?.getAttribute("aria-hidden")).toBe("true");
+    expect(document.activeElement).toBe(filters());
+    expect(back).toHaveBeenCalledTimes(1);
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(back).toHaveBeenCalledTimes(1);
+  });
   it("closes native Display and gives the active filter sole modal ownership", async () => {
     const display = container.querySelector<HTMLDetailsElement>(".eb-display-options")!;
     display.open = true;

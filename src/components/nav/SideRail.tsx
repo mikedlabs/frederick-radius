@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { haptic } from "@/lib/haptics";
 import { shouldPrefetchGlobalNavigation } from "@/lib/fair/route-policy";
+import { cancelPrimaryTabResume, preparePrimaryTabResume, rememberPrimaryTab } from "@/lib/primary-tab-session";
+import { isPlainPrimaryNavigation } from "./BottomNav";
 import { TABS, tabIndexForPath } from "./tabs";
 import styles from "./NavChrome.module.css";
 
@@ -41,11 +43,18 @@ export default function SideRail() {
                 <Link
                   href={href}
                   prefetch={allowPrefetch && pathname !== href ? prefetch : false}
-                  onPointerDown={() => {
-                    if (!isAtDestination) setPendingIdx(idx);
+                  onPointerDown={event => {
+                    if (!isAtDestination && isPlainPrimaryNavigation(event.nativeEvent)) setPendingIdx(idx);
                   }}
                   onClick={(event) => {
-                    if (isAtDestination) return;
+                    if (event.defaultPrevented || !isPlainPrimaryNavigation(event.nativeEvent)) { setPendingIdx(null); return; }
+                    rememberPrimaryTab(`${window.location.pathname}${window.location.search}${window.location.hash}`, window.scrollY);
+                    if (pathname === href) {
+                      event.preventDefault(); cancelPrimaryTabResume(); setPendingIdx(null); return;
+                    }
+                    const resume = preparePrimaryTabResume(href);
+                    const destination = resume?.href ?? href;
+                    const navigate = () => resume ? router.push(destination, { scroll: false }) : router.push(destination);
                     setPendingIdx(idx);
                     haptic("light");
                     if (typeof document !== "undefined" && "startViewTransition" in document) {
@@ -53,7 +62,9 @@ export default function SideRail() {
                       const doc = document as Document & {
                         startViewTransition?: (callback: () => void) => unknown;
                       };
-                      doc.startViewTransition?.(() => router.push(href));
+                      doc.startViewTransition?.(navigate);
+                    } else if (resume) {
+                      event.preventDefault(); navigate();
                     }
                   }}
                   aria-current={isAtDestination ? "page" : undefined}

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { haptic } from "@/lib/haptics";
 import { shouldPrefetchGlobalNavigation } from "@/lib/fair/route-policy";
+import { cancelPrimaryTabResume, preparePrimaryTabResume, rememberPrimaryTab } from "@/lib/primary-tab-session";
 import { TABS, tabIndexForPath } from "./tabs";
 import styles from "./NavChrome.module.css";
 
@@ -86,10 +87,22 @@ export default function BottomNav() {
               const active = isRealActive;
 
               const handleActivate = (event: React.MouseEvent<HTMLAnchorElement>) => {
-                if (isAtDestination || !isPlainPrimaryNavigation(event.nativeEvent)) {
+                if (event.defaultPrevented || !isPlainPrimaryNavigation(event.nativeEvent)) {
                   setPendingIdx(null);
                   return;
                 }
+                rememberPrimaryTab(`${window.location.pathname}${window.location.search}${window.location.hash}`, window.scrollY);
+                // Reselecting this root keeps the current filters and position.
+                // A nested route can still return to its remembered root.
+                if (pathname === href) {
+                  event.preventDefault();
+                  cancelPrimaryTabResume();
+                  setPendingIdx(null);
+                  return;
+                }
+                const resume = preparePrimaryTabResume(href);
+                const destination = resume?.href ?? href;
+                const navigate = () => resume ? router.push(destination, { scroll: false }) : router.push(destination);
                 setPendingIdx(idx);
                 haptic("light");
                 if (typeof document !== "undefined" && "startViewTransition" in document) {
@@ -97,7 +110,10 @@ export default function BottomNav() {
                   const doc = document as Document & {
                     startViewTransition?: (callback: () => void) => unknown;
                   };
-                  doc.startViewTransition?.(() => router.push(href));
+                  doc.startViewTransition?.(navigate);
+                } else if (resume) {
+                  event.preventDefault();
+                  navigate();
                 }
               };
 

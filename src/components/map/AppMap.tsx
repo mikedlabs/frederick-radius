@@ -38,6 +38,8 @@ import type { OsmPlace } from "@/lib/integrations/overpass";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { useFollowedSlugs } from "@/hooks/useFollows";
+import { useMapTabResumeQuery } from "@/hooks/useMapTabResumeQuery";
+import { rememberMapTabView } from "@/lib/primary-tab-session";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { SearchResult } from "@/lib/search/index";
 import {
@@ -1135,12 +1137,16 @@ export default function AppMap({
   // AppMap is mounted with `ssr: false`, so the first client render can safely
   // seed this from the exact URL carried through `returnTo`.
   const routeQuery = (routeSearchParams.get("q") ?? "").slice(0, 160);
+  const tabResumeQuery = useMapTabResumeQuery(isBrowseMap);
   const clientTask = isBrowseMap ? parseMapClientTask(routeSearchParams.get(MAP_TASK_PARAM)) : null;
   // The shared URL owns deliberate result bounds. It restores the same pins
   // and ranked rows through Back without a second in-memory area overriding it.
   const routeTaskArea = routeSearchParams.get(MAP_TASK_AREA_PARAM);
   const committedTaskArea = useMemo(() => isBrowseMap ? parseMapTaskArea(routeTaskArea, resultScope) : null, [isBrowseMap, routeTaskArea, resultScope]);
-  const [submittedQuery, setSubmittedQuery] = useState(() => routeQuery.trim());
+  const [submittedQuery, setSubmittedQuery] = useState(() => {
+    const live = typeof window === "undefined" ? routeSearchParams : new URLSearchParams(window.location.search);
+    return (live.has("q") ? (live.get("q") ?? "").slice(0, 160) : tabResumeQuery ?? routeQuery).trim();
+  });
   const [dockSearchPanelVisible, setDockSearchPanelVisible] = useState(false);
   const routePlaceSelection = routeSearchParams.get("place");
   const routeEventSelection = routeSearchParams.get("event");
@@ -1150,7 +1156,8 @@ export default function AppMap({
   );
   const [q, setQ] = useState(() => {
     if (typeof window === "undefined") return "";
-    return (new URLSearchParams(window.location.search).get("q") ?? "").slice(0, 160);
+    const params = new URLSearchParams(window.location.search);
+    return (params.has("q") ? params.get("q") ?? "" : tabResumeQuery ?? "").slice(0, 160);
   });
   const searchLiveQueryRef = useRef(q);
   const searchRequestRef = useRef(0);
@@ -1182,10 +1189,18 @@ export default function AppMap({
       // representation so a harmless trailing space cannot leave route/back
       // synchronization blocked forever.
       pendingLocalQueryRef.current = next.trim();
+      if (isBrowseMap) rememberMapTabView(`${window.location.pathname}${window.location.search}${window.location.hash}`,
+        { q: next }, Date.now(), { pendingUrlWrite: true });
       setQ(next);
     },
-    [invalidateTemporaryMapboxRetrieve],
+    [invalidateTemporaryMapboxRetrieve, isBrowseMap],
   );
+  useEffect(() => {
+    if (!isBrowseMap) return;
+    const href = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    const liveQuery = new URLSearchParams(window.location.search).get("q") ?? "";
+    rememberMapTabView(href, { q }, Date.now(), { pendingUrlWrite: liveQuery !== q });
+  }, [isBrowseMap, q, routeQuery]);
   // Next keeps recently visited route segments in its client cache. Returning
   // from a full place page can therefore revive this map with its prior local
   // state even though the exact return URL includes a query. Treat the router

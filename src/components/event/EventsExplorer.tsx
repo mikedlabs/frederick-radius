@@ -34,6 +34,7 @@ import { parseViewState, toQuery, type ViewState, type When } from "@/lib/view-s
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { EventSourceHealth } from "@/lib/loaders/unifiedEvents";
 import { getEventsTown, setEventsTown } from "@/lib/personalize";
+import { readResumedEventsTabView, rememberEventsTabView } from "@/lib/primary-tab-session";
 import {
   getScope,
   parseScope,
@@ -64,6 +65,7 @@ import {
 } from "@/hooks/useGeolocation";
 import type { LngLat } from "@/lib/geo";
 import { fetchEventsBrowse } from "@/lib/events/fetchBrowse";
+import { HISTORY_LAYER_URL_RESTORED, replaceHistoryLayerUrl } from "@/hooks/useReversibleHistoryLayer";
 
 export type TimeKey = "all" | "today" | "weekend" | "week";
 
@@ -584,10 +586,18 @@ export default function EventsExplorer({
     // before a person can meaningfully interact.
     queueMicrotask(() => {
       if (!active) return;
+      const resumedView = readResumedEventsTabView(
+        `${window.location.pathname}${window.location.search}${window.location.hash}`,
+      );
       applyBrowserState();
+      if (resumedView) {
+        setQ(resumedView.q);
+        setView(resumedView.view);
+      }
       setUrlReady(true);
     });
     window.addEventListener("popstate", applyBrowserState);
+    window.addEventListener(HISTORY_LAYER_URL_RESTORED, applyBrowserState);
     const unsubscribeScope = subscribeScopeChange((nextScope) => {
       setActiveScope(nextScope);
       setTown(scopeTownSlug(nextScope));
@@ -595,6 +605,7 @@ export default function EventsExplorer({
     return () => {
       active = false;
       window.removeEventListener("popstate", applyBrowserState);
+      window.removeEventListener(HISTORY_LAYER_URL_RESTORED, applyBrowserState);
       unsubscribeScope();
     };
   }, [applyBrowserState]);
@@ -934,8 +945,20 @@ export default function EventsExplorer({
     if (sort !== "recommended") sp.set("sort", sort);
     const full = sp.toString();
     const url = full ? `${window.location.pathname}?${full}` : window.location.pathname;
-    window.history.replaceState(null, "", url);
+    replaceHistoryLayerUrl(url);
   }, [viewState, activeScope, day, time, tod, intent, sub, freeOnly, happyOnly, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly, sort, urlReady]);
+
+  // Capture after the URL mirror above has committed the current filters.
+  // This small in-document handoff keeps private search/view state through a
+  // deliberate tab switch, without adding it to URLs or persistent storage.
+  // Each settled render also covers filter-only changes with unchanged q/view.
+  useEffect(() => {
+    if (!urlReady || window.location.pathname !== "/events") return;
+    rememberEventsTabView(
+      `${window.location.pathname}${window.location.search}${window.location.hash}`,
+      { q, view },
+    );
+  });
 
   // The bounded preview is sufficient for the default list. Every operation
   // that promises a complete answer promotes the cached continuation exactly

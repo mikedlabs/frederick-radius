@@ -6,6 +6,8 @@ import EventsExplorer from "./EventsExplorer";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { summarizeEventsForBrowse } from "@/lib/events/browsePayload";
 import { EVENTS_BROWSE_TIMEOUT_MS } from "@/lib/events/fetchBrowse";
+import { HISTORY_LAYER_URL_RESTORED } from "@/hooks/useReversibleHistoryLayer";
+import { cancelPrimaryTabResume, preparePrimaryTabResume, rememberPrimaryTab } from "@/lib/primary-tab-session";
 
 const recommendationContext = vi.hoisted(() => ({
   origin: null as { lat: number; lng: number } | null,
@@ -47,8 +49,8 @@ vi.mock("./EventsBoardDock", async (importOriginal) => {
   const ActualDock = (await importOriginal<typeof import("./EventsBoardDock")>()).default;
   return { default: (props: ComponentProps<typeof ActualDock>) => {
     if (recommendationContext.actualDisplay) return <ActualDock {...props} />;
-    const { q, setQ, town, lens, cat, filteredCount, countComplete, setView, setSort } = props;
-    return <div data-test-dock data-town={town ?? "county"} data-time={lens} data-category={cat ?? "all"} data-count={filteredCount} data-complete={String(countComplete)}>
+    const { q, setQ, town, lens, cat, filteredCount, countComplete, view, setView, setSort } = props;
+    return <div data-test-dock data-view={view} data-town={town ?? "county"} data-time={lens} data-category={cat ?? "all"} data-count={filteredCount} data-complete={String(countComplete)}>
       <input aria-label="Filter the events shown" value={q} onChange={(event) => setQ(event.currentTarget.value)} />
       <button type="button" onClick={() => setView("calendar")}>Calendar test view</button>
       <button type="button" onClick={() => setSort("time")}>Soonest test sort</button>
@@ -88,6 +90,8 @@ beforeEach(() => {
   recommendationContext.featured.clear();
   recommendationContext.actualDisplay = false;
   window.localStorage.clear();
+  window.sessionStorage.clear();
+  cancelPrimaryTabResume();
   document.cookie = "fr_scope=; path=/; max-age=0";
   window.history.replaceState(null, "", "/events");
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
@@ -102,6 +106,58 @@ async function render(options = props(), strict = false) {
   await act(async () => root.render(strict ? <StrictMode><EventsExplorer {...options} /></StrictMode> : <EventsExplorer {...options} />));
 }
 const eventLinks = () => [...host.querySelectorAll<HTMLAnchorElement>('a[href^="/events/"]')].map((link) => link.getAttribute("href"));
+
+describe("Events primary-tab continuity", () => {
+  it("reconciles the committed filter URL after an earlier pop read queued old filters", async () => {
+    window.history.replaceState(null, "", "/events?in=thurmont&lens=today&free=true");
+    await render(props([listedEvent(), { ...listedEvent("paid-concert"), is_free: false }], healthy));
+    expect(eventLinks()).toEqual(["/events/recovered-concert"]);
+    await act(async () => {
+      window.history.replaceState(null, "", "/events?in=thurmont&lens=today");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(eventLinks()).toContain("/events/paid-concert");
+    await act(async () => {
+      window.history.replaceState(null, "", "/events?in=thurmont&lens=today&free=true");
+      window.dispatchEvent(new Event(HISTORY_LAYER_URL_RESTORED));
+    });
+    expect(eventLinks()).toEqual(["/events/recovered-concert"]);
+    expect(window.location.search).toContain("free=true");
+  });
+  it.each([false, true])("resumes private search/view after a filter-only URL change, with direct links independent (StrictMode %s)", async strict => {
+    window.history.replaceState(null, "", "/events?in=thurmont&lens=today");
+    const options = props([listedEvent(), listedEvent("needle-concert", "thurmont", "Needle concert")], healthy);
+    await render(options, strict);
+    const input = host.querySelector("input")!;
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => { setValue.call(input, "needle"); input.dispatchEvent(new Event("input", { bubbles: true })); });
+    await act(async () => [...host.querySelectorAll("button")].find(node => node.textContent === "Calendar test view")!.click());
+    await act(async () => [...host.querySelectorAll("button")].find(node => node.textContent === "Soonest test sort")!.click());
+    const href = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    expect(new URLSearchParams(window.location.search).get("sort")).toBe("time");
+    rememberPrimaryTab(href, 215);
+    await act(async () => root.unmount());
+    window.history.replaceState(null, "", "/map");
+    expect(preparePrimaryTabResume("/events")?.href).toBe(href);
+    window.history.replaceState(null, "", href);
+    root = createRoot(host);
+    await render(options, strict);
+    expect(host.querySelector<HTMLInputElement>("input")?.value).toBe("needle");
+    expect(host.querySelector("[data-test-dock]")?.getAttribute("data-view")).toBe("calendar");
+    expect(eventLinks()).not.toContain("/events/recovered-concert");
+    expect(window.location.search).not.toContain("needle");
+    expect(JSON.stringify({ ...window.sessionStorage })).not.toContain("needle");
+
+    await act(async () => root.unmount());
+    cancelPrimaryTabResume();
+    window.history.replaceState(null, "", "/events?in=frederick");
+    root = createRoot(host);
+    await render(options, strict);
+    expect(host.querySelector<HTMLInputElement>("input")?.value).toBe("");
+    expect(host.querySelector("[data-test-dock]")?.getAttribute("data-view")).toBe("list");
+    expect(host.querySelector("[data-test-dock]")?.getAttribute("data-town")).toBe("frederick");
+  });
+});
 
 // These mounted regressions must recover without clicking a filter or retry.
 describe("Events passive empty-snapshot recovery", () => {
