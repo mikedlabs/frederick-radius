@@ -224,6 +224,9 @@ jobs:
           e2e/find-place-media.spec.ts
           e2e/nearby-place-media.spec.ts
           e2e/map-selected-photo-continuity.spec.ts
+          e2e/primary-tab-resume.spec.ts
+          e2e/events-filter-back.spec.ts
+          e2e/place-sheet-quick-actions.spec.ts
           --project=webkit-mobile --workers=1 --retries=1
         env:
           NEXT_TELEMETRY_DISABLED: "1"
