@@ -1,0 +1,103 @@
+{
+  "commit": "49aa28ca3135a561601e23b7e101e433475838fc",
+  "tree": "b00c2733b83394713b5b0e5bb745af7fb00f3fda",
+  "changedSourceFiles": 100,
+  "sourceFreezeSha256": "8f31ad51e273beda18402fc2351d21c0e8994db4a8fd5a9af180b16ec3c65581",
+  "filesEqualToVerifiedFreeze": true,
+  "includedReviewHeads": {
+    "WS3": "68937041bee32a7cffc67920a702506e0506769a",
+    "WS4": "a834ac81ec3fee3353d72a102a87c8c13a28b443"
+  },
+  "checks": {
+    "style": {
+      "exit": 0,
+      "seconds": 1.64,
+      "receiptFileSha256": "e2b0b9bf662846df0e4be2800a1718f9946de860559cf7491d914a82e097f106"
+    },
+    "colors": {
+      "exit": 0,
+      "seconds": 0.42,
+      "receiptFileSha256": "aeb4d8d720fcbd98b22160ba83a4d68ef7ae5d3c15e10e27d650bca45b99d032"
+    },
+    "zindex": {
+      "exit": 0,
+      "seconds": 0.23,
+      "receiptFileSha256": "12c0fee4d40a716f2aac942eed44fe96da40421c820cddd79a3efb34afef4f74"
+    },
+    "types": {
+      "exit": 0,
+      "seconds": 4.57,
+      "receiptFileSha256": "b35cdec1b6739066f22c71d0f334b982bce30bce4235a0641d23c2089a855734"
+    },
+    "changed-file-lint": {
+      "exit": 0,
+      "seconds": 29.74,
+      "files": 97,
+      "receiptFileSha256": "1c3056f8b3c1c7e8b4d47c264160bae2b28f5de35f7b92c3ed7feca6b66d062b"
+    },
+    "unit": {
+      "exit": 0,
+      "seconds": 386.75,
+      "passed": 8493,
+      "skipped": 2,
+      "filesPassed": 1035,
+      "filesSkipped": 1,
+      "receiptFileSha256": "e51f44804fb90663d1b75b34bb91d3973c017ea948ea8824cacd28758e1d8285"
+    },
+    "build": {
+      "exit": 0,
+      "seconds": 113.81,
+      "receiptFileSha256": "6437174e5ac22a25048eba1831a6cce5ad2aeccf3bd75cebffaace3e3340ae26"
+    },
+    "workshop": {
+      "exit": 0,
+      "seconds": 12.06,
+      "passed": 128,
+      "receiptFileSha256": "9ec7d105468caaff7e8c89ec3cf1842b0022add65daeb4899154bf66b7a6ffba"
+    },
+    "ux": {
+      "exit": 0,
+      "seconds": 172.32,
+      "passed": 51,
+      "receiptFileSha256": "b0eeba5902c16ed36ed6377a319e49cb69ecd75d593e99b1a504262e0fb06f11"
+    }
+  },
+  "exactFinalHeadBuild": {
+    "passed": true,
+    "buildId": "-OpsyG-ZplTq6jnIokvMZ",
+    "seconds": 79.268
+  },
+  "replacementMobile": {
+    "passed": 4,
+    "failed": 0,
+    "retries": 0,
+    "wallSeconds": 31.91
+  },
+  "historicalMobile": "Archived privately; no historical image bytes retained in final screenshot set.",
+  "limits": "Guarded promoted data without provider credentials; no dependency change or deployment.",
+  "evidenceClassification": "Completed independent bounded local verification with eight qualified follow-ups; not live.",
+  "workstreams": [
+    {
+      "pr": 1762,
+      "head": "91df6f28a343ce2804edd4d6386aec03e4fe2ea6",
+      "base": "main"
+    },
+    {
+      "pr": 1763,
+      "head": "e989fe8c109424fe56c118ffa4bcc0742173c0cd",
+      "base": "main"
+    },
+    {
+      "pr": 1764,
+      "head": "68937041bee32a7cffc67920a702506e0506769a",
+      "base": "main"
+    },
+    {
+      "pr": 1765,
+      "head": "a834ac81ec3fee3353d72a102a87c8c13a28b443",
+      "base": "codex/uiux-1-functional-20261008"
+    }
+  ],
+  "requiredCheckReceipt": "ci.json",
+  "independentReviewReceipt": "review.json"
+}
