@@ -17,6 +17,7 @@ import {
   resetFeedMetrics,
 } from "@/lib/integrations/event-schema";
 import { recordSnapshot } from "@/lib/integrations/feed-snapshot";
+import { countyCategory } from "@/lib/events/county-category";
 import { normalizeTitle, cleanDescription, clampDescription } from "@/lib/events/normalize";
 import { fetchTicketmasterMusicResult } from "@/lib/integrations/ticketmaster";
 import {
@@ -662,14 +663,19 @@ function categoryExists(slug: string, fallback: string): string {
 }
 
 /**
- * P0-5 Option A: the Frederick County feed's category bears no relation
- * to the event, so county events get no category (and render no badge)
- * rather than a wrong one. Other feeds keep the keyword inference.
- * Option B (an LLM classifier at ingest) is a separate, paid change and
- * is intentionally not done here.
+ * County rows use the shared title-only rule in county-category.ts
+ * (P0-5: no generic keyword matcher, never read the description).
+ * Other feeds keep keyword inference.
  */
-export function feedCategory(feed: FeedSpec, title: string, description: string): string {
-  if (feed.source === "county") return "";
+export function feedCategory(
+  feed: FeedSpec,
+  title: string,
+  description: string,
+  venue?: string,
+): string {
+  if (feed.source === "county") {
+    return categoryExists(countyCategory(title, venue), "community");
+  }
   return categoryExists(
     inferCategory(title, description, feed.default_category),
     feed.default_category,
