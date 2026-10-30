@@ -28,10 +28,9 @@
       "category": "arts",
       "method": "render",
       "urls": [
-        "https://www.skystagefrederick.com/?format=json",
         "https://www.skystagefrederick.com/project/calendar/"
       ],
-      "note": "Open-air FAC venue, 59 S. Carroll St. Programmed by the Frederick Arts Council; its own /project/calendar/ page is an empty JS widget. Try the Squarespace site feed first, then render the homepage. Events also syndicate to the county CivicEngage calendar (frederickcountymd.gov) and Eventbrite — see docs/EXTRACTION_PLATFORM.md for the aggregator path if direct collection stays thin."
+      "note": "Open-air FAC venue, 59 S. Carroll St. Programmed by the Frederick Arts Council. Site migrated from Squarespace to WordPress (Oct 2026); the /project/calendar/ page is a JS widget that requires render. Site has returned 429 Too Many Requests intermittently — ingest handles this gracefully by leaving prior data untouched. Events also syndicate to the county CivicEngage calendar (frederickcountymd.gov) and Eventbrite — see docs/EXTRACTION_PLATFORM.md for the aggregator path if direct collection stays thin."
     },
     {
       "slug": "new-spire",
@@ -49,11 +48,11 @@
       "name": "Bushwaller's",
       "category": "music",
       "method": "image",
-      "imageUrl": "https://static.wixstatic.com/media/cea4fa_1a264cc4ca314aa38da0b0cdde2adab9~mv2.png",
+      "imageUrl": "https://static.wixstatic.com/media/cea4fa_f2a7ad354e5d46149d881d8c7616ede5~mv2.png",
       "urls": [
         "https://www.bushwallers.com/events"
       ],
-      "note": "Oldest Irish pub in Frederick, 209 N. Market St. Live music upstairs. Wix site publishes the monthly lineup ONLY as a calendar PNG (no text, no feed) — read it with Claude vision from imageUrl. The image is a month graphic; refresh imageUrl when they post a new month (filename like 2026May.png). Verified May 2026."
+      "note": "Oldest Irish pub in Frederick, 209 N. Market St. Live music upstairs. Wix site publishes the monthly lineup ONLY as a calendar PNG (no text, no feed) — read it with Claude vision from imageUrl. The image changes monthly: visit bushwallers.com/events, inspect the calendar image, and update imageUrl to the current month's static.wixstatic.com/media/cea4fa_*.png URL. Updated October 2026."
     },
     {
       "slug": "cellar-door",
@@ -90,8 +89,10 @@
       "name": "The Derby (New Market)",
       "category": "music",
       "method": "render",
-      "urls": [],
-      "note": "Live music Wed–Sat. Posts on Instagram/Facebook (@thederbymd) — social-only; needs the partnership/vision path, not blind scraping. URL left empty until a non-social source exists."
+      "urls": [
+        "https://www.bandsintown.com/v/10205258-the-derby-restaurant-and-bar"
+      ],
+      "note": "83 W Main St, New Market. Live music Wed–Sat. Bandsintown venue page carries upcoming shows with real dates (16 concerts listed as of Oct 2026). Also tracked on Undiscovered Music Network. Still posts social-first on Instagram/Facebook (@thederbymd), but Bandsintown provides a scrapable calendar. Verified Oct 2026."
     },
     {
       "slug": "the-frederick-center",
