@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:a747fcd19b9301ca80a3f7897462611613f70ec8113eea33ae81f528bd92cd79",
+  "data_version": "sha256:55c08fcee55fc76105b414cf8e7c3049709212095597a995c499ca92e10d279b",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-26T21:54:36.956Z",
+      "promoted_at": "2026-10-31T15:43:21.531Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -66,15 +66,15 @@
         },
         {
           "path": "src/data/places-official-hours.json",
-          "sha256": "60e889da2acc9f0b65efbf7f20077d9f0c907da4add6257640bb9f35beff1193",
+          "sha256": "c9d4a2f3aef5b62f4453670a9894fab6fd1afc55b7567649331a277606a49efe",
           "records": 9,
           "bytes": 12142
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "6f7bb6918450557955f5f61758963e52efba30d8e88887d95ec955485547141c",
+          "sha256": "ad6f5290dfb0aedb149e1f466fa2b8103b3dfae051bf5ef8e4f18a6bc9a34034",
           "records": 32,
-          "bytes": 41428
+          "bytes": 41425
         },
         {
           "path": "src/data/business-status.json",
@@ -576,15 +576,15 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "504b6148f5b80076d888c6ef14c8bf102bd993b696e22d91e0fe58cafce9753f",
+          "sha256": "4c94e3688d95062d47ccf1893d77b4567a3965d305400873f064dbe53489c529",
           "records": 1571,
-          "bytes": 2316715
+          "bytes": 2316719
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "5b007dba1ace797bb2658289b6a528961c78872c7d8903faf0886a313cc7cfae",
+          "sha256": "cb1db1c8f2273a76357306174aeb562531dd8b3122e4bd5b1fc62bef9dc7679d",
           "records": 40,
-          "bytes": 48852
+          "bytes": 48859
         },
         {
           "path": "src/data/event-venue-photo-credits.json",

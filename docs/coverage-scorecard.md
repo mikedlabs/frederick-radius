@@ -7,7 +7,7 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-10-26 — 1571 places._
+_Generated 2026-10-31 — 1571 places._
 
 Current checked schedules: 40. Current qualified schedules: 3.
 Qualified venue or service tables retain their conditions and expiry. They
@@ -75,8 +75,8 @@ successful image loading is a separate browser check.
 | Tours & rides | 2 | 0 (0%) | 1 (50%) | 2 (100%) | 2 (100%) |
 | Transit | 1 | 0 (0%) | 1 (100%) | 0 (0%) | 0 (0%) |
 | Galleries | 27 | 1 (3.7%) | 23 (85.2%) | 1 (3.7%) | 26 (96.3%) |
-| Coffee | 38 | 2 (5.3%) | 34 (89.5%) | 6 (15.8%) | 32 (84.2%) |
-| Restaurants | 178 | 14 (7.9%) | 162 (91%) | 42 (23.6%) | 171 (96.1%) |
+| Restaurants | 178 | 13 (7.3%) | 162 (91%) | 42 (23.6%) | 171 (96.1%) |
+| Coffee | 38 | 3 (7.9%) | 34 (89.5%) | 6 (15.8%) | 32 (84.2%) |
 | Book stores | 12 | 1 (8.3%) | 11 (91.7%) | 1 (8.3%) | 12 (100%) |
 | Ice cream & treats | 28 | 3 (10.7%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
 | Markets | 57 | 7 (12.3%) | 53 (93%) | 21 (36.8%) | 56 (98.2%) |
