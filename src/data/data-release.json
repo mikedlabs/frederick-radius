@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:a747fcd19b9301ca80a3f7897462611613f70ec8113eea33ae81f528bd92cd79",
+  "data_version": "sha256:fde48ebed73565aa5c32f994244ec274105ba63cac7a5ef83b9c11da51267715",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-26T21:54:36.956Z",
+      "promoted_at": "2026-10-31T09:22:55.016Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -66,15 +66,15 @@
         },
         {
           "path": "src/data/places-official-hours.json",
-          "sha256": "60e889da2acc9f0b65efbf7f20077d9f0c907da4add6257640bb9f35beff1193",
+          "sha256": "c9d4a2f3aef5b62f4453670a9894fab6fd1afc55b7567649331a277606a49efe",
           "records": 9,
           "bytes": 12142
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "6f7bb6918450557955f5f61758963e52efba30d8e88887d95ec955485547141c",
+          "sha256": "34aea045bc9a40ab829f79891ee9cc568a368d708d9320e07cd237a09a8c4405",
           "records": 32,
-          "bytes": 41428
+          "bytes": 42924
         },
         {
           "path": "src/data/business-status.json",
@@ -576,15 +576,15 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "504b6148f5b80076d888c6ef14c8bf102bd993b696e22d91e0fe58cafce9753f",
+          "sha256": "f5b8e2cc5f14519c05678bfe302c1e19d07167bc7716c44935cde7bd442bbe70",
           "records": 1571,
-          "bytes": 2316715
+          "bytes": 2316048
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "5b007dba1ace797bb2658289b6a528961c78872c7d8903faf0886a313cc7cfae",
-          "records": 40,
-          "bytes": 48852
+          "sha256": "415317582600a49cd7f1cc12702551e3bd99ed64bec0b7ac8a4810be10b07c03",
+          "records": 39,
+          "bytes": 48100
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
