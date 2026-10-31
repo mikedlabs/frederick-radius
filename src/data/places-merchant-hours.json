@@ -115,11 +115,11 @@
       "slug": "beans-in-the-belfry-brunswick",
       "source_url": "https://beansinthebelfry.com/",
       "source_name": "Beans in the Belfry",
-      "source_sha256": "0ce6587879f641616c988948d1366676231d84e31c92d9c28d275718f3bea58e",
-      "observed_at": "2026-10-26T09:43:44.360Z",
-      "expires_at": "2026-11-02T09:43:44.360Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "cae04a29a560384d1cadb80d641ea8c820dfbd2781b0d79be3b9fd1c9f2ae24a",
+      "observed_at": "2026-10-31T09:22:11.181Z",
+      "expires_at": "2026-11-07T09:22:11.181Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -170,11 +170,11 @@
       "slug": "dublin-roasters-frederick",
       "source_url": "https://dublinroasterscoffee.com",
       "source_name": "Dublin Roasters Coffee",
-      "source_sha256": "b5e6799057a5bb744d5992cccdead33a7f12a21e8e3736387355056ca7167647",
-      "observed_at": "2026-10-26T09:43:44.712Z",
-      "expires_at": "2026-11-02T09:43:44.712Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "dd024abd9e412a810827a47daeb64406be837259c87d630687a47026e0570cdb",
+      "observed_at": "2026-10-31T09:22:11.473Z",
+      "expires_at": "2026-11-07T09:22:11.473Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -225,11 +225,11 @@
       "slug": "pistarros",
       "source_url": "https://pistarro.com/",
       "source_name": "Pistarro’s",
-      "source_sha256": "3f6fca0f6d3a43ad88553cd888ca14aadc11cc1121ebbdbe9b0438e9472e04b3",
-      "observed_at": "2026-10-26T09:43:44.924Z",
-      "expires_at": "2026-11-02T09:43:44.924Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "b0ccdbf703fa61aaadb320582e4dcae68aaa7ebc819d2b48365770c4ca9fe415",
+      "observed_at": "2026-10-31T09:22:11.664Z",
+      "expires_at": "2026-11-07T09:22:11.664Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -280,11 +280,11 @@
       "slug": "jojos-restaurant-tap-house",
       "source_url": "https://jojosrestauranttaphouse.com/",
       "source_name": "JoJo's Restaurant & Tap House",
-      "source_sha256": "c0a0815694d976c71666695119c1265419df31f5cfacc28a7bd77aa5c17e4804",
-      "observed_at": "2026-10-26T09:43:45.269Z",
-      "expires_at": "2026-11-02T09:43:45.269Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "a382236b192a2586b3dd5e83dec66784b25cf5fbb5f1da68e7c6968eb96ca92f",
+      "observed_at": "2026-10-31T09:22:11.781Z",
+      "expires_at": "2026-11-07T09:22:11.781Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [],
@@ -325,11 +325,11 @@
       "slug": "thai-table-frederick",
       "source_url": "https://thaitablecuisine.com/",
       "source_name": "Thai Table",
-      "source_sha256": "f4923d73181c8daf78389799f15a6ead3af379559b17a8acd9be1796678c8719",
-      "observed_at": "2026-10-26T09:43:45.813Z",
-      "expires_at": "2026-11-02T09:43:45.813Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "fa581aea21a46ef087ebae6d74d5bf09cdc97a8b2de1558acb0345170849351a",
+      "observed_at": "2026-10-31T09:22:12.057Z",
+      "expires_at": "2026-11-07T09:22:12.057Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [],
@@ -392,10 +392,10 @@
       "source_url": "https://www.thaimeric.com/",
       "source_name": "Thai Meric Eatery & Bar",
       "source_sha256": "b6a4152d67f6d8f82ecba07a4fed1e5349161fb31302150f8dde02f98bff10d7",
-      "observed_at": "2026-10-26T09:43:46.284Z",
-      "expires_at": "2026-11-02T09:43:46.284Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "observed_at": "2026-10-31T09:22:12.288Z",
+      "expires_at": "2026-11-07T09:22:12.288Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "sun": [
@@ -466,11 +466,11 @@
       "slug": "white-rabbit-gastropub",
       "source_url": "https://www.whiterabbitgastropub.com/readme",
       "source_name": "White Rabbit Gastropub",
-      "source_sha256": "fb9951a8675b3fd41af31242746ad16df774ee2cd2957a77cad77fe8967c4e37",
-      "observed_at": "2026-10-26T09:43:46.824Z",
-      "expires_at": "2026-11-02T09:43:46.824Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "ba23a899eac25b5473a6e7c74f8b40d505e0a4e0f9d12c9a634699d794bfc80e",
+      "observed_at": "2026-10-31T09:22:12.564Z",
+      "expires_at": "2026-11-07T09:22:12.564Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -522,10 +522,10 @@
       "source_url": "https://www.ilportorestaurant.com/location-frederick/",
       "source_name": "Il Porto Restaurant",
       "source_sha256": "af755fbbb91f83a6f90ec3d72e3bd5b2ae39ffcad3ff25bc8addb54e37342b71",
-      "observed_at": "2026-10-26T09:43:48.916Z",
-      "expires_at": "2026-11-02T09:43:48.916Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "observed_at": "2026-10-31T09:22:13.672Z",
+      "expires_at": "2026-11-07T09:22:13.672Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -706,11 +706,11 @@
       "slug": "kulfi-ice-creams-frederick",
       "source_url": "https://kulfi-icecream.com/",
       "source_name": "Kulfi Ice Creams",
-      "source_sha256": "9211ce646a9d56e9879b1cc3f871a026f8527082866e9f9542f20639e01d1225",
-      "observed_at": "2026-10-26T09:43:49.308Z",
-      "expires_at": "2026-11-02T09:43:49.308Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "49713a6df8538612c1ba99bb15f143164dc70512c2d00f93557221e048767dec",
+      "observed_at": "2026-10-31T09:22:13.777Z",
+      "expires_at": "2026-11-07T09:22:13.777Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -761,11 +761,11 @@
       "slug": "delaplaine-arts-center-frederick",
       "source_url": "https://delaplaine.org/",
       "source_name": "Delaplaine Arts Center",
-      "source_sha256": "48f913fa809b577b80560ea5cf6e51775161154ab61ddaf8253cac1c612aa058",
-      "observed_at": "2026-10-26T09:43:51.801Z",
-      "expires_at": "2026-11-02T09:43:51.801Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "165844768e35443aef3588ea4cce31f947b27dd29873fd8afe5b37e8b445b091",
+      "observed_at": "2026-10-31T09:22:13.958Z",
+      "expires_at": "2026-11-07T09:22:13.958Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -816,11 +816,11 @@
       "slug": "alekos-middletown",
       "source_url": "https://www.alekosvillagecafe.com/",
       "source_name": "Aleko's Village Cafe",
-      "source_sha256": "c15c3d5c3ef2b101f82c16e5692f7cdf73b73130f51b7aec4ae6820059c3b55c",
-      "observed_at": "2026-10-26T09:43:52.227Z",
-      "expires_at": "2026-11-02T09:43:52.227Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "22eb2ec1b58a0ec948444baab0786313347c2e6bb0d3371923bd2cd6dcd0dacd",
+      "observed_at": "2026-10-31T09:22:14.217Z",
+      "expires_at": "2026-11-07T09:22:14.217Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [],
@@ -862,10 +862,10 @@
       "source_url": "https://local.safeway.com/safeway/md/middletown/815-e-main-st.html",
       "source_name": "Safeway Middletown",
       "source_sha256": "eb3fe12a460ba6f5a7cdfd9e2618cf90054172b81766d37d4c7438a6da4bbba1",
-      "observed_at": "2026-10-26T09:43:52.681Z",
-      "expires_at": "2026-11-02T09:43:52.681Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "observed_at": "2026-10-31T09:22:14.620Z",
+      "expires_at": "2026-11-07T09:22:14.620Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -917,10 +917,10 @@
       "source_url": "https://local.safeway.com/safeway/md/walkersville/151-walkers-village-way.html",
       "source_name": "Safeway Walkersville",
       "source_sha256": "5b721efa6297b454188c7049a12004a2624442719c155ea70a98a385e5d3c995",
-      "observed_at": "2026-10-26T09:43:52.898Z",
-      "expires_at": "2026-11-02T09:43:52.898Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "observed_at": "2026-10-31T09:22:14.879Z",
+      "expires_at": "2026-11-07T09:22:14.879Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -971,11 +971,11 @@
       "slug": "common-market-frederick",
       "source_url": "https://www.commonmarket.coop/",
       "source_name": "Common Market Co-op (Route 85)",
-      "source_sha256": "f07659685dbb7ac9c84a681e15b0935fd46339f5b3d1daa9325ebab46fd9bdcd",
-      "observed_at": "2026-10-26T09:43:56.981Z",
-      "expires_at": "2026-11-02T09:43:56.981Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "d5a16719bc84d7a0dcf26a3d17d7a23a423a6df4f96286cff86aa74fae8c4531",
+      "observed_at": "2026-10-31T09:22:16.270Z",
+      "expires_at": "2026-11-07T09:22:16.270Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -1026,11 +1026,11 @@
       "slug": "common-market",
       "source_url": "https://www.commonmarket.coop/",
       "source_name": "Common Market (7th Street)",
-      "source_sha256": "f07659685dbb7ac9c84a681e15b0935fd46339f5b3d1daa9325ebab46fd9bdcd",
-      "observed_at": "2026-10-26T09:43:56.981Z",
-      "expires_at": "2026-11-02T09:43:56.981Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "d5a16719bc84d7a0dcf26a3d17d7a23a423a6df4f96286cff86aa74fae8c4531",
+      "observed_at": "2026-10-31T09:22:16.270Z",
+      "expires_at": "2026-11-07T09:22:16.270Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -1081,11 +1081,11 @@
       "slug": "national-museum-civil-war-medicine-frederick",
       "source_url": "https://www.civilwarmed.org/",
       "source_name": "National Museum of Civil War Medicine",
-      "source_sha256": "2862274daaf659f09727e79be49e4ba909377bc05bc6cb24ea5f2baa14bc72ea",
-      "observed_at": "2026-10-26T09:43:57.441Z",
-      "expires_at": "2026-11-02T09:43:57.441Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "94d09080f532a72e0126ed7a4c31c58995685290773dd84926d4b9e77e5e7738",
+      "observed_at": "2026-10-31T09:22:16.780Z",
+      "expires_at": "2026-11-07T09:22:16.780Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -1142,11 +1142,11 @@
       "slug": "the-tasting-room-frederick",
       "source_url": "https://trrestaurant.com/",
       "source_name": "The Tasting Room",
-      "source_sha256": "ff8189a2a2e0b62ae2c3e315c8fd64192dc0dc145cbee6d2248e2a45b2149fe2",
-      "observed_at": "2026-10-26T09:43:57.722Z",
-      "expires_at": "2026-11-02T09:43:57.722Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "da26f6b7fe9f48d1cc883932bb46b837fcaaccd89458bd719049403f4a36b9ff",
+      "observed_at": "2026-10-31T09:22:16.985Z",
+      "expires_at": "2026-11-07T09:22:16.985Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "sun": [],
@@ -1198,11 +1198,11 @@
       "slug": "hootch-and-banter-frederick",
       "source_url": "https://hootchandbanter.com",
       "source_name": "Hootch & Banter",
-      "source_sha256": "1136e6282f8563d347a5882687fde21ecee2d6159b8361b1b51d6846af11723d",
-      "observed_at": "2026-10-26T09:43:57.882Z",
-      "expires_at": "2026-11-02T09:43:57.882Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "9608ef29c650450c2b4fa2dd1e08277bb3e4e87cd5d18b88f680fbcd0069bc32",
+      "observed_at": "2026-10-31T09:22:17.102Z",
+      "expires_at": "2026-11-07T09:22:17.102Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -1260,10 +1260,10 @@
       "source_url": "https://stores.foodlion.com/md/frederick/6920-crestwood-blvd",
       "source_name": "Food Lion Crestwood",
       "source_sha256": "db312c26ab10dbaabaa7dbf6bb08cba1b5f64f6209cf9c4be9174983419a4497",
-      "observed_at": "2026-10-26T09:43:58.247Z",
-      "expires_at": "2026-11-02T09:43:58.247Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "observed_at": "2026-10-31T09:22:17.431Z",
+      "expires_at": "2026-11-07T09:22:17.431Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -1315,10 +1315,10 @@
       "source_url": "https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd.",
       "source_name": "Food Lion Yellow Springs",
       "source_sha256": "6603b6d4cfdc7b23063757d8236ad37a004564a17e82f981f38fad804ac48ecc",
-      "observed_at": "2026-10-26T09:43:58.595Z",
-      "expires_at": "2026-11-02T09:43:58.595Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "observed_at": "2026-10-31T09:22:17.724Z",
+      "expires_at": "2026-11-07T09:22:17.724Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -1370,10 +1370,10 @@
       "source_url": "https://stores.foodlion.com/md/thurmont/231-tippin-dr",
       "source_name": "Food Lion Thurmont",
       "source_sha256": "044ae315fc5267a6744169144c97d0136ef2cac6593763d29659c86fa4955a3e",
-      "observed_at": "2026-10-26T09:43:58.981Z",
-      "expires_at": "2026-11-02T09:43:58.981Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "observed_at": "2026-10-31T09:22:18.053Z",
+      "expires_at": "2026-11-07T09:22:18.053Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -1424,11 +1424,11 @@
       "slug": "firebirds-wood-fired-grill-frederick",
       "source_url": "https://firebirdsrestaurants.com/frederick",
       "source_name": "Firebirds Wood Fired Grill",
-      "source_sha256": "cec1bbb965365dea9e61fb1d1819aa8e982dba02f83caff5b9df81a5768ad2fd",
-      "observed_at": "2026-10-26T09:43:59.614Z",
-      "expires_at": "2026-11-02T09:43:59.614Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "69c07ff8522dbca24a9f6c4f7d038b426d7eb00d3cfdb87581be43734dff6f2e",
+      "observed_at": "2026-10-31T09:22:18.380Z",
+      "expires_at": "2026-11-07T09:22:18.380Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -1479,11 +1479,11 @@
       "slug": "fratellis-italian-seafood-middletown",
       "source_url": "https://www.fratellispasta.com/location/fratellis-middletown/",
       "source_name": "Fratelli's Italian & Seafood",
-      "source_sha256": "f300b417b0443d7f7abc25b84062c5b4fa805f45c9f30bcdd018c5efcf37f2ae",
-      "observed_at": "2026-10-26T09:43:59.804Z",
-      "expires_at": "2026-11-02T09:43:59.804Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "78cc8f7c85e5af770e2184ee3096f947bfd09e67f3f13e41a08d3353d6218c96",
+      "observed_at": "2026-10-31T09:22:18.532Z",
+      "expires_at": "2026-11-07T09:22:18.532Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "sun": [
@@ -1535,10 +1535,10 @@
       "source_url": "https://hinzis.com/",
       "source_name": "Hinzi's Kitchen",
       "source_sha256": "9b7e55a73a502a37be2ae2afea4bbef12cdd33001a3aa0b71149176dd2f0323c",
-      "observed_at": "2026-10-26T09:43:59.980Z",
-      "expires_at": "2026-11-02T09:43:59.980Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "observed_at": "2026-10-31T09:22:18.655Z",
+      "expires_at": "2026-11-07T09:22:18.655Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -1589,11 +1589,11 @@
       "slug": "hoffman-brothers-ice-cream",
       "source_url": "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr",
       "source_name": "Hoffman Brothers Ice Cream",
-      "source_sha256": "948bfe4bdea76a72158f959594cf053d391b16be0e5494122c61dd78838775a3",
-      "observed_at": "2026-10-26T09:44:01.311Z",
-      "expires_at": "2026-11-02T09:44:01.311Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "68277638ee0abea7e855d4e05540e335b80d8c80065d8631af86880922b6b2cb",
+      "observed_at": "2026-10-31T09:22:18.760Z",
+      "expires_at": "2026-11-07T09:22:18.760Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [],
@@ -1639,11 +1639,11 @@
       "slug": "frederick-fudge-ice-cream",
       "source_url": "https://fredicecream.com/",
       "source_name": "Frederick Fudge Ice Cream",
-      "source_sha256": "7212267cdada5aa4e63d2458dd2f089ac51a8fb3a6ed5deeea4fc04e496f404d",
-      "observed_at": "2026-10-26T09:44:02.825Z",
-      "expires_at": "2026-11-02T09:44:02.825Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "ec187efe944a999301062388e7880b297898bd8801b60a7b12e1dd4af6c8b82b",
+      "observed_at": "2026-10-31T09:22:20.830Z",
+      "expires_at": "2026-11-07T09:22:20.830Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -1694,11 +1694,11 @@
       "slug": "carriage-house-inn-restaurant-catering-emmitsburg",
       "source_url": "https://chouseinn.com/",
       "source_name": "Carriage House Inn Restaurant & Catering",
-      "source_sha256": "c64fc25c5f6214e5fcae26ca9f26c469fcda35b5782de83f752fa941f7d748b3",
-      "observed_at": "2026-10-26T09:44:03.210Z",
-      "expires_at": "2026-11-02T09:44:03.210Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "c29b42b617f5aff019029044f68a32d6b1bcdf719ff420b522edd7c9c990142b",
+      "observed_at": "2026-10-31T09:22:21.046Z",
+      "expires_at": "2026-11-07T09:22:21.046Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "mon": [],
@@ -1744,11 +1744,11 @@
       "slug": "el-rancho-restaurant-walkersville",
       "source_url": "https://elrancho-restaurant.com/",
       "source_name": "El Rancho Restaurant",
-      "source_sha256": "d1f68ae8859c26f701ed8b05dfdd9c2b725efc258256c5d41e5e9d68a05e6a48",
-      "observed_at": "2026-10-26T09:44:04.112Z",
-      "expires_at": "2026-11-02T09:44:04.112Z",
-      "coverage_from": "2026-10-26",
-      "coverage_through": "2026-11-02",
+      "source_sha256": "887549f3d4ef9a2d816757b3ebb1dcce145744889f973dc8b86e47953d3c548d",
+      "observed_at": "2026-10-31T09:22:21.689Z",
+      "expires_at": "2026-11-07T09:22:21.689Z",
+      "coverage_from": "2026-10-31",
+      "coverage_through": "2026-11-07",
       "kind": "weekly",
       "hours": {
         "sun": [
@@ -1798,9 +1798,69 @@
   ],
   "review": [
     {
-      "slug": "gravel-and-grind-frederick",
-      "checked_at": "2026-10-26T09:43:43.818Z",
+      "slug": "brewers-alley-frederick",
+      "checked_at": "2026-10-31T09:22:10.711Z",
       "reason": "source_unavailable"
+    },
+    {
+      "slug": "gravel-and-grind-frederick",
+      "checked_at": "2026-10-31T09:22:10.711Z",
+      "reason": "pending_acceptance",
+      "candidate": {
+        "slug": "gravel-and-grind-frederick",
+        "source_url": "https://www.gravelandgrind.com/",
+        "source_name": "Gravel & Grind",
+        "source_sha256": "fdba4b0dccbc18657e756bb13b69a11c3a5f4d1001484fc57c38fa072216acab",
+        "observed_at": "2026-10-31T09:22:10.925Z",
+        "expires_at": "2026-11-07T09:22:10.925Z",
+        "coverage_from": "2026-10-31",
+        "coverage_through": "2026-11-07",
+        "kind": "weekly",
+        "hours": {
+          "mon": [
+            {
+              "open": "08:00",
+              "close": "14:00"
+            }
+          ],
+          "tue": [
+            {
+              "open": "08:00",
+              "close": "14:00"
+            }
+          ],
+          "wed": [
+            {
+              "open": "08:00",
+              "close": "17:00"
+            }
+          ],
+          "thu": [
+            {
+              "open": "08:00",
+              "close": "17:00"
+            }
+          ],
+          "fri": [
+            {
+              "open": "08:00",
+              "close": "17:00"
+            }
+          ],
+          "sat": [
+            {
+              "open": "08:00",
+              "close": "17:00"
+            }
+          ],
+          "sun": [
+            {
+              "open": "08:00",
+              "close": "16:00"
+            }
+          ]
+        }
+      }
     }
   ]
 }
