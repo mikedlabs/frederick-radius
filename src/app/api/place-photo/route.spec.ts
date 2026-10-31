@@ -8,11 +8,20 @@ const mocks = vi.hoisted(() => ({
   isSameOriginRequest: vi.fn(),
   isUnattributedRequest: vi.fn(),
   photoUrl: vi.fn(),
+  googlePhotoDeliveryConfigured: vi.fn(),
   reserveDailyUsage: vi.fn(),
+  releaseDailyUsage: vi.fn(),
+  resolvePlacePhotoMediaName: vi.fn(),
+  rememberRejectedPhotoName: vi.fn(),
 }));
 
 vi.mock("@/lib/integrations/google-places", () => ({
   photoUrl: mocks.photoUrl,
+  googlePhotoDeliveryConfigured: mocks.googlePhotoDeliveryConfigured,
+}));
+vi.mock("@/lib/google-photo-name", () => ({
+  resolvePlacePhotoMediaName: mocks.resolvePlacePhotoMediaName,
+  rememberRejectedPhotoName: mocks.rememberRejectedPhotoName,
 }));
 vi.mock("@/data/places", () => ({ PLACE_BY_SLUG: {} }));
 vi.mock("@/data/categories", () => ({ CATEGORY_BY_SLUG: {} }));
@@ -23,6 +32,7 @@ vi.mock("@/lib/origin-check", () => ({
 }));
 vi.mock("@/lib/usage-meter", () => ({
   reserveDailyUsage: mocks.reserveDailyUsage,
+  releaseDailyUsage: mocks.releaseDailyUsage,
 }));
 
 import { GET } from "./route";
@@ -69,8 +79,14 @@ describe("GET /api/place-photo daily budget", () => {
     mocks.isSameOriginRequest.mockReturnValue(true);
     mocks.isUnattributedRequest.mockReturnValue(false);
     mocks.isOverPaidRequestBudget.mockResolvedValue(false);
+    mocks.googlePhotoDeliveryConfigured.mockReturnValue(true);
     mocks.photoUrl.mockReturnValue("https://places.googleapis.test/photo");
+    mocks.resolvePlacePhotoMediaName.mockImplementation(async (storedName: string) => ({
+      name: storedName,
+    }));
+    mocks.rememberRejectedPhotoName.mockImplementation(() => {});
     mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
+    mocks.releaseDailyUsage.mockResolvedValue(true);
     mocks.fetch.mockResolvedValue(
       new Response(new Uint8Array([1, 2, 3]), {
         status: 200,
@@ -251,7 +267,7 @@ describe("GET /api/place-photo daily budget", () => {
   });
 
   it.each(["no-key", "daily-cap", "upstream-400"])("returns a transparent intrinsic pixel for the %s signal without losing its reason", async (reason) => {
-    if (reason === "no-key") mocks.photoUrl.mockReturnValue(null);
+    if (reason === "no-key") mocks.googlePhotoDeliveryConfigured.mockReturnValue(false);
     if (reason === "daily-cap") mocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 1_500 });
     if (reason === "upstream-400") mocks.fetch.mockResolvedValue(new Response(null, { status: 400 }));
     const response = await GET(request({ fallback: "signal" }));
@@ -260,6 +276,7 @@ describe("GET /api/place-photo daily budget", () => {
     await expectTransparentPixel(response);
     expect(mocks.fetch).toHaveBeenCalledTimes(reason === "upstream-400" ? 1 : 0);
     expect(mocks.reserveDailyUsage).toHaveBeenCalledTimes(reason === "no-key" ? 0 : 1);
+    expect(mocks.releaseDailyUsage).toHaveBeenCalledTimes(reason === "upstream-400" ? 1 : 0);
   });
 
   it("does no paid work for an already cancelled caller and keeps the signal fallback", async () => {
@@ -479,24 +496,81 @@ describe("GET /api/place-photo daily budget", () => {
 
   it.each(["rate-limited", "no-key"])("keeps %s fallback before any reservation", async (reason) => {
     if (reason === "rate-limited") mocks.isOverPaidRequestBudget.mockResolvedValue(true);
-    else mocks.photoUrl.mockReturnValue(null);
+    else mocks.googlePhotoDeliveryConfigured.mockReturnValue(false);
     const response = await GET(request());
     expect(response.headers.get("x-photo-fallback")).toBe(reason);
     expect(response.headers.get("cache-control")).toBe("public, max-age=300, s-maxage=300");
     expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+    expect(mocks.releaseDailyUsage).not.toHaveBeenCalled();
     expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(mocks.resolvePlacePhotoMediaName).not.toHaveBeenCalled();
   });
 
-  it("does not heal a failed exact photo with a different Google identity", async () => {
+  it("fetches the resolved current name once and does not try a second identity after it fails", async () => {
     const cancel = vi.fn();
+    mocks.resolvePlacePhotoMediaName.mockResolvedValue({
+      name: "places/test-place/photos/fresh-photo",
+    });
     mocks.fetch.mockResolvedValue(new Response(new ReadableStream({ cancel }), { status: 404 }));
     const response = await GET(request({ fallback: "signal" }));
     expect(response.headers.get("x-photo-fallback")).toBe("upstream-404");
     await expectTransparentPixel(response);
     expect(cancel).toHaveBeenCalledOnce();
-    expect(mocks.photoUrl).toHaveBeenCalledExactlyOnceWith("places/test-place/photos/test-photo", 800);
+    expect(mocks.photoUrl).toHaveBeenCalledExactlyOnceWith("places/test-place/photos/fresh-photo", 800);
     expect(mocks.fetch).toHaveBeenCalledOnce();
     expect(mocks.reserveDailyUsage).toHaveBeenCalledOnce();
+    expect(mocks.releaseDailyUsage).toHaveBeenCalledOnce();
+    expect(mocks.rememberRejectedPhotoName).toHaveBeenCalledExactlyOnceWith(
+      "places/test-place/photos/fresh-photo",
+      "upstream-404",
+    );
+  });
+
+  it("uses a fresh Place Details name instead of the stored resource", async () => {
+    mocks.resolvePlacePhotoMediaName.mockResolvedValue({
+      name: "places/test-place/photos/fresh-photo",
+    });
+
+    const response = await GET(request());
+
+    expect(response.headers.get("x-photo-fallback")).toBeNull();
+    expect(mocks.resolvePlacePhotoMediaName).toHaveBeenCalledExactlyOnceWith(
+      "places/test-place/photos/test-photo",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(mocks.photoUrl).toHaveBeenCalledExactlyOnceWith("places/test-place/photos/fresh-photo", 800);
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+    expect(mocks.releaseDailyUsage).not.toHaveBeenCalled();
+  });
+
+  it("does not reserve or fetch when the current name was already rejected", async () => {
+    mocks.resolvePlacePhotoMediaName.mockResolvedValue({
+      name: null,
+      reason: "upstream-400",
+    });
+
+    const response = await GET(request({ fallback: "signal" }));
+
+    expect(response.headers.get("x-photo-fallback")).toBe("upstream-400");
+    await expectTransparentPixel(response);
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+    expect(mocks.releaseDailyUsage).not.toHaveBeenCalled();
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(mocks.photoUrl).not.toHaveBeenCalled();
+  });
+
+  it("releases the daily reservation when Google rejects the photo name", async () => {
+    mocks.fetch.mockResolvedValue(new Response(null, { status: 400 }));
+
+    const response = await GET(request({ fallback: "signal" }));
+
+    expect(response.headers.get("x-photo-fallback")).toBe("upstream-400");
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledOnce();
+    expect(mocks.releaseDailyUsage).toHaveBeenCalledExactlyOnceWith("google_photo");
+    expect(mocks.rememberRejectedPhotoName).toHaveBeenCalledExactlyOnceWith(
+      "places/test-place/photos/test-photo",
+      "upstream-400",
+    );
   });
 
   it("fails closed when the budget database is unavailable", async () => {
