@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:55c08fcee55fc76105b414cf8e7c3049709212095597a995c499ca92e10d279b",
+  "data_version": "sha256:0a7d7dd982ee96a00dc08859c5b5444d11d8839fcd5dfadab21bcaf3f6b4aa8e",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -606,25 +606,25 @@
       ]
     },
     "transit": {
-      "promoted_at": "2026-10-17T00:10:41.346Z",
+      "promoted_at": "2026-11-01T07:27:17.061Z",
       "artifacts": [
         {
           "path": "src/data/transit.json",
-          "sha256": "9a0634a49dea3ce837de04ff69aef3fec575fd23be999126321c68a78050fa66",
+          "sha256": "919f7f28e86b3a050ce0920167d4b7f65fb2791ee872a74b4dd7b1a5ca8e19ff",
           "records": 8,
-          "bytes": 77612
+          "bytes": 81533
         },
         {
           "path": "src/data/transit-network.json",
-          "sha256": "648943cc4f48ce1916eee12a49e3c8f360a602334494411845fbdb3ca0e3c229",
+          "sha256": "536ff457c65bef50fe38dc1d3b7410b986be3a45b9fbf3a45b2de3e0b04094fd",
           "records": 2,
-          "bytes": 91059
+          "bytes": 91051
         },
         {
           "path": "src/data/transit-trips.json",
-          "sha256": "8453f0ba465465da0c7c7f553f2076e0ba2ce2cc3e6e7161494c767349475b78",
+          "sha256": "b502395dfa492388b230f541f57271a8ba0de73e3e3dfe281741eac9184129f3",
           "records": 917,
-          "bytes": 104780
+          "bytes": 104692
         }
       ]
     },
