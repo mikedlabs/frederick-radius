@@ -6,37 +6,24 @@
  *
  * Run: node --import tsx scripts/copy-scores.ts
  */
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import PLACES_RAW from "../src/data/places-client.json" with { type: "json" };
-import { classifyDescription, type CopyQuality } from "../src/lib/copy-quality";
 import type { PlaceCardData } from "../src/lib/loaders/places";
+import { buildCopyScorecard, type CopyScorecard } from "./lib/copy-scorecard";
 
 function main(): void {
-  const counts: Record<CopyQuality, number> = {
-    none: 0,
-    scraped: 0,
-    auto_clean: 0,
-    reviewed: 0,
-  };
-  const bySlug: Record<string, CopyQuality> = {};
   // Score the exact decorated artifact users receive. Raw publicPlaces still
   // contains provider/directory text that the loader intentionally suppresses;
   // counting that hidden text made the admin scorecard report zero missing
   // descriptions while more than a thousand public cards were empty.
   const places = PLACES_RAW as unknown as PlaceCardData[];
-  for (const p of places) {
-    const q = classifyDescription(
-      p.name,
-      p.short_blurb,
-      Boolean(p.description_reviewed),
-    );
-    counts[q]++;
-    bySlug[p.slug] = q;
-  }
-  writeFileSync(
-    new URL("../src/data/copy-scores.json", import.meta.url),
-    JSON.stringify({ computed_at: new Date().toISOString(), counts, bySlug }, null, 0),
-  );
+  const output = new URL("../src/data/copy-scores.json", import.meta.url);
+  const previous: CopyScorecard | undefined = existsSync(output)
+    ? JSON.parse(readFileSync(output, "utf8"))
+    : undefined;
+  const scorecard = buildCopyScorecard(places, previous);
+  if (scorecard !== previous) writeFileSync(output, JSON.stringify(scorecard));
+  const { counts } = scorecard;
   const tot = places.length;
   const pct = (n: number) => ((n / tot) * 100).toFixed(1) + "%";
   console.log(

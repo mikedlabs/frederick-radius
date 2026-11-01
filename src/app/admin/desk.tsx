@@ -10,7 +10,7 @@ import { plausibleKeys, fetchAggregate } from "@/lib/integrations/plausible-stat
 import { PLACES } from "@/data/places";
 import VENUE_EVENTS from "@/data/venue-events.json" with { type: "json" };
 import TRANSIT from "@/data/transit.json" with { type: "json" };
-import SCORES_RAW from "@/data/copy-scores.json" with { type: "json" };
+import DATA_RELEASE_RAW from "@/data/data-release.json" with { type: "json" };
 import { getNeedsReviewPlaces } from "@/lib/loaders/places";
 import { getNeedsReviewEvents } from "@/lib/loaders/events";
 import { easternDayKey } from "@/lib/tz";
@@ -34,7 +34,6 @@ import { easternDayKey } from "@/lib/tz";
  *                    the database work instead of after it.
  */
 
-const SCORES = SCORES_RAW as { computed_at: string; counts: Record<string, number> };
 
 // ── Shared view atoms (used by page.tsx skeletons too) ──────────────────
 
@@ -292,7 +291,10 @@ function datasetTones(): { total: number; fresh: number; aging: number; stale: n
     "none", // client dataset (rebuilt with each edit)
     ageOf(venueLatest, 7, 14).tone,
     ageOf(transit.generatedAt, 60, 120).tone,
-    ageOf(SCORES.computed_at, 7, 21).tone,
+    // The protected derived scorecard is revalidated with the places release.
+    // Unchanged classifications keep their computation clock; source clocks
+    // remain independent and are never renewed by this release timestamp.
+    ageOf(DATA_RELEASE_RAW.streams.places.promoted_at, 7, 21).tone,
     "none", // human corrections
     "fresh", // event seeds (dates audited Jul 2026)
     "none", // collections

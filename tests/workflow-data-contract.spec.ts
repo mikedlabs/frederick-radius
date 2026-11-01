@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
@@ -64,6 +65,38 @@ type WorkflowDocument = {
 };
 
 describe("scheduled data workflow contracts", () => {
+  it.each([
+    ["data-steward.yml", "steward", "steward-publish", "bot/data-steward"],
+    ["data-steward.yml", "official-hours", "official-hours-publish", "bot/official-library-hours"],
+    ["enrich-places.yml", "enrich", "publish", "bot/curated-place-enrichment"],
+    ["ingest-business-info.yml", "ingest", "publish", "bot/business-info-refresh"],
+    ["photo-attribution-backfill.yml", "backfill", "publish", "bot/google-photo-attribution-backfill"],
+    ["refresh-commerce-links.yml", "refresh", "publish", "bot/official-commerce-link-refresh"],
+  ])("keeps derived copy scores in the exact %s %s publisher artifact", (name, producerId, publisherId, branch) => {
+    const workflow = parse(workflowText(name)) as WorkflowDocument;
+    const publisher = workflow.jobs?.[publisherId];
+    const allowed = String(publisher?.with?.allowed_paths).trim().split(/\s+/).sort();
+    expect(publisher?.with?.branch).toBe(branch);
+    expect(allowed).toContain("src/data/copy-scores.json");
+    const staged = workflow.jobs?.[producerId]?.steps?.filter((step) =>
+      step.run?.includes("install -D") && step.run.includes("src/data/copy-scores.json"),
+    ) ?? [];
+    expect(staged).toHaveLength(1);
+    const stagedPaths = [...new Set(staged[0].run?.match(
+      /(?:src\/data|docs|audit)\/[A-Za-z0-9._/-]+\.(?:json|md)/g,
+    ))].sort();
+    expect(stagedPaths).toEqual(allowed);
+    const require = createRequire(import.meta.url);
+    const { AUTOMATED_PR_ALLOWED_PATHS } = require("../scripts/lib/native-automated-pr-gates.cjs");
+    expect([...AUTOMATED_PR_ALLOWED_PATHS[branch]].sort()).toEqual(allowed);
+    const bridge = workflowText("automated-pr-status-bridge.yml");
+    const phaseMaps = [...bridge.matchAll(new RegExp(`'${branch}':\\s*\\[([^\\]]+)\\]`, "g"))];
+    expect(phaseMaps).toHaveLength(2);
+    for (const phase of phaseMaps) {
+      expect([...phase[1].matchAll(/'([^']+)'/g)].map((part) => part[1]).sort()).toEqual(allowed);
+    }
+  });
+
   it("closes the production health issue on the endpoint's real recovery status", () => {
     const workflow = workflowText("production-health-alert.yml");
 

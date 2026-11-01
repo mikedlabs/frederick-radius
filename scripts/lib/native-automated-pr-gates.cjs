@@ -10,6 +10,7 @@ const AUTOMATED_PR_ALLOWED_PATHS = {
     'src/data/place-refresh-identities.json',
     'src/data/places-client-hours.json',
     'src/data/places-client.json',
+    'src/data/copy-scores.json',
     'src/data/places-official-hours.json',
     'src/data/places-merchant-hours.json',
   ],
@@ -21,6 +22,7 @@ const AUTOMATED_PR_ALLOWED_PATHS = {
     'src/data/place-refresh-identities.json',
     'src/data/places-client-hours.json',
     'src/data/places-client.json',
+    'src/data/copy-scores.json',
     'src/data/places-hours-refresh.json',
   ],
   'bot/transit-steward': [
@@ -36,6 +38,7 @@ const AUTOMATED_PR_ALLOWED_PATHS = {
     'src/data/place-refresh-identities.json',
     'src/data/places-client-hours.json',
     'src/data/places-client.json',
+    'src/data/copy-scores.json',
     'src/data/places-enrichment.json',
   ],
   'bot/business-info-refresh': [
@@ -45,6 +48,7 @@ const AUTOMATED_PR_ALLOWED_PATHS = {
     'src/data/event-venue-photo-credits.json',
     'src/data/places-client-hours.json',
     'src/data/places-client.json',
+    'src/data/copy-scores.json',
   ],
   'bot/municipal-civic-refresh': ['src/data/municipal-civic.json'],
   'bot/venue-event-refresh': [
@@ -66,6 +70,7 @@ const AUTOMATED_PR_ALLOWED_PATHS = {
     'src/data/place-refresh-identities.json',
     'src/data/places-client-hours.json',
     'src/data/places-client.json',
+    'src/data/copy-scores.json',
     'src/data/places-enrichment.json',
   ],
   'bot/official-commerce-link-refresh': [
@@ -74,6 +79,7 @@ const AUTOMATED_PR_ALLOWED_PATHS = {
     'src/data/event-venue-photo-credits.json',
     'src/data/places-client-hours.json',
     'src/data/places-client.json',
+    'src/data/copy-scores.json',
   ],
 };
 

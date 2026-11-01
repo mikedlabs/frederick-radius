@@ -190,6 +190,7 @@ jobs:
             src/data/place-refresh-identities.json \
             src/data/places-hours-refresh.json \
             src/data/places-client.json \
+            src/data/copy-scores.json \
             src/data/places-client-hours.json \
             src/data/event-venue-photo-credits.json \
             src/data/data-release.json \
@@ -264,6 +265,7 @@ jobs:
         src/data/place-refresh-identities.json
         src/data/places-hours-refresh.json
         src/data/places-client.json
+        src/data/copy-scores.json
         src/data/places-client-hours.json
         src/data/event-venue-photo-credits.json
         src/data/data-release.json
@@ -376,6 +378,7 @@ jobs:
             src/data/places-merchant-hours.json \
             src/data/place-refresh-identities.json \
             src/data/places-client.json \
+            src/data/copy-scores.json \
             src/data/places-client-hours.json \
             src/data/event-venue-photo-credits.json \
             src/data/data-release.json \
@@ -418,6 +421,7 @@ jobs:
         src/data/places-merchant-hours.json
         src/data/place-refresh-identities.json
         src/data/places-client.json
+        src/data/copy-scores.json
         src/data/places-client-hours.json
         src/data/event-venue-photo-credits.json
         src/data/data-release.json

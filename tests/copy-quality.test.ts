@@ -9,6 +9,7 @@ import { classifyDescription } from "../src/lib/copy-quality";
 import DESCRIPTIONS_RAW from "../src/data/descriptions.json" with { type: "json" };
 import PLACES_RAW from "../src/data/places-client.json" with { type: "json" };
 import SCORES from "../src/data/copy-scores.json" with { type: "json" };
+import { buildCopyScorecard } from "../scripts/lib/copy-scorecard";
 import {
   publicPlaces,
   type PlaceCardData,
@@ -85,16 +86,43 @@ test("committed copy scorecard matches the current dataset", () => {
     auto_clean: 0,
     reviewed: 0,
   };
+  const bySlug: Record<string, string> = {};
   for (const place of places) {
-    actual[classifyDescription(
+    const quality = classifyDescription(
       place.name,
       place.short_blurb,
       Boolean(place.description_reviewed),
-    )]++;
+    );
+    actual[quality]++;
+    bySlug[place.slug] = quality;
   }
   assert.deepEqual(committed, actual, "run npm run copy:scores after place or copy changes");
+  assert.deepEqual(SCORES.bySlug, bySlug, "copy scorecard must match exact classified membership, not just totals");
   const share = actual.scraped / places.length;
   console.log(`dataset: ${actual.scraped}/${places.length} scraped (${(share * 100).toFixed(1)}%)`);
+});
+
+test("routine scorecard computation preserves its clock and bytes for unchanged classifications", () => {
+  const places = [{ slug: "a", name: "A", short_blurb: "" }, { slug: "b", name: "B", short_blurb: "" }];
+  const previous = buildCopyScorecard(places, undefined, new Date("2026-10-31T12:00:00Z"));
+  const next = buildCopyScorecard([...places].reverse(), previous, new Date("2026-11-01T12:00:00Z"));
+  assert.equal(next, previous);
+  assert.equal(JSON.stringify(next), JSON.stringify(previous));
+});
+
+test("equal-count seasonal membership swaps require a newly computed exact scorecard", () => {
+  const before = [{ slug: "summer", name: "Summer", short_blurb: "" }];
+  const previous = buildCopyScorecard(before, undefined, new Date("2026-10-31T12:00:00Z"));
+  const next = buildCopyScorecard([{ slug: "winter", name: "Winter", short_blurb: "" }], previous, new Date("2026-11-01T12:00:00Z"));
+  assert.deepEqual(next.counts, previous.counts);
+  assert.deepEqual(next.bySlug, { winter: "none" });
+  assert.equal(next.computed_at, "2026-11-01T12:00:00.000Z");
+  assert.notEqual(next, previous);
+});
+
+test("duplicate scorecard identities cannot be silently collapsed", () => {
+  const place = { slug: "duplicate", name: "Duplicate", short_blurb: "" };
+  assert.throws(() => buildCopyScorecard([place, place]), /Duplicate copy-scorecard identity/);
 });
 
 test("every committed approval passes the public loader trust boundary", () => {
