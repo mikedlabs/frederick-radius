@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:55c08fcee55fc76105b414cf8e7c3049709212095597a995c499ca92e10d279b",
+  "data_version": "sha256:23468848c2d6b42c7a55ec37a36563603665dc2bce240c6dd9174bc50d657fa4",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-31T15:43:21.531Z",
+      "promoted_at": "2026-11-01T09:22:44.006Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -66,15 +66,15 @@
         },
         {
           "path": "src/data/places-official-hours.json",
-          "sha256": "c9d4a2f3aef5b62f4453670a9894fab6fd1afc55b7567649331a277606a49efe",
+          "sha256": "1f5cd1c7ff1e34ec2e24ef4a4b2b6281fe32ff9110c6cabe7d139998ce1eeef0",
           "records": 9,
           "bytes": 12142
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "ad6f5290dfb0aedb149e1f466fa2b8103b3dfae051bf5ef8e4f18a6bc9a34034",
+          "sha256": "41c58a4a820acdd78d502ce32ada68976cb41d5b7334ef2d4c137d8cc09b3337",
           "records": 32,
-          "bytes": 41425
+          "bytes": 41567
         },
         {
           "path": "src/data/business-status.json",
@@ -576,15 +576,15 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "4c94e3688d95062d47ccf1893d77b4567a3965d305400873f064dbe53489c529",
-          "records": 1571,
-          "bytes": 2316719
+          "sha256": "d63188a97597158c0cd7270557782e0b441e1f6c45d0687e832a1a94fb6be024",
+          "records": 1572,
+          "bytes": 2316881
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "cb1db1c8f2273a76357306174aeb562531dd8b3122e4bd5b1fc62bef9dc7679d",
-          "records": 40,
-          "bytes": 48859
+          "sha256": "4ec113f26d1d82dbb7eb9ec3487009c568ef4c0f1b431cc65e6c0b95a6da1377",
+          "records": 39,
+          "bytes": 48100
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
