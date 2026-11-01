@@ -1752,7 +1752,7 @@
     "name": "Candy Kitchen",
     "commerce_source": {
       "url": "https://candykitchen.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-11-01T12:41:53.586Z"
     }
   },
   "pistarros": {
@@ -3165,6 +3165,55 @@
         "url": "https://ledopizza.com/store/md-lake-linganore/room-rental/",
         "anchor_text": "submit a party-room and catering inquiry",
         "source_url": "https://ledopizza.com/store/md-lake-linganore/"
+      }
+    ]
+  },
+  "callahans-seafood-bar-grill-frederick": {
+    "name": "Callahan's Seafood Bar & Grill",
+    "commerce_source": {
+      "url": "https://callahansrestaurantfrederick.com/",
+      "checkedAt": "2026-11-01T12:41:53.160Z"
+    }
+  },
+  "canapes-catering": {
+    "name": "Canapes Catering",
+    "commerce_source": {
+      "url": "https://www.canapescatering.com/",
+      "checkedAt": "2026-11-01T12:41:53.284Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.canapescatering.com/wedding-menu/",
+        "anchor_text": "Wedding Menu",
+        "source_url": "https://www.canapescatering.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.canapescatering.com/holiday-menu/",
+        "anchor_text": "Holiday Menu",
+        "source_url": "https://www.canapescatering.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://canapescatering.com/corporate-casual/",
+        "anchor_text": "View Our Cafe Menu",
+        "source_url": "https://www.canapescatering.com/"
+      }
+    ]
+  },
+  "celebration-cellars-winery-walkersville": {
+    "name": "Celebration Cellars Winery",
+    "commerce_source": {
+      "url": "https://celebrationcellarswinery.com/",
+      "checkedAt": "2026-11-01T12:41:55.045Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://squareup.com/gift/YQCN2E4ATXAAY/order",
+        "anchor_text": "Purchase a Gift Card",
+        "source_url": "https://celebrationcellarswinery.com/"
       }
     ]
   }
