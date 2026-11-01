@@ -3,14 +3,14 @@
   "source_id": "fcpl_branch_hours",
   "weekly": {
     "url": "https://www.fcpl.org/branches-hours",
-    "observed_at": "2026-10-31T09:22:09.957Z",
-    "sha256": "4a495301b9ec9a63095281a139986dcd249143a91783b179bc65cef6f99f510c"
+    "observed_at": "2026-11-01T09:21:57.007Z",
+    "sha256": "95b2e64f8615838ef101fc13937637a6c2e3b8c584de5fb01785ca008295f431"
   },
   "closures": {
     "url": "https://www.fcpl.org/holiday-closings",
-    "observed_at": "2026-10-31T09:22:10.491Z",
-    "sha256": "6f3ab019528ca809d710b20cfa5bd3f52367ae8bc6cbfe645d1e50e4066276c7",
-    "coverage_from": "2026-10-31",
+    "observed_at": "2026-11-01T09:21:57.500Z",
+    "sha256": "31aa7e0eb2ec24a9084c6aeb399afd7ebbf971bf85f0611f3bbe08c744f38933",
+    "coverage_from": "2026-11-01",
     "coverage_through": "2027-12-31",
     "exceptions": [
       {
@@ -155,7 +155,7 @@
       }
     ]
   },
-  "expires_at": "2026-11-07T09:22:09.957Z",
+  "expires_at": "2026-11-08T09:21:57.007Z",
   "places": [
     {
       "slug": "brunswick-branch-library-brunswick",
