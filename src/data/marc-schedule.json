@@ -1,15 +1,15 @@
 {
   "source": "https://feeds.mta.maryland.gov/gtfs/marc",
   "feedDate": null,
-  "generatedAt": "2026-09-17",
+  "generatedAt": "2026-11-01",
   "staticFeed": {
     "sourceUrl": "https://feeds.mta.maryland.gov/gtfs/marc",
-    "fetchedOn": "2026-09-17",
+    "fetchedOn": "2026-11-01",
     "serviceWindowStart": "2022-11-14",
     "serviceWindowEnd": "2026-12-31"
   },
   "stations": 8,
-  "departures": 58,
+  "departures": 54,
   "calendar": {
     "102": {
       "days": [
@@ -575,29 +575,22 @@
         "trip": "Train872R"
       },
       {
-        "t": "06:08",
-        "min": 368,
+        "t": "06:00",
+        "min": 360,
+        "svc": "101B",
+        "head": "BALTIMORE CAMDEN",
+        "trip": "Train830"
+      },
+      {
+        "t": "06:23",
+        "min": 383,
         "svc": "101B",
         "head": "UNION STATION",
         "trip": "Train874"
       },
       {
-        "t": "06:40",
-        "min": 400,
-        "svc": "101B",
-        "head": "UNION STATION",
-        "trip": "Train876"
-      },
-      {
-        "t": "06:40",
-        "min": 400,
-        "svc": "Bruns25Special",
-        "head": "UNION STATION",
-        "trip": "Train876S"
-      },
-      {
-        "t": "07:07",
-        "min": 427,
+        "t": "06:57",
+        "min": 417,
         "svc": "101B",
         "head": "UNION STATION",
         "trip": "Train878"
@@ -635,16 +628,16 @@
       {
         "t": "06:05",
         "min": 365,
-        "svc": "101B",
-        "head": "UNION STATION",
-        "trip": "Train892"
-      },
-      {
-        "t": "06:05",
-        "min": 365,
         "svc": "101BrunswickR",
         "head": "UNION STATION",
         "trip": "Train892R"
+      },
+      {
+        "t": "06:22",
+        "min": 382,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train892"
       },
       {
         "t": "07:10",
@@ -665,16 +658,16 @@
       {
         "t": "06:12",
         "min": 372,
-        "svc": "101B",
-        "head": "UNION STATION",
-        "trip": "Train892"
-      },
-      {
-        "t": "06:12",
-        "min": 372,
         "svc": "101BrunswickR",
         "head": "UNION STATION",
         "trip": "Train892R"
+      },
+      {
+        "t": "06:30",
+        "min": 390,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train892"
       },
       {
         "t": "07:17",
@@ -707,29 +700,22 @@
         "trip": "Train872R"
       },
       {
-        "t": "06:19",
-        "min": 379,
+        "t": "06:11",
+        "min": 371,
+        "svc": "101B",
+        "head": "BALTIMORE CAMDEN",
+        "trip": "Train830"
+      },
+      {
+        "t": "06:34",
+        "min": 394,
         "svc": "101B",
         "head": "UNION STATION",
         "trip": "Train874"
       },
       {
-        "t": "06:50",
-        "min": 410,
-        "svc": "101B",
-        "head": "UNION STATION",
-        "trip": "Train876"
-      },
-      {
-        "t": "06:50",
-        "min": 410,
-        "svc": "Bruns25Special",
-        "head": "UNION STATION",
-        "trip": "Train876S"
-      },
-      {
-        "t": "07:17",
-        "min": 437,
+        "t": "07:07",
+        "min": 427,
         "svc": "101B",
         "head": "UNION STATION",
         "trip": "Train878"
@@ -786,25 +772,18 @@
         "trip": "Train875R"
       },
       {
-        "t": "18:04",
-        "min": 1084,
+        "t": "18:29",
+        "min": 1109,
         "svc": "101B",
-        "head": "BRUNSWICK",
-        "trip": "Train877"
-      },
-      {
-        "t": "18:04",
-        "min": 1084,
-        "svc": "101BrunswickR",
-        "head": "BRUNSWICK",
-        "trip": "Train877R"
+        "head": "MARTINSBURG",
+        "trip": "Train879"
       },
       {
         "t": "18:46",
         "min": 1126,
         "svc": "101B",
-        "head": "MARTINSBURG",
-        "trip": "Train879"
+        "head": "BRUNSWICK",
+        "trip": "Train831"
       },
       {
         "t": "19:20",
@@ -844,8 +823,8 @@
         "trip": "Train891"
       },
       {
-        "t": "18:49",
-        "min": 1129,
+        "t": "18:28",
+        "min": 1108,
         "svc": "101B",
         "head": "FREDERICK",
         "trip": "Train893"
@@ -874,8 +853,8 @@
         "trip": "Train891"
       },
       {
-        "t": "18:59",
-        "min": 1139,
+        "t": "18:38",
+        "min": 1118,
         "svc": "101B",
         "head": "FREDERICK",
         "trip": "Train893"
@@ -925,25 +904,18 @@
         "trip": "Train875R"
       },
       {
-        "t": "18:28",
-        "min": 1108,
-        "svc": "101B",
-        "head": "BRUNSWICK",
-        "trip": "Train877"
-      },
-      {
-        "t": "18:28",
-        "min": 1108,
-        "svc": "101BrunswickR",
-        "head": "BRUNSWICK",
-        "trip": "Train877R"
-      },
-      {
-        "t": "18:57",
-        "min": 1137,
+        "t": "18:39",
+        "min": 1119,
         "svc": "101B",
         "head": "MARTINSBURG",
         "trip": "Train879"
+      },
+      {
+        "t": "19:05",
+        "min": 1145,
+        "svc": "101B",
+        "head": "BRUNSWICK",
+        "trip": "Train831"
       },
       {
         "t": "19:30",
