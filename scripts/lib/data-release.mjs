@@ -117,6 +117,7 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
   // Published read models and attribution joins.
   "src/data/place-refresh-identities.json",
   "src/data/places-client.json",
+  "src/data/copy-scores.json",
   "src/data/places-client-hours.json",
   "src/data/event-venue-photo-credits.json",
 ]);

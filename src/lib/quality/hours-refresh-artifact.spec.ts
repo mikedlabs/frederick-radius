@@ -5,11 +5,13 @@ import {
 } from "../../../scripts/pull-hours-refresh.mjs";
 import {
   hoursRefreshForAcceptedIdentity,
+  isInSeason,
   canonicalPlaceRefreshIdentities,
   resolveRefreshedBusinessStatusForAcceptedIdentity,
 } from "@/lib/loaders/places";
 import PLACE_REFRESH_IDENTITIES_RAW from "@/data/place-refresh-identities.json" with { type: "json" };
 import CLIENT_PLACES_RAW from "@/data/places-client.json" with { type: "json" };
+import DATA_RELEASE_RAW from "@/data/data-release.json" with { type: "json" };
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 
 const NOW = new Date("2026-07-26T13:00:00.000Z");
@@ -380,7 +382,7 @@ describe("hours refresh artifact safety", () => {
     ).toThrow("dated in the future");
   });
 
-  it("retains closed and off-season rows outside the public client snapshot", () => {
+  it("retains closed and seasonal refresh identities independently of public visibility", () => {
     const identityArtifact = PLACE_REFRESH_IDENTITIES_RAW as {
       identities: Array<{ slug: string; google_place_id: string }>;
     };
@@ -414,7 +416,13 @@ describe("hours refresh artifact safety", () => {
       expect(publicSlugs.has(slug), slug).toBe(false);
       expect(identityBySlug.get(slug), slug).toBe(googlePlaceId);
     }
-    expect(publicSlugs.has(seasonalSlug)).toBe(false);
+    // Snapshot membership follows its actual promotion month; refresh identity
+    // remains present both inside and outside the public season.
+    const promotedAt = new Date(DATA_RELEASE_RAW.streams.places.promoted_at);
+    expect(Number.isFinite(promotedAt.getTime())).toBe(true);
+    expect(publicSlugs.has(seasonalSlug)).toBe(
+      isInSeason({ slug: seasonalSlug }, promotedAt),
+    );
     expect(identityBySlug.get(seasonalSlug)).toBe(
       "ChIJdwLwxD7byYkR1McOcsHb0Mc",
     );

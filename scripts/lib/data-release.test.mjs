@@ -141,12 +141,23 @@ test("the place release covers canonical server and place-page inputs", () => {
     "src/data/loc-archive.ts",
     "public/images/seasons/aerial-manifest.json",
     "src/data/places-client.json",
+    "src/data/copy-scores.json",
   ];
 
   assert.deepEqual(
     required.filter((path) => !PLACE_RELEASE_ARTIFACTS.includes(path)),
     [],
   );
+});
+
+test("a changed derived copy scorecard invalidates the protected places release", () => {
+  const root = fixtureRoot();
+  const manifest = fixtureManifest(root);
+  const target = resolve(root, "src/data/copy-scores.json");
+  writeFileSync(target, JSON.stringify({ counts: { none: 1 }, bySlug: { seasonal: "none" } }));
+  const result = validateDataRelease(manifest, root);
+  assert.equal(result.dataVersion, null);
+  assert.ok(result.errors.some(error => error.includes("src/data/copy-scores.json") && error.includes("digest differs")));
 });
 
 test("the published amenity map is a dedicated protected release stream", () => {

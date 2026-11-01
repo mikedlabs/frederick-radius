@@ -89,8 +89,9 @@ export default function DataHealth() {
       title="Data health"
       intro={
         <>
-          Copy scores computed {new Date(SCORES.computed_at).toLocaleString()}. The nightly
-          cron at /api/cron/data-health recomputes and reports these numbers.
+          Copy classifications last changed {new Date(SCORES.computed_at).toLocaleString()}.
+          The client catalog build maintains this protected scorecard. Source
+          collection and description approval remain separate.
         </>
       }
     >

@@ -1,21 +1,43 @@
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import catalog from "../src/data/places-client.json";
+import merchantHoursRaw from "../src/data/places-merchant-hours.json";
+import type { Hours } from "../src/data/places";
+import type { MerchantHoursArtifact } from "../src/lib/merchant-hours";
+import { getOpenStatus } from "../src/lib/hours";
 import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
 
-const slug = "brewers-alley-frederick";
+const slug = "hootch-and-banter-frederick";
 const committed = catalog.find(place => place.slug === slug)!;
-// The committed client row omits its runtime verdict. The wire endpoint's
-// required unknown status is an explicit fixture boundary, never an opening
-// claim or permission to change the stored schedule/source observation.
-const fixturePlace = { ...committed, open_status: { state: "unknown" as const } };
-const menuUrl = "https://brewers-alley.com/menus/main-menu/";
+const merchantHours = merchantHoursRaw as unknown as MerchantHoursArtifact;
+const acceptedSchedule = (() => {
+  const row = merchantHours.places.find(place => place.slug === slug);
+  if (!row || row.source_name !== committed.name || row.qualification?.usage !== "display_only") {
+    throw new Error("Place action geometry requires Hootch & Banter's accepted qualified dinner schedule.");
+  }
+  return row;
+})();
+// This controlled loopback response retains the accepted historical source
+// record independently of the current client freshness projection. The fixed
+// browser clock does not change any source observation, expiry or public hold.
+const historicalHours: Hours = { ...acceptedSchedule.hours, _official: {
+  slug, kind: "merchant", schedule_kind: acceptedSchedule.kind,
+  source_name: acceptedSchedule.source_name, source_url: acceptedSchedule.source_url,
+  observed_at: acceptedSchedule.observed_at, expires_at: acceptedSchedule.expires_at,
+  coverage_from: acceptedSchedule.coverage_from, coverage_through: acceptedSchedule.coverage_through,
+  exceptions: acceptedSchedule.exceptions ?? [], qualification: acceptedSchedule.qualification,
+} };
+const browserAt = new Date(Date.parse(acceptedSchedule.observed_at) + 1_000);
+const fixturePlace = { ...committed, hours: historicalHours, hours_verified: true,
+  hours_source: "first_party" as const, hours_updated_at: acceptedSchedule.observed_at,
+  open_status: { state: "unknown" as const } };
+const menuUrl = "https://hootchandbanter.com/dinner-menu/";
 const directionsUrl = `https://maps.apple.com/?q=${encodeURIComponent(committed.name.trim())}&ll=${committed.geom.lat},${committed.geom.lng}`;
-const mapPath = "/map?q=brewers&in=frederick&c=-77.4100,39.4160,14.0&show=none";
+const mapPath = "/map?q=hootch&in=frederick&c=-77.4114,39.4130,14.0&show=none";
 
-// These are the actual committed merchant identity, actions, source clocks and
-// coordinates. The local transport does not certify live hours, current
-// merchant appearance or WebGL. Paid photo bytes/provider calls stay blocked.
+// Identity, actions and coordinates are committed facts; the qualified dinner
+// schedule is an explicit historical fixture, never a live venue-opening claim.
+// Merchant appearance and WebGL remain unverified. Provider calls stay blocked.
 test.use({ isMobile: true, hasTouch: true, serviceWorkers: "block" });
 
 async function boundary(page: Page, baseURL: string | undefined, info: TestInfo) {
@@ -23,6 +45,19 @@ async function boundary(page: Page, baseURL: string | undefined, info: TestInfo)
     throw new Error("Place-sheet action fixtures require an explicit HTTP loopback app.");
   }
   expect(committed.commerce_links?.find(link => link.type === "menu")?.url).toBe(menuUrl);
+  expect(getOpenStatus(historicalHours, { verified: true }, browserAt)).toEqual({ state: "unknown" });
+  // Brewer's missing disclosure was a truthful consequence of its source
+  // hold. Preserve that suppression when held instead of reviving its hours
+  // merely to make this unrelated sticky-action geometry fixture scroll.
+  const brewerHeld = merchantHours.review.some(place => place.slug === "brewers-alley-frederick");
+  if (brewerHeld) {
+    const brewer = catalog.find(place => place.slug === "brewers-alley-frederick") as
+      { hours?: Hours; hours_verified?: boolean } | undefined;
+    expect(brewer).toBeDefined();
+    expect(brewer?.hours ?? null).toBeNull();
+    expect(brewer?.hours_verified).toBe(false);
+  }
+  await page.clock.setFixedTime(browserAt);
   const origin = new URL(baseURL).origin;
   const requests: string[] = [], blocked: string[] = [], writes: string[] = [], errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
@@ -79,8 +114,12 @@ async function boundary(page: Page, baseURL: string | undefined, info: TestInfo)
   return { requests, writes, errors, async attach(extra: Record<string, unknown>) {
     const receiptPath = info.outputPath("place-sheet-action-boundary.json");
     await writeFile(receiptPath, JSON.stringify({
-      scope: "Real local app, committed merchant/actions/clocks and bundled source imagery only; WebGL and providers unavailable. Guest Save writes only local device storage. No menu, directions, phone or other external action invoked.",
+      scope: "Real local app with committed merchant/actions/coordinates and an accepted historical qualified dinner-hours fixture at its observation clock; no live-hours or current-appearance claim. WebGL and providers unavailable. Guest Save writes only local device storage. No external action invoked.",
       slug, menuUrl, directionsUrl,
+      historicalHoursFixture: { observedAt: acceptedSchedule.observed_at, expiresAt: acceptedSchedule.expires_at,
+        browserClockOnly: browserAt.toISOString(), qualification: acceptedSchedule.qualification,
+        sourceUrl: acceptedSchedule.source_url, sourceHash: acceptedSchedule.source_sha256,
+        genericOpenStatus: "unknown", brewerHoldSuppressionChecked: brewerHeld },
       counts: { requests: requests.length, blocked: blocked.length, writes: writes.length, errors: errors.length },
       detailLimit: 400, detailTruncated: [requests, blocked, writes, errors].some(values => values.length > 400),
       requests: requests.slice(0, 400), blocked: blocked.slice(0, 400), writes: writes.slice(0, 400), errors: errors.slice(0, 400), ...extra,
@@ -180,7 +219,7 @@ for (const setting of [
       await expect(dialog.getByText("Loading place details…", { exact: true })).toHaveCount(0);
       const bar = dialog.locator("[data-place-sheet-quick-actions]");
       const directions = bar.getByRole("link", { name: "Directions", exact: true });
-      const menu = bar.getByRole("link", { name: "View menu", exact: true });
+      const menu = bar.getByRole("link", { name: "Dinner menu", exact: true });
       const save = bar.locator(`button[data-save-ref="place:${slug}"]`);
       const close = dialog.getByRole("button", { name: "Close place details", exact: true });
       await expect(directions).toHaveAttribute("href", directionsUrl);
@@ -237,8 +276,8 @@ for (const setting of [
       await expect(acknowledgement).toHaveCount(0, { timeout: 8000 });
       saveAcknowledgementWaitMs = Date.now() - acknowledgementStarted;
 
-      // Open the existing, source-dated weekly-hours disclosure through its
-      // native control so the actual sheet has useful long content to scroll.
+      // Open the accepted historical dinner-hours fixture through the real
+      // native disclosure, preserving its conditions and useful scroll content.
       const hours = dialog.locator("[data-place-sheet-official-hours] summary").first();
       await hours.evaluate(node => node.scrollIntoView({ block: "center" }));
       await reachable(hours); await hours.tap();

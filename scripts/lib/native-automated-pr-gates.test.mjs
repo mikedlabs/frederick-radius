@@ -377,10 +377,33 @@ for (const [publisher, paths] of Object.entries(AUTOMATED_PR_ALLOWED_PATHS)) tes
   assert.equal(result.mode, "data-only"); assert.equal(result.verified, true);
 });
 
-test("the canonical eleven-branch policy matches the reviewed pre-existing allowlist exactly", () => {
+test("the canonical eleven-branch policy matches the reviewed derived-output allowlist exactly", () => {
   const canonical = Object.entries(AUTOMATED_PR_ALLOWED_PATHS).sort(([a], [b]) => a.localeCompare(b)).map(([name, paths]) => [name, [...paths].sort()]);
-  assert.equal(createHash("sha256").update(JSON.stringify(canonical)).digest("hex"), "a8db475729f76fede35b267b83374df5ba494cad45bfc2ff5eb19798f9010c64");
+  assert.equal(createHash("sha256").update(JSON.stringify(canonical)).digest("hex"), "f7b204ad02a99b6e606a437dbbf1bfb3877ba7ef249a6081052e94b192198195");
 });
+
+const placePublisherBranches = new Set([
+  "bot/official-library-hours", "bot/data-steward", "bot/curated-place-enrichment",
+  "bot/business-info-refresh", "bot/google-photo-attribution-backfill",
+  "bot/official-commerce-link-refresh",
+]);
+for (const publisher of Object.keys(AUTOMATED_PR_ALLOWED_PATHS)) {
+  test(`copy scores remain confined to the existing place publisher ${publisher}`, async () => {
+    const { state, options } = harness();
+    options.branch = publisher;
+    options.context.payload.pull_request.head.ref = publisher;
+    state.headBranch = publisher;
+    state.files[0].filename = "src/data/copy-scores.json";
+    const result = await classifyNativeAutomatedPr(options);
+    const allowed = placePublisherBranches.has(publisher);
+    assert.equal(AUTOMATED_PR_ALLOWED_PATHS[publisher].includes("src/data/copy-scores.json"), allowed);
+    assert.equal(result.mode, allowed ? "data-only" : "held");
+    assert.equal(result.verified, allowed);
+    assert.equal(result.semanticAcceptance, false);
+    assert.equal(result.changesAutoMerge, false);
+    assert.deepEqual(state.approvals, []);
+  });
+}
 
 test("an unknown bot branch is held instead of falling through to full verification", async () => {
   const { options } = harness(); options.branch = "bot/unregistered"; options.context.payload.pull_request.head.ref = options.branch;

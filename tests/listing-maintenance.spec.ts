@@ -232,7 +232,7 @@ describe("complete catalog and CLI contract", () => {
       expect(PHOTO_STATES.reduce((n, s) => n + r.summary.photos[s], 0)).toBe(CLIENT.length);
       expect(r.candidate_queue.length).toBeLessThanOrEqual(5);
       expect(JSON.parse(readFileSync(join(dir, "listing-maintenance.json"), "utf8"))).toEqual(r);
-      expect(readFileSync(join(dir, "listing-maintenance.md"), "utf8")).toContain("All 1571");
+      expect(readFileSync(join(dir, "listing-maintenance.md"), "utf8")).toContain(`All ${CLIENT.length} promoted public listings accounted for once.`);
       expect(fetch).not.toHaveBeenCalled();
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });

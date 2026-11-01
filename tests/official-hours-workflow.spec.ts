@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 const require = createRequire(import.meta.url);
 const read = (name: string) => readFileSync(`.github/workflows/${name}`, "utf8");
-const expectedPaths = ["docs/coverage-scorecard.md", "docs/hours-refresh-review.md", "src/data/data-release.json", "src/data/event-venue-photo-credits.json", "src/data/place-refresh-identities.json", "src/data/places-client-hours.json", "src/data/places-client.json", "src/data/places-official-hours.json", "src/data/places-merchant-hours.json"].sort();
+const expectedPaths = ["docs/coverage-scorecard.md", "docs/hours-refresh-review.md", "src/data/copy-scores.json", "src/data/data-release.json", "src/data/event-venue-photo-credits.json", "src/data/place-refresh-identities.json", "src/data/places-client-hours.json", "src/data/places-client.json", "src/data/places-official-hours.json", "src/data/places-merchant-hours.json"].sort();
 describe("official library hours delivery boundary", () => {
   it("reuses the existing schedule and credential-isolated publication with a fail-closed semantic gate", () => {
     const workflow = parse(read("data-steward.yml"));
@@ -32,12 +32,12 @@ describe("official library hours delivery boundary", () => {
     expect(checks.with.head_sha).toBe("${{ needs.official-hours-publish.outputs.pr_head_sha }}");
     expect(JSON.stringify(producer)).not.toMatch(/secrets\.|DATABASE_URL|GOOGLE_PLACES|self-hosted/);
   });
-  it("uses the unchanged exact output policy for native classification and approval", () => {
+  it("uses the exact derived-output policy for native classification and approval", () => {
     const { AUTOMATED_PR_ALLOWED_PATHS } = require("../scripts/lib/native-automated-pr-gates.cjs");
     expect([...AUTOMATED_PR_ALLOWED_PATHS["bot/official-library-hours"]].sort()).toEqual(expectedPaths);
     expect(read("ci.yml")).toContain("scripts/lib/native-automated-pr-gates.cjs");
     expect(read("automated-pr-checks.yml")).toContain("scripts/lib/native-automated-pr-gates.cjs");
-    // Historical manual recovery keeps its exact older allowlist and tests.
+    // Both bridge phases use the same exact reviewed derived-output policy.
     const bridge = read("automated-pr-status-bridge.yml");
     for (const match of bridge.matchAll(/'bot\/official-library-hours':\s*\[([^\]]+)\]/g)) {
       expect([...match[1].matchAll(/'([^']+)'/g)].map((part) => part[1]).sort()).toEqual(expectedPaths);

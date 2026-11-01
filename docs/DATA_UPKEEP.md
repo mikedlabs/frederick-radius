@@ -286,6 +286,11 @@ Do not reset a lock to make a run succeed.
 This command changes only the merchant evidence artifact. Reconcile onto current
 main, rebuild affected client artifacts, promote only the places release stream,
 and use the normal required review, GitHub checks and production verification.
+`build:client-places` also classifies the newly written client catalog into
+`copy-scores.json`. Place publishers carry this exact derived file, protected
+by the places stream and checked against every client slug. Unchanged
+classifications retain their computation timestamp. This inventory does not
+approve descriptions, hours, image rights or any other source fact.
 It does not merge a PR, run a provider or bypass a release gate. Batches reduce
 repeated code and review operations; they do not turn unverified candidates
 into verified schedules or expand any source/request/provider budget.
