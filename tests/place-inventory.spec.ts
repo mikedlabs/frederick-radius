@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   getPlaceBySlug,
   likelyOpenPlaces,
@@ -87,6 +87,23 @@ describe("curated place inventory regressions", () => {
     }
   });
 
+  it.each([
+    { year: 2026, month: 9, day: 31, visible: false },
+    { year: 2026, month: 10, day: 1, visible: true },
+    { year: 2027, month: 1, day: 28, visible: true },
+    { year: 2027, month: 2, day: 1, visible: false },
+  ])("keeps seasonal lookup and discovery aligned on $year-$month-$day", ({ year, month, day, visible }) => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(year, month, day, 12));
+      const slug = "sailing-through-the-winter-solstice";
+      expect(Boolean(publicPlaceBySlug(slug))).toBe(visible);
+      expect(publicPlaces().some((place) => place.slug === slug)).toBe(visible);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("keeps every discovery path inside the canonical public inventory", () => {
     const publicSlugs = new Set(places.map((place) => place.slug));
     const assertSubset = (slugs: string[]) => {
@@ -98,7 +115,8 @@ describe("curated place inventory regressions", () => {
     assertSubset(placesWithinRadius({ lng: -77.41, lat: 39.46 }, 100_000).map((place) => place.slug));
     assertSubset(getPlaceBySlug("cafe-nola")?.nearby_places.map((place) => place.slug) ?? []);
 
-    expect(publicPlaceBySlug("sailing-through-the-winter-solstice")).toBeUndefined();
+    const seasonalSlug = "sailing-through-the-winter-solstice";
+    expect(publicPlaceBySlug(seasonalSlug)).toEqual(bySlug.get(seasonalSlug));
     expect(publicPlaceBySlug("a")).toBeUndefined();
   });
 });

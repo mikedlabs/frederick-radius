@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:55c08fcee55fc76105b414cf8e7c3049709212095597a995c499ca92e10d279b",
+  "data_version": "sha256:0ae42ec6691b17e2766b713d8e59e465967f5267b7123969c27e8f560cc72403",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-31T15:43:21.531Z",
+      "promoted_at": "2026-11-01T15:36:58.365Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -576,9 +576,9 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "4c94e3688d95062d47ccf1893d77b4567a3965d305400873f064dbe53489c529",
-          "records": 1571,
-          "bytes": 2316719
+          "sha256": "ffb0695eae700dc766c6e1b52a84c2e8fc8eee71ec9978576c00bb4c3390f0de",
+          "records": 1572,
+          "bytes": 2317552
         },
         {
           "path": "src/data/places-client-hours.json",
@@ -606,13 +606,13 @@
       ]
     },
     "transit": {
-      "promoted_at": "2026-10-17T00:10:41.346Z",
+      "promoted_at": "2026-11-01T15:44:31.868Z",
       "artifacts": [
         {
           "path": "src/data/transit.json",
-          "sha256": "9a0634a49dea3ce837de04ff69aef3fec575fd23be999126321c68a78050fa66",
+          "sha256": "9202d49349630abd490e1c8003a5aa2671ca4f124ce41aabc5b4008f7fe5a8b9",
           "records": 8,
-          "bytes": 77612
+          "bytes": 81533
         },
         {
           "path": "src/data/transit-network.json",

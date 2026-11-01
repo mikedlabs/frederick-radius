@@ -3,13 +3,13 @@
 Compared committed baseline with the current artifacts. Provider snapshot timestamp: 2026-08-22T17:16:36.471Z; this does not redate retained observations or first-party evidence.
 This report is a review aid. It does not approve, reject, or change a place status.
 
-**No unreviewed public catalog or public closure transition requires manual review.**
+**Manual review required:** 1 unreviewed public listing addition(s).
 
 ## Coverage delta
 
 | Metric | Before | After | Change |
 | --- | ---: | ---: | ---: |
-| Public places | 1571 | 1571 | 0 |
+| Public places | 1571 | 1572 | +1 |
 | Public places with publishable verified hours | 37 | 37 | 0 |
 | Public places with qualified schedules | 3 | 3 | 0 |
 | Hours snapshot rows | 1522 | 1522 | 0 |
@@ -28,7 +28,9 @@ An unreviewed removal must be checked before merge. Confirm a closure against th
 
 ### Added to public discovery
 
-No public listings were added.
+| Slug | Place | Category | Town | Provider status | Review evidence |
+| --- | --- | --- | --- | --- | --- |
+| `sailing-through-the-winter-solstice` | Sailing Through the Winter Solstice | park | frederick | — | Review required |
 
 ## Provider status transitions
 
