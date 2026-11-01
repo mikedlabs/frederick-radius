@@ -9,7 +9,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import PLACES_RAW from "../src/data/places-client.json" with { type: "json" };
 import type { PlaceCardData } from "../src/lib/loaders/places";
-import { buildCopyScorecard, type CopyScorecard } from "./lib/copy-scorecard";
+import { buildCopyScorecard, parseCopyScorecard } from "./lib/copy-scorecard";
 
 function main(): void {
   // Score the exact decorated artifact users receive. Raw publicPlaces still
@@ -18,8 +18,8 @@ function main(): void {
   // descriptions while more than a thousand public cards were empty.
   const places = PLACES_RAW as unknown as PlaceCardData[];
   const output = new URL("../src/data/copy-scores.json", import.meta.url);
-  const previous: CopyScorecard | undefined = existsSync(output)
-    ? JSON.parse(readFileSync(output, "utf8"))
+  const previous = existsSync(output)
+    ? parseCopyScorecard(readFileSync(output, "utf8"))
     : undefined;
   const scorecard = buildCopyScorecard(places, previous);
   if (scorecard !== previous) writeFileSync(output, JSON.stringify(scorecard));

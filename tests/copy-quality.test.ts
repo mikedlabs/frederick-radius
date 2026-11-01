@@ -9,7 +9,7 @@ import { classifyDescription } from "../src/lib/copy-quality";
 import DESCRIPTIONS_RAW from "../src/data/descriptions.json" with { type: "json" };
 import PLACES_RAW from "../src/data/places-client.json" with { type: "json" };
 import SCORES from "../src/data/copy-scores.json" with { type: "json" };
-import { buildCopyScorecard } from "../scripts/lib/copy-scorecard";
+import { buildCopyScorecard, parseCopyScorecard } from "../scripts/lib/copy-scorecard";
 import {
   publicPlaces,
   type PlaceCardData,
@@ -123,6 +123,25 @@ test("equal-count seasonal membership swaps require a newly computed exact score
 test("duplicate scorecard identities cannot be silently collapsed", () => {
   const place = { slug: "duplicate", name: "Duplicate", short_blurb: "" };
   assert.throws(() => buildCopyScorecard([place, place]), /Duplicate copy-scorecard identity/);
+});
+
+test("corrupt or malformed derived scores rebuild from the current classified catalog", () => {
+  const places = [{ slug: "current", name: "Current", short_blurb: "" }];
+  for (const source of ['{"computed_at":', "null", "[]", JSON.stringify({ computed_at: "2026-10-31T12:00:00Z", counts: {}, bySlug: {} })]) {
+    const previous = parseCopyScorecard(source);
+    assert.equal(previous, undefined);
+    const repaired = buildCopyScorecard(places, previous, new Date("2026-11-01T12:00:00Z"));
+    assert.deepEqual(repaired.bySlug, { current: "none" });
+    assert.equal(repaired.computed_at, "2026-11-01T12:00:00.000Z");
+  }
+});
+
+test("valid cached classifications keep their original computation clock", () => {
+  const places = [{ slug: "current", name: "Current", short_blurb: "" }];
+  const original = buildCopyScorecard(places, undefined, new Date("2026-10-31T12:00:00Z"));
+  const previous = parseCopyScorecard(JSON.stringify(original));
+  assert.deepEqual(previous, original);
+  assert.equal(buildCopyScorecard(places, previous, new Date("2026-11-01T12:00:00Z")), previous);
 });
 
 test("every committed approval passes the public loader trust boundary", () => {
