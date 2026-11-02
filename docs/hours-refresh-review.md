@@ -3,15 +3,15 @@
 Compared committed baseline with the current artifacts. Provider snapshot timestamp: 2026-08-22T17:16:36.471Z; this does not redate retained observations or first-party evidence.
 This report is a review aid. It does not approve, reject, or change a place status.
 
-**Manual review required:** 1 unreviewed public listing removal(s).
+**No unreviewed public catalog or public closure transition requires manual review.**
 
 ## Coverage delta
 
 | Metric | Before | After | Change |
 | --- | ---: | ---: | ---: |
-| Public places | 1572 | 1571 | -1 |
-| Public places with publishable verified hours | 37 | 37 | 0 |
-| Public places with qualified schedules | 3 | 3 | 0 |
+| Public places | 1571 | 1571 | 0 |
+| Public places with publishable verified hours | 37 | 39 | +2 |
+| Public places with qualified schedules | 3 | 4 | +1 |
 | Hours snapshot rows | 1522 | 1522 | 0 |
 | Fresh schedule rows in snapshot | 1160 | 1160 | 0 |
 | Unmatched database rows ignored | — | 14 | — |
@@ -22,9 +22,7 @@ Qualified schedules retain their service or admission conditions and do not esta
 
 ### Removed from public discovery
 
-| Slug | Place | Category | Town | New status | Checked at | Status evidence |
-| --- | --- | --- | --- | --- | --- | --- |
-| `concettas-main-street-bistro-mount-airy` | Concetta's Main Street Bistro | coffee | mount-airy | No new provider closure | — | Review required |
+No public listings were removed.
 
 An unreviewed removal must be checked before merge. Confirm a closure against the business or another current official source; inspect any removal without a new closed status as a loader or catalog regression.
 
