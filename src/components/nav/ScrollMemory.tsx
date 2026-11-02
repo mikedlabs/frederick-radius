@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { consumeBrowseScrollReturn } from "@/lib/browse-scroll-return";
+import { browseScrollKey, consumeBrowseScrollReturn } from "@/lib/browse-scroll-return";
 import { restoreBrowseFocusReturn, takeBrowseFocusReturn, type BrowseFocusReturn } from "@/lib/browse-focus-return";
 import { cancelPrimaryTabResume, consumePrimaryTabResume, rememberPrimaryTab } from "@/lib/primary-tab-session";
 import { isHistoryLayerScrollReturn } from "@/hooks/useReversibleHistoryLayer";
@@ -53,7 +53,7 @@ const CLEAR_DELAY_MS = 400;
 const POP_FRESH_MS = 3_000;
 
 function keyForLocation(): string {
-  return `${KEY_PREFIX}${window.location.pathname}${window.location.search}`;
+  return `${KEY_PREFIX}${browseScrollKey(window.location.pathname, window.location.search)}`;
 }
 
 // Pending fresh-navigation clears, cancellable by popstate or a real
@@ -216,7 +216,7 @@ if (typeof window !== "undefined") {
 export default function ScrollMemory() {
   const pathname = usePathname();
   const search = useSearchParams();
-  const key = `${KEY_PREFIX}${pathname}${search?.size ? `?${search.toString()}` : ""}`;
+  const key = `${KEY_PREFIX}${browseScrollKey(pathname, search?.toString() ?? "")}`;
   const explicitReturnKey = useRef<string | null>(null);
   const tabReturn = useRef<{ key: string; scrollY: number } | null>(null);
   const pendingFocusReturn = useRef<{ key: string; value: BrowseFocusReturn } | null>(null);

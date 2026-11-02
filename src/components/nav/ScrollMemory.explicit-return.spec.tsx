@@ -45,6 +45,15 @@ afterEach(async () => {
 });
 
 describe("full-document explicit listing return", () => {
+  it.each(["q=live%20music", "q=caf%c3%a9%20music", "q=C%2b%2b%20music"])("restores the same encoded query through the explicit-return boundary: %s", async search => {
+    const encoded = `/today?${search}&in=frederick`;
+    const canonicalKey = `fr:scroll:/today?${new URLSearchParams(`${search}&in=frederick`)}`;
+    route.search = `${search}&in=frederick`; history.replaceState({}, "", encoded);
+    sessionStorage.setItem(canonicalKey, "412"); markBrowseScrollReturn(encoded);
+    await act(async () => root.render(<StrictMode><ScrollMemory /></StrictMode>));
+    await act(async () => vi.advanceTimersByTimeAsync(1000));
+    expect(position).toBe(412); expect(sessionStorage.getItem(canonicalKey)).toBe("412");
+  });
   it("restores existing exact-URL memory under effect replay instead of clearing it as a fresh visit", async () => {
     window.sessionStorage.setItem(`fr:scroll:${path}`, "412");
     markBrowseScrollReturn(path);

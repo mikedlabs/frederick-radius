@@ -4,11 +4,18 @@ export const BROWSE_SCROLL_RETURN_KEY = "fr:browse-scroll-return:v1";
 const RETURN_INTENT_MAX_AGE_MS = 30_000;
 type ReturnStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
+/** Match Next's query serialization without sorting or dropping duplicates.
+ * Encoded spaces share one key; a literal plus remains encoded as %2B. */
+export function browseScrollKey(pathname: string, search: string): string {
+  const query = new URLSearchParams(search).toString();
+  return `${pathname}${query ? `?${query}` : ""}`;
+}
+
 function listingKey(raw: unknown): string | null {
   const path = normalizeBrowseReturnTo(raw);
   if (!path) return null;
   const url = new URL(path, "https://frederick-radius.invalid");
-  return `${url.pathname}${url.search}`;
+  return browseScrollKey(url.pathname, url.search);
 }
 
 /** Explicit Back links load a fresh document to preserve the correct map
@@ -35,7 +42,10 @@ export function consumeBrowseScrollReturn(raw: unknown, storage?: ReturnStorage,
     if (!value || typeof value.key !== "string" || typeof value.at !== "number" || !Number.isFinite(value.at)) return false;
     const key = listingKey(raw);
     const age = now - value.at;
-    return key !== null && key === value.key && age >= 0 && age <= RETURN_INTENT_MAX_AGE_MS;
+    // An intent created by the previous code can still have a raw encoded
+    // query during its existing 30-second lifetime. Validate and serialize it
+    // through the same boundary; do not refresh its clock or broaden its path.
+    return key !== null && key === listingKey(value.key) && age >= 0 && age <= RETURN_INTENT_MAX_AGE_MS;
   } catch {
     return false;
   }

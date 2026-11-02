@@ -36,6 +36,56 @@ function Fixture({ preserve }: { preserve: boolean }) {
   return <><ScrollMemory />{open && <div role="dialog">Actual temporary layer</div>}</>;
 }
 describe("temporary layer and browse scroll ownership", () => {
+  it.each([
+    "q=live%20music&in=frederick",
+    "q=caf%c3%a9%20music&in=frederick",
+    "q=C%2b%2b%20music&in=frederick",
+    "q=live%20music&q=caf%C3%A9%2B&in=frederick",
+  ])("records owned return/remount and later genuine query navigation for encoded %s", async rawSearch => {
+    const encoded = `/events?${rawSearch}`, canonical = `/events?${new URLSearchParams(rawSearch)}`;
+    const canonicalKey = `fr:scroll:${canonical}`;
+    route.search = rawSearch; history.replaceState({}, "", encoded);
+    await act(async () => root.render(<Fixture preserve={false} />));
+    await act(async () => {
+      history.replaceState({}, "", encoded); window.dispatchEvent(new PopStateEvent("popstate", { state: {} }));
+    });
+    await advance(32);
+    await act(async () => root.render(<ScrollMemory key="encoded-remount" />));
+    position = 866; window.dispatchEvent(new Event("scroll")); await advance(4000);
+    expect(position).toBe(866); expect(sessionStorage.getItem(canonicalKey)).toBe("866");
+    const freshSearch = "in=brunswick&q=different%20phrase&q=x%2By", fresh = `/events?${freshSearch}`;
+    const freshKey = `fr:scroll:/events?${new URLSearchParams(freshSearch)}`;
+    sessionStorage.setItem(freshKey, "612"); route.search = freshSearch; history.pushState({}, "", fresh);
+    await act(async () => root.render(<ScrollMemory key="encoded-fresh" />));
+    await advance(500); expect(sessionStorage.getItem(freshKey)).toBeNull();
+    position = 0; route.search = rawSearch;
+    await act(async () => {
+      history.replaceState({}, "", encoded); window.dispatchEvent(new PopStateEvent("popstate", { state: {} }));
+      root.render(<ScrollMemory key="encoded-real-back" />);
+    });
+    await advance(16); expect(position).toBe(866);
+  });
+  it.each([
+    "in=frederick&q=live%20music&q=C%2B%2B",
+    "q=C%2B%2B&q=live%20music&in=frederick",
+    "q=live%20music&in=frederick",
+  ])("does not merge a different query order or duplicate sequence: %s", async destinationSearch => {
+    const rawSearch = "q=live%20music&q=C%2B%2B&in=frederick", encoded = `/events?${rawSearch}`;
+    route.search = rawSearch; history.replaceState({}, "", encoded);
+    await act(async () => root.render(<Fixture preserve={false} />));
+    await act(async () => {
+      history.replaceState({}, "", encoded); window.dispatchEvent(new PopStateEvent("popstate", { state: {} }));
+    });
+    await advance(32);
+    const destination = `/events?${destinationSearch}`;
+    sessionStorage.setItem(`fr:scroll:/events?${new URLSearchParams(destinationSearch)}`, "612");
+    route.search = destinationSearch;
+    await act(async () => {
+      history.replaceState({}, "", destination); window.dispatchEvent(new PopStateEvent("popstate", { state: {} }));
+      root.render(<ScrollMemory key="different-query-order" />);
+    });
+    await advance(16); expect(position).toBe(612);
+  });
   it.each([false, true])("does not pin later card centering to a competing stored clamp after an owned Back (editor=%s)", async preserve => {
     await act(async () => root.render(<Fixture preserve={preserve} />));
     // An in-layer programmatic scroll can differ from the actual pre-open
