@@ -12,6 +12,13 @@ const HISTORY_LAYER_KEY = "__frederickRadiusLayer";
 const HISTORY_LAYER_SCROLL_KEY = "__frederickRadiusLayerScrollY";
 const HISTORY_URL_REPLACED = "fr:history-layer-url-replaced";
 export const HISTORY_LAYER_URL_RESTORED = "fr:history-layer-url-restored";
+const ownedScrollReturns = new WeakSet<Event>();
+
+/** A temporary layer owns its in-place Back coordinate. The browse-page
+ * clamp corrector must not start a second restoration for this same event. */
+export function isHistoryLayerScrollReturn(event: Event): boolean {
+  return ownedScrollReturns.has(event);
+}
 
 /** Mirror shareable state without discarding Next's state or an overlay owner. */
 export function replaceHistoryLayerUrl(url: string) {
@@ -147,9 +154,10 @@ export function useReversibleHistoryLayer({
   const returnFromEditor = useCallback((href: string, scrollY: number | null, next?: () => void) => {
     if (returningRef.current) return;
     returningRef.current = true;
-    window.addEventListener("popstate", () => {
+    window.addEventListener("popstate", (event) => {
       returningRef.current = false;
       if (!restoreSamePathUrl(href)) return;
+      ownedScrollReturns.add(event);
       if (next) window.setTimeout(() => {
         if (window.location.href === href) next();
       }, 0);
@@ -166,6 +174,7 @@ export function useReversibleHistoryLayer({
     if (!active || !id) return;
     const returnScrollY =
       requestedReturnScrollY ?? currentLayerScrollY() ?? window.scrollY;
+    const layerHref = window.location.href;
     returnScrollYRef.current = returnScrollY;
     pushLayer(id, returnScrollY);
     latestHrefRef.current = window.location.href;
@@ -175,17 +184,20 @@ export function useReversibleHistoryLayer({
     if (preserveUrlOnDismiss) window.addEventListener(HISTORY_URL_REPLACED, rememberUrl);
     const previousScrollRestoration = window.history.scrollRestoration;
     window.history.scrollRestoration = "manual";
-    const onPopState = () => {
+    const onPopState = (event: PopStateEvent) => {
       if (currentLayerId() !== id) {
         const href = preserveUrlOnDismiss ? latestHrefRef.current : null;
         const restored = href ? restoreSamePathUrl(href) : false;
+        const expectedHref = href ?? layerHref;
+        if ((!href || restored) && window.location.href === expectedHref) ownedScrollReturns.add(event);
         dismissRef.current();
-        if (!href || restored) restoreLayerScroll(returnScrollYRef.current, href ?? undefined);
+        if (!href || restored) restoreLayerScroll(returnScrollYRef.current, expectedHref);
       }
     };
-    window.addEventListener("popstate", onPopState, preserveUrlOnDismiss);
+    // Mark the owned traversal before generic bubble-phase route restorers.
+    window.addEventListener("popstate", onPopState, true);
     return () => {
-      window.removeEventListener("popstate", onPopState, preserveUrlOnDismiss);
+      window.removeEventListener("popstate", onPopState, true);
       window.removeEventListener(HISTORY_URL_REPLACED, rememberUrl);
       window.history.scrollRestoration = previousScrollRestoration;
       if (preserveUrlOnDismiss) queueMicrotask(() => {
@@ -215,8 +227,11 @@ export function useReversibleHistoryLayer({
       // dismissing can unmount the surface before popstate is delivered.
       window.addEventListener(
         "popstate",
-        () => restoreLayerScroll(returnScrollY),
-        { once: true },
+        (event) => {
+          if (window.location.href === href) ownedScrollReturns.add(event);
+          restoreLayerScroll(returnScrollY, href);
+        },
+        { once: true, capture: true },
       );
       window.history.back();
     } else if (!owned) {
