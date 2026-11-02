@@ -168,44 +168,27 @@ describe("bundled source artifact evidence", () => {
 
   it("recognizes every workflow artifact currently bundled for monitoring", () => {
     const evidence = bundledSourceArtifactEvidence();
+    const merchantArtifact = MERCHANT_HOURS_RAW as MerchantHoursArtifact;
+    // Registration and publication are separate: an enrolled source can still
+    // be held. Expect only owners with actual retained approval/review rows,
+    // without maintaining a second list that blocks the next reviewed batch.
+    const merchantKeys = [
+      ...merchantArtifact.places.map((row) => row.slug),
+      ...merchantArtifact.review.map((row) => row.slug),
+    ].map((slug) => {
+      const owner = MERCHANT_HOURS_SOURCES.find((source) => source.slug === slug);
+      expect(owner, `Registered owner for retained merchant ${slug}`).toBeDefined();
+      return owner!.ledger_id;
+    });
 
-    expect([...new Set(evidence.map((item) => item.sourceKey))].sort()).toEqual([
-      "alekos_hours",      "beans_belfry_hours",
-      "brewers_alley_hours",
+    expect([...new Set(evidence.map((item) => item.sourceKey))].sort()).toEqual([...new Set([
+      ...merchantKeys,
       "business_info_extraction",
-      "carriage_house_inn_restaurant_catering_emmitsburg_hours",
-      "common_market_hours",
-      "curious_iguana_hours",
-      "delaplaine_hours",
-      "dublin_roasters_hours",
-      "el_rancho_restaurant_walkersville_hours",
       "fcpl_branch_hours",
-      "firebirds_wood_fired_grill_frederick_hours",
-      "food_lion_crestwood_hours",
-      "food_lion_thurmont_hours",
-      "food_lion_yellow_springs_hours",
-      "fratellis_italian_seafood_middletown_hours",
-      "frederick_fudge_ice_cream_hours",
-      "gravel_grind_hours",
-      "hinzis_kitchen_hours",
-      "hoffman_brothers_ice_cream_hours",
-      "hootch_banter_hours",
-      "il_porto_frederick_hours",
-      "jojos_hours",
-      "kulfi_hours",
       "municipal_civic_extraction",
-      "museum_civil_war_medicine_hours",
-      "pistarros_hours",
-      "safeway_middletown_hours",
-      "safeway_walkersville_hours",
-      "sumittra_hours",
-      "tasting_room_hours",
-      "thai_meric_hours",
-      "thai_table_hours",
       "transit_gtfs",
       "venue_event_extraction",
-      "white_rabbit_hours",
-    ]);
+    ])].sort());
     expect(
       evidence.find((item) => item.sourceKey === "business_info_extraction"),
     ).toMatchObject({
