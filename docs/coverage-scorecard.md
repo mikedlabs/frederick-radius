@@ -7,28 +7,28 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-11-01 — 1572 places._
+_Generated 2026-11-02 — 1571 places._
 
-Current checked schedules: 40. Current qualified schedules: 3.
+Current checked schedules: 39. Current qualified schedules: 3.
 Qualified venue or service tables retain their conditions and expiry. They
 are counted separately and cannot support generic Open now claims.
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick | 855 | 680 (80%) | 21 (2%) | 711 (83%) | 714 (84%) | 50 | 297 |
+| Frederick | 855 | 680 (80%) | 20 (2%) | 711 (83%) | 714 (84%) | 50 | 297 |
 | Thurmont | 110 | 75 (68%) | 2 (2%) | 100 (91%) | 99 (90%) | 3 | 30 |
 | Brunswick | 97 | 65 (67%) | 3 (3%) | 84 (87%) | 78 (80%) | 2 | 24 |
 | Walkersville | 86 | 66 (77%) | 3 (3%) | 81 (94%) | 78 (91%) | 2 | 29 |
 | Middletown | 85 | 52 (61%) | 4 (5%) | 72 (85%) | 74 (87%) | 4 | 27 |
 | New Market | 75 | 51 (68%) | 0 (0%) | 62 (83%) | 60 (80%) | 4 | 13 |
-| Mount Airy | 63 | 48 (76%) | 0 (0%) | 58 (92%) | 58 (92%) | 5 | 27 |
+| Mount Airy | 62 | 47 (76%) | 0 (0%) | 57 (92%) | 57 (92%) | 5 | 26 |
 | Emmitsburg | 57 | 39 (68%) | 2 (4%) | 52 (91%) | 51 (89%) | 2 | 18 |
 | Myersville | 46 | 33 (72%) | 1 (2%) | 40 (87%) | 40 (87%) | 2 | 9 |
 | Woodsboro | 36 | 20 (56%) | 0 (0%) | 30 (83%) | 26 (72%) | 1 | 10 |
 | Urbana | 30 | 21 (70%) | 1 (3%) | 24 (80%) | 25 (83%) | 2 | 10 |
 | Burkittsville | 30 | 15 (50%) | 0 (0%) | 28 (93%) | 30 (100%) | 2 | 8 |
 | Rosemont | 2 | 0 (0%) | 0 (0%) | 1 (50%) | 1 (50%) | 0 | 1 |
-| **Total** | **1572** | 1165 (74%) | 37 (2%) | 1343 (85%) | 1334 (85%) | **79** | **503** |
+| **Total** | **1571** | 1164 (74%) | 36 (2%) | 1342 (85%) | 1333 (85%) | **79** | **502** |
 
 ## Coverage by category
 
@@ -75,8 +75,8 @@ successful image loading is a separate browser check.
 | Tours & rides | 2 | 0 (0%) | 1 (50%) | 2 (100%) | 2 (100%) |
 | Transit | 1 | 0 (0%) | 1 (100%) | 0 (0%) | 0 (0%) |
 | Galleries | 27 | 1 (3.7%) | 23 (85.2%) | 1 (3.7%) | 26 (96.3%) |
+| Coffee | 37 | 2 (5.4%) | 33 (89.2%) | 6 (16.2%) | 31 (83.8%) |
 | Restaurants | 178 | 13 (7.3%) | 162 (91%) | 42 (23.6%) | 171 (96.1%) |
-| Coffee | 38 | 3 (7.9%) | 34 (89.5%) | 6 (15.8%) | 32 (84.2%) |
 | Book stores | 12 | 1 (8.3%) | 11 (91.7%) | 1 (8.3%) | 12 (100%) |
 | Ice cream & treats | 28 | 3 (10.7%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
 | Markets | 57 | 7 (12.3%) | 53 (93%) | 21 (36.8%) | 56 (98.2%) |
@@ -91,9 +91,9 @@ are inventory only; they do not make either source current.
 
 | Check | Count |
 | --- | ---: |
-| Public Google-backed places expected in the 6-day cycle | 1484 |
+| Public Google-backed places expected in the 6-day cycle | 1483 |
 | Snapshot rows | 1522 |
-| Rows matched to the public set | 1481 |
+| Rows matched to the public set | 1480 |
 | Rows carrying a schedule | 1159 |
 | Rows refreshed within policy, including status-only results | 0 (0%) |
 | Rows fresh within policy | 0 (0%) |
@@ -101,7 +101,7 @@ are inventory only; they do not make either source current.
 | Cycle buckets meeting the minimum write ratio | 0 / 6 |
 | Stale rows | 1159 |
 | Invalid verification timestamps | 0 |
-| Unmatched rows | 41 |
+| Unmatched rows | 42 |
 
 Oldest refresh: 2026-08-13T08:01:03.490Z. Newest refresh: 2026-08-22T08:01:01.244Z.
 
@@ -110,7 +110,7 @@ Oldest refresh: 2026-08-13T08:01:03.490Z. Newest refresh: 2026-08-22T08:01:01.24
 | 0 | 274 | 0 | 0 | no |
 | 1 | 208 | 0 | 0 | no |
 | 2 | 273 | 0 | 0 | no |
-| 3 | 261 | 0 | 0 | no |
+| 3 | 260 | 0 | 0 | no |
 | 4 | 243 | 0 | 0 | no |
 | 5 | 225 | 0 | 0 | no |
 
