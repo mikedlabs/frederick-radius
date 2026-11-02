@@ -77,8 +77,9 @@ bytes never enter Git, generated client datasets or publication allowlists.
 The monthly MARC owner separately retains `marc-source-evidence-<run>-<attempt>`
 for seven days, including same-transfer headers and failed originals. Its official
 MTA endpoint redirects to the exact reviewed MDOT S3 ZIP destination declared in
-the builder. Only that request/destination pair can cross hosts, with one HTTPS
-redirect and no retry. The original observation and ZIP hash survive offline
+the builder. curl follows at most one HTTPS redirect without retry; capture
+accepts only the reviewed request/destination pair after that transfer and
+rejects off-pair destinations. The original observation and ZIP hash survive offline
 replay; optional-file read failures cannot silently remove holiday exceptions.
 MARC's 8 MB archive limit and existing 45-day freshness gate remain separate
 from Frederick transit. Check `npm run validate:transit-data` before expensive

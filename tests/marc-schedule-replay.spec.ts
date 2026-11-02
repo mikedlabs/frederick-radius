@@ -67,6 +67,31 @@ describe("MARC retained original replay", () => {
       : execFileSync("unzip", ["-p", zip, file], { encoding: "utf8" });
     expect(() => buildMarcSchedule(read, original, NOW)).toThrow("Invalid or duplicate MARC service-date exception");
   });
+  it.each([false, true])("rejects duplicate calendar service IDs even when their rows agree (%s)", conflict => {
+    const read = (file: string) => {
+      const text = execFileSync("unzip", ["-p", zip, file], { encoding: "utf8" });
+      if (file !== "calendar.txt") return text;
+      const lines = text.trimEnd().split(/\r?\n/);
+      const duplicate = lines[1].split(",");
+      if (conflict) duplicate[1] = duplicate[1] === "1" ? "0" : "1";
+      return lines.join("\n") + "\n" + duplicate.join(",") + "\n";
+    };
+    expect(() => buildMarcSchedule(read, original, NOW)).toThrow("Invalid or duplicate MARC calendar service or weekday flag");
+  });
+  it.each([
+    ...["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map(day => [day, ""]),
+    ...["2", "-1", "00", "false"].map(flag => ["monday", flag]),
+  ])("rejects calendar weekday %s flag %j before numeric coercion", (day, flag) => {
+    const read = (file: string) => {
+      const text = execFileSync("unzip", ["-p", zip, file], { encoding: "utf8" });
+      if (file !== "calendar.txt") return text;
+      const lines = text.trimEnd().split(/\r?\n/), header = lines[0].split(","), row = lines[1].split(",");
+      expect(header).toContain(day);
+      row[header.indexOf(day)] = flag;
+      return [lines[0], row.join(","), ...lines.slice(2)].join("\n") + "\n";
+    };
+    expect(() => buildMarcSchedule(read, original, NOW)).toThrow("Invalid or duplicate MARC calendar service or weekday flag");
+  });
   it("rejects missing or changed originals without a fallback source request", () => {
     expect(() => buildMarcScheduleFromZip(join(root, "absent.zip"), original, NOW)).toThrow();
     expect(() => buildMarcScheduleFromZip(zip, { ...original, sourceSha256: "0".repeat(64) }, NOW)).toThrow("bytes/hash");

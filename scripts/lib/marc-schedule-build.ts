@@ -83,10 +83,7 @@ function gtfsDateIso(value: string): string | undefined {
 /** Pure schedule projection. Source observation, rather than replay time, owns freshness. */
 export function buildMarcSchedule(read: (file: string) => string, original: MarcOriginal, now = new Date()) {
   validateOriginalMetadata(original, now);
-    // feedDate: take the latest end_date stamp is not it; use the file
-    // mtime via the zip listing's date. Simplest honest signal: read
-    // calendar's first start_date is wrong too. We stamp with the
-    // GTFS's own feed_info if present, else leave null.
+    // feedDate comes from feed_info.txt when present; otherwise it stays null.
     let feedDate: string | null = null;
     try {
       const fi = parseCsv(read("feed_info.txt"));
@@ -133,12 +130,15 @@ export function buildMarcSchedule(read: (file: string) => string, original: Marc
 
     // calendar: service_id -> weekday flags (mon..sun) + date range
     const calendar: Record<string, { days: number[]; start: string; end: string }> = {};
+    const serviceIds = new Set<string>();
     for (const r of calendarRows) {
+      const flags = [r.monday, r.tuesday, r.wednesday, r.thursday, r.friday, r.saturday, r.sunday];
+      if (!r.service_id?.trim() || serviceIds.has(r.service_id) || flags.some(value => value !== "0" && value !== "1")) {
+        throw new Error("Invalid or duplicate MARC calendar service or weekday flag.");
+      }
+      serviceIds.add(r.service_id);
       calendar[r.service_id] = {
-        days: [
-          +r.monday, +r.tuesday, +r.wednesday, +r.thursday, +r.friday,
-          +r.saturday, +r.sunday,
-        ],
+        days: flags.map(Number),
         start: r.start_date,
         end: r.end_date,
       };

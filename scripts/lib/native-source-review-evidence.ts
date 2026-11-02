@@ -86,7 +86,7 @@ export function createNativeSourceReviewEvidence(directory: string, options: {
   sourceRevision: string;
   sourceRun?: string;
   sourceAttempt?: string;
-  sources: { id: string; urls: string[]; selected: boolean; reviewedFinalUrls?: string[] }[];
+  sources: { id: string; urls: string[]; selected: boolean; reviewedFinalUrls?: { requestedUrl: string; finalUrl: string }[] }[];
   maxResponses: number;
   maxResponseBytes: number;
   maxTotalBytes: number;
@@ -103,7 +103,10 @@ export function createNativeSourceReviewEvidence(directory: string, options: {
     source.urls.forEach(hostname);
     // A cross-host original needs a reviewed exact request/destination pair.
     // Other owners retain their existing same-host response boundary.
-    source.reviewedFinalUrls?.forEach(hostname);
+    source.reviewedFinalUrls?.forEach(pair => {
+      hostname(pair.requestedUrl); hostname(pair.finalUrl);
+      if (!source.urls.includes(pair.requestedUrl)) throw new Error("Reviewed native redirect request is outside its source identity.");
+    });
   }
   if ((options.sourceRun !== undefined && !/^[1-9]\d*$/.test(options.sourceRun))
     || (options.sourceAttempt !== undefined && !/^[1-9]\d*$/.test(options.sourceAttempt))) throw new Error("Invalid native run or attempt identity.");
@@ -138,7 +141,7 @@ export function createNativeSourceReviewEvidence(directory: string, options: {
           || !["GET", "POST"].includes(response.method) || !Number.isSafeInteger(response.status) || response.status < 100 || response.status > 599
           || !source.urls.some(url => hostname(url) === hostname(response.requestedUrl))
           || (hostname(response.requestedUrl) !== hostname(response.finalUrl)
-            && !(source.urls.includes(response.requestedUrl) && source.reviewedFinalUrls?.includes(response.finalUrl)))) throw new Error("Native response identity or capture boundary changed.");
+            && !source.reviewedFinalUrls?.some(pair => pair.requestedUrl === response.requestedUrl && pair.finalUrl === response.finalUrl))) throw new Error("Native response identity or capture boundary changed.");
         const record: Record<string, unknown> = { source_id: sourceId, request_number: records.length + 1,
           requested_url: response.requestedUrl, final_url: response.finalUrl, method: response.method, status: response.status,
           request_context: response.context ?? {} };

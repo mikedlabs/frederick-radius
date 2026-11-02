@@ -86,7 +86,7 @@ describe("native source review evidence", () => {
   it("binds only the reviewed exact MTA request and cross-host ZIP destination", () => {
     const requested = "https://feeds.mta.maryland.gov/gtfs/marc";
     const destination = "https://mdotmta-gtfs.s3.amazonaws.com/mdotmta_gtfs_marc.zip";
-    const options = { publisher: "marc-transit" as const, sources: [{ id: SOURCE, urls: [requested], reviewedFinalUrls: [destination], selected: true }] };
+    const options = { publisher: "marc-transit" as const, sources: [{ id: SOURCE, urls: [requested], reviewedFinalUrls: [{ requestedUrl: requested, finalUrl: destination }], selected: true }] };
     const scope = fixture(options);
     scope.evidence.capture(SOURCE, response({ requestedUrl: requested, finalUrl: destination }));
     expect(scope.index().records[0]).toMatchObject({ requested_url: requested, final_url: destination, source_sha256: hash("official original") });
@@ -99,6 +99,37 @@ describe("native source review evidence", () => {
     }
     const unreviewed = fixture({ publisher: "marc-transit", sources: [{ id: SOURCE, urls: [requested], selected: true }] });
     expect(() => unreviewed.evidence.capture(SOURCE, response({ requestedUrl: requested, finalUrl: destination }))).toThrow(NativeEvidenceError);
+  });
+
+  it("does not mix individually reviewed requests and destinations into an unreviewed pair", () => {
+    const firstRequest = "https://official.example.test/feed-one";
+    const secondRequest = "https://official.example.test/feed-two";
+    const firstDestination = "https://storage.example.test/feed-one.zip";
+    const secondDestination = "https://storage.example.test/feed-two.zip";
+    const options = { sources: [{ id: SOURCE, urls: [firstRequest, secondRequest], selected: true,
+      reviewedFinalUrls: [{ requestedUrl: firstRequest, finalUrl: firstDestination }, { requestedUrl: secondRequest, finalUrl: secondDestination }] }] };
+    for (const pair of [
+      { requestedUrl: firstRequest, finalUrl: firstDestination },
+      { requestedUrl: secondRequest, finalUrl: secondDestination },
+    ]) {
+      const accepted = fixture(options);
+      accepted.evidence.capture(SOURCE, response(pair));
+      expect(accepted.index().records[0]).toMatchObject({ requested_url: pair.requestedUrl, final_url: pair.finalUrl });
+    }
+    for (const pair of [
+      { requestedUrl: firstRequest, finalUrl: secondDestination },
+      { requestedUrl: secondRequest, finalUrl: firstDestination },
+    ]) {
+      const rejected = fixture(options);
+      expect(() => rejected.evidence.capture(SOURCE, response(pair))).toThrow("Native response identity or capture boundary changed");
+      expect(rejected.index()).toMatchObject({ records: [], capture_failed: true });
+    }
+  });
+
+  it("rejects a reviewed pair whose request is not in its source identity", () => {
+    expect(() => fixture({ sources: [{ id: SOURCE, urls: [URL], selected: true,
+      reviewedFinalUrls: [{ requestedUrl: URL + "/unregistered", finalUrl: "https://storage.example.test/original.zip" }] }] }))
+      .toThrow("Reviewed native redirect request is outside its source identity");
   });
 
   it("retains an original MARC ZIP and exact source/output clocks without granting acceptance", () => {
