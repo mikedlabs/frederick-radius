@@ -13,7 +13,7 @@ be delayed by GitHub; these are windows, not guaranteed publication deadlines.
 | Owner | Window | Scope and publication rule |
 | --- | --- | --- |
 | `transit-steward.yml` | Daily 07:23 | Public Frederick GTFS. Existing review and release checks remain. |
-| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus twenty-two exact reviewed native merchant URLs for twenty-three listing identities. Three identities retain display-only venue or dinner qualifications. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. Run summaries derive their source/binding counts from the current registry. |
+| `data-steward.yml` official-hours jobs | Daily 09:17 | Both required library pages plus the exact reviewed native merchant URLs in the current registry. Qualified venue, dinner and taproom schedules remain display-only. Unchanged accepted facts may renew observations after checks; changed facts and removed holds need review. The two manual sources are preserved without a request or new date. Run summaries derive their source/binding counts from the current registry. |
 | Existing Codex data upkeep, manual merchant cohort | Review before evidence expires | Sumittra and Curious Iguana only. Read their official pages through the existing Firecrawl connection when evidence is within 48 hours of expiry. A private preflight reserves each attempt before a read, capped at two attempts per UTC day and 30 per UTC month. No automatic paid GitHub job. |
 | `ingest-venues.yml` native job | Daily 11:07 | Banyan, Weinberg and New Spire native sources. No model, Firecrawl key, browser or paid-review prerequisite. Future changes need review. Failed/unselected sources retain their rows and dates. |
 | `refresh-commerce-links.yml` native mode | Daily 12:37 | At most 20 eligible official business sites and one same-host follow page each. The same static responses supply private listing-intake evidence as well as commerce links. Finite body/deadline, no retries, redirects or destination probes. New/changed facts need review. |
@@ -235,7 +235,7 @@ display-only qualification. That qualification never establishes generic
 Open now. Common Market is the currently enrolled shared-page cohort;
 FCPL retains its independently reviewed nine-branch adapter.
 
-Seven additional exact identities use the declarative `visible_weekly_contact_card`
+Reviewed merchant identities use the declarative `visible_weekly_contact_card`
 shape: Firebirds Frederick, Fratelli's Middletown, Hinzi's Frederick, Hoffman
 Brothers, Frederick Fudge & Ice Cream, Carriage House Inn and El Rancho
 Walkersville. The native owner now has 29 unique URLs for 30 native identities;
@@ -302,9 +302,9 @@ gallery day. Conflicting copies, hidden hours, closure notices or an unreviewed
 admission cutoff require review. This source uses the ordinary 512000-byte
 native limit and seven-day evidence window; no holiday hours are inferred.
 
-### Qualified venue and dinner schedules
+### Qualified venue, dinner and taproom schedules
 
-The National Museum of Civil War Medicine, The Tasting Room and Hootch & Banter
+The National Museum of Civil War Medicine, The Tasting Room, Hootch & Banter and Monocacy Brewing Company
 have exact daily source owners in the same native collector. Their complete
 weeks carry `qualification` with an explicit `scope`, readable `label` and
 condition `note`, and `usage: display_only`. These schedules are useful visit
@@ -319,7 +319,16 @@ Room adapter reads labeled dinner periods and explicit Sunday closure; happy
 hour and bar times cannot extend that week. Hootch & Banter retains dinner
 periods separately from weekend brunch, the kitchen gap, late bar service and
 upstairs private events. Neither restaurant's dinner schedule becomes a claim
-that its whole venue is open or closed.
+that its whole venue is open or closed. Monocacy's exact labeled taproom week
+also remains display-only; it cannot establish brewery operations, tour
+availability or generic Open now. Its shared-PM typography is enabled only
+by the reviewed contact-cohort declaration, never by page text or a CLI flag.
+
+Mamma Angela's complete primary week uses the same contact-cohort parser with
+explicitly reviewed word ranges. Both new owners require exact street, town,
+postal code and telephone identity, visible complete weeks, outside-notice
+checks and authoritative replay. Enrollment does not accept hours, contacts
+or photographs, change a capture date, or grant page/image reuse rights.
 
 Museum and Hootch source conditions name annual closures without observed
 calendar dates. A weekly evidence window spanning one of those boundaries is
@@ -332,7 +341,7 @@ verified hours.
 Every qualification travels with the exact original source bytes, hash, actual
 observation and seven-day expiry through candidate replay, explicit acceptance,
 public client rebuilding and production verification. An old capture never
-receives a new observation. These three source enrollments use the existing
+receives a new observation. These source enrollments use the existing
 512000-byte native cap and transport policy. Paid budgets, source-review limits,
 provider holds and image licensing rules remain unchanged.
 
@@ -454,6 +463,13 @@ failed-source observations. A captured revision may differ from current main,
 but must match its own index and selected original records.
 
 ## Serialized review and publication
+
+Before delegating external source research, pass the owner's remaining local-day
+page-read, enrollment and provider allocation to every agent. Keep one shared
+accounting record, including failed requests and returned cached-page evidence.
+Truncated or uncertain counts are unknown; stop additional reads rather than
+infer spare capacity. An explicit bounded owner exception authorizes only its
+named extra attempts and never resets a ledger, raises a paid cap or renews a fact.
 
 The commerce and business-info collectors share a business-info run lock in
 the Git common directory before starting provider work, so cooperating linked

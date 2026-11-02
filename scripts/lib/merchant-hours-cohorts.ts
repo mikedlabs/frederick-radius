@@ -39,6 +39,32 @@ const FOOD_LION_COHORTS: readonly OfficialHoursCohort[] = FOOD_LION_LOCATIONS.ma
 
 const REVIEWED_VISIBLE_CONTACT_COHORTS: readonly OfficialHoursCohort[] = [
   {
+    shape: "visible_weekly_contact_card", ledger_id: "mamma_angela_hours",
+    source_url: "https://www.mammaangelamtairymd.com/", canonical_url: "https://www.mammaangelamtairymd.com",
+    bindings: [{ slug: "mamma-angela-mount-airy", source_name: "Mamma Angela", identity: { name: "Mamma Angela", street: "5 Ridgeside Court", locality: "Mount Airy", region: "MD", postalCode: "21771", phone: "3018291575" } }],
+    locations: {
+      "mamma-angela-mount-airy": {
+        name: { selector: "title", expected: "Mamma Angela| Family-owned Italian Restaurant | Mount Airy" },
+        address: { selector: "#i72scp7p_2", expected: "5 Ridgeside Court Mount Airy, MD 21771" },
+        phone: { selector: "#i72scp7p > p:last-child", expected: "1 301 829 1575" },
+        weeks: [{ selector: "#i72scp7p_0", count: 1, label: "WE' RE O PEN!", word_ranges: true }],
+      },
+    },
+  },
+  {
+    shape: "visible_weekly_contact_card", ledger_id: "monocacy_taproom_hours",
+    source_url: "https://monocacybrewing.com/", canonical_url: "https://monocacybrewing.com/",
+    bindings: [{ slug: "monocacy-brewing-frederick", source_name: "Monocacy Brewing Company", identity: { name: "Monocacy Brewing Company", street: "1781 North Market St", locality: "Frederick", region: "MD", postalCode: "21701", phone: "2404574232" } }],
+    locations: {
+      "monocacy-brewing-frederick": {
+        name: { selector: "title", expected: "Monocacy Brewing Company - Quality beer. It's in our nature." },
+        address: { selector: "#text-5 .textwidget > h3", expected: "1781 NORTH MARKET ST FREDERICK, MD 21701" },
+        phone: { selector: "#text-5 .textwidget > h2", expected: "240.457.4232" },
+        weeks: [{ selector: "#text-10 .textwidget > div", count: 1, label: "Taproom Hours", shared_pm_range: true }],
+      },
+    },
+  },
+  {
     "shape": "visible_weekly_contact_card",
     "ledger_id": "firebirds_wood_fired_grill_frederick_hours",
     "source_url": "https://firebirdsrestaurants.com/frederick",

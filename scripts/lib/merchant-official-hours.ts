@@ -150,8 +150,11 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
   if (!MERCHANT_HOURS_SOURCES.some((item) => item.slug === source.slug && item.url === source.url) || page.url !== source.url || !isHoursFresh(page.observedAt, now)) throw new Error("Unapproved merchant source or observation.");
   const { text, document } = textPage(page.html);
   const defaultWindow = source.kind === "weekly" ? merchantWeeklyHoursWindow(source.slug, page.observedAt) : undefined;
-  const qualified = parseQualifiedMerchantHours(source, page, document, text, easternDayKey(new Date(page.observedAt)), defaultWindow?.coverage_through ?? easternDayKey(new Date(page.observedAt)));
   const cohort = merchantHoursCohort(source);
+  const cohortQualification = cohort && "qualification" in source ? source.qualification : undefined;
+  const qualified = cohort && cohortQualification
+    ? { hours: parseOfficialHoursCohort(document, text, cohort.cohort, cohort.binding, { coverage_from: easternDayKey(new Date(page.observedAt)), coverage_through: defaultWindow!.coverage_through }), qualification: cohortQualification, exceptions: undefined }
+    : parseQualifiedMerchantHours(source, page, document, text, easternDayKey(new Date(page.observedAt)), defaultWindow?.coverage_through ?? easternDayKey(new Date(page.observedAt)));
   const contactCohort = cohort?.cohort.shape === "visible_weekly_contact_card";
   // Reviewed contact cohorts own their scoped notice/structured checks, including
   // original dated archives. Other adapters retain the existing whole-page gate.

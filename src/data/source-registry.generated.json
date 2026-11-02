@@ -1909,6 +1909,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "mamma_angela_hours",
+    "name": "Mamma Angela - First-party Hours",
+    "owner": "Mamma Angela",
+    "url": "https://www.mammaangelamtairymd.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://www.mammaangelamtairymd.com/",
+      "mamma_angela_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "mapillary_objects",
     "name": "Mapillary — Street-Level Object Detections",
     "owner": "Mapillary",
@@ -2235,6 +2256,27 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/mdot-wzdx.ts",
     "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "monocacy_taproom_hours",
+    "name": "Monocacy Brewing Company - First-party Taproom Hours",
+    "owner": "Monocacy Brewing Company",
+    "url": "https://monocacybrewing.com/",
+    "license": "public first-party taproom hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://monocacybrewing.com/",
+      "monocacy_taproom_hours"
+    ],
     "rowsRequired": false,
     "publicationApplicability": "required"
   },

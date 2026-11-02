@@ -43,6 +43,11 @@ type VisibleWeekSection = {
   suffix?: string;
   /** A corroborating service copy cannot supply missing primary weekdays. */
   partial?: true;
+  /** Exact reviewed wording, never enabled by a page or CLI option. */
+  word_ranges?: true;
+  /** A reviewed afternoon range such as 3–9PM. Both endpoints are PM;
+   * missing meridiem in any other source or format remains ambiguous. */
+  shared_pm_range?: true;
   partitions?: { labels: readonly string[]; days: readonly DayOfWeek[] };
 };
 export type VisibleWeeklyContactLocation = {
@@ -544,11 +549,13 @@ function microdataPrimaryStoreWeek(document: Document, pageText: string, cohort:
 
 const VISIBLE_DAY = "(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tues?|Wed|Thurs?|Thu|Fri|Sat|Sun)\\.?";
 const VISIBLE_DAYS = `${VISIBLE_DAY}(?:\\s*(?:[-–—,&]|and|to)\\s*${VISIBLE_DAY})*`;
+const VISIBLE_WORD_DAYS = `${VISIBLE_DAY}(?:\\s*(?:[-–—,&]|and|to|thru)\\s*${VISIBLE_DAY})*`;
 const VISIBLE_CLOCK = "(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm|a|p))";
 const VISIBLE_RANGE = `${VISIBLE_CLOCK}\\s*[-–—]\\s*${VISIBLE_CLOCK}`;
 const dayAliases = [["monday", "mon"], ["tuesday", "tue", "tues"], ["wednesday", "wed"], ["thursday", "thu", "thur", "thurs"], ["friday", "fri"], ["saturday", "sat"], ["sunday", "sun"]];
-function expandedVisibleDays(value: string): DayOfWeek[] {
-  const pieces = value.toLowerCase().replace(/\./g, "").split(/\s*([-–—,&]|\band\b|\bto\b)\s*/);
+function expandedVisibleDays(value: string, wordRanges = false): DayOfWeek[] {
+  const normalized = wordRanges ? value.replace(/\bthru\b/gi, "to") : value;
+  const pieces = normalized.toLowerCase().replace(/\./g, "").split(/\s*([-–—,&]|\band\b|\bto\b)\s*/);
   const day = (raw: string) => {
     const index = dayAliases.findIndex(aliases => aliases.includes(raw.trim()));
     if (index < 0) throw new Error("Unknown visible cohort weekday.");
@@ -578,13 +585,17 @@ function visibleSectionWeek(node: Element, section: VisibleWeekSection): Hours {
     remaining = remaining.slice(0, -section.suffix.length).trim();
   }
   const hours: Hours = {};
+  const daysPattern = section.word_ranges ? VISIBLE_WORD_DAYS : VISIBLE_DAYS;
+  const rangePattern = section.shared_pm_range
+    ? "(\\d{1,2}(?::\\d{2})?)\\s*[-–—]\\s*(\\d{1,2}(?::\\d{2})?\\s*pm)"
+    : section.word_ranges ? `${VISIBLE_CLOCK}\\s*(?:[-–—]|to)\\s*${VISIBLE_CLOCK}` : VISIBLE_RANGE;
   const separator = () => { remaining = remaining.replace(/^[\s|·]+/, ""); };
   while (remaining) {
     separator(); if (!remaining) break;
-    const row = remaining.match(new RegExp(`^(${VISIBLE_DAYS})\\s*(?:[:|.\\-–—]\\s*)*(Closed|${VISIBLE_RANGE})(?:\\s+(?:EDT|EST))?(?=\\s|$)`, "i"));
+    const row = remaining.match(new RegExp(`^(${daysPattern})\\s*(?:[:|.\\-–—]\\s*)*(Closed|${rangePattern})(?:\\s+(?:EDT|EST))?(?=\\s|$)`, "i"));
     if (!row || ++rows > 7) throw new Error("Unknown visible week text or service condition.");
-    const days = expandedVisibleDays(row[1]);
-    const slots = /^closed$/i.test(row[2]) ? [] : [{ open: visibleClock(row[3]), close: visibleClock(row[4]) }];
+    const days = expandedVisibleDays(row[1], section.word_ranges);
+    const slots = /^closed$/i.test(row[2]) ? [] : [{ open: visibleClock(section.shared_pm_range ? `${row[3]}pm` : row[3]), close: visibleClock(row[4]) }];
     if (slots.some(slot => slot.open >= slot.close)) throw new Error("Overnight or all-day visible hours need separate review.");
     for (const day of days) { if (hours[day]) throw new Error("Duplicate visible cohort weekday."); hours[day] = slots.map(slot => ({ ...slot })); }
     remaining = remaining.slice(row[0].length); separator();
@@ -785,8 +796,10 @@ function visibleContactWeek(document: Document, cohort: VisibleContactCohort, bi
     const index = FULL_DAYS.findIndex(day => rawDay.toLowerCase().replace(/s$/, "") === day.toLowerCase());
     return index >= 0 && hours[WEEKDAYS[index]]?.length === 0 ? " " : whole;
   });
+  const outsideClock = profiles.some(profile => profile.location.weeks.some(section => section.shared_pm_range))
+    ? `(?:${VISIBLE_CLOCK}|\\d{1,2}(?::\\d{2})?\\s*[-–—]\\s*\\d{1,2}(?::\\d{2})?\\s*pm)` : VISIBLE_CLOCK;
   if (notices(outsideText) || /\bclos(?:ed|ing|ures?)\s+(?:on|from|until|through|during|this|every|at)\b|\b(?:reduced|limited|extended|shortened|revised|changed|updated)\s+(?:(?:store|business)\s+)?hours\b/i.test(outsideText)
-    || new RegExp(`\\b${VISIBLE_DAYS}\\s*[:|.\\-–—]*\\s*(?:Closed|${VISIBLE_CLOCK})`, "i").test(outsideText)) throw new Error("Unreviewed outside schedule, closure or service condition.");
+    || new RegExp(`\\b${VISIBLE_DAYS}\\s*[:|.\\-–—]*\\s*(?:Closed|${outsideClock})`, "i").test(outsideText)) throw new Error("Unreviewed outside schedule, closure or service condition.");
   return hours;
 }
 

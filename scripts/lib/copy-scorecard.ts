@@ -12,6 +12,14 @@ export type CopyScorecard = {
   bySlug: Record<string, CopyQuality>;
 };
 
+/** Match the canonical ISO clock emitted by Date.toISOString(). Date.parse
+ * alone also accepts strings such as "1" and normalizes invalid dates. */
+function canonicalComputationClock(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) && new Date(parsed).toISOString() === value;
+}
+
 /** Only a valid derived cache can preserve an earlier computation clock.
  * Invalid cached output is rebuilt from the authoritative client catalog. */
 export function parseCopyScorecard(source: string): CopyScorecard | undefined {
@@ -19,7 +27,7 @@ export function parseCopyScorecard(source: string): CopyScorecard | undefined {
   try { value = JSON.parse(source); } catch { return undefined; }
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   const previous = value as Partial<CopyScorecard>;
-  if (typeof previous.computed_at !== "string" || !Number.isFinite(Date.parse(previous.computed_at)) ||
+  if (!canonicalComputationClock(previous.computed_at) ||
       !previous.counts || typeof previous.counts !== "object" || Array.isArray(previous.counts) ||
       !previous.bySlug || typeof previous.bySlug !== "object" || Array.isArray(previous.bySlug)) return undefined;
   const qualities: CopyQuality[] = ["none", "scraped", "auto_clean", "reviewed"];
@@ -49,7 +57,7 @@ export function buildCopyScorecard(
     bySlug[place.slug] = quality;
   }
   if (
-    previous && Number.isFinite(Date.parse(previous.computed_at)) &&
+    previous && canonicalComputationClock(previous.computed_at) &&
     Object.keys(previous.counts).length === Object.keys(counts).length &&
     Object.entries(counts).every(([key, value]) => previous.counts[key as CopyQuality] === value) &&
     Object.keys(previous.bySlug).length === places.length &&

@@ -39,6 +39,7 @@ export const MERCHANT_HOURS_SOURCES = [
   {"slug": "frederick-fudge-ice-cream", "name": "Frederick Fudge Ice Cream", "ledger_id": "frederick_fudge_ice_cream_hours", "category": "ice-cream", "url": "https://fredicecream.com/", "kind": "weekly"},
   {"slug": "carriage-house-inn-restaurant-catering-emmitsburg", "name": "Carriage House Inn Restaurant & Catering", "ledger_id": "carriage_house_inn_restaurant_catering_emmitsburg_hours", "category": "restaurant", "url": "https://chouseinn.com/", "kind": "weekly"},
   {"slug": "el-rancho-restaurant-walkersville", "name": "El Rancho Restaurant", "ledger_id": "el_rancho_restaurant_walkersville_hours", "category": "restaurant", "url": "https://elrancho-restaurant.com/", "kind": "weekly"},
+  { slug: "mamma-angela-mount-airy", name: "Mamma Angela", ledger_id: "mamma_angela_hours", category: "restaurant", url: "https://www.mammaangelamtairymd.com/", kind: "weekly" },
 ] as const;
 export type MerchantHoursSource = typeof MERCHANT_HOURS_SOURCES[number];
 export type MerchantHoursRecord = {

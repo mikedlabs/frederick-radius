@@ -1,7 +1,6 @@
 import type { DayOfWeek, Hours, HoursDateException } from "../../src/data/places";
 import type { MerchantHoursRecord, MerchantHoursSource } from "../../src/lib/merchant-hours";
 import type { OfficialPageReceipt } from "./fcpl-official-hours";
-import { QUALIFIED_HOURS_SOURCES } from "../../src/lib/qualified-hours-sources";
 
 type QualifiedSchedule = { hours: Hours; qualification: NonNullable<MerchantHoursRecord["qualification"]>; exceptions?: HoursDateException[] };
 const normalized = (value: string) => value.replace(/\s+/g, " ").trim();
@@ -9,7 +8,6 @@ const visibleText = (element: Element) => normalized(element.textContent ?? "");
 const CLOCK = "(\\d{1,2}(?::\\d{2})?\\s*[AP]M)";
 const RANGE = `${CLOCK}\\s*[-–—]\\s*${CLOCK}`;
 const DAYS: DayOfWeek[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-const SLUGS = new Set<string>(QUALIFIED_HOURS_SOURCES.map((source) => source.slug));
 
 function visible(element: Element) {
   for (let node: Element | null = element; node; node = node.parentElement) {
@@ -155,16 +153,22 @@ function hootch(document: Document): QualifiedSchedule {
   return { hours, qualification: { scope: "kitchen", label: "Dinner hours", note: `These are dinner service hours. Weekend brunch runs from 11 a.m. to 2:45 p.m. The kitchen closes between brunch and dinner. Bar hours differ. ${closureNote}`, usage: "display_only" } };
 }
 
-/** Three reviewed exact sources only. A qualified schedule is useful display
+const SOURCE_PARSERS: Readonly<Record<string, (document: Document) => QualifiedSchedule>> = {
+  "national-museum-civil-war-medicine-frederick": museum,
+  "the-tasting-room-frederick": tastingRoom,
+  "hootch-and-banter-frederick": hootch,
+};
+
+/** Reviewed exact source shapes only. Cohort-owned qualified sources use the
+ * shared cohort parser. A qualified schedule is useful display
  * information, never proof of current visitability or admission availability.
  */
 export function parseQualifiedMerchantHours(source: MerchantHoursSource, page: OfficialPageReceipt, document: Document, text: string, coverageFrom: string, coverageThrough: string): QualifiedSchedule | undefined {
-  if (!SLUGS.has(source.slug)) return undefined;
+  const parser = SOURCE_PARSERS[source.slug];
+  if (!parser) return undefined;
   if (page.url !== source.url) throw Error("Mismatched qualified source URL.");
   rejectStructuredHours(document); rejectNotices(text);
   if ([...text.matchAll(/\bHours\b/gi)].length !== (source.slug === "hootch-and-banter-frederick" ? 2 : 1)) throw Error("Additional or missing qualified hours block.");
   if (source.slug !== "the-tasting-room-frederick") holdAnnualClosureBoundary(source.slug, coverageFrom, coverageThrough);
-  if (source.slug === "national-museum-civil-war-medicine-frederick") return museum(document);
-  if (source.slug === "the-tasting-room-frederick") return tastingRoom(document);
-  return hootch(document);
+  return parser(document);
 }
