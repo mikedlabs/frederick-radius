@@ -1532,7 +1532,14 @@ function acceptedBaseOperationalStatus(p: Place): OperationalStatus | undefined 
 }
 
 export function clientOperationalCorrectionForPlace(p: Place, now = new Date()): CompactOperationalCorrection | undefined {
-  return compactOperationalCorrection(p.slug, acceptedBaseOperationalStatus(p), now);
+  const fallback = acceptedBaseOperationalStatus(p);
+  const identity = acceptedEnrichmentIdentity(p);
+  const refreshed = refreshedBusinessStatus(p.slug, identity.googlePlaceId)?.status;
+  // Raw imported "operational" can be a loader default, not an independent
+  // accepted verdict. Only bound provider evidence can remove the dependency.
+  const independent = fallback === "operational" &&
+    (refreshed === "operational" || (!refreshed && identity.enrichment?.business_status === "OPERATIONAL"));
+  return compactOperationalCorrection(p.slug, fallback, now, independent);
 }
 
 // Default ON by owner directive (2026-05-17: "hide the businesses most

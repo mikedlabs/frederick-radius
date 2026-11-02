@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EventArchivePublicReasonCode, EventArchiveSnapshot } from "@/lib/loaders/todayEventSnapshot";
-import { searchEventsFromSnapshot, searchEventCoverageMessage, searchEventRecoveryHref } from "./event-coverage";
+import { searchEventsFromSnapshot, searchEventCoverageMessage, searchEventRecoveryHref, searchEventRecoveryLabel } from "./event-coverage";
 
 const events = [{ slug: "verified-event" }] as EventArchiveSnapshot["publicEvents"];
 function snapshot(code?: EventArchivePublicReasonCode) {
@@ -39,5 +39,13 @@ describe("Search event coverage", () => {
     expect(searchEventRecoveryHref("brunswick", { label: "Tonight", date: "2026-11-02", freeOnly: true })).toBe("/events?in=brunswick&d=2026-11-02&tod=evening&free=1");
     expect(searchEventRecoveryHref("brunswick", { label: "This weekend", date: null, freeOnly: false })).toBe("/events?in=brunswick&when=weekend");
     expect(searchEventRecoveryHref(null, { label: "This afternoon", date: "2026-11-02", freeOnly: false })).toBe("/events?in=county&d=2026-11-02&tod=midday");
+  });
+
+  it("explicitly broadens next-weekend recovery without substituting this weekend or a single date", () => {
+    const window = { label: "Next weekend", date: "2026-11-14", freeOnly: true };
+    expect(searchEventRecoveryHref(null, window)).toBe("/events?in=county&free=1");
+    expect(searchEventRecoveryHref("brunswick", window)).toBe("/events?in=brunswick&free=1");
+    expect(searchEventRecoveryLabel(window)).toBe("Choose dates in Events");
+    expect(searchEventRecoveryLabel({ label: "This weekend", date: null, freeOnly: false })).toBe("See all events");
   });
 });

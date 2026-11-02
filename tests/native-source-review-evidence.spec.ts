@@ -83,6 +83,25 @@ describe("native response observer boundary", () => {
 });
 
 describe("native source review evidence", () => {
+  it("retains an original MARC ZIP and exact source/output clocks without granting acceptance", () => {
+    const url = "https://feeds.mta.maryland.gov/gtfs/marc";
+    const scope = fixture({ publisher: "marc-transit", sources: [{ id: "marc-transit", urls: [url], selected: true }] });
+    const archive = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x01, 0x02]);
+    scope.evidence.capture("marc-transit", response({ requestedUrl: url, finalUrl: url, body: archive,
+      context: { phase: "gtfs-archive", content_type: "application/zip", curl_exit_code: 0 } }));
+    scope.evidence.finish([{ sourceId: "marc-transit", status: "complete", observedAt: AT }]);
+    const output = "src/data/marc-schedule.json";
+    const payload = JSON.stringify({ generatedAt: AT.slice(0, 10), staticFeed: { fetchedOn: AT.slice(0, 10) } }) + "\n";
+    writeFileSync(join(scope.checkout, output), payload);
+    scope.evidence.bindOutputs([output]);
+    expect(scope.index()).toMatchObject({ publisher: "marc-transit", source_revision: REVISION,
+      source_run: "12345", source_attempt: "2", collection_complete: true, generated_outputs_bound: true,
+      semantic_acceptance: false, output_files: [{ path: output, sha256: hash(payload) }],
+      records: [expect.objectContaining({ source_id: "marc-transit", requested_url: url, final_url: url,
+        status: 200, observed_at: AT, source_sha256: hash(archive), bytes: archive.length })] });
+    expect(readFileSync(join(scope.directory, scope.index().records[0].evidence_file))).toEqual(archive);
+  });
+
   it("retains exact native identities, byte hashes and unselected sources without semantic approval", () => {
     const scope = fixture();
     scope.evidence.capture(SOURCE, response({ context: { page: 2, venueFilter: "weinberg-center" } }));

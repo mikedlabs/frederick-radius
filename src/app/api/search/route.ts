@@ -179,7 +179,9 @@ export async function GET(request: NextRequest) {
   const { meta } = searchResult;
   const responseMeta = eventCoverage === "complete"
     ? meta
-    : { ...meta, eventCoverage, ...(eventCoverage === "unavailable" ? { liveEventsUnavailable: true } : {}) };
+    // AppMap still consumes the legacy flag as an incomplete-calendar caveat.
+    // Newer consumers use eventCoverage to distinguish usable partial rows.
+    : { ...meta, eventCoverage, liveEventsUnavailable: true };
 
   // A degraded event archive plus an empty result set used to answer 503, and
   // the overlay treats any non-ok as a transport failure: it rendered "Check

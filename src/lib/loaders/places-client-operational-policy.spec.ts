@@ -46,10 +46,18 @@ describe("client operational-correction expiry", () => {
   it("does not expire an independently accepted operational base verdict", () => {
     expect(clientPlaceBySlug(fixtures[1].slug, AFTER)?.is_operational).toBe("operational");
     expect(clientPlaces(AFTER).some(p => p.slug === fixtures[1].slug)).toBe(true);
-    expect(compactOperationalCorrection(fixtures[1].slug, "operational", BEFORE)).toEqual({ fallback_status: "operational" });
+    expect(compactOperationalCorrection(fixtures[1].slug, "operational", BEFORE, true)).toEqual({ fallback_status: "operational" });
     expect(compactOperationalCorrection(fixtures[0].slug, "closed_permanently", BEFORE)).toEqual({
       fallback_status: "closed_permanently", review_after: "2026-11-01",
     });
+  });
+  it("keeps a raw operational default dependent on review, including after a rebuild", () => {
+    const policy = compactOperationalCorrection(fixtures[0].slug, "operational", AFTER);
+    expect(policy).toEqual({ fallback_status: "operational", review_after: "2026-11-01" });
+    expect(clientPlaceOperationalState({ ...fixtures[0], operational_correction: policy }, AFTER)).toEqual({
+      status: "needs_verification", discoverable: true, mayAssertHours: false,
+    });
+    expect(compactOperationalCorrection(fixtures[0].slug, "operational", AFTER, true)).toEqual({ fallback_status: "operational" });
   });
   it("fails conservatively for legacy dependent rows without compact fallback metadata", () => {
     expect(clientPlaces(BEFORE).some(p => p.slug === fixtures[2].slug)).toBe(true);

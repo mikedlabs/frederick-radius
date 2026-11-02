@@ -203,7 +203,7 @@ describe("GET /api/search map fast path", () => {
     },
   );
 
-  it.each(["map", "global"])("keeps verified partial events visible in %s search without calling them unavailable", async origin => {
+  it.each(["map", "global"])("keeps verified partial events and the legacy incomplete-calendar caveat in %s search", async origin => {
     mocks.loadEventArchiveSnapshot.mockResolvedValue({ publicEvents: [liveEvent()], sourceHealth: {
       degraded: true, unavailable: ["Some event records could not be verified."],
       issues: [{ code: "event_archive_validation", message: "Some event records could not be verified." }],
@@ -214,7 +214,7 @@ describe("GET /api/search map fast path", () => {
     const body = await response.json();
     expect(body.results).toContainEqual(expect.objectContaining({ id: "event:radius-investor-showcase" }));
     expect(body.meta.eventCoverage).toBe("partial");
-    expect(body.meta.liveEventsUnavailable).toBeUndefined();
+    expect(body.meta.liveEventsUnavailable).toBe(true);
     expect(body.meta.scopeMunicipality).toBe("frederick");
     expect(response.headers.get("cache-control")).toBe("private, no-store");
   });

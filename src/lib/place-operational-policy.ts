@@ -1,6 +1,7 @@
 import type { OperationalStatus } from "@/data/places";
 import {
   activeManualPlaceStatusOverride,
+  hasValidManualPlaceStatusEvidence,
   isIsoCalendarDate,
   isManualPlaceClosureOverride,
   manualPlaceStatusOverride,
@@ -17,14 +18,19 @@ export function compactOperationalCorrection(
   slug: string,
   fallback: OperationalStatus | undefined,
   now = new Date(),
+  independentlyAcceptedOperational = false,
 ): CompactOperationalCorrection | undefined {
-  const correction = activeManualPlaceStatusOverride(slug, now);
-  if (correction?.status !== "operational") return undefined;
+  const correction = manualPlaceStatusOverride(slug);
+  // Retain the causal policy for public rows rebuilt after the deadline too.
+  // This is metadata, not permission to keep the expired correction active.
+  if (correction?.status !== "operational" || !hasValidManualPlaceStatusEvidence(correction)
+    || correction.effective_at > easternDayKey(now)) return undefined;
   return {
     fallback_status: fallback ?? "needs_verification",
     // An independently accepted operational verdict does not depend on the
     // manual correction and must not inherit its expiration date.
-    ...(fallback !== "operational" ? { review_after: correction.review_after } : {}),
+    ...(!(fallback === "operational" && independentlyAcceptedOperational)
+      ? { review_after: correction.review_after } : {}),
   };
 }
 

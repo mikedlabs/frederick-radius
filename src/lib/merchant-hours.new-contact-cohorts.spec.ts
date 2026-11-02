@@ -68,15 +68,19 @@ describe("reviewed ordinary and taproom contact cohorts", () => {
     }
   });
   it.each([
-    [ordinarySlug, "5 Ridgeside Court", "6 Ridgeside Court"], [ordinarySlug, "301 829 1575", "301 829 1576"],
-    [ordinarySlug, "Mount Airy, MD 21771", "Mount Airy, MD 21772"], [ordinarySlug, "Sunday</p><p>11:00am to 9:00pm", ""],
-    [ordinarySlug, "Monday thru Thursday", "Monday thru Wednesday"],
-    [taproomSlug, "1781 NORTH MARKET ST", "1782 NORTH MARKET ST"], [taproomSlug, "240.457.4232", "301.846.4204"],
-    [taproomSlug, "Taproom Hours", "Brewery Hours"], [taproomSlug, "Sunday: 12 – 8PM", "Sunday: 12 – 8"],
-    [taproomSlug, "Monday: 3 – 9PM", "Monday: 11 – 9PM"],
-  ])("holds incomplete or changed exact evidence for %s (%s)", (slug, from, to) => {
+    [ordinarySlug, "5 Ridgeside Court", "6 Ridgeside Court", /Changed exact visible contact identity/],
+    [ordinarySlug, "301 829 1575", "301 829 1576", /Changed exact visible contact identity/],
+    [ordinarySlug, "Mount Airy, MD 21771", "Mount Airy, MD 21772", /Changed exact visible contact identity/],
+    [ordinarySlug, "Sunday</p><p>11:00am to 9:00pm", "", /Incomplete primary visible cohort week/],
+    [ordinarySlug, "Monday thru Thursday", "Monday thru Wednesday", /Incomplete primary visible cohort week/],
+    [taproomSlug, "1781 NORTH MARKET ST", "1782 NORTH MARKET ST", /Changed exact visible contact identity/],
+    [taproomSlug, "240.457.4232", "301.846.4204", /Changed exact visible contact identity/],
+    [taproomSlug, "Taproom Hours", "Brewery Hours", /Missing exact visible hours label/],
+    [taproomSlug, "Sunday: 12 – 8PM", "Sunday: 12 – 8", /Unknown visible week text or service condition/],
+    [taproomSlug, "Monday: 3 – 9PM", "Monday: 11 – 9PM", /Overnight or all-day visible hours need separate review/],
+  ])("holds incomplete or changed exact evidence for %s (%s)", (slug, from, to, reason) => {
     expect(fixtures[slug]).toContain(from);
-    expect(() => parse(slug, fixtures[slug].replace(from, to))).toThrow();
+    expect(() => parse(slug, fixtures[slug].replace(from, to))).toThrow(reason);
   });
   it.each([ordinarySlug, taproomSlug])("holds notices, hidden/duplicate weeks and conflicting extra claims for %s", slug => {
     for (const extra of ["Closed today", "Holiday hours apply", "By appointment", "Kitchen hours differ", "Hours may vary", "Closed for renovations", "Monday: 8am–10pm"]) {
@@ -102,6 +106,9 @@ describe("reviewed ordinary and taproom contact cohorts", () => {
       const document = new JSDOM(fixtures[slug]).window.document;
       expect(() => parseOfficialHoursCohort(document, document.body.textContent ?? "", cohort, cohort.bindings[0])).toThrow();
     }
+  });
+  it.each([ordinarySlug, taproomSlug])("holds an outside word-range week for %s", slug => {
+    expect(() => parse(slug, fixtures[slug].replace("</body>", "<p>Monday thru Thursday: 8am to 10pm</p></body>"))).toThrow(/outside schedule/);
   });
   it("holds a newly added shared-PM copy outside the exact reviewed taproom section", () => {
     expect(() => parse(taproomSlug, fixtures[taproomSlug].replace("</body>", "<p>Monday: 3–10PM</p></body>"))).toThrow(/outside schedule/);

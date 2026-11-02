@@ -35,6 +35,6 @@ describe("compact accepted operational fallback", () => {
       { place_id: acceptedId, business_status: "CLOSED_PERMANENTLY", refreshed_at: "2026-08-20T12:00:00Z" },
       acceptedId,
     );
-    expect(compactOperationalCorrection(slug, base?.status, now)).toEqual({ fallback_status: "operational" });
+    expect(compactOperationalCorrection(slug, base?.status, now, true)).toEqual({ fallback_status: "operational" });
   });
 });

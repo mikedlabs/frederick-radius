@@ -799,7 +799,7 @@ function visibleContactWeek(document: Document, cohort: VisibleContactCohort, bi
   const outsideClock = profiles.some(profile => profile.location.weeks.some(section => section.shared_pm_range))
     ? `(?:${VISIBLE_CLOCK}|\\d{1,2}(?::\\d{2})?\\s*[-–—]\\s*\\d{1,2}(?::\\d{2})?\\s*pm)` : VISIBLE_CLOCK;
   if (notices(outsideText) || /\bclos(?:ed|ing|ures?)\s+(?:on|from|until|through|during|this|every|at)\b|\b(?:reduced|limited|extended|shortened|revised|changed|updated)\s+(?:(?:store|business)\s+)?hours\b/i.test(outsideText)
-    || new RegExp(`\\b${VISIBLE_DAYS}\\s*[:|.\\-–—]*\\s*(?:Closed|${outsideClock})`, "i").test(outsideText)) throw new Error("Unreviewed outside schedule, closure or service condition.");
+    || new RegExp(`\\b${VISIBLE_WORD_DAYS}\\s*[:|.\\-–—]*\\s*(?:Closed|${outsideClock})`, "i").test(outsideText)) throw new Error("Unreviewed outside schedule, closure or service condition.");
   return hours;
 }
 

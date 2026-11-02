@@ -235,11 +235,14 @@ display-only qualification. That qualification never establishes generic
 Open now. Common Market is the currently enrolled shared-page cohort;
 FCPL retains its independently reviewed nine-branch adapter.
 
-Reviewed merchant identities use the declarative `visible_weekly_contact_card`
+Other reviewed merchant identities use the declarative `visible_weekly_contact_card`
 shape: Firebirds Frederick, Fratelli's Middletown, Hinzi's Frederick, Hoffman
 Brothers, Frederick Fudge & Ice Cream, Carriage House Inn and El Rancho
 Walkersville. The current registry defines the native URLs and their independent identities;
 two manual identities retain their existing observations and provider holds.
+Mamma Angela uses that contact shape for its primary restaurant week; Monocacy
+uses it for its separately qualified, display-only taproom week. The registry
+and cohort declarations name every exact owner and its reviewed source shape.
 Registration alone does not accept or publish facts. Complete primary weekdays,
 exact canonical/name/address/telephone and agreeing repeated or matching
 structured claims are required. Missing JSON-LD alone is not a rejection.

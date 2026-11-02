@@ -1,14 +1,15 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { SearchHit } from "@/lib/search";
+import type { SearchHit, QualifiedSearchMeta } from "@/lib/search";
 
 const mocks = vi.hoisted(() => ({
   search: vi.fn(),
   eventSnapshot: vi.fn(),
+  meta: {} as Partial<QualifiedSearchMeta>,
 }));
 
-vi.mock("@/lib/search", () => ({ qualifiedSearch: (...args: unknown[]) => ({ hits: mocks.search(...args), meta: { qualifiers: {} } }), isEventSearchIntent: () => false }));
+vi.mock("@/lib/search", () => ({ qualifiedSearch: (...args: unknown[]) => ({ hits: mocks.search(...args), meta: { qualifiers: {}, ...mocks.meta } }), isEventSearchIntent: () => false }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
 vi.mock("@/lib/loaders/todayEventSnapshot", () => ({ loadEventArchiveSnapshot: (...args: unknown[]) => mocks.eventSnapshot(...args), EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS: 2500 }));
 vi.mock("@/components/search/SearchBrowsePosition", () => ({ default: () => null }));
@@ -69,6 +70,7 @@ function paidPlaceHit(index: number): SearchHit {
 describe("submitted search photo budget", () => {
   beforeEach(() => {
     mocks.search.mockReset().mockReturnValue([]);
+    mocks.meta = {};
     mocks.eventSnapshot.mockReset().mockResolvedValue({ publicEvents: [], sourceHealth: { degraded: false } });
   });
 
@@ -207,5 +209,14 @@ describe("submitted search photo budget", () => {
     expect(html).toContain("The current event schedule could not be checked");
     expect(html).not.toContain("There are no matches");
     expect(html).not.toContain("private database failure");
+  });
+
+  it("makes next-weekend recovery explicitly broader rather than routing to the wrong weekend", async () => {
+    mocks.meta = { eventWindow: { label: "Next weekend", date: null, freeOnly: true } };
+    mocks.eventSnapshot.mockResolvedValue({ publicEvents: [], sourceHealth: { degraded: true, issues: [{ code: "event_archive_timeout" }] } });
+    const html = renderToStaticMarkup(await SearchPage({ searchParams: Promise.resolve({ q: "free events next weekend", in: "brunswick", kind: "event" }) }));
+    expect(html).toContain("Choose dates in Events");
+    expect(html).toContain('href="/events?in=brunswick&amp;free=1"');
+    expect(html).not.toContain("when=weekend");
   });
 });

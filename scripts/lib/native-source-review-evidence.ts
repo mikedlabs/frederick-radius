@@ -82,7 +82,7 @@ const hostname = (value: string) => {
 };
 
 export function createNativeSourceReviewEvidence(directory: string, options: {
-  publisher: "native-venues" | "frederick-transit";
+  publisher: "native-venues" | "frederick-transit" | "marc-transit";
   sourceRevision: string;
   sourceRun?: string;
   sourceAttempt?: string;

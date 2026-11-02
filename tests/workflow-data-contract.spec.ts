@@ -830,6 +830,32 @@ describe("scheduled data workflow contracts", () => {
           branch: "${{ needs.transit-publish.outputs.pr_branch }}",
           head_sha: "${{ needs.transit-publish.outputs.pr_head_sha }}",
         });
+      } else if (name === "build-marc-schedule.yml") {
+        const build = workflow.jobs?.build;
+        const uploads = build?.steps?.filter((step) => step.uses === "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a") ?? [];
+        expect(artifactUploads).toHaveLength(2);
+        expect(uploads).toHaveLength(2);
+        const originals = uploads.filter((step) => step.name === "Preserve original MARC source evidence");
+        expect(originals).toHaveLength(1);
+        expect(originals[0].if).toBe("always()");
+        expect(originals[0].with).toEqual({
+          name: "marc-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}",
+          path: "${{ runner.temp }}/marc-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}",
+          "if-no-files-found": "warn",
+          "retention-days": 7,
+        });
+        const publication = uploads.filter((step) => step !== originals[0]);
+        expect(publication).toHaveLength(1);
+        expect(publication[0].if).toBeUndefined();
+        expect(publication[0].with).toEqual({
+          name: "marc-schedule-output",
+          path: "${{ runner.temp }}/marc-schedule-output",
+          "if-no-files-found": "error",
+          "retention-days": 1,
+        });
+        expect(workflow.jobs?.publish?.with?.artifact).toBe("marc-schedule-output");
+        expect(workflow.jobs?.publish?.with?.allowed_paths).toBe("src/data/marc-schedule.json");
+        expect(text).not.toMatch(/artifact:\s+marc-source-evidence/);
       } else if (name === "ingest-business-info.yml" || name === "refresh-commerce-links.yml") {
         const uploads = Object.values(workflow.jobs ?? {}).flatMap((job) => (job.steps ?? []).filter((step) => step.uses === "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"));
         const held = uploads.filter((step) => step.name === "Preserve held business-info candidate after a write conflict");

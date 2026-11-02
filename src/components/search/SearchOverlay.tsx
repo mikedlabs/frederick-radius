@@ -29,7 +29,7 @@ import { commandDestination } from "@/lib/command-routing";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import { settleFindReturnScroll } from "./find-return-scroll";
 import SearchPlaceVisual, { SearchPlaceVisualImage, SearchPlaceVisualCredit, SearchPlaceLead } from "./SearchPlaceVisual";
-import { searchEventCoverageMessage, searchEventRecoveryHref, type SearchEventCoverage } from "@/lib/search/event-coverage";
+import { searchEventCoverageMessage, searchEventRecoveryHref, searchEventRecoveryLabel, type SearchEventCoverage } from "@/lib/search/event-coverage";
 
 /**
  * Quick-answer intents now live in `@/lib/answers/intents` so /today's
@@ -930,8 +930,9 @@ export default function SearchOverlay({
               ].filter(Boolean).join(" · ")}
             </p>
           )}
+          <div role="status" aria-live="polite" aria-atomic="true" aria-label="Event search coverage" data-search-event-status>
           {query.trim() && status === "done" && eventCoverageMessage && (
-            <p role="status" data-search-event-coverage={eventCoverage} className="px-4 py-2 text-xs leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            <p data-search-event-coverage={eventCoverage} className="px-4 py-2 text-xs leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               {eventCoverageMessage}{" "}
               <a href={searchEventRecoveryHref(searchMeta?.scopeMunicipality, searchMeta?.eventWindow)}
                 onClick={(event) => {
@@ -940,9 +941,10 @@ export default function SearchOverlay({
                   if (query.trim()) pushRecent(query.trim());
                   navigateFromSearch(searchEventRecoveryHref(searchMeta?.scopeMunicipality, searchMeta?.eventWindow));
                 }}
-                className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2" style={{ color: "var(--app-link)" }}>See all events</a>
+                className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2" style={{ color: "var(--app-link)" }}>{searchEventRecoveryLabel(searchMeta?.eventWindow)}</a>
             </p>
           )}
+          </div>
           {!query.trim() ? (
             <EmptyHint
               recent={recent}
@@ -1280,7 +1282,9 @@ export default function SearchOverlay({
                     ? "Searching"
                     : reasoningRequest
                       ? "Ready for an answer"
-                      : "No matches"}
+                      : eventCoverageMessage
+                        ? "Event matches may be incomplete"
+                        : "No matches"}
           </p>
         </div>
       </div>
