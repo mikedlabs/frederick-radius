@@ -238,7 +238,7 @@ FCPL retains its independently reviewed nine-branch adapter.
 Reviewed merchant identities use the declarative `visible_weekly_contact_card`
 shape: Firebirds Frederick, Fratelli's Middletown, Hinzi's Frederick, Hoffman
 Brothers, Frederick Fudge & Ice Cream, Carriage House Inn and El Rancho
-Walkersville. The native owner now has 29 unique URLs for 30 native identities;
+Walkersville. The current registry defines the native URLs and their independent identities;
 two manual identities retain their existing observations and provider holds.
 Registration alone does not accept or publish facts. Complete primary weekdays,
 exact canonical/name/address/telephone and agreeing repeated or matching

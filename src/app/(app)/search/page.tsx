@@ -4,7 +4,8 @@ import SearchBrowsePosition from "@/components/search/SearchBrowsePosition";
 import { cookies } from "next/headers";
 import { formatHoursLine } from "@/lib/hours";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { loadEventArchiveSnapshot, TODAY_EVENT_SNAPSHOT_TIMEOUT_MS } from "@/lib/loaders/todayEventSnapshot";
+import { loadEventArchiveSnapshot, EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS } from "@/lib/loaders/todayEventSnapshot";
+import { searchEventsFromSnapshot, searchEventCoverageMessage, searchEventRecoveryHref, type SearchEventCoverage } from "@/lib/search/event-coverage";
 import { resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 import SearchRefinements from "@/components/search/SearchRefinements";
 import { withBrowseReturnTo } from "@/lib/browse-return";
@@ -271,19 +272,26 @@ export default async function SearchPage({
   const suppressLocalHits = isHighConfidenceCivicIntent(query, civicCandidates);
   const civicOnly = kind === "all" && suppressLocalHits;
   let eventPool;
-  let eventsUnavailable = false;
+  let eventCoverage: SearchEventCoverage = "complete";
   // All results also searches exact event titles that carry no event keyword.
   // This is the bounded archive reader, without a publisher refresh fan-out.
   if (query && !civicOnly && (kind === "all" || kind === "event")) {
-    const snapshot = await loadEventArchiveSnapshot(new Date(), { timeoutMs: TODAY_EVENT_SNAPSHOT_TIMEOUT_MS });
-    eventPool = snapshot.publicEvents;
-    eventsUnavailable = snapshot.sourceHealth.degraded;
+    try {
+      const snapshot = await loadEventArchiveSnapshot(new Date(), { timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS });
+      const events = searchEventsFromSnapshot(snapshot);
+      eventPool = events.publicEvents;
+      eventCoverage = events.coverage;
+    } catch {
+      eventPool = [];
+      eventCoverage = "unavailable";
+    }
   }
   // Keep the existing query/location interpretation for refinement and Back
   // links; civic-only results need neither live nor curated event candidates.
   const result = qualifiedSearch(query, 80, civicOnly ? [] : eventPool, { municipality: context.filterMunicipality, contextLabel: context.label, resultKind: kind });
   const hits = query ? result.hits : [];
   const town = result.meta.scopeMunicipality ?? context.filterMunicipality;
+  const eventCoverageMessage = searchEventCoverageMessage(eventCoverage);
   const resultParams = new URLSearchParams();
   if (query) resultParams.set("q", query);
   resultParams.set("in", town ?? scopeParam ?? "county");
@@ -548,7 +556,7 @@ export default async function SearchPage({
         </div>
       )}
 
-      {query && rankedHits.length === 0 && govAnswers.length === 0 && civicAnswers.length === 0 && (
+      {query && !eventCoverageMessage && rankedHits.length === 0 && govAnswers.length === 0 && civicAnswers.length === 0 && (
         <div className="space-y-2 border-y px-2 py-8 text-center text-sm" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
           <p>There are no matches for &ldquo;{query}&rdquo;. Try a shorter search or add a town.</p>
           <p>
@@ -570,7 +578,7 @@ export default async function SearchPage({
           })}
         </nav>
       )}
-      {eventsUnavailable && <p role="status" className="border-l-2 pl-3 text-[14px] leading-relaxed" style={{ borderColor: "var(--app-amber)", color: "var(--app-ink-2)" }}>The current event schedule is unavailable, so these matches may be incomplete. <Link href={contextualSearchResult({ type: "action", id: "events", title: "Events", subtitle: "", href: "/events" }, { ...result.meta, scopeMunicipality: town }, query, "county").href} className="underline underline-offset-2">Check the events board.</Link></p>}
+      {eventCoverageMessage && <p role="status" data-search-event-coverage={eventCoverage} className="border-l-2 pl-3 text-[14px] leading-relaxed" style={{ borderColor: "var(--app-amber)", color: "var(--app-ink-2)" }}>{eventCoverageMessage} <Link href={searchEventRecoveryHref(town, result.meta.eventWindow)} className="inline-flex min-h-11 items-center underline underline-offset-2">See all events</Link></p>}
       {rankedHits.length > 0 && (
         <section className="space-y-2" aria-label={`${rankedHits.length} results for ${query}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">

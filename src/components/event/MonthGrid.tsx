@@ -49,10 +49,12 @@ export default function MonthGrid({
   month,
   byDay,
   total,
+  degraded = false,
 }: {
   month: string; // "YYYY-MM"
   byDay: Record<string, CalEvent[]>;
   total: number;
+  degraded?: boolean;
 }) {
   const [y, m] = month.split("-").map(Number);
   const todayKey = useMemo(() => {
@@ -95,7 +97,7 @@ export default function MonthGrid({
             {monthLabel(month)}
           </h2>
           <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            {total.toLocaleString()} events
+            {total.toLocaleString()} {degraded ? "listings available" : "events"}
           </p>
         </div>
         <Link
@@ -231,7 +233,7 @@ export default function MonthGrid({
               className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-sm"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
             >
-              No events are scheduled for this day.
+              {degraded ? "No listings are available for this day." : "No events are scheduled for this day."}
             </p>
           ) : (
             <ul className="space-y-1.5">

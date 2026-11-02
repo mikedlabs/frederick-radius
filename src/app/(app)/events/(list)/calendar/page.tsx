@@ -27,9 +27,9 @@ export default async function CalendarPage({
   searchParams: Promise<{ m?: string }>;
 }) {
   const { m } = await searchParams;
-  const month = m && /^\d{4}-\d{2}$/.test(m) ? m : currentNyMonth();
+  const month = m && /^\d{4}-(0[1-9]|1[0-2])$/.test(m) ? m : currentNyMonth();
   const [y, mo] = month.split("-").map(Number);
-  const { byDay, total } = await getMonthEvents(new Date(y, mo - 1, 1));
+  const { byDay, total, sourceHealth } = await getMonthEvents(new Date(Date.UTC(y, mo - 1, 1, 12)));
 
   return (
     <div className="space-y-4">
@@ -56,7 +56,12 @@ export default async function CalendarPage({
         </p>
       </header>
 
-      <MonthGrid month={month} byDay={byDay} total={total} />
+      {sourceHealth.degraded && (
+        <p role="status" className="text-sm" style={{ color: "var(--app-ink-2)" }}>
+          {sourceHealth.unavailable.join(" ")} Some listings may be missing.
+        </p>
+      )}
+      <MonthGrid month={month} byDay={byDay} total={total} degraded={sourceHealth.degraded} />
     </div>
   );
 }

@@ -13,8 +13,8 @@ describe("server/client place inventory parity", () => {
   const server = publicPlaces().map((place) => decoratePlace(place));
   const client = CLIENT_RAW as unknown as ClientRow[];
 
-  it("ships exactly the canonical public slugs", () => {
-    expect(client.map((place) => place.slug).sort()).toEqual(
+  it("discovers exactly the canonical public slugs at runtime", () => {
+    expect(clientPlaces().map((place) => place.slug).sort()).toEqual(
       server.map((place) => place.slug).sort(),
     );
   });

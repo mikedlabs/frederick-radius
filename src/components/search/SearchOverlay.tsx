@@ -29,6 +29,7 @@ import { commandDestination } from "@/lib/command-routing";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import { settleFindReturnScroll } from "./find-return-scroll";
 import SearchPlaceVisual, { SearchPlaceVisualImage, SearchPlaceVisualCredit, SearchPlaceLead } from "./SearchPlaceVisual";
+import { searchEventCoverageMessage, searchEventRecoveryHref, type SearchEventCoverage } from "@/lib/search/event-coverage";
 
 /**
  * Quick-answer intents now live in `@/lib/answers/intents` so /today's
@@ -370,7 +371,7 @@ export default function SearchOverlay({
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchMeta, setSearchMeta] = useState<
-    (QualifiedSearchIndexResult["meta"] & { liveEventsUnavailable?: boolean }) | null
+    (QualifiedSearchIndexResult["meta"] & { liveEventsUnavailable?: boolean; eventCoverage?: SearchEventCoverage }) | null
   >(null);
   // Fetch lifecycle, so a network/API failure never masquerades as "nothing in
   // Frederick matches" (2026-07-12 audit): "loading" while a request is in
@@ -378,6 +379,8 @@ export default function SearchOverlay({
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
     initialQuery.trim() ? "loading" : "idle",
   );
+  const eventCoverage = searchMeta?.eventCoverage ?? (searchMeta?.liveEventsUnavailable ? "unavailable" : "complete");
+  const eventCoverageMessage = searchEventCoverageMessage(eventCoverage);
   const [retryNonce, setRetryNonce] = useState(0);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [coords, setCoords] = useState<{ lng: number; lat: number } | null>(null);
@@ -528,6 +531,7 @@ export default function SearchOverlay({
     if (
       status !== "done" ||
       results.length !== 0 ||
+      eventCoverageMessage ||
       q.length < 3 ||
       isNaturalLanguageRequest(q)
     ) return;
@@ -537,7 +541,7 @@ export default function SearchOverlay({
       track("search_empty", { query: q.slice(0, 80) });
     }, 1400);
     return () => clearTimeout(t);
-  }, [query, results, status]);
+  }, [query, results, status, eventCoverageMessage]);
 
   // Focus the input when overlay opens; also read any ALREADY-granted location
   // fix (no prompt) so place results can show distance. If there's no cached
@@ -926,6 +930,19 @@ export default function SearchOverlay({
               ].filter(Boolean).join(" · ")}
             </p>
           )}
+          {query.trim() && status === "done" && eventCoverageMessage && (
+            <p role="status" data-search-event-coverage={eventCoverage} className="px-4 py-2 text-xs leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              {eventCoverageMessage}{" "}
+              <a href={searchEventRecoveryHref(searchMeta?.scopeMunicipality, searchMeta?.eventWindow)}
+                onClick={(event) => {
+                  if (!isPlainNavigationClick(event)) return;
+                  event.preventDefault();
+                  if (query.trim()) pushRecent(query.trim());
+                  navigateFromSearch(searchEventRecoveryHref(searchMeta?.scopeMunicipality, searchMeta?.eventWindow));
+                }}
+                className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2" style={{ color: "var(--app-link)" }}>See all events</a>
+            </p>
+          )}
           {!query.trim() ? (
             <EmptyHint
               recent={recent}
@@ -1005,21 +1022,13 @@ export default function SearchOverlay({
               </div>
             ) : hasAnswer ? null : (
             <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
-              <p>Nothing matches <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>&ldquo;{query}&rdquo;</span> yet.</p>
-              {/* The degraded-archive caveat, the load-bearing half of the
-                  503 removal. The API now answers 200 with this flag instead
-                  of failing the request, and no component read the flag
-                  before — so without this line an event the archive simply
-                  could not see would render as a confident "nothing matches",
-                  which is a quieter version of the same false answer. */}
-              {searchMeta?.liveEventsUnavailable ? (
-                <p className="mt-1 text-xs">
-                  Live events could not be checked just now, so a current event
-                  may be missing from this answer. Places and pages are
-                  unaffected.
-                </p>
+              {eventCoverageMessage ? (
+                <p>No place or page matches this search. The event schedule may have additional matches.</p>
               ) : (
+                <>
+                <p>Nothing matches <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>&ldquo;{query}&rdquo;</span> yet.</p>
                 <p className="mt-1 text-xs">Try a shorter search, then add a town if you need to narrow it.</p>
+                </>
               )}
             </div>
             )
@@ -1190,7 +1199,7 @@ export default function SearchOverlay({
             </ul>
           )}
 
-          {query.trim() && results.length === 0 && !hasAnswer && status === "done" && !reasoningRequest ? (
+          {query.trim() && results.length === 0 && !hasAnswer && status === "done" && !reasoningRequest && !eventCoverageMessage ? (
             <div className="border-t px-4 py-4" style={{ borderColor: "var(--app-border)" }}>
               <Link
                 href={`/ask?q=${encodeURIComponent(query.trim())}`}
