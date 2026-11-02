@@ -5,6 +5,8 @@ import { MARC_STATIONS, MARC_STOP_IDS } from "../../src/data/marc-stations";
 import { assertTransitValidation, validateMarcGtfsRows, validateMarcScheduleArtifact } from "./transit-data-validation";
 
 export const GTFS_URL = "https://feeds.mta.maryland.gov/gtfs/marc";
+// Exact destination returned by the official MTA endpoint, reviewed November 2.
+export const MARC_GTFS_DOWNLOAD_URL = "https://mdotmta-gtfs.s3.amazonaws.com/mdotmta_gtfs_marc.zip";
 export const MAX_MARC_ARCHIVE_BYTES = 8 * 1024 * 1024;
 export type MarcOriginal = { observedAt: string; sourceSha256: string };
 export class MissingOptionalMarcFile extends Error {
@@ -101,6 +103,15 @@ export function buildMarcSchedule(read: (file: string) => string, original: Marc
       calendarDateRows = parseCsv(read("calendar_dates.txt"), ["service_id", "date", "exception_type"]);
     } catch (error) {
       if (!(error instanceof MissingOptionalMarcFile) || error.file !== "calendar_dates.txt") throw error;
+    }
+    const exceptionKeys = new Set<string>();
+    for (const row of calendarDateRows) {
+      const key = JSON.stringify([row.service_id, row.date]);
+      if (!row.service_id?.trim() || !/^\d{8}$/.test(row.date ?? "")
+        || !["1", "2"].includes(row.exception_type) || exceptionKeys.has(key)) {
+        throw new Error("Invalid or duplicate MARC service-date exception.");
+      }
+      exceptionKeys.add(key);
     }
     const tripRows = parseCsv(read("trips.txt"));
     const stopTimeRows = parseCsv(read("stop_times.txt"));

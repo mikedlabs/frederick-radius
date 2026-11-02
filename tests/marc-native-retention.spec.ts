@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const command = vi.hoisted(() => vi.fn());
 vi.mock("node:child_process", () => ({ execFileSync: command }));
 import { main } from "../scripts/build-marc-schedule";
-import { GTFS_URL } from "../scripts/lib/marc-schedule-build";
+import { GTFS_URL, MARC_GTFS_DOWNLOAD_URL } from "../scripts/lib/marc-schedule-build";
 const AT = "2026-11-02T15:00:00.123Z";
 const digest = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 let root: string, evidence: string;
@@ -22,12 +22,30 @@ function transfer(body: Buffer, metadata: Record<string, unknown>, failed = fals
   command.mockImplementation((name: string, args: string[]) => {
     expect(name).toBe("curl"); expect(args.filter(arg => arg === GTFS_URL)).toHaveLength(1);
     expect(args).toContain("--location"); expect(args).not.toContain("--retry");
+    expect(args[args.indexOf("--max-redirs") + 1]).toBe("1");
+    expect(args[args.indexOf("--proto-redir") + 1]).toBe("=https");
     writeFileSync(args[args.indexOf("--output") + 1], body);
+    writeFileSync(args[args.indexOf("--dump-header") + 1], "Declared fixture HTTP headers\r\n");
     if (failed) throw Object.assign(new Error("Declared fixture transfer failure"), { status: 28, stdout: JSON.stringify(metadata) });
     return JSON.stringify(metadata);
   });
 }
 describe("MARC one-transfer failure evidence", () => {
+  it("retains the exact reviewed S3 response and redirect headers even if ZIP parsing then fails", () => {
+    const body = Buffer.from("Declared invalid ZIP original");
+    transfer(body, { http_code: 200, url_effective: MARC_GTFS_DOWNLOAD_URL, content_type: "application/zip", num_redirects: 1 });
+    const nativeTransfer = command.getMockImplementation()!;
+    command.mockImplementation((name: string, args: string[]) => {
+      if (name === "unzip") throw new Error("Declared ZIP parsing failure");
+      return nativeTransfer(name, args);
+    });
+    expect(() => main([])).toThrow("Declared ZIP parsing failure");
+    expect(command.mock.calls.filter(([name]) => name === "curl")).toHaveLength(1);
+    expect(index()).toMatchObject({ semantic_acceptance: false, generated_outputs_bound: false,
+      records: [expect.objectContaining({ requested_url: GTFS_URL, final_url: MARC_GTFS_DOWNLOAD_URL, source_sha256: digest(body) })] });
+    expect(readFileSync(join(evidence, "response-headers.txt"), "utf8")).toBe("Declared fixture HTTP headers\r\n");
+  });
+
   it("retains a failed HTTP original and actual status without a source retry or generated output", () => {
     const body = Buffer.from("Declared HTTP503 fixture original");
     transfer(body, { http_code: 503, url_effective: GTFS_URL, content_type: "text/html", num_redirects: 0 });

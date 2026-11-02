@@ -83,6 +83,24 @@ describe("native response observer boundary", () => {
 });
 
 describe("native source review evidence", () => {
+  it("binds only the reviewed exact MTA request and cross-host ZIP destination", () => {
+    const requested = "https://feeds.mta.maryland.gov/gtfs/marc";
+    const destination = "https://mdotmta-gtfs.s3.amazonaws.com/mdotmta_gtfs_marc.zip";
+    const options = { publisher: "marc-transit" as const, sources: [{ id: SOURCE, urls: [requested], reviewedFinalUrls: [destination], selected: true }] };
+    const scope = fixture(options);
+    scope.evidence.capture(SOURCE, response({ requestedUrl: requested, finalUrl: destination }));
+    expect(scope.index().records[0]).toMatchObject({ requested_url: requested, final_url: destination, source_sha256: hash("official original") });
+    for (const changed of [
+      { requestedUrl: requested, finalUrl: destination.replace("marc.zip", "other.zip") },
+      { requestedUrl: requested + "/other", finalUrl: destination },
+    ]) {
+      const rejected = fixture(options);
+      expect(() => rejected.evidence.capture(SOURCE, response(changed))).toThrow(NativeEvidenceError);
+    }
+    const unreviewed = fixture({ publisher: "marc-transit", sources: [{ id: SOURCE, urls: [requested], selected: true }] });
+    expect(() => unreviewed.evidence.capture(SOURCE, response({ requestedUrl: requested, finalUrl: destination }))).toThrow(NativeEvidenceError);
+  });
+
   it("retains an original MARC ZIP and exact source/output clocks without granting acceptance", () => {
     const url = "https://feeds.mta.maryland.gov/gtfs/marc";
     const scope = fixture({ publisher: "marc-transit", sources: [{ id: "marc-transit", urls: [url], selected: true }] });

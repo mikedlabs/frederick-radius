@@ -57,6 +57,16 @@ describe("MARC retained original replay", () => {
     expect(() => main([`--input-zip=${zip}`, `--observed-at=${AT}`, `--source-sha256=${sha}`, `--output=${output}`])).toThrow();
     expect(fetch).not.toHaveBeenCalled();
   });
+  it.each([
+    "service_id,date,exception_type\nfixture,20261102,3\n",
+    "service_id,date,exception_type\nfixture,20261102,\n",
+    "service_id,date,exception_type\n,20261102,2\n",
+    "service_id,date,exception_type\nfixture,20261102,1\nfixture,20261102,2\n",
+  ])("rejects malformed or conflicting service-date exceptions instead of dropping them", value => {
+    const read = (file: string) => file === "calendar_dates.txt" ? value
+      : execFileSync("unzip", ["-p", zip, file], { encoding: "utf8" });
+    expect(() => buildMarcSchedule(read, original, NOW)).toThrow("Invalid or duplicate MARC service-date exception");
+  });
   it("rejects missing or changed originals without a fallback source request", () => {
     expect(() => buildMarcScheduleFromZip(join(root, "absent.zip"), original, NOW)).toThrow();
     expect(() => buildMarcScheduleFromZip(zip, { ...original, sourceSha256: "0".repeat(64) }, NOW)).toThrow("bytes/hash");

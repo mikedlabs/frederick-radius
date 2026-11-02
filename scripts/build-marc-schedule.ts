@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createNativeSourceReviewEvidence } from "./lib/native-source-review-evidence";
-import { buildMarcScheduleFromZip, GTFS_URL, MAX_MARC_ARCHIVE_BYTES } from "./lib/marc-schedule-build";
+import { buildMarcScheduleFromZip, GTFS_URL, MARC_GTFS_DOWNLOAD_URL, MAX_MARC_ARCHIVE_BYTES } from "./lib/marc-schedule-build";
 
 const CHECKOUT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = resolve(CHECKOUT, "src/data/marc-schedule.json");
@@ -60,17 +60,18 @@ export function main(args = process.argv.slice(2)) {
   const revision = process.env.GITHUB_SHA ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: CHECKOUT, encoding: "utf8" }).trim();
   const evidence = createNativeSourceReviewEvidence(directory, {
     publisher: "marc-transit", checkout: CHECKOUT, sourceRevision: revision, sourceRun: process.env.GITHUB_RUN_ID, sourceAttempt: process.env.GITHUB_RUN_ATTEMPT,
-    sources: [{ id: "marc-static-gtfs", urls: [GTFS_URL], selected: true }], maxResponses: 1,
+    sources: [{ id: "marc-static-gtfs", urls: [GTFS_URL], reviewedFinalUrls: [MARC_GTFS_DOWNLOAD_URL], selected: true }], maxResponses: 1,
     maxResponseBytes: MAX_MARC_ARCHIVE_BYTES, maxTotalBytes: MAX_MARC_ARCHIVE_BYTES,
   });
-  const dir = mkdtempSync(join(tmpdir(), "marc-gtfs-")), zip = join(dir, "marc.zip");
+  const dir = mkdtempSync(join(tmpdir(), "marc-gtfs-")), zip = join(dir, "marc.zip"), headers = join(dir, "response-headers.txt");
   let completed = false;
   try {
     let exitCode = 0, stdout = "", stderr = "";
     try {
-      // Preserve existing redirect behavior, one curl invocation, no retry.
+      // Retain the existing official redirect, bounded to its one reviewed hop.
       // The write-out belongs to this same transfer, not a second HEAD/GET.
-      stdout = execFileSync("curl", ["--silent", "--show-error", "--location", "--max-time", "60",
+      stdout = execFileSync("curl", ["--silent", "--show-error", "--location", "--max-redirs", "1",
+        "--proto", "=https", "--proto-redir", "=https", "--max-time", "60", "--dump-header", headers,
         "--max-filesize", String(MAX_MARC_ARCHIVE_BYTES), "--output", zip, "--write-out", "%{json}", GTFS_URL],
       { encoding: "utf8", maxBuffer: 100_000 });
     } catch (error) {
@@ -84,6 +85,7 @@ export function main(args = process.argv.slice(2)) {
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) metadata = parsed as Record<string, unknown>;
     } catch { /* Missing transfer metadata remains unknown. */ }
     const transport = marcCurlEvidence({ exitCode, metadata, observedAt, stderr });
+    if (existsSync(headers)) writeFileSync(join(directory, "response-headers.txt"), readFileSync(headers), { flag: "wx", mode: 0o600 });
     const bytes = existsSync(zip) ? readFileSync(zip) : null;
     // Transport diagnostics survive even when strict native identity rejects
     // the final URL, status is unknown, or the transfer/body is incomplete.
