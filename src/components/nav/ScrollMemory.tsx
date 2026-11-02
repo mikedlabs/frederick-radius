@@ -2,9 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { consumeBrowseScrollReturn } from "@/lib/browse-scroll-return";
+import { browseScrollKey, consumeBrowseScrollReturn } from "@/lib/browse-scroll-return";
 import { restoreBrowseFocusReturn, takeBrowseFocusReturn, type BrowseFocusReturn } from "@/lib/browse-focus-return";
 import { cancelPrimaryTabResume, consumePrimaryTabResume, rememberPrimaryTab } from "@/lib/primary-tab-session";
+import { isHistoryLayerScrollReturn } from "@/hooks/useReversibleHistoryLayer";
 
 /**
  * ScrollMemory — back-button scroll continuity for list surfaces
@@ -52,7 +53,7 @@ const CLEAR_DELAY_MS = 400;
 const POP_FRESH_MS = 3_000;
 
 function keyForLocation(): string {
-  return `${KEY_PREFIX}${window.location.pathname}${window.location.search}`;
+  return `${KEY_PREFIX}${browseScrollKey(window.location.pathname, window.location.search)}`;
 }
 
 // Pending fresh-navigation clears, cancellable by popstate or a real
@@ -70,6 +71,10 @@ function cancelPendingClear(key: string) {
 // The most recent history traversal, so a route effect that runs AFTER
 // popstate (the other possible ordering) can recognise it as a Back.
 let lastPop: { key: string; at: number } | null = null;
+// Unlike a timed generic POP hint, an owned layer return belongs to this
+// exact navigation until a new URL, link, POP or document departure wins.
+// Route-context replay/remount must not restore again or clear its memory.
+let lastLayerReturnKey: string | null = null;
 
 // The Navigation Timing entry describes the DOCUMENT load; only the first
 // route effect after a load may read it (later SPA navs within the same
@@ -178,11 +183,21 @@ function restoreFor(key: string, requestedPosition?: number) {
 // did). A module listener can't be unmounted. By the time popstate
 // fires the URL is already the destination, so it can act directly.
 if (typeof window !== "undefined") {
-  window.addEventListener("pagehide", () => { documentDeparted = true; });
+  window.addEventListener("pagehide", () => { documentDeparted = true; lastLayerReturnKey = null; });
   window.addEventListener("pageshow", () => { documentDeparted = false; });
-  window.addEventListener("popstate", () => {
+  window.addEventListener("popstate", (event) => {
     cancelPrimaryTabResume(); // Native Back is distinct from a requested tab resume.
     const key = keyForLocation();
+    if (isHistoryLayerScrollReturn(event)) {
+      lastLayerReturnKey = key;
+      // The layer restores its pre-open coordinate over its own two frames.
+      // A second three-second correction would fight subsequent card focus
+      // or scrollIntoView after the filter/sheet has already closed.
+      cancelPendingClear(key);
+      if (activeCorrection?.key === key) activeCorrection.cancel();
+      return;
+    }
+    lastLayerReturnKey = null;
     lastPop = { key, at: Date.now() };
     cancelPendingClear(key);
     restoreFor(key);
@@ -190,6 +205,7 @@ if (typeof window !== "undefined") {
   document.addEventListener("click", event => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
     if (event.target instanceof Element && event.target.closest("a[href]")) {
+      lastLayerReturnKey = null;
       // Capture precedes a primary-tab handler creating its own new intent.
       // An explicit link always cancels an older, uncommitted resume request.
       cancelPrimaryTabResume();
@@ -200,12 +216,18 @@ if (typeof window !== "undefined") {
 export default function ScrollMemory() {
   const pathname = usePathname();
   const search = useSearchParams();
-  const key = `${KEY_PREFIX}${pathname}${search?.size ? `?${search.toString()}` : ""}`;
+  const key = `${KEY_PREFIX}${browseScrollKey(pathname, search?.toString() ?? "")}`;
   const explicitReturnKey = useRef<string | null>(null);
   const tabReturn = useRef<{ key: string; scrollY: number } | null>(null);
   const pendingFocusReturn = useRef<{ key: string; value: BrowseFocusReturn } | null>(null);
 
   useEffect(() => {
+    const actualKey = keyForLocation();
+    if (lastLayerReturnKey && actualKey !== lastLayerReturnKey) lastLayerReturnKey = null;
+    // Next can publish an intermediate query context after the owned POP.
+    // Wait for its actual address-bar key without spending that decision.
+    if (lastLayerReturnKey && key !== lastLayerReturnKey) return;
+    const layerReturn = lastLayerReturnKey === key;
     // Decide back-vs-fresh for THIS route state. Two back signals: a
     // fresh popstate record for this key (popstate-first ordering), or
     // a document load whose navigation type is back_forward. The
@@ -224,7 +246,10 @@ export default function ScrollMemory() {
     // Strict Mode can replay an effect after consuming device state. Retain
     // the decision for this mounted route, without replaying it on another.
     let back = explicitReturn || explicitReturnKey.current === key || tabReturn.current?.key === key || activeCorrection?.key === key;
-    if (back) {
+    if (layerReturn) {
+      consultedDocNav = true;
+      cancelPendingClear(key);
+    } else if (back) {
       // Explicit Back and a still-pending module correction both identify this
       // return, even if the destination effect arrives after POP_FRESH_MS.
       consultedDocNav = true;
@@ -238,9 +263,9 @@ export default function ScrollMemory() {
       back = nav?.type === "back_forward";
     }
 
-    if (back) {
+    if (back && !layerReturn) {
       restoreFor(key, tabReturn.current?.key === key ? tabReturn.current.scrollY : undefined);
-    } else {
+    } else if (!layerReturn) {
       rememberPrimaryTab(`${window.location.pathname}${window.location.search}${window.location.hash}`, 0);
       // Fresh navigation: this page starts at the top, so its memory
       // resets — Back must mean "where I just was", never a stale

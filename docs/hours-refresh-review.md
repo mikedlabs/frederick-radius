@@ -3,13 +3,13 @@
 Compared committed baseline with the current artifacts. Provider snapshot timestamp: 2026-08-22T17:16:36.471Z; this does not redate retained observations or first-party evidence.
 This report is a review aid. It does not approve, reject, or change a place status.
 
-**Manual review required:** 1 unreviewed public listing addition(s).
+**Manual review required:** 1 unreviewed public listing removal(s).
 
 ## Coverage delta
 
 | Metric | Before | After | Change |
 | --- | ---: | ---: | ---: |
-| Public places | 1571 | 1572 | +1 |
+| Public places | 1572 | 1571 | -1 |
 | Public places with publishable verified hours | 37 | 37 | 0 |
 | Public places with qualified schedules | 3 | 3 | 0 |
 | Hours snapshot rows | 1522 | 1522 | 0 |
@@ -22,15 +22,15 @@ Qualified schedules retain their service or admission conditions and do not esta
 
 ### Removed from public discovery
 
-No public listings were removed.
+| Slug | Place | Category | Town | New status | Checked at | Status evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| `concettas-main-street-bistro-mount-airy` | Concetta's Main Street Bistro | coffee | mount-airy | No new provider closure | — | Review required |
 
 An unreviewed removal must be checked before merge. Confirm a closure against the business or another current official source; inspect any removal without a new closed status as a loader or catalog regression.
 
 ### Added to public discovery
 
-| Slug | Place | Category | Town | Provider status | Review evidence |
-| --- | --- | --- | --- | --- | --- |
-| `sailing-through-the-winter-solstice` | Sailing Through the Winter Solstice | park | frederick | — | Review required |
+No public listings were added.
 
 ## Provider status transitions
 

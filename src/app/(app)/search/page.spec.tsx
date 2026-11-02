@@ -1,16 +1,17 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { SearchHit } from "@/lib/search";
+import type { SearchHit, QualifiedSearchMeta } from "@/lib/search";
 
 const mocks = vi.hoisted(() => ({
   search: vi.fn(),
   eventSnapshot: vi.fn(),
+  meta: {} as Partial<QualifiedSearchMeta>,
 }));
 
-vi.mock("@/lib/search", () => ({ qualifiedSearch: (...args: unknown[]) => ({ hits: mocks.search(...args), meta: { qualifiers: {} } }), isEventSearchIntent: () => false }));
+vi.mock("@/lib/search", () => ({ qualifiedSearch: (...args: unknown[]) => ({ hits: mocks.search(...args), meta: { qualifiers: {}, ...mocks.meta } }), isEventSearchIntent: () => false }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
-vi.mock("@/lib/loaders/todayEventSnapshot", () => ({ loadEventArchiveSnapshot: (...args: unknown[]) => mocks.eventSnapshot(...args), TODAY_EVENT_SNAPSHOT_TIMEOUT_MS: 1000 }));
+vi.mock("@/lib/loaders/todayEventSnapshot", () => ({ loadEventArchiveSnapshot: (...args: unknown[]) => mocks.eventSnapshot(...args), EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS: 2500 }));
 vi.mock("@/components/search/SearchBrowsePosition", () => ({ default: () => null }));
 vi.mock("@/components/search/SearchRefinements", () => ({ default: () => <div data-search-area /> }));
 vi.mock("@/lib/search/answer", () => ({ primaryAnswerFor: () => undefined }));
@@ -69,6 +70,7 @@ function paidPlaceHit(index: number): SearchHit {
 describe("submitted search photo budget", () => {
   beforeEach(() => {
     mocks.search.mockReset().mockReturnValue([]);
+    mocks.meta = {};
     mocks.eventSnapshot.mockReset().mockResolvedValue({ publicEvents: [], sourceHealth: { degraded: false } });
   });
 
@@ -124,6 +126,7 @@ describe("submitted search photo budget", () => {
     mocks.eventSnapshot.mockResolvedValue({ publicEvents: eventPool, sourceHealth: { degraded: false } });
     await SearchPage({ searchParams: Promise.resolve({ q: "Radius Investor Showcase" }) });
     expect(mocks.eventSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.eventSnapshot).toHaveBeenCalledWith(expect.any(Date), { timeoutMs: 2500 });
     expect(mocks.search).toHaveBeenCalledWith("Radius Investor Showcase", 80, eventPool, expect.objectContaining({ resultKind: "all" }));
   });
 
@@ -171,5 +174,49 @@ describe("submitted search photo budget", () => {
     await SearchPage({ searchParams: Promise.resolve({ q: "coffee", kind }) });
     expect(mocks.eventSnapshot).not.toHaveBeenCalled();
     expect(mocks.search).toHaveBeenCalledWith("coffee", 80, undefined, expect.objectContaining({ resultKind: kind }));
+  });
+
+  it.each(["all", "event"])("retains verified partial events and the town/query in %s search", async (kind) => {
+    const eventPool = [{ slug: "verified-event" }];
+    mocks.eventSnapshot.mockResolvedValue({ publicEvents: eventPool, sourceHealth: {
+      degraded: true, issues: [{ code: "event_archive_validation" }],
+    } });
+    const html = renderToStaticMarkup(await SearchPage({ searchParams: Promise.resolve({ q: "showcase", in: "brunswick", kind }) }));
+    expect(mocks.search).toHaveBeenCalledWith("showcase", 80, eventPool, expect.objectContaining({ municipality: "brunswick", resultKind: kind }));
+    expect(html).toContain('data-search-event-coverage="partial"');
+    expect(html).toContain("Some events could not be verified");
+    expect(html).toContain('href="/events?in=brunswick"');
+    expect(html).toContain("q=showcase&amp;in=brunswick");
+    expect(html).not.toContain("There are no matches");
+    expect(html).not.toContain("The current event schedule could not be checked");
+  });
+
+  it.each(["event_archive_timeout", "event_archive_stale"])("withholds %s fallback events without losing place matches", async (code) => {
+    mocks.eventSnapshot.mockResolvedValue({ publicEvents: [{ slug: "fallback-seed" }], sourceHealth: { degraded: true, issues: [{ code }] } });
+    mocks.search.mockReturnValue([paidPlaceHit(1)]);
+    const html = renderToStaticMarkup(await SearchPage({ searchParams: Promise.resolve({ q: "showcase", in: "brunswick" }) }));
+    expect(mocks.search).toHaveBeenCalledWith("showcase", 80, [], expect.objectContaining({ municipality: "brunswick" }));
+    expect(html).toContain('data-search-event-coverage="unavailable"');
+    expect(html).toContain("Paid place 1");
+    expect(html).toContain('href="/events?in=brunswick"');
+  });
+
+  it("keeps rejected reads on the search page without turning missing events into zero matches", async () => {
+    mocks.eventSnapshot.mockRejectedValue(new Error("private database failure"));
+    const html = renderToStaticMarkup(await SearchPage({ searchParams: Promise.resolve({ q: "showcase", kind: "event" }) }));
+    expect(mocks.search).toHaveBeenCalledWith("showcase", 80, [], expect.objectContaining({ resultKind: "event" }));
+    expect(html).toContain('href="/events?in=county"');
+    expect(html).toContain("The current event schedule could not be checked");
+    expect(html).not.toContain("There are no matches");
+    expect(html).not.toContain("private database failure");
+  });
+
+  it("makes next-weekend recovery explicitly broader rather than routing to the wrong weekend", async () => {
+    mocks.meta = { eventWindow: { label: "Next weekend", date: null, freeOnly: true } };
+    mocks.eventSnapshot.mockResolvedValue({ publicEvents: [], sourceHealth: { degraded: true, issues: [{ code: "event_archive_timeout" }] } });
+    const html = renderToStaticMarkup(await SearchPage({ searchParams: Promise.resolve({ q: "free events next weekend", in: "brunswick", kind: "event" }) }));
+    expect(html).toContain("Choose dates in Events");
+    expect(html).toContain('href="/events?in=brunswick&amp;free=1"');
+    expect(html).not.toContain("when=weekend");
   });
 });

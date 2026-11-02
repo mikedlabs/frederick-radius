@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SearchResult } from "@/lib/search/index";
+import { track } from "@/lib/track";
 
 const navigation = vi.hoisted(() => ({ leaveTo: vi.fn(), dismiss: vi.fn(), recent: vi.fn() }));
 vi.mock("@/hooks/useReversibleHistoryLayer", () => ({
@@ -24,6 +25,7 @@ const gravel = { id: "place:gravel-and-grind-frederick", type: "place", title: "
 beforeEach(() => {
   vi.useFakeTimers(); requests.length = 0;
   navigation.leaveTo.mockReset(); navigation.recent.mockReset();
+  vi.mocked(track).mockClear();
   vi.stubGlobal("fetch", vi.fn((url: string, options: RequestInit) => new Promise<Response>(resolve => {
     if (!String(url).startsWith("/api/search?")) throw new Error("Unexpected request");
     requests.push({ url: String(url), signal: options.signal as AbortSignal, resolve });
@@ -37,8 +39,8 @@ async function render(query: string) {
   await act(async () => root.render(<SearchOverlay open onClose={vi.fn()} initialQuery={query} historyLayerId="retrieval-test" />));
 }
 async function tick() { await act(async () => vi.advanceTimersByTimeAsync(160)); }
-async function respond(index: number, results: SearchResult[]) {
-  await act(async () => requests[index].resolve(new Response(JSON.stringify({ results }), { status: 200 })));
+async function respond(index: number, results: SearchResult[], meta?: Record<string, unknown>) {
+  await act(async () => requests[index].resolve(new Response(JSON.stringify({ results, meta }), { status: 200 })));
 }
 async function enter() {
   await act(async () => host.querySelector("input")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })));
@@ -55,7 +57,7 @@ describe("Find retrieval-first interactions", () => {
   it("retrieves a punctuated name, describes pending work and sends early Enter to full Search", async () => {
     await render("Gravel & Grind?"); await tick();
     expect(new URL(requests[0].url, "https://test.local").searchParams.get("q")).toBe("Gravel & Grind");
-    expect(host.querySelector('[role="status"]')?.textContent).toBe("Searching");
+    expect([...host.querySelectorAll('[role="status"]')].some(node => node.textContent === "Searching")).toBe(true);
     await enter();
     expect(navigation.leaveTo).toHaveBeenCalledWith("/search?q=Gravel%20%26%20Grind%3F");
     expect(navigation.recent).toHaveBeenCalledWith("Gravel & Grind?");
@@ -96,5 +98,58 @@ describe("Find retrieval-first interactions", () => {
     expect(requests).toHaveLength(1);
     await enter();
     expect(navigation.leaveTo).toHaveBeenLastCalledWith("/ask?q=I%20need%20wheelchair%20accessible%20coffee");
+  });
+
+  it.each(["partial", "unavailable"])("shows %s event coverage beside usable results without replacing the query or place action", async coverage => {
+    await render("Gravel & Grind"); await tick();
+    const persistent = host.querySelector('[data-search-event-status]');
+    expect(persistent?.getAttribute("role")).toBe("status");
+    expect(persistent?.getAttribute("aria-live")).toBe("polite");
+    expect(persistent?.textContent).toBe("");
+    await respond(0, [gravel], { eventCoverage: coverage, liveEventsUnavailable: true, scopeMunicipality: "brunswick", qualifiers: {} });
+    expect(host.querySelector('[data-search-event-status]')).toBe(persistent);
+    const caveat = host.querySelector(`[data-search-event-coverage="${coverage}"]`)!;
+    expect(caveat.textContent).toContain(coverage === "partial" ? "Some events could not be verified" : "The current event schedule could not be checked");
+    expect(caveat.querySelector("a")?.getAttribute("href")).toBe("/events?in=brunswick");
+    expect(host.querySelector("input")?.value).toBe("Gravel & Grind");
+    expect(host.querySelector(`a[href="${gravel.href}"]`)).not.toBeNull();
+    await enter();
+    expect(navigation.leaveTo).toHaveBeenLastCalledWith(gravel.href);
+    await act(async () => (caveat.querySelector("a") as HTMLAnchorElement).click());
+    expect(navigation.leaveTo).toHaveBeenLastCalledWith("/events?in=brunswick");
+    expect(navigation.recent).toHaveBeenLastCalledWith("Gravel & Grind");
+  });
+
+  it("labels next-weekend recovery as a broader date choice while preserving county and free filters", async () => {
+    await render("free events next weekend"); await tick();
+    await respond(0, [], { eventCoverage: "unavailable", scopeMunicipality: null,
+      eventWindow: { label: "Next weekend", date: "2026-11-14", freeOnly: true }, qualifiers: {} });
+    const recovery = host.querySelector('[data-search-event-coverage] a') as HTMLAnchorElement;
+    expect(recovery.textContent).toBe("Choose dates in Events");
+    expect(recovery.getAttribute("href")).toBe("/events?in=county&free=1");
+    await act(async () => recovery.click());
+    expect(navigation.leaveTo).toHaveBeenLastCalledWith("/events?in=county&free=1");
+  });
+
+  it("keeps explicit county and the supported afternoon/free filters on event recovery", async () => {
+    await render("free events this afternoon"); await tick();
+    await respond(0, [], { eventCoverage: "unavailable", scopeMunicipality: null,
+      eventWindow: { label: "This afternoon", date: "2026-11-02", freeOnly: true }, qualifiers: {} });
+    const recovery = host.querySelector('[data-search-event-coverage] a') as HTMLAnchorElement;
+    expect(recovery.getAttribute("href")).toBe("/events?in=county&d=2026-11-02&tod=midday&free=1");
+    await act(async () => recovery.click());
+    expect(navigation.leaveTo).toHaveBeenLastCalledWith("/events?in=county&d=2026-11-02&tod=midday&free=1");
+    expect(navigation.recent).toHaveBeenLastCalledWith("free events this afternoon");
+  });
+
+  it.each(["partial", "unavailable"])("does not report a false miss or an exact-listing absence for %s event coverage", async coverage => {
+    await render("zzqxwvnotreal"); await tick();
+    await respond(0, [], { eventCoverage: coverage, scopeMunicipality: "brunswick", qualifiers: {} });
+    expect(host.textContent).not.toContain("Nothing matches");
+    expect(host.textContent).not.toContain("No exact listing matched");
+    expect([...host.querySelectorAll('[role="status"]')].some(node => node.textContent === "No matches")).toBe(false);
+    expect(host.querySelector('[data-search-event-coverage]')).not.toBeNull();
+    await act(async () => vi.advanceTimersByTimeAsync(1600));
+    expect(vi.mocked(track).mock.calls.some(([event]) => event === "search_empty")).toBe(false);
   });
 });

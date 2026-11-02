@@ -19,7 +19,7 @@
  */
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { publicPlaces, decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
+import { publicPlaces, decoratePlace, clientOperationalCorrectionForPlace, type PlaceCardData } from "@/lib/loaders/places";
 import { businessInfoCommerceLinks } from "@/lib/loaders/businessInfo";
 import { hoursFreshnessEnforced } from "@/lib/hours-freshness";
 import { findGooglePlaceIdCollisions } from "@/lib/quality/enrichmentBinding";
@@ -119,6 +119,8 @@ const slim = publicPlaces().map((p) => {
   void _cl;
   return {
     ...rest,
+    // Preserve expiry and accepted fallback without bundling provider records.
+    operational_correction: clientOperationalCorrectionForPlace(p),
     ...(d.hours_source === "first_party" ? { hours_source: d.hours_source } : {}),
     // The business-info workflow writes through a review PR. Once accepted,
     // its exact direct links join the client artifact here, so map sheets and

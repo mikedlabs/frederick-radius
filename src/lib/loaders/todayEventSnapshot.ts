@@ -59,6 +59,8 @@ export const EVENT_BROWSE_SNAPSHOT_LIMIT = 1_500;
 const EVENT_ARCHIVE_MAX_TIMEOUT_MS = 5_000;
 
 type EventArchiveSnapshotOptions = {
+  /** Select a calendar window without using that date to judge source freshness. */
+  windowStart?: Date;
   horizonDays?: number;
   limit?: number;
   timeoutMs?: number;
@@ -435,6 +437,61 @@ function boundedInteger(value: number | undefined, fallback: number, min: number
   return Math.max(min, Math.min(max, Math.floor(Number.isFinite(value) ? value! : fallback)));
 }
 
+type ArchiveReadFlight = {
+  pending: Promise<ArchiveEnvelope>;
+  controller: AbortController;
+  readers: number;
+  settled: boolean;
+};
+const archiveReadFlights = new Map<string, ArchiveReadFlight>();
+
+/**
+ * Next coalesces revalidation inside one request, not between requests. A
+ * stale-entry burst otherwise queues identical reads on our max:1 pool and
+ * spends the read budget waiting behind itself. Share only in-flight SQL,
+ * never a fallback or a hydrated result. Each waiter retains its own deadline;
+ * abort SQL only when its last waiter leaves or its database budget expires.
+ */
+async function shareArchiveRead(
+  start: Date, end: Date, limit: number, timeoutMs: number,
+  remainingMs: number, signal: AbortSignal,
+): Promise<ArchiveEnvelope> {
+  const key = JSON.stringify([start.toISOString(), end.toISOString(), limit, timeoutMs]);
+  let flight = archiveReadFlights.get(key);
+  if (!flight) {
+    const controller = new AbortController();
+    flight = {
+      pending: readArchiveEnvelope(start, end, limit, timeoutMs, controller.signal),
+      controller, readers: 0, settled: false,
+    };
+    archiveReadFlights.set(key, flight);
+    const current = flight;
+    const settled = () => {
+      current.settled = true;
+      if (archiveReadFlights.get(key) === current) archiveReadFlights.delete(key);
+    };
+    void current.pending.then(settled, settled);
+  }
+  flight.readers += 1;
+  try {
+    // Preserve the shared operation's typed rejection through the waiter's
+    // separate deadline instead of turning an archive timeout into unavailable.
+    const result = await beforeDeadline(flight.pending.then(
+      value => ({ ok: true as const, value }),
+      error => ({ ok: false as const, error }),
+    ), remainingMs, { signal });
+    if (!result.ok) throw new ArchiveSnapshotReadError(result.code);
+    if (!result.value.ok) throw result.value.error;
+    return result.value.value;
+  } finally {
+    flight.readers -= 1;
+    if (flight.readers === 0 && !flight.settled) {
+      if (archiveReadFlights.get(key) === flight) archiveReadFlights.delete(key);
+      flight.controller.abort();
+    }
+  }
+}
+
 async function readArchiveEnvelope(start: Date, end: Date, limit: number, timeoutMs: number, signal?: AbortSignal): Promise<ArchiveEnvelope> {
   // A cache transport may resolve after its caller has already timed out.
   if (signal?.aborted) throw new ArchiveSnapshotReadError("event_archive_timeout");
@@ -528,7 +585,9 @@ export async function loadEventArchiveSnapshot(
   const timeoutMs = boundedInteger(options.timeoutMs, EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS, 100, EVENT_ARCHIVE_MAX_TIMEOUT_MS);
   // Never teach a shared cache that a promoted/no-storage build has no events.
   if (isPromotedDataBuild() || !getSql()) return curatedFallback(now, "event_archive_unavailable");
-  const { start, end } = snapshotBounds(now, horizonDays);
+  const windowStart = options.windowStart && Number.isFinite(options.windowStart.getTime())
+    ? options.windowStart : now;
+  const { start, end } = snapshotBounds(windowStart, horizonDays);
   if (!options.cache) {
     try {
       return hydrateTodayEventSnapshot(await readArchiveEnvelope(start, end, limit, timeoutMs), now);
@@ -550,7 +609,7 @@ export async function loadEventArchiveSnapshot(
         if (controller.signal.aborted || remainingMs <= 0) {
           throw new ArchiveSnapshotReadError("event_archive_timeout");
         }
-        const envelope = await readArchiveEnvelope(start, end, limit, Math.min(timeoutMs, remainingMs), controller.signal);
+        const envelope = await shareArchiveRead(start, end, limit, timeoutMs, remainingMs, controller.signal);
         try {
           return await encodeArchiveEnvelope(envelope);
         } catch (error) {

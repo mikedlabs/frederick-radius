@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { isEventSearchIntent } from "@/lib/search";
 import { isLiveEventIndependentMapActionQuery } from "@/lib/search/index";
+import * as searchIndex from "@/lib/search/index";
 
 const mocks = vi.hoisted(() => ({
   loadEventArchiveSnapshot: vi.fn(),
@@ -12,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/loaders/todayEventSnapshot", () => ({
   loadEventArchiveSnapshot: mocks.loadEventArchiveSnapshot,
-  TODAY_EVENT_SNAPSHOT_TIMEOUT_MS: 650,
+  EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS: 2500,
 }));
 
 vi.mock("@/lib/ip-geo", () => ({
@@ -117,7 +118,7 @@ describe("GET /api/search map fast path", () => {
     expect(response.status).toBe(200);
     expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledWith(
       expect.any(Date),
-      { timeoutMs: 650 },
+      { timeoutMs: 2500 },
     );
     expect(body.results).toContainEqual(
       expect.objectContaining({
@@ -202,6 +203,54 @@ describe("GET /api/search map fast path", () => {
     },
   );
 
+  it.each(["map", "global"])("keeps verified partial events and the legacy incomplete-calendar caveat in %s search", async origin => {
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({ publicEvents: [liveEvent()], sourceHealth: {
+      degraded: true, unavailable: ["Some event records could not be verified."],
+      issues: [{ code: "event_archive_validation", message: "Some event records could not be verified." }],
+    } });
+    const req = request("Radius Investor Showcase", origin);
+    req.nextUrl.searchParams.set("in", "frederick");
+    const response = await GET(req);
+    const body = await response.json();
+    expect(body.results).toContainEqual(expect.objectContaining({ id: "event:radius-investor-showcase" }));
+    expect(body.meta.eventCoverage).toBe("partial");
+    expect(body.meta.liveEventsUnavailable).toBe(true);
+    expect(body.meta.scopeMunicipality).toBe("frederick");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+  });
+
+  it("withholds stale event candidates while keeping the exact local place result", async () => {
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({ publicEvents: [{ ...liveEvent(), title: "Gravel & Grind" }], sourceHealth: {
+      degraded: true, unavailable: [], issues: [{ code: "event_archive_stale", message: "The event schedule has not been refreshed recently." }],
+    } });
+    const req = request("Gravel & Grind", "global");
+    req.nextUrl.searchParams.set("in", "county");
+    const body = await (await GET(req)).json();
+    expect(body.results).toContainEqual(expect.objectContaining({ id: "place:gravel-and-grind-frederick" }));
+    expect(body.results.some((result: { type: string }) => result.type === "event")).toBe(false);
+    expect(body.meta.eventCoverage).toBe("unavailable");
+  });
+
+  it("does not retain default seed matches when an archive read throws", async () => {
+    const original = searchIndex.qualifiedSearchIndex;
+    const rank = vi.spyOn(searchIndex, "qualifiedSearchIndex").mockImplementation((query, limit, events, context) => {
+      const result = original(query, limit, events, context);
+      return events === undefined ? { ...result, results: [
+        { id: "event:default-seed", type: "event", title: "Gravel & Grind", subtitle: "Unconfirmed default", href: "/events/default-seed", score: 100 },
+        ...result.results,
+      ] } : result;
+    });
+    try {
+      mocks.loadEventArchiveSnapshot.mockRejectedValue(new Error("Archive read failed"));
+      const req = request("Gravel & Grind", "global");
+      req.nextUrl.searchParams.set("in", "county");
+      const body = await (await GET(req)).json();
+      expect(body.results).toContainEqual(expect.objectContaining({ id: "place:gravel-and-grind-frederick" }));
+      expect(body.results.some((result: { type: string }) => result.type === "event")).toBe(false);
+      expect(body.meta.eventCoverage).toBe("unavailable");
+    } finally { rank.mockRestore(); }
+  });
+
   it("returns an honest unavailable response and does not bank a false miss", async () => {
     mocks.loadEventArchiveSnapshot.mockResolvedValue({
       publicEvents: [],
@@ -263,7 +312,7 @@ describe("GET /api/search map fast path", () => {
 
   it.each(["Schifferstadt", "public restroom", "coffee events tonight", "public restroom events tonight"])("keeps mixed or event-shaped global query %s on the archive path", async query => {
     await GET(request(query, "global"));
-    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledExactlyOnceWith(expect.any(Date), { timeoutMs: 650 });
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledExactlyOnceWith(expect.any(Date), { timeoutMs: 2500 });
   });
 
   it("waits for the archive and returns its matching event for an otherwise unanswered title", async () => {

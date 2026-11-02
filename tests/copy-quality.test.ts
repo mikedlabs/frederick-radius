@@ -161,3 +161,27 @@ test("every committed approval passes the public loader trust boundary", () => {
     "approved entries must be safe, sourced, documented, and loadable",
   );
 });
+
+
+test("noncanonical cached computation clocks are rejected instead of preserved", () => {
+  const places = [{ slug: "current", name: "Current", short_blurb: "" }];
+  const canonical = buildCopyScorecard(places, undefined, new Date("2026-10-31T12:00:00Z"));
+  for (const clock of ["1", "2026-10-31", "2026-10-31T12:00:00Z", "2026-10-31T12:00:00.000+00:00", "2026-02-30T12:00:00.000Z", "", "not-a-date"]) {
+    const previous = { ...canonical, computed_at: clock };
+    assert.equal(parseCopyScorecard(JSON.stringify(previous)), undefined, clock);
+    const rebuilt = buildCopyScorecard(places, previous, new Date("2026-11-01T12:00:00Z"));
+    assert.notEqual(rebuilt, previous, clock);
+    assert.equal(rebuilt.computed_at, "2026-11-01T12:00:00.000Z", clock);
+    assert.deepEqual(rebuilt.counts, canonical.counts);
+    assert.deepEqual(rebuilt.bySlug, canonical.bySlug);
+  }
+});
+
+test("canonical cached computation clocks retain their exact original bytes", () => {
+  const places = [{ slug: "current", name: "Current", short_blurb: "" }];
+  const original = buildCopyScorecard(places, undefined, new Date("2026-10-31T12:00:00.123Z"));
+  const parsed = parseCopyScorecard(JSON.stringify(original));
+  assert.deepEqual(parsed, original);
+  assert.equal(buildCopyScorecard(places, parsed, new Date("2026-11-01T12:00:00Z")), parsed);
+  assert.equal(JSON.stringify(parsed), JSON.stringify(original));
+});

@@ -11,7 +11,7 @@ import { merchantHoursForPlace } from "@/lib/merchant-hours";
 import OFFICIAL_HOURS_RAW from "@/data/places-official-hours.json" with { type: "json" };
 import { officialHoursForPlace } from "@/lib/official-hours";
 import { isDisplayOnlyHours, isScheduleEvidenceCurrent } from "@/lib/hours";
-import { PLACES, type Place } from "@/data/places";
+import { PLACES, type Place, type OperationalStatus } from "@/data/places";
 import { CATEGORY_BY_SLUG, CATEGORIES } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsAtVenue, type Event } from "@/data/events";
@@ -85,6 +85,7 @@ import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
 import { chooseCanonicalGooglePlaceId } from "@/lib/quality/enrichmentBinding";
 import { publishablePlaceWebsite } from "@/lib/place-website-policy";
 import { compareNearbyPlaceCandidates } from "@/lib/decision/nearby-place-ranking";
+import { compactOperationalCorrection, type CompactOperationalCorrection } from "@/lib/place-operational-policy";
 import type { DecisionOriginSource } from "@/lib/scope";
 
 // Official Maryland farmers-market schedule snapshot (built by
@@ -702,6 +703,8 @@ const photoProxy = (name: string, w = 800, slug?: string) =>
   `/api/place-photo?name=${encodeURIComponent(name)}&w=${w}${slug ? `&slug=${encodeURIComponent(slug)}` : ""}`;
 
 export type PlaceCardData = Place & PlaceEnriched & {
+  /** Compact build policy; no heavy provider evidence reaches the client. */
+  operational_correction?: CompactOperationalCorrection;
   open_status: OpenStatus;
   distance_m?: number;
   /** "verified" = Google hours confirm open. "likely" = curated window. */
@@ -1504,27 +1507,39 @@ export function isOperational(p: Place): boolean {
   const manualStatus = activeManualPlaceStatusOverride(p.slug);
   if (manualStatus?.status === "operational") return true;
   if (isManualPlaceClosureOverride(manualStatus)) return false;
-  if (isKnownClosed(p.name)) return false; // manual override of last resort
+  const status = acceptedBaseOperationalStatus(p);
+  return status !== "closed_permanently" && status !== "closed_temporarily";
+}
+
+/** The same accepted fallback used when a reviewed operational correction expires. */
+function acceptedBaseOperationalStatus(p: Place): OperationalStatus | undefined {
+  if (isKnownClosed(p.name)) return "closed_permanently";
   const acceptedIdentity = acceptedEnrichmentIdentity(p);
   const refreshedStatus = refreshedBusinessStatus(
     p.slug,
     acceptedIdentity.googlePlaceId,
   )?.status;
-  if (refreshedStatus) {
-    return (
-      refreshedStatus !== "closed_permanently" &&
-      refreshedStatus !== "closed_temporarily"
-    );
-  }
+  if (refreshedStatus) return refreshedStatus;
   // Google enrichment is the SOURCE OF TRUTH for closure. DFP-scraped
   // records hardcode is_operational: "operational" at load time so the
   // raw Place field can lie (Serendipity Market, Brass Copper Shop,
   // …). Read the live enrichment business_status first; only fall
   // back to the Place field when there is no enrichment.
   const e = acceptedIdentity.enrichment;
-  if (e?.business_status === "CLOSED_PERMANENTLY") return false;
-  if (e?.business_status === "CLOSED_TEMPORARILY") return false;
-  return p.is_operational !== "closed_permanently" && p.is_operational !== "closed_temporarily";
+  if (e?.business_status === "CLOSED_PERMANENTLY") return "closed_permanently";
+  if (e?.business_status === "CLOSED_TEMPORARILY") return "closed_temporarily";
+  return p.is_operational;
+}
+
+export function clientOperationalCorrectionForPlace(p: Place, now = new Date()): CompactOperationalCorrection | undefined {
+  const fallback = acceptedBaseOperationalStatus(p);
+  const identity = acceptedEnrichmentIdentity(p);
+  const refreshed = refreshedBusinessStatus(p.slug, identity.googlePlaceId)?.status;
+  // Raw imported "operational" can be a loader default, not an independent
+  // accepted verdict. Only bound provider evidence can remove the dependency.
+  const independent = fallback === "operational" &&
+    (refreshed === "operational" || (!refreshed && identity.enrichment?.business_status === "OPERATIONAL"));
+  return compactOperationalCorrection(p.slug, fallback, now, independent);
 }
 
 // Default ON by owner directive (2026-05-17: "hide the businesses most

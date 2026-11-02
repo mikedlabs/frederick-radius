@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { haptic } from "@/lib/haptics";
@@ -47,12 +47,16 @@ function shiftMonth(ym: string, delta: number): string {
 
 export default function MonthGrid({
   month,
+  initialDay,
   byDay,
   total,
+  degraded = false,
 }: {
   month: string; // "YYYY-MM"
+  initialDay?: string | null;
   byDay: Record<string, CalEvent[]>;
   total: number;
+  degraded?: boolean;
 }) {
   const [y, m] = month.split("-").map(Number);
   const todayKey = useMemo(() => {
@@ -74,7 +78,12 @@ export default function MonthGrid({
   }
   while (cells.length % 7 !== 0) cells.push(null);
 
-  const [selected, setSelected] = useState<string | null>(todayKey.startsWith(month) ? todayKey : null);
+  // Selection follows the URL-derived server prop, so Back and a changed
+  // month cannot retain a previous client-only day. Standalone consumers keep
+  // the existing current-month default when no server selection was supplied.
+  const selected = initialDay === undefined
+    ? todayKey.startsWith(`${month}-`) ? todayKey : null
+    : initialDay;
   const selectedEvents = selected ? byDay[selected] ?? [] : [];
 
   return (
@@ -83,9 +92,10 @@ export default function MonthGrid({
       <div className="flex items-center justify-between">
         <Link
           href={`/events/calendar?m=${shiftMonth(month, -1)}`}
+          prefetch={false}
           onClick={() => haptic("light")}
           aria-label="Previous month"
-          className="grid h-9 w-9 place-items-center rounded-full border transition hover:bg-[var(--app-bg-sunken)]"
+          className="grid h-11 w-11 place-items-center rounded-full border transition hover:bg-[var(--app-bg-sunken)]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
         >
           <ChevronLeft className="h-4 w-4" strokeWidth={2} aria-hidden />
@@ -95,14 +105,15 @@ export default function MonthGrid({
             {monthLabel(month)}
           </h2>
           <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            {total.toLocaleString()} events
+            {total.toLocaleString()} {degraded ? "listings available" : "events"}
           </p>
         </div>
         <Link
           href={`/events/calendar?m=${shiftMonth(month, 1)}`}
+          prefetch={false}
           onClick={() => haptic("light")}
           aria-label="Next month"
-          className="grid h-9 w-9 place-items-center rounded-full border transition hover:bg-[var(--app-bg-sunken)]"
+          className="grid h-11 w-11 place-items-center rounded-full border transition hover:bg-[var(--app-bg-sunken)]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
         >
           <ChevronRight className="h-4 w-4" strokeWidth={2} aria-hidden />
@@ -166,16 +177,19 @@ export default function MonthGrid({
                 ? "color-mix(in srgb, var(--app-bg-sunken) 55%, transparent)"
                 : "transparent";
             return (
-              <button
+              <Link
                 key={i}
-                type="button"
-                onClick={() => { haptic("light"); setSelected(key); }}
-                className="relative aspect-square border-b border-r p-1 text-left transition active:scale-[0.97]"
+                href={`/events/calendar?m=${month}&d=${key}`}
+                prefetch={false}
+                scroll={false}
+                onClick={() => haptic("light")}
+                className="relative aspect-square min-h-11 border-b border-r p-1 text-left transition focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--app-brand)] active:scale-[0.97]"
                 style={{
                   borderColor: "var(--app-border)",
                   background: cellBg,
                 }}
                 aria-label={`${evs.length} ${evs.length === 1 ? "event" : "events"} on ${key}`}
+                aria-current={isSel ? "date" : undefined}
               >
                 {/* Today bar — a thin brand strip at the top of the cell
                  *  is more legible at a glance than relying only on a
@@ -212,7 +226,7 @@ export default function MonthGrid({
                     }}
                   />
                 )}
-              </button>
+              </Link>
             );
           })}
         </div>
@@ -231,7 +245,7 @@ export default function MonthGrid({
               className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-sm"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
             >
-              No events are scheduled for this day.
+              {degraded ? "No listings are available for this day." : "No events are scheduled for this day."}
             </p>
           ) : (
             <ul className="space-y-1.5">

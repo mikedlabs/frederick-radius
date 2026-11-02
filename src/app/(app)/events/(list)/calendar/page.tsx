@@ -3,6 +3,8 @@ import Link from "next/link";
 import { List } from "lucide-react";
 import { getMonthEvents } from "@/lib/loaders/calendar";
 import MonthGrid from "@/components/event/MonthGrid";
+import { easternDayKey } from "@/lib/tz";
+import { isIsoCalendarDate } from "../../../../../../scripts/lib/iso-calendar-date.mjs";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/events/calendar" },
@@ -12,24 +14,21 @@ export const metadata: Metadata = {
 
 export const revalidate = 1800;
 
-function currentNyMonth(): string {
-  const p = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-  }).format(new Date());
-  return p.slice(0, 7); // YYYY-MM
-}
-
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ m?: string }>;
+  searchParams: Promise<{ m?: string | string[]; d?: string | string[] }>;
 }) {
-  const { m } = await searchParams;
-  const month = m && /^\d{4}-\d{2}$/.test(m) ? m : currentNyMonth();
+  const { m, d } = await searchParams;
+  const today = easternDayKey(new Date());
+  const month = typeof m === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(m) ? m : today.slice(0, 7);
+  // Every day has a native destination before hydration. Only a real date in
+  // this displayed month can select the server-rendered day panel.
+  const initialDay = isIsoCalendarDate(d) && d.slice(0, 7) === month
+    ? d
+    : today.slice(0, 7) === month ? today : null;
   const [y, mo] = month.split("-").map(Number);
-  const { byDay, total } = await getMonthEvents(new Date(y, mo - 1, 1));
+  const { byDay, total, sourceHealth } = await getMonthEvents(new Date(Date.UTC(y, mo - 1, 1, 12)));
 
   return (
     <div className="space-y-4">
@@ -56,7 +55,12 @@ export default async function CalendarPage({
         </p>
       </header>
 
-      <MonthGrid month={month} byDay={byDay} total={total} />
+      {sourceHealth.degraded && (
+        <p role="status" className="text-sm" style={{ color: "var(--app-ink-2)" }}>
+          {sourceHealth.unavailable.join(" ")} Some listings may be missing.
+        </p>
+      )}
+      <MonthGrid month={month} initialDay={initialDay} byDay={byDay} total={total} degraded={sourceHealth.degraded} />
     </div>
   );
 }

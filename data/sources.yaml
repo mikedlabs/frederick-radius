@@ -2479,6 +2479,46 @@ sources:
       reads retain old evidence and stage a fail-closed review item. New facts
       require review before promotion; job success is not published freshness.
 
+  - id: mamma_angela_hours
+    name: Mamma Angela - First-party Hours
+    owner: Mamma Angela
+    url: https://www.mammaangelamtairymd.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: Mamma Angela
+    status: active
+    collection: workflow
+    evidence_aliases: [mamma_angela_hours, https://www.mammaangelamtairymd.com/]
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 5 Ridgeside Court, Mount Airy MD 21771 identity and telephone 3018291575.
+      Reviewed visible contact cohort preserves the complete primary week, including the source's explicit thru/to wording. Existing native owner, ordinary 512000-byte cap and seven-day evidence limit. No credentials, redirects, retries or additional provider. Registration and parser replay do not accept facts or renew an observation. Contacts and images have separate review and reuse requirements.
+
+  - id: monocacy_taproom_hours
+    name: Monocacy Brewing Company - First-party Taproom Hours
+    owner: Monocacy Brewing Company
+    url: https://monocacybrewing.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party taproom hours facts; no page or image reuse
+    contact: Monocacy Brewing Company
+    status: active
+    collection: workflow
+    evidence_aliases: [monocacy_taproom_hours, https://monocacybrewing.com/]
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 1781 North Market St, Frederick MD 21701 identity and independently corrected telephone 2404574232. The reviewed visible contact cohort reads only the labeled public taproom week, with its explicit shared-PM range format.
+      Qualified bar scope is display_only, never generic Open now, likely-open ranking, brewery/tour availability or general opening-hours schema. Existing native owner, ordinary 512000-byte cap and seven-day evidence limit. No credentials, redirects, retries or provider. Registration and replay are not acceptance; retain actual source hashes, clocks, holds and all failed/unselected records. No contact or photo acceptance or page/image reuse rights are inferred.
+
   - id: gravel_grind_hours
     name: "Gravel & Grind — First-party Hours"
     owner: "Gravel & Grind"

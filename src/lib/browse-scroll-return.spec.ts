@@ -11,6 +11,28 @@ function deviceStorage() {
 }
 
 describe("explicit browse return scroll intent", () => {
+  it.each([
+    ["/events?q=live%20music&in=frederick", "/events?q=live+music&in=frederick"],
+    ["/events?q=caf%c3%a9%20music&in=frederick", "/events?q=caf%C3%A9+music&in=frederick"],
+    ["/events?q=C%2b%2b%20music&in=frederick", "/events?q=C%2B%2B+music&in=frederick"],
+  ])("accepts the same encoded query and a still-valid legacy marker: %s", (raw, canonical) => {
+    const storage = deviceStorage();
+    markBrowseScrollReturn(raw, storage, 1000);
+    expect(JSON.parse(storage.getItem(BROWSE_SCROLL_RETURN_KEY)!).key).toBe(canonical);
+    expect(consumeBrowseScrollReturn(canonical, storage, 1100)).toBe(true);
+    storage.setItem(BROWSE_SCROLL_RETURN_KEY, JSON.stringify({ key: raw, at: 1000 }));
+    expect(consumeBrowseScrollReturn(canonical, storage, 1100)).toBe(true);
+    expect(consumeBrowseScrollReturn(canonical, storage, 1200)).toBe(false);
+  });
+  it.each([
+    ["/events?q=live%2Bmusic", "/events?q=live+music"],
+    ["/events?q=live%20music&in=frederick", "/events?in=frederick&q=live+music"],
+    ["/events?q=live%20music&q=C%2B%2B", "/events?q=C%2B%2B&q=live+music"],
+    ["/events?q=live%20music&q=C%2B%2B", "/events?q=live+music"],
+  ])("does not conflate literal plus, query order or duplicate values: %s", (raw, different) => {
+    const storage = deviceStorage(); markBrowseScrollReturn(raw, storage, 1000);
+    expect(consumeBrowseScrollReturn(different, storage, 1100)).toBe(false);
+  });
   it("restores once for the same safe route and exact filters without storing a second coordinate", () => {
     const storage = deviceStorage();
     const origin = "/events?in=frederick&lens=today&view=calendar";
