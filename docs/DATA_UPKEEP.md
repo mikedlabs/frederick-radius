@@ -74,6 +74,16 @@ Native venue and Frederick transit jobs retain a separate authenticated
 existing responses; they add no requests, retries, models or providers. Raw
 bytes never enter Git, generated client datasets or publication allowlists.
 
+The monthly MARC owner separately retains `marc-source-evidence-<run>-<attempt>`
+for seven days, including same-transfer headers and failed originals. Its official
+MTA endpoint redirects to the exact reviewed MDOT S3 ZIP destination declared in
+the builder. Only that request/destination pair can cross hosts, with one HTTPS
+redirect and no retry. The original observation and ZIP hash survive offline
+replay; optional-file read failures cannot silently remove holiday exceptions.
+MARC's 8 MB archive limit and existing 45-day freshness gate remain separate
+from Frederick transit. Check `npm run validate:transit-data` before expensive
+release checks so an overdue snapshot is identified early.
+
 Each index pins the source revision, native run/attempt, exact source identity,
 request method and URL, actual response observation, original byte count and
 SHA-256. Venue pagination records its filter and offset without copying the
