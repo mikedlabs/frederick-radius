@@ -1,0 +1,11 @@
+{
+  "commit": "49aa28ca3135a561601e23b7e101e433475838fc",
+  "buildId": "-OpsyG-ZplTq6jnIokvMZ",
+  "startedAt": "2026-10-08T22:17:02.416Z",
+  "completedAt": "2026-10-08T22:18:21.684Z",
+  "seconds": 79.268,
+  "mode": "committed promoted data",
+  "providerCredentialsUsed": false,
+  "externalProviderEgress": "blocked",
+  "scope": "Fresh exact-commit build used by the final mobile run."
+}

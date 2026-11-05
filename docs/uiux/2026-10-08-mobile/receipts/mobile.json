@@ -1,0 +1,1891 @@
+{
+  "commit": "49aa28ca3135a561601e23b7e101e433475838fc",
+  "buildId": "-OpsyG-ZplTq6jnIokvMZ",
+  "sourceFreezeSha256": "8f31ad51e273beda18402fc2351d21c0e8994db4a8fd5a9af180b16ec3c65581",
+  "viewportCssPixels": [
+    390,
+    844
+  ],
+  "browser": "Chromium",
+  "startTime": "2026-10-08T22:18:35.207Z",
+  "runnerSeconds": 31.335,
+  "receiptWallSeconds": 31.91,
+  "workers": 1,
+  "passed": 4,
+  "failed": 0,
+  "skipped": 0,
+  "flaky": 0,
+  "retries": 0,
+  "candidateAndHarnessUnchanged": true,
+  "harnessSha256": "5aaf1892c5144375e344f89aa0a5186e45e876e914ad3206db50debc6e7924fe",
+  "cases": [
+    {
+      "theme": "light",
+      "case": "390px four-tab navigation, Find, overflow, tap regions, and accessibility evidence",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "theme": "light",
+      "case": "real event detail Close hit region and Saved wallet after actual save/reload",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "theme": "dark",
+      "case": "390px four-tab navigation, Find, overflow, tap regions, and accessibility evidence",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "theme": "dark",
+      "case": "real event detail Close hit region and Saved wallet after actual save/reload",
+      "status": "passed",
+      "retry": 0
+    }
+  ],
+  "provenanceReview": "Completed independent source/build/harness/readiness/capture binding and bounded visual/follow-up review.",
+  "readinessRecords": 42,
+  "minimumSettledSamples": 2,
+  "maximumSettlingMs": 1544,
+  "relevantAnimationsRemaining": 0,
+  "panelCloseStability": {
+    "proofs": [
+      {
+        "theme": "light",
+        "phase": "event-detail-close-before-collect",
+        "formattedExtractedJsonFileSha256": "af4678960110bc75ed4672ec5f92e6ce4a8d203ba8342ec26b4275aee12a378b"
+      },
+      {
+        "theme": "light",
+        "phase": "event-detail-close-before-click",
+        "formattedExtractedJsonFileSha256": "7c85481ecb2ae72ae5d219fd82f6a946c77bc60c60c5ca36190ffd01992293af"
+      },
+      {
+        "theme": "dark",
+        "phase": "event-detail-close-before-collect",
+        "formattedExtractedJsonFileSha256": "db8501d6b7a5b7078e8b650c520832246f336419efd4634e69189be8abc43ac0"
+      },
+      {
+        "theme": "dark",
+        "phase": "event-detail-close-before-click",
+        "formattedExtractedJsonFileSha256": "4768c6c15dc754fcc549e27f3887f16ea5554e8bedf04cf3eea365522a950866"
+      }
+    ],
+    "sampleGapMs": [
+      106,
+      108
+    ],
+    "maximumDeltaPx": 0.2064,
+    "allowedDeltaPx": 0.25
+  },
+  "axeSummary": {
+    "violationRecords": 0,
+    "incompleteRuleRecords": 28,
+    "contrastIncompleteRecords": 14,
+    "contrastTypeErrorSkipRecords": 12,
+    "ariaProhibitedAttrIncompleteRecords": 8,
+    "ariaValidAttrValueIncompleteRecords": 6
+  },
+  "initialRun": {
+    "commit": "e9faca91b8a9d1dd10cdcc06da14c49d7568fd22",
+    "failed": 4,
+    "harnessSha256": "6265685e32bf41b8cb689f18be217c5afcf233778946dd3519f04956be03518e",
+    "eventFailure": "Backdrop locator selected instead of the visible panel header Close.",
+    "mapFailure": "Initial probes hit HTML while Map was loading; that run lacked native-animation metadata.",
+    "preservedPrivately": true
+  },
+  "historicalCorrectedRun": {
+    "commit": "e9faca91b8a9d1dd10cdcc06da14c49d7568fd22",
+    "passed": 4,
+    "preservedPrivately": true,
+    "htmlFilterGrayscaleExcludedFromFinalImages": true
+  },
+  "acceptanceStatus": "Completed bounded local verification: four final cases passed; eight qualified follow-ups remain. Not live; root review precedes publication.",
+  "probeMethod": "Center plus four cardinal offsets at +/-21.5 CSS pixels; not exhaustive every-point verification of a 44px square.",
+  "grayscaleCaptureMethod": "Chromium CDP Emulation.setEmulatedVisionDeficiency: achromatopsia; reset none; no HTML filter.",
+  "surfaces": [
+    {
+      "theme": "light",
+      "surface": "today",
+      "documentWidth": 390,
+      "header": {
+        "needs": 390,
+        "available": 390
+      },
+      "readiness": {
+        "route": {
+          "settled": true,
+          "elapsedMs": 547,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "color": {
+          "settled": true,
+          "elapsedMs": 128,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "grayscale": {
+          "settled": true,
+          "elapsedMs": 138,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        }
+      },
+      "mapState": null,
+      "navigation": [
+        {
+          "label": "Today",
+          "rect": {
+            "x": 13,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Map",
+          "rect": {
+            "x": 104,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Events",
+          "rect": {
+            "x": 195,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Saved",
+          "rect": {
+            "x": 286,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        }
+      ],
+      "panelClose": [],
+      "targetInventoryCandidates": 1,
+      "scrollCoverage": {
+        "sampled": true,
+        "sampleCount": 2,
+        "reachedEnd": true,
+        "coverageClipped": false,
+        "uninspectedScrollRegions": []
+      },
+      "axeViolations": 0,
+      "axeIncomplete": [
+        {
+          "rule": "aria-prohibited-attr",
+          "nodeCount": 2,
+          "evaluatorError": false
+        },
+        {
+          "rule": "color-contrast",
+          "nodeCount": 1,
+          "evaluatorError": true
+        }
+      ],
+      "grayscaleMethod": {
+        "method": "Chromium CDP Emulation.setEmulatedVisionDeficiency",
+        "type": "achromatopsia",
+        "reset": "none"
+      },
+      "formattedExtractedJsonFileSha256": {
+        "geometry": "5421a50de62d3471698667bcc44cf05467917510dda21c71fb7e2c4c54938c34",
+        "routeReadiness": "d05cb32fd6c0ae23cba9044bc30d3fdd30c31ae9bb08920b80f387868718c6e9",
+        "colorReadiness": "72be5adffb62268c0c6ac561e8cf3453ce515e5e02333ba380d266fc4eb93357",
+        "grayscaleReadiness": "d093d9eea9ccd7f19b414e7034b445517230789246d12f4469cc3087f2693281",
+        "grayscaleMethod": "0037ba7fdf3fa77a000f53866ce3685f6d4ce4a8c4b073244e77e2a43f36d0ea",
+        "axe": "5ff70e1eebc2f81d81314e5db2b8331490fb05c02f268ca4d4a41c4d06ad681e"
+      }
+    },
+    {
+      "theme": "light",
+      "surface": "map",
+      "documentWidth": 390,
+      "header": {
+        "needs": 390,
+        "available": 390
+      },
+      "readiness": {
+        "route": {
+          "settled": true,
+          "elapsedMs": 1544,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "color": {
+          "settled": true,
+          "elapsedMs": 124,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "grayscale": {
+          "settled": true,
+          "elapsedMs": 130,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        }
+      },
+      "mapState": {
+        "interface": "error",
+        "loaded": false,
+        "error": "true",
+        "errorFallbackList": true,
+        "chunkFailure": false,
+        "placeLayerError": false,
+        "loadingScenes": 0,
+        "dynamicChunkLoading": false
+      },
+      "navigation": [
+        {
+          "label": "Today",
+          "rect": {
+            "x": 4,
+            "y": 792,
+            "width": 95.5,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Map",
+          "rect": {
+            "x": 99.5,
+            "y": 792,
+            "width": 95.5,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Events",
+          "rect": {
+            "x": 195,
+            "y": 792,
+            "width": 95.5,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Saved",
+          "rect": {
+            "x": 290.5,
+            "y": 792,
+            "width": 95.5,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        }
+      ],
+      "panelClose": [],
+      "targetInventoryCandidates": 4,
+      "scrollCoverage": {
+        "sampled": true,
+        "sampleCount": 2,
+        "reachedEnd": true,
+        "coverageClipped": false,
+        "uninspectedScrollRegions": []
+      },
+      "axeViolations": 0,
+      "axeIncomplete": [
+        {
+          "rule": "color-contrast",
+          "nodeCount": 6,
+          "evaluatorError": false
+        }
+      ],
+      "grayscaleMethod": {
+        "method": "Chromium CDP Emulation.setEmulatedVisionDeficiency",
+        "type": "achromatopsia",
+        "reset": "none"
+      },
+      "formattedExtractedJsonFileSha256": {
+        "geometry": "b5ef7778a5ccbfe1acd98462aa3748028ea232427e3415c5dcb6e54b3f8931fd",
+        "routeReadiness": "6c6630d1ee5a26b52449bf05ebd0adc9f67d0717fd65119e837dba7ad22016f0",
+        "colorReadiness": "e8b4105d9b1904f5ec3ef1df5cb1a37ebafbe827dede10b8865692e6381684fb",
+        "grayscaleReadiness": "167f6cabc5c1e9f7d826762c0c81fd33afdc92d7f214b7428de3c3800e43119a",
+        "grayscaleMethod": "0037ba7fdf3fa77a000f53866ce3685f6d4ce4a8c4b073244e77e2a43f36d0ea",
+        "axe": "30468dd9c2a63627613342a06be3fe0b7230a903b420c96ba7659dcbcde063d9"
+      }
+    },
+    {
+      "theme": "light",
+      "surface": "events",
+      "documentWidth": 390,
+      "header": {
+        "needs": 390,
+        "available": 390
+      },
+      "readiness": {
+        "route": {
+          "settled": true,
+          "elapsedMs": 636,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "color": {
+          "settled": true,
+          "elapsedMs": 329,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "grayscale": {
+          "settled": true,
+          "elapsedMs": 132,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        }
+      },
+      "mapState": null,
+      "navigation": [
+        {
+          "label": "Today",
+          "rect": {
+            "x": 13,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Map",
+          "rect": {
+            "x": 104,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Events",
+          "rect": {
+            "x": 195,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Saved",
+          "rect": {
+            "x": 286,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        }
+      ],
+      "panelClose": [],
+      "targetInventoryCandidates": 1,
+      "scrollCoverage": {
+        "sampled": true,
+        "sampleCount": 2,
+        "reachedEnd": true,
+        "coverageClipped": false,
+        "uninspectedScrollRegions": []
+      },
+      "axeViolations": 0,
+      "axeIncomplete": [
+        {
+          "rule": "aria-prohibited-attr",
+          "nodeCount": 1,
+          "evaluatorError": false
+        },
+        {
+          "rule": "aria-valid-attr-value",
+          "nodeCount": 1,
+          "evaluatorError": false
+        },
+        {
+          "rule": "color-contrast",
+          "nodeCount": 1,
+          "evaluatorError": true
+        }
+      ],
+      "grayscaleMethod": {
+        "method": "Chromium CDP Emulation.setEmulatedVisionDeficiency",
+        "type": "achromatopsia",
+        "reset": "none"
+      },
+      "formattedExtractedJsonFileSha256": {
+        "geometry": "ba3762236cc8b85bd81806c1ab0f12d373cdb428e333f29bc950b465e9677085",
+        "routeReadiness": "76823210536c5e458b33e5f775fcee163dc916c6cc26dc54376991a7d71c0a7c",
+        "colorReadiness": "31d34d84caf221c3a7926d3e758a29171bf9c70277da4d4c3bf77f0c51b47da6",
+        "grayscaleReadiness": "494450140d257500247bc3ad7b068030f567a39bb23a906c1a990b15b9ad1b5d",
+        "grayscaleMethod": "0037ba7fdf3fa77a000f53866ce3685f6d4ce4a8c4b073244e77e2a43f36d0ea",
+        "axe": "695a83c1a1168fee63140b154da8914c16485c3242d28a9688a6150d724800d0"
+      }
+    },
+    {
+      "theme": "light",
+      "surface": "saved",
+      "documentWidth": 390,
+      "header": {
+        "needs": 390,
+        "available": 390
+      },
+      "readiness": {
+        "route": {
+          "settled": true,
+          "elapsedMs": 430,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "color": {
+          "settled": true,
+          "elapsedMs": 130,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "grayscale": {
+          "settled": true,
+          "elapsedMs": 130,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        }
+      },
+      "mapState": null,
+      "navigation": [
+        {
+          "label": "Today",
+          "rect": {
+            "x": 13,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Map",
+          "rect": {
+            "x": 104,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Events",
+          "rect": {
+            "x": 195,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Saved",
+          "rect": {
+            "x": 286,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        }
+      ],
+      "panelClose": [],
+      "targetInventoryCandidates": 2,
+      "scrollCoverage": {
+        "sampled": true,
+        "sampleCount": 1,
+        "reachedEnd": true,
+        "coverageClipped": false,
+        "uninspectedScrollRegions": []
+      },
+      "axeViolations": 0,
+      "axeIncomplete": [
+        {
+          "rule": "color-contrast",
+          "nodeCount": 1,
+          "evaluatorError": true
+        }
+      ],
+      "grayscaleMethod": {
+        "method": "Chromium CDP Emulation.setEmulatedVisionDeficiency",
+        "type": "achromatopsia",
+        "reset": "none"
+      },
+      "formattedExtractedJsonFileSha256": {
+        "geometry": "be39e8cb11b948df2945fbe68cf35ab1e10c3f8145f9f6a22975996d10a6af94",
+        "routeReadiness": "e73f7f7cb3931e03912bb77c6865c9411b98217f0a01b036fa89b92fda6f9eb1",
+        "colorReadiness": "b2e24133dadfd6d215ae441ab6dff053cc58a575fcddaec15de981dec9357420",
+        "grayscaleReadiness": "b2e24133dadfd6d215ae441ab6dff053cc58a575fcddaec15de981dec9357420",
+        "grayscaleMethod": "0037ba7fdf3fa77a000f53866ce3685f6d4ce4a8c4b073244e77e2a43f36d0ea",
+        "axe": "7318540d955330f00fff24c23a9ba8a68b58725f96494fd8156f05f6f505c1b6"
+      }
+    },
+    {
+      "theme": "light",
+      "surface": "find",
+      "documentWidth": 390,
+      "header": {
+        "needs": 390,
+        "available": 390
+      },
+      "readiness": {
+        "route": {
+          "settled": true,
+          "elapsedMs": 121,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "color": {
+          "settled": true,
+          "elapsedMs": 125,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "grayscale": {
+          "settled": true,
+          "elapsedMs": 117,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        }
+      },
+      "mapState": null,
+      "navigation": [
+        {
+          "label": "Today",
+          "rect": {
+            "x": 13,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "center-obscured",
+          "effective44": false,
+          "clipped": false
+        },
+        {
+          "label": "Map",
+          "rect": {
+            "x": 104,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "center-obscured",
+          "effective44": false,
+          "clipped": false
+        },
+        {
+          "label": "Events",
+          "rect": {
+            "x": 195,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "center-obscured",
+          "effective44": false,
+          "clipped": false
+        },
+        {
+          "label": "Saved",
+          "rect": {
+            "x": 286,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "center-obscured",
+          "effective44": false,
+          "clipped": false
+        }
+      ],
+      "panelClose": [],
+      "targetInventoryCandidates": 0,
+      "scrollCoverage": {
+        "sampled": false,
+        "sampleCount": 0,
+        "reachedEnd": true,
+        "coverageClipped": false,
+        "uninspectedScrollRegions": []
+      },
+      "axeViolations": 0,
+      "axeIncomplete": [
+        {
+          "rule": "aria-prohibited-attr",
+          "nodeCount": 1,
+          "evaluatorError": false
+        },
+        {
+          "rule": "aria-valid-attr-value",
+          "nodeCount": 2,
+          "evaluatorError": false
+        },
+        {
+          "rule": "color-contrast",
+          "nodeCount": 1,
+          "evaluatorError": true
+        }
+      ],
+      "grayscaleMethod": {
+        "method": "Chromium CDP Emulation.setEmulatedVisionDeficiency",
+        "type": "achromatopsia",
+        "reset": "none"
+      },
+      "formattedExtractedJsonFileSha256": {
+        "geometry": "0b99e278037d7b918902416b6d023c8f2d7a3ac05f364afa8c8c37e40cf28804",
+        "routeReadiness": "c396befa04d7c46976e1470d723035ed81aa536b02fc2264b6a5525271f72672",
+        "colorReadiness": "402205672ddba499fa60030d0cd666d1406d9301a3b6be91d973e7e778cd991f",
+        "grayscaleReadiness": "6dce5c80710fb17ba3ad96089b065b1555aa545df5af1fd60c4175985006619d",
+        "grayscaleMethod": "0037ba7fdf3fa77a000f53866ce3685f6d4ce4a8c4b073244e77e2a43f36d0ea",
+        "axe": "6cb4d02e5fed5d7d1f631ffa21e5ffac3fd077bdd7074554d314583ee81cd882"
+      }
+    },
+    {
+      "theme": "light",
+      "surface": "event-detail",
+      "documentWidth": 390,
+      "header": {
+        "needs": 390,
+        "available": 390
+      },
+      "readiness": {
+        "route": {
+          "settled": true,
+          "elapsedMs": 432,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "color": {
+          "settled": true,
+          "elapsedMs": 130,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "grayscale": {
+          "settled": true,
+          "elapsedMs": 129,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        }
+      },
+      "mapState": null,
+      "navigation": [],
+      "panelClose": [
+        {
+          "label": "Close",
+          "rect": {
+            "x": 12,
+            "y": 237.859375,
+            "width": 77.03125,
+            "height": 44
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        }
+      ],
+      "targetInventoryCandidates": 0,
+      "scrollCoverage": {
+        "sampled": false,
+        "sampleCount": 0,
+        "reachedEnd": true,
+        "coverageClipped": false,
+        "uninspectedScrollRegions": []
+      },
+      "axeViolations": 0,
+      "axeIncomplete": [
+        {
+          "rule": "aria-prohibited-attr",
+          "nodeCount": 1,
+          "evaluatorError": false
+        },
+        {
+          "rule": "aria-valid-attr-value",
+          "nodeCount": 1,
+          "evaluatorError": false
+        },
+        {
+          "rule": "color-contrast",
+          "nodeCount": 1,
+          "evaluatorError": true
+        }
+      ],
+      "grayscaleMethod": {
+        "method": "Chromium CDP Emulation.setEmulatedVisionDeficiency",
+        "type": "achromatopsia",
+        "reset": "none"
+      },
+      "formattedExtractedJsonFileSha256": {
+        "geometry": "e2388705cdc5e57a6bfaf4339cc89a0719d6d41a1cf663a975e5a3f4d993b783",
+        "routeReadiness": "464903a63fb2095b8903d225b6e58918e20f4816242185b7094986f85dfd8d75",
+        "colorReadiness": "02f8864bdaa8300ec202a20cc8d17b454906c3a255615f4901d1f56f3a1b855a",
+        "grayscaleReadiness": "366da30c90b3770e8f18723fba8aa6c10a6f03c7153af0022783462e05a7a4e7",
+        "grayscaleMethod": "0037ba7fdf3fa77a000f53866ce3685f6d4ce4a8c4b073244e77e2a43f36d0ea",
+        "axe": "69359afa022e88d08d833f460b748aab3389fb08c7c5234d17a17308d7e4b6d7"
+      }
+    },
+    {
+      "theme": "light",
+      "surface": "saved-event-wallet",
+      "documentWidth": 390,
+      "header": {
+        "needs": 390,
+        "available": 390
+      },
+      "readiness": {
+        "route": {
+          "settled": true,
+          "elapsedMs": 230,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "color": {
+          "settled": true,
+          "elapsedMs": 134,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "grayscale": {
+          "settled": true,
+          "elapsedMs": 129,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        }
+      },
+      "mapState": null,
+      "navigation": [
+        {
+          "label": "Today",
+          "rect": {
+            "x": 13,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Map",
+          "rect": {
+            "x": 104,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Events",
+          "rect": {
+            "x": 195,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Saved",
+          "rect": {
+            "x": 286,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        }
+      ],
+      "panelClose": [],
+      "targetInventoryCandidates": 4,
+      "scrollCoverage": {
+        "sampled": true,
+        "sampleCount": 1,
+        "reachedEnd": true,
+        "coverageClipped": false,
+        "uninspectedScrollRegions": []
+      },
+      "axeViolations": 0,
+      "axeIncomplete": [
+        {
+          "rule": "color-contrast",
+          "nodeCount": 1,
+          "evaluatorError": true
+        }
+      ],
+      "grayscaleMethod": {
+        "method": "Chromium CDP Emulation.setEmulatedVisionDeficiency",
+        "type": "achromatopsia",
+        "reset": "none"
+      },
+      "formattedExtractedJsonFileSha256": {
+        "geometry": "77de5fe8878681fc3fbd1b3c8467968939b204636f08639565ef41a573e647e9",
+        "routeReadiness": "848d2970d98de73c70c091cc6486d85db03b275097d36df36d16e03d89fe2281",
+        "colorReadiness": "362e4d6db37d85d2c746c6ec9936dcc200c3e42c95dc03857b5c304fa1635e31",
+        "grayscaleReadiness": "3424e3e5b9bb0116708d4918d6076f1e3f6241108e380834742b35e0c477b1d1",
+        "grayscaleMethod": "0037ba7fdf3fa77a000f53866ce3685f6d4ce4a8c4b073244e77e2a43f36d0ea",
+        "axe": "7e53d93408e15b9ff7625116183f4e38eff3875c6541920263d439f148ae4356"
+      }
+    },
+    {
+      "theme": "dark",
+      "surface": "today",
+      "documentWidth": 390,
+      "header": {
+        "needs": 390,
+        "available": 390
+      },
+      "readiness": {
+        "route": {
+          "settled": true,
+          "elapsedMs": 540,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "color": {
+          "settled": true,
+          "elapsedMs": 130,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "grayscale": {
+          "settled": true,
+          "elapsedMs": 115,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        }
+      },
+      "mapState": null,
+      "navigation": [
+        {
+          "label": "Today",
+          "rect": {
+            "x": 13,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Map",
+          "rect": {
+            "x": 104,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Events",
+          "rect": {
+            "x": 195,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Saved",
+          "rect": {
+            "x": 286,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        }
+      ],
+      "panelClose": [],
+      "targetInventoryCandidates": 2,
+      "scrollCoverage": {
+        "sampled": true,
+        "sampleCount": 3,
+        "reachedEnd": true,
+        "coverageClipped": false,
+        "uninspectedScrollRegions": []
+      },
+      "axeViolations": 0,
+      "axeIncomplete": [
+        {
+          "rule": "aria-prohibited-attr",
+          "nodeCount": 2,
+          "evaluatorError": false
+        },
+        {
+          "rule": "color-contrast",
+          "nodeCount": 1,
+          "evaluatorError": true
+        }
+      ],
+      "grayscaleMethod": {
+        "method": "Chromium CDP Emulation.setEmulatedVisionDeficiency",
+        "type": "achromatopsia",
+        "reset": "none"
+      },
+      "formattedExtractedJsonFileSha256": {
+        "geometry": "40b41502780a7ddea48c3f45e56406c2557c5060df7a8634f7f906e7021288b8",
+        "routeReadiness": "78a4a1d3ce1879358988dc80769b0a94811bfcd12811fbdd9e9c7fcd7dfddd50",
+        "colorReadiness": "3f384fceea777c11bbc318b901335c4406e41126aba09242fdd36cea3b9466ee",
+        "grayscaleReadiness": "30904e04bbe3cef85a34f2da6e56519148991470e57f8ea7bc94810f6729a8f6",
+        "grayscaleMethod": "0037ba7fdf3fa77a000f53866ce3685f6d4ce4a8c4b073244e77e2a43f36d0ea",
+        "axe": "bc5597dbf4d086afeca2eb81d6886a99532836f8b7351d1ee373e55ef771a510"
+      }
+    },
+    {
+      "theme": "dark",
+      "surface": "map",
+      "documentWidth": 390,
+      "header": {
+        "needs": 390,
+        "available": 390
+      },
+      "readiness": {
+        "route": {
+          "settled": true,
+          "elapsedMs": 432,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "color": {
+          "settled": true,
+          "elapsedMs": 125,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "grayscale": {
+          "settled": true,
+          "elapsedMs": 123,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        }
+      },
+      "mapState": {
+        "interface": "error",
+        "loaded": false,
+        "error": "true",
+        "errorFallbackList": true,
+        "chunkFailure": false,
+        "placeLayerError": false,
+        "loadingScenes": 0,
+        "dynamicChunkLoading": false
+      },
+      "navigation": [
+        {
+          "label": "Today",
+          "rect": {
+            "x": 4,
+            "y": 792,
+            "width": 95.5,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Map",
+          "rect": {
+            "x": 99.5,
+            "y": 792,
+            "width": 95.5,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Events",
+          "rect": {
+            "x": 195,
+            "y": 792,
+            "width": 95.5,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Saved",
+          "rect": {
+            "x": 290.5,
+            "y": 792,
+            "width": 95.5,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        }
+      ],
+      "panelClose": [],
+      "targetInventoryCandidates": 4,
+      "scrollCoverage": {
+        "sampled": true,
+        "sampleCount": 2,
+        "reachedEnd": true,
+        "coverageClipped": false,
+        "uninspectedScrollRegions": []
+      },
+      "axeViolations": 0,
+      "axeIncomplete": [
+        {
+          "rule": "color-contrast",
+          "nodeCount": 6,
+          "evaluatorError": false
+        }
+      ],
+      "grayscaleMethod": {
+        "method": "Chromium CDP Emulation.setEmulatedVisionDeficiency",
+        "type": "achromatopsia",
+        "reset": "none"
+      },
+      "formattedExtractedJsonFileSha256": {
+        "geometry": "c8da404176943cad81bc6528b0d6cd2cceb918557688c66538fd51dc1f2294d6",
+        "routeReadiness": "45bf185bbba23fbaa1e99ee1438049295f4f78c00fe15550c8aecf84eef6b1ce",
+        "colorReadiness": "58db0bf9cae94aeb5a763718c0f068a9da9f1f68d4f93c3fa3b9b3c1226bd112",
+        "grayscaleReadiness": "eb33ae0c783b14493c7901a1af51ca4d00edf1d99c3e63e183195dc5c72b953c",
+        "grayscaleMethod": "0037ba7fdf3fa77a000f53866ce3685f6d4ce4a8c4b073244e77e2a43f36d0ea",
+        "axe": "f88049a52b39f4fbd456e934094f0bbedf839db85eb5d8729d2af9eb62484c85"
+      }
+    },
+    {
+      "theme": "dark",
+      "surface": "events",
+      "documentWidth": 390,
+      "header": {
+        "needs": 390,
+        "available": 390
+      },
+      "readiness": {
+        "route": {
+          "settled": true,
+          "elapsedMs": 642,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "color": {
+          "settled": true,
+          "elapsedMs": 328,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "grayscale": {
+          "settled": true,
+          "elapsedMs": 129,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        }
+      },
+      "mapState": null,
+      "navigation": [
+        {
+          "label": "Today",
+          "rect": {
+            "x": 13,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Map",
+          "rect": {
+            "x": 104,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Events",
+          "rect": {
+            "x": 195,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Saved",
+          "rect": {
+            "x": 286,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        }
+      ],
+      "panelClose": [],
+      "targetInventoryCandidates": 1,
+      "scrollCoverage": {
+        "sampled": true,
+        "sampleCount": 2,
+        "reachedEnd": true,
+        "coverageClipped": false,
+        "uninspectedScrollRegions": []
+      },
+      "axeViolations": 0,
+      "axeIncomplete": [
+        {
+          "rule": "aria-prohibited-attr",
+          "nodeCount": 1,
+          "evaluatorError": false
+        },
+        {
+          "rule": "aria-valid-attr-value",
+          "nodeCount": 1,
+          "evaluatorError": false
+        },
+        {
+          "rule": "color-contrast",
+          "nodeCount": 1,
+          "evaluatorError": true
+        }
+      ],
+      "grayscaleMethod": {
+        "method": "Chromium CDP Emulation.setEmulatedVisionDeficiency",
+        "type": "achromatopsia",
+        "reset": "none"
+      },
+      "formattedExtractedJsonFileSha256": {
+        "geometry": "35bb6efabf19e912284d8148fd77838241eec8b92083f89684d5e8ce992822cd",
+        "routeReadiness": "e2fe281300e49e567ae4bebc1cac4bea7fc3f0ec89cd73433d16b62dbbd1f8bc",
+        "colorReadiness": "70a71760ce08f08bd37ed58d667db87f9eec49e743b7febae753ebe782192c54",
+        "grayscaleReadiness": "bbcb637b8fdc9cbcf4b36081f4263549bc732f724e81bc37172c3c3d2abe31bc",
+        "grayscaleMethod": "0037ba7fdf3fa77a000f53866ce3685f6d4ce4a8c4b073244e77e2a43f36d0ea",
+        "axe": "0bbbd05a642eccd71f3c8d9b45f0d91248541b616cb3dfb3247c7ed7d78b5c8c"
+      }
+    },
+    {
+      "theme": "dark",
+      "surface": "saved",
+      "documentWidth": 390,
+      "header": {
+        "needs": 390,
+        "available": 390
+      },
+      "readiness": {
+        "route": {
+          "settled": true,
+          "elapsedMs": 427,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "color": {
+          "settled": true,
+          "elapsedMs": 128,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "grayscale": {
+          "settled": true,
+          "elapsedMs": 131,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        }
+      },
+      "mapState": null,
+      "navigation": [
+        {
+          "label": "Today",
+          "rect": {
+            "x": 13,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Map",
+          "rect": {
+            "x": 104,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Events",
+          "rect": {
+            "x": 195,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Saved",
+          "rect": {
+            "x": 286,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        }
+      ],
+      "panelClose": [],
+      "targetInventoryCandidates": 2,
+      "scrollCoverage": {
+        "sampled": true,
+        "sampleCount": 1,
+        "reachedEnd": true,
+        "coverageClipped": false,
+        "uninspectedScrollRegions": []
+      },
+      "axeViolations": 0,
+      "axeIncomplete": [
+        {
+          "rule": "color-contrast",
+          "nodeCount": 1,
+          "evaluatorError": true
+        }
+      ],
+      "grayscaleMethod": {
+        "method": "Chromium CDP Emulation.setEmulatedVisionDeficiency",
+        "type": "achromatopsia",
+        "reset": "none"
+      },
+      "formattedExtractedJsonFileSha256": {
+        "geometry": "bb400d542fafc802024c1ca4daa914db20d487522bf0d261957f7d4f546f60f3",
+        "routeReadiness": "b3b08c33161002154d30a4b14ca408a05bd1e4229264011cd4d50746b4e22a3b",
+        "colorReadiness": "20982bcc72a24c42fa1e48253a51a1c85dfa3cb2cdecee20354beda1e3d909d7",
+        "grayscaleReadiness": "fc6be0f178a62336ba51b707c2538c630c183610132c48fa515ea73ba3cfdfd3",
+        "grayscaleMethod": "0037ba7fdf3fa77a000f53866ce3685f6d4ce4a8c4b073244e77e2a43f36d0ea",
+        "axe": "24552efcfb0b095f401abd558c33075e00f925e21a266b01d18797ad845ebce5"
+      }
+    },
+    {
+      "theme": "dark",
+      "surface": "find",
+      "documentWidth": 390,
+      "header": {
+        "needs": 390,
+        "available": 390
+      },
+      "readiness": {
+        "route": {
+          "settled": true,
+          "elapsedMs": 126,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "color": {
+          "settled": true,
+          "elapsedMs": 132,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "grayscale": {
+          "settled": true,
+          "elapsedMs": 123,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        }
+      },
+      "mapState": null,
+      "navigation": [
+        {
+          "label": "Today",
+          "rect": {
+            "x": 13,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "center-obscured",
+          "effective44": false,
+          "clipped": false
+        },
+        {
+          "label": "Map",
+          "rect": {
+            "x": 104,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "center-obscured",
+          "effective44": false,
+          "clipped": false
+        },
+        {
+          "label": "Events",
+          "rect": {
+            "x": 195,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "center-obscured",
+          "effective44": false,
+          "clipped": false
+        },
+        {
+          "label": "Saved",
+          "rect": {
+            "x": 286,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "center-obscured",
+          "effective44": false,
+          "clipped": false
+        }
+      ],
+      "panelClose": [],
+      "targetInventoryCandidates": 0,
+      "scrollCoverage": {
+        "sampled": false,
+        "sampleCount": 0,
+        "reachedEnd": true,
+        "coverageClipped": false,
+        "uninspectedScrollRegions": []
+      },
+      "axeViolations": 0,
+      "axeIncomplete": [
+        {
+          "rule": "aria-prohibited-attr",
+          "nodeCount": 1,
+          "evaluatorError": false
+        },
+        {
+          "rule": "aria-valid-attr-value",
+          "nodeCount": 2,
+          "evaluatorError": false
+        },
+        {
+          "rule": "color-contrast",
+          "nodeCount": 1,
+          "evaluatorError": true
+        }
+      ],
+      "grayscaleMethod": {
+        "method": "Chromium CDP Emulation.setEmulatedVisionDeficiency",
+        "type": "achromatopsia",
+        "reset": "none"
+      },
+      "formattedExtractedJsonFileSha256": {
+        "geometry": "32d4bdfea56722dba12aae9038e5da8722614d01763d50db57e0d00f4b7c3887",
+        "routeReadiness": "9844ec6d315fd5999cff255b59f9c0b9937f61d7b80ca1f23852388540538630",
+        "colorReadiness": "a89adf12b602150dbfd0575cb1c5db0077c7a819bcdb7cdeaad1114d278aef36",
+        "grayscaleReadiness": "2ad0f7c166c8863ce87e5d32ba9b844a0ca2c3c9a5934055cabfd669dbbfb183",
+        "grayscaleMethod": "0037ba7fdf3fa77a000f53866ce3685f6d4ce4a8c4b073244e77e2a43f36d0ea",
+        "axe": "294110416159080d1969334d9b90a8ed5021858af29b44324a45cc664b0d83e9"
+      }
+    },
+    {
+      "theme": "dark",
+      "surface": "event-detail",
+      "documentWidth": 390,
+      "header": {
+        "needs": 390,
+        "available": 390
+      },
+      "readiness": {
+        "route": {
+          "settled": true,
+          "elapsedMs": 430,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "color": {
+          "settled": true,
+          "elapsedMs": 129,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "grayscale": {
+          "settled": true,
+          "elapsedMs": 129,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        }
+      },
+      "mapState": null,
+      "navigation": [],
+      "panelClose": [
+        {
+          "label": "Close",
+          "rect": {
+            "x": 12,
+            "y": 237.859375,
+            "width": 77.03125,
+            "height": 44
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        }
+      ],
+      "targetInventoryCandidates": 0,
+      "scrollCoverage": {
+        "sampled": false,
+        "sampleCount": 0,
+        "reachedEnd": true,
+        "coverageClipped": false,
+        "uninspectedScrollRegions": []
+      },
+      "axeViolations": 0,
+      "axeIncomplete": [
+        {
+          "rule": "aria-prohibited-attr",
+          "nodeCount": 1,
+          "evaluatorError": false
+        },
+        {
+          "rule": "aria-valid-attr-value",
+          "nodeCount": 1,
+          "evaluatorError": false
+        },
+        {
+          "rule": "color-contrast",
+          "nodeCount": 1,
+          "evaluatorError": true
+        }
+      ],
+      "grayscaleMethod": {
+        "method": "Chromium CDP Emulation.setEmulatedVisionDeficiency",
+        "type": "achromatopsia",
+        "reset": "none"
+      },
+      "formattedExtractedJsonFileSha256": {
+        "geometry": "0379941ce71e4d429c4774957ef8d85741e2613cd496e1c9b6b58ba74f77adce",
+        "routeReadiness": "2cda94c7e34289c400436fe8975587d0a454c72ed506423c1596c575ca0d887e",
+        "colorReadiness": "366da30c90b3770e8f18723fba8aa6c10a6f03c7153af0022783462e05a7a4e7",
+        "grayscaleReadiness": "366da30c90b3770e8f18723fba8aa6c10a6f03c7153af0022783462e05a7a4e7",
+        "grayscaleMethod": "0037ba7fdf3fa77a000f53866ce3685f6d4ce4a8c4b073244e77e2a43f36d0ea",
+        "axe": "305c5db89a5c2c42cb7c92ba6cce4cd015cd75054a4ba422af7efa710ee1b57a"
+      }
+    },
+    {
+      "theme": "dark",
+      "surface": "saved-event-wallet",
+      "documentWidth": 390,
+      "header": {
+        "needs": 390,
+        "available": 390
+      },
+      "readiness": {
+        "route": {
+          "settled": true,
+          "elapsedMs": 232,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "color": {
+          "settled": true,
+          "elapsedMs": 134,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        },
+        "grayscale": {
+          "settled": true,
+          "elapsedMs": 127,
+          "settledSamples": 2,
+          "nativeAnimationsRemaining": 0,
+          "finiteAnimationsRemaining": 0
+        }
+      },
+      "mapState": null,
+      "navigation": [
+        {
+          "label": "Today",
+          "rect": {
+            "x": 13,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Map",
+          "rect": {
+            "x": 104,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Events",
+          "rect": {
+            "x": 195,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        },
+        {
+          "label": "Saved",
+          "rect": {
+            "x": 286,
+            "y": 783,
+            "width": 91,
+            "height": 48
+          },
+          "actionability": "actionable",
+          "effective44": true,
+          "clipped": false
+        }
+      ],
+      "panelClose": [],
+      "targetInventoryCandidates": 4,
+      "scrollCoverage": {
+        "sampled": true,
+        "sampleCount": 1,
+        "reachedEnd": true,
+        "coverageClipped": false,
+        "uninspectedScrollRegions": []
+      },
+      "axeViolations": 0,
+      "axeIncomplete": [
+        {
+          "rule": "color-contrast",
+          "nodeCount": 1,
+          "evaluatorError": true
+        }
+      ],
+      "grayscaleMethod": {
+        "method": "Chromium CDP Emulation.setEmulatedVisionDeficiency",
+        "type": "achromatopsia",
+        "reset": "none"
+      },
+      "formattedExtractedJsonFileSha256": {
+        "geometry": "7f21d7892e15a1c24593d02ad4a80665b485f2883d1bb675e6bb2249f44d501b",
+        "routeReadiness": "6f51b0ec7f338d1bf1a757847510c10781477cac098c84f85158ee86b4553bdd",
+        "colorReadiness": "362e4d6db37d85d2c746c6ec9936dcc200c3e42c95dc03857b5c304fa1635e31",
+        "grayscaleReadiness": "1ac054ac74fa04339c4fd27c73d28434926af2921e94ce876294e384f0ddc04a",
+        "grayscaleMethod": "0037ba7fdf3fa77a000f53866ce3685f6d4ce4a8c4b073244e77e2a43f36d0ea",
+        "axe": "7066d9b2551228f989e505324da6566f290c731613d93e5e65d81b2e04cc7e84"
+      }
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "images/dark-events-grayscale.png",
+      "sha256": "fe6803e66b5e204e5cad5c32c54818aefe047d12550c8952573c8480d967e4c1",
+      "pixels": [
+        390,
+        1490
+      ],
+      "modified": false,
+      "grayscale": true
+    },
+    {
+      "file": "images/dark-events.png",
+      "sha256": "e90080eb54bf02462f50a0055d40d3ffc0b9faab127b9bd479f300a32a5917fb",
+      "pixels": [
+        390,
+        1490
+      ],
+      "modified": false,
+      "grayscale": false
+    },
+    {
+      "file": "images/dark-find.png",
+      "sha256": "9f0659b7c33c13e930ac9c5eb548b46fc3275470f6b046d2356f3a0a59a2337b",
+      "pixels": [
+        390,
+        1490
+      ],
+      "modified": false,
+      "grayscale": false
+    },
+    {
+      "file": "images/dark-map.png",
+      "sha256": "5a73b16549c3861007a7022c5cac2535a1444fe0faa80416153d731ddd0428a0",
+      "pixels": [
+        390,
+        844
+      ],
+      "modified": false,
+      "grayscale": false
+    },
+    {
+      "file": "images/dark-saved.png",
+      "sha256": "14ff67d2c4c8168f96d230b6a38cda8dbbd25e14221b5c2e6f61edb28792cb4b",
+      "pixels": [
+        390,
+        844
+      ],
+      "modified": false,
+      "grayscale": false
+    },
+    {
+      "file": "images/dark-today.png",
+      "sha256": "5362285a6f0d4c6f1c67ad2eae7d2c10ef4f45921943ecf64d05e16a71cda826",
+      "pixels": [
+        390,
+        1611
+      ],
+      "modified": false,
+      "grayscale": false
+    },
+    {
+      "file": "images/light-events.png",
+      "sha256": "0b429f1d2357f9c124abe8507967ff2da85e28daed6852558cbd82d2b7488e97",
+      "pixels": [
+        390,
+        1490
+      ],
+      "modified": false,
+      "grayscale": false
+    },
+    {
+      "file": "images/light-find.png",
+      "sha256": "d37095aaf3ab73118f88a43ecfcd156907b8331c1a1ab3ff69173f03a718f3ae",
+      "pixels": [
+        390,
+        1490
+      ],
+      "modified": false,
+      "grayscale": false
+    },
+    {
+      "file": "images/light-map.png",
+      "sha256": "c49ad5ea9c6e91a2918b351b34189349aab4e7d591028766f9470cb98d2e5bd2",
+      "pixels": [
+        390,
+        844
+      ],
+      "modified": false,
+      "grayscale": false
+    },
+    {
+      "file": "images/light-saved.png",
+      "sha256": "974bc36cd35174c9c3e91751f30debd5080d96bb030e41a8d30104af9cbebc61",
+      "pixels": [
+        390,
+        844
+      ],
+      "modified": false,
+      "grayscale": false
+    },
+    {
+      "file": "images/light-today-grayscale.png",
+      "sha256": "921838755bcd889a0b14ca925f5663b5608fbbbfa37559a49f23a930462782f8",
+      "pixels": [
+        390,
+        1587
+      ],
+      "modified": false,
+      "grayscale": true
+    },
+    {
+      "file": "images/light-today.png",
+      "sha256": "03c0c300d19ebfd12ac4f3fe17f7c27e8c8f140e434a9aa96ea1aef23819d867",
+      "pixels": [
+        390,
+        1587
+      ],
+      "modified": false,
+      "grayscale": false
+    },
+    {
+      "file": "images/dark-event-detail.png",
+      "sha256": "a69f15f5d18d8a66a6190028e524127c48409ccc1badf337d35ce51b0ec3df46",
+      "pixels": [
+        390,
+        1490
+      ],
+      "modified": false,
+      "grayscale": false
+    },
+    {
+      "file": "images/dark-saved-event-wallet.png",
+      "sha256": "578df11054513a7398d1ddbd4ef9e4e86b956a07ea28e43e17d1a244f3cbfa93",
+      "pixels": [
+        390,
+        844
+      ],
+      "modified": false,
+      "grayscale": false
+    },
+    {
+      "file": "images/light-event-detail.png",
+      "sha256": "3adc10c4435b49e97287dc9bcf3a6895ba696a49f4df65e3967ae8e5d1d902b9",
+      "pixels": [
+        390,
+        1490
+      ],
+      "modified": false,
+      "grayscale": false
+    },
+    {
+      "file": "images/light-saved-event-wallet.png",
+      "sha256": "b30d83aeb9ad3cb6e5a1670306d209ee16cd32752984f16181d3bf4dd18147b1",
+      "pixels": [
+        390,
+        844
+      ],
+      "modified": false,
+      "grayscale": false
+    }
+  ],
+  "publishedFindingsReceipt": "followups.json",
+  "formattedExtractionManifestFileSha256": {
+    "analysis": "50b9cdcde9d0c12f11bdf2020ccce8b2cae98b4b340fcfaf320f5b3137025c1f",
+    "index": "50e99dba5f3f83b498d3afc08e410b2d245034d195394d7f26e916ab5541c087"
+  },
+  "hashProvenance": {
+    "formattedExtractedJsonFileSha256": "SHA256 of exact formatted extracted JSON file bytes; not the original embedded attachment body.",
+    "formattedExtractionManifestFileSha256": "SHA256 of the formatted analysis/index JSON files.",
+    "originalEmbeddedAttachmentBodyHashes": "Recorded separately in the private extraction index; not substituted for formatted-file hashes.",
+    "screenshotSha256": "SHA256 of exact unchanged PNG bytes copied into the report."
+  },
+  "peerReviewMarkdownFileSha256": "237f33ecc460a4cb66ab9f490440b5b83ead633596cd3ec8a7c91880f656071d",
+  "publishedIssueNumbers": [
+    1766,
+    1767,
+    1768,
+    1769,
+    1770,
+    1771,
+    1772,
+    1773
+  ]
+}
