@@ -60,11 +60,11 @@
       "slug": "gravel-and-grind-frederick",
       "source_url": "https://www.gravelandgrind.com/",
       "source_name": "Gravel & Grind",
-      "source_sha256": "fdba4b0dccbc18657e756bb13b69a11c3a5f4d1001484fc57c38fa072216acab",
-      "observed_at": "2026-10-31T09:22:10.925Z",
-      "expires_at": "2026-11-07T09:22:10.925Z",
-      "coverage_from": "2026-10-31",
-      "coverage_through": "2026-11-07",
+      "source_sha256": "402ffe996e44e08c45b6c01e1d82c381caeaebb3a9ba2639dad7493305408b7a",
+      "observed_at": "2026-11-05T09:23:32.395Z",
+      "expires_at": "2026-11-12T09:23:32.395Z",
+      "coverage_from": "2026-11-05",
+      "coverage_through": "2026-11-12",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -576,11 +576,11 @@
       "slug": "sumittra-thai-cuisine",
       "source_url": "https://www.sumittra.com/",
       "source_name": "Sumittra Thai Cuisine",
-      "source_sha256": "3e8aa0bad02c20d52067e9a4305f87923e6c7a32696dba50dc8fadc03d0543d7",
-      "observed_at": "2026-10-31T15:29:01.925Z",
-      "expires_at": "2026-11-07T15:29:01.925Z",
-      "coverage_from": "2026-10-31",
-      "coverage_through": "2026-11-07",
+      "source_sha256": "789b592ac25eb35993b3e6dfb25d437375f68fbc51d7872682aa6cf632517874",
+      "observed_at": "2026-11-05T15:31:43.350Z",
+      "expires_at": "2026-11-12T15:31:43.350Z",
+      "coverage_from": "2026-11-05",
+      "coverage_through": "2026-11-12",
       "kind": "weekly",
       "hours": {
         "mon": [
