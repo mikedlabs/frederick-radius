@@ -16,7 +16,8 @@
  * action open /events/[slug].
  * The raised card tears out the same cream SPECIMEN-LABEL STUB places use,
  * where the mono ledger prints the full when, venue, town, kind, admission,
- * and saved date, plus the actions (Open event · Directions · Tickets).
+ * and saved date, plus who published the listing and when Radius checked it,
+ * then the actions (Open event · Directions · Tickets).
  *
  * Pure presentation over already-assembled, already-sorted Events. Reuses
  * the shared event helpers (eventLipFact / eventWhenParts / eventPriceLabel,
@@ -36,7 +37,8 @@ import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 import { savedDateLabel } from "@/components/saved/walletFacts";
 import { useToggleSave, savedChangeDescription } from "@/hooks/useSaved";
-import { eventLipFact, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
+import { eventLipFact, eventListingNote, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
+import EventSourceLink from "@/components/event/EventSourceLink";
 import { statusLabel } from "@/lib/event-status";
 import { withBrowseReturnTo } from "@/lib/browse-return";
 
@@ -98,6 +100,7 @@ function Card({
     status === "cancelled" ? "var(--app-danger)" : "var(--app-warning-press)";
   const when = eventWhenParts(event);
   const price = eventPriceLabel(event);
+  const listingNote = eventListingNote(event, now);
   const saved = savedDateLabel(savedAt);
   const hasGeom =
     Boolean(event.geom) && Number.isFinite(event.geom.lat) && Number.isFinite(event.geom.lng);
@@ -211,6 +214,21 @@ function Card({
             )}
           </dl>
         </div>
+        {listingNote ? (
+          <div data-event-listing-note className="mt-3">
+            <p
+              className="text-[13px] leading-[1.5]"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              {listingNote.sentence}
+            </p>
+            {listingNote.sourceUrl ? (
+              <div className="mt-1">
+                <EventSourceLink href={listingNote.sourceUrl} />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <div className="sw-actions">
           <Link href={withBrowseReturnTo(`/events/${event.slug}`, "/my-radius")} className="sw-act-primary">
             Open event
