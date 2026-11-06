@@ -1373,7 +1373,7 @@
     "name": "South Market Sandwich Co",
     "commerce_source": {
       "url": "https://southmarketsandwiches.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-11-06T12:42:04.721Z"
     },
     "commerce_links": [
       {
@@ -1962,7 +1962,7 @@
     "name": "River Bar Grill",
     "commerce_source": {
       "url": "https://riverbargrillfrederick.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-11-06T12:42:00.781Z"
     },
     "commerce_links": [
       {
@@ -3165,6 +3165,155 @@
         "url": "https://ledopizza.com/store/md-lake-linganore/room-rental/",
         "anchor_text": "submit a party-room and catering inquiry",
         "source_url": "https://ledopizza.com/store/md-lake-linganore/"
+      }
+    ]
+  },
+  "ripleighs-creamery-emmitsburg": {
+    "name": "Ripleigh's Creamery",
+    "commerce_source": {
+      "url": "https://ripleighs.com/",
+      "checkedAt": "2026-11-06T12:42:00.445Z"
+    }
+  },
+  "roasthouse-pub-frederick": {
+    "name": "Roasthouse Pub",
+    "commerce_source": {
+      "url": "https://roasthousepubfrederick.com/",
+      "checkedAt": "2026-11-06T12:42:00.736Z"
+    }
+  },
+  "rocky-point-creamery-brunswick": {
+    "name": "Rocky Point Creamery",
+    "commerce_source": {
+      "url": "https://www.rockypointcreamery.com/",
+      "checkedAt": "2026-11-06T12:42:01.177Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.rockypointcreamery.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://www.rockypointcreamery.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.rockypointcreamery.com/gift-cards",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://www.rockypointcreamery.com/"
+      }
+    ]
+  },
+  "saxbys-at-mount-st-marys-university-emmitsburg": {
+    "name": "Saxbys at Mount St. Mary's University",
+    "commerce_source": {
+      "url": "https://www.saxbyscoffee.com/",
+      "checkedAt": "2026-11-06T12:42:01.946Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.saxbyscoffee.com/menus/",
+        "anchor_text": "Menus",
+        "source_url": "https://www.saxbyscoffee.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.saxbyscoffee.com/order-catering/",
+        "anchor_text": "Catering",
+        "source_url": "https://www.saxbyscoffee.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.saxbyscoffee.com/order",
+        "anchor_text": "Order Online",
+        "source_url": "https://www.saxbyscoffee.com/"
+      }
+    ]
+  },
+  "showroom-frederick": {
+    "name": "Showroom",
+    "commerce_source": {
+      "url": "https://www.showroomfrederick.com/",
+      "checkedAt": "2026-11-06T12:42:02.432Z"
+    },
+    "commerce_links": [
+      {
+        "type": "reservation",
+        "url": "https://www.opentable.com/booking/restref/availability?rid=1130335&correlationId=fdcc1d95-62e6-4a13-82be-a38cb7b558a7&restRef=1130335",
+        "anchor_text": "Reserve a Table",
+        "source_url": "https://www.showroomfrederick.com/"
+      },
+      {
+        "type": "reservation",
+        "url": "https://www.showroomfrederick.com/_dm/s/rt/widgets/opentable/opentable.jsp?restid=1130335&ref=&country=us&return=%2F%3Fnull&device=desktop",
+        "anchor_text": "Make a Reservation",
+        "source_url": "https://www.showroomfrederick.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/showroom-882-n-east-street",
+        "anchor_text": "Order Online",
+        "source_url": "https://www.showroomfrederick.com/"
+      }
+    ]
+  },
+  "simple-theory-wine-co-frederick": {
+    "name": "Simple Theory Wine Co",
+    "commerce_source": {
+      "url": "https://simpletheorywines.com/",
+      "checkedAt": "2026-11-06T12:42:02.816Z"
+    }
+  },
+  "snowfox-sushi-brunswick": {
+    "name": "SNOWFOX Sushi",
+    "commerce_source": {
+      "url": "https://www.snowfox.com/",
+      "checkedAt": "2026-11-06T12:42:04.465Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://www.snowfox.com/order-now",
+        "anchor_text": "SnowFox To Go",
+        "source_url": "https://www.snowfox.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.snowfox.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://www.snowfox.com/"
+      }
+    ]
+  },
+  "sara-keps-kitchen-thurmont": {
+    "name": "Sara Kep's Kitchen",
+    "commerce_source": {
+      "url": "https://sarakepskitchen.com/",
+      "checkedAt": "2026-11-06T12:42:06.623Z"
+    },
+    "commerce_links": [
+      {
+        "type": "catering",
+        "url": "https://sarakepskitchen.com/catering-private-events/",
+        "anchor_text": "Catering & Private Events",
+        "source_url": "https://sarakepskitchen.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://sarakepskitchen.com/balance/",
+        "anchor_text": "Gift Card Balance",
+        "source_url": "https://sarakepskitchen.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://sarakepskitchen.com/shop/gift-cards/",
+        "source_url": "https://sarakepskitchen.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://sarakepskitchen.com/family-style-dinners/",
+        "anchor_text": "View Menus",
+        "source_url": "https://sarakepskitchen.com/"
       }
     ]
   }
