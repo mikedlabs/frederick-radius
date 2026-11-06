@@ -32,6 +32,7 @@ import {
   isLikelyEventActionUrl,
 } from "@/lib/events/attendance";
 import { classifyEvent } from "@/lib/events/classify";
+import { storedCopyCategory } from "@/lib/events/county-category";
 import { cleanEventSlug } from "@/lib/events/normalize";
 import { FREDERICK_COUNTY_BBOX, type LngLat } from "@/lib/geo";
 import { resolveFrederickMunicipality } from "@/lib/location";
@@ -222,7 +223,7 @@ function occurrenceToCard(
       ? { lng: s.lng, lat: s.lat }
       : muni?.centroid);
   if (!geom) return null;
-  const category = s.category ?? "community";
+  const category = storedCopyCategory(source, s.category, s.title, s.venueName);
   const slug = routeStyle === "live"
     ? cleanEventSlug({
         presenter: s.presenter,
