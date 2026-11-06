@@ -19,6 +19,7 @@ import {
 import { upsertEvent, emptyStats, type UpsertStats } from "@/lib/ingest/upsert";
 import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
 import { checkEventSchemaReadiness } from "@/lib/ingest/event-schema-readiness";
+import { civicEngageRadiusCategory } from "@/lib/ingest/civicengage-category";
 import { verifyCronAuth } from "../_auth";
 import sources from "@/../config/civicengage_sources.json" with { type: "json" };
 
@@ -261,7 +262,10 @@ function dedupeEvents(
 
   for (const feed of feedResults) {
     if (!feed.ok) continue;
-    const category = src.category_map[String(feed.catID)] ?? null;
+    const category =
+      civicEngageRadiusCategory(src.domain, feed.catID) ??
+      src.category_map[String(feed.catID)] ??
+      null;
     for (const event of feed.events) {
       const existing = byUid.get(event.uid);
       if (existing) {

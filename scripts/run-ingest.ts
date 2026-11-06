@@ -9,6 +9,7 @@
 import { getSql, closeDb } from "@/lib/db/client";
 import { parseICal } from "@/lib/ingest/parser";
 import { upsertEvent, emptyStats } from "@/lib/ingest/upsert";
+import { civicEngageRadiusCategory } from "@/lib/ingest/civicengage-category";
 import { geocodePending } from "@/lib/ingest/geocode";
 import sources from "@/../config/civicengage_sources.json" with { type: "json" };
 
@@ -48,7 +49,7 @@ async function main() {
         const events = parseICal(ics);
         parsed += events.length;
         for (const e of events) {
-          await upsertEvent(sql, { sourceDomain: src.domain, municipality: src.municipality, category: src.category_map[String(catID)] ?? null }, e, stats);
+          await upsertEvent(sql, { sourceDomain: src.domain, municipality: src.municipality, category: civicEngageRadiusCategory(src.domain, catID) ?? src.category_map[String(catID)] ?? null }, e, stats);
         }
       }
       console.log(`✓ ${src.municipality}: parsed ${parsed} · raw +${stats.rawInserted}/~${stats.rawUpdated}/=${stats.rawUnchanged} · norm ${stats.normUpserted} · unparseable-loc ${stats.unparseableLocations}`);
