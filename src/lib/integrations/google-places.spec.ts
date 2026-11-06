@@ -1,12 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  currentPlacePhotoName,
   decisionFeatures,
   getPlaceDetailsResult,
+  googlePhotoDeliveryConfigured,
   googlePlacesConfigured,
   normalizeGooglePhotoAttributions,
   normalizeGooglePlaceSummary,
   photoUrl,
   pickReview,
+  placeIdFromPhotoName,
   resolveAndEnrichResult,
 } from "./google-places";
 
@@ -162,8 +165,56 @@ describe("photo delivery isolation", () => {
     vi.stubEnv("GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED", "0");
 
     expect(googlePlacesConfigured()).toBe(false);
+    expect(googlePhotoDeliveryConfigured()).toBe(true);
     expect(photoUrl("places/ChIJtest/photos/photo-one", 640)).toContain(
       "places/ChIJtest/photos/photo-one/media?maxWidthPx=640&key=test-photo-key",
     );
+  });
+
+  it("reads the Place ID from a photo resource name", () => {
+    expect(placeIdFromPhotoName("places/ChIJtest/photos/photo-one")).toBe("ChIJtest");
+    expect(placeIdFromPhotoName("https://evil.example/photo")).toBeNull();
+  });
+
+  it("resolves the current main photo with the photos-only field mask", async () => {
+    vi.stubEnv("GOOGLE_PLACES_API_KEY", "test-photo-key");
+    vi.stubEnv("GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED", "0");
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      id: "ChIJtest",
+      photos: [
+        { name: "places/ChIJtest/photos/first" },
+        { name: "places/ChIJtest/photos/second" },
+      ],
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(currentPlacePhotoName("ChIJtest")).resolves.toEqual({
+      status: "found",
+      name: "places/ChIJtest/photos/first",
+    });
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
+      "https://places.googleapis.com/v1/places/ChIJtest",
+      expect.objectContaining({
+        cache: "no-store",
+        headers: {
+          "X-Goog-Api-Key": "test-photo-key",
+          "X-Goog-FieldMask": "id,photos",
+        },
+      }),
+    );
+  });
+
+  it("does not treat an empty or failed details response as a photo name", async () => {
+    vi.stubEnv("GOOGLE_PLACES_API_KEY", "test-photo-key");
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "ChIJtest", photos: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response("quota", { status: 429 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(currentPlacePhotoName("ChIJtest")).resolves.toEqual({ status: "empty" });
+    await expect(currentPlacePhotoName("ChIJtest")).resolves.toEqual({ status: "unavailable" });
   });
 });
