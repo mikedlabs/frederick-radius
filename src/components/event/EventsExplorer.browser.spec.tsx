@@ -192,6 +192,19 @@ describe("Events passive empty-snapshot recovery", () => {
     expect(eventLinks()).toContain("/events/recovered-concert");
     expect(host.textContent).toContain("Why these results are partial"); expect(request).not.toHaveBeenCalled();
   });
+  it("identifies the recent copy and still offers to check for changes", async () => {
+    await render(props([listedEvent()], {
+      degraded: true,
+      unavailable: ["Showing a recent copy of the event schedule."],
+      issues: [{ code: "event_archive_recent_copy", message: "Showing a recent copy of the event schedule." }],
+    }));
+
+    expect(eventLinks()).toContain("/events/recovered-concert");
+    expect(host.textContent).toContain("Why these results may be out of date");
+    expect(host.textContent).toContain("Radius is showing a recent copy of the event schedule.");
+    expect(host.textContent).not.toContain("The saved event schedule is incomplete.");
+    expect([...host.querySelectorAll("button")].some((button) => button.textContent === "Check again")).toBe(true);
+  });
   it("keeps a degraded runtime response qualified and makes no automatic retry", async () => {
     request.mockResolvedValue(payload([listedEvent()], degraded)); await render();
     expect(eventLinks()).toContain("/events/recovered-concert");
@@ -215,7 +228,7 @@ describe("Events passive empty-snapshot recovery", () => {
     expect(eventLinks()).toContain("/events/recovered-concert");
   });
   it("gives an empty archive timeout truthful recovery and official calendars, then replaces it after an explicit retry", async () => {
-    const archiveTimeout = {
+    const archiveTimeout: SourceHealth = {
       degraded: true,
       unavailable: ["The event schedule is taking longer than expected to load."],
       issues: [{ code: "event_archive_timeout", message: "The event schedule is taking longer than expected to load." }],
@@ -247,7 +260,7 @@ describe("Events passive empty-snapshot recovery", () => {
     expect(host.querySelector('a[href="https://www.frederickcountymd.gov/calendar.aspx"]')).toBeNull();
   });
   it("keeps known events after an empty timeout response without blaming publisher calendars", async () => {
-    const archiveTimeout = {
+    const archiveTimeout: SourceHealth = {
       degraded: true,
       unavailable: ["The event schedule is taking longer than expected to load."],
       issues: [{ code: "event_archive_timeout", message: "The event schedule is taking longer than expected to load." }],

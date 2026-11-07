@@ -57,6 +57,18 @@ export const EVENT_BROWSE_SNAPSHOT_LIMIT = 1_500;
 // connection, but no public request can turn this bounded archive read into a
 // long-running database wait.
 const EVENT_ARCHIVE_MAX_TIMEOUT_MS = 5_000;
+const EVENT_BROWSE_CACHE_SECONDS = 300;
+
+// A warm instance can keep one successful live browse read for the same
+// window when Next's cache transport is unreachable. The entry fits the same
+// size budget and expires within one normal browse revalidation interval.
+type RecentBrowseRead = {
+  sql: NonNullable<ReturnType<typeof getSql>>;
+  windowStart: number;
+  readAt: number;
+  envelope: ArchiveEnvelope | null;
+};
+let recentBrowseRead: RecentBrowseRead | null = null;
 
 type EventArchiveSnapshotOptions = {
   /** Select a calendar window without using that date to judge source freshness. */
@@ -71,6 +83,7 @@ type EventArchiveSnapshotOptions = {
 export type EventArchivePublicReasonCode =
   | "event_archive_timeout"
   | "event_archive_unavailable"
+  | "event_archive_recent_copy"
   | "event_archive_status_unavailable"
   | "event_archive_refresh_failed"
   | "event_archive_stale"
@@ -97,6 +110,8 @@ const EVENT_ARCHIVE_PUBLIC_MESSAGES: Record<
     "The event schedule is taking longer than expected to load.",
   event_archive_unavailable:
     "The event schedule is temporarily unavailable.",
+  event_archive_recent_copy:
+    "Showing a recent copy of the event schedule.",
   event_archive_status_unavailable:
     "The event schedule's freshness could not be confirmed.",
   event_archive_refresh_failed:
@@ -584,17 +599,40 @@ export async function loadEventArchiveSnapshot(
   const limit = boundedInteger(options.limit, EVENT_BROWSE_SNAPSHOT_LIMIT, 1, 2_000);
   const timeoutMs = boundedInteger(options.timeoutMs, EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS, 100, EVENT_ARCHIVE_MAX_TIMEOUT_MS);
   // Never teach a shared cache that a promoted/no-storage build has no events.
-  if (isPromotedDataBuild() || !getSql()) return curatedFallback(now, "event_archive_unavailable");
+  const sql = isPromotedDataBuild() ? null : getSql();
+  if (!sql) return curatedFallback(now, "event_archive_unavailable");
   const windowStart = options.windowStart && Number.isFinite(options.windowStart.getTime())
     ? options.windowStart : now;
   const { start, end } = snapshotBounds(windowStart, horizonDays);
+  const isBrowseWindow = options.windowStart === undefined &&
+    horizonDays === EVENT_BROWSE_HORIZON_DAYS && limit === EVENT_BROWSE_SNAPSHOT_LIMIT;
+  const matchesBrowseRead = (read: RecentBrowseRead | null): read is RecentBrowseRead =>
+    isBrowseWindow && read !== null && read.sql === sql && read.windowStart === start.getTime();
   if (!options.cache) {
     try {
-      return hydrateTodayEventSnapshot(await readArchiveEnvelope(start, end, limit, timeoutMs), now);
+      const envelope = await readArchiveEnvelope(start, end, limit, timeoutMs);
+      // A successful explicit refresh can remove events. Do not restore an
+      // older copy of that window after it returns.
+      if (matchesBrowseRead(recentBrowseRead)) recentBrowseRead = null;
+      return hydrateTodayEventSnapshot(envelope, now);
     } catch (error) {
       return curatedFallback(now, error instanceof ArchiveSnapshotReadError ? error.code : "event_archive_unavailable");
     }
   }
+
+  const degradedBrowse = (code: EventArchivePublicReasonCode): EventArchiveSnapshot => {
+    const read = recentBrowseRead;
+    if (matchesBrowseRead(read) && read.envelope) {
+      const ageMs = now.getTime() - read.readAt;
+      if (ageMs >= 0 && ageMs < EVENT_BROWSE_CACHE_SECONDS * 1_000) {
+        const snapshot = hydrateTodayEventSnapshot(read.envelope, now);
+        if (!snapshot.sourceHealth.degraded) {
+          return { ...snapshot, sourceHealth: eventArchiveSourceHealth(["event_archive_recent_copy", code]) };
+        }
+      }
+    }
+    return curatedFallback(now, code);
+  };
 
   const controller = new AbortController();
   const deadlineAt = performance.now() + timeoutMs;
@@ -610,8 +648,14 @@ export async function loadEventArchiveSnapshot(
           throw new ArchiveSnapshotReadError("event_archive_timeout");
         }
         const envelope = await shareArchiveRead(start, end, limit, timeoutMs, remainingMs, controller.signal);
+        const read: RecentBrowseRead | null = isBrowseWindow
+          ? { sql, windowStart: start.getTime(), readAt: now.getTime(), envelope: null }
+          : null;
+        if (read) recentBrowseRead = read;
         try {
-          return await encodeArchiveEnvelope(envelope);
+          const encoded = await encodeArchiveEnvelope(envelope);
+          if (read && !controller.signal.aborted) read.envelope = envelope;
+          return encoded;
         } catch (error) {
           // An over-budget successful read is still useful to this caller. Reject
           // inside the cache so it cannot replace the last good persisted value.
@@ -621,7 +665,7 @@ export async function loadEventArchiveSnapshot(
       }, [
         "durable-event-archive-envelope-gzip-v1",
         start.toISOString(), end.toISOString(), String(limit), String(timeoutMs),
-      ], { revalidate: 300, tags: ["events", "durable-event-archive"] });
+      ], { revalidate: EVENT_BROWSE_CACHE_SECONDS, tags: ["events", "durable-event-archive"] });
       const encoded = await cachedRead();
       if (freshUncachedEnvelope) return hydrateTodayEventSnapshot(freshUncachedEnvelope, now);
       const envelope = await decodeArchiveEnvelope(encoded);
@@ -630,12 +674,12 @@ export async function loadEventArchiveSnapshot(
       return hydrateTodayEventSnapshot(envelope, now);
     } catch (error) {
       if (freshUncachedEnvelope) return hydrateTodayEventSnapshot(freshUncachedEnvelope, now);
-      return curatedFallback(now, error instanceof ArchiveSnapshotReadError ? error.code : "event_archive_unavailable");
+      return degradedBrowse(error instanceof ArchiveSnapshotReadError ? error.code : "event_archive_unavailable");
     }
   })();
   const outcome = await beforeDeadline(Object.assign(pipeline, {
     cancel: () => controller.abort(),
   }), Math.max(0, Math.floor(deadlineAt - performance.now())), { cancelOnFailure: false });
   // Success must not abort Next's legitimate background stale revalidation.
-  return outcome.ok ? outcome.value : curatedFallback(now, outcome.code);
+  return outcome.ok ? outcome.value : degradedBrowse(outcome.code);
 }

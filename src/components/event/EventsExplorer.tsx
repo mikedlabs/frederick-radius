@@ -32,6 +32,7 @@ import { hasDeafCommunityOrCommunicationAccess } from "@/lib/events/communicatio
 import { type Daypart } from "@/lib/daypart";
 import { parseViewState, toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import type { EventArchiveSourceHealth } from "@/lib/loaders/todayEventSnapshot";
 import type { EventSourceHealth } from "@/lib/loaders/unifiedEvents";
 import { getEventsTown, setEventsTown } from "@/lib/personalize";
 import { readResumedEventsTabView, rememberEventsTabView } from "@/lib/primary-tab-session";
@@ -170,6 +171,10 @@ const DAYPART_KEYS: Daypart[] = DAYPARTS.map((d) => d.key);
 // set, kept visually apart from the filter caption. ViewKey / EventSortKey
 // are imported from there so both surfaces speak one vocabulary.
 
+type BrowseSourceHealth = EventSourceHealth & {
+  issues?: EventArchiveSourceHealth["issues"];
+};
+
 type Props = {
   /** Bounded server preview. Empty degraded snapshots may recover once. */
   events: EventWithMeta[];
@@ -177,7 +182,7 @@ type Props = {
   categories: { slug: string; name: string }[];
   towns: { slug: string; name: string }[];
   summary: EventBrowseSummary;
-  sourceHealth: EventSourceHealth;
+  sourceHealth: BrowseSourceHealth;
   /** Server-computed boundaries (avoids client TZ math + hydration drift). */
   nowISO: string;
   next24ISO: string;
@@ -189,13 +194,13 @@ type BrowseResponse = {
   events: EventWithMeta[];
   liveSlugs?: string[];
   generatedAt: string;
-  sourceHealth?: EventSourceHealth;
+  sourceHealth?: BrowseSourceHealth;
 };
 
 type ReconciledBrowseResponse = {
   events: EventWithMeta[];
   liveSlugs: string[];
-  sourceHealth: EventSourceHealth;
+  sourceHealth: BrowseSourceHealth;
   dataComplete: boolean;
 };
 
@@ -1018,6 +1023,8 @@ export default function EventsExplorer({
     hasLoadedEvents: eventPool.length > 0,
   });
   const showOfficialCalendars = !dataComplete && eventPool.length === 0;
+  const showingRecentCopy = Array.isArray(currentSourceHealth.issues) &&
+    currentSourceHealth.issues.some((issue) => issue?.code === "event_archive_recent_copy");
 
   const primaryHorizon = horizonGroups[0];
   const primaryLead = primaryHorizon ? splitHorizonLead(primaryHorizon.events, sort).lead : null;
@@ -1186,7 +1193,7 @@ export default function EventsExplorer({
           }}
         >
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 font-semibold">
-            <span>Why these results are partial</span>
+            <span>{showingRecentCopy ? "Why these results may be out of date" : "Why these results are partial"}</span>
             <ChevronDown
               className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
               strokeWidth={2.2}
@@ -1195,7 +1202,9 @@ export default function EventsExplorer({
           </summary>
           <div className="flex items-start justify-between gap-3 border-t py-3" style={{ borderColor: "var(--app-border)" }}>
             <span>
-              The saved event schedule is incomplete. These are the listings available to Radius; check with each organizer before going.
+              {showingRecentCopy
+                ? "Radius is showing a recent copy of the event schedule. Check with the organizer before going."
+                : "The saved event schedule is incomplete. Check with the organizer before going."}
             </span>
             {!dataComplete && (
               <button

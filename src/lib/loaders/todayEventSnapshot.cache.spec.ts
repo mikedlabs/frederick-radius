@@ -167,6 +167,51 @@ describe("durable archive cache through installed Next App Router revalidation",
     expect(result.sourceHealth.issues[0].code).toBe("event_archive_timeout");
     expect(sql).not.toHaveBeenCalled(); expect(cache.set).not.toHaveBeenCalled();
   }, 2_000);
+  it("keeps a recent successful browse read when the shared cache stalls", async () => {
+    const sql = vi.fn().mockResolvedValue([envelope()]);
+    mocks.getSql.mockReturnValue(sql);
+    await cached(NOW, { timeoutMs: 100 });
+    cache.get.mockImplementationOnce(() => new Promise(() => {}));
+
+    const result = await cached(new Date(NOW.getTime() + 60_000), { timeoutMs: 100 });
+
+    expect(result.publicEvents.find(row => row.slug === event().slug)?.last_verified_at).toBe(VERIFIED);
+    expect(result.sourceHealth.issues.map(issue => issue.code)).toEqual([
+      "event_archive_recent_copy", "event_archive_timeout",
+    ]);
+    expect(result.sourceHealth.degraded).toBe(true);
+    expect(sql).toHaveBeenCalledOnce();
+    expect(cache.set).toHaveBeenCalledOnce();
+  });
+  it("falls back to curated rows after the last successful browse read expires or the window changes", async () => {
+    const sql = vi.fn().mockResolvedValue([envelope()]);
+    mocks.getSql.mockReturnValue(sql);
+    await cached();
+    const atExpiry = new Date(NOW.getTime() + 300_000);
+    const tomorrow = new Date("2026-10-19T04:00:00.000Z");
+    for (const now of [atExpiry, tomorrow]) {
+      cache.get.mockRejectedValueOnce(new Error("cache transport unavailable"));
+      const result = await cached(now);
+      expect(result.publicEvents.some(row => row.slug === event().slug)).toBe(false);
+      expect(result.sourceHealth.issues.map(issue => issue.code)).toEqual(["event_archive_unavailable"]);
+    }
+    expect(sql).toHaveBeenCalledOnce();
+  });
+  it("cannot restore removed events after an explicit refresh reads an empty archive", async () => {
+    const sql = vi.fn().mockResolvedValueOnce([envelope()]).mockResolvedValue([envelope([])]);
+    mocks.getSql.mockReturnValue(sql);
+    await cached();
+    const later = new Date(NOW.getTime() + 1_000);
+    const refreshed = await inApp(() => loadEventArchiveSnapshot(later, { cache: false }));
+    expect(refreshed.publicEvents.some(row => row.slug === event().slug)).toBe(false);
+    expect(refreshed.sourceHealth.degraded).toBe(false);
+
+    cache.get.mockRejectedValueOnce(new Error("cache transport unavailable"));
+    const failed = await cached(later);
+    expect(failed.publicEvents.some(row => row.slug === event().slug)).toBe(false);
+    expect(failed.sourceHealth.issues.map(issue => issue.code)).toEqual(["event_archive_unavailable"]);
+    expect(sql).toHaveBeenCalledTimes(2);
+  });
   it("cannot start SQL when a cache miss resolves after the caller's deadline", async () => {
     const sql = vi.fn(); mocks.getSql.mockReturnValue(sql);
     let resolveLookup!: (value: null) => void;
