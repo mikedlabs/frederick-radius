@@ -116,4 +116,13 @@ describe("Search before hydration", () => {
     expect(window.history.state[NATIVE_REQUEST_ENTRY_KEY].draft).toEqual({ kind: "search", query: "  coffee & tea  " });
     expect(window.history.state.unrelated).toBe("kept");
   });
+
+  it("submits a browser-filled field even if no React change event ran", async () => {
+    await render();
+    input().value = "coffee and tea";
+    await act(async () => host.querySelector<HTMLButtonElement>('button[type="submit"]')!.click());
+    const destination = new URL(navigation.push.mock.calls[0][0], window.location.origin);
+    expect(destination.searchParams.get("q")).toBe("coffee and tea");
+    expect(window.history.state[NATIVE_REQUEST_ENTRY_KEY].draft.query).toBe("coffee and tea");
+  });
 });

@@ -43,7 +43,7 @@ for (const width of [390, 1440]) {
   test(`Today makes manual scope and useful tasks available at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
     await page.goto("/today");
-    const find = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
+    const find = page.getByRole("link", { name: "Find what you need", exact: true });
     await expect(find).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Choose your area" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Local services", exact: true })).toBeVisible();

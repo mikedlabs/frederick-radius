@@ -165,7 +165,7 @@ for (const width of [375, 1366]) {
     const area = page.getByRole("combobox", { name: "Choose your area", exact: true });
     await expect(area).toBeEnabled();
     await area.selectOption("county");
-    const opener = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
+    const opener = page.getByRole("link", { name: "Find what you need", exact: true });
     const dialog = page.getByRole("dialog", { name: "What do you need?", exact: true });
     const field = dialog.getByRole("searchbox", { name: "Ask or find across Frederick County", exact: true });
     await opener.click();

@@ -195,7 +195,7 @@ for (const viewport of VIEWPORTS) {
     test("global Find opens as one focused task surface", async ({ page }, testInfo) => {
       await page.goto("/today", { waitUntil: "domcontentloaded" });
       const trigger = page.getByRole("link", {
-        name: "Find a place, service, event, or answer",
+        name: "Find what you need", exact: true,
       });
       await expect(page.getByRole("combobox", { name: "Choose your area" })).toBeEnabled();
       await expect(trigger).toBeVisible({ timeout: 20_000 });
@@ -323,7 +323,7 @@ for (const viewport of VIEWPORTS) {
         compass.getByRole("heading", { name: "Choose a direction" }),
       ).toBeVisible();
       await expect(
-        compass.getByRole("link", { name: "Find a place, service, event, or answer" }),
+        compass.getByRole("link", { name: /^Find places and events\b/ }),
       ).toHaveAttribute("href", "/search");
       await expect(compass.getByRole("searchbox")).toHaveCount(0);
 

@@ -56,7 +56,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await expect(weatherRegion).toHaveAttribute("data-weather-state", /^(available|safety-only|unavailable)$/);
     const weatherState = await weatherRegion.getAttribute("data-weather-state");
     await page.evaluate(() => document.fonts.ready);
-    const find = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
+    const find = page.getByRole("link", { name: "Find what you need", exact: true });
     await expect(find).toBeVisible();
     const findBox = await find.boundingBox();
     // Active safety alerts and an intentional day-of civic spotlight lead

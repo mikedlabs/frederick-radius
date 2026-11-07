@@ -67,7 +67,7 @@ test("Today keeps decoded exact local photography and Find while unreviewed busi
     await expect(tasks.nth(index)).toHaveAttribute("href", `/nearby?${new URLSearchParams({ c: kind, in: "county", returnTo: "/today?in=county" })}`);
   }
   await expect(page.locator('[data-today-local-discovery]')).not.toContainText(/Find pizza|Zoe|Sabor/);
-  const find = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
+  const find = page.getByRole("link", { name: "Find what you need", exact: true });
   await expect(find).toBeVisible();
   const findBox = (await find.boundingBox())!, discoveryBox = (await page.locator("[data-today-local-discovery]").boundingBox())!;
   expect(findBox.y + findBox.height).toBeLessThanOrEqual(discoveryBox.y);

@@ -69,7 +69,7 @@ test("Find is reversible through Close, Escape, and browser Back", async ({
   // arriving while the overlay happens to be open.
   await page.waitForLoadState("networkidle");
   const trigger = page.getByRole("link", {
-    name: "Find a place, service, event, or answer", exact: true,
+    name: "Find what you need", exact: true,
   });
   await expect(trigger).toHaveAttribute("data-find-interaction-ready", "true");
   // The current request doorway is in the page. Put it visibly below the

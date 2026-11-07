@@ -182,7 +182,7 @@ for (const { entry, query, slug, photoSource } of [
     await page.setViewportSize({ width: 390, height: 844 });
     await imageTransport(page);
     const launcher = entry.startsWith("/today")
-      ? page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true })
+      ? page.getByRole("link", { name: "Find what you need", exact: true })
       : page.locator("header").getByRole("button", { name: "Ask or find across Frederick County", exact: true }).filter({ visible: true });
     async function openEntryFind() {
       await expect(launcher).toHaveCount(1);

@@ -60,6 +60,31 @@ test("a new area replaces the town embedded in the request without losing the pl
   expect(new URL(page.url()).searchParams.get("in")).toBe("county");
 });
 
+test("Find offers a visible submit action and an explicit recovery from an empty town search", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.route("**/api/place-photo?**", (route) => route.abort());
+  await page.goto("/search?in=brunswick&kind=place", { waitUntil: "domcontentloaded" });
+  const form = page.getByRole("search");
+  const input = form.getByRole("searchbox");
+  const submit = form.getByRole("button", { name: "Search", exact: true });
+  await input.fill("Schifferstadt");
+  const bounds = (await submit.boundingBox())!;
+  expect(bounds.width).toBeGreaterThanOrEqual(44);
+  expect(bounds.height).toBeGreaterThanOrEqual(44);
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(320);
+  await submit.click();
+
+  await expect(page.getByRole("heading", { name: /There are no matches for.*Schifferstadt/ })).toBeVisible();
+  await expect(page.getByText(/Your search was limited to Brunswick/)).toBeVisible();
+  await page.getByRole("link", { name: "Search the whole county" }).click();
+  await expect(page.getByRole("combobox", { name: "Search area" })).toHaveValue("county");
+  await expect(page.getByRole("heading", { name: "Schifferstadt Architectural Museum", exact: true })).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("kind")).toBe("place");
+  await page.goBack();
+  await expect(page.getByRole("combobox", { name: "Search area" })).toHaveValue("brunswick");
+  await expect(page.getByRole("link", { name: "Search the whole county" })).toBeVisible();
+});
+
 
 for (const width of [320, 390]) {
   test(`native search area and photographic lead reflow at ${width}px with enlarged text`, async ({ page }, info) => {
@@ -121,6 +146,11 @@ for (const width of [320, 390]) {
     expect(bounds.width).toBeGreaterThanOrEqual(width - 64);
     expect(bounds.x).toBeGreaterThanOrEqual(0);
     expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+    const submit = page.getByRole("search").getByRole("button", { name: "Search", exact: true });
+    const searchBox = (await submit.boundingBox())!;
+    expect(searchBox.width).toBeGreaterThanOrEqual(44);
+    expect(searchBox.height).toBeGreaterThanOrEqual(44);
+    expect(searchBox.x + searchBox.width).toBeLessThanOrEqual(width);
     const lead = page.locator("[data-search-place-lead]").first();
     await expect(lead.getByRole("heading", { name: "Schifferstadt Architectural Museum", exact: true })).toBeVisible();
     for (const action of [lead.getByRole("link", { name: "View place: Schifferstadt Architectural Museum", exact: true }), lead.getByRole("link", { name: "Map: Schifferstadt Architectural Museum", exact: true })]) {

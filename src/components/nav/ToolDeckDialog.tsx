@@ -110,13 +110,15 @@ export default function ToolDeckDialog({
     };
   }, [open, openerRef]);
 
+  // Changing sections replaces the control that opened the new section.
+  // Keep focus in the panel even when it stays mounted between sections.
   useEffect(() => {
     if (!open || (presentation === "modal" && !mounted)) return;
     const frame = window.requestAnimationFrame(() => {
       (closeRef.current ?? panelRef.current)?.focus();
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [mounted, open, presentation]);
+  }, [mounted, open, presentation, title]);
 
   if (presentation === "inline") {
     if (!open) return null;

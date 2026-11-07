@@ -46,6 +46,12 @@ or a named municipality. A location request must explain the benefit before
 the browser permission prompt appears. Declining location always leaves a
 working county or town fallback.
 
+Find offers a visible Search action alongside keyboard submission. If a
+complete town search finds no matches, the result explains the town limit
+and can repeat the request countywide while retaining its result type and
+return context. This one search does not change the visitor's saved scope.
+An incomplete event read keeps its own coverage message.
+
 The map must not expose two controls that change the same location state.
 Recenter, scope, and the location readout must agree.
 

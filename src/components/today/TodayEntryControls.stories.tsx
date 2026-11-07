@@ -27,7 +27,7 @@ const usableControls: NonNullable<Story["play"]> = async ({ canvasElement }) => 
   await canvasElement.ownerDocument.fonts.ready;
   const canvas = within(canvasElement);
   const group = canvasElement.querySelector<HTMLElement>("[data-today-entry-controls]")!;
-  const find = canvas.getByRole("link", { name: "Find a place, service, event, or answer" });
+  const find = canvas.getByRole("link", { name: /^Find what you need/ });
   const area = canvas.getByRole("combobox", { name: "Choose your area" });
   const location = canvas.getByRole("button", { name: "Use my location" });
   await expect(find).toHaveAttribute("href", "/search");

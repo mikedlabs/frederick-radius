@@ -256,7 +256,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
 
     const masthead = page.locator("main .scroll-masthead");
     const find = page.getByRole("link", {
-      name: "Find a place, service, event, or answer", exact: true,
+      name: "Find what you need", exact: true,
     });
     await expect(masthead).toHaveCount(1);
     await expect(find).toHaveCount(1);
@@ -311,7 +311,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
       };
       return {
         mastheadBox: bounds("main .scroll-masthead"),
-        findBox: bounds('[data-find-density="arrival"] a[aria-label="Find a place, service, event, or answer"]'),
+        findBox: bounds('[data-find-density="arrival"] a[data-find-interaction-ready]'),
         entryControlsBox: bounds("[data-today-entry-controls]"),
         weatherBox: bounds("[data-today-weather]"),
         photoBox: bounds("[data-today-photo-lead] [data-place-card-photo]"),

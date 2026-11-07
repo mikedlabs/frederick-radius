@@ -40,16 +40,24 @@ async function escape(target: HTMLElement) {
 }
 
 describe("actual Radix Tools drawer delegation", () => {
-  it("prevents outer dismissal at document capture and returns from the inline index once", async () => {
-    await render(); const outer = dialog(); const launcher = button("Browse the full tool index");
+  it("keeps focus in the inline index when changing sections and returns on Escape", async () => {
+    await render(); const outer = dialog();
+    const chapter = outer.querySelector<HTMLButtonElement>('[data-compass-intent="go-out"] button')!;
+    await click(chapter);
+    const launcher = button("More food, drinks & events");
     await click(launcher);
     expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
     const inner = outer.querySelector<HTMLElement>("[data-tool-deck-inline]")!;
     expect(inner).not.toBeNull(); expect(document.activeElement).toBe(inner.querySelector("button"));
-    await escape(inner.querySelector<HTMLButtonElement>("button")!);
+    const allTools = button("All tools");
+    allTools.focus();
+    await click(allTools);
+    expect(inner.querySelector("h2")?.textContent).toBe("All tools");
+    expect(document.activeElement).toBe(inner.querySelector("button"));
+    await escape(document.activeElement as HTMLElement);
     expect(navigation.back).not.toHaveBeenCalled();
     expect(dialog()).toBe(outer); expect(outer.querySelector("[data-tool-deck-inline]")).toBeNull();
-    expect(window.location.search).toBe(""); expect(document.activeElement).toBe(launcher);
+    expect(window.location.search).toBe("?chapter=go-out"); expect(document.activeElement).toBe(launcher);
   });
   it("keeps normal outer Escape dismissal when no inner panel owns input", async () => {
     await render(); const close = dialog().querySelector<HTMLButtonElement>('button[aria-label="Close All tools"]')!;

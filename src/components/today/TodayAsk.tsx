@@ -62,7 +62,6 @@ export default function TodayAsk({
           haptic("light");
           requestFind("global");
         }}
-        aria-label="Find a place, service, event, or answer"
         className={styles.launcher}
       >
         <span

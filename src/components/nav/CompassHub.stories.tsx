@@ -46,7 +46,7 @@ type Story = StoryObj<typeof meta>;
 
 const intentFlow = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
   const canvas = within(canvasElement);
-  const find = canvas.getByRole("link", { name: "Find a place, service, event, or answer" });
+  const find = canvas.getByRole("link", { name: /^Find places and events\b/ });
   await expect(find).toHaveAttribute("href", "/search");
   await expect(find.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
   await expect(canvas.queryByRole("searchbox")).not.toBeInTheDocument();
@@ -106,7 +106,7 @@ export const EmbeddedToolsDrawer: Story = {
   play: async () => {
     const drawer = await within(document.body).findByRole("dialog", { name: "All tools" });
     const tools = within(drawer);
-    await expect(tools.getByRole("link", { name: "Find a place, service, event, or answer" })).toHaveAttribute("href", "/search");
+    await expect(tools.getByRole("link", { name: /^Find places and events\b/ })).toHaveAttribute("href", "/search");
     const launcher = tools.getByRole("button", { name: "Browse the full tool index" });
     await waitFor(() => expect(launcher).toBeEnabled()); await userEvent.click(launcher);
     const index = await tools.findByRole("region", { name: "All tools" });

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { rememberNativeRequest } from "./native-request-return";
 import { useNativeRequestReturn } from "./useNativeRequestReturn";
 
@@ -44,54 +44,64 @@ export default function SearchInput({
       role="search"
       onSubmit={(e) => {
         e.preventDefault();
-        rememberNativeRequest({ draft: { kind: "search", query: q }, target: "search-input" });
-        const next = q.trim();
-        router.push(searchHref(next, returnTo, scope, kind));
+        // The field may have received input before React finished hydrating.
+        // Submit the same visible value the native GET form would send.
+        const visibleQuery = inputRef.current?.value ?? q;
+        rememberNativeRequest({ draft: { kind: "search", query: visibleQuery }, target: "search-input" });
+        router.push(searchHref(visibleQuery.trim(), returnTo, scope, kind));
       }}
-      className="search-field-shell flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3"
-      style={{ borderColor: "var(--app-control-border)" }}
+      className="flex flex-wrap items-stretch gap-2"
     >
-      <label htmlFor="site-search-input" className="sr-only">
-        Search Frederick County
-      </label>
-      <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-      <input
-        id="site-search-input"
-        ref={inputRef}
-        type="search"
-        name="q"
-        value={q}
-        onChange={(e) => {
-          setQ(e.target.value);
-          rememberNativeRequest({ draft: { kind: "search", query: e.target.value } });
-        }}
-        placeholder="Find places, events, towns, tools"
-        autoComplete="off"
-        autoCorrect="off"
-        autoCapitalize="off"
-        spellCheck={false}
-        className="w-full bg-transparent py-3 text-[16px] outline-none placeholder:text-[color:var(--app-ink-3)]"
-        style={{ color: "var(--app-ink)" }}
-      />
+      <div className="search-field-shell flex min-w-0 flex-[1_1_13rem] items-center gap-2 rounded-full border border-[var(--app-control-border)] bg-[var(--app-bg-elevated)] px-3">
+        <label htmlFor="site-search-input" className="sr-only">
+          Search Frederick County
+        </label>
+        <Search className="h-4 w-4 shrink-0 text-[var(--app-ink-3)]" strokeWidth={1.75} aria-hidden />
+        <input
+          id="site-search-input"
+          ref={inputRef}
+          type="search"
+          name="q"
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            rememberNativeRequest({ draft: { kind: "search", query: e.target.value } });
+          }}
+          placeholder="Places, events, towns, tools"
+          enterKeyHint="search"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          className="min-w-0 flex-1 bg-transparent py-3 text-base text-[var(--app-ink)] outline-none placeholder:text-[color:var(--app-ink-3)] [&::-webkit-search-cancel-button]:hidden"
+        />
+        {q && (
+          <button
+            type="button"
+            aria-label="Clear"
+            onClick={() => {
+              setQ("");
+              inputRef.current?.focus();
+              rememberNativeRequest({ draft: { kind: "search", query: "" }, target: "search-input" });
+              router.push(searchHref("", returnTo, scope, kind));
+            }}
+            className="-mr-2 grid size-11 shrink-0 place-items-center rounded-full text-[var(--app-ink-2)] hover:bg-[var(--app-bg-sunken)]"
+          >
+            <X className="size-4" aria-hidden />
+          </button>
+        )}
+      </div>
       {/* Native GET replaces the query string, so context must be successful
           form controls before hydration as well as in the client handler. */}
       {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
       {scope && <input type="hidden" name="in" value={scope} />}
       {kind && <input type="hidden" name="kind" value={kind} />}
-      {q && (
-        <button
-          type="button"
-          onClick={() => {
-            setQ("");
-            rememberNativeRequest({ draft: { kind: "search", query: "" }, target: "search-input" });
-            router.push(searchHref("", returnTo, scope, kind));
-          }}
-          className="tap-44 rounded px-1 text-xs"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Clear
-        </button>
-      )}
+      <button
+        type="submit"
+        className="tactile-interactive min-h-11 max-w-full flex-[1_0_auto] rounded-full bg-[var(--app-brand-press)] px-4 py-2 text-base font-semibold text-[var(--app-on-brand)] sm:grow-0"
+      >
+        Search
+      </button>
     </form>
   );
 }

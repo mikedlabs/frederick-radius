@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
 import {
   dismissReturnBridge,
   emptyReturnBridgeState,
@@ -31,7 +32,7 @@ for (const width of [390, 1366]) {
     const drawer = page.getByRole("dialog");
     await expect(drawer).toHaveCount(1);
     await expect(drawer.getByRole("heading", { name: "What do you need?", exact: true })).toBeVisible();
-    await expect(drawer.getByRole("link", { name: "Find a place, service, event, or answer", exact: true })).toHaveAttribute("href", "/search");
+    await expect(drawer.getByRole("link", { name: /^Find places and events\b/ })).toHaveAttribute("href", "/search");
     await expect(drawer.getByRole("searchbox")).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(drawer).toHaveCount(0);
@@ -84,14 +85,14 @@ test("Tools drawer uses the native Find destination and retains its origin on Ba
   await trigger.click();
   let drawer = page.getByRole("dialog");
   await expect(drawer).toHaveCount(1);
-  await drawer.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }).click();
+  await drawer.getByRole("link", { name: /^Find places and events\b/ }).click();
   await expect(page).toHaveURL(/\/search$/);
   await expect(page.getByRole("dialog")).toHaveCount(0);
   const search = page.getByRole("searchbox", { name: "Search Frederick County", exact: true });
   await search.fill("coffee"); await expect(search).toHaveValue("coffee");
   await page.goBack(); await expect(page).toHaveURL(/\/compass$/);
   drawer = page.getByRole("dialog"); await expect(drawer).toHaveCount(1);
-  await expect(drawer.getByRole("link", { name: "Find a place, service, event, or answer", exact: true })).toBeVisible();
+  await expect(drawer.getByRole("link", { name: /^Find places and events\b/ })).toBeVisible();
   await page.keyboard.press("Escape"); await expect(drawer).toHaveCount(0); await expect(page).toHaveURL(origin);
 });
 
@@ -156,3 +157,5 @@ test("County status opens its full workspace with one weather drawer", async ({ 
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await expect(page.getByRole("dialog")).toHaveAccessibleName("Weather");
 });
+
+registerWebkitLoopbackDocumentSeam();

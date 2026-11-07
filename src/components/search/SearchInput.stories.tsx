@@ -40,8 +40,10 @@ export const NativeGetKeepsContext: Story = {
   args: { defaultValue: "coffee & tea", scope: "county", kind: "place", returnTo: "/map?q=coffee&in=brunswick" },
   play: async ({ canvasElement }) => {
     const form = canvasElement.querySelector("form")!;
+    const submit = within(form).getByRole("button", { name: /^Search$/ });
     await expect(form.getAttribute("action")).toBe("/search");
     await expect(form.method).toBe("get");
+    await expect(submit).toHaveAttribute("type", "submit");
     // The browser's actual successful controls also work without interception.
     await expect(Array.from(new FormData(form).entries())).toEqual([
       ["q", "coffee & tea"], ["returnTo", "/map?q=coffee&in=brunswick"], ["in", "county"], ["kind", "place"],

@@ -293,7 +293,7 @@ test("Today shows a real photograph on arrival while weather and Find lead at 39
   await expect(page.getByRole("region", { name: "More ways to explore", exact: true }).getByRole("group", { name: "Quick needs", exact: true })).toHaveCount(1);
   await expect(quick.getByRole("link")).toHaveCount(4);
   const targets = [];
-  for (const control of [page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }), page.getByRole("combobox", { name: "Choose your area", exact: true }), ...await quick.getByRole("link").all()]) targets.push(await target44(control));
+  for (const control of [page.getByRole("link", { name: "Find what you need", exact: true }), page.getByRole("combobox", { name: "Choose your area", exact: true }), ...await quick.getByRole("link").all()]) targets.push(await target44(control));
   await attach(info, "arrival-photo-and-controls", { geometry, targets, widths: await assertWidth(page), proofBoundary: evidence.proofBoundary });
   expect(evidence.errors).toEqual([]);
   // Capture the arrival only after measured proof; resetting here cannot make
@@ -311,7 +311,7 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
   const image = page.locator("[data-today-photo-lead] img");
   await decoded(image, primaryPhoto.src);
   const textProbes = [
-    { name: "Find words", control: page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }).getByText("Find what you need", { exact: true }) },
+    { name: "Find words", control: page.getByRole("link", { name: "Find what you need", exact: true }).getByText("Find what you need", { exact: true }) },
     { name: "Area picker", control: page.getByRole("combobox", { name: "Choose your area", exact: true }) },
     { name: "Quick action words", control: page.getByRole("group", { name: "Quick needs", exact: true }).getByRole("link").first().locator("span") },
   ];
@@ -409,7 +409,7 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
   const targets = receipt.targets;
   const quick = page.getByRole("group", { name: "Quick needs", exact: true });
   await expect(quick.getByRole("link")).toHaveCount(4);
-  for (const control of [page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }), page.getByRole("combobox", { name: "Choose your area", exact: true }), ...await quick.getByRole("link").all()]) targets.push(await target44(control));
+  for (const control of [page.getByRole("link", { name: "Find what you need", exact: true }), page.getByRole("combobox", { name: "Choose your area", exact: true }), ...await quick.getByRole("link").all()]) targets.push(await target44(control));
   await assertWidth(page);
   expect(evidence.errors).toEqual([]);
   } finally {

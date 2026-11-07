@@ -768,7 +768,6 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
             href="/search"
             prefetch={false}
             data-compass-find
-            aria-label="Find a place, service, event, or answer"
             onClick={(event) => {
               // The existing Tools drawer already owns modal input. Let this
               // real search destination clear that route rather than stacking Find.
@@ -1488,16 +1487,14 @@ function DeckToolBrowser({
                   key={group.id}
                   type="button"
                   onClick={() => {
-                    document
-                      .getElementById(`compass-tools-${group.id}`)
-                      ?.scrollIntoView({
-                        behavior: window.matchMedia(
-                          "(prefers-reduced-motion: reduce)",
-                        ).matches
-                          ? "auto"
-                          : "smooth",
-                        block: "start",
-                      });
+                    const heading = document.getElementById(`compass-tools-${group.id}`);
+                    heading?.focus({ preventScroll: true });
+                    heading?.scrollIntoView({
+                      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                        ? "auto"
+                        : "smooth",
+                      block: "start",
+                    });
                   }}
                   // tap-44: the chip PAINTS 40px tall (min-h-10, deliberate
                   // density for a nine-chip rail) but must HIT 44, per the
@@ -1560,6 +1557,7 @@ function DeckToolBrowser({
               <button
                 type="button"
                 onClick={() => {
+                  filterRef.current?.focus();
                   setFilter("");
                   rememberNativeRequest({ draft: { kind: "tools", query: "" } });
                 }}
@@ -1578,12 +1576,17 @@ function DeckToolBrowser({
         visibleGroups.map((group) => (
           <section
             key={group.id}
-            id={`compass-tools-${group.id}`}
-            className="scroll-mt-14 space-y-2.5"
+            className="space-y-2.5"
           >
             {showGroupHeadings ? (
               <div>
-                <h3 className="text-[14px] font-semibold">{group.label}</h3>
+                <h3
+                  id={`compass-tools-${group.id}`}
+                  tabIndex={showCategoryNav ? -1 : undefined}
+                  className="scroll-mt-14 rounded-sm text-[14px] font-semibold focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                >
+                  {group.label}
+                </h3>
                 <p
                   className="mt-0.5 text-[12px] leading-snug"
                   style={{ color: "var(--app-ink-3)" }}

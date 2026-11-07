@@ -314,7 +314,7 @@ for (const viewport of VIEWPORTS) {
           // The connected-discovery pass moved the single request doorway
           // into Today's main launcher; do not assert the retired header UI.
           await expect(
-            main.getByRole("link", { name: "Find a place, service, event, or answer" }),
+            main.getByRole("link", { name: "Find what you need", exact: true }),
           ).toHaveAttribute("href", "/search");
         }
 

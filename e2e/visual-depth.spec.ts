@@ -170,7 +170,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await page.evaluate(() => document.fonts.ready);
     await expectTouchTarget(area);
     await expectTouchTarget(page.getByRole("link", {
-      name: "Find a place, service, event, or answer", exact: true,
+      name: "Find what you need", exact: true,
     }));
     for (const name of ["Open now", "Public essentials", "Plan a few hours", "Local services"]) {
       await expectTouchTarget(page.getByRole("link", { name, exact: true }));
@@ -230,7 +230,7 @@ test("reduced motion keeps Pulse and Today actions still on hover and navigation
     await page.goto(route, { waitUntil: "domcontentloaded" });
     const action = route.startsWith("/pulse")
       ? await weatherTrigger(page)
-      : page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
+      : page.getByRole("link", { name: "Find what you need", exact: true });
     await expect(action).toBeVisible();
     await action.hover();
     await expect.poll(() => action.evaluate((element) => {

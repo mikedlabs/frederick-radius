@@ -10,7 +10,6 @@ describe("Today universal Find launcher", () => {
     }));
     expect(html).toContain('href="/search"');
     expect(html).toContain('data-find-interaction-ready="false"');
-    expect(html).toContain('aria-label="Find a place, service, event, or answer"');
     expect(html).toContain('data-find-density="arrival"');
     expect(html).toContain("Find what you need");
     expect(html).not.toContain("Search a name, a need, or a question.");
@@ -23,7 +22,6 @@ describe("Today universal Find launcher", () => {
       createElement(TodayAsk, null, createElement("span", null, "Category choices")),
     );
 
-    expect(html).toContain('aria-label="Find a place, service, event, or answer"');
     expect(html).toContain('href="/search"');
     expect(html).toContain("Find what you need");
     expect(html).toContain(
@@ -46,7 +44,7 @@ describe("Today universal Find launcher", () => {
       createElement(TodayAsk, { embedded: true, showQuickNeeds: false }),
       createElement(TodayQuickNeeds, null, createElement("span", null, "Category choices")),
     ));
-    expect(html.match(/aria-label="Find a place, service, event, or answer"/g)).toHaveLength(1);
+    expect(html.match(/href="\/search"/g)).toHaveLength(1);
     expect(html.match(/aria-label="Quick needs"/g)).toHaveLength(1);
     for (const href of ["/open-now", "/amenities", "/contacts", "/places"]) {
       expect(html).toContain(`href="${href}"`);

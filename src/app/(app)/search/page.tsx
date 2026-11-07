@@ -6,6 +6,7 @@ import { formatHoursLine } from "@/lib/hours";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { loadEventArchiveSnapshot, EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS } from "@/lib/loaders/todayEventSnapshot";
 import { searchEventsFromSnapshot, searchEventCoverageMessage, searchEventRecoveryHref, searchEventRecoveryLabel, type SearchEventCoverage } from "@/lib/search/event-coverage";
+import { queryWithoutSearchArea } from "@/lib/search/refinement";
 import { resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 import SearchRefinements from "@/components/search/SearchRefinements";
 import { withBrowseReturnTo } from "@/lib/browse-return";
@@ -15,7 +16,7 @@ import { submittedSearchPlaceVisuals } from "@/lib/search/submitted-place-visual
 import type { PlaceCardPhotoSource } from "@/lib/place-card-photo";
 import { contextualSearchResult } from "@/lib/search/index";
 import Link from "next/link";
-import { MapPin, Calendar, Building2, Tag, ArrowLeft, ArrowRight, ChevronDown, DoorOpen, Phone, MessageCircleQuestion } from "lucide-react";
+import { MapPin, Calendar, Building2, Tag, ArrowLeft, ArrowRight, ChevronDown, DoorOpen, Phone } from "lucide-react";
 import { qualifiedSearch, type SearchHit } from "@/lib/search";
 import { primaryAnswerFor } from "@/lib/search/answer";
 import { findDepartments, jurisdictionLabel, formatPhone } from "@/data/departments";
@@ -377,6 +378,27 @@ export default async function SearchPage({
       ? "var(--app-positive)"
       : CRAVING_BY_KEY[answer.key]?.color ?? "var(--app-brand)"
     : "var(--app-brand)";
+  const showEmpty = Boolean(query && !eventCoverageMessage && rankedHits.length === 0 && govAnswers.length === 0 && civicAnswers.length === 0);
+  const townLabel = town ? MUNICIPALITY_BY_SLUG[town]?.name : undefined;
+  const recovery = (() => {
+    if (!showEmpty) return null;
+    const broaderQuery = townLabel ? queryWithoutSearchArea(query) : null;
+    if (broaderQuery) {
+      const params = new URLSearchParams(resultParams);
+      params.set("q", broaderQuery);
+      params.set("in", "county");
+      return { label: "Search the whole county", href: `/search?${params}` };
+    }
+    if (kind === "event") {
+      return { label: searchEventRecoveryLabel(result.meta.eventWindow), href: searchEventRecoveryHref(town, result.meta.eventWindow) };
+    }
+    if (kind === "page") return { label: "Browse all tools", href: "/compass" };
+    if (answer && result.meta.qualifiers.openNow) return null;
+    return {
+      label: "Ask Radius for help",
+      href: `/ask?${new URLSearchParams({ q: query, in: town ?? "county" })}`,
+    };
+  })();
 
   return (
     <div className="space-y-5">
@@ -401,26 +423,6 @@ export default async function SearchPage({
         <SearchInput key={`${query}:${scopeParam}:${kind}`} defaultValue={query} returnTo={mapReturnHref ?? undefined} scope={town ?? scopeParam ?? "county"} kind={kind} />
         <SearchRefinements town={town ?? null} query={query} />
       </header>
-
-      {/* Generic "ask about this" CTA — suppressed when a direct answer lead is
-          present below, so the view never stacks two brand-emphasis blocks
-          (one primary action per view). */}
-      {query && !answer && rankedHits.length === 0 && !suppressLocalHits && govAnswers.length === 0 ? (
-        <Link
-          href={`/ask?${new URLSearchParams({ q: query, in: town ?? "county" }).toString()}`}
-          className="tactile-interactive flex min-h-12 items-center gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2"
-          style={{
-            borderColor: "color-mix(in srgb, var(--app-brand) 28%, var(--app-border))",
-            background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated))",
-          }}
-        >
-          <MessageCircleQuestion className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
-          <span className="min-w-0 flex-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-            Need a recommendation or a plan? Ask Radius about this.
-          </span>
-          <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
-        </Link>
-      ) : null}
 
       {/* Answer-first lead: the direct answer to an intent query, above the
           ranked list. Links to the nearest-open craving surface (or Open now). */}
@@ -556,18 +558,6 @@ export default async function SearchPage({
         </div>
       )}
 
-      {query && !eventCoverageMessage && rankedHits.length === 0 && govAnswers.length === 0 && civicAnswers.length === 0 && (
-        <div className="space-y-2 border-y px-2 py-8 text-center text-sm" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-          <p>There are no matches for &ldquo;{query}&rdquo;. Try a shorter search or add a town.</p>
-          <p>
-            Need a government office?{" "}
-            <Link href="/contacts" className="font-semibold underline underline-offset-2" style={{ color: "var(--app-ink-2)" }}>
-              Every service and who to call
-            </Link>
-          </p>
-        </div>
-      )}
-
       {query && !suppressLocalHits && (
         <nav aria-label="Result types" className="flex gap-1 overflow-x-auto border-b" style={{ borderColor: "var(--app-border)" }}>
           {[["all", "All matches"], ["place", "Places"], ["event", "Events"], ["page", "Tools & areas"]].map(([value, label]) => {
@@ -577,6 +567,23 @@ export default async function SearchPage({
             return <Link key={value} href={`/search?${params.toString()}`} aria-current={active ? "page" : undefined} className="min-h-11 shrink-0 border-b-2 px-3 py-3 text-[13px] font-semibold" style={{ borderColor: active ? "var(--app-brand)" : "transparent", color: active ? "var(--app-brand-press)" : "var(--app-ink-2)" }}>{label}</Link>;
           })}
         </nav>
+      )}
+      {showEmpty && (
+        <section aria-labelledby="search-empty-heading" className="rounded-[var(--app-radius-lg)] border border-[var(--app-border)] bg-[var(--app-bg-sunken)] px-4 py-5 sm:px-5">
+          <h2 id="search-empty-heading" className="wrap-anywhere text-lg leading-snug font-semibold text-[var(--app-ink)]">
+            There are no matches for &ldquo;{query}&rdquo;.
+          </h2>
+          <p className="mt-1 text-sm leading-relaxed text-[var(--app-ink-2)]">
+            {townLabel
+              ? `Your search was limited to ${townLabel}. Try a shorter name or fewer words.`
+              : "Try a shorter name or fewer words."}
+          </p>
+          {recovery && (
+            <Link href={recovery.href} prefetch={false} className="mt-2 inline-flex min-h-11 items-center gap-2 py-2 text-sm font-semibold text-[var(--app-link)] underline underline-offset-4">
+              {recovery.label} <ArrowRight className="size-4 shrink-0" aria-hidden />
+            </Link>
+          )}
+        </section>
       )}
       {eventCoverageMessage && <p role="status" data-search-event-coverage={eventCoverage} className="border-l-2 pl-3 text-[14px] leading-relaxed" style={{ borderColor: "var(--app-amber)", color: "var(--app-ink-2)" }}>{eventCoverageMessage} <Link href={searchEventRecoveryHref(town, result.meta.eventWindow)} className="inline-flex min-h-11 items-center underline underline-offset-2">{searchEventRecoveryLabel(result.meta.eventWindow)}</Link></p>}
       {rankedHits.length > 0 && (

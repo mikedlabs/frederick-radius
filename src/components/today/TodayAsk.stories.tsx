@@ -16,7 +16,7 @@ type Story = StoryObj<typeof meta>;
 export const CompactDoorway: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const find = canvas.getByRole("link", { name: "Find a place, service, event, or answer" });
+    const find = canvas.getByRole("link", { name: /^Find what you need/ });
     await expect(find).toHaveAttribute("href", "/search");
     await expect(find).toHaveAttribute("data-find-interaction-ready", "true");
     await expect(within(find).getByText("Find what you need")).toBeVisible();
@@ -34,7 +34,7 @@ export const FirstDecisionDoorway: Story = {
   args: { showQuickNeeds: false, density: "arrival" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const find = canvas.getByRole("link", { name: "Find a place, service, event, or answer" });
+    const find = canvas.getByRole("link", { name: /^Find what you need/ });
     await expect(find).toHaveAttribute("href", "/search");
     await expect(find).toHaveAttribute("data-find-interaction-ready", "true");
     await expect(find.getBoundingClientRect().height).toBeGreaterThanOrEqual(48);
@@ -53,6 +53,6 @@ export const SecondaryWaysToExplore: Story = {
       await expect(shortcut).toBeVisible();
       await expect(shortcut.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     }
-    await expect(canvas.queryByRole("link", { name: "Find a place, service, event, or answer" })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("link", { name: /^Find what you need/ })).not.toBeInTheDocument();
   },
 };

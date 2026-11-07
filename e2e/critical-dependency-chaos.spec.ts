@@ -131,7 +131,7 @@ test.describe("critical surfaces under combined dependency failure", () => {
     expect(response?.status()).toBe(200);
     await expectHealthyShell(page, "/today");
     const primaryFind = page.getByRole("link", {
-      name: "Find a place, service, event, or answer",
+      name: "Find what you need", exact: true,
     });
     await expect(primaryFind).toBeVisible();
     await expect(primaryFind).toHaveAttribute("href", "/search");

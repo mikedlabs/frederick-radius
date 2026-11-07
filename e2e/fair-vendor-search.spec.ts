@@ -57,7 +57,7 @@ test("global Find and its API distinguish the restaurant from its Fair vendor", 
 
   await page.goto("/today", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("combobox", { name: "Choose your area" })).toBeEnabled();
-  await page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }).click();
+  await page.getByRole("link", { name: "Find what you need", exact: true }).click();
   const find = page.getByRole("dialog", { name: "What do you need?", exact: true });
   await find.getByRole("searchbox", { name: "Ask or find across Frederick County" }).fill("Rad Pies");
   const best = find.locator("#search-opt-0");

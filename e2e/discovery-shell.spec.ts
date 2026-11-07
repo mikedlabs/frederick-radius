@@ -54,7 +54,7 @@ test.describe("mobile discovery shell", () => {
       name: "Ask or find across Frederick County",
     })).toHaveCount(0);
     const openFind = page.getByRole("link", {
-      name: "Find a place, service, event, or answer", exact: true,
+      name: "Find what you need", exact: true,
     });
     await expect(openFind).toHaveCount(1);
     await expect(openFind).toBeVisible();
@@ -344,7 +344,7 @@ test.describe("mobile discovery shell", () => {
 
     await page.goto("/compass", { waitUntil: "domcontentloaded" });
     await expect(
-      page.getByRole("link", { name: "Find a place, service, event, or answer" }),
+      page.getByRole("link", { name: /^Find places and events\b/ }),
     ).toHaveAttribute("href", "/search");
     await expect(page.getByRole("searchbox")).toHaveCount(0);
     await expect(
@@ -695,7 +695,7 @@ test.describe("mobile discovery shell", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "What do you need?" }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: "Find a place, service, event, or answer" })).toHaveAttribute("href", "/search");
+    await expect(page.getByRole("link", { name: /^Find places and events\b/ })).toHaveAttribute("href", "/search");
     await expect(page.getByRole("searchbox")).toHaveCount(0);
     await expect(page.locator("[data-compass-ready]")).toHaveAttribute(
       "data-compass-ready",
@@ -757,7 +757,7 @@ test.describe("mobile discovery shell", () => {
   test("Compass opens shared Find and retains the request when it closes", async ({ page }) => {
     await page.goto("/compass", { waitUntil: "domcontentloaded" });
     await expect(page.locator("[data-compass-ready]")).toHaveAttribute("data-compass-ready", "true");
-    const findLauncher = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
+    const findLauncher = page.getByRole("link", { name: /^Find places and events\b/ });
     await findLauncher.click();
     const find = page.getByRole("dialog", { name: "What do you need?" });
     const request = find.getByRole("searchbox", { name: "Ask or find across Frederick County" });
