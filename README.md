@@ -109,14 +109,23 @@ Renamed routes 301 to their canonical destinations via `next.config.ts`: `/now` 
 
 ## Local dev
 
+Use the Node version in `.nvmrc` and the npm version in `package.json`.
+Run `nvm use` if you use nvm.
+
 ```bash
-npm install
+npx -y npm@10.9.8 ci
 npm run dev      # http://localhost:3000
 npm run build    # production build; verifies all routes generate
 npm run lint
 npm test         # vitest unit tests
 npm run test:e2e # Playwright E2E
 ```
+
+When updating dependencies, regenerate the lockfile with `npx -y npm@10.9.8 install`.
+Check `npm outdated` and `npm audit` against the reviewed lockfile. Keep
+related framework packages together and review breaking upgrades separately.
+For public UI changes, use `npm run test:ux` to check rendering and
+accessibility, plus the focused browser tests for the changed journey.
 
 ### Optional environment variables
 
