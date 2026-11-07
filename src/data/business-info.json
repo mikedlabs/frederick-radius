@@ -583,7 +583,7 @@
     },
     "commerce_source": {
       "url": "https://sweetiescompany.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-11-07T12:42:19.582Z"
     }
   },
   "jraymonds-steakhouse": {
@@ -850,7 +850,7 @@
     "name": "Springfield Manor Winery, Distillery & Brewery",
     "commerce_source": {
       "url": "https://www.springfieldmanor.com/",
-      "checkedAt": "2026-07-29T12:31:45.836Z"
+      "checkedAt": "2026-11-07T12:42:16.943Z"
     },
     "commerce_links": [
       {
@@ -3243,6 +3243,178 @@
         "url": "https://order.toasttab.com/online/showroom-882-n-east-street",
         "anchor_text": "Order Online",
         "source_url": "https://www.showroomfrederick.com/"
+      }
+    ]
+  },
+  "subway-196": {
+    "name": "Subway",
+    "commerce_source": {
+      "url": "https://restaurants.subway.com/united-states/md/frederick/913-w-7th-street",
+      "checkedAt": "2026-11-07T12:42:17.954Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.subway.com/en-us/subwaycard",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://restaurants.subway.com/united-states/md/frederick/913-w-7th-street"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.subway.com/en-us/catering",
+        "anchor_text": "Catering & Groups",
+        "source_url": "https://restaurants.subway.com/united-states/md/frederick/913-w-7th-street"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.ezcater.com/catering/pvt/subway-frederick-w-th-st",
+        "anchor_text": "Order Catering Order Catering",
+        "source_url": "https://restaurants.subway.com/united-states/md/frederick/913-w-7th-street"
+      },
+      {
+        "type": "order",
+        "url": "https://www.subway.com/en-us/menunutrition/menu",
+        "anchor_text": "Start Order",
+        "source_url": "https://restaurants.subway.com/united-states/md/frederick/913-w-7th-street"
+      },
+      {
+        "type": "order",
+        "url": "https://www.subway.com/en-us/locator?mode=delivery",
+        "anchor_text": "Order Delivery Order Delivery",
+        "source_url": "https://restaurants.subway.com/united-states/md/frederick/913-w-7th-street"
+      }
+    ]
+  },
+  "subway-middletown": {
+    "name": "Subway",
+    "commerce_source": {
+      "url": "https://restaurants.subway.com/united-states/md/middletown/5-e-main-st?utm_source=yxt-goog&utm_medium=local&utm_term=acq&utm_content=12388&utm_campaign=evergreen-2020&y_source=1_MTQ4OTY4ODQtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D",
+      "checkedAt": "2026-11-07T12:42:18.209Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.subway.com/en-us/subwaycard",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://restaurants.subway.com/united-states/md/middletown/5-e-main-st?utm_source=yxt-goog&utm_medium=local&utm_term=acq&utm_content=12388&utm_campaign=evergreen-2020&y_source=1_MTQ4OTY4ODQtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.subway.com/en-us/catering",
+        "anchor_text": "Catering & Groups",
+        "source_url": "https://restaurants.subway.com/united-states/md/middletown/5-e-main-st?utm_source=yxt-goog&utm_medium=local&utm_term=acq&utm_content=12388&utm_campaign=evergreen-2020&y_source=1_MTQ4OTY4ODQtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.ezcater.com/catering/pvt/subway-middletown-7",
+        "anchor_text": "Order Catering Order Catering",
+        "source_url": "https://restaurants.subway.com/united-states/md/middletown/5-e-main-st?utm_source=yxt-goog&utm_medium=local&utm_term=acq&utm_content=12388&utm_campaign=evergreen-2020&y_source=1_MTQ4OTY4ODQtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D"
+      },
+      {
+        "type": "order",
+        "url": "https://www.subway.com/en-us/menunutrition/menu",
+        "anchor_text": "Start Order",
+        "source_url": "https://restaurants.subway.com/united-states/md/middletown/5-e-main-st?utm_source=yxt-goog&utm_medium=local&utm_term=acq&utm_content=12388&utm_campaign=evergreen-2020&y_source=1_MTQ4OTY4ODQtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D"
+      },
+      {
+        "type": "order",
+        "url": "https://www.subway.com/en-us/locator?mode=delivery",
+        "anchor_text": "Order Delivery Order Delivery",
+        "source_url": "https://restaurants.subway.com/united-states/md/middletown/5-e-main-st?utm_source=yxt-goog&utm_medium=local&utm_term=acq&utm_content=12388&utm_campaign=evergreen-2020&y_source=1_MTQ4OTY4ODQtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D"
+      }
+    ]
+  },
+  "spacie-gracie-frederick": {
+    "name": "Spacie Gracie",
+    "commerce_source": {
+      "url": "https://spacie-gracie.com/",
+      "checkedAt": "2026-11-07T12:42:18.569Z"
+    }
+  },
+  "superfoods-cafe-market-mount-airy": {
+    "name": "Superfoods Cafe & Market",
+    "commerce_source": {
+      "url": "https://www.superfoodscafeandmarket.com/",
+      "checkedAt": "2026-11-07T12:42:18.689Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.superfoodscafeandmarket.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://www.superfoodscafeandmarket.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/super-foods-cafe-106-south-main-street",
+        "anchor_text": "ORDER ONLINE",
+        "source_url": "https://www.superfoodscafeandmarket.com/"
+      }
+    ]
+  },
+  "sweetfrog-frederick": {
+    "name": "sweetFrog",
+    "commerce_source": {
+      "url": "https://www.sweetfrog.com/stores/frozen-yogurt-frederick/35377?utm_source=gmb&utm_medium=gmb&utm_campaign=gmb&utm_id=gmb",
+      "checkedAt": "2026-11-07T12:42:19.159Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.sweetfrog.com/menu/flavors/index.php",
+        "anchor_text": "flavors",
+        "source_url": "https://www.sweetfrog.com/stores/frozen-yogurt-frederick/35377?utm_source=gmb&utm_medium=gmb&utm_campaign=gmb&utm_id=gmb"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.sweetfrog.com/menu/toppings/index.php",
+        "anchor_text": "toppings",
+        "source_url": "https://www.sweetfrog.com/stores/frozen-yogurt-frederick/35377?utm_source=gmb&utm_medium=gmb&utm_campaign=gmb&utm_id=gmb"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.sweetfrog.com/menu/nutrition/index.php",
+        "anchor_text": "nutrition",
+        "source_url": "https://www.sweetfrog.com/stores/frozen-yogurt-frederick/35377?utm_source=gmb&utm_medium=gmb&utm_campaign=gmb&utm_id=gmb"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.sweetfrog.com/gift-cards/index.php",
+        "anchor_text": "gift cards",
+        "source_url": "https://www.sweetfrog.com/stores/frozen-yogurt-frederick/35377?utm_source=gmb&utm_medium=gmb&utm_campaign=gmb&utm_id=gmb"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.sweetfrog.com/catering/index.php",
+        "anchor_text": "catering",
+        "source_url": "https://www.sweetfrog.com/stores/frozen-yogurt-frederick/35377?utm_source=gmb&utm_medium=gmb&utm_campaign=gmb&utm_id=gmb"
+      }
+    ]
+  },
+  "surah-steak-seafood-sushi-mount-airy": {
+    "name": "Surah Steak Seafood Sushi",
+    "commerce_source": {
+      "url": "https://mtsurah.com/",
+      "checkedAt": "2026-11-07T12:42:19.886Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://mtsurah.com/order/?mode=online",
+        "anchor_text": "Menu",
+        "source_url": "https://mtsurah.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://mtsurah.com/menu.html",
+        "anchor_text": "Full Menu",
+        "source_url": "https://mtsurah.com/"
+      },
+      {
+        "type": "reservation",
+        "url": "https://mtsurah.com/order/?mode=reserve",
+        "anchor_text": "Reserve",
+        "source_url": "https://mtsurah.com/"
       }
     ]
   }
