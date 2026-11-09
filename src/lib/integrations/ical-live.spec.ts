@@ -50,6 +50,17 @@ const DFP_FEED: FeedSpec = {
   default_category: "community",
 };
 
+const FCC_FEED: FeedSpec = {
+  source: "fcc",
+  source_label: "Frederick Community College",
+  url: "https://api.calendar.moderncampus.net/pubcalendar/edb420ae-0d61-4c0c-90af-26e2dfad9adf/events",
+  format: "moderncampus",
+  default_venue: "Frederick Community College",
+  default_geom: { lng: -77.4392, lat: 39.4568 },
+  default_municipality: "frederick",
+  default_category: "community",
+};
+
 const NOW = new Date("2026-07-19T12:00:00Z");
 const HORIZON = new Date("2026-08-18T12:00:00Z");
 const FETCHED = "2026-07-19T12:00:00.000Z";
@@ -96,6 +107,38 @@ describe("official-feed classification and venue corrections", () => {
       venue: "Fleming Avenue Courts",
       address: "500 Fleming Avenue, Frederick, MD 21701",
     });
+  });
+
+  it("does not read College Park or a career fair as a park or a market", () => {
+    // Production categories on Nov 9, 2026 were Parks & trails and Markets.
+    expect(
+      feedCategory(
+        FCC_FEED,
+        "On Campus Recruitment UMD, College Park Biocomputational Engineering",
+        "Meet a transfer representative in the lobby.",
+      ),
+    ).toBe("community");
+    expect(feedCategory(FCC_FEED, "Public Safety Career and College Fair", "")).toBe("community");
+    expect(feedCategory(DFP_FEED, "Fall Job Fair", "Employers from across the county.")).toBe("community");
+    // A real market and a real park walk keep their categories.
+    expect(feedCategory(DFP_FEED, "Holiday Makers Market", "Local vendors.")).toBe("market");
+    expect(feedCategory(DFP_FEED, "Baker Park Bird Walk", "Meet at the bandshell.")).toBe("outdoors");
+  });
+
+  it("classifies a campus row from its title, not from building names in the description", () => {
+    // "Linganore Hall" made information sessions wineries, and the
+    // "Athletics Center" made a headshot session a sports event.
+    expect(
+      feedCategory(FCC_FEED, "Nursing Information Session", "Linganore Hall (L Building), Room L-203."),
+    ).toBe("community");
+    expect(
+      feedCategory(FCC_FEED, "Free Professional Headshots for FCC Students", "Athletics Center lobby."),
+    ).toBe("community");
+    // The title still carries a real category when it states one.
+    expect(feedCategory(FCC_FEED, "FCC Chamber Ensemble Recital", "Visual & Performing Arts Center.")).toBe("music");
+    expect(feedCategory(FCC_FEED, "Fall Jazz Concert", "Visual & Performing Arts Center.")).toBe("music");
+    // A venue calendar keeps reading its descriptions.
+    expect(feedCategory(DFP_FEED, "Friday on the Creek", "Live music with a local band.")).toBe("music");
   });
 
   it("does not find the word art inside Partner Hours", () => {

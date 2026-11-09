@@ -526,7 +526,7 @@ const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
   // bands, light weights" otherwise substring-matches the music words, and
   // "Cardio Sculpt" rendered on the live-music radar (2026-07-17 review).
   { slug: "community", words: ["cardio", "zumba", "fitness class", "exercise", "workout", "pilates", "barre", "aerobics", "sculpt", "learn to"] },
-  { slug: "music", words: ["concert", "band", "music", "dj", "open mic", "acoustic", "punch brothers", "alive @ five"] },
+  { slug: "music", words: ["concert", "recital", "ensemble", "orchestra", "symphony", "choir", "band", "music", "dj", "open mic", "acoustic", "punch brothers", "alive @ five"] },
   // Sports is checked early so a game beats the family/outdoors/market
   // fallbacks ("youth soccer at the park" is sports, not outdoors).
   // Tight, low-noise terms only (no bare "game"/"match"/"play").
@@ -560,8 +560,25 @@ function containsCategoryKeyword(text: string, keyword: string): boolean {
   return new RegExp(`(?:^|[^a-z0-9])${escaped}(?=$|[^a-z0-9])`, "i").test(text);
 }
 
+/** Names that contain a category word without meaning it. "College Park" is
+ *  a university, not a park, and a career, college or job fair is not a
+ *  market. Production filed "On Campus Recruitment UMD, College Park" under
+ *  Parks & trails and "Public Safety Career and College Fair" under Markets
+ *  (Nov 9, 2026). */
+const CATEGORY_FALSE_FRIENDS =
+  /\bcollege\s+park\b|\b(?:career|college|job|hiring|transfer|resource|health|wellness|benefits|volunteer|science|internship|majors?)(?:\s+(?:and|&)\s+\w+)?\s+fairs?\b/gi;
+
+/** Campus calendars whose descriptions name buildings ("Linganore Hall",
+ *  "Athletics Center") that the keyword table reads as a winery or a game.
+ *  These rows are classified from the title alone. */
+const TITLE_ONLY_CATEGORY_SOURCES: ReadonlySet<string> = new Set([
+  "fcc",
+  "hood",
+  "mount-st-marys",
+]);
+
 function inferCategory(title: string, description: string, fallback: string): string {
-  const text = `${title} ${description}`.toLowerCase();
+  const text = `${title} ${description}`.toLowerCase().replace(CATEGORY_FALSE_FRIENDS, " ");
   // Stage credits are stronger evidence than the generic word "music".
   // Do not promote every concert hosted at a theater into this category.
   if (/\bmusic\s+and\s+lyrics\s+by\b/.test(text) && /\bbook\s+by\b/.test(text)) {
@@ -677,7 +694,11 @@ export function feedCategory(
     return categoryExists(countyCategory(title, venue), "community");
   }
   return categoryExists(
-    inferCategory(title, description, feed.default_category),
+    inferCategory(
+      title,
+      TITLE_ONLY_CATEGORY_SOURCES.has(feed.source) ? "" : description,
+      feed.default_category,
+    ),
     feed.default_category,
   );
 }
@@ -2825,7 +2846,7 @@ function getCachedEventSourcePage(
     [
       // v3 adds the publisher-owned modification timestamp used to settle
       // first-party event changes. Keep old cache tuples out of this shape.
-      "live-event-source-page-v4",
+      "live-event-source-page-v6",
       source,
       String(windowDays),
       afterCursor ?? "first",
