@@ -253,9 +253,12 @@ export function feedStatuses(): { keyed: FeedStatus[]; keyless: FeedStatus[] } {
         if (name === "GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL") {
           return value?.trim() !== GOOGLE_MAPS_WRITTEN_APPROVAL_VALUE;
         }
+        // Adapters trim their credentials, so a value of only spaces is
+        // missing here too. Otherwise this list, and the Events source
+        // sentence built from it, would call a disabled feed ready.
         return name.endsWith("_ENABLED") || name.endsWith("_APPROVED")
           ? value !== "1"
-          : !value;
+          : !value?.trim();
       });
       const policyMissing = Boolean(
         f.policyApproval &&
