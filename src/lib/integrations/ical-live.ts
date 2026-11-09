@@ -457,8 +457,8 @@ const FEEDS: FeedSpec[] = [
     // Frederick Community College — Modern Campus (Localist) public calendar
     // (fetch-verified 2026-07-12). The classic calendar.frederick.edu host is
     // dead (302 -> not-found); this pubcalendar API is the live replacement.
-    // startDatetime is zone-less UTC (not ET — the API converts ET to UTC but
-    // strips the Z); the fetcher appends the ?start&end window.
+    // startDatetime is zone-less UTC, not Eastern (see
+    // jsonArrayFeedRowInstants); the fetcher appends the ?start&end window.
     source: "fcc",
     source_label: "Frederick Community College",
     url: "https://api.calendar.moderncampus.net/pubcalendar/edb420ae-0d61-4c0c-90af-26e2dfad9adf/events",
@@ -1933,10 +1933,35 @@ async function fetchWixHtmlFeed(
 }
 
 /**
+ * Start and end instants for one row of a JSON-array campus feed.
+ *
+ * Both formats publish UTC. Presence names its fields that way. Modern Campus
+ * (Frederick Community College) does not: `startDatetime` is a UTC wall time
+ * with no zone marker, so "2026-11-09T23:30" for an information night is
+ * 6:30 PM Eastern, not 11:30 PM. Read as Eastern, every timed FCC listing
+ * showed four hours late in daylight time and five in standard time, and a
+ * 10 AM recruitment table read "Happening now" until 6 PM (production,
+ * Nov 9, 2026; the Oct 8 audit counted 60 listings).
+ */
+export function jsonArrayFeedRowInstants(
+  format: "moderncampus" | "presence",
+  raw: Record<string, unknown>,
+): { startsAtISO: string | null; rawEndsAtISO: string | null } {
+  const str = (k: string): string => (typeof raw[k] === "string" ? (raw[k] as string) : "");
+  const [startKey, endKey] = format === "presence"
+    ? ["startDateTimeUtc", "endDateTimeUtc"]
+    : ["startDatetime", "endDatetime"];
+  return {
+    startsAtISO: jsonEventDateToISO(str(startKey), undefined),
+    rawEndsAtISO: jsonEventDateToISO(str(endKey), undefined),
+  };
+}
+
+/**
  * Fetch a JSON events feed that returns a flat array (no VCALENDAR/XML) and
  * map it with a per-format field adapter. Covers the college calendars:
  *   - "moderncampus" — Frederick Community College's Modern Campus / Localist
- *     pubcalendar API (startDatetime is zone-less ET; needs ?start&end).
+ *     pubcalendar API (startDatetime is zone-less UTC; needs ?start&end).
  *   - "presence" — Mount St. Mary's Presence student-engagement API
  *     (startDateTimeUtc is absolute UTC).
  * Same window + fail-soft + validate contract as the iCal/tribe paths.
@@ -1986,21 +2011,14 @@ async function fetchJsonArrayFeed(
     for (const raw of items) {
       const str = (k: string): string => (typeof raw[k] === "string" ? (raw[k] as string) : "");
       const isPresence = feed.format === "presence";
-      const isMC = feed.format === "moderncampus";
       const rawTitle = (isPresence ? str("eventName") : str("title")).trim();
       if (!rawTitle) continue;
-      const startsAtISO = isPresence
-        ? jsonEventDateToISO(str("startDateTimeUtc"), undefined)
-        : isMC
-          ? jsonEventDateToISO(str("startDatetime"), undefined)
-          : jsonEventDateToISO(undefined, str("startDatetime"));
+      const { startsAtISO, rawEndsAtISO } = jsonArrayFeedRowInstants(
+        isPresence ? "presence" : "moderncampus",
+        raw,
+      );
       if (!startsAtISO) continue;
       const effectiveStart = new Date(startsAtISO);
-      const rawEndsAtISO = isPresence
-        ? jsonEventDateToISO(str("endDateTimeUtc"), undefined)
-        : isMC
-          ? jsonEventDateToISO(str("endDatetime"), undefined)
-          : jsonEventDateToISO(undefined, str("endDatetime"));
       const endsAtISO =
         rawEndsAtISO && Date.parse(rawEndsAtISO) > effectiveStart.getTime()
           ? rawEndsAtISO
@@ -2867,7 +2885,9 @@ function getCachedEventSourcePage(
     [
       // v3 adds the publisher-owned modification timestamp used to settle
       // first-party event changes. Keep old cache tuples out of this shape.
-      "live-event-source-page-v4",
+      // v5: Frederick Community College times are read as UTC, so cached
+      // FCC rows carry different starts_at and ends_at values.
+      "live-event-source-page-v5",
       source,
       String(windowDays),
       afterCursor ?? "first",
