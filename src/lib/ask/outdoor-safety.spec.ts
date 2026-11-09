@@ -151,7 +151,7 @@ describe("applyAskOutdoorSafety", () => {
     expect(guarded.answer).not.toContain("creekside concert");
   });
 
-  it("keeps the parks but leads with a caveat when live feeds can't be verified", () => {
+  it("answers first and adds one caveat when live feeds can't be verified", () => {
     // A monitoring gap, not a hazard: loadOutdoorSafetyHold only returns
     // "unavailable" after ruling out an active alert and unhealthy air.
     const unavailable = {
@@ -161,17 +161,22 @@ describe("applyAskOutdoorSafety", () => {
       url: "/pulse",
       unavailableFeeds: ["weather alerts", "air quality"] as Array<"weather alerts" | "air quality">,
     };
-    const guarded = applyAskOutdoorSafety(result(), "playground near me", unavailable);
+    const original = result();
+    const guarded = applyAskOutdoorSafety(original, "playground near me", unavailable);
 
-    // The parks are NOT buried, unlike a real hazard hold.
+    // The parks are NOT buried, unlike a real hazard hold, and the answer to
+    // the question still comes first.
     expect(guarded.sources.map((source) => source.name)).toContain("Hill Street Skate Park");
-    // The safety caveat leads (card first, and in the answer) so it never
-    // reads as an all-clear.
-    expect(guarded.sources[0]?.name).toBe("Outdoor conditions not verified");
-    expect(guarded.answer).toContain("could not be verified");
-    expect(guarded.answer).toContain("check official conditions");
-    expect(guarded.answer).toContain("Hill Street Skate Park");
+    expect(guarded.sources[0]?.name).toBe(original.sources[0]?.name);
+    const answer = guarded.answer ?? "";
+    expect(answer.startsWith(original.answer ?? "missing answer")).toBe(true);
+    // The caveat is said once, and the official conditions card and link stay
+    // with the results, so the answer never reads as an all-clear.
+    expect(answer.match(/could not be verified/g)).toHaveLength(1);
+    expect(answer).toContain("Check official conditions before you head out.");
+    expect(guarded.sources.at(-1)?.name).toBe("Outdoor conditions not verified");
     expect(guarded.actions?.some((a) => a.kind === "open" && a.href === "/pulse")).toBe(true);
+    expect(guarded.actions?.length ?? 0).toBeLessThanOrEqual(3);
     expect(guarded.intelligence?.tools).toContain("weather");
   });
 

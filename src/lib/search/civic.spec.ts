@@ -69,14 +69,21 @@ describe("searchCivicActions", () => {
     ]);
   });
 
-  it("leads a trash/recycling schedule question with the real schedule page", () => {
+  it("leads a trash schedule question with the trash schedule page", () => {
     const r = searchCivicActions("trash pickup schedule");
-    expect(r[0]?.id).toBe("civic:collection-schedule");
-    expect(r[0]?.href).toContain("Curbside-Collection-Schedule");
+    expect(r[0]?.id).toBe("civic:trash-schedule");
+    expect(r[0]?.href).toContain("cityoffrederickmd.gov/236/Collection-Schedule");
+    expect(r[0]?.subtitle).toBe("Official link · cityoffrederickmd.gov");
   });
 
-  it("resolves 'trash day' to the collection schedule", () => {
-    expect(searchCivicActions("trash day")[0]?.id).toBe("civic:collection-schedule");
+  it("resolves 'trash day' to the trash schedule", () => {
+    expect(searchCivicActions("trash day")[0]?.id).toBe("civic:trash-schedule");
+  });
+
+  it("resolves 'recycling day' to the County recycling schedule", () => {
+    const r = searchCivicActions("recycling day");
+    expect(r[0]?.id).toBe("civic:recycling-schedule");
+    expect(r[0]?.href).toContain("Curbside-Collection-Schedule");
   });
 });
 

@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { qualifiedSearch, type QualifiedSearchContext, type SearchHit } from "@/lib/search";
 import { isEventSearchIntent } from "@/lib/search";
 import { loadAskEventSnapshot, withAskEventCoverage, type AskEventSnapshot } from "@/lib/ask/event-snapshot";
-import { matchCivicAction } from "@/data/civic-actions";
+import { CIVIC_ACTIONS, matchCivicAction, type CivicAction } from "@/data/civic-actions";
 import { departmentJurisdictionLabel, isDepartmentRequest, matchDepartment } from "@/data/department-contacts";
 import { findTownCivicResource } from "@/data/town-websites";
 import { findMunicipalCivic } from "@/lib/loaders/municipalCivic";
@@ -1591,6 +1591,21 @@ async function answerParkingRequest(
   });
 }
 
+/** Source card for an official task link, named for whoever publishes it. */
+export function civicActionSource(action: CivicAction): AskSource {
+  const publisher = action.publisher ?? "Frederick County";
+  return {
+    slug: action.id,
+    name: `${publisher} · ${action.label}`,
+    category: "civic",
+    city: "",
+    href: action.url,
+    eyebrow: `${publisher} · Official`,
+    reason: "The authoritative Frederick link for this task",
+    confidence: "high",
+  };
+}
+
 type AmenityRankCandidate = {
   amenity: Pick<Amenity, "municipality" | "name">;
   distance: number | null;
@@ -3124,16 +3139,15 @@ export async function askFrederick(
   }
 
   if (civic) {
-    sources.push({
-      slug: civic.id,
-      name: `Frederick County · ${civic.label}`,
-      category: "civic",
-      city: "",
-      href: civic.url,
-      eyebrow: "Frederick County · Official",
-      reason: "The authoritative Frederick link for this task",
-      confidence: "high",
-    });
+    // Some answers belong to two publishers (trash is a town service,
+    // recycling a County one). The matched action leads; its related actions
+    // follow, each under its own publisher's name.
+    const related = (civic.related ?? [])
+      .map((id) => CIVIC_ACTIONS.find((action) => action.id === id))
+      .filter((action): action is CivicAction => Boolean(action));
+    for (const action of [civic, ...related]) {
+      sources.push(civicActionSource(action));
+    }
   }
   const civicLine = civic
     ? `OFFICIAL CIVIC ACTION (cite this link if relevant): ${civic.label} → ${civic.url}\n`
@@ -3410,6 +3424,7 @@ export async function askFrederick(
         : null;
     const primaryAnswer = explicitWeatherAnswer || appointmentAnswer || communicationAccessEmptyAnswer || deterministicAnswer({
         civic: civic?.label,
+        civicAnswer: civic?.answer,
         department: dept?.name,
         municipal: useMunicipal
           ? { town: useMunicipal.town, label: useMunicipal.contacts[0]?.label, exact: useMunicipal.matchedIntent, hoursAnswer: municipalHoursAnswer }
@@ -3445,6 +3460,10 @@ export async function askFrederick(
       placesForAskSources(responseSources),
       fit,
     );
+    // An official answer (a county or town link, a department contact) is
+    // not a discovery result. Offering "Make it a plan", "Open now" or
+    // "Independent spots" under "when is trash day" turns a correct answer
+    // into a confusing one, so those refinements are left off below.
     const directActions = intent.kind === "event" && responseSources.length === 0
       ? communicationAccessEventDiscovery
         ? [
@@ -3455,7 +3474,9 @@ export async function askFrederick(
           { label: "Open the full calendar", kind: "open" as const, href: "/events" },
           { label: "Try this weekend", kind: "refine" as const, query: "What events are happening this weekend?" },
         ]
-      : responseActions;
+      : officialAnswer
+        ? responseActions.filter((action) => action.kind !== "refine")
+        : responseActions;
     return calendarAnswer({
       status: responseSources.length > 0 ? "matches" : "empty",
       configured: hasKey(),
@@ -3547,6 +3568,7 @@ export async function askFrederick(
 
 function deterministicAnswer({
   civic,
+  civicAnswer,
   department,
   municipal,
   count,
@@ -3565,6 +3587,7 @@ function deterministicAnswer({
   sources,
 }: {
   civic?: string;
+  civicAnswer?: string;
   department?: string;
   municipal?: { town: string; label?: string; exact: boolean; hoursAnswer?: string };
   count: number;
@@ -3585,6 +3608,7 @@ function deterministicAnswer({
   if (municipal?.hoursAnswer) return municipal.hoursAnswer;
   if (municipal?.exact) return `Here is the official ${municipal.town} resource${municipal.label ? ` for ${municipal.label.toLowerCase()}` : ""}.`;
   if (municipal) return `Radius does not have a verified department-specific answer for ${municipal.town} yet, so here is the official municipal contact instead of guessing.`;
+  if (civicAnswer) return civicAnswer;
   if (civic) return `Use this official Frederick resource for ${civic.toLowerCase()}.`;
   if (department) return `Here is the official contact for ${department}.`;
   if (eventIntent && count === 0) return "I couldn’t find a current Radius event that fits that time window. Try the full calendar or widen the date.";

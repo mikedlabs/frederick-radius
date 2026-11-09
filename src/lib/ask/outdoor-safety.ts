@@ -131,21 +131,24 @@ export function applyAskOutdoorSafety(
 
   // A monitoring gap is not a hazard. `loadOutdoorSafetyHold` returns an
   // active NWS alert or an unhealthy-air reading BEFORE it ever returns
-  // "unavailable", so this branch means we found no known danger and simply
-  // could not reach a feed. Do not bury the answer for that: keep the places
-  // and lead with an honest "could not confirm, check before you go" note.
-  // This still refuses to imply an all-clear (the caveat leads and the safety
-  // card is first) while not hiding real parks on a brief feed outage. A real
-  // NWS/air-quality hold falls through to the full suppression below.
+  // "unavailable", so this branch means no known danger was found and a feed
+  // simply could not be reached. Do not bury the answer for that: answer the
+  // question, then say once that conditions could not be checked and keep the
+  // official conditions card and link with the results. That never reads as
+  // an all-clear, and it stops a feed outage from hiding every park and
+  // playground. A real NWS or air-quality hold falls through to the full
+  // suppression below.
   if (hold.kind === "unavailable") {
     return {
       ...result,
-      answer: `${hold.reason} I could not confirm live conditions, so check official conditions before you head out. ${result.answer}`.trim(),
-      sources: [officialSource, ...result.sources].slice(0, 5),
+      answer: [result.answer, hold.reason, "Check official conditions before you head out."]
+        .filter(Boolean)
+        .join(" "),
+      sources: [...result.sources.slice(0, 4), officialSource],
       actions: [
+        ...(result.actions ?? []).slice(0, 2),
         { label: "Check live conditions", kind: "open" as const, href: hold.url },
-        ...(result.actions ?? []),
-      ].slice(0, 3),
+      ],
       intelligence: result.intelligence
         ? { ...result.intelligence, tools: [...new Set([...result.intelligence.tools, "weather"])] }
         : { tools: ["weather"], confidence: "medium", retrieval: "keyword" },
