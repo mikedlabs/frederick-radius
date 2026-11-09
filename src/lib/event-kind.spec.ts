@@ -58,6 +58,25 @@ describe("isUtilityEvent", () => {
     expect(isUtilityEvent({ title: "Mayor & City Council Public Hearing" })).toBe(true);
   });
 
+  it("treats closures and internal meetings on an events calendar as notices", () => {
+    // Each of these ranked as a draw on the production board on Nov 9, 2026.
+    expect(isUtilityEvent({ category: "community", title: "Veteran's Day - Libraries Closed" })).toBe(true);
+    expect(isUtilityEvent({ category: "community", title: "Centers are Closed for Veteran Day" })).toBe(true);
+    expect(isUtilityEvent({ category: "community", title: "WFS- No School" })).toBe(true);
+    expect(isUtilityEvent({ category: "community", title: "Circulation Department Meeting" })).toBe(true);
+    expect(isUtilityEvent({ category: "community", title: "WFS- Winter Break" })).toBe(true);
+    expect(isUtilityEvent({ category: "community", title: "School Closed for Fall Break" })).toBe(true);
+    expect(isUtilityEvent({ category: "community", title: "Thanksgiving Eve - Libraries Close" })).toBe(true);
+  });
+
+  it("does not read an activity that mentions a break, a school or a closing as a notice", () => {
+    // Guards for the nearest wrong matches, not rows from the board.
+    expect(isUtilityEvent({ category: "family", title: "Spring Break Camp" })).toBe(false);
+    expect(isUtilityEvent({ category: "gallery", title: "Closing Reception: Shorelines" })).toBe(false);
+    expect(isUtilityEvent({ category: "music", title: "Old School Hip Hop Night" })).toBe(false);
+    expect(isUtilityEvent({ category: "family", title: "Break My Game: Tabletop Game Play Testing" })).toBe(false);
+  });
+
   it("leaves real draws alone", () => {
     expect(isUtilityEvent({ category: "music", title: "Alive @ Five — Mack Berry Band" })).toBe(false);
     expect(isUtilityEvent({ category: "food", title: "First Friday Beer Garden" })).toBe(false);
