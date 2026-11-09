@@ -2848,10 +2848,14 @@ function getCachedEventSourcePage(
     [
       // v3 adds the publisher-owned modification timestamp used to settle
       // first-party event changes. Keep old cache tuples out of this shape.
-      "live-event-source-page-v6",
+      "live-event-source-page-v4",
       source,
       String(windowDays),
       afterCursor ?? "first",
+      // Bumped when the category rules change. It is separate from the
+      // shape version above so a rule change and a shape change can land
+      // in either order without touching the same line.
+      "categories-v2",
     ],
     {
       revalidate: 840,
