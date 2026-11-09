@@ -21,6 +21,7 @@ import {
   StatusPill,
 } from "@/components/admin/kit";
 import { audienceOptions, audienceStats, recentBroadcasts } from "@/lib/push-broadcast";
+import { hasCompleteVapidConfiguration } from "@/lib/push";
 import { sendBroadcast } from "./actions";
 
 export const metadata: Metadata = {
@@ -44,7 +45,7 @@ export default async function NotifyPage({
   searchParams: Promise<{ sent?: string; held?: string; gone?: string; to?: string; error?: string }>;
 }) {
   const sp = await searchParams;
-  const vapid = Boolean(process.env.VAPID_PUBLIC_KEY);
+  const vapid = hasCompleteVapidConfiguration();
   const stats = await audienceStats();
   const options = await audienceOptions();
   const history = await recentBroadcasts(12);
@@ -88,7 +89,7 @@ export default async function NotifyPage({
 
       {!vapid ? (
         <EmptyState tone="warning" icon={BellRing}>
-          Push isn&rsquo;t configured on this deployment (VAPID keys unset), so sends will no-op.
+          Push is not fully configured on this deployment. All three VAPID values are required, so sends will not leave the app yet.
         </EmptyState>
       ) : total === 0 ? (
         <EmptyState icon={BellRing}>

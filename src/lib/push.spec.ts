@@ -13,7 +13,7 @@ vi.mock("web-push", () => ({
   },
 }));
 
-import { sendPush } from "./push";
+import { hasCompleteVapidConfiguration, sendPush } from "./push";
 import { WEB_PUSH_TIMEOUT_MS } from "./push-security";
 
 describe("sendPush outbound boundary", () => {
@@ -61,5 +61,11 @@ describe("sendPush outbound boundary", () => {
       ),
     ).rejects.toThrow("invalid_subscription");
     expect(mocks.sendNotification).not.toHaveBeenCalled();
+  });
+
+  it("treats a whitespace-only VAPID value as unconfigured", () => {
+    process.env.VAPID_PRIVATE_KEY = "   ";
+
+    expect(hasCompleteVapidConfiguration()).toBe(false);
   });
 });

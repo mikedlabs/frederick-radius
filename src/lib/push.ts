@@ -44,13 +44,33 @@ export type PushPayload = {
 
 let _configured = false;
 
+function vapidConfiguration(): {
+  publicKey: string;
+  privateKey: string;
+  subject: string;
+} | null {
+  const publicKey = process.env.VAPID_PUBLIC_KEY?.trim() ?? "";
+  const privateKey = process.env.VAPID_PRIVATE_KEY?.trim() ?? "";
+  const subject = process.env.VAPID_SUBJECT?.trim() ?? "";
+  return publicKey && privateKey && subject
+    ? { publicKey, privateKey, subject }
+    : null;
+}
+
+/** Whether this deployment has the complete server-side VAPID credential set. */
+export function hasCompleteVapidConfiguration(): boolean {
+  return vapidConfiguration() !== null;
+}
+
 export function configurePush(): boolean {
   if (_configured) return true;
-  const pub = process.env.VAPID_PUBLIC_KEY;
-  const priv = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT;
-  if (!pub || !priv || !subject) return false;
-  webpush.setVapidDetails(subject, pub, priv);
+  const vapid = vapidConfiguration();
+  if (!vapid) return false;
+  webpush.setVapidDetails(
+    vapid.subject,
+    vapid.publicKey,
+    vapid.privateKey,
+  );
   _configured = true;
   return true;
 }
@@ -58,7 +78,7 @@ export function configurePush(): boolean {
 /** Public VAPID key for the browser to call pushManager.subscribe with.
  *  Returns null when env is unset so callers can hide the UI cleanly. */
 export function publicVapidKey(): string | null {
-  return process.env.VAPID_PUBLIC_KEY ?? null;
+  return vapidConfiguration()?.publicKey ?? null;
 }
 
 /** Send one notification. Returns null when push is unconfigured or

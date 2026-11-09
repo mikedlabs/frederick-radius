@@ -102,3 +102,64 @@ Do not route another job until all of these are true:
 GitHub does not bill compute minutes for self-hosted runners. Artifact and
 cache storage remain GitHub-hosted and may still count toward storage billing;
 the pilot uploads one small artifact with one-day retention.
+
+## Independent production monitor
+
+After this change is reviewed, merged, and pulled into the NAS checkout, the
+NAS can check production without receiving a GitHub, Vercel, Supabase, or
+database credential. This is separate from the Actions runner and remains
+useful when a hosted workflow cannot start. It makes one outbound GET request
+to `https://frederickradius.app/api/health` and validates the current production
+contract. HTTP 200 or a top-level `operational` string alone is not healthy.
+
+This repository change does not create or enable a DSM task. An administrator
+must create one Task Scheduler task named **Frederick Radius production
+health** only after the code is merged and the NAS checkout is updated:
+
+- run it every five minutes, all day, using the NAS
+  `America/New_York` timezone;
+- run `npm run monitor:production:nas` from the reviewed `main` checkout;
+- use a low-privilege account with read access to the checkout and write access
+  only to `scripts/reports`;
+- enable DSM notification with run details when the task exits abnormally.
+
+The first unhealthy observation exits normally. A second consecutive unhealthy
+observation confirms the incident. The monitor then alerts only on that
+transition, once every six hours while it remains unhealthy, and once on
+recovery. Its compact state is
+`scripts/reports/nas-production-monitor-state.json`, which is gitignored. An
+invalid or partial state file is ignored safely instead of inventing a recovery.
+Do not delete a valid state file during an incident because it owns the debounce
+and reminder clock.
+
+If `SLACK_WEBHOOK_URL` is available to the task, the monitor sends the
+transition to that incoming webhook and exits normally only after Slack accepts
+it. Keep the value outside the checkout in an owner-readable,
+permission-limited DSM secret or environment file; the monitor never prints or
+persists it. If the webhook is absent, invalid, unavailable, or rejected, the
+due alert exits with code 2 so DSM can deliver the fallback notification. A
+monitor implementation or state-write failure exits with code 1. No-alert
+checks exit with code 0.
+
+Before enabling the schedule, run one healthy check and one controlled failure
+through DSM, verify the expected notification and recovery, and inspect the
+state file permissions. This monitor is not a public service. Do not publish a
+NAS port, create a router forward, or make the NAS a Radius origin. Keep the
+daily GitHub `Production health alert` workflow enabled as an independent
+off-site backstop; NAS and GitHub checks never suppress one another.
+
+## Fair watcher tasks
+
+After the runner handoff is accepted, these tasks can also run from the
+reviewed `main` checkout and store only private, gitignored review state. They
+need outbound web access and no provider token. Set DSM to include run details
+on nonzero exits.
+
+| DSM task | In-season cadence (Eastern) | Outside-season cadence | Command | Nonzero signal |
+| --- | --- | --- | --- | --- |
+| Frederick Radius Fair official pages | Daily at 6:10 a.m.; temporarily every fifteen minutes during published Fair operating hours | Sunday at 6:10 a.m. | `npm run fair:source-watch -- --live --fail-on-change` | Exit 3 means an official page changed; exit 1 means retrieval failed. |
+| Frederick Radius Fair community | 12:20 a.m., 6:20 a.m., 12:20 p.m., and 6:20 p.m. | Sunday at 6:20 a.m. | `npm run fair:community-watch -- --live --fail-on-new` | Exit 3 means a new matching public post; exit 1 means retrieval failed. |
+
+Do not run the daily official-page task alongside the temporary fifteen-minute
+event-hours task. A nonzero watcher result is a private review prompt, never
+authorization to change or publish the Fair guide automatically.

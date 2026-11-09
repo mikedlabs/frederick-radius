@@ -17,8 +17,18 @@
 import type { Anomaly } from "./feed-snapshot";
 
 const MIN_REPEAT_MS = 6 * 60 * 60 * 1000; // 6h, ≈ one cron window
+const SLACK_REQUEST_TIMEOUT_MS = 5_000;
 let lastFingerprint: string | null = null;
 let lastSentAt = 0;
+
+export type AnomalyAlertDelivery =
+  | "not_needed"
+  | "suppressed"
+  | "not_configured"
+  | "accepted"
+  | "rejected"
+  | "timeout"
+  | "failed";
 
 function fingerprint(anomalies: Anomaly[]): string {
   // Stable: sort by source+kind. Detail can vary in counts so we
@@ -31,29 +41,28 @@ function fingerprint(anomalies: Anomaly[]): string {
 
 /**
  * POST a formatted message to Slack when SLACK_WEBHOOK_URL is set.
- * Otherwise log to stderr with the same structure. Always resolves
- * (errors are swallowed) so the cron handler can `void` the call.
+ * Otherwise log to stderr with the same structure. Delivery is deadline-bound
+ * and returned explicitly so callers never confuse a completed helper with a
+ * provider-accepted alert.
  */
-export async function sendAnomalyAlert(anomalies: Anomaly[]): Promise<void> {
-  if (anomalies.length === 0) return;
+export async function sendAnomalyAlert(
+  anomalies: Anomaly[],
+): Promise<AnomalyAlertDelivery> {
+  if (anomalies.length === 0) return "not_needed";
 
   const fp = fingerprint(anomalies);
   if (fp === lastFingerprint && Date.now() - lastSentAt < MIN_REPEAT_MS) {
-
     console.info("[alerts] suppressing repeat anomaly alert (same fingerprint)");
-    return;
+    return "suppressed";
   }
 
-  const url = process.env.SLACK_WEBHOOK_URL;
+  const url = process.env.SLACK_WEBHOOK_URL?.trim();
   if (!url) {
-
     console.warn(
       `[alerts] ${anomalies.length} anomalies, no SLACK_WEBHOOK_URL set:`,
       anomalies.map((a) => `${a.source}:${a.kind}`).join(", "),
     );
-    lastFingerprint = fp;
-    lastSentAt = Date.now();
-    return;
+    return "not_configured";
   }
 
   const text = formatSlack(anomalies);
@@ -62,17 +71,21 @@ export async function sendAnomalyAlert(anomalies: Anomaly[]): Promise<void> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
+      signal: AbortSignal.timeout(SLACK_REQUEST_TIMEOUT_MS),
     });
     if (!res.ok) {
-
       console.error(`[alerts] slack post failed: HTTP ${res.status}`);
-      return;
+      return "rejected";
     }
     lastFingerprint = fp;
     lastSentAt = Date.now();
+    return "accepted";
   } catch (err) {
-
     console.error("[alerts] slack post threw:", err instanceof Error ? err.message : err);
+    const name = err instanceof Error ? err.name : "";
+    return name === "AbortError" || name === "TimeoutError"
+      ? "timeout"
+      : "failed";
   }
 }
 
@@ -125,7 +138,7 @@ export async function sendWarmFailureAlert(failures: WarmFailure[]): Promise<voi
     return;
   }
 
-  const url = process.env.SLACK_WEBHOOK_URL;
+  const url = process.env.SLACK_WEBHOOK_URL?.trim();
   if (!url) {
     console.warn(
       `[alerts] warm-events failed to warm ${failures.length} cache(s), no SLACK_WEBHOOK_URL set:`,
@@ -146,6 +159,7 @@ export async function sendWarmFailureAlert(failures: WarmFailure[]): Promise<voi
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
+      signal: AbortSignal.timeout(SLACK_REQUEST_TIMEOUT_MS),
     });
     if (!res.ok) {
       console.error(`[alerts] warm slack post failed: HTTP ${res.status}`);
