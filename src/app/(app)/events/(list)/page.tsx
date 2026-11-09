@@ -23,6 +23,7 @@ import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
 import SlowSuspenseFallback from "@/components/ui/SlowSuspenseFallback";
 import { isEventLiveNow } from "@/lib/eventWhenLabel";
+import { eventSourceStatement, ticketingSourcesOn } from "@/lib/events/source-statement";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/events" },
@@ -120,14 +121,11 @@ export default async function EventsIndexPage() {
         className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
       >
-        {/* Honesty footer = TRUE sources only (June-9 automation audit):
-            DFP killed their public iCal and the Hood Trumba feed is gone;
-            naming dead feeds in the trust block was the opposite of trust. */}
+        {/* Honesty footer = TRUE sources only (June-9 automation audit).
+            The sentence is built from which sources are switched on, so it
+            cannot credit a ticketing feed that is not running. */}
         <p>
-          Event listings come from Celebrate Frederick, the Frederick
-          County calendar, Ticketmaster (music + Frederick Keys home
-          games), Bandsintown, the Weinberg Center lineup, and the county
-          municipal calendars. Live feeds are checked about every 15 minutes.
+          {eventSourceStatement(ticketingSourcesOn())}
         </p>
         <p>
           Missing an event?{" "}
