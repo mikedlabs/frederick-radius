@@ -102,7 +102,7 @@ async function loadAirQuality(
       return null;
     }
     const usable = data.filter(
-      (r) => Number.isFinite(r.AQI) && r.AQI >= 0 && Number.isFinite(r.Category?.Number),
+      (r) => r != null && Number.isFinite(r.AQI) && r.AQI >= 0 && Number.isFinite(r.Category?.Number),
     );
     if (usable.length === 0) {
       logAirNowFailure(
@@ -129,6 +129,8 @@ async function loadAirQuality(
   } catch (error) {
     if (ctrl.signal.aborted) {
       logAirNowFailure("timeout", `no response within ${deadlineMs} ms`);
+    } else if (error instanceof SyntaxError) {
+      logAirNowFailure("malformed", "the response body was not valid JSON");
     } else {
       logAirNowFailure("request", `request failed (${error instanceof Error ? error.name : "unknown error"})`);
     }
