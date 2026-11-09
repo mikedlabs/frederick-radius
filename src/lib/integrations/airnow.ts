@@ -45,6 +45,33 @@ const COLORS: Record<number, string> = {
   1: "#315A43", 2: "#B26B00", 3: "#A03A22", 4: "#A02929", 5: "#7E1F1F", 6: "#5B0000",
 };
 
+const FAILURE_LOG_INTERVAL_MS = 10 * 60 * 1_000;
+const lastFailureLogAt = new Map<string, number>();
+
+/** Say why a reading is missing, at most once per cause every ten minutes.
+ * Every failure used to return null without a word, so the
+ * "unavailable" seen in production in the Oct 8 audit and again on Nov 9,
+ * 2026 could not be told apart from a bad key, a rate limit or a slow
+ * provider. The request URL carries
+ * the key, so it is never logged. */
+function logAirNowFailure(cause: string, detail: string): void {
+  const now = Date.now();
+  if (now - (lastFailureLogAt.get(cause) ?? -Infinity) < FAILURE_LOG_INTERVAL_MS) return;
+  lastFailureLogAt.set(cause, now);
+  console.warn(`[airnow] ${detail}`);
+}
+
+/** AirNow reports some failures, such as a rejected key, as a 200 response
+ * holding a message instead of observations. Carry that message into the log
+ * so the cause is readable, bounded so a large body cannot flood it. */
+function providerMessage(body: unknown): string {
+  const errors = (body as { WebServiceError?: Array<{ Message?: unknown }> } | null)?.WebServiceError;
+  const message = Array.isArray(errors) ? errors[0]?.Message : undefined;
+  return typeof message === "string" && message.trim()
+    ? `: ${message.trim().slice(0, 120)}`
+    : "";
+}
+
 async function loadAirQuality(
   lat: number,
   lng: number,
@@ -65,10 +92,25 @@ async function loadAirQuality(
       signal: ctrl.signal,
       next: { revalidate: 1800 },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      logAirNowFailure(`http-${res.status}`, `HTTP ${res.status} from the current-observation endpoint`);
+      return null;
+    }
     const data = (await res.json()) as AirNowResp;
-    return data
-      .filter((r) => Number.isFinite(r.AQI) && r.AQI >= 0 && Number.isFinite(r.Category?.Number))
+    if (!Array.isArray(data)) {
+      logAirNowFailure("shape", `the response was not a list of observations${providerMessage(data)}`);
+      return null;
+    }
+    const usable = data.filter(
+      (r) => Number.isFinite(r.AQI) && r.AQI >= 0 && Number.isFinite(r.Category?.Number),
+    );
+    if (usable.length === 0) {
+      logAirNowFailure(
+        "empty",
+        `no usable observation within 25 miles (${data.length} rows returned)`,
+      );
+    }
+    return usable
       .map((r) => ({
       parameter: r.ParameterName,
       aqi: r.AQI,
@@ -84,7 +126,12 @@ async function loadAirQuality(
       dateObserved: r.DateObserved,
       hourObserved: r.HourObserved,
       }));
-  } catch {
+  } catch (error) {
+    if (ctrl.signal.aborted) {
+      logAirNowFailure("timeout", `no response within ${deadlineMs} ms`);
+    } else {
+      logAirNowFailure("request", `request failed (${error instanceof Error ? error.name : "unknown error"})`);
+    }
     return null;
   } finally {
     clearTimeout(timer);

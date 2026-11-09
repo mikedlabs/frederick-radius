@@ -68,3 +68,60 @@ describe("AirNow request deadline", () => {
     expect(signal?.aborted).toBe(true);
   });
 });
+
+describe("AirNow failure reporting", () => {
+  // Each case uses its own coordinates because readings are memoized per
+  // point, and its own cause because a cause is logged once per ten minutes.
+  it("says which HTTP status came back, without the request URL", async () => {
+    process.env.AIRNOW_API_KEY = "secret-key";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("rate limited", { status: 429 })));
+
+    await expect(getAirQuality({ lat: 39.1, lng: -77.1 })).resolves.toBeNull();
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    const message = String(warn.mock.calls[0]?.[0]);
+    expect(message).toBe("[airnow] HTTP 429 from the current-observation endpoint");
+    expect(message).not.toContain("secret-key");
+    warn.mockRestore();
+  });
+
+  it("says when a successful response holds no usable observation", async () => {
+    process.env.AIRNOW_API_KEY = "secret-key";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json([])));
+
+    await expect(getAirQuality({ lat: 39.2, lng: -77.2 })).resolves.toEqual([]);
+
+    expect(String(warn.mock.calls[0]?.[0])).toBe(
+      "[airnow] no usable observation within 25 miles (0 rows returned)",
+    );
+    warn.mockRestore();
+  });
+
+  it("passes along the provider's own message when the body is not a list", async () => {
+    process.env.AIRNOW_API_KEY = "secret-key";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      Response.json({ WebServiceError: [{ Message: "Invalid API key" }] })));
+
+    await expect(getAirQuality({ lat: 39.5, lng: -77.5 })).resolves.toBeNull();
+
+    const message = String(warn.mock.calls[0]?.[0]);
+    expect(message).toBe("[airnow] the response was not a list of observations: Invalid API key");
+    expect(message).not.toContain("secret-key");
+    warn.mockRestore();
+  });
+
+  it("does not repeat the same cause on the next request", async () => {
+    process.env.AIRNOW_API_KEY = "secret-key";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 503 })));
+
+    await getAirQuality({ lat: 39.3, lng: -77.3 });
+    await getAirQuality({ lat: 39.4, lng: -77.4 });
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+});
