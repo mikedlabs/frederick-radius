@@ -139,6 +139,9 @@ export function applyAskOutdoorSafety(
   // playground. A real NWS or air-quality hold falls through to the full
   // suppression below.
   if (hold.kind === "unavailable") {
+    // Nothing was recommended, so there is nothing to qualify. The honest
+    // empty state stays as it is instead of gaining a conditions card.
+    if (result.status === "empty") return result;
     return {
       ...result,
       answer: [result.answer, hold.reason, "Check official conditions before you head out."]

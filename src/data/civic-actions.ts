@@ -118,7 +118,7 @@ export const CIVIC_ACTIONS: CivicAction[] = [
     label: "Trash and yard waste collection schedule",
     publisher: "City of Frederick",
     url: "https://www.cityoffrederickmd.gov/236/Collection-Schedule",
-    keywords: ["trash day", "garbage day", "trash pickup", "garbage pickup", "trash collection", "garbage collection", "trash schedule", "garbage schedule", "when is trash", "when is garbage", "yard waste", "collection day", "pickup schedule", "collection schedule"],
+    keywords: ["trash day", "garbage day", "trash pickup", "garbage pickup", "trash collection", "garbage collection", "trash schedule", "garbage schedule", "when is trash", "when is garbage", "yard waste", "collection day", "pickup schedule", "collection schedule", "trash and recycling", "recycling and trash", "garbage and recycling", "recycling and garbage"],
     answer: "Trash day depends on where you live. The City of Frederick collects trash and yard waste for city addresses and publishes that schedule. Other towns and private haulers set their own days. Recycling is a separate Frederick County service with its own schedule.",
     related: ["recycling-schedule"],
   },
@@ -140,7 +140,7 @@ export function civicActionFitsQuery(actionId: string, query: string): boolean {
 }
 
 const CIVIC_INTENT =
-  /\b(?:county office|city office|government|agency|department|official|contact|call|phone|report|request|register|apply|pay|permit|license|vote|voting|election|ballot|pothole|recycling|trash|tax|bill|zoning|ordinance|budget|council|jury|public records?|foia|mpia|road closures?|school clos(?:ing|ure)s?|bus|transit|adopt|animal control|marriage|deed|broadband|volunteer)\b/i;
+  /\b(?:county office|city office|government|agency|department|official|contact|call|phone|report|request|register|apply|pay|permit|license|vote|voting|election|ballot|pothole|recycling|trash|garbage|yard waste|tax|bill|zoning|ordinance|budget|council|jury|public records?|foia|mpia|road closures?|school clos(?:ing|ure)s?|bus|transit|adopt|animal control|marriage|deed|broadband|volunteer)\b/i;
 
 const CIVIC_STOP = new Set([
   "a", "an", "and", "can", "city", "county", "do", "for", "frederick", "get", "handle", "handles", "how", "i",

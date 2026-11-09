@@ -37,6 +37,13 @@ describe("eventMatchesTopic — movies", () => {
     expect(eventMatchesTopic(libraryScreening, "movies tonight")).toBe(true);
   });
 
+  it("admits plural film titles for a movie ask", () => {
+    const moviesInThePark = event({ title: "Movies in the Park", category: "family" });
+    const filmsAtTheLibrary = event({ title: "Films at the Library", category: "arts" });
+    expect(eventMatchesTopic(moviesInThePark, "movies tonight")).toBe(true);
+    expect(eventMatchesTopic(filmsAtTheLibrary, "movie")).toBe(true);
+  });
+
   it("does not change non-movie topic queries", () => {
     // A live-music ask still admits the music event; a plain ask still admits all.
     expect(eventMatchesTopic(vinylNight, "live music tonight")).toBe(true);

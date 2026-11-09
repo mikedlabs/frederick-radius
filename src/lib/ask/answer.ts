@@ -1883,7 +1883,7 @@ export function eventMatchesTopic(event: Event, query: string): boolean {
   // food truck) as "movies" is noise. Keep only genuinely film-related rows
   // (a library screening, a film festival), which is usually none.
   if (/\b(?:movies?|films?|cinema|showtimes?|matinee|screening)\b/i.test(query)) {
-    return /\b(?:movie|cinema|film|screening|showtime|matinee)\b/i.test(text);
+    return /\b(?:movies?|cinemas?|films?|screenings?|showtimes?|matinees?)\b/i.test(text);
   }
   return true;
 }

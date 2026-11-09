@@ -59,6 +59,24 @@ describe("matchCivicAction", () => {
     expect(action?.related).toEqual(["recycling-schedule"]);
   });
 
+  it("reaches the trash schedule when the question says garbage or yard waste", () => {
+    expect(matchCivicAction("when is garbage day")?.id).toBe("trash-schedule");
+    expect(matchCivicAction("yard waste pickup")?.id).toBe("trash-schedule");
+  });
+
+  it("answers a question about both services with the answer that covers both", () => {
+    const action = matchCivicAction("trash and recycling schedule");
+    expect(action?.id).toBe("trash-schedule");
+    expect(action?.related).toEqual(["recycling-schedule"]);
+    expect(matchCivicAction("recycling and garbage pickup")?.id).toBe("trash-schedule");
+    // A recycling-only question still gets the County schedule.
+    expect(matchCivicAction("when is recycling day")?.id).toBe("recycling-schedule");
+  });
+
+  it("does not read restaurant curbside pickup as a collection question", () => {
+    expect(matchCivicAction("restaurants with curbside pickup")).toBeNull();
+  });
+
   it("routes a trash-pickup-schedule question to the trash schedule", () => {
     expect(matchCivicAction("trash pickup schedule")?.id).toBe("trash-schedule");
   });

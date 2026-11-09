@@ -180,6 +180,21 @@ describe("applyAskOutdoorSafety", () => {
     expect(guarded.intelligence?.tools).toContain("weather");
   });
 
+  it("leaves an empty result alone when live feeds can't be verified", () => {
+    // Nothing was recommended, so there is nothing to qualify. The interface
+    // hides answer text on an empty result, and a conditions card under
+    // "could not find a solid match" would be noise.
+    const unavailable = {
+      kind: "unavailable" as const,
+      event: "Outdoor safety check unavailable",
+      reason: "Current weather alerts and air quality could not be verified.",
+      url: "/pulse",
+      unavailableFeeds: ["air quality"] as Array<"weather alerts" | "air quality">,
+    };
+    const empty = { ...result(), status: "empty" as const, answer: null, sources: [], actions: [] };
+    expect(applyAskOutdoorSafety(empty, "playground near me", unavailable)).toBe(empty);
+  });
+
   it("still fully suppresses outdoor picks during a real NWS hazard", () => {
     // Contrast with the unavailable case: an active alert removes the park.
     const guarded = applyAskOutdoorSafety(result(), "playground near me", HOLD);
