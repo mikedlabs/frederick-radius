@@ -41,9 +41,11 @@ const UTILITY_TITLE_PATTERNS = [
 // "Centers are Closed for Veteran Day", "WFS- No School", "WFS- Winter Break",
 // "Circulation Department Meeting". On Nov 9, 2026 each of these ranked as a
 // draw. A break only counts when it ends the title, so a "Spring Break Camp"
-// stays an activity.
+// stays an activity, and "closing" only counts as a closure ("Closing at
+// 5", "Closing for the holiday"), so a closing reception or ceremony at a
+// library or center stays an outing.
 const NOTICE_TITLE =
-  /\b(?:librar(?:y|ies)|centers?|offices?|branch(?:es)?|schools?|campus)\s+(?:(?:is|are|will\s+be)\s+)?clos(?:ed?|es|ing)\b|\bno\s+school\b|\b(?:winter|spring|summer|fall|thanksgiving|holiday|christmas)\s+break\s*$|\bdepartment\s+meeting\b/i;
+  /\b(?:librar(?:y|ies)|centers?|offices?|branch(?:es)?|schools?|campus)\s+(?:(?:is|are|will\s+be)\s+)?(?:clos(?:ed?|es)\b|closing(?=\s+(?:for|on|at|early)\b|\s*$))|\bno\s+school\b|\b(?:winter|spring|summer|fall|thanksgiving|holiday|christmas)\s+break\s*$|\bdepartment\s+meeting\b/i;
 
 export function isUtilityEvent(e: { category?: string; title?: string }): boolean {
   if (categoryKind(e.category) === "utility") return true;

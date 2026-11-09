@@ -526,7 +526,7 @@ const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
   // bands, light weights" otherwise substring-matches the music words, and
   // "Cardio Sculpt" rendered on the live-music radar (2026-07-17 review).
   { slug: "community", words: ["cardio", "zumba", "fitness class", "exercise", "workout", "pilates", "barre", "aerobics", "sculpt", "learn to"] },
-  { slug: "music", words: ["concert", "recital", "ensemble", "orchestra", "symphony", "choir", "band", "music", "dj", "open mic", "acoustic", "punch brothers", "alive @ five"] },
+  { slug: "music", words: ["concert", "recital", "string ensemble", "chamber ensemble", "jazz ensemble", "wind ensemble", "vocal ensemble", "brass ensemble", "percussion ensemble", "orchestra", "symphony", "choir", "band", "music", "dj", "open mic", "acoustic", "punch brothers", "alive @ five"] },
   // Sports is checked early so a game beats the family/outdoors/market
   // fallbacks ("youth soccer at the park" is sports, not outdoors).
   // Tight, low-noise terms only (no bare "game"/"match"/"play").
@@ -1389,7 +1389,9 @@ async function fetchRssFeed(
           feed.default_venue,
         ),
       );
-      const inferredCategory = feedCategory(feed, title, description);
+      // The resolved venue lets the county's title-only rule see a Gaver
+      // Farm row whose title does not name the farm.
+      const inferredCategory = feedCategory(feed, title, description, venue);
 
       const candidate = {
         id: `${feed.source}:${dedupeKey(title, start, venue)}`,

@@ -155,6 +155,13 @@ describe("inferredNonMusicCategory venue-calendar veto (2026-10-17)", () => {
     }
   });
 
+  it("still finds Santa and a craft night beside a name that looks like them", () => {
+    expect(inferredNonMusicCategory("Santa Fe's Breakfast with Santa")).toBe("family");
+    expect(inferredNonMusicCategory("Holiday Craft Fair")).toBe("community");
+    expect(inferredNonMusicCategory("Arts & Crafts Afternoon")).toBe("community");
+    expect(inferredNonMusicCategory("Crafting for All")).toBe("community");
+  });
+
   it("keeps real band titles as music", () => {
     for (const title of [
       "Jimmy Kenny and The Pirate Beach Band",
@@ -170,6 +177,7 @@ describe("inferredNonMusicCategory venue-calendar veto (2026-10-17)", () => {
       "Classic Rock Night",
       "Working Class Heroes",
       "Santa Fe and The Fat City Horns",
+      "Craft Beer & Live Music",
     ]) {
       expect(inferredNonMusicCategory(title)).toBeNull();
       expect(ingestCategory(title)).toBe("music");

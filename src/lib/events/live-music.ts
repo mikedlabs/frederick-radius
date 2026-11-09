@@ -37,12 +37,22 @@ const CLASS_TITLE = /\bclass(?:es)?\b/i;
 const CLASS_NAME_EXCEPTION =
   /\b(?:first|world|working|middle|upper|high|second|third|top)\s+class\b|\bclass\s+(?:of|act)\b/i;
 
-/** Santa photos and breakfasts. "Santa Fe" is a place / band name. */
+/** Santa photos and breakfasts. "Santa Fe" is a place / band name, so it
+ *  is set aside before looking for Santa himself: "Santa Fe and The Fat City
+ *  Horns" is a band, and "Santa Fe's Breakfast with Santa" is still a
+ *  family event. */
 const SANTA_TITLE = /\bsanta\b/i;
-const SANTA_NAME_EXCEPTION = /\bsanta\s+fe\b/i;
+const SANTA_FE = /\bsanta\s+fe\b/gi;
 
-/** Craft nights and fairs. "witchcraft" / "aircraft" are saved by \b. */
-const CRAFT_TITLE = /\bcrafts?\b/i;
+function mentionsSanta(title: string): boolean {
+  return SANTA_TITLE.test(title.replace(SANTA_FE, " "));
+}
+
+/** Craft nights, fairs and tables. The word alone is not enough: a taproom
+ *  bills "Craft Beer & Live Music" too. "witchcraft" / "aircraft" are saved
+ *  by \b. */
+const CRAFT_TITLE =
+  /\bcrafts?\s+(?:night|fair|show|market|sale|bazaar|workshop|time|club|circle|table|party|day|afternoon|hour)s?\b|\b(?:arts?|sip)\s*(?:&|and|n|'n')\s*crafts?\b|\bcrafternoon\b|\bcrafting\b/i;
 
 /** Vendor fairs belong with markets. */
 const VENDOR_TITLE = /\bvendors?\b/i;
@@ -66,7 +76,7 @@ export function inferredNonMusicCategory(
   title: string,
 ): InferredNonMusicCategory | null {
   if (isMarketTitle(title) || VENDOR_TITLE.test(title)) return "market";
-  if (SANTA_TITLE.test(title) && !SANTA_NAME_EXCEPTION.test(title)) return "family";
+  if (mentionsSanta(title)) return "family";
   if (NON_MUSIC_TITLE.test(title)) return "community";
   if (CLASS_TITLE.test(title) && !CLASS_NAME_EXCEPTION.test(title)) return "community";
   if (CRAFT_TITLE.test(title)) return "community";

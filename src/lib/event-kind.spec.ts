@@ -67,12 +67,16 @@ describe("isUtilityEvent", () => {
     expect(isUtilityEvent({ category: "community", title: "WFS- Winter Break" })).toBe(true);
     expect(isUtilityEvent({ category: "community", title: "School Closed for Fall Break" })).toBe(true);
     expect(isUtilityEvent({ category: "community", title: "Thanksgiving Eve - Libraries Close" })).toBe(true);
+    expect(isUtilityEvent({ category: "community", title: "Libraries Closing at 5 PM" })).toBe(true);
+    expect(isUtilityEvent({ category: "community", title: "Holiday Schedule: Offices Closing" })).toBe(true);
   });
 
   it("does not read an activity that mentions a break, a school or a closing as a notice", () => {
     // Guards for the nearest wrong matches, not rows from the board.
     expect(isUtilityEvent({ category: "family", title: "Spring Break Camp" })).toBe(false);
     expect(isUtilityEvent({ category: "gallery", title: "Closing Reception: Shorelines" })).toBe(false);
+    expect(isUtilityEvent({ category: "gallery", title: "Library Closing Reception" })).toBe(false);
+    expect(isUtilityEvent({ category: "community", title: "Senior Center Closing Ceremony" })).toBe(false);
     expect(isUtilityEvent({ category: "music", title: "Old School Hip Hop Night" })).toBe(false);
     expect(isUtilityEvent({ category: "family", title: "Break My Game: Tabletop Game Play Testing" })).toBe(false);
   });

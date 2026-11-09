@@ -141,6 +141,17 @@ describe("official-feed classification and venue corrections", () => {
     expect(feedCategory(DFP_FEED, "Friday on the Creek", "Live music with a local band.")).toBe("music");
   });
 
+  it("reads a musical ensemble as music without reading a theater company's name as one", () => {
+    const HOOD_FEED: FeedSpec = { ...FCC_FEED, source: "hood", source_label: "Hood College" };
+    expect(feedCategory(HOOD_FEED, "Hood String Ensemble: “The Universal Vibe\"", "")).toBe("music");
+    // Music is matched before theater, so a bare "ensemble" would have
+    // filed every Maryland Ensemble Theatre listing under music.
+    expect(
+      feedCategory(DFP_FEED, "Death and the Girl", "Presented by Maryland Ensemble Theatre on the main stage."),
+    ).not.toBe("music");
+    expect(feedCategory(DFP_FEED, "Maryland Ensemble Theatre: Oh Crit!", "")).toBe("theater");
+  });
+
   it("does not find the word art inside Partner Hours", () => {
     expect(
       feedCategory(
