@@ -808,7 +808,12 @@ const MONTHS: Record<string, number> = {
  * path does. A date with no time anchors at midday so it cannot slip
  * to the wrong calendar day.
  */
-export function parseCountyDateTime(dateStr: string, timeStr?: string): Date | null {
+export function parseCountyDateTime(
+  dateStr: string,
+  timeStr?: string,
+  /** Calendar days to add in Eastern time, for an end that falls after midnight. */
+  dayOffset = 0,
+): Date | null {
   const dm = /^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})$/.exec(dateStr.trim());
   if (!dm) return null;
   const month = MONTHS[dm[1].toLowerCase()];
@@ -825,7 +830,7 @@ export function parseCountyDateTime(dateStr: string, timeStr?: string): Date | n
       minute = Number(tm[2]);
     }
   }
-  return new Date(easternWallToUtcISO(year, month, day, hour, minute));
+  return new Date(easternWallToUtcISO(year, month, day + dayOffset, hour, minute));
 }
 
 const CIVICENGAGE_CLOCK = /(\d{1,2}:\d{2}\s*[APap][Mm])/;
@@ -861,7 +866,9 @@ export function parseCountyEventWindow(
   if (!clocks.end) return { start, end: null };
   let end = parseCountyDateTime(dateStr, clocks.end);
   if (end && end.getTime() <= start.getTime()) {
-    end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+    // The same clock on the next Eastern calendar day. Adding 24 hours is an
+    // hour off on the two nights a year the clocks change.
+    end = parseCountyDateTime(dateStr, clocks.end, 1);
   }
   return { start, end };
 }

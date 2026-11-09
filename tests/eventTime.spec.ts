@@ -89,6 +89,17 @@ describe("parseCountyEventWindow", () => {
     expect(window?.end?.toISOString()).toBe("2026-05-15T05:00:00.000Z");
   });
 
+  it("lands an overnight end on the right hour when the clocks change that night", () => {
+    // Clocks fall back at 2 AM on Nov 1, 2026. 3 AM that morning is EST.
+    const fall = parseCountyEventWindow("October 31, 2026", "11:00 PM - 3:00 AM");
+    expect(fall?.start.toISOString()).toBe("2026-11-01T03:00:00.000Z");
+    expect(fall?.end?.toISOString()).toBe("2026-11-01T08:00:00.000Z");
+    // Clocks spring forward at 2 AM on Mar 8, 2026. 3 AM that morning is EDT.
+    const spring = parseCountyEventWindow("March 7, 2026", "10:00 PM - 3:00 AM");
+    expect(spring?.start.toISOString()).toBe("2026-03-08T03:00:00.000Z");
+    expect(spring?.end?.toISOString()).toBe("2026-03-08T07:00:00.000Z");
+  });
+
   it("rolls an overnight end across a month boundary", () => {
     const window = parseCountyEventWindow("May 31, 2026", "10:00 PM - 1:00 AM");
     expect(window?.end?.toISOString()).toBe("2026-06-01T05:00:00.000Z");

@@ -40,8 +40,17 @@ const EASTERN_DAY_FORMATTER = new Intl.DateTimeFormat("en-CA", {
  *
  * Method: interpret the wall numbers as if they were UTC, ask what the
  * New York clock reads at that instant, and the difference is New York's
- * offset for that date. Apply it. Correct across the EDT and EST switch
- * for any event-hour time (not intended for the 2 AM transition itself).
+ * offset for that date. Apply it, then check the answer by reading the New
+ * York clock at the result.
+ *
+ * The check matters for the first hours after a clock change. There the
+ * first reading still sees the old offset, so 3:00 AM on the morning clocks
+ * fall back came out as 2:00 AM. When the result does not read back as the
+ * requested wall time, the offset is taken again at the result and used if
+ * it reads back correctly. A wall time that does not exist (2:30 AM on the
+ * spring-forward morning) keeps the first answer, and one that occurs twice
+ * (1:30 AM on the fall-back morning) keeps its first occurrence, both as
+ * before.
  */
 export function easternWallToUtcISO(
   year: number,
@@ -52,21 +61,27 @@ export function easternWallToUtcISO(
   second = 0,
 ): string {
   const asUTC = Date.UTC(year, month - 1, day, hour, minute, second);
-  const parts = Object.fromEntries(
-    EASTERN_WALL_FORMATTER
-      .formatToParts(new Date(asUTC))
-      .map((p) => [p.type, p.value]),
-  ) as Record<string, string>;
-  const asNY = Date.UTC(
-    Number(parts.year),
-    Number(parts.month) - 1,
-    Number(parts.day),
-    Number(parts.hour) % 24,
-    Number(parts.minute),
-    second,
-  );
-  const offsetMs = asUTC - asNY;
-  return new Date(asUTC + offsetMs).toISOString();
+  // New York's wall clock at an instant, written as if it were UTC.
+  const wallAt = (instantMs: number): number => {
+    const parts = Object.fromEntries(
+      EASTERN_WALL_FORMATTER
+        .formatToParts(new Date(instantMs))
+        .map((p) => [p.type, p.value]),
+    ) as Record<string, string>;
+    return Date.UTC(
+      Number(parts.year),
+      Number(parts.month) - 1,
+      Number(parts.day),
+      Number(parts.hour) % 24,
+      Number(parts.minute),
+      second,
+    );
+  };
+  const first = asUTC + (asUTC - wallAt(asUTC));
+  const firstWall = wallAt(first);
+  if (firstWall === asUTC) return new Date(first).toISOString();
+  const second_ = asUTC + (first - firstWall);
+  return new Date(wallAt(second_) === asUTC ? second_ : first).toISOString();
 }
 
 /**
