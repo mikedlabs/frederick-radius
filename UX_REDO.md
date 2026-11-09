@@ -1,4 +1,11 @@
-# Frederick Radius — UX Redo Plan (plan of record)
+# Frederick Radius — UX Redo Plan
+
+> **HISTORICAL (superseded 2026-09-21).** This is no longer the plan of
+> record; the current sequenced plan lives in [`STATE.md`](./STATE.md).
+> What remains valuable and still in force is the **data-confidence gate**
+> below (confidence tiers, source and freshness on every data-bearing
+> surface); `docs/NORTH_STAR.md` still points here for it. Read the gate;
+> plan the work from `STATE.md`.
 
 > The sequenced plan to move the app from feature-rich-but-diffuse to the
 > answer-first field guide `docs/NORTH_STAR.md` describes. NORTH_STAR is
