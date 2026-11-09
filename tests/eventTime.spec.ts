@@ -89,6 +89,11 @@ describe("parseCountyEventWindow", () => {
     expect(window?.end?.toISOString()).toBe("2026-05-15T05:00:00.000Z");
   });
 
+  it("rolls an overnight end across a month boundary", () => {
+    const window = parseCountyEventWindow("May 31, 2026", "10:00 PM - 1:00 AM");
+    expect(window?.end?.toISOString()).toBe("2026-06-01T05:00:00.000Z");
+  });
+
   it("accepts an en-dash separator used by CivicEngage HTML", () => {
     const window = parseCountyEventWindow("May 14, 2026", "10:00 PM – 1:00 AM");
     expect(window?.end?.toISOString()).toBe("2026-05-15T05:00:00.000Z");

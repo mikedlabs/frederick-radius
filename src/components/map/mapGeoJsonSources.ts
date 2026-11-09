@@ -522,9 +522,10 @@ export function buildEventScrubTimes(
     const localStart = new Date(start.toLocaleString("en-US", { timeZone: "America/New_York" }));
     const startH = easternHourFloat({ hour: localStart.getHours(), minute: localStart.getMinutes() });
     // An all-day row owns the whole date. Timed rows use the same bounded
-    // visibility end as Events: a missing/equal end or an 11:59 PM placeholder
-    // gets three hours, so a placeholder can never hold the scrubber until
-    // midnight.
+    // visibility end as Events: a missing/equal end or an end-of-day
+    // placeholder (11:58 PM or later) gets three hours, so a placeholder can
+    // never hold the scrubber until midnight. A date-only anchor keeps its
+    // capped stated end.
     const end = e.is_all_day
       ? null
       : new Date(effectiveTimedEventEndMs(e));
@@ -560,9 +561,10 @@ export function buildEventsGeoJson(
 
       if (e.starts_at) {
         const start = new Date(e.starts_at).getTime();
-        // Assume 3 hours duration if ends_at is not provided
-        const end = e.ends_at ? new Date(e.ends_at).getTime() : start + 3 * 60 * 60 * 1000;
-        
+        // The same bounded end the scrubber and Events use, so a 1 PM
+        // row stamped "ends 11:59 PM" does not pulse all evening.
+        const end = effectiveTimedEventEndMs({ starts_at: e.starts_at, ends_at: e.ends_at });
+
         if (now >= start && now <= end) {
           // Happening RIGHT NOW! Maximum pulse.
           weight = 5;

@@ -76,6 +76,48 @@ describe("CivicEngage live RSS", () => {
     expect(story?.ends_at).toBe("2026-05-15T23:30:00.000Z");
   });
 
+  it("leaves out a row that publishes a date and no time", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () =>
+        new Response(
+          rssFeed(
+            [
+              rssItem({ title: "Holiday Display", date: "May 14, 2026", times: "" }),
+              rssItem({ title: "Evening Concert", date: "May 14, 2026", times: "7:00 PM - 9:00 PM" }),
+            ].join("\n"),
+          ),
+          { status: 200, headers: { "content-type": "application/rss+xml" } },
+        ),
+      ),
+    );
+
+    const result = await getLiveEventsForSources(["city-frederick"], 60);
+
+    // Listing it at the parser's midday anchor would print "12:00 PM" for
+    // an event whose publisher announced no time.
+    expect(result.events.map((event) => event.title)).toEqual(["Evening Concert"]);
+  });
+
+  it("treats an XML-declared error page as a failed source", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () =>
+        new Response(
+          '<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml"><body><h1>Service unavailable</h1></body></html>',
+          { status: 200, headers: { "content-type": "application/xhtml+xml" } },
+        ),
+      ),
+    );
+
+    const result = await getLiveEventsForSources(["city-frederick"], 60);
+    expect(result).toMatchObject({
+      events: [],
+      sources_succeeded: [],
+      sources_failed: ["city-frederick"],
+    });
+  });
+
   it("treats an HTML error page as a failed source, not an empty calendar", async () => {
     vi.stubGlobal(
       "fetch",

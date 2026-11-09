@@ -1346,7 +1346,8 @@ async function fetchRssFeed(
       return { events: [], ok: false };
     }
     const xml = await readBoundedText(res, MAX_RSS_SOURCE_BYTES);
-    if (!/<rss\b|<\?xml\b/i.test(xml)) {
+    // An XML declaration is not enough: an XHTML error page has one too.
+    if (!/<(?:rss|rdf:RDF)(?:\s|>)/i.test(xml)) {
       reportFeedUnavailable(feed, "not RSS");
       return { events: [], ok: false };
     }
@@ -1378,8 +1379,10 @@ async function fetchRssFeed(
       //   <calendarEvent:Location>...</calendarEvent:Location>
       const eventDate = pick("calendarEvent:EventDates");
       const eventTimes = pick("calendarEvent:EventTimes");
-      const eventWindow = eventDate
-        ? parseCountyEventWindow(eventDate, eventTimes || undefined)
+      // A row with no published time stays out, as it did before. Listing
+      // it at the parser's midday anchor would print a start nobody announced.
+      const eventWindow = eventDate && eventTimes
+        ? parseCountyEventWindow(eventDate, eventTimes)
         : null;
       const start = eventWindow?.start ?? null;
       let end = eventWindow?.end ?? null;
