@@ -10,27 +10,32 @@ test.describe("BottomDrawer keyboard focus", () => {
     await page.goto("/moments/great-frederick-fair-2026#program", {
       waitUntil: "domcontentloaded",
     });
-    await page
-      .getByRole("button", { name: "Browse full program", exact: true })
-      .click();
-
+    // The program list renders its detail openers directly; the Fair
+    // workspace no longer puts a "Browse full program" step in front of them.
     const opener = page
       .getByRole("button", { name: /^Open details for / })
       .first();
     await expect(opener).toBeVisible();
-    const itemTitle = (await opener.getAttribute("aria-label"))?.replace(
+    const openerLabel = (await opener.getAttribute("aria-label"))?.replace(
       "Open details for ",
       "",
     );
-    if (!itemTitle) throw new Error("Program detail opener needs an accessible name");
+    if (!openerLabel) throw new Error("Program detail opener needs an accessible name");
     await opener.focus();
     await opener.press("Enter");
 
-    const drawer = page.getByRole("dialog", { name: itemTitle });
+    const drawer = page.getByRole("dialog");
+    await expect(drawer).toBeVisible();
+    // The drawer is named for the item alone. An opener may add the time and
+    // place after that title (the Grandstand spotlight does).
+    const itemTitle = await drawer.evaluate(
+      (node) => document.getElementById(node.getAttribute("aria-labelledby") ?? "")?.textContent ?? "",
+    );
+    expect(itemTitle).not.toBe("");
+    expect(openerLabel.startsWith(itemTitle)).toBe(true);
     const closeButton = drawer.getByRole("button", {
       name: `Close ${itemTitle}`,
     });
-    await expect(drawer).toBeVisible();
     await expect(drawer).toHaveAttribute("aria-modal", "true");
     await expect(closeButton).toBeFocused();
 

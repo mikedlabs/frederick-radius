@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import Link from "next/link";
-import { Database, CheckCircle2, Sparkles, Users, AlertCircle } from "lucide-react";
+import { AlertCircle, type LucideIcon } from "lucide-react";
+import { SOURCE_BADGE_META, type SourceBadgeTier } from "@/components/place/SourceBadge";
 import PageBloom from "@/components/ui/PageBloom";
 import CostTransparency from "@/components/trust/CostTransparency";
 import { publicDataSnapshot } from "@/lib/public-data-snapshot";
@@ -460,40 +461,40 @@ export default async function TrustPage() {
   );
 }
 
+/** The legend takes each tier's label, glyph and color from the badge it
+ *  explains, so the two cannot drift apart. */
+function badgeTier(tier: SourceBadgeTier) {
+  const { label, color, icon } = SOURCE_BADGE_META[tier];
+  return { label, color, icon };
+}
+
 const BADGES: Array<{
   label: string;
   color: string;
-  icon: typeof Sparkles;
+  icon: LucideIcon;
   body: string;
 }> = [
   {
-    label: "Radius reviewed",
-    color: "var(--app-brand-press)",
-    icon: Sparkles,
+    ...badgeTier("reviewed"),
     body: "Selected or edited in Frederick Radius. Current facts may still combine multiple sources and can change.",
   },
   {
-    label: "Checked at source",
-    color: "var(--app-positive)",
-    icon: CheckCircle2,
+    ...badgeTier("checked"),
     body: "Basic details were matched or checked against the named source, with a checked-on date where available. This is not owner verification.",
   },
   {
+    // No place carries this tier yet. It is a stronger form of "checked",
+    // so it shares that check and color.
+    ...badgeTier("checked"),
     label: "Owner verified",
-    color: "var(--app-positive)",
-    icon: CheckCircle2,
     body: "Reserved for a business with an approved, active ownership claim. It applies to owner-managed details, not third-party ratings or reviews.",
   },
   {
-    label: "Community source",
-    color: "var(--app-cool)",
-    icon: Users,
+    ...badgeTier("community"),
     body: "Submitted by a local or assembled from a public community or mapping source. Check important details with the linked source.",
   },
   {
-    label: "Official source",
-    color: "var(--app-civic)",
-    icon: Database,
+    ...badgeTier("official"),
     body: "Imported from a government source. Frederick Radius may normalize or summarize it. The source agency does not operate or endorse this app; check the linked source for the current official record.",
   },
 ];

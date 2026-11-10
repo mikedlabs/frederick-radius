@@ -43,7 +43,9 @@ export default function DealLines({
   if (clauses.length === 0) return null;
 
   const subColor = tone === "onPhoto" ? "rgba(255,255,255,0.92)" : "var(--app-ink-2)";
-  const figColor = tone === "onPhoto" ? "color-mix(in srgb, var(--app-accent) 72%, #fff)" : "var(--app-accent-press)";
+  // Ink-tone figures use the text-role token: Plum on light surfaces, lifted
+  // in dark appearance, where the pressed Plum measured 1.34:1.
+  const figColor = tone === "onPhoto" ? "color-mix(in srgb, var(--app-accent) 72%, #fff)" : "var(--app-accent-text)";
   const vagueColor = tone === "onPhoto" ? "rgba(255,255,255,0.78)" : "var(--app-ink-3)";
 
   // Figureless at source: one honest, visibly-muted line, never gold figures.
