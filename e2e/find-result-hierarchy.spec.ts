@@ -24,11 +24,69 @@ registerWebkitLoopbackDocumentSeam();
 
 async function openFind(page: Page) {
   const launcher = page.locator("header").getByRole("button", { name: "Ask or find across Frederick County", exact: true }).filter({ visible: true });
-  await expect(launcher).toHaveAttribute("data-find-interaction-ready", "true");
+  // A cold development server can take longer than the default five seconds
+  // to hydrate the header and to load the lazy Find chunk.
+  await expect(launcher).toHaveAttribute("data-find-interaction-ready", "true", { timeout: 30_000 });
   await launcher.click();
   const dialog = page.getByRole("dialog", { name: "What do you need?", exact: true });
-  await expect(dialog).toBeVisible();
+  await expect(dialog).toBeVisible({ timeout: 30_000 });
   return { dialog, launcher };
+}
+
+for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+  test(`Find opens on shortcuts and holds its shape while a search is pending at ${viewport.width}px`, async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize(viewport);
+    // Hold each real search response until the pending state has been measured.
+    // The request still reaches the real endpoint once it is released.
+    let release = () => {};
+    let held = new Promise<void>(resolve => { release = resolve; });
+    const holdNext = () => { held = new Promise<void>(resolve => { release = resolve; }); };
+    await page.route("**/api/search?**", async route => {
+      await held;
+      await route.continue().catch(() => {});
+    });
+    await page.goto("/contacts", { waitUntil: "domcontentloaded" });
+    const { dialog } = await openFind(page);
+    const panel = dialog.locator(":scope > div");
+    const panelHeight = async () => Math.round((await panel.boundingBox())!.height);
+    const opened = await panelHeight();
+    // The phone surface is the whole screen. The desktop panel is one fixed size.
+    if (viewport.width < 640) expect(opened).toBe(viewport.height);
+    else expect(opened).toBeLessThan(viewport.height);
+
+    // An empty history keeps its sentence but never leads the first screen.
+    const useful = dialog.getByText("Useful now", { exact: true });
+    const recents = dialog.getByRole("region", { name: "Recent searches on this device" });
+    await expect(recents.getByText("No recent searches on this device.", { exact: true })).toBeVisible();
+    expect((await useful.boundingBox())!.y).toBeLessThan((await recents.boundingBox())!.y);
+    const shortcuts = dialog.locator("ul").filter({ has: page.locator('a[href="/open-now"]') }).getByRole("link");
+    await expect(shortcuts).toHaveCount(4);
+    for (const shortcut of await shortcuts.all()) {
+      expect((await shortcut.boundingBox())!.height).toBeGreaterThanOrEqual(56);
+      await expect(shortcut).toHaveCSS("box-shadow", "none");
+    }
+
+    const input = dialog.getByRole("searchbox");
+    const pending = dialog.locator("[data-search-loading]");
+    const settled = dialog.locator("#search-results");
+    for (const typed of ["coffee", " shop"]) {
+      await input.pressSequentially(typed);
+      // Pending work shows four still rows under the field, never an empty panel.
+      await expect(pending.locator(":scope > div")).toHaveCount(4);
+      await expect(settled).toHaveCount(0);
+      const firstRow = (await pending.locator(":scope > div").first().boundingBox())!;
+      expect(firstRow.height).toBeGreaterThanOrEqual(62);
+      expect(await panelHeight()).toBe(opened);
+      release();
+      // The released request still runs against the real endpoint.
+      await expect(pending).toHaveCount(0, { timeout: 30_000 });
+      expect(await panelHeight()).toBe(opened);
+      holdNext();
+    }
+    await expect(input).toHaveValue("coffee shop");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  });
 }
 
 for (const width of [320, 375, 390, 430]) {

@@ -11,6 +11,7 @@ import { EventSheetProvider } from "@/components/event/EventSheetProvider";
 import ScrollMemory from "@/components/nav/ScrollMemory";
 import ModeParamSync from "@/components/mode/ModeParamSync";
 import OfflineSnapshotSync from "@/components/pwa/OfflineSnapshotSync";
+import MotionPreferences from "@/components/util/MotionPreferences";
 import { Suspense } from "react";
 
 export default function AppLayout({ children, modal }: {
@@ -18,6 +19,9 @@ export default function AppLayout({ children, modal }: {
   modal: React.ReactNode;
 }) {
   return (
+    // Outermost on purpose: the place and event sheets, the modal slot and
+    // every page below all read the visitor's Reduce Motion setting from here.
+    <MotionPreferences>
     <PlaceSheetProvider>
     <EventSheetProvider>
       <RouteAccent>
@@ -89,5 +93,6 @@ export default function AppLayout({ children, modal }: {
       </RouteAccent>
     </EventSheetProvider>
     </PlaceSheetProvider>
+    </MotionPreferences>
   );
 }

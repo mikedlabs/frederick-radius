@@ -68,6 +68,87 @@ export const TileCategoryReadability: Story = {
   },
 };
 
+/** An open, dog-friendly place 480 m away. placeReasons offers "Open now",
+ * "0.3 mi away" and "Dog-friendly"; the card already prints the distance. */
+const openNearby: PlaceCardData = {
+  ...place, slug: "place-without-photography", name: "Example Taproom", category: "brewery",
+  address: "100 Example St, Frederick, MD", tags: ["dog-friendly"], distance_m: 480,
+  open_status: { state: "open", closesAt: "21:00", closingSoon: false }, google_photo_url: undefined,
+};
+
+export const EachFactOnce: Story = {
+  args: { place: openNearby },
+  parameters: {
+    a11y: { test: "error" },
+    docs: { description: { story: "The distance is printed in the card’s text line and never repeated as an “away” chip. On the narrow grid cell and the tile, a long lead fact truncates and the distance stays readable, on its own line when both do not fit. A row says dog-friendly with the chip or the paw, not both. The grid cell has no colored bottom rule." } },
+  },
+  render: (args) => <div style={{ display: "grid", gap: 12 }}>
+    {(["answer", "grid", "row"] as const).map((variant) => <div key={variant} data-variant={variant}><PlaceCard {...args} variant={variant} /></div>)}
+    <div data-variant="row-dog-chip"><PlaceCard {...args} variant="row" place={{ ...openNearby, open_status: { state: "unknown" } }} /></div>
+    {/* 140px is the two-up town grid cell on a 320px phone. */}
+    <div data-variant="grid-narrow" style={{ width: 140 }}><PlaceCard {...args} variant="grid" /></div>
+    <div data-variant="tile-long-fact"><PlaceCard {...args} variant="tile" place={{ ...openNearby, known_for: ["The taproom pours barrel-aged sours and a long guest list."] }} /></div>
+  </div>,
+  play: async ({ canvasElement }) => {
+    const card = (variant: string) => canvasElement.querySelector<HTMLElement>(`[data-variant="${variant}"] article`)!;
+    const chips = (variant: string) => [...card(variant).querySelectorAll('[aria-label="Reasons this is shown"] > span')].map((chip) => chip.textContent);
+    for (const variant of ["answer", "grid", "row", "row-dog-chip", "grid-narrow", "tile-long-fact"]) {
+      await expect(card(variant).textContent?.match(/0\.3 mi/g)).toHaveLength(1);
+      await expect(card(variant).textContent).not.toContain("away");
+    }
+    // textContent ignores clipping, so measure the painted glyphs: the distance
+    // must sit inside the paragraph that clips its line, and inside the card.
+    const glyphs = (node: Element) => {
+      const range = node.ownerDocument.createRange();
+      range.selectNodeContents(node);
+      return range.getBoundingClientRect();
+    };
+    const line = (variant: string) => {
+      const distance = card(variant).querySelector<HTMLElement>("[data-place-distance]")!;
+      const fact = distance.parentElement!.previousElementSibling as HTMLElement;
+      return { paragraph: distance.closest("p")!.getBoundingClientRect(), distance: glyphs(distance), fact, lead: glyphs(fact),
+        separator: distance.previousElementSibling!.getBoundingClientRect() };
+    };
+    for (const variant of ["grid", "grid-narrow", "tile-long-fact"]) {
+      const { paragraph, distance, lead } = line(variant);
+      const bounds = card(variant).getBoundingClientRect();
+      await expect(distance.width).toBeGreaterThan(0);
+      await expect(distance.left).toBeGreaterThanOrEqual(Math.max(paragraph.left, bounds.left) - 0.5);
+      await expect(distance.right).toBeLessThanOrEqual(Math.min(paragraph.right, bounds.right) + 0.5);
+      // The row is pulled left to hide a leading separator; the lead text is not.
+      await expect(Math.abs(lead.left - paragraph.left)).toBeLessThanOrEqual(0.5);
+    }
+    // Room for both: one line, with the separator painted between the two facts.
+    const wide = line("grid");
+    await expect(wide.distance.top).toBeLessThan(wide.lead.bottom - 1);
+    await expect(wide.separator.left).toBeGreaterThanOrEqual(wide.lead.right - 0.5);
+    // No room: the category keeps its line and the distance takes the next
+    // one, with the separator clipped away instead of leading that line.
+    const narrow = line("grid-narrow");
+    await expect(narrow.fact.scrollWidth).toBeLessThanOrEqual(narrow.fact.clientWidth);
+    await expect(narrow.distance.top).toBeGreaterThanOrEqual(narrow.lead.bottom - 1);
+    await expect(narrow.separator.right).toBeLessThanOrEqual(narrow.paragraph.left + 0.5);
+    // A long known-for line is the part that truncates on a tile.
+    const tile = line("tile-long-fact");
+    await expect(tile.fact.scrollWidth).toBeGreaterThan(tile.fact.clientWidth);
+    // The answer card states open hours in its status line, so its only chip is new information.
+    await expect(chips("answer")).toEqual(["Dog-friendly"]);
+    await expect(within(card("answer")).getByText(/^Open/)).toBeVisible();
+    // Row and grid keep the open chip (their only open signal) and leave the distance seat empty.
+    await expect(chips("grid")).toEqual(["Open now"]);
+    await expect(chips("row")).toEqual(["Open now"]);
+    await expect(card("row").querySelector('svg[aria-label="Dog-friendly"]')).not.toBeNull();
+    await expect(chips("row-dog-chip")).toEqual(["Dog-friendly"]);
+    await expect(card("row-dog-chip").querySelector('svg[aria-label="Dog-friendly"]')).toBeNull();
+    // No colored rule closes the grid cell: its last element is the content block.
+    const face = card("grid").querySelector<HTMLElement>("[data-press-face]")!;
+    await expect(face.lastElementChild?.getAttribute("aria-hidden")).toBeNull();
+    for (const variant of ["answer", "grid", "row", "row-dog-chip", "grid-narrow", "tile-long-fact"]) {
+      await expect(card(variant).scrollWidth).toBeLessThanOrEqual(card(variant).clientWidth);
+    }
+  },
+};
+
 export const PhotographLedGrid: Story = { args: { variant: "grid" } };
 export const MapRow: Story = { args: { variant: "row", neutral: true } };
 export const WithoutPhotography: Story = { args: { place: { ...place, slug: "place-without-photography", google_photo_url: undefined } } };

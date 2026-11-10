@@ -1,12 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Compass,
   MapPin,
-  Sparkles,
   Bell,
   RotateCcw,
   ChevronRight,
@@ -19,8 +17,6 @@ import {
   ShoppingBag,
   Heart,
   Hotel,
-  Users,
-  Route,
 } from "lucide-react";
 import KeepRadiusCard from "@/components/pwa/KeepRadiusCard";
 import { resetModeState } from "@/hooks/useMode";
@@ -34,6 +30,12 @@ import {
   getCommunityNotes,
   setCommunityNotes,
 } from "@/lib/personalize";
+import {
+  applyAppearance,
+  getAppearance,
+  subscribeAppearance,
+  type Appearance,
+} from "@/lib/appearance";
 import { haptic } from "@/lib/haptics";
 import { BRAND } from "@/lib/brand";
 import {
@@ -51,13 +53,14 @@ import {
 /**
  * PreferencesPanel — the editable settings hub.
  *
- * Surfaces every device-local pick the user made (Persona, Where,
- * Interests, Notifications topic) in one place so they can see what's
- * been saved and change anything. The chips on Today + the pre-expanded
+ * Surfaces every device-local pick the user made (Where, Fit, Interests,
+ * Community notes, Appearance, Notifications topic) in one place so they
+ * can see what's been saved and change anything. The chips on Today + the pre-expanded
  * sections on Radius are the AMBIENT view of these picks; this panel
  * is the CONTROL view.
  *
- * Each section is editable inline. The interests grid mirrors the
+ * Each section is a heading under a hairline rule, so the control inside it
+ * is the only bordered element. The interests grid mirrors the
  * /welcome step-3 layout (intentionally — recognition over recall).
  * The "Reset & re-onboard" affordance at the foot clears every
  * device-local pref + the onboarded cookie and sends the user back to
@@ -97,6 +100,12 @@ export default function PreferencesPanel() {
   const [muniEditing, setMuniEditing] = useState(false);
   const [communityOn, setCommunityOn] = useState(true);
   const [fit, setFit] = useState<AskFitContext>({});
+  // The same store the header toggle reads, so both controls stay in step.
+  const appearance = useSyncExternalStore<Appearance>(
+    subscribeAppearance,
+    getAppearance,
+    () => "light",
+  );
 
   useEffect(() => {
     // SSR-safe: server renders the initial null/empty, the stored
@@ -184,9 +193,9 @@ export default function PreferencesPanel() {
   }, [router]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* HOME MUNICIPALITY */}
-      <SectionShell title="Your spot" icon="muni">
+      <SectionShell title="Your spot">
         {!muniEditing ? (
           <button
             type="button"
@@ -194,7 +203,7 @@ export default function PreferencesPanel() {
               haptic("light");
               setMuniEditing(true);
             }}
-            className="flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition active:scale-[0.99]"
+            className="flex w-full items-center justify-between gap-3 rounded-[var(--app-radius-md)] border p-3 text-left transition active:scale-[0.99]"
             style={{
               borderColor: "var(--app-border)",
               background: "var(--app-bg-elevated)",
@@ -230,7 +239,7 @@ export default function PreferencesPanel() {
             <button
               type="button"
               onClick={() => changeMuni(null)}
-              className="w-full rounded-xl border p-2.5 text-left text-[13px] font-semibold transition active:scale-[0.99]"
+              className="w-full rounded-[var(--app-radius-md)] border p-2.5 text-left text-[13px] font-semibold transition active:scale-[0.99]"
               style={{
                 borderColor:
                   muni === null ? "var(--app-brand)" : "var(--app-border)",
@@ -246,7 +255,7 @@ export default function PreferencesPanel() {
                   <button
                     type="button"
                     onClick={() => changeMuni(m.slug)}
-                    className="w-full rounded-xl border p-2.5 text-left text-[13px] font-medium transition active:scale-[0.99]"
+                    className="w-full rounded-[var(--app-radius-md)] border p-2.5 text-left text-[13px] font-medium transition active:scale-[0.99]"
                     style={{
                       borderColor:
                         muni === m.slug ? "var(--app-brand)" : "var(--app-border)",
@@ -268,34 +277,34 @@ export default function PreferencesPanel() {
 
       {/* FIT DEFAULTS — kept in Settings instead of adding another filter row
           to Ask. Every value is an explicit enum; no notes or location data. */}
-      <SectionShell title="What fits" icon="fit">
+      <SectionShell title="What fits">
         <details className="group">
-          <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl border px-3 py-2.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
+          <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
             <span className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
               {askFitSummary(fit) ?? "No defaults set"}
             </span>
             <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
           </summary>
           <div className="mt-3 space-y-4">
-            <FitChoices
+            <ChoiceGroup
               label="Nearby"
               value={fit.travelMode}
               choices={[[undefined, "Any distance"], ["walk", "Keep it walkable"]]}
               onChange={(value) => changeFit("travelMode", value as AskFitContext["travelMode"])}
             />
-            <FitChoices
+            <ChoiceGroup
               label="Walking"
               value={fit.walkingTolerance}
               choices={[[undefined, "Flexible"], ["short", "Shorter"], ["moderate", "Moderate"]]}
               onChange={(value) => changeFit("walkingTolerance", value as AskFitContext["walkingTolerance"])}
             />
-            <FitChoices
+            <ChoiceGroup
               label="Going with"
               value={fit.family}
               choices={[[undefined, "Anyone"], ["young-kids", "Young kids"], ["school-age", "School-age"], ["teens", "Teens"]]}
               onChange={(value) => changeFit("family", value as AskFitContext["family"])}
             />
-            <FitChoices
+            <ChoiceGroup
               label="Budget"
               value={fit.budget}
               choices={[[undefined, "Flexible"], ["free", "Free"], ["value", "Good value"]]}
@@ -307,14 +316,11 @@ export default function PreferencesPanel() {
                 {([[
                   "wheelchair",
                   "Wheelchair access",
-                ], ["communication", "Communication access"]] as const).map(([value, label]) => {
-                  const on = fit.accessibility?.includes(value) ?? false;
-                  return (
-                    <button key={value} type="button" aria-pressed={on} onClick={() => toggleAccess(value)} className="tap-44-y rounded-full border px-3 py-2 text-[12px] font-semibold" style={{ borderColor: on ? "var(--app-brand)" : "var(--app-border)", background: on ? "color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated))" : "var(--app-bg-elevated)", color: "var(--app-ink)" }}>
-                      {label}
-                    </button>
-                  );
-                })}
+                ], ["communication", "Communication access"]] as const).map(([value, label]) => (
+                  <ChoiceChip key={value} on={fit.accessibility?.includes(value) ?? false} onClick={() => toggleAccess(value)}>
+                    {label}
+                  </ChoiceChip>
+                ))}
               </div>
             </div>
           </div>
@@ -325,7 +331,7 @@ export default function PreferencesPanel() {
       </SectionShell>
 
       {/* INTERESTS */}
-      <SectionShell title="What you're into" icon="interests">
+      <SectionShell title="What you're into">
         <ul className="grid grid-cols-2 gap-2">
           {INTEREST_OPTIONS.map((opt) => {
             const on = interests.has(opt.slug);
@@ -335,7 +341,7 @@ export default function PreferencesPanel() {
                   type="button"
                   onClick={() => toggleInterest(opt.slug)}
                   aria-pressed={on}
-                  className="flex w-full items-center gap-2 rounded-xl border p-2.5 text-left transition active:scale-[0.99]"
+                  className="flex w-full items-center gap-2 rounded-[var(--app-radius-md)] border p-2.5 text-left transition active:scale-[0.99]"
                   style={{
                     borderColor: on ? opt.color : "var(--app-border)",
                     background: on
@@ -383,9 +389,9 @@ export default function PreferencesPanel() {
 
       {/* COMMUNITY NOTES — one topic-neutral switch for the whole quiet
           community layer on Today (Pride Month, Sunday places of worship). */}
-      <SectionShell title="Community notes" icon="community">
+      <SectionShell title="Community notes">
         <div
-          className="flex items-center justify-between gap-3 rounded-xl border p-3"
+          className="flex items-center justify-between gap-3 rounded-[var(--app-radius-md)] border p-3"
           style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
         >
           <span className="min-w-0 flex-1 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
@@ -412,6 +418,24 @@ export default function PreferencesPanel() {
         </p>
       </SectionShell>
 
+      {/* APPEARANCE: the same saved choice as the header toggle, given a
+          home beside the other device preferences. */}
+      <SectionShell title="Appearance">
+        <ChoiceGroup
+          label="Appearance"
+          labelHidden
+          value={appearance}
+          choices={[["light", "Light"], ["dark", "Dark"]]}
+          onChange={(value) => {
+            haptic("light");
+            applyAppearance(value === "dark" ? "dark" : "light");
+          }}
+        />
+        <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+          Your choice is saved on this device and applies to every page.
+        </p>
+      </SectionShell>
+
       {/* NOTIFICATIONS — link to the existing dedicated page */}
       <Link
         href="/settings/notifications"
@@ -424,7 +448,7 @@ export default function PreferencesPanel() {
       >
         <span className="inline-flex items-center gap-3">
           <span
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-md)]"
             style={{
               background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
               color: "var(--app-cool)",
@@ -470,70 +494,86 @@ export default function PreferencesPanel() {
 
 function SectionShell({
   title,
-  icon,
   children,
 }: {
   title: string;
-  icon: "persona" | "muni" | "interests" | "community" | "fit";
   children: React.ReactNode;
 }) {
-  const Icon =
-    icon === "persona" ? Compass : icon === "muni" ? MapPin : icon === "community" ? Users : icon === "fit" ? Route : Sparkles;
-  const tint =
-    icon === "persona"
-      ? "var(--app-brand)"
-      : icon === "muni"
-        ? "var(--app-cool)"
-        : icon === "community"
-          ? "var(--app-brand-2)"
-          : icon === "fit"
-            ? "var(--app-cool)"
-          : "var(--app-positive)";
+  const headingId = useId();
   return (
     <section
-      className="rounded-[var(--app-radius-lg)] border p-4"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated)",
-      }}
+      aria-labelledby={headingId}
+      className="border-t pt-5"
+      style={{ borderColor: "var(--app-border)" }}
     >
-      <header className="mb-3 flex items-center gap-2">
-        <Icon className="h-4 w-4" strokeWidth={2.25} aria-hidden style={{ color: tint }} />
-        <h2
-          className="font-serif text-[15px] font-semibold tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          {title}
-        </h2>
-      </header>
+      <h2
+        id={headingId}
+        className="mb-3 text-[17px] font-semibold leading-tight tracking-[-0.01em]"
+        style={{ color: "var(--app-ink)" }}
+      >
+        {title}
+      </h2>
       {children}
     </section>
   );
 }
 
-function FitChoices({
+function ChoiceChip({
+  on,
+  onClick,
+  children,
+}: {
+  on: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className="tap-44-y rounded-full border px-3 py-2 text-[12px] font-semibold"
+      style={{
+        borderColor: on ? "var(--app-brand)" : "var(--app-border)",
+        background: on
+          ? "color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated))"
+          : "var(--app-bg-elevated)",
+        color: "var(--app-ink)",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ChoiceGroup({
   label,
+  labelHidden = false,
   value,
   choices,
   onChange,
 }: {
   label: string;
+  /** The section heading already names the group, so keep the legend for assistive tech only. */
+  labelHidden?: boolean;
   value?: string;
   choices: ReadonlyArray<readonly [string | undefined, string]>;
   onChange: (value: string | undefined) => void;
 }) {
   return (
     <fieldset>
-      <legend className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>{label}</legend>
+      <legend
+        className={labelHidden ? "sr-only" : "mb-2 text-[11px] font-bold uppercase tracking-[0.08em]"}
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        {label}
+      </legend>
       <div className="flex flex-wrap gap-2">
-        {choices.map(([choice, choiceLabel]) => {
-          const on = value === choice;
-          return (
-            <button key={choice ?? "any"} type="button" aria-pressed={on} onClick={() => onChange(choice)} className="tap-44-y rounded-full border px-3 py-2 text-[12px] font-semibold" style={{ borderColor: on ? "var(--app-brand)" : "var(--app-border)", background: on ? "color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated))" : "var(--app-bg-elevated)", color: "var(--app-ink)" }}>
-              {choiceLabel}
-            </button>
-          );
-        })}
+        {choices.map(([choice, choiceLabel]) => (
+          <ChoiceChip key={choice ?? "any"} on={value === choice} onClick={() => onChange(choice)}>
+            {choiceLabel}
+          </ChoiceChip>
+        ))}
       </div>
     </fieldset>
   );

@@ -244,4 +244,62 @@ describe("NotificationsCard existing subscription recovery", () => {
     ).toBe(false);
     expect(unsubscribeExisting).not.toHaveBeenCalled();
   });
+  it("tells a problem from a confirmation and keeps a second message for its own full time", async () => {
+    let topicReads = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/push/public-key") return Response.json({ enabled: true, key: "AQID" });
+      if (url.startsWith("/api/push/topics?")) {
+        topicReads += 1;
+        return topicReads === 1 ? Response.json({}, { status: 503 }) : Response.json({ registered: true, topics: ["parking"] });
+      }
+      if (url.startsWith("/api/push/prefs?")) return Response.json({ quiet_start: 21, quiet_end: 7 });
+      if (url === "/api/push/subscribe") return Response.json({}, { status: 500 });
+      throw new Error(`Unexpected request: ${url}`);
+    }));
+    await renderAndSettle();
+    // Hold only the notice timers; every other timer keeps running for real.
+    const held = new Map<number, { run: () => void; delay: number }>();
+    const realSet = window.setTimeout.bind(window);
+    const realClear = window.clearTimeout.bind(window);
+    let nextId = 900_000;
+    vi.spyOn(window, "setTimeout").mockImplementation(((handler: () => void, delay?: number, ...rest: unknown[]) => {
+      if (delay !== 4000 && delay !== 8000) return realSet(handler, delay, ...rest);
+      held.set(++nextId, { run: handler, delay });
+      return nextId;
+    }) as typeof window.setTimeout);
+    vi.spyOn(window, "clearTimeout").mockImplementation((id) => {
+      if (!held.delete(id as number)) realClear(id);
+    });
+    try {
+      // The phone-feedback card above owns the first status region.
+      const status = () => Array.from(container.querySelectorAll<HTMLElement>('p[role="status"]')).at(-1)!;
+      const press = async (label: string) => {
+        const control = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.includes(label));
+        if (!control) throw new Error(`Missing ${label} control.`);
+        await act(async () => {
+          control.click();
+          for (let turn = 0; turn < 6; turn += 1) await Promise.resolve();
+        });
+      };
+      await press("Retry");
+      expect(status().textContent).toBe("Notification connection verified.");
+      expect(status().dataset.noticeTone).toBe("done");
+      expect(status().getAttribute("style")).toContain("var(--app-forest-text)");
+      expect([...held.values()].map((timer) => timer.delay)).toEqual([4000]);
+
+      await press("Parking");
+      expect(status().textContent).toBe("That topic change did not save. Try it again.");
+      expect(status().dataset.noticeTone).toBe("problem");
+      expect(status().getAttribute("style")).toContain("var(--app-danger-text)");
+      // The confirmation's timer is gone, so it cannot wipe the problem early.
+      expect([...held.values()].map((timer) => timer.delay)).toEqual([8000]);
+
+      await act(async () => { for (const timer of held.values()) timer.run(); });
+      expect(status().textContent).toBe("");
+      expect(status().className).toBe("sr-only");
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
 });

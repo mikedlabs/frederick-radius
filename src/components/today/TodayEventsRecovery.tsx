@@ -86,10 +86,12 @@ function rowTime(event: TodayEvent): string {
 }
 
 /** The caller supplies an approved visual. This pure presentation seam also
- * supports declared offline layout fixtures without weakening API approval. */
+ * supports declared offline layout fixtures without weakening API approval.
+ * Coral marks only an event that is on now, and only the lead carries the
+ * "View event" cue, so the event names lead the list. */
 export function TodayEventBriefCard({ event, visual, lead = false }: { event: TodayEvent; visual: EventCardVisual | null; lead?: boolean }) {
   const facts = <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-    <p className="text-xs font-semibold tabular-nums" style={{ color: "var(--app-brand-press)" }}>
+    <p className="text-xs font-semibold tabular-nums" style={{ color: event.moment === "Now" ? "var(--app-link)" : "var(--app-ink-2)" }}>
       {rowTime(event)}{event.moment === "Now" && event.time !== "All day" ? ` · ${event.time}` : ""}{event.endTime ? `–${event.endTime}` : ""}
     </p>
     <h3 id={`today-choice-${event.slug}`} className={`${lead ? "text-xl" : "text-base"} mt-1 font-semibold leading-snug tracking-tight`} style={{ color: "var(--app-ink)" }}>
@@ -99,7 +101,7 @@ export function TodayEventBriefCard({ event, visual, lead = false }: { event: To
       {event.venue}{event.free ? " · Free" : event.price ? ` · ${event.price}` : ""}
     </p>
   </div>;
-  return lead || !visual ? <TodayHeadlineCard eventSlug={event.slug} titleId={`today-choice-${event.slug}`} detailId={`today-choice-facts-${event.slug}`} visual={visual} accent="var(--app-brand)" priority={false}>
+  return lead || !visual ? <TodayHeadlineCard eventSlug={event.slug} titleId={`today-choice-${event.slug}`} detailId={`today-choice-facts-${event.slug}`} visual={visual} accent="var(--app-brand)" priority={false} actionCue={lead}>
     {facts}
   </TodayHeadlineCard> : <EventGlanceCard eventSlug={event.slug} visual={visual} cancelled={false} accent="var(--app-brand)" surface="today" compactCredit={false}>
     {facts}

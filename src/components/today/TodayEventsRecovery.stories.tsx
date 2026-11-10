@@ -281,6 +281,75 @@ export const OwnedPhotoFullView390: Story = {
   },
 };
 
+// A lead with imageless follow-ups. The lead alone carries the action cue and
+// the lift, and coral marks only the event that is on now.
+const imagelessRows: TodayEvent[] = [
+  eventFixture,
+  relativeRows[1],
+  {
+    ...eventFixture, slug: "offline-later-fixture", title: "Offline later fixture",
+    presenter: undefined, time: "8:30 PM", moment: "Tonight", free: false,
+  },
+];
+export const ImagelessFollowUps390: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  args: { response: { events: imagelessRows, partial: false } },
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBe(390);
+    const canvas = within(canvasElement);
+    const cards = Array.from(canvasElement.querySelectorAll<HTMLElement>('article[data-decision-entity="event"]'));
+    await expect(cards).toHaveLength(imagelessRows.length);
+    await expect(canvasElement.querySelector("img")).toBeNull();
+    const [lead, ...followUps] = cards;
+    await expect(canvas.getAllByText("View event", { exact: true })).toHaveLength(1);
+    await expect(within(lead).getByText("View event", { exact: true })).toBeVisible();
+    await expect(getComputedStyle(lead).boxShadow).not.toBe("none");
+    for (const card of followUps) {
+      // A flat hairline item keeps the whole-card link, its heading and its facts.
+      await expect(getComputedStyle(card).boxShadow).toBe("none");
+      await expect(getComputedStyle(card).borderTopWidth).toBe("1px");
+      const link = card.querySelector<HTMLAnchorElement>('a[href^="/events/"]')!;
+      await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+      await expect(link.querySelector("h3")).not.toBeNull();
+      await expect(link.querySelectorAll("p")).toHaveLength(2);
+    }
+    const token = (name: string) => {
+      const probe = canvasElement.appendChild(document.createElement("span"));
+      probe.style.color = `var(${name})`;
+      const color = getComputedStyle(probe).color;
+      probe.remove();
+      return color;
+    };
+    const live = token("--app-link"), quiet = token("--app-ink-2");
+    await expect(live).not.toBe(quiet);
+    const timeColor = (text: string) => getComputedStyle(canvas.getByText(text, { exact: true })).color;
+    await expect(timeColor("Now · 9:17 AM")).toBe(live);
+    await expect(timeColor("7:00 PM")).toBe(quiet);
+    await expect(timeColor("8:30 PM")).toBe(quiet);
+    await assertReadable(canvasElement);
+    await assertControls(canvasElement);
+    // Keyboard focus rings the whole card from the article, which its own
+    // clipping cannot hide, and only the focused card carries it.
+    if (!(globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) return;
+    const browser = await import("vitest/browser");
+    const tab = browser.server.browser === "webkit" && browser.server.platform === "darwin" ? "{Alt>}{Tab}{/Alt}" : "{Tab}";
+    // Trusted input establishes this story frame before native Tab.
+    await browser.userEvent.click(canvas.getByRole("heading", { name: "Events today" }));
+    for (const card of [lead, followUps[0]]) {
+      const link = card.querySelector<HTMLAnchorElement>(":scope > a")!;
+      for (let presses = 0; presses < 8 && document.activeElement !== link; presses++) await browser.userEvent.keyboard(tab);
+      await expect(link).toHaveFocus();
+      await expect(link.matches(":focus-visible")).toBe(true);
+      await expect(getComputedStyle(link).outlineStyle).toBe("none");
+      for (const other of cards) {
+        await expect(getComputedStyle(other).outlineStyle).toBe(other === card ? "solid" : "none");
+      }
+      await expect(parseFloat(getComputedStyle(card).outlineWidth)).toBeGreaterThanOrEqual(2);
+      await expect(parseFloat(getComputedStyle(card).outlineOffset)).toBeGreaterThan(0);
+    }
+  },
+};
+
 export const EnlargedTextOnlyRelative320: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   play: async ({ canvasElement }) => {

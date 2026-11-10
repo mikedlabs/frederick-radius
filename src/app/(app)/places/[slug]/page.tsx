@@ -327,7 +327,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               action, not an icon pair crowding the title. Sharing
               stays in the footer ShareButton. */}
           <div className="min-w-0">
-            <h1 className="display-2 breathe-in" style={{ color: "var(--app-ink)" }}>
+            <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
               {place.name}
             </h1>
             {/* Identity line: what it is + where, at a glance. The street
@@ -573,7 +573,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           </ul>
           {moreVenueEvents.length > 0 ? (
             <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
-              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-link)" }}>
                 Show {moreVenueEvents.length} more
                 <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
               </summary>
@@ -590,7 +590,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       <section className="space-y-3">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-title" style={{ color: "var(--app-ink)" }}>Nearby</h2>
-          <Link prefetch={false} href={exploreAreaHref} className="tap-44 inline-flex items-center text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+          <Link prefetch={false} href={exploreAreaHref} className="tap-44 inline-flex items-center text-[12px] font-semibold" style={{ color: "var(--app-link)" }}>
             View area <ArrowRight aria-hidden className="ml-1 h-3.5 w-3.5" strokeWidth={2.25} />
           </Link>
         </div>
@@ -601,7 +601,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         </ul>
         {moreNearbyPlaces.length > 0 ? (
           <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
-            <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+            <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-link)" }}>
               Show {moreNearbyPlaces.length} more nearby
               <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
             </summary>
@@ -630,7 +630,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
           {cat && (
-            <Link prefetch={false} href={`/category/${place.category}`} className="tap-44 inline-flex items-center" style={{ color: "var(--app-brand-press)" }}>
+            <Link prefetch={false} href={`/category/${place.category}`} className="tap-44 inline-flex items-center" style={{ color: "var(--app-link)" }}>
               More {cat.name.toLowerCase()} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           )}
@@ -796,7 +796,7 @@ function IntegrationRow({
   return (
     <section className="space-y-2">
       <h2 className="eyebrow inline-flex items-center gap-1.5">
-        <Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-cool)" }} />
+        <Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-cool-text)" }} />
         {title}
       </h2>
       <div className="flex flex-wrap gap-1.5">

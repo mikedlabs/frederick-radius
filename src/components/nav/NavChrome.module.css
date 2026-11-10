@@ -86,6 +86,16 @@
   padding-left: max(1rem, env(safe-area-inset-left, 0px));
   padding-right: max(1rem, env(safe-area-inset-right, 0px));
 }
+/* Beside the desktop side rail the reading column starts 6rem in
+   (.app-main-reading in globals.css). Start the lockup on that same edge
+   so the wordmark sits above the content it names. The 96px cap keeps the
+   six actions on one row when text is enlarged to 200 percent. */
+@media (min-width: 1024px) {
+  .bar .row {
+    padding-left: min(6rem, 96px);
+    padding-right: max(1.25rem, env(safe-area-inset-right, 0px));
+  }
+}
 /* Text-only enlargement must not turn 44px icon targets into 88px
    controls inside the fixed-height app bar. Let labels reflow and the row
    grow instead; every icon action keeps its physical touch target. */

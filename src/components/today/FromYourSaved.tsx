@@ -42,7 +42,7 @@ function SavedPlacePreview({ place, returnTo }: { place: PlaceCardData; returnTo
       <div className={styles.media} data-today-saved-media={source ? "photo" : "artwork"}>
         {source ? <PlaceCardPhoto key={source.src} source={source} onResult={onResult}
           sizes="(min-width: 640px) 280px, calc((100vw - 44px) / 2)" />
-          : <PlaceCategoryArtwork name={place.name} category={place.category} />}
+          : <PlaceCategoryArtwork category={place.category} />}
       </div>
       <div className={styles.copy}>
         <h3>{place.name}</h3>

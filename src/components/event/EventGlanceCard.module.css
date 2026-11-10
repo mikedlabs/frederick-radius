@@ -17,7 +17,16 @@
 .figure {
   width: 96px;
   flex-shrink: 0;
-  align-self: stretch;
+  align-self: start;
+}
+
+/* A fixed 4:3 frame (96 by 72) instead of one stretched to the card's
+   height: wide publisher artwork is contained whole without tall plate
+   bands above and below it. */
+.figure > div {
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 4 / 3;
 }
 
 @media (min-width: 640px) {
@@ -36,12 +45,6 @@
   .figure {
     width: 100%;
     align-self: auto;
-  }
-
-  .figure > div {
-    height: auto;
-    min-height: 0;
-    aspect-ratio: 4 / 3;
   }
 }
 

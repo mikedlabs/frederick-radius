@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type MouseEvent } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "./PlaceCardPhoto";
 import { usePlacePhotoData } from "@/components/place/usePlacePhoto";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -18,9 +18,10 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { directionsHref } from "@/lib/map/directionsHref";
 import SourceBadge from "./SourceBadge";
 import discoveryStyles from "./NearbyDiscoveryCard.module.css";
+import PlaceCategoryArtwork from "./PlaceCategoryArtwork";
 import { nearbyParksPhotoPlan } from "@/lib/nearby-parks-layout";
 import FieldNoteTag, { DealHookTag } from "./FieldNoteTag";
-import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
+import { ReasonChipRow } from "@/components/ui/ReasonChip";
 import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
 import { placeCardPhotoPlan, recordPlaceCardPhotoResult, selectedPlaceCardPhoto, type PlaceCardPhotoResult, type PlaceCardPhotoState } from "@/lib/place-card-photo";
 
@@ -62,52 +63,6 @@ function Rave({
 }
 
 /**
- * Tactile status chips for the result cards. Same tone vocabulary +
- * color tokens as ReasonChip, but dressed in the front-door tile's
- * "made" language. Restyle only — every chip here comes straight from
- * placeReasons(), so no badge is ever invented.
- */
-const CHIP_TONE: Record<ReasonTone, { color: string; tint: string; edge: string; dot?: boolean }> = {
-  open:     { color: "var(--app-positive)", tint: "var(--app-positive-tint-14)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)", dot: true },
-  near:     { color: "var(--app-cool)",     tint: "var(--app-cool-tint-14)",     edge: "color-mix(in srgb, var(--app-cool) 24%, transparent)" },
-  verified: { color: "var(--app-positive)",  tint: "color-mix(in srgb, var(--app-positive) 14%, transparent)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)" },
-  free:     { color: "var(--app-positive)", tint: "var(--app-positive-tint-14)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)" },
-  rated:    { color: "var(--app-accent-press)",   tint: "color-mix(in srgb, var(--app-accent) 20%, transparent)",  edge: "color-mix(in srgb, var(--app-accent) 34%, transparent)" },
-  neutral:  { color: "var(--app-ink-2)",    tint: "var(--app-ink-tint-6)",       edge: "var(--app-ink-tint-12)" },
-};
-
-function StatusChip({ label, tone = "neutral" }: { label: string; tone?: ReasonTone }) {
-  const t = CHIP_TONE[tone];
-  return (
-    <span
-      className="inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] font-semibold leading-none tracking-tight"
-      style={{
-        // The label follows the current surface; the tone stays in its tint, ring, and dot.
-        color: "var(--app-ink)",
-        background: t.tint,
-        boxShadow: `inset 0 0 0 1px ${t.edge}, inset 0 1px 0 rgba(255,255,255,0.45)`,
-      }}
-    >
-      {t.dot && (
-        <span aria-hidden className="inline-block h-[5px] w-[5px] rounded-full" style={{ background: t.color }} />
-      )}
-      {label}
-    </span>
-  );
-}
-
-function StatusChipRow({ reasons, className = "" }: { reasons: PlaceReasonChip[]; className?: string }) {
-  if (reasons.length === 0) return null;
-  return (
-    <span className={`inline-flex flex-wrap items-center gap-1.5 ${className}`} aria-label="Reasons this is shown">
-      {reasons.map((r, i) => (
-        <StatusChip key={`${r.label}-${i}`} label={r.label} tone={r.tone} />
-      ))}
-    </span>
-  );
-}
-
-/**
  * The category mark — the leading visual token that replaces the imported
  * photo when no eligible source is available. The category icon signals
  * type without pretending to be a photograph of the place.
@@ -143,6 +98,39 @@ function CategoryMark({
         style={{ color, height: Math.round(size * 0.44), width: Math.round(size * 0.44) }}
       />
     </div>
+  );
+}
+
+/**
+ * One text line for the narrow cards: a lead fact, then the distance. The
+ * lead truncates and the distance never does, because this line is the only
+ * place the card states it. When both cannot fit, the distance wraps to a
+ * line of its own. The separator sits in the distance's leading 10px and the
+ * row is pulled left by the same 10px, so a separator that would start a line
+ * falls outside the paragraph and is clipped.
+ */
+function FactAndDistance({
+  lead,
+  distance_m,
+  className,
+}: {
+  lead?: ReactNode;
+  distance_m?: number;
+  className: string;
+}) {
+  if (!lead && distance_m === undefined) return null;
+  return (
+    <p className={`overflow-hidden ${className}`} style={{ color: "var(--app-ink-3)" }}>
+      <span className="-ml-2.5 flex flex-wrap items-baseline">
+        {lead && <span className="min-w-0 truncate pl-2.5">{lead}</span>}
+        {distance_m !== undefined && (
+          <span className="flex shrink-0 whitespace-nowrap tabular-nums">
+            <span aria-hidden className="w-2.5 text-center">·</span>
+            <span data-place-distance>{formatDistance(distance_m)}</span>
+          </span>
+        )}
+      </span>
+    </p>
   );
 }
 
@@ -224,15 +212,21 @@ export default function PlaceCard({
   // reflection of the map, not a ranked pick); open/closed still shows via the
   // variant's PlaceStatus.
   const reasons = neutral ? [] : placeReasons(place);
+  // Every variant that shows chips also prints the distance in its own text
+  // line, so the "0.3 mi away" chip would state it twice. Each variant applies
+  // its chip cap first and drops the echo second: the seat stays empty instead
+  // of being refilled, and no chip appears that the card did not already show.
+  const withoutDistanceEcho = (list: PlaceReasonChip[]) => list.filter((r) => r.kind !== "near");
   // Where the card ALSO renders an explicit open indicator (the tile's
   // status dot, the feature/answer PlaceStatus line), the leading "Open"
-  // reason chip just echoes it. Drop it there so the two visible chips
-  // carry NEW signal (a walk time, Local favorite) instead of repeating
-  // the dot. Row/grid keep the full set — there the chip is the ONLY
-  // open signal, so removing it would lose information.
+  // reason chip just echoes it. Drop it there so the visible chips carry
+  // NEW signal (Dog-friendly, Local favorite) instead of repeating the
+  // dot. Row/grid keep the open chip: there it is the ONLY open signal,
+  // so removing it would lose information.
   const nonOpenReasons = reasons.filter(
     (r) => r.kind !== "open_now" && r.kind !== "verified_open",
   );
+  const leadReasons = withoutDistanceEcho(nonOpenReasons);
 
   // Nearby discovery gives an exact place photograph enough room to identify
   // the destination. A missing/exhausted plan keeps a compact, factual card.
@@ -240,9 +234,6 @@ export default function PlaceCard({
     const nearby = discoverySurface === "nearby";
     const credit = <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} touchTarget compact discloseModifications={parksDiscovery} />;
     const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? place.city;
-    // A decorative initial distinguishes no-photo results without presenting a
-    // graphic as the business's logo or asserting anything about its appearance.
-    const initial = place.name.match(/[\p{L}\p{N}]/u)?.[0]?.toLocaleUpperCase("en-US") ?? "";
     const repeatedFacts = new Set([place.name, cat?.name, place.category, town, "Hours not confirmed"]
       .filter((value): value is string => Boolean(value))
       .map((value) => value.trim().toLocaleLowerCase()));
@@ -279,11 +270,7 @@ export default function PlaceCard({
             deferGoogleBytes={!parksDiscovery && lazyPhoto} />}
           {nearby ? <div className={`${discoveryStyles.body} ${photo ? "" : discoveryStyles.withoutPhoto} ${!photo && !parksDiscovery ? discoveryStyles.illustrated : ""}`}>
             {!photo && (parksDiscovery ? <CategoryMark category={place.category} color="var(--app-ink-2)" size={36} />
-              : <span aria-hidden="true" data-nearby-category-art className={discoveryStyles.categoryArt}
-                style={{ "--nearby-category-color": color } as CSSProperties}>
-                <span data-nearby-art-initial className={discoveryStyles.categoryInitial}>{initial}</span>
-                <CategoryIcon slug={place.category} className={discoveryStyles.categoryArtIcon} strokeWidth={1.65} />
-              </span>)}
+              : <PlaceCategoryArtwork category={place.category} />)}
             <div className={discoveryStyles.copy}>
               <h3 className={discoveryStyles.title}>{place.name}</h3>
               {!parksDiscovery && <p className={discoveryStyles.eyebrow}>
@@ -387,8 +374,8 @@ export default function PlaceCard({
               <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <PlaceStatus status={place.open_status} className="!text-[12px]" />
                 {place.deal_hook ? <DealHookTag label={place.deal_hook} /> : place.field_notes && !place.field_note_tip ? <FieldNoteTag /> : null}
-                {nonOpenReasons.length > 0 ? (
-                  <StatusChipRow reasons={nonOpenReasons} />
+                {leadReasons.length > 0 ? (
+                  <ReasonChipRow reasons={leadReasons} />
                 ) : (
                   <Rave rating={place.google_rating} count={place.google_rating_count} />
                 )}
@@ -465,7 +452,7 @@ export default function PlaceCard({
               )}
               {place.field_notes && !place.field_note_tip && <FieldNoteTag />}
             </div>
-            {nonOpenReasons.length > 0 && <StatusChipRow reasons={nonOpenReasons} />}
+            {leadReasons.length > 0 && <ReasonChipRow reasons={leadReasons} />}
             {/* Voice line, in priority order: the VERIFIED field note (the moat's
                 own intel) leads over a Google review snippet, which leads over the
                 "Loved for" tag list. One voice, never stacked. */}
@@ -494,6 +481,7 @@ export default function PlaceCard({
   // ── TILE — fixed-width card for horizontal shelves. The photo and its
   // sibling credit keep the source links separate from opening and saving.
   if (variant === "tile") {
+    const tileReasons = withoutDistanceEcho(nonOpenReasons.slice(0, 2));
     return (
       <article
         className="tactile relative w-[244px] shrink-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
@@ -527,17 +515,14 @@ export default function PlaceCard({
             {/* Subtitle no longer echoes the category — the uppercase
                 header already states it. Lead with what's NEW (known-for),
                 then distance; nothing repeated. */}
-            <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-              {place.known_for?.[0] && (
-                <span style={{ color: "var(--app-ink-2)" }}>{place.known_for[0]}</span>
-              )}
-              {place.distance_m !== undefined && (
-                <>{place.known_for?.[0] ? " · " : ""}{formatDistance(place.distance_m)}</>
-              )}
-            </p>
+            <FactAndDistance
+              className="text-[12px]"
+              lead={place.known_for?.[0] && <span style={{ color: "var(--app-ink-2)" }}>{place.known_for[0]}</span>}
+              distance_m={place.distance_m}
+            />
             {place.deal_hook ? <DealHookTag label={place.deal_hook} compact /> : place.field_notes ? <FieldNoteTag compact /> : null}
-            {nonOpenReasons.length > 0 ? (
-              <ReasonChipRow reasons={nonOpenReasons.slice(0, 2)} className="pt-0.5" />
+            {tileReasons.length > 0 ? (
+              <ReasonChipRow reasons={tileReasons} className="pt-0.5" />
             ) : (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <PlaceStatus status={place.open_status} className="!text-[12px]" />
@@ -564,6 +549,7 @@ export default function PlaceCard({
   // ── GRID — compact responsive cell. Leading category mark, tight text,
   // chips. ~a third the footprint of a tile.
   if (variant === "grid") {
+    const gridReasons = withoutDistanceEcho(reasons.slice(0, 2));
     return (
       <article className="tactile relative overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)]">
         <button
@@ -581,13 +567,10 @@ export default function PlaceCard({
               <h3 className="line-clamp-2 text-[15px] font-semibold leading-[1.2] tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {place.name}
               </h3>
-              <p className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                {cat?.name ?? place.category}
-                {place.distance_m !== undefined && <> · {formatDistance(place.distance_m)}</>}
-              </p>
+              <FactAndDistance className="text-[11px]" lead={cat?.name ?? place.category} distance_m={place.distance_m} />
               {place.deal_hook ? <DealHookTag label={place.deal_hook} compact /> : place.field_notes ? <FieldNoteTag compact /> : null}
-              {reasons.length > 0 ? (
-                <ReasonChipRow reasons={reasons.slice(0, 2)} className="pt-0.5" />
+              {gridReasons.length > 0 ? (
+                <ReasonChipRow reasons={gridReasons} className="pt-0.5" />
               ) : (
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <PlaceStatus status={place.open_status} className="!text-[11px]" />
@@ -596,7 +579,6 @@ export default function PlaceCard({
               )}
             </div>
           </div>
-          <div aria-hidden className="h-[2px] w-full" style={{ background: color }} />
           </span>
         </button>
         <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} />
@@ -606,7 +588,11 @@ export default function PlaceCard({
 
   // ── ROW — exact photography, a readable name, and one useful facts line.
   // Keep source links outside the detail action and cap reason chips at two.
-  const rowReasons = reasons.slice(0, 2);
+  const rowReasons = withoutDistanceEcho(reasons.slice(0, 2));
+  // The paw carries "dog-friendly" only where no chip already says it
+  // (compact rows hide the chips, so they keep the paw).
+  const showPaw = (place.tags ?? []).includes("dog-friendly")
+    && (compact || !rowReasons.some((r) => r.kind === "dog_friendly"));
   const inlineTag = place.deal_hook ? (
     <DealHookTag label={place.deal_hook} compact />
   ) : place.field_notes ? (
@@ -656,7 +642,7 @@ export default function PlaceCard({
             )}
           </div>
           <p className="mt-0.5 flex items-center gap-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            {(place.tags ?? []).includes("dog-friendly") && (
+            {showPaw && (
               <PawPrint
                 className="h-3 w-3 shrink-0"
                 strokeWidth={2.25}
@@ -677,7 +663,7 @@ export default function PlaceCard({
           {!compact && (
             rowReasons.length > 0 ? (
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                <StatusChipRow reasons={rowReasons} />
+                <ReasonChipRow reasons={rowReasons} />
                 {inlineTag}
               </div>
             ) : (

@@ -512,28 +512,33 @@ export default function EventCard({
                     <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
                   </span>
                 )}
+                {/* The status separator trails the time, the way "Now ·" does,
+                    so a wrapped status never starts its line with a dot. */}
                 <span>
                   {date.weekday} {date.month} {date.day}
                   {timingText ? ` · ${timingText}` : ""}
+                  {statusText ? " · " : ""}
                 </span>
                 {statusText && (
                   <span className="font-medium" style={{ color: statusForeground }}>
-                    · {statusText}
+                    {statusText}
                   </span>
                 )}
-                {/* Recurrence legibility: a weekly bingo or storytime reads as a
-                    repeating series, not a one-off. Derived from the real
-                    collapsed cadence, never asserted. */}
-                {event.is_recurring && event.recurrence_text && (
-                  <span style={{ color: "var(--app-ink-3)" }}>· {event.recurrence_text}</span>
-                )}
               </p>
+              {/* Recurrence legibility: a weekly bingo or storytime reads as a
+                  repeating series, not a one-off. Derived from the real
+                  collapsed cadence, never asserted. It has its own line. */}
+              {event.is_recurring && event.recurrence_text && (
+                <p className="mt-0.5 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                  {event.recurrence_text}
+                </p>
+              )}
               {/* Venue and Meta block — Icon-first representations */}
               <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
                 {venueLabel && (
-                  <span className="flex items-center gap-1">
+                  <span className="flex min-w-0 max-w-full items-center gap-1">
                     <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-                    <span className="truncate max-w-[160px] leading-snug">{venueLabel}</span>
+                    <span className="min-w-0 truncate leading-snug">{venueLabel}</span>
                   </span>
                 )}
                 

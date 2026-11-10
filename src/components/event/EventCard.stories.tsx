@@ -30,6 +30,46 @@ export const MissingEndAt320: Story = {
   args: { event: { ...sample, ends_at: sample.starts_at }, variant: "glance" },
 };
 export const Online: Story = { args: { event: { ...sample, attendance_mode: "online" }, variant: "glance" } };
+
+const longVenue = {
+  ...sample, title: "Weeknight trivia", venue_name: "JoJo's Restaurant & Tap House",
+  address: "16 East Patrick Street, Frederick, MD", municipality: "frederick", municipality_name: "Frederick",
+  is_free: false, price_text: "$5 at the door", is_recurring: true, recurrence_text: "Runs most days",
+} as EventWithMeta;
+const startsWithSeparator = (canvasElement: HTMLElement) =>
+  [...canvasElement.querySelectorAll("article p, article span")].filter((node) => node.textContent?.trim().startsWith("·"));
+
+/** A long venue keeps its town when the card has room, and recurrence gets
+ * a line of its own with no leading separator. */
+export const LongVenueWithRecurrence: Story = {
+  globals: { viewport: { value: "radiusDesktop", isRotated: false } },
+  args: { variant: "glance", event: longVenue },
+  play: async ({ canvasElement }) => {
+    const venue = within(canvasElement).getByText("JoJo's Restaurant & Tap House · Frederick", { exact: true });
+    await expect(venue).toBeVisible();
+    await expect(venue.getBoundingClientRect().width).toBeGreaterThan(160);
+    await expect(venue.scrollWidth).toBeLessThanOrEqual(venue.clientWidth);
+    const recurrence = within(canvasElement).getByText("Runs most days", { exact: true });
+    await expect(recurrence.tagName).toBe("P");
+    await expect(recurrence.getBoundingClientRect().left).toBeCloseTo(venue.closest("div")!.getBoundingClientRect().left, 0);
+    expect(startsWithSeparator(canvasElement)).toEqual([]);
+  },
+};
+
+/** At 320 the same venue is cut inside the card instead of widening it. */
+export const LongVenueAt320: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { variant: "glance", event: longVenue },
+  play: async ({ canvasElement }) => {
+    const venue = within(canvasElement).getByText("JoJo's Restaurant & Tap House · Frederick", { exact: true });
+    const card = canvasElement.querySelector("article")!.getBoundingClientRect();
+    await expect(venue.getBoundingClientRect().right).toBeLessThanOrEqual(card.right);
+    await expect(venue.getBoundingClientRect().width).toBeGreaterThan(160);
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+    expect(startsWithSeparator(canvasElement)).toEqual([]);
+  },
+};
+
 export const PrimaryTabRows: Story = {
   decorators: [(Story) => <div data-app-primary-tab="/events"><Story /></div>],
   args: { variant: "glance" },

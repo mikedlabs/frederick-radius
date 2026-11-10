@@ -176,7 +176,7 @@ export const OwnedSheetKeepsFactsAfterFailure: Story = {
   play: async ({ canvasElement }) => {
     const originalHref = window.location.href;
     const originalState = window.history.state;
-    const originalOverflow = document.body.style.overflow;
+    const originalOverflow = document.documentElement.style.overflowY;
     const canvas = within(canvasElement);
     const opener = canvas.getByRole("button", { name: "View Creek details" });
     await userEvent.click(opener);
@@ -223,7 +223,7 @@ export const OwnedSheetKeepsFactsAfterFailure: Story = {
     // observes the document; focus return alone may precede traversal.
     await waitFor(() => expect(window.history.state).toEqual(originalState));
     await expect(window.location.href).toBe(originalHref);
-    await expect(document.body.style.overflow).toBe(originalOverflow);
+    await expect(document.documentElement.style.overflowY).toBe(originalOverflow);
   },
 };
 
@@ -249,7 +249,7 @@ export const FullHeroReturnsOnBrowserBack: Story = {
   play: async ({ canvasElement }) => {
     const originalHref = window.location.href;
     const originalState = window.history.state;
-    const originalOverflow = document.body.style.overflow;
+    const originalOverflow = document.documentElement.style.overflowY;
     const opener = within(canvasElement).getByRole("button", { name: `View ${place.name} photo` });
     await userEvent.click(opener);
     const body = within(document.body);
@@ -257,7 +257,9 @@ export const FullHeroReturnsOnBrowserBack: Story = {
     await waitFor(() => expect(viewer).toHaveFocus());
     await expect(window.history.state?.__frederickRadiusLayer).toMatch(/^photo:/);
     await expect(window.location.href).toBe(originalHref);
-    await expect(document.body.style.overflow).toBe("hidden");
+    // The page lock holds the document's real scroll root and leaves body alone.
+    await expect(document.documentElement.style.overflowY).toBe("hidden");
+    await expect(document.body.style.overflow).not.toBe("hidden");
 
     // Real browser traversal, not a synthetic popstate or a mocked Back call.
     window.history.back();
@@ -265,7 +267,7 @@ export const FullHeroReturnsOnBrowserBack: Story = {
     await waitFor(() => expect(opener).toHaveFocus());
     await waitFor(() => expect(window.history.state).toEqual(originalState));
     await expect(window.location.href).toBe(originalHref);
-    await expect(document.body.style.overflow).toBe(originalOverflow);
+    await expect(document.documentElement.style.overflowY).toBe(originalOverflow);
     await expect(within(canvasElement).getByRole("img", { name: owned.alt })).toBeVisible();
   },
 };
@@ -311,7 +313,7 @@ export const SheetViewerBackAndEscapeKeepPlaceOpen: Story = {
   play: async ({ canvasElement }) => {
     const originalHref = window.location.href;
     const originalState = window.history.state;
-    const originalOverflow = document.body.style.overflow;
+    const originalOverflow = document.documentElement.style.overflowY;
     const sheetOpener = within(canvasElement).getByRole("button", { name: "View Creek details" });
     await userEvent.click(sheetOpener);
     const body = within(document.body);
@@ -329,7 +331,8 @@ export const SheetViewerBackAndEscapeKeepPlaceOpen: Story = {
     await waitFor(() => expect(photoOpener).toHaveFocus());
     await waitFor(() => expect(window.history.state).toEqual(parentState));
     await expect(sheet).toBeVisible();
-    await expect(document.body.style.overflow).toBe("hidden");
+    // The viewer released its hold; the sheet beneath still holds the page.
+    await expect(document.documentElement.style.overflowY).toBe("hidden");
 
     // The viewer is a React portal beneath BottomSheet in the component tree.
     // A real Escape must close only the photo, not bubble into that parent.
@@ -342,7 +345,7 @@ export const SheetViewerBackAndEscapeKeepPlaceOpen: Story = {
     await waitFor(() => expect(window.history.state).toEqual(parentState));
     await expect(sheet).toBeVisible();
     await expect(within(sheet).getByRole("heading", { name: place.name })).toBeVisible();
-    await expect(document.body.style.overflow).toBe("hidden");
+    await expect(document.documentElement.style.overflowY).toBe("hidden");
 
     // Only the next Back dismisses the place and returns to its own opener.
     window.history.back();
@@ -350,6 +353,6 @@ export const SheetViewerBackAndEscapeKeepPlaceOpen: Story = {
     await waitFor(() => expect(sheetOpener).toHaveFocus());
     await waitFor(() => expect(window.history.state).toEqual(originalState));
     await expect(window.location.href).toBe(originalHref);
-    await expect(document.body.style.overflow).toBe(originalOverflow);
+    await expect(document.documentElement.style.overflowY).toBe(originalOverflow);
   },
 };

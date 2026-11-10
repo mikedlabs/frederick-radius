@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Martini, Search, X } from "lucide-react";
-import HappyHourBrowser, { type HHRow } from "./HappyHourBrowser";
+import { Search, X } from "lucide-react";
+import HappyHourBrowser, { usePlacePhotoFailure, type HHRow } from "./HappyHourBrowser";
 import { dealHook, splitDeal, figureCount, dealQuality } from "@/lib/happyHourDeal";
 import { isClosedNow } from "@/lib/hours";
 import DealLines from "@/components/happy/DealLines";
@@ -17,7 +17,8 @@ import DealLines from "@/components/happy/DealLines";
  * The page opens on a COVER STORY: the single most time-sensitive pour right
  * now (on-now, ending soonest), as a full-bleed photo with the venue name in
  * serif and its extracted deal hook ("50% OFF", "$5 DRAFTS") set huge in gold
- * mono. Below is THE GUIDE: a leader-dotted priced index where every line is
+ * mono. A venue with no usable photograph gets the same lead as a text cover
+ * (see Cover). Below is THE GUIDE: a leader-dotted priced index where every line is
  * "VENUE ········· $5 MARGARITAS" — a serif name, a real dotted leader, the
  * gold mono hook flush-right, like a wine list's contents page. The amount-off
  * is welded to the name as the hero, exactly as asked.
@@ -126,14 +127,6 @@ function coverScore(it: Item): number {
   return dealQuality(it.r.deal) * 1000 + (it.r.photo ? 100 : 0) + (it.lastCall ? 40 : 0);
 }
 
-function PhotoFallback({ big }: { big?: boolean }) {
-  return (
-    <div aria-hidden className="grid h-full w-full place-items-center" style={{ background: "linear-gradient(150deg, color-mix(in srgb, var(--app-accent) 30%, var(--app-brand-2)) 0%, var(--app-brand-2) 72%)" }}>
-      <Martini className={big ? "h-10 w-10" : "h-5 w-5"} strokeWidth={1.5} style={{ color: "color-mix(in srgb, var(--app-accent) 60%, #fff)" }} />
-    </div>
-  );
-}
-
 /** The status tab + label for the cover, by kind. */
 function coverTab(it: Item): { label: string; tone: "live" | "lastcall" | "soon" } {
   if (it.kind === "live") {
@@ -144,56 +137,103 @@ function coverTab(it: Item): { label: string; tone: "live" | "lastcall" | "soon"
   return { label: `Opens ${DAY_ABBR[it.day!]} · ${fmtMin(it.startsAt!)}`, tone: "soon" };
 }
 
-function Cover({ it, bloom }: { it: Item; bloom?: boolean }) {
+function CoverBadge({ it, className = "" }: { it: Item; className?: string }) {
   const tab = coverTab(it);
-  // Press variants, not the raw tokens: this badge carries WHITE 10px text,
-  // and neither the brand red nor the gold holds 4.5:1 under white.
-  const tabColor = tab.tone === "lastcall" || tab.tone === "live" ? "var(--app-brand-press)" : "var(--app-accent-press)";
+  const live = tab.tone !== "soon";
+  // Press variants, not the raw tokens: this badge carries white 10px text,
+  // and neither the brand red nor the plum holds 4.5:1 under white.
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] ${className}`}
+      style={{ background: live ? "var(--app-brand-press)" : "var(--app-accent-press)", color: "var(--app-on-brand)" }}
+    >
+      {live && <span aria-hidden className="live-dot h-1 w-1 rounded-full" style={{ background: "var(--app-on-brand)" }} />}
+      {tab.label}
+    </span>
+  );
+}
+
+/** The deal under the venue name. A single clean discount gets the big figure
+ *  (the punch the lead needs); a multi-part deal shows its clauses stacked
+ *  (figure glued to each item, never one ripped out); a vague-at-source entry
+ *  shows a muted honest line. `onPhoto` is the white-on-scrim palette. */
+function CoverDeal({ deal, onPhoto }: { deal?: string; onPhoto: boolean }) {
+  const figure = onPhoto ? "color-mix(in srgb, var(--app-accent) 72%, var(--app-on-brand))" : "var(--app-accent-text)";
+  const tone = onPhoto ? "onPhoto" : "ink";
+  if (!deal) {
+    return <p className="mt-2 font-serif text-[20px] font-semibold" style={{ color: figure }}>Specials</p>;
+  }
+  const figs = figureCount(deal);
+  if (figs === 0) {
+    return <DealLines deal={deal} tone={tone} vague className="mt-2 max-w-prose text-[14px]" />;
+  }
+  const { hook, rest } = splitDeal(deal);
+  if (figs === 1 && hook) {
+    const subject = rest && rest.toLowerCase() !== hook.toLowerCase() ? rest : "";
+    return (
+      <>
+        <p className="mt-1.5 font-serif text-[40px] font-bold leading-none tracking-[-0.01em]" style={{ color: figure }}>{hook}</p>
+        {subject && (
+          <p className="mt-1.5 max-w-prose text-[15px] font-medium leading-snug" style={{ color: onPhoto ? "color-mix(in srgb, var(--app-on-brand) 92%, transparent)" : "var(--app-ink-2)" }}>
+            {subject}
+          </p>
+        )}
+      </>
+    );
+  }
+  return <DealLines deal={deal} max={3} tone={tone} className="mt-2 max-w-prose space-y-1 text-[15px] font-medium" />;
+}
+
+/**
+ * The lead pour. With a photograph it is a full-bleed cover: the venue and its
+ * deal sit on a fixed dark scrim. With no photograph (none on file, or the
+ * photo proxy answered with its failure signal) it is a text cover on the
+ * normal elevated surface in theme ink, so it reads in both appearances and
+ * nothing stands in for a photo.
+ */
+function Cover({ it, bloom }: { it: Item; bloom?: boolean }) {
+  const { src, imageProps } = usePlacePhotoFailure(it.r.photo);
+  const link = {
+    href: `/places/${it.r.slug}`,
+    "aria-label": `${it.r.name}${it.hook ? `: ${it.hook}` : ""}${it.r.deal ? `. ${it.r.deal}` : ""}`,
+  };
+  const pop = bloom ? " pop-in" : "";
+
+  if (!src) {
+    return (
+      <Link
+        {...link}
+        data-happy-cover="text"
+        className={`tactile-interactive block rounded-[var(--app-radius-lg)] border p-4${pop}`}
+        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
+      >
+        <CoverBadge it={it} />
+        {it.r.town && <p className="mt-3 font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--app-ink-3)" }}>{it.r.town}</p>}
+        <h2 className="mt-0.5 font-serif text-[26px] font-semibold leading-[1.02] tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>{it.r.name}</h2>
+        <CoverDeal deal={it.r.deal} onPhoto={false} />
+      </Link>
+    );
+  }
+
   return (
     <Link
-      href={`/places/${it.r.slug}`}
-      aria-label={`${it.r.name}${it.hook ? `: ${it.hook}` : ""}${it.r.deal ? `. ${it.r.deal}` : ""}`}
-      className={`tactile-interactive relative block aspect-[16/9] overflow-hidden rounded-[var(--app-radius-lg)]${bloom ? " pop-in" : ""}`}
-      style={{ boxShadow: "var(--app-elev-1), var(--app-hi)" }}
+      {...link}
+      data-happy-cover="photo"
+      className={`tactile-interactive relative block aspect-[16/9] overflow-hidden rounded-[var(--app-radius-lg)]${pop}`}
+      // A fixed dark ground: the white cover text has to read before the
+      // photo paints, and while a failed photo is still being detected.
+      style={{ background: "var(--app-media-ink)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
     >
-      {it.r.photo ? <Image src={it.r.photo} alt="" fill sizes="(max-width: 640px) 100vw, 640px" unoptimized={it.r.photo.startsWith("/api/place-photo")} className="object-cover" /> : <PhotoFallback big />}
-      {/* Bottom ink scrim for legibility + a faint warm sheen up top. */}
-      <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 92%, transparent) 4%, color-mix(in srgb, var(--app-ink) 60%, transparent) 34%, transparent 62%), linear-gradient(to bottom, color-mix(in srgb, var(--app-accent) 14%, transparent), transparent 30%)" }} />
-
-      {/* Status tab, top-left. */}
-      <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-white" style={{ background: tabColor }}>
-        {(tab.tone === "live" || tab.tone === "lastcall") && <span aria-hidden className="live-dot h-1 w-1 rounded-full bg-white" />}
-        {tab.label}
-      </span>
-
-      {/* Cover plate, bottom — venue, then the deal. A single clean discount
-          gets the big gold figure (the punch the hero needs); a multi-part deal
-          shows its clauses stacked (figure glued to each item, never one ripped
-          out); a vague-at-source entry shows a muted honest line. */}
+      <Image key={src} {...imageProps} src={src} alt="" fill sizes="(max-width: 640px) 100vw, 640px" unoptimized={src.startsWith("/api/place-photo")} className="object-cover" />
+      {/* Bottom scrim for legibility + a faint warm sheen up top. The scrim is
+          the fixed media ink: --app-ink turns light in dark appearance and
+          would wash out the white cover text. */}
+      <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-media-ink) 92%, transparent) 4%, color-mix(in srgb, var(--app-media-ink) 60%, transparent) 34%, transparent 62%), linear-gradient(to bottom, color-mix(in srgb, var(--app-accent) 14%, transparent), transparent 30%)" }} />
+      <CoverBadge it={it} className="absolute left-3 top-3" />
       <div className="absolute inset-x-0 bottom-0 p-4">
-        {it.r.town && <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "color-mix(in srgb, var(--app-accent) 60%, #fff)" }}>{it.r.town}</p>}
-        <h2 className="mt-0.5 font-serif text-[26px] font-semibold leading-[1.02] tracking-[-0.01em] text-white">{it.r.name}</h2>
-        {(() => {
-          const gold = "color-mix(in srgb, var(--app-accent) 72%, #fff)";
-          if (!it.r.deal) {
-            return <p className="mt-2 font-serif text-[20px] font-semibold" style={{ color: gold }}>Specials</p>;
-          }
-          const figs = figureCount(it.r.deal);
-          if (figs === 0) {
-            return <DealLines deal={it.r.deal} tone="onPhoto" vague className="mt-2 max-w-prose text-[14px]" />;
-          }
-          const { hook, rest } = splitDeal(it.r.deal);
-          if (figs === 1 && hook) {
-            const subject = rest && rest.toLowerCase() !== hook.toLowerCase() ? rest : "";
-            return (
-              <>
-                <p className="mt-1.5 font-serif font-bold leading-none tracking-[-0.01em]" style={{ fontSize: 40, color: gold }}>{hook}</p>
-                {subject && <p className="mt-1.5 max-w-prose text-[15px] font-medium leading-snug" style={{ color: "rgba(255,255,255,0.92)" }}>{subject}</p>}
-              </>
-            );
-          }
-          return <DealLines deal={it.r.deal} max={3} tone="onPhoto" className="mt-2 max-w-prose space-y-1 text-[15px] font-medium" />;
-        })()}
+        {it.r.town && <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "color-mix(in srgb, var(--app-accent) 60%, var(--app-on-brand))" }}>{it.r.town}</p>}
+        <h2 className="mt-0.5 font-serif text-[26px] font-semibold leading-[1.02] tracking-[-0.01em]" style={{ color: "var(--app-on-brand)" }}>{it.r.name}</h2>
+        <CoverDeal deal={it.r.deal} onPhoto />
       </div>
     </Link>
   );
@@ -213,7 +253,7 @@ function PricedRow({ it, nowMin }: { it: Item; nowMin: number }) {
       <div className="flex min-w-0 items-baseline gap-2">
         {live && <span aria-hidden className="live-dot mb-0.5 h-1.5 w-1.5 shrink-0 self-center rounded-full" style={{ background: "var(--app-brand)" }} />}
         <span className="min-w-0 flex-1 truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>{it.r.name}</span>
-        <span className="shrink-0 font-mono text-[11px] font-bold uppercase tracking-[0.04em]" style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>{sub}</span>
+        <span className="shrink-0 font-mono text-[11px] font-bold uppercase tracking-[0.04em]" style={{ color: live ? "var(--app-link)" : "var(--app-ink-3)" }}>{sub}</span>
       </div>
       {it.r.town && <span className="mt-0.5 block truncate text-[11px] font-medium" style={{ color: "var(--app-ink-3)" }}>{it.r.town}</span>}
       {/* The deal — figures flow inline (glued to each item), clamped to keep the
@@ -338,7 +378,7 @@ export default function HappyHourGuide({
           opposite. Counts are supporting detail, never the headline. */}
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-          <span className="inline-flex items-center gap-1.5 font-bold" style={{ color: liveCount > 0 ? "var(--app-brand-press)" : "var(--app-ink-2)" }}>
+          <span className="inline-flex items-center gap-1.5 font-bold" style={{ color: liveCount > 0 ? "var(--app-link)" : "var(--app-ink-2)" }}>
             <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: liveCount > 0 ? "var(--app-brand)" : "var(--app-ink-3)" }} />
             <span aria-live="polite">{liveCount > 0 ? `${liveCount} on now` : later.length > 0 ? `next ${fmtMin(later[0].startsAt!)}` : "none on now"}</span>
           </span>
@@ -438,7 +478,7 @@ export default function HappyHourGuide({
                 {cover.kind === "live" ? (
                   <>
                     <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
-                    <span style={{ color: "var(--app-brand-press)" }}>Pouring now · {liveCount} {liveCount === 1 ? "spot" : "spots"}</span>
+                    <span style={{ color: "var(--app-link)" }}>Pouring now · {liveCount} {liveCount === 1 ? "spot" : "spots"}</span>
                   </>
                 ) : (
                   <span>{cover.kind === "later" ? "Next pour today" : "Next pour this week"}</span>
@@ -448,15 +488,15 @@ export default function HappyHourGuide({
             </div>
           )}
 
-          <IndexSection label="Also pouring now" count={liveRest.length} tone="var(--app-brand-press)" items={liveRest} nowMin={nowMin} />
-          <IndexSection label="Opening later today" count={laterRest.length} tone="var(--app-accent-press)" items={laterRest} nowMin={nowMin} />
+          <IndexSection label="Also pouring now" count={liveRest.length} tone="var(--app-link)" items={liveRest} nowMin={nowMin} />
+          <IndexSection label="Opening later today" count={laterRest.length} tone="var(--app-accent-text)" items={laterRest} nowMin={nowMin} />
           <IndexSection label="More this week" count={otherRest.length} tone="var(--app-ink-2)" items={moreVisible} nowMin={nowMin} />
           {hiddenMoreCount > 0 && (
             <button
               type="button"
               onClick={() => setShowAllMore(true)}
               className="min-h-11 w-full border-y text-[13px] font-semibold"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+              style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
             >
               Show all {otherRest.length} later this week
             </button>
@@ -492,7 +532,7 @@ export default function HappyHourGuide({
                   type="button"
                   onClick={() => setShowAllVaries(true)}
                   className="min-h-11 w-full border-t text-[13px] font-semibold"
-                  style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+                  style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
                 >
                   Show all {varies.length} schedules
                 </button>

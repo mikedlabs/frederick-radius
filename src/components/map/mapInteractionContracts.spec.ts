@@ -35,6 +35,17 @@ describe("map interaction state contracts", () => {
     expect(appMap).not.toContain("navigator.geolocation.getCurrentPosition");
   });
 
+  it("names the map note it dismisses instead of always calling it a location message", () => {
+    const appMap = readFileSync("src/components/map/AppMap.tsx", "utf8");
+
+    // Search and selection notes take the chip ahead of a locate failure.
+    expect(appMap).toContain("const geoMsg = mapNote ?? locateMsg;");
+    expect(appMap).toContain(
+      'aria-label={mapNote ? "Dismiss map message" : "Dismiss location message"}',
+    );
+    expect(appMap).not.toContain('aria-label="Dismiss location message"');
+  });
+
   it("uses auth-aware place follows in the compact map card", () => {
     const source = readFileSync("src/components/map/MapPeek.tsx", "utf8");
 

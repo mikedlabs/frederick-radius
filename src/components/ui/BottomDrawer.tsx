@@ -2,12 +2,17 @@
 
 import { Drawer } from "vaul";
 import {
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
   useCallback,
   useLayoutEffect,
   useRef,
 } from "react";
 import { X } from "lucide-react";
+import {
+  releaseAbandonedHistoryLayer,
+  useReversibleHistoryLayer,
+} from "@/hooks/useReversibleHistoryLayer";
 import { haptic } from "@/lib/haptics";
 
 /**
@@ -16,7 +21,16 @@ import { haptic } from "@/lib/haptics";
  * the native-feeling mobile pattern for filters, place previews,
  * amenities, and any deep-but-temporary view. Vaul handles the
  * drag-to-snap physics, focus trap, body-scroll lock, and ESC
- * handler — wrapping it here keeps brand styling DRY.
+ * handler — wrapping it here keeps brand styling DRY, and supplies the
+ * app rules the library cannot know: Back closes the drawer in place
+ * (`historyLayerId`), and a toast raised above it stays usable.
+ *
+ * Toasts: a press on a Sonner toast does not count as a press outside the
+ * drawer, so its action runs and the drawer stays open. Known limit: Radix's
+ * focus trap pulls Sonner's Alt+T shortcut back into the drawer, so a
+ * keyboard cannot reach a toast while a drawer is open. Feedback that starts
+ * inside a drawer should use an in-drawer status (BeerSheet's "Saved" label
+ * is the model) and keep toasts for outcomes that outlive it.
  *
  * Usage:
  *   <BottomDrawer
@@ -51,8 +65,22 @@ export type BottomDrawerProps = {
   bareHeader?: boolean;
   /** Delegate Escape within an explicitly owned inline panel, if supplied. */
   onEscapeKeyDown?: (event: KeyboardEvent) => void;
-  /** Use an opaque surface for dense content above a busy map or photograph. */
-  surface?: "default" | "solid";
+  /** Opaque by default, so the page beneath never reads through the
+   *  controls. "translucent" is an explicit opt-in for a light surface. */
+  surface?: "solid" | "translucent";
+  /** "standard" caps the drawer at 760px and centers it from the `sm`
+   *  breakpoint, matching BottomSheet. "wide" keeps the full width for
+   *  content that was laid out for it. */
+  width?: "standard" | "wide";
+  /** Give a controlled drawer the app's Back rule: opening pushes one
+   *  same-URL history entry, Back closes the drawer in place, every other
+   *  close removes that entry, and an in-app link inside it replaces the
+   *  entry instead of stranding it. Keep the id stable while the drawer is
+   *  open. Omit it when the caller already owns a history entry for this
+   *  drawer (a route or a query parameter). A caller that changes the URL as
+   *  it closes the drawer must let the entry leave first, with
+   *  `navigateAfterHistoryLayer(id, next)`. */
+  historyLayerId?: string;
 };
 
 export default function BottomDrawer({
@@ -64,8 +92,12 @@ export default function BottomDrawer({
   onOpenChange,
   bareHeader = false,
   onEscapeKeyDown,
-  surface = "default",
+  surface = "solid",
+  width = "standard",
+  historyLayerId,
 }: BottomDrawerProps) {
+  const ownsHistoryLayer = Boolean(historyLayerId) && open !== undefined;
+
   // Most controlled drawers are opened by a button outside Drawer.Root, so
   // Radix has no registered trigger to restore. Remember that real opener
   // before Vaul moves focus into the modal.
@@ -74,6 +106,15 @@ export default function BottomDrawer({
   const restoreTimerRef = useRef<number | null>(null);
   const drawerOpenRef = useRef(Boolean(open));
   const previousControlledOpenRef = useRef(false);
+  const historyLayer = useReversibleHistoryLayer({
+    active: ownsHistoryLayer && Boolean(open),
+    id: historyLayerId ?? "",
+    // Back asks the parent to close. A drawer that has already closed has
+    // nothing left to report.
+    onDismiss: () => {
+      if (drawerOpenRef.current) onOpenChange?.(false);
+    },
+  });
 
   const rememberCurrentFocus = useCallback(() => {
     const activeElement = document.activeElement;
@@ -139,6 +180,45 @@ export default function BottomDrawer({
     [onOpenChange, open, rememberCurrentFocus, restoreRememberedFocus],
   );
 
+  // Same rule as BottomSheet: an in-app link replaces the drawer's temporary
+  // entry with its destination, leaving one clean Back step to this page.
+  const onLinkCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (
+      !ownsHistoryLayer
+      || event.button !== 0
+      || event.metaKey
+      || event.ctrlKey
+      || event.shiftKey
+      || event.altKey
+    ) {
+      return;
+    }
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const anchor = target.closest<HTMLAnchorElement>("a[href]");
+    if (
+      !anchor
+      || (anchor.target && anchor.target !== "_self")
+      || anchor.hasAttribute("download")
+    ) {
+      return;
+    }
+    const destination = new URL(anchor.href, window.location.href);
+    if (
+      destination.origin !== window.location.origin
+      || !["http:", "https:"].includes(destination.protocol)
+    ) {
+      return;
+    }
+    const href = `${destination.pathname}${destination.search}${destination.hash}`;
+    const here = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (href === here) return;
+    event.preventDefault();
+    event.stopPropagation();
+    haptic("light");
+    historyLayer.leaveTo(href);
+  };
+
   useLayoutEffect(() => {
     if (open === undefined) return;
 
@@ -146,8 +226,42 @@ export default function BottomDrawer({
     if (open && !wasOpen) rememberCurrentFocus();
     drawerOpenRef.current = open;
     previousControlledOpenRef.current = open;
-    if (!open && wasOpen) restoreRememberedFocus();
-  }, [open, rememberCurrentFocus, restoreRememberedFocus]);
+    if (!open && wasOpen) {
+      // One place removes the drawer's history entry, whichever way it closed:
+      // Close, Escape, the overlay, a drag, or the parent's own control such
+      // as "Show 12 beers". After Back the entry is already gone and this
+      // does nothing, so Back never lands on a dead same-URL stop.
+      if (ownsHistoryLayer) historyLayer.dismiss();
+      restoreRememberedFocus();
+    }
+  }, [historyLayer, open, ownsHistoryLayer, rememberCurrentFocus, restoreRememberedFocus]);
+
+  // The entry this drawer pushed, while it is open. A drawer whose slot is
+  // replaced unmounts without receiving open=false, so the close above never
+  // runs. The unmount below removes that entry, and only when nothing else has
+  // moved history in the same turn, so a real navigation is never reversed.
+  const openLayerRef = useRef<{ id: string; href: string } | null>(null);
+  const mountedRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!ownsHistoryLayer || !open || !historyLayerId) {
+      openLayerRef.current = null;
+    } else if (openLayerRef.current?.id !== historyLayerId) {
+      openLayerRef.current = { id: historyLayerId, href: window.location.href };
+    }
+  }, [historyLayerId, open, ownsHistoryLayer]);
+  useLayoutEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      const layer = openLayerRef.current;
+      if (!layer) return;
+      // Strict Mode remounts before this runs, and a route commit has already
+      // written its own entry by then.
+      queueMicrotask(() => {
+        if (!mountedRef.current) releaseAbandonedHistoryLayer(layer.id, layer.href);
+      });
+    };
+  }, []);
 
   useLayoutEffect(
     () => () => {
@@ -177,14 +291,21 @@ export default function BottomDrawer({
     >
       {trigger ? <Drawer.Trigger asChild>{trigger}</Drawer.Trigger> : null}
       <Drawer.Portal>
-        <Drawer.Overlay
-          className="fixed inset-0 z-[var(--z-overlay)]"
-          style={{ background: "rgba(10, 8, 4, 0.45)" }}
-        />
+        <Drawer.Overlay className="fixed inset-0 z-[var(--z-overlay)] bg-black/45" />
         <Drawer.Content
           onEscapeKeyDown={onEscapeKeyDown}
+          onClickCapture={onLinkCapture}
+          onPointerDownOutside={(event) => {
+            // Radix dispatches this on the pressed element. A toast sits
+            // outside the drawer in the DOM but belongs to the same task.
+            if (
+              event.target instanceof Element
+              && event.target.closest("[data-sonner-toaster]")
+            ) event.preventDefault();
+          }}
           aria-modal="true"
           data-drawer-surface={surface}
+          data-drawer-width={width}
           {...(subtitle ? {} : { "aria-describedby": undefined })}
           onCloseAutoFocus={(event) => {
             if (!returnFocusRef.current?.isConnected) return;
@@ -195,9 +316,13 @@ export default function BottomDrawer({
               || restoreTimerRef.current !== null
             ) restoreRememberedFocus();
           }}
-          className="fixed bottom-0 left-0 right-0 z-[var(--z-overlay)] mt-24 flex max-h-[90dvh] flex-col rounded-t-[24px] border-t outline-none"
+          // bottom-0 stays at every width: an offset would leave a strip
+          // visible at the end of Vaul's exit transform.
+          className={`fixed bottom-0 left-0 right-0 z-[var(--z-overlay)] mt-24 flex max-h-[90dvh] flex-col rounded-t-[var(--app-radius-lg)] border-t outline-none${
+            width === "standard" ? " sm:mx-auto sm:max-w-[760px] sm:border-x" : ""
+          }`}
           style={{
-            background: surface === "solid" ? "var(--app-bg-elevated-solid)" : "var(--app-bg-elevated)",
+            background: surface === "translucent" ? "var(--app-bg-elevated)" : "var(--app-bg-elevated-solid)",
             borderColor: "var(--app-border)",
             boxShadow: "var(--app-elev-3), var(--app-edge), var(--app-hi)",
           }}

@@ -10,7 +10,7 @@ import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
  * different motion, focus, swipe, and touch-target behavior. Keeping this
  * small adapter preserves their simple API while BottomSheet owns the actual
  * dialog contract everywhere: focus trap and return, reduced motion, Escape,
- * backdrop and drag dismissal, route cleanup, safe areas, and body scroll.
+ * backdrop and drag dismissal, route cleanup, safe areas, and page scroll.
  */
 export default function Sheet({
   open,

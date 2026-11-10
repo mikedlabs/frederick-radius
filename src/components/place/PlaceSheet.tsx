@@ -384,8 +384,9 @@ function PlaceSheetContent({
         )}
 
         {/* Below-hero content lives inside the standard padding. */}
-        {/* reveal-up: same settle-in cascade as the event sheet. */}
-        <div className="reveal-up px-5 pt-4">
+        {/* No entrance of its own: the sheet's spring is the entrance, so
+            the content is already in place as the sheet arrives. */}
+        <div className="px-5 pt-4">
           {/* Identity and its one action row stay useful before metadata
               arrives and after every photo candidate has failed. */}
           <header className="mb-3" data-place-sheet-identity>

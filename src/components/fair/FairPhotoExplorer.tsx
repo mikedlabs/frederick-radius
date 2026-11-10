@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import BottomDrawer from "@/components/ui/BottomDrawer";
-import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
+import { navigateAfterHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import {
   FAIR_PHOTO_PREVIEW,
   FAIR_PHOTO_VIEWER_PATH,
@@ -22,6 +22,8 @@ import {
 import FairShareButton from "./FairShareButton";
 
 type FairPhotoLandmarkId = "grandstand" | "midway" | "ferris-wheel";
+
+const HISTORY_LAYER_ID = "fair-photo-explorer";
 
 const LANDMARKS: Array<{
   id: FairPhotoLandmarkId;
@@ -87,11 +89,6 @@ export default function FairPhotoExplorer({
     useState<FairPhotoLandmarkId>("grandstand");
   const [viewerState, setViewerState] = useState<ViewerState>("idle");
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const historyLayer = useReversibleHistoryLayer({
-    active: open,
-    id: "fair-photo-explorer",
-    onDismiss: () => onOpenChange(false),
-  });
   const selected =
     LANDMARKS.find((landmark) => landmark.id === selectedId) ?? LANDMARKS[0];
 
@@ -119,20 +116,21 @@ export default function FairPhotoExplorer({
     };
   }, [open]);
 
-  const closeOrOpen = (nextOpen: boolean) => {
-    if (nextOpen) {
-      onOpenChange(true);
-      return;
-    }
-    historyLayer.dismiss();
-  };
-
-  const leaveFor = (next: () => void) => historyLayer.leave(next);
+  // The drawer owns its Back entry. A handoff steps back off that entry,
+  // which closes the drawer, and only then lets the map or program change
+  // the URL. Closing first would remove the entry a second time.
+  const leaveFor = (next: () => void) =>
+    navigateAfterHistoryLayer(HISTORY_LAYER_ID, () => {
+      onOpenChange(false);
+      next();
+    });
 
   return (
     <BottomDrawer
       open={open}
-      onOpenChange={closeOrOpen}
+      onOpenChange={onOpenChange}
+      historyLayerId={HISTORY_LAYER_ID}
+      width="wide"
       title="Explore the Fair at night"
       subtitle="A real Frederick photograph with useful landmarks"
       bareHeader

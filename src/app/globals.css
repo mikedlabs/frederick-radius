@@ -88,6 +88,14 @@
   --app-cool: #285D73;            /* Creek — supporting data/civic accent */
   --app-cool-2: #4C7C8F;
   --app-sage: #859076;            /* topo-line sage — light nature accent */
+  /* Text roles. Use these, not the fill tokens above, when the brand or a
+     semantic color is the color of words or icons. They match the fill on
+     the light shell and lift to a measured foreground in the dark block
+     below, where the fills must keep their values for filled controls. */
+  --app-brand-text: var(--app-brand);
+  --app-cool-text: var(--app-cool);
+  --app-accent-text: var(--app-accent);
+  --app-forest-text: var(--app-brand-2);
 
   --app-positive: #315A43;
   --app-warning: #925E16;         /* text-safe Ochre warning or White-on-warning fill */
@@ -278,6 +286,10 @@
     --app-border-strong: var(--app-border);
     --app-control-border: #A5A59A;
     --app-link: #FFAAA0;
+    --app-brand-text: var(--app-link);
+    --app-cool-text: color-mix(in srgb, var(--app-cool) 45%, var(--app-ink));
+    --app-accent-text: color-mix(in srgb, var(--app-accent) 45%, var(--app-ink));
+    --app-forest-text: color-mix(in srgb, var(--app-brand-2) 45%, var(--app-ink));
     --state-open: color-mix(in srgb, var(--app-positive) 55%, var(--app-paper));
     --state-closing: color-mix(in srgb, var(--app-warning) 50%, var(--app-paper));
     --state-closed: var(--app-ink-3);
@@ -286,6 +298,9 @@
     --app-danger-text: color-mix(in srgb, var(--app-danger) 55%, var(--app-paper));
     --app-live-text: var(--app-amber);
     --app-hi: inset 0 1px 0 color-mix(in srgb, var(--app-paper) 6%, transparent);
+    /* The white top gloss is a paper cue. On Charcoal it turns one card
+       glossy beside its flat neighbors, so the dark shell has none. */
+    --app-paper-light: none;
 }
 
 /* Neutral listing grammar belongs only to the four primary destinations.
@@ -873,7 +888,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .content-chapter {
   --content-chapter-accent: var(--app-brand);
   --today-section-accent: var(--content-chapter-accent);
-  --today-section-ink: var(--app-brand-press);
+  --today-section-ink: var(--app-link);
   position: relative;
   margin-inline: -0.5rem;
   padding: 0.875rem 0.5rem 1.125rem;
@@ -942,16 +957,18 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   );
 }
 
+/* Tone inks mix from the text-role tokens, so they keep their light values
+   and lift with the dark shell. */
 .content-chapter--civic {
   --content-chapter-accent: var(--app-civic);
   --today-section-ink:
-    color-mix(in srgb, var(--app-civic) 72%, var(--app-ink));
+    color-mix(in srgb, var(--app-cool-text) 72%, var(--app-ink));
 }
 
 .content-chapter--forest {
   --content-chapter-accent: var(--app-brand-2);
   --today-section-ink:
-    color-mix(in srgb, var(--app-brand-2) 72%, var(--app-ink));
+    color-mix(in srgb, var(--app-forest-text) 72%, var(--app-ink));
 }
 
 .content-chapter--amber {
@@ -1519,25 +1536,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .pop-in { animation: none; }
 }
 
-/* Split-flap (Solari board) flip — a destination-board flap settling into
- * place. Used on the live transit board: keying the text by its value makes
- * React remount the cell when a bus moves, replaying the flip. */
-@keyframes flap {
-  0%   { transform: rotateX(-88deg); opacity: 0; }
-  55%  { transform: rotateX(12deg);  opacity: 1; }
-  100% { transform: rotateX(0deg);   opacity: 1; }
-}
-.flap {
-  /* display comes from the element's own class (e.g. `block` for a
-   * truncating destination) so transforms apply without breaking layout. */
-  transform-origin: center top;
-  backface-visibility: hidden;
-  animation: flap 380ms cubic-bezier(0.3, 0.85, 0.35, 1) both;
-}
-@media (prefers-reduced-motion: reduce) {
-  .flap { animation: none; }
-}
-
 /* ─────────────────────────────────────────────────────
  * EXPRESSIVE MOTION LAYER (v3) — the "alive" feel.
  * The app had functional motion (press states, fades) but not
@@ -2023,12 +2021,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   isolation: isolate;
 }
 .shader-rim::before {
+  /* A full-size overlay that takes the host's own corner shape and draws
+     only a top border, so the rule follows the rounded corners. A short
+     bar cannot: its radius is capped by its own height. */
   content: "";
   position: absolute;
-  inset: 0 0 auto;
-  height: 3px;
-  border-radius: inherit inherit 0 0;
-  background: var(--section-accent, var(--app-brand));
+  inset: 0;
+  border-top: 3px solid var(--section-accent, var(--app-brand));
+  border-radius: inherit;
   pointer-events: none;
   opacity: 0.9;
 }
@@ -2296,13 +2296,19 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   box-shadow: var(--app-edge), var(--app-elev-1);
 }
 .tactile-feature::before {
+  /* Same overlay as .shader-rim::before. The host does not need to clip, so
+     tap extenders and focus rings are never cut. */
   content: "";
   position: absolute;
-  inset: 0 0 auto;
-  height: 2px;
-  border-radius: inherit inherit 0 0;
-  background: var(--section-accent, var(--app-brand));
+  inset: 0;
+  border-top: 2px solid var(--section-accent, var(--app-brand));
+  border-radius: inherit;
   pointer-events: none;
+}
+/* The event poster has a 1px border and does not clip. Its rule reaches the
+   border edge so the two do not draw a double line around the corner. */
+.tactile-feature[data-event-poster]::before {
+  inset: -1px;
 }
 
 /* Accent focus signal for an interactive plate. */
@@ -2535,38 +2541,35 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 /* ─────────────────────────────────────────────────────
  * .reveal-up — opt-in entrance animation for lists of cards.
- * Children fade + lift on mount with a staggered cascade so
- * a shelf of 4-8 items reads as a swept reveal rather than a
- * pop-in. CSS-only; uses @starting-style so it fires once on
- * mount and never on prop changes or re-renders.
+ * Children fade + lift on mount with a short stagger. The whole
+ * reveal is budgeted to finish inside 300ms (200ms transition, 30ms
+ * steps, ladder capped at the fourth child), so a long list is
+ * readable at once instead of assembling row by row. CSS-only; uses
+ * @starting-style so it fires once on mount and never on prop changes
+ * or re-renders.
  *
  * Usage:
  *   <ul className="reveal-up">
  *     <li>…</li>     // delay 0ms
- *     <li>…</li>     // delay 50ms
- *     <li>…</li>     // delay 100ms
- *     …
+ *     <li>…</li>     // delay 30ms
+ *     <li>…</li>     // delay 60ms
+ *     <li>…</li>     // delay 90ms, shared by every later child
  *   </ul>
  * ───────────────────────────────────────────────────── */
 .reveal-up > * {
   opacity: 1;
   transform: translateY(0);
   transition:
-    opacity 360ms var(--app-ease-out),
-    transform 360ms var(--app-ease-out);
+    opacity 200ms var(--app-ease-out),
+    transform 200ms var(--app-ease-out);
 }
 @starting-style {
   .reveal-up > * { opacity: 0; transform: translateY(8px); }
 }
 .reveal-up > *:nth-child(1) { transition-delay: 0ms; }
-.reveal-up > *:nth-child(2) { transition-delay: 50ms; }
-.reveal-up > *:nth-child(3) { transition-delay: 100ms; }
-.reveal-up > *:nth-child(4) { transition-delay: 150ms; }
-.reveal-up > *:nth-child(5) { transition-delay: 200ms; }
-.reveal-up > *:nth-child(6) { transition-delay: 250ms; }
-.reveal-up > *:nth-child(7) { transition-delay: 300ms; }
-.reveal-up > *:nth-child(8) { transition-delay: 350ms; }
-.reveal-up > *:nth-child(n + 9) { transition-delay: 400ms; }
+.reveal-up > *:nth-child(2) { transition-delay: 30ms; }
+.reveal-up > *:nth-child(3) { transition-delay: 60ms; }
+.reveal-up > *:nth-child(n + 4) { transition-delay: 90ms; }
 @media (prefers-reduced-motion: reduce) {
   .reveal-up > * { transition: none; }
   @starting-style { .reveal-up > * { opacity: 1; transform: none; } }
@@ -3281,9 +3284,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .sv-stand em { font-style: normal; color: var(--app-ink-2); }
 .sv-gear {
   flex: none; width: 44px; height: 44px; display: grid; place-items: center;
-  border-radius: 50%; border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-sm); border: 1px solid var(--app-border);
   background: var(--app-bg-elevated); color: var(--app-ink-2);
+  transition: background-color var(--app-dur-fast) var(--app-ease-out);
 }
+/* Same hover feedback as the header controls. A utility on the link cannot do
+   it, because this unlayered background outranks layered utilities. */
+@media (hover: hover) { .sv-gear:hover { background: var(--app-bg-sunken); } }
 
 /* On now — a ruled running line under the masthead, not a boxed module. The
    names raise their card in the wallet below, so the strip and the deck are
@@ -3328,7 +3335,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .sv-evrow .cal { flex: none; width: 34px; text-align: center; font-family: var(--font-mono, monospace); }
 .sv-evrow .cal b { display: block; font-size: 15px; font-weight: 700; color: var(--app-ink); line-height: 1; }
-.sv-evrow .cal span { display: block; margin-top: 1px; font-size: 8px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--app-brand-press); }
+.sv-evrow .cal span { display: block; margin-top: 1px; font-size: 8px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--app-link); }
 .sv-evrow .who { min-width: 0; flex: 1; }
 .sv-evrow .who b {
   display: block; font-family: var(--font-sans-base), ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 14px;
@@ -3340,7 +3347,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   letter-spacing: .05em; text-transform: uppercase; color: var(--app-ink-3);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.sv-evrow .who span.is-today { color: var(--app-brand-press); }
+.sv-evrow .who span.is-today { color: var(--app-link); }
 .sv-evrow .arr { flex: none; color: var(--app-ink-3); font-weight: 700; font-size: 12px; }
 
 /* The almanac colophon: every teaser demoted to one quiet ledger. */
@@ -3496,7 +3503,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .map-location-offer-actions button:first-child {
   border-color: color-mix(in srgb, var(--app-brand) 38%, var(--app-border));
   background: color-mix(in srgb, var(--app-brand) 11%, var(--app-bg-elevated));
-  color: var(--app-brand-press);
+  color: var(--app-link);
 }
 .map-location-offer-actions button:focus-visible {
   outline: none;
@@ -3704,7 +3711,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-weight: 650;
 }
 .dock-search-loading svg {
-  color: var(--app-brand-press);
+  color: var(--app-link);
 }
 .dock-search-empty {
   padding: 14px;
@@ -3943,7 +3950,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   place-items: center;
   border-radius: 10px;
   background: color-mix(in srgb, var(--app-brand) 10%, transparent);
-  color: var(--app-brand-press);
+  color: var(--app-link);
 }
 .map-context-rail[data-map-state-line] .map-context-rail-icon {
   background: color-mix(in srgb, var(--app-cool) 12%, transparent);
@@ -3977,7 +3984,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .map-context-rail-open:hover .map-context-rail-arrow,
 .map-context-rail-open:focus-visible .map-context-rail-arrow {
-  color: var(--app-brand-press);
+  color: var(--app-link);
   transform: translateX(2px);
 }
 .map-context-rail-open:hover,
@@ -5407,7 +5414,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .map-edge-tool:hover,
 .map-edge-tool:focus-visible {
-  color: var(--app-brand-press);
+  color: var(--app-link);
 }
 .map-edge-tool:active {
   transform: scale(0.94);
@@ -6497,7 +6504,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background: color-mix(in srgb, var(--app-cool) 9%, var(--app-bg-sunken));
 }
 .map-entity-aerial-icon {
-  color: var(--app-brand-press);
+  color: var(--app-link);
   background: var(--app-brand-tint-6);
 }
 .map-entity-history-icon {
@@ -6642,7 +6649,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .map-finding-eyebrow {
   display: block;
   margin-top: 2px;
-  color: var(--app-brand-press);
+  color: var(--app-link);
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 9px;
   font-weight: 700;
@@ -6968,7 +6975,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   width: 32px;
   height: 32px;
   border-radius: var(--app-radius-sm);
-  color: var(--app-brand-press);
+  color: var(--app-link);
   background: color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated));
 }
 .map-list-place-visual {
@@ -7152,7 +7159,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: var(--app-ink);
 }
 .eb-title-on {
-  color: var(--app-brand-press);
+  color: var(--app-link);
 }
 
 /* The when-ribbon — date shortcuts within the event controls. It collapses
@@ -7398,11 +7405,26 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     z-index: var(--z-dropdown);
     top: calc(100% - 2px);
     right: 8px;
+    /* Never wider than the screen. Larger text wraps instead of clipping. */
+    max-width: calc(100vw - 16px);
+    flex-wrap: wrap;
     padding: 8px;
     border: 1px solid var(--app-border);
     border-radius: var(--app-radius-md);
-    background: var(--app-bg-elevated);
+    /* A popover is opaque: the event art must not show through its text. */
+    background: var(--app-bg-elevated-solid);
     box-shadow: var(--app-shadow-2);
+  }
+}
+
+@media (max-width: 400px) {
+  /* One row of Order and View needs about 383px of screen. Narrower phones
+     stack the two controls in a compact panel under the Display button, so
+     the panel and the Order menu it opens both stay on screen at 320px. */
+  .eb-display-panel {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 }
 
@@ -8013,7 +8035,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   justify-content: space-between;
   padding: .7rem 1rem;
   border-top: 1px solid var(--app-border);
-  color: var(--app-brand-press);
+  color: var(--app-link);
   font-size: .68rem;
   font-weight: 700;
 }
@@ -8037,34 +8059,18 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    The schedule is the product. Vendor imagery appears only when Radius holds
    explicit display permission; the fallback is a restrained route-board mark,
    never an unrelated food photo assigned to a real business. */
+/* The masthead sits on the page plane: a headline and the lineup, with no
+   card, wash, shadow, or accent stripe between the visitor and the stops. */
 .food-truck-masthead {
-  position: relative;
   display: grid;
   grid-template-columns: minmax(0, .86fr) minmax(18rem, 1.14fr);
   gap: clamp(1.25rem, 3vw, 2.5rem);
   align-items: center;
-  overflow: hidden;
-  padding: clamp(1.25rem, 4vw, 2rem);
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-xl);
   color: var(--app-ink);
-  background:
-    linear-gradient(120deg, color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 56%),
-    var(--app-bg-elevated);
-  box-shadow: var(--app-elev-2), var(--app-edge), var(--app-hi);
-  isolation: isolate;
-}
-
-.food-truck-masthead::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: .32rem;
-  background: var(--app-brand);
 }
 
 .food-truck-masthead-copy { align-self: center; max-width: 39rem; }
-.food-truck-masthead-copy > p:first-child { color: var(--app-brand-press); }
+.food-truck-masthead-copy > p:first-child { color: var(--app-link); }
 
 .food-truck-masthead-copy h1 {
   margin-top: .6rem;
@@ -8275,7 +8281,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--app-brand-press);
+  color: var(--app-link);
 }
 
 .food-truck-stop-date strong {
@@ -8643,8 +8649,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @media (max-width: 480px) {
   .food-truck-masthead {
     gap: .75rem;
-    padding: 1rem 1.1rem 1.1rem;
-    border-radius: var(--app-radius-lg);
   }
   .food-truck-masthead-copy h1 { font-size: clamp(2.4rem, 11vw, 3rem); }
   .food-truck-masthead-copy h1 + p { margin-top: .75rem; }

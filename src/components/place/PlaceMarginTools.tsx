@@ -34,7 +34,7 @@ export default function PlaceMarginTools({ slug }: { slug: string }) {
         type="button"
         onClick={() => setOpen(true)}
         className="tap-44 inline-flex items-center gap-2 self-start text-[13px] font-semibold"
-        style={{ color: "var(--app-cool)" }}
+        style={{ color: "var(--app-link)" }}
       >
         <NotebookPen className="h-4 w-4" strokeWidth={2.25} aria-hidden />
         Add a note or list
