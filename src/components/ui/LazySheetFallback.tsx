@@ -7,6 +7,7 @@ import {
   type RefObject,
 } from "react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 
 type Props = {
@@ -47,9 +48,10 @@ export default function LazySheetFallback({
   });
   const dismiss = historyLayer.dismiss;
 
+  // The same page lock the real sheet takes when its chunk arrives.
+  useScrollLock(true);
+
   useLayoutEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     closeRef.current?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -60,7 +62,6 @@ export default function LazySheetFallback({
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
     };
   }, [dismiss]);
 

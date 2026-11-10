@@ -123,7 +123,7 @@ export default function PlaceMiniMap({
                 {latitude} · {longitude}
               </p>
             </div>
-            <span className="shrink-0 text-xs font-semibold text-[color:var(--app-brand)]">
+            <span className="shrink-0 text-xs font-semibold text-[color:var(--app-link)]">
               Open map <span aria-hidden="true">↗</span>
             </span>
           </div>

@@ -8,6 +8,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type RefObject,
 } from "react";
 import { Search, Compass, ChevronLeft, X } from "lucide-react";
@@ -29,6 +30,7 @@ import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { installNativeReturnOwner, rememberNativeRequest } from "@/components/search/native-request-return";
 import { useNativeRequestReturn } from "@/components/search/useNativeRequestReturn";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 const SearchOverlay = lazy(() => import("@/components/search/SearchOverlay"));
 let searchLayerSequence = 0;
@@ -58,6 +60,26 @@ export function topBarFindTarget(pathname: string): FindTarget {
   return pathname === "/map" ? "map" : "global";
 }
 
+// The Find chord is Command on Apple keyboards and Control elsewhere. The
+// server cannot know which, so it renders no hint and the client fills it in
+// after hydration instead of printing a key the visitor may not have.
+const subscribeToNothing = () => () => undefined;
+const readAppleKeyboard = () => /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+const readUnknownKeyboard = () => null;
+
+/** Is this key event aimed at something the visitor is typing into? */
+function typingInto(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const role = target.getAttribute("role");
+  return target.tagName === "INPUT"
+    || target.tagName === "TEXTAREA"
+    || target.tagName === "SELECT"
+    || target.isContentEditable
+    || role === "textbox"
+    || role === "searchbox"
+    || role === "combobox";
+}
+
 /** Another active modal owns input until its existing dismissal completes. */
 function anotherModalOwnsInput(): boolean {
   return Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'))
@@ -81,6 +103,11 @@ export default function TopBar() {
   const router = useRouter();
   const toolsOpenerRef = useRef<HTMLAnchorElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
+  const appleKeyboard = useSyncExternalStore<boolean | null>(
+    subscribeToNothing,
+    readAppleKeyboard,
+    readUnknownKeyboard,
+  );
 
   useLayoutEffect(() => {
     const row = rowRef.current;
@@ -284,33 +311,41 @@ export default function TopBar() {
     setSearchOpen(false);
   }, [pathname, searchOpen]);
 
-  // Forward slash opens search globally
+  // Cmd/Ctrl+K and forward slash open search globally
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // Forward slash as a quick-open (don't trigger when typing into another input)
-      if (e.key === "/" && !searchOpen) {
-        const target = e.target as HTMLElement | null;
-        const tag = target?.tagName;
-        const role = target?.getAttribute("role");
-        const editable = tag === "INPUT"
-          || tag === "TEXTAREA"
-          || tag === "SELECT"
-          || target?.isContentEditable
-          || role === "textbox"
-          || role === "searchbox"
-          || role === "combobox";
-        if (!editable) {
-          e.preventDefault();
+      // The chord printed in the desktop search field. It cannot be typed as
+      // text, so unlike slash it also works from inside another field. The
+      // app takes it from the browser (Chrome and Firefox bind Ctrl+K to
+      // their own search field), and an open Find keeps its first opener.
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && (e.key === "k" || e.key === "K")) {
+        // The one exception: on an Apple keyboard the chord is Command, and
+        // Control+K inside a field is the system's delete-to-end-of-line.
+        if (appleKeyboard && !e.metaKey && typingInto(e.target)) return;
+        // Another open modal owns the keyboard, and Find will not open over
+        // it, so leave the chord to that modal and the browser.
+        if (anotherModalOwnsInput()) return;
+        e.preventDefault();
+        if (!searchOpen) {
           openPrimaryFind(
             document.activeElement instanceof HTMLElement ? document.activeElement : null,
             window.scrollY,
           );
         }
+        return;
+      }
+      // Forward slash as a quick-open (don't trigger when typing into another input)
+      if (e.key === "/" && !searchOpen && !typingInto(e.target)) {
+        e.preventDefault();
+        openPrimaryFind(
+          document.activeElement instanceof HTMLElement ? document.activeElement : null,
+          window.scrollY,
+        );
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openPrimaryFind, searchOpen]);
+  }, [appleKeyboard, openPrimaryFind, searchOpen]);
 
   return (
     <>
@@ -326,7 +361,7 @@ export default function TopBar() {
         <div
           ref={rowRef}
           data-app-topbar-row
-          className={`${styles.row} mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-1.5 sm:gap-2 lg:max-w-screen-lg lg:pl-24`}
+          className={`${styles.row} mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-1.5 sm:gap-2 lg:max-w-screen-lg`}
         >
           {isDeepPage ? (
             // Deep page: a clear way back, so no screen is a dead-end.
@@ -385,11 +420,11 @@ export default function TopBar() {
             </AppTransitionLink>
           )}
 
-          {/* Search trigger — full-width input-styled pill so the
-              header reads as "find anything" instead of three tiny
-              icons competing for attention. Fills the space between
-              the logo and the right-side chips, Apple-Maps style.
-              Tap anywhere on it opens the typeahead modal. */}
+          {/* Search trigger: a full-width, input-styled field with the same
+              8px corner as the controls beside it, so the header reads as
+              "find anything" instead of three tiny icons competing for
+              attention. It fills the space between the logo and the
+              right-side controls. Tap anywhere on it opens Find. */}
           {pageOwnsSearch ? (
             pathname === "/map" || pathname === "/compass" ? (
               // The map's search moved into the dock at the foot of the screen,
@@ -412,7 +447,7 @@ export default function TopBar() {
             )
           ) : (
             <>
-              {/* Mobile uses the circular header action rendered just after
+              {/* Mobile uses the 44px square header action rendered just after
                   this flexible spacer. Desktop gets the wider field because
                   the side rail leaves room for a descriptive search control. */}
               <div aria-hidden className="min-w-0 flex-1 lg:hidden" />
@@ -427,17 +462,20 @@ export default function TopBar() {
                   openPrimaryFind(event.currentTarget, returnScrollY);
                 }}
                 aria-label="Ask or find across Frederick County"
-                className={`${styles.search} tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] disabled:cursor-wait disabled:opacity-60 lg:flex`}
+                aria-keyshortcuts={appleKeyboard === null ? undefined : appleKeyboard ? "Meta+K" : "Control+K"}
+                className={`${styles.search} tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] disabled:cursor-wait disabled:opacity-60 lg:flex`}
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
               >
                 <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
                 <span className="truncate text-left">What do you need?</span>
-                <kbd
-                  className="ml-auto shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight"
-                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-                >
-                  ⌘K
-                </kbd>
+                {appleKeyboard === null ? null : (
+                  <kbd
+                    className="ml-auto shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight"
+                    style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+                  >
+                    {appleKeyboard ? "⌘K" : "Ctrl K"}
+                  </kbd>
+                )}
               </button>
             </>
           )}
@@ -459,7 +497,7 @@ export default function TopBar() {
                 pointerScrollYRef.current = null;
                 openPrimaryFind(event.currentTarget, returnScrollY);
               }}
-              className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 disabled:cursor-wait disabled:opacity-60 lg:hidden"
+              className="relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 disabled:cursor-wait disabled:opacity-60 lg:hidden"
               style={{
                 borderColor: searchOpen ? "var(--app-brand)" : "var(--app-border)",
                 color: searchOpen ? "var(--app-link)" : "var(--app-ink-2)",
@@ -583,9 +621,8 @@ function SearchOverlayFallback({
   });
   const dismiss = historyLayer.dismiss;
 
+  useScrollLock(true);
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     closeRef.current?.focus({ preventScroll: true });
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -594,10 +631,7 @@ function SearchOverlayFallback({
       dismiss();
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [dismiss]);
 
   return (
@@ -630,7 +664,7 @@ function SearchOverlayFallback({
           ref={closeRef}
           type="button"
           onClick={dismiss}
-          className="grid h-11 w-11 place-items-center rounded-full border"
+          className="grid h-11 w-11 place-items-center rounded-[var(--app-radius-sm)] border"
           style={{
             borderColor: "var(--app-border)",
             color: "var(--app-ink-2)",
@@ -644,7 +678,7 @@ function SearchOverlayFallback({
         <span className="sr-only">Loading search.</span>
         <div
           aria-hidden
-          className="h-12 w-full animate-pulse rounded-full"
+          className="h-12 w-full animate-pulse rounded-[var(--app-radius-md)]"
           style={{ background: "var(--app-bg-sunken)" }}
         />
         <div

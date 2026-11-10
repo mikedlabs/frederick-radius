@@ -9,7 +9,7 @@ import { FAMILY_BY_KEY, beerKey, type BeerWithBrewery } from "@/data/beers";
 import { useIsSaved, useToggleSave, savedChangeDescription } from "@/hooks/useSaved";
 import type { BreweryPhotoAsset } from "@/lib/beer/brewery-media";
 import { haptic } from "@/lib/haptics";
-import { toast } from "sonner";
+import { notifyError } from "@/lib/feedback/notify";
 
 /**
  * BeerSheet — a beer's detail in a bottom sheet, so tapping a pour opens its
@@ -29,6 +29,7 @@ export default function BeerSheet({
     <BottomDrawer
       open={beer !== null}
       onOpenChange={(open) => { if (!open) onClose(); }}
+      historyLayerId="beer-pour"
       title={beer?.name ?? "Beer"}
       bareHeader
     >
@@ -117,7 +118,7 @@ function BeerSheetBody({
               await toggle(!saved);
               haptic("light");
             } catch (error) {
-              toast.error(saved ? "Could not remove this pour" : "Could not save this pour", { description: savedChangeDescription(error) });
+              notifyError({ title: saved ? "Could not remove this pour" : "Could not save this pour", description: savedChangeDescription(error) });
             } finally { busyRef.current = false; setBusy(false); }
           }}
           disabled={busy}

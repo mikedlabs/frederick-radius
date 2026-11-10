@@ -159,7 +159,10 @@ describe("primary tab palette contrast", () => {
     });
     for (const surface of ["--app-bg", "--app-bg-elevated-solid", "--app-bg-sunken"]) {
       it(`${mode} text, links, and actual status copy clear AA on ${surface}`, () => {
-        for (const foreground of ["--app-ink", "--app-ink-2", "--app-ink-3", "--app-link", "--state-open", "--state-closing", "--app-danger-text", "--app-live-text"]) {
+        for (const foreground of [
+          "--app-ink", "--app-ink-2", "--app-ink-3", "--app-link", "--state-open", "--state-closing", "--app-danger-text", "--app-live-text",
+          "--app-brand-text", "--app-cool-text", "--app-accent-text", "--app-forest-text",
+        ]) {
           expect(contrast(values, foreground, surface), `${foreground} on ${surface}`).toBeGreaterThanOrEqual(4.5);
         }
         expect(contrast(values, "--app-control-border-safe", surface)).toBeGreaterThanOrEqual(3);
@@ -178,6 +181,19 @@ describe("primary tab palette contrast", () => {
     for (const token of ["--app-media-ink", "--app-brand", "--app-brand-press", "--app-on-brand"]) {
       expect(resolveColor(light, `var(${token})`)).toEqual(resolveColor(dark, `var(${token})`));
     }
+  });
+  it("gives colored text its own role tokens: the fill color in light, a lifted foreground in dark", () => {
+    const light = palette(false);
+    const dark = palette(true);
+    for (const [role, fill] of [
+      ["--app-brand-text", "--app-brand"], ["--app-cool-text", "--app-cool"],
+      ["--app-accent-text", "--app-accent"], ["--app-forest-text", "--app-brand-2"],
+    ]) {
+      expect(resolveColor(light, `var(${role})`), role).toEqual(resolveColor(light, `var(${fill})`));
+      expect(resolveColor(dark, `var(${role})`), role).not.toEqual(resolveColor(dark, `var(${fill})`));
+    }
+    expect(resolveColor(dark, "var(--app-brand-text)")).toEqual(resolveColor(dark, "var(--app-link)"));
+    expect(dark.get("--app-link")).toBe("#FFAAA0");
   });
 
   for (const mode of ["light", "dark"] as const) {

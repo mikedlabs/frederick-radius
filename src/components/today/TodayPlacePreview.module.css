@@ -66,9 +66,11 @@
   color: var(--app-ink-2);
 }
 
+/* The primary action gets the widest cell so "View place" holds one line at
+ * 320px. No label in this row forbids wrapping, so each grows with text size. */
 .actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
   border-top: 1px solid var(--app-border);
 }
 
@@ -91,6 +93,13 @@
 .actions > a:first-child {
   color: var(--app-on-brand);
   background: var(--app-brand);
+}
+
+/* Map's label drops under its pin before it would break inside the word. */
+.actions > a + a {
+  flex-wrap: wrap;
+  align-content: center;
+  row-gap: 2px;
 }
 
 .actions > * + * {
@@ -166,13 +175,51 @@
   min-width: 0;
 }
 
+/* Save reads as Map's twin: icon beside a label of the same size and weight.
+ * SaveButton keeps its own color, which is the saved-state signal. Nothing is
+ * cut off: a label that does not fit beside the icon drops under it, and one
+ * that is still too wide wraps, the same way Map grows with text size. */
 .saveControl > button {
+  flex-flow: row wrap;
+  align-content: center;
+  gap: 2px 6px;
   width: 100%;
   min-width: 0;
   min-height: 52px;
   border-radius: 0;
-  font-size: 0.8125rem;
-  line-height: 1.35;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.4;
+  padding: 4px;
+}
+
+.saveControl > button > span:not([aria-hidden]) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+/* Text enlarged through the root size leaves the card too few rem for three
+ * cells (a 320px phone at default size is 17.875rem, and "Map" starts to
+ * break inside the word near 16.5rem). The primary action takes its own row
+ * below 17rem. Text zoom that leaves rem alone keeps three cells and relies
+ * on the wrapping above. */
+@container not (min-width: 17rem) {
+  .actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .actions > a:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .actions > :nth-child(2) {
+    border-left: 0;
+  }
+
+  .actions > :nth-child(n + 2) {
+    border-top: 1px solid var(--app-border);
+  }
 }
 
 @container (min-width: 18rem) {

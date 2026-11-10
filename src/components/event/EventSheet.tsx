@@ -168,9 +168,9 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
        *  the footer needs enough padding to clear the floating BottomNav
        *  pill, where the place sheet's long scroll never parks there. */}
       <div className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[88px]">
-        {/* reveal-up: the sheet's blocks settle top-to-bottom on open —
-         *  the one cascade grammar every surface shares. */}
-        <div className="reveal-up px-5 pt-4">
+        {/* No entrance of its own: the sheet's spring is the entrance, so
+         *  the content is already in place as the sheet arrives. */}
+        <div className="px-5 pt-4">
           <header className="min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs font-semibold" style={{ color: "var(--app-ink-3)" }}>{categoryLabel}</p>

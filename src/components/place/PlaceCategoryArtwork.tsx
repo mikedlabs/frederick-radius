@@ -3,18 +3,16 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import CategoryIcon from "./CategoryIcon";
 import styles from "./NearbyDiscoveryCard.module.css";
 
-/** Decorative identity for a place without eligible photography. This is
- * category artwork, never a photograph, business logo or appearance claim. */
-export default function PlaceCategoryArtwork({ name, category, className = "" }: {
-  name: string;
+/** Stand-in for a place without eligible photography: a flat plate with the
+ * category icon. It says what kind of place this is and nothing about how the
+ * place looks. It is never a photograph, a business logo or a monogram. */
+export default function PlaceCategoryArtwork({ category, className = "" }: {
   category: string;
   className?: string;
 }) {
-  const initial = name.match(/[\p{L}\p{N}]/u)?.[0]?.toLocaleUpperCase("en-US") ?? "";
   const color = CATEGORY_BY_SLUG[category]?.color ?? "var(--app-brand)";
   return <span aria-hidden="true" data-place-category-art className={`${styles.categoryArt} ${className}`}
-    style={{ "--nearby-category-color": color } as CSSProperties}>
-    <span className={styles.categoryInitial}>{initial}</span>
+    style={{ "--place-category-color": color } as CSSProperties}>
     <CategoryIcon slug={category} className={styles.categoryArtIcon} strokeWidth={1.65} />
   </span>;
 }

@@ -59,6 +59,35 @@ describe("TopBar search ownership", () => {
     expect(topBar).toContain("{showMobileSearch && (");
   });
 
+  it("draws every bordered header control with the one utility corner", () => {
+    const source = ["TopBar.tsx", "LocationChip.tsx"]
+      .map((file) => readFileSync(`src/components/nav/${file}`, "utf8"))
+      .join("\n");
+    // Desktop search field, phone search, Tools, the loading Close, and the
+    // location chip. The round search and location buttons were drift beside
+    // the square status, appearance and Tools controls, never a decision.
+    const controls = source.split("\n").filter((line) => /className=.*\sh-(9|11)\s.*\sborder[\s"]/.test(line));
+    expect(controls).toHaveLength(5);
+    for (const control of controls) {
+      expect(control).toContain("rounded-[var(--app-radius-sm)]");
+      expect(control).not.toContain("rounded-full");
+    }
+  });
+
+  it("starts the desktop lockup on the reading column's left edge", () => {
+    const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
+    const chrome = readFileSync("src/components/nav/NavChrome.module.css", "utf8").replace(/\s+/g, " ");
+    const main = readFileSync("src/app/globals.css", "utf8").replace(/\s+/g, " ");
+
+    // A Tailwind padding utility on the row loses to `.bar .row` and did
+    // nothing for months; the rule lives beside the padding it overrides.
+    expect(topBar).not.toMatch(/data-app-topbar-row[\s\S]{0,200}\blg:pl-/);
+    expect(main).toContain("@media (min-width: 1024px) { .app-main-reading { padding-left: 6rem; padding-right: 1.25rem; } }");
+    expect(chrome).toContain(
+      "@media (min-width: 1024px) { .bar .row { padding-left: min(6rem, 96px); padding-right: max(1.25rem, env(safe-area-inset-right, 0px)); } }",
+    );
+  });
+
   it("keeps the mobile scope picker bounded with an explicit close action", () => {
     const location = readFileSync("src/components/nav/LocationChip.tsx", "utf8");
 

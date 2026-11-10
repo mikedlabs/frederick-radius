@@ -72,6 +72,41 @@ describe("bounded event preview photo policy", () => {
   });
 });
 
+describe("glance card venue and recurrence lines", () => {
+  const longVenue = { ...candidate, hero_image: undefined, hero_image_attribution: undefined,
+    venue_name: "JoJo's Restaurant & Tap House", is_recurring: true, recurrence_text: "Runs most days" };
+
+  it("prints a long venue with its town and no fixed width cap", () => {
+    render(longVenue);
+    const label = [...host.querySelectorAll("span")].find(node => !node.children.length && node.textContent === "JoJo's Restaurant & Tap House · Frederick")!;
+    expect(label).toBeDefined();
+    // It may shrink and truncate inside one card line, never at a fixed width.
+    expect(label.className).toContain("truncate");
+    expect(label.className).toContain("min-w-0");
+    expect(label.className).not.toContain("max-w-[");
+    expect(label.parentElement!.className).toContain("max-w-full");
+    factsSurvive();
+  });
+
+  it.each([
+    { label: "scheduled", patch: {} },
+    { label: "postponed", patch: { status: "postponed" as const } },
+  ])("gives recurrence its own line and starts no $label line with a separator", ({ patch }) => {
+    render({ ...longVenue, ...patch });
+    const recurrence = [...host.querySelectorAll("p")].find(node => node.textContent === "Runs most days")!;
+    expect(recurrence).toBeDefined();
+    expect(recurrence.previousElementSibling?.textContent).toContain("Wed OCT 10 · 7:00 PM–9:00 PM");
+    expect(recurrence.previousElementSibling?.textContent).not.toContain("Runs most days");
+    expect([...host.querySelectorAll("article p, article span")].filter(node => node.textContent?.trim().startsWith("·"))).toEqual([]);
+    if (patch.status) {
+      expect(host.textContent).toContain("Postponed");
+      // The text a screen reader reads keeps the space the flex gap shows.
+      expect(recurrence.previousElementSibling?.textContent).toContain("· Postponed");
+      expect(recurrence.previousElementSibling?.textContent).not.toContain("·Postponed");
+    }
+    factsSurvive();
+  });
+});
 
 describe("photo-forward discovery card contracts", () => {
   const owned = { ...candidate, venue_name: "Baker Park", venue_place_slug: "baker-park-frederick" };

@@ -2,7 +2,7 @@
 
 import { track } from "@/lib/track";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   AlertCircle,
   Bell,
@@ -233,6 +233,17 @@ function PhoneFeedbackCard() {
   );
 }
 
+/* A confirmation and a problem read differently at a glance. Both start from
+   a text-role token that flips with appearance. On its own tint the raw token
+   falls to 4.4:1 at 12px in dark appearance, so the text leans toward ink. */
+function noticeStyle(problem: boolean): CSSProperties {
+  const tone = `var(${problem ? "--app-danger-text" : "--app-forest-text"})`;
+  return {
+    background: `color-mix(in srgb, ${tone} 12%, transparent)`,
+    color: `color-mix(in srgb, ${tone} 70%, var(--app-ink))`,
+  };
+}
+
 function PushNotificationsCard() {
   const [support, setSupport] = useState<SupportState>("unknown");
   const [pubKey, setPubKey] = useState<string | null>(null);
@@ -244,12 +255,17 @@ function PushNotificationsCard() {
   const [quietEnd, setQuietEnd] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; problem: boolean } | null>(null);
+  const noticeTimer = useRef<number | undefined>(undefined);
 
-  const flash = useCallback((msg: string) => {
-    setToast(msg);
-    window.setTimeout(() => setToast(null), 2500);
+  // One timer at a time: a second message is not wiped early by the first
+  // message's timer. A problem stays long enough to read and act on.
+  const flash = useCallback((text: string, problem = false) => {
+    window.clearTimeout(noticeTimer.current);
+    setNotice({ text, problem });
+    noticeTimer.current = window.setTimeout(() => setNotice(null), problem ? 8000 : 4000);
   }, []);
+  useEffect(() => () => window.clearTimeout(noticeTimer.current), []);
 
   const hydrateExistingSubscription = useCallback(
     async (
@@ -360,12 +376,12 @@ function PushNotificationsCard() {
       const state = await hydrateExistingSubscription(subscription);
       if (state === "missing") {
         setSupport("needs-reconnect");
-        flash("This device needs a fresh notification connection.");
+        flash("This device needs a fresh notification connection.", true);
         return;
       }
       if (state === "unverified") {
         setSupport("verification-error");
-        flash("Couldn't verify this device yet. Your browser setup was not changed.");
+        flash("Couldn't verify this device yet. Your browser setup was not changed.", true);
         return;
       }
       flash("Notification connection verified.");
@@ -384,7 +400,7 @@ function PushNotificationsCard() {
       const retained = await reg.pushManager.getSubscription();
       if (retained?.endpoint === subscription.endpoint) {
         setSupport("verification-error");
-        flash("Couldn't renew this connection yet. Try again.");
+        flash("Couldn't renew this connection yet. Try again.", true);
         return;
       }
       replacement =
@@ -411,7 +427,7 @@ function PushNotificationsCard() {
         replacement = null;
         setSubscription(null);
         setSupport("ready");
-        flash("Couldn't reconnect notifications. Tap Turn on to try again.");
+        flash("Couldn't reconnect notifications. Tap Turn on to try again.", true);
         return;
       }
       setSubscription(replacement);
@@ -426,7 +442,7 @@ function PushNotificationsCard() {
       }
       setSubscription(null);
       setSupport("ready");
-      flash("Couldn't reconnect notifications. Tap Turn on to try again.");
+      flash("Couldn't reconnect notifications. Tap Turn on to try again.", true);
     } finally {
       setBusy(false);
     }
@@ -442,7 +458,7 @@ function PushNotificationsCard() {
         setSupport(permission === "denied" ? "blocked" : "ready");
         // "default" = the user dismissed the prompt without choosing. Say so,
         // rather than silently snapping back to the Turn-on button.
-        if (permission === "default") flash("Tap Turn on and choose Allow to get notifications.");
+        if (permission === "default") flash("Tap Turn on and choose Allow to get notifications.", true);
         return;
       }
       const reg = await navigator.serviceWorker.ready;
@@ -452,10 +468,10 @@ function PushNotificationsCard() {
         const state = await hydrateExistingSubscription(existing);
         if (state === "missing") {
           setSupport("needs-reconnect");
-          flash("This device needs a fresh notification connection.");
+          flash("This device needs a fresh notification connection.", true);
         } else if (state === "unverified") {
           setSupport("verification-error");
-          flash("Couldn't verify this device yet. Your browser setup was not changed.");
+          flash("Couldn't verify this device yet. Your browser setup was not changed.", true);
         }
         return;
       }
@@ -485,7 +501,7 @@ function PushNotificationsCard() {
       if (!res.ok) {
         await sub.unsubscribe().catch(() => false);
         createdSubscription = null;
-        flash("Couldn't save subscription. Try again later.");
+        flash("Couldn't save subscription. Try again later.", true);
         return;
       }
       setSubscription(sub);
@@ -497,7 +513,7 @@ function PushNotificationsCard() {
       if (createdSubscription) {
         await createdSubscription.unsubscribe().catch(() => false);
       }
-      flash("Notifications could not be turned on. Try again.");
+      flash("Notifications could not be turned on. Try again.", true);
     } finally {
       setBusy(false);
     }
@@ -538,12 +554,12 @@ function PushNotificationsCard() {
           }),
         });
         if (!response.ok) {
-          flash("That topic change did not save. Try it again.");
+          flash("That topic change did not save. Try it again.", true);
           return false;
         }
         return true;
       } catch {
-        flash("That topic change did not save. Try it again.");
+        flash("That topic change did not save. Try it again.", true);
         return false;
       } finally {
         setSaving(false);
@@ -593,7 +609,7 @@ function PushNotificationsCard() {
       } catch {
         setQuietStart(previousStart);
         setQuietEnd(previousEnd);
-        flash("That quiet-hours change did not save. Try it again.");
+        flash("That quiet-hours change did not save. Try it again.", true);
       } finally {
         setSaving(false);
       }
@@ -612,7 +628,7 @@ function PushNotificationsCard() {
       });
       if (!res.ok) {
         const json = (await res.json().catch(() => ({ error: "" }))) as { error?: string };
-        flash(json.error ? `Send failed: ${json.error}` : "Send failed.");
+        flash(json.error ? `Send failed: ${json.error}` : "Send failed.", true);
         return;
       }
       haptic("success");
@@ -978,15 +994,16 @@ function PushNotificationsCard() {
         </section>
       )}
 
-      {/* Always-present live region so screen readers announce the toast
+      {/* Always-present live region so screen readers announce the message
           when it appears (a conditionally-mounted region can be missed). */}
       <p
         role="status"
         aria-live="polite"
-        className={toast ? "mt-3 rounded-[var(--app-radius-md)] px-3 py-2 text-[12px] font-medium" : "sr-only"}
-        style={toast ? { background: "color-mix(in srgb, var(--app-cool) 12%, transparent)", color: "var(--app-cool)" } : undefined}
+        data-notice-tone={notice ? (notice.problem ? "problem" : "done") : undefined}
+        className={notice ? "mt-3 rounded-[var(--app-radius-md)] px-3 py-2 text-[12px] font-medium" : "sr-only"}
+        style={notice ? noticeStyle(notice.problem) : undefined}
       >
-        {toast}
+        {notice?.text}
       </p>
     </article>
   );

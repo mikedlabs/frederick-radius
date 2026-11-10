@@ -357,7 +357,7 @@ export const CURATED_TRAILS: Trail[] = [
   // ── C&O Canal Towpath segments — Frederick County ──────────────
   {
     id: "co-brunswick-segment",
-    name: "C&O Canal Towpath — Brunswick segment",
+    name: "C&O Canal Towpath, Brunswick segment",
     park: "C&O Canal National Historical Park",
     system: "NPS",
     surface: "Crushed stone",
@@ -374,7 +374,7 @@ export const CURATED_TRAILS: Trail[] = [
   },
   {
     id: "co-point-of-rocks",
-    name: "C&O Canal Towpath — Point of Rocks segment",
+    name: "C&O Canal Towpath, Point of Rocks segment",
     park: "C&O Canal National Historical Park",
     system: "NPS",
     surface: "Crushed stone",
@@ -391,7 +391,7 @@ export const CURATED_TRAILS: Trail[] = [
   },
   {
     id: "co-lander-lockhouse",
-    name: "C&O Canal Towpath — Lander Lockhouse",
+    name: "C&O Canal Towpath, Lander Lockhouse",
     park: "C&O Canal National Historical Park",
     system: "NPS",
     surface: "Crushed stone",
@@ -672,7 +672,7 @@ export const CURATED_TRAILS: Trail[] = [
   // ── Appalachian Trail (brief Frederick County overlap) ─────────
   {
     id: "at-cramptons-gap",
-    name: "Appalachian Trail — Crampton's Gap",
+    name: "Appalachian Trail, Crampton's Gap",
     park: "South Mountain State Park",
     system: "NPS / MD DNR",
     surface: "Natural / rock",

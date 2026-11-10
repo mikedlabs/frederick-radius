@@ -19,10 +19,13 @@ import { ArrowDownAZ, Check, ChevronDown } from "lucide-react";
  * Behavior:
  *   - Closed by default; clicking the trigger toggles open state.
  *   - Clicking an option commits the value and closes.
- *   - Esc closes; outside-click closes; Enter/Space on the trigger
- *     toggles. Roving focus inside the menu uses native browser
- *     tab order — the items are real buttons in DOM order so VO/NVDA
- *     announce them correctly.
+ *   - Esc closes; a press outside closes; focus moving on to another
+ *     control closes; Enter/Space on the trigger toggles. Roving focus
+ *     inside the menu uses native browser tab order — the items are
+ *     real buttons in DOM order so VO/NVDA announce them correctly.
+ *   - The Escape this menu consumes is marked `defaultPrevented`, so a
+ *     disclosure that contains it (the Events Display panel) leaves
+ *     that press alone and stays open.
  *   - The selected option is highlighted with the brand accent so
  *     a returning user sees their current sort in one glance.
  *
@@ -64,31 +67,49 @@ export default function SortDropdown<K extends string = string>({
   const choicesId = useId();
   const current = options.find((o) => o.key === value) ?? options[0];
 
-  // Outside-click + Escape closes the menu. Bound only while open
-  // so we don't add listeners pages don't need.
+  // An outside press + Escape closes the menu. Bound only while open
+  // so we don't add listeners pages don't need. The press is pointerdown,
+  // not mousedown: a finger that starts a scroll never sends mousedown,
+  // which left the menu open behind a swipe.
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => {
+    const onDown = (e: PointerEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      setOpen(false);
+      // Hand focus back only when this control held it. Escape pressed
+      // from elsewhere on the page must not pull focus here.
+      if (ref.current?.contains(document.activeElement)) triggerRef.current?.focus();
     };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    // Capture, so the mark is set before an enclosing layer's bubble-phase
+    // Escape listener reads it.
+    document.addEventListener("keydown", onKey, true);
     return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey, true);
     };
   }, [open]);
 
   return (
-    <div ref={ref} className={`relative inline-block ${className}`}>
+    <div
+      ref={ref}
+      className={`relative inline-block ${className}`}
+      // Tabbing past the last choice leaves the menu, so it closes and
+      // aria-expanded cannot stay true behind the user. Safari does not focus
+      // a button on press; it reports no target, or parks focus on a focusable
+      // ancestor (the page's <main tabindex="-1">). Neither closes the menu,
+      // or the choice would unmount between pointerdown and click.
+      onBlur={(e) => {
+        const next = e.relatedTarget;
+        if (next instanceof Node && !e.currentTarget.contains(next) && !next.contains(e.currentTarget)) setOpen(false);
+      }}
+    >
       <button
         ref={triggerRef}
         type="button"
@@ -126,7 +147,9 @@ export default function SortDropdown<K extends string = string>({
           id={choicesId}
           role="group"
           aria-label={label}
-          className={`absolute z-[var(--z-dropdown)] mt-1 min-w-[180px] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-1 shadow-[var(--app-shadow-2)] ${
+          // A popover is opaque (the solid token) and never wider than the
+          // screen less its gutters.
+          className={`absolute z-[var(--z-dropdown)] mt-1 min-w-[180px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-1 shadow-[var(--app-shadow-2)] ${
             align === "right" ? "right-0" : "left-0"
           }`}
           style={{ borderColor: "var(--app-border)" }}
@@ -145,9 +168,10 @@ export default function SortDropdown<K extends string = string>({
                 }}
                 className="flex min-h-[44px] w-full items-start gap-2 px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--app-bg-sunken)]"
                 style={{
-                  // Brick on its own 10% tint is 3.83:1 at 13px. The pressed
-                  // token is the text-on-light signal (5.80:1 on that ground).
-                  color: active ? "var(--app-brand-press)" : "var(--app-ink)",
+                  // Brick on its own 10% tint is 3.83:1 at 13px. The link token
+                  // is the pressed brick in light (5.80:1 on that ground) and
+                  // the light coral in dark, where the pressed brick is too dim.
+                  color: active ? "var(--app-link)" : "var(--app-ink)",
                   background: active
                     ? "color-mix(in srgb, var(--app-brand) 10%, transparent)"
                     : "transparent",

@@ -239,7 +239,7 @@ export default function LiveGooglePlaceContext({
             .catch(() => setStatus("error"));
         }}
         className="tap-44-y inline-flex items-center gap-1.5 text-sm font-semibold disabled:opacity-60"
-        style={{ color: "var(--app-brand-press)" }}
+        style={{ color: "var(--app-link)" }}
       >
         {status === "loading" ? "Checking current details…" : "Check current Google details"}
         <ExternalLink className="h-3.5 w-3.5" aria-hidden />
