@@ -29,6 +29,8 @@ export default function SaveButton({
 }: {
   refType: "place" | "event" | "radius";
   refId: string;
+  /** Always "Save {name}". The control strips that one leading verb, so a
+   *  title that itself begins with "Save" keeps its own words. */
   label: string;
   /** Render as a complete mobile action-bar cell so the visible label is
    *  inside the same button hit area as the bookmark icon. */

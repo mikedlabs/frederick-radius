@@ -104,11 +104,14 @@ function TapRow({ beer, savedKey, index }: { beer: BeerWithBrewery; savedKey: st
             try {
               if (await remove(false)) throw new Error("Removal not confirmed");
               // The card's only control leaves with it. Land on the section,
-              // or on the Saved heading when this was the last pour, and not
-              // on a neighbor's Remove, where a second Enter would delete it.
+              // or, when this was the last pour, on the Saved heading or the
+              // /beer Find tab that holds this section. Never on a
+              // neighbor's Remove, where a second Enter would delete it.
               if (hadFocus) window.requestAnimationFrame(() => {
                 if (document.activeElement !== button && document.activeElement !== document.body) return;
-                (document.getElementById("my-taps") ?? document.getElementById("saved-page-heading"))?.focus();
+                (document.getElementById("my-taps")
+                  ?? document.getElementById("saved-page-heading")
+                  ?? document.getElementById("beer-mode-find"))?.focus();
               });
               notifyRemoved({
                 label: beer.name,

@@ -11,7 +11,7 @@ type ToastAction = { label: string; onClick: () => void };
 
 /** The thing a save toast is about. Toasts for one item share an id, so
  *  toggling it again replaces its toast instead of stacking a second one. */
-export type SavedItem = { type: "place" | "event" | "radius" | "beer"; id: string };
+export type SavedItem = { type: "place" | "event" | "radius" | "beer" | "outing"; id: string };
 
 const itemToastId = (item?: SavedItem) => (item ? `save:${item.type}:${item.id}` : undefined);
 const undoAction = (onUndo: () => void): ToastAction => ({ label: "Undo", onClick: onUndo });

@@ -113,7 +113,7 @@ describe("saved-outing real-store controls and return cards", () => {
     await act(async () => button("Remove outing from Saved").click());
     expect(host.querySelector('[role="status"]')?.textContent).toContain("Removed from Saved");
     expect(mocks.toast).toHaveBeenCalledTimes(1);
-    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Our Brunswick date", { duration: 6000, action: { label: "Undo", onClick: expect.any(Function) } });
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Our Brunswick date", { id: `save:outing:${token}`, duration: 6000, action: { label: "Undo", onClick: expect.any(Function) } });
     const undo = mocks.toast.mock.calls[0][1].action.onClick as () => void;
     await act(async () => undo());
     expect(button("Remove outing from Saved").getAttribute("aria-pressed")).toBe("true");
@@ -130,6 +130,17 @@ describe("saved-outing real-store controls and return cards", () => {
     // Nothing was restored, and no control claims a saved outing.
     expect(JSON.parse(localStorage.getItem(SAVED_OUTINGS_KEY)!)).toEqual([]);
     expect(host.querySelector('button[aria-pressed="true"]')).toBeNull();
+  });
+
+  it("restores the saved title, not a planner title edited since the save", async () => {
+    await render();
+    await act(async () => button("Save outing").click());
+    await act(async () => root.render(<SaveOutingButton token={token} title="Renamed plan" />));
+    mocks.toast.mockClear();
+    await act(async () => button("Remove outing from Saved").click());
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Our Brunswick date", expect.objectContaining({ id: `save:outing:${token}` }));
+    await act(async () => mocks.toast.mock.calls[0][1].action.onClick());
+    expect(JSON.parse(localStorage.getItem(SAVED_OUTINGS_KEY)!)).toEqual([{ token, title: "Our Brunswick date", saved_at: expect.any(String) }]);
   });
 
   it("reopens the identical ordered dated choices after navigation and a fresh Saved mount", async () => {
@@ -222,7 +233,7 @@ describe("saved-outing real-store controls and return cards", () => {
     await act(async () => saveOuting(token, "Our Brunswick date"));
     await act(async () => root.render(<SavedList />));
     await act(async () => button("Remove outing: Our Brunswick date").click());
-    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Our Brunswick date", { duration: 6000, action: { label: "Undo", onClick: expect.any(Function) } });
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Our Brunswick date", { id: `save:outing:${token}`, duration: 6000, action: { label: "Undo", onClick: expect.any(Function) } });
     expect(host.querySelector("[data-saved-empty-state]")).not.toBeNull();
     expect(host.textContent).toContain("Save an outing");
     expect(JSON.parse(localStorage.getItem(SAVED_OUTINGS_KEY)!)).toEqual([]);

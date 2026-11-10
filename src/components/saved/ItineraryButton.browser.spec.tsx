@@ -210,7 +210,22 @@ describe("Event detail save uses the Saved tab's device store", () => {
     await act(async () => mocks.toast.mock.calls[0][1].action.onClick());
     expect(saved()).toEqual([]);
     expect(button().getAttribute("aria-pressed")).toBe("false");
-    expect(mocks.toast.error).toHaveBeenCalledWith("Could not undo this change", expect.objectContaining({ duration: 8000 }));
+    expect(mocks.toast.error).toHaveBeenCalledWith("Could not undo this change", expect.objectContaining({
+      duration: 8000, action: { label: "Try again", onClick: expect.any(Function) },
+    }));
+    // The card may have unmounted by now, so the error toast is the only way
+    // back. Its retry restores the event.
+    vi.restoreAllMocks();
+    await act(async () => root.render(<SavedSnapshot />));
+    await act(async () => mocks.toast.error.mock.calls.at(-1)![1].action.onClick());
+    expect(saved()).toEqual([{ type: "event", id: EVENT, saved_at: expect.any(String) }]);
+  });
+
+  it("offers no retry when an ordinary save or removal fails", async () => {
+    await render();
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("Blocked", "SecurityError"); });
+    await click();
+    expect(mocks.toast.error).toHaveBeenCalledWith("Could not save this event", expect.not.objectContaining({ action: expect.anything() }));
   });
 
   it("reports unsupported coordination without changing readable event saves", async () => {

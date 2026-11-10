@@ -520,7 +520,7 @@ export default async function EventPage({
             <p className="text-xs font-semibold" style={{ color: "var(--app-ink-3)" }}>{cat?.name ?? "Event"}</p>
             <div className="flex shrink-0 items-center gap-1">
               <EventActions event={event} actions={["share"]} />
-              <div className="hidden lg:block"><SaveButton refType="event" refId={event.slug} label={eventDisplayTitle(event)} /></div>
+              <div className="hidden lg:block"><SaveButton refType="event" refId={event.slug} label={`Save ${eventDisplayTitle(event)}`} /></div>
             </div>
           </div>
           <h1 className="break-words text-[1.625rem] font-semibold leading-tight tracking-tight sm:text-[2rem]" style={{ color: "var(--app-ink)" }}>{eventDisplayTitle(event)}</h1>
@@ -1125,7 +1125,7 @@ export default async function EventPage({
             )}
           </>
         )}
-        <SaveButton refType="event" refId={event.slug} label={eventDisplayTitle(event)} barLabel="Save" />
+        <SaveButton refType="event" refId={event.slug} label={`Save ${eventDisplayTitle(event)}`} barLabel="Save" />
       </MobileActionBar>
     </div>
   );

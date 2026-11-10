@@ -34,12 +34,15 @@ export default function SaveOutingButton({ token, title, disabled = false }: { t
     setBusy(true);
     setError(null);
     setMessage(null);
+    // Undo restores the saved row as it was. The planner title can have
+    // changed since the outing was saved, so read the stored one first.
+    const savedTitle = saved.outings.find((outing) => outing.token === token)?.title ?? title;
     try {
       if (isSaved) await removeOuting(token);
       else await saveOuting(token, title);
       const confirmation = { saved: !isSaved, text: isSaved ? "Removed from Saved on this device." : "Saved on this device. Open this outing from Saved." };
       setMessage(confirmation);
-      if (isSaved) notifyRemoved({ label: title, onUndo: () => void restoreOuting(token, title) });
+      if (isSaved) notifyRemoved({ label: savedTitle, onUndo: () => void restoreOuting(token, savedTitle), item: { type: "outing", id: token } });
       else toast(confirmation.text);
     } catch (failure) {
       setError(savedOutingErrorDescription(failure));

@@ -40,6 +40,9 @@ export default function ItineraryButton({
       notifyError({
         title: undoing ? "Could not undo this change" : next ? "Could not save this event" : "Could not remove from Saved",
         description: savedChangeDescription(error),
+        // Undo usually fires after the card has left the screen, so a failed
+        // restore keeps a way back on the error toast itself.
+        onRetry: undoing ? () => void change(next, true) : undefined,
       });
     } finally {
       busyRef.current = false;

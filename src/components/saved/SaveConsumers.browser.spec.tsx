@@ -15,7 +15,7 @@ import SavedWallet from "./SavedWallet";
 import SavedEventWallet from "./SavedEventWallet";
 
 const mocks = vi.hoisted(() => ({
-  saved: false, toggle: vi.fn(), toggleLocal: vi.fn(), add: vi.fn(),
+  saved: false, toggle: vi.fn(), toggleLocal: vi.fn(), add: vi.fn(), toggleTargets: [] as string[],
   local: [] as Array<{ type: string; id: string; saved_at: string }>,
   failure: null as null | ((description: string) => void),
   query: new URLSearchParams(), replace: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock("@/hooks/useFollows", () => ({
   useFollowMutationState: () => "idle",
   useToggleFollow: (_slug: string, _source: string, failure?: (description: string) => void) => { mocks.failure = failure ?? null; return mocks.toggle; },
 }));
-vi.mock("@/hooks/useSaved", () => ({ savedChangeDescription: () => "We could not confirm this change. Please try again.", useMounted: () => true, useSavedList: () => mocks.local, useIsSaved: () => mocks.saved, useToggleSave: () => mocks.toggleLocal, addSaved: (...args: unknown[]) => mocks.add(...args) }));
+vi.mock("@/hooks/useSaved", () => ({ savedChangeDescription: () => "We could not confirm this change. Please try again.", useMounted: () => true, useSavedList: () => mocks.local, useIsSaved: () => mocks.saved, useToggleSave: (_type: string, id: string) => { mocks.toggleTargets.push(id); return mocks.toggleLocal; }, addSaved: (...args: unknown[]) => mocks.add(...args) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace }), useSearchParams: () => mocks.query }));
 vi.mock("@/components/place/PlaceMedallion", () => ({ PlaceMedallion: () => <span /> }));
 vi.mock("@/components/place/PlacePhoto", () => ({ default: () => <span /> }));
@@ -47,7 +47,7 @@ describe("Existing save consumers report only confirmed changes", () => {
   let container: HTMLDivElement;
   let root: Root;
   beforeEach(() => {
-    vi.clearAllMocks(); mocks.saved = false; mocks.failure = null; mocks.local = []; mocks.query = new URLSearchParams();
+    vi.clearAllMocks(); mocks.saved = false; mocks.failure = null; mocks.local = []; mocks.toggleTargets = []; mocks.query = new URLSearchParams();
     mocks.toggle.mockReset(); mocks.toggleLocal.mockReset(); mocks.add.mockReset();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ place: null })));
     container = document.createElement("div"); document.body.append(container); root = createRoot(container);
@@ -137,6 +137,19 @@ describe("Existing save consumers report only confirmed changes", () => {
     mocks.toggleLocal.mockImplementationOnce(refusal);
     await act(async () => mocks.toast.mock.calls[0][1].action.onClick());
     expect(mocks.toast.error).toHaveBeenCalledWith("Could not undo this change", expect.objectContaining({ duration: 8000, action: expect.objectContaining({ label: "Try again" }) }));
+  });
+  it("removes and restores the saved row of an event saved under an older slug", async () => {
+    mocks.toggleLocal.mockResolvedValueOnce(false);
+    await render(<SavedEventWallet events={[event]} savedIds={{ [event.slug]: "old-test-event" }} now={new Date("2026-10-08T13:00:00Z")} startRaised />);
+    // The card's device toggle is bound to the saved row, not the renamed slug.
+    expect(new Set(mocks.toggleTargets)).toEqual(new Set(["old-test-event"]));
+    await click("Remove Test event from saved");
+    expect(mocks.toggleLocal).toHaveBeenCalledWith(false);
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Test event", expect.objectContaining({ id: "save:event:old-test-event" }));
+    mocks.toggleLocal.mockResolvedValueOnce(true);
+    await act(async () => mocks.toast.mock.calls[0][1].action.onClick());
+    expect(mocks.toggleLocal).toHaveBeenLastCalledWith(true);
+    expect(new Set(mocks.toggleTargets)).toEqual(new Set(["old-test-event"]));
   });
   it("keeps an event wallet card and reports rejected device removal", async () => {
     mocks.toggleLocal.mockImplementation(refusal);

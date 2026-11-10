@@ -64,6 +64,20 @@ export const SavedPourRemovalOffersUndo: Story = {
     await expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual([{ type: "beer", id: beerKey(beer), saved_at: expect.any(String) }]);
   },
 };
+/** On /beer the section sits in the Find tab and there is no Saved heading,
+ *  so removing the last pour by keyboard hands focus to that tab. */
+export const LastPourRemovalFocusesBeerTab: Story = {
+  beforeEach: () => sample(true),
+  render: () => <><button type="button" id="beer-mode-find">Find a beer</button><MyTaps /></>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const remove = await canvas.findByRole("button", { name: `Remove ${beer.name} from saved pours` });
+    remove.focus();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(canvas.queryByRole("region", { name: "Saved pours" })).not.toBeInTheDocument());
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Find a beer" })).toHaveFocus());
+  },
+};
 export const SavedPourRemoval: Story = {
   beforeEach: () => sample(true),
   render: () => <MyTaps />,

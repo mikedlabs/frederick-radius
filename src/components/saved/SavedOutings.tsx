@@ -29,7 +29,7 @@ export default function SavedOutings({ snapshot }: { snapshot: SavedOutingsSnaps
       await removeOuting(token);
       // Undo runs after the card is gone, and after this section is gone when
       // it was the last outing, so restoreOuting reports a failure as a toast.
-      notifyRemoved({ label: title, onUndo: () => void restoreOuting(token, title) });
+      notifyRemoved({ label: title, onUndo: () => void restoreOuting(token, title), item: { type: "outing", id: token } });
       if (restoreFocus) window.requestAnimationFrame(() => {
         // The confirmed store update removes the old control. Orient keyboard
         // users after React commits, including the last-card empty state.

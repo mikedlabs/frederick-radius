@@ -182,6 +182,22 @@ export async function fetchSavedEventsBySlugs(
  * stay stale forever. Unresolved slugs are deliberately untouched, preserving
  * the last known card while a provider or archive is temporarily unavailable.
  */
+/** The saved row id per resolved event slug. A row saved under an older
+ * event slug hydrates to the renamed event, so its card must remove and
+ * restore that row and not write a new one under the current slug. */
+export function savedEventRowIds(
+  items: readonly { type: string; id: string }[],
+  eventsBySlug: ReadonlyMap<string, { slug: string }>,
+): Record<string, string> {
+  const ids: Record<string, string> = {};
+  for (const item of items) {
+    if (item.type !== "event") continue;
+    const event = eventsBySlug.get(item.id);
+    if (event && !(event.slug in ids)) ids[event.slug] = item.id;
+  }
+  return ids;
+}
+
 export function mergeSavedEventHydration(
   previous: ReadonlyMap<string, EventWithMeta>,
   result: EventsBySlugsResolution,
@@ -889,6 +905,13 @@ export default function SavedList({
     for (const i of items) if (i.type === "event") m[i.id] = i.saved_at;
     return m;
   }, [items]);
+  // The saved row id per resolved event slug. A row saved under an older
+  // event slug renders the renamed event, and removal and Undo must still
+  // change that row rather than write a new one under the current slug.
+  const savedIdByEventSlug = useMemo(
+    () => savedEventRowIds(items, eventsBySlug),
+    [items, eventsBySlug],
+  );
 
   // The whole-page skeleton is for ARRIVAL only: the first paint on a device
   // whose saved slugs have not resolved yet. It used to gate on the exact
@@ -1152,7 +1175,7 @@ export default function SavedList({
               <Skeleton.Block height={62} round="var(--app-radius-md)" />
             </div>
           ) : upcomingEvents.length > 0 ? (
-            <SavedEventWallet events={upcomingEvents} savedAt={savedAtByEventSlug} now={now} openSlug={journey.eventSlug} onOpenSlug={(eventSlug) => updateJourney({ eventSlug })} />
+            <SavedEventWallet events={upcomingEvents} savedAt={savedAtByEventSlug} savedIds={savedIdByEventSlug} now={now} openSlug={journey.eventSlug} onOpenSlug={(eventSlug) => updateJourney({ eventSlug })} />
           ) : events.length > 0 ? (
             <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
               There are no upcoming events. Your saved events have all passed.
@@ -1187,6 +1210,7 @@ export default function SavedList({
                   <SavedEventWallet
                     events={pastEvents}
                     savedAt={savedAtByEventSlug}
+                    savedIds={savedIdByEventSlug}
                     now={now}
                     startRaised={false}
                     openSlug={journey.pastEventSlug}
