@@ -180,9 +180,16 @@ describe("Event Display disclosure dismissal", () => {
     order().focus();
     await act(async () => { order().dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })); });
     expect(display().open).toBe(true);
-    await act(async () => { result().dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })); });
+    // Model the whole press: the browser focuses the pressed control after
+    // pointerdown. Then wait a task so a deferred focus move would show.
+    await act(async () => {
+      result().dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+      result().dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      result().focus();
+    });
+    await settle();
     expect(display().open).toBe(false);
-    expect(document.activeElement).not.toBe(summary());
+    expect(document.activeElement).toBe(result());
   });
 
   it("closes the open Order menu with Display when a finger starts a scroll outside", async () => {

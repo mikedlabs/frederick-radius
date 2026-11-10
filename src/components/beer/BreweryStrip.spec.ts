@@ -40,7 +40,15 @@ describe("BreweryStrip", () => {
     // The card title is the label. The mark fallback must not print the name
     // and a "Frederick County brewery" line a second time inside the image slot.
     expect(html).not.toContain("Frederick County brewery");
-    expect(html.match(/>Olde Mother Brewing</g)).toHaveLength(1);
+    // React escapes text nodes, so compare against the escaped form of each
+    // name ("Brewer's Alley" renders as "Brewer&#x27;s Alley").
+    const escapeText = (text: string) =>
+      text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+    const textNodes = [...html.matchAll(/>([^<]+)</g)].map((match) => match[1]);
+    for (const brewery of BREWERIES) {
+      const occurrences = textNodes.filter((text) => text === escapeText(brewery.name)).length;
+      expect(occurrences, brewery.name).toBe(1);
+    }
   });
 
   it("shows every taproom in a three-column grid from the lg breakpoint", () => {

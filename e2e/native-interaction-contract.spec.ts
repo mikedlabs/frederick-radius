@@ -252,6 +252,10 @@ test("the place-page Save CTA names its pending action immediately", async ({
 });
 
 const SHEET_EVENT_TITLE = "Interaction contract event";
+/** The declared fixture's own card. /events renders its first cards from the
+ * server archive, which page routing cannot replace, so the first card on the
+ * page can be a real event until the routed browse request lands. */
+const SHEET_EVENT_TRIGGER = 'article a[href^="/events/interaction-contract-event"]';
 
 /** One clearly fictional event behind the real Events page, card, and sheet.
  * Only its HTTP record is controlled; the shell under test is the shipped one. */
@@ -290,7 +294,7 @@ function readSheet(page: Page): Promise<SheetGeometry | null> {
  * entrance has finished, so a rest position means something. */
 async function openDeclaredEventSheet(page: Page): Promise<SheetGeometry> {
   await page.goto("/events", { waitUntil: "domcontentloaded" });
-  const trigger = page.locator('article a[href^="/events/"]').first();
+  const trigger = page.locator(SHEET_EVENT_TRIGGER).first();
   await expect(trigger).toBeVisible();
   await trigger.scrollIntoViewIfNeeded();
   await trigger.click();
@@ -364,7 +368,7 @@ test("declared fixture: an event sheet keeps its route and restores the event tr
   await routeDeclaredSheetEvent(page);
 
   await page.goto("/events", { waitUntil: "domcontentloaded" });
-  const trigger = page.locator('article a[href^="/events/"]').first();
+  const trigger = page.locator(SHEET_EVENT_TRIGGER).first();
   await expect(trigger).toBeVisible();
   await trigger.scrollIntoViewIfNeeded();
   const scrollY = await page.evaluate(() => window.scrollY);
@@ -448,7 +452,7 @@ test("declared fixture: the page holds still behind an open sheet", async ({
   // A short viewport keeps the page scrollable whatever the Events layout is.
   await page.setViewportSize({ width: 390, height: 560 });
   await page.goto("/events", { waitUntil: "domcontentloaded" });
-  const trigger = page.locator('article a[href^="/events/"]').first();
+  const trigger = page.locator(SHEET_EVENT_TRIGGER).first();
   await expect(trigger).toBeVisible();
   // Start from a scrolled position that has stopped moving, so the page has
   // room to travel in both directions if the lock fails.

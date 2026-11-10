@@ -208,8 +208,12 @@ will be CLOSED* on Wednesday, November 11, 2026 for Veterans Day. *The following
     ).alerts[0];
 
     expect(summary.length).toBeLessThanOrEqual(240);
-    expect(summary).toMatch(/^Open: Program 1, Program 2, /);
-    expect(summary).toMatch(/[A-Za-z0-9]…$/);
+    // The 240-character window ends inside "Program 21". The clip keeps
+    // every whole item through Program 20 and drops only the separator after
+    // it, so the retained prefix is exact.
+    expect(summary).toBe(
+      `Open: ${programs.slice(0, 20).join(", ")}…`,
+    );
   });
 
   it("drops an item whose link leaves the official publisher host", () => {
