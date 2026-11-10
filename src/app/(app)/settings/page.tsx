@@ -9,10 +9,10 @@ import { getServerUser } from "@/lib/auth";
 /**
  * /settings — the preferences hub.
  *
- * One surface for every device-local pick the user has saved: persona
- * (Visitor / Resident), home municipality, interests, and the link
- * down to /settings/notifications for push topics. Also exposes the
- * Reset-and-re-onboard escape hatch.
+ * One surface for every device-local pick the user has saved: home
+ * municipality, fit defaults, interests, community notes, appearance, and
+ * the link down to /settings/notifications for push topics. Also exposes
+ * the Reset-and-re-onboard escape hatch.
  *
  * This page is the CONTROL counterpart to the chips on Today (which
  * are AMBIENT — they show what's been picked). Discoverable from the
@@ -36,9 +36,6 @@ export default async function SettingsPage() {
             back control for every deep (non-tab) page like Settings, and it
             prefers real history over a hardcoded /today (2026-07 shell-
             hardening P6: two stacked Back affordances). */}
-        <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-          Settings
-        </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
           Settings
         </h1>

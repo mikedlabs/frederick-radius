@@ -9,6 +9,7 @@ import {
   useState,
   useSyncExternalStore,
   type ComponentProps,
+  type KeyboardEvent,
 } from "react";
 import {
   ArrowLeft,
@@ -19,13 +20,13 @@ import {
   ExternalLink,
   History,
   Landmark,
+  ListChecks,
   MapPinned,
   MessageCircleQuestion,
   Pin,
   RadioTower,
   Route,
   Search,
-  Sparkles,
   UtensilsCrossed,
   X,
   type LucideIcon,
@@ -78,7 +79,7 @@ const GROUP_META: Record<
   ToolDeckGroupId,
   { icon: LucideIcon; color: string }
 > = {
-  decide: { icon: Sparkles, color: "var(--app-brand-press)" },
+  decide: { icon: ListChecks, color: "var(--app-brand-press)" },
   food: { icon: UtensilsCrossed, color: "var(--app-accent-press)" },
   events: { icon: CalendarDays, color: "var(--app-brand-press)" },
   "getting-around": { icon: Route, color: "var(--app-cool)" },
@@ -1037,21 +1038,21 @@ function ContextualToolSuggestion({
           background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated-solid))",
         }}
       >
+        {/* The destination's own glyph, bare: a road incident is a County
+            Pulse reading, not a generated suggestion. It shares the eyebrow's
+            link color, which stays readable in dark appearance. */}
         <span
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-          style={{
-            color: "var(--app-brand-press)",
-            background: "color-mix(in srgb, var(--app-brand) 10%, transparent)",
-          }}
+          className="grid h-9 w-9 shrink-0 place-items-center"
+          style={{ color: "var(--app-link)" }}
           aria-hidden
         >
-          <Sparkles className="h-[18px] w-[18px]" strokeWidth={2} />
+          <item.icon className="h-5 w-5" strokeWidth={2} />
         </span>
         <span className="min-w-0 flex-1">
           <span
             id="compass-suggestion-heading"
             className="block text-[11px] font-semibold uppercase tracking-[0.08em]"
-            style={{ color: "var(--app-brand-press)" }}
+            style={{ color: "var(--app-link)" }}
           >
             {eyebrow}
           </span>
@@ -1471,9 +1472,30 @@ function DeckToolBrowser({
   }));
   const total = groups.reduce((count, group) => count + group.items.length, 0);
   const showGroupHeadings = groups.length > 1;
+  const browserRef = useRef<HTMLDivElement>(null);
+  // Enter runs a filter that has narrowed to one tool by clicking its real
+  // link, so recents, the native-request return and external-tab attributes
+  // behave exactly as a tap would. With several matches, and always in the
+  // shortcut editor (where people filter in order to pin), it moves focus to
+  // the first row instead, so the focus ring shows what the next Enter does.
+  const onFilterKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter" && event.key !== "ArrowDown") return;
+    // keyCode 229 covers Safari, which reports the Enter that commits an IME
+    // composition after it has already cleared isComposing.
+    if (event.nativeEvent.isComposing || event.keyCode === 229 || !filter.trim()) return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const rows = browserRef.current?.querySelectorAll<HTMLElement>(
+      showPinControls ? "[data-tool-pin]" : "[data-tool-link]",
+    );
+    const first = rows?.[0];
+    if (!first) return;
+    event.preventDefault();
+    if (event.key === "Enter" && !showPinControls && rows.length === 1) first.click();
+    else first.focus();
+  };
 
   return (
-    <div className="space-y-4">
+    <div ref={browserRef} className="space-y-4">
       {showCategoryNav && !filter ? (
         <nav
           aria-label="Tool categories"
@@ -1549,6 +1571,8 @@ function DeckToolBrowser({
                 setFilter(event.target.value);
                 rememberNativeRequest({ draft: { kind: "tools", query: event.target.value } });
               }}
+              onKeyDown={onFilterKeyDown}
+              enterKeyHint={showPinControls ? undefined : "go"}
               placeholder="Filter these tools"
               className="min-h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] py-2.5 pl-10 pr-10 text-[15px] font-medium outline-none placeholder:font-normal placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
               style={{
@@ -1648,6 +1672,7 @@ function ToolLedger({
               prefetch={false}
               {...externalLinkProps(item)}
               {...intentProps(item)}
+              data-tool-link
               className="tactile-interactive group flex min-w-0 flex-1 items-center gap-3 px-1 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
             >
               <span
@@ -1690,6 +1715,7 @@ function ToolLedger({
                 type="button"
                 aria-label={`${pinned ? "Unpin" : "Pin"} ${item.label}`}
                 aria-pressed={pinned}
+                data-tool-pin
                 onClick={() => onTogglePin(item)}
                 className="grid min-h-11 w-12 shrink-0 place-items-center self-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                 style={{

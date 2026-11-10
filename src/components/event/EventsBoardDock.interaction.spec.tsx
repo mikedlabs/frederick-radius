@@ -157,3 +157,101 @@ describe("Event filter ownership", () => {
     expect(label).toContain("Thurmont");
   });
 });
+
+describe("Event Display disclosure dismissal", () => {
+  const display = () => container.querySelector<HTMLDetailsElement>("details.eb-display-options")!;
+  const summary = () => display().querySelector("summary")!;
+  const order = () => display().querySelector<HTMLButtonElement>('button[aria-label^="Order:"]')!;
+  const result = () => container.querySelector<HTMLButtonElement>("[data-results] button")!;
+  // The native toggle event is queued as a task; the dismissal listeners
+  // attach after it, so wait one task before acting on the open panel.
+  const settle = () => act(async () => { await new Promise((resolve) => setTimeout(resolve)); });
+  // A real key press is cancelable, which is how the Order menu marks the
+  // Escape it consumed.
+  const escape = () => act(async () => { document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })); });
+  async function openDisplay() {
+    await act(async () => summary().click());
+    await settle();
+    expect(display().open).toBe(true);
+  }
+
+  it("closes on a press outside it and leaves focus with the page", async () => {
+    await openDisplay();
+    order().focus();
+    await act(async () => { order().dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })); });
+    expect(display().open).toBe(true);
+    await act(async () => { result().dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })); });
+    expect(display().open).toBe(false);
+    expect(document.activeElement).not.toBe(summary());
+  });
+
+  it("closes the open Order menu with Display when a finger starts a scroll outside", async () => {
+    await openDisplay();
+    await act(async () => order().click());
+    expect(order().getAttribute("aria-expanded")).toBe("true");
+    // A swipe sends pointerdown and no mousedown.
+    await act(async () => { result().dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })); });
+    expect(display().open).toBe(false);
+    expect(order().getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("closes on Escape and returns focus from inside the panel to the summary", async () => {
+    await openDisplay();
+    order().focus();
+    await escape();
+    expect(display().open).toBe(false);
+    expect(document.activeElement).toBe(summary());
+  });
+
+  it("gives the first Escape to the open Order menu and the second to Display", async () => {
+    await openDisplay();
+    order().focus();
+    await act(async () => order().click());
+    expect(order().getAttribute("aria-expanded")).toBe("true");
+    await escape();
+    expect(order().getAttribute("aria-expanded")).toBe("false");
+    expect(display().open).toBe(true);
+    expect(document.activeElement).toBe(order());
+    await escape();
+    expect(display().open).toBe(false);
+    expect(document.activeElement).toBe(summary());
+  });
+
+  it("closes the Order menu and Display when focus moves on to another control", async () => {
+    await openDisplay();
+    order().focus();
+    await act(async () => order().click());
+    const choice = display().querySelector<HTMLButtonElement>('[role="group"][aria-label="Order"] button')!;
+    await act(async () => choice.focus());
+    expect(order().getAttribute("aria-expanded")).toBe("true");
+    await act(async () => result().focus());
+    expect(order().getAttribute("aria-expanded")).toBe("false");
+    expect(display().open).toBe(false);
+    expect(document.activeElement).toBe(result());
+  });
+
+  it("stays open when a Safari press parks focus on the focusable main around it", async () => {
+    // Safari does not focus a pressed button. Focus goes to the nearest
+    // focusable ancestor, which in the app is <main tabindex="-1">.
+    const main = container.querySelector("main")!;
+    main.tabIndex = -1;
+    summary().focus();
+    await openDisplay();
+    await act(async () => main.focus());
+    expect(display().open).toBe(true);
+    await act(async () => order().click());
+    order().focus();
+    await act(async () => main.focus());
+    expect(order().getAttribute("aria-expanded")).toBe("true");
+    expect(display().open).toBe(true);
+  });
+
+  it("returns focus to the summary after a keyboard choice closes the panel", async () => {
+    await openDisplay();
+    const compact = display().querySelector<HTMLButtonElement>('button[aria-label="Compact view"]')!;
+    compact.focus();
+    await act(async () => compact.click());
+    expect(display().open).toBe(false);
+    expect(document.activeElement).toBe(summary());
+  });
+});

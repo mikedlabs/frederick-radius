@@ -146,6 +146,72 @@ describe("official CivicPlus alert parsing", () => {
     );
   });
 
+  it("turns the Health Department's em dash bullets into a plain comma list", () => {
+    // The Closings item published on 2026-11-10, verbatim. County status
+    // printed it as "OPEN: — Infants & Toddlers Program — School Based...".
+    const xml = `<?xml version="1.0"?><rss version="2.0"><channel>
+      <lastBuildDate>Tue, 10 Nov 2026 13:42:31 -0500</lastBuildDate>
+      <item>
+        <title>Partially Closed Veterans Day</title>
+        <link>https://health.frederickcountymd.gov/AlertCenter.aspx?AID=33</link>
+        <pubDate>Tue, 10 Nov 2026 10:37:14 -0500</pubDate>
+        <description>The Frederick County Health Department
+will be CLOSED* on Wednesday, November 11, 2026 for Veterans Day. *The following programs will be OPEN:
+— Infants &amp; Toddlers Program
+— School Based Programs
+— School Health Services</description>
+      </item>
+    </channel></rss>`;
+    const parsed = parseOfficialAlertFeed(
+      xml,
+      OFFICIAL_CIVIC_ALERT_FEEDS[2],
+      "2026-11-10T19:00:00.000Z",
+    );
+
+    expect(parsed.alerts[0].summary).toBe(
+      "The Frederick County Health Department will be CLOSED* on Wednesday, November 11, 2026 for Veterans Day. *The following programs will be OPEN: Infants & Toddlers Program, School Based Programs, School Health Services",
+    );
+  });
+
+  it("keeps em dashes out of titles and summaries however the feed encodes them", () => {
+    const xml = `<rss><channel><item>
+      <title>Offices closed &amp;mdash; Frederick County</title>
+      <link>https://health.frederickcountymd.gov/AlertCenter.aspx?AID=34</link>
+      <pubDate>Tue, 10 Nov 2026 10:37:14 -0500</pubDate>
+      <description>&lt;p&gt;The clinic &#8212; which reopened Monday &#8212; closes at noon.&lt;/p&gt;&lt;p&gt;Hours: 8 AM &#8211; 12 PM at 350 Montevue Ln., Frederick.&lt;/p&gt;</description>
+    </item></channel></rss>`;
+    const [alert] = parseOfficialAlertFeed(
+      xml,
+      OFFICIAL_CIVIC_ALERT_FEEDS[2],
+      "2026-11-10T19:00:00.000Z",
+    ).alerts;
+
+    expect(alert.title).toBe("Offices closed, Frederick County");
+    expect(alert.summary).toBe(
+      "The clinic, which reopened Monday, closes at noon. Hours: 8 AM - 12 PM at 350 Montevue Ln., Frederick.",
+    );
+    expect(`${alert.title} ${alert.summary}`).not.toMatch(/[—–]|\s,/);
+  });
+
+  it("never clips a long list on a separator", () => {
+    const programs = Array.from({ length: 24 }, (_, index) => `Program ${index + 1}`);
+    const xml = `<rss><channel><item>
+      <title>Programs open on the holiday</title>
+      <link>https://health.frederickcountymd.gov/AlertCenter.aspx?AID=35</link>
+      <pubDate>Tue, 10 Nov 2026 10:37:14 -0500</pubDate>
+      <description>Open: ${programs.map((name) => `— ${name}`).join(" ")}</description>
+    </item></channel></rss>`;
+    const { summary } = parseOfficialAlertFeed(
+      xml,
+      OFFICIAL_CIVIC_ALERT_FEEDS[2],
+      "2026-11-10T19:00:00.000Z",
+    ).alerts[0];
+
+    expect(summary.length).toBeLessThanOrEqual(240);
+    expect(summary).toMatch(/^Open: Program 1, Program 2, /);
+    expect(summary).toMatch(/[A-Za-z0-9]…$/);
+  });
+
   it("drops an item whose link leaves the official publisher host", () => {
     const xml = `<rss><channel><item>
       <title>Do not follow this</title>
