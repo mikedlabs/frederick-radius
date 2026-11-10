@@ -172,6 +172,73 @@ export const ReducedMotion: Story = {
   render: () => <SheetFixture />,
 };
 
+/**
+ * A short pull that the visitor lets go of returns the sheet to rest with its
+ * scrim, from anywhere on the handle row. Before this was pinned, release
+ * momentum carried the sheet down and parked it there with the scrim gone.
+ */
+export const ShortPullReturnsToRest: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  render: () => <SheetFixture />,
+  play: async ({ canvasElement }) => {
+    const view = canvasElement.ownerDocument.defaultView!;
+    const page = within(canvasElement.ownerDocument.body);
+    const dialog = await page.findByRole("dialog", { name: "Weather details" });
+    const panel = dialog.querySelector<HTMLElement>("[data-bottom-sheet-panel]")!;
+    const backdrop = dialog.querySelector<HTMLElement>("[data-bottom-sheet-backdrop]")!;
+    const row = panel.querySelector<HTMLElement>("[data-sheet-handle]")!;
+    const close = within(dialog).getByRole("button", { name: "Close Weather details" });
+    const pause = (ms: number) => new Promise<void>((resolve) => view.setTimeout(resolve, ms));
+    const top = () => panel.getBoundingClientRect().top;
+    const point = (type: string, target: EventTarget, x: number, y: number) =>
+      target.dispatchEvent(new view.PointerEvent(type, {
+        bubbles: true, cancelable: true, composed: true, pointerId: 1, pointerType: "mouse",
+        isPrimary: true, button: 0, buttons: type === "pointerup" ? 0 : 1, clientX: x, clientY: y,
+      }));
+    /** Pull down 60px at an unhurried pace and let go while still moving. */
+    const pull = async (start: HTMLElement, x: number, y: number) => {
+      point("pointerdown", start, x, y);
+      for (let step = 1; step <= 10; step += 1) {
+        await pause(24);
+        point("pointermove", view, x, y + step * 6);
+      }
+      await pause(48);
+      const travelled = top();
+      point("pointerup", view, x, y + 60);
+      return travelled;
+    };
+
+    // The entrance spring must finish before a rest position means anything.
+    let rest = 0;
+    await waitFor(async () => {
+      const before = top();
+      await pause(60);
+      rest = top();
+      expect(Math.abs(rest - before)).toBeLessThanOrEqual(0.25);
+      expect(Number(view.getComputedStyle(backdrop).opacity)).toBeCloseTo(0.45, 2);
+    });
+
+    // Start beside the pill, on the row's spacer, to prove the whole row drags.
+    const rowBox = row.getBoundingClientRect();
+    const spacerX = rowBox.right - 40;
+    const rowY = rowBox.top + rowBox.height / 2;
+    expect(view.document.elementFromPoint(spacerX, rowY)?.closest("button")).toBeNull();
+    const pulledTo = await pull(row, spacerX, rowY);
+    expect(pulledTo - rest).toBeGreaterThan(30);
+    await waitFor(() => {
+      expect(Math.abs(top() - rest)).toBeLessThanOrEqual(1);
+      expect(Number(view.getComputedStyle(backdrop).opacity)).toBeCloseTo(0.45, 2);
+    }, { timeout: 1500 });
+    await expect(dialog).toBeInTheDocument();
+
+    // A press that begins on Close is a button press, never a drag.
+    const closeBox = close.getBoundingClientRect();
+    const heldAt = await pull(close, closeBox.left + closeBox.width / 2, closeBox.top + closeBox.height / 2);
+    expect(Math.abs(heldAt - rest)).toBeLessThanOrEqual(1);
+    await expect(dialog).toBeInTheDocument();
+  },
+};
+
 function ExplicitReturnFocusFixture() {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -288,12 +355,17 @@ export const GuardedDismissal: Story = {
     await expect(dialog).toBeVisible();
     await userEvent.keyboard("{Escape}");
     await expect(dialog).toBeVisible();
-    // Activate the actual backdrop button through the keyboard; its visual
-    // center is covered by the panel and is not a valid pointer target.
-    const backdrop = content.getByRole("button", { name: /^Close$/ });
-    backdrop.focus();
-    await expect(backdrop).toHaveFocus();
-    await userEvent.keyboard(" ");
+    // The backdrop is a pointer convenience that assistive tech never meets:
+    // the handle row's labeled button is the dialog's only Close control.
+    const backdrop = dialog.querySelector<HTMLButtonElement>("[data-bottom-sheet-backdrop]")!;
+    await expect(backdrop).toHaveAttribute("aria-hidden", "true");
+    await expect(backdrop.tabIndex).toBe(-1);
+    const closeControls = content.getAllByRole("button", { name: /^Close/ });
+    await expect(closeControls).toHaveLength(1);
+    await expect(closeControls[0]).toBe(close);
+    // Its visual center is covered by the panel, so activate the element
+    // itself instead of a point on the screen.
+    backdrop.click();
     await expect(dialog).toBeVisible();
     await userEvent.click(content.getByRole("button", { name: "Finish operation" }));
     await expect(content.getByRole("status")).toHaveTextContent("Ready to close");

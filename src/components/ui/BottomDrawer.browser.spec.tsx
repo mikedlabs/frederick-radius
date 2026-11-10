@@ -2,9 +2,27 @@
 
 import { act, createElement, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { Toaster, toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import BottomDrawer from "./BottomDrawer";
+
+const navigation = vi.hoisted(() => ({ leaveTo: vi.fn() }));
+// The history layer is real. Only its final document navigation is replaced,
+// because jsdom cannot load another page.
+vi.mock("@/hooks/useReversibleHistoryLayer", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/hooks/useReversibleHistoryLayer")>();
+  return {
+    ...actual,
+    useReversibleHistoryLayer: (
+      options: Parameters<typeof actual.useReversibleHistoryLayer>[0],
+    ) => ({ ...actual.useReversibleHistoryLayer(options), leaveTo: navigation.leaveTo }),
+  };
+});
+
+const LAYER_KEY = "__frederickRadiusLayer";
+// jsdom has no pointer capture, which Sonner requests when a toast is pressed.
+Element.prototype.setPointerCapture ??= () => {};
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true;
@@ -84,6 +102,55 @@ function RemovableControlledDrawer({ mounted }: { mounted: boolean }) {
   );
 }
 
+function LayeredDrawer({
+  historyLayerId,
+  refuseClose = false,
+}: {
+  historyLayerId?: string;
+  /** A parent may decline a close request, such as an unsaved form. */
+  refuseClose?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>Open layered drawer</button>
+      <BottomDrawer
+        open={open}
+        onOpenChange={(next) => { if (next || !refuseClose) setOpen(next); }}
+        historyLayerId={historyLayerId}
+        title="Layered details"
+      >
+        <button type="button" onClick={() => setOpen(false)}>Show results</button>
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- the drawer intercepts the rendered anchor, which is what next/link produces */}
+        <a href="/places/baker-park-frederick">Open Baker Park</a>
+        <a href="/map" target="_blank" rel="noreferrer">Open the map in a new tab</a>
+        <a href="https://example.com/menu">Open the vendor site</a>
+      </BottomDrawer>
+    </>
+  );
+}
+
+function ToastDrawer({ onUndo }: { onUndo: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>Open toast drawer</button>
+      <BottomDrawer open={open} onOpenChange={setOpen} title="Toast details">
+        <button
+          type="button"
+          onClick={() => toast("Saved to your list.", {
+            duration: Infinity,
+            action: { label: "Undo", onClick: onUndo },
+          })}
+        >
+          Save this stop
+        </button>
+      </BottomDrawer>
+      <Toaster />
+    </>
+  );
+}
+
 function UncontrolledDrawer() {
   return (
     <BottomDrawer
@@ -115,6 +182,34 @@ async function flushScheduledWork() {
   });
 }
 
+function layerId(): unknown {
+  return (window.history.state as Record<string, unknown> | null)?.[LAYER_KEY];
+}
+
+/** What the browser does for Back from a same-URL layer entry. */
+async function pressBack() {
+  await act(async () => {
+    window.history.replaceState(null, "", window.location.href);
+    window.dispatchEvent(new PopStateEvent("popstate", { state: null }));
+  });
+  await flushScheduledWork();
+}
+
+async function openFromFirstButton(container: HTMLElement): Promise<HTMLButtonElement> {
+  const opener = container.querySelector<HTMLButtonElement>("button");
+  if (!opener) throw new Error("Expected a drawer opener.");
+  opener.focus();
+  await act(async () => opener.click());
+  await flushScheduledWork();
+  return opener;
+}
+
+function pressOutsideOn(target: Element) {
+  return act(async () => {
+    target.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0 }));
+  });
+}
+
 describe("BottomDrawer keyboard focus", () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -141,15 +236,23 @@ describe("BottomDrawer keyboard focus", () => {
         dispatchEvent: vi.fn(),
       })),
     });
+    vi.stubGlobal("scrollTo", vi.fn());
+    navigation.leaveTo.mockReset();
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
   });
 
   afterEach(async () => {
-    await act(async () => root.unmount());
+    await act(async () => {
+      toast.dismiss();
+      root.unmount();
+    });
     vi.clearAllTimers();
     vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    window.history.replaceState(null, "", window.location.href);
     container.remove();
     document.body.querySelectorAll('[role="dialog"]').forEach((node) =>
       node.remove(),
@@ -166,8 +269,12 @@ describe("BottomDrawer keyboard focus", () => {
     await flushScheduledWork();
 
     expect(dialog().getAttribute("aria-modal")).toBe("true");
-    expect(dialog().dataset.drawerSurface).toBe("default");
-    expect(dialog().style.background).toBe("var(--app-bg-elevated)");
+    expect(dialog().dataset.drawerSurface).toBe("solid");
+    expect(dialog().style.background).toBe("var(--app-bg-elevated-solid)");
+    expect(dialog().dataset.drawerWidth).toBe("standard");
+    expect(dialog().className).toContain("sm:max-w-[760px]");
+    expect(dialog().className).toContain("rounded-t-[var(--app-radius-lg)]");
+    expect(layerId()).toBeUndefined();
     expect(dialog().getAttribute("aria-labelledby")).toBeTruthy();
     expect(dialog().getAttribute("aria-describedby")).toBeTruthy();
     expect(document.activeElement).toBe(closeButton());
@@ -238,13 +345,159 @@ describe("BottomDrawer keyboard focus", () => {
     }
   });
 
-  it("opts into an opaque surface without changing the dialog semantics", async () => {
-    await act(async () => root.render(<BottomDrawer open title="Solid details" surface="solid"><p>Readable map details</p></BottomDrawer>));
+  it("opts into a translucent surface and a wide layout without changing the dialog semantics", async () => {
+    await act(async () => root.render(<BottomDrawer open title="Wide details" surface="translucent" width="wide"><p>Readable map details</p></BottomDrawer>));
     await flushScheduledWork();
-    expect(dialog().dataset.drawerSurface).toBe("solid");
-    expect(dialog().style.background).toBe("var(--app-bg-elevated-solid)");
+    expect(dialog().dataset.drawerSurface).toBe("translucent");
+    expect(dialog().style.background).toBe("var(--app-bg-elevated)");
+    expect(dialog().dataset.drawerWidth).toBe("wide");
+    expect(dialog().className).not.toContain("max-w-");
     expect(dialog().getAttribute("aria-modal")).toBe("true");
     expect(dialog().contains(document.activeElement)).toBe(true);
+  });
+
+  it("pushes one history entry and lets Back close the drawer in place", async () => {
+    await act(async () => root.render(<LayeredDrawer historyLayerId="layered-details" />));
+    const entries = window.history.length;
+    const href = window.location.href;
+    const opener = await openFromFirstButton(container);
+
+    expect(dialog().getAttribute("data-state")).toBe("open");
+    expect(window.history.length).toBe(entries + 1);
+    expect(layerId()).toBe("layered-details");
+
+    await pressBack();
+
+    expect(dialog().getAttribute("data-state")).toBe("closed");
+    expect(window.location.href).toBe(href);
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("removes its own history entry when Close or Escape dismisses it", async () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    await act(async () => root.render(<LayeredDrawer historyLayerId="layered-details" />));
+    const opener = await openFromFirstButton(container);
+
+    await act(async () => closeButton().click());
+    await flushScheduledWork();
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(dialog().getAttribute("data-state")).toBe("closed");
+    expect(document.activeElement).toBe(opener);
+
+    // The mocked traversal never ran, so the entry is still the layer's own
+    // and reopening must reuse it instead of stacking a second one.
+    const entries = window.history.length;
+    await act(async () => opener.click());
+    await flushScheduledWork();
+    expect(window.history.length).toBe(entries);
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    await flushScheduledWork();
+    expect(back).toHaveBeenCalledTimes(2);
+    expect(dialog().getAttribute("data-state")).toBe("closed");
+  });
+
+  it("removes its history entry when the parent closes the drawer from its own control", async () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    await act(async () => root.render(<LayeredDrawer historyLayerId="layered-details" />));
+    await openFromFirstButton(container);
+    const apply = Array.from(dialog().querySelectorAll("button"))
+      .find((button) => button.textContent === "Show results");
+    if (!apply) throw new Error("Expected the in-drawer apply action.");
+
+    await act(async () => apply.click());
+    await flushScheduledWork();
+
+    expect(dialog().getAttribute("data-state")).toBe("closed");
+    expect(back).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps its history entry while the parent declines to close", async () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    await act(async () => root.render(<LayeredDrawer historyLayerId="layered-details" refuseClose />));
+    await openFromFirstButton(container);
+
+    await act(async () => closeButton().click());
+    await flushScheduledWork();
+
+    expect(dialog().getAttribute("data-state")).toBe("open");
+    expect(back).not.toHaveBeenCalled();
+    expect(layerId()).toBe("layered-details");
+  });
+
+  it("replaces its history entry when an in-app link inside it is followed", async () => {
+    await act(async () => root.render(<LayeredDrawer historyLayerId="layered-details" />));
+    await openFromFirstButton(container);
+    const [inApp, newTab, external] = Array.from(dialog().querySelectorAll<HTMLAnchorElement>("a"));
+    // jsdom cannot navigate, so stop whatever the drawer leaves to the browser.
+    const browserHandled: string[] = [];
+    const stopNavigation = (event: MouseEvent) => {
+      browserHandled.push((event.target as HTMLAnchorElement).getAttribute("href") ?? "");
+      event.preventDefault();
+    };
+    document.addEventListener("click", stopNavigation);
+    try {
+      await act(async () => inApp.click());
+      expect(navigation.leaveTo).toHaveBeenCalledTimes(1);
+      expect(navigation.leaveTo).toHaveBeenCalledWith("/places/baker-park-frederick");
+      expect(browserHandled).toEqual([]);
+
+      await act(async () => newTab.click());
+      await act(async () => external.click());
+      await act(async () => {
+        inApp.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, metaKey: true }));
+      });
+      expect(navigation.leaveTo).toHaveBeenCalledTimes(1);
+      expect(browserHandled).toEqual(["/map", "https://example.com/menu", "/places/baker-park-frederick"]);
+    } finally {
+      document.removeEventListener("click", stopNavigation);
+    }
+  });
+
+  it("leaves history and links alone when no history layer is requested", async () => {
+    await act(async () => root.render(<LayeredDrawer />));
+    const entries = window.history.length;
+    await openFromFirstButton(container);
+    expect(window.history.length).toBe(entries);
+    expect(layerId()).toBeUndefined();
+
+    const inApp = dialog().querySelector<HTMLAnchorElement>("a");
+    if (!inApp) throw new Error("Expected the in-app link.");
+    const stopNavigation = (event: MouseEvent) => event.preventDefault();
+    document.addEventListener("click", stopNavigation);
+    try {
+      await act(async () => inApp.click());
+    } finally {
+      document.removeEventListener("click", stopNavigation);
+    }
+    expect(navigation.leaveTo).not.toHaveBeenCalled();
+  });
+
+  it("keeps the drawer open when a toast above it is pressed, and runs the toast action", async () => {
+    const undo = vi.fn();
+    await act(async () => root.render(<ToastDrawer onUndo={undo} />));
+    await openFromFirstButton(container);
+    const save = Array.from(dialog().querySelectorAll("button"))
+      .find((button) => button.textContent === "Save this stop");
+    if (!save) throw new Error("Expected the in-drawer save action.");
+    await act(async () => save.click());
+    await flushScheduledWork();
+
+    const action = document.querySelector<HTMLButtonElement>("[data-sonner-toaster] button[data-action]");
+    if (!action) throw new Error("Expected the toast action.");
+    expect(dialog().contains(action)).toBe(false);
+    await pressOutsideOn(action);
+    await act(async () => action.click());
+    await flushScheduledWork();
+
+    expect(undo).toHaveBeenCalledTimes(1);
+    expect(dialog().getAttribute("data-state")).toBe("open");
+
+    // The guard is narrow: any other press outside still dismisses.
+    await pressOutsideOn(container);
+    await flushScheduledWork();
+    expect(dialog().getAttribute("data-state")).toBe("closed");
   });
 
   it("traps forward and backward keyboard focus inside the drawer", async () => {

@@ -152,6 +152,11 @@ export default function FeedbackWidget() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorText, setErrorText] = useState("");
   const resetTimer = useRef<number | null>(null);
+  // The floating trigger steps aside for its own sheet, so it is already gone
+  // when the sheet looks for the focused control. Remember it at the click so
+  // closing returns focus to it. Event-driven opens clear this and keep the
+  // control that actually opened the sheet.
+  const openerRef = useRef<HTMLElement | null>(null);
 
   const publicSurface = publicFeedbackSurface(pathname);
   const isPublicFoodTruckBoard = publicSurface === "food-trucks";
@@ -166,6 +171,7 @@ export default function FeedbackWidget() {
 
   useEffect(() => {
     const openFeedback = (event?: Event) => {
+      openerRef.current = null;
       try {
         window.sessionStorage.removeItem(PENDING_FEEDBACK_KEY);
       } catch {
@@ -277,7 +283,10 @@ export default function FeedbackWidget() {
       {!open && shouldShowFeedbackTrigger(publicSurface) && (
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={(event) => {
+            openerRef.current = event.currentTarget;
+            setOpen(true);
+          }}
           aria-haspopup="dialog"
           aria-label="Send feedback"
           className="tap-44 fixed inline-flex h-11 w-11 items-center justify-center rounded-full border transition-colors"
@@ -303,6 +312,7 @@ export default function FeedbackWidget() {
       <Sheet
         open={open}
         onClose={close}
+        returnFocusRef={openerRef}
         title={
           succeeded
             ? isPublicFairDay
