@@ -193,7 +193,7 @@ describe("Event detail save uses the Saved tab's device store", () => {
 
   it("names the event on removal and restores it from Undo after the control has unmounted", async () => {
     await render(); await click();
-    expect(mocks.toast.success).toHaveBeenCalledWith("Saved · Donut Thursday", { id: `save:event:${EVENT}`, duration: 6000, action: { label: "Undo", onClick: expect.any(Function) } });
+    expect(mocks.toast.success).toHaveBeenCalledWith("Saved · Donut Thursday", { id: `save:event:${EVENT}`, duration: 3000, action: { label: "Undo", onClick: expect.any(Function) } });
     await click();
     expect(saved()).toEqual([]);
     expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Donut Thursday", { id: `save:event:${EVENT}`, duration: 6000, action: { label: "Undo", onClick: expect.any(Function) } });

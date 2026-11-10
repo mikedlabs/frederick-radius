@@ -1,5 +1,9 @@
 import { toast } from "sonner";
 
+/** A routine save confirms what the control already shows. It leaves quickly,
+ *  because inside a place or event sheet the toast sits over the sheet's own
+ *  next actions until it goes. */
+export const SAVED_TOAST_MS = 3000;
 /** Long enough to notice Undo and reach it with a thumb. */
 export const UNDO_TOAST_MS = 6000;
 /** A next step beside Undo is two controls to read. */
@@ -35,7 +39,9 @@ export function notifySaved({ label, title, description, onUndo, forward, item }
   return toast.success(title ?? `Saved · ${label}`, {
     id: itemToastId(item),
     description,
-    duration: forward ? CHOICE_TOAST_MS : UNDO_TOAST_MS,
+    // A second line or a second control needs reading time. A bare
+    // "Saved" does not.
+    duration: forward ? CHOICE_TOAST_MS : description ? UNDO_TOAST_MS : SAVED_TOAST_MS,
     action: forward ?? undoAction(onUndo),
     cancel: forward ? undoAction(onUndo) : undefined,
   });
