@@ -339,6 +339,11 @@ async function approveNativeAutomatedPrRuns(options) {
         entry.run = current;
         const write = receipt.approvalWrites.find((row) => row.id === run.id);
         if (write) write.restartedAttempt = current.run_attempt;
+        // The restart can first appear after the receipt recorded a
+        // same-attempt observation, so the run row is refreshed here too and
+        // shows the attempt that actually ran. Its action is kept.
+        const index = pinned.indexOf(entry);
+        if (receipt.runs[index]) receipt.runs[index] = { ...observeRun(current, entry.workflow.file), action: receipt.runs[index].action };
       }
       return restarted;
     };

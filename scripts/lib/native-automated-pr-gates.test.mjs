@@ -803,6 +803,11 @@ test("a restart observed only after a same-attempt transition is accepted once a
   assert.deepEqual(state.approvals, [101, 202]);
   assert.equal(result.approvalWrites[0].attempt, 1); assert.equal(result.approvalWrites[0].restartedAttempt, 2);
   assert.equal(result.approvalWrites[1].restartedAttempt, undefined);
+  // The run row shows the attempt that actually ran, not the attempt 1
+  // observation recorded before the restart appeared.
+  assert.equal(result.runs[0].id, 101); assert.equal(result.runs[0].attempt, 2);
+  assert.equal(result.runs[0].action, "approved"); assert.equal(result.runs[0].status, state.runs[0].status);
+  assert.equal(result.runs[1].id, 202); assert.equal(result.runs[1].attempt, 1);
 });
 
 for (const [label, status, conclusion] of [["queued", "queued", null], ["in_progress", "in_progress", null], ["completed success", "completed", "success"]]) {
