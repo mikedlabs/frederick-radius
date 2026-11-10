@@ -1,5 +1,11 @@
 # Fair Day visitor intelligence
 
+> **Retired.** The 2026 Fair workspace was removed after the fair ended on
+> September 26, 2026. The `fair:community-watch`, `fair:source-watch` and
+> `fair:data:collect` npm scripts, `scripts/import-fair-layout.ts`, and the
+> `fair-data-steward` workflow no longer exist, so the commands below cannot be
+> run from the current tree. The last commit that contains them is `8906ad86`.
+
 Frederick Radius uses community discussion to discover missing questions, not
 to manufacture answers. A Reddit title, review, or social post can reveal a
 visitor problem. It cannot by itself establish a current parking rule, a live

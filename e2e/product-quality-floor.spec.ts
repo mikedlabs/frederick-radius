@@ -95,10 +95,6 @@ for (const width of [320, 375, 390, 430, 1366]) {
     } else {
       await expect(summary).toHaveCount(0);
     }
-    const campaign = page.locator("[data-today-fair-feature]");
-    if (await campaign.count()) {
-      expect((await campaign.boundingBox())!.y).toBeGreaterThan(findBox!.y + findBox!.height);
-    }
     await page.getByRole("combobox", { name: "Choose your area" }).selectOption("town:brunswick");
     await expect(page.getByTestId("today-scope-status")).toHaveText("Brunswick picks · Countywide weather");
     await expect(page.getByRole("link", { name: "Plan a few hours", exact: true })).toHaveAttribute("href", /in=brunswick/);

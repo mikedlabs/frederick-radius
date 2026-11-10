@@ -152,11 +152,6 @@ describe("scheduled data workflow contracts", () => {
         "steward",
         "${{ github.ref == 'refs/heads/main' && vars.HOURS_REFRESH_CRON == '1' && vars.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL == 'written-google-authorization-confirmed' && vars.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED == '1' }}",
       ],
-      [
-        "fair-data-steward.yml",
-        "collect",
-        "${{ github.ref == 'refs/heads/main' }}",
-      ],
     ] as const;
     expect(radiusDataJobs.sort()).toEqual(
       trustedGenerators
