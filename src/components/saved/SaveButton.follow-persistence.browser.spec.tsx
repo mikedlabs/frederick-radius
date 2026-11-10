@@ -212,6 +212,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     expect(mocks.toast.success).not.toHaveBeenCalled();
     expect(mocks.toast.error).toHaveBeenLastCalledWith("Could not save this item", {
       description: "The connection ended before this change could be confirmed. Refresh Saved to check your list.",
+      duration: 8000,
     });
     await click();
     expect(writes).toHaveLength(1);
@@ -235,7 +236,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     await click();
     await settle(1);
     expect(saved()).toBe("other-stop");
-    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved", expect.any(Object));
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · test-stop", expect.objectContaining({ id: "save:place:test-stop", duration: 6000 }));
   });
 
   it("refuses queued same-place intents until a failed HTTP outcome has been reconciled", async () => {
@@ -307,6 +308,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     expect(mocks.toast.success).not.toHaveBeenCalled();
     expect(mocks.toast.error).toHaveBeenLastCalledWith(control === "icon" ? "Could not save this item" : "Could not save this place", {
       description: "You have saved 100 places. Remove a place from Saved before adding another.",
+      duration: 8000,
     });
   });
 
@@ -438,7 +440,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     expect(saved()).toBe("");
     expect([...serverSlugs]).toEqual([]);
     expect(imports).toHaveLength(1);
-    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved", expect.any(Object));
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · test-stop", expect.objectContaining({ id: "save:place:test-stop", duration: 6000 }));
   });
 
   it("bounds a hung import body, shares one fresh read, and ignores its late accepted slugs after removal", async () => {
@@ -483,7 +485,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     await act(async () => imports[0].request.reject(new Error("Connection lost")));
     await click(0);
     expect(writes).toHaveLength(0);
-    expect(mocks.toast.error).toHaveBeenLastCalledWith("Could not save this item", { description: "The connection ended before this change could be confirmed. Refresh Saved to check your list." });
+    expect(mocks.toast.error).toHaveBeenLastCalledWith("Could not save this item", { description: "The connection ended before this change could be confirmed. Refresh Saved to check your list.", duration: 8000 });
     await click(1);
     await settle(0);
     expect(saved()).toBe("other-stop");
@@ -580,6 +582,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     expect(saved()).toBe("");
     expect(mocks.toast.error).toHaveBeenLastCalledWith("Could not save this item", {
       description: "This change is still pending. Wait for it to finish before making another change to this place.",
+      duration: 8000,
     });
     await click();
     expect(writes).toHaveLength(1);
@@ -716,6 +719,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     expect(mocks.toast.success).not.toHaveBeenCalled();
     expect(mocks.toast.error).toHaveBeenLastCalledWith("Could not remove from Saved", {
       description: "Your saved list changed while we checked your account. Check this place and try again.",
+      duration: 8000,
     });
     expect(JSON.parse(localStorage.getItem("fr:saved:v1")!)).toHaveLength(1);
     // A fresh tap uses the account state now shown by the control.
@@ -742,6 +746,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     expect(mocks.toast.success).not.toHaveBeenCalled();
     expect(mocks.toast.error).toHaveBeenLastCalledWith("Could not save this item", {
       description: "We could not confirm this change. Please try again.",
+      duration: 8000,
     });
     identity = deferred<Response>();
     identity.resolve(response(200, { user }));

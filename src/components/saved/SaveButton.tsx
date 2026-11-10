@@ -18,7 +18,7 @@ import {
   decisionContextFromPath,
   trackDecision,
 } from "@/lib/decision/telemetry";
-import { toast } from "sonner";
+import { notifyError, notifyRemoved, notifySaved } from "@/lib/feedback/notify";
 
 export default function SaveButton({
   refType,
@@ -83,7 +83,8 @@ export default function SaveButton({
       if (failureDescriptionRef.current !== null || nextSaved === wasSaved) throw new Error("Save state did not change");
       return true;
     } catch (error) {
-      toast.error(wasSaved ? "Could not remove from Saved" : "Could not save this item", {
+      notifyError({
+        title: wasSaved ? "Could not remove from Saved" : "Could not save this item",
         description: failureDescriptionRef.current ?? savedChangeDescription(error),
       });
       return false;
@@ -149,32 +150,28 @@ export default function SaveButton({
             action: "save",
           });
         }
-        // Sonner toast — quiet, brand-aligned acknowledgement so the
-        // user sees something happen even if the bookmark animation
-        // is missed at a glance. Undo action mirrors the toggle so
-        // a mistaken save is one tap to reverse.
+        // A quiet acknowledgement, so the person sees something happen even
+        // when the bookmark animation is missed at a glance. Undo mirrors the
+        // toggle, and the toast names the item so a stack of removals is not
+        // three copies of one sentence.
+        const name = label.replace(/^Save\s+/, "");
+        const item = { type: refType, id: refId };
+        const onUndo = () => void toggle(!wasSaved);
         if (wasSaved) {
-          toast(`Removed from Saved`, {
-            action: { label: "Undo", onClick: () => void toggle(!wasSaved) },
-          });
+          notifyRemoved({ label: name, onUndo, item });
         } else if (totalBefore === 0) {
-          // First add ever — moment worth marking. Editorial copy
-          // instead of the routine acknowledgement, plus a longer
-          // dwell so the user has time to read what just happened.
-          toast.success("Your saved list starts here", {
+          // First add ever: a moment worth marking with its own copy
+          // instead of the routine acknowledgement.
+          notifySaved({
+            label: name,
+            title: "Your saved list starts here",
             description: "Anything you save stays together under Saved.",
-            duration: offerKeepAction ? 7000 : 5000,
-            action: offerKeepAction
-              ? { label: "Keep handy", onClick: openReturnBridge }
-              : { label: "Undo", onClick: () => void toggle(!wasSaved) },
-            cancel: offerKeepAction
-              ? { label: "Undo", onClick: () => void toggle(!wasSaved) }
-              : undefined,
+            onUndo,
+            forward: offerKeepAction ? { label: "Keep handy", onClick: openReturnBridge } : undefined,
+            item,
           });
         } else {
-          toast.success(`Saved · ${label.replace(/^Save\s+/, "")}`, {
-            action: { label: "Undo", onClick: () => void toggle(!wasSaved) },
-          });
+          notifySaved({ label: name, onUndo, item });
         }
       }}
       disabled={busy || eventSaveUnavailable}

@@ -158,6 +158,28 @@ describe("SaveButton truthful save feedback", () => {
     expect(mocks.toast.error).toHaveBeenCalledTimes(1);
   });
 
+  it("marks the first save, then names the item on removal, on one toast id with Undo for six seconds", async () => {
+    mocks.togglePlace.mockImplementationOnce(async () => { mocks.saved = true; return true; });
+    render();
+    await act(async () => button().click());
+    expect(mocks.toast.success).toHaveBeenCalledWith("Your saved list starts here", {
+      id: "save:place:test-stop", description: "Anything you save stays together under Saved.", duration: 6000,
+      action: { label: "Undo", onClick: expect.any(Function) },
+    });
+    mocks.togglePlace.mockImplementationOnce(async () => { mocks.saved = false; return false; });
+    await act(async () => button().click());
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Test stop", {
+      id: "save:place:test-stop", duration: 6000, action: { label: "Undo", onClick: expect.any(Function) },
+    });
+  });
+
+  it("keeps a failure on screen for eight seconds with its reason", async () => {
+    mocks.togglePlace.mockRejectedValueOnce(new Error("Storage unavailable"));
+    render();
+    await act(async () => button().click());
+    expect(mocks.toast.error).toHaveBeenCalledWith("Could not save this item", { description: "We could not confirm this change. Please try again.", duration: 8000 });
+  });
+
   it("keeps a saved item selected when removal or Undo fails", async () => {
     mocks.saved = true;
     mocks.togglePlace.mockRejectedValueOnce(new Error("Storage unavailable"));

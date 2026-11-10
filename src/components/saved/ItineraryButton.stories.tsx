@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
+import { toast } from "sonner";
+import AppToaster from "@/components/ui/AppToaster";
 import ItineraryButton from "./ItineraryButton";
 
 const KEY = "fr:saved:v1";
@@ -27,10 +29,11 @@ const meta = {
   tags: ["autodocs"],
   parameters: {
     layout: "centered",
-    docs: { description: { component: "The existing event action saves to this device's Saved list. Its selected state follows confirmed storage; unavailable storage never shows a successful save." } },
+    docs: { description: { component: "The existing event action saves to this device's Saved list. Its selected state follows confirmed storage; unavailable storage never shows a successful save. Saving and removing each raise a toast that names the event and offers Undo." } },
   },
   args: { eventId: SAMPLE, label: "Add Sample Frederick event to itinerary" },
-  beforeEach: () => sampleStorage(),
+  decorators: [(Story) => <><Story /><AppToaster /></>],
+  beforeEach: () => { toast.dismiss(); const restore = sampleStorage(); return () => { toast.dismiss(); restore(); }; },
 } satisfies Meta<typeof ItineraryButton>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -56,6 +59,25 @@ export const SaveAt375: Story = { globals: { viewport: { value: "radiusMobileCom
 export const SaveAt390: Story = { globals: { viewport: { value: "radiusMobile", isRotated: false } }, play: confirmedSave };
 export const SaveAt430: Story = { globals: { viewport: { value: "radiusMobileLarge", isRotated: false } }, play: confirmedSave };
 export const SaveOnDesktop: Story = { globals: { viewport: { value: "radiusDesktop", isRotated: false } }, play: confirmedSave };
+export const RemovalOffersUndoAt390: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(document.body);
+    const save = await canvas.findByRole("button", { name: "Save Sample Frederick event" });
+    await waitFor(() => expect(save).toBeEnabled());
+    await userEvent.click(save);
+    await waitFor(() => expect(body.getByText("Saved · Sample Frederick event", { exact: true })).toBeVisible());
+    await userEvent.click(await canvas.findByRole("button", { name: "Remove Sample Frederick event from Saved" }));
+    // One toast per item: the removal replaces the save confirmation.
+    const removed = await body.findByText("Removed from Saved · Sample Frederick event", { exact: true });
+    await waitFor(() => expect(document.querySelectorAll("[data-sonner-toast]")).toHaveLength(1));
+    await expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual([]);
+    await userEvent.click(within(removed.closest<HTMLElement>("[data-sonner-toast]")!).getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Remove Sample Frederick event from Saved" })).toHaveAttribute("aria-pressed", "true"));
+    await expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual([{ type: "event", id: SAMPLE, saved_at: expect.any(String) }]);
+  },
+};
 export const UnavailableAt390: Story = {
   globals: { viewport: { value: "radiusMobile", isRotated: false } },
   beforeEach: () => sampleStorage(true),

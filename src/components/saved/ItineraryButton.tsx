@@ -3,7 +3,7 @@
 import { useEventSavedState, useMounted, useSetEventSaved, savedChangeDescription } from "@/hooks/useSaved";
 import { useRef, useState } from "react";
 import { Bookmark } from "lucide-react";
-import { toast } from "sonner";
+import { notifyError, notifyRemoved, notifySaved } from "@/lib/feedback/notify";
 
 /** Retain the existing event-card call sites while using the same event save
  * authority as the full page and Saved tab. Legacy Day Plan data is untouched. */
@@ -24,30 +24,39 @@ export default function ItineraryButton({
   const setSaved = useSetEventSaved(eventId);
   const eventName = label?.replace(/^Add\s+/, "").replace(/\s+to itinerary$/, "") || "event";
 
+  // One path for the tap and for Undo. Undo reports its own failure and stays
+  // quiet on success: the bookmark flipping back is the confirmation.
+  async function change(next: boolean, undoing = false) {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      if (await setSaved(next) !== next) throw new Error("Saved change not confirmed");
+      if (undoing) return;
+      const item = { type: "event", id: eventId } as const;
+      if (next) notifySaved({ label: eventName, onUndo: () => void change(false, true), item });
+      else notifyRemoved({ label: eventName, onUndo: () => void change(true, true), item });
+    } catch (error) {
+      notifyError({
+        title: undoing ? "Could not undo this change" : next ? "Could not save this event" : "Could not remove from Saved",
+        description: savedChangeDescription(error),
+      });
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
+
   return (
     <button
       type="button"
       data-save-ref={`event:${eventId}`}
       disabled={!mounted || savedState === null || busy}
       aria-busy={busy || undefined}
-      onClick={async (event) => {
+      onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        if (busyRef.current) return;
-        busyRef.current = true;
-        setBusy(true);
-        try {
-          const saved = await setSaved(!isSaved);
-          if (saved) toast.success(`Saved · ${eventName}`);
-          else toast("Removed from Saved");
-        } catch (error) {
-          toast.error(isSaved ? "Could not remove from Saved" : "Could not save this event", {
-            description: savedChangeDescription(error),
-          });
-        } finally {
-          busyRef.current = false;
-          setBusy(false);
-        }
+        void change(!isSaved);
       }}
       aria-pressed={savedState === null ? undefined : mounted && isSaved}
       aria-label={busy ? `${isSaved ? "Removing" : "Saving"} ${eventName}` : savedState === null ? `Saved state unavailable for ${eventName}` : isSaved ? `Remove ${eventName} from Saved` : `Save ${eventName}`}

@@ -13,7 +13,7 @@ import {
   currentReturnBridgeState,
   openReturnBridge,
 } from "@/lib/return-bridge";
-import { toast } from "sonner";
+import { notifyError, notifyRemoved, notifySaved } from "@/lib/feedback/notify";
 import { trackDecision } from "@/lib/decision/telemetry";
 
 /**
@@ -128,23 +128,19 @@ export default function MyRadiusButton({
           position: "detail",
           action: "save",
         });
-        toast.success(`Saved · ${name}`, {
+        notifySaved({
+          label: name,
           description: authed ? undefined : "On this device. Sign in to keep saves everywhere.",
-          duration: offerKeepAction ? 7000 : undefined,
-          action: offerKeepAction
-            ? { label: "Keep handy", onClick: openReturnBridge }
-            : { label: "Undo", onClick: () => void undo(nowFollowed) },
-          cancel: offerKeepAction
-            ? { label: "Undo", onClick: () => void undo(nowFollowed) }
-            : undefined,
+          onUndo: () => void undo(nowFollowed),
+          forward: offerKeepAction ? { label: "Keep handy", onClick: openReturnBridge } : undefined,
+          item: { type: "place", id: slug },
         });
       } else {
-        toast(`Removed from Saved · ${name}`, {
-          action: { label: "Undo", onClick: () => void undo(nowFollowed) },
-        });
+        notifyRemoved({ label: name, onUndo: () => void undo(nowFollowed), item: { type: "place", id: slug } });
       }
     } catch {
-      toast.error(wasFollowed ? "Could not remove from Saved" : "Could not save this place", {
+      notifyError({
+        title: wasFollowed ? "Could not remove from Saved" : "Could not save this place",
         description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again.",
       });
     } finally {
@@ -164,7 +160,8 @@ export default function MyRadiusButton({
       const nextFollowed = await toggle(!wasFollowed);
       if (failureDescriptionRef.current !== null || nextFollowed === wasFollowed) throw new Error("Save state did not change");
     } catch {
-      toast.error("Could not undo this change", {
+      notifyError({
+        title: "Could not undo this change",
         description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again.",
       });
     } finally {

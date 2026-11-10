@@ -24,7 +24,7 @@
  */
 import { eventDisplayTitle } from "@/lib/events/display-title";
 import { useRef, useState } from "react";
-import { toast } from "sonner";
+import { notifyError, notifyRemoved } from "@/lib/feedback/notify";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import CategoryIcon from "@/components/place/CategoryIcon";
@@ -35,6 +35,7 @@ import { googleMapsDirections } from "@/lib/integrations/deeplinks";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 import { savedDateLabel } from "@/components/saved/walletFacts";
+import { walletFocusAfterRemoval } from "@/components/saved/SavedWallet";
 import { useToggleSave, savedChangeDescription } from "@/hooks/useSaved";
 import { eventLipFact, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
 import { statusLabel } from "@/lib/event-status";
@@ -76,8 +77,8 @@ function Card({
   const kind = cat?.name ?? "Event";
   const fact = eventLipFact(event, now);
   // Un-save from the card itself, the same device-local toggle the save
-  // side wrote with. One tap, no confirm: events are device-local by
-  // contract and re-saving costs one tap on the event page.
+  // side wrote with. One tap, no confirm: the toast that names the event
+  // carries Undo.
   const toggleSave = useToggleSave("event", event.slug);
   const removingRef = useRef(false);
   const [removing, setRemoving] = useState(false);
@@ -109,6 +110,16 @@ function Card({
     track(open ? "saved_event_wallet_collapse" : "saved_event_wallet_raise", {
       category: event.category,
     });
+  }
+
+  // Undo usually runs after this card has left the deck. The saved store is
+  // module state, so the same toggle still restores the event from here.
+  async function restore() {
+    try {
+      if (!await toggleSave(true)) throw new Error("Restore not confirmed");
+    } catch (error) {
+      notifyError({ title: "Could not undo this change", description: savedChangeDescription(error), onRetry: () => void restore() });
+    }
   }
 
   return (
@@ -240,15 +251,18 @@ function Card({
           )}
           <button
             type="button"
-            onClick={async () => {
+            onClick={async (click) => {
               if (removingRef.current) return;
               removingRef.current = true;
+              const moveFocus = walletFocusAfterRemoval(click.currentTarget);
               setRemoving(true);
               try {
                 if (await toggleSave(false)) throw new Error("Removal not confirmed");
                 haptic("light");
+                notifyRemoved({ label: eventDisplayTitle(event), onUndo: () => void restore(), item: { type: "event", id: event.slug } });
+                moveFocus();
               } catch (error) {
-                toast.error("Could not remove from Saved", { description: savedChangeDescription(error) });
+                notifyError({ title: "Could not remove from Saved", description: savedChangeDescription(error) });
               } finally {
                 setRemoving(false);
                 removingRef.current = false;

@@ -5,7 +5,7 @@ import { useMemo, useRef, useState } from "react";
 import { useSavedList, useToggleSave, useMounted, savedChangeDescription } from "@/hooks/useSaved";
 import { BEER_BY_KEY, FAMILY_BY_KEY, type BeerWithBrewery } from "@/data/beers";
 import { BreweryLogo } from "./BreweryLogo";
-import { toast } from "sonner";
+import { notifyError, notifyRemoved } from "@/lib/feedback/notify";
 
 const prettyTown = (slug: string) =>
   slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -34,6 +34,8 @@ export default function MyTaps({ heading = true }: { heading?: boolean }) {
     <section
       id="my-taps"
       aria-label="Saved pours"
+      // Takes focus after a removal, so it does not fall to <body>.
+      tabIndex={-1}
       className="scroll-mt-24 -mx-4 space-y-5 overflow-hidden border-y px-4 py-8 sm:-mx-5 sm:px-8 lg:mx-0 lg:rounded-[var(--app-radius-sm)] lg:border lg:px-10"
       style={{
         borderColor: "var(--app-border)",
@@ -67,6 +69,15 @@ function TapRow({ beer, savedKey, index }: { beer: BeerWithBrewery; savedKey: st
   const remove = useToggleSave("beer", savedKey);
   const removingRef = useRef(false);
   const [removing, setRemoving] = useState(false);
+  // Undo runs after this card has left the rail. The saved store is module
+  // state, so the same toggle still restores the pour from here.
+  async function restore() {
+    try {
+      if (!await remove(true)) throw new Error("Restore not confirmed");
+    } catch (error) {
+      notifyError({ title: "Could not undo this change", description: savedChangeDescription(error), onRetry: () => void restore() });
+    }
+  }
   const fam = FAMILY_BY_KEY[beer.family];
   return (
     <li
@@ -84,12 +95,28 @@ function TapRow({ beer, savedKey, index }: { beer: BeerWithBrewery; savedKey: st
         </span>
         <button
           type="button"
-          onClick={async () => {
+          onClick={async (event) => {
             if (removingRef.current) return;
             removingRef.current = true;
+            const button = event.currentTarget;
+            const hadFocus = document.activeElement === button;
             setRemoving(true);
-            try { await remove(false); }
-            catch (error) { toast.error("Could not remove this pour", { description: savedChangeDescription(error) }); }
+            try {
+              if (await remove(false)) throw new Error("Removal not confirmed");
+              // The card's only control leaves with it. Land on the section,
+              // or on the Saved heading when this was the last pour, and not
+              // on a neighbor's Remove, where a second Enter would delete it.
+              if (hadFocus) window.requestAnimationFrame(() => {
+                if (document.activeElement !== button && document.activeElement !== document.body) return;
+                (document.getElementById("my-taps") ?? document.getElementById("saved-page-heading"))?.focus();
+              });
+              notifyRemoved({
+                label: beer.name,
+                title: `Removed from saved pours · ${beer.name}`,
+                onUndo: () => void restore(),
+                item: { type: "beer", id: savedKey },
+              });
+            } catch (error) { notifyError({ title: "Could not remove this pour", description: savedChangeDescription(error) }); }
             finally { removingRef.current = false; setRemoving(false); }
           }}
           disabled={removing}
