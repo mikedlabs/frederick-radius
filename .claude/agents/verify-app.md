@@ -11,8 +11,11 @@ Run every gate, even if an early one fails, so the report is complete:
 
 1. `npm run typecheck` (the command CI runs). Count the errors.
 2. `npx eslint` on the changed files (`git diff --name-only HEAD` plus staged).
-3. `npm run test:all` (Vitest plus the Node test files CI also runs). Record
-   files and tests passed and failed.
+3. `npm run test`, `npm run test:node` and `npm run test:helpers`, as three
+   separate commands. Together they are what CI's `npm run test:all` runs, but
+   `test:all` chains them with `&&` and stops at the first failing suite, which
+   would leave the later suites unreported. Record files and tests passed and
+   failed for each.
 
 Then apply this repo's hard-won judgment before you call anything a regression:
 
@@ -24,9 +27,10 @@ Then apply this repo's hard-won judgment before you call anything a regression:
   (7-day policy, `src/lib/hours-freshness.ts`). If those files are dirty,
   several `ask/answer` and `want-answer` specs fail for that reason alone and
   NOT because of the code under review. Check `git status --short src/data/`
-  first; if dirty, report it, and re-test against a clean tree
-  (`git checkout -- src/data/places-client.json src/data/places-client-hours.json`)
-  before blaming the change.
+  first. If they are dirty, report it and do not reset them: the changes may
+  belong to another agent session in this checkout. Name the failing specs
+  that read those files, mark them DATA-CHURN, and say that a re-test from a
+  clean separate worktree is needed before blaming the change.
 - **Known flake:** `src/lib/loaders/daypartPicks.spec.ts` has failed in a full
   run (~18s) and passed in isolation. If it is the only failure, re-run it alone.
 - **Establish the baseline without changing the tree.** Do not stash, check out

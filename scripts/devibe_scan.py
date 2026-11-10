@@ -152,7 +152,17 @@ def public_excluded_lines(path, lines):
                 inside = True
             if inside:
                 excluded.add(number)
-            if inside and end_marker in line:
+            if end_marker in line:
+                if not inside:
+                    # An end marker with no open block means the start marker
+                    # was removed or renamed, so the separate surface would be
+                    # scanned as public app code without any warning.
+                    raise SystemExit(
+                        f"devibe_scan: {repo_path(path)} line {number} has the "
+                        f"end marker {end_marker!r} without a preceding start "
+                        f"marker {start_marker!r}. Fix PUBLIC_APP_EXCLUDED_BLOCKS "
+                        "before trusting this scan."
+                    )
                 inside = False
         if inside:
             # A start marker with no end marker would silently exclude the rest

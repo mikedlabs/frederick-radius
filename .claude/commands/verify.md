@@ -15,13 +15,18 @@ Steps, in order. Run them all even if an early one fails, so the report is compl
 
 1. `npm run typecheck` must report 0 errors. This is the command CI runs.
 2. `npx eslint <the changed .ts/.tsx files above>` must be clean.
-3. `npm run test:all` must be all green. It runs the Vitest suite plus the
-   Node test files in `tests/` and `scripts/lib/` that `npx vitest run` skips,
-   and CI runs the same command.
+3. Run the three suites that make up `npm run test:all` as separate commands,
+   because `test:all` chains them with `&&` and stops at the first failing
+   suite: `npm run test` (Vitest), `npm run test:node` (`tests/*.test.ts`) and
+   `npm run test:helpers` (`scripts/lib/*.test.mjs` and `tests/*.test.mjs`).
+   All three must be green. CI runs `npm run test:all`, so each one counts.
 
-This is the local gate. CI's required `verify` and `style-lint` checks also run
-audits, data-artifact validation, the build and browser tests, so check them on
-the PR.
+This is the local gate. CI's required `verify` check also runs the dependency
+and repository audits, committed transit data validation, the build, the
+Storybook component tests and the browser tests. On an automated data PR it
+skips most of those and runs the data-artifact validation instead. The required
+`style-lint` check runs only `style:lint`, `lint:colors` and `lint:zindex`.
+Check both results on the PR.
 
 Then check for the traps this repo has actually hit:
 

@@ -51,7 +51,7 @@ findings across 2,494 files.
 | Signal | Public product | All surfaces | Reading |
 |---|---:|---:|---|
 | High | 0 | 30 | Violet gradients and gradient text remain isolated to the internal pitch world. |
-| Medium | 343 | Not the release gate | The main debt is 330 uses of oversized rounding or capsules, 55 of them `border-radius: 999px` rules in `globals.css`. The rest are 7 glow shadows, 5 routine motion patterns and 1 emoji. This is real repetition, not a reason to call the product finished. |
+| Medium | 343 | Not the release gate | The main debt is 330 uses of oversized rounding or capsules, 55 of them in `globals.css` (52 `border-radius: 999px` rules and 3 `border-radius: 9999px` rules). The rest are 7 glow shadows, 5 routine motion patterns and 1 emoji. This is real repetition, not a reason to call the product finished. |
 | Low | 1 | Not the release gate | One source-owned sentence matches a generic-copy expression. Review its provenance before changing it. |
 
 Between October 12 and November 10 this scan skipped almost all of
@@ -74,9 +74,10 @@ The product should read like a field guide, not a stack of floating SaaS cards.
   marks to establish hierarchy before adding another container.
 - Use the named radius tokens from `src/app/globals.css` (`--app-radius-sm`,
   `--app-radius-md`, `--app-radius-lg`, `--app-radius-xl`) instead of a
-  hand-set pixel value. Match the nearest shared primitive: `Button` and
-  `SortDropdown` use `--app-radius-md`, and `Row`, `EmptyState` and
-  `BottomSheet` use `--app-radius-lg`.
+  hand-set pixel value. Match the nearest shared primitive: `Button` uses
+  `--app-radius-md`, `SortDropdown` pairs a full-capsule filter trigger with
+  a `--app-radius-md` menu, and `Row`, `EmptyState` and `BottomSheet` use
+  `--app-radius-lg`.
 - Full capsules are reserved for status, toggles, and compact filters. A normal
   action, navigation item, content card, or source row should not be a pill.
 - Shadows indicate a real layer such as a menu or sheet. Routine content stays

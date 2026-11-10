@@ -18,10 +18,11 @@ Rules this repo has learned the hard way:
 1. **Verify before committing.** Run `npm run typecheck`, `npx eslint <changed>`,
    and `npm run test:all` locally. CI's `verify` and `style-lint` checks are
    required by the `Main production safety` ruleset and block the merge when
-   red, so a clean local run is necessary but does not replace them. CI
-   `verify` also runs the audit, data-artifact, transit and build steps in
-   `.github/workflows/ci.yml`, which the local gate does not cover. Check
-   those results on the PR before merging.
+   red, so a clean local run is necessary but does not replace them. On an
+   ordinary PR, CI `verify` also runs the audit, transit data, build,
+   Storybook and browser steps in `.github/workflows/ci.yml`, which the local
+   gate does not cover. Its data-artifact validation step runs only on
+   automated data PRs. Check those results on the PR before merging.
 
 2. **Stage explicitly. Never `git add -A`.** Exploration agents and data builds
    write files into this tree. `npm run build:client-places` and

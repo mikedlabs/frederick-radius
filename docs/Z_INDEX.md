@@ -54,7 +54,9 @@ has its own cinematic stacking and is out of scope.
 ## Guard
 `npm run lint:zindex` (`scripts/check-zindex.mjs`) runs in the required
 `style-lint` CI job. It scans `.ts` and `.tsx` files under `src`, except
-`src/components/marketing/`. It fails on an arbitrary numeric `z-[NNN]`, on a
+`src/components/marketing/`. Its exclusion list also names
+`src/components/map/index.tsx` and `src/components/map/map-component.tsx`,
+but neither file exists, so those entries skip nothing. It fails on an arbitrary numeric `z-[NNN]`, on a
 bare `z-40`, `z-50`, `z-60`, `z-70`, `z-80`, `z-90` or `z-100`, and on an
 inline numeric `zIndex` of 40 or more. It does not flag `z-0`, `z-10`, `z-20`
 or `z-30`, and it accepts both token forms, `z-[var(--z-…)]` and
