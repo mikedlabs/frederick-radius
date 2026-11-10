@@ -45,7 +45,7 @@ PUBLIC_APP_EXCLUDED_FILES = {
 # than hiding the most important public-product stylesheet wholesale.
 PUBLIC_APP_EXCLUDED_BLOCKS = {
     "src/app/globals.css": (
-        ("INTERNAL PITCH DECK", "APP (Warm Civic)"),
+        ("INTERNAL PITCH DECK", "Product identity"),
     ),
 }
 EXTS = {".html", ".htm", ".css", ".scss", ".sass", ".less", ".js", ".jsx",
@@ -154,6 +154,14 @@ def public_excluded_lines(path, lines):
                 excluded.add(number)
             if inside and end_marker in line:
                 inside = False
+        if inside:
+            # A start marker with no end marker would silently exclude the rest
+            # of the file. That hid 9,272 lines of globals.css for a month.
+            raise SystemExit(
+                f"devibe_scan: {repo_path(path)} has the start marker "
+                f"{start_marker!r} but no end marker {end_marker!r}. "
+                "Fix PUBLIC_APP_EXCLUDED_BLOCKS before trusting this scan."
+            )
     return excluded
 
 
