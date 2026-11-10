@@ -31,7 +31,9 @@ export default function TownStrip({ activeSlug }: { activeSlug: string }) {
       // -mx-4 lets the strip bleed to the screen edge so users see the
       // last chip clipping rather than ending flush, hinting at scroll.
       // overflow-x-auto + scrollbar-hide gives a clean horizontal sweep.
-      className="-mx-4 flex gap-1.5 overflow-x-auto px-4 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      // From lg up the row wraps instead, because a mouse wheel cannot reach
+      // towns that sit past the edge of a hidden-scrollbar rail.
+      className="-mx-4 flex gap-1.5 overflow-x-auto px-4 py-1 [-ms-overflow-style:none] [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden"
     >
       <span
         className="shrink-0 self-center pr-1 text-[10px] font-bold uppercase tracking-[0.12em]"

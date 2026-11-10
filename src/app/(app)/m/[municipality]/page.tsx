@@ -30,7 +30,7 @@ export const revalidate = 600;
  *      the town name, and ONE short blurb. No pop./est. metadata lead.
  *   2. A town-scoped ask/search pill — the first action.
  *   3. A field-guide locator line (mono caps centroid coordinates).
- *   4. Worth your time — the LEAD answer: a glow-lead selected card + a
+ *   4. Worth your time — the LEAD answer: one lead card + a
  *      2-up grid of compact cells, then a demoted "All places →" link.
  *   5. Sibling-town nav (TownStrip) as a slim row.
  *   6. Upcoming events (honest empty-state preserved).
@@ -129,7 +129,7 @@ export default async function MunicipalityPage(
     })
     .map((x) => x.p);
 
-  // The lead pick gets the glow; the next handful fill a compact 2-up grid.
+  // The lead pick is the answer card; the next handful fill a compact 2-up grid.
   const lead = worthYourTime[0];
   const grid = worthYourTime.slice(1, 5);
 
@@ -233,8 +233,8 @@ export default async function MunicipalityPage(
 
       {/* 4 — Worth your time: the LEAD answer — the PLACES lead the page now
           (owner call: open with what's actionable + visual, not the town's
-          history). A glow-lead selected card, then a compact 2-up grid of
-          cells, then a demoted "all places" link. */}
+          history). One lead card, then a compact 2-up grid of cells, then a
+          demoted "all places" link. */}
       {lead ? (
         <section className="space-y-3">
           <div className="flex items-baseline gap-2.5">
@@ -246,13 +246,8 @@ export default async function MunicipalityPage(
             </span>
           </div>
 
-          {/* The selected pick — glow-lead. */}
-          <div
-            className="rounded-[var(--app-radius-lg)]"
-            style={{ boxShadow: "0 16px 36px -20px color-mix(in srgb, var(--app-brand) 55%, transparent)" }}
-          >
-            <PlaceCard place={lead} variant="answer" />
-          </div>
+          {/* The selected pick. Its size and top rule mark it as the lead. */}
+          <PlaceCard place={lead} variant="answer" />
 
           {/* Compact 2-up grid of the next handful. */}
           {grid.length > 0 && (
