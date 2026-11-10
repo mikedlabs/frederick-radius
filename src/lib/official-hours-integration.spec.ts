@@ -112,6 +112,10 @@ describe("published first-party schedule projections", () => {
     const compact = JSON.parse(writes.get("places-client-hours.json")!) as ClientPlaceHours[];
     for (const [slug] of FCPL_BRANCHES) {
       expect(full.find((row) => row.slug === slug)?.hours, `baked ${slug}`).toBeUndefined();
+      // Raw readers of the client artifact skip the loader's recomputation,
+      // so the baked row itself must already say the hours are unverified.
+      // The compact file has no row for these slugs, asserted below.
+      expect(full.find((row) => row.slug === slug), `baked ${slug}`).toMatchObject({ hours_verified: false });
       expect(compact.some((row) => row.slug === slug), `baked map ${slug}`).toBe(false);
     }
     vi.doMock("@/data/places-client.json", () => ({ default: full }));
