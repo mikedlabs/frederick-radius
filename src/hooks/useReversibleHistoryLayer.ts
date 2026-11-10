@@ -118,6 +118,21 @@ export function navigateAfterHistoryLayer(id: string, next: () => void) {
 }
 
 /**
+ * Remove a layer entry whose surface unmounted while it was still open, for
+ * example when the tab or slot holding it is replaced.
+ *
+ * Only the untouched entry goes: it must still be this layer's entry at the
+ * same URL it opened on. A real navigation has already pushed or replaced a
+ * different entry by then, and Back has already left it, so neither one is
+ * reversed.
+ */
+export function releaseAbandonedHistoryLayer(id: string, href: string) {
+  if (typeof window === "undefined" || !id) return;
+  if (currentLayerId() !== id || window.location.href !== href) return;
+  window.history.back();
+}
+
+/**
  * Gives a modal surface native-app Back behavior without putting UI state in
  * the URL. Opening pushes one same-URL history entry; browser Back dismisses
  * the surface, while Close/Escape remove that entry themselves.

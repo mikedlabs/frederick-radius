@@ -1,26 +1,15 @@
 // @vitest-environment jsdom
 
-import { act, createElement, useState } from "react";
+import { act, createElement, StrictMode, useState } from "react";
+import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { Toaster, toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import BottomDrawer from "./BottomDrawer";
 
-const navigation = vi.hoisted(() => ({ leaveTo: vi.fn() }));
-// The history layer is real. Only its final document navigation is replaced,
-// because jsdom cannot load another page.
-vi.mock("@/hooks/useReversibleHistoryLayer", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/hooks/useReversibleHistoryLayer")>();
-  return {
-    ...actual,
-    useReversibleHistoryLayer: (
-      options: Parameters<typeof actual.useReversibleHistoryLayer>[0],
-    ) => ({ ...actual.useReversibleHistoryLayer(options), leaveTo: navigation.leaveTo }),
-  };
-});
-
 const LAYER_KEY = "__frederickRadiusLayer";
+const INITIAL_HREF = window.location.href;
 // jsdom has no pointer capture, which Sonner requests when a toast is pressed.
 Element.prototype.setPointerCapture ??= () => {};
 
@@ -130,6 +119,21 @@ function LayeredDrawer({
   );
 }
 
+/** A tab or slot that replaces the drawer while it is still open. */
+function SlotDrawer({ mounted }: { mounted: boolean }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>Open slot drawer</button>
+      {mounted ? (
+        <BottomDrawer open={open} onOpenChange={setOpen} historyLayerId="slot-details" title="Slot details">
+          <button type="button">Slot body action</button>
+        </BottomDrawer>
+      ) : null}
+    </>
+  );
+}
+
 function ToastDrawer({ onUndo }: { onUndo: () => void }) {
   const [open, setOpen] = useState(false);
   return (
@@ -186,13 +190,63 @@ function layerId(): unknown {
   return (window.history.state as Record<string, unknown> | null)?.[LAYER_KEY];
 }
 
-/** What the browser does for Back from a same-URL layer entry. */
-async function pressBack() {
-  await act(async () => {
-    window.history.replaceState(null, "", window.location.href);
-    window.dispatchEvent(new PopStateEvent("popstate", { state: null }));
+type HistoryStack = { entries: { href: string; state: unknown }[]; index: number };
+
+/**
+ * A session history with a real entry stack. Push and replace write the
+ * current entry, and Back moves the index down one entry and delivers
+ * popstate with that entry's state, as a browser does a task later.
+ */
+function installHistoryStack(): HistoryStack {
+  const native = window.history.replaceState.bind(window.history);
+  const stack: HistoryStack = {
+    entries: [{ href: window.location.href, state: window.history.state }],
+    index: 0,
+  };
+  vi.spyOn(window.history, "pushState").mockImplementation((state, unused, url) => {
+    stack.entries.splice(stack.index + 1);
+    stack.entries.push({ href: new URL(String(url ?? window.location.href), window.location.href).href, state });
+    stack.index += 1;
+    native(state, unused, url);
   });
+  vi.spyOn(window.history, "replaceState").mockImplementation((state, unused, url) => {
+    stack.entries[stack.index] = { href: new URL(String(url ?? window.location.href), window.location.href).href, state };
+    native(state, unused, url);
+  });
+  vi.spyOn(window.history, "back").mockImplementation(() => {
+    window.setTimeout(() => {
+      if (stack.index === 0) return;
+      stack.index -= 1;
+      const entry = stack.entries[stack.index];
+      native(entry.state, "", entry.href);
+      window.dispatchEvent(new PopStateEvent("popstate", { state: entry.state }));
+    }, 0);
+  });
+  return stack;
+}
+
+/** Browser Back through the history stack. */
+async function pressBack() {
+  await act(async () => window.history.back());
   await flushScheduledWork();
+}
+
+/** jsdom cannot load another document, so stand in for the page's location. */
+function stubLocation() {
+  const real = new URL(window.location.href);
+  const location = {
+    href: real.href,
+    origin: real.origin,
+    protocol: real.protocol,
+    host: real.host,
+    pathname: real.pathname,
+    search: real.search,
+    hash: real.hash,
+    replace: vi.fn(),
+    assign: vi.fn(),
+  };
+  vi.stubGlobal("location", location);
+  return location;
 }
 
 async function openFromFirstButton(container: HTMLElement): Promise<HTMLButtonElement> {
@@ -237,7 +291,6 @@ describe("BottomDrawer keyboard focus", () => {
       })),
     });
     vi.stubGlobal("scrollTo", vi.fn());
-    navigation.leaveTo.mockReset();
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -252,7 +305,8 @@ describe("BottomDrawer keyboard focus", () => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
-    window.history.replaceState(null, "", window.location.href);
+    // A route test moves the URL. Every test starts on the same page.
+    window.history.replaceState(null, "", INITIAL_HREF);
     container.remove();
     document.body.querySelectorAll('[role="dialog"]').forEach((node) =>
       node.remove(),
@@ -357,20 +411,84 @@ describe("BottomDrawer keyboard focus", () => {
   });
 
   it("pushes one history entry and lets Back close the drawer in place", async () => {
+    window.history.replaceState({ page: "beneath" }, "", window.location.href);
+    const stack = installHistoryStack();
     await act(async () => root.render(<LayeredDrawer historyLayerId="layered-details" />));
-    const entries = window.history.length;
     const href = window.location.href;
     const opener = await openFromFirstButton(container);
 
     expect(dialog().getAttribute("data-state")).toBe("open");
-    expect(window.history.length).toBe(entries + 1);
+    expect(stack.entries).toHaveLength(2);
+    expect(stack.index).toBe(1);
     expect(layerId()).toBe("layered-details");
 
     await pressBack();
 
+    // Back consumed the layer entry. The page beneath is current again with
+    // its own state, and closing did not remove a second entry.
     expect(dialog().getAttribute("data-state")).toBe("closed");
+    expect(stack.index).toBe(0);
+    expect(window.history.state).toEqual({ page: "beneath" });
+    expect(window.history.back).toHaveBeenCalledTimes(1);
     expect(window.location.href).toBe(href);
     expect(document.activeElement).toBe(opener);
+  });
+
+  it("removes its history entry when its slot is replaced while it is open", async () => {
+    const stack = installHistoryStack();
+    await act(async () => root.render(<SlotDrawer mounted />));
+    await openFromFirstButton(container);
+    expect(stack.index).toBe(1);
+    expect(layerId()).toBe("slot-details");
+
+    await act(async () => root.render(<SlotDrawer mounted={false} />));
+    await flushScheduledWork();
+
+    expect(window.history.back).toHaveBeenCalledTimes(1);
+    expect(stack.index).toBe(0);
+    expect(layerId()).toBeUndefined();
+  });
+
+  it("does not reverse a route navigation that replaces an open drawer", async () => {
+    const stack = installHistoryStack();
+    await act(async () => root.render(<SlotDrawer mounted />));
+    await openFromFirstButton(container);
+
+    // The router writes the destination entry in the commit that removes the
+    // page, after the drawer's own unmount work has run.
+    await act(async () => {
+      flushSync(() => root.render(<SlotDrawer mounted={false} />));
+      window.history.pushState({ route: "place" }, "", "/places/baker-park-frederick");
+    });
+    await flushScheduledWork();
+
+    expect(window.history.back).not.toHaveBeenCalled();
+    expect(stack.index).toBe(2);
+    expect(window.location.pathname).toBe("/places/baker-park-frederick");
+  });
+
+  it("does not remove a second entry after Back has already closed a drawer that then unmounts", async () => {
+    const stack = installHistoryStack();
+    await act(async () => root.render(<SlotDrawer mounted />));
+    await openFromFirstButton(container);
+    await pressBack();
+    await act(async () => root.render(<SlotDrawer mounted={false} />));
+    await flushScheduledWork();
+
+    expect(window.history.back).toHaveBeenCalledTimes(1);
+    expect(stack.index).toBe(0);
+  });
+
+  it("keeps its history entry through a Strict Mode remount", async () => {
+    const stack = installHistoryStack();
+    await act(async () => root.render(<StrictMode><SlotDrawer mounted /></StrictMode>));
+    await openFromFirstButton(container);
+    await flushScheduledWork();
+
+    expect(window.history.back).not.toHaveBeenCalled();
+    expect(stack.index).toBe(1);
+    expect(layerId()).toBe("slot-details");
+    expect(dialog().getAttribute("data-state")).toBe("open");
   });
 
   it("removes its own history entry when Close or Escape dismisses it", async () => {
@@ -430,6 +548,9 @@ describe("BottomDrawer keyboard focus", () => {
     await act(async () => root.render(<LayeredDrawer historyLayerId="layered-details" />));
     await openFromFirstButton(container);
     const [inApp, newTab, external] = Array.from(dialog().querySelectorAll<HTMLAnchorElement>("a"));
+    const location = stubLocation();
+    let layerAtNavigation: unknown;
+    location.replace.mockImplementation(() => { layerAtNavigation = layerId(); });
     // jsdom cannot navigate, so stop whatever the drawer leaves to the browser.
     const browserHandled: string[] = [];
     const stopNavigation = (event: MouseEvent) => {
@@ -439,8 +560,12 @@ describe("BottomDrawer keyboard focus", () => {
     document.addEventListener("click", stopNavigation);
     try {
       await act(async () => inApp.click());
-      expect(navigation.leaveTo).toHaveBeenCalledTimes(1);
-      expect(navigation.leaveTo).toHaveBeenCalledWith("/places/baker-park-frederick");
+      // The destination replaces the drawer's own entry, so one Back from
+      // the place returns to the page beneath and never to a dead stop.
+      expect(location.replace).toHaveBeenCalledTimes(1);
+      expect(location.replace).toHaveBeenCalledWith("/places/baker-park-frederick");
+      expect(layerAtNavigation).toBe("layered-details");
+      expect(location.assign).not.toHaveBeenCalled();
       expect(browserHandled).toEqual([]);
 
       await act(async () => newTab.click());
@@ -448,7 +573,8 @@ describe("BottomDrawer keyboard focus", () => {
       await act(async () => {
         inApp.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, metaKey: true }));
       });
-      expect(navigation.leaveTo).toHaveBeenCalledTimes(1);
+      expect(location.replace).toHaveBeenCalledTimes(1);
+      expect(location.assign).not.toHaveBeenCalled();
       expect(browserHandled).toEqual(["/map", "https://example.com/menu", "/places/baker-park-frederick"]);
     } finally {
       document.removeEventListener("click", stopNavigation);
@@ -464,14 +590,21 @@ describe("BottomDrawer keyboard focus", () => {
 
     const inApp = dialog().querySelector<HTMLAnchorElement>("a");
     if (!inApp) throw new Error("Expected the in-app link.");
-    const stopNavigation = (event: MouseEvent) => event.preventDefault();
+    const location = stubLocation();
+    const browserHandled: boolean[] = [];
+    const stopNavigation = (event: MouseEvent) => {
+      browserHandled.push(!event.defaultPrevented);
+      event.preventDefault();
+    };
     document.addEventListener("click", stopNavigation);
     try {
       await act(async () => inApp.click());
     } finally {
       document.removeEventListener("click", stopNavigation);
     }
-    expect(navigation.leaveTo).not.toHaveBeenCalled();
+    expect(browserHandled).toEqual([true]);
+    expect(location.replace).not.toHaveBeenCalled();
+    expect(location.assign).not.toHaveBeenCalled();
   });
 
   it("keeps the drawer open when a toast above it is pressed, and runs the toast action", async () => {

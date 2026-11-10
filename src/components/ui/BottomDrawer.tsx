@@ -9,7 +9,10 @@ import {
   useRef,
 } from "react";
 import { X } from "lucide-react";
-import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
+import {
+  releaseAbandonedHistoryLayer,
+  useReversibleHistoryLayer,
+} from "@/hooks/useReversibleHistoryLayer";
 import { haptic } from "@/lib/haptics";
 
 /**
@@ -232,6 +235,33 @@ export default function BottomDrawer({
       restoreRememberedFocus();
     }
   }, [historyLayer, open, ownsHistoryLayer, rememberCurrentFocus, restoreRememberedFocus]);
+
+  // The entry this drawer pushed, while it is open. A drawer whose slot is
+  // replaced unmounts without receiving open=false, so the close above never
+  // runs. The unmount below removes that entry, and only when nothing else has
+  // moved history in the same turn, so a real navigation is never reversed.
+  const openLayerRef = useRef<{ id: string; href: string } | null>(null);
+  const mountedRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!ownsHistoryLayer || !open || !historyLayerId) {
+      openLayerRef.current = null;
+    } else if (openLayerRef.current?.id !== historyLayerId) {
+      openLayerRef.current = { id: historyLayerId, href: window.location.href };
+    }
+  }, [historyLayerId, open, ownsHistoryLayer]);
+  useLayoutEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      const layer = openLayerRef.current;
+      if (!layer) return;
+      // Strict Mode remounts before this runs, and a route commit has already
+      // written its own entry by then.
+      queueMicrotask(() => {
+        if (!mountedRef.current) releaseAbandonedHistoryLayer(layer.id, layer.href);
+      });
+    };
+  }, []);
 
   useLayoutEffect(
     () => () => {

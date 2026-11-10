@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { act, createElement } from "react";
+import { act, createElement, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { renderToString } from "react-dom/server";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { acquireScrollLock } from "./scroll-lock";
 
@@ -124,6 +125,37 @@ describe("useScrollLock", () => {
     await act(async () => reactRoot.render(lock(true)));
     await act(async () => reactRoot.unmount());
     expect(root.style.overflowY).toBe("");
+  });
+
+  it("locks in the same commit that opens the overlay, before passive effects run", async () => {
+    const container = document.createElement("div");
+    const reactRoot = createRoot(container);
+    await act(async () => reactRoot.render(lock(false)));
+    let lockedAtFirstPassiveEffect: string | null = null;
+    function Probe() {
+      useEffect(() => {
+        lockedAtFirstPassiveEffect = root.style.overflowY;
+      }, []);
+      return null;
+    }
+    // The probe renders first, so its passive effect runs before any passive
+    // effect of the lock. It sees the lock only when the hook applies it in
+    // the layout phase, before the browser can paint.
+    await act(async () => reactRoot.render([createElement(Probe, { key: "probe" }), lock(true, "lock")]));
+    expect(lockedAtFirstPassiveEffect).toBe("hidden");
+    await act(async () => reactRoot.unmount());
+    expect(root.style.overflowY).toBe("");
+  });
+
+  it("renders on the server without touching the document or warning", () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(renderToString(lock(true))).toBe("");
+      expect(root.style.overflowY).toBe("");
+      expect(errors).not.toHaveBeenCalled();
+    } finally {
+      errors.mockRestore();
+    }
   });
 
   it("keeps the page locked while either of two stacked overlays is open", async () => {
