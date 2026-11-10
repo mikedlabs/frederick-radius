@@ -2,7 +2,6 @@
  * /api/feedback — visitor feedback intake.
  *
  *   POST { message, email?, pathname?, version? }
- *   POST { message, pathname: FairDay, fairIssue, fairContext?, email? }
  *   POST { source: "ask-correction", reason, resultRef?, pathname? }
  *
  * Writes to the existing `submissions` table with kind="feedback" (the same

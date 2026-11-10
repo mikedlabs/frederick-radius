@@ -1,28 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import {
-  Accessibility,
-  Baby,
-  CalendarDays,
-  Car,
-  CircleHelp,
-  MapPin,
-  MessageSquare,
-} from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import Sheet from "@/components/ui/Sheet";
 import { track } from "@/lib/track";
 import { BETA_ID_COOKIE } from "@/lib/beta-constants";
-import {
-  FAIR_FEEDBACK_REASONS,
-  FEEDBACK_MAX_MESSAGE,
-  type FairFeedbackReason,
-} from "@/lib/feedback";
+import { FEEDBACK_MAX_MESSAGE } from "@/lib/feedback";
 import {
   OPEN_FEEDBACK_EVENT,
   PENDING_FEEDBACK_KEY,
-  parseFeedbackOpenDetail,
 } from "@/lib/feedback-ui";
 import { MOBILE_BOTTOM_CHROME_RESERVE } from "@/components/ui/MobileActionBar";
 
@@ -42,27 +29,6 @@ import { MOBILE_BOTTOM_CHROME_RESERVE } from "@/components/ui/MobileActionBar";
 
 type Phase = "idle" | "sending" | "ok" | "error";
 
-const FAIR_REASON_ICONS: Record<
-  FairFeedbackReason,
-  ComponentType<{ className?: string; strokeWidth?: number; "aria-hidden"?: boolean }>
-> = {
-  map_wrong: MapPin,
-  schedule_change: CalendarDays,
-  parking_entry: Car,
-  restroom_help: Baby,
-  access_barrier: Accessibility,
-  other: CircleHelp,
-};
-
-const FAIR_MESSAGE_PROMPTS: Record<FairFeedbackReason, string> = {
-  map_wrong: "Tell us what is in the wrong place or hard to find.",
-  schedule_change: "Tell us which time, event, or detail changed.",
-  parking_entry: "Tell us what happened while parking or entering.",
-  restroom_help: "Tell us what was missing or hard to find.",
-  access_barrier: "Tell us what made the Fair harder to access or use.",
-  other: "Tell us what changed or what made Fair Day harder to use.",
-};
-
 export const FEEDBACK_TRIGGER_BOTTOM =
   `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_CHROME_RESERVE} + 12px)`;
 
@@ -80,9 +46,8 @@ function hasBetaCookie(): boolean {
 
 export function publicFeedbackSurface(
   pathname: string | null,
-): "fair" | "food-trucks" | null {
+): "food-trucks" | null {
   if (pathname === "/food-trucks") return "food-trucks";
-  if (pathname === "/moments/great-frederick-fair-2026") return "fair";
   return null;
 }
 
@@ -90,26 +55,15 @@ export function buildFeedbackRequestBody({
   message,
   email,
   pathname,
-  fairIssue,
-  fairContext,
 }: {
   message: string;
   email: string;
   pathname: string | null;
-  fairIssue: FairFeedbackReason | null;
-  fairContext: string;
 }) {
-  const isFair = publicFeedbackSurface(pathname) === "fair";
   return {
     message,
     ...(email ? { email } : {}),
     ...(pathname ? { pathname } : {}),
-    ...(isFair && fairIssue
-      ? {
-          fairIssue,
-          ...(fairContext ? { fairContext } : {}),
-        }
-      : {}),
   };
 }
 
@@ -119,11 +73,6 @@ export function feedbackSendErrorMessage(error?: string): string {
       return "That email doesn't look right. Fix it, or leave it blank.";
     case "too-long":
       return "That's a lot. Trim it a little and send.";
-    case "bad-fair-issue":
-    case "bad-fair-surface":
-    case "bad-fair-context":
-    case "fair-context-too-long":
-      return "That Fair report could not be verified. Close it and try again.";
     case "rate-limited":
       return "That's plenty for now. Try again in a bit.";
     case "feedback-storage-unavailable":
@@ -133,22 +82,12 @@ export function feedbackSendErrorMessage(error?: string): string {
   }
 }
 
-/** Fair Day exposes feedback inside its Help drawer so it does not compete with
- * the Fair's four primary controls. Other surfaces keep the floating trigger. */
-export function shouldShowFeedbackTrigger(
-  publicSurface: "fair" | "food-trucks" | null,
-): boolean {
-  return publicSurface !== "fair";
-}
-
 export default function FeedbackWidget() {
   const pathname = usePathname();
   const [show, setShow] = useState(false);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
-  const [fairIssue, setFairIssue] = useState<FairFeedbackReason | null>(null);
-  const [fairContext, setFairContext] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorText, setErrorText] = useState("");
   const resetTimer = useRef<number | null>(null);
@@ -160,7 +99,6 @@ export default function FeedbackWidget() {
 
   const publicSurface = publicFeedbackSurface(pathname);
   const isPublicFoodTruckBoard = publicSurface === "food-trucks";
-  const isPublicFairDay = publicSurface === "fair";
 
   // Reads document.cookie after mount; both the server and first client render
   // return null, so there is no hydration mismatch.
@@ -170,7 +108,9 @@ export default function FeedbackWidget() {
   }, [publicSurface]);
 
   useEffect(() => {
-    const openFeedback = (event?: Event) => {
+    const openFeedback = () => {
+      // The request came from elsewhere on the page, so there is no trigger
+      // here to hand focus back to.
       openerRef.current = null;
       try {
         window.sessionStorage.removeItem(PENDING_FEEDBACK_KEY);
@@ -185,13 +125,6 @@ export default function FeedbackWidget() {
       setEmail("");
       setPhase("idle");
       setErrorText("");
-
-      const detail =
-        event instanceof CustomEvent
-          ? parseFeedbackOpenDetail(event.detail)
-          : null;
-      setFairIssue(isPublicFairDay ? detail?.fairIssue ?? null : null);
-      setFairContext(isPublicFairDay ? detail?.fairContext ?? "" : "");
       setOpen(true);
     };
     window.addEventListener(OPEN_FEEDBACK_EVENT, openFeedback);
@@ -206,7 +139,7 @@ export default function FeedbackWidget() {
       window.removeEventListener(OPEN_FEEDBACK_EVENT, openFeedback);
       if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
     };
-  }, [isPublicFairDay]);
+  }, []);
 
   function close() {
     setOpen(false);
@@ -215,8 +148,6 @@ export default function FeedbackWidget() {
     resetTimer.current = window.setTimeout(() => {
       setMessage("");
       setEmail("");
-      setFairIssue(null);
-      setFairContext("");
       setPhase("idle");
       setErrorText("");
       resetTimer.current = null;
@@ -225,11 +156,6 @@ export default function FeedbackWidget() {
 
   async function send() {
     const trimmed = message.trim();
-    if (isPublicFairDay && !fairIssue) {
-      setErrorText("Choose what this report is about.");
-      setPhase("error");
-      return;
-    }
     if (!trimmed) {
       setErrorText("Tell us what changed or went wrong.");
       setPhase("error");
@@ -246,8 +172,6 @@ export default function FeedbackWidget() {
             message: trimmed,
             email: email.trim(),
             pathname,
-            fairIssue,
-            fairContext,
           }),
         ),
       });
@@ -257,10 +181,7 @@ export default function FeedbackWidget() {
         setPhase("error");
         return;
       }
-      track("feedback_send", {
-        path: pathname || "",
-        ...(fairIssue ? { fair_issue: fairIssue } : {}),
-      });
+      track("feedback_send", { path: pathname || "" });
       setPhase("ok");
     } catch {
       setErrorText("That didn't send. Give it another try.");
@@ -280,7 +201,7 @@ export default function FeedbackWidget() {
           the tap target stays comfortable. During beta the owner wants feedback
           reachable on every screen (owner call, 2026-07-20), so the tab stays up
           over other bottom sheets and only steps aside for its OWN open sheet. */}
-      {!open && shouldShowFeedbackTrigger(publicSurface) && (
+      {!open && (
         <button
           type="button"
           onClick={(event) => {
@@ -313,22 +234,8 @@ export default function FeedbackWidget() {
         open={open}
         onClose={close}
         returnFocusRef={openerRef}
-        title={
-          succeeded
-            ? isPublicFairDay
-              ? "Fair report received."
-              : "Thanks. We have your note."
-            : isPublicFairDay
-              ? "Report a Fair issue"
-              : "Send feedback"
-        }
-        subtitle={
-          succeeded
-            ? undefined
-            : isPublicFairDay
-              ? "Help Frederick Radius keep Fair Day accurate."
-              : "What would you keep or change?"
-        }
+        title={succeeded ? "Thanks. We have your note." : "Send feedback"}
+        subtitle={succeeded ? undefined : "What would you keep or change?"}
         maxHeight="80dvh"
         footer={
           succeeded ? (
@@ -348,11 +255,7 @@ export default function FeedbackWidget() {
               className="w-full rounded-[var(--app-radius-md)] py-3 text-[15px] font-semibold disabled:opacity-50"
               style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)", minHeight: 44 }}
             >
-              {sending
-                ? "Sending…"
-                : isPublicFairDay
-                  ? "Send Fair report"
-                  : "Send"}
+              {sending ? "Sending…" : "Send"}
             </button>
           )
         }
@@ -361,108 +264,12 @@ export default function FeedbackWidget() {
           <p className="pb-1 text-[14px]" style={{ color: "var(--app-ink-2)" }}>
             {isPublicFoodTruckBoard
               ? "We use these notes to correct the board. If you left an email, we may write back."
-              : isPublicFairDay
-                ? "Frederick Radius received your report. We will use it to correct Fair Day. If you left an email, we may reply."
               : "We read every note during the beta. If you left an email, we may write back."}
           </p>
         ) : (
           <div className="flex flex-col gap-3 pb-1">
-            {isPublicFairDay ? (
-              <>
-                <fieldset>
-                  <legend
-                    className="mb-2 text-[13px] font-semibold"
-                    style={{ color: "var(--app-ink)" }}
-                  >
-                    What should we fix?
-                  </legend>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(
-                      Object.entries(FAIR_FEEDBACK_REASONS) as Array<
-                        [FairFeedbackReason, string]
-                      >
-                    ).map(([value, label]) => {
-                      const selected = fairIssue === value;
-                      const Icon = FAIR_REASON_ICONS[value];
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          aria-pressed={selected}
-                          onClick={() => {
-                            if (value !== fairIssue) setFairContext("");
-                            setFairIssue(value);
-                            setErrorText("");
-                            if (phase === "error") setPhase("idle");
-                          }}
-                          className="flex min-h-12 items-center gap-2 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-left text-[13px] font-semibold leading-tight transition-colors"
-                          style={{
-                            borderColor: selected
-                              ? "var(--app-brand)"
-                              : "var(--app-border)",
-                            background: selected
-                              ? "var(--app-brand-tint-14)"
-                              : "var(--app-bg-elevated-solid)",
-                            color: selected
-                              ? "var(--app-brand-press)"
-                              : "var(--app-ink)",
-                          }}
-                        >
-                          <Icon
-                            className="h-4 w-4 shrink-0"
-                            strokeWidth={2}
-                            aria-hidden
-                          />
-                          <span>{label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </fieldset>
-
-                {fairContext ? (
-                  <p
-                    className="rounded-[var(--app-radius-sm)] border px-3 py-2 text-[12px] leading-relaxed"
-                    style={{
-                      borderColor: "var(--app-border)",
-                      background: "var(--app-bg-sunken)",
-                      color: "var(--app-ink-2)",
-                    }}
-                  >
-                    <span className="font-semibold" style={{ color: "var(--app-ink)" }}>
-                      Reporting:
-                    </span>{" "}
-                    {fairContext}
-                  </p>
-                ) : null}
-
-                <p
-                  className="rounded-[var(--app-radius-sm)] border px-3 py-2 text-[12px] leading-relaxed"
-                  style={{
-                    borderColor: "var(--app-warning)",
-                    background: "var(--app-warning-tint-6)",
-                    color: "var(--app-ink-2)",
-                  }}
-                >
-                  For an immediate safety or medical emergency, get on-site help
-                  or call 911. This form reports information to Frederick Radius,
-                  not the Fair.
-                </p>
-              </>
-            ) : null}
-
-            <label
-              htmlFor="fr-feedback-message"
-              className={
-                isPublicFairDay
-                  ? "text-[13px] font-semibold"
-                  : "sr-only"
-              }
-              style={isPublicFairDay ? { color: "var(--app-ink)" } : undefined}
-            >
-              {isPublicFairDay
-                ? "What changed or went wrong?"
-                : "What’s working, what’s rough"}
+            <label htmlFor="fr-feedback-message" className="sr-only">
+              What’s working, what’s rough
             </label>
             <textarea
               id="fr-feedback-message"
@@ -471,13 +278,7 @@ export default function FeedbackWidget() {
               maxLength={FEEDBACK_MAX_MESSAGE}
               rows={4}
               autoComplete="off"
-              placeholder={
-                isPublicFairDay
-                  ? fairIssue
-                    ? FAIR_MESSAGE_PROMPTS[fairIssue]
-                    : "Choose a topic, then tell us what happened."
-                  : "A bug, a rough edge, something you liked…"
-              }
+              placeholder="A bug, a rough edge, something you liked…"
               className="w-full resize-y rounded-[var(--app-radius-md)] border px-3 py-2.5 text-base outline-none"
               style={{
                 borderColor: "var(--app-border)",
@@ -493,13 +294,8 @@ export default function FeedbackWidget() {
                 className="text-[13px] font-medium"
                 style={{ color: "var(--app-ink-2)" }}
               >
-                {isPublicFairDay ? "Email (optional)" : "Email, if you want a reply"}
+                Email, if you want a reply
               </label>
-              {isPublicFairDay ? (
-                <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                  Add it only if you want a reply.
-                </p>
-              ) : null}
               <input
                 id="fr-feedback-email"
                 type="email"

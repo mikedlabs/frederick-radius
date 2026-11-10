@@ -24,9 +24,6 @@ async function workerHarness() {
   const listeners = new Map<string, Listener>();
   const puts: Array<{ cache: string; request: unknown; value: unknown }> = [];
   const offline = { kind: "offline" };
-  const fair = { kind: "fair" };
-  const fairMap = { kind: "fair-map" };
-  const fairRedirect = { kind: "fair-redirect" };
   const errorResponse = { kind: "network-error" };
 
   const cacheFor = (name: string) => ({
@@ -47,10 +44,6 @@ async function workerHarness() {
     delete: vi.fn(async () => true),
     match: vi.fn(async (request: unknown) => {
       if (request === "/offline") return offline;
-      if (request === "/moments/great-frederick-fair-2026") return fair;
-      if (request === "/data/fair/great-frederick-fair-2026-map.geojson") {
-        return fairMap;
-      }
       return undefined;
     }),
   };
@@ -74,10 +67,6 @@ async function workerHarness() {
     fetch,
     Response: {
       error: () => errorResponse,
-      redirect: (url: string, status: number) =>
-        url === "/moments/great-frederick-fair-2026" && status === 302
-          ? fairRedirect
-          : errorResponse,
     },
     URL,
     Set,
@@ -112,9 +101,6 @@ async function workerHarness() {
     fetch,
     puts,
     offline,
-    fair,
-    fairMap,
-    fairRedirect,
     errorResponse,
     openWindow,
     dispatchFetch,
@@ -193,32 +179,8 @@ describe("service worker cache boundaries", () => {
     expect(worker.puts).toHaveLength(0);
   });
 
-  it("reloads canonical Fair HTML but reuses HTTP-cached same-origin static assets", async () => {
+  it("ignores the retired Fair warm-up message", async () => {
     const worker = await workerHarness();
-    worker.fetch
-      .mockResolvedValueOnce(
-        response(
-          "https://frederick.example/moments/great-frederick-fair-2026",
-          "public, max-age=0, s-maxage=3600",
-          [
-            '<script src="/_next/static/chunks/fair-a1.js"></script>',
-            '<link href="/_next/static/css/fair-b2.css" rel="stylesheet">',
-            '<script src="https://evil.example/_next/static/chunks/no.js"></script>',
-            '<img src="/fair/private-photo.jpg">',
-          ].join(""),
-        ),
-      )
-      .mockResolvedValueOnce(
-        response("https://frederick.example/_next/static/chunks/fair-a1.js"),
-      )
-      .mockResolvedValueOnce(
-        response("https://frederick.example/_next/static/css/fair-b2.css"),
-      )
-      .mockResolvedValueOnce(
-        response(
-          "https://frederick.example/data/fair/great-frederick-fair-2026-map.geojson",
-        ),
-      );
     let pending: Promise<unknown> | undefined;
     worker.listeners.get("message")!({
       data: { type: "CACHE_FAIR" },
@@ -228,160 +190,18 @@ describe("service worker cache boundaries", () => {
     });
 
     await pending;
-    expect(worker.fetch).toHaveBeenNthCalledWith(
-      1,
-      "/moments/great-frederick-fair-2026",
-      { cache: "reload", credentials: "omit" },
-    );
-    expect(worker.fetch).toHaveBeenNthCalledWith(
-      2,
-      "https://frederick.example/_next/static/chunks/fair-a1.js",
-      { cache: "default", credentials: "omit" },
-    );
-    expect(worker.fetch).toHaveBeenNthCalledWith(
-      3,
-      "https://frederick.example/_next/static/css/fair-b2.css",
-      { cache: "default", credentials: "omit" },
-    );
-    expect(worker.fetch).toHaveBeenNthCalledWith(
-      4,
-      "/data/fair/great-frederick-fair-2026-map.geojson",
-      { cache: "reload", credentials: "omit" },
-    );
-    expect(worker.puts.map((entry) => entry.request)).toEqual([
-      "/moments/great-frederick-fair-2026",
-      "https://frederick.example/_next/static/chunks/fair-a1.js",
-      "https://frederick.example/_next/static/css/fair-b2.css",
-      "/data/fair/great-frederick-fair-2026-map.geojson",
-    ]);
-  });
-
-  it("revalidates the Fair map snapshot and replaces the warmed copy", async () => {
-    const worker = await workerHarness();
-    const currentMap = response(
-      "https://frederick.example/data/fair/great-frederick-fair-2026-map.geojson",
-    );
-    worker.fetch.mockResolvedValueOnce(currentMap);
-
-    const handled = worker.dispatchFetch(
-      "https://frederick.example/data/fair/great-frederick-fair-2026-map.geojson",
-    );
-
-    await expect(handled.result()).resolves.toBe(currentMap);
-    expect(worker.fetch).toHaveBeenCalledWith(handled.request, {
-      cache: "no-cache",
-    });
-    expect(worker.puts).toHaveLength(1);
-    expect(worker.puts[0]).toMatchObject({
-      request: "/data/fair/great-frederick-fair-2026-map.geojson",
-    });
-  });
-
-  it("falls back to the warmed Fair map snapshot when offline", async () => {
-    const worker = await workerHarness();
-    worker.fetch.mockRejectedValueOnce(new Error("offline"));
-
-    const handled = worker.dispatchFetch(
-      "https://frederick.example/data/fair/great-frederick-fair-2026-map.geojson",
-    );
-
-    await expect(handled.result()).resolves.toBe(worker.fairMap);
-    expect(worker.caches.match).toHaveBeenCalledWith(
-      "/data/fair/great-frederick-fair-2026-map.geojson",
-    );
+    expect(pending).toBeUndefined();
+    expect(worker.fetch).not.toHaveBeenCalled();
     expect(worker.puts).toHaveLength(0);
   });
 
   it.each([
-    ["https://frederick.example/beta", "public, max-age=60"],
-    ["https://evil.example/moments/great-frederick-fair-2026", "public, max-age=60"],
-    ["https://frederick.example/moments/great-frederick-fair-2026?private=1", "public, max-age=60"],
-    ["https://frederick.example/moments/great-frederick-fair-2026", "private, max-age=60"],
-    ["https://frederick.example/moments/great-frederick-fair-2026", "no-store"],
-  ])("rejects an unsafe Fair warm response from %s with %s", async (url, cacheControl) => {
-    const worker = await workerHarness();
-    worker.fetch.mockResolvedValueOnce(response(url, cacheControl, ""));
-    let pending: Promise<unknown> | undefined;
-    worker.listeners.get("message")!({
-      data: { type: "CACHE_FAIR" },
-      waitUntil(value: Promise<unknown>) {
-        pending = value;
-      },
-    });
-
-    await pending;
-    expect(worker.puts).toHaveLength(0);
-  });
-
-  it("caps Fair static asset warming at forty unique files", async () => {
-    const worker = await workerHarness();
-    const assets = Array.from(
-      { length: 48 },
-      (_, index) => '<script src="/_next/static/chunks/fair-' + index + '.js"></script>',
-    ).join("");
-    worker.fetch.mockImplementation(async (request: string) =>
-      request === "/moments/great-frederick-fair-2026"
-        ? response(
-            "https://frederick.example/moments/great-frederick-fair-2026",
-            "public, max-age=60",
-            assets,
-          )
-        : response(new URL(request, "https://frederick.example").href),
-    );
-    let pending: Promise<unknown> | undefined;
-    worker.listeners.get("message")!({
-      data: { type: "CACHE_FAIR" },
-      waitUntil(value: Promise<unknown>) {
-        pending = value;
-      },
-    });
-
-    await pending;
-    expect(worker.fetch).toHaveBeenCalledTimes(42);
-    expect(worker.puts).toHaveLength(42);
-    expect(worker.puts.at(-1)?.request).toBe(
-      "/data/fair/great-frederick-fair-2026-map.geojson",
-    );
-  });
-
-  it("uses cached canonical Fair HTML for its exact offline navigation", async () => {
-    const worker = await workerHarness();
-    worker.fetch.mockRejectedValueOnce(new Error("offline"));
-
-    const handled = worker.dispatchFetch(
-      "https://frederick.example/moments/great-frederick-fair-2026",
-      { mode: "navigate" },
-    );
-    await expect(handled.result()).resolves.toBe(worker.fair);
-    expect(worker.caches.match).toHaveBeenCalledWith(
-      "/moments/great-frederick-fair-2026",
-    );
-    expect(worker.caches.match).not.toHaveBeenCalledWith("/offline");
-    expect(worker.puts).toHaveLength(0);
-  });
-
-  it("preserves the /fair redirect before using canonical offline HTML", async () => {
-    const worker = await workerHarness();
-    worker.fetch.mockRejectedValueOnce(new Error("offline"));
-
-    const handled = worker.dispatchFetch("https://frederick.example/fair", {
-      mode: "navigate",
-    });
-    await expect(handled.result()).resolves.toBe(worker.fairRedirect);
-    expect(worker.caches.match).toHaveBeenCalledWith(
-      "/moments/great-frederick-fair-2026",
-    );
-    expect(worker.caches.match).not.toHaveBeenCalledWith("/offline");
-    expect(worker.puts).toHaveLength(0);
-  });
-
-  it.each([
+    "https://frederick.example/fair",
     "https://frederick.example/fair?day=1",
-    "https://frederick.example/fair/",
-    "https://frederick.example/moments/great-frederick-fair-2026?day=1",
+    "https://frederick.example/moments/great-frederick-fair-2026",
     "https://frederick.example/moments/great-frederick-fair-2026/parking",
     "https://frederick.example/today",
-  ])("keeps generic offline behavior for non-exact navigation %s", async (url) => {
+  ])("gives %s only the generic offline page", async (url) => {
     const worker = await workerHarness();
     worker.fetch.mockRejectedValueOnce(new Error("offline"));
 

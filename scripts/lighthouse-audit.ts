@@ -92,7 +92,7 @@ function parseArgs(): Args {
   );
 
   // The set is intentionally narrow: the primary decision surfaces, the
-  // computationally distinct transit, Ask, and Fair experiences, and one
+  // computationally distinct transit and Ask experiences, and one
   // dynamic place route. Add more URLs sparingly so the weekly pass stays
   // useful.
   //
@@ -105,7 +105,6 @@ function parseArgs(): Args {
     "/events",
     "/ask",
     "/transit",
-    "/moments/great-frederick-fair-2026",
     "/places/carroll-creek-linear-park-frederick",
   ];
   return {

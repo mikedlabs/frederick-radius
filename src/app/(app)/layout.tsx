@@ -1,4 +1,6 @@
-import AppChrome from "@/components/nav/AppChrome";
+import BottomNav from "@/components/nav/BottomNav";
+import SideRail from "@/components/nav/SideRail";
+import TopBar from "@/components/nav/TopBar";
 import RouteAccent from "@/components/nav/RouteAccent";
 import AppMain from "@/components/nav/AppMain";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
@@ -62,7 +64,7 @@ export default function AppLayout({ children, modal }: {
           {/* Native-feeling pull-to-refresh — touch-only, fires only
               when scrollY === 0. Reduced-motion users see no spinner. */}
           <PullToRefresh />
-          <AppChrome region="header" />
+          <TopBar />
           {/* Content column. Most routes sit in a centered reading
               column; full-bleed routes (the browse map) opt out inside
               AppMain so the map can fill the viewport on desktop. The
@@ -72,7 +74,8 @@ export default function AppLayout({ children, modal }: {
           {/* Two navs, one shows at a time:
               - BottomNav: floating pill at bottom, < lg
               - SideRail: floating rail on left edge, ≥ lg */}
-          <AppChrome region="primary-navigation" />
+          <BottomNav />
+          <SideRail />
           <InstallPrompt />
           {/* Counts aggregate beta activity and refreshes internal access-use
               timing once per session. No personal code goes to analytics. */}

@@ -4,18 +4,16 @@ import Link from "next/link";
 import Image from "next/image";
 import { Sparkles, Flag, TriangleAlert, Star, Info, ExternalLink, CloudSun } from "lucide-react";
 import { CIVIC_MOMENTS, momentBySlug, type MomentItem, type MomentItemKind } from "@/data/civic-moments";
-import FairDayPage from "@/components/fair/FairDayPage";
 import InTheStreetsWorkspace from "@/components/in-the-streets/InTheStreetsWorkspace";
 import PageBloom from "@/components/ui/PageBloom";
 import { jsonLdScript } from "@/lib/seo/jsonld";
 import { easternDayKey } from "@/lib/tz";
 
-const FAIR_DAY_SLUG = "great-frederick-fair-2026";
 const IN_THE_STREETS_SLUG = "in-the-street-2026";
 
 /**
- * /moments/[slug] — a curated hub for a big county occasion (the Fourth, the
- * Fair, the holiday markets). Closed set (dynamicParams=false, prerendered from
+ * /moments/[slug]: a curated hub for a big county occasion (the Fourth, In
+ * The Street, the holiday markets). Closed set (dynamicParams=false, prerendered from
  * CIVIC_MOMENTS), so an unknown slug is an honest 404, not a soft shell. Content
  * is hand-curated + sourced; pattern-confidence items carry a "confirm" hedge.
  */
@@ -32,31 +30,21 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!m) notFound();
   // An owned moment photograph should lead a shared link with the actual
   // experience instead of generic civic-moment artwork.
-  const ogImage = slug === FAIR_DAY_SLUG
+  const ogImage = m.spotlightImage
     ? {
-        url: "/images/fair/fairgrounds-night-mike-d-1920.jpg",
-        width: 1920,
-        height: 1080,
-        alt: "The Great Frederick Fairgrounds glowing at night, seen from above.",
+        url: m.spotlightImage.src,
+        width: m.spotlightImage.width,
+        height: m.spotlightImage.height,
+        alt: m.spotlightImage.alt,
       }
-    : m.spotlightImage
-      ? {
-          url: m.spotlightImage.src,
-          width: m.spotlightImage.width,
-          height: m.spotlightImage.height,
-          alt: m.spotlightImage.alt,
-        }
     : {
         url: `/api/og?type=moment&slug=${slug}`,
         width: 1200,
         height: 630,
         alt: `${m.title} in Frederick County`,
       };
-  const title = slug === FAIR_DAY_SLUG ? "Fair Day | The Great Frederick Fair 2026" : m.title;
-  const description =
-    slug === FAIR_DAY_SLUG
-      ? "Plan tickets, arrival, the official schedule, and what you do not want to miss in one independent Frederick Radius guide."
-      : m.subtitle;
+  const title = m.title;
+  const description = m.subtitle;
   return {
     title,
     description,
@@ -139,9 +127,6 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
   if (!m) notFound();
   const isDayOf = easternDayKey(new Date()) === m.ends;
 
-  if (slug === FAIR_DAY_SLUG) {
-    return <FairDayPage />;
-  }
   if (slug === IN_THE_STREETS_SLUG) {
     return <InTheStreetsWorkspace />;
   }

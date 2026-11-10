@@ -482,13 +482,6 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(datelineBox.y + datelineBox.height).toBeLessThanOrEqual(weatherBox.y);
     expect(datelineBox.x >= headingBox.x + headingBox.width - 1 || datelineBox.y >= headingBox.y + headingBox.height - 1).toBe(true);
     expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(findBox.y);
-    const campaign = page.locator("[data-today-fair-feature]");
-    if (await campaign.count()) {
-      const campaignBox = (await campaign.boundingBox())!;
-      expect(campaignBox.y).toBeGreaterThan(findBox.y + findBox.height);
-      expect(campaignBox.height).toBeLessThan(210);
-      await expect(campaign).toHaveAttribute("data-fair-feature-tone", "briefing");
-    }
 
     const places = page.locator('[aria-label="Places for your area"]');
     const events = page.locator("[data-today-events]");
