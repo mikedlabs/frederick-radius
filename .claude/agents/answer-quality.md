@@ -28,8 +28,12 @@ Then judge:
   a drop means the app got worse at answering.
 - **Separate ranking bugs from data gaps.** If the right row does not exist in
   `src/data/places-client.json`, that is a `knownGap`, not a ranking failure —
-  say which it is. Known gaps today: no mosque row anywhere, zero hardware
-  stores.
+  say which it is. Do not rely on a remembered list of gaps. A need is a known
+  gap only when its entry in `src/lib/search/coverage-corpus.ts` carries a
+  `knownGap` note, and no entry carries one today. The catalog has a mosque
+  row (Islamic Society of Frederick, subcategory `mosque`) and rows with the
+  `hardware` subcategory (Home Depot, Lowe's and Tractor Supply locations), so
+  a miss on a mosque or hardware query is a ranking failure, not a data gap.
 - **Spot-check by hand** for anything suspicious: import `answerRowsFor` from
   `src/lib/search/coverage.ts` in a /tmp script and print the top rows for the
   query, so you can see WHAT the reader would get, not just a verdict.

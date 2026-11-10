@@ -7,7 +7,7 @@ This contract keeps the app recognizable while removing friction. It is the shar
 Every public page should have:
 
 - One visible H1 that names the page or answers the current intent.
-- A useful action in the first viewport at 390 × 844 and 1440 × 900.
+- A useful action in the first viewport at 320 × 568, 390 × 844, and 1440 × 900.
 - No horizontal document overflow.
 - No browser exceptions or error-level console messages.
 - No failed, broken, or still-unresolved images after lazy content has had a chance to load.
@@ -29,10 +29,12 @@ The automated audit uses stable representatives instead of taking thousands of n
 
 | Group | Representatives | What they protect |
 |---|---|---|
-| Core | Today, coffee search, voter-registration search, food-permit search, mixed local search, nearby coffee, open now, events, map, coordinate-centered map, pulse, compass | Ask, authoritative civic answers, local-result precedence, discover, compare, and navigate journeys |
-| Guides | Beer, brunch, deals, happy hour, live music, weekend, parking, food trucks, amenities, shipping, rivers, transit, trails | Editorial character plus practical utility |
-| Templates | Cafe Nola, Whiskey Creek Golf Club, First Friday, coffee category, Frederick town, Frederick without a plan, Frederick Health | Shared incorporated and unincorporated place, event, category, municipality, collection, and nonprofit renderers |
-| Support | Places, towns, about, trust, emergency vet | Browse entry points, product context, trust, and urgent utility |
+| Core | Today, Ask, Plan, Saved, coffee search, voter-registration search, food-permit search, mixed local search, nearby coffee in Urbana, open now, events, map, coordinate-centered map, Pulse, Compass, Signals | Ask, plan, save, authoritative civic answers, local-result precedence, discover, compare, and navigate journeys |
+| Guides | History, check a date, rhythm, contacts, communication access, collections index, nonprofits, sports, beer, brunch, deals, happy hour, live music, weekend, parking, food trucks, amenities, shipping, rivers, transit, trails | Editorial character plus practical utility |
+| Templates | Cafe Nola, Whiskey Creek Golf Club, one current event chosen at run time, coffee category, Frederick town, Frederick without a plan, Frederick Health | Shared incorporated and unincorporated place, event, category, municipality, collection, and nonprofit renderers |
+| Support | Places, towns, about, trust, emergency vet, emergency, scanner, numbers, reserve, markers, settings, notification settings, shared Radius list, Dear Frederick, event submission, place submission, food-truck operator console, From Above preview, From Above time machine, report, collect | Browse entry points, product context, trust, urgent utility, preferences, submissions, and field tools |
+
+The `ROUTES` array in `scripts/page-quality-audit.ts` is the manifest of record (65 routes on 2026-11-10). Check it before adding a representative. The event template has no fixed slug: the audit picks a current event from `/api/events/browse`, or uses `EVENT_AUDIT_PATH=/events/<slug>` when that variable is set.
 
 When adding a materially different shared renderer, add one stable representative route to `scripts/page-quality-audit.ts`. Do not add every generated record.
 
@@ -59,7 +61,7 @@ ROUTE_FILTER=today,place-detail npm run audit:pages
 npm run audit:pages -- --route=guide
 ```
 
-The harness sets the `fr_onboarded=1` cookie and dismisses the beta-introduction storage keys so it measures the real page. Override or disable the onboarding cookie when testing those states:
+The harness sets a `fr_onboarded=1` cookie and two retired beta-introduction storage keys. No code under `src/` reads either value today, so they do not change what a page renders, and `ONBOARDING_COOKIE=none` does not reveal a first-visit state. To audit the welcome flow, add a `/welcome` entry to the `ROUTES` array in `scripts/page-quality-audit.ts`. The variable still controls which cookie the audit context sends:
 
 ```bash
 ONBOARDING_COOKIE=fr_onboarded=1 npm run audit:pages
@@ -98,7 +100,7 @@ The output is disposable local evidence and must remain untracked. Do not stage 
 
 ## What the harness measures
 
-At mobile 390 × 844 and desktop 1440 × 900 it records:
+At compact 320 × 568, mobile 390 × 844, and desktop 1440 × 900 it records:
 
 - Navigation status, redirects, runtime exceptions, and error-level console messages.
 - Document height and width.

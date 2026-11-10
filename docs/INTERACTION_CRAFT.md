@@ -10,12 +10,13 @@ behavior. Cite the rule number in PRs that lean on one.
 
 1. **Count decisions, not taps.** Three mindless taps beat one tap that needs
    thought. When auditing a journey, list the DECISIONS (which surface? which
-   tab? which word?) — that list is the friction. The map finder rebuild
-   (12 categories visible instead of one-chip-plus-"More") was this rule.
+   tab? which word?) — that list is the friction. The map's "What do you
+   need?" list (common needs first, with Categories and More one tap away)
+   is this rule.
 
 2. **Content may reorder; controls never move.** Habituation is what makes an
    app feel like a limb, and it only forms on things that stay put. Time-aware
-   reordering is welcome on content (the Most-needed tail, shelves, lists) and
+   reordering is welcome on content (shelves, lists) and
    forbidden on controls (nav, anchors, buttons). The shared header location
    control is the standing example: it owns Near me / Whole county / town scope
    and stays put rather than reshuffling by context.
@@ -48,9 +49,12 @@ behavior. Cite the rule number in PRs that lean on one.
 8. **The placeholder is the manual.** Every search/filter input teaches its
    range with concrete examples in the user's words — and must not
    overpromise (no "ask a question" until the Ask handoff is actually wired
-   to that box). Shipped sitewide: global search "Find places, events, towns,
-   tools"; map boxes "Find coffee, a trail, a town"; the niche surfaces
-   (contacts, transit, markers, beer) already complied.
+   to that box). Current examples: the global search overlay reads "A place,
+   plan, service, or quick need…" (`SearchOverlay.tsx`), the `/search` page
+   reads "Find places, events, towns, tools" (`SearchInput.tsx`), and the
+   map boxes read "Find coffee, a trail, a town" (`AppMapDeck.tsx`) and
+   "Coffee, events, restrooms…" (`MapDock.tsx`). These are examples of the
+   rule, not required strings.
 
 9. **Spend novelty in one place per surface.** Be boring where users have
    habits from other apps (search, nav, back, sheets); be unforgettable in
@@ -78,8 +82,11 @@ behavior. Cite the rule number in PRs that lean on one.
 13. **Keep the answer visible; reveal the evidence and alternatives.** Safety,
     the current answer, and the strongest current option stay in the page.
     Filters, source trails, alternate picks, history, and catalogs open after
-    intent. Use the existing BottomDrawer for temporary mobile depth and
-    CollapsibleSection for quiet lower-page detail.
+    intent. Use an existing sheet shell for temporary mobile depth and
+    CollapsibleSection for quiet lower-page detail. `docs/UI_PRIMITIVES.md`
+    describes the two shells (`BottomSheet` with its `Sheet` adapter, and
+    `BottomDrawer`) and which surfaces use each. Keep the shell a surface
+    already uses, and do not add a new one.
 
 14. **One destination gets one doorway per viewport.** Before adding a search,
     tool directory, settings link, or category launcher, check the shell and
@@ -102,16 +109,19 @@ behavior. Cite the rule number in PRs that lean on one.
   Today content collapsed behind explicit intent; Map shows six common needs,
   reveals the full place and amenity catalogs on request, then closes the panel
   when a choice is made so the map becomes the answer again.
-- Rule 14: mobile TopBar search removed where the primary bottom Find control
-  already owns the same action; Ask no longer embeds a second tool directory.
+- Rule 14: mobile TopBar search is hidden on routes whose page already owns
+  search (`pageOwnsPrimarySearch` in `TopBar.tsx`); Ask no longer embeds a
+  second tool directory.
 - Rule 15: Saved empty state and the global mobile footer reduced to the facts
   and actions that remain useful.
 
 ## Standing next builds (named, in priority order)
 
-1. **The Radius bar** (rules 1, 2, 6): one persistent find bar, thumb-zone,
-   on every surface — needs row, recents, type-anything. Placement decision
-   pending (above the nav pill vs replacing its center).
+1. **The find doorway** (rules 1, 2, 6, 14): this is resolved in code.
+   Search lives in the top bar, or in the page on routes that own it
+   (`pageOwnsPrimarySearch` in `TopBar.tsx`), and the bottom nav stays at
+   four destinations. Do not add a persistent bottom find bar without an
+   owner request.
 2. **Finish the arrival journey** (rule 3): the map preview now makes details,
    open-state, save, and directions clear; complete the on-arrival and stamp
    moments inside the full place sheet.

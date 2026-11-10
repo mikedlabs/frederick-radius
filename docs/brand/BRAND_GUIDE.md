@@ -56,7 +56,7 @@ The color keys `brick`, `cream`, and `ink`, and existing `*-brick` / `*-cream` a
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| Deep Coral | `#C34335` | Logo, links, primary actions, selected states |
+| Deep Coral | `#C34335` | Logo, brand frames, accents, and the base tone for links and primary actions |
 | White | `#FFFFFF` | Main page ground and reverse artwork |
 | Charcoal | `#22221F` | Primary text, high-contrast controls, and export frames |
 
@@ -64,6 +64,15 @@ Deep Coral, White, Charcoal, the Ripple, and owned Frederick photography are wha
 surface recognizably Frederick Radius. Deep Coral and Charcoal pass WCAG AA for normal
 text on White. Keep this recognition system stable across Today, Ask Radius,
 the map, All tools, Live conditions, Beer, campaigns, and platform surfaces.
+
+In the product's light appearance, link text, the focus ring, and filled
+primary buttons and pills use the darker pressed coral token
+`--app-brand-press` (links reach it through `--app-link`), not `--app-brand`.
+Reuse the shared `Button`, `Pill`, and `--app-link` token instead of filling a
+new action with `--app-brand`. The pressed coral is a product token and is not
+part of the canonical `BRAND.colors` contract, so this guide refers to it by
+token name only. `npm run build:brand` rejects any six-digit hex in this file that is not
+in the contract.
 
 ### Functional data colors
 
@@ -152,9 +161,11 @@ Install both Public Sans TTF files in desktop design applications so upright
 and italic resolve as one family. If a design application cannot use variable
 fonts, install the 400, 500, 600, and 700 upright and italic cuts from
 `fonts/static/` instead. Install the variable pair or the static set, not both,
-because duplicate installs can split or duplicate the family menu. License
-copies and upstream source details ship beside the fonts in
-[`public/brand/fonts`](../../public/brand/fonts).
+because duplicate installs can split or duplicate the family menu. Upstream
+source details ship beside the fonts in
+[`public/brand/fonts/README.md`](../../public/brand/fonts/README.md). The
+license copies are in [`public/brand/licenses`](../../public/brand/licenses)
+and must travel with any font handoff.
 
 ### Product type scale
 
@@ -347,7 +358,10 @@ The source kit includes:
 - A 1080 by 1350 owned-photography post template.
 - A 1080 by 1920 owned-photography story template and brand frame.
 - A 1200 by 630 Open Graph card.
-- Six 18 by 24 poster masters. The original set uses owned Frederick photography and current product captures. The campaign pair adds the live field-guide concept and a tracked production QR.
+- A 1080 by 1350 photo-led Facebook Page launch post and a 1080 by 1350 Facebook food-truck launch post.
+- Four 1080 px square season cards for the Facebook season carousel.
+- A 1200 by 630 food-truck page Open Graph card.
+- Six 18 by 24 poster masters. The original set uses owned Frederick photography and the historical July 22, 2026 product captures. The two product posters (`posters/product-today.svg` and `posters/ask-radius.svg`) embed captures that retain the earlier warm palette and Public Sans runtime, so recapture the product before printing them as version 1.4 artwork. The campaign pair adds the live field-guide concept and a tracked production QR.
 - Six CR80 NFC card masters. The general and partner pairs remain editable templates. The Radius Signal pair adds a finished public-facing card with separate tracked NFC and QR destinations.
 
 NFC cards follow [`NFC_CARD_GUIDE.md`](NFC_CARD_GUIDE.md). Never ship a
@@ -416,11 +430,15 @@ npm test
 
 `npm run build:brand` rebuilds the editable SVGs, PNG exports, font package, licenses, and asset manifest. Do not redraw the Ripple in a component or design file when the source asset already exists.
 
-The generated kit contains 37 SVG masters with matching PNG exports: seven
-marks, six lockups, twelve social assets, six posters, and six NFC card
-masters. Its manifest also records 14 font files plus the separately generated
-launcher, favicon, Apple, notification, splash, and dynamic Open Graph
-surfaces.
+The generated kit contains 43 SVG masters: seven marks, six lockups, eighteen
+social assets, six posters (four in `posters/` and the campaign pair in
+`campaign/`), and six NFC card masters. Forty-one write a PNG export beside
+the SVG. The two photography posters (`posters/you-are-here.svg` and
+`posters/whole-county.svg`) write their PNGs to the ignored
+`output/brand/posters/` folder instead, and the campaign pair under
+`public/brand/campaign/` is generated locally and is not committed. The kit's
+manifest also records 14 font files plus the separately generated launcher,
+favicon, Apple, notification, splash, and dynamic Open Graph surfaces.
 
 A successful local build does not mean the brand is live. Commit and push the
 generated files, wait for the production deployment, then check the public
