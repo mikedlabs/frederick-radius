@@ -98,7 +98,12 @@ describe("glance card venue and recurrence lines", () => {
     expect(recurrence.previousElementSibling?.textContent).toContain("Wed OCT 10 · 7:00 PM–9:00 PM");
     expect(recurrence.previousElementSibling?.textContent).not.toContain("Runs most days");
     expect([...host.querySelectorAll("article p, article span")].filter(node => node.textContent?.trim().startsWith("·"))).toEqual([]);
-    if (patch.status) expect(host.textContent).toContain("Postponed");
+    if (patch.status) {
+      expect(host.textContent).toContain("Postponed");
+      // The text a screen reader reads keeps the space the flex gap shows.
+      expect(recurrence.previousElementSibling?.textContent).toContain("· Postponed");
+      expect(recurrence.previousElementSibling?.textContent).not.toContain("·Postponed");
+    }
     factsSurvive();
   });
 });

@@ -322,6 +322,9 @@ export default function TopBar() {
         // The one exception: on an Apple keyboard the chord is Command, and
         // Control+K inside a field is the system's delete-to-end-of-line.
         if (appleKeyboard && !e.metaKey && typingInto(e.target)) return;
+        // Another open modal owns the keyboard, and Find will not open over
+        // it, so leave the chord to that modal and the browser.
+        if (anotherModalOwnsInput()) return;
         e.preventDefault();
         if (!searchOpen) {
           openPrimaryFind(

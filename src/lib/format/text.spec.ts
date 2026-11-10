@@ -106,6 +106,12 @@ describe("repairApostropheSuffix", () => {
     expect(repairApostropheSuffix("Don'T Miss It")).toBe("Don't Miss It");
   });
 
+  it("lowers the suffix after an accented letter too", () => {
+    expect(repairApostropheSuffix("José'S Tacos")).toBe("José's Tacos");
+    expect(repairApostropheSuffix("Zoë’S Kitchen")).toBe("Zoë’s Kitchen");
+    expect(titleCaseName("JOSÉ'S TACOS")).toBe("José's Tacos");
+  });
+
   it("leaves surnames and quoted letters alone", () => {
     expect(repairApostropheSuffix("O'Neill's Rock 'N' Roll")).toBe(
       "O'Neill's Rock 'N' Roll",

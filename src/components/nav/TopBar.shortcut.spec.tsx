@@ -131,6 +131,23 @@ describe("Find keyboard shortcuts", () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
+  it("leaves the chord to another open modal instead of swallowing it", async () => {
+    await mount();
+    const modal = document.createElement("div");
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    const modalField = document.createElement("input");
+    modal.append(modalField);
+    document.body.append(modal);
+    try {
+      const chord = await press(modalField, { key: "k", metaKey: true });
+      expect(dialog()).toBeNull();
+      expect(chord.defaultPrevented).toBe(false);
+    } finally {
+      modal.remove();
+    }
+  });
+
   it("keeps the first opener when the chord repeats while Find is open", async () => {
     await mount();
     await press(pageButton, { key: "k", metaKey: true });

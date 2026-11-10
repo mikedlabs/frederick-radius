@@ -4850,7 +4850,9 @@ export default function AppMap({
                 setGeoMsg(null);
                 setLocateMsg(null);
               }}
-              aria-label="Dismiss location message"
+              // The chip shows a search or selection note ahead of a locate
+              // failure, so the action names the message actually on screen.
+              aria-label={mapNote ? "Dismiss map message" : "Dismiss location message"}
               style={{ color: "var(--app-ink-3)" }}
             >
               <X className="h-4 w-4" strokeWidth={2.3} aria-hidden />

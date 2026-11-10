@@ -517,7 +517,7 @@ export default function EventCard({
                 <span>
                   {date.weekday} {date.month} {date.day}
                   {timingText ? ` · ${timingText}` : ""}
-                  {statusText ? " ·" : ""}
+                  {statusText ? " · " : ""}
                 </span>
                 {statusText && (
                   <span className="font-medium" style={{ color: statusForeground }}>

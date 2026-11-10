@@ -81,7 +81,7 @@ export function cleanFeedText(raw: string): string {
  */
 export function repairApostropheSuffix(text: string): string {
   return text.replace(
-    /([A-Za-z])(['’])(S|T|RE|VE|LL|D|M)\b/gi,
+    /(\p{L})(['’])(S|T|RE|VE|LL|D|M)\b/giu,
     (_match, letter: string, apostrophe: string, suffix: string) =>
       `${letter}${apostrophe}${suffix.toLowerCase()}`,
   );
