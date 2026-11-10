@@ -43,14 +43,22 @@ not fail the command.
 
 ## Current baseline
 
-The July 22 public-product pass scanned 1,193 files and excluded 81 files that
-belong to the separate surfaces above.
+The November 10, 2026 public-product scan, taken with the UI defect pass
+(#1945) applied, covered 2,510 files and excluded 85 files that belong to the
+separate surfaces above. Without that pass the same scan reports 348 medium
+findings across 2,494 files.
 
 | Signal | Public product | All surfaces | Reading |
 |---|---:|---:|---|
-| High | 0 | 31 | Violet gradients and gradient text remain isolated to the internal pitch world. |
-| Medium | 323 | Not the release gate | The main debt is 307 uses of oversized rounding or capsules. This is real repetition, not a reason to call the product finished. |
+| High | 0 | 30 | Violet gradients and gradient text remain isolated to the internal pitch world. |
+| Medium | 343 | Not the release gate | The main debt is 330 uses of oversized rounding or capsules, 55 of them in `globals.css` (52 `border-radius: 999px` rules and 3 `border-radius: 9999px` rules). The rest are 7 glow shadows, 5 routine motion patterns and 1 emoji. This is real repetition, not a reason to call the product finished. |
 | Low | 1 | Not the release gate | One source-owned sentence matches a generic-copy expression. Review its provenance before changing it. |
+
+Between October 12 and November 10 this scan skipped almost all of
+`globals.css`, because the end marker of the excluded pitch block had been
+deleted and the exclusion ran to the end of the file. Counts recorded in that
+window understate the stylesheet. The scanner now exits with an error when a
+start marker has no end marker.
 
 Zero high findings means the public product avoids the loudest stock defaults.
 It does not mean the visual system is done. Repeated pills, generic cards, and
@@ -60,10 +68,16 @@ routine entrance motion can still make a page feel assembled from a template.
 
 The product should read like a field guide, not a stack of floating SaaS cards.
 
-- Cream paper is the normal canvas. Use rules, spacing, type, and registration
+- White is the normal canvas and soft gray is the inset surface (`--app-bg`
+  and `--app-bg-sunken`). Dark appearance uses its own canvas and surface
+  tokens. Use rules, spacing, type, and registration
   marks to establish hierarchy before adding another container.
-- Utility controls use a 6 to 8 pixel corner. Cards use 10 to 12 pixels. Large
-  panels and sheets sit near 16 pixels. Use the closest named radius token.
+- Use the named radius tokens from `src/app/globals.css` (`--app-radius-sm`,
+  `--app-radius-md`, `--app-radius-lg`, `--app-radius-xl`) instead of a
+  hand-set pixel value. Match the nearest shared primitive: `Button` uses
+  `--app-radius-md`, `SortDropdown` pairs a full-capsule filter trigger with
+  a `--app-radius-md` menu, and `Row`, `EmptyState` and `BottomSheet` use
+  `--app-radius-lg`.
 - Full capsules are reserved for status, toggles, and compact filters. A normal
   action, navigation item, content card, or source row should not be a pill.
 - Shadows indicate a real layer such as a menu or sheet. Routine content stays
@@ -81,10 +95,14 @@ The product should read like a field guide, not a stack of floating SaaS cards.
 - The public palette does not use violet, indigo, or purple as its primary
   product color.
 - Headlines use solid ink instead of gradient-filled text.
-- Libre Caslon Display and Public Sans are the named Warm Civic type system,
-  not untouched library defaults.
-- Brick, Cream, Ink, Forest, Creek, Plum, and Ochre come from the Radius brand
-  tokens.
+- Product UI uses the System sans stack defined in `src/lib/brand.ts`. This is
+  the approved Brand System 1.4 choice, so do not replace it with a downloaded
+  typeface. Libre Caslon Display Regular is limited to the wordmark and rare
+  editorial signatures, and Public Sans is the print and export family.
+- Deep Coral, White, Charcoal, Catoctin Forest, Creek, Plum, and Ochre Amber
+  come from the Radius brand tokens in `src/lib/brand.ts`. The `brick`,
+  `cream`, and `ink` keys are compatibility names for Deep Coral, White, and
+  Charcoal.
 - User-facing icons use the established SVG system instead of emoji.
 
 ## Shipping checklist
