@@ -104,8 +104,15 @@ function indexSheetAt(width: number, height: number, viewport: string): Story {
         await expect(box.top).toBeGreaterThanOrEqual(window.innerHeight * 0.1 - 1);
         // The sheet does not drag, so its first element is the header, not a grab pill.
         await expect(sheet.firstElementChild?.tagName).toBe("HEADER");
-        const close = index.getByRole("button", { name: "Close All tools" }).getBoundingClientRect();
-        await expect(Math.min(close.width, close.height)).toBeGreaterThanOrEqual(44);
+        // Measure the Close control at rest. A bounding box read while a press
+        // or entrance transform is still settling reports the transformed
+        // size, which made this check fail on a slower CI runner.
+        const closeButton = index.getByRole("button", { name: "Close All tools" });
+        await waitFor(() => {
+          const settling = closeButton.getBoundingClientRect();
+          expect(Math.min(settling.width, settling.height)).toBeGreaterThanOrEqual(44);
+        });
+        const close = closeButton.getBoundingClientRect();
         await expect(close.right).toBeLessThanOrEqual(window.innerWidth);
         const filter = index.getByRole("searchbox", { name: "Search tools in this section" });
         await expect(filter).toHaveAttribute("enterkeyhint", "go");
