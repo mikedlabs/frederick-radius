@@ -313,6 +313,35 @@ async function approveNativeAutomatedPrRuns(options) {
     for (const { run } of pinned) requireThat(heldForApproval(run) || alreadyRunningOrPassed(run),
       "An existing native gate failed, was cancelled, skipped or has an uncertain state. Owner attention is required.");
     const progressed = new Set(pinned.filter(({ run }) => alreadyRunningOrPassed(run)).map(({ run }) => run.id));
+    // Run ID -> the attempt this script approved and GitHub accepted with 201.
+    const approvedAttempts = new Map();
+    // GitHub restarts an approved action_required run as the next attempt of
+    // the same run ID and check suite (run_attempt 1 becomes 2, as observed on
+    // run 42775375255). That restart is the expected result of our own write,
+    // so exactly one transition is accepted: a run this script approved, still
+    // pinned at the approved attempt, observed with the same ID, check suite and
+    // head SHA, at exactly the approved attempt plus 1, and queued, in progress
+    // or completed with success. The entry is then re-pinned to that attempt so
+    // every later read must match it. Everything else is still refused: a jump
+    // of more than one attempt, a different suite or head SHA, any attempt
+    // change on a run this script did not approve (or before its 201), a second
+    // restart, and a restarted attempt that is held or concluded other than
+    // success. A substituted run therefore cannot borrow the original approval.
+    const matchesPinned = (entry, current) => {
+      const run = entry.run;
+      if (current.id === run.id && current.run_attempt === run.run_attempt
+        && current.check_suite_id === run.check_suite_id && current.head_sha === run.head_sha) return true;
+      const approved = approvedAttempts.get(run.id);
+      const restarted = approved !== undefined && run.run_attempt === approved
+        && current.id === run.id && current.check_suite_id === run.check_suite_id && current.head_sha === run.head_sha
+        && current.run_attempt === approved + 1 && alreadyRunningOrPassed(current);
+      if (restarted) {
+        entry.run = current;
+        const write = receipt.approvalWrites.find((row) => row.id === run.id);
+        if (write) write.restartedAttempt = current.run_attempt;
+      }
+      return restarted;
+    };
     // Recheck both exact runs before each possible write and the final result.
     // GitHub cannot atomically couple the checks to an approval operation;
     // rechecking narrows but cannot eliminate cross-API races.
@@ -322,10 +351,10 @@ async function approveNativeAutomatedPrRuns(options) {
       // same three PR/ref reads around each individual workflow.
       await candidate.revalidate();
       const checked = new Map();
-      for (const { workflow, run } of pinned) {
+      for (const entry of pinned) {
+        const { workflow, run } = entry;
         const current = await latest(workflow, false, true);
-        requireThat(current.id === run.id && current.run_attempt === run.run_attempt && current.check_suite_id === run.check_suite_id
-          && (heldForApproval(current) || alreadyRunningOrPassed(current)),
+        requireThat(matchesPinned(entry, current) && (heldForApproval(current) || alreadyRunningOrPassed(current)),
         "A native gate changed identity or has failed before approval.");
         requireThat(!(progressed.has(run.id) && heldForApproval(current)),
           "A native gate regressed to held after running or passing.");
@@ -364,6 +393,7 @@ async function approveNativeAutomatedPrRuns(options) {
       catch (error) { write.responseStatus = error.status ?? null; throw error; }
       write.responseStatus = response.status;
       requireThat(response.status === 201, "Native approval did not return the documented 201 response. Manual owner approval is required.");
+      approvedAttempts.set(run.id, run.run_attempt);
       let after;
       // A status read may lag accepted approval. Observe only this approved ID and
       // attempt, without another write, for at most 2.25 seconds of waiting.
@@ -373,7 +403,7 @@ async function approveNativeAutomatedPrRuns(options) {
         after = (await github.rest.actions.getWorkflowRun({ owner, repo, run_id: run.id })).data;
         noteAssociations(workflow, "approval-observation", [after], write.observationReads);
         validateRun(after, workflow, candidate.identity);
-        requireThat(after.id === run.id && after.run_attempt === run.run_attempt && after.check_suite_id === run.check_suite_id,
+        requireThat(matchesPinned(pinned[index], after),
           "The exact native run ID, attempt or check suite changed during approval observation.");
         if (alreadyRunningOrPassed(after)) break;
         requireThat(heldForApproval(after) && observation < 3,
