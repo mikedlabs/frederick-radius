@@ -72,8 +72,15 @@ export function parseFcplOfficialHours(weekly: OfficialPageReceipt, closures: Of
     }
   }
   // Active banners can announce weather/branch closures outside the annual
-  // calendar. Only this reviewed, explicitly dated all-library notice is
-  // accepted, and only when the same closure is present in the calendar.
+  // calendar. Only two reviewed, explicitly dated all-library wordings are
+  // accepted, and only when the same full closure is already in the calendar.
+  // A banner therefore never creates, moves or extends a closure; any other
+  // wording, or a date the calendar does not list as closed, still throws so
+  // a person reviews it.
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const bannerDate = (month: string, day: string, year: string) => `${year}-${String(months.indexOf(month) + 1).padStart(2, "0")}-${day.padStart(2, "0")}`;
+  const calendarClosed = (date: string, reason?: string) => isCalendarDate(date)
+    && exceptions.some((item) => item.date === date && item.closed && (reason === undefined || item.reason === reason));
   for (const page of [weekDocument, document]) {
     const blocks = [...page.querySelectorAll(".news-alerts")];
     for (const block of blocks) {
@@ -81,11 +88,20 @@ export function parseFcplOfficialHours(weekly: OfficialPageReceipt, closures: Of
       if (!notices.length && /closed|closing|hours|delay|weather/i.test(clean(block.textContent))) throw new Error("Unrecognized active FCPL hours notice.");
       for (const notice of notices) {
         const text = clean(notice.textContent);
-        const match = text.match(/^Frederick County Public Libraries will be closed on (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) (\d{1,2}), (\d{4}) for Staff Development Day\.$/);
-        if (!match) throw new Error("Unreviewed active FCPL closure notice.");
-        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        const date = `${match[4]}-${String(months.indexOf(match[2]) + 1).padStart(2, "0")}-${match[3].padStart(2, "0")}`;
-        if (!isCalendarDate(date) || new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`)) !== match[1] || !exceptions.some((item) => item.date === date && item.closed && item.reason === "Libraries Closed - Staff Development Day")) throw new Error("Active FCPL closure notice is not covered by the dated calendar.");
+        const staffDay = text.match(/^Frederick County Public Libraries will be closed on (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) (\d{1,2}), (\d{4}) for Staff Development Day\.$/);
+        // System-wide holiday wording, first seen 2026-11-09 for Veteran's Day.
+        // The reason allows letters, spaces, hyphens and straight or curly
+        // apostrophes only, so a banner cannot append other hours text. The
+        // reason is not matched to the calendar label: the closure itself is
+        // taken from the calendar, which must already close that exact date.
+        const holiday = text.match(/^Frederick County Public Libraries will be closed (January|February|March|April|May|June|July|August|September|October|November|December) (\d{1,2}), (\d{4}) in observance of ([A-Za-z][A-Za-z '‘’ʼ-]{0,59})\.$/);
+        if (!staffDay && !holiday) throw new Error("Unreviewed active FCPL closure notice.");
+        if (staffDay) {
+          const date = bannerDate(staffDay[2], staffDay[3], staffDay[4]);
+          if (!isCalendarDate(date) || new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`)) !== staffDay[1] || !calendarClosed(date, "Libraries Closed - Staff Development Day")) throw new Error("Active FCPL closure notice is not covered by the dated calendar.");
+        } else if (holiday && !calendarClosed(bannerDate(holiday[1], holiday[2], holiday[3]))) {
+          throw new Error("Active FCPL closure notice is not covered by the dated calendar.");
+        }
       }
     }
   }

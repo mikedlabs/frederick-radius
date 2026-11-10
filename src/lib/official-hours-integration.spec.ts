@@ -19,6 +19,32 @@ const librarySlugs = new Set<string>(FCPL_BRANCHES.map(([slug]) => slug));
 const shippedMerchantHours = (CLIENT_HOURS as ClientPlaceHours[]).filter((row) => row.hours._official?.kind === "merchant");
 
 const now = new Date(Math.max(Date.parse(OFFICIAL.weekly.observed_at), Date.parse(OFFICIAL.closures.observed_at)) + 1000);
+// The committed slim client files are baked by build:client-places with the
+// wall clock, at some build time no later than the real present. While the
+// committed library artifact is still current at the real present, every
+// such build was current too, so server and client parity is checked at the
+// pinned observation clock. Once the artifact has expired, a build may have
+// kept or dropped the library hours depending on when it ran, so the only
+// clock at which every projection must agree is one after expiry, where all
+// of them must fail soft to "no verified hours". This is the single clock
+// decision for the library cohort; it is made once, before any fake timers.
+const libraryExpiry = Date.parse(OFFICIAL.expires_at);
+const libraryCohortCurrent = Date.now() < libraryExpiry;
+function expectNoVerifiedLibraryHours(at: Date) {
+  const map = new Map(clientPlaceHours(at).map((row) => [row.slug, row]));
+  for (const [slug] of FCPL_BRANCHES) {
+    const raw = publicPlaces().find((row) => row.slug === slug)!;
+    const server = decoratePlace(raw, undefined, at);
+    const client = clientPlaceBySlug(slug, at)!;
+    for (const [side, projection] of [["server", server], ["client", client]] as const) {
+      expect(projection.hours_source, `${side} ${slug}`).toBe("first_party");
+      expect(projection.hours, `${side} ${slug}`).toBeUndefined();
+      expect(projection.hours_verified, `${side} ${slug}`).toBe(false);
+      expect(projection.open_status.state, `${side} ${slug}`).toBe("unknown");
+    }
+    expect(map.has(slug), `map ${slug}`).toBe(false);
+  }
+}
 // Use the committed observation for parity, and fixed source fixtures for holidays.
 afterEach(() => vi.useRealTimers());
 describe("published first-party schedule projections", () => {
@@ -34,7 +60,7 @@ describe("published first-party schedule projections", () => {
     expect(market.category).toBe("market");
     expect(market.hours?._official).toBeUndefined();
   });
-  it("keeps server, slim client, map and planner on the exact same date-aware evidence", () => {
+  it.runIf(libraryCohortCurrent)("keeps server, slim client, map and planner on the exact same date-aware evidence", () => {
     vi.useFakeTimers(); vi.setSystemTime(now);
     const map = new Map(clientPlaceHours(now).map((row) => [row.slug, row]));
     for (const [slug] of FCPL_BRANCHES) {
@@ -48,6 +74,54 @@ describe("published first-party schedule projections", () => {
       expect(client.open_status, slug).toEqual(server.open_status);
       expect(getOpenStatus(map.get(slug)?.hours, { verified: true }, now)).toEqual(server.open_status);
       if (server.open_status.state === "closed") expect(planOpenStateForWindow(client, now, 30)).toBe("closed");
+    }
+  });
+  it.runIf(!libraryCohortCurrent)("fails the expired committed library cohort soft on server, slim client and map at the real clock", () => {
+    const at = new Date();
+    vi.useFakeTimers(); vi.setSystemTime(at);
+    expectNoVerifiedLibraryHours(at);
+  });
+  it("fails an expired library cohort soft on every projection, whichever side of expiry the client was built", async () => {
+    // Deterministic: the first instant after expiry, independent of the wall
+    // clock, against the committed client files.
+    const expired = new Date(libraryExpiry + 1);
+    vi.useFakeTimers(); vi.setSystemTime(expired);
+    expectNoVerifiedLibraryHours(expired);
+    // Then the case that failed in data-steward on 2026-11-10: the real
+    // build:client-places runs after expiry, so its files carry no library
+    // hours. Both loaders reading those files must give the same answer.
+    const writes = new Map<string, string>();
+    vi.resetModules();
+    vi.doMock("node:fs", async () => ({ ...await vi.importActual<typeof import("node:fs")>("node:fs"), writeFileSync: vi.fn((path: string, data: string) => writes.set(basename(path), data)) }));
+    try {
+      await import("../../scripts/build-client-places");
+      const full = JSON.parse(writes.get("places-client.json")!) as { slug: string; hours?: unknown; hours_verified: boolean }[];
+      const compact = JSON.parse(writes.get("places-client-hours.json")!) as ClientPlaceHours[];
+      for (const [slug] of FCPL_BRANCHES) {
+        expect(full.find((row) => row.slug === slug)?.hours, `baked ${slug}`).toBeUndefined();
+        expect(compact.some((row) => row.slug === slug), `baked map ${slug}`).toBe(false);
+      }
+      vi.doMock("@/data/places-client.json", () => ({ default: full }));
+      vi.doMock("@/data/places-client-hours.json", () => ({ default: compact }));
+      vi.resetModules();
+      const { clientPlaceBySlug: bakedClientPlace } = await import("@/lib/loaders/places-client");
+      const { clientPlaceHours: bakedClientHours } = await import("@/lib/loaders/places-client-hours");
+      const { decoratePlace: serverDecorate, publicPlaces: serverPlaces } = await import("@/lib/loaders/places");
+      const map = new Map(bakedClientHours(expired).map((row) => [row.slug, row]));
+      for (const [slug] of FCPL_BRANCHES) {
+        const server = serverDecorate(serverPlaces().find((row) => row.slug === slug)!, undefined, expired);
+        const client = bakedClientPlace(slug, expired)!;
+        expect(server.hours, slug).toBeUndefined();
+        expect(client.hours, slug).toEqual(server.hours);
+        expect(client.hours_verified, slug).toBe(server.hours_verified);
+        expect(client.open_status, slug).toEqual(server.open_status);
+        expect(map.has(slug), slug).toBe(false);
+      }
+    } finally {
+      vi.doUnmock("node:fs");
+      vi.doUnmock("@/data/places-client.json");
+      vi.doUnmock("@/data/places-client-hours.json");
+      vi.resetModules();
     }
   });
   it("does not replace the holiday-aware source with a newer provider weekday projection", () => {
