@@ -45,8 +45,22 @@ function expectNoVerifiedLibraryHours(at: Date) {
     expect(map.has(slug), `map ${slug}`).toBe(false);
   }
 }
+// Two tests below import the real build-client-places with node:fs and data
+// JSON mocked. That cleanup lives here, not in a finally block, so it still
+// runs when one of those tests times out or fails and cannot leak the mocks
+// into a later test.
+const BUILD_MOCKED_MODULES = ["node:fs", "@/data/places-merchant-hours.json", "@/data/places-client.json", "@/data/places-client-hours.json"];
+// Each of those tests evaluates build-client-places over the whole catalog
+// and then fresh copies of the client loaders. That takes several seconds
+// alone and longer when the full suite is loading every worker, so they get
+// an explicit budget instead of the 20 second default.
+const BUILD_IMPORT_TIMEOUT_MS = 120_000;
 // Use the committed observation for parity, and fixed source fixtures for holidays.
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  for (const id of BUILD_MOCKED_MODULES) vi.doUnmock(id);
+  vi.resetModules();
+});
 describe("published first-party schedule projections", () => {
   it("preserves all nine exact library identities independently of the Urbana market", () => {
     const rows = publicPlaces();
@@ -93,37 +107,31 @@ describe("published first-party schedule projections", () => {
     const writes = new Map<string, string>();
     vi.resetModules();
     vi.doMock("node:fs", async () => ({ ...await vi.importActual<typeof import("node:fs")>("node:fs"), writeFileSync: vi.fn((path: string, data: string) => writes.set(basename(path), data)) }));
-    try {
-      await import("../../scripts/build-client-places");
-      const full = JSON.parse(writes.get("places-client.json")!) as { slug: string; hours?: unknown; hours_verified: boolean }[];
-      const compact = JSON.parse(writes.get("places-client-hours.json")!) as ClientPlaceHours[];
-      for (const [slug] of FCPL_BRANCHES) {
-        expect(full.find((row) => row.slug === slug)?.hours, `baked ${slug}`).toBeUndefined();
-        expect(compact.some((row) => row.slug === slug), `baked map ${slug}`).toBe(false);
-      }
-      vi.doMock("@/data/places-client.json", () => ({ default: full }));
-      vi.doMock("@/data/places-client-hours.json", () => ({ default: compact }));
-      vi.resetModules();
-      const { clientPlaceBySlug: bakedClientPlace } = await import("@/lib/loaders/places-client");
-      const { clientPlaceHours: bakedClientHours } = await import("@/lib/loaders/places-client-hours");
-      const { decoratePlace: serverDecorate, publicPlaces: serverPlaces } = await import("@/lib/loaders/places");
-      const map = new Map(bakedClientHours(expired).map((row) => [row.slug, row]));
-      for (const [slug] of FCPL_BRANCHES) {
-        const server = serverDecorate(serverPlaces().find((row) => row.slug === slug)!, undefined, expired);
-        const client = bakedClientPlace(slug, expired)!;
-        expect(server.hours, slug).toBeUndefined();
-        expect(client.hours, slug).toEqual(server.hours);
-        expect(client.hours_verified, slug).toBe(server.hours_verified);
-        expect(client.open_status, slug).toEqual(server.open_status);
-        expect(map.has(slug), slug).toBe(false);
-      }
-    } finally {
-      vi.doUnmock("node:fs");
-      vi.doUnmock("@/data/places-client.json");
-      vi.doUnmock("@/data/places-client-hours.json");
-      vi.resetModules();
+    await import("../../scripts/build-client-places");
+    const full = JSON.parse(writes.get("places-client.json")!) as { slug: string; hours?: unknown; hours_verified: boolean }[];
+    const compact = JSON.parse(writes.get("places-client-hours.json")!) as ClientPlaceHours[];
+    for (const [slug] of FCPL_BRANCHES) {
+      expect(full.find((row) => row.slug === slug)?.hours, `baked ${slug}`).toBeUndefined();
+      expect(compact.some((row) => row.slug === slug), `baked map ${slug}`).toBe(false);
     }
-  });
+    vi.doMock("@/data/places-client.json", () => ({ default: full }));
+    vi.doMock("@/data/places-client-hours.json", () => ({ default: compact }));
+    vi.resetModules();
+    const { clientPlaceBySlug: bakedClientPlace } = await import("@/lib/loaders/places-client");
+    const { clientPlaceHours: bakedClientHours } = await import("@/lib/loaders/places-client-hours");
+    // The server loader does not read the client files, so the copy imported
+    // at the top of this spec is the same projection and is not re-imported.
+    const map = new Map(bakedClientHours(expired).map((row) => [row.slug, row]));
+    for (const [slug] of FCPL_BRANCHES) {
+      const server = decoratePlace(publicPlaces().find((row) => row.slug === slug)!, undefined, expired);
+      const client = bakedClientPlace(slug, expired)!;
+      expect(server.hours, slug).toBeUndefined();
+      expect(client.hours, slug).toEqual(server.hours);
+      expect(client.hours_verified, slug).toBe(server.hours_verified);
+      expect(client.open_status, slug).toEqual(server.open_status);
+      expect(map.has(slug), slug).toBe(false);
+    }
+  }, BUILD_IMPORT_TIMEOUT_MS);
   it("does not replace the holiday-aware source with a newer provider weekday projection", () => {
     const place = getPlaceBySlug(FCPL_BRANCHES[1][0], undefined, now)!;
     const result = applyLivePlaceEvidence(place, { slug: place.slug, placeId: place.google_place_id!, weekdayHours: ["Monday: Open 24 hours"], businessStatus: "OPERATIONAL", observedAt: now.toISOString() }, now);
@@ -183,32 +191,24 @@ describe("published first-party schedule projections", () => {
     vi.resetModules();
     vi.doMock("@/data/places-merchant-hours.json", () => ({ default: artifact }));
     vi.doMock("node:fs", async () => ({ ...await vi.importActual<typeof import("node:fs")>("node:fs"), writeFileSync: vi.fn((path: string, data: string) => writes.set(basename(path), data)) }));
-    try {
-      // Exercise the real transformation while keeping every generated file untouched.
-      await import("../../scripts/build-client-places");
-      const full = JSON.parse(writes.get("places-client.json")!) as { slug: string; hours?: unknown; hours_verified: boolean }[];
-      const compact = JSON.parse(writes.get("places-client-hours.json")!) as ClientPlaceHours[];
-      expect(full.find((row) => row.slug === source.slug)).toMatchObject({ hours_verified: false });
-      expect(full.find((row) => row.slug === source.slug)?.hours).toBeUndefined();
-      expect(compact.some((row) => row.slug === source.slug)).toBe(false);
-      vi.doMock("@/data/places-client.json", () => ({ default: full }));
-      vi.doMock("@/data/places-client-hours.json", () => ({ default: compact }));
-      vi.resetModules();
-      const { clientPlaceBySlug: heldClientPlace } = await import("@/lib/loaders/places-client");
-      const { clientPlaceHours: heldClientHours } = await import("@/lib/loaders/places-client-hours");
-      for (const clock of [new Date(observedAt), at]) {
-        vi.setSystemTime(clock);
-        expect(heldClientPlace(source.slug)?.hours).toBeUndefined();
-        expect(heldClientPlace(source.slug)?.hours_verified).toBe(false);
-        expect(heldClientPlace(source.slug)?.open_status.state).toBe("unknown");
-        expect(heldClientHours(clock).some((row) => row.slug === source.slug)).toBe(false);
-      }
-    } finally {
-      vi.doUnmock("node:fs");
-      vi.doUnmock("@/data/places-merchant-hours.json");
-      vi.doUnmock("@/data/places-client.json");
-      vi.doUnmock("@/data/places-client-hours.json");
-      vi.resetModules();
+    // Exercise the real transformation while keeping every generated file untouched.
+    await import("../../scripts/build-client-places");
+    const full = JSON.parse(writes.get("places-client.json")!) as { slug: string; hours?: unknown; hours_verified: boolean }[];
+    const compact = JSON.parse(writes.get("places-client-hours.json")!) as ClientPlaceHours[];
+    expect(full.find((row) => row.slug === source.slug)).toMatchObject({ hours_verified: false });
+    expect(full.find((row) => row.slug === source.slug)?.hours).toBeUndefined();
+    expect(compact.some((row) => row.slug === source.slug)).toBe(false);
+    vi.doMock("@/data/places-client.json", () => ({ default: full }));
+    vi.doMock("@/data/places-client-hours.json", () => ({ default: compact }));
+    vi.resetModules();
+    const { clientPlaceBySlug: heldClientPlace } = await import("@/lib/loaders/places-client");
+    const { clientPlaceHours: heldClientHours } = await import("@/lib/loaders/places-client-hours");
+    for (const clock of [new Date(observedAt), at]) {
+      vi.setSystemTime(clock);
+      expect(heldClientPlace(source.slug)?.hours).toBeUndefined();
+      expect(heldClientPlace(source.slug)?.hours_verified).toBe(false);
+      expect(heldClientPlace(source.slug)?.open_status.state).toBe("unknown");
+      expect(heldClientHours(clock).some((row) => row.slug === source.slug)).toBe(false);
     }
-  });
+  }, BUILD_IMPORT_TIMEOUT_MS);
 });
