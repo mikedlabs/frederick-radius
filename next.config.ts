@@ -301,6 +301,7 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
+          { key: "Content-Security-Policy", value: contentSecurityPolicy },
           // Force HTTPS for two years; reversible (no `preload`, so we
           // never get pinned on a browser preload list we can't undo).
           ...(isProduction
@@ -323,15 +324,6 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "geolocation=(self), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=(), browsing-topics=(), interest-cohort=()",
           },
-        ],
-      },
-      {
-        // The photographic renderer is a separate document with its own
-        // tightly scoped Wasm policy. Two CSP headers would intersect, not
-        // override each other, so the application policy excludes only it.
-        source: "/:path((?!fair-photo-viewer/?$).*)",
-        headers: [
-          { key: "Content-Security-Policy", value: contentSecurityPolicy },
         ],
       },
     ];
@@ -444,6 +436,14 @@ const nextConfig: NextConfig = {
         destination: "/events/first-friday-june-2026-frederick",
         permanent: true,
       },
+      // The 2026 Great Frederick Fair workspace was retired after the fair
+      // ended on September 26, 2026. /fair was printed and spoken, so it stays
+      // a real page that says the fair is over. Every other fair address a
+      // visitor could still hold folds into it. A trailing ":path*" also
+      // matches the bare address.
+      { source: "/moments/great-frederick-fair-2026/:path*", destination: "/fair", permanent: true },
+      { source: "/fair-photo-viewer", destination: "/fair", permanent: true },
+      { source: "/fair/:path+", destination: "/fair", permanent: true },
     ];
   },
 };

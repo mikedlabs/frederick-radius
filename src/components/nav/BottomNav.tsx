@@ -4,9 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { haptic } from "@/lib/haptics";
-import { shouldPrefetchGlobalNavigation } from "@/lib/fair/route-policy";
 import { cancelPrimaryTabResume, preparePrimaryTabResume, rememberPrimaryTab } from "@/lib/primary-tab-session";
-import { TABS, tabIndexForPath } from "./tabs";
+import { TABS, shouldPrefetchGlobalNavigation, tabIndexForPath } from "./tabs";
 import styles from "./NavChrome.module.css";
 
 type NavigationGesture = Pick<

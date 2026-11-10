@@ -6,8 +6,6 @@
  * may be present but cannot complete the Home Screen permission flow.
  */
 
-import { isFairDayPath } from "@/lib/fair/route-policy";
-
 /** Gives mounted workspaces one synchronous handoff before an accepted reload. */
 export const APP_UPDATE_ACCEPTED_EVENT = "fr:app-update-accepted";
 
@@ -55,8 +53,7 @@ export function isIosSafari(): boolean {
 export function isInstallPromptSuppressedPath(pathname: string): boolean {
   // Automatic offers stay out of focused journeys. Deliberate actions in
   // Saved, Compass and Settings bypass this policy and keep installation open.
-  return isFairDayPath(pathname)
-    || pathname === "/map"
+  return pathname === "/map"
     || pathname === "/today"
     // Discovery results are focused work too: a queued first-visit offer
     // must not appear as someone moves from Today into Nearby or Search.
