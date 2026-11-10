@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { featuredEventSlugs } from "@/lib/events/featured";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, ChevronDown, LocateFixed, X } from "lucide-react";
+import { ArrowRight, ChevronDown, LocateFixed, X } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import EventsRestorePreview from "@/components/event/EventsRestorePreview";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
@@ -1123,7 +1122,7 @@ export default function EventsExplorer({
             aria-hidden
             className="h-4 w-4 shrink-0"
             strokeWidth={2.2}
-            style={{ color: "var(--app-brand-press)" }}
+            style={{ color: "var(--app-link)" }}
           />
           <span className="min-w-0 flex-1">
             <span className="block text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
@@ -1152,7 +1151,7 @@ export default function EventsExplorer({
               onClick={() => geolocation.request()}
               disabled={geolocation.state.status === "loading"}
               className="tap-44-y inline-flex min-h-11 shrink-0 items-center px-1 text-[11px] font-semibold disabled:opacity-55"
-              style={{ color: "var(--app-brand-press)" }}
+              style={{ color: "var(--app-link)" }}
             >
               {geolocation.state.status === "loading"
                 ? "Locating…"
@@ -1231,7 +1230,7 @@ export default function EventsExplorer({
             type="button"
             onClick={() => void ensureAllEvents(true)}
             className="tap-44-y inline-flex min-h-11 shrink-0 items-center font-semibold underline"
-            style={{ color: "var(--app-cool)" }}
+            style={{ color: "var(--app-link)" }}
           >
             Retry
           </button>
@@ -1271,32 +1270,19 @@ export default function EventsExplorer({
           )}
         </ol>
       ) : filtered.length === 0 ? (
-        // Composed empty state — soft category-tinted block, serif line,
-        // one quiet sentence, primary action. Replaces the bare bordered
-        // text-only message.
+        // The Saved empty grammar: a left-aligned title, one sentence, then
+        // the actions. No icon, tinted halo or card around a state that only
+        // has to say what happened and what to do next.
         <div className="space-y-4">
-          <div
-            className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-6 text-center shadow-sm"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <span
-              aria-hidden
-              className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full"
-              style={{
-                background: "color-mix(in srgb, var(--section-accent, var(--app-brand)) 15%, var(--app-bg-sunken))",
-                color: "var(--section-accent, var(--app-brand))",
-              }}
-            >
-              <CalendarDays className="h-6 w-6" strokeWidth={1.5} />
-            </span>
+          <div data-events-empty-state className="max-w-sm py-2">
             <h3
-              className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
+              className="font-sans text-[18px] font-semibold leading-snug"
               style={{ color: "var(--app-ink)" }}
             >
               {emptyState.title}
             </h3>
             <p
-              className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-pretty"
+              className="mt-1.5 text-[13.5px] leading-relaxed text-pretty"
               style={{ color: "var(--app-ink-2)" }}
             >
               {emptyState.description}
@@ -1305,14 +1291,14 @@ export default function EventsExplorer({
               <button
                 type="button"
                 onClick={() => void ensureAllEvents(true)}
-                className="tap-44 mt-3 inline-flex min-h-11 items-center px-3 text-[13px] font-semibold underline"
-                style={{ color: "var(--app-cool)" }}
+                className="tap-44-y mt-1 flex min-h-11 w-fit items-center text-[13px] font-semibold underline"
+                style={{ color: "var(--app-link)" }}
               >
                 Check the calendar again
               </button>
             ) : null}
             {showOfficialCalendars && (
-              <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
+              <div className="flex flex-wrap gap-x-5">
                 <a
                   href="https://www.frederickcountymd.gov/calendar.aspx"
                   target="_blank"
@@ -1334,36 +1320,29 @@ export default function EventsExplorer({
               </div>
             )}
           </div>
-          
-          {/* Honest relaxations — Bento-grid for quick actions */}
+
+          {/* Honest relaxations: each active filter can be dropped on its own. */}
           {relaxations.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="flex flex-wrap items-center gap-2">
               {relaxations.map((r) => (
                 <button
                   key={r.key}
                   type="button"
                   onClick={r.drop}
                   aria-label={`Remove ${r.label} filter`}
-                  className="tap-44-y tactile tactile-interactive flex min-h-[44px] items-center justify-between rounded-[var(--app-radius-md)] border bg-[var(--app-bg-surface)] px-4 py-2 text-[13px] font-semibold transition active:scale-95"
-                  style={{
-                    borderColor: "var(--app-border)",
-                    color: "var(--app-ink)",
-                  }}
+                  className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border bg-[var(--app-bg-elevated-solid)] px-4 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                  style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
                 >
-                  <span className="truncate pr-2">{r.label}</span>
-                  <X className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+                  <span className="truncate">{r.label}</span>
+                  <X className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
                 </button>
               ))}
               {relaxations.length > 1 && (
                 <button
                   type="button"
                   onClick={clear}
-                  className="tap-44-y tactile tactile-interactive flex min-h-[44px] items-center justify-center rounded-[var(--app-radius-md)] border px-4 py-2 text-[13px] font-semibold transition active:scale-95 sm:col-span-3"
-                  style={{ 
-                    borderColor: "transparent",
-                    background: "color-mix(in srgb, var(--section-accent, var(--app-brand)) 10%, var(--app-bg-surface))", 
-                    color: "var(--section-accent, var(--app-brand))" 
-                  }}
+                  className="inline-flex min-h-11 items-center px-2 text-[13px] font-semibold underline"
+                  style={{ color: "var(--app-link)" }}
                 >
                   Clear all filters
                 </button>
@@ -1380,21 +1359,15 @@ export default function EventsExplorer({
         // — a bare `grid` leaves an auto track that a card with a wide
         // min-content (one long unbroken token) stretches past the page edge
         // (397px track in a 358px column, Jul-9 mobile audit).
-        <motion.ul layout className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-          <AnimatePresence>
-            {filtered.slice(0, 100).map((e) => (
-              <motion.li
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                key={`${e.slug}-${e.starts_at}`}
-              >
-                <EventCard event={e} nowISO={nowISO} />
-              </motion.li>
-            ))}
-          </AnimatePresence>
+        // A chosen sort or filter is a full re-rank, so the list swaps
+        // directly. Animating up to 100 rows kept it shuffling for most of
+        // a second after every chip tap.
+        <ul data-events-sorted-list={sort} className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+          {filtered.slice(0, 100).map((e) => (
+            <li key={`${e.slug}-${e.starts_at}`}>
+              <EventCard event={e} nowISO={nowISO} />
+            </li>
+          ))}
           {filtered.length > 100 && (
             <li
               className="col-span-full pt-2 text-center text-[11px]"
@@ -1403,7 +1376,7 @@ export default function EventsExplorer({
               Showing the first 100. Use filters or the calendar view to narrow further.
             </li>
           )}
-        </motion.ul>
+        </ul>
       ) : (
         // Grouped by human time horizon — "what's on now / today / this
         // weekend / later" — so the page is navigable at a glance, not
@@ -1483,12 +1456,8 @@ export default function EventsExplorer({
                           }}
                           aria-expanded={isOpen}
                           disabled={isOpen && loadingAll}
-                          className="tactile tactile-interactive flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-4 py-2.5 text-[13px] font-semibold"
-                          style={{
-                            borderColor: "var(--app-border)",
-                            background: "var(--app-bg-elevated)",
-                            color: "var(--app-cool)",
-                          }}
+                          className="flex min-h-11 w-fit items-center gap-1.5 rounded-[var(--app-radius-sm)] text-[13px] font-semibold underline-offset-4 hover:underline disabled:opacity-60"
+                          style={{ color: "var(--app-link)" }}
                         >
                           {isOpen && !dataComplete
                             ? loadingAll
@@ -1505,11 +1474,11 @@ export default function EventsExplorer({
                           />
                         </button>
                         {overflow > 0 && (
-                          <div className="px-1 pt-1 text-center">
+                          <div className="pt-1">
                             <Link
                               href="/events/calendar"
                               className="tap-44 inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
-                              style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
+                              style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
                             >
                               {dataComplete ? `${overflow} more on the calendar` : "See more on the calendar"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
                             </Link>
@@ -1552,7 +1521,7 @@ export default function EventsExplorer({
                       type="button"
                       onClick={() => void ensureAllEvents()}
                       className="tap-44-y px-3 text-[12px] font-semibold underline"
-                      style={{ color: "var(--app-cool)" }}
+                      style={{ color: "var(--app-link)" }}
                     >
                       Load all {summary.utilityCount} civic events
                     </button>
@@ -1580,24 +1549,8 @@ function CompactEventList({
   nowISO: string;
 }) {
   if (events.length === 0) return null;
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.05 }
-    }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 15, scale: 0.98 },
-    show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring" as const, bounce: 0, duration: 0.4 } }
-  };
-
   return (
-    <motion.ol
-      variants={container}
-      initial="hidden"
-      animate="show"
+    <ol
       className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
       style={{
         borderColor: "var(--app-border)",
@@ -1605,16 +1558,16 @@ function CompactEventList({
       }}
     >
       {events.map((event) => (
-        <motion.li variants={item} key={`${event.slug}-${event.starts_at}`}>
+        <li key={`${event.slug}-${event.starts_at}`}>
           <EventCard
             event={event}
             variant="compact"
             live={live.has(event.slug)}
             nowISO={nowISO}
           />
-        </motion.li>
+        </li>
       ))}
-    </motion.ol>
+    </ol>
   );
 }
 
@@ -1631,12 +1584,11 @@ function PromotedEvent({
   live: boolean;
   nowISO: string;
 }) {
+  // A plain wrapper, so the lead is server-rendered visible instead of
+  // waiting for hydration to fade in. It keeps the poster and its photo
+  // credit together as one child of the horizon section.
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: "spring", bounce: 0.1, duration: 0.5 }}
-    >
+    <div>
       <EventCard
         event={event}
         variant="feature"
@@ -1645,6 +1597,6 @@ function PromotedEvent({
         priorityImage={priorityImage}
         visual={visual ?? undefined}
       />
-    </motion.div>
+    </div>
   );
 }

@@ -12,9 +12,16 @@ import type { EventCardVisual } from "@/components/event/eventVisuals";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 /** Keep optional media and its credit together while the factual headline
- * remains server-rendered children. Failed media never removes the event. */
+ * remains server-rendered children. Failed media never removes the event.
+ * A follow-up choice in a list passes `actionCue={false}`: the whole card is
+ * already the link, so an imageless follow-up drops the repeated "View event"
+ * label and the lift shadow, sits as a flat hairline item under the lead and
+ * answers a pointer with a surface change instead of the arrow nudge.
+ * Keyboard focus rings the whole card from the article, because the article
+ * clips an outline drawn by the link under the media. The link keeps its own
+ * inset ring only where `:has()` is unavailable. */
 export default function TodayHeadlineCard({
-  eventSlug, titleId, detailId, visual, accent, priority, children,
+  eventSlug, titleId, detailId, visual, accent, priority, actionCue = true, children,
 }: {
   eventSlug: string;
   titleId: string;
@@ -22,18 +29,20 @@ export default function TodayHeadlineCard({
   visual: EventCardVisual | null;
   accent: string;
   priority: boolean;
+  actionCue?: boolean;
   children: ReactNode;
 }) {
   const { identity, visibleVisual, failImage: unavailable, inspectLoadedImage } = useEventVisualLifecycle(visual);
+  const lifted = actionCue || Boolean(visibleVisual);
 
   return (
-    <article data-decision-impression="true" data-decision-surface="today" data-decision-entity="event" data-decision-id={eventSlug} data-decision-position="result" className="min-w-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)]" style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-shadow-1)" }}>
+    <article data-decision-impression="true" data-decision-surface="today" data-decision-entity="event" data-decision-id={eventSlug} data-decision-position="result" className="min-w-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] has-[>a:focus-visible]:outline-2 has-[>a:focus-visible]:outline-offset-2 has-[>a:focus-visible]:outline-[var(--app-focus)]" style={{ borderColor: "var(--app-border)", boxShadow: lifted ? "var(--app-shadow-1)" : undefined }}>
       <Link
         href={`/events/${eventSlug}`}
         prefetch={false}
         aria-labelledby={titleId}
         aria-describedby={detailId}
-        className="group block min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--app-bg)]"
+        className={`focus-ring-inset group block min-w-0 rounded-[inherit] supports-[selector(:has(*))]:outline-none! ${actionCue ? "" : "transition-colors hover:bg-[var(--app-bg-sunken)]"}`}
       >
         {visibleVisual?.presentation === "artwork" ? (
           <EventArtwork visual={visibleVisual} priority={priority} credit={false}
@@ -57,7 +66,7 @@ export default function TodayHeadlineCard({
         ) : null}
         <div className="min-w-0 p-4 [overflow-wrap:anywhere]">
           {children}
-          {!visibleVisual && <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--app-brand-press)" }}>
+          {actionCue && !visibleVisual && <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--app-link)" }}>
             View event<ArrowRight aria-hidden className="h-3.5 w-3.5 transition-transform duration-200 motion-safe:group-hover:translate-x-0.5" strokeWidth={2.1} />
           </span>}
         </div>

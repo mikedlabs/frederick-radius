@@ -53,7 +53,11 @@ describe("lazy dialog boundaries", () => {
     );
 
     expect(fallback).toContain("useFocusTrap(dialogRef, true)");
-    expect(fallback).toContain('document.body.style.overflow = "hidden"');
+    // Both halves of the swap hold the one shared page lock. A body lock holds
+    // nothing here, because the document scrolls on <html>.
+    expect(fallback).toContain("useScrollLock(true)");
+    expect(bottomSheet).toContain("useScrollLock(open)");
+    expect(fallback + bottomSheet).not.toContain("document.body.style.overflow");
     expect(fallback).toContain('event.key !== "Escape"');
     expect(fallback).toContain("returnFocusRef.current?.focus?.()");
     expect(bottomSheet).toContain("const [open, setOpen] = useState(present)");

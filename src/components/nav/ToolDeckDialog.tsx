@@ -11,6 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import { ArrowLeft, X } from "lucide-react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { prefersReducedMotion } from "@/lib/motion";
 
 export type ToolDeckDialogProps = {
@@ -75,14 +76,8 @@ export default function ToolDeckDialog({
     };
   }, [open, presentation]);
 
-  useEffect(() => {
-    if (!open || presentation === "inline") return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open, presentation]);
+  // The inline presentation lives in a drawer that already holds the page.
+  useScrollLock(open && presentation === "modal");
 
   useEffect(() => {
     if (!open || presentation === "inline") return;
@@ -190,12 +185,7 @@ export default function ToolDeckDialog({
         }`}
         style={{ borderColor: "var(--app-border)" }}
       >
-        <div
-          aria-hidden
-          className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full lg:hidden"
-          style={{ background: "var(--app-border-strong)" }}
-        />
-
+        {/* No grab pill: this panel does not drag, so it does not promise to. */}
         <header
           className="flex shrink-0 items-start gap-3 border-b pb-3 pt-3"
           style={{

@@ -14,6 +14,7 @@
  * burn-ban, closing, and health notices.
  */
 
+import { cleanFeedText, tidyListSeparators } from "@/lib/format/text";
 import type {
   OfficialOperationalSignalBase,
   OfficialSignalProvenance,
@@ -197,14 +198,21 @@ function tagText(tag: string, block: string): string {
 }
 
 function plainText(value: string, maxLength: number): string {
-  const text = decodeEntities(value)
+  const withoutCode = decodeEntities(value)
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ");
+  // The shared feed cleaner strips the remaining tags, collapses whitespace
+  // and applies the writing rule: an em dash becomes a comma. The Health
+  // Department bullets its lists with em dashes ("OPEN: — Infants & Toddlers
+  // Program — School Based Programs"), so the separators are tidied after.
+  const text = tidyListSeparators(cleanFeedText(withoutCode));
   if (text.length <= maxLength) return text;
-  return `${text.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+  return clip(text, Math.max(0, maxLength - 1));
+}
+
+/** Cut at `end` and mark the cut. A list clipped mid-way never ends "item,…". */
+function clip(text: string, end: number): string {
+  return `${text.slice(0, end).replace(/[\s,;:]+$/, "")}…`;
 }
 
 function officialSummary(value: string, maxLength: number): string {
@@ -225,7 +233,7 @@ function officialSummary(value: string, maxLength: number): string {
   const safeEnd = lastWordBreak >= Math.floor(maxLength * 0.7)
     ? lastWordBreak
     : maxLength - 1;
-  return `${window.slice(0, safeEnd).trimEnd()}…`;
+  return clip(window, safeEnd);
 }
 
 function isoOrNull(value: string): string | null {

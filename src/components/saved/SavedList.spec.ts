@@ -8,6 +8,7 @@ import {
   fetchSavedEventsBySlugs,
   fetchSavedEventsHydration,
   mergeSavedEventHydration,
+  savedEventRowIds,
   mergeSavedPlaceHydration,
   SavedPlaceRefreshNotice,
   fetchSavedPlacesBySlugs,
@@ -281,6 +282,26 @@ describe("SavedList empty state", () => {
 
     expect(next.get("old-event-title")).toBe(canonical);
     expect(next.get("current-event-title")).toBe(canonical);
+  });
+
+  it("keeps the saved row id of an event saved under an older slug", () => {
+    const canonical = { slug: "current-event-title" } as EventWithMeta;
+    const other = { slug: "other-event" } as EventWithMeta;
+    const eventsBySlug = new Map([
+      ["old-event-title", canonical],
+      ["current-event-title", canonical],
+      ["other-event", other],
+    ]);
+
+    expect(savedEventRowIds([
+      { type: "event", id: "old-event-title" },
+      { type: "place", id: "other-event" },
+      { type: "event", id: "other-event" },
+      { type: "event", id: "unresolved-event" },
+    ], eventsBySlug)).toEqual({
+      "current-event-title": "old-event-title",
+      "other-event": "other-event",
+    });
   });
 
   it("tells the reader ambiguous event misses are still saved", () => {

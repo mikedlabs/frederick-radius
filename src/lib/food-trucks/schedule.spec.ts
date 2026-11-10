@@ -278,6 +278,51 @@ describe("food-truck schedule sources", () => {
     });
   });
 
+  it("stores the roster's reviewed name when a published vendor resolves to it", () => {
+    // Steinhardt published "D'S Delights", and the board repeated it.
+    const stops = parseSteinhardtSchedule(JSON.stringify({
+      upcoming: [{
+        id: "ds-delights-20260729",
+        title: "D'S Delights",
+        startDate: Date.parse("2026-07-29T18:00:00.000Z"),
+      }],
+    }));
+    expect(stops[0].vendors[0]).toMatchObject({
+      name: "D's Delights",
+      slug: "ds-delights",
+    });
+    expect(stops[0].title).toBe("D's Delights at Steinhardt Brewing");
+
+    const aliased = parseCelebrateFrederickSchedule(`
+      <table><tr>
+        <td>July 26, 2026</td>
+        <td>IN10SE BBQ FOOD TRUCK</td>
+        <td>MAYTA'S PERUVIAN</td>
+      </tr></table>`);
+    expect(aliased[0].vendors).toMatchObject([
+      { name: "In10se BBQ", slug: "in10se-bbq" },
+      { name: "Mayta's Peruvian", slug: "maytas-peruvian" },
+    ]);
+  });
+
+  it("repairs a possessive suffix on a vendor the roster does not list", () => {
+    const stops = parseMonocacyBrewingSchedule([
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "BEGIN:VEVENT",
+      "UID:unlisted-20260727",
+      "DTSTAMP:20260722T223103Z",
+      "DTSTART:20260727T200000Z",
+      "DTEND:20260728T000000Z",
+      "SUMMARY:Food Truck: Nana'S Kitchen Food Truck",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n"));
+    expect(stops[0].vendors[0].name).toBe("Nana's Kitchen");
+    expect(stops[0].vendors[0].slug).toBeUndefined();
+    expect(stops[0].title).toBe("Nana's Kitchen at Monocacy Brewing");
+  });
+
   it("does not use loose matching that could attach the wrong business", () => {
     expect(matchFoodTruckSlug("Blues Pizza Food Truck")).toBeUndefined();
     expect(matchFoodTruckSlug("Blues BBQ")).toBe("blues-bbq");

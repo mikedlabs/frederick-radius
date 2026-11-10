@@ -90,7 +90,7 @@ export default function TodayPlacePreview({ place, category, hydratePhoto = fals
       {photo.source ? <div className={styles.media}>
         <PlaceCardPhoto key={photo.source.src} decodeIdentity={photo.sourceKey} source={photo.source} onResult={photo.onResult}
           width={360} deferGoogleBytes sizes="(min-width: 640px) 520px, calc(100vw - 32px)" />
-      </div> : <div className={styles.artwork}><PlaceCategoryArtwork name={place.name} category={category} /></div>}
+      </div> : <div className={styles.artwork}><PlaceCategoryArtwork category={category} /></div>}
       <div className={styles.facts}>
         <p className={styles.category}>{CATEGORY_BY_SLUG[category]?.name ?? category.replace(/-/g, " ")}</p>
         <h3 data-today-pick-name className={styles.name}>{place.name}</h3>

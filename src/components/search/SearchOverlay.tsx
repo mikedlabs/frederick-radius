@@ -27,6 +27,7 @@ import { searchCivicActions, shouldShowDepartmentAnswers } from "@/lib/search/ci
 import type { IntentIcon } from "@/lib/answers/types";
 import { commandDestination } from "@/lib/command-routing";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { settleFindReturnScroll } from "./find-return-scroll";
 import SearchPlaceVisual, { SearchPlaceVisualImage, SearchPlaceVisualCredit, SearchPlaceLead } from "./SearchPlaceVisual";
 import { searchEventCoverageMessage, searchEventRecoveryHref, searchEventRecoveryLabel, type SearchEventCoverage } from "@/lib/search/event-coverage";
@@ -50,6 +51,7 @@ const QUICK_ICON: Record<IntentIcon, typeof Clock> = {
 // result. Trust signals are populated server-side on each result so
 // the overlay doesn't need clientPlaceBySlug / EVENT_BY_SLUG either.
 import TrustChip from "@/components/ui/TrustChip";
+import Skeleton from "@/components/ui/Skeleton";
 import { TRUST_COLOR, type TrustSignal } from "@/lib/trust";
 import { useRecentSearches, usePushRecentSearch, useClearRecentSearches, useRecentSearchStatus, type RecentSearchStatus } from "@/hooks/useRecentSearches";
 import { frederickHour } from "@/lib/search-suggestions";
@@ -588,7 +590,8 @@ export default function SearchOverlay({
     }
   }, [open]);
 
-  // Keyboard navigation: arrows, Enter, Esc
+  // Keyboard: Escape closes and Tab cycles inside the dialog. Results are
+  // real links reached with Tab; Enter is handled on the field itself.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -601,9 +604,12 @@ export default function SearchOverlay({
       // WITHIN the overlay instead of walking into the page behind the
       // backdrop (WCAG 2.4.3). Wrap at both ends.
       if (e.key === "Tab" && dialogRef.current) {
-        const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])',
-        );
+        // Only real Tab stops count. The full-screen backdrop is a button with
+        // tabIndex -1: counting it made the forward wrap land on it (or stall
+        // on a phone, where it is not rendered) and let Shift+Tab leave.
+        const focusables = [...dialogRef.current.querySelectorAll<HTMLElement>(
+          "a[href], button:not([disabled]), input, [tabindex]",
+        )].filter((node) => node.tabIndex >= 0);
         if (focusables.length > 0) {
           const first = focusables[0];
           const last = focusables[focusables.length - 1];
@@ -621,18 +627,10 @@ export default function SearchOverlay({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // pushRecent + query are read inside the handler when Enter is
-    // pressed — without them, a stale closure can persist the previous
-    // query string after the user edits the input and hits Enter.
   }, [dismiss, open]);
 
-  // Lock body scroll while open
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [open]);
+  // Hold the page behind Find still while it is open.
+  useScrollLock(open);
 
   if (!open) return null;
 
@@ -712,9 +710,10 @@ export default function SearchOverlay({
         className="absolute inset-0 hidden bg-black/40 backdrop-blur-[2px] sm:block"
       />
 
-      {/* Sheet */}
+      {/* Sheet. One fixed desktop height: a panel that grows and shrinks with
+          each response moves the field's surroundings while someone types. */}
       <div
-        className="relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden sm:mt-[8dvh] sm:h-auto sm:max-h-[84dvh] sm:max-w-screen-sm sm:rounded-[var(--app-radius-xl)] sm:shadow-[var(--app-shadow-3)] backdrop-blur-2xl"
+        className="relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden sm:mt-[8dvh] sm:h-[min(84dvh,46rem)] sm:max-w-screen-sm sm:rounded-[var(--app-radius-xl)] sm:shadow-[var(--app-shadow-3)] backdrop-blur-2xl"
         style={{ background: "color-mix(in srgb, var(--app-bg) 85%, transparent)" }}
       >
         <div
@@ -764,8 +763,8 @@ export default function SearchOverlay({
             aria-label="Ask or find across Frederick County"
             // Results are real links, not ARIA listbox options. Keeping the
             // input a native search field avoids the invalid pattern of a
-            // focusable link nested inside role=option while retaining the
-            // fast Arrow/Enter shortcut for sighted keyboard users.
+            // focusable link nested inside role=option. Tab moves through
+            // the results and Enter on the field opens the first answer.
             aria-controls={query.trim() && results.length > 0 ? "search-results" : undefined}
             // self-stretch fills the pill's full 56px, so a thumb landing
             // anywhere in it focuses the input instead of hitting a dead
@@ -788,7 +787,7 @@ export default function SearchOverlay({
         </div>
 
         {/* Results */}
-        <div className="min-h-0 flex-1 overflow-y-auto sm:max-h-[64dvh]" style={{ boxShadow: "inset 0 4px 12px rgba(34,28,21,0.04)" }}>
+        <div className="min-h-0 flex-1 overflow-y-auto" style={{ boxShadow: "inset 0 4px 12px rgba(34,28,21,0.04)" }}>
           {/* Direct answer — "ask Frederick" routes a buried-gov question
               (recycling, permits, potholes, animal control…) straight to
               the right department + phone + source, ABOVE place results.
@@ -993,9 +992,7 @@ export default function SearchOverlay({
                 )}
               </div>
             ) : status === "loading" ? (
-              <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
-                <p>Searching&hellip;</p>
-              </div>
+              <SearchLoadingRows />
             ) : reasoningRequest && !hasAnswer ? (
               <div className="px-4 py-5 sm:px-5">
                 <button
@@ -1292,6 +1289,39 @@ export default function SearchOverlay({
   );
 }
 
+/** Title and subtitle widths for the pending rows, varied so the block reads
+ *  as a list and not a grid of identical bars. */
+const LOADING_ROW_WIDTHS = [["58%", "36%"], ["44%", "52%"], ["66%", "30%"], ["50%", "42%"]] as const;
+/** Find re-enters this state on every keystroke, so the shared sweep is
+ *  switched off: a shimmer that restarts per letter reads as flicker. */
+const STILL = "after:hidden!";
+
+/**
+ * Pending rows at the geometry of a real result row (40px thumbnail, two text
+ * lines, 62px minimum height), so the panel holds its shape between the last
+ * keystroke and the response. Decorative only: the persistent footer status
+ * announces "Searching".
+ */
+function SearchLoadingRows() {
+  return (
+    <div data-search-loading aria-hidden className="py-2">
+      {LOADING_ROW_WIDTHS.map(([title, subtitle]) => (
+        <div
+          key={title}
+          className="flex min-h-[62px] items-start gap-3 border-b px-4 py-2.5 sm:px-5"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <Skeleton.Block width={40} height={40} className={`mt-0.5 shrink-0 ${STILL}`} />
+          <div className="min-w-0 flex-1 space-y-2 pt-1.5">
+            <Skeleton.Block width={title} height={12} className={STILL} />
+            <Skeleton.Block width={subtitle} height={10} className={STILL} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function KbdHint({ label, desc }: { label: string; desc: string }) {
   return (
     <span className="inline-flex items-center gap-1">
@@ -1332,88 +1362,100 @@ function EmptyHint({
     { href: "/pulse", title: PRODUCT_NAMES.liveConditions.uiLabel, subtitle: "Check weather, air, roads, transit, and outages.", Icon: Activity },
   ];
 
+  // Submitted phrases lead only when there is something to repeat. With no
+  // chips the section keeps its label and its honest sentence, but sits below
+  // the shortcuts so an empty module never holds the first position.
+  const hasRecentChips = recentStatus.available && recent.length > 0;
+  const recentSection = (
+    <section aria-label="Recent searches on this device" className={hasRecentChips ? undefined : "mt-5"}>
+      <div className="flex items-baseline justify-between">
+        <p
+          className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
+          Recent searches
+        </p>
+        {hasRecentChips && (
+          <button
+            type="button"
+            onClick={onClearRecent}
+            className="tap-44 px-1 text-[10px] font-semibold uppercase tracking-[0.08em]"
+            style={{ color: "var(--app-ink-3)" }}
+            aria-label="Clear recent searches"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      {!recentStatus.available ? (
+        <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Recent searches are unavailable on this device.
+        </p>
+      ) : recent.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {recent.slice(0, 3).map((s) => (
+            <button
+              key={`recent-${s}`}
+              type="button"
+              onClick={() => onPick(s)}
+              className="flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[12.5px] font-medium transition hover:bg-[var(--app-bg-sunken)] active:scale-95"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+            >
+              <Clock className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+              <span className="truncate max-w-[140px]">{s}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          No recent searches on this device.
+        </p>
+      )}
+      {recentStatus.clearFailed && (
+        <p role="status" className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Could not clear recent searches. Please try again.
+        </p>
+      )}
+    </section>
+  );
+
   return (
     <div className="px-4 py-5 sm:px-5">
-      <section aria-label="Recent searches on this device">
-        <div className="flex items-baseline justify-between">
-          <p
-            className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
-            Recent searches
-          </p>
-          {recentStatus.available && recent.length > 0 && (
-            <button
-              type="button"
-              onClick={onClearRecent}
-              className="tap-44 px-1 text-[10px] font-semibold uppercase tracking-[0.08em]"
-              style={{ color: "var(--app-ink-3)" }}
-              aria-label="Clear recent searches"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-        {!recentStatus.available ? (
-          <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            Recent searches are unavailable on this device.
-          </p>
-        ) : recent.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {recent.slice(0, 3).map((s) => (
-              <button
-                key={`recent-${s}`}
-                type="button"
-                onClick={() => onPick(s)}
-                className="tactile-interactive flex min-h-11 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[12.5px] font-medium shadow-[var(--app-shadow-1)] transition-transform hover:scale-[1.02] active:scale-95"
-                style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-              >
-                <Clock className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-                <span className="truncate max-w-[140px]">{s}</span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            No recent searches on this device.
-          </p>
-        )}
-        {recentStatus.clearFailed && (
-          <p role="status" className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            Could not clear recent searches. Please try again.
-          </p>
-        )}
-      </section>
+      {hasRecentChips && recentSection}
 
-      <div className="mt-5">
+      <div className={hasRecentChips ? "mt-5" : undefined}>
         <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
           Useful now
         </p>
-        <div className="mt-2 grid grid-cols-2 gap-2">
+        {/* A flat ruled list, the same pattern as the Compass tool ledger.
+            Written in place because each row must close Find's history layer
+            through onNavigate before it leaves. */}
+        <ul className="mt-2 divide-y border-y" style={{ borderColor: "var(--app-border)" }}>
           {quickStart.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={(event) => {
-                if (!isPlainNavigationClick(event)) return;
-                event.preventDefault();
-                onNavigate(item.href);
-              }}
-              className="tactile tactile-interactive group relative flex flex-col gap-2 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)] transition-transform hover:-translate-y-0.5 hover:shadow-[var(--app-shadow-2)] active:scale-[0.98] active:translate-y-0"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--app-radius-md)]" style={{ color: "var(--app-link)", background: "var(--app-brand-tint-6)" }}>
-                <item.Icon className="h-4 w-4" strokeWidth={2.1} aria-hidden />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[13px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>{item.title}</span>
-                <span className="mt-1 block line-clamp-2 text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{item.subtitle}</span>
-              </span>
-            </Link>
+            <li key={item.href} style={{ borderColor: "var(--app-border)" }}>
+              <Link
+                href={item.href}
+                onClick={(event) => {
+                  if (!isPlainNavigationClick(event)) return;
+                  event.preventDefault();
+                  onNavigate(item.href);
+                }}
+                className="focus-ring-inset flex min-h-14 items-center gap-3 px-1 py-2.5 transition-colors hover:bg-[var(--app-bg-sunken)] active:bg-[var(--app-bg-sunken)]"
+              >
+                <item.Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-2)" }} aria-hidden />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[14px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>{item.title}</span>
+                  <span className="mt-0.5 block line-clamp-2 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{item.subtitle}</span>
+                </span>
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-35" strokeWidth={2.25} aria-hidden />
+              </Link>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
+
+      {!hasRecentChips && recentSection}
 
       <p className="mt-4 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
         Type a name, category, need, or question. Radius will choose the right path.

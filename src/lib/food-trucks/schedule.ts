@@ -1,6 +1,7 @@
 import "server-only";
 
-import { FOOD_TRUCKS } from "@/data/food-trucks";
+import { FOOD_TRUCK_BY_SLUG, FOOD_TRUCKS } from "@/data/food-trucks";
+import { repairApostropheSuffix } from "@/lib/format/text";
 import { parseICal } from "@/lib/ingest/parser";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 import type {
@@ -150,10 +151,19 @@ function stopId(...parts: string[]): string {
     .slice(0, 160);
 }
 
+/**
+ * A publisher's spelling of a vendor is cleaned here, once, before the
+ * snapshot is stored. A vendor that resolves to the roster takes the
+ * roster's reviewed name, so a published "D'S Delights" is stored as
+ * "D's Delights". An unlisted vendor keeps the published name with its
+ * possessive suffix repaired.
+ */
 function vendor(name: string, url?: string): FoodTruckScheduleVendor {
+  const slug = matchFoodTruckSlug(name);
+  const rosterName = slug ? FOOD_TRUCK_BY_SLUG.get(slug)?.name : undefined;
   return {
-    name: name.trim(),
-    slug: matchFoodTruckSlug(name),
+    name: rosterName ?? repairApostropheSuffix(name.trim()),
+    slug,
     url: safeHttpUrl(url),
   };
 }
@@ -243,9 +253,10 @@ export function parseSpringfieldManorSchedule(ics: string): FoodTruckScheduleSto
     const endsAt = clock.endHour == null
       ? event.endsAtUtc
       : easternWallToUtcISO(date.year, date.month, date.day, clock.endHour, clock.endMinute ?? 0);
+    const truck = vendor(name);
     return [{
       id: stopId("springfield", startsAt, name),
-      title: `${name} at Springfield Manor`,
+      title: `${truck.name} at Springfield Manor`,
       startsAt,
       endsAt,
       venueName: "Springfield Manor Winery Distillery Brewery",
@@ -254,7 +265,7 @@ export function parseSpringfieldManorSchedule(ics: string): FoodTruckScheduleSto
       municipality: "Thurmont",
       lat: 39.5589667,
       lng: -77.4346912,
-      vendors: [vendor(name)],
+      vendors: [truck],
       sourceName: FOOD_TRUCK_SOURCES.springfield.label,
       sourceUrl: FOOD_TRUCK_SOURCES.springfield.pageUrl,
       confidence: "venue" as const,
@@ -322,10 +333,11 @@ export function parseSteinhardtSchedule(json: string): FoodTruckScheduleStop[] {
       FOOD_TRUCK_SOURCES.steinhardt.pageUrl,
     );
     const publishedId = typeof item.id === "string" ? item.id : name;
+    const truck = vendor(name, publishedLink);
 
     return [{
       id: stopId("steinhardt", publishedId, start.toISOString()),
-      title: `${name} at Steinhardt Brewing`,
+      title: `${truck.name} at Steinhardt Brewing`,
       startsAt: start.toISOString(),
       endsAt: end?.toISOString(),
       venueName: "Steinhardt Brewing Company",
@@ -334,7 +346,7 @@ export function parseSteinhardtSchedule(json: string): FoodTruckScheduleStop[] {
       municipality: "Frederick",
       lat: 39.4130741,
       lng: -77.403639,
-      vendors: [vendor(name, publishedLink)],
+      vendors: [truck],
       sourceName: FOOD_TRUCK_SOURCES.steinhardt.label,
       sourceUrl: eventPage ?? FOOD_TRUCK_SOURCES.steinhardt.pageUrl,
       confidence: "venue",
@@ -360,9 +372,10 @@ export function parseMonocacyBrewingSchedule(ics: string): FoodTruckScheduleStop
     if (!/\bfood\s+truck\b/i.test(event.summary)) return [];
     const name = vendorNameFromFoodTruckSummary(event.summary);
     if (!name) return [];
+    const truck = vendor(name);
     return [{
       id: stopId("monocacy", event.uid, event.startsAtUtc),
-      title: `${name} at Monocacy Brewing`,
+      title: `${truck.name} at Monocacy Brewing`,
       startsAt: event.startsAtUtc,
       endsAt: event.endsAtUtc,
       venueName: "Monocacy Brewing Company",
@@ -371,7 +384,7 @@ export function parseMonocacyBrewingSchedule(ics: string): FoodTruckScheduleStop
       municipality: "Frederick",
       lat: 39.4402298,
       lng: -77.398855,
-      vendors: [vendor(name)],
+      vendors: [truck],
       sourceName: FOOD_TRUCK_SOURCES.monocacy.label,
       sourceUrl: FOOD_TRUCK_SOURCES.monocacy.pageUrl,
       confidence: "venue",

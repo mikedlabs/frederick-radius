@@ -161,6 +161,7 @@ export default function BeerIndex({ photos = {} }: { photos?: BreweryPhotoMap })
       <BottomDrawer
         open={filtersOpen}
         onOpenChange={setFiltersOpen}
+        historyLayerId="beer-filters"
         title="Filter and sort beers"
         subtitle={`${results.length} ${results.length === 1 ? "beer matches" : "beers match"} these choices.`}
       >
@@ -270,7 +271,9 @@ export default function BeerIndex({ photos = {} }: { photos?: BreweryPhotoMap })
             </div>
           </fieldset>
 
-          <div className="sticky bottom-0 -mx-4 flex items-center gap-2 border-t px-4 pt-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
+          {/* The drawer body keeps a bottom inset for the home indicator. The
+              bar extends through it so no sort option shows beneath the button. */}
+          <div className="sticky -bottom-[max(env(safe-area-inset-bottom,0px)+24px,24px)] -mx-4 -mb-[max(env(safe-area-inset-bottom,0px)+24px,24px)] flex items-center gap-2 border-t px-4 pb-[max(env(safe-area-inset-bottom,0px)+24px,24px)] pt-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)" }}>
             {activeFilterCount > 0 ? (
               <button type="button" onClick={clearAll} className="tap-44 min-h-11 px-3 text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
                 Clear

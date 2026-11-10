@@ -105,7 +105,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
   }, [state]);
   const nearestMuni = townsByDistance?.[0] ?? null;
 
-  // Click-outside / Escape to close.
+  // Click-outside / Escape to close. Tabbing out closes through onBlur below.
   useEffect(() => {
     if (!open) return;
     function onClick(e: MouseEvent) {
@@ -160,7 +160,19 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
         : "County";
 
   return (
-    <div ref={wrapRef} className="relative min-w-0 shrink-0">
+    <div
+      ref={wrapRef}
+      className="relative min-w-0 shrink-0"
+      onBlur={(event) => {
+        // Keyboard focus moved on, so the panel must not keep covering the
+        // page. A null target is not a reason to close: Safari does not focus
+        // a tapped button, and closing here would remove the panel between
+        // pointerdown and click and swallow the town choice. Outside pointer
+        // presses are handled by the mousedown listener above.
+        const next = event.relatedTarget;
+        if (open && next instanceof Node && !event.currentTarget.contains(next)) closePicker(false);
+      }}
+    >
       <button
         ref={triggerRef}
         data-location-chip
@@ -175,7 +187,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
         aria-controls="location-scope-choices"
         aria-label={`Change town or location scope. Current scope: ${label}`}
         title={`Town and location: ${label}`}
-        className="inline-flex h-11 min-w-11 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-full border bg-[var(--app-bg-elevated)] px-2 text-[12px] font-semibold leading-none transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:max-w-none sm:justify-start"
+        className="inline-flex h-11 min-w-11 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 text-[12px] font-semibold leading-none transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:max-w-none sm:justify-start"
         style={{ borderColor: "var(--app-border)", color: labelColor }}
       >
         <LabelIcon

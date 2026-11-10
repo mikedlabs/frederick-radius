@@ -225,6 +225,8 @@ const CURATED_CLUSTER_LABEL = curatedClusterLabelExpression();
 // every basemap frame.
 const MAP_RENDER_READINESS_PROBE_INTERVAL_MS = 250;
 const MAP_RENDER_READINESS_MAX_ATTEMPTS = 12;
+// How long a search or selection note stays on the map chip.
+const MAP_NOTE_MS = 6000;
 const MAP_RENDERER_CONFIGURED = MAPBOX_TOKEN.length > 0;
 
 // Types, constants, and popup components are kept in focused siblings so this
@@ -1020,7 +1022,17 @@ export default function AppMap({
   });
   // P0-10: a graceful note when the user denies (or we cannot get)
   // geolocation, instead of the "Near me" button silently doing nothing.
-  const [geoMsg, setGeoMsg] = useState<string | null>(null);
+  // A locate failure stays until it is dismissed or location recovers.
+  const [locateMsg, setLocateMsg] = useState<string | null>(null);
+  // Search and selection notes share the chip. They are passing information,
+  // so they clear themselves and uncover a locate failure still standing.
+  const [mapNote, setGeoMsg] = useState<string | null>(null);
+  const geoMsg = mapNote ?? locateMsg;
+  useEffect(() => {
+    if (!mapNote) return;
+    const timer = window.setTimeout(() => setGeoMsg(null), MAP_NOTE_MS);
+    return () => window.clearTimeout(timer);
+  }, [mapNote]);
   // Cold open is CLEAN: no layers pre-selected (matching the empty-categories
   // decision above) so the map opens as the live town, not a wall of pins. The
   // mode toggle still applies its curated layers when the user picks a mode.
@@ -1335,7 +1347,7 @@ export default function AppMap({
       isBrowseMap,
       rankingSeed: locationSeed.ranking,
       autoFitNearbyScope,
-      setGeoMsg,
+      setGeoMsg: setLocateMsg,
       markCameraIntent: () => {
         cameraIntentRef.current = true;
       },
@@ -2926,6 +2938,7 @@ export default function AppMap({
         contextLabel: `Nearest mapped ${group.label.toLowerCase()}`,
       });
       setGeoMsg(null);
+      setLocateMsg(null);
       const map = mapRef.current?.getMap();
       if (!map) return;
       cameraIntentRef.current = true;
@@ -4824,17 +4837,22 @@ export default function AppMap({
             was silent (it lived inside the collapsed Where pane). */}
         {geoMsg && (
           <div
-            className={`z-[var(--z-map-control)] flex items-center gap-1 rounded-[var(--app-radius-md)] border bg-white/95 py-1 pl-3 pr-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur ${
+            className={`z-[var(--z-map-control)] flex items-center gap-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-1 pl-3 pr-1 text-[13px] font-medium leading-snug shadow-[var(--app-shadow-1)] ${
               dock ? "map-geo-toast" : "absolute bottom-3 left-1/2 -translate-x-1/2"
             }`}
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
           >
             <span role="status" aria-live="polite">{geoMsg}</span>
             <button
               type="button"
               className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
-              onClick={() => setGeoMsg(null)}
-              aria-label="Dismiss location message"
+              onClick={() => {
+                setGeoMsg(null);
+                setLocateMsg(null);
+              }}
+              // The chip shows a search or selection note ahead of a locate
+              // failure, so the action names the message actually on screen.
+              aria-label={mapNote ? "Dismiss map message" : "Dismiss location message"}
               style={{ color: "var(--app-ink-3)" }}
             >
               <X className="h-4 w-4" strokeWidth={2.3} aria-hidden />

@@ -14,7 +14,7 @@ function harness() {
     headRepo: fullName, baseRepo: fullName, headBranch: branch, baseBranch: "main", mergeable: true,
     files: [{ filename: "src/data/places-merchant-hours.json", status: "modified" }], changedFiles: 1,
     totalOverride: null, calls: [], approvals: [], waits: [], onRead: null, onApprove: null, approveStatus: 201,
-    approveError: null, transition: true, workflows: {}, runs: [], attemptOverride: null, listProjection: null, detailProjection: null,
+    approveError: null, transition: true, attemptStep: 1, workflows: {}, runs: [], attemptOverride: null, listProjection: null, detailProjection: null,
     autoMerge: null, omitAutoMerge: false };
   const clone = (value) => structuredClone(value);
   const pull = () => ({ number: 7, state: state.pullState, draft: state.draft, mergeable: state.mergeable,
@@ -52,7 +52,9 @@ function harness() {
     if (state.approveError) throw state.approveError;
     state.approvals.push(args.run_id);
     const run = state.runs.find((candidate) => candidate.id === args.run_id);
-    if (state.transition) { run.status = "queued"; run.conclusion = null; }
+    // GitHub restarts an approved action_required run as the next attempt of
+    // the same run ID and check suite (observed on run 42775375255).
+    if (state.transition) { run.status = "queued"; run.conclusion = null; run.run_attempt += state.attemptStep; }
     state.onApprove?.(args);
     return { status: state.approveStatus, data: {} };
   };
@@ -89,6 +91,9 @@ test("approves only the two existing exact held native runs and records their at
   assert.ok(result.approvalWrites.every((write) => write.responseStatus === 201 && write.attempt === 1 && write.suiteId === write.id + 1000));
   assert.equal(result.semanticAcceptance, false); assert.equal(result.changesAutoMerge, false);
   assert.ok(result.runs.every((run) => run.event === "pull_request" && run.action === "approved"));
+  // GitHub's restart of each approved run is accepted once and re-pinned.
+  assert.ok(result.runs.every((run) => run.attempt === 2 && run.suiteId === run.id + 1000));
+  assert.ok(result.approvalWrites.every((write) => write.restartedAttempt === 2 && write.transitionVerified));
 });
 
 test("empty discovery metadata may settle into the same exact association before any approval", async () => {
@@ -443,11 +448,12 @@ test("a publisher head movement after one approval stops before the second nativ
   assert.equal(result.state, "held"); assert.deepEqual(state.approvals, [101]); assert.equal(result.approvalWrites.length, 1);
 });
 
-test("a changed run attempt in the approval response observation stays held with its original reservation", async () => {
-  const { state, approvalOptions } = harness(); state.onApprove = () => { state.runs[0].run_attempt = 2; };
+test("an unexpected attempt jump in the approval response observation stays held with its original reservation", async () => {
+  const { state, approvalOptions } = harness(); state.onApprove = () => { state.runs[0].run_attempt = 3; };
   const result = await approveNativeAutomatedPrRuns(approvalOptions);
   assert.equal(result.state, "held"); assert.deepEqual(state.approvals, [101]);
   assert.equal(result.approvalWrites[0].attempt, 1); assert.equal(result.approvalWrites[0].transitionVerified, false);
+  assert.match(result.failure, /exact native run ID, attempt or check suite changed during approval observation/);
 });
 
 test("an API failure after accepting approval preserves the one exact write without retry", async () => {
@@ -492,7 +498,7 @@ test("persistent action_required gets only four same-ID observations and one app
   assert.equal(state.calls.filter((row) => row.name === "getRun" && row.args.run_id === 101).length, 8);
 });
 
-test("a changed attempt during delayed approval observation holds immediately without another approval", async () => {
+test("a restarted attempt that is still held during delayed approval observation holds immediately without another approval", async () => {
   const { state, approvalOptions } = harness(); state.transition = false;
   let observed = 0;
   state.onRead = (name, args) => {
@@ -501,6 +507,7 @@ test("a changed attempt during delayed approval observation holds immediately wi
   const result = await approveNativeAutomatedPrRuns(approvalOptions);
   assert.equal(result.state, "held"); assert.deepEqual(state.approvals, [101]); assert.deepEqual(state.waits, [750]);
   assert.equal(result.approvalWrites[0].attempt, 1); assert.equal(result.approvalWrites[0].transitionVerified, false);
+  assert.match(result.failure, /changed during approval observation/);
 });
 
 test("source movement during the short approval observation stops further reads and approvals", async () => {
@@ -777,4 +784,108 @@ test('independent probe: approved gate reverts to held after verified transition
  state.onRead = (name,args) => { if(name==='listRuns' && args.workflow_id===22 && state.approvals.length===1) { state.runs[0].status='completed'; state.runs[0].conclusion='action_required'; } };
  const result = await approveNativeAutomatedPrRuns(approvalOptions);
  assert.equal(result.state,'held'); assert.deepEqual(state.approvals,[101]);
+});
+
+// GitHub restarts an approved run as attempt + 1 of the same run ID and check
+// suite. These tests pin exactly which post-approval identity changes the gate
+// accepts and which it still refuses.
+test("a restart observed only after a same-attempt transition is accepted once and re-pinned", async () => {
+  const { state, approvalOptions } = harness(); state.attemptStep = 0;
+  // The first observation still shows attempt 1 queued; the next batch sees
+  // the restart, matching the refresh-commerce-links run 42817740973.
+  state.onRead = (name, args) => {
+    if (name === "listRuns" && args.workflow_id === 11 && state.approvals.length === 1 && state.runs[0].run_attempt === 1) {
+      state.runs[0].run_attempt = 2;
+    }
+  };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "approved"); assert.equal(result.verified, true);
+  assert.deepEqual(state.approvals, [101, 202]);
+  assert.equal(result.approvalWrites[0].attempt, 1); assert.equal(result.approvalWrites[0].restartedAttempt, 2);
+  assert.equal(result.approvalWrites[1].restartedAttempt, undefined);
+  // The run row shows the attempt that actually ran, not the attempt 1
+  // observation recorded before the restart appeared.
+  assert.equal(result.runs[0].id, 101); assert.equal(result.runs[0].attempt, 2);
+  assert.equal(result.runs[0].action, "approved"); assert.equal(result.runs[0].status, state.runs[0].status);
+  assert.equal(result.runs[1].id, 202); assert.equal(result.runs[1].attempt, 1);
+});
+
+for (const [label, status, conclusion] of [["queued", "queued", null], ["in_progress", "in_progress", null], ["completed success", "completed", "success"]]) {
+  test(`the approved attempt + 1 restart is accepted while ${label}`, async () => {
+    const { state, approvalOptions } = harness();
+    state.onApprove = (args) => {
+      const run = state.runs.find((row) => row.id === args.run_id); run.status = status; run.conclusion = conclusion;
+    };
+    const result = await approveNativeAutomatedPrRuns(approvalOptions);
+    assert.equal(result.state, "approved"); assert.equal(result.verified, true);
+    assert.deepEqual(state.approvals, [101, 202]);
+    assert.ok(result.approvalWrites.every((write) => write.attempt === 1 && write.restartedAttempt === 2 && write.transitionVerified));
+  });
+}
+
+for (const [label, mutate, pattern] of [
+  ["a jump of two attempts", (run) => { run.run_attempt = 3; }, /changed during approval observation/],
+  ["a different check suite", (run) => { run.check_suite_id = 9999; }, /changed during approval observation/],
+  ["a different head SHA", (run) => { run.head_sha = OTHER; }, /workflow source, event, repository, head or attempt is invalid/],
+  ["a failed restarted attempt", (run) => { run.status = "completed"; run.conclusion = "failure"; }, /changed during approval observation/],
+  ["a cancelled restarted attempt", (run) => { run.status = "completed"; run.conclusion = "cancelled"; }, /changed during approval observation/],
+  ["a restarted attempt held again", (run) => { run.status = "completed"; run.conclusion = "action_required"; }, /changed during approval observation/],
+]) test(`after approval, ${label} is refused and the second gate is never approved`, async () => {
+  const { state, approvalOptions } = harness();
+  state.onApprove = (args) => { if (args.run_id === 101) mutate(state.runs[0]); };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.equal(result.verified, false); assert.equal(result.manualApprovalRequired, true);
+  assert.deepEqual(state.approvals, [101]); assert.equal(result.approvalWrites.length, 1);
+  assert.equal(result.approvalWrites[0].transitionVerified, false);
+  assert.equal(result.approvalWrites[0].restartedAttempt, undefined);
+  assert.match(result.failure, pattern);
+});
+
+test("an attempt change after a non-201 approval response is never accepted", async () => {
+  const { state, approvalOptions } = harness(); state.approveStatus = 202;
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, [101]);
+  assert.equal(state.runs[0].run_attempt, 2); assert.equal(result.approvalWrites[0].restartedAttempt, undefined);
+  assert.match(result.failure, /documented 201 response/);
+});
+
+test("an attempt change on the gate this script has not yet approved is refused", async () => {
+  const { state, approvalOptions } = harness();
+  // The style gate restarts on its own before this script approves it.
+  state.onApprove = (args) => {
+    if (args.run_id === 101) { const style = state.runs[1]; style.run_attempt = 2; style.status = "queued"; style.conclusion = null; }
+  };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, [101]);
+  assert.match(result.failure, /native gate changed identity or has failed before approval/);
+});
+
+test("an attempt change on a run that was already running and never approved is refused", async () => {
+  const { state, approvalOptions } = harness();
+  state.runs[1].status = "in_progress"; state.runs[1].conclusion = null;
+  state.onApprove = () => { state.runs[1].run_attempt = 2; };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, [101]);
+  assert.match(result.failure, /native gate changed identity or has failed before approval/);
+});
+
+test("a second restart after the accepted one is refused", async () => {
+  const { state, approvalOptions } = harness();
+  state.onRead = (name, args) => {
+    if (name === "listRuns" && args.workflow_id === 22 && state.approvals.length === 1) state.runs[0].run_attempt = 3;
+  };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, [101]);
+  assert.equal(result.approvalWrites[0].restartedAttempt, 2);
+  assert.match(result.failure, /native gate changed identity or has failed before approval/);
+});
+
+test("a later read that falls back to the approved attempt after the re-pin is refused", async () => {
+  const { state, approvalOptions } = harness();
+  state.onRead = (name, args) => {
+    if (name === "listRuns" && args.workflow_id === 22 && state.approvals.length === 1) state.runs[0].run_attempt = 1;
+  };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, [101]);
+  assert.match(result.failure, /native gate changed identity or has failed before approval/);
 });

@@ -7,6 +7,7 @@ import Image from "next/image";
 import { createPortal } from "react-dom";
 import { haptic } from "@/lib/haptics";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import {
   GoogleContentReportLink,
@@ -22,7 +23,7 @@ import { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
  * fit to the screen (object-contain, never cropped). Navigate by arrows,
  * keyboard (←/→), or horizontal swipe; dismiss by the X, Esc, a tap on
  * the backdrop, a swipe-down, or browser Back. The viewer owns one temporary
- * history layer above any place sheet. Body scroll is locked while open.
+ * history layer above any place sheet. Page scroll is locked while open.
  *
  * Reusable: any surface with a photo (place sheet hero + gallery today;
  * result cards later) can hand it an ordered, source-typed photograph array + a start
@@ -81,11 +82,8 @@ export default function PhotoLightbox({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [dismiss, go]);
 
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, []);
+  // Counted with the sheet beneath it, so either layer can close first.
+  useScrollLock(sources.length > 0);
 
   // Focus management (2026-07 shell-hardening P7): move focus INTO the viewer
   // on open — before, focus stayed on the page behind it and Tab walked through

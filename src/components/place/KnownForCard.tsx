@@ -1,4 +1,4 @@
-import { Sparkles, Heart } from "lucide-react";
+import { Heart } from "lucide-react";
 
 /**
  * KnownForCard — "what is this place actually known for, and what
@@ -46,21 +46,13 @@ export default function KnownForCard({
       className="border-y py-4"
       style={{ borderColor: "var(--app-border)" }}
     >
-      <header className="flex items-center gap-2">
-        <Sparkles
-          aria-hidden
-          className="h-3.5 w-3.5"
-          strokeWidth={2.25}
-          style={{ color: "var(--app-cool)" }}
-        />
-        <h3
-          id="known-for-heading"
-          className="text-[11px] font-bold uppercase tracking-[0.12em]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          What people say
-        </h3>
-      </header>
+      <h3
+        id="known-for-heading"
+        className="text-[11px] font-bold uppercase tracking-[0.12em]"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        What people say
+      </h3>
 
       {k.length > 0 && (
         <div className="mt-3">
