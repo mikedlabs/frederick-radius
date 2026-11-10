@@ -97,6 +97,26 @@ describe("bounded first-party source adapter", () => {
       expect(() => parseFcplOfficialHours(w, c, now)).toThrow(/not covered by the dated calendar/);
     });
     it.each([
+      // Each of these passed the earlier free-text reason check.
+      live.replace("Veteran's Day.", "Veterans Day until further notice."),
+      "<p>Frederick County Public Libraries will be closed November 26, 2026 in observance of Thanksgiving and will remain closed through the weekend.</p>",
+      live.replace("Veteran's Day.", "Veterans Day and the Walkersville Branch is closed Friday."),
+      live.replace("Veteran's Day.", "Christmas."),
+      // The calendar labels December 25 "Christmas Holiday". A shorter banner
+      // reason is not guessed to mean the same closure.
+      "<p>Frederick County Public Libraries will be closed December 25, 2026 in observance of Christmas.</p>",
+    ])("refuses a holiday banner whose reason is not the calendar's reason for that date: %s", (paragraph) => {
+      const [w, c] = withBanner(paragraph);
+      expect(() => parseFcplOfficialHours(w, c, now)).toThrow(/reason does not match the dated calendar/);
+    });
+    it("accepts the calendar's own reason for that date in another letter case", () => {
+      const calendarOnly = parseFcplOfficialHours(weekly, closures, now).closures.exceptions;
+      const [w, c] = withBanner(live.replace("Veteran's Day", "VETERANS DAY"));
+      expect(parseFcplOfficialHours(w, c, now).closures.exceptions).toEqual(calendarOnly);
+      const [tw, tc] = withBanner("<p>Frederick County Public Libraries will be closed November 27, 2026 in observance of Thanksgiving.</p>");
+      expect(parseFcplOfficialHours(tw, tc, now).closures.exceptions).toEqual(calendarOnly);
+    });
+    it.each([
       live.replace(" in observance of Veteran's Day.", " in observance of Veteran's Day. Branches open at 1 pm on November 12."),
       live.replace("Veteran's Day", "Veteran's Day and 2 snow days"),
       live.replace("Frederick County Public Libraries", "The Walkersville Branch Library"),
