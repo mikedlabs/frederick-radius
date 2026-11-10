@@ -125,10 +125,21 @@ export function navigateAfterHistoryLayer(id: string, next: () => void) {
  * same URL it opened on. A real navigation has already pushed or replaced a
  * different entry by then, and Back has already left it, so neither one is
  * reversed.
+ *
+ * This Back belongs to the layer just as a Close does, so it carries the same
+ * owned-return mark. Browse scroll memory then leaves the page where it is
+ * instead of treating the cleanup as a page Back and restoring an old position.
  */
 export function releaseAbandonedHistoryLayer(id: string, href: string) {
   if (typeof window === "undefined" || !id) return;
   if (currentLayerId() !== id || window.location.href !== href) return;
+  window.addEventListener(
+    "popstate",
+    (event) => {
+      if (window.location.href === href) ownedScrollReturns.add(event);
+    },
+    { once: true, capture: true },
+  );
   window.history.back();
 }
 

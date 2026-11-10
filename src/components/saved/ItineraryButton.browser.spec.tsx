@@ -226,6 +226,15 @@ describe("Event detail save uses the Saved tab's device store", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("Blocked", "SecurityError"); });
     await click();
     expect(mocks.toast.error).toHaveBeenCalledWith("Could not save this event", expect.not.objectContaining({ action: expect.anything() }));
+    // Save for real, then make the removal fail the same way.
+    vi.restoreAllMocks();
+    await click();
+    expect(saved()).toEqual([{ type: "event", id: EVENT, saved_at: expect.any(String) }]);
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("Blocked", "SecurityError"); });
+    await click();
+    expect(saved()).toEqual([{ type: "event", id: EVENT, saved_at: expect.any(String) }]);
+    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(mocks.toast.error).toHaveBeenLastCalledWith("Could not remove from Saved", expect.not.objectContaining({ action: expect.anything() }));
   });
 
   it("reports unsupported coordination without changing readable event saves", async () => {
