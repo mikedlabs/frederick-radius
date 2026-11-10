@@ -35,7 +35,6 @@ export const APP_PAGES: AppPage[] = [
   { href: "/live-music", title: "Live music", blurb: "See published venue lineups and ticketed shows.", keywords: ["live music", "bands", "who is playing", "lineup"] },
 
   // ── Events & planning ──
-  { href: "/moments/great-frederick-fair-2026", title: "2026 Fair guide", blurb: "Review the 2026 Great Frederick Fair program, visitor information, and featured vendor details.", indexTitle: false, keywords: ["fair", "great frederick fair", "frederick fair", "fair guide", "fair map", "fair vendors", "fairgrounds map"] },
   { href: "/events", title: "Events", blurb: "See listed events happening today, tonight, this weekend, or later.", keywords: ["events", "things to do", "whats happening", "today", "tonight", "this weekend"] },
   { href: "/events/calendar", title: "Event calendar", blurb: "Browse listed Frederick County events on a month calendar.", keywords: ["event calendar", "events calendar", "calendar", "month view"] },
 

@@ -153,24 +153,22 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage).not.toContain("<WeatherNeeds");
   });
 
-  it("keeps alerts first and the request doorway ahead of the one Fair campaign slot", () => {
+  it("keeps alerts first and the request doorway ahead of the one civic moment slot", () => {
     const alerts = renderedPage.indexOf("<CivicAlerts compact />");
-    const fair = renderedPage.indexOf("<TodayFairFeature");
+    const context = renderedPage.indexOf("className={styles.context}");
     const masthead = renderedPage.indexOf("<TodayMasthead");
     const find = renderedPage.indexOf("<TodayAsk embedded");
     const weather = renderedPage.indexOf('<TodayCard density="masthead"');
 
     expect(masthead).toBeGreaterThan(alerts);
     expect(find).toBeGreaterThan(masthead);
-    expect(fair).toBeGreaterThan(renderedPage.indexOf("{whatsOn}"));
+    expect(context).toBeGreaterThan(renderedPage.indexOf("{whatsOn}"));
     expect(renderedPage).toContain("<TodayPlanTonightLink />");
     expect(weather).toBeLessThan(find);
-    expect(weather).toBeLessThan(fair);
-    expect(renderedPage).toContain("fairPromotionPhase ? (");
-    expect(renderedPage).toContain(": civicMoment ? (");
-    expect(renderedPage.match(/<TodayFairFeature\b/g)).toHaveLength(1);
-    expect(todayPage).toContain('from "@/components/today/TodayFairFeatureIsland"');
-    expect(todayPage).not.toContain('from "@/components/today/TodayFairFeature"');
+    expect(weather).toBeLessThan(context);
+    expect(renderedPage).toContain("{civicMoment && (");
+    // The retired Fair campaign no longer has a slot on Today.
+    expect(todayPage).not.toMatch(/TodayFairFeature|fairPromotionPhase|fair-promotion/);
   });
 
   it("puts In The Streets ahead of the ordinary briefing on its actual day", () => {
@@ -184,7 +182,7 @@ describe("Today decision hierarchy", () => {
     expect(todayPage).toContain("civicMoment.ends === easternDayKey(now)");
   });
 
-  it("gives each part of the briefing one purpose and preserves an overlapping civic moment", () => {
+  it("gives each part of the briefing one purpose and keeps a live civic moment", () => {
     const decide = renderedPage.indexOf("data-today-briefing");
     const follow = renderedPage.indexOf("data-today-events");
     const plan = renderedPage.indexOf('title="Plan the rest"');
@@ -195,12 +193,9 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage).not.toContain('label="Follow the day"');
     expect(plan).toBeGreaterThan(follow);
     expect(more).toBeGreaterThan(plan);
-    expect(renderedPage).toContain(
-      "civicMoment.slug !== TODAY_FAIR_PROMOTION_SLUG",
-    );
-    // Day-of In The Streets leads above the masthead; the existing Fair-aware
-    // slots remain for pre-event weekends and overlapping occasions.
-    expect(renderedPage.match(/<MomentSpotlight\b/g)).toHaveLength(3);
+    // Day-of In The Streets leads above the masthead; the context slot after
+    // the local answers carries any live moment on every other day.
+    expect(renderedPage.match(/<MomentSpotlight\b/g)).toHaveLength(2);
   });
 
   it("keeps the town-aware place answer mounted instead of replacing it with an event", () => {

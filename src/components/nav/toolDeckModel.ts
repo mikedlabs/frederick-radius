@@ -42,7 +42,6 @@ export const TOOL_DECK_GROUP_DEFINITIONS = [
     toolIds: [
       "events",
       "event-calendar",
-      "great-frederick-fair-2026",
       "live-music",
       "parks",
       "check-a-date",

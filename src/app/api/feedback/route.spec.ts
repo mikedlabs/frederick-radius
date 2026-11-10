@@ -65,9 +65,7 @@ describe("POST /api/feedback durable receipt", () => {
       value: {
         message: PRIVATE_MESSAGE,
         email: PRIVATE_EMAIL,
-        pathname: "/moments/great-frederick-fair-2026",
-        fairIssue: "restroom_help",
-        fairContext: "Gate 3 family area",
+        pathname: "/food-trucks",
       },
     });
     mocks.fanoutToTopic.mockResolvedValue({

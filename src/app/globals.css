@@ -1295,86 +1295,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     top: 10px !important;
   }
 
-  /* The Fair map carries an in-canvas search, lens rail, and two compact
-     utility actions on phones. Move MapLibre's native zoom group below those
-     rails. Keep attribution above the persistent Fair navigation; the rem
-     offset follows enlarged root text instead of falling behind that bar. */
-  .fair-grounds-map-canvas .maplibregl-ctrl-top-right {
-    top: 7.75rem !important;
-  }
-  .fair-grounds-map-canvas .maplibregl-ctrl-bottom-right {
-    bottom: calc(
-      var(
-          --fair-map-action-bar-clearance,
-          calc(4.875rem + env(safe-area-inset-bottom))
-        ) + 8px
-    ) !important;
-    top: auto !important;
-    left: 10px !important;
-    right: auto !important;
-  }
-
-  /* Narrow phones already have pinch, double-tap, keyboard zoom, automatic
-     lens framing, and the 44px Whole grounds action. Hiding the redundant
-     native +/- rail gives real map places ownership of this scarce canvas
-     space, including when a visitor enlarges text to 200%. */
-  @media (max-width: 639.98px) {
-    .fair-grounds-map-canvas .maplibregl-ctrl-top-right {
-      display: none !important;
-    }
-  }
-
-  /* On a short phone the Navigator already leaves a real keyboard list below
-     the map. Do not stack a second in-canvas place tray over the remaining
-     touchable geography; it returns at normal phone heights and larger. */
-  @media (max-width: 639.98px) and (max-height: 700px) {
-    [data-fair-map-task-index] {
-      display: none !important;
-    }
-  }
-
-  /* Fair place and cluster sheets stay between the app header and the Fair
-     navigation at every text size. Their own content scrolls instead of
-     covering either persistent navigation surface. */
-  .fair-map-mobile-sheet {
-    bottom: calc(
-      var(
-          --fair-map-action-bar-height,
-          calc(
-            var(--app-bottomnav-reserve, 68px) +
-              env(safe-area-inset-bottom, 0px)
-          )
-        ) + 8px
-    ) !important;
-    max-height: calc(
-      100dvh - var(--app-topbar-h, 56px) -
-        var(
-          --fair-map-action-bar-height,
-          calc(
-            var(--app-bottomnav-reserve, 68px) +
-              env(safe-area-inset-bottom, 0px)
-          )
-        ) -
-        env(safe-area-inset-top, 0px) -
-        24px
-    ) !important;
-  }
-
-  .fair-map-cluster-dialog,
-  .fair-map-place-dialog {
-    top: auto !important;
-    width: min(calc(100% - 1.5rem), 30rem);
-    margin-block: 0;
-    margin-inline: auto;
-    color: var(--app-ink);
-  }
-
-  .fair-map-cluster-dialog::backdrop,
-  .fair-map-place-dialog::backdrop {
-    background: color-mix(in srgb, var(--app-ink) 24%, transparent);
-    backdrop-filter: blur(2px);
-  }
-
   /* /radius is an embedded planning canvas, not the full-screen browse map.
      Its lower sheet covers both conventional bottom corners, while the reach
      readout and camera rail occupy the first upper shelf. Give Mapbox's legal
@@ -2083,14 +2003,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   width: 44px !important;
   height: 44px !important;
 }
-/* Fairgrounds pins sit over an unpredictable basemap. A light inner outline
- * plus dark outer halo keeps keyboard focus visible over roads, grass, roofs,
- * and either map theme instead of relying on one brand color. */
-.fair-grounds-map-marker:focus-visible {
-  outline: 3px solid var(--app-ink-inverse);
-  outline-offset: 1px;
-  box-shadow: 0 0 0 5px var(--app-ink);
-}
 .maplibregl-map .maplibregl-ctrl-attrib-button {
   min-width: 44px !important;
   min-height: 44px !important;
@@ -2158,25 +2070,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   isolation: auto;
 }
 
-::view-transition-old(fair-map-selection) {
-  animation: vt-map-sheet-down 240ms cubic-bezier(0.3, 0, 0.2, 1) forwards;
-}
-::view-transition-new(fair-map-selection) {
-  animation: vt-map-sheet-up 320ms cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
-}
-
 @keyframes vt-fade-out { to { opacity: 0; transform: translateY(-4px); } }
 @keyframes vt-fade-in  { from { opacity: 0; transform: translateY(5px); } }
-@keyframes vt-map-sheet-down { to { opacity: 0; transform: translateY(12px) scale(0.98); } }
-@keyframes vt-map-sheet-up   { from { opacity: 0; transform: translateY(24px) scale(0.96); } }
 /* Reduced motion: gate the navigation slide off for prefers-reduced-motion
  * users (WCAG 2.3.3). */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(app-main),
   ::view-transition-new(app-main),
-  ::view-transition-group(radius-weather),
-  ::view-transition-old(fair-map-selection),
-  ::view-transition-new(fair-map-selection) {
+  ::view-transition-group(radius-weather) {
     animation: none;
   }
 }

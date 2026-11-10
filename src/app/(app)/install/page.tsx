@@ -55,8 +55,7 @@ export default function InstallPage() {
         <div className="mt-4 flex items-start gap-3">
           <Bookmark className="mt-0.5 h-5 w-5 shrink-0 text-[var(--app-ink-3)]" aria-hidden />
           <p className="text-[14px] leading-relaxed text-[var(--app-ink-2)]">
-            Saved places and Fair My Day plans stay in the browser and device
-            where you saved them. They do not sync through a cloud account.
+            Saved places stay in the browser and device where you saved them. They do not sync through a cloud account.
             Adding Radius or sharing this link does not transfer them.
           </p>
         </div>
