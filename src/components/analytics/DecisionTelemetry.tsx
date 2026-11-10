@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import {
   decisionImpressionFromDataset,
   decisionTelemetryFromDatasets,
@@ -32,8 +33,15 @@ function impressionKey(element: HTMLElement): string {
  * One delegated observer keeps telemetry out of the visual component tree.
  * Dynamic Ask cards and map sheets are discovered through MutationObserver;
  * impressions fire only after at least half the marked card is visible.
+ *
+ * The observer restarts on every client route change. A card that React keeps
+ * mounted across a navigation was unobserved after its first impression and
+ * gets no child-list mutation, so only a fresh scan can count it on the new
+ * page. Impression keys already include the pathname.
  */
 export default function DecisionTelemetryObserver() {
+  const pathname = usePathname();
+
   useEffect(() => {
     const seen = new Set<string>();
     const observed = new WeakSet<Element>();
@@ -107,7 +115,7 @@ export default function DecisionTelemetryObserver() {
       mutations?.disconnect();
       io?.disconnect();
     };
-  }, []);
+  }, [pathname]);
 
   return null;
 }

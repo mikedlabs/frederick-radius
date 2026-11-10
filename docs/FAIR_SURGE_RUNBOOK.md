@@ -3,7 +3,7 @@
 > **Retired.** The 2026 Fair workspace was removed after the fair ended on
 > September 26, 2026. `npm run perf:fair:surge` and `scripts/fair-surge.ts` no
 > longer exist, so the commands below cannot be run from the current tree. The
-> last commit that contains them is `8906ad86`.
+> last commit on main that contains them is `8906ad86`.
 
 This harness measures the Fair page on the same machine that runs it. It is a
 bounded application-origin check, not a public traffic generator and not a
