@@ -19,15 +19,13 @@ npm run scan:devibe:all   # public product plus private and experimental surface
 The public scan excludes the following separate surfaces:
 
 - `/pitch` and its marketing-only components and helpers.
-- `/proto` and its prototype components. Production already blocks these
-  routes.
 - `/admin` and its operational components. These tools are private and do not
   define the customer-facing brand.
 - The legacy pitch token block inside `globals.css`. The rest of that shared
   stylesheet remains in the public scan.
 
 The all-surfaces command keeps those findings visible. It is the correct scan
-before making `/pitch`, a prototype, or an admin tool public.
+before making `/pitch` or an admin tool public.
 
 Useful direct commands are:
 

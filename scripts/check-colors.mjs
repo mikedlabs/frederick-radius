@@ -29,7 +29,6 @@
  *
  * ALLOWLISTED surfaces (own palette, on purpose or as tracked debt):
  *   - marketing / pitch — the deliberately separate dark marketing world.
- *   - proto — dev/preview-only mockups, prod-404'd.
  *   - beer — KNOWN DEBT: the /beer vertical was built on a hardcoded
  *     brown/cream palette (~136 literals). Tracked for tokenization; listed
  *     here so the guard protects every OTHER surface today without a false
@@ -41,7 +40,6 @@ import { join } from "node:path";
 const EXCLUDE = [
   "src/components/marketing/",
   "src/app/pitch/",
-  "/proto/",
   // KNOWN DEBT — remove when /beer is tokenized (see docs/UI_AUDIT_2026-07-21.md).
   "src/components/beer/",
   "src/app/(app)/beer/",
