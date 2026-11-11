@@ -128,7 +128,6 @@ function PlaceSheetContent({
     : place.open_status;
   const cat = CATEGORY_BY_SLUG[place.category];
   const muni = MUNICIPALITY_BY_SLUG[place.municipality];
-  const color = cat?.color ?? "var(--app-brand)";
   // The sheet mounts only after a client interaction, so its lazy initializer
   // can read the live address bar. That is more precise than a router snapshot:
   // the map writes camera movement and layers through `history.replaceState`.
@@ -518,8 +517,9 @@ function PlaceSheetContent({
         {/* Real travel time from the user's consented location (Routes API) */}
         {travel && (travel.walkMin != null || travel.driveMin != null) && (
           <div
-            className="mt-3 inline-flex items-center gap-3 rounded-full border px-3 py-1.5 text-xs font-medium"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            // Travel time is information, so it is a plain line, not a capsule.
+            className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] font-medium"
+            style={{ color: "var(--app-ink-2)" }}
           >
             {travel.walkMin === 0 ? (
               /* A sub-minute walk should not turn into "0 min." */
@@ -555,11 +555,10 @@ function PlaceSheetContent({
             type="button"
             onClick={() => void requestTravelTime()}
             disabled={travelStatus === "loading"}
-            className="tap-44 mt-3 inline-flex items-center gap-2 rounded-full border px-3 text-xs font-semibold disabled:opacity-60"
+            className="tap-44 mt-3 inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[14px] font-semibold disabled:opacity-60"
             style={{
-              borderColor: "var(--app-border)",
-              color: "var(--app-ink-2)",
-              background: "var(--app-bg-elevated)",
+              borderColor: "var(--app-control-border)",
+              color: "var(--app-ink)",
             }}
           >
             <Footprints className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
@@ -615,8 +614,7 @@ function PlaceSheetContent({
               <div key={source.src} className="w-32 shrink-0">
                 <button type="button" aria-label={`View ${place.name} photo ${index + 2}`}
                   onClick={() => { haptic("light"); openPhoto(source.src); }}
-                  className="relative h-24 w-32 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] border"
-                  style={{ borderColor: "var(--app-border)" }}>
+                  className="relative block h-24 w-32 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]">
                   <Image src={source.src} alt="" fill unoptimized={source.kind === "google"}
                     loading="lazy" sizes="128px" placeholder="blur" blurDataURL={PAPER_CREAM_BLUR} className="object-cover"
                     style={source.kind !== "google" ? { objectPosition: source.objectPosition } : undefined}
@@ -647,10 +645,7 @@ function PlaceSheetContent({
           return (
             <div className="mt-5">
               <h3 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>From above</h3>
-              <figure
-                className="relative overflow-hidden rounded-[var(--app-radius-lg)]"
-                style={{ boxShadow: "var(--app-edge), var(--app-elev-1)" }}
-              >
+              <figure className="relative overflow-hidden rounded-[var(--app-radius-md)]">
                 <div className="relative aspect-[16/10] w-full bg-[var(--app-bg-sunken)]">
                   <Image
                     src={aerial.src}
@@ -685,24 +680,22 @@ function PlaceSheetContent({
         {venueEvents.length > 0 && (
           <div className="mt-5">
             <h3 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>Upcoming here</h3>
-            <ul className="flex flex-col gap-1.5">
+            {/* Ruled rows: a tabular date column, then the title and time. */}
+            <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
               {venueEvents.map((ev) => (
-                <li key={ev.slug}>
+                <li key={ev.slug} className="border-b" style={{ borderColor: "var(--app-border)" }}>
                   <Link
                     href={`/events/${ev.slug}`}
                     onClick={() => haptic("light")}
-                    className="tactile flex items-center gap-3 rounded-[var(--app-radius-md)] p-2.5 transition active:scale-[0.99]"
+                    className="flex min-h-11 items-center gap-3 rounded-[var(--app-radius-sm)] py-2.5"
                   >
-                    <div
-                      className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-sm)]"
-                      style={{ background: `color-mix(in srgb, ${color} 13%, var(--app-bg-elevated-solid))`, color }}
-                    >
-                      <span className="text-[9px] font-bold uppercase tracking-[0.08em] leading-none">{ev.month}</span>
-                      <span className="font-serif text-[18px] font-semibold leading-none">{ev.day}</span>
+                    <div className="flex w-10 shrink-0 flex-col items-start tabular-nums" style={{ color: "var(--app-ink)" }}>
+                      <span className="text-[11px] font-semibold uppercase leading-none tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>{ev.month}</span>
+                      <span className="mt-1 text-[18px] font-bold leading-none">{ev.day}</span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>{ev.title}</p>
-                      <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>{ev.weekday} · {ev.time}</p>
+                      <p className="truncate text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>{ev.title}</p>
+                      <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>{ev.weekday} · {ev.time}</p>
                     </div>
                     <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
                   </Link>
@@ -890,11 +883,11 @@ function PlaceSheetActions({
       ) : null}
       {remainingMore.length > 0 ? (
         <details
-          className="group overflow-hidden rounded-[var(--app-radius-md)] border"
+          className="group border-y"
           style={{ borderColor: "var(--app-border)" }}
         >
           <summary
-            className="tap-44-y flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-[12.5px] font-semibold [&::-webkit-details-marker]:hidden"
+            className="tap-44-y flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-[var(--app-radius-sm)] text-[14px] font-semibold [&::-webkit-details-marker]:hidden"
             style={{ color: "var(--app-ink-2)" }}
           >
             <span>More actions</span>
@@ -909,7 +902,7 @@ function PlaceSheetActions({
               />
             </span>
           </summary>
-          <div className="border-t px-3" style={{ borderColor: "var(--app-border)" }}>
+          <div className="border-t" style={{ borderColor: "var(--app-border)" }}>
             {remainingMore.map((action) => (
               <PlaceActionLink key={action.key} action={action} priority="row" entityId={entityId} />
             ))}
@@ -976,7 +969,8 @@ function PlaceActionLink({
       <Icon
         className="h-4 w-4 shrink-0"
         strokeWidth={2.1}
-        style={{ color: primary ? "var(--app-on-brand)" : "var(--app-brand-press)" }}
+        // Only the filled action carries coral; the rest are ink.
+        style={{ color: primary ? "var(--app-on-brand)" : "var(--app-ink-2)" }}
         aria-hidden
       />
       <span className={row ? "min-w-0 flex-1" : "min-w-0 max-w-full [overflow-wrap:anywhere]"}>{action.label}</span>

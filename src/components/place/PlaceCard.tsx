@@ -599,28 +599,26 @@ export default function PlaceCard({
     <FieldNoteTag compact />
   ) : null;
   return (
+    // PLAIN TOOL: a ruled row on the page ground. No card, no lift, no
+    // category stripe; the row ends in one hairline and the list's last row
+    // may drop it where the section already draws a rule.
     <article
-      className="tactile tactile-e2 relative overflow-hidden rounded-[var(--app-radius-lg)]"
-      style={{
-        backgroundColor: "var(--app-bg-elevated-solid)",
-        backgroundImage: "var(--app-paper-light)",
-      }}
+      data-place-row
+      className="relative border-b"
+      style={{ borderColor: "var(--app-border)" }}
     >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[3px]"
-        style={{ background: color }}
-      />
       <button
         type="button"
         data-press-target="card"
         onClick={openDetail}
         aria-label={`View ${actionName} details`}
-        className="absolute inset-0 z-0 rounded-[var(--app-radius-lg)] text-left"
+        className="absolute inset-0 z-0 rounded-[var(--app-radius-sm)] text-left"
       >
         <span data-press-face="outline" aria-hidden />
       </button>
-      <div className="flex items-stretch gap-3 p-3 pl-3.5">
+      {/* pr-1 leaves room for the Save control's 44px hit extender, so the
+          row never scrolls sideways now that it no longer clips. */}
+      <div className="flex items-stretch gap-3 py-3 pr-1">
         <div ref={photoAnchorRef} className="pointer-events-none relative z-10 shrink-0 self-center">
           {photo ? (
             <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={photoWidth} frame={compact ? "compact-row" : "row"} deferGoogleBytes={lazyPhoto} />
@@ -629,19 +627,19 @@ export default function PlaceCard({
         <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col justify-center">
           <div className="flex items-start gap-2">
             <h3
-              className="line-clamp-2 min-w-0 flex-1 text-[15px] font-semibold leading-[1.3] tracking-tight"
+              className={`line-clamp-2 min-w-0 flex-1 font-semibold leading-[1.3] tracking-tight ${compact ? "text-[15px]" : "text-[17px]"}`}
               style={{ color: "var(--app-ink)" }}
             >
               {place.name}
             </h3>
             {showSource && <SourceBadge place={place} size="sm" />}
             {place.distance_m !== undefined && (
-              <span className="ml-auto mt-[1px] shrink-0 whitespace-nowrap text-[12px] font-medium tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              <span className="ml-auto mt-[2px] shrink-0 whitespace-nowrap text-[14px] font-medium tabular-nums" style={{ color: "var(--app-ink-2)" }}>
                 {formatDistance(place.distance_m)}
               </span>
             )}
           </div>
-          <p className="mt-0.5 flex items-center gap-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          <p className="mt-0.5 flex items-center gap-1 text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
             {showPaw && (
               <PawPrint
                 className="h-3 w-3 shrink-0"
@@ -684,7 +682,9 @@ export default function PlaceCard({
           <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
         </div>
       </div>
-      <div className="relative z-10">
+      {/* The credit sits under the row's facts without a second hairline;
+          the row's own bottom rule closes it. */}
+      <div className="relative z-10 [&_.place-card-photo-credit]:border-t-0 [&_.place-card-photo-credit]:px-0">
         <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} compact />
       </div>
     </article>

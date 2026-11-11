@@ -80,10 +80,12 @@ export default function MyRadiusButton({
         data-place-save={slug}
         aria-hidden
         tabIndex={-1}
-        className="tap-44 inline-flex h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[15px] font-semibold"
-        style={{ color: "var(--app-ink-2)" }}
+        className="tap-44-y inline-flex h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[15px] font-semibold"
+        style={{ color: "var(--app-ink)" }}
       >
-        <Bookmark className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+        {/* Matches the mounted unsaved control exactly, so hydration does
+            not shift the action strip's color or width. */}
+        <Bookmark className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-2)" }} />
         Save
       </button>
     );
@@ -182,24 +184,26 @@ export default function MyRadiusButton({
         aria-busy={busy}
         aria-label={busy ? `${saving ? "Saving" : "Removing"} ${name}` : `Saved. Tap to remove ${name}`}
         title={mutation === "unconfirmed" ? "This change could not be confirmed." : undefined}
-        className="inline-flex h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[15px] font-semibold transition hover:underline disabled:opacity-60"
+        className="tap-44-y inline-flex h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[15px] font-semibold transition-colors hover:underline disabled:opacity-60"
         style={{
+          // The saved state keeps the link color and a checked bookmark, so
+          // it reads as different from the ink "Save" at a glance.
           color: showRemove ? "var(--app-danger-text)" : "var(--app-link)",
         }}
       >
         {busy ? (
           <>
-            <Loader2 className="h-[18px] w-[18px] animate-spin" strokeWidth={2.5} aria-hidden />
+            <Loader2 className="h-[18px] w-[18px] animate-spin motion-reduce:animate-none" strokeWidth={2} aria-hidden />
             {saving ? "Saving…" : "Removing…"}
           </>
         ) : showRemove ? (
           <>
-            <X className="h-[18px] w-[18px]" strokeWidth={2.5} aria-hidden />
+            <X className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
             Remove
           </>
         ) : (
           <>
-            <BookmarkCheck className="h-[18px] w-[18px]" strokeWidth={2.5} aria-hidden />
+            <BookmarkCheck className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
             Saved
           </>
         )}
@@ -217,12 +221,12 @@ export default function MyRadiusButton({
       aria-busy={busy}
       aria-label={busy ? `${saving ? "Saving" : "Removing"} ${name}` : `Save ${name}`}
       title={mutation === "unconfirmed" ? "This change could not be confirmed." : undefined}
-      className="tap-44-y inline-flex h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[15px] font-semibold transition hover:underline disabled:opacity-60"
+      className="tap-44-y inline-flex h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[15px] font-semibold transition-colors hover:underline disabled:opacity-60"
       style={{ color: "var(--app-ink)" }}
     >
       {busy ? (
         <>
-          <Loader2 className="h-[18px] w-[18px] animate-spin" strokeWidth={2.5} aria-hidden />
+          <Loader2 className="h-[18px] w-[18px] animate-spin motion-reduce:animate-none" strokeWidth={2} aria-hidden />
           {saving ? "Saving…" : "Removing…"}
         </>
       ) : (

@@ -253,8 +253,8 @@ export default function PlaceList({
         // Honest empty state: facets narrowed the set to nothing. Without this
         // the grid/list below render blank under a "0 of N" count.
         <p
-          className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+          className="border-y py-6 text-center text-[15px]"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
         >
           No places match those filters. Tap a filter again to widen the list.
         </p>
@@ -270,7 +270,8 @@ export default function PlaceList({
           ))}
         </div>
       ) : (
-        <ul className="space-y-2" aria-busy={!mounted ? "true" : undefined}>
+        // Ruled rows: each row ends in a hairline and the list starts with one.
+        <ul className="border-t" style={{ borderColor: "var(--app-border)" }} aria-busy={!mounted ? "true" : undefined}>
           {visiblePlaces.map((p) => (
             <li key={p.slug}>
               {/* compact=true drops the second metadata row (status +
