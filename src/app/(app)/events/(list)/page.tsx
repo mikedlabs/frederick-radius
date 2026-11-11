@@ -18,7 +18,6 @@ import EventCard from "@/components/event/EventCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
-import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
 import SlowSuspenseFallback from "@/components/ui/SlowSuspenseFallback";
@@ -86,7 +85,6 @@ export default async function EventsIndexPage() {
 
   return (
     <div className="relative space-y-4">
-      <PageBloom variant="warm-cool" />
 
       {/* Freshness guard (build review): /events is ISR + carries day-relative
           labels ("today", weekday dateline), so a cached shell served on a

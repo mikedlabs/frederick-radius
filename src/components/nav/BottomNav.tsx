@@ -146,7 +146,7 @@ export default function BottomNav() {
                     {/* Plain tool: the selected destination is marked by a
                         2px coral rule across the top of its column, a 700
                         label and a heavier icon stroke. */}
-                    <span aria-hidden className={styles.destinationRule} />
+                    <span aria-hidden data-destination-rule className={styles.destinationRule} />
                     <span data-press-face className="flex flex-col items-center justify-center gap-1">
                       <Icon
                         width={20}

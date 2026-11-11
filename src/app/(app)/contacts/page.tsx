@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { DEPARTMENTS } from "@/data/departments";
 import { CIVIC_ACTIONS, CIVIC_VERB_LABEL } from "@/data/civic-actions";
 import ContactsDirectory from "@/components/contacts/ContactsDirectory";
-import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/contacts" },
@@ -42,7 +41,6 @@ export default function ContactsPage() {
 
   return (
     <div className="relative space-y-5">
-      <PageBloom variant="warm-cool" />
 
       <header className="space-y-2">
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>

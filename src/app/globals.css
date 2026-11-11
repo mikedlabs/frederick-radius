@@ -1575,35 +1575,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 
-/* ─────────────────────────────────────────────────────
- * Page wash — a single STATIC warm-gradient field behind
- * every page (see PageBloom.tsx). This replaced four
- * slow-drifting "aurora" orbs: animating large blurred
- * layers cost scroll FPS (perf audit), and an aurora/blob
- * background is a known AI-generated tell (docs/DESIGN_TELLS.md).
- * The wash itself is composed inline in PageBloom via
- * color-mix radial gradients; only the grain texture below
- * is shared CSS.
- * ───────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   /* SkyHero gradient drift and the floating-action breath keep their
      default appearance without continuous motion. */
   .sky-hero::before { animation: none; }
   .fab-breath { animation: none; }
-}
-
-/* Subtle SVG grain — the "shader artifact" texture that
- * keeps the aurora from feeling like flat CSS. About 6%
- * opacity, multiply-blended so it sits on top of the bloom
- * without darkening real content. */
-.aurora-grain {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.07;
-  mix-blend-mode: multiply;
-  /* Inline SVG noise — no extra HTTP request. */
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
 
 /* ─────────────────────────────────────────────────────
@@ -9198,9 +9174,6 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
    These overrides sit last so they win over earlier component treatments
    without rewriting every surface by hand.
    ========================================================================== */
-
-/* Ambient page washes are decoration. The ground is plain. */
-[data-page-bloom] { display: none !important; }
 
 /* Type carries the hierarchy the boxes used to. Page titles are the top step
    of one ladder: 40px heavy titles, 28px lead clocks, 20px section and lead

@@ -1,4 +1,3 @@
-import PageBloom from "@/components/ui/PageBloom";
 import Skeleton from "@/components/ui/Skeleton";
 
 /**
@@ -13,7 +12,6 @@ export default function FoodTrucksLoading() {
   return (
     <div className="relative space-y-5 sm:space-y-6" aria-busy="true">
       <span className="sr-only" role="status">Loading food trucks.</span>
-      <PageBloom variant="single" />
 
       {/* `block!` matches the real page, which drops the masthead's empty
           second grid track. */}

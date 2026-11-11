@@ -159,7 +159,9 @@ export default function EventRow({
         )}
         <Heading className={styles.title}>
           <Link href={`/events/${slug}`} data-decision-action="open" data-press-target="card" prefetch={false} className={styles.link}>
-            {title}
+            {/* The press contract: the link's hit rectangle stays still and
+                only this face responds to a press. */}
+            <span data-press-face className="block">{title}</span>
           </Link>
         </Heading>
         {where ? <p data-event-card-venue className={styles.where}>{where}</p> : null}

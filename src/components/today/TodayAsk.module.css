@@ -48,9 +48,9 @@
   background: color-mix(in srgb, var(--app-on-brand) 14%, transparent);
 }
 
-/* PLAIN TOOL: Find is a real field. 48px, 6px corners, one control border. */
+/* PLAIN TOOL: Find is a real field. 52px, 6px corners, one control border. */
 .arrival .launcher {
-  min-height: 48px;
+  min-height: 52px;
   padding: 0 var(--app-space-3);
   gap: var(--app-space-2);
   /* The heaviest control on the page, in ink rather than coral. */

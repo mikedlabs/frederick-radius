@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import NearbyEssentials from "@/components/amenities/NearbyEssentials";
 import { AMENITY_GROUPS, AMENITY_KIND_TO_CAT } from "@/components/map/constants";
-import PageBloom from "@/components/ui/PageBloom";
 import {
   AMENITY_KINDS,
   allAmenities,
@@ -138,7 +137,6 @@ export default async function AmenitiesPage({
 
   return (
     <div className="relative mx-auto max-w-lg space-y-5 py-5 sm:py-7">
-      <PageBloom variant="warm-cool" />
 
       <header className="space-y-2">
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>

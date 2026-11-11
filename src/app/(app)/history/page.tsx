@@ -3,7 +3,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { Landmark, Calendar, Sparkles, Users, ExternalLink, ArrowRight } from "lucide-react";
 import { HISTORY, historyTopics, type HistoryEntry, type HistoryImage } from "@/data/history";
-import PageBloom from "@/components/ui/PageBloom";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import DecorativeDivider from "@/components/ui/DecorativeDivider";
@@ -127,7 +126,6 @@ export default async function HistoryPage({
 
   return (
     <div className="relative space-y-6">
-      <PageBloom variant="warm-cool" />
 
       {/* Cinematic hero — replaces the plain text header. A real
           aerial photograph of Frederick County (rotated daily by

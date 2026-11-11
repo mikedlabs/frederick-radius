@@ -4,7 +4,6 @@ import { ArrowLeft, ArrowRight, CalendarSearch } from "lucide-react";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { easternDayKey } from "@/lib/tz";
 import EventCard from "@/components/event/EventCard";
-import PageBloom from "@/components/ui/PageBloom";
 
 /**
  * /check-a-date — the organizer's question, answered.
@@ -83,7 +82,6 @@ export default async function CheckADatePage({
 
   return (
     <div className="relative mx-auto max-w-md space-y-5 py-6">
-      <PageBloom variant="warm-cool" />
 
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link

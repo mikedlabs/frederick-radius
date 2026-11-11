@@ -11,7 +11,6 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import EventCard from "@/components/event/EventCard";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import { PlaceMedallion } from "@/components/place/PlaceMedallion";
-import PageBloom from "@/components/ui/PageBloom";
 
 /**
  * /live-music — the music radar: tonight's stages, then every show on the
@@ -141,7 +140,6 @@ export default async function LiveMusicPage() {
     // sheet on demand (skeleton + single-event fetch) instead of a page
     // navigation per maybe. Anchors stay real.
     <EventSheetBoundary fetchMissing className="relative mx-auto max-w-md space-y-6 py-6">
-      <PageBloom variant="warm-cool" />
 
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link

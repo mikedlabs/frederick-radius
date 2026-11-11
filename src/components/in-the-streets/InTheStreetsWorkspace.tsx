@@ -1,14 +1,12 @@
 import React from "react";
 import Link from "next/link";
 import { ArrowLeft, Sparkles } from "lucide-react";
-import PageBloom from "@/components/ui/PageBloom";
 import InTheStreetsTimelineCard from "./InTheStreetsTimelineCard";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 export default function InTheStreetsWorkspace() {
   return (
     <div className="relative mx-auto max-w-screen-sm space-y-6 pb-20">
-      <PageBloom variant="warm-cool" />
 
       <nav aria-label="Breadcrumb" className="text-xs px-2 pt-2">
         <Link href="/today" className="inline-flex items-center gap-1.5 px-2 py-3.5 -mx-2 -my-3.5 hover:underline text-[var(--app-ink-3)] transition-colors active:text-[var(--app-brand)]">

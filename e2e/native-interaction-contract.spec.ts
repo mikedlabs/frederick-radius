@@ -1270,7 +1270,16 @@ test.describe("stable native press surfaces", () => {
       }
       during = await snapshot(destination);
       fixedOuter(before, during);
-      expect(during.shadow, "the actual touched destination has a static provisional mark").not.toBe("none");
+      // The flat bar acknowledges a tap with its rule in ink, where the old
+      // floating bar used an inset ring. The mark must be painted, tall
+      // enough to see, and must not move the destination.
+      const mark = await destination.locator("[data-destination-rule]").evaluate((node) => {
+        const css = getComputedStyle(node);
+        return { background: css.backgroundColor, opacity: Number(css.opacity), height: node.getBoundingClientRect().height };
+      });
+      expect(mark.background, "the actual touched destination has a static provisional mark").not.toBe("rgba(0, 0, 0, 0)");
+      expect(mark.opacity, "the provisional mark is clearly visible").toBeGreaterThanOrEqual(0.6);
+      expect(mark.height, "the provisional mark is at least 2px tall").toBeGreaterThanOrEqual(2);
       await protocol.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
       touchStarted = false;
       await expect(destination).toHaveAttribute("data-pending", "false");
