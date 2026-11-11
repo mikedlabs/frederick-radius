@@ -3,6 +3,7 @@ import { act, StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cancelPrimaryTabResume, preparePrimaryTabResume, rememberPrimaryTab } from "@/lib/primary-tab-session";
+import { setScope } from "@/lib/scope";
 import { useMapTabResumeQuery } from "./useMapTabResumeQuery";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -11,11 +12,13 @@ let root: Root, host: HTMLElement;
 function Fixture() { const query = useMapTabResumeQuery(true); return <span>{query ?? "no-resume"}</span>; }
 beforeEach(() => {
   sessionStorage.clear(); cancelPrimaryTabResume();
+  // The shared area still matches the remembered map, so its camera resumes.
+  setScope("town:frederick");
   history.replaceState({ retained: "history-owner" }, "", href);
   rememberPrimaryTab(`${href}&q=coffee`, 0);
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
 });
-afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.restoreAllMocks(); sessionStorage.clear(); cancelPrimaryTabResume(); });
+afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.restoreAllMocks(); sessionStorage.clear(); cancelPrimaryTabResume(); setScope(null); });
 describe("one-time Map tab query handoff", () => {
   it("commits one admitted query before passive synchronization and keeps camera/layers/history ownership", async () => {
     preparePrimaryTabResume("/map");

@@ -167,7 +167,7 @@ for (const width of [375, 1366]) {
     await area.selectOption("county");
     const opener = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
     const dialog = page.getByRole("dialog", { name: "What do you need?", exact: true });
-    const field = dialog.getByRole("searchbox", { name: "Ask or find across Frederick County", exact: true });
+    const field = dialog.getByRole("searchbox", { name: "Ask or find across the whole county", exact: true });
     await opener.click();
     await field.fill("coffee");
     await expect(dialog.getByText("Fresh search fixture 1", { exact: true })).toBeVisible();
@@ -185,7 +185,9 @@ for (const width of [375, 1366]) {
 
     await area.selectOption("town:brunswick");
     await opener.click();
-    await expect(field).toHaveValue("coffee");
+    // The field names the area it now searches.
+    const townField = dialog.getByRole("searchbox", { name: "Ask or find in Brunswick", exact: true });
+    await expect(townField).toHaveValue("coffee");
     await expect(dialog.getByText("Fresh search fixture 3", { exact: true })).toBeVisible();
     await expect(dialog.getByText("Coffee · Brunswick", { exact: true })).toBeVisible();
     expect(requests).toEqual([
@@ -202,11 +204,11 @@ for (const width of [375, 1366]) {
     const detailOpener = page.getByRole("button", { name: "Ask or find across Frederick County", exact: true });
     await expect(detailOpener).toBeEnabled();
     await detailOpener.click();
-    await expect(field).toHaveValue("coffee");
+    await expect(townField).toHaveValue("coffee");
     await expect(dialog.getByText("Fresh search fixture 4", { exact: true })).toBeVisible();
     const nextQuery = width === 375 ? "pizza" : "";
     if (nextQuery) {
-      await field.fill(nextQuery);
+      await townField.fill(nextQuery);
       await expect(dialog.getByText("Fresh search fixture 5", { exact: true })).toBeVisible();
     } else {
       await dialog.getByRole("button", { name: "Clear search", exact: true }).click();
@@ -220,7 +222,7 @@ for (const width of [375, 1366]) {
     // No reload: Back may restore a BFCache header with an older memory draft.
     await expect(area).toBeEnabled();
     await opener.click();
-    await expect(field).toHaveValue(nextQuery);
+    await expect(townField).toHaveValue(nextQuery);
     if (nextQuery) {
       await expect(dialog.getByText("Fresh search fixture 6", { exact: true })).toBeVisible();
       await expect(dialog.getByText("Pizza · Brunswick", { exact: true })).toBeVisible();
@@ -231,7 +233,7 @@ for (const width of [375, 1366]) {
       await expect(opener).toBeFocused();
       await opener.click();
     }
-    await expect(field).toHaveValue("");
+    await expect(townField).toHaveValue("");
     await expect(dialog.getByText("Useful now", { exact: true })).toBeVisible();
     await expect(dialog.getByText("Fresh search fixture 4", { exact: true })).toHaveCount(0);
   });

@@ -72,12 +72,12 @@ export function scopeCentroid(scope: Scope | null): LngLat | null {
   return slug ? (MUNICIPALITY_BY_SLUG[slug]?.centroid ?? null) : null;
 }
 
-/** Human label for the chip / caption. */
+/** The one printed name for each area: "Near me", "Whole county", or the
+ * town's name. An unset area is the whole county, as every reader treats it. */
 export function scopeLabel(scope: Scope | null): string {
   if (scope === "nearme") return "Near me";
-  if (scope === "county") return "Whole county";
   const slug = scopeTownSlug(scope);
-  return (slug && MUNICIPALITY_BY_SLUG[slug]?.name) || "Frederick County";
+  return (slug && MUNICIPALITY_BY_SLUG[slug]?.name) || "Whole county";
 }
 
 /**
@@ -255,7 +255,7 @@ export function resolveDecisionContext({
       origin: null,
       filterMunicipality: null,
       source: "county",
-      label: "Whole county",
+      label: scopeLabel("county"),
       canShowDistance: false,
       fallbackReason: null,
     };
@@ -265,7 +265,7 @@ export function resolveDecisionContext({
       origin: deviceOrigin,
       filterMunicipality: null,
       source: "device",
-      label: "Near you",
+      label: scopeLabel("nearme"),
       canShowDistance: true,
       fallbackReason: null,
     };
@@ -319,7 +319,7 @@ export function resolveDecisionContext({
     origin: null,
     filterMunicipality: null,
     source: "none",
-    label: "Whole county",
+    label: scopeLabel("county"),
     canShowDistance: false,
     fallbackReason:
       approximateStatus === "outside-county" ? "outside-county" : "location-unavailable",

@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { MapPin, ChevronDown, Loader2 } from "lucide-react";
-import { setScope } from "@/lib/scope";
+import { scopeInSentence, scopeLabel } from "@/lib/scope";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { commitLocationScope } from "./locationScopeNavigation";
 
 /**
  * ScopeBar — the always-present "where am I looking" control for a
@@ -20,8 +21,8 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
  * the results, working the same on mobile and desktop.
  *
  * So this bar is ALWAYS shown, states the current choice, and carries the
- * change control inline. It writes the shared browsing SCOPE (lib/scope.ts) —
- * the same lens the nav chip and the other list surfaces use — so a change
+ * change control inline. It writes the shared browsing SCOPE (lib/scope.ts)
+ * through the same writer as the nav chip (commitLocationScope), so a change
  * here shows up in the chip and re-ranks everywhere, and the two controls can
  * never disagree.
  */
@@ -49,7 +50,7 @@ export default function ScopeBar({
     >
       <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand-text)" }} />
       <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-        {currentName ? `Ranked from ${currentName}` : "Showing all of Frederick County"}
+        {currentName ? `Ranked from ${currentName}` : scopeLabel("county")}
       </span>
       {/* The change control — a native select so it works everywhere and needs
           no popover. Pre-selected to the current choice; picking re-ranks.
@@ -70,9 +71,11 @@ export default function ScopeBar({
           value={selectValue}
           onChange={(e) => {
             const v = e.target.value;
-            setScope(v === "county" ? "county" : (`town:${v}` as const));
             // Server components re-render with the new fr_scope cookie.
-            startTransition(() => router.refresh());
+            commitLocationScope(v === "county" ? "county" : (`town:${v}` as const), {
+              replace: (href, options) => startTransition(() => router.replace(href, options)),
+              refresh: () => startTransition(() => router.refresh()),
+            });
           }}
           className="absolute -inset-y-[13px] inset-x-0 cursor-pointer opacity-0 disabled:cursor-wait"
         >
@@ -90,7 +93,7 @@ export default function ScopeBar({
         </select>
       </label>
       <span id="scope-status" className="sr-only" role="status" aria-live="polite">
-        {isPending ? "Updating place rankings" : currentName ? `Ranked from ${currentName}` : "Ranked across Frederick County"}
+        {isPending ? "Updating place rankings" : currentName ? `Ranked from ${currentName}` : `Ranked across ${scopeInSentence(scopeLabel("county"))}`}
       </span>
     </div>
   );

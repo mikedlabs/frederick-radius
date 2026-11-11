@@ -16,6 +16,7 @@ vi.mock("@/hooks/useRecentSearches", () => ({
   usePushRecentSearch: () => navigation.recent, useClearRecentSearches: () => vi.fn(),
 }));
 import SearchOverlay from "./SearchOverlay";
+import { setScope } from "@/lib/scope";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root, host: HTMLDivElement;
@@ -151,5 +152,36 @@ describe("Find retrieval-first interactions", () => {
     expect(host.querySelector('[data-search-event-coverage]')).not.toBeNull();
     await act(async () => vi.advanceTimersByTimeAsync(1600));
     expect(vi.mocked(track).mock.calls.some(([event]) => event === "search_empty")).toBe(false);
+  });
+});
+
+describe("Find states the shared area", () => {
+  afterEach(() => setScope(null));
+  const field = () => host.querySelector<HTMLInputElement>('input[role="searchbox"]')!;
+  const areaLine = () => host.querySelector("[data-find-area]")?.textContent;
+
+  it("names the whole county for an unset area, in the field and on an unqualified answer", async () => {
+    await render("Gravel & Grind"); await tick();
+    expect(field().getAttribute("aria-label")).toBe("Ask or find across the whole county");
+    expect(areaLine()).toBeUndefined();
+    await respond(0, [gravel], { qualifiers: { constrained: false }, contextLabel: null });
+    expect(areaLine()).toBe("Whole county");
+  });
+
+  it("follows a header change to a town and prints the server's area label", async () => {
+    setScope("town:thurmont");
+    await render("coffee"); await tick();
+    expect(field().getAttribute("aria-label")).toBe("Ask or find in Thurmont");
+    await respond(0, [gravel], { qualifiers: { constrained: true, categoryLabel: "Coffee" }, contextLabel: "Thurmont" });
+    expect(areaLine()).toBe("Coffee · Thurmont");
+    await act(async () => setScope("nearme"));
+    expect(field().getAttribute("aria-label")).toBe("Ask or find near you");
+  });
+
+  it("adds the area to a category answer that the server did not scope", async () => {
+    setScope("county");
+    await render("pizza"); await tick();
+    await respond(0, [gravel], { qualifiers: { constrained: true, categoryLabel: "Pizza" }, contextLabel: null });
+    expect(areaLine()).toBe("Pizza · Whole county");
   });
 });

@@ -6,6 +6,7 @@ import { isRoutineProgram, rankRecommendations } from "@/lib/events/lead-rank";
 import type { SourceConfidence } from "@/lib/provenance";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
 import { eventAttendanceLabel, hasRecommendationAttendance } from "@/lib/events/attendance";
+import { scopeLabel as areaLabel } from "@/lib/scope";
 
 export type TodayEventCandidate = Event & { confidence: SourceConfidence };
 
@@ -43,7 +44,7 @@ export function todayEventPicksMeta({
   todayPicks,
   tonightPicks,
   degraded,
-  scopeLabel = "Countywide",
+  scopeLabel = areaLabel("county"),
 }: {
   todayPicks: number;
   tonightPicks: number;
@@ -57,7 +58,7 @@ export function todayEventPicksMeta({
     `${count} event ${count === 1 ? "pick" : "picks"}`;
   return `${pickLabel(todayPicks)} today${
     tonightPicks > 0 ? ` · ${pickLabel(tonightPicks)} tonight` : ""
-  } · ${scopeLabel.trim() || "Countywide"}${degraded ? " · Partial coverage" : ""}`;
+  } · ${scopeLabel.trim() || areaLabel("county")}${degraded ? " · Partial coverage" : ""}`;
 }
 
 export function shouldRenderTodayEventSection({

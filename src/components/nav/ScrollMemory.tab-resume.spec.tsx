@@ -3,6 +3,7 @@ import { act, StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cancelPrimaryTabResume, preparePrimaryTabResume, rememberPrimaryTab } from "@/lib/primary-tab-session";
+import { setScope } from "@/lib/scope";
 import ScrollMemory from "./ScrollMemory";
 
 const route = vi.hoisted(() => ({ pathname: "/events", search: "in=frederick&lens=weekend" }));
@@ -14,6 +15,8 @@ let scroll: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   window.dispatchEvent(new Event("pagehide")); window.dispatchEvent(new Event("pageshow"));
   vi.useFakeTimers(); sessionStorage.clear(); cancelPrimaryTabResume();
+  // Arrival on ?in=frederick wrote it into the shared area, as Events does.
+  setScope("town:frederick");
   route.pathname = "/events"; route.search = "in=frederick&lens=weekend"; history.replaceState({}, "", path);
   position = 0;
   vi.spyOn(window, "innerHeight", "get").mockReturnValue(400);
@@ -30,7 +33,7 @@ beforeEach(() => {
 });
 afterEach(async () => {
   window.dispatchEvent(new Event("pagehide")); await act(async () => root.unmount()); host.remove(); surface.remove();
-  vi.clearAllTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.useRealTimers(); sessionStorage.clear(); cancelPrimaryTabResume();
+  vi.clearAllTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.useRealTimers(); sessionStorage.clear(); cancelPrimaryTabResume(); setScope(null);
 });
 const mount = () => act(async () => root.render(<StrictMode><ScrollMemory /></StrictMode>));
 const advance = (ms: number) => act(async () => vi.advanceTimersByTimeAsync(ms));
@@ -43,6 +46,12 @@ describe("primary-tab scroll resume", () => {
     surface.dataset.eventsInteractionReady = "true"; await advance(16);
     expect(position).toBe(612); await advance(3_032);
     expect(sessionStorage.getItem(`fr:scroll:${path}`)).toBe("612");
+  });
+  it("restores the list position at the rebased address after the area changed elsewhere", async () => {
+    rememberPrimaryTab(path, 612); setScope("county");
+    expect(preparePrimaryTabResume("/events")?.href).toBe("/events?in=county&lens=weekend");
+    route.search = "in=county&lens=weekend"; history.replaceState({}, "", "/events?in=county&lens=weekend");
+    await mount(); await advance(16); expect(position).toBe(612);
   });
   it("restores a remembered top position instead of retaining the outgoing tab's deep scroll", async () => {
     rememberPrimaryTab(path, 0); preparePrimaryTabResume("/events"); position = 700;

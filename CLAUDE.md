@@ -156,8 +156,16 @@ update its implementation, relevant contract and tests together.
   was removed as clutter). A first-time visitor may see one consent sheet
   offering **Use my location** or **Browse county**; it explains the benefit
   before any browser prompt. After that, the shared header location control is
-  the sole Near me / Whole county / town scope control. Do not add another
-  floating Locate or scope toggle to the map. Radius ("Nearby") mode still exists behind
+  the sole Near me / Whole county / town scope control, on the map and on
+  every other page (owner decision 2026-11-11). Area changes go through its
+  writer, `commitLocationScope` in `src/components/nav/locationScopeNavigation.ts`;
+  the older in-page choosers on Today, Search, Events, the map dock and Ask are
+  being retired onto the header control, so do not add another. Tab memory
+  never restores an old area (`src/lib/primary-tab-session.ts`), and the area
+  prints as "Near me", "Whole county" or the town's name (`scopeLabel`). The
+  remaining exceptions are listed in the Location section of
+  `docs/USER_FIRST_INTERACTION_CONTRACT.md` and go away with the choosers.
+  Do not add another floating Locate or scope toggle to the map. Radius ("Nearby") mode still exists behind
   `/map?mode=radius` (isochrone + control sheet). It has no floating toggle,
   but it does have deliberate secondary entries: the "Compare travel reach"
   row at the end of the map dock's "Find nearby" pane

@@ -1,5 +1,10 @@
+import { getScope, parseScope, SCOPE_PARAM, scopeToParam, type Scope } from "@/lib/scope";
+
 /** Root-tab browse memory only. URLs/positions stay in this browser tab's
- * session; private Events search/view state stays in this document's memory. */
+ * session; private Events search/view state stays in this document's memory.
+ * Tab memory never owns the area. Each snapshot records the area it showed,
+ * and a resume rebases onto the current shared area when that has changed, so
+ * an old `?in=` is never replayed as if it were an explicit inbound link. */
 export const PRIMARY_TAB_SESSION_KEY = "fr:primary-tabs:v1";
 const INTENT_KEY = "fr:primary-tab-resume:v1";
 const BASE = new URL("https://frederick-radius.invalid");
@@ -7,13 +12,16 @@ const MAX_AGE_MS = 12 * 60 * 60_000;
 const INTENT_AGE_MS = 30_000;
 export type PrimaryTabRoot = "/today" | "/map" | "/events" | "/my-radius";
 type SessionStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
-export type PrimaryTabSnapshot = { href: string; scrollY: number; at: number };
+export type PrimaryTabSnapshot = { href: string; scrollY: number; at: number; scope: Scope | null };
 type Session = Partial<Record<PrimaryTabRoot, PrimaryTabSnapshot>>;
 const ROOTS: readonly PrimaryTabRoot[] = ["/today", "/map", "/events", "/my-radius"];
+// `in` stays in a remembered href only to keep the position the page's own URL
+// writer gives the area. preparePrimaryTabResume replaces its value with the
+// current shared area. The legacy town param `m` is never remembered.
 const KEYS: Record<PrimaryTabRoot, readonly string[]> = {
   "/today": ["in", "view"],
-  "/map": ["in", "c", "cats", "am", "gems", "m", "when", "r", "civic", "unv", "intent", "sub", "t", "open", "at", "amenity", "show", "scene", "deals", "music", "mode", "place", "event", "layers", "minutes", "task", "area"],
-  "/events": ["in", "cats", "m", "when", "r", "civic", "unv", "d", "lens", "tod", "intent", "sub", "free", "happy", "kids", "lgbtq", "access", "recurring", "sort"],
+  "/map": ["in", "c", "cats", "am", "gems", "when", "r", "civic", "unv", "intent", "sub", "t", "open", "at", "amenity", "show", "scene", "deals", "music", "mode", "place", "event", "layers", "minutes", "task", "area"],
+  "/events": ["in", "cats", "when", "r", "civic", "unv", "d", "lens", "tod", "intent", "sub", "free", "happy", "kids", "lgbtq", "access", "recurring", "sort"],
   "/my-radius": [],
 };
 const FORBIDDEN = /^(?:returnTo|return|redirect|next|callback|token|code|key|secret|email|account|note|notes|signature|sig|endpoint|manage_token)$/i;
@@ -59,7 +67,9 @@ export function normalizePrimaryTabHref(raw: unknown): string | null {
 function validSnapshot(value: unknown, now: number): value is PrimaryTabSnapshot {
   if (!value || typeof value !== "object") return false;
   const item = value as PrimaryTabSnapshot;
-  return normalizePrimaryTabHref(item.href) === item.href && Number.isFinite(item.scrollY)
+  return normalizePrimaryTabHref(item.href) === item.href
+    && (item.scope === null || (typeof item.scope === "string" && parseScope(item.scope) === item.scope))
+    && Number.isFinite(item.scrollY)
     && item.scrollY >= 0 && item.scrollY <= 100_000 && Number.isFinite(item.at)
     && now >= item.at && now - item.at <= MAX_AGE_MS;
 }
@@ -75,7 +85,7 @@ function readSession(storage: SessionStorage | undefined, now: number): Session 
     return Object.fromEntries(ROOTS.flatMap(root => {
       const item = parsed?.[root];
       return validSnapshot(item, now) && new URL(item.href, BASE).pathname === root
-        ? [[root, { href: item.href, scrollY: item.scrollY, at: item.at }]] : [];
+        ? [[root, { href: item.href, scrollY: item.scrollY, at: item.at, scope: item.scope }]] : [];
     }));
   } catch { return {}; }
 }
@@ -90,7 +100,11 @@ export function rememberPrimaryTab(raw: string, scrollY: number, storage?: Sessi
     && now >= mapView.at && now - mapView.at <= MAX_AGE_MS)) {
     rememberMapTabView(raw, { q: new URL(raw, BASE).searchParams.get("q") ?? "" }, now);
   }
-  const next = { ...readSession(storage, now), [root]: { href, scrollY, at: now } };
+  // The shared area when this view was left. An inbound link's own ?in that
+  // the page never adopted is not recorded, so returning to that tab without
+  // changing the area brings the link's view back whole.
+  const scope = getScope();
+  const next = { ...readSession(storage, now), [root]: { href, scrollY, at: now, scope } };
   fallback = next;
   try { storageOrDefault(storage).setItem(PRIMARY_TAB_SESSION_KEY, JSON.stringify(next)); } catch { /* in-document fallback */ }
 }
@@ -117,13 +131,33 @@ function matchesResumeHref(intent: PrimaryTabSnapshot, raw: string): boolean {
   expected.searchParams.set("q", mapView.q);
   return `${expected.pathname}${expected.search}${expected.hash}` === raw;
 }
+/** The same root view under a different area. The area param keeps its
+ * position, so the destination's own URL writer has nothing to reorder, and a
+ * map camera, task area or focused place chosen under the old area is dropped
+ * so the map frames the current area instead. */
+function rebaseOnArea(href: string, scope: Scope | null): string {
+  const url = new URL(href, BASE);
+  if (scope) url.searchParams.set(SCOPE_PARAM, scopeToParam(scope));
+  else url.searchParams.delete(SCOPE_PARAM);
+  if (url.pathname === "/map") for (const key of ["c", "area", "place"]) url.searchParams.delete(key);
+  return normalizePrimaryTabHref(`${url.pathname}${url.search}${url.hash}`) ?? url.pathname;
+}
 /** Called only by a plain primary-tab activation, never on route arrival. */
 export function preparePrimaryTabResume(root: string, storage?: SessionStorage, now = Date.now()): PrimaryTabSnapshot | null {
   const tab = primaryTabRoot(root);
   const snapshot = tab ? readSession(storage, now)[tab] ?? null : null;
   cancelPrimaryTabResume(storage);
   if (!snapshot) return null;
-  const intent = { ...snapshot, at: now };
+  const scope = getScope();
+  // Never having chosen an area and choosing Whole county are the same area.
+  const sameArea = (snapshot.scope ?? "county") === (scope ?? "county");
+  const href = sameArea ? snapshot.href : rebaseOnArea(snapshot.href, scope);
+  // Private search text and view mode belong to the view, not to its old area.
+  if (href !== snapshot.href) {
+    if (eventsView?.href === snapshot.href) eventsView = { ...eventsView, href };
+    if (mapView?.href === snapshot.href) mapView = { ...mapView, href };
+  }
+  const intent = { ...snapshot, href, scope, at: now };
   fallbackIntent = intent;
   try { storageOrDefault(storage).setItem(INTENT_KEY, JSON.stringify(intent)); } catch { /* in-document fallback */ }
   return intent;

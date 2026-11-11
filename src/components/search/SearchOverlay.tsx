@@ -9,8 +9,10 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type MouseEvent as ReactMouseEvent,
 } from "react";
+import { getScope, scopeInSentence, scopeLabel, scopeTownSlug, subscribeScopeChange, type Scope } from "@/lib/scope";
 import { flushSync } from "react-dom";
 import Link from "next/link";
 import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Phone, Train, Activity } from "lucide-react";
@@ -341,6 +343,15 @@ function storedFindReturnScrollY(): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+const subscribeArea = (onChange: () => void) => subscribeScopeChange(() => onChange());
+
+/** The Find field's accessible name states the shared area it searches. */
+export function findFieldLabel(scope: Scope | null): string {
+  const area = scopeLabel(scope);
+  if (scope === "nearme") return `Ask or find ${scopeInSentence(area)}`;
+  if (scopeTownSlug(scope)) return `Ask or find in ${area}`;
+  return `Ask or find across ${scopeInSentence(area)}`;
+}
 
 export default function SearchOverlay({
   open,
@@ -364,6 +375,8 @@ export default function SearchOverlay({
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SearchResult[]>([]);
+  // The shared area, so the field and the result line say where Find looks.
+  const area = useSyncExternalStore(subscribeArea, getScope, () => null);
   const [searchMeta, setSearchMeta] = useState<
     (QualifiedSearchIndexResult["meta"] & { liveEventsUnavailable?: boolean; eventCoverage?: SearchEventCoverage }) | null
   >(null);
@@ -754,7 +767,7 @@ export default function SearchOverlay({
               submitCommand();
             }}
             placeholder="A place, plan, service, or quick need…"
-            aria-label="Ask or find across Frederick County"
+            aria-label={findFieldLabel(area)}
             // Results are real links, not ARIA listbox options. Keeping the
             // input a native search field avoids the invalid pattern of a
             // focusable link nested inside role=option. Tab moves through
@@ -892,23 +905,24 @@ export default function SearchOverlay({
               )}
             </div>
           )}
-          {searchMeta?.qualifiers.constrained && status === "done" && (
+          {/* Every answer states the area it covers: the server's label for how
+              it scoped or ranked results, else the shared area. */}
+          {query.trim() && status === "done" && (
             <p
+              data-find-area
               className="border-b px-4 py-2 text-[11px] font-medium"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
             >
               {[
-                searchMeta.qualifiers.categoryLabel,
-                searchMeta.qualifiers.openNow ? "Confirmed open" : null,
-                searchMeta.qualifiers.nearMe
+                searchMeta?.qualifiers.constrained ? searchMeta.qualifiers.categoryLabel : null,
+                searchMeta?.qualifiers.constrained && searchMeta.qualifiers.openNow ? "Confirmed open" : null,
+                searchMeta?.qualifiers.constrained && searchMeta.qualifiers.nearMe
                   ? searchMeta.nearMeApplied
                     ? `Nearest first${searchMeta.contextLabel ? ` · ${searchMeta.contextLabel}` : ""}`
                     : searchMeta.fallbackReason === "outside-county"
                       ? "Location is outside Frederick County · not distance-ranked"
                       : "Location unavailable · not distance-ranked"
-                  : searchMeta.contextLabel && searchMeta.qualifiers.categoryLabel
-                    ? searchMeta.contextLabel
-                    : null,
+                  : searchMeta?.contextLabel ?? scopeLabel(area),
               ].filter(Boolean).join(" · ")}
             </p>
           )}
