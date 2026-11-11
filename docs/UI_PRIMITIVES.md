@@ -17,8 +17,8 @@ pivot" control.
 <Pill tone="ink" size="sm" href="/today?t=tonight" active={mode==="tonight"}>Tonight</Pill>
 ```
 - **tones:** `brand` (selected facet) · `cool` (town/place lane) · `ink`
-  (the "when?" lane) · `prominent` (currently the same solid fill as
-  `brand`, with no gradient; no product surface uses it today).
+  (the "when?" lane). The unused `prominent` tone was removed with the
+  internal styleguide page, its only caller.
 - **`href`** renders a Next `<Link>`. While its navigation is pending the
   pill shows an inset ring, and a spinner replaces the icon when an
   `icon` was passed. Without `href` it renders a `<button>` with
@@ -148,8 +148,7 @@ editorial guides or already use compact rows — left as-is by design.
 
 **Adopted today (checked against imports on 2026-11-10):**
 - In product code, `Pill` is imported by `municipality/TownStrip`,
-  `fair/FairVendorExplorer` and `ui/FilterChip`. The internal styleguide
-  page also renders it.
+  `fair/FairVendorExplorer` and `ui/FilterChip`.
 - `FilterChip` wraps `Pill` and is used by `place/PlaceList`,
   `radius/RadiusBuilder` and `saved/SavedList`.
 - `Segmented`, `today/TimeToggle`, `map/MapModeToggle` and
