@@ -23,10 +23,10 @@ export default function PlanFromPlaceLink({ slug, name }: { slug: string; name: 
         event.currentTarget.href = placePlanHref(slug, new URL(window.location.href), getScope());
       }}
       aria-label={`Plan an outing from ${name}`}
-      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-4 text-[13px] font-semibold"
-      style={{ borderColor: "var(--app-border)", color: "var(--app-ink)", background: "var(--app-bg-elevated)" }}
+      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[15px] font-semibold hover:underline"
+      style={{ color: "var(--app-ink)" }}
     >
-      <Route className="h-4 w-4" aria-hidden />
+      <Route className="h-[18px] w-[18px]" aria-hidden style={{ color: "var(--app-ink-2)" }} />
       Plan from here
     </a>
   );

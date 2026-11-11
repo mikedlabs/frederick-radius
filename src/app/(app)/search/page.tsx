@@ -178,7 +178,7 @@ function SearchResultRow({
       in: new URL(mapReturnTo ?? "/search", "https://frederickradius.app").searchParams.get("in") ?? "county",
     });
     const placeMapHref = withBrowseReturnTo(`/map?${mapParams.toString()}`, mapReturnTo);
-    return <li className="my-3 overflow-hidden rounded-[var(--app-radius-lg)] border" style={{ borderColor: "var(--app-border)" }}>
+    return <li className="pb-2 pt-4">
       <SearchPlaceVisual source={placePhoto} lead>
         <SearchPlaceLead fallback={<CategoryIcon slug={hit.place.category} className="h-5 w-5" aria-hidden />} actions={<>
           <Link href={href} prefetch={false}
@@ -211,35 +211,32 @@ function SearchResultRow({
         data-decision-position={lead ? "lead" : "result"}
         data-decision-action="open"
         prefetch={false}
-        className="group flex min-h-[88px] items-start gap-3 px-1 py-4 sm:gap-4 transition-[background-color,transform] duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)] active:scale-[0.995]"
+        className="group flex min-h-[76px] items-start gap-3 py-4 sm:gap-4"
       >
-        <SearchPlaceVisualImage size={56} fallback={
+        <SearchPlaceVisualImage size={48} fallback={
           d.categorySlug
             ? <CategoryIcon slug={d.categorySlug} className="h-5 w-5" strokeWidth={1.8} style={{ color: d.badge.color }} />
             : <Icon className="h-5 w-5" strokeWidth={2} style={{ color: d.badge.color }} />
         } />
         <span className="min-w-0 flex-1">
-          <span className="block text-[18px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <span className="block text-[17px] font-semibold leading-snug tracking-[-0.01em] group-hover:underline group-hover:decoration-1 group-hover:underline-offset-[3px]" style={{ color: "var(--app-ink)" }}>
             {d.title}
           </span>
           {d.subtitle && (
-            <span className="mt-1 block text-[13px] leading-normal" style={{ color: "var(--app-ink-3)" }}>
+            <span className="mt-0.5 block text-[14px] leading-normal" style={{ color: "var(--app-ink-2)" }}>
               {d.subtitle}
             </span>
           )}
           {hit.type === "place" && (
-            <span className="mt-1.5 block text-[12px] leading-normal" style={{ color: hit.place.open_status?.state === "open" ? "var(--state-open)" : "var(--app-ink-2)" }}>
+            <span className="mt-0.5 block text-[13px] leading-normal" style={{ color: hit.place.open_status?.state === "open" ? "var(--state-open)" : "var(--app-ink-2)" }}>
               {hit.place.open_status ? formatHoursLine(hit.place.open_status) : "Hours not posted"}
             </span>
           )}
         </span>
         {hit.type !== dominantType && (
           <span
-            className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em]"
-            style={{
-              background: `color-mix(in srgb, ${d.badge.color} 10%, transparent)`,
-              color: "var(--app-ink-2)",
-            }}
+            className="shrink-0 pt-1 text-[11px] font-semibold uppercase tracking-[0.09em]"
+            style={{ color: "var(--app-ink-2)" }}
           >
             {d.badge.label}
           </span>

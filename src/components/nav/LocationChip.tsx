@@ -187,12 +187,12 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
         aria-controls="location-scope-choices"
         aria-label={`Change town or location scope. Current scope: ${label}`}
         title={`Town and location: ${label}`}
-        className="inline-flex h-11 min-w-11 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 text-[12px] font-semibold leading-none transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:max-w-none sm:justify-start"
-        style={{ borderColor: "var(--app-border)", color: labelColor }}
+        className="inline-flex h-11 min-w-11 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] px-2 text-[13px] font-semibold leading-none transition hover:bg-[var(--app-bg-sunken)] sm:max-w-none sm:justify-start"
+        style={{ color: labelColor }}
       >
         <LabelIcon
-          className={state.status === "loading" && scope === "nearme" ? "h-4 w-4 shrink-0 animate-spin sm:h-3 sm:w-3" : "h-4 w-4 shrink-0 sm:h-3 sm:w-3"}
-          strokeWidth={2}
+          className={state.status === "loading" && scope === "nearme" ? "h-5 w-5 shrink-0 animate-spin sm:h-3.5 sm:w-3.5" : "h-5 w-5 shrink-0 sm:h-3.5 sm:w-3.5"}
+          strokeWidth={1.75}
           aria-hidden
         />
         {compact ? (

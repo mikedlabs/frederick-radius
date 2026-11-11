@@ -1,0 +1,179 @@
+/* PLAIN TOOL event row. Events carry no photographs, so the row is purely
+   typographic: a fixed time column in tabular numerals, then the title and
+   one muted location line. Rows sit on the white ground between hairlines. */
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4.75rem minmax(0, 1fr);
+  column-gap: var(--app-space-4);
+  min-width: 0;
+  padding-block: var(--app-space-4);
+  border-bottom: 1px solid var(--app-border);
+  color: var(--app-ink);
+}
+
+.when {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.time {
+  color: var(--app-ink);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.date {
+  color: var(--app-ink-2);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.body {
+  min-width: 0;
+}
+
+.eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--app-space-2);
+  margin: 0 0 4px;
+  color: var(--app-ink-2);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--app-live-text);
+  font-weight: 600;
+}
+
+.liveDot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--app-amber);
+}
+
+.title {
+  display: block;
+  margin: 0;
+  color: var(--app-ink);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.link {
+  color: inherit;
+  outline: none;
+}
+
+/* The whole row opens the event; the link's overlay keeps one tab stop. */
+.link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.link:focus-visible::after {
+  outline: 2px solid var(--app-focus);
+  outline-offset: -2px;
+  border-radius: var(--app-radius-sm);
+}
+
+@media (hover: hover) {
+  .row:hover .title {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+}
+
+.where {
+  margin: 4px 0 0;
+  color: var(--app-ink-2);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.note {
+  margin: 2px 0 0;
+  color: var(--app-ink-2);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.cancelled .title {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* The standout on Events: the first row's time column is set large, in
+   ink, with the brand rule beside it. Nothing else on the page is
+   decorated. */
+.lead {
+  padding-top: var(--app-space-3);
+  grid-template-columns: 6.25rem minmax(0, 1fr);
+}
+
+.lead .when {
+  padding-top: 0;
+  padding-left: var(--app-space-3);
+  border-left: 2px solid var(--app-brand);
+}
+
+.lead .time {
+  font-size: 1.75rem;
+  font-weight: 650;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+
+/* "All day", "Time not listed" and range labels are words, not numerals;
+   they stay at reading size so the column never wraps a word per line. */
+.lead .time[data-clock="label"] {
+  font-size: 1rem;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.lead .title {
+  font-size: 1.25rem;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 359.98px) {
+  .row {
+    grid-template-columns: 4.25rem minmax(0, 1fr);
+    column-gap: var(--app-space-3);
+  }
+
+  .lead {
+    grid-template-columns: 5.25rem minmax(0, 1fr);
+  }
+
+  .lead .time {
+    font-size: 1.5rem;
+  }
+}

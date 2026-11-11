@@ -4,13 +4,14 @@
   container-type: inline-size;
   min-width: 0;
   color: var(--app-ink);
-  background: var(--app-bg-elevated-solid);
+  background: transparent;
 }
 
 .leadPhoto {
   width: 100%;
-  height: clamp(150px, 46vw, 180px);
-  border-radius: 0;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--app-radius-md);
 }
 
 .leadHeader {
@@ -18,7 +19,7 @@
   align-items: flex-start;
   gap: 12px;
   min-width: 0;
-  padding: 16px;
+  padding: 12px 0 8px;
 }
 
 .leadHeader > div {
@@ -31,27 +32,28 @@
   margin: 4px 0 0;
   color: var(--app-ink);
   font-family: inherit;
-  font-size: 1.375rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 650;
   line-height: 1.15;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.025em;
   overflow-wrap: anywhere;
 }
 
 .leadActions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-block: 1px solid var(--app-border);
+  grid-template-columns: repeat(2, max-content);
+  gap: var(--app-space-6);
+  border-block: 0;
 }
 
 .leadActions > a {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 6px;
   min-width: 0;
-  min-height: 48px;
-  padding: 10px 12px;
+  min-height: 44px;
+  padding: 10px 0;
   color: var(--app-link);
   font-size: 0.875rem;
   font-weight: 650;
@@ -61,12 +63,12 @@
 }
 
 .leadActions > a:first-child {
-  background: var(--app-brand);
-  color: var(--app-on-brand);
+  color: var(--app-ink);
 }
 
-.leadActions > a + a {
-  border-left: 1px solid var(--app-border);
+.leadActions > a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .leadActions > a:focus-visible {
@@ -74,9 +76,7 @@
   outline-offset: -4px;
 }
 
-.leadActions > a:first-child:focus-visible {
-  outline-color: var(--app-on-brand);
-}
+
 
 .leadActions svg {
   width: 16px;
@@ -104,6 +104,7 @@
 @container (min-width: 600px) {
   .leadPhoto {
     height: 240px;
+    aspect-ratio: auto;
   }
 
   .leadHeader {

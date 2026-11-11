@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { MapPin, Ticket, Accessibility, Navigation, Clock3 } from "lucide-react";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import type { EventWithMeta } from "@/lib/loaders/events";
 // VALUE import from the DATA-FREE formatter module, never from the loader:
@@ -19,12 +18,9 @@ import { statusLabel } from "@/lib/event-status";
 import DatePlate from "@/components/event/DatePlate";
 import { eventDecisionLocation, eventDecisionTime } from "@/lib/events/decision-facts";
 import { communicationAccessLabels } from "@/lib/events/communication-access";
-import {
-  eventCardVisual,
-  type EventCardVisual,
-} from "@/components/event/eventVisuals";
+import type { EventCardVisual } from "@/components/event/eventVisuals";
 import EventPosterCard from "@/components/event/EventPosterCard";
-import EventGlanceCard from "@/components/event/EventGlanceCard";
+import EventRow from "@/components/event/EventRow";
 import {
   eventHasTrustworthyEnd,
   isEventLiveNow,
@@ -44,7 +40,7 @@ export default function EventCard({
   priorityImage = true,
   visual,
   nowISO,
-  venuePhotos = "all-approved",
+  venuePhotos: _venuePhotos = "all-approved",
 }: {
   event: EventWithMeta;
   /**
@@ -159,7 +155,6 @@ export default function EventCard({
   const accentText = `var(--app-list-fact-color, color-mix(in srgb, ${accent} 55%, var(--app-ink)))`;
   const categoryLabel = cat?.name ?? (event.category ? event.category : "Event");
   const accessLabel = communicationAccessLabels(event)[0];
-  const cardVisual = eventCardVisual(event, { venuePhotos: variant === "discovery" ? "free-reviewed" : venuePhotos });
   const decisionAttributes = {
     "data-decision-impression": "true",
     "data-decision-surface": "events",
@@ -168,37 +163,38 @@ export default function EventCard({
     "data-decision-position": "result",
   } as const;
 
-  if (variant === "discovery") {
-    return <EventGlanceCard eventSlug={event.slug} visual={cardVisual} accent={accent}
-      cancelled={isCancelled} layout="discovery" compactCredit={false}>
-      <div className="min-w-0" data-event-card-heading>
-          <p className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold" style={{ color: "var(--app-ink-2)" }}>
-            <span>{categoryLabel}</span>
-            {confirmedLive && <span className="inline-flex items-center gap-1.5" style={{ color: "var(--app-live-text)" }}>
-              <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-live-text)" }} />Happening now
-            </span>}
-            {statusText && <span style={{ color: statusForeground }}>{statusText}</span>}
+  // PLAIN TOOL: events carry no photographs, so both browsing variants are
+  // one typographic row. A time column in tabular numerals leads, then the
+  // title and one muted location line. Supporting facts follow in one line.
+  const rowExtras = [
+    event.is_recurring && event.recurrence_text ? event.recurrence_text : null,
+    event.is_free ? "Free" : event.price_text || null,
+    accessLabel || null,
+    event.distance_m !== undefined ? `${formatDistance(event.distance_m)} away` : null,
+  ].filter(Boolean) as string[];
+  if (variant === "discovery" || variant === "glance") {
+    return (
+      <EventRow
+        slug={event.slug}
+        title={displayTitle}
+        weekday={date.weekday}
+        month={date.month}
+        day={date.day}
+        startTime={date.time}
+        timing={timingText}
+        category={categoryLabel}
+        live={confirmedLive}
+        status={statusText}
+        statusColor={statusForeground}
+        cancelled={isCancelled}
+        where={venueLabel}
+        extra={rowExtras.length > 0 ? (
+          <p className="mt-1 text-[13px] leading-snug tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+            {rowExtras.join(" · ")}
           </p>
-          <h3 className={`break-words text-lg font-semibold leading-snug tracking-tight ${isCancelled ? "line-through" : ""}`}>{displayTitle}</h3>
-      </div>
-      <p data-event-card-time className="mt-3 flex min-w-0 items-start gap-2 text-sm font-semibold leading-snug tabular-nums">
-        <Clock3 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-        <span>{date.weekday} {date.month} {date.day}{timingText ? ` · ${timingText}` : ""}</span>
-      </p>
-      {venueLabel && <p data-event-card-venue className="mt-2 flex min-w-0 items-start gap-2 text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
-        <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span className="min-w-0 break-words">{venueLabel}</span>
-      </p>}
-      {event.is_recurring && event.recurrence_text && <p className="mt-2 text-xs leading-snug" style={{ color: "var(--app-ink-2)" }}>{event.recurrence_text}</p>}
-      {(event.is_free || event.price_text || accessLabel || event.distance_m !== undefined) && <div
-        className="mt-3 flex min-w-0 flex-wrap items-start gap-x-3 gap-y-2 border-t pt-3 text-xs leading-snug"
-        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
-        {(event.is_free || event.price_text) && <span className="flex min-w-0 items-start gap-1.5 font-semibold">
-          <Ticket className="h-3.5 w-3.5 shrink-0" aria-hidden /><span className="min-w-0 break-words">{event.is_free ? "Free" : event.price_text}</span>
-        </span>}
-        {accessLabel && <span className="flex min-w-0 items-start gap-1.5"><Accessibility className="h-3.5 w-3.5 shrink-0" aria-hidden /><span>{accessLabel}</span></span>}
-        {event.distance_m !== undefined && <span className="flex items-center gap-1.5 tabular-nums"><Navigation className="h-3.5 w-3.5 shrink-0" aria-hidden />{formatDistance(event.distance_m)} away</span>}
-      </div>}
-    </EventGlanceCard>;
+        ) : null}
+      />
+    );
   }
 
   // Utility variant — TINY single muted line for the civic / municipal
@@ -447,124 +443,6 @@ export default function EventCard({
           </div>
         </article>
       </div>
-    );
-  }
-
-  // Glance variant — the new default browsing card per the mobile
-  // review. ~108px tall, photo-less, designed so 2.5-3 cards are
-  // visible at once on a 700px mobile viewport. Layout:
-  //
-  //   ┌────────────────────────────────────────────┐
-  //   │ THU · MAY 28                       5:00 PM │  ← top row
-  //   │                                            │
-  //   │ Alive @ Five · The Learned Doctors         │  ← title
-  //   │ Carroll Creek Amphitheater                 │  ← venue
-  //   │                                            │
-  //   │ Live Music · $5 · 21+                      │  ← meta row
-  //   └────────────────────────────────────────────┘
-  //
-  // The reviewer's spec was the trigger for adding this variant;
-  // the old "row" with its 64px thumbnail + chip row sits at ~150px
-  // and broke the "2.5-3 cards per viewport" target.
-  //
-  // The image is OPTIONAL by design (the reviewer's exact word) —
-  // browsing scans on text, then opens the detail page for visuals.
-  // Save / share actions also move to the detail page; the glance
-  // card is a Link to the event, full stop.
-  if (variant === "glance") {
-    return (
-      <EventGlanceCard eventSlug={event.slug} visual={cardVisual} accent={accent} cancelled={isCancelled}>
-            <div className="min-w-0 flex-1">
-              {/* WHAT leads. A stack of glance cards should read as a column
-                  of titles, not a column of identical clock times — the
-                  group header ("On tonight", "This weekend") already carries
-                  the rough WHEN, so each card answers "what" first. (Reverses
-                  the old time-first glance, which buried the title.) */}
-              <h3
-                className="text-[15px] font-semibold leading-snug tracking-tight line-clamp-2"
-                style={{ color: "var(--app-ink)" }}
-              >
-                {displayTitle}
-              </h3>
-              {/* WHEN — supporting mono data (the design-system thesis on the
-                  temporal token). A live dot + "Now" when it's happening
-                  right now. Time-or-weekday so a (future) null all-day time
-                  leads with the weekday, never a bare "12:00 AM". */}
-              <p
-                className="mt-1 flex flex-wrap items-center gap-x-1.5 font-mono text-[11px] tabular-nums"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                {/* Live is AMBER, the palette's real live/caution state.
-                    It was Catoctin Forest, the same green as "Free" forty
-                    lines below, so happening-now and costs-nothing read as
-                    one signal. Text on --app-amber-text (AA on Cream). */}
-                {confirmedLive && (
-                  <span
-                    className="inline-flex items-center gap-1 font-medium"
-                    style={{ color: "var(--app-live-text)" }}
-                  >
-                    <span
-                      aria-hidden
-                      className="live-dot h-1.5 w-1.5 rounded-full"
-                      style={{ background: "var(--app-amber)" }}
-                    />
-                    Now
-                    <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
-                  </span>
-                )}
-                {/* The status separator trails the time, the way "Now ·" does,
-                    so a wrapped status never starts its line with a dot. */}
-                <span>
-                  {date.weekday} {date.month} {date.day}
-                  {timingText ? ` · ${timingText}` : ""}
-                  {statusText ? " · " : ""}
-                </span>
-                {statusText && (
-                  <span className="font-medium" style={{ color: statusForeground }}>
-                    {statusText}
-                  </span>
-                )}
-              </p>
-              {/* Recurrence legibility: a weekly bingo or storytime reads as a
-                  repeating series, not a one-off. Derived from the real
-                  collapsed cadence, never asserted. It has its own line. */}
-              {event.is_recurring && event.recurrence_text && (
-                <p className="mt-0.5 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-                  {event.recurrence_text}
-                </p>
-              )}
-              {/* Venue and Meta block — Icon-first representations */}
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                {venueLabel && (
-                  <span className="flex min-w-0 max-w-full items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-                    <span className="min-w-0 truncate leading-snug">{venueLabel}</span>
-                  </span>
-                )}
-                
-                {(event.is_free || event.price_text) && (
-                  <span className="flex items-center gap-1 font-medium" style={{ color: event.is_free ? "var(--app-list-fact-color, var(--app-positive))" : "inherit" }}>
-                    <Ticket className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-                    {event.is_free ? "Free" : event.price_text}
-                  </span>
-                )}
-
-                {accessLabel && (
-                  <span className="flex items-center gap-1 font-medium" style={{ color: "var(--app-list-fact-color, var(--app-cool))" }}>
-                    <Accessibility className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-                    {accessLabel}
-                  </span>
-                )}
-
-                {event.distance_m !== undefined && (
-                  <span className="ml-auto flex items-center gap-1 font-mono tabular-nums">
-                    <Navigation className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-                    {formatDistance(event.distance_m)}
-                  </span>
-                )}
-              </div>
-            </div>
-      </EventGlanceCard>
     );
   }
 

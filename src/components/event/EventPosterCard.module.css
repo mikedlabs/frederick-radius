@@ -1,10 +1,13 @@
+/* PLAIN TOOL: a pictured lead is the photograph with its facts set below on
+   the white ground. No card border, no shadow. */
 .poster {
   container-name: event-poster;
   container-type: inline-size;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
-  background: var(--app-bg-elevated-solid, var(--app-bg-elevated));
-  box-shadow: var(--app-shadow-1);
+  border: 0;
+  border-bottom: 1px solid var(--app-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .layout {
@@ -17,7 +20,7 @@
   min-width: 0;
   aspect-ratio: 16 / 10;
   overflow: hidden;
-  border-radius: var(--app-radius-lg) var(--app-radius-lg) 0 0;
+  border-radius: var(--app-radius-md);
   background: var(--app-bg-sunken);
 }
 
@@ -26,12 +29,12 @@
 }
 
 .artwork > div {
-  border-radius: var(--app-radius-lg) var(--app-radius-lg) 0 0;
+  border-radius: var(--app-radius-md);
 }
 
 .body {
   min-width: 0;
-  padding: 1rem;
+  padding: var(--app-space-3) 0 var(--app-space-4);
   overflow-wrap: anywhere;
 }
 
@@ -43,17 +46,14 @@
 }
 
 .facts {
-  margin-top: 0.875rem;
-  padding-top: 0.875rem;
-  border-top: 1px solid var(--app-border);
+  margin-top: 0.5rem;
   color: var(--app-ink);
 }
 
-/* Wide cards pair the image and decision facts. A narrow shelf or enlarged
-   reading text keeps the same natural single column without clipped facts. */
 @container event-poster (min-width: 42rem) {
   .hasMedia {
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    column-gap: var(--app-space-5);
   }
 
   .hasMedia .photo,
@@ -61,10 +61,9 @@
     height: 100%;
     min-height: 216px;
     aspect-ratio: auto;
-    border-radius: var(--app-radius-lg) 0 0 var(--app-radius-lg);
   }
 
   .body {
-    padding: 1.25rem;
+    padding: 0 0 var(--app-space-4);
   }
 }

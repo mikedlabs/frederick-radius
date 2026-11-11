@@ -46,15 +46,12 @@ export default function SectionHeading({
     <header className="section-heading flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1 min-[360px]:flex-nowrap">
       <h2
         className={`${small
-            ? "flex min-w-0 items-center gap-2 font-sans text-[16px] font-semibold leading-none tracking-tight"
-            : "flex min-w-0 items-center gap-2 font-sans text-[22px] font-bold leading-none tracking-tight"}${hasTrailingAction ? " max-[359px]:basis-full" : ""}`}
+            ? "flex min-w-0 items-baseline gap-2 font-sans text-[12px] font-semibold uppercase leading-none tracking-[0.09em]"
+            : "flex min-w-0 items-baseline gap-2 font-sans text-[13px] font-semibold uppercase leading-none tracking-[0.09em]"}${hasTrailingAction ? " max-[359px]:basis-full" : ""}`}
         style={{ color: "var(--app-ink)" }}
       >
-        <span
-          aria-hidden
-          className={small ? "inline-block h-3 w-1 rounded-full shrink-0" : "inline-block h-4 w-1 rounded-full shrink-0"}
-          style={{ background: `var(--app-heading-rule, ${tickColor})` }}
-        />
+        {/* PLAIN TOOL: no accent tick. A small uppercase label and the
+            hairline that follows it carry the section break. */}
         <span
           className="truncate"
           style={{
@@ -67,7 +64,7 @@ export default function SectionHeading({
         </span>
         {count !== undefined && (
           <span
-            className={small ? "font-data text-sm font-normal" : "font-data text-base font-normal"}
+            className="font-data text-[12px] font-normal tabular-nums tracking-normal"
             style={{ color: "var(--app-ink-3)" }}
           >
             {count}
@@ -76,9 +73,9 @@ export default function SectionHeading({
       </h2>
       <span
         aria-hidden
-        className="mb-[0.18rem] hidden h-px min-w-4 flex-1 min-[360px]:block"
+        className="mb-[0.2rem] hidden h-px min-w-4 flex-1 min-[360px]:block"
         style={{
-          background: `var(--app-heading-rule, linear-gradient(90deg, color-mix(in srgb, ${tickColor} 34%, var(--app-border)), var(--app-border)))`,
+          background: "var(--app-border)",
         }}
       />
       {trailing ? (

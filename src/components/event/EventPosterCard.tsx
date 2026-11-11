@@ -22,6 +22,7 @@ import EventArtwork from "./EventArtwork";
 import { eventHasTrustworthyEnd, isEventLiveNow } from "@/lib/eventWhenLabel";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
 import styles from "./EventPosterCard.module.css";
+import EventRow from "./EventRow";
 
 export type EventPosterCardProps = {
   event: EventWithMeta;
@@ -83,6 +84,39 @@ export default function EventPosterCard({ event, visual, priorityImage = true, w
   const reasons = eventReasons(event, cardNow ?? undefined).filter(reason => reason.kind !== "free");
   const accessLabel = communicationAccessLabels(event)[0];
 
+  // PLAIN TOOL: without an approved picture the lead is the page's one
+  // standout row, set with a large time column instead of a boxed poster.
+  if (!visibleVisual && layout === "hero") {
+    const extras = [
+      whyItMatters || null,
+      event.is_free ? "Free" : event.price_text || null,
+      accessLabel || null,
+      event.distance_m !== undefined ? `${formatDistance(event.distance_m)} away` : null,
+    ].filter(Boolean) as string[];
+    return (
+      <EventRow
+        lead
+        position="lead"
+        slug={event.slug}
+        title={eventDisplayTitle(event)}
+        weekday={date.weekday}
+        month={date.month}
+        day={date.day}
+        startTime={date.time}
+        timing={timingText}
+        category={categoryLabel}
+        live={confirmedLive}
+        status={statusText}
+        statusColor={isCancelled ? "var(--app-danger-text)" : "var(--state-closing)"}
+        cancelled={isCancelled}
+        where={venueLabel}
+        extra={extras.length > 0 ? (
+          <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{extras.join(" · ")}</p>
+        ) : null}
+      />
+    );
+  }
+
   return <>
     <article
       data-decision-impression="true" data-decision-surface="events" data-decision-entity="event"
@@ -90,7 +124,7 @@ export default function EventPosterCard({ event, visual, priorityImage = true, w
       data-event-poster={photo ? "photo" : artwork ? "artwork" : "category"}
       data-event-fallback={visibleVisual ? undefined : "date-category"}
       data-event-poster-layout={layout}
-      className={`${styles.poster} tactile tactile-feature tactile-ring group relative min-w-0`}
+      className={`${styles.poster} group relative min-w-0`}
     >
       <div className={`${styles.layout} ${visibleVisual ? styles.hasMedia : ""}`}>
         {photo && photoSrc && <figure className={styles.photo}>
