@@ -92,14 +92,10 @@ export default function EventWeekRibbon({
   return (
     <nav
       aria-label="This week"
-      // One frosted module — translucent fill + backdrop-blur + hairline
-      // edge + a soft lift, matching the Saved page's fluid-card grammar.
-      // The seven cells read as one ribbon, not seven floating tiles.
-      className="grid grid-cols-7 overflow-hidden rounded-[var(--app-radius-lg)] backdrop-blur-md"
-      style={{
-        background: "var(--app-bg-elevated)",
-        boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
-      }}
+      // One flat ribbon on the page ground between two hairlines. The seven
+      // cells read as one row, not seven floating tiles.
+      className="grid grid-cols-7 border-y"
+      style={{ borderColor: "var(--app-border)" }}
     >
       {days.map((d, i) => {
         const isActive = activeDay ? d.key === activeDay : false;
@@ -107,14 +103,10 @@ export default function EventWeekRibbon({
         const cellClass =
           "group flex flex-col items-center gap-1 py-2 transition active:scale-[0.96]";
         const cellStyle: React.CSSProperties = {
-          // Today/active: quiet brand wash + a top accent rule via an
-          // inset shadow. Hairline left dividers keep the seven cells
-          // legible as a row without a heavy grid.
-          background: highlighted
-            ? "color-mix(in srgb, var(--app-brand) 8%, transparent)"
-            : d.isWeekend
-              ? "color-mix(in srgb, var(--app-cool) 4%, transparent)"
-              : "transparent",
+          // Today/active: a thin coral top rule (an indicator, not a field)
+          // drawn as an inset line. Hairline left dividers keep the seven
+          // cells legible as a row without a heavy grid.
+          background: "transparent",
           boxShadow:
             [
               highlighted ? "inset 0 2px 0 0 var(--app-brand)" : null,
@@ -130,9 +122,9 @@ export default function EventWeekRibbon({
               className="text-[10px] font-bold uppercase tracking-[0.1em]"
               style={{
                 color: highlighted
-                  ? "var(--app-brand)"
+                  ? "var(--app-brand-text)"
                   : d.isWeekend
-                    ? "var(--app-cool)"
+                    ? "var(--app-cool-text)"
                     : "var(--app-ink-3)",
               }}
             >
@@ -140,7 +132,7 @@ export default function EventWeekRibbon({
             </span>
             <span
               className="font-serif text-[17px] font-semibold leading-none tabular-nums"
-              style={{ color: highlighted ? "var(--app-brand)" : "var(--app-ink)" }}
+              style={{ color: highlighted ? "var(--app-brand-text)" : "var(--app-ink)" }}
             >
               {d.dom}
             </span>

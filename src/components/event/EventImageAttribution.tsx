@@ -18,7 +18,7 @@ export default function EventImageAttribution({
   return (
     <div
       data-event-photo-credit
-      className={`${compact ? "text-[9px] leading-tight" : "text-xs leading-snug"} ${className}`}
+      className={`${compact ? "text-[0.6875rem] leading-snug" : "text-xs leading-snug"} ${className}`}
       style={{ color: overlay ? "rgba(255,255,255,0.94)" : "var(--app-ink-3)" }}
     >
       <span className="block font-semibold">

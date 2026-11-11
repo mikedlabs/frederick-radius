@@ -265,7 +265,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 }}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="tactile-lift tactile-interactive flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold"
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold"
                 style={{
                   backgroundColor: "var(--app-brand-press)",
                   color: "var(--app-on-brand)",
@@ -295,10 +295,8 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 }}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`tactile-interactive flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold ${
-                  ticketHref && canAttend
-                    ? "border bg-[var(--app-bg-elevated)]"
-                    : "tactile-lift"
+                className={`flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold ${
+                  ticketHref && canAttend ? "border" : ""
                 }`}
                 style={
                   ticketHref && canAttend
@@ -370,11 +368,11 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
            *  which also surfaces the nearest garage line. Only for events
            *  at a KNOWN venue; a guessed point gets no plan built on it. */}
           {preciseGeo && event.venue_place_slug && canAttend && (
-            <div className="mt-4 rounded-[var(--app-radius-md)] border border-dashed p-3" style={{ borderColor: "var(--app-border)" }}>
-              <p className="text-[12.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
+              <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
                 Around the venue
               </p>
-              <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 See food, drinks, and parking around {event.venue_name || "the venue"} on the map.
               </p>
               <Link

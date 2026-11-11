@@ -22,6 +22,16 @@
   background: transparent;
 }
 
+/* The picture's credit spans the row under the facts, inside the row's
+   hairline, and stays above the row link's overlay. */
+.credit {
+  position: relative;
+  z-index: 1;
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin-top: var(--app-space-3);
+}
+
 /* On a wide column a 16:10 picture would push the facts below the fold. */
 @media (min-width: 640px) {
   .photo,

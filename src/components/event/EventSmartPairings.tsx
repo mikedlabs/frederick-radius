@@ -117,7 +117,7 @@ export default async function EventSmartPairings({
               style={{ color: "var(--app-ink-2)" }}
               aria-hidden
             />
-            <span>{eat}{nearbyFood[0] && <Link prefetch={false} href={`/places/${nearbyFood[0].slug}`} className="tap-44 flex w-fit items-center text-[12px] font-semibold underline" style={{ color: "var(--app-brand-press)" }}>Check hours &amp; details</Link>}</span>
+            <span>{eat}{nearbyFood[0] && <Link prefetch={false} href={`/places/${nearbyFood[0].slug}`} className="tap-44 flex w-fit items-center text-[12px] font-semibold underline" style={{ color: "var(--app-link)" }}>Check hours &amp; details</Link>}</span>
           </li>
         )}
       </ul>

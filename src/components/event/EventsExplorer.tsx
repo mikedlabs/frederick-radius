@@ -1174,6 +1174,7 @@ export default function EventsExplorer({
             live={live.has(primaryLead.slug)}
             priorityImage
             nowISO={nowISO}
+            headingLevel={2}
           />
         </div>
       )}
@@ -1427,6 +1428,7 @@ export default function EventsExplorer({
                     live={live.has(lead.slug)}
                     priorityImage
                     nowISO={nowISO}
+                    headingLevel={3}
                   />
                 ) : lead && !leadMovedBeforeRail ? (
                   <EventCard
@@ -1443,15 +1445,23 @@ export default function EventsExplorer({
                       // One column at every width, capped by the section's
                       // 720px measure: each row draws its own hairline, so a
                       // single column keeps every rule aligned.
+                      // Every sort uses the same row as the group's lead, so
+                      // one group never mixes two row styles.
                       sort === "recommended" ? <ul data-events-discovery-grid className="grid min-w-0 grid-cols-1">
                         {preview.map((event) => (
                           <li key={eventIdentity(event)} className="min-w-0"><EventCard event={event} variant="discovery" venuePhotos="free-reviewed" showDate={showDate(event)} live={live.has(event.slug)} nowISO={nowISO} /></li>
                         ))}
-                      </ul> : <CompactEventList events={preview} live={live} nowISO={nowISO} />
+                      </ul> : <GroupEventList events={preview} variant="glance" showDate={showDate} live={live} nowISO={nowISO} />
                     )}
                     {expanded.length > 0 && (
                       <div className="reveal-up">
-                        <CompactEventList events={expanded} live={live} nowISO={nowISO} />
+                        <GroupEventList
+                          events={expanded}
+                          variant={sort === "recommended" ? "discovery" : "glance"}
+                          showDate={showDate}
+                          live={live}
+                          nowISO={nowISO}
+                        />
                       </div>
                     )}
                     {/* Only when the window holds MORE than the default peek —
@@ -1487,8 +1497,8 @@ export default function EventsExplorer({
                           <div className="pt-1">
                             <Link
                               href="/events/calendar"
-                              className="tap-44 inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
-                              style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
+                              className="tap-44 inline-flex items-center gap-1.5 text-[13px] font-semibold underline-offset-4 hover:underline"
+                              style={{ color: "var(--app-link)" }}
                             >
                               {dataComplete ? `${overflow} more on the calendar` : "See more on the calendar"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
                             </Link>
@@ -1549,12 +1559,18 @@ export default function EventsExplorer({
   );
 }
 
-function CompactEventList({
+function GroupEventList({
   events,
+  variant,
+  showDate,
   live,
   nowISO,
 }: {
   events: EventWithMeta[];
+  /** Recommended discovery rows use free reviewed media; other sorts use the
+   * glance row. Both are the same EventRow, so a group reads as one list. */
+  variant: "discovery" | "glance";
+  showDate: (event: EventWithMeta) => boolean;
   live: ReadonlySet<string>;
   nowISO: string;
 }) {
@@ -1562,12 +1578,14 @@ function CompactEventList({
   // Rows on the white ground, each carrying its own bottom hairline. The
   // section heading or the row above supplies the rule on top.
   return (
-    <ol>
+    <ol className="grid min-w-0 grid-cols-1">
       {events.map((event) => (
-        <li key={`${event.slug}-${event.starts_at}`}>
+        <li key={`${event.slug}-${event.starts_at}`} className="min-w-0">
           <EventCard
             event={event}
-            variant="compact"
+            variant={variant}
+            venuePhotos={variant === "discovery" ? "free-reviewed" : undefined}
+            showDate={showDate(event)}
             live={live.has(event.slug)}
             nowISO={nowISO}
           />
@@ -1583,12 +1601,15 @@ function PromotedEvent({
   priorityImage,
   live,
   nowISO,
+  headingLevel,
 }: {
   event: EventWithMeta;
   visual: EventCardVisual | null;
   priorityImage: boolean;
   live: boolean;
   nowISO: string;
+  /** 2 above the interest rail, 3 inside a group under the group's h2. */
+  headingLevel: 2 | 3;
 }) {
   // A plain wrapper, so the lead is server-rendered visible instead of
   // waiting for hydration to fade in. It keeps the poster and its photo
@@ -1602,6 +1623,7 @@ function PromotedEvent({
         nowISO={nowISO}
         priorityImage={priorityImage}
         visual={visual ?? undefined}
+        headingLevel={headingLevel}
       />
     </div>
   );

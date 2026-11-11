@@ -10,8 +10,10 @@ import { useEventVisualLifecycle } from "./useEventVisualLifecycle";
 import styles from "./EventRow.module.css";
 
 /** An event row with an approved picture: a square thumbnail at the right
- * edge and its credit under the facts. A failed image removes both, marks the
- * row media-free, and leaves the row's facts and link in place. */
+ * edge and its credit under the facts. A photograph fills the square; publisher
+ * artwork stays whole on a transparent ground, because only verified photos
+ * may crop (see eventVisuals.ts). A failed image removes both, marks the row
+ * media-free, and leaves the row's facts and link in place. */
 export default function EventRowMedia({ visual, compactCredit = false, ...row }: Omit<EventRowProps, "media" | "mediaCredit" | "mediaKind"> & {
   visual: EventCardVisual | null;
   /** Glance rows keep the small credit they always had; discovery rows use
@@ -20,6 +22,7 @@ export default function EventRowMedia({ visual, compactCredit = false, ...row }:
 }) {
   const { identity, visibleVisual, failImage, inspectLoadedImage } = useEventVisualLifecycle(visual);
   if (!visibleVisual) return <EventRow {...row} mediaKind="none" />;
+  const fit = visibleVisual.presentation === "photo" ? "object-cover" : "object-contain";
   let src = proxyPhotoAtWidth(visibleVisual.src, 132);
   if (src.startsWith("/api/place-photo")) {
     const proxy = new URL(src, "https://frederickradius.local");
@@ -42,7 +45,7 @@ export default function EventRowMedia({ visual, compactCredit = false, ...row }:
             sizes="64px"
             placeholder="blur"
             blurDataURL={PAPER_CREAM_BLUR}
-            className={`${styles.thumbImage} object-cover`}
+            className={fit}
             style={visibleVisual.objectPosition ? { objectPosition: visibleVisual.objectPosition } : undefined}
             onLoad={(event) => inspectLoadedImage(event.currentTarget)}
             onError={failImage}

@@ -98,7 +98,12 @@ describe("publisher event artwork lifecycle", () => {
     const title = host.querySelector('a[href="/events/component-event"]')!;
     expect(artwork.contains(title)).toBe(false);
     expect(artwork.textContent).not.toContain("Cancelled");
-    expect(host.querySelector("article [data-event-photo-credit]")).toBeNull();
+    // The credit sits inside the lead row, above its hairline, but never
+    // inside the event link.
+    const credit = host.querySelector("article [data-event-photo-credit]");
+    expect(credit).not.toBeNull();
+    expect(title.contains(credit)).toBe(false);
+    expect(artwork.contains(credit)).toBe(false);
     act(() => host.querySelector("img")!.dispatchEvent(new Event("error")));
     expect(host.querySelector('[data-event-fallback="date-category"]')).not.toBeNull();
     expect(host.querySelector("img")).toBeNull();

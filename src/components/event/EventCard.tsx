@@ -8,14 +8,10 @@ import { eventDateBlock } from "@/lib/events/format";
 import { eventDisplayTitle } from "@/lib/events/display-title";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import ItineraryButton from "@/components/saved/ItineraryButton";
-import TrustChip from "@/components/ui/TrustChip";
-import { Chip } from "@/components/ui/Chip";
-import { ReasonChipRow } from "@/components/ui/ReasonChip";
 import { eventReasons } from "@/lib/event-reasons";
 import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
 import { statusLabel } from "@/lib/event-status";
-import DatePlate from "@/components/event/DatePlate";
 import { eventDecisionLocation, eventDecisionTime } from "@/lib/events/decision-facts";
 import { communicationAccessLabels } from "@/lib/events/communication-access";
 import { eventCardVisual, type EventCardVisual } from "@/components/event/eventVisuals";
@@ -43,24 +39,25 @@ export default function EventCard({
   nowISO,
   venuePhotos = "all-approved",
   showDate = true,
+  headingLevel = 2,
 }: {
   event: EventWithMeta;
   /**
-   * Layout density, smallest → largest editorial weight:
-   *   `utility` — TINY one-line muted row (civic meetings, recurring
+   * Layout density, from smallest to largest editorial weight:
+   *   `utility`: TINY one-line muted row (civic meetings, recurring
    *     pickups, municipal notices). No photo, no chips. The long tail.
-   *   `compact` — single-line Rolodex row (date pill + title + meta).
-   *   `discovery` — photo-forward Recommended preview, using reviewed free media.
-   *   `glance`  — the default ~108px browsing card. Anchored by a left
-   *     accent rail + a centered category icon on a tonal tile.
-   *   `row`     — legacy list card with full chip row + actions.
-   *   `tile`    — grid/rail card, date-led header + category band.
-   *   `feature` — HERO: date-led editorial lead, one per surface.
+   *   `compact`: single-line Rolodex row (date pill + title + meta).
+   *   `discovery`: photo-forward Recommended preview, using reviewed free media.
+   *   `glance`: the default browsing row: time column, title, venue,
+   *     and an approved picture or the category glyph at the right.
+   *   `row`: the same row plus its trust label and the Save control.
+   *   `tile`: the same row plus its reasons as plain text.
+   *   `feature`: the page lead, with the coral time block, one per surface.
    *
-   * Photo Policy (amended 2026-06-16): the glance / default card shows the
+   * Photo Policy (amended 2026-06-16): the glance / default row shows the
    * venue's hero photo when the event has one (events borrow their venue's
-   * image), with the category-icon tile as the fallback. The date block still
-   * leads the text; the dense variants (utility / compact) stay photoless so
+   * image), with the unboxed category glyph as the fallback. The time column
+   * still leads; the dense variants (utility / compact) stay photoless so
    * the long tail reads as a calm list. See docs/PHOTO_POLICY.md.
    */
   variant?: "row" | "tile" | "feature" | "compact" | "glance" | "discovery" | "utility";
@@ -99,6 +96,9 @@ export default function EventCard({
   venuePhotos?: "all-approved" | "free-reviewed";
   /** Row variants only: hide the day line when the row above shows the same day. */
   showDate?: boolean;
+  /** Feature only: h2 when the lead stands under the page title, h3 inside a
+   * group section that already has its own h2. */
+  headingLevel?: 2 | 3;
 }) {
   const displayTitle = eventDisplayTitle(event);
   const status = event.status ?? "scheduled";
@@ -123,6 +123,7 @@ export default function EventCard({
         whyItMatters={whyItMatters}
         live={confirmedLive}
         nowISO={nowISO}
+        headingLevel={headingLevel}
       />
     );
   }
@@ -135,13 +136,8 @@ export default function EventCard({
   const statusText = statusLabel(status);
   const isCancelled = status === "cancelled";
   const timingText = eventDecisionTime(event, cardNow ?? undefined);
-  // Badge palette: red for cancelled, amber for postponed.
-  // Text-safe status color. Plain --app-warning (amber) fails WCAG AA both as
-  // inline text on cream and as white-on-fill badge; --app-warning-press is the
-  // darkened AA-safe variant (white clears 4.5:1 on it, and it clears 4.5:1 as
-  // text on cream). Cancelled already uses --app-danger, which passes. This one
-  // value feeds every status spot below (inline text + white pills). (audit a11y)
-  const statusBg = isCancelled ? "var(--app-danger)" : "var(--app-warning-press)";
+  // Text-safe status color: red for cancelled, the closing amber for
+  // postponed. Status is inline text in every row, never a filled badge.
   const statusForeground = isCancelled ? "var(--app-danger-text)" : "var(--state-closing)";
   const venueLabel = eventDecisionLocation(event);
   // Accent MUST be a hex literal — used in templates like `${accent}38`
@@ -167,18 +163,32 @@ export default function EventCard({
     "data-decision-position": "result",
   } as const;
 
-  // PLAIN TOOL: most events carry no photographs, so both browsing variants
-  // are one typographic row. A time column in tabular numerals leads, then the
+  // PLAIN TOOL: most events carry no photographs, so every browsing variant
+  // is one typographic row. A time column in tabular numerals leads, then the
   // title and one muted location line. An approved venue photo or publisher
-  // artwork keeps its place as a small square at the right of the row.
-  if (variant === "discovery" || variant === "glance") {
+  // artwork keeps its place as a small square at the right of the row; a row
+  // without one shows the category glyph in that slot. The legacy "tile" and
+  // "row" variants are the same row: "tile" adds its reasons as plain text and
+  // "row" adds its trust label and the Save control.
+  if (variant === "discovery" || variant === "glance" || variant === "tile" || variant === "row") {
     const cardVisual = eventCardVisual(event, { venuePhotos: variant === "discovery" ? "free-reviewed" : venuePhotos });
+    // Reasons are informational, so they read as plain text in the facts
+    // line. Free and distance are already stated there, and live state is the
+    // row's own guarded "Happening now" label.
+    const reasonLabels = variant === "tile" || variant === "row"
+      ? eventReasons(event, cardNow ?? undefined)
+        .filter(reason => reason.kind !== "free" && reason.kind !== "near" && reason.kind !== "walkable"
+          && reason.kind !== "live_now")
+        .map(reason => reason.label)
+      : [];
     // Recurrence is its own line; the decision facts (price, access,
     // distance) share one muted line under it.
     const facts = [
+      ...reasonLabels,
       event.is_free ? "Free" : event.price_text || null,
       accessLabel || null,
       event.distance_m !== undefined ? `${formatDistance(event.distance_m)} away` : null,
+      variant === "row" ? eventTrust(event).label : null,
     ].filter(Boolean) as string[];
     const recurrence = event.is_recurring && event.recurrence_text ? event.recurrence_text : null;
     const row = {
@@ -197,6 +207,8 @@ export default function EventCard({
       where: venueLabel,
       showDate,
       layout: variant,
+      glyph: event.category,
+      action: variant === "row" ? <ItineraryButton eventId={event.slug} label={`Add ${displayTitle} to itinerary`} /> : undefined,
       extra: recurrence || facts.length > 0 ? (
         <>
           {recurrence ? <p data-event-card-recurrence className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{recurrence}</p> : null}
@@ -207,13 +219,13 @@ export default function EventCard({
       ) : null,
     };
     return cardVisual
-      ? <EventRowMedia {...row} visual={cardVisual} compactCredit={variant === "glance"} />
+      ? <EventRowMedia {...row} visual={cardVisual} compactCredit={variant !== "discovery"} />
       : <EventRow {...row} mediaKind="none" />;
   }
 
   // Utility variant — TINY single muted line for the civic / municipal
   // long tail: board meetings, recurring pickups, posted notices. One
-  // calm row, anchored by a small category-tinted dot, with the date +
+  // calm row, anchored by a small muted category glyph, with the date +
   // time set quietly to the right. No photo, no chips, no actions —
   // present and scannable, never competing with the events people came
   // for. This is the "muted line" the tier brief asks for.
@@ -226,13 +238,10 @@ export default function EventCard({
       >
         <span
           aria-hidden
-          className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px]"
-          style={{
-            background: `color-mix(in srgb, var(--app-list-fact-color, ${accent}) 14%, var(--app-bg-sunken))`,
-            color: `var(--app-list-fact-color, ${accent})`,
-          }}
+          className="grid h-6 w-6 shrink-0 place-items-center"
+          style={{ color: "var(--app-ink-3)" }}
         >
-          <CategoryIcon slug={event.category} className="h-3.5 w-3.5" strokeWidth={2} />
+          <CategoryIcon slug={event.category} className="h-4 w-4" strokeWidth={1.75} />
         </span>
         <Link
           href={`/events/${event.slug}`}
@@ -344,13 +353,13 @@ export default function EventCard({
               {event.is_free && (
                 <>
                   {" · "}
-                  <span style={{ color: "var(--app-list-fact-color, var(--app-positive))" }}>Free</span>
+                  <span style={{ color: "var(--app-list-fact-color, var(--app-forest-text))" }}>Free</span>
                 </>
               )}
               {accessLabel && (
                 <>
                   {" · "}
-                  <span style={{ color: "var(--app-list-fact-color, var(--app-cool))" }}>{accessLabel}</span>
+                  <span style={{ color: "var(--app-list-fact-color, var(--app-cool-text))" }}>{accessLabel}</span>
                 </>
               )}
               {statusText && (
@@ -377,150 +386,6 @@ export default function EventCard({
     );
   }
 
-  // Tile variant — the workhorse grid card, now date-led (no photo
-  // banner). A category-tinted header strip carries the calendar date
-  // block + category + status; the body holds title, time/venue, and the
-  // reason chips. The category color stays the through-line so a music
-  // tile reads differently from a planning meeting at a glance.
-  if (variant === "tile") {
-    // Folder-tab card: the category rides a colored TAB on the top-left
-    // (deepened toward ink so white reads AA on light accents), the card's
-    // top-left corner squares to meet it, and the old inline label + bottom
-    // color band are gone — the tab IS the category now. The wrapper reserves
-    // the tab's height so it never clips inside a rail (no parent change).
-    const tabBg = `var(--app-list-header-bg, color-mix(in srgb, ${accent} 68%, var(--app-media-ink)))`;
-    const reasons = eventReasons(event, cardNow ?? undefined);
-    return (
-      <div className="relative flex h-full flex-col pt-[14px]">
-        <span
-          className="absolute left-3 top-0 z-10 max-w-[75%] truncate rounded-t-[8px] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em]"
-          style={{ background: tabBg, boxShadow: "var(--app-edge)", color: "var(--app-list-header-ink, var(--app-on-brand))" }}
-        >
-          {confirmedLive ? "Live now" : categoryLabel}
-        </span>
-        {/* Compact horizontal layout — date block beside the content, no empty
-            header band, no bottom-pinned reasons. h-full/flex-1: in a flex
-            rail the wrapper stretches to the tallest sibling anyway, so the
-            card fills it — otherwise a two-line neighbor leaves this tile
-            floating over a blank band. */}
-        <article
-          {...decisionAttributes}
-          className="tactile tactile-interactive group relative flex flex-1 gap-3 overflow-hidden rounded-[var(--app-radius-lg)] rounded-tl-none border bg-[var(--app-bg-elevated)] px-3 pb-3 pt-2.5 transition-all duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0"
-          style={{
-            borderColor: "var(--app-border)",
-            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-          }}
-        >
-          {/* Faint engraved category glyph — paper texture + a distinct
-              printed-calendar identity, the way the intel records carry one. */}
-          <span aria-hidden className="pointer-events-none absolute -bottom-4 -right-3" style={{ color: accent, opacity: 0.06 }}>
-            <CategoryIcon slug={event.category} className="h-[88px] w-[88px] rotate-[8deg]" strokeWidth={0.9} />
-          </span>
-          <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent={`var(--app-list-fact-color, ${accent})`} size="sm" />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            {statusText && (
-              <span className="self-start rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
-            )}
-            <Link
-              href={`/events/${event.slug}`}
-              data-decision-action="open"
-              prefetch={false}
-              className={`line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
-              style={{ color: "var(--app-ink)" }}
-            >
-              <span className="absolute inset-0" aria-hidden />
-              {displayTitle}
-            </Link>
-            <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-              <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-2)" }}>{timingText}</span>
-              {venueLabel ? <> · {venueLabel}</> : null}
-            </p>
-            {accessLabel && (
-              <p className="truncate text-[11px] font-medium" style={{ color: "var(--app-cool)" }}>
-                {accessLabel}
-              </p>
-            )}
-            {reasons.length > 0 ? (
-              <div className="pt-0.5"><ReasonChipRow reasons={reasons} /></div>
-            ) : (event.price_text && !event.is_free) || event.distance_m !== undefined ? (
-              <div className="flex items-center gap-1.5 pt-0.5 text-[11px]">
-                {event.price_text && !event.is_free && (
-                  <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
-                )}
-                {event.distance_m !== undefined && (
-                  <span className="ml-auto font-mono tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                    {formatDistance(event.distance_m)}
-                  </span>
-                )}
-              </div>
-            ) : null}
-          </div>
-        </article>
-      </div>
-    );
-  }
-
-  return (
-    <article
-      {...decisionAttributes}
-      className="tactile tactile-interactive group relative flex items-stretch gap-3 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-3 transition-transform duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] hover:scale-[1.01] active:scale-[0.98]"
-    >
-      <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent={`var(--app-list-fact-color, ${accent})`} />
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          {statusText && (
-            <span
-              className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white"
-              style={{ background: statusBg }}
-            >
-              {statusText}
-            </span>
-          )}
-          <Link
-            href={`/events/${event.slug}`}
-            data-decision-action="open"
-            prefetch={false}
-            className={`text-[15px] font-semibold tracking-tight outline-none focus-visible:underline line-clamp-2 ${isCancelled ? "line-through opacity-70" : ""}`}
-            style={{ color: "var(--app-ink)" }}
-          >
-            <span className="absolute inset-0" aria-hidden />
-            {displayTitle}
-          </Link>
-        </div>
-        <p className="mt-0.5 text-xs" style={{ color: "var(--app-ink-3)" }}>
-          <span className="font-mono tabular-nums">{timingText}</span>{venueLabel ? ` · ${venueLabel}` : ""}
-        </p>
-        <div className="mt-2 flex items-center gap-2">
-          {cat && (
-            <Chip color={cat.color} className="uppercase tracking-wide">
-              {cat.name}
-            </Chip>
-          )}
-          <TrustChip signal={eventTrust(event)} />
-          {accessLabel && (
-            <span className="text-[11px] font-medium" style={{ color: "var(--app-cool)" }}>
-              {accessLabel}
-            </span>
-          )}
-          {event.is_free ? (
-            <span className="text-[11px] font-medium" style={{ color: "var(--app-positive)" }}>
-              Free
-            </span>
-          ) : event.price_text && (
-            <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-              {event.price_text}
-            </span>
-          )}
-          {event.distance_m !== undefined && (
-            <span className="ml-auto font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-              {formatDistance(event.distance_m)}
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="relative z-10 flex shrink-0 items-center self-start">
-        <ItineraryButton eventId={event.slug} label={`Add ${displayTitle} to itinerary`} />
-      </div>
-    </article>
-  );
+  // Every variant returns above; the union is exhausted here.
+  return null;
 }
