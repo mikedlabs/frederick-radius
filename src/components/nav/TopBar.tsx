@@ -407,12 +407,8 @@ export default function TopBar() {
                 <span
                   data-product-status="beta"
                   aria-hidden="true"
-                  className="inline-flex h-[18px] shrink-0 items-center rounded-[4px] border px-1.5 font-sans text-[8px] font-bold uppercase leading-none tracking-[0.16em]"
-                  style={{
-                    borderColor: "var(--app-brand-tint-22)",
-                    background: "var(--app-brand-tint-6)",
-                    color: "var(--app-ink-3)",
-                  }}
+                  className="inline-flex shrink-0 items-center font-sans text-[10px] font-semibold uppercase leading-none tracking-[0.14em]"
+                  style={{ color: "var(--app-ink-3)" }}
                 >
                   Beta
                 </span>
@@ -497,14 +493,13 @@ export default function TopBar() {
                 pointerScrollYRef.current = null;
                 openPrimaryFind(event.currentTarget, returnScrollY);
               }}
-              className="relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 disabled:cursor-wait disabled:opacity-60 lg:hidden"
+              className={`${styles.tool} relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] disabled:cursor-wait disabled:opacity-60 lg:hidden`}
               style={{
-                borderColor: searchOpen ? "var(--app-brand)" : "var(--app-border)",
-                color: searchOpen ? "var(--app-link)" : "var(--app-ink-2)",
-                background: searchOpen ? "var(--app-brand-tint-6)" : undefined,
+                color: searchOpen ? "var(--app-link)" : "var(--app-ink)",
+                background: searchOpen ? "var(--app-bg-sunken)" : undefined,
               }}
             >
-              <Search className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+              <Search className="h-[20px] w-[20px]" strokeWidth={1.75} aria-hidden />
             </button>
           )}
 
@@ -547,14 +542,13 @@ export default function TopBar() {
               aria-label="Open tools"
               aria-current={pathname === "/compass" ? "page" : undefined}
               title="Tools"
-              className={`${styles.tool} relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 hover:bg-[var(--app-bg-sunken)] sm:px-3`}
+              className={`${styles.tool} relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] px-2 sm:px-3`}
               style={{
-                borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
-                color: pathname === "/compass" ? "var(--app-link)" : "var(--app-ink-2)",
-                background: pathname === "/compass" ? "var(--app-brand-tint-6)" : undefined,
+                color: pathname === "/compass" ? "var(--app-link)" : "var(--app-ink)",
+                background: pathname === "/compass" ? "var(--app-bg-sunken)" : undefined,
               }}
             >
-              <Compass className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
+              <Compass className="h-[20px] w-[20px] shrink-0" strokeWidth={1.75} aria-hidden />
               {/* Keep the name beyond narrow phone widths so location,
                   appearance and Tools retain separate 44px touch targets. */}
               <span className="hidden text-[12px] font-semibold leading-none min-[460px]:inline sm:hidden">Tools</span>

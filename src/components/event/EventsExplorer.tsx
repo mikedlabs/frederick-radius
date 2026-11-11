@@ -11,6 +11,7 @@ import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
 import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/event/EventsBoardDock";
 import SectionHeading from "@/components/ui/SectionHeading";
+import { eventDateBlock } from "@/lib/events/format";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon, isRangeListing, RANGE_LISTING_STALE_AFTER_MS } from "@/lib/eventHorizon";
@@ -1164,7 +1165,7 @@ export default function EventsExplorer({
       ) : null}
 
       {showPrimaryLeadBeforeRail && primaryLead && (
-        <div data-events-primary-lead="before-interest" data-events-visual-shortlist>
+        <div data-events-primary-lead="before-interest" data-events-visual-shortlist className="max-w-[720px]">
           <PromotedEvent
             event={primaryLead}
             visual={eventCardVisual(primaryLead)}
@@ -1414,7 +1415,7 @@ export default function EventsExplorer({
             const expanded = isOpen ? rest.slice(PEEK, EXPANDED_CAP) : [];
             const overflow = isOpen ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
             return (
-              <section key={g.key} className="space-y-3">
+              <section key={g.key} className="max-w-[720px] space-y-3">
                 <SectionHeading title={g.label} count={groupCount} />
                 {lead && !leadMovedBeforeRail && leadVariant === "feature" ? (
                   <PromotedEvent
@@ -1435,8 +1436,16 @@ export default function EventsExplorer({
                 {totalRest > 0 && (
                   <>
                     {preview.length > 0 && (
-                      sort === "recommended" ? <ul data-events-discovery-grid className="grid min-w-0 grid-cols-1 items-start gap-4 sm:grid-cols-2">
-                        {preview.map((event) => <li key={eventIdentity(event)} className="min-w-0"><EventCard event={event} variant="discovery" venuePhotos="free-reviewed" live={live.has(event.slug)} nowISO={nowISO} /></li>)}
+                      // One column at every width: rows on white depend on
+                      // their hairlines lining up, and a day line prints only
+                      // where the day changes from the row above.
+                      sort === "recommended" ? <ul data-events-discovery-grid className="grid min-w-0 grid-cols-1">
+                        {preview.map((event, index) => {
+                          const dayKey = (e: typeof event) => { const d = eventDateBlock(e); return `${d.weekday} ${d.month} ${d.day}`; };
+                          const above = index > 0 ? preview[index - 1] : lead && !leadMovedBeforeRail ? lead : null;
+                          const showDate = !above || dayKey(above) !== dayKey(event);
+                          return <li key={eventIdentity(event)} className="min-w-0"><EventCard event={event} variant="discovery" venuePhotos="free-reviewed" showDate={showDate} live={live.has(event.slug)} nowISO={nowISO} /></li>;
+                        })}
                       </ul> : <CompactEventList events={preview} live={live} nowISO={nowISO} />
                     )}
                     {expanded.length > 0 && (

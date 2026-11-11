@@ -297,8 +297,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         </ol>
       </nav>
 
+      {/* PLAIN TOOL: the photograph runs edge to edge on a phone with no
+          card around it, and the name sits below it on the white ground. */}
       <header
-        className="overflow-hidden rounded-[var(--app-radius-xl)] tactile tactile-e2"
+        data-place-identity
         data-decision-impression="true"
         data-decision-surface="place"
         data-decision-entity="place"
@@ -317,7 +319,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           photoAttributions={place.google_photo_attributions}
           googleMapsUri={place.google_maps_uri}
         />
-        <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
+        <div className="space-y-3 pt-4">
           <Suspense fallback={null}>
             <MapReturnLink />
           </Suspense>
@@ -327,14 +329,14 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               action, not an icon pair crowding the title. Sharing
               stays in the footer ShareButton. */}
           <div className="min-w-0">
-            <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
+            <h1 className="text-[34px] font-extrabold leading-[1.04] tracking-[-0.04em] max-[359px]:text-[30px] sm:text-[44px]" style={{ color: "var(--app-ink)" }}>
               {place.name}
             </h1>
             {/* Identity line: what it is + where, at a glance. The street
                 address lives in ONE place — the Location plate beside the
                 map + directions — instead of being printed here too
                 (July 2026 review: same fact twice above the fold). */}
-            <p className="mt-1 text-sm" style={{ color: "var(--app-ink-3)" }}>
+            <p className="mt-1.5 text-[15px]" style={{ color: "var(--app-ink-2)" }}>
               {cat?.name ?? place.category} · {place.municipality_name}
             </p>
             {/* The visit-decision facts — open/closed, price, provenance —
@@ -376,13 +378,16 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           <Suspense fallback={null}>
             <PendingFollowApplier slug={place.slug} name={place.name} />
           </Suspense>
-          <div className="-mt-1 flex flex-wrap items-center gap-2">
+          {/* One ruled strip holds the personal actions, so three unboxed
+              text actions read as a set rather than stray labels. */}
+          <div data-place-action-strip className="flex flex-wrap items-center justify-between gap-x-1 border-y sm:justify-start sm:gap-x-6" style={{ borderColor: "var(--app-border)" }}>
             <MyRadiusButton slug={place.slug} name={place.name} />
             {isDestinationCategory(place.category) && isRecommendable(place) && place.is_operational !== "closed_permanently" && (
               <Suspense fallback={null}>
                 <PlanFromPlaceLink slug={place.slug} name={place.name} />
               </Suspense>
             )}
+            <BeenHereToggle placeSlug={place.slug} label={place.name} />
           </div>
           {desc && (
             <div>
@@ -418,7 +423,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         />
       )}
 
-      <div className="hidden grid-cols-2 gap-2 lg:grid">
+      <div className="hidden grid-cols-[auto_1fr] items-center gap-x-6 gap-y-1 border-y py-3 lg:grid lg:grid-cols-[minmax(12rem,auto)_repeat(4,auto)] lg:justify-start" style={{ borderColor: "var(--app-border)" }}>
         <ActionButton href={googleUrl} icon={Navigation} label="Directions" decisionAction="directions" external primary />
         {place.email && <ActionButton href={`mailto:${place.email}`} icon={Mail} label="Email" decisionAction="email" />}
         {place.phone && <ActionButton href={`tel:${place.phone}`} icon={Phone} label="Call" decisionAction="call" />}
@@ -439,12 +444,6 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         placeSlug={place.slug}
         placeName={place.name}
       />
-
-      {/* Personal "been here" marker — demoted below the directional/contact
-          grid; it's a quiet device-local note, not a primary action. */}
-      <div className="flex">
-        <BeenHereToggle placeSlug={place.slug} label={place.name} />
-      </div>
 
       {/* Secondary visit context is outside the identity hero and follows
           closure + action controls, so the first screen answers whether the
@@ -743,12 +742,14 @@ function ActionButton({
       href={href}
       data-decision-action={decisionAction}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      className="tap-44 tactile tactile-interactive flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border py-3 text-xs font-semibold"
+      className={primary
+        ? "tap-44 flex min-h-12 items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[15px] font-semibold"
+        : "tap-44 flex min-h-12 items-center justify-start gap-2 px-1 text-[15px] font-semibold hover:underline"}
       style={primary
-        ? { background: "var(--app-brand-press)", borderColor: "var(--app-brand-press)", color: "var(--app-on-brand)" }
-        : { background: "var(--app-bg-elevated)", borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+        ? { background: "var(--app-brand-press)", color: "var(--app-on-brand)" }
+        : { color: "var(--app-ink)" }}
     >
-      <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden style={{ color: primary ? "var(--app-on-brand)" : "var(--app-brand-press)" }} />
+      <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden style={{ color: primary ? "var(--app-on-brand)" : "var(--app-ink-2)" }} />
       {label}
     </Comp>
   );

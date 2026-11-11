@@ -43,28 +43,22 @@ export function MobileActionBar({
   return (
     <div
       data-mobile-action-bar
-      className="pointer-events-none fixed inset-x-0 lg:hidden"
+      className="fixed inset-x-0 bottom-0 lg:hidden"
       style={{
         zIndex: "var(--z-nav)",
-        // BottomNav is suppressed on these routes, so this dock owns the
-        // ordinary mobile-chrome position instead of forming a second tier.
-        bottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
-        // On a notched phone in landscape the side insets aren't 0; keep
-        // the card off the notch while holding the 0.75rem base in portrait.
-        paddingLeft: "max(0.75rem, env(safe-area-inset-left, 0px))",
-        paddingRight: "max(0.75rem, env(safe-area-inset-right, 0px))",
+        // PLAIN TOOL: a flat bar attached to the bottom edge, white with a
+        // top hairline, in the same position the tab bar occupies.
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        paddingLeft: "env(safe-area-inset-left, 0px)",
+        paddingRight: "env(safe-area-inset-right, 0px)",
+        background: "var(--app-bg)",
+        borderTop: "1px solid var(--app-border)",
       }}
     >
       <div
         role="toolbar"
         aria-label={ariaLabel}
-        className="pointer-events-auto mx-auto flex max-w-screen-md items-stretch gap-1.5 rounded-[var(--app-radius-lg)] border p-1.5"
-        style={{
-          background: "var(--app-bg-elevated-solid)",
-          borderColor: "var(--app-border)",
-          boxShadow:
-            "0 10px 28px -8px rgba(20,20,18,0.22), 0 2px 6px rgba(20,20,18,0.10), var(--app-edge), var(--app-hi)",
-        }}
+        className="mx-auto flex max-w-screen-md items-stretch gap-2 px-3 py-2"
       >
         {children}
       </div>
@@ -72,8 +66,12 @@ export function MobileActionBar({
   );
 }
 
-const CELL =
-  "flex flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none min-h-[52px] tap-44";
+const CELL_BASE =
+  "flex items-center justify-center rounded-[var(--app-radius-md)] px-2 py-1.5 font-semibold leading-none min-h-[48px] tap-44";
+// The one filled action reads as a button (icon beside its label); the
+// others are quiet stacked text actions.
+const CELL_PRIMARY = `${CELL_BASE} flex-[1.4] flex-row gap-2 text-[14px]`;
+const CELL = `${CELL_BASE} flex-1 flex-col gap-1 text-[11px]`;
 
 /**
  * Shared cell chrome so a link cell (MobileBarLink) and a reused control
@@ -81,17 +79,17 @@ const CELL =
  * calendar button can style itself as a bar cell without duplicating this.
  */
 export function barCellClass(primary?: boolean): string {
-  return primary ? `${CELL} tactile-glow-brand` : `${CELL} transition-colors hover:bg-[var(--app-bg-sunken)]`;
+  return primary ? CELL_PRIMARY : `${CELL} transition-colors hover:bg-[var(--app-bg-sunken)]`;
 }
 export function barCellStyle(primary?: boolean): React.CSSProperties {
   return primary
     ? // brand-press, not brand: white on plain --app-brand is ~4.1:1 on the
       // 11px semibold cell label (fails AA); brand-press is ~6:1 (2026-07 P4).
       { background: "var(--app-brand-press)", color: "var(--app-on-brand)" }
-    : { color: "var(--app-ink-2)" };
+    : { color: "var(--app-ink)" };
 }
 export function barIconStyle(primary?: boolean): React.CSSProperties {
-  return { color: primary ? "var(--app-on-brand)" : "var(--app-brand-press)" };
+  return { color: primary ? "var(--app-on-brand)" : "var(--app-ink)" };
 }
 
 /**

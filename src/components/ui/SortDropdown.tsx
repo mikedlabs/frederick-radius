@@ -118,7 +118,7 @@ export default function SortDropdown<K extends string = string>({
         aria-controls={choicesId}
         aria-label={`${label}: ${current?.label ?? ""}`}
         title={label}
-        className="tap-44 inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 py-1 text-[12px] font-semibold transition active:scale-[0.97]"
+        className="tap-44 inline-flex items-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 py-1 text-[12px] font-semibold transition"
         style={{
           borderColor: "var(--app-border)",
           color: "var(--app-ink-2)",

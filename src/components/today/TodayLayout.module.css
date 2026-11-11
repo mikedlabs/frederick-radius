@@ -45,28 +45,32 @@
   border-bottom: 0;
 }
 
+/* PLAIN TOOL: the Find field stands alone as a 48px ruled input; the scope
+   is a plain text row beneath it, not a second boxed tray. */
 .entryControls {
   display: grid;
+  gap: 2px;
   container-type: inline-size;
   min-width: 0;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
-  background: var(--app-bg-sunken);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .scope {
   min-width: 0;
-  padding: 0 4px 4px;
+  padding: 0;
 }
 
 .scope > div {
   margin-top: 0;
-  column-gap: var(--spacing);
+  column-gap: var(--app-space-4);
+  justify-content: space-between;
 }
 
 .scope label {
   /* Reflow before the native label and location action compete for space. */
-  flex: 1 1 12rem;
+  flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
 }
@@ -76,11 +80,12 @@
   /* WebKit's native menu ignores min-height; keep its visible target full size. */
   height: max(44px, 2.75rem);
   /* Keep the native arrow and enlarged system-font label inside the picker. */
-  padding-inline: 4px;
+  padding-inline: 0 4px;
   border: 0;
   border-radius: var(--app-radius-sm);
   background: transparent;
-  font-size: 1rem;
+  color: var(--app-ink);
+  font-size: 0.9375rem;
   font-weight: 600;
   box-shadow: none;
 }
@@ -90,7 +95,7 @@
   min-height: 44px;
   height: auto;
   max-width: 100%;
-  padding: 6px 10px;
+  padding: 6px 0;
   font-size: 0.8125rem;
   overflow-wrap: anywhere;
 }
@@ -189,19 +194,18 @@
   min-width: 0;
 }
 
+/* PLAIN TOOL discovery. The lead photograph is the one decorated object on
+   Today: a 16:10 image with 6px corners and the place name set below it in
+   ink. Secondary places are rows on the white ground, divided by hairlines.
+   No card, no border box, no shadow, no dark slab over the image. */
 .discoveryCard {
   position: relative;
   min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-xl);
-  background: var(--app-bg-elevated-solid);
-  box-shadow: var(--app-shadow-1);
-  transition: box-shadow var(--app-dur-fast) var(--app-ease-out);
-}
-
-.discoveryCard:hover {
-  box-shadow: var(--app-shadow-2);
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .discoveryPlaceLink {
@@ -209,29 +213,30 @@
   min-width: 0;
   min-height: 48px;
   color: var(--app-ink);
-  transition: transform var(--app-dur-fast) var(--app-ease-out);
 }
 
 .discoveryPlaceLink:hover {
   color: var(--app-ink);
 }
 
-.discoveryPlaceLink:active,
-.discoveryTask:active {
-  transform: scale(0.99);
+.discoveryPlaceLink:hover .discoveryName {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 
 .discoveryPlaceLink:focus-visible,
 .discoveryTask:focus-visible {
-  outline: 3px solid var(--app-focus);
-  outline-offset: -3px;
+  outline: 2px solid var(--app-focus);
+  outline-offset: 2px;
 }
 
 .discoveryPhoto {
   position: relative;
   display: block;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
+  border-radius: var(--app-radius-md);
   background: var(--app-bg-sunken);
 }
 
@@ -253,131 +258,166 @@
 }
 
 .discoveryCaption {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: var(--app-space-2);
+  display: block;
   min-width: 0;
-  min-height: 88px;
-  padding: var(--app-space-3);
+  /* Clear the Save action that sits at the caption's right edge. */
+  padding: var(--app-space-3) 88px var(--app-space-1, 4px) 0;
 }
 
 .discoveryName {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.22;
-  letter-spacing: -0.025em;
+  color: var(--app-ink);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 
 .discoveryTown {
-  margin: var(--spacing) 0 0;
+  margin: 2px 0 0;
   color: var(--app-ink-2);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
+/* The arrow was decoration; the whole row is the link. */
 .discoveryAction {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  place-items: center;
-  color: var(--app-link);
-}
-
-/* The exact photograph and its caption share one grid cell. Caption growth
-   contributes to the track, so enlarged text cannot be clipped by a fixed hero. */
-.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.discoveryPlace[data-today-discovery-role="lead"] .discoveryPhoto {
-  grid-area: 1 / 1;
-  /* Grid's normal alignment preserves an aspect-ratio item's intrinsic
-     height. Explicit stretch lets enlarged captions grow their shared row. */
-  align-self: stretch;
-  min-height: 250px;
-  aspect-ratio: 8 / 5;
-}
-
-.discoveryPlace[data-today-discovery-role="lead"] .discoveryCaption {
-  grid-area: 1 / 1;
-  align-self: end;
-  margin-top: 100px;
-  padding: var(--app-space-4);
-  color: var(--app-ink-inverse);
-  background: color-mix(in srgb, var(--app-media-ink) 94%, transparent);
-  z-index: 1;
+  display: none;
 }
 
 .discoveryPlace[data-today-discovery-role="lead"] .discoveryName {
-  font-size: clamp(1.5rem, 6cqi, 2rem);
-  line-height: 1.1;
-  letter-spacing: -0.035em;
+  font-size: clamp(1.5rem, 6cqi, 1.75rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
 }
 
-.discoveryPlace[data-today-discovery-role="lead"] .discoveryTown,
-.discoveryPlace[data-today-discovery-role="lead"] .discoveryAction {
-  color: var(--app-ink-inverse);
-}
-
+/* Save is an icon and a word, with no capsule, and keeps a full 44px target.
+   Its color comes from the shared Save control, so a saved place reads the
+   same here as on the place page. */
 .discoverySave {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  right: 0;
+  bottom: 0;
   z-index: 2;
   min-width: 44px;
-  border: 1px solid var(--app-border);
-  border-radius: 999px;
-  background: var(--app-bg-elevated-solid);
-  box-shadow: var(--app-shadow-1);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .discoverySave > button {
   flex-direction: row;
-  gap: 5px;
+  gap: 6px;
   min-width: 44px;
   min-height: 44px;
-  padding: 8px 10px;
-  border-radius: inherit;
-  font-size: 0.75rem;
+  padding: 8px 0 8px 8px;
+  border-radius: var(--app-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
   line-height: 1.35;
 }
 
-.discoveryPlace[data-today-discovery-role="secondary"] .discoverySave {
-  position: static;
-  width: max-content;
-  margin: 0 var(--app-space-2) var(--app-space-2) auto;
+.discoverySave > button:hover {
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-/* Exhausted images become complete factual links. The save control retains
-   its own space and no empty photographic panel remains. */
+/* The lead is a grid: the photograph spans the full width, then the name
+   and town sit in the first column with Save beside the name. The link uses
+   subgrid tracks so it stays one real focusable box around photo and name. */
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  column-gap: var(--app-space-3);
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink,
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-row: 1 / 3;
+  grid-template-columns: subgrid;
+  grid-template-rows: subgrid;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPhoto {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryCaption {
+  grid-column: 1;
+  grid-row: 2;
+  padding: var(--app-space-3) 0 var(--app-space-1, 4px);
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoverySave {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  /* Center the 44px target on the first line of the 28px name. */
+  margin-top: calc(var(--app-space-3) - 6px);
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] .discoveryCaption {
+  padding-top: 0;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] + .discoverySave {
+  margin-top: -6px;
+}
+
+/* Secondary places: a thumbnail row between hairlines. */
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryCard {
+  border-top: 1px solid var(--app-border);
+  padding-block: var(--app-space-3);
+}
+
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--app-space-3);
+}
+
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryPhoto {
+  width: 72px;
+  height: 72px;
+  aspect-ratio: 1;
+  border-radius: var(--app-radius-sm);
+}
+
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryCaption {
+  padding: 0 88px 0 0;
+}
+
+.discoveryPlace[data-today-discovery-role="secondary"] .discoverySave {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+
+/* Exhausted images become complete factual links. */
 .discoveryPlace[data-today-discovery-role] .discoveryPlaceLink[data-photo-state="failed"] {
   display: block;
 }
 
 .discoveryPlaceLink[data-photo-state="failed"] .discoveryCaption {
-  margin-top: 0;
+  padding-top: 0;
   color: var(--app-ink);
-  background: var(--app-bg-elevated-solid);
-}
-
-.discoveryCard:has(.discoveryPlaceLink[data-photo-state="failed"]) .discoverySave {
-  position: static;
-  width: max-content;
-  margin: 0 var(--app-space-2) var(--app-space-2) auto;
 }
 
 .discoveryPlaceLink[data-photo-state="failed"] .discoveryTown {
   color: var(--app-ink-2);
-}
-
-.discoveryPlaceLink[data-photo-state="failed"] .discoveryAction {
-  color: var(--app-link);
 }
 
 .discoveryCredit {
@@ -420,11 +460,13 @@
   padding-block: var(--spacing) var(--app-space-2);
 }
 
+/* Browse-by-need links are plain text rows with a hairline above, not
+   gray tiles. */
 .discoveryTasks {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--app-space-2);
-  margin-top: var(--app-space-3);
+  gap: 0 var(--app-space-4);
+  margin-top: var(--app-space-2);
 }
 
 .discoveryTask {
@@ -433,15 +475,16 @@
   gap: var(--app-space-2);
   min-width: 0;
   min-height: 52px;
-  padding: var(--app-space-2) var(--app-space-3);
-  border-radius: var(--app-radius-md);
+  padding: var(--app-space-2) 0;
+  border-top: 1px solid var(--app-border);
+  border-radius: 0;
   color: var(--app-ink);
-  background: var(--app-bg-sunken);
-  font-size: 0.875rem;
+  background: transparent;
+  font-size: 0.9375rem;
   font-weight: 600;
   line-height: 1.35;
   overflow-wrap: anywhere;
-  transition: transform var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out);
+  transition: color var(--app-dur-fast) var(--app-ease-out);
 }
 
 .discoveryTask > span:not(.discoveryTaskIcon) {
@@ -450,40 +493,22 @@
 }
 
 .discoveryTask:hover {
-  color: var(--app-ink);
-  background: var(--app-bg-elevated-solid);
+  color: var(--app-link);
+  background: transparent;
 }
 
 .discoveryTaskIcon {
   display: grid;
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   place-items: center;
-  color: var(--app-link);
+  color: var(--app-ink-2);
 }
 
-.discoveryTask[data-today-discovery-action="outside"] .discoveryTaskIcon {
-  color: var(--app-link);
-}
-
-/* Use available content width relative to actual text, not the device width.
-   At enlarged text sizes the same choices reflow into complete single cards. */
 @container (min-width: 18rem) {
   .discoveryTasks {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink {
-    display: grid;
-    grid-template-columns: 92px minmax(0, 1fr);
-    align-items: stretch;
-  }
-
-  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryPhoto {
-    height: 100%;
-    min-height: 116px;
-    aspect-ratio: auto;
   }
 }
 
@@ -491,19 +516,12 @@
   .discoveryPlaceGrid {
     grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
     align-items: start;
+    column-gap: var(--app-space-6);
   }
 
-  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink {
-    display: block;
-  }
-
-  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryPhoto {
-    height: auto;
-    aspect-ratio: 4 / 3;
-  }
-
-  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryCaption {
-    padding-right: var(--app-space-3);
+  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryCard {
+    border-top: 0;
+    padding-top: 0;
   }
 }
 

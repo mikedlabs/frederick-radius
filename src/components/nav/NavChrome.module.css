@@ -1,66 +1,88 @@
 /* The four destinations keep their footprint and behavior; depth makes the
    current destination and available actions easier to recognize. */
+/* PLAIN TOOL chrome. The header and the tab bar are flat instruments on the
+   white ground: no boxes, no floating pill, no gradient. A single hairline
+   separates each from the page. */
 .bar {
-  background: color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent);
-  box-shadow: var(--app-hi), 0 5px 18px -13px color-mix(in srgb, var(--app-ink) 32%, transparent);
+  background: var(--app-bg);
+  box-shadow: none;
 }
 .search {
   min-height: 44px;
-  box-shadow: inset 0 1px 3px color-mix(in srgb, var(--app-ink) 8%, transparent), var(--app-hi);
+  box-shadow: none;
 }
 .tool {
-  box-shadow: var(--app-hi), var(--app-elev-1);
-  transition: box-shadow var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out), transform var(--app-dur-fast) var(--app-ease-out);
+  box-shadow: none;
+  transition: background-color var(--app-dur-fast) var(--app-ease-out), color var(--app-dur-fast) var(--app-ease-out);
 }
-.rail,
-.dock {
-  background: var(--app-bg-elevated-solid);
-  border: 1px solid var(--app-border-strong);
-  box-shadow: var(--app-hi), var(--app-shadow-2);
+.rail {
+  background: var(--app-bg);
+  border: 0;
+  border-right: 1px solid var(--app-border);
+  box-shadow: none;
+}
+.dockShell {
+  background: var(--app-bg);
+  border-top: 1px solid var(--app-border);
 }
 .dock {
-  border-radius: var(--app-radius-xl);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 .destination {
   color: var(--app-ink-2);
-  transition: color var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out), box-shadow var(--app-dur-fast) var(--app-ease-out), transform var(--app-dur-fast) var(--app-ease-out);
+  transition: color var(--app-dur-fast) var(--app-ease-out);
+}
+.destinationLabel {
+  font-weight: 500;
+  letter-spacing: 0;
+}
+/* The selected destination is marked by a 3px rule across the top of its
+   column, inset 6px from each side, laid over the bar's hairline. */
+.destinationRule {
+  position: absolute;
+  top: -1px;
+  left: 6px;
+  right: 6px;
+  height: 3px;
+  background: transparent;
 }
 .destination[data-selected="true"] {
-  --press-focus-color: var(--app-on-brand);
-  --press-ack-color: var(--app-on-brand);
-  color: var(--app-on-brand);
-  background: linear-gradient(160deg, var(--app-brand), var(--app-brand-press));
-  box-shadow: var(--app-hi), var(--app-lip), var(--app-brand-glow);
+  color: var(--app-ink);
+}
+.destination[data-selected="true"] .destinationLabel {
+  font-weight: 600;
+}
+.destination[data-selected="true"] .destinationRule {
+  background: var(--app-brand);
 }
 .destination[data-pending="true"]:not([data-selected="true"]) {
-  color: var(--app-link);
-  background: var(--app-brand-tint-6);
-  box-shadow: inset 0 0 0 2px var(--app-link);
+  color: var(--app-ink);
+}
+.destination[data-pending="true"]:not([data-selected="true"]) .destinationRule {
+  background: var(--app-control-border);
 }
 .tool:focus-visible,
 .search:focus-visible {
   outline: 2px solid var(--app-brand);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 .destination:focus-visible {
   outline: 2px solid var(--app-brand);
   outline-offset: -3px;
 }
-.destination[data-selected="true"]:focus-visible {
-  outline-color: var(--app-on-brand);
-}
 @media (hover: hover) {
   .tool:hover {
-    box-shadow: var(--app-hi), var(--app-shadow-1);
-    transform: translateY(-1px);
+    background: var(--app-bg-sunken);
   }
   .destination:not([data-selected="true"]):hover {
     color: var(--app-ink);
-    background: var(--app-bg-sunken);
   }
 }
 .tool:active {
-  transform: scale(.95);
+  background: var(--app-bg-sunken);
 }
 @media (prefers-reduced-motion: reduce) {
   .tool,

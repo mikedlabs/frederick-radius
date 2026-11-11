@@ -16,10 +16,10 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
-  background: var(--app-bg-elevated-solid);
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .destination {
@@ -41,6 +41,7 @@
   min-width: 0;
   aspect-ratio: 4 / 3;
   overflow: hidden;
+  border-radius: var(--app-radius-md);
   background: var(--app-bg-sunken);
 }
 

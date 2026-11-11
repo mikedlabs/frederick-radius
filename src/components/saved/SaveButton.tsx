@@ -193,7 +193,9 @@ export default function SaveButton({
         ? "tap-44 relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
         : "tap-44 relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92]"}
       style={{
-        color: renderedSaved ? "var(--app-link)" : "var(--app-ink-3)",
+        // A labeled Save reads as an action in ink; the saved state uses the
+        // link color everywhere, matching the place page's Saved control.
+        color: renderedSaved ? "var(--app-link)" : barLabel ? "var(--app-ink)" : "var(--app-ink-3)",
         transitionTimingFunction: "var(--app-ease-spring)",
       }}
     >

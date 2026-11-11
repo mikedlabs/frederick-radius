@@ -186,10 +186,12 @@
   /* Shape policy: a field guide uses cut paper and ruled panels, not a
      bubble around every object. Full capsules remain reserved for compact
      filters, status, and toggles. */
-  --app-radius-sm: 8px;
-  --app-radius-md: 12px;
-  --app-radius-lg: 18px;
-  --app-radius-xl: 24px;
+  /* PLAIN TOOL direction: a calm instrument. Corners are barely there, so
+     the content reads as rows on white rather than objects in bubbles. */
+  --app-radius-sm: 4px;
+  --app-radius-md: 6px;
+  --app-radius-lg: 8px;
+  --app-radius-xl: 10px;
 
   /* Reuse Tailwind's 4px scale for the four primary tab surfaces. */
   --app-space-2: calc(var(--spacing) * 2);
@@ -213,7 +215,7 @@
      chrome to THIS var, not --app-topbar-h, and transition `top` with
      the TopBar's own 240ms ease so the two move as one piece of chrome. */
   --app-topbar-offset: var(--app-topbar-h);
-  --app-bottomnav-reserve: 68px;
+  --app-bottomnav-reserve: 57px;
   --app-browse-map-height: calc(
     100dvh - var(--app-topbar-h) - var(--app-bottomnav-reserve) -
       env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
@@ -224,12 +226,12 @@
   --app-dur-med: 240ms;
   --app-dur-slow: 420ms;
 
-  --app-shadow-1:
-    0 1px 2px color-mix(in srgb, var(--app-media-ink) 7%, transparent),
-    0 2px 6px -1px color-mix(in srgb, var(--app-media-ink) 9%, transparent);
-  --app-shadow-2:
-    0 1px 3px color-mix(in srgb, var(--app-media-ink) 8%, transparent),
-    0 8px 18px -4px color-mix(in srgb, var(--app-media-ink) 14%, transparent);
+  /* PLAIN TOOL: content never floats. The two lowest shadow tiers and every
+     decorative lip, gloss and glow resolve to an invisible value (not
+     `none`, so they stay valid inside comma lists). Sheets and overlays keep
+     shadow-3 and elev-3/4 because they genuinely sit above the page. */
+  --app-shadow-1: 0 0 0 0 transparent;
+  --app-shadow-2: 0 0 0 0 transparent;
   --app-shadow-3:
     0 2px 6px color-mix(in srgb, var(--app-media-ink) 10%, transparent),
     0 18px 36px -8px color-mix(in srgb, var(--app-media-ink) 20%, transparent);
@@ -237,27 +239,21 @@
   /* Product depth. Most content stays on the page plane. Elevation is
      intentionally quiet and reserved for floating navigation, sheets, and
      overlays; ordinary rows and sections use borders and spacing. */
-  --app-elev-1:
-    0 1px 2px color-mix(in srgb, var(--app-media-ink) 8%, transparent);
-  --app-elev-2:
-    0 2px 5px color-mix(in srgb, var(--app-media-ink) 8%, transparent),
-    0 10px 24px -16px color-mix(in srgb, var(--app-media-ink) 18%, transparent);
+  --app-elev-1: 0 0 0 0 transparent;
+  --app-elev-2: 0 0 0 0 transparent;
   --app-elev-3:
     0 3px 8px color-mix(in srgb, var(--app-media-ink) 10%, transparent),
     0 18px 38px -20px color-mix(in srgb, var(--app-media-ink) 24%, transparent);
   --app-elev-4:
     0 4px 10px color-mix(in srgb, var(--app-media-ink) 12%, transparent),
     0 24px 52px -24px color-mix(in srgb, var(--app-media-ink) 28%, transparent);
-  --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.42);
-  /* Deck stack — a faint card peeking behind the bottom edge, so a
-   * surface reads as the top of a physical stack (the Wallet feel). */
-  --app-deck-edge: 0 1px 2px rgba(26, 26, 26, 0.05), 0 2px 5px -1px rgba(26, 26, 26, 0.08);
-  --app-edge: inset 0 0 0 1px rgba(26, 26, 26, 0.10);
-  /* A 1px darker bottom inner shadow — the "lip" on filled controls. */
-  --app-lip: inset 0 -1px 0 rgba(0, 0, 0, 0.14);
-  --app-gloss: linear-gradient(to bottom, rgba(255,255,255,0.10), rgba(255,255,255,0));
-  --app-paper-light: linear-gradient(to bottom, rgba(255,255,255,0.18), rgba(255,255,255,0));
-  --app-brand-glow: 0 2px 4px color-mix(in srgb, var(--app-media-ink) 12%, transparent);
+  --app-hi: 0 0 0 0 transparent;
+  --app-deck-edge: 0 0 0 0 transparent;
+  --app-edge: 0 0 0 0 transparent;
+  --app-lip: 0 0 0 0 transparent;
+  --app-gloss: linear-gradient(transparent, transparent);
+  --app-paper-light: linear-gradient(transparent, transparent);
+  --app-brand-glow: 0 0 0 0 transparent;
   /* Overshoot for press/lift physics. Bumped 1.4 -> 1.56 (owner ask,
    * 2026-07-22: "smoother, not as sharp") so a released control visibly
    * springs past rest and settles, instead of snapping straight back. */
@@ -297,10 +293,8 @@
     --state-live: var(--app-amber);
     --app-danger-text: color-mix(in srgb, var(--app-danger) 55%, var(--app-paper));
     --app-live-text: var(--app-amber);
-    --app-hi: inset 0 1px 0 color-mix(in srgb, var(--app-paper) 6%, transparent);
-    /* The white top gloss is a paper cue. On Charcoal it turns one card
-       glossy beside its flat neighbors, so the dark shell has none. */
-    --app-paper-light: none;
+    --app-hi: 0 0 0 0 transparent;
+    --app-paper-light: linear-gradient(transparent, transparent);
 }
 
 /* Neutral listing grammar belongs only to the four primary destinations.
@@ -9200,4 +9194,194 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
   .dock-pane[data-pane="contents"] .dock-task-grid .dock-content-row > svg {
     display: none;
   }
+}
+
+/* ==========================================================================
+   PLAIN TOOL DIRECTION (design prototype)
+   A calm instrument. Content sits on the white ground, separated by space and
+   hairlines. The one photograph per page is the only decorated object; on
+   Events, where there are no photographs, the first row's time column is.
+   These overrides sit last so they win over earlier component treatments
+   without rewriting every surface by hand.
+   ========================================================================== */
+
+/* Ambient page washes are decoration. The ground is plain. */
+[data-page-bloom] { display: none !important; }
+
+/* Type carries the hierarchy the boxes used to. Page titles are the top step
+   of one ladder: 40px heavy titles, 28px lead clocks, 20px section and lead
+   headings, 17px row titles and 14px supporting lines. */
+[data-app-primary-tab="/today"] h1[data-today-title],
+[data-app-primary-tab="/today"] [data-today-masthead] h1 {
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+@media (min-width: 640px) {
+  [data-app-primary-tab="/today"] [data-today-masthead] h1 { font-size: 48px; }
+}
+@media (max-width: 359.98px) {
+  [data-app-primary-tab="/today"] [data-today-masthead] h1 { font-size: 34px; }
+}
+
+/* Events dock: a flat white header with one hairline under it. */
+.eb-head,
+[data-app-primary-tab] .eb-head,
+.eb-dock.eb-collapsed .eb-head,
+[data-app-primary-tab] .eb-dock.eb-collapsed .eb-head {
+  background: var(--app-bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+[data-app-primary-tab] .eb-masthead { padding: var(--app-space-3) 0 var(--app-space-2); }
+.eb-title,
+[data-app-primary-tab] .eb-title {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+@media (max-width: 480px) {
+  .eb-title,
+  [data-app-primary-tab] .eb-title { font-size: 40px; }
+  [data-app-primary-tab] .eb-masthead { max-height: 64px; }
+}
+@media (max-width: 359.98px) {
+  .eb-title,
+  [data-app-primary-tab] .eb-title { font-size: 34px; }
+}
+
+/* Quick date chips stay capsules, but compact: a 32px visible pill inside a
+   44px transparent hit area. */
+[data-app-primary-tab] .eb-whenribbon { gap: 4px; padding: 0 0 2px; max-height: 52px; }
+[data-app-primary-tab] .eb-whenribbon .eb-chip,
+[data-app-primary-tab] .eb-whenribbon .eb-chip[data-on] {
+  position: relative;
+  isolation: isolate;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--app-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+[data-app-primary-tab] .eb-whenribbon .eb-chip::before {
+  content: "";
+  position: absolute;
+  inset: 6px 0;
+  z-index: -1;
+  border: 1px solid var(--app-control-border);
+  border-radius: 999px;
+  background: var(--app-bg);
+}
+[data-app-primary-tab] .eb-whenribbon .eb-chip[data-on] { color: var(--app-bg); }
+[data-app-primary-tab] .eb-whenribbon .eb-chip[data-on]::before {
+  border-color: var(--app-ink);
+  background: var(--app-ink);
+}
+[data-app-primary-tab] .eb-whenribbon .eb-chip[data-on] .eb-chip-dot { display: none; }
+.eb-chip:active { transform: none; }
+
+/* Filters is a plain row, not a boxed control. */
+[data-app-primary-tab] .eb-filterbar,
+.eb-filterbar { padding: 0; border-top: 1px solid var(--app-border); }
+[data-app-primary-tab] .eb-filter-trigger,
+.eb-filter-trigger {
+  min-height: 48px;
+  padding: 6px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--app-ink);
+}
+.eb-filter-label { font-size: 15px; font-weight: 600; }
+.eb-filter-summary { font-size: 13px; color: var(--app-ink-2); }
+.eb-filter-count { border-radius: 4px; background: var(--app-ink); color: var(--app-bg); }
+[data-app-primary-tab] .eb-subbar,
+.eb-subbar { padding-inline: 0; }
+.eb-countline {
+  font-family: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  color: var(--app-ink-2);
+}
+@media (max-width: 480px) {
+  .eb-display-options > summary {
+    min-width: 0;
+    min-height: 44px;
+    padding-inline: 4px 0;
+    border: 0;
+    border-radius: var(--app-radius-sm);
+    background: transparent;
+    color: var(--app-ink);
+    font-size: 13px;
+  }
+  .eb-display-panel { box-shadow: var(--app-shadow-3); }
+}
+.eb-pane-tabs { border-radius: var(--app-radius-md); }
+
+/* Event group sections: rows run edge to edge under the label. */
+[data-app-primary-tab] .section-heading { padding-top: var(--app-space-4); }
+
+/* Place identity: the photograph bleeds to the screen edge on a phone and
+   the category pill over it is removed; the identity line already names the
+   category. */
+[data-place-identity] [data-place-hero-pill] { display: none; }
+@media (max-width: 639.98px) {
+  /* Each side cancels its own reading gutter, which follows its own safe
+     area, so a notched phone in landscape bleeds evenly. The hero sets an
+     explicit width, so the width grows by both gutters too. */
+  [data-place-identity] > :first-child {
+    width: calc(100% + max(1rem, env(safe-area-inset-left, 0px)) + max(1rem, env(safe-area-inset-right, 0px)));
+    max-width: none;
+    margin-left: calc(-1 * max(1rem, env(safe-area-inset-left, 0px)));
+    margin-right: calc(-1 * max(1rem, env(safe-area-inset-right, 0px)));
+    border-radius: 0;
+  }
+}
+@media (min-width: 640px) {
+  [data-place-identity] > :first-child {
+    overflow: hidden;
+    border-radius: var(--app-radius-md);
+  }
+}
+
+/* Map controls speak the same flat language as the chrome: 6px corners, one
+   hairline, solid white, no lift. Compact filter chips stay capsules. Sheets
+   and the peek keep shadow-3 because they genuinely sit over the map. */
+.dock .dock-head,
+.dock.dock-open .dock-head,
+.map-edge-tool,
+.map-context-rail,
+.map-location-offer,
+.map-smart-note,
+.dock-content-list {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+.map-edge-tool {
+  color: var(--app-ink);
+  opacity: 1;
+}
+.map-location-offer-actions button {
+  border-radius: var(--app-radius-md);
+  box-shadow: none;
+}
+.map-error-fallback-head {
+  border-bottom: 1px solid var(--app-border);
+}
+
+/* Map list rows are ruled rows; a rounded corner bends the hairline. */
+.map-list-row {
+  border-radius: 0;
 }

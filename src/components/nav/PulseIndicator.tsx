@@ -197,17 +197,16 @@ export default function PulseIndicator() {
       aria-label={statusLabel}
       aria-current={current ? "page" : undefined}
       title={statusLabel}
-      className={`relative h-11 min-w-11 shrink-0 items-center justify-center flex-col gap-0.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] sm:inline-flex sm:flex-row sm:gap-1.5 sm:px-2.5 ${
+      className={`relative h-11 min-w-11 shrink-0 items-center justify-center flex-col gap-0.5 rounded-[var(--app-radius-sm)] px-1.5 transition hover:bg-[var(--app-bg-sunken)] sm:inline-flex sm:flex-row sm:gap-1.5 sm:px-2.5 ${
         mobileVisible ? "inline-flex" : "hidden"
       }`}
       style={{
-        borderColor: current ? "var(--app-brand)" : "var(--app-border)",
         color: current
           ? "var(--app-link)"
           : currentAlerts
             ? TONE_FOREGROUND[tone]
-            : "var(--app-ink-2)",
-        background: current ? "var(--app-brand-tint-6)" : undefined,
+            : "var(--app-ink)",
+        background: current ? "var(--app-bg-sunken)" : undefined,
       }}
     >
       <span className="relative grid h-4 w-4 shrink-0 place-items-center" aria-hidden>
