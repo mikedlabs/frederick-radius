@@ -81,6 +81,8 @@ const usableLead: NonNullable<Story["play"]> = async ({ canvasElement, args }) =
   // Decoding and React’s source-bound load commit are separate boundaries.
   const attribution = await canvas.findByRole("link", { name: "Wikimedia Commons" });
   await expect(canvasElement.querySelector("[data-photo-credit-text]")).toBeVisible();
+  await expect(canvasElement.querySelector("[data-photo-credit-text]")).toHaveTextContent(`${source.photo.author} · `);
+  await expect(canvasElement.querySelector("[data-photo-credit-text]")).toHaveTextContent(source.photo.license);
   await expect(canvasElement).not.toHaveTextContent(source.photo.modifications!);
   await expect(attribution).toHaveAttribute("href", source.photo.source_url);
   const deed = canvas.getByRole("link", { name: source.photo.license });

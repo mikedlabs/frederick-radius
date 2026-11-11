@@ -37,16 +37,17 @@ export default function PhotoCreditLine({ credit, className = "", style }: {
     >
       <span className="sr-only">{countyProvided ? "Photo provided by " : "Photo by "}</span>
       {/* Two lines: the plain facts, then the links. Only the links line
-          needs 44px targets, so the facts line stays at text height, and no
-          line starts or ends on a dangling dot. A hidden separator keeps the
-          whole credit reading and copying as "a · b · c". */}
+          needs 44px targets, so the facts line stays at text height. The
+          links line uses space, not dots, so no line starts or ends on a
+          separator; hidden separators keep the whole credit reading and
+          copying as "a · b · c". */}
       <span data-photo-credit-text className="flex flex-col items-start">
         <span>
           <span data-photo-credit-author>{credit.author}</span>
           {credit.year && <>{" · "}<span data-photo-credit-year>{credit.year}</span></>}
           <span className="sr-only">{" · "}</span>
         </span>
-        <span className="flex flex-wrap items-center gap-x-1 gap-y-1">
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <a href={credit.licenseHref} target="_blank" rel="noopener noreferrer">{credit.license}</a>
           <CreditPart><a href={credit.sourceHref} target="_blank" rel="noopener noreferrer">{credit.sourceLabel}</a></CreditPart>
           {credit.originalSourceHref && (
@@ -59,8 +60,9 @@ export default function PhotoCreditLine({ credit, className = "", style }: {
   );
 }
 
-/** One credit item with its leading separator, kept on the same row. The
- * separator stays text, so the line reads and copies as "a · b · c". */
+/** One item on the links line. The links are underlined and spaced apart,
+ * so the separator is hidden text: no wrapped row starts on a dot, and the
+ * credit still reads and copies as "a · b · c". */
 function CreditPart({ children }: { children: ReactNode }) {
-  return <span className="whitespace-nowrap">{" · "}{children}</span>;
+  return <span className="whitespace-nowrap"><span className="sr-only">{" · "}</span>{children}</span>;
 }

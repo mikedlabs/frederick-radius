@@ -9,9 +9,9 @@ export type EventPhotoLicenseCredit = {
   creator: string;
   source_url: string;
   license: { label: string; url: string };
-  /** Internal change record; never printed on a public surface. */
-  modifications: string;
-  /** The stored file differs from the source file; printed as "edited". */
+  /** The stored file differs from the source file; printed as "edited". The
+   * full change record stays in the photo data and never enters this public
+   * credit or the recovery payload. */
   edited: boolean;
   /** Reviewed capture date; the credit prints only its year. */
   captured_on?: string;
@@ -23,7 +23,7 @@ export function sameEventPhotoLicense(a: EventPhotoLicenseCredit | undefined, b:
   if (!a || !b) return a === b;
   return a.creator === b.creator && a.source_url === b.source_url
     && a.license?.label === b.license?.label && a.license?.url === b.license?.url
-    && a.modifications === b.modifications && a.edited === b.edited
+    && a.edited === b.edited
     && a.captured_on === b.captured_on && a.original_source_url === b.original_source_url;
 }
 
@@ -155,7 +155,7 @@ function licensedEventVenueVisual(venueSlug: string | undefined): EventCardVisua
     presentation: "photo",
     objectPosition: "objectPosition" in photo ? photo.objectPosition : "center",
     licensedCredit: { creator: image.creator, source_url: image.source_url,
-      license: { ...image.license }, modifications: image.modifications, edited: image.edited,
+      license: { ...image.license }, edited: image.edited,
       ...(capturedOn === undefined ? {} : { captured_on: capturedOn }),
       ...(originalSource === undefined ? {} : { original_source_url: originalSource }) },
   };

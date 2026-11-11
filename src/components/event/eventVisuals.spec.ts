@@ -227,14 +227,18 @@ describe("exact licensed event venue photographs", () => {
       hero_image: "/api/place-photo?name=unused-google&w=800" }), { venuePhotos: "free-reviewed" })!;
     expect(visual).toMatchObject({ src: photo.image.src, presentation: "photo", key: `licensed-venue:${venue_place_slug}`,
       licensedCredit: { creator: photo.image.creator, source_url: photo.image.source_url,
-        license: photo.image.license, modifications: photo.image.modifications, edited: photo.image.edited } });
+        license: photo.image.license, edited: photo.image.edited } });
+    // The internal change record never enters the public credit or payload.
+    expect(visual.licensedCredit).not.toHaveProperty("modifications");
     expect(visual.attribution).toBeUndefined();
     expect(eventCardVisual(event({ venue_place_slug }))).toEqual(visual);
     expect(eventCardVisual(event({ venue_place_slug }), { venuePhotos: "owned-only" })).toBeNull();
     expect(parseRecoveryEventVisual({ ...visual, ignored: "drop" })).toEqual(visual);
     expect(parseRecoveryEventVisual({ ...visual, licensedCredit: undefined })).toBeNull();
     expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit, creator: "Wrong creator" } })).toBeNull();
-    expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit, modifications: "Unchanged" } })).toBeNull();
+    // An older packet that still carries the change text resolves to the
+    // reviewed visual, which does not.
+    expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit, modifications: "Old internal note" } })).toEqual(visual);
     expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit!, edited: !photo.image.edited } })).toBeNull();
     expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit!, captured_on: "1999-01-01" } })).toBeNull();
     expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit, license: { label: "Public domain", url: "https://example.test" } } })).toBeNull();
