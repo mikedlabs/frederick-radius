@@ -82,6 +82,18 @@ async function assertPlainTool(canvasElement: HTMLElement, scale = 1) {
     await expect(parseFloat(view.getComputedStyle(label).fontSize)).toBeCloseTo(13 * scale, 1);
   }
 
+  // Phone feedback uses the same row title and 14px help line as the rest.
+  const feedbackTitle = within(canvasElement).getByText("Feedback cues");
+  await expect(parseFloat(view.getComputedStyle(feedbackTitle).fontSize)).toBeCloseTo(17 * scale, 1);
+  const feedbackHelp = feedbackTitle.nextElementSibling as HTMLElement;
+  await expect(parseFloat(view.getComputedStyle(feedbackHelp).fontSize)).toBeCloseTo(14 * scale, 1);
+
+  // A row title and its help line sit close, as in the Sign in row: the
+  // 44px target is an extender, not a tall box that pushes the help down.
+  const spot = within(canvasElement).getByText("Sets where Today and the Map start from.");
+  const spotTitle = spot.previousElementSibling as HTMLElement;
+  await expect(spot.getBoundingClientRect().top - spotTitle.getBoundingClientRect().bottom).toBeLessThan(8 * scale);
+
   // No coral field anywhere on the page, switch tracks included.
   for (const node of canvasElement.querySelectorAll<HTMLElement>("button, a, summary")) {
     await expect(coral.has(view.getComputedStyle(node).backgroundColor)).toBe(false);

@@ -1,7 +1,7 @@
 import PlaceSectionLabel, { PlaceDotList } from "./PlaceSectionLabel";
 
 /**
- * KnownForCard — "what is this place actually known for, and what
+ * KnownForCard: "what is this place actually known for, and what
  * specific things do customers rave about?" rendered as a compact
  * two-row strip.
  *
@@ -27,9 +27,20 @@ import PlaceSectionLabel, { PlaceDotList } from "./PlaceSectionLabel";
  *     has a phantom label with nothing beneath it)
  *   - Cap at 4 items per row (extraction also caps at 4)
  *   - No "AI" disclaimer in the UI: it's labelled "what people say"
- *     because that's what it is — a summary of the public reviews
+ *     because that's what it is: a summary of the public reviews
  *     Google already shows. We just made it scannable.
+ *   - One section label ("What people say") heads the card. The two rows
+ *     carry plain 14px semibold sentence-case sub-labels, so the card never
+ *     stacks two identical uppercase labels.
  */
+
+function SubLabel({ children }: { children: string }) {
+  return (
+    <p className="text-[0.875rem] font-semibold leading-snug" style={{ color: "var(--app-ink-2)" }}>
+      {children}
+    </p>
+  );
+}
 export default function KnownForCard({
   knownFor,
   customersLoved,
@@ -49,14 +60,14 @@ export default function KnownForCard({
 
       {k.length > 0 && (
         <div className="space-y-1">
-          <PlaceSectionLabel as="p">Known for</PlaceSectionLabel>
+          <SubLabel>Known for</SubLabel>
           <PlaceDotList items={k} />
         </div>
       )}
 
       {c.length > 0 && (
         <div className="space-y-1">
-          <PlaceSectionLabel as="p">Customers loved</PlaceSectionLabel>
+          <SubLabel>Customers loved</SubLabel>
           <PlaceDotList items={c} />
         </div>
       )}

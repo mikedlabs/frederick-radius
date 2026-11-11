@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Play } from "lucide-react";
 import {
   ROW_HELP,
+  ROW_TITLE,
   SettingsRow,
   SettingsSection,
   SettingsSwitch,
@@ -91,13 +92,18 @@ export default function PhoneFeedbackCard() {
         trailing={
           <SettingsSwitch
             checked={enabled && !unavailable}
-            label="Phone feedback"
+            label="Feedback cues"
             disabled={unavailable}
             onClick={toggle}
           />
         }
       >
-        <p className="text-[1rem] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+        {/* A short row title over the shared 14px help line, the same
+            pattern as the other Settings rows. */}
+        <p className={ROW_TITLE} style={{ color: "var(--app-ink)" }}>
+          Feedback cues
+        </p>
+        <p className={`mt-0.5 ${ROW_HELP}`} style={helpStyle}>
           {supportCopy}
         </p>
       </SettingsRow>

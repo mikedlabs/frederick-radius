@@ -88,6 +88,34 @@ describe("event detail artwork presentation", () => {
   });
 });
 
+describe("event detail source row", () => {
+  const EventSourceLinkName = "EventSourceLink";
+  const sourceLinkWrappers = (page: ReactNode) => {
+    const nodes = elements(page);
+    return nodes.filter(node => node.type === "span" && elements(node.props.children as ReactNode).some(child => typeof child.type === "function" && child.type.name === EventSourceLinkName));
+  };
+
+  it("hides the inline official link on desktop when the desktop row's action is the official page", async () => {
+    mocks.resolve.mockResolvedValue({ kind: "live", event: { ...event, venue_place_slug: undefined } });
+    const page = await EventPage({ params: Promise.resolve({ slug: event.slug }), searchParams: Promise.resolve({}) });
+    expect(sourceLinkWrappers(page).map(node => node.props.className)).toEqual(["lg:hidden"]);
+    const official = elements(page).filter(node => node.props.href === event.source_url);
+    expect(official.some(node => elements(node.props.children as ReactNode).some(child => child.props.children === "Official page") || (Array.isArray(node.props.children) && (node.props.children as unknown[]).includes("Official page")))).toBe(true);
+  });
+
+  it("keeps the inline official link at every width when the desktop row leads with another action", async () => {
+    const page = await EventPage({ params: Promise.resolve({ slug: event.slug }), searchParams: Promise.resolve({}) });
+    expect(sourceLinkWrappers(page)).toHaveLength(0);
+    expect(elements(page).some(node => typeof node.type === "function" && node.type.name === EventSourceLinkName)).toBe(true);
+  });
+
+  it("hides the inline official link on desktop for a cancelled event whose announcement is the same page", async () => {
+    mocks.resolve.mockResolvedValue({ kind: "live", event: { ...event, status: "cancelled" } });
+    const page = await EventPage({ params: Promise.resolve({ slug: event.slug }), searchParams: Promise.resolve({}) });
+    expect(sourceLinkWrappers(page).map(node => node.props.className)).toEqual(["lg:hidden"]);
+  });
+});
+
 describe("event detail operational recovery rendering", () => {
   it.each([
     ["timeout", () => new EventResolutionTimeoutError(["live"])],

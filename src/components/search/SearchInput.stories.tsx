@@ -30,6 +30,17 @@ export const EditingAt390: Story = {
     await expect(window.history.state[NATIVE_REQUEST_ENTRY_KEY].draft.query).toBe("");
   },
 };
+/** An empty field at 320px ends its long placeholder with an ellipsis. */
+export const EmptyPlaceholderAt320: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const input = within(canvasElement).getByRole("searchbox", { name: "Search Frederick County" });
+    await expect(getComputedStyle(input).textOverflow).toBe("ellipsis");
+    await expect(input.getBoundingClientRect().right).toBeLessThanOrEqual(
+      canvasElement.ownerDocument.documentElement.clientWidth,
+    );
+  },
+};
 export const UrlRequestAt320: Story = {
   args: { defaultValue: "coffee & tea" },
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },

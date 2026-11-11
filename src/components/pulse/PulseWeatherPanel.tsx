@@ -264,7 +264,7 @@ export default async function PulseWeatherPanel({
             </p>
           </div>
           <div className="shrink-0" style={{ color: onSky }}>
-            <AnimatedSkyGlyph variant={variant} size={64} />
+            <AnimatedSkyGlyph variant={variant} size={64} onDarkSky={sky.tone === "dark"} />
           </div>
         </div>
       </div>

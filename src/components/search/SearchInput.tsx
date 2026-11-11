@@ -70,7 +70,10 @@ export default function SearchInput({
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}
-        className="w-full bg-transparent py-3 text-[16px] outline-none placeholder:text-[color:var(--app-ink-3)]"
+        // min-w-0 lets the field shrink inside the flex row, and the
+        // ellipsis ends a long placeholder cleanly at 320px instead of
+        // slicing a letter at the field edge.
+        className="w-full min-w-0 text-ellipsis bg-transparent py-3 text-[16px] outline-none placeholder:text-ellipsis placeholder:text-[color:var(--app-ink-3)]"
         style={{ color: "var(--app-ink)" }}
       />
       {/* Native GET replaces the query string, so context must be successful

@@ -553,12 +553,15 @@ export default async function SearchPage({
       )}
 
       {query && !suppressLocalHits && (
-        <nav aria-label="Result types" className="flex gap-1 overflow-x-auto border-b" style={{ borderColor: "var(--app-border)" }}>
-          {[["all", "All matches"], ["place", "Places"], ["event", "Events"], ["page", "Tools & areas"]].map(([value, label]) => {
+        // The four tabs fit one 320px line at default text with the short
+        // "All" label and tighter padding below sm. With enlarged text the row
+        // wraps instead of scrolling, so no tab is ever cut at the edge.
+        <nav aria-label="Result types" className="flex flex-wrap gap-x-1 border-b" style={{ borderColor: "var(--app-border)" }}>
+          {[["all", "All"], ["place", "Places"], ["event", "Events"], ["page", "Tools & areas"]].map(([value, label]) => {
             const params = new URLSearchParams(resultParams);
             if (value === "all") params.delete("kind"); else params.set("kind", value);
             const active = (kind || "all") === value;
-            return <Link key={value} href={`/search?${params.toString()}`} aria-current={active ? "page" : undefined} className="min-h-11 shrink-0 border-b-2 px-3 py-3 text-[13px] font-semibold" style={{ borderColor: active ? "var(--app-brand)" : "transparent", color: active ? "var(--app-link)" : "var(--app-ink-2)" }}>{label}</Link>;
+            return <Link key={value} href={`/search?${params.toString()}`} aria-current={active ? "page" : undefined} className="min-h-11 shrink-0 whitespace-nowrap border-b-2 px-2 py-3 text-[13px] font-semibold sm:px-3" style={{ borderColor: active ? "var(--app-brand)" : "transparent", color: active ? "var(--app-link)" : "var(--app-ink-2)" }}>{label}</Link>;
           })}
         </nav>
       )}

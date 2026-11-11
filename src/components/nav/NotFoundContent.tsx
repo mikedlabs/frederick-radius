@@ -27,10 +27,13 @@ export default function NotFoundContent() {
   return (
     <div
       // Plain tool: the page ground is the plain surface token. No wash.
-      className="relative min-h-screen overflow-hidden"
+      // No full-screen height: inside the app shell a 100vh box centered
+      // the content under the top bar and left large blank bands above it
+      // and above the footer. It now starts at ordinary page padding.
+      className="relative overflow-hidden"
       style={{ background: "var(--app-bg)", color: "var(--app-ink)" }}
     >
-      <div className="relative mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-6 px-6 py-16 text-center">
+      <div className="relative mx-auto flex max-w-md flex-col items-center gap-6 px-4 pb-12 pt-6 text-center sm:pt-10">
         <Compass className="h-8 w-8" strokeWidth={1.5} aria-hidden style={{ color: "var(--app-cool-text)" }} />
         <div className="space-y-2">
           <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
@@ -48,7 +51,7 @@ export default function NotFoundContent() {
           </p>
         </div>
         {/* Search is the fastest way forward for someone who landed on a
-            dead link — one field, straight into the ranked results. */}
+            dead link: one field, straight into the ranked results. */}
         <div className="w-full max-w-sm">
           <SearchInput />
         </div>
@@ -62,7 +65,7 @@ export default function NotFoundContent() {
           </Button>
         </div>
 
-        {/* Contextual doorways — a few popular ways back in. */}
+        {/* Contextual doorways: a few popular ways back in. */}
         <nav aria-label="Popular pages" className="flex flex-wrap items-center justify-center gap-2">
           {DOORWAYS.map((d) => (
             <Link

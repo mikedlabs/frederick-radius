@@ -11,6 +11,7 @@ import Plausible from "@/components/analytics/Plausible";
 import DecisionTelemetryObserver from "@/components/analytics/DecisionTelemetry";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
+import SavedAppearanceRestore from "@/components/util/SavedAppearanceRestore";
 import { PLATFORM_BRAND } from "@/lib/platform-brand";
 import { APPEARANCE_BOOTSTRAP } from "@/lib/appearance";
 
@@ -224,6 +225,9 @@ export default function RootLayout({
         >
           Skip to content
         </a>
+        {/* The head bootstrap does not run on a client-built not-found or
+            error shell; this restores the saved appearance there. */}
+        <SavedAppearanceRestore />
         {/* NuqsAdapter — App Router edition. Wraps the tree so any
             client component can call useQueryState to read/write URL
             search params with a typed API. Master UI brief §16 + §20:

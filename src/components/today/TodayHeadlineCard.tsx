@@ -91,8 +91,8 @@ export default function TodayHeadlineCard({
         className="focus-ring-inset group block min-w-0 supports-[selector(:has(*))]:outline-none!"
       >
         {visibleVisual?.presentation === "artwork" ? (
-          <EventArtwork visual={visibleVisual} priority={priority} credit={false}
-            className="mt-4 overflow-hidden rounded-[var(--app-radius-md)]" onUnavailable={unavailable} />
+          <EventArtwork visual={visibleVisual} priority={priority} credit={false} frame="poster"
+            className="mt-4" onUnavailable={unavailable} />
         ) : visibleVisual ? (
           <figure
             className="relative mt-4 aspect-[16/9] w-full overflow-hidden rounded-[var(--app-radius-md)] sm:aspect-[21/9]"
