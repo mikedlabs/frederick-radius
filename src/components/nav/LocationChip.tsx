@@ -110,25 +110,27 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
 
   const scopeTown = scopeTownSlug(scope);
 
-  // The chip label follows the scope first; "near me" borrows the live
-  // geolocation readout so it still reads "Near Brunswick" once granted.
-  // One printed name per area. An unset area is the whole county.
-  let label = scopeLabel(scope);
+  // One printed name per area: the chip shows "Near me", "Whole county" or
+  // the town. For Near me the live state (locating, nearest town, location
+  // off) is carried by the icon and spoken in the accessible name.
+  const label = scopeLabel(scope);
+  let detail: string | null = null;
   let LabelIcon = MapPin;
   let labelColor: string = scope ? "var(--app-ink-2)" : "var(--app-ink-3)";
   if (scope === "nearme") {
     if (state.status === "granted" && nearestMuni) {
       // Miles and feet, through the same helper the other 119 call sites use.
       // This chip was the one place in a Maryland app that reported kilometers.
-      label = nearestMuni.distance_km < 1
-        ? `Near ${nearestMuni.name}`
+      detail = nearestMuni.distance_km < 1
+        ? `near ${nearestMuni.name}`
         : `${formatDistance(nearestMuni.distance_km * 1000)} from ${nearestMuni.name}`;
       LabelIcon = Navigation;
       labelColor = "var(--app-cool-text)";
     } else if (state.status === "loading") {
-      label = "Locating…";
+      detail = "finding your location";
       LabelIcon = Loader2;
     } else if (state.status === "denied") {
+      detail = "location is off";
       LabelIcon = AlertCircle;
       labelColor = "var(--app-warning)";
     } else {
@@ -169,8 +171,8 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
         }}
         aria-expanded={open}
         aria-controls="location-scope-choices"
-        aria-label={`Change town or location scope. Current scope: ${label}`}
-        title={`Town and location: ${label}`}
+        aria-label={`Change town or location scope. Current scope: ${label}${detail ? `, ${detail}` : ""}`}
+        title={`Town and location: ${label}${detail ? `, ${detail}` : ""}`}
         className="inline-flex h-11 min-w-11 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] px-2 text-[13px] font-semibold leading-none transition hover:bg-[var(--app-bg-sunken)] sm:max-w-none sm:justify-start"
         style={{ color: labelColor }}
       >

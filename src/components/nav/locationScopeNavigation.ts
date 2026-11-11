@@ -46,7 +46,9 @@ export function commitLocationScope(next: Scope | null, transport: LocationScope
     // Refining the current Tools workspace must not intercept itself.
     replaceNativeWorkspaceScope(href);
   } else if (NATIVE_HISTORY_ROUTES.has(window.location.pathname)) {
-    window.history.replaceState(null, "", href);
+    // Keep this entry's own state (focus, layer and selection continuity);
+    // Next merges its router fields into whatever is passed here.
+    window.history.replaceState(window.history.state, "", href);
   } else {
     transport.replace(href, { scroll: false });
   }

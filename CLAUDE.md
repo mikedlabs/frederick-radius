@@ -156,11 +156,13 @@ update its implementation, relevant contract and tests together.
   was removed as clutter). A first-time visitor may see one consent sheet
   offering **Use my location** or **Browse county**; it explains the benefit
   before any browser prompt. After that, the shared header location control is
-  the sole Near me / Whole county / town scope control, on the map and on
-  every other page (owner decision 2026-11-11). Area changes go through its
-  writer, `commitLocationScope` in `src/components/nav/locationScopeNavigation.ts`;
-  the older in-page choosers on Today, Search, Events, the map dock and Ask are
-  being retired onto the header control, so do not add another. Tab memory
+  meant to be the sole Near me / Whole county / town scope control, on the map
+  and on every other page (owner decision 2026-11-11). That is in progress:
+  the header control, Today's select and the list-page ScopeBar write through
+  `commitLocationScope` in `src/components/nav/locationScopeNavigation.ts`,
+  while the in-page choosers on Search, Events, the map dock, Ask and /nearby
+  still write the area directly until they are retired. Do not add another
+  chooser, and route any new area write through that writer. Tab memory
   never restores an old area (`src/lib/primary-tab-session.ts`), and the area
   prints as "Near me", "Whole county" or the town's name (`scopeLabel`). The
   remaining exceptions are listed in the Location section of

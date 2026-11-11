@@ -10,7 +10,8 @@ vi.mock("@/hooks/useReversibleHistoryLayer", () => ({
   useReversibleHistoryLayer: () => navigation,
 }));
 vi.mock("@/lib/track", () => ({ track: vi.fn() }));
-vi.mock("@/hooks/useGeolocation", () => ({ readCachedPosition: () => null }));
+const geo = vi.hoisted(() => ({ cached: null as { lat: number; lng: number } | null }));
+vi.mock("@/hooks/useGeolocation", () => ({ readCachedPosition: () => geo.cached }));
 vi.mock("@/hooks/useRecentSearches", () => ({
   useRecentSearches: () => [], useRecentSearchStatus: () => ({ available: true, clearFailed: false }),
   usePushRecentSearch: () => navigation.recent, useClearRecentSearches: () => vi.fn(),
@@ -156,7 +157,8 @@ describe("Find retrieval-first interactions", () => {
 });
 
 describe("Find states the shared area", () => {
-  afterEach(() => setScope(null));
+  // Inner hooks run before the outer unmount, so reset inside act.
+  afterEach(async () => { geo.cached = null; await act(async () => setScope(null)); });
   const field = () => host.querySelector<HTMLInputElement>('input[role="searchbox"]')!;
   const areaLine = () => host.querySelector("[data-find-area]")?.textContent;
 
@@ -176,6 +178,34 @@ describe("Find states the shared area", () => {
     expect(areaLine()).toBe("Coffee · Thurmont");
     await act(async () => setScope("nearme"));
     expect(field().getAttribute("aria-label")).toBe("Ask or find near you");
+  });
+
+  it("refetches when the area changes while Find is open", async () => {
+    await render("coffee"); await tick();
+    expect(requests).toHaveLength(1);
+    await act(async () => setScope("town:thurmont"));
+    await tick();
+    // The endpoint reads the area cookie when a request starts, so the old
+    // area's request is abandoned and a new one goes out.
+    expect(requests[0].signal.aborted).toBe(true);
+    expect(requests).toHaveLength(2);
+  });
+
+  it("says near you when no area is chosen and the browser already shared a location", async () => {
+    geo.cached = { lat: 39.4143, lng: -77.4105 };
+    await render("Gravel & Grind"); await tick();
+    expect(field().getAttribute("aria-label")).toBe("Ask or find near you");
+    await respond(0, [gravel], { qualifiers: { constrained: false }, contextLabel: null });
+    expect(areaLine()).toBe("Near me");
+  });
+
+  it("names the area a near-me question fell back to when no location is usable", async () => {
+    await render("coffee near me"); await tick();
+    await respond(0, [gravel], {
+      qualifiers: { constrained: true, categoryLabel: "Coffee", nearMe: true },
+      nearMeApplied: false, fallbackReason: null, contextLabel: "Whole county",
+    });
+    expect(areaLine()).toBe("Coffee · Location unavailable · not distance-ranked · Whole county");
   });
 
   it("adds the area to a category answer that the server did not scope", async () => {

@@ -47,17 +47,24 @@ or a named municipality. Those three are the names for the area, and an unset
 area reads as **Whole county**. Three older surfaces do not use them yet and
 are being retired with their choosers: the map dock's Where pane ("County"),
 the /nearby filter sheet ("Nearby"), and the short form "County" where the
-narrow header chip and Ask's composer chip cannot fit "Whole county". A location request must explain
-the benefit before the browser permission prompt appears. Declining location
-always leaves a working county or town fallback.
+narrow header chip and Ask's composer chip cannot fit "Whole county". A
+location request must explain the benefit before the browser permission
+prompt appears. Declining location always leaves a working county or town
+fallback.
 
-The area is one shared value, and the header area control is the place to
-change it. Its writer (`commitLocationScope`) stores the value and then
-updates the current page's own `?in=`; Today's area select and the list-page
-ScopeBar use the same writer. The remaining in-page choosers on Search,
-Events, the map dock, Ask and /nearby still write the value directly and are
-being retired onto the header control. Find names the area it searches and
-states it on every answer.
+The area is one shared value. The target, by owner decision on 2026-11-11, is
+that the header area control is the only place to change it. Today that is
+true of the header control, Today's area select and the list-page ScopeBar,
+which all write through `commitLocationScope`: it stores the value and then
+updates the current page's own `?in=`. The in-page choosers on Search,
+Events, the map dock, Ask and /nearby still write the value directly. They
+are being retired onto the header control; until then, do not add another.
+
+Find names the area it actually searches, in its field and on every answer.
+With no area chosen, the search endpoint ranks around a location the browser
+has already shared, so Find says "near you" in that case. When a near-me
+question has no usable location, the answer says so and names the area it
+fell back to.
 
 Tab memory never restores an old area. Returning to Today, Map or Events
 through the tab bar opens the remembered filters in the current shared area,

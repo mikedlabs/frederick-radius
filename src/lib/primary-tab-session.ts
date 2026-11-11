@@ -132,14 +132,16 @@ function matchesResumeHref(intent: PrimaryTabSnapshot, raw: string): boolean {
   return `${expected.pathname}${expected.search}${expected.hash}` === raw;
 }
 /** The same root view under a different area. The area param keeps its
- * position, so the destination's own URL writer has nothing to reorder, and a
- * map camera, task area or focused place chosen under the old area is dropped
- * so the map frames the current area instead. */
+ * position, so the destination's own URL writer has nothing to reorder, and
+ * whatever placed the map in the old area is dropped so the map frames the
+ * current area instead: the camera (`c`), a deep-link centre (`at`, which the
+ * map prefers over the area's own centre), a task area, and a focused place
+ * or event. */
 function rebaseOnArea(href: string, scope: Scope | null): string {
   const url = new URL(href, BASE);
   if (scope) url.searchParams.set(SCOPE_PARAM, scopeToParam(scope));
   else url.searchParams.delete(SCOPE_PARAM);
-  if (url.pathname === "/map") for (const key of ["c", "area", "place"]) url.searchParams.delete(key);
+  if (url.pathname === "/map") for (const key of ["c", "at", "area", "place", "event"]) url.searchParams.delete(key);
   return normalizePrimaryTabHref(`${url.pathname}${url.search}${url.hash}`) ?? url.pathname;
 }
 /** Called only by a plain primary-tab activation, never on route arrival. */

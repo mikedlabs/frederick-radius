@@ -58,6 +58,12 @@ describe("bounded primary-tab session memory", () => {
     setScope("town:thurmont");
     expect(preparePrimaryTabResume("/map", undefined, now + 3)?.href).toBe("/map?in=thurmont");
   });
+  it("drops a deep-link centre and a focused event with the camera when the area changes", () => {
+    setScope("town:brunswick");
+    rememberPrimaryTab("/map?in=brunswick&at=39.3140%2C-77.6280&event=brunswick-fall-fest&layers=parks", 0, undefined, now);
+    setScope("town:thurmont");
+    expect(preparePrimaryTabResume("/map", undefined, now + 1)?.href).toBe("/map?in=thurmont&layers=parks");
+  });
   it("treats never choosing an area and choosing Whole county as the same area", () => {
     rememberPrimaryTab("/map?c=-77.4%2C39.4%2C12&layers=parking", 0, undefined, now);
     // Reset on Events and the header's Whole county row both store "county".

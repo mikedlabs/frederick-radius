@@ -377,6 +377,8 @@ export default function SearchOverlay({
   const [results, setResults] = useState<SearchResult[]>([]);
   // The shared area, so the field and the result line say where Find looks.
   const area = useSyncExternalStore(subscribeArea, getScope, () => null);
+  // With no area chosen, /api/search ranks around a location the browser has
+  // already shared, so that is the area Find is actually searching.
   const [searchMeta, setSearchMeta] = useState<
     (QualifiedSearchIndexResult["meta"] & { liveEventsUnavailable?: boolean; eventCoverage?: SearchEventCoverage }) | null
   >(null);
@@ -391,6 +393,7 @@ export default function SearchOverlay({
   const [retryNonce, setRetryNonce] = useState(0);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [coords, setCoords] = useState<{ lng: number; lat: number } | null>(null);
+  const searchedArea: Scope | null = area ?? (coords ? "nearme" : null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -524,7 +527,9 @@ export default function SearchOverlay({
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [open, query, coords, retryNonce]);
+    // `area` is not read here: /api/search reads the area cookie when the
+    // request starts, so a header change while Find is open must refetch.
+  }, [open, query, coords, retryNonce, area]);
 
   // Report zero-result searches. The queries people type and get nothing
   // for are the app's real backlog, so the query text rides with the event
@@ -767,7 +772,7 @@ export default function SearchOverlay({
               submitCommand();
             }}
             placeholder="A place, plan, service, or quick need…"
-            aria-label={findFieldLabel(area)}
+            aria-label={findFieldLabel(searchedArea)}
             // Results are real links, not ARIA listbox options. Keeping the
             // input a native search field avoids the invalid pattern of a
             // focusable link nested inside role=option. Tab moves through
@@ -920,9 +925,9 @@ export default function SearchOverlay({
                   ? searchMeta.nearMeApplied
                     ? `Nearest first${searchMeta.contextLabel ? ` · ${searchMeta.contextLabel}` : ""}`
                     : searchMeta.fallbackReason === "outside-county"
-                      ? "Location is outside Frederick County · not distance-ranked"
-                      : "Location unavailable · not distance-ranked"
-                  : searchMeta?.contextLabel ?? scopeLabel(area),
+                      ? `Location is outside Frederick County · not distance-ranked · ${searchMeta.contextLabel ?? scopeLabel(searchedArea)}`
+                      : `Location unavailable · not distance-ranked · ${searchMeta.contextLabel ?? scopeLabel(searchedArea)}`
+                  : searchMeta?.contextLabel ?? scopeLabel(searchedArea),
               ].filter(Boolean).join(" · ")}
             </p>
           )}

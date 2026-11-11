@@ -61,6 +61,12 @@ describe("the one area writer", () => {
     expect(router.replace).not.toHaveBeenCalled();
     expect(router.refresh).not.toHaveBeenCalled();
   });
+  it("keeps the current entry's own history state when it rewrites the map's area", () => {
+    history.replaceState({ focus: "baker-park", layer: "parking" }, "", "/map?in=thurmont&layers=parking");
+    commitLocationScope("county", transport());
+    expect(window.location.search).toBe("?in=county&layers=parking");
+    expect(history.state).toEqual({ focus: "baker-park", layer: "parking" });
+  });
   it("replaces other scoped routes through the router without scrolling", () => {
     history.replaceState(null, "", "/events?in=thurmont&lens=week");
     const router = transport();
