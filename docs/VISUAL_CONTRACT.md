@@ -19,6 +19,15 @@ reference, even when the CSS is identical. The spec includes the platform in
 every filename, and the manual workflow keeps capture separate from compare.
 No visual job runs on every pull request yet.
 
+> **Note, November 10, 2026.** Any reviewed Linux/Chromium references in
+> `e2e/visual-contract.spec.ts-snapshots/` predate the interface update the
+> owner approved on November 10, 2026, which changed corners, rows, chrome and
+> the Find, Ask and map surfaces. Treat them as stale. Recapture them with the
+> **Visual contract candidates** workflow in `capture` mode, review every PNG,
+> and promote the approved Linux images through the steps below before a
+> `compare` result is allowed to block CI again. A Darwin capture does not
+> replace them.
+
 ## Review and promote the Linux references
 
 1. Run **Visual contract candidates** from GitHub Actions with `capture`.

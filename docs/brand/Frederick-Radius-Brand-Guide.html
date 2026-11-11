@@ -98,6 +98,8 @@
     .system-legend p{font-size:11px;line-height:1.35;color:var(--ink)}
     .social-grid{display:grid;grid-template-columns:1.15fr .75fr .75fr;gap:18px;align-items:start}
     .social-grid img{width:100%;display:block;border-radius:12px;box-shadow:0 12px 28px rgba(19,37,62,.16)}
+    .shape-note{font-size:11.5px;line-height:1.4;margin-top:4px}
+    .shape-note code{font-family:inherit;font-weight:650;color:var(--ink);white-space:nowrap}
     .do-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
     .do{border-top:4px solid var(--forest);padding-top:14px}.dont{border-top:4px solid var(--brick);padding-top:14px}
     @page{size:13.333in 7.5in;margin:0}
@@ -244,8 +246,8 @@
           <div class="role-chip"><div class="role-name">Metadata · 13</div><div style="font-size:13px">Updated 8:42 AM</div></div>
           <div class="role-chip"><div class="role-name">Body · 15</div><div style="font-size:15px">Useful detail</div></div>
           <div class="role-chip"><div class="role-name">Reading · 16</div><div style="font-size:16px">Current conditions</div></div>
-          <div class="role-chip"><div class="role-name">Item title · 20</div><div style="font-size:20px;font-weight:600">Baker Park</div></div>
-          <div class="role-chip"><div class="role-name">Page title · 32</div><div style="font-size:32px;line-height:1;font-weight:650">Today</div></div>
+          <div class="role-chip"><div class="role-name">Row title · 17</div><div style="font-size:17px;font-weight:600">Baker Park</div></div>
+          <div class="role-chip"><div class="role-name">Page title · 32</div><div style="font-size:32px;line-height:1;font-weight:800">Today</div></div>
         </div>
         <div class="input-spec"><span>Ask Radius</span><span class="note">Input · 16 px minimum</span></div>
         <p class="note" style="margin-top:8px;font-size:10px">Desktop handoff: variable upright and italic. Compatibility set: 400, 500, 600, and 700 with matching italics. Map canvas labels use Mapbox cartographic type; Radius map controls use System sans. No new font download is needed.</p>
@@ -286,6 +288,24 @@
     </div>
     <div class="rule"></div>
     <p style="font-size:21px;color:var(--ink)">Beer, Live conditions, All tools, and the rest of the product keep one identity. Beer may use Ochre for taste selections, flagship markers, and beer metadata, but its page uses the same chosen light or dark appearance, photography, and clean surfaces.</p>
+    <div class="folio">Product system</div>
+  </section>
+
+  <section class="page">
+    <div class="kicker">07B · Interface shape</div>
+    <h2 style="font-family:'Public Sans',Arial,sans-serif;font-size:32px;line-height:1.06;font-weight:650;letter-spacing:-.4px;margin-top:18px">Interface shape (owner-approved November 10, 2026)</h2>
+    <p class="note" style="margin-top:10px;max-width:1080px">The owner approved the "Plain tool, with the coral plate" direction on November 10, 2026. It changes the interface shape only. The palette, typefaces, and brand version stay as they are.</p>
+    <div class="grid2" style="margin-top:16px;gap:12px 40px">
+      <div><h3>Rows, not cards.</h3><p class="note shape-note">Ordinary content sits on the page ground as rows separated by a 1 px hairline (<code>--app-border</code>) or by space. Do not put a bordered, filled, or shadowed card around ordinary content, and do not add gradients or glows. A bordered surface is still right for form fields, menus, sheets, and floating layers over the map.</p></div>
+      <div><h3>Radius scale.</h3><p class="note shape-note"><code>--app-radius-sm</code> is 4 px, for small markers, focus outlines inside rows, and the coral time block. <code>--app-radius-md</code> is 6 px, for fields, buttons, menus, and row thumbnails. <code>--app-radius-lg</code> is 8 px, for sheets, drawers, and floating panels over the map. <code>--app-radius-xl</code> is 10 px, for a rare larger feature surface.</p></div>
+      <div><h3>Capsules.</h3><p class="note shape-note">A full capsule appears only on compact filter chips, status badges, and toggle switches. Buttons, navigation, rows, and informational tags are never capsules. An informational tag is plain text.</p></div>
+      <div><h3>Type carries the hierarchy.</h3><p class="note shape-note">Page titles are heavy System sans. Row titles are 17 px at weight 600. Meta lines are 14 px in muted ink. Section labels are 13 px uppercase with open letter spacing. Libre Caslon Display does not appear in product UI.</p></div>
+      <div><h3>Flat chrome.</h3><p class="note shape-note">Top bar icons are unboxed ink glyphs. The bottom bar is flat and attached to the screen edge, and a 2 px Deep Coral rule marks the active tab.</p></div>
+      <div><h3>One bold moment per page.</h3><p class="note shape-note">A page may hold one solid Deep Coral block. On Today it is the coral name plate over the lead photograph. On Events it is the lead event's time block. No other Deep Coral field appears on the page except the single filled coral action the view already has, such as Directions on a place page. The name plate is a solid block that overlaps the photograph's edge; it is not a color wash over the image.</p></div>
+      <div><h3>Media in rows.</h3><p class="note shape-note">A row shows a photo thumbnail only when a real photograph exists. A row without one keeps the same media slot width, so titles stay aligned down the list, and shows its category glyph in muted ink (<code>--app-ink-3</code>) at about 24 px, level with the first line of the title. That glyph has no background, border, tint, or rounded tile.</p></div>
+      <div><h3>Text link colors.</h3><p class="note shape-note">Coral text uses <code>--app-link</code> or <code>--app-brand-text</code>. Creek text uses <code>--app-cool-text</code>, and Catoctin Forest text uses <code>--app-forest-text</code>. Never use <code>--app-brand-press</code>, <code>--app-brand</code>, or <code>--app-cool</code> directly as a text color, because they fail contrast in dark appearance. White text on a coral fill sits on <code>--app-brand-press</code> and uses <code>--app-on-brand</code>.</p></div>
+    </div>
+    <p class="note" style="margin-top:12px;color:var(--ink);font-weight:600">A rounded, bordered card around ordinary content is a regression from this direction.</p>
     <div class="folio">Product system</div>
   </section>
 

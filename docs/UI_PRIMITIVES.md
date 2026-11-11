@@ -1,63 +1,200 @@
 # UI Primitives & the Cohesion Rollout
 
-> The app already had a good design system — it just wasn't adopted. The
+> The app already had a good design system, but it was not adopted. The
 > canonical `FilterChip` existed but was used in 3 files while the same
-> toggle-pill was hand-rolled ~40 times with five slightly different
-> stylings. This is the standard + the checklist to finish adopting it
-> everywhere ("adopt once → everywhere", from the UX audit).
+> toggle pill was hand-rolled about 40 times with five slightly different
+> stylings. This is the standard and the checklist to finish adopting it
+> everywhere ("adopt once, then everywhere", from the UX audit).
+
+## The shape these primitives follow (November 10, 2026)
+
+The owner approved the "Plain tool, with the coral plate" interface on
+November 10, 2026. The canonical rules are in the Interface shape section of
+[`docs/brand/BRAND_GUIDE.md`](brand/BRAND_GUIDE.md), and the surface, radius
+and shadow tables are in [`docs/STYLE.md`](STYLE.md). Content is rows on the
+page ground separated by a hairline or by space. Fields and buttons use the
+6px `--app-radius-md`. A full capsule survives only on compact filter chips,
+status badges and toggle switches. Type carries the hierarchy. A page has one
+solid Deep Coral block and, at most, its one filled coral action. A row shows
+a thumbnail only when a real photograph exists; otherwise it keeps the media
+slot and shows a plain `--app-ink-3` glyph with no tile behind it. A rounded,
+bordered card around ordinary content is a regression. The primitives below
+already draw this shape, so reuse them before writing new markup.
 
 ## The canonical interactive primitives
 
-### `Pill` — standalone toggle / intent chip
-`src/components/ui/Pill.tsx`. One primitive for every "tap to narrow /
-pivot" control.
+### `SectionHeading`: the strong title above a group of rows
+`src/components/ui/SectionHeading.tsx`. A bold system sans title (20px at
+`lg`, 16px at `sm`), an optional quiet tabular count, one hairline that fills
+the remaining width, and an optional trailing action (`href` for a "See all"
+link, `onCtaClick` for a button, or any `trailing` control). It has no accent
+tick, box or tinted band; the title and the rule carry the break. The action
+text mixes the route accent (`--section-accent`, else `--app-brand`) toward
+ink, and a context can override it with `--app-heading-action`.
 
 ```tsx
-<Pill tone="brand" active={on} onClick={toggle} icon={<Zap className="h-3.5 w-3.5" aria-hidden />} count={3}>Music</Pill>
-<Pill tone="ink" size="sm" href="/today?t=tonight" active={mode==="tonight"}>Tonight</Pill>
+<SectionHeading title="Open now" count={12} href="/places?open=1" />
 ```
-- **tones:** `brand` (selected facet) · `cool` (town/place lane) · `ink`
-  (the "when?" lane). The unused `prominent` tone was removed with the
-  internal styleguide page, its only caller.
-- **`href`** renders a Next `<Link>`. While its navigation is pending the
-  pill shows an inset ring, and a spinner replaces the icon when an
-  `icon` was passed. Without `href` it renders a `<button>` with
-  `aria-pressed`, `onClick` and haptics.
-- **`bare`** is for chip rows inside a shared elevated container.
-  Inactive chips are transparent with no border of their own. No
+- Use it for a titled group of results on a list page.
+- Do not use it for the small uppercase label between sections of a detail
+  page; that is `PlaceSectionLabel`. Do not wrap it in a card or add a
+  colored tick.
+
+### `PlaceSectionLabel` and `PlaceDotList`: detail page labels and facts
+`src/components/place/PlaceSectionLabel.tsx`. `PlaceSectionLabel` is the
+13px uppercase system sans label with `0.1em` tracking in `--app-ink-3`,
+rendered as `h2`, `h3` or `p`. The page draws one hairline between sections,
+so the label never brings its own rule, tick or box. Its class string is
+exported as `PLACE_SECTION_LABEL_CLASS` for a label that must be built by
+hand. `PlaceDotList` renders informational items (what a place is known for,
+who it suits) as one line of 15px ink text separated by middle dots. Each dot
+is bound to the item before it, so a wrapped line never starts with one.
+
+- Use the label for each section of a place page and for any detail page
+  that follows the same ruled layout.
+- Use `PlaceDotList` whenever a set of facts would otherwise be drawn as
+  tags. Facts are not controls, so they are never capsules.
+- Do not use the label as a list heading with an action; that is
+  `SectionHeading`.
+
+### `Pill`: the compact filter chip
+`src/components/ui/Pill.tsx`. The one capsule-shaped control, for a "tap to
+narrow or pivot" choice. An unselected chip is a hairline
+`--app-control-border` outline on the page ground. A selected chip is a
+solid fill, ink by default, so coral stays reserved for the page's one bold
+block and one filled action. The box is a real 44px minimum in both
+dimensions, so it survives a clipped scrolling rail.
+
+```tsx
+<Pill active={on} onClick={toggle} icon={<Zap className="h-3.5 w-3.5" aria-hidden />} count={3}>Music</Pill>
+<Pill size="sm" href="/today?t=tonight" active={mode==="tonight"}>Tonight</Pill>
+```
+- **tones:** `ink` is the default and the normal selected state. `cool`
+  is a Creek fill for a town or place lane. `brand` is a press coral fill
+  for a caller that deliberately needs it. Do not use it on an ordinary
+  filter, because it would add a second coral field to the page.
+- **`href`** renders a Next `<Link>` with `aria-current`. While its
+  navigation is pending, a spinner replaces the icon when an `icon` was
+  passed. Without `href` it renders a `<button>` with `aria-pressed`,
+  `onClick` and haptics.
+- **`bare`** drops the outline for chip rows inside a shared container. No
   production surface uses it today.
 - **`icon`** takes a rendered element such as
-  `<Zap className="h-3.5 w-3.5" aria-hidden />`, not the component
-  itself, because a server component cannot pass a function to this
-  client component. **`count`** is a tone-aware badge. **`size`** is
-  `sm` or `md`.
+  `<Zap className="h-3.5 w-3.5" aria-hidden />`, not the component itself,
+  because a server component cannot pass a function to this client
+  component. **`count`** is a tone-aware badge. **`size`** is `sm` or `md`.
+- Do not use `Pill` for an ordinary action, navigation, a row, or an
+  informational tag. Those are `Button`, a text link, a `Row`, or plain
+  text.
 
-### `Row` / `RowList` / `IconTile` — dense directory rows
-`src/components/ui/Row.tsx`. The antidote to "directory of big cards
-that goes on forever." A `RowList` is one elevated, rounded container
-with hairline dividers; each `Row` is a ~56px scannable line
-(leading icon/thumb + title + subtitle + trailing meta + chevron).
-Server-component safe. For generic directory data (parks, trails,
-amenities) — use `PlaceCard variant="row"` for place data with photos.
+### `FilterChip`: a single-select facet
+`src/components/ui/FilterChip.tsx`. A thin wrapper over `Pill` at
+`size="sm"` with the default ink tone: an outline when off, an ink fill when
+on, and an optional count so a person sees how much each choice holds before
+tapping. Use it in facet rows (cuisine, saved lists, the Radius builder). Do
+not use it as a tab bar or as a navigation link.
+
+### `Button`: the canonical action
+`src/components/ui/Button.tsx`. Flat, with the 6px `--app-radius-md` corner,
+a 44px minimum height at every size, and no gloss, lip, glow or lift. Pass
+`href` for a Next link; otherwise it renders a real `<button>` with
+`loading`, `disabled` and `aria-pressed`. It forwards
+`data-decision-action`.
+
+- **`primary`** is the one filled coral action a view may have: white
+  (`--app-on-brand`) on `--app-brand-press`. Use it at most once per view.
+- **`secondary`** is an outlined control on the page ground with a
+  `--app-control-border` edge. This is the normal second action.
+- **`quiet`** is text with a sunken hover ground.
+- Do not make a button a capsule, and do not hand-build a coral fill with
+  `--app-brand`.
+
+### `SortDropdown`: a single-select menu
+`src/components/ui/SortDropdown.tsx`. A field-shaped trigger (6px corner,
+`--app-control-border` edge) that opens a menu of sort choices. The menu is
+an opaque `--app-bg-elevated-solid` popover with a hairline edge, the 6px
+corner and `--app-shadow-3`, because it really sits above the page. The
+current choice is ink on the sunken ground with a check, not a coral tint.
+Escape, an outside press and tabbing away close it. State belongs to the
+caller.
+
+- Use it in a list page toolbar beside a count or a layout toggle.
+- For one choice from a long list inside a form, a native `<select>` is
+  simpler. Stop and ask before writing new `menu` or `listbox` markup.
+
+### `EmptyState`: an honest empty result
+`src/components/ui/EmptyState.tsx`. Plain text on the page ground under one
+hairline: a 17px semibold title with a small inline icon, an optional 14px
+body, one outlined 6px action, and an optional underlined secondary text
+link. `tone` colors only the icon (`quiet`, `brand` through
+`--app-brand-text`, or `positive` through `--app-forest-text`). There is no
+box, halo or gradient.
+
+- The title is a complete sentence that says what is true ("Nothing on the
+  calendar for tonight.").
+- Do not add a second button, and do not put the empty state in a card.
+
+### `Row` / `RowList` / `IconTile`: dense directory rows
+`src/components/ui/Row.tsx`. A `RowList` is a run of ruled rows on the page
+ground, closed by one hairline above and below, with no rounded container or
+lift. Each `Row` is at least 56px tall, with a leading slot, a 17px semibold
+title, a 14px subtitle, a quiet tabular `meta`, and a chevron (or an external
+glyph) when it links somewhere. It is server-component safe. Use it for
+generic directory data (parks, trails, amenities, contacts). Use
+`PlaceCard variant="row"` for place data with photos and hours, and
+`EventRow` for events.
 
 ```tsx
 <RowList>
   {parks.map((p) => (
     <Row key={p.id} href={`/map?at=${p.lat},${p.lng}`}
-         leading={<IconTile icon={Trees} tone="var(--app-brand-2)" />}
+         leading={<Trees className="h-6 w-6" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />}
          title={p.name} subtitle={`${kind} · ${p.address}`} meta={`${p.acres} ac`} />
   ))}
 </RowList>
 ```
-Pair with `CollapsibleSection` to collapse long lists by group (largest
-group `defaultOpen`, rest tucked away, choice persisted).
+- The leading slot holds a real photograph thumbnail when one exists, and
+  otherwise a plain category glyph in `--app-ink-3` at about 24px with no
+  background. Keep the slot the same width down the list so titles align.
+- `IconTile` still draws a soft gray tile, which the November 10 media rule
+  retires for lists. Use a plain glyph in new rows until `IconTile` itself
+  is flattened.
+- Pair it with `CollapsibleSection` to collapse long lists by group (the
+  largest group `defaultOpen`, the rest tucked away, the choice persisted).
+- Do not add a gap between rows or wrap a row in a card; the hairline is
+  the separator.
 
-### `BottomSheet` — the shared progressive-detail shell
+### `EventRow`: one event in any list
+`src/components/event/EventRow.tsx`. The shared event row: a left time
+column (the start clock with a smaller meridiem, then the date unless the
+group heading already states the day), the facts (an optional category,
+live or status eyebrow, the title as the event link, the venue, and a timing
+note such as "Until 9:00 PM"), and an optional right-hand thumbnail placed by
+the row grid. It carries the decision telemetry attributes
+(`data-decision-*`) and the stable `data-event-*` hooks that earlier card
+contracts used.
+
+- **`lead`** turns the time column into the solid Deep Coral block, the one
+  bold field on Events. Set it on one row per page at most. Every other row
+  keeps an ink time column.
+- **`media`** is passed only when an approved photograph exists. A row
+  without one stays purely typographic. Its time column already holds the
+  leading position, so it needs no glyph.
+- **`banner`** places a full-width picture above the facts for a pictured
+  lead.
+- Use it on Today, Events, Saved and the map list. Do not rebuild an event
+  card, and do not give a second row the coral block.
+
+### `BottomSheet`: the shared progressive-detail shell
 `src/components/ui/BottomSheet.tsx` (app-like pass, phase 2). ONE
-dismissal grammar for every sheet built on it: spring up, drag-down / backdrop-tap /
-ESC to dismiss, focus trap + restore, body scroll lock. Content comes in
-via a render prop that receives `dismiss`; pair with the exported
-`SheetHandle` for the labeled Close row.
+dismissal grammar for every sheet built on it: spring up, drag down, tap the
+backdrop or press Escape to dismiss, with a focus trap and restore and a
+body scroll lock. Content comes in via a render prop that receives
+`dismiss`; pair with the exported `SheetHandle` for the labeled Close row.
+A sheet is a real layer above the page, so it keeps its surface
+(`--app-bg-elevated-solid`), the 8px `--app-radius-lg` top corners, a
+hairline top edge and `--app-shadow-3`. Content inside it still follows the
+row rules, so do not put cards inside a sheet.
 
 ```tsx
 <BottomSheet present={Boolean(item)} onClose={clear} ariaLabel={item?.name ?? "Details"}>
@@ -80,7 +217,9 @@ via a render prop that receives `dismiss`; pair with the exported
     `onOpenChange`. A controlled drawer that passes `historyLayerId`
     closes in place on the browser Back button. Leave the id off only
     when the route itself owns history. Beer, Fair, Food trucks, Plan,
-    the map selection surfaces and `InterceptedDrawer` use it.
+    the map selection surfaces and `InterceptedDrawer` use it. It draws
+    the same 8px top corners and hairline edge as `BottomSheet`, with the
+    deeper `--app-elev-3` layer shadow and a 44px outlined close control.
   - When you extend an existing surface, keep the shell it already uses.
     The docs record no rule for choosing a shell on a new surface, and
     existing usage does not split cleanly (`BeerSheet` shows one beer in
@@ -97,8 +236,8 @@ via a render prop that receives `dismiss`; pair with the exported
     `src/lib/scroll-lock.ts` outside React effects). The document
     scrolls on `html`, so setting `document.body.style.overflow` does
     nothing here.
-- Event side: `EventSheetProvider` (mounted in the app layout) +
-  `EventSheetBoundary` wire whole surfaces by event delegation — cards
+- Event side: `EventSheetProvider` (mounted in the app layout) and
+  `EventSheetBoundary` wire whole surfaces by event delegation. Rows
   keep their real `/events/[slug]` anchors; a plain left-click opens the
   sheet, modified clicks and unknown slugs fall through to navigation.
   `fetchMissing` mode (used by /today, /live-music) opens on a skeleton
@@ -128,21 +267,37 @@ notifyError({ title: "That did not save.", description, onRetry });
 - Sonner's defaults are a recognizable look of their own. Check any new
   toast variant in dark appearance.
 
-### Other canonical pieces (already existed — keep using)
-`Button` (`src/components/ui/Button.tsx`, the canonical action, with
-`primary`, `secondary` and `quiet` variants), `Chip` (tonal display
-pill, non-interactive),
-`CollapsibleSection` (hide-when-not-needed group wrapper),
-`SectionHeading`, `EmptyState`, the `.text-*`/`.display-*` type scale,
-`.deck-card`. The weight rule: 400 quiet · 500 labels · 600 titles ·
-700 numerics only.
+### `MobileActionBar`: the primary actions on a detail page
+`src/components/ui/MobileActionBar.tsx`. On phones it replaces `BottomNav` on
+place and event detail pages and pins the key actions (directions, call,
+tickets, calendar, save) within thumb reach. It is a flat bar attached to the
+screen's bottom edge: the page ground with one top hairline, and no floating
+offset, card, radius or shadow. Its height matches `--app-bottomnav-reserve`
+above the bottom safe area, so toasts and the feedback trigger clear it as
+they clear the tab bar. `MobileBarLink` with `primary` is the one filled
+coral cell (white on `--app-brand-press`); every other cell is quiet ink text
+under its icon. `MobileBarControl` wraps a reused client control such as
+`SaveButton`. Link cells forward `data-decision-action`.
 
-### Directory density — done
+- Give a bar at most one `primary` cell, and only when the page has no other
+  filled coral action.
+- Do not stack it above `BottomNav` or add a second floating action bar.
+
+### Other canonical pieces (already existed, keep using)
+`CollapsibleSection` (a group wrapper that hides what is not needed) and the
+`.text-*`/`.display-*` type scale. `Chip`, `TrustChip` and `FreshnessChip`
+still draw informational tags as tinted capsules, which the November 10 rule
+retires. Render a new informational tag as plain text, and treat those three
+as pending conversion rather than as a pattern to copy. The weight rule is
+400 for quiet text, 500 for labels, 600 for row titles, and 700 or heavier
+for page and section titles and numerics.
+
+### Directory density: done
 `parks` (10,680px → 1,682px) and `trails` (~1,673px) rebuilt from
 big map-thumbnail card grids to dense `Row` + collapsed-by-town
-`CollapsibleSection`. These were the two true "card dump" pages; the
-other long surfaces (parking, amenities, transit, places) are
-editorial guides or already use compact rows — left as-is by design.
+`CollapsibleSection`. These were the two true "card dump" pages. The
+other long surfaces (parking, amenities, transit, places) are editorial
+guides or already use compact rows, and were left as they are by design.
 
 ## Rollout status
 
@@ -181,4 +336,4 @@ Convert when the control is a standard toggle/intent pill or a mode
 tablist. **Don't** force-convert when a per-instance style is doing real
 work (a positive-tone outline toggle, a control that floats over the map
 with a custom backdrop, nav active states). Cohesion is shared
-vocabulary where it fits — not one mold for everything.
+vocabulary where it fits, not one mold for everything.
