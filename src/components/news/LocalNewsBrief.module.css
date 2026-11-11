@@ -107,6 +107,12 @@
   border-top: 1px solid var(--app-border);
 }
 
+/* After the headline list, the last story's own hairline is the divider, so
+   the official updates do not add a second line under it. */
+.stories + .official {
+  border-top: 0;
+}
+
 .summary {
   display: flex;
   align-items: center;

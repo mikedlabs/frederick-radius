@@ -9,6 +9,7 @@ import {
   eatBeforePhrase,
 } from "@/lib/event-pairings";
 import type { EventParkingDecision } from "@/lib/events/parking";
+import PlaceSectionLabel from "@/components/place/PlaceSectionLabel";
 
 /**
  * EventSmartPairings — the "decision layer" card that sits high on
@@ -80,12 +81,7 @@ export default async function EventSmartPairings({
       className="max-w-[720px] border-t pt-4"
       style={{ borderColor: "var(--app-border)" }}
     >
-      <p
-        className="text-[13px] font-semibold uppercase tracking-[0.06em]"
-        style={{ color: "var(--app-ink-2)" }}
-      >
-        Around the event
-      </p>
+      <PlaceSectionLabel as="p">Around the event</PlaceSectionLabel>
       <ul className="mt-1.5 space-y-1.5">
         {weather && (
           <li className="flex items-start gap-2.5 text-[13px] leading-snug" style={{ color: "var(--app-ink)" }}>
