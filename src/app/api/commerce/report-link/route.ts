@@ -3,7 +3,7 @@
  *
  *   POST { placeSlug, placeName?, linkRef?, url?, provider?, linkType?, note? }
  *
- * Unauthenticated + fail-soft, like /api/saved. Writes to commerce_link_reports
+ * Unauthenticated + fail-soft. Writes to commerce_link_reports
  * (a plain queue, NOT community_reports — a broken link is place metadata, not a
  * map pin). If the table isn't migrated or the DB is absent, it degrades to a
  * benign ok:false so the UI can still say "thanks" without a hard error.

@@ -444,7 +444,7 @@ export async function getChartIncidentsFrederickResult(
   }
 }
 
-/** Compatibility wrapper for map, Today, and notification consumers. */
+/** Compatibility wrapper for map and Today consumers. */
 export async function getChartIncidentsFrederick(
   options: Parameters<typeof getChartIncidentsFrederickResult>[0] = {},
 ): Promise<ChartIncident[]> {

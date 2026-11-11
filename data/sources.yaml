@@ -1628,9 +1628,8 @@ sources:
       redistribution terms are confirmed, then set PARKING_OCCUPANCY_URL
       (optionally PARKING_OCCUPANCY_KEY). The runtime loader
       src/lib/integrations/parking-live.ts then lights up the /parking live
-      badges and the /api/cron/parking-alerts fanout. Disabled = graceful
-      no-op, no fabricated counts. (The predictive
-      /api/cron/parking-forecast nudge runs without this feed.) The pipeline schema/transform here remain the
+      badges. Disabled = graceful no-op, no fabricated counts. The pipeline
+      schema/transform here remain the
       batch-ingest mirror of that same model. pending_review by design.
 
   - id: transit_gtfs

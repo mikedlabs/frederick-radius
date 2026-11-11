@@ -5,7 +5,6 @@ import { Check, X, Inbox, Flag } from "lucide-react";
 import { getDb, getSql } from "@/lib/db/client";
 import { submissions } from "@/lib/db/schema";
 import { feedbackSourcePath } from "@/lib/feedback-source-path";
-import OwnerAlertsCard from "@/components/admin/OwnerAlertsCard";
 import {
   AdminShell,
   Section,
@@ -46,9 +45,7 @@ type Data = {
   pendingTotal: number;
   /** The newest resolved notes, for the short log under the inbox. */
   resolved: FeedbackRow[];
-  pushDevices: number;
   followCount: number;
-  saveCount: number;
   reportsPending: number;
   /** Load-time epoch ms; components stay pure by reading time from here. */
   now: number;
@@ -65,7 +62,7 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
     // Sequential on purpose: getDb() talks to Supavisor transaction pooling
     // with max:1 + prepare:false, and concurrent queries (Promise.all) get
     // pipelined down the one pooled connection, which Supavisor does not
-    // answer, so the render hangs. One-at-a-time always completes. The four
+    // answer, so the render hangs. One-at-a-time always completes. The
     // counts travel as one statement.
     const pending = await db
       .select()
@@ -82,10 +79,8 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
     const counts = (
       await raw`
         select
-          (select count(*)::int from push_subscriptions) as push_devices,
           (select count(*)::int from submissions where kind = 'feedback' and status = 'pending') as feedback_pending,
           (select count(*)::int from follows) as follow_count,
-          (select count(*)::int from saved_events) as save_count,
           (select count(*)::int from community_reports where status = 'pending') as reports_pending
       `
     )[0] as Record<string, number>;
@@ -96,9 +91,7 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
         // Never report fewer waiting notes than the page is about to show.
         pendingTotal: Math.max(counts.feedback_pending ?? 0, pending.length),
         resolved,
-        pushDevices: counts.push_devices ?? 0,
         followCount: counts.follow_count ?? 0,
-        saveCount: counts.save_count ?? 0,
         reportsPending: counts.reports_pending ?? 0,
         now,
       },
@@ -159,19 +152,13 @@ function Dashboard({ data }: { data: Data }) {
   return (
     <>
       <section className="mt-6">
-        <OwnerAlertsCard />
-      </section>
-
-      <section className="mt-6">
         <SectionLabel>The vitals</SectionLabel>
         <StatCards
           cols={3}
           items={[
             { value: pendingTotal, label: "Feedback waiting", tone: pendingTotal > 0 ? "warning" : "positive" },
             { value: data.reportsPending, label: "Reports pending", tone: data.reportsPending > 0 ? "warning" : "positive" },
-            { value: data.pushDevices, label: "Push devices" },
             { value: data.followCount, label: "Follows" },
-            { value: data.saveCount, label: "Event saves" },
           ]}
         />
       </section>

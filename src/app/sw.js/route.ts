@@ -1,6 +1,3 @@
-
-import { PLATFORM_BRAND } from "@/lib/platform-brand";
-
 /**
  * /sw.js — the service worker, served dynamically so the CACHE_VERSION
  * embedded inside it bumps on every deploy.
@@ -335,94 +332,32 @@ self.addEventListener("fetch", (event) => {
   // Everything else: pass through (network), no caching.
 });
 
-/* ─────────────────────────────────────────────────────
- * Web Push: opt-in notifications.
- * ───────────────────────────────────────────────────── */
-function hasUnsafeRedirectCharacters(value) {
-  for (let i = 0; i < value.length; i++) {
-    const code = value.charCodeAt(i);
-    if (value[i] === "\\\\" || code <= 31 || code === 127) return true;
-  }
-  return false;
+/* ---------------------------------------------------------------
+ * Retired Web Push.
+ *
+ * Push notifications were removed from the app, and no server code
+ * sends them any more. An installed app can still hold a browser
+ * push subscription from an older worker. This worker drops that
+ * subscription when it activates, and treats any push that still
+ * arrives as a signal to unsubscribe instead of showing it. It never
+ * displays a notification. Both steps are best-effort: a failure
+ * here must not block activation or the cache work above.
+ * --------------------------------------------------------------- */
+function dropRetiredPushSubscription() {
+  const manager = self.registration && self.registration.pushManager;
+  if (!manager || typeof manager.getSubscription !== "function") return Promise.resolve();
+  return manager
+    .getSubscription()
+    .then((subscription) => (subscription ? subscription.unsubscribe() : undefined))
+    .catch(() => undefined);
 }
 
-function safeNavigationTarget(raw) {
-  if (typeof raw !== "string") return "/today";
-  if (hasUnsafeRedirectCharacters(raw)) return "/today";
-  const candidate = raw.trim();
-  if (!candidate.startsWith("/") || candidate.startsWith("//")) return "/today";
-
-  let inspected = candidate;
-  for (let i = 0; i < 4; i++) {
-    try {
-      const decoded = decodeURIComponent(inspected);
-      if (decoded === inspected) break;
-      inspected = decoded;
-    } catch {
-      return "/today";
-    }
-  }
-  if (inspected.startsWith("//") || hasUnsafeRedirectCharacters(inspected)) return "/today";
-
-  try {
-    const parsed = new URL(candidate, self.location.origin);
-    if (parsed.origin !== self.location.origin || parsed.pathname.startsWith("//")) return "/today";
-    return parsed.pathname + parsed.search + parsed.hash;
-  } catch {
-    return "/today";
-  }
-}
-
-self.addEventListener("push", (event) => {
-  let payload = {};
-  try {
-    payload = event.data ? event.data.json() : {};
-  } catch {
-    payload = { title: "Frederick Radius", body: event.data ? event.data.text() : "" };
-  }
-  const title = payload.title || "Frederick Radius";
-  const body = payload.body || "";
-  const url = safeNavigationTarget(payload.url);
-  const options = {
-    body,
-    icon: payload.icon || "${PLATFORM_BRAND.icons.push}",
-    badge: payload.badge || "${PLATFORM_BRAND.icons.badge}",
-    tag: payload.tag,
-    data: { url, n: payload.n },
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
+self.addEventListener("activate", (event) => {
+  event.waitUntil(dropRetiredPushSubscription());
 });
 
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-  const url = safeNavigationTarget(event.notification.data && event.notification.data.url);
-  // POST is deliberate: this endpoint changes aggregate state, and a
-  // same-origin POST carries the Origin evidence required by the server's CSRF
-  // guard. Keep the request inside waitUntil as well; a worker may otherwise
-  // be terminated before a fire-and-forget attribution ping leaves the device.
-  const n = event.notification.data && event.notification.data.n;
-  const opened = n
-    ? fetch("/api/push/opened?n=" + encodeURIComponent(n), {
-        method: "POST",
-        mode: "same-origin",
-        credentials: "same-origin",
-        cache: "no-store",
-        keepalive: true,
-      }).catch(() => undefined)
-    : Promise.resolve(undefined);
-  const navigation =
-    self.clients
-      .matchAll({ type: "window", includeUncontrolled: true })
-      .then((clients) => {
-        const target = new URL(url, self.location.origin).href;
-        for (const c of clients) {
-          if (c.url === target) return c.focus();
-        }
-        const first = clients[0];
-        if (first && "navigate" in first) return first.navigate(url).then(() => first.focus());
-        return self.clients.openWindow(url);
-      });
-  event.waitUntil(Promise.all([opened, navigation]));
+self.addEventListener("push", (event) => {
+  event.waitUntil(dropRetiredPushSubscription());
 });
 `;
 

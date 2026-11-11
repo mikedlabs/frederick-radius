@@ -83,7 +83,6 @@
     "enrich:discovered": "tsx --tsconfig tsconfig.json scripts/enrich-discovered.ts",
     "merge:discovered": "tsx --tsconfig tsconfig.json scripts/merge-discovered.ts",
     "vet": "tsx --tsconfig tsconfig.json scripts/vet-places.ts",
-    "push:keys": "tsx --tsconfig tsconfig.json scripts/push-keys.ts",
     "build:discovered": "tsx --tsconfig tsconfig.json scripts/build-discovered-places.ts",
     "ingest": "tsx --tsconfig tsconfig.json scripts/run-ingest.ts",
     "dedup": "tsx --tsconfig tsconfig.json scripts/dedup.ts",
@@ -180,8 +179,7 @@
     "server-only": "^0.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
-    "vaul": "^1.1.2",
-    "web-push": "^3.6.7"
+    "vaul": "^1.1.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
@@ -196,7 +194,6 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/web-push": "^3.6.4",
     "@vitest/browser": "^4.1.10",
     "@vitest/browser-playwright": "^4.1.10",
     "@vitest/runner": "^4.1.10",

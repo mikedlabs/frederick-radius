@@ -52,12 +52,4 @@ describe("automation ownership", () => {
     expect(ci).toContain("if: ${{ env.AUTOMATED_DATA_PR != '1' }}");
     expect(ci).toContain("Production browser and connected-journey gate");
   });
-
-  it("does not promise saved-event pushes while their worker is dormant", () => {
-    const settings = readFileSync(
-      "src/components/settings/NotificationsCard.tsx",
-      "utf8",
-    );
-    expect(settings).not.toContain('topics: ["saved-events"');
-  });
 });

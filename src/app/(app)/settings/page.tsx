@@ -10,12 +10,11 @@ import { getServerUser } from "@/lib/auth";
  *
  * One surface for every device-local pick the user has saved: home
  * municipality, fit defaults, interests, community notes, appearance, and
- * the link down to /settings/notifications for push topics. Also exposes
- * the Reset-and-re-onboard escape hatch.
+ * phone feedback. Also exposes the Reset-and-re-onboard escape hatch.
  *
  * This page is the CONTROL counterpart to the chips on Today (which
  * are AMBIENT — they show what's been picked). Discoverable from the
- * Saved page footer + the back-link on /settings/notifications.
+ * Saved page footer.
  */
 
 export const metadata: Metadata = {

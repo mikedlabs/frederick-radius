@@ -217,7 +217,6 @@ const ROUTES: AuditRoute[] = [
   { id: "reserve", path: "/reserve", group: "support", description: "Reservation links" },
   { id: "markers", path: "/markers", group: "support", description: "Historic marker browser" },
   { id: "settings", path: "/settings", group: "support", description: "Preferences" },
-  { id: "notification-settings", path: "/settings/notifications", group: "support", description: "Notification preferences" },
   { id: "shared-radius", path: "/radius/shared?p=cafe-nola,gravel-and-grind-frederick", group: "support", description: "Recipient-facing shared list" },
   { id: "dear-frederick", path: "/dear-frederick", group: "support", description: "Community notes" },
   { id: "submit-event", path: "/submit/event", group: "support", description: "Event submission" },
