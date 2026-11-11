@@ -345,7 +345,9 @@
   --lead-band: 44px;
   --lead-gap: 12px;
   /* The widest label Save can show here is the transient "Removing…". */
-  --lead-save-width: 6.75rem;
+  /* Sized with margin: the Linux and Android system fonts set this label
+     about 6px wider than the Mac one. */
+  --lead-save-width: 7.5rem;
   container: today-lead / inline-size;
 }
 

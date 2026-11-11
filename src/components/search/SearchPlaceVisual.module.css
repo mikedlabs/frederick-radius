@@ -39,10 +39,15 @@
   overflow-wrap: anywhere;
 }
 
+/* The two actions sit side by side and wrap when they cannot. Fixed
+   max-content columns pushed "Map" past the row's edge with enlarged text or
+   a wider system font. */
 .leadActions {
-  display: grid;
-  grid-template-columns: repeat(2, max-content);
-  gap: var(--app-space-6);
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--app-space-6);
+  row-gap: 0;
+  min-width: 0;
   border-block: 0;
 }
 
@@ -84,8 +89,8 @@
   flex-shrink: 0;
 }
 
-.leadActions:has(> a:only-child) {
-  grid-template-columns: minmax(0, 1fr);
+.leadActions > a:only-child {
+  flex: 1 1 100%;
 }
 
 /* The result's own width controls the split, including narrow desktop dialogs. */
