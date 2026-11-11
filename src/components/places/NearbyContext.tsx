@@ -48,12 +48,14 @@ export default async function NearbyContext({
                 its title, source link, distance and extract remain useful. */}
             {p.thumbnail ? <NearbyThumbnail src={p.thumbnail} /> : null}
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <div className="flex items-baseline justify-between gap-3">
+              {/* The title may shrink and wrap so the distance never leaves the
+                  row, including beside a thumbnail with enlarged text. */}
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                 <a
                   href={p.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="tap-44-y inline-flex items-center text-[17px] font-semibold leading-snug tracking-tight hover:underline"
+                  className="tap-44-y inline-flex min-w-0 items-center text-[17px] font-semibold leading-snug tracking-tight [overflow-wrap:anywhere] hover:underline"
                   style={{ color: "var(--app-ink)" }}
                 >
                   {p.title}

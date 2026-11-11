@@ -213,9 +213,9 @@ export default function PreferencesPanel() {
                 haptic("light");
                 setMuniEditing(true);
               }}
-              className="flex min-h-11 w-full items-center justify-between gap-3 text-left"
+              className="flex min-h-11 w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 text-left"
             >
-              <span className={`min-w-0 ${ROW_TITLE}`} style={inkStyle}>
+              <span className={`min-w-0 [overflow-wrap:anywhere] ${ROW_TITLE}`} style={inkStyle}>
                 {muni
                   ? MUNICIPALITY_BY_SLUG[muni]?.name ?? muni
                   : "All of the county"}
@@ -243,7 +243,7 @@ export default function PreferencesPanel() {
               >
                 All of the county
               </button>
-              <ul className="grid grid-cols-2 gap-2">
+              <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8.5rem),1fr))] gap-2">
                 {MUNICIPALITIES.map((m) => (
                   <li key={m.slug} className="min-w-0">
                     <button
@@ -272,7 +272,7 @@ export default function PreferencesPanel() {
         <SettingsRow>
           <details className="group">
             <summary className="tap-44 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
-              <span className={`min-w-0 ${ROW_TITLE}`} style={inkStyle}>
+              <span className={`min-w-0 [overflow-wrap:anywhere] ${ROW_TITLE}`} style={inkStyle}>
                 {askFitSummary(fit) ?? "No defaults set"}
               </span>
               <ChevronRight
@@ -331,7 +331,7 @@ export default function PreferencesPanel() {
       {/* INTERESTS: these are controls, so each keeps a 6px border. */}
       <SettingsSection title="What you're into">
         <SettingsRow>
-          <ul className="grid grid-cols-2 gap-2">
+          <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8.5rem),1fr))] gap-2">
             {INTEREST_OPTIONS.map((opt) => {
               const on = interests.has(opt.slug);
               return (
@@ -459,8 +459,8 @@ function ChoiceChip({
       onClick={onClick}
       className={
         shape === "segment"
-          ? "min-h-11 min-w-[5.5rem] rounded-[var(--app-radius-md)] border px-4 text-[0.9375rem] font-semibold transition-colors motion-reduce:transition-none"
-          : "tap-44-y rounded-full border px-3 py-2 text-[0.8125rem] font-semibold leading-tight transition-colors motion-reduce:transition-none"
+          ? "min-h-11 min-w-[5.5rem] max-w-full rounded-[var(--app-radius-md)] border px-4 text-[0.9375rem] font-semibold [overflow-wrap:anywhere] transition-colors motion-reduce:transition-none"
+          : "tap-44-y max-w-full rounded-full border px-3 py-2 text-left text-[0.8125rem] font-semibold leading-tight [overflow-wrap:anywhere] transition-colors motion-reduce:transition-none"
       }
       style={toggleStyle(on)}
     >

@@ -90,7 +90,10 @@ export function SettingsRow({
       {children !== undefined ? (
         <div className="min-w-0 flex-[1_1_12rem]">{children}</div>
       ) : null}
-      {trailing !== undefined ? <div className="shrink-0">{trailing}</div> : null}
+      {/* The trailing control keeps its natural width but may never be wider
+          than the row. A plain shrink-0 let the Appearance pair run off a
+          320px screen with enlarged text instead of wrapping. */}
+      {trailing !== undefined ? <div className="min-w-0 max-w-full">{trailing}</div> : null}
     </div>
   );
 }

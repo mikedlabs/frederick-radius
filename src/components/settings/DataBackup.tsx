@@ -107,7 +107,9 @@ export default function DataBackup() {
             variant="secondary"
             size="sm"
             onClick={exportBackup}
-            className="text-[0.875rem]"
+            // The label may wrap: with enlarged text a one-line button is wider
+            // than a 320px screen.
+            className="max-w-full whitespace-normal text-left text-[0.875rem]"
             iconLeft={<Download className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
           >
             Download backup
@@ -116,7 +118,9 @@ export default function DataBackup() {
             variant="secondary"
             size="sm"
             onClick={() => fileRef.current?.click()}
-            className="text-[0.875rem]"
+            // The label may wrap: with enlarged text a one-line button is wider
+            // than a 320px screen.
+            className="max-w-full whitespace-normal text-left text-[0.875rem]"
             iconLeft={<Upload className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
           >
             Restore from file

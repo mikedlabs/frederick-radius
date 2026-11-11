@@ -40,7 +40,7 @@ export default async function SettingsPage() {
             back control for every deep (non-tab) page like Settings, and it
             prefers real history over a hardcoded /today (2026-07 shell-
             hardening P6: two stacked Back affordances). */}
-        <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
+        <h1 className="text-[min(2.125rem,13vw)] font-extrabold leading-[1.04] tracking-[-0.04em]" style={{ color: "var(--app-ink)" }}>
           Settings
         </h1>
         <p

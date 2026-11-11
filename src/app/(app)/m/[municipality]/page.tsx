@@ -296,8 +296,10 @@ export default async function MunicipalityPage(
           surfaces the submit door + a nearby fallback. */}
       {(upcomingEvents.length > 0 || BY_TOWN_ENABLED) && (
         <section className="space-y-2.5">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="text-[1.25rem] font-bold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+          {/* The row wraps: with enlarged text the heading and the link cannot
+              share a 320px line, and an unwrapped row pushed the link off screen. */}
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <h2 className="min-w-0 text-[1.25rem] font-bold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
               Upcoming in {m.name}
             </h2>
             <Link

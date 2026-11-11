@@ -85,7 +85,9 @@
   border-radius: var(--app-radius-sm);
   background: transparent;
   color: var(--app-ink);
-  font-size: 0.9375rem;
+  /* 16px, never smaller: iOS zooms the page when a form control under 16px
+     takes focus. */
+  font-size: 1rem;
   font-weight: 600;
   box-shadow: none;
 }
