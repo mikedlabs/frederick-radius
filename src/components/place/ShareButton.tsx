@@ -94,7 +94,7 @@ export default function ShareButton({
       className={`tap-44-y ${
         className ?? "inline-flex items-center gap-1 text-xs font-medium transition active:scale-95"
       }`}
-      style={{ color: "var(--app-ink-3)" }}
+      style={{ color: "var(--app-ink-2)" }}
       aria-label={`Share ${title}`}
     >
       {copied ? (

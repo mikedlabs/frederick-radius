@@ -55,6 +55,7 @@ import {
 import LiveGooglePlaceContext from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
 import MapReturnLink from "@/components/place/MapReturnLink";
+import PlaceSectionLabel from "@/components/place/PlaceSectionLabel";
 import PlaceCommunicationAccess from "@/components/place/PlaceCommunicationAccess";
 import PlaceVisitDetailsCard from "@/components/place/PlaceVisitDetailsCard";
 import { placeVisitDetails } from "@/lib/loaders/placeVisitDetails";
@@ -259,9 +260,12 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
   return (
     // AppMain owns the one shared mobile-chrome reserve. Adding another page
-    // pad here created a large empty tail beneath every place.
+    // pad here created a large empty tail beneath every place. That reserve
+    // (6rem plus the bottom safe area) is taller than the 57px action bar,
+    // so the bar never covers the footer. No entrance animation: this
+    // content arrives with a navigation.
     <div
-      className="space-y-5 reveal-up sm:space-y-6"
+      className="space-y-5 sm:space-y-6"
       data-decision-surface="place"
       data-decision-entity="place"
       data-decision-id={place.slug}
@@ -379,8 +383,16 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             <PendingFollowApplier slug={place.slug} name={place.name} />
           </Suspense>
           {/* One ruled strip holds the personal actions, so three unboxed
-              text actions read as a set rather than stray labels. */}
-          <div data-place-action-strip className="flex flex-wrap items-center justify-between gap-x-1 border-y sm:justify-start sm:gap-x-6" style={{ borderColor: "var(--app-border)" }}>
+              text actions read as one set: 15px semibold ink, 18px icons,
+              44px rows. They sit left-aligned with an even gap and wrap to a
+              second line on a 320px phone instead of spreading apart or
+              clipping. Without a description below, the sections' top rule
+              closes the strip, so it draws only its top hairline. */}
+          <div
+            data-place-action-strip
+            className={`flex flex-wrap items-center gap-x-5 sm:gap-x-6 ${desc ? "border-y" : "border-t"}`}
+            style={{ borderColor: "var(--app-border)" }}
+          >
             <MyRadiusButton slug={place.slug} name={place.name} />
             {isDestinationCategory(place.category) && isRecommendable(place) && place.is_operational !== "closed_permanently" && (
               <Suspense fallback={null}>
@@ -423,7 +435,18 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         />
       )}
 
-      <div className="hidden grid-cols-[auto_1fr] items-center gap-x-6 gap-y-1 border-y py-3 lg:grid lg:grid-cols-[minmax(12rem,auto)_repeat(4,auto)] lg:justify-start" style={{ borderColor: "var(--app-border)" }}>
+      {/* PLAIN TOOL: everything below the identity is a stack of sections on
+          the white ground with exactly one hairline between neighbors. The
+          container draws the rules (divide-y) and the vertical rhythm (each
+          direct child gets 20px above and below), so no section brings its
+          own border, box or padding, and a section that renders nothing
+          leaves no doubled rule behind. */}
+      <div
+        data-place-sections
+        className="divide-y divide-[var(--app-border)] border-t *:py-5"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+      <div className="hidden grid-cols-[auto_1fr] items-center gap-x-6 gap-y-1 lg:grid lg:grid-cols-[minmax(12rem,auto)_repeat(4,auto)] lg:justify-start">
         <ActionButton href={googleUrl} icon={Navigation} label="Directions" decisionAction="directions" external primary />
         {place.email && <ActionButton href={`mailto:${place.email}`} icon={Mail} label="Email" decisionAction="email" />}
         {place.phone && <ActionButton href={`tel:${place.phone}`} icon={Phone} label="Call" decisionAction="call" />}
@@ -447,31 +470,30 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
       {/* Secondary visit context is outside the identity hero and follows
           closure + action controls, so the first screen answers whether the
-          place is visitable and what the user can do next. */}
-      <div className="space-y-3">
-        <PlaceVisitDetailsCard details={visitDetails} />
-        <PlaceCommunicationAccess place={place} />
-        <KnownForCard
-          knownFor={place.known_for}
-          customersLoved={place.customers_loved}
-        />
-        <CourseInfoStrip slug={place.slug} />
-        <PlaceAudienceTags tags={place.tags} />
-        {hasFieldNotes(place.slug) ? (
-          <FieldNotesCard slug={place.slug} />
-        ) : (
-          <BusinessExtrasCard info={businessInfo} />
-        )}
+          place is visitable and what the user can do next. Each one is its
+          own ruled section; one that has nothing to say renders nothing. */}
+      <PlaceVisitDetailsCard details={visitDetails} />
+      <PlaceCommunicationAccess place={place} />
+      <KnownForCard
+        knownFor={place.known_for}
+        customersLoved={place.customers_loved}
+      />
+      <CourseInfoStrip slug={place.slug} />
+      <PlaceAudienceTags tags={place.tags} />
+      {hasFieldNotes(place.slug) ? (
+        <FieldNotesCard slug={place.slug} />
+      ) : (
+        <BusinessExtrasCard info={businessInfo} />
+      )}
+      {/* The live Google check and the personal note tools are short
+          actions, so they share one section instead of a rule each. */}
+      <div className="space-y-2">
         <LiveGooglePlaceContext slug={place.slug} showSummary={!desc} />
         <PlaceMarginTools slug={place.slug} />
       </div>
 
-      {/* Waze-style amenity icon row. Lives right after the primary
-          action grid so the user gets the "what's here?" answer in
-          glyph form before any text. Self-hides when no amenities
-          are curated for the place. Accent matches the place's
-          category color so the row reads as part of the place's
-          identity, not as decoration.
+      {/* "What you'll find": a plain two-column checklist. Self-hides
+          when no amenities are curated for the place.
           Source: prefer the curated `amenities` array, fall back to
           the amenity-facet subset of `tags` so dog-friendly parks /
           patios / outdoor-seating venues surface their icons without
@@ -487,10 +509,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             ? place.amenities
             : (place.tags ?? []).filter((t) => AMENITY_TAG_SLUGS.has(t));
         return amenities.length > 0 ? (
-          <PlaceAmenityIcons
-            amenities={amenities}
-            accent={cat?.color ?? "var(--app-brand)"}
-          />
+          <PlaceAmenityIcons amenities={amenities} />
         ) : null;
       })()}
 
@@ -526,57 +545,51 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         attributions={place.google_photo_attributions}
       />
 
-      <section className="space-y-2">
-        <h2 className="eyebrow">
-          Location
-        </h2>
+      <section className="space-y-3">
+        <PlaceSectionLabel>Location</PlaceSectionLabel>
+        {/* The address leads, then the locator in its thin frame. */}
+        <div className="flex items-start gap-2 text-[15px] leading-snug">
+          <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-2)" }} aria-hidden />
+          <div>
+            <p style={{ color: "var(--app-ink)" }}>{place.address}</p>
+            <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>{place.city}, {place.state} {place.postal_code}</p>
+          </div>
+        </div>
         <PlaceMiniMap lng={place.geom.lng} lat={place.geom.lat} name={place.name} color={cat?.color} />
-        {/* "From above" — the nearest geotagged drone shot, when one
+        {/* "From above": the nearest geotagged drone shot, when one
             genuinely covers this spot (downtown Frederick). Self-hides
             elsewhere so it never fakes an aerial of a place we don't have. */}
         <AerialBeat lat={place.geom.lat} lng={place.geom.lng} label={place.city || "Frederick"} />
-        <div className="flex items-start gap-2 border-b py-3 text-sm" style={{ borderColor: "var(--app-border)" }}>
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-          <div>
-            <p style={{ color: "var(--app-ink)" }}>{place.address}</p>
-            <p style={{ color: "var(--app-ink-3)" }}>{place.city}, {place.state} {place.postal_code}</p>
-          </div>
-        </div>
       </section>
 
       <NearbyArchiveContext lat={place.geom.lat} lng={place.geom.lng} excludeName={place.name} />
 
-      {/* The text-pill amenities section that used to live here was
-          replaced by the Waze-style icon row directly under the
-          primary action buttons. Same data source (place.amenities),
-          one rendering, much faster to scan. */}
-
       {eventsAtThisVenue.length > 0 && (
-        <section className="space-y-3">
+        <section className="space-y-1">
           <div className="flex items-baseline justify-between gap-3">
-            <h2 className="text-title" style={{ color: "var(--app-ink)" }}>
-              Upcoming here
-            </h2>
-            <span className="text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            <PlaceSectionLabel>Upcoming here</PlaceSectionLabel>
+            <span className="text-[14px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
               {eventsAtThisVenue.length} event{eventsAtThisVenue.length === 1 ? "" : "s"}
             </span>
           </div>
-          {/* grid-cols-1 base: without an explicit column below lg the single
-              implicit track sizes to max-content and pushed the detail page
-              past the viewport at 320/375/768px (audit FR-004). min-w-0 lets
-              each card shrink instead of forcing overflow. */}
-          <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+          {/* Ruled event rows. grid-cols-1 base: without an explicit column
+              below lg the single implicit track sizes to max-content and
+              pushed the detail page past the viewport at 320/375/768px (audit
+              FR-004). min-w-0 lets each row shrink instead of forcing
+              overflow. The last row drops its hairline because the section
+              rule (or the "Show more" rule) already closes the list. */}
+          <ul className={RULED_LIST}>
             {firstVenueEvents.map((e) => (
               <li key={`${e.slug}-${e.starts_at}`} className="min-w-0"><EventCard event={e} variant="glance" /></li>
             ))}
           </ul>
           {moreVenueEvents.length > 0 ? (
             <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
-              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-link)" }}>
+              <summary className={SHOW_MORE_SUMMARY} style={{ color: "var(--app-link)" }}>
                 Show {moreVenueEvents.length} more
-                <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
+                <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" strokeWidth={2} aria-hidden />
               </summary>
-              <ul className="grid grid-cols-1 gap-2 pt-2 lg:grid-cols-2">
+              <ul className={`${RULED_LIST} border-t`} style={{ borderColor: "var(--app-border)" }}>
                 {moreVenueEvents.map((e) => (
                   <li key={`${e.slug}-${e.starts_at}`} className="min-w-0"><EventCard event={e} variant="glance" /></li>
                 ))}
@@ -586,25 +599,25 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         </section>
       )}
 
-      <section className="space-y-3">
+      <section className="space-y-1">
         <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-title" style={{ color: "var(--app-ink)" }}>Nearby</h2>
-          <Link prefetch={false} href={exploreAreaHref} className="tap-44 inline-flex items-center text-[12px] font-semibold" style={{ color: "var(--app-link)" }}>
+          <PlaceSectionLabel>Nearby</PlaceSectionLabel>
+          <Link prefetch={false} href={exploreAreaHref} className="tap-44 inline-flex items-center text-[14px] font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-link)" }}>
             View area <ArrowRight aria-hidden className="ml-1 h-3.5 w-3.5" strokeWidth={2.25} />
           </Link>
         </div>
-        <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+        <ul className={RULED_LIST}>
           {firstNearbyPlaces.map((p) => (
             <li key={p.slug} className="min-w-0"><PlaceCard place={p} variant="row" /></li>
           ))}
         </ul>
         {moreNearbyPlaces.length > 0 ? (
           <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
-            <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-link)" }}>
+            <summary className={SHOW_MORE_SUMMARY} style={{ color: "var(--app-link)" }}>
               Show {moreNearbyPlaces.length} more nearby
-              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
+              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" strokeWidth={2} aria-hidden />
             </summary>
-            <ul className="grid grid-cols-1 gap-2 pt-2 lg:grid-cols-2">
+            <ul className={`${RULED_LIST} border-t`} style={{ borderColor: "var(--app-border)" }}>
               {moreNearbyPlaces.map((p) => (
                 <li key={p.slug} className="min-w-0"><PlaceCard place={p} variant="row" /></li>
               ))}
@@ -620,23 +633,23 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         <NearbyContext lat={place.geom.lat} lng={place.geom.lng} excludeName={place.name} />
       </Suspense>
 
-      <footer className="space-y-2 pt-4">
-        <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+      <footer className="space-y-1">
+        <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
           {/* Freshness only. The source already speaks once, as the
               SourceBadge in the header decision zone — restating it here
               was the "source twice" duplicate (July 2026 review). */}
           Updated {place.updated_at}
         </p>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+        <div className="flex flex-wrap items-center gap-x-5 text-[14px]">
           {cat && (
-            <Link prefetch={false} href={`/category/${place.category}`} className="tap-44 inline-flex items-center" style={{ color: "var(--app-link)" }}>
+            <Link prefetch={false} href={`/category/${place.category}`} className="tap-44 inline-flex min-h-11 items-center font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-link)" }}>
               More {cat.name.toLowerCase()} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           )}
           <a
             href={`mailto:hello@frederickradius.app?subject=Correction for ${place.name}`}
-            className="tap-44 inline-flex items-center"
-            style={{ color: "var(--app-ink-3)" }}
+            className="tap-44 inline-flex min-h-11 items-center underline underline-offset-2"
+            style={{ color: "var(--app-ink-2)" }}
           >
             Report incorrect info
           </a>
@@ -645,9 +658,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             text={safeBlurb(place)}
             url={`/places/${place.slug}`}
             imageUrl={`/api/og?type=place&slug=${place.slug}&format=story`}
+            className="inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold underline-offset-2 hover:underline"
           />
         </div>
       </footer>
+      </div>
 
       <script
         type="application/ld+json"
@@ -668,12 +683,12 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         }}
       />
 
-      {/* Mobile-only thumb-reachable dock. Desktop keeps the inline action
-          grid above; this reuses the same directions/call links, pinned
-          within thumb reach. Directions is the one vermilion primary. Save
-          is NOT here: it lives in exactly one place — the header CTA above
-          the fold — so the page never shows two bookmark affordances at
-          once (the bar's copy duplicated it; July 2026 audit). */}
+      {/* Mobile-only thumb-reachable bar, flat against the bottom edge.
+          Desktop keeps the inline action row above; this reuses the same
+          directions/call links, pinned within thumb reach. Directions is the
+          page's single filled coral action. Save is NOT here: it lives in
+          exactly one place, the header action strip, so the page never shows
+          two bookmark affordances at once (July 2026 audit). */}
       <MobileActionBar ariaLabel={`Actions for ${place.name}`}>
         <MobileBarLink
           href={googleUrl}
@@ -726,6 +741,15 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   );
 }
 
+/** A list of ruled rows (place rows, event rows). Each row ends in its own
+ * hairline; the last one drops it because the section rule or a following
+ * "Show more" rule already closes the list. */
+const RULED_LIST =
+  "grid grid-cols-1 lg:grid-cols-2 lg:gap-x-8 [&>li:last-child>*]:border-b-0";
+
+const SHOW_MORE_SUMMARY =
+  "tap-44 flex min-h-11 cursor-pointer list-none items-center justify-between text-[14px] font-semibold [&::-webkit-details-marker]:hidden";
+
 function ActionButton({
   href, icon: Icon, label, decisionAction, external, primary = false,
 }: {
@@ -758,27 +782,28 @@ function ActionButton({
 function ClosureBanner({
   severity, title, body, placeName,
 }: { severity: "permanent" | "temporary"; title: string; body: string; placeName: string }) {
-  // Closed is never red (design system): demote the saturated toast slab to a
-  // calm tinted plate. Permanent rides the neutral closed-state grey; temporary
-  // keeps a soft amber. Title/body carry the message in ink, the accent only
-  // tints the icon + hairline — so a closure reads as information, not an alarm.
+  // Closed is never red (design system). Permanent rides the neutral
+  // closed-state grey; temporary keeps the Ochre caution. PLAIN TOOL: a flat
+  // state band in its semantic tint with 6px corners and no outline. Title
+  // and body carry the message in ink; the accent only colors the icon, so a
+  // closure reads as information, not an alarm.
   const permanent = severity === "permanent";
   const bg = permanent ? "var(--state-closed-bg)" : "var(--app-warning-tint-14)";
   const accent = permanent ? "var(--state-closed)" : "var(--app-accent-press)";
   return (
     <div
       role="alert"
-      className="flex items-start gap-3 rounded-[var(--app-radius-lg)] border p-4"
-      style={{ background: bg, borderColor: `color-mix(in srgb, ${accent} 30%, transparent)` }}
+      className="flex items-start gap-3 rounded-[var(--app-radius-md)] px-4 py-3.5"
+      style={{ background: bg }}
     >
       <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden style={{ color: accent }} />
       <div className="min-w-0 flex-1">
-        <p className="font-serif text-lg font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{title}</p>
-        <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{body}</p>
+        <p className="text-[17px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>{title}</p>
+        <p className="mt-1 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{body}</p>
         <a
           href={`mailto:hello@frederickradius.app?subject=Closure status for ${placeName}`}
-          className="mt-2 inline-block text-[12px] font-semibold underline underline-offset-2"
-          style={{ color: "var(--app-ink-2)" }}
+          className="inline-flex min-h-11 items-center text-[14px] font-semibold underline underline-offset-2"
+          style={{ color: "var(--app-ink)" }}
         >
           Send a correction
         </a>
@@ -796,21 +821,23 @@ function IntegrationRow({
 }) {
   return (
     <section className="space-y-2">
-      <h2 className="eyebrow inline-flex items-center gap-1.5">
-        <Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-cool-text)" }} />
+      <PlaceSectionLabel className="inline-flex items-center gap-1.5">
+        <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-cool-text)" }} />
         {title}
-      </h2>
-      <div className="flex flex-wrap gap-1.5">
+      </PlaceSectionLabel>
+      {/* Outlined 6px link buttons; capsules are kept for filter chips. */}
+      <div className="flex flex-wrap gap-2">
         {actions.map((a) => (
           <Button
             key={a.key}
             variant="secondary"
-            size="sm"
+            size="md"
             href={a.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-full"
-            iconRight={<ExternalLink className="h-3 w-3" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />}
+            className="border bg-transparent text-[15px]"
+            style={{ borderColor: "var(--app-control-border)", backgroundColor: "transparent", color: "var(--app-ink)" }}
+            iconRight={<ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />}
           >
             {a.label}
           </Button>
@@ -821,5 +848,5 @@ function IntegrationRow({
 }
 
 // prettyAmenity() was removed when the amenities section moved from
-// text pills to PlaceAmenityIcons. The icon component owns its own
-// slug → label map (AMENITY_META).
+// text pills to PlaceAmenityIcons. That component owns its own
+// slug-to-label map (AMENITY_LABEL).

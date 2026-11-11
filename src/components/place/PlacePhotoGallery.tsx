@@ -5,6 +5,7 @@ import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import PhotoLightbox from "@/components/ui/PhotoLightbox";
+import PlaceSectionLabel from "@/components/place/PlaceSectionLabel";
 import { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import {
@@ -82,8 +83,10 @@ export function PlacePhotoGalleryView({ sources, name }: {
   return (
     <>
     {availableSources.length >= 2 && <section className="space-y-2">
-      <h2 className="eyebrow">Photos</h2>
-      <div className="embla overflow-hidden -mx-1 px-1 pb-1" ref={emblaRef}>
+      <PlaceSectionLabel>Photos</PlaceSectionLabel>
+      {/* The 4px inset on every side keeps the 2px focus ring and its 2px
+          offset inside the clipped carousel viewport. */}
+      <div className="embla -m-1 overflow-hidden p-1" ref={emblaRef}>
         <div className="embla__container flex gap-2">
           {availableSources.slice(1, 8).map((source, i) => {
             const url = source.src;
@@ -94,8 +97,7 @@ export function PlacePhotoGalleryView({ sources, name }: {
                   type="button"
                   onClick={() => openPhoto(url)}
                   aria-label={`View ${name} photo ${i + 2}`}
-                  className="relative h-28 w-40 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] border transition active:scale-[0.98]"
-                  style={{ borderColor: "var(--app-border)" }}
+                  className="relative block h-28 w-40 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
                 >
                   <Image
                     src={photoSrc}

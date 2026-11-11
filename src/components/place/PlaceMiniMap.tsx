@@ -47,7 +47,7 @@ export default function PlaceMiniMap({
       href={`/map?c=${lng.toFixed(5)},${lat.toFixed(5)},15.5`}
       prefetch={false}
       aria-label={`Open the map centered on ${name}`}
-      className="tactile tactile-interactive block overflow-hidden rounded-[var(--app-radius-md)] border"
+      className="block overflow-hidden rounded-[var(--app-radius-md)] border"
       style={{ borderColor: "var(--app-border)" }}
     >
       {staticMapEnabled ? (
@@ -85,7 +85,7 @@ export default function PlaceMiniMap({
             <circle cx="160" cy="83" r="89" fill="none" stroke="currentColor" />
           </svg>
 
-          <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full border border-[color:var(--app-border)] bg-[color:var(--app-bg)]/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur-sm">
+          <div className="absolute left-3 top-3 flex items-center gap-2 rounded-[var(--app-radius-sm)] bg-[color:var(--app-bg)] px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.1em]">
             <span
               aria-hidden="true"
               className="h-1.5 w-1.5 rounded-full"
@@ -93,13 +93,13 @@ export default function PlaceMiniMap({
             />
             Radius locator
           </div>
-          <span className="absolute right-3 top-3 rounded-full border border-[color:var(--app-border)] bg-[color:var(--app-bg)]/90 px-2.5 py-1 text-[10px] font-medium text-[color:var(--app-ink-2)] shadow-sm backdrop-blur-sm">
+          <span className="absolute right-3 top-3 rounded-[var(--app-radius-sm)] bg-[color:var(--app-bg)] px-2 py-1 text-[11px] font-medium text-[color:var(--app-ink-2)]">
             Position only
           </span>
 
           <div
             aria-hidden="true"
-            className="absolute left-1/2 top-[47%] flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-[color:var(--app-bg)] shadow-lg"
+            className="absolute left-1/2 top-[47%] flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-[color:var(--app-bg)]"
             style={{ backgroundColor: markerColor }}
           >
             <svg
@@ -116,7 +116,7 @@ export default function PlaceMiniMap({
             </svg>
           </div>
 
-          <div className="absolute inset-x-3 bottom-3 flex min-w-0 items-center justify-between gap-3 rounded-[var(--app-radius-sm)] border border-[color:var(--app-border)] bg-[color:var(--app-bg)]/95 px-3 py-2 shadow-sm backdrop-blur-sm">
+          <div className="absolute inset-x-3 bottom-3 flex min-w-0 items-center justify-between gap-3 rounded-[var(--app-radius-sm)] bg-[color:var(--app-bg)] px-3 py-2">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{name}</p>
               <p className="font-mono text-[10px] text-[color:var(--app-ink-2)]">

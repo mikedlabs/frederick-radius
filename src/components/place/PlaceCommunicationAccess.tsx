@@ -1,5 +1,6 @@
 import { Accessibility, ExternalLink } from "lucide-react";
 import type { Place } from "@/data/places";
+import { PLACE_SECTION_LABEL_CLASS } from "./PlaceSectionLabel";
 
 function communicationLabels(
   communication: NonNullable<
@@ -44,58 +45,47 @@ export default function PlaceCommunicationAccess({
   const labels = communicationLabels(communication);
   if (labels.length === 0) return null;
 
+  // PLAIN TOOL: a ruled section on the page ground. The Creek glyph keeps the
+  // civic cue; there is no tinted box around the facts.
   return (
-    <section
-      aria-labelledby="place-communication-access"
-      className="rounded-[var(--app-radius-md)] border px-3.5 py-3"
-      style={{
-        borderColor:
-          "color-mix(in srgb, var(--app-cool) 30%, var(--app-border))",
-        background:
-          "color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated))",
-      }}
-    >
-      <div className="flex items-start gap-2.5">
+    <section aria-labelledby="place-communication-access">
+      <h3
+        id="place-communication-access"
+        className={`flex items-center gap-1.5 ${PLACE_SECTION_LABEL_CLASS}`}
+        style={{ color: "var(--app-ink-3)" }}
+      >
         <Accessibility
-          className="mt-0.5 h-4 w-4 shrink-0"
+          className="h-4 w-4 shrink-0"
           strokeWidth={2}
-          style={{ color: "var(--app-cool)" }}
+          style={{ color: "var(--app-cool-text)" }}
           aria-hidden
         />
-        <div className="min-w-0 flex-1">
-          <h3
-            id="place-communication-access"
-            className="text-[12.5px] font-semibold"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Communication access
-          </h3>
-          <p
-            className="mt-0.5 text-[12px] leading-snug"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            {labels.join(" · ")}
-          </p>
-          {communication.notes ? (
-            <p
-              className="mt-1 text-[11px] leading-snug"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {communication.notes}
-            </p>
-          ) : null}
-          <a
-            href={communication.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="tap-44-y mt-1 inline-flex items-center gap-1 text-[10.5px] font-medium underline"
-            style={{ color: "var(--app-cool)" }}
-          >
-            {checkedLabel(communication.verified_at)}
-            <ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden />
-          </a>
-        </div>
-      </div>
+        Communication access
+      </h3>
+      <p
+        className="mt-1 text-[15px] leading-snug"
+        style={{ color: "var(--app-ink)" }}
+      >
+        {labels.join(" · ")}
+      </p>
+      {communication.notes ? (
+        <p
+          className="mt-1 text-[14px] leading-snug"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          {communication.notes}
+        </p>
+      ) : null}
+      <a
+        href={communication.source_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="tap-44-y mt-1 inline-flex items-center gap-1 text-[13px] underline underline-offset-2"
+        style={{ color: "var(--app-ink-2)" }}
+      >
+        {checkedLabel(communication.verified_at)}
+        <ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden />
+      </a>
     </section>
   );
 }

@@ -3,7 +3,7 @@
  * Used when we have no structured seed `hours` but Google gave us strings.
  * Today's row is emphasized. No interactivity → server component.
  */
-import { Clock } from "lucide-react";
+import PlaceSectionLabel from "./PlaceSectionLabel";
 
 const NY_WEEKDAY = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
@@ -15,16 +15,11 @@ export default function GoogleHours({ lines }: { lines: string[] }) {
   const today = NY_WEEKDAY.format(new Date());
 
   return (
+    // PLAIN TOOL: ruled day rows under the section label, no box.
     <section className="space-y-2">
-      <h2
-        className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.08em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        <Clock className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-cool)" }} />
-        Hours
-      </h2>
+      <PlaceSectionLabel>Hours</PlaceSectionLabel>
       <ul
-        className="divide-y rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 text-sm"
+        className="divide-y divide-[var(--app-border)] border-t text-[15px]"
         style={{ borderColor: "var(--app-border)" }}
       >
         {lines.map((line) => {
@@ -45,7 +40,7 @@ export default function GoogleHours({ lines }: { lines: string[] }) {
                 {day}
               </span>
               <span
-                className="font-mono tabular-nums"
+                className="tabular-nums"
                 style={{
                   color: isToday ? "var(--app-ink)" : "var(--app-ink-3)",
                   fontWeight: isToday ? 600 : 400,
