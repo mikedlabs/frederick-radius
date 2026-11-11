@@ -30,7 +30,12 @@ export const EditingAt390: Story = {
     await expect(window.history.state[NATIVE_REQUEST_ENTRY_KEY].draft.query).toBe("");
   },
 };
-/** An empty field at 320px ends its long placeholder with an ellipsis. */
+/**
+ * An empty field at 320px stays inside the viewport and declares an ellipsis
+ * for a placeholder longer than the field. A browser exposes no measurement
+ * of how a placeholder is painted, so the painted result is checked by eye
+ * at this viewport; this play guards the two things that can regress.
+ */
 export const EmptyPlaceholderAt320: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   play: async ({ canvasElement }) => {

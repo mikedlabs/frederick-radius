@@ -32,7 +32,7 @@ export function readSavedAppearance(): Appearance {
 
 /**
  * Re-applies the saved choice from the client. The head bootstrap normally
- * does this before first paint, but Next serves a not-found or error shell
+ * does this before first paint, but Next serves a not-found shell
  * that is rendered on the client from the RSC payload, and React never runs
  * a script it inserts. Without this, those pages ignore a saved dark choice.
  * On every other page the bootstrap already applied the same value, so this

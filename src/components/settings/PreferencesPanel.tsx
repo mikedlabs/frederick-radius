@@ -273,7 +273,7 @@ export default function PreferencesPanel() {
       <SettingsSection title="What fits">
         <SettingsRow>
           <details className="group">
-            <summary className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+            <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
               <span className={`min-w-0 [overflow-wrap:anywhere] ${ROW_TITLE}`} style={inkStyle}>
                 {askFitSummary(fit) ?? "No defaults set"}
               </span>

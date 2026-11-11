@@ -109,6 +109,14 @@ describe("event detail source row", () => {
     expect(elements(page).some(node => typeof node.type === "function" && node.type.name === EventSourceLinkName)).toBe(true);
   });
 
+  it("hides the inline official link on desktop for an online event whose online link is the source page", async () => {
+    // The venue stays set: "Online details" outranks the venue page in the
+    // row, and with no separate online link it points at the source page.
+    mocks.resolve.mockResolvedValue({ kind: "live", event: { ...event, attendance_mode: "online" } });
+    const page = await EventPage({ params: Promise.resolve({ slug: event.slug }), searchParams: Promise.resolve({}) });
+    expect(sourceLinkWrappers(page).map(node => node.props.className)).toEqual(["lg:hidden"]);
+  });
+
   it("hides the inline official link on desktop for a cancelled event whose announcement is the same page", async () => {
     mocks.resolve.mockResolvedValue({ kind: "live", event: { ...event, status: "cancelled" } });
     const page = await EventPage({ params: Promise.resolve({ slug: event.slug }), searchParams: Promise.resolve({}) });

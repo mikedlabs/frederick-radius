@@ -29,11 +29,14 @@ export default function NotFoundContent() {
       // Plain tool: the page ground is the plain surface token. No wash.
       // No full-screen height: inside the app shell a 100vh box centered
       // the content under the top bar and left large blank bands above it
-      // and above the footer. It now starts at ordinary page padding.
+      // and above the footer. The surrounding main supplies the page
+      // gutters and top padding (AppMain in the shell, the standalone
+      // not-found route outside it), so this adds only a little breathing
+      // room and never doubles the side padding on a narrow phone.
       className="relative overflow-hidden"
       style={{ background: "var(--app-bg)", color: "var(--app-ink)" }}
     >
-      <div className="relative mx-auto flex max-w-md flex-col items-center gap-6 px-4 pb-12 pt-6 text-center sm:pt-10">
+      <div className="relative mx-auto flex max-w-md flex-col items-center gap-6 pb-8 pt-4 text-center sm:pt-6">
         <Compass className="h-8 w-8" strokeWidth={1.5} aria-hidden style={{ color: "var(--app-cool-text)" }} />
         <div className="space-y-2">
           <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>

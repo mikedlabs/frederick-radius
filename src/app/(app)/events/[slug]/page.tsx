@@ -361,19 +361,23 @@ export default async function EventPage({
   // treatment; ended-ness only speaks for events that actually ran.
   const hasEnded =
     eventStatus === "scheduled" && isEventListingEnded(event, new Date());
-  // When the desktop action row falls back to the publisher's page ("Official
-  // page"), the Source row's inline link would be a second copy of the same
-  // link one screen apart. Keep the inline link on phone, where the bottom
-  // bar has no Official page action, and drop it at the row's breakpoint.
-  // A cancelled or postponed event's row links the organizer's announcement,
-  // which is the same page unless the notice names its own.
-  const desktopRowHasSourceLink = Boolean(event.source_url) && (
-    eventStatus !== "scheduled"
-      ? (notice?.source_url ?? event.source_url) === event.source_url
-      : hasEnded
-        ? !event.venue_place_slug
-        : !event.ticket_url && !event.rsvp_url && !(attendance !== "physical" && onlineActionUrl) && !event.venue_place_slug
-  );
+  // When the desktop action row already links the publisher's page, the
+  // Source row's inline link would be a second copy of the same link one
+  // screen apart. Keep the inline link on phone, where the bottom bar has no
+  // such action, and drop it at the row's breakpoint. This mirrors the row's
+  // own choice of link below and compares the address, because several
+  // labels can point at the source page: "Official page", "Online details"
+  // when an online event has no separate link, and a cancelled or postponed
+  // event's "Organizer's announcement" unless the notice names its own.
+  const desktopRowLinkHref =
+    eventStatus !== "scheduled" ? (notice?.source_url ?? event.source_url)
+    : hasEnded ? (event.venue_place_slug ? null : event.source_url)
+    : event.ticket_url ? event.ticket_url
+    : event.rsvp_url ? event.rsvp_url
+    : attendance !== "physical" && onlineActionUrl ? onlineActionUrl
+    : event.venue_place_slug ? null
+    : event.source_url;
+  const desktopRowHasSourceLink = Boolean(event.source_url) && desktopRowLinkHref === event.source_url;
   const eventVisual = eventCardVisual(event);
   const photoVisual = eventVisual?.presentation === "photo" ? eventVisual : null;
   // Server component: request-time clock is correct here, not impure render.

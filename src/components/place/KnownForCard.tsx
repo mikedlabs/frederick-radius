@@ -33,14 +33,6 @@ import PlaceSectionLabel, { PlaceDotList } from "./PlaceSectionLabel";
  *     carry plain 14px semibold sentence-case sub-labels, so the card never
  *     stacks two identical uppercase labels.
  */
-
-function SubLabel({ children }: { children: string }) {
-  return (
-    <p className="text-[0.875rem] font-semibold leading-snug" style={{ color: "var(--app-ink-2)" }}>
-      {children}
-    </p>
-  );
-}
 export default function KnownForCard({
   knownFor,
   customersLoved,
@@ -72,5 +64,14 @@ export default function KnownForCard({
         </div>
       )}
     </section>
+  );
+}
+
+/** Plain sub-label under the card's one section label. */
+function SubLabel({ children }: { children: string }) {
+  return (
+    <p className="text-[0.875rem] font-semibold leading-snug" style={{ color: "var(--app-ink-2)" }}>
+      {children}
+    </p>
   );
 }

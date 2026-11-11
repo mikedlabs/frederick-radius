@@ -225,8 +225,10 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        {/* The head bootstrap does not run on a client-built not-found or
-            error shell; this restores the saved appearance there. */}
+        {/* The head bootstrap does not run on a client-built not-found
+            shell; this restores the saved appearance there. The root
+            global-error fallback replaces this layout and keeps its own
+            small palette that follows the device setting. */}
         <SavedAppearanceRestore />
         {/* NuqsAdapter — App Router edition. Wraps the tree so any
             client component can call useQueryState to read/write URL
