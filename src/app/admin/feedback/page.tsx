@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { Check, X, Inbox, Flag } from "lucide-react";
 import { getDb, getSql } from "@/lib/db/client";
 import { submissions } from "@/lib/db/schema";
+import { feedbackSourcePath } from "@/lib/feedback-source-path";
 import {
   AdminShell,
   Section,
@@ -26,8 +27,24 @@ export const dynamic = "force-dynamic";
 
 type FeedbackRow = typeof submissions.$inferSelect;
 
+/** How many resolved notes the page reads for its "Recently resolved" log. */
+const RESOLVED_LOG_LIMIT = 15;
+
+/**
+ * The most waiting notes one page load reads. /api/feedback is a public write
+ * route, so the read needs a ceiling, but the ceiling must never make the
+ * inbox look emptier than it is: the page reads the oldest notes first, counts
+ * every waiting note separately, and says so when some are not shown.
+ */
+const PENDING_PAGE_LIMIT = 500;
+
 type Data = {
-  feedback: FeedbackRow[];
+  /** The notes still waiting, oldest first, up to PENDING_PAGE_LIMIT. */
+  pending: FeedbackRow[];
+  /** Every waiting note, including any past the page limit. */
+  pendingTotal: number;
+  /** The newest resolved notes, for the short log under the inbox. */
+  resolved: FeedbackRow[];
   followCount: number;
   reportsPending: number;
   /** Load-time epoch ms; components stay pure by reading time from here. */
@@ -47,15 +64,22 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
     // pipelined down the one pooled connection, which Supavisor does not
     // answer, so the render hangs. One-at-a-time always completes. The
     // counts travel as one statement.
-    const feedback = await db
+    const pending = await db
       .select()
       .from(submissions)
-      .where(eq(submissions.kind, "feedback"))
+      .where(and(eq(submissions.kind, "feedback"), eq(submissions.status, "pending")))
+      .orderBy(asc(submissions.created_at))
+      .limit(PENDING_PAGE_LIMIT);
+    const resolved = await db
+      .select()
+      .from(submissions)
+      .where(and(eq(submissions.kind, "feedback"), ne(submissions.status, "pending")))
       .orderBy(desc(submissions.created_at))
-      .limit(200);
+      .limit(RESOLVED_LOG_LIMIT);
     const counts = (
       await raw`
         select
+          (select count(*)::int from submissions where kind = 'feedback' and status = 'pending') as feedback_pending,
           (select count(*)::int from follows) as follow_count,
           (select count(*)::int from community_reports where status = 'pending') as reports_pending
       `
@@ -63,7 +87,10 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
     return {
       ok: true,
       data: {
-        feedback,
+        pending,
+        // Never report fewer waiting notes than the page is about to show.
+        pendingTotal: Math.max(counts.feedback_pending ?? 0, pending.length),
+        resolved,
         followCount: counts.follow_count ?? 0,
         reportsPending: counts.reports_pending ?? 0,
         now,
@@ -119,11 +146,8 @@ function FeedbackSkeleton() {
 
 function Dashboard({ data }: { data: Data }) {
   // The inbox is a queue: oldest note first, so the person who has waited
-  // longest is answered first (the fetch is newest-first for the resolved log).
-  const pending = data.feedback
-    .filter((f) => f.status === "pending")
-    .sort((a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime());
-  const resolved = data.feedback.filter((f) => f.status !== "pending");
+  // longest is answered first. The resolved log is newest-first.
+  const { pending, pendingTotal, resolved } = data;
 
   return (
     <>
@@ -132,14 +156,14 @@ function Dashboard({ data }: { data: Data }) {
         <StatCards
           cols={3}
           items={[
-            { value: pending.length, label: "Feedback waiting", tone: pending.length > 0 ? "warning" : "positive" },
+            { value: pendingTotal, label: "Feedback waiting", tone: pendingTotal > 0 ? "warning" : "positive" },
             { value: data.reportsPending, label: "Reports pending", tone: data.reportsPending > 0 ? "warning" : "positive" },
             { value: data.followCount, label: "Follows" },
           ]}
         />
       </section>
 
-      <FeedbackInbox pending={pending} resolved={resolved} now={data.now} />
+      <FeedbackInbox pending={pending} pendingTotal={pendingTotal} resolved={resolved} now={data.now} />
 
       <Section title="Related tools">
         <div className="mt-3">
@@ -173,9 +197,27 @@ function Dashboard({ data }: { data: Data }) {
 
 /* ---------------------------------------------------------------- feedback */
 
-function FeedbackInbox({ pending, resolved, now }: { pending: FeedbackRow[]; resolved: FeedbackRow[]; now: number }) {
+function FeedbackInbox({
+  pending,
+  pendingTotal,
+  resolved,
+  now,
+}: {
+  pending: FeedbackRow[];
+  pendingTotal: number;
+  resolved: FeedbackRow[];
+  now: number;
+}) {
   return (
     <Section title="Feedback inbox">
+      {pendingTotal > pending.length ? (
+        <div className="mt-3">
+          <Notice tone="warning">
+            Showing the {pending.length.toLocaleString("en-US")} notes that have waited longest, out of{" "}
+            {pendingTotal.toLocaleString("en-US")} waiting. The rest appear as you clear these.
+          </Notice>
+        </div>
+      ) : null}
       {pending.length === 0 ? (
         <AllClear>There is no unread feedback.</AllClear>
       ) : (
@@ -192,7 +234,7 @@ function FeedbackInbox({ pending, resolved, now }: { pending: FeedbackRow[]; res
         <div className="mt-5">
           <SectionLabel>Recently resolved</SectionLabel>
           <HairlineList>
-            {resolved.slice(0, 15).map((f, i) => {
+            {resolved.map((f, i) => {
               const p = feedbackPayload(f);
               return (
                 <HairlineRow
@@ -291,7 +333,7 @@ function feedbackPayload(row: FeedbackRow): {
   const p = (row.payload ?? {}) as Record<string, unknown>;
   return {
     message: typeof p.message === "string" && p.message.trim() ? p.message : "(empty note)",
-    pathname: typeof p.pathname === "string" && p.pathname.startsWith("/") ? p.pathname : null,
+    pathname: feedbackSourcePath(p.pathname),
     commit: typeof p.commit === "string" && p.commit.trim() ? p.commit : null,
   };
 }
