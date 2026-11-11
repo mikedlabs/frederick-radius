@@ -29,25 +29,18 @@ const SIZE: Record<Size, string> = {
   lg: "h-12 gap-2.5 px-6 text-[15px]",
 };
 
-function variantOf(v: Variant): { cls: string; style: CSSProperties } {
-  switch (v) {
-    case "primary":
-      return {
-        cls: "border border-transparent transition-[filter] duration-[var(--app-dur-fast)] hover:brightness-[0.94] active:brightness-90",
-        style: { backgroundColor: "var(--app-brand-press)", color: "var(--app-on-brand)", "--press-ack-color": "var(--app-on-brand)" } as CSSProperties,
-      };
-    case "secondary":
-      return {
-        cls: "border transition-colors duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)]",
-        style: { backgroundColor: "var(--app-bg)", borderColor: "var(--app-control-border)", color: "var(--app-ink)" },
-      };
-    case "quiet":
-      return {
-        cls: "transition-colors duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)] hover:text-[var(--app-ink)]",
-        style: { color: "var(--app-ink-2)" },
-      };
-  }
-}
+/* Every variant's resting ground, border and text live in classes, never in
+ * an inline style. An inline declaration outranks any utility, so a resting
+ * color set in `style` would silently defeat the hover classes beside it.
+ * Callers should likewise restyle through `className`, not `style`. */
+const BUTTON_VARIANT_CLASS: Record<Variant, string> = {
+  primary:
+    "border border-transparent bg-[var(--app-brand-press)] text-[var(--app-on-brand)] [--press-ack-color:var(--app-on-brand)] transition-[filter] duration-[var(--app-dur-fast)] hover:brightness-[0.94] active:brightness-90",
+  secondary:
+    "border border-[var(--app-control-border)] bg-[var(--app-bg)] text-[var(--app-ink)] transition-colors duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)]",
+  quiet:
+    "bg-transparent text-[var(--app-ink-2)] transition-colors duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)] hover:text-[var(--app-ink)]",
+};
 
 const BASE =
   "inline-flex select-none items-center justify-center whitespace-nowrap rounded-[var(--app-radius-md)] font-semibold tracking-tight";
@@ -99,9 +92,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
     iconRight,
     children,
   } = props;
-  const v = variantOf(variant);
-  const cls = cn(BASE, SIZE[size], v.cls, className);
-  const mergedStyle: CSSProperties = { ...v.style, ...style };
+  const cls = cn(BASE, SIZE[size], BUTTON_VARIANT_CLASS[variant], className);
 
   if (props.href !== undefined) {
     return (
@@ -114,7 +105,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
         data-press-target="control"
         onClick={props.onClick}
         className={cls}
-        style={mergedStyle}
+        style={style}
       >
         <span data-press-face className="inline-flex w-full min-w-0 [align-items:inherit] [flex-direction:inherit] [justify-content:inherit] [gap:inherit]">
           {iconLeft}
@@ -137,7 +128,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
       data-press-target="control"
       onClick={props.onClick}
       className={`${cls} disabled:pointer-events-none disabled:opacity-50`}
-      style={mergedStyle}
+      style={style}
     >
       <span data-press-face className="inline-flex w-full min-w-0 [align-items:inherit] [flex-direction:inherit] [justify-content:inherit] [gap:inherit]">
         {loading ? <Spinner /> : iconLeft}

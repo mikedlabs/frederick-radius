@@ -103,6 +103,9 @@
   /* Danger retains its own red and never borrows the action color. */
   --app-danger: #B4231E;
   --app-danger-text: var(--app-danger);
+  /* Warning label text. On a 14% Ochre tint it measures 5.99:1 over White
+     and 5.48:1 over the soft gray inset. */
+  --app-warning-text: var(--app-warning-press);
   --app-live-text: var(--app-warning-press);
   --app-info: #285D73;
   --app-civic: #285D73;           /* Creek alias for official/government provenance */
@@ -292,6 +295,10 @@
     --state-unknown: var(--app-ink-3);
     --state-live: var(--app-amber);
     --app-danger-text: color-mix(in srgb, var(--app-danger) 55%, var(--app-paper));
+    /* #C9AF8B. On a 14% Ochre tint it measures 7.14:1 over the dark canvas,
+       6.13:1 over the dark surface and 6.52:1 over the dark inset, where
+       the pressed Ochre measured 2.08, 1.79 and 1.90. */
+    --app-warning-text: color-mix(in srgb, var(--app-warning) 50%, var(--app-paper));
     --app-live-text: var(--app-amber);
     --app-hi: 0 0 0 0 transparent;
     --app-paper-light: linear-gradient(transparent, transparent);
@@ -371,10 +378,8 @@
 }
 [data-app-primary-tab] .map-list-event { background: transparent; }
 
-/* Real place photographs need enough area to identify the storefront. */
+/* Map list frame size is set once, below, for every place row. */
 [data-app-primary-tab] .map-list-place-visual[data-photo-state="ready"] {
-  width: 72px;
-  height: 72px;
   border-radius: var(--app-radius-md);
 }
 
@@ -9679,12 +9684,13 @@ header[data-map-header="true"] [data-location-chip][data-compact="true"] {
   border-radius: 0;
 }
 
-/* Media in rows: a row shows a photo only when a real one exists. A row with
-   an approved photo source reserves a 72px square, so a slow or failed
-   photo never moves the row. Without one, the category glyph sits alone in
-   ink-3 in a 24px column at the row's left edge, beside the title's first
-   line, with no fill, border, tint, corner or reserved height, so the text
-   column takes the rest of the width. */
+/* Media in rows: a row shows a photo only when a real one exists. Every
+   place row has one 56px frame that does not depend on photo metadata or on
+   a load succeeding, so no row changes height when data arrives or a photo
+   fails, and photo and glyph rows share one height at 320px. 56px holds the
+   name plus two meta lines. Without a photo the category glyph sits alone in
+   ink-3 at the top of that frame, beside the title's first line, with no
+   fill, border, tint or corner. Event rows keep their 24px glyph column. */
 .map-list-row,
 [data-app-primary-tab] .map-list-row {
   align-items: flex-start;
@@ -9709,10 +9715,10 @@ header[data-map-header="true"] [data-location-chip][data-compact="true"] {
   background: transparent;
   box-shadow: none;
 }
-.map-list-place-visual[data-media="photo"],
-[data-app-primary-tab] .map-list-place-visual[data-media="photo"] {
-  width: 72px;
-  height: 72px;
+.map-list-place-visual,
+[data-app-primary-tab] .map-list-place-visual {
+  width: 56px;
+  height: 56px;
   place-items: start center;
 }
 .map-list-place-visual[data-photo-state="ready"],

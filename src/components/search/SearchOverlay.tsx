@@ -1036,6 +1036,7 @@ export default function SearchOverlay({
                 const art = r.thumbnailSource ? (
                   <SearchPlaceVisualImage size={idx === 0 ? 64 : 40}
                     className={idx === 0 ? "" : "mt-0.5"}
+                    glyphClassName={glyphOffset}
                     fallback={<Icon className="h-6 w-6" strokeWidth={1.8} aria-hidden />} />
                 ) : r.thumbnail ? (
                   // eslint-disable-next-line @next/next/no-img-element

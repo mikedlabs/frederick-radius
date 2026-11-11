@@ -92,7 +92,10 @@ export default function AppMapDeck({
                 aria-label="Find places near me"
                 aria-busy={locating || undefined}
                 title={locating ? "Locating…" : "Find places near me"}
-                className="tap-44 mr-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--app-radius-sm)] transition-colors"
+                // A real 44px box, not a 36px box with a hit extender: an
+                // extender would reach 4px into the search field beside it.
+                // Its icon sits where the old 36px box with mr-1 put it.
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--app-radius-sm)] transition-colors"
                 style={{
                   color: userLoc ? "var(--app-link)" : "var(--app-ink-2)",
                   background: "transparent",

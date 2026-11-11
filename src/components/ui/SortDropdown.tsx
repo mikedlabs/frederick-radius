@@ -167,13 +167,14 @@ export default function SortDropdown<K extends string = string>({
                   setOpen(false);
                   triggerRef.current?.focus();
                 }}
-                className="flex min-h-[44px] w-full items-start gap-2 px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--app-bg-sunken)]"
+                className={`flex min-h-[44px] w-full items-start gap-2 px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--app-bg-sunken)] ${
+                  active ? "bg-[var(--app-bg-sunken)]" : "bg-transparent"
+                }`}
                 style={{
                   // Plain tool: the current choice is ink on the sunken
                   // ground with a check, not a coral tint. Ink clears AA on
                   // both grounds in light and dark.
                   color: "var(--app-ink)",
-                  background: active ? "var(--app-bg-sunken)" : "transparent",
                   fontWeight: active ? 600 : 500,
                 }}
               >

@@ -29,7 +29,9 @@ const TONE: Record<Tone, { fill: string; text: string }> = {
   brand: { fill: "var(--app-brand)", text: "var(--app-link)" },
   cool: { fill: "var(--app-cool)", text: "var(--app-cool-text)" },
   positive: { fill: "var(--app-positive)", text: "var(--app-forest-text)" },
-  warning: { fill: "var(--app-warning)", text: "var(--app-warning-press)" },
+  // --app-warning-text is the pressed Ochre in light and a light Ochre in
+  // dark, where the pressed shade fell to about 2.1:1 on its own tint.
+  warning: { fill: "var(--app-warning)", text: "var(--app-warning-text)" },
   danger: { fill: "var(--app-danger)", text: "var(--app-danger-text)" },
   accent: { fill: "var(--app-accent)", text: "var(--app-accent-text)" },
 };

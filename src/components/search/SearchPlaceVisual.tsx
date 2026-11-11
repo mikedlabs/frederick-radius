@@ -45,10 +45,14 @@ export default function SearchPlaceVisual({ source: suppliedSource, children, le
   return <Context value={{ source, identity, loaded, failed, resolve }}>{children}</Context>;
 }
 
-export function SearchPlaceVisualImage({ fallback, size = 56, className = "", frame = "thumbnail" }: {
+export function SearchPlaceVisualImage({ fallback, size = 56, className = "", glyphClassName, frame = "thumbnail" }: {
   fallback: ReactNode;
   size?: number;
   className?: string;
+  /** Placement for the glyph state. A row whose photo fails must place its
+   * glyph exactly where a row that never had a photo places it, so the caller
+   * passes the same offset it gives its own no-photo glyph. */
+  glyphClassName?: string;
   frame?: "thumbnail" | "lead";
 }) {
   const visual = useContext(Context);
@@ -65,7 +69,7 @@ export function SearchPlaceVisualImage({ fallback, size = 56, className = "", fr
   // category glyph sits alone beside the title's first line with no tile.
   if (frame === "thumbnail" && (!source || !src || visual?.failed)) {
     return (
-      <span aria-hidden className={`grid shrink-0 place-items-center ${className}`}
+      <span aria-hidden className={`grid shrink-0 place-items-center ${glyphClassName ?? className}`}
         style={{ width: size, height: 24, color: "var(--app-ink-3)" }}
         data-search-place-visual={source?.kind ?? "none"} data-search-place-photo-frame={frame}
         data-search-place-photo-state="glyph">

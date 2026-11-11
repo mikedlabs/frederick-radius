@@ -1528,12 +1528,7 @@ function DeckToolBrowser({
                   // density for a nine-chip rail) but must HIT 44, per the
                   // repo's own tap-target rule. The invisible extender adds
                   // the missing 4px of touch without changing the paint.
-                  className="tap-44 inline-flex min-h-10 shrink-0 snap-start items-center gap-1.5 rounded-[var(--app-radius-md)] border px-2.5 text-[12px] font-semibold outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-                  style={{
-                    borderColor: "var(--app-control-border)",
-                    color: "var(--app-ink)",
-                    background: "var(--app-bg)",
-                  }}
+                  className="tap-44 inline-flex min-h-10 shrink-0 snap-start items-center gap-1.5 rounded-[var(--app-radius-md)] border border-[var(--app-control-border)] bg-[var(--app-bg)] px-2.5 text-[12px] font-semibold text-[var(--app-ink)] outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                 >
                   <Icon
                     className="h-3.5 w-3.5"

@@ -69,7 +69,7 @@ export default function MapFoodTruckPeek({ pin, onClose }: { pin: FoodTruckMapPi
           </span>
           <span className="map-peek-name font-serif">{pin.name}</span>
           <span className="map-peek-meta">
-            <span style={{ color: live ? "var(--app-positive)" : "var(--app-ink)", fontWeight: 650 }}>
+            <span style={{ color: live ? "var(--app-forest-text)" : "var(--app-ink)", fontWeight: 650 }}>
               {live ? remainingLabel(pin.expiresAt) : publishedTiming(pin)}
             </span>
             <span aria-hidden className="map-peek-dot">·</span>

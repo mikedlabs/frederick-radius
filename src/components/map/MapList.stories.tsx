@@ -156,15 +156,19 @@ export const StableVisualFrameAcrossPhotoFailure: Story = {
       nextRow: second.getBoundingClientRect(),
       text: first.querySelector(".map-list-main")!.getBoundingClientRect(),
     };
-    await expect(before.frame.width).toBe(72);
-    await expect(before.frame.height).toBe(72);
-    // A row with no photo source draws only the 24px glyph column and
-    // reserves no photo height, so its text column is wider.
-    await expect(emptyFrame).toHaveAttribute("data-media", "glyph");
-    await expect(emptyFrame.getBoundingClientRect().width).toBe(24);
-    await expect(emptyFrame.getBoundingClientRect().height).toBe(24);
-    await expect(second.querySelector<HTMLElement>(".map-list-main")!.getBoundingClientRect().width)
-      .toBeGreaterThan(before.text.width + 40);
+    await expect(before.frame.width).toBe(56);
+    await expect(before.frame.height).toBe(56);
+    // A row with no photo source uses the same 56px frame with the glyph
+    // alone and no tile, so a photo row and a glyph row share one height
+    // and one text column whatever the photo data turns out to be.
+    await expect(emptyFrame).toHaveAttribute("data-photo-state", "fallback");
+    await expect(emptyFrame.querySelector("img")).toBeNull();
+    await expect(getComputedStyle(emptyFrame).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    await expect(emptyFrame.getBoundingClientRect().width).toBe(56);
+    await expect(emptyFrame.getBoundingClientRect().height).toBe(56);
+    await expect(Math.abs(before.nextRow.height - before.row.height)).toBeLessThanOrEqual(0.5);
+    await expect(Math.abs(second.querySelector<HTMLElement>(".map-list-main")!.getBoundingClientRect().width - before.text.width))
+      .toBeLessThanOrEqual(0.5);
     image.dispatchEvent(new Event("error"));
     await waitFor(() => expect(frame).toHaveAttribute("data-photo-state", "fallback"));
     await expect(frame.querySelector("img")).toBeNull();
@@ -210,10 +214,12 @@ export const MetaLineWrapsAsTextAt320: Story = {
       await expect(townTop).toBeGreaterThanOrEqual(categoryRects[categoryRects.length - 1].top - 0.5);
     }
     const visual = row.querySelector<HTMLElement>(".map-list-place-visual")!;
-    await expect(visual).toHaveAttribute("data-media", "glyph");
+    await expect(visual).toHaveAttribute("data-photo-state", "fallback");
+    const frame = visual.getBoundingClientRect();
     const main = row.querySelector<HTMLElement>(".map-list-main")!.getBoundingClientRect();
     const box = row.getBoundingClientRect();
-    // No dead band: the row ends just below its text.
-    await expect(box.bottom - main.bottom).toBeLessThanOrEqual(16);
+    // No dead band: the row ends just below the taller of its text and its
+    // fixed 56px frame.
+    await expect(box.bottom - Math.max(main.bottom, frame.bottom)).toBeLessThanOrEqual(16);
   },
 };

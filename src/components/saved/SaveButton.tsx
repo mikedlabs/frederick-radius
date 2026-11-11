@@ -109,10 +109,12 @@ export default function SaveButton({
         tabIndex={-1}
         className={barLabel
           ? `${BAR_QUIET_CELL_CLASS} tap-44 flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[0.6875rem] font-semibold leading-none`
-          : "tap-44 grid h-9 w-9 place-items-center rounded-[var(--app-radius-md)]"}
-        style={{ color: "var(--app-ink-3)" }}
+          // The placeholder mirrors the mounted unsaved control exactly, so
+          // hydration changes neither the glyph size, the box nor the color.
+          : "tap-44 relative -m-1 grid h-11 w-11 place-items-center rounded-[var(--app-radius-sm)]"}
+        style={{ color: barLabel ? "var(--app-ink)" : "var(--app-ink-3)" }}
       >
-        <Bookmark className="h-4 w-4" strokeWidth={1.75} />
+        <Bookmark className={barLabel ? "h-4 w-4" : "h-5 w-5"} strokeWidth={1.75} />
         {barLabel ? <span>{barLabel}</span> : null}
       </button>
     );

@@ -25,8 +25,11 @@ export default function SideRail() {
   return (
     <div
       className="pointer-events-none fixed bottom-0 left-0 hidden lg:flex lg:items-center"
-      // Start below the header so the rail never paints over its hairline.
-      style={{ zIndex: "var(--z-nav)", top: "calc(env(safe-area-inset-top, 0px) + var(--app-topbar-h))" }}
+      // Start below the header's 1px hairline. --app-topbar-h measures the
+      // row alone, without the header's bottom border, and the rail sits
+      // above the header in z-order, so without the extra pixel its ground
+      // would cover the hairline across the rail's width.
+      style={{ zIndex: "var(--z-nav)", top: "calc(env(safe-area-inset-top, 0px) + var(--app-topbar-h) + 1px)" }}
     >
       {/* Plain tool: the rail is attached to the screen edge with one
           hairline, not a floating panel. */}

@@ -218,12 +218,7 @@ export default function ToolDeckDialog({
             type="button"
             onClick={onClose}
             aria-label={`Close ${title}`}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-md)] border transition-colors hover:bg-[var(--app-bg-sunken)]"
-            style={{
-              borderColor: "var(--app-control-border)",
-              background: "var(--app-bg-elevated-solid)",
-              color: "var(--app-ink-2)",
-            }}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-md)] border border-[var(--app-control-border)] bg-[var(--app-bg-elevated-solid)] text-[var(--app-ink-2)] transition-colors hover:bg-[var(--app-bg-sunken)]"
           >
             <X className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
           </button>

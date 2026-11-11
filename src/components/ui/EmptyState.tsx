@@ -91,8 +91,7 @@ export default function EmptyState({
         <div className="mt-4 pl-[26px]">
           <Link
             href={cta.href}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-md)] border px-4 text-[14px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-control-border)", background: "var(--app-bg)", color: "var(--app-ink)" }}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-md)] border border-[var(--app-control-border)] bg-[var(--app-bg)] px-4 text-[14px] font-semibold text-[var(--app-ink)] transition-colors hover:bg-[var(--app-bg-sunken)]"
           >
             {cta.label}
           </Link>

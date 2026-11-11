@@ -1,5 +1,3 @@
-/* The four destinations keep their footprint and behavior; depth makes the
-   current destination and available actions easier to recognize. */
 /* PLAIN TOOL chrome. The header and the tab bar are flat instruments on the
    white ground: no boxes, no floating pill, no gradient. A single hairline
    separates each from the page. */
