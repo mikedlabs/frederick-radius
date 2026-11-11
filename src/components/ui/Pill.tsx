@@ -25,10 +25,9 @@ import { haptic } from "@/lib/haptics";
  *   brand      — brand fill (the default "selected facet")
  *   cool       — cool fill (town / place lane)
  *   ink        — ink fill on paper text (TimeToggle's "when?" lane)
- *   prominent  — a stronger brick selection, without a decorative gradient
  */
 
-type Tone = "brand" | "cool" | "ink" | "prominent";
+type Tone = "brand" | "cool" | "ink";
 
 // Light-text fills use --app-brand-press (the AA-safe darker vermilion): white
 // on plain --app-brand is only 4.17:1 (fails AA for the small pill label).
@@ -36,13 +35,11 @@ const ACTIVE_BG: Record<Tone, string> = {
   brand: "var(--app-brand-press)",
   cool: "var(--app-cool)",
   ink: "var(--app-ink)",
-  prominent: "var(--app-brand-press)",
 };
 const ACTIVE_FG: Record<Tone, string> = {
   brand: "var(--app-on-brand)",
   cool: "var(--app-on-brand)",
   ink: "var(--app-bg)",
-  prominent: "var(--app-on-brand)",
 };
 
 type PillProps = {

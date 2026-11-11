@@ -603,7 +603,9 @@ Files: `src/components/today/SunCountdown.tsx` · `src/lib/almanac.ts` · `src/l
 
 src/app/(app)/proto/almanac/page.tsx already computes a zero-dependency seasonalNote() (firefly season, spring bloom, peak foliage, frost windows for USDA 6b/7a) plus moonPhase, water gauges, and daylight delta — but it ships noindexed at /proto. Hoist seasonalNote into src/lib/almanac.ts and surface the one line on /today (near AlmanacFooter) and on TownAlmanac: 'Firefly season. Peak after dusk along the creek lines.' It changes roughly monthly, costs no API call, and no generic tool knows Frederick's firefly window. Optionally promote the full prototype to a real /almanac page as the daily-ritual destination.
 
-Files: `src/app/(app)/proto/almanac/page.tsx` · `src/lib/almanac.ts` · `src/components/today/AlmanacFooter.tsx` · `src/components/municipality/TownAlmanac.tsx`
+Note (2026-11-10): the `/proto` pages were removed. The almanac prototype, including `seasonalNote()`, is recoverable with `git show df503e75:"src/app/(app)/proto/almanac/page.tsx"`.
+
+Files: `src/app/(app)/proto/almanac/page.tsx` (removed) · `src/lib/almanac.ts` · `src/components/today/AlmanacFooter.tsx` · `src/components/municipality/TownAlmanac.tsx`
 
 ### [MEDIUM · S] 'On this day' pinning in the history deck
 

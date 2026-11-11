@@ -75,7 +75,7 @@ describe("Radius tool registry", () => {
       }
       expect(tool.href).toMatch(/^\//);
       expect(tool.href).not.toMatch(
-        /^\/(?:admin(?:\/|$)|collect(?:\/|$)|proto(?:\/|$)|business\/claim(?:\/|$)|from-above\/time-machine(?:\/|$))/,
+        /^\/(?:admin(?:\/|$)|collect(?:\/|$)|business\/claim(?:\/|$)|from-above\/time-machine(?:\/|$))/,
       );
       expect(existsSync(join(process.cwd(), routeFile(tool.href)))).toBe(true);
     }
