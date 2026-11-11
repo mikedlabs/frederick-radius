@@ -130,7 +130,13 @@ export function SettingsSwitch({
       <span
         aria-hidden
         className="inline-block h-5 w-5 rounded-full transition-transform motion-reduce:transition-none"
-        style={{ background: "var(--app-bg)", transform: checked ? "translateX(22px)" : "translateX(2px)" }}
+        style={{
+          background: "var(--app-bg)",
+          // Travel is in rem like the 2.75rem track and 1.25rem knob, so the
+          // knob still reaches the right edge with enlarged text: a 0.125rem
+          // inset off, and 2.75 - 1.25 - 0.125 = 1.375rem on.
+          transform: checked ? "translateX(1.375rem)" : "translateX(0.125rem)",
+        }}
       />
     </button>
   );

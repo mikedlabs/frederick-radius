@@ -61,10 +61,9 @@ export default async function SettingsPage() {
               <form action="/auth/signout" method="post">
                 <button
                   type="submit"
-                  className="inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-[var(--app-radius-md)] border px-3 text-[0.875rem] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                  className="inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 text-[0.875rem] font-semibold transition-colors motion-reduce:transition-none hover:bg-[var(--app-bg-sunken)]"
                   style={{
                     borderColor: "var(--app-control-border)",
-                    background: "var(--app-bg)",
                     color: "var(--app-ink)",
                   }}
                 >
