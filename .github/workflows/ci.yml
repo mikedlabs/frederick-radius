@@ -177,10 +177,19 @@ jobs:
         timeout-minutes: 10
         run: |
           set -euo pipefail
-          # The runner's Azure HTTP mirror can stall before tests begin.
-          # Keep the same signed Ubuntu archive and mirror priorities over HTTPS.
+          # Either Ubuntu mirror can stall from a hosted runner. The runner's
+          # Azure HTTP mirror has, and archive.ubuntu.com did for hours on
+          # 2026-11-11. A timing check decides which to try first. Both stay
+          # listed, both serve the same signed archive, and apt still verifies
+          # it. Any unclear result leaves the runner's own order untouched.
           if [ -f /etc/apt/apt-mirrors.txt ]; then
-            sudo sed -E -i 's@^([[:space:]]*)http://azure\.archive\.ubuntu\.com/ubuntu(/?)([[:space:]].*|$)@\1https://archive.ubuntu.com/ubuntu\2\3@' /etc/apt/apt-mirrors.txt
+            if [ "$(bash scripts/ci-pick-apt-mirror.sh)" = "archive" ]; then
+              mirrors="$(bash scripts/ci-pick-apt-mirror.sh --archive-first < /etc/apt/apt-mirrors.txt)"
+              if [ -n "$mirrors" ]; then
+                printf '%s\n' "$mirrors" | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+              fi
+            fi
+            cat /etc/apt/apt-mirrors.txt
           fi
           npx playwright install --with-deps chromium webkit
       - name: Component workshop tests
