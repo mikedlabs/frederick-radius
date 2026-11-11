@@ -449,8 +449,13 @@ test("a source-checked event keeps its official page reachable beside transactio
   });
   expect(response?.status()).toBe(200);
 
-  const source = page.locator("[data-event-source-link]");
+  // The link lives in the one muted source line after the description, never
+  // inside a collapsed disclosure.
+  const sourceLine = page.locator("[data-event-source-line]");
+  await expect(sourceLine).toBeVisible();
+  const source = sourceLine.locator("[data-event-source-link]");
   await expect(source).toBeVisible();
+  expect(await source.evaluate((element) => element.closest("details") === null)).toBe(true);
   await expect(source).toHaveAttribute("href", "https://snallyfest.com/");
   await expect(source).toHaveAttribute("target", "_blank");
   await expect(source).toContainText("Official event page");

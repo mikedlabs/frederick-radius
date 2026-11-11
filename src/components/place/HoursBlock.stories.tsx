@@ -80,24 +80,40 @@ export const DatedClosure: Story = {
   },
 };
 
-export const Unconfirmed: Story = {
+/** A place with no schedule renders no hours block. Its status line under
+ * the title carries the caveat and the date the hours were last checked. */
+export const NoScheduleStatusLine: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
-  args: { hours: undefined, website: "https://example.org/", phone: "301-555-0100", provenance: undefined },
+  parameters: { docs: { description: { story: "A place with no usable schedule shows no hours block. The status line keeps the plain caveat and follows it with the date the hours themselves were last checked." } } },
+  render: () => (
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <LiveOpenStatus verified={false} initial={{ state: "unknown" }} hoursCheckedAt={new Date(+now - 30 * 86_400_000).toISOString()} />
+      <span className="font-medium" style={{ color: "var(--app-ink-3)" }}>$$</span>
+    </div>
+  ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText("Hours not recently confirmed")).toBeVisible();
-    const website = canvas.getByRole("link", { name: "Check the official website" });
-    const phone = canvas.getByRole("link", { name: "Call to check hours" });
-    await expect(website).toHaveAttribute("href", "https://example.org/");
-    await expect(website).toHaveAttribute("target", "_blank");
-    await expect(phone).toHaveAttribute("href", "tel:3015550100");
-    // Both wrapped actions retain independent physical hit areas in WebKit.
-    await expectTouchLink(website);
-    await expectTouchLink(phone);
-    const first = website.getBoundingClientRect();
-    const second = phone.getBoundingClientRect();
-    await expect(second.top - first.bottom).toBeGreaterThanOrEqual(4);
+    const caveat = canvas.getByText("Hours not recently confirmed", { exact: true });
+    await expect(caveat).toBeVisible();
+    // A plain date, never the green "checked at source" badge.
+    const checked = canvas.getByText(/^Hours last checked /);
+    await expect(canvas.queryByText(/checked at source/)).not.toBeInTheDocument();
+    await expect(checked).toBeVisible();
+    await expect(canvas.queryByText(/Check with the business/)).not.toBeInTheDocument();
     await expect(canvas.queryByText(/Hours today/)).not.toBeInTheDocument();
+    // The caveat and its date share one line, and the line wraps instead of
+    // overflowing a 320px phone, including at 200 percent text.
+    const doc = canvasElement.ownerDocument;
+    const root = doc.documentElement;
+    const fontSize = root.style.getPropertyValue("font-size");
+    try {
+      root.style.setProperty("font-size", "200%");
+      await expect(doc.documentElement.scrollWidth).toBeLessThanOrEqual(doc.defaultView!.innerWidth + 1);
+      await expect(checked).toBeVisible();
+    } finally {
+      if (fontSize) root.style.setProperty("font-size", fontSize);
+      else root.style.removeProperty("font-size");
+    }
   },
 };
 

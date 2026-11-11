@@ -82,6 +82,8 @@ import { eventDecisionLocation, eventTimeCaution } from "@/lib/events/decision-f
 import { isDateOnlyEventAnchor } from "@/lib/eventWhenLabel";
 import { eventPlanEligibility } from "@/lib/plan/event-plan-eligibility";
 import { withBrowseReturnTo } from "@/lib/browse-return";
+import { googleMapsDirections, googleMapsDirectionsToAddress } from "@/lib/integrations/deeplinks";
+import { looksLikeStreetAddress } from "@/lib/integrations/mapboxGeocode";
 
 function splitDescription(text: string, limit = 300): { preview: string; rest: string } {
   if (text.length <= limit) return { preview: text, rest: "" };
@@ -270,9 +272,17 @@ export default async function EventPage({
     Boolean(venuePlace),
   );
   const pinGeom = venuePlace?.geom ?? event.geom;
+  // Directions are a promise of a real doorstep. A precise coordinate wins;
+  // otherwise the publisher's own street address is the destination (Google
+  // geocodes the text). An area centroid is never handed out as a doorstep.
+  // Many FCPL branch rooms ("Emmitsburg Branch Library, Outside Library
+  // (EMM)") carry a reviewed branch address but no venue match.
+  const eventAddress = physicalAttendance ? (event.address ?? "").trim() : "";
   const directionsUrl = hasPreciseLocation
-    ? `https://www.google.com/maps/dir/?api=1&destination=${pinGeom.lat},${pinGeom.lng}`
-    : null;
+    ? googleMapsDirections(pinGeom.lat, pinGeom.lng)
+    : looksLikeStreetAddress(eventAddress)
+      ? googleMapsDirectionsToAddress(eventAddress)
+      : null;
   const hasTrustworthyEnd = eventHasTrustworthyEnd(event);
   const timeCaution = eventTimeCaution(event);
   const calendarEndsAt = hasTrustworthyEnd
@@ -361,6 +371,35 @@ export default async function EventPage({
   // treatment; ended-ness only speaks for events that actually ran.
   const hasEnded =
     eventStatus === "scheduled" && isEventListingEnded(event, new Date());
+  // Only a scheduled event that has not ended may invite a trip. A cancelled,
+  // postponed or past event keeps its address as a record, without a link.
+  const canGo = eventStatus === "scheduled" && !hasEnded;
+  const goDirectionsUrl = canGo && physicalAttendance ? directionsUrl : null;
+  // The street address under the venue line. iCal feeds join the venue and
+  // the street ("Frederick Fairgrounds, 797 E Patrick St, ..."), so a leading
+  // venue name is stripped rather than hiding the whole address. What is
+  // left prints only when it still holds a street and the venue line does
+  // not already say it (some feeds put the street itself in the venue field,
+  // as in "121 N Bentz St").
+  const venueKey = (event.venue_name ?? "").trim().toLocaleLowerCase();
+  const addressRest = venueKey && eventAddress.toLocaleLowerCase().startsWith(venueKey)
+    ? eventAddress.slice(venueKey.length).replace(/^[\s,·–-]+/, "")
+    : eventAddress;
+  const whereAddress =
+    addressRest &&
+    (addressRest === eventAddress || looksLikeStreetAddress(addressRest)) &&
+    !attendanceLabel.toLocaleLowerCase().includes(addressRest.toLocaleLowerCase())
+      ? addressRest
+      : "";
+  // The phone bar's one filled action, in order: Tickets, then Online
+  // details for an event with an online part, then Directions when there is
+  // a doorstep to go to, then Add to calendar. The desktop row keeps its own
+  // order (Tickets, RSVP, Online details, Venue page, Official page).
+  const barPrimary: "tickets" | "online" | "directions" | "calendar" =
+    event.ticket_url ? "tickets"
+    : attendance !== "physical" && onlineActionUrl ? "online"
+    : goDirectionsUrl ? "directions"
+    : "calendar";
   // When the desktop action row already links the publisher's page, the
   // Source row's inline link would be a second copy of the same link one
   // screen apart. Keep the inline link on phone, where the bottom bar has no
@@ -378,6 +417,7 @@ export default async function EventPage({
     : event.venue_place_slug ? null
     : event.source_url;
   const desktopRowHasSourceLink = Boolean(event.source_url) && desktopRowLinkHref === event.source_url;
+  const trust = eventTrust(event);
   const eventVisual = eventCardVisual(event);
   const photoVisual = eventVisual?.presentation === "photo" ? eventVisual : null;
   // Server component: request-time clock is correct here, not impure render.
@@ -511,10 +551,11 @@ export default async function EventPage({
       })()}
 
       {/* PLAIN TOOL header: no outer card. The category label, then the
-       * heavy title, the approved venue photo when there is one, and the
-       * decision facts as ruled rows (when, where, price, source) on the
-       * white ground. The page's one filled coral action is in the action
-       * row below. */}
+       * heavy title, the approved venue photo when there is one, the
+       * decision facts as ruled rows (when, where, price, organizer) on the
+       * white ground, the description, and one muted source line. The
+       * page's one filled coral action is in the action row (desktop) or
+       * the bottom bar (phone). */}
       <header
         data-decision-impression="true"
         data-decision-surface="events"
@@ -567,12 +608,43 @@ export default async function EventPage({
                 )}
               </dd>
             </div>
-            {attendanceLabel && (
-              <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
-                <dt className="pt-0.5 text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>{physicalAttendance ? "Where" : "Online"}</dt>
-                <dd className="min-w-0 break-words text-[15px] leading-snug" style={{ color: "var(--app-ink)" }}>{attendanceLabel}</dd>
-              </div>
-            )}
+            {(attendanceLabel || whereAddress) && (() => {
+              // WHERE names the venue and town, then the street address the
+              // record carries (the same field the event sheet prints). When
+              // there is somewhere to go, the whole fact opens directions.
+              const place = (
+                <>
+                  {attendanceLabel && <span className="block text-[15px] leading-snug" style={{ color: "var(--app-ink)" }}>{attendanceLabel}</span>}
+                  {whereAddress && <span data-event-address className="mt-0.5 block text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{whereAddress}</span>}
+                </>
+              );
+              return (
+                <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
+                  <dt className="pt-0.5 text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>{physicalAttendance ? "Where" : "Online"}</dt>
+                  <dd className="min-w-0 break-words">
+                    {goDirectionsUrl ? (
+                      <a
+                        href={goDirectionsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-decision-action="directions"
+                        data-event-where-directions
+                        className="group block min-h-11"
+                        style={{ color: "var(--app-ink)" }}
+                      >
+                        {place}
+                        {/* Visible before hover: the trailing link-colored
+                            "Directions" says the fact is a link. */}
+                        <span className="mt-1 inline-flex items-center gap-1 text-[13px] font-semibold underline-offset-2 group-hover:underline" style={{ color: "var(--app-link)" }}>
+                          <Navigation className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                          Directions
+                        </span>
+                      </a>
+                    ) : place}
+                  </dd>
+                </div>
+              );
+            })()}
             {(event.is_free || event.price_text) && (
               <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
                 <dt className="pt-0.5 text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>Price</dt>
@@ -601,21 +673,6 @@ export default async function EventPage({
                 </dd>
               </div>
             )}
-            <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
-              <dt className="pt-0.5 text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>Source</dt>
-              {/* Trust, freshness and the source link stack at every width,
-                  as they do on phone, instead of running side by side. */}
-              <dd className="flex min-w-0 flex-col items-start gap-y-1 text-xs" style={{ color: "var(--app-ink-2)" }}>
-                <TrustChip signal={eventTrust(event)} detail />
-                <FreshnessChip
-                  iso={event.last_verified_at ?? undefined}
-                  subject="Event"
-                />
-                {event.source_url && (desktopRowHasSourceLink
-                  ? <span className="lg:hidden"><EventSourceLink href={event.source_url} /></span>
-                  : <EventSourceLink href={event.source_url} />)}
-              </dd>
-            </div>
           </dl>
           {eventVisual?.presentation === "artwork" && <EventArtwork visual={eventVisual} />}
           {desc && (
@@ -632,6 +689,38 @@ export default async function EventPage({
               ) : null}
             </div>
           )}
+          {/* ONE muted source line after the description, still inside the
+              header so it stays close on a phone: the listing kind, who
+              published it, when the event was checked, and the official
+              page. It used to be a four-line Source row above the
+              description (November 2026 detail audit). Nothing here is a
+              disclosure, so the official link is always visible. */}
+          <p
+            data-event-source-line
+            className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-snug"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            <span className={EVENT_SOURCE_ITEM}><TrustChip signal={trust} /></span>
+            <span className={EVENT_SOURCE_ITEM}>{trust.basis}</span>
+            {/* FreshnessChip fills its slot after hydration; the empty
+                wrapper collapses with its separator until then. */}
+            <span className={EVENT_SOURCE_ITEM}>
+              <FreshnessChip iso={event.last_verified_at ?? undefined} subject="Event" />
+            </span>
+            {/* On desktop the action row may already link this exact page
+                (desktopRowLinkHref); then only phones keep the inline copy. */}
+            {event.source_url && (desktopRowHasSourceLink ? (
+              <>
+                <span aria-hidden className="lg:hidden">·</span>
+                <span className="lg:hidden"><EventSourceLink href={event.source_url} /></span>
+              </>
+            ) : (
+              <>
+                <span aria-hidden>·</span>
+                <EventSourceLink href={event.source_url} />
+              </>
+            ))}
+          </p>
         </div>
       </header>
 
@@ -702,7 +791,10 @@ export default async function EventPage({
           event.source_url ? { href: event.source_url, external: true, Icon: ExternalLink, label: "Official page" } :
           null;
         const hasThird = thirdAction !== null;
-        const dirPrimary = physicalAttendance && hasPreciseLocation && !hasThird;
+        // Same destination as WHERE and the phone bar: a precise coordinate,
+        // or the published street address when the coordinate is only an
+        // area centroid.
+        const dirPrimary = Boolean(goDirectionsUrl) && !hasThird;
 
 
         return (
@@ -733,9 +825,9 @@ export default async function EventPage({
                 {thirdAction.label}
               </Link>
             ))}
-            {physicalAttendance && hasPreciseLocation && directionsUrl && (
+            {goDirectionsUrl && (
               <a
-                href={directionsUrl}
+                href={goDirectionsUrl}
                 data-decision-action="directions"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -1006,10 +1098,13 @@ export default async function EventPage({
       />
 
       {/* Mobile-only thumb-reachable dock. Desktop keeps the inline action
-          grid above; this reuses the same .ics calendar button, ticket +
-          directions links, and the SaveButton. The vermilion primary is
-          Tickets when they exist, otherwise Add to calendar. A cancelled/
-          postponed event gets the same replacement as the grid: the
+          row above; this reuses the same calendar button, ticket and
+          directions links, and the SaveButton. Exactly one cell is filled
+          (barPrimary): Tickets, else Online details for an event with an
+          online part, else Directions when there is an address or precise
+          location, else Add to calendar. At most four cells: Add to
+          calendar, Tickets or Online details, Directions, Save. A cancelled/
+          postponed event gets the same replacement as the row: the
           organizer's word + a way back to tonight (Save stays so a
           postponed event can be tracked for its new date). */}
       <MobileActionBar ariaLabel={`Actions for ${eventDisplayTitle(event)}`}>
@@ -1067,10 +1162,7 @@ export default async function EventPage({
                 address: event.address,
                 is_all_day: event.is_all_day,
               }}
-              barVariant={event.ticket_url || onlineActionUrl ? "quiet" : "primary"}
-              // The short visible label keeps four cells inside a 320px bar;
-              // the button's accessible name stays "Add to calendar".
-              label="Calendar"
+              barVariant={barPrimary === "calendar" ? "primary" : "quiet"}
             />
             {event.ticket_url && (
               <MobileBarLink
@@ -1079,7 +1171,7 @@ export default async function EventPage({
                 label="Tickets"
                 ariaLabel={`Tickets for ${eventDisplayTitle(event)}`}
                 external
-                primary
+                primary={barPrimary === "tickets"}
                 decisionAction="ticket"
               />
             )}
@@ -1090,17 +1182,18 @@ export default async function EventPage({
                 label="Online details"
                 ariaLabel={`Online details for ${eventDisplayTitle(event)}`}
                 external
-                primary
+                primary={barPrimary === "online"}
                 decisionAction="website"
               />
             )}
-            {physicalAttendance && hasPreciseLocation && directionsUrl && (
+            {goDirectionsUrl && (
               <MobileBarLink
-                href={directionsUrl}
+                href={goDirectionsUrl}
                 icon={Navigation}
                 label="Directions"
                 ariaLabel={`Directions to ${event.venue_name || event.title}`}
                 external
+                primary={barPrimary === "directions"}
                 decisionAction="directions"
               />
             )}
@@ -1115,7 +1208,12 @@ export default async function EventPage({
 /* The desktop action row matches the place page: one filled Deep Coral
    action, then unboxed icon-and-label links on the page ground. Each keeps a
    48px target. */
-const DESKTOP_ACTION_ROW = "hidden flex-wrap items-center gap-x-6 gap-y-1 lg:flex";
+/** One item of the event source line. Each item after the first owns the
+ * separator before it, and an empty item (FreshnessChip before hydration)
+ * collapses with its separator. */
+const EVENT_SOURCE_ITEM =
+  "inline-flex min-w-0 items-center gap-2 empty:hidden [&:not(:first-child)]:before:content-['·']";
+const DESKTOP_ACTION_ROW ="hidden flex-wrap items-center gap-x-6 gap-y-1 lg:flex";
 const DESKTOP_PRIMARY_CLASS = "tap-44 flex min-h-12 items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[15px] font-semibold";
 const DESKTOP_PRIMARY_STYLE = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
 const DESKTOP_PRIMARY_ICON = { color: "var(--app-on-brand)" };

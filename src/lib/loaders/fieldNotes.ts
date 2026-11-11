@@ -39,14 +39,6 @@ export type FieldNotes = {
   deals?: FNSourced[];
 };
 
-export type FieldNotesVerificationSummary = {
-  total: number;
-  dated: number;
-  undated: number;
-  allDated: boolean;
-  latest: string | null;
-};
-
 // Boundary cleaning, never render-time: field-notes.json is hand-authored, so
 // it bypasses cleanFeedText and the ESLint JSXText em-dash guard that protect
 // feed/JSX copy. deepCleanStrings (shared with the business-info loader)
@@ -63,23 +55,6 @@ export function hasFieldNotes(slug: string): boolean {
   return Boolean(n && (n.happy_hour || n.parking || n.insider?.length || n.deals?.length));
 }
 
-/** Flatten the display rows without manufacturing evidence for older notes. */
-export function fieldNoteSources(notes: FieldNotes): FNSourced[] {
-  return [
-    ...(notes.happy_hour
-      ? [{
-          text: notes.happy_hour.schedule,
-          source_url: notes.happy_hour.source_url,
-          confidence: notes.happy_hour.confidence,
-          last_verified: notes.happy_hour.last_verified,
-        }]
-      : []),
-    ...(notes.deals ?? []),
-    ...(notes.parking ? [notes.parking] : []),
-    ...(notes.insider ?? []),
-  ];
-}
-
 /** A verification date is evidence only when it is present and parseable. */
 export function recordedFieldNoteVerificationDate(
   value?: string,
@@ -87,27 +62,6 @@ export function recordedFieldNoteVerificationDate(
   const candidate = value?.trim();
   if (!candidate || !Number.isFinite(Date.parse(candidate))) return null;
   return candidate;
-}
-
-/**
- * Summarize row-level evidence for the card seal. `allDated` is deliberately
- * strict: a single undated fact keeps the card at SOURCED rather than letting
- * another row's newer date confer a blanket VERIFIED state.
- */
-export function fieldNotesVerificationSummary(
-  rows: readonly FNSourced[],
-): FieldNotesVerificationSummary {
-  const dates = rows
-    .map((row) => recordedFieldNoteVerificationDate(row.last_verified))
-    .filter((date): date is string => Boolean(date))
-    .sort();
-  return {
-    total: rows.length,
-    dated: dates.length,
-    undated: rows.length - dates.length,
-    allDated: rows.length > 0 && dates.length === rows.length,
-    latest: dates.at(-1) ?? null,
-  };
 }
 
 /** Every place with a sourced happy-hour note on file — powers /happy-hour. */

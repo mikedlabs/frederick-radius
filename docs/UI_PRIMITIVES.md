@@ -312,7 +312,38 @@ under its icon. `MobileBarControl` wraps a reused client control such as
 
 - Give a bar at most one `primary` cell, and only when the page has no other
   filled coral action.
+- The event bar picks its one `primary` cell in this order: Tickets, then
+  Online details for an event with an online part, then Directions when the
+  event has a street address or a precise location, then Add to calendar.
+  It holds at most four cells (Add to calendar, Tickets or Online details,
+  Directions, Save), and the calendar cell's visible label is always
+  "Add to calendar". A cancelled, postponed or ended event offers no
+  Directions or calendar cell. The desktop action row keeps its own order.
 - Do not stack it above `BottomNav` or add a second floating action bar.
+
+### `LiveOpenStatus` and `PlaceSourceLine`: answer first, provenance last
+`src/components/place/LiveOpenStatus.tsx` is the one status line under a
+place's title on the place page and in the place sheet. A confirmed open,
+closing-soon or closed state is the whole answer. Otherwise it keeps the plain
+caveat ("Hours not recently confirmed", or "Venue opening not confirmed" for
+a schedule that covers only part of the venue) and follows it with a
+`FreshnessChip` for the date the hours themselves were last checked
+(`hoursCheckedAt`, from `placeFreshnessEvidence(place).hours`).
+`src/components/place/PlaceSourceLine.tsx` is the one muted line of record
+provenance after the content: the `SourceBadge`, "Confirmed by Google" when
+the hours are not first-party, and one listing date (the listing check when
+one exists, otherwise "Updated on ..."). The sheet passes its correction link
+as children. A place with no schedule renders no `HoursBlock`; the status
+line is its only hours voice.
+
+- Never show two different checked or updated dates side by side. The status
+  line takes the hours date; the source line takes the listing date.
+- Keep attribution for a single fact beside that fact, not in the source
+  line: `PlaceDescriptionCredit`, `HoursBlock` provenance, each field note's
+  own date and link, and the `CommerceActions` source label.
+- The event page builds the same shape inline: `TrustChip`, the publisher
+  basis, `FreshnessChip` and `EventSourceLink` on one line after the
+  description.
 
 ### `PhotoCreditLine`: the one reviewed photograph credit
 `src/components/place/PhotoCreditLine.tsx`. Every reviewed licensed

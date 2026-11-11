@@ -24,6 +24,11 @@ describe("freshnessLabel", () => {
     ).toBe("Listing checked at source · 9d ago");
   });
 
+  it("prints a padded midnight-UTC check on the day it records", () => {
+    const label = freshnessLabel({ iso: "2026-07-22T00:00:00.000Z", now: NOW, subject: "Listing" })?.label;
+    expect(label).toMatch(/Jul 22/);
+  });
+
   it("rejects invalid and future timestamps", () => {
     expect(
       freshnessLabel({ iso: "not-a-date", now: NOW, subject: "Event" }),

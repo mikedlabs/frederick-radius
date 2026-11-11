@@ -9,39 +9,29 @@ import TrustChip from "@/components/ui/TrustChip";
 import { ChevronDown, AlertCircle } from "lucide-react";
 
 
+/**
+ * The weekly schedule disclosure for a place that HAS hours. A place with no
+ * schedule renders no hours block at all: its status line under the title
+ * already states "Hours not recently confirmed" and the date the hours were
+ * last checked, and the page's action bar carries Call and Website.
+ */
 export default function HoursBlock({
   hours,
   verified = false,
   provenance,
-  website,
-  phone,
 }: {
-  hours?: Hours;
+  hours: Hours;
   verified?: boolean;
   /** Hours source + freshness line (e.g. "Hours from Google, confirmed 3
    *  days ago."). Lives inside the expanded details so it stays honest
    *  without competing with the open/closed dot in the decision zone. */
   provenance?: string;
-  website?: string;
-  phone?: string;
 }) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
-  // PLAIN TOOL: a ruled block on the page ground. The heading, the sentence
-  // and two quiet underlined text actions; no surrounding border or fill.
-  if (!hours) return (
-    <section aria-label="Hours" data-hours-unconfirmed>
-      <p className="text-[17px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>Hours not recently confirmed</p>
-      <p className="mt-1 text-[15px] leading-snug" style={{ color: "var(--app-ink-2)" }}>Check with the business before going.</p>
-      <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1 text-[15px]">
-        {website && <a href={website} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline underline-offset-2" style={{ color: "var(--app-ink)" }}>Check the official website</a>}
-        {phone && <a href={`tel:${phone.replace(/[^+\d]/g, "")}`} className="inline-flex min-h-11 items-center underline underline-offset-2" style={{ color: "var(--app-ink)" }}>Call to check hours</a>}
-      </div>
-    </section>
-  );
   const status = getOpenStatus(hours, { verified }, now);
   const today = hoursForDate(hours, now);
   const exception = hours._official?.exceptions.find((item) => item.date === easternDayKey(now));

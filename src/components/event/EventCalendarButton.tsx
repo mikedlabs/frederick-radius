@@ -29,16 +29,15 @@ type CalendarEvent = {
 export default function EventCalendarButton({
   event,
   barVariant,
-  label = "Add to calendar",
 }: {
   event: CalendarEvent;
   /**
    * Render as a MobileActionBar cell instead of the default grid cell.
-   * "primary" gets the vermilion emphasis; "quiet" is a plain cell.
+   * "primary" gets the vermilion emphasis; "quiet" is a plain cell. The
+   * visible label is always "Add to calendar": the four-cell event bar
+   * keeps it unclipped at 320px (MobileActionBar EventFourActions320).
    */
   barVariant?: "primary" | "quiet";
-  /** Override the visible label (e.g. a shorter "Calendar" in a tight bar). */
-  label?: string;
 }) {
   function download() {
     haptic("medium");
@@ -86,7 +85,7 @@ export default function EventCalendarButton({
         aria-hidden
         style={inBar ? barIconStyle(primary) : { color: "var(--app-ink-2)" }}
       />
-      {label}
+      Add to calendar
     </button>
   );
 }

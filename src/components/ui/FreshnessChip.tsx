@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { recordedDayTimeZone } from "@/lib/trust";
 
 /**
  * FreshnessChip — visible age signal for any timestamped row.
@@ -41,10 +42,12 @@ function formatAbsolute(
   d: Date,
   stale: boolean,
   subject: FreshnessSubject,
+  iso: string,
 ): string {
+  const timeZone = recordedDayTimeZone(iso);
   const opts: Intl.DateTimeFormatOptions = stale
-    ? { month: "short", year: "numeric" }
-    : { month: "short", day: "numeric" };
+    ? { month: "short", year: "numeric", timeZone }
+    : { month: "short", day: "numeric", timeZone };
   const prefix = stale ? `${subject} last checked` : `${subject} checked`;
   return `${prefix} ${d.toLocaleDateString("en-US", opts)}`;
 }
@@ -65,7 +68,7 @@ export function freshnessLabel({
     tier: age.tier,
     label:
       age.label ||
-      formatAbsolute(new Date(timestamp), age.tier === "stale", subject),
+      formatAbsolute(new Date(timestamp), age.tier === "stale", subject, iso),
   };
 }
 
