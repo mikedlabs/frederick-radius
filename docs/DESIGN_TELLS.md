@@ -41,24 +41,22 @@ not fail the command.
 
 ## Current baseline
 
-> **Note, November 10, 2026.** The interface update the owner approved on
-> November 10, 2026 shrinks the radius tokens to 4, 6, 8 and 10px, keeps full
-> capsules only on compact filter chips, status badges and toggle switches,
-> and resolves the lower shadow tiers to transparent. It removes most of the
-> capsule and rounding tells counted below. The baseline below was taken
-> before that update and is being regenerated; do not quote its counts as
-> current.
-
-The November 10, 2026 public-product scan, taken with the UI defect pass
-(#1945) applied, covered 2,510 files and excluded 85 files that belong to the
-separate surfaces above. Without that pass the same scan reports 348 medium
-findings across 2,494 files.
+The November 10, 2026 public-product scan, taken with the interface update
+the owner approved that day applied, covered 2,303 files and excluded 58 files
+that belong to the separate surfaces above. An earlier scan the same day
+reported 343 medium findings, before the fair, the beta layer, the push stack
+and the prototype pages were removed and before the interface update.
 
 | Signal | Public product | All surfaces | Reading |
 |---|---:|---:|---|
 | High | 0 | 30 | Violet gradients and gradient text remain isolated to the internal pitch world. |
-| Medium | 343 | Not the release gate | The main debt is 330 uses of oversized rounding or capsules, 55 of them in `globals.css` (52 `border-radius: 999px` rules and 3 `border-radius: 9999px` rules). The rest are 7 glow shadows, 5 routine motion patterns and 1 emoji. This is real repetition, not a reason to call the product finished. |
+| Medium | 233 | Not the release gate | 224 uses of oversized rounding or capsules, 7 glow shadows and 2 routine motion patterns. Measured across all surfaces against the same day's `main`, the interface update took the rounding count from 356 to 280. Of the 224 that remain in the public product, 54 are in `globals.css` (51 `border-radius: 999px` rules and 3 `border-radius: 9999px` rules), many of them rules the update overrides without deleting. Most of the rest sit on specialty guide pages the update did not reach. This is real repetition, not a reason to call the product finished. |
 | Low | 1 | Not the release gate | One source-owned sentence matches a generic-copy expression. Review its provenance before changing it. |
+
+The interface update covers Today, Map, Events, Saved, Find, Tools, Settings,
+Ask, place pages, event pages and town pages. A capsule that survives on those
+surfaces should be a compact filter chip, a status badge or a toggle switch.
+Anything else there is a regression.
 
 Between October 12 and November 10 this scan skipped almost all of
 `globals.css`, because the end marker of the excluded pitch block had been

@@ -122,13 +122,15 @@ export function SettingsSwitch({
       data-settings-switch
       className="tap-44 relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors motion-reduce:transition-none disabled:opacity-45"
       style={{
-        background: checked ? "var(--app-brand)" : "var(--app-control-border)",
+        // On is ink, the same as every other selected control. A coral track
+        // would add coral fields to a page that has no coral action.
+        background: checked ? "var(--app-ink)" : "var(--app-control-border)",
       }}
     >
       <span
         aria-hidden
-        className="inline-block h-5 w-5 rounded-full bg-white transition-transform motion-reduce:transition-none"
-        style={{ transform: checked ? "translateX(22px)" : "translateX(2px)" }}
+        className="inline-block h-5 w-5 rounded-full transition-transform motion-reduce:transition-none"
+        style={{ background: "var(--app-bg)", transform: checked ? "translateX(22px)" : "translateX(2px)" }}
       />
     </button>
   );

@@ -82,9 +82,8 @@ async function assertPlainTool(canvasElement: HTMLElement, scale = 1) {
     await expect(parseFloat(view.getComputedStyle(label).fontSize)).toBeCloseTo(13 * scale, 1);
   }
 
-  // No coral field: only a switch track may carry the brand fill.
+  // No coral field anywhere on the page, switch tracks included.
   for (const node of canvasElement.querySelectorAll<HTMLElement>("button, a, summary")) {
-    if (node.getAttribute("role") === "switch") continue;
     await expect(coral.has(view.getComputedStyle(node).backgroundColor)).toBe(false);
   }
 

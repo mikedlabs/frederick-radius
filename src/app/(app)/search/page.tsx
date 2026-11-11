@@ -106,7 +106,7 @@ function displayFor(hit: SearchHit, showBranchAddress = false): Display {
         href: `/events/${hit.event.slug}`,
         title: hit.event.title,
         subtitle: [hit.event.venue_name, MUNICIPALITY_BY_SLUG[hit.event.municipality]?.name ?? hit.event.municipality, new Date(hit.event.starts_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/New_York" })].filter(Boolean).join(" · "),
-        badge: { label: "Event", color: "var(--app-cool)" },
+        badge: { label: "Event", color: "var(--app-cool-text)" },
         Icon: Calendar,
       };
     case "municipality":
@@ -114,7 +114,7 @@ function displayFor(hit: SearchHit, showBranchAddress = false): Display {
         href: `/m/${hit.municipality.slug}`,
         title: hit.municipality.name,
         subtitle: hit.municipality.hero_blurb || hit.municipality.description,
-        badge: { label: "Town", color: "var(--app-cool)" },
+        badge: { label: "Town", color: "var(--app-cool-text)" },
         Icon: Building2,
       };
     case "category":
@@ -130,7 +130,7 @@ function displayFor(hit: SearchHit, showBranchAddress = false): Display {
         href: hit.page.href,
         title: hit.page.title,
         subtitle: hit.page.blurb,
-        badge: { label: "Guide", color: "var(--app-brand)" },
+        badge: { label: "Guide", color: "var(--app-brand-text)" },
         Icon: DoorOpen,
       };
   }
