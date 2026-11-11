@@ -12,65 +12,68 @@ import { PlaceCardPhotoCredit } from "./PlaceCardPhoto";
 const photo = getLandmarkPhoto("sabor-de-cuba-restaurant-frederick")!;
 const source: PlaceCardPhotoSource = { kind: "curated", src: photo.localSrc!, alt: photo.alt, photo };
 
-describe("visible dated-reference photo credits", () => {
+describe("short reviewed photo credit line", () => {
   let container: HTMLDivElement;
   let root: Root;
   beforeEach(() => { container = document.createElement("div"); document.body.append(container); root = createRoot(container); });
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
-  async function render(selected: PlaceCardPhotoSource = source, loaded = true, discloseModifications = true) {
-    await act(async () => root.render(<PlaceCardPhotoCredit source={selected} loaded={loaded} touchTarget compact discloseModifications={discloseModifications} />));
+  async function render(selected: PlaceCardPhotoSource = source, loaded = true) {
+    await act(async () => root.render(<PlaceCardPhotoCredit source={selected} loaded={loaded} touchTarget />));
   }
+  const line = () => container.querySelector<HTMLElement>("[data-photo-credit-text]")!;
 
-  it("shows the known capture year outside collapsed details without removing full credits", async () => {
-    await render(); const label = container.querySelector<HTMLElement>("[data-photo-reference]")!;
-    expect(label.textContent).toBe("Reference photo · 2018");
-    expect(label.closest("details, a, button, [hidden], [inert], [aria-hidden='true']")).toBeNull();
-    expect(getComputedStyle(label).visibility).toBe("visible");
-    const details = container.querySelector<HTMLDetailsElement>("details")!;
-    expect(details.open).toBe(false); expect(details.textContent).toContain(photo.modifications);
-    expect(container.querySelector(`a[href="${photo.source_url}"]`)?.textContent).toBe(photo.author);
+  it("prints author, capture year, license and source as one visible line without the change record", async () => {
+    await render();
+    expect(line().textContent).toBe("Bohemian Baltimore · 2018 · CC BY-SA 4.0 · Wikimedia Commons · edited");
+    expect(line().closest("details, a, button, [hidden], [inert], [aria-hidden='true']")).toBeNull();
+    expect(getComputedStyle(line()).visibility).toBe("visible");
     expect(container.querySelector(`a[href="${photo.licenseUrl}"]`)?.textContent).toBe(photo.license);
-    details.open = true;
-    expect(label.closest("details")).toBeNull(); expect(details.textContent).toContain("April 2018");
+    expect(container.querySelector(`a[href="${photo.source_url}"]`)?.textContent).toBe("Wikimedia Commons");
+    // The stored file is Wikimedia's resized 1,280 px rendition, so it says so.
+    expect(container.querySelector("[data-photo-credit-edited]")?.textContent).toBe("edited");
+    expect(container.textContent).not.toContain(photo.modifications);
+    expect(container.querySelector("details, summary, [data-photo-reference]")).toBeNull();
+    expect(container.querySelector(".sr-only")?.textContent).toBe("Photo by ");
   });
 
-  it("retains the visible reference label when full modifications are already expanded", async () => {
-    await render(source, true, false);
-    expect(container.querySelectorAll("[data-photo-reference]")).toHaveLength(1);
-    expect(container.querySelector("[data-photo-reference]")?.textContent).toBe("Reference photo · 2018");
-    expect(container.textContent).toContain(photo.modifications);
-    expect(container.querySelector("details")).toBeNull();
+  it("keeps every credit link underlined with a 44px target", async () => {
+    await render();
+    const links = [...container.querySelectorAll<HTMLAnchorElement>("[data-photo-credit-line] a")];
+    expect(links).toHaveLength(2);
+    const lineClass = container.querySelector("[data-photo-credit-line]")!.className;
+    for (const rule of ["[&_a]:underline", "[&_a]:min-h-11", "[&_a]:min-w-11"]) expect(lineClass).toContain(rule);
+    for (const link of links) expect(link.target).toBe("_blank");
   });
 
-  it("shows Brewer's known 2004 reference year outside its collapsed edit disclosure", async () => {
+  it("marks an edited file and keeps Brewer's Alley original photograph link", async () => {
     const brewer = getLandmarkPhoto("brewers-alley-frederick")!;
     await render({ kind: "curated", src: brewer.localSrc!, alt: brewer.alt, photo: brewer });
-    const label = container.querySelector<HTMLElement>("[data-photo-reference]")!;
-    expect(label.textContent).toBe("Reference photo · 2004");
-    expect(label.closest("details, a, button, [hidden], [inert], [aria-hidden='true']")).toBeNull();
-    expect(getComputedStyle(label).visibility).toBe("visible");
-    const details = container.querySelector<HTMLDetailsElement>("details")!;
-    expect(details.open).toBe(false); expect(details.textContent).toContain("October 26, 2004");
-    expect(container.querySelector(`a[href="${brewer.source_url}"]`)?.textContent).toBe(brewer.author);
-    expect(container.querySelector(`a[href="${brewer.licenseUrl}"]`)?.textContent).toBe(brewer.license);
+    expect(line().textContent).toBe("Stacy (Rambling Traveler) · 2004 · CC BY-SA 2.0 · Wikimedia Commons · Original photograph");
+    expect(container.querySelector(`a[href="${brewer.originalSourceUrl}"]`)?.textContent).toBe("Original photograph");
+    expect(container.textContent).not.toContain("October 26, 2004");
+    const furnace = getLandmarkPhoto("catoctin-furnace-thurmont")!;
+    await render({ kind: "curated", src: furnace.localSrc!, alt: furnace.alt, photo: furnace });
+    expect(line().textContent).toBe("G Wayne Rhodes · CC BY-SA 4.0 · Wikimedia Commons · edited");
+    expect(container.querySelector("[data-photo-credit-line]")?.hasAttribute("data-photo-edited")).toBe(true);
+    expect(container.textContent).not.toContain(furnace.modifications);
   });
 
-  it("keeps the entire pending credit and reference label hidden and inert until decoded", async () => {
+  it("keeps the entire pending credit hidden and inert until decoded", async () => {
     await render(source, false); const credit = container.querySelector<HTMLElement>(".place-card-photo-credit")!;
     expect(credit.hasAttribute("inert")).toBe(true); expect(credit.getAttribute("aria-hidden")).toBe("true");
     expect(credit.style.visibility).toBe("hidden");
-    expect(container.querySelector("[data-photo-reference]")?.closest("[inert]")).toBe(credit);
+    expect(line().closest("[inert]")).toBe(credit);
   });
 
-  it("leaves unknown and invalid dates unlabeled while preserving their provenance", async () => {
+  it("leaves unknown and invalid dates out of the line while preserving provenance", async () => {
     const county = getLandmarkPhoto("ballenger-creek-park-frederick")!;
     await render({ kind: "curated", src: county.localSrc!, alt: county.alt, photo: county });
-    expect(container.querySelector("[data-photo-reference]")).toBeNull();
-    expect(container.querySelector("summary")?.textContent).toBe("Photo details");
-    expect(container.textContent).toContain("Photo capture date unknown");
+    expect(line().textContent).toBe("Frederick County Parks & Recreation · Used with permission · Frederick County · edited");
+    expect(container.querySelector(".sr-only")?.textContent).toBe("Photo provided by ");
+    expect(container.textContent).not.toContain("Photo capture date unknown");
     await render({ ...source, photo: { ...photo, capturedOn: "2023-02-29" } });
-    expect(container.querySelector("[data-photo-reference]")).toBeNull();
-    expect(container.textContent).toContain(photo.author);
+    expect(container.querySelector("[data-photo-credit-year]")).toBeNull();
+    expect(line().textContent).toBe("Bohemian Baltimore · CC BY-SA 4.0 · Wikimedia Commons · edited");
   });
 
   it.each(["zoes-chocolate-company", "visitation-hotel"])("shows only the unverified appearance context for %s", async slug => {
@@ -79,7 +82,7 @@ describe("visible dated-reference photo credits", () => {
     expect(label.textContent).toBe("Reference photo · Appearance unverified");
     expect(label.closest("a, button, details, [hidden], [inert], [aria-hidden='true']")).toBeNull();
     expect(getComputedStyle(label).visibility).toBe("visible");
-    expect(container.querySelectorAll("a, button, summary, [data-photo-reference]")).toHaveLength(0);
+    expect(container.querySelectorAll("a, button, summary, [data-photo-credit-line]")).toHaveLength(0);
     expect(container.textContent).not.toMatch(/Photo by|Photo provided by|\b\d{4}\b/);
   });
 

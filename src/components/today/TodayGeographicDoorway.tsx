@@ -60,7 +60,7 @@ function DiscoveryPlace({ place, scope, returnTo, lead }: { place: LocalDiscover
       </div>
       </div>
       {source?.kind === "curated" && <div className={styles.discoveryCredit} data-today-discovery-credit={place.slug}>
-        <PlaceCardPhotoCredit source={source} loaded={loaded} touchTarget compact discloseModifications />
+        <PlaceCardPhotoCredit source={source} loaded={loaded} touchTarget />
       </div>}
     </article>
   );

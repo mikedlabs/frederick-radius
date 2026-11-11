@@ -9,6 +9,7 @@ const read = {
   highF: 75, sun: { label: "Sunset", time: "6:36 PM" }, variant: "Cloud" as const,
   forecastAvailable: true, issuedAt: "2026-10-12T14:53:00.000Z",
   safetyNote: "The air-quality reading is unavailable.",
+  safetyNoteRoutine: true,
   daylight: <span> · 4h 4m of daylight left</span>,
 };
 const meta = {
@@ -28,7 +29,9 @@ export const PartialSafetyRead: Story = {
     await expect(heading).toBeVisible();
     await expect(heading).toHaveTextContent(/^This afternoon$/);
     await expect(canvas.getByText("Friday, October 16", { exact: true })).toBeVisible();
-    await expect(canvas.getByText("The air-quality reading is unavailable.")).toBeVisible();
+    // A missing air-quality reading is routine evidence behind Details.
+    const airNote = canvas.getByText("The air-quality reading is unavailable.");
+    await expect(airNote).not.toBeVisible();
     const details = canvasElement.querySelector<HTMLElement>("summary[data-today-weather-summary]")!;
     const forecast = canvasElement.querySelector<HTMLAnchorElement>('a[href="/pulse?open=weather"]')!;
     await expect(details).toHaveAccessibleName(/Forecast details for Frederick.*70 degrees Fahrenheit forecast/);
@@ -43,12 +46,13 @@ export const PartialSafetyRead: Story = {
     await expect(canvas.getByText(/^Oct 12, 2026(?:,| at) 10:53 AM EDT$/)).toBeVisible();
     await expect(canvas.getByText(/^Oct 12, 2026(?:,| at) 10:53 AM EDT$/)).toHaveAttribute("datetime", "2026-10-12T14:53:00.000Z");
     await expect(forecast).toBeVisible();
+    await expect(airNote).toBeVisible();
     await expect(forecast).toHaveAttribute("href", "/pulse?open=weather");
     await expect(forecast.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     await expect(forecast.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
     await userEvent.click(details);
     await expect(canvas.getByText(/^Oct 12, 2026(?:,| at) 10:53 AM EDT$/)).not.toBeVisible();
-    await expect(canvas.getByText("The air-quality reading is unavailable.")).toBeVisible();
+    await expect(airNote).not.toBeVisible();
     await expect(forecast).not.toBeVisible();
     await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
   },
@@ -66,7 +70,7 @@ export const ForecastUnavailable: Story = {
 };
 
 export const NarrowLongWarning: Story = {
-  args: { weather: <TodayWeatherView {...read} headline="Flash Flood Warning is active." condition="Chance showers and thunderstorms" safetyNote="Weather-alert and air-quality checks are unavailable." /> },
+  args: { weather: <TodayWeatherView {...read} headline="Flash Flood Warning is active." condition="Chance showers and thunderstorms" safetyNote="Weather-alert and air-quality checks are unavailable." safetyNoteRoutine={false} /> },
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

@@ -254,7 +254,7 @@ export const ExactReviewedPhotosAt320: Story = {
     const license = scoped.getByRole("link", { name: "CC BY-SA 4.0" });
     await expect(source).toHaveAttribute("href", "https://commons.wikimedia.org/wiki/File:New_Market_HD_MD1.jpg");
     await expect(license).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0/");
-    await expect(scoped.getByText("Photo by Acroterion.")).toBeVisible();
+    await expect(scoped.getByText("Acroterion", { exact: true })).toBeVisible();
     await expect(source.closest("button")).toBeNull();
     await expect(canvasElement.querySelector("button a, a button")).toBeNull();
     for (const target of [open, directions]) await expectReachableTarget(target);

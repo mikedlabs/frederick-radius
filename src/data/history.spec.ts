@@ -13,6 +13,8 @@ describe("history image attribution", () => {
       expect(image.license.label, image.slug).not.toBe("");
       expect(new URL(image.license.url).protocol, image.slug).toBe("https:");
       expect(image.modifications, image.slug).toMatch(/resized|crop/i);
+      // Every History image is a resized, converted or metadata-stripped copy.
+      expect(image.edited, image.slug).toBe(true);
     }
   });
 

@@ -227,7 +227,7 @@ describe("exact licensed event venue photographs", () => {
       hero_image: "/api/place-photo?name=unused-google&w=800" }), { venuePhotos: "free-reviewed" })!;
     expect(visual).toMatchObject({ src: photo.image.src, presentation: "photo", key: `licensed-venue:${venue_place_slug}`,
       licensedCredit: { creator: photo.image.creator, source_url: photo.image.source_url,
-        license: photo.image.license, modifications: photo.image.modifications } });
+        license: photo.image.license, modifications: photo.image.modifications, edited: photo.image.edited } });
     expect(visual.attribution).toBeUndefined();
     expect(eventCardVisual(event({ venue_place_slug }))).toEqual(visual);
     expect(eventCardVisual(event({ venue_place_slug }), { venuePhotos: "owned-only" })).toBeNull();
@@ -235,6 +235,8 @@ describe("exact licensed event venue photographs", () => {
     expect(parseRecoveryEventVisual({ ...visual, licensedCredit: undefined })).toBeNull();
     expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit, creator: "Wrong creator" } })).toBeNull();
     expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit, modifications: "Unchanged" } })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit!, edited: !photo.image.edited } })).toBeNull();
+    expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit!, captured_on: "1999-01-01" } })).toBeNull();
     expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit, license: { label: "Public domain", url: "https://example.test" } } })).toBeNull();
     expect(parseRecoveryEventVisual({ ...visual, sourceHref: "https://example.test" })).toBeNull();
     expect(parseRecoveryEventVisual({ ...visual, src: "/history-photos/wrong-venue.jpg" })).toBeNull();
@@ -245,6 +247,7 @@ describe("exact licensed event venue photographs", () => {
     const visual = eventCardVisual(event({ venue_place_slug: "brewers-alley-frederick" }))!;
     expect(visual.caption).toBe("Venue · Brewer's Alley side entrance, photographed in 2004");
     expect(visual.licensedCredit?.original_source_url).toBe(CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"].provenance.original_source_url);
+    expect(visual.licensedCredit).toMatchObject({ captured_on: "2004-10-26", edited: false });
     expect(parseRecoveryEventVisual({ ...visual, licensedCredit: { ...visual.licensedCredit, original_source_url: undefined } })).toBeNull();
   });
 

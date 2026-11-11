@@ -606,36 +606,6 @@
   border: 0;
 }
 
-.discoveryCredit :global(.place-card-photo-credit-row) {
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spacing) var(--app-space-2);
-}
-
-.discoveryCredit :global(.place-card-photo-edits > summary) {
-  min-width: 44px;
-  min-height: 48px;
-  align-content: center;
-  list-style-position: inside;
-  cursor: pointer;
-  border-radius: var(--app-radius-sm);
-}
-
-.discoveryCredit :global(.place-card-photo-edits > summary:focus-visible) {
-  outline: 2px solid var(--app-focus);
-  outline-offset: -2px;
-}
-
-.discoveryCredit :global(.place-card-photo-edits[open]) {
-  flex-basis: 100%;
-}
-
-.discoveryCredit :global(.place-card-photo-credit-details) {
-  display: grid;
-  gap: var(--spacing);
-  padding-block: var(--spacing) var(--app-space-2);
-}
-
 /* Browse-by-need links are plain text rows with a hairline above, not
    gray tiles. */
 .discoveryTasks {

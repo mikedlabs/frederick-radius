@@ -49,8 +49,8 @@ describe("Find source identity and failure recovery", () => {
     expect(host.querySelector("img")?.getAttribute("src")).toBe("/place-photos/cunningham-falls.jpg");
     expect(host.querySelector(".place-card-photo-credit")).toBeNull();
     await load(host.querySelector("img")!);
-    expect(host.textContent).toContain("Photo by Alyson Hurt.");
-    expect(host.textContent).toContain("Historical photograph from February 2005. Display may resize or crop.");
+    expect(host.querySelector("[data-photo-credit-text]")?.textContent).toBe("Alyson Hurt · 2005 · CC BY 2.0 · Wikimedia Commons · edited");
+    expect(host.textContent).not.toContain("Historical photograph from February 2005");
     expect(host.querySelector('a[href="https://commons.wikimedia.org/wiki/File:Cunningham_Falls.jpg"]')).not.toBeNull();
     expect(host.querySelector('a[href="https://creativecommons.org/licenses/by/2.0/"]')).not.toBeNull();
     expect(host.querySelector("a a")).toBeNull();
@@ -109,8 +109,8 @@ describe("Find source identity and failure recovery", () => {
     expect(host.querySelector("[data-search-place-lead]")?.getAttribute("data-has-photo")).toBe("true");
     expect(host.querySelector(".place-card-photo-credit")).toBeNull();
     await load(image);
-    expect(host.textContent).toContain("Pete Giove-Fourwinds");
-    expect(host.textContent).toContain("Resized and converted for display; cards may crop the image responsively.");
+    expect(host.querySelector("[data-photo-credit-text]")?.textContent).toBe("Pete Giove-Fourwinds · CC BY-SA 3.0 · Wikimedia Commons · edited");
+    expect(host.textContent).not.toContain("Resized and converted for display");
     expect(host.querySelector('a[href="https://creativecommons.org/licenses/by-sa/3.0/"]')).not.toBeNull();
     expect(host.querySelector("a a")).toBeNull();
     await act(async () => image.dispatchEvent(new Event("error")));
@@ -129,7 +129,7 @@ describe("Find source identity and failure recovery", () => {
     // This rendering contract is independent of whether any real destination
     // later gains a preferred, bundled photograph.
     const photo = { file: "Controlled remote search fixture.jpg", alt: "A controlled remote search venue.",
-      author: "Controlled search photographer", license: "CC BY-SA 4.0", verified: true,
+      author: "Controlled search photographer", license: "CC BY-SA 4.0", verified: true, edited: false,
       source_url: "https://commons.wikimedia.org/wiki/File:Controlled_remote_search_fixture.jpg" };
     const remote: PlaceCardPhotoSource = { kind: "curated", src: wikimediaUrl(photo.file, 256), alt: photo.alt, photo };
     const original = remote.src;

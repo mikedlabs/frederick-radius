@@ -33,6 +33,7 @@ coral-tinted tile.
 - An eligible source or configured provider is not proof that the image decoded. Verify real bytes and visible credits, and test a useful failure state.
 - Keep event date, time and venue identity readable. Label a venue photo as venue context rather than implying it depicts the event itself.
 - Town and scenic heroes use approved contextual imagery. A random business photo does not establish a town's visual identity.
+- A reviewed licensed photograph prints one short credit line directly under it: author, the capture year when known, the license, the source, then "edited" when the stored file differs from the source file (`PhotoCreditLine` in `docs/UI_PRIMITIVES.md`). A file counts as edited when its stored bytes were changed in any way, including resizing, conversion, recompression, an in-file crop or removed metadata. CSS display cropping alone does not count, and a record that does not say clearly counts as edited. Record this as the structured `edited` field beside the record's `modifications` text. The `modifications` text is the internal change record and is not printed on public surfaces.
 - Preserve usable touch targets, focus, Back continuity, contrast and reduced motion while refining card layout and animation.
 
 ## Superseded decisions

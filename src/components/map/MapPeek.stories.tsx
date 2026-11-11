@@ -47,18 +47,6 @@ async function expectFullWidthPhoto(root: HTMLElement, image: HTMLImageElement) 
   await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
 }
 
-/** Storybook's synthetic focus selector omits summary. Exercise the native
- * pointer in browser tests without repairing focus after the interaction. */
-async function clickPhotoEdits(summary: HTMLElement) {
-  if ((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) {
-    const browser = await import("vitest/browser");
-    let trusted = false;
-    summary.addEventListener("pointerdown", event => { trusted = event.isTrusted; }, { once: true });
-    await browser.userEvent.click(summary);
-    await expect(trusted).toBe(true);
-  } else summary.click();
-}
-
 const plan: PlaceCardPhotoPlan = {
   key: "map-peek-source-transition-component-fixture",
   sources: [
@@ -69,7 +57,7 @@ const plan: PlaceCardPhotoPlan = {
     } },
     { kind: "curated", src: curatedFixture, alt: "Component fixture alternate image transport.", photo: {
       file: "Component fixture.jpg", alt: "Component fixture alternate image transport.",
-      author: "Component Commons fixture", license: "CC BY-SA 4.0", verified: true,
+      author: "Component Commons fixture", license: "CC BY-SA 4.0", verified: true, edited: false,
       source_url: "https://commons.wikimedia.org/wiki/File:Component_fixture.jpg",
     } },
   ],
@@ -149,25 +137,14 @@ export const FallbackAndExhaustionAt320: Story = {
     }, { timeout: 5000 });
     await expectFullWidthPhoto(root, currentImage()!);
     await expect(canvas.queryByText("Component Google fixture")).not.toBeInTheDocument();
-    const sourceLink = canvas.getByRole("link", { name: "Photo by Component Commons fixture. Wikimedia Commons" });
-    await expect(sourceLink).toHaveTextContent("Component Commons fixture");
-    const editSummary = canvas.getByText("Edited photo", { exact: true });
-    const fullEdits = canvas.getByText("The image is resized for display; previews may be cropped.");
-    await expect(editSummary).toBeVisible();
-    await expect(fullEdits).not.toBeVisible();
+    const sourceLink = canvas.getByRole("link", { name: "Wikimedia Commons" });
+    const creditLine = root.querySelector<HTMLElement>("[data-photo-credit-text]")!;
+    await expect(creditLine).toBeVisible();
+    await expect(creditLine).toHaveTextContent(/^Component Commons fixture · CC BY-SA 4\.0 · Wikimedia Commons$/);
+    await expect(root.querySelector("details, summary")).toBeNull();
     await expect(sourceLink).toHaveAttribute("href", "https://commons.wikimedia.org/wiki/File:Component_fixture.jpg");
     await expect(canvas.getByRole("link", { name: "CC BY-SA 4.0" })).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0");
     await expect(details).toHaveFocus();
-    editSummary.focus();
-    await clickPhotoEdits(editSummary);
-    await expect(editSummary.closest("details")).toHaveAttribute("open");
-    await expect(fullEdits).toBeVisible();
-    await expect(canvas.getByText("The photo is by Component Commons fixture on Wikimedia Commons.")).toBeVisible();
-    await expect(editSummary).toHaveFocus();
-    await clickPhotoEdits(editSummary);
-    await expect(editSummary.closest("details")).not.toHaveAttribute("open");
-    await expect(fullEdits).not.toBeVisible();
-    await expect(editSummary).toHaveFocus();
     details.focus();
     await expect(canvas.getByText("Hours not confirmed")).toBeVisible();
     await expect(root.querySelectorAll("img")).toHaveLength(1);
@@ -175,7 +152,7 @@ export const FallbackAndExhaustionAt320: Story = {
     await document.fonts.ready;
     await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
-    for (const target of [details, editSummary, ...root.querySelectorAll<HTMLAnchorElement>(".map-peek-source-credit a")]) {
+    for (const target of [details, ...root.querySelectorAll<HTMLAnchorElement>(".map-peek-source-credit a")]) {
       target.scrollIntoView({ block: "nearest" });
       const box = target.getBoundingClientRect();
       await expect(box.width).toBeGreaterThanOrEqual(44);

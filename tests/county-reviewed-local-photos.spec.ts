@@ -240,6 +240,8 @@ describe("individually reviewed County local photographs", () => {
     expect(new URL(entry.image.license.url).hostname.replace(/^www\./, "")).toBe("recreater.com");
     expect(entry.image.modifications).toContain("capture date unknown");
     expect(entry.image.modifications).toContain("removed losslessly");
+    // Removing metadata changes the stored bytes, so the credit says "edited".
+    expect(entry.image.edited).toBe(true);
     const planned = placeCardPhotoPlan({ slug: row.slug }, 360).sources[0];
     expect(planned).toMatchObject({ kind: "curated", src: entry.image.src,
       alt: entry.image.alt, objectPosition: row.focal,

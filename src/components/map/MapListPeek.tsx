@@ -187,7 +187,7 @@ function PlaceRow({
       )}
       {creditSource && <div className={styles.photoCredit}>
         <PlaceCardPhotoCredit source={creditSource}
-          loaded={Boolean(photoLoaded && photo?.src === creditSource.src)} touchTarget compact />
+          loaded={Boolean(photoLoaded && photo?.src === creditSource.src)} touchTarget />
       </div>}
     </div>
   );

@@ -133,8 +133,8 @@ for (const width of [320, 375, 390, 430]) {
     const source = dialog.locator('.place-card-photo-credit a[href^="https://commons.wikimedia.org/wiki/File:"]');
     await expect(source).toHaveCount(1);
     await expect(source).toBeVisible();
-    await expect(dialog.getByText("Photo by Alyson Hurt.", { exact: true })).toBeVisible();
-    await expect(dialog.getByText("Historical photograph from February 2005. Display may resize or crop.", { exact: true })).toBeVisible();
+    await expect(dialog.locator(".place-card-photo-credit [data-photo-credit-text]")).toHaveText("Alyson Hurt · 2005 · CC BY 2.0 · Wikimedia Commons · edited");
+    await expect(dialog).not.toContainText("Historical photograph from February 2005");
     await expect(source).toHaveAttribute("href", "https://commons.wikimedia.org/wiki/File:Cunningham_Falls.jpg");
     await expect(dialog.getByRole("link", { name: "CC BY 2.0", exact: true })).toHaveAttribute("href", "https://creativecommons.org/licenses/by/2.0/");
     await expect(dialog.locator("a a")).toHaveCount(0);
@@ -157,8 +157,8 @@ for (const width of [320, 375, 390, 430]) {
     await dialog.getByRole("button", { name: "Close Find", exact: true }).click();
     await page.goto("/search?q=Cunningham%20Falls&in=county&kind=place", { waitUntil: "domcontentloaded" });
     await expectDecodedBundledFalls(page.locator("main"));
-    await expect(page.locator("main").getByText("Photo by Alyson Hurt.", { exact: true })).toBeVisible();
-    await expect(page.locator("main").getByText("Historical photograph from February 2005. Display may resize or crop.", { exact: true })).toBeVisible();
+    await expect(page.locator("main .place-card-photo-credit [data-photo-credit-text]")).toHaveText("Alyson Hurt · 2005 · CC BY 2.0 · Wikimedia Commons · edited");
+    await expect(page.locator("main")).not.toContainText("Historical photograph from February 2005");
     await expect(page.locator('main .place-card-photo-credit a[href="https://commons.wikimedia.org/wiki/File:Cunningham_Falls.jpg"]')).toBeVisible();
     await expect(page.locator("main").getByRole("link", { name: "CC BY 2.0", exact: true })).toHaveAttribute("href", "https://creativecommons.org/licenses/by/2.0/");
     await expect(page.locator("main a a")).toHaveCount(0);

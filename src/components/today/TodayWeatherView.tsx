@@ -16,6 +16,9 @@ export type TodayWeatherViewProps = {
   forecastAvailable: boolean;
   issuedAt: string | null;
   safetyNote: string | null;
+  /** The note only reports a missing air-quality reading. The masthead keeps
+   *  it inside the forecast details instead of a first-screen line. */
+  safetyNoteRoutine?: boolean;
   daylight?: ReactNode;
   children?: ReactNode;
 };
@@ -78,7 +81,7 @@ export function WeatherUnavailable({ density = "standard" }: { density?: TodayWe
  * live daylight, and offline capture remain owned by the server composition. */
 export default function TodayWeatherView({
   headline, condition, temperatureF, highF, sun, variant,
-  forecastAvailable, issuedAt, safetyNote, daylight, children, density = "standard",
+  forecastAvailable, issuedAt, safetyNote, safetyNoteRoutine = false, daylight, children, density = "standard",
 }: TodayWeatherViewProps) {
   const issuance = forecastIssuance(issuedAt);
   const hasDistinctRead = Boolean(headline && headline !== condition);
@@ -93,6 +96,17 @@ export default function TodayWeatherView({
   );
 
   if (density === "masthead") {
+    // Unavailable readings do not take primary space. A missing air-quality
+    // reading joins the forecast evidence; a missing alert feed, or a note
+    // with no forecast to disclose, stays in the first read.
+    const noteInDetails = Boolean(safetyNote && safetyNoteRoutine && forecastAvailable);
+    // First-read notes keep data-weather-safety-note; a routine note inside
+    // the details is marked separately so it never reads as a first-read fact.
+    const safetyLine = safetyNote
+      ? noteInDetails
+        ? <p data-weather-routine-note className={styles.safetyNote}>{safetyNote}</p>
+        : <p data-weather-safety-note className={styles.safetyNote}>{safetyNote}</p>
+      : null;
     return (
       <section
         aria-label="Today in Frederick"
@@ -125,6 +139,7 @@ export default function TodayWeatherView({
             </summary>
             <div className={styles.forecastEvidence}>
               {provenance}
+              {noteInDetails && safetyLine}
               {(highF !== null || sun || daylight) && (
                 <p data-weather-stats className={styles.stats}>
                   {highF !== null && <span>{`High ${highF}°`}</span>}
@@ -140,7 +155,7 @@ export default function TodayWeatherView({
             <FullForecastLink />
           </>
         )}
-        {safetyNote && <p data-weather-safety-note className={styles.safetyNote}>{safetyNote}</p>}
+        {!noteInDetails && safetyLine}
       </section>
     );
   }

@@ -382,6 +382,9 @@ describe("Recommended attendance promotion through the mounted explorer", () => 
     expect(leadLinks()).toEqual(["/events/named-concert"]);
     expect(host.querySelector('[data-events-complete="true"]')).not.toBeNull();
     expect(host.querySelector(".eb-countline")?.textContent).toBe("3 event listings · 1 town");
+    // The count is announced, not printed above the first event.
+    expect(host.querySelector(".eb-countline")?.classList.contains("sr-only")).toBe(true);
+    expect(host.querySelector("[data-events-partial]")).toBeNull();
 
     // The actual dock has mobile and desktop control copies. Open the native
     // mobile disclosure and scope both choices to it, never a hidden sibling.

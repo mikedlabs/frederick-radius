@@ -97,7 +97,7 @@ export const ReviewedLocalPhotosAt320: Story = {
     await expect(source).toHaveAttribute("href", "https://commons.wikimedia.org/wiki/File:New_Market_HD_MD1.jpg");
     const license = canvas.getByRole("link", { name: "CC BY-SA 4.0" });
     await expect(license).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0/");
-    await expect(canvas.getByText("Photo by Acroterion.")).toBeVisible();
+    await expect(canvas.getByText("Acroterion", { exact: true })).toBeVisible();
     await expect(source.closest("button")).toBeNull();
     await expect(canvasElement.querySelector("button a")).toBeNull();
     const open = canvas.getByRole("button", { name: /New Market Historic District/ });

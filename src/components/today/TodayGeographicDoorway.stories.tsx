@@ -247,19 +247,13 @@ export const ThurmontEnlargedCredits320: Story = {
       await expect(credits[index].querySelectorAll("a").length).toBeGreaterThanOrEqual(2);
     }
 
-    const summary = credits[0].querySelector<HTMLElement>("details > summary")!;
-    const disclosure = summary.closest("details")!;
-    await physicalLink(summary);
-    summary.focus(); await expect(summary).toHaveFocus();
-    const inBrowserGate = Boolean((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__);
-    if (inBrowserGate) {
-      const { userEvent: nativeUserEvent } = await import("vitest/browser");
-      try { await nativeUserEvent.click(summary); } finally { await nativeUserEvent.cleanup(); }
-    } else {
-      await userEvent.click(summary);
+    // Each reviewed credit is one short line; the internal change record stays in the data.
+    for (const credit of credits) {
+      await expect(credit.querySelector("details, summary")).toBeNull();
+      const line = credit.querySelector<HTMLElement>("[data-photo-credit-text]")!;
+      await expect(line).toBeVisible();
+      await expect(line.textContent).not.toMatch(/Resized|Display may|stored unchanged/);
     }
-    await expect(disclosure).toHaveAttribute("open");
-    await expect(credits[0].querySelector(".place-card-photo-credit-details")).toBeVisible();
 
     const first = links[0].getBoundingClientRect(), firstCredit = credits[0].getBoundingClientRect();
     const second = links[1].getBoundingClientRect(), secondCredit = credits[1].getBoundingClientRect();

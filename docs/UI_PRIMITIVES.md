@@ -314,6 +314,26 @@ under its icon. `MobileBarControl` wraps a reused client control such as
   filled coral action.
 - Do not stack it above `BottomNav` or add a second floating action bar.
 
+### `PhotoCreditLine`: the one reviewed photograph credit
+`src/components/place/PhotoCreditLine.tsx`. Every reviewed licensed
+photograph (curated place photos, licensed event venue photos and the town
+hero) prints one short muted line under its photo, in this order: author,
+the capture year when the record has a valid one, the license, the source,
+then `edited` when the stored file differs from the source file. Build its
+facts with `curatedPhotoCredit` or `eventPhotoCredit` from
+`src/lib/curated-photo-source.ts`; `PlaceCardPhotoCredit` and
+`EventVisualCredit` already do. A record with an earlier publication adds an
+"Original photograph" source link after the source.
+
+- License, source and original-photograph links stay underlined (color alone
+  never marks a link) with a real 44px target, and render outside the
+  destination link.
+- The `edited` word comes from the record's structured `edited` field, never
+  from parsing `modifications`. The full `modifications` change record stays
+  in the data and is not printed on any public surface.
+- Google photos keep `GooglePhotoAttributionLine`, and owned reference photos
+  keep their "Appearance unverified" context; neither uses this line.
+
 ### Other canonical pieces (already existed, keep using)
 `CollapsibleSection` (a group wrapper that hides what is not needed) and the
 `.text-*`/`.display-*` type scale. `TrustChip` is already plain text: an

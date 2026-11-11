@@ -263,8 +263,9 @@ describe("Today place preview exact media and actions", () => {
     await decode(image()!);
     expect(credit()?.getAttribute("aria-hidden")).toBeNull();
     expect(credit()?.hasAttribute("inert")).toBe(false);
-    expect(credit()?.textContent).toContain(`Photo by ${schifferstadt.creator}.`);
-    expect(credit()?.textContent).toContain(schifferstadt.modifications);
+    expect(credit()?.querySelector("[data-photo-credit-text]")?.textContent)
+      .toBe(`${schifferstadt.creator} · ${schifferstadt.license.label} · Wikimedia Commons · edited`);
+    expect(credit()?.textContent).not.toContain(schifferstadt.modifications);
     expect(credit()?.querySelector(`a[href="${schifferstadt.source_url}"]`)?.textContent).toBe("Wikimedia Commons");
     expect(credit()?.querySelector(`a[href="${schifferstadt.license.url}"]`)?.textContent).toBe(schifferstadt.license.label);
     expect(request).not.toHaveBeenCalled();

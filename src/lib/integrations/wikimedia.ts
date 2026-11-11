@@ -1,4 +1,4 @@
-import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
+import { CREDITED_LOCAL_PLACE_PHOTOS, creditedPhotoCapturedOn, creditedPhotoOriginalSource } from "@/data/credited-local-place-photos";
 
 /**
  * Wikimedia Commons photos for curated places.
@@ -29,7 +29,14 @@ export type WikimediaPhoto = {
   /** Existing reviewed local copy; retain the Commons source and attribution. */
   localSrc?: string;
   licenseUrl?: string;
+  /** An earlier publication the reviewed source file was copied from. */
+  originalSourceUrl?: string;
+  /** Internal change record; never printed on a public surface. */
   modifications?: string;
+  /** The stored bytes differ from the source file (resized, converted,
+   *  recompressed, cropped or metadata removed). CSS display cropping and
+   *  Commons-served renditions do not count; unclear records count as edited. */
+  edited: boolean;
   /** Retain the reviewed subject when a card or hero crops the photograph. */
   objectPosition?: "center" | "left" | "right" | "top" | "bottom" | `${number}% ${number}%`;
   /** Prefer reviewed bundled bytes without claiming the provider image is wrong. */
@@ -51,13 +58,14 @@ export type WikimediaPhoto = {
 export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
   ...Object.fromEntries(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).map(([slug, record]) => {
     const { file, image } = record;
-    const capturedOn = "review" in record && "captured_on" in record.review ? record.review.captured_on
-      : "provenance" in record && "captured_on" in record.provenance ? record.provenance.captured_on : undefined;
+    const capturedOn = creditedPhotoCapturedOn(record);
+    const originalSourceUrl = creditedPhotoOriginalSource(record);
     return [slug, {
       file, alt: image.alt, author: image.creator, license: image.license.label,
       source_url: image.source_url, verified: true, localSrc: image.src,
-      licenseUrl: image.license.url, modifications: image.modifications,
+      licenseUrl: image.license.url, modifications: image.modifications, edited: image.edited,
       ...(capturedOn === undefined ? {} : { capturedOn }),
+      ...(originalSourceUrl === undefined ? {} : { originalSourceUrl }),
       ...("preferLocal" in record ? { preferLocal: record.preferLocal } : {}),
       ...("objectPosition" in record ? { objectPosition: record.objectPosition } : {}),
     } satisfies WikimediaPhoto];
@@ -68,6 +76,8 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
     author: "Acroterion",
     license: "CC BY-SA 4.0",
     source_url: "https://commons.wikimedia.org/wiki/File:Carroll_Creek_Park_Frederick_MD1.jpg",
+    // Served as Commons renditions; no stored copy was changed.
+    edited: false,
     verified: true,
   },
   "cunningham-falls-state-park-thurmont": {
@@ -79,6 +89,10 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
     localSrc: "/place-photos/cunningham-falls.jpg",
     licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
     modifications: "Historical photograph from February 2005. Display may resize or crop.",
+    // The reviewed record gives the month only.
+    capturedOn: "2005-02",
+    // The record does not say whether the local bytes match the source file.
+    edited: true,
     preferLocal: true,
     verified: true,
   },
@@ -89,6 +103,7 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
     license: "Public domain",
     source_url:
       "https://commons.wikimedia.org/wiki/File:Roddy_Road_covered_bridge_near_Thurmont_in_Frederick_County,_Maryland,_built_about_1850.jpg",
+    edited: false,
     verified: true,
   },
 
@@ -101,6 +116,7 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
     author: "Acroterion",
     license: "CC BY-SA 4.0",
     source_url: "https://commons.wikimedia.org/wiki/File:Baker_Park_Swinging_Bridge_Frederick_MD2.jpg",
+    edited: false,
     verified: true,
   },
 
@@ -115,6 +131,7 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
     localSrc: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.src,
     licenseUrl: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.license.url,
     modifications: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.modifications,
+    edited: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.edited,
     verified: true,
     // Google hero is dominated by a directional park sign, not the house.
     preferCurated: true,
@@ -128,6 +145,7 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
     localSrc: "/place-photos/catoctin-furnace.jpg",
     licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
     modifications: "Resized to 1,200 px and recompressed as JPEG; display may crop the photograph.",
+    edited: true,
     verified: true,
     // Google hero is a waterfall, not the iron furnace (misattributed).
     preferCurated: true,
@@ -167,7 +185,9 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
     alt: "Carroll Creek Promenade in downtown Frederick, with brick buildings, the water feature, and spring blossoms along the creek.",
     author: "Acroterion",
     license: "CC BY-SA 4.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
     source_url: "https://commons.wikimedia.org/wiki/File:Carroll_Creek_Park_Frederick_MD1.jpg",
+    edited: false,
     verified: true,
   },
   brunswick: {
@@ -175,7 +195,9 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
     alt: "A downtown Brunswick, Maryland heritage mural depicting the town's railroad history, reading “Brunswick, MD · Founded 1787.”",
     author: "Bob Carney",
     license: "CC BY 2.0",
+    licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
     source_url: "https://commons.wikimedia.org/wiki/File:Brunswick_001.jpg",
+    edited: false,
     verified: true,
   },
   thurmont: {
@@ -183,7 +205,9 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
     alt: "Thurmont's town square park, with the town clock, a gazebo, and flower beds at the town center.",
     author: "CraigShipp.com Photos",
     license: "CC BY-SA 2.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/2.0/",
     source_url: "https://commons.wikimedia.org/wiki/File:Thurmont_Town_Square_Park.jpg",
+    edited: false,
     verified: true,
   },
   middletown: {
@@ -191,7 +215,9 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
     alt: "Main Street in Middletown's historic district, with porch-fronted homes and the Catoctin ridge beyond.",
     author: "Acroterion",
     license: "CC BY-SA 4.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
     source_url: "https://commons.wikimedia.org/wiki/File:Middletown,_Maryland_historic_district.jpg",
+    edited: false,
     verified: true,
   },
   emmitsburg: {
@@ -199,7 +225,9 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
     alt: "A panorama of Emmitsburg, Maryland, its church spires set below Catoctin Mountain.",
     author: "Vasiliy Meshko",
     license: "CC BY-SA 3.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
     source_url: "https://commons.wikimedia.org/wiki/File:Emmitsburg_Pano.jpg",
+    edited: false,
     verified: true,
   },
   "new-market": {
@@ -207,7 +235,9 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
     alt: "A Victorian antiques storefront on Main Street in New Market, Maryland, a town known for its antique shops.",
     author: "Dougtone",
     license: "CC BY-SA 2.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/2.0/",
     source_url: "https://commons.wikimedia.org/wiki/File:New_Market,_Maryland.jpg",
+    edited: false,
     verified: true,
   },
   walkersville: {
@@ -215,7 +245,9 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
     alt: "The historic brick Harris Farmhouse in Walkersville, Maryland, a bank barn beyond it.",
     author: "Acroterion",
     license: "CC BY-SA 4.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
     source_url: "https://commons.wikimedia.org/wiki/File:Harris_Farmhouse_Walkersville,_MD1.jpg",
+    edited: false,
     verified: true,
   },
 };
