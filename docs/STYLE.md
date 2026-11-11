@@ -24,7 +24,7 @@ changing for the task. Each PR carries one concern.
 |-------------------|-------------------|----------------------------------------|
 | `--font-sans`     | System sans (`-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`) | Product titles, body, navigation, labels, controls |
 | `--font-serif`    | System sans | Compatibility alias for older interface components |
-| `--font-display`  | Libre Caslon Display | The wordmark and a rare editorial signature on a few specialty guide pages, used through `.font-brand` or `.font-editorial`. Never on Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages, or event pages |
+| `--font-display`  | Libre Caslon Display | The wordmark beside the Ripple in the top bar (`.font-brand`), shown at `sm` and wider on routes without a Back button, and a rare editorial signature on a few specialty guide pages (`.font-editorial`). No page title or content on Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages, or event pages uses it |
 | `--font-mono`, `--font-data` | System sans (tabular numerals come from the `.font-mono` and `.font-data` classes) | Times, distances, counts, tabular data |
 
 Product UI uses the system sans already on the device. Public Sans is not
@@ -64,23 +64,30 @@ are baked in, so don't set `leading-*` on these.
 
 Normal paragraph text on a phone should be 15 to 16 px. Eleven to 13 px is
 reserved for short supporting data, never instructions or a multi-sentence
-explanation. Product headings use system sans. Libre Caslon Display is the
-wordmark and a rare editorial signature on a few specialty guide pages, at
-18 px or larger. It never appears on Today, Map, Events, Saved, Find, Tools,
-Settings, Ask, place pages, or event pages; every title there is heavy system
-sans.
+explanation. Product headings use system sans. Libre Caslon Display sets the
+header wordmark in the top bar and is a rare editorial signature on a few
+specialty guide pages, at 18 px or larger. No page title or content on Today,
+Map, Events, Saved, Find, Tools, Settings, Ask, place pages, or event pages
+uses it; every title there is heavy system sans.
 
 Plus `.eyebrow` for uppercase 11px with `0.1em` tracking.
 
-### List and section roles (November 10, 2026)
+### List and section roles
 
-The interface update approved on November 10, 2026 fixes three list roles.
-A row title is 17px at weight 600 in `--app-ink`. A row meta line is 14px in
-`--app-ink-2` or `--app-ink-3`. A section label is 13px uppercase at weight
-600 with `0.1em` tracking in `--app-ink-3`, as `PlaceSectionLabel` draws it.
-Page titles are heavy system sans (weight 700 to 800), 28 to 40px on phones
-and up to 48px on wide screens. Type carries the hierarchy, so a heading does
-not need a tick, box, or tinted band.
+Three list roles have no utility class, because a shared primitive owns each
+one. Pick them by role too: use the primitive instead of restating its pixel
+values in a caller.
+
+| Role | Use | What it draws |
+|---|---|---|
+| Row title | `Row` (`src/components/ui/Row.tsx`) | 17px at weight 600 in `--app-ink` |
+| Row meta line | `Row` (`subtitle`) | 14px in `--app-ink-2`. The trailing `meta` fact is 13px, tabular, in `--app-ink-2` |
+| Section label | `PlaceSectionLabel`, or `PLACE_SECTION_LABEL_CLASS` for a label built by hand | 13px uppercase at weight 600 with `0.1em` tracking in `--app-ink-3` |
+
+A page title is the page's H1 in heavy system sans (weight 700 to 800). There
+is no page-title class yet: the redesigned place and event pages set their H1
+sizes directly, and `.display-1` is the older weight 600 hero headline. Type
+carries the hierarchy, so a heading does not need a tick, box, or tinted band.
 
 ### Color is NOT baked into typography classes
 
@@ -175,6 +182,10 @@ appearances, and review new UI in both.
 The interface update approved on November 10, 2026 ("Plain tool, with the
 coral plate") sets the shape rules below. The canonical statement is the
 Interface shape section of [`docs/brand/BRAND_GUIDE.md`](brand/BRAND_GUIDE.md).
+These rules apply to Today, Map, Events, Saved, Find, Tools, Settings, Ask,
+place pages, event pages, and town pages. Specialty guide pages still carry
+older treatments until their own pass; do not copy those treatments into the
+pages listed here.
 
 Content is rows on the page canvas (`--app-bg`, White in light appearance),
 separated by a 1px hairline (`--app-border`) or by space. Typography and
@@ -247,9 +258,10 @@ shadow. The active tab carries a 2px Deep Coral rule.
 
 ### The one bold block
 
-A page may hold one solid Deep Coral block. On Today it is the coral name
-plate over the lead photograph. On Events it is the lead event's time block
-(`EventRow` with `lead`). No other coral field appears on the page except the
+A page may hold one solid Deep Coral block. Only two pages have one: on Today
+it is the coral name plate over the lead photograph, and on Events it is the
+lead event's time block (`EventRow` with `lead`). Do not add one to any other
+page. No other coral field appears on the page except the
 single filled coral action the view already has, such as Directions in a
 place page's `MobileActionBar`. A selected filter chip is filled ink
 (background `--app-ink`, text `--app-bg`), never coral. White text on a coral fill sits on `--app-brand-press` with

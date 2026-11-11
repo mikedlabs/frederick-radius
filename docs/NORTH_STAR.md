@@ -152,7 +152,8 @@ and tells you plainly. Confident through restraint.
   open near you." Short, true, useful.
 - Visual: the plain field-guide system approved on November 10, 2026
   (White ground, ruled rows instead of cards, type-led hierarchy, the
-  Ripple, and one solid Deep Coral block per page). The **voice and
+  Ripple, and at most one solid Deep Coral block on a page, which only
+  Today and Events carry). The **voice and
   interaction laws** above are written down, so the brand is a *behavior*,
   not just a palette.
 

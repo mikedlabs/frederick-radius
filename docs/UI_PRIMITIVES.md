@@ -11,19 +11,24 @@
 The owner approved the "Plain tool, with the coral plate" interface on
 November 10, 2026. The canonical rules are in the Interface shape section of
 [`docs/brand/BRAND_GUIDE.md`](brand/BRAND_GUIDE.md), and the surface, radius
-and shadow tables are in [`docs/STYLE.md`](STYLE.md). Content is rows on the
+and shadow tables are in [`docs/STYLE.md`](STYLE.md). The shape covers Today,
+Map, Events, Saved, Find, Tools, Settings, Ask, place pages, event pages and
+town pages; specialty guide pages still carry older treatments until their
+own pass. Content is rows on the
 page ground separated by a hairline or by space. Fields and buttons use the
 6px `--app-radius-md`. A full capsule survives only on compact filter chips,
-status badges and toggle switches. Type carries the hierarchy. A page has one
-solid Deep Coral block and, at most, its one filled coral action. A selected
+status badges and toggle switches. Type carries the hierarchy. A page may
+hold one solid Deep Coral block; only Today (the name plate) and Events (the
+lead event's time block) have one, and no other page should gain one. Beyond
+that block, a page has at most its one filled coral action. A selected
 filter chip is filled ink (background `--app-ink`, text `--app-bg`), never
 coral. Coral text uses `--app-link` or `--app-brand-text`, Creek text uses
 `--app-cool-text`, and forest text uses `--app-forest-text`; the fill tokens
 `--app-brand`, `--app-brand-press` and `--app-cool` are never text colors.
-Libre Caslon Display is the wordmark and a rare editorial signature on a few
-specialty guide pages. It never appears on Today, Map, Events, Saved, Find,
-Tools, Settings, Ask, place pages or event pages, where every title is heavy
-system sans. A row shows
+Libre Caslon Display sets the header wordmark in the top bar and is a rare
+editorial signature on a few specialty guide pages. No page title or content
+on Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages or event
+pages uses it; every title there is heavy system sans. A row shows
 a thumbnail only when a real photograph exists; otherwise it keeps the media
 slot and shows a plain `--app-ink-3` glyph with no tile behind it. A rounded,
 bordered card around ordinary content is a regression. The primitives below
@@ -77,10 +82,11 @@ dimensions, so it survives a clipped scrolling rail.
 <Pill active={on} onClick={toggle} icon={<Zap className="h-3.5 w-3.5" aria-hidden />} count={3}>Music</Pill>
 <Pill size="sm" href="/today?t=tonight" active={mode==="tonight"}>Tonight</Pill>
 ```
-- **tones:** `ink` is the default and the selected state for every filter
-  chip. `cool` is a Creek fill for a town or place lane. `brand` is a press
-  coral fill for a caller that deliberately needs it. Never use `brand` on a
-  filter chip, because it would add a second coral field to the page.
+- **tones:** `ink` is the default and the selected state for every chip.
+  `cool` and `brand` exist for compatibility only, so older callers still
+  compile. Both render the same ink fill as `ink` (background `--app-ink`,
+  text `--app-bg`), not a Creek or coral fill. Do not pass them in new code
+  or rely on them for color.
 - **`href`** renders a Next `<Link>` with `aria-current`. While its
   navigation is pending, a spinner replaces the icon when an `icon` was
   passed. Without `href` it renders a `<button>` with `aria-pressed`,
