@@ -147,8 +147,8 @@ editorial guides or already use compact rows — left as-is by design.
 ## Rollout status
 
 **Adopted today (checked against imports on 2026-11-10):**
-- In product code, `Pill` is imported by `municipality/TownStrip`,
-  `fair/FairVendorExplorer` and `ui/FilterChip`.
+- In product code, `Pill` is imported by `municipality/TownStrip` and
+  `ui/FilterChip`.
 - `FilterChip` wraps `Pill` and is used by `place/PlaceList`,
   `radius/RadiusBuilder` and `saved/SavedList`.
 - `Segmented`, `today/TimeToggle`, `map/MapModeToggle` and
