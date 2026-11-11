@@ -26,6 +26,7 @@ import {
 } from "react";
 import {
   ASK_COMPOSER_INPUT_CLASS,
+  ASK_COMPOSER_INPUT_STYLE,
   AskComposerFrame,
   AskComposerMark,
   AskComposerSubmit,
@@ -66,6 +67,7 @@ import {
   type AskResponseSection,
 } from "@/lib/ask/presentation";
 import SaveButton from "@/components/saved/SaveButton";
+import CategoryIcon from "@/components/place/CategoryIcon";
 import {
   createAskReturnId,
   historyStateWithAskReturn,
@@ -223,7 +225,7 @@ export function queryNeedsNearbyContext(query: string): boolean {
   return NEARBY_LANGUAGE.test(query);
 }
 
-// Inherently-local discovery: "pizza", "coffee", "where can I get tacos" — the
+// Inherently-local discovery: "pizza", "coffee", "where can I get tacos". The
 // user wants it NEAR them even without saying "near me", so a county-wide
 // answer buries the closest option (owner, 2026-07-20: "if the user hasn't
 // given location permission, can it ask before answering"). These prompt for
@@ -530,48 +532,50 @@ function AskSourceCard({
       data-decision-entity={decisionEntity}
       data-decision-id={decisionId}
       data-decision-position={decisionPosition}
-      className="overflow-hidden border-y"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "color-mix(in srgb, var(--app-bg-elevated-solid) 62%, transparent)",
-      }}
+      className="border-b py-3"
+      style={{ borderColor: "var(--app-border)" }}
     >
-      <div className="grid grid-cols-[92px_minmax(0,1fr)] items-start sm:grid-cols-[104px_minmax(0,1fr)] sm:items-stretch">
-        <div
-          data-ask-source-media
-          className="relative m-3 aspect-square w-[68px] overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] sm:m-0 sm:h-full sm:min-h-[112px] sm:w-auto sm:aspect-auto sm:rounded-none"
-        >
-          {displayPhoto && source.photo_url ? (
-            <>
-              <Image
-                src={source.photo_url}
-                alt=""
-                fill
-                sizes="(max-width: 639px) 68px, 104px"
-                unoptimized={source.photo_url.startsWith("/api/place-photo")}
-                placeholder="blur"
-                blurDataURL={PAPER_CREAM_BLUR}
-                className="object-cover"
-              />
-            </>
-          ) : (
-            <span
-              className="absolute inset-0 grid place-items-center"
-              style={{ background: "var(--app-bg-sunken)", color: "var(--app-brand-press)" }}
-            >
-              <MapPin className="h-7 w-7" strokeWidth={1.5} aria-hidden />
-            </span>
-          )}
-        </div>
+      <div className="flex items-start gap-3">
+        {displayPhoto && source.photo_url ? (
+          <div
+            data-ask-source-media
+            className="relative aspect-square w-[68px] shrink-0 overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)]"
+          >
+            <Image
+              src={source.photo_url}
+              alt=""
+              fill
+              sizes="68px"
+              unoptimized={source.photo_url.startsWith("/api/place-photo")}
+              placeholder="blur"
+              blurDataURL={PAPER_CREAM_BLUR}
+              className="object-cover"
+            />
+          </div>
+        ) : (
+          <span
+            data-ask-source-media
+            className="flex w-[68px] shrink-0 justify-center pt-[calc(0.8125rem*1.35+4px)]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            <CategoryIcon
+              slug={source.category}
+              className="h-6 w-6"
+              strokeWidth={1.75}
+            />
+          </span>
+        )}
 
-        <div className="min-w-0 p-3.5">
+        <div className="min-w-0 flex-1">
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <p
-                className="text-[10px] font-bold uppercase tracking-[0.11em]"
-                style={{ color: "var(--app-brand-press)" }}
+                className="mb-1 text-[13px] leading-[1.35]"
+                style={{ color: "var(--app-ink-2)" }}
               >
-                {String(index + 1).padStart(2, "0")} · {source.eyebrow || source.category}
+                <span className="tabular-nums">{String(index + 1).padStart(2, "0")}</span>
+                {" · "}
+                {source.eyebrow || source.category}
               </p>
               <Link
                 href={source.href}
@@ -581,7 +585,7 @@ function AskSourceCard({
                 onClick={() => {
                   if (!external) onInternalOpen?.(index);
                 }}
-                className="mt-1 block font-sans text-[17px] font-semibold leading-tight tracking-tight hover:underline"
+                className="block font-sans text-[17px] font-semibold leading-snug tracking-[-0.01em] hover:underline hover:decoration-1 hover:underline-offset-[3px]"
                 style={{ color: "var(--app-ink)" }}
               >
                 {source.name}
@@ -598,7 +602,7 @@ function AskSourceCard({
 
           {source.reason ? (
             <p
-              className="mt-1.5 text-[12px] font-medium leading-snug"
+              className="mt-1 text-[14px] leading-snug"
               style={{ color: "var(--app-ink-2)" }}
             >
               {source.reason}
@@ -606,35 +610,35 @@ function AskSourceCard({
           ) : null}
           {sourceHasDistinctDetail(source) ? (
             <p
-              className="mt-1 line-clamp-2 text-[11px] leading-relaxed"
-              style={{ color: "var(--app-ink-3)" }}
+              className="mt-1 line-clamp-2 text-[14px] leading-normal"
+              style={{ color: "var(--app-ink-2)" }}
             >
               {source.detail}
             </p>
           ) : null}
 
           <div
-            className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px]"
-            style={{ color: "var(--app-ink-3)" }}
+            className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px]"
+            style={{ color: "var(--app-ink-2)" }}
           >
             {typeof source.rating === "number" ? (
-              <span className="inline-flex items-center gap-1 font-semibold" style={{ color: "var(--app-ink-2)" }}>
-                <Star className="h-3 w-3" fill="currentColor" strokeWidth={0} aria-hidden style={{ color: "var(--app-brand)" }} />
+              <span className="inline-flex items-center gap-1 font-semibold">
+                <Star className="h-3.5 w-3.5" fill="currentColor" strokeWidth={0} aria-hidden />
                 {source.rating.toFixed(1)}
                 {source.ratingCount ? (
-                  <span className="font-normal" style={{ color: "var(--app-ink-3)" }}>({source.ratingCount.toLocaleString()})</span>
+                  <span className="font-normal">({source.ratingCount.toLocaleString()})</span>
                 ) : null}
               </span>
             ) : null}
             {source.distance ? (
               <span className="inline-flex items-center gap-1">
-                <Navigation className="h-3 w-3" aria-hidden />
+                <Navigation className="h-3.5 w-3.5" aria-hidden />
                 {source.distance}
               </span>
             ) : null}
             {source.status ? (
               <span className="inline-flex items-center gap-1">
-                <Clock3 className="h-3 w-3" aria-hidden />
+                <Clock3 className="h-3.5 w-3.5" aria-hidden />
                 {source.status}
               </span>
             ) : null}
@@ -643,10 +647,7 @@ function AskSourceCard({
         </div>
       </div>
 
-      <div
-        className="flex min-h-11 items-center gap-1 border-t px-2"
-        style={{ borderColor: "var(--app-border)" }}
-      >
+      <div className="mt-1 flex flex-wrap items-center gap-x-5 pl-[80px]">
         <Link
           href={source.href}
           data-decision-action={decisionOpenAction}
@@ -656,8 +657,8 @@ function AskSourceCard({
             haptic("light");
             if (!external) onInternalOpen?.(index);
           }}
-          className="tap-44 inline-flex flex-1 items-center justify-center gap-1.5 px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:opacity-70"
-          style={{ color: "var(--app-brand-press)" }}
+          className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold hover:underline hover:underline-offset-[3px] active:opacity-70"
+          style={{ color: "var(--app-link)" }}
         >
           {sourceOpenLabel(source)}
           {external ? (
@@ -672,7 +673,7 @@ function AskSourceCard({
             data-decision-action="email"
             onClick={() => haptic("light")}
             aria-label={`Email ${source.name}`}
-            className="tap-44 inline-flex items-center justify-center gap-1.5 px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:opacity-70"
+            className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold hover:underline hover:underline-offset-[3px] active:opacity-70"
             style={{ color: "var(--app-ink-2)" }}
           >
             <Mail className="h-3.5 w-3.5" aria-hidden />
@@ -685,7 +686,7 @@ function AskSourceCard({
             data-decision-action="call"
             onClick={() => haptic("light")}
             aria-label={`Call ${source.name} at ${source.phone}`}
-            className="tap-44 inline-flex items-center justify-center gap-1.5 px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:opacity-70"
+            className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold hover:underline hover:underline-offset-[3px] active:opacity-70"
             style={{ color: "var(--app-ink-2)" }}
           >
             <Phone className="h-3.5 w-3.5" aria-hidden />
@@ -707,62 +708,52 @@ function AskPlanCard({
   return (
     <section
       aria-labelledby="ask-plan-title"
-      className="mt-4 overflow-hidden rounded-[22px] border"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated-solid)",
-        boxShadow: "var(--app-elev-1)",
-      }}
+      className="mt-5 border-t pt-4"
+      style={{ borderColor: "var(--app-border)" }}
     >
-      <div
-        className="flex items-start justify-between gap-3 border-b px-4 py-4"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <div className="min-w-0">
-          <p className="eyebrow" style={{ color: "var(--app-brand-press)" }}>
-            A route you can edit
-          </p>
-          <h3
-            id="ask-plan-title"
-            className="mt-1 font-serif text-[20px] font-semibold leading-tight tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {plan.title}
-          </h3>
-          <p
-            className="mt-1 text-[12px] leading-relaxed"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            {plan.summary}
-          </p>
-        </div>
-        <span
-          className="shrink-0 rounded-full border px-2.5 py-1 font-mono text-[10px]"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+      <div className="min-w-0">
+        <p
+          className="text-[13px] font-semibold uppercase tracking-[0.08em]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          A route you can edit
+        </p>
+        <h3
+          id="ask-plan-title"
+          className="mt-1 font-sans text-[20px] font-bold leading-tight tracking-[-0.02em]"
+          style={{ color: "var(--app-ink)" }}
+        >
+          {plan.title}
+        </h3>
+        <p
+          className="mt-1 text-[14px] leading-normal"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          {plan.summary}
+        </p>
+        <p
+          className="mt-1 text-[14px] tabular-nums"
+          style={{ color: "var(--app-ink-2)" }}
         >
           {plan.dateLabel} · {plan.stops.length} {plan.stops.length === 1 ? "stop" : "stops"}
-        </span>
+        </p>
       </div>
 
-      <ol data-testid="ask-plan-stops" className="px-4 py-1">
-        {plan.stops.map((stop, index) => (
+      <ol
+        data-testid="ask-plan-stops"
+        className="mt-3 border-t"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        {plan.stops.map((stop) => (
           <li
             key={`${stop.order}-${stop.href}`}
-            className="relative grid grid-cols-[44px_minmax(0,1fr)] gap-3 border-b py-3.5 last:border-b-0"
+            className="grid grid-cols-[44px_minmax(0,1fr)] gap-3 border-b py-3"
             style={{ borderColor: "var(--app-border)" }}
           >
-            {index < plan.stops.length - 1 ? (
-              <span
-                className="absolute bottom-[-7px] left-[21px] top-[51px] w-px"
-                style={{ background: "var(--app-border-strong, var(--app-border))" }}
-                aria-hidden
-              />
-            ) : null}
             {stop.photo_url ? (
               <span
                 aria-hidden
-                className="relative z-10 h-11 w-11 overflow-hidden rounded-[12px] bg-[var(--app-bg-sunken)]"
-                style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
+                className="relative h-11 w-11 overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)]"
               >
                 <Image
                   src={stop.photo_url}
@@ -774,62 +765,62 @@ function AskPlanCard({
                   blurDataURL={PAPER_CREAM_BLUR}
                   className="object-cover"
                 />
-                <span
-                  className="absolute left-1 top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 text-[9px] font-bold"
-                  style={{
-                    background: "var(--app-brand-press)",
-                    color: "var(--app-on-brand, #fff)",
-                    boxShadow: "0 1px 4px rgba(0,0,0,.22)",
-                  }}
-                >
-                  {stop.order}
-                </span>
               </span>
             ) : (
               <span
-                className="relative z-10 grid h-11 w-11 place-items-center rounded-[12px] text-[11px] font-bold"
-                style={{
-                  background:
-                    "color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated))",
-                  color: "var(--app-brand-press)",
-                  boxShadow: "var(--app-edge), var(--app-hi)",
-                }}
+                aria-hidden
+                className="flex h-11 w-11 items-start justify-center pt-0.5"
+                style={{ color: "var(--app-ink-3)" }}
               >
-                {stop.order}
+                <CategoryIcon
+                  slug={stop.category}
+                  className="h-6 w-6"
+                  strokeWidth={1.75}
+                />
               </span>
             )}
             <div className="min-w-0">
               <div className="flex items-start justify-between gap-3">
-                <Link
-                  href={stop.href}
-                  onClick={() => {
-                    if (!stop.href.startsWith("http")) onInternalOpen?.();
-                  }}
-                  className="font-sans text-[16px] font-semibold leading-tight hover:underline"
-                  style={{ color: "var(--app-ink)" }}
-                >
-                  {stop.name}
-                </Link>
+                <p className="min-w-0 font-sans text-[17px] font-semibold leading-snug tracking-[-0.01em]">
+                  <span
+                    className="mr-1.5 tabular-nums"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {stop.order}.
+                  </span>
+                  <Link
+                    href={stop.href}
+                    onClick={() => {
+                      if (!stop.href.startsWith("http")) onInternalOpen?.();
+                    }}
+                    className="hover:underline hover:decoration-1 hover:underline-offset-[3px]"
+                    style={{ color: "var(--app-ink)" }}
+                  >
+                    {stop.name}
+                  </Link>
+                </p>
                 <span
-                  className="shrink-0 font-mono text-[10px]"
-                  style={{ color: "var(--app-ink-3)" }}
+                  className="shrink-0 pt-0.5 text-[14px] tabular-nums"
+                  style={{ color: "var(--app-ink-2)" }}
                 >
                   {stop.time}
                 </span>
               </div>
               <p
-                className="mt-1 text-[11.5px] leading-relaxed"
+                className="mt-1 text-[14px] leading-normal"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 {stop.why}
               </p>
-              <div
-                className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px]"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                {stop.status ? <span>{stop.status}</span> : null}
-                {stop.tip ? <span>{stop.tip}</span> : null}
-              </div>
+              {stop.status || stop.tip ? (
+                <div
+                  className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[13px]"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {stop.status ? <span>{stop.status}</span> : null}
+                  {stop.tip ? <span>{stop.tip}</span> : null}
+                </div>
+              ) : null}
             </div>
           </li>
         ))}
@@ -840,12 +831,12 @@ function AskPlanCard({
         onClick={() => {
           if (!plan.href.startsWith("http")) onInternalOpen?.();
         }}
-        className="group flex min-h-12 items-center justify-between border-t px-4 text-[12px] font-semibold"
-        style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+        className="group flex min-h-12 items-center justify-between gap-3 border-b text-[14px] font-semibold"
+        style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
       >
         Open and edit this route
         <ArrowRight
-          className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+          className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-0.5"
           aria-hidden
         />
       </Link>
@@ -868,8 +859,11 @@ function AskActionList({
 }) {
   if (actions.length === 0) return null;
   return (
-    <nav aria-label={label} className="mt-4">
-      <p className="eyebrow mb-2 px-1" style={{ color: "var(--app-ink-3)" }}>
+    <nav aria-label={label} className="mt-5">
+      <p
+        className="mb-2 text-[13px] font-semibold uppercase tracking-[0.08em]"
+        style={{ color: "var(--app-ink-3)" }}
+      >
         {label}
       </p>
       <div className="flex flex-wrap gap-2">
@@ -883,18 +877,16 @@ function AskActionList({
               onClick={() => {
                 if (!action.href?.startsWith("http")) onInternalOpen();
               }}
-              className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] border px-3.5 text-[11.5px] font-semibold transition active:opacity-75"
+              className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-md)] border bg-transparent px-3.5 text-[14px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:opacity-75"
               style={
                 emphasizeFirst && index === 0
                   ? {
-                      borderColor: "var(--app-brand-press)",
-                      color: "var(--app-on-brand)",
-                      background: "var(--app-brand-press)",
+                      borderColor: "var(--app-ink)",
+                      color: "var(--app-ink)",
                     }
                   : {
-                      borderColor: "var(--app-border)",
+                      borderColor: "var(--app-control-border)",
                       color: "var(--app-ink-2)",
-                      background: "var(--app-bg-elevated-solid)",
                     }
               }
             >
@@ -910,18 +902,16 @@ function AskActionList({
               key={`${action.label}-${action.query}`}
               type="button"
               onClick={() => onRefine(action)}
-              className="tap-44 min-h-11 rounded-[var(--app-radius-sm)] border px-3.5 text-[11.5px] font-semibold transition active:opacity-75"
+              className="tap-44 min-h-11 rounded-[var(--app-radius-md)] border bg-transparent px-3.5 text-[14px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:opacity-75"
               style={
                 emphasizeFirst && index === 0
                   ? {
-                      borderColor: "var(--app-brand-press)",
-                      color: "var(--app-on-brand)",
-                      background: "var(--app-brand-press)",
+                      borderColor: "var(--app-ink)",
+                      color: "var(--app-ink)",
                     }
                   : {
-                      borderColor: "var(--app-border)",
+                      borderColor: "var(--app-control-border)",
                       color: "var(--app-ink-2)",
-                      background: "var(--app-bg-elevated-solid)",
                     }
               }
             >
@@ -944,6 +934,22 @@ type AreaChooserProps = {
   onClose: () => void;
   variant?: "inline" | "sheet";
 };
+
+/** A chosen area option reads as selected ink, the same rule as a selected
+ * filter chip, so the page keeps its single coral field on the submit. */
+function areaOptionStyle(selected: boolean) {
+  return selected
+    ? {
+        borderColor: "var(--app-ink)",
+        background: "var(--app-ink)",
+        color: "var(--app-bg)",
+      }
+    : {
+        borderColor: "var(--app-control-border)",
+        background: "transparent",
+        color: "var(--app-ink-2)",
+      };
+}
 
 function AreaChooser({
   containerRef,
@@ -975,27 +981,15 @@ function AreaChooser({
         event.preventDefault();
         onClose();
       }}
-      className={
-        variant === "sheet"
-          ? "outline-none"
-          : "mt-2 rounded-[18px] border p-3.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-      }
-      style={
-        variant === "sheet"
-          ? undefined
-          : {
-              borderColor: "var(--app-border)",
-              background: "var(--app-bg-elevated-solid)",
-              boxShadow: "var(--app-elev-1)",
-            }
-      }
+      className={variant === "sheet" ? "outline-none" : "mt-3 border-b pb-4"}
+      style={variant === "sheet" ? undefined : { borderColor: "var(--app-border)" }}
     >
       {variant === "inline" ? (
         <>
           <div className="flex items-start justify-between gap-3">
             <p
               id="ask-area-heading"
-              className="pt-1 text-[13px] font-semibold"
+              className="pt-2.5 text-[17px] font-semibold leading-snug"
               style={{ color: "var(--app-ink)" }}
             >
               Choose where Radius should look.
@@ -1004,15 +998,15 @@ function AreaChooser({
               type="button"
               onClick={onClose}
               aria-label="Close area chooser"
-              className="tap-44 grid h-8 w-8 shrink-0 place-items-center rounded-full transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.97]"
+              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-md)] transition-colors hover:bg-[var(--app-bg-sunken)] active:opacity-70"
               style={{ color: "var(--app-ink-3)" }}
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
           <p
-            className="mt-1 text-[11px] leading-relaxed"
-            style={{ color: "var(--app-ink-3)" }}
+            className="mt-1 text-[14px] leading-normal"
+            style={{ color: "var(--app-ink-2)" }}
           >
             Radius uses a device location only after you ask it to. It never
             treats a network location as your precise position.
@@ -1026,18 +1020,8 @@ function AreaChooser({
           onClick={onUseLocation}
           disabled={geolocationStatus === "loading"}
           aria-pressed={currentScope === "nearme" && hasDevicePosition}
-          className="tap-44 inline-flex min-h-11 items-center justify-center gap-2 rounded-[13px] border px-3 text-[11.5px] font-semibold transition active:scale-[0.98] disabled:opacity-55"
-          style={{
-            borderColor:
-              currentScope === "nearme" && hasDevicePosition
-                ? "var(--app-brand)"
-                : "var(--app-border)",
-            background:
-              currentScope === "nearme" && hasDevicePosition
-                ? "color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated-solid))"
-                : "transparent",
-            color: "var(--app-ink-2)",
-          }}
+          className="tap-44 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[14px] font-semibold transition-colors active:opacity-75 disabled:opacity-55"
+          style={areaOptionStyle(currentScope === "nearme" && hasDevicePosition)}
         >
           <LocateFixed className="h-4 w-4" aria-hidden />
           {geolocationStatus === "loading" ? "Finding you…" : "Use my location"}
@@ -1046,16 +1030,8 @@ function AreaChooser({
           type="button"
           onClick={() => onChooseScope("county")}
           aria-pressed={currentScope === "county"}
-          className="tap-44 inline-flex min-h-11 items-center justify-center gap-2 rounded-[13px] border px-3 text-[11.5px] font-semibold transition active:scale-[0.98]"
-          style={{
-            borderColor:
-              currentScope === "county" ? "var(--app-brand)" : "var(--app-border)",
-            background:
-              currentScope === "county"
-                ? "color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated-solid))"
-                : "transparent",
-            color: "var(--app-ink-2)",
-          }}
+          className="tap-44 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[14px] font-semibold transition-colors active:opacity-75"
+          style={areaOptionStyle(currentScope === "county")}
         >
           {currentScope === "county" ? (
             <Check className="h-4 w-4" aria-hidden />
@@ -1067,7 +1043,7 @@ function AreaChooser({
       </div>
 
       <label
-        className="mt-3 block text-[10px] font-bold uppercase tracking-[0.1em]"
+        className="mt-4 block text-[13px] font-semibold uppercase tracking-[0.08em]"
         style={{ color: "var(--app-ink-3)" }}
       >
         Choose a town
@@ -1076,8 +1052,8 @@ function AreaChooser({
           onChange={(event) => {
             if (event.target.value) onChooseScope(`town:${event.target.value}`);
           }}
-          className="mt-1.5 block min-h-11 w-full rounded-[13px] border bg-[var(--app-bg-elevated-solid)] px-3 text-[13px] font-semibold normal-case tracking-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+          className="mt-1.5 block min-h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 text-[16px] font-normal normal-case tracking-normal"
+          style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
         >
           <option value="">Select a town</option>
           {MUNICIPALITIES.map((municipality) => (
@@ -1091,8 +1067,8 @@ function AreaChooser({
       {locationFailed ? (
         <p
           role="status"
-          className="mt-2 text-[11px] leading-relaxed"
-          style={{ color: "var(--app-brand-press)" }}
+          className="mt-2 text-[14px] leading-normal"
+          style={{ color: "var(--app-brand-text)" }}
         >
           Radius could not get a device location. Choose a town or search the
           whole county instead.
@@ -1149,14 +1125,11 @@ function WorkspaceComposer({
       aria-controls="ask-area-chooser"
       aria-label={`Search area: ${contextLabel}. Change area.`}
       title={contextLabel}
-      className="tap-44 inline-flex h-11 min-h-11 min-w-11 max-w-[96px] shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98] disabled:opacity-55"
-      style={{
-        background: "var(--app-bg-sunken)",
-        color: "var(--app-ink-2)",
-      }}
+      className="tap-44 inline-flex h-11 min-h-11 min-w-11 max-w-[104px] shrink-0 items-center gap-1 rounded-[var(--app-radius-md)] px-2 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:opacity-75 disabled:opacity-55"
+      style={{ color: "var(--app-ink-2)" }}
     >
-      <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      <span className="max-w-[58px] truncate min-[350px]:max-w-[70px]">
+      <MapPin className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="max-w-[60px] truncate min-[350px]:max-w-[74px]">
         {compactContextLabel(contextLabel)}
       </span>
     </button>
@@ -1182,15 +1155,15 @@ function WorkspaceComposer({
           onChange={(event) => onQueryChange(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={compact ? "Ask a follow-up." : "Ask anything."}
-          className={`${ASK_COMPOSER_INPUT_CLASS} min-h-11 px-1 py-2`}
-          style={{ color: "var(--app-ink)" }}
+          className={`${ASK_COMPOSER_INPUT_CLASS} min-h-11 px-1.5 py-2`}
+          style={ASK_COMPOSER_INPUT_STYLE}
           aria-label="Ask Radius"
           aria-describedby="ask-composer-context"
         />
         {compact && loading ? (
           <span
             data-ask-inline-status
-            className="hidden h-11 shrink-0 items-center gap-1.5 px-1 text-[10px] font-semibold min-[360px]:inline-flex"
+            className="hidden h-11 shrink-0 items-center gap-1.5 px-1 text-[13px] font-semibold min-[360px]:inline-flex"
             style={{ color: "var(--app-ink-2)" }}
             aria-hidden
           >
@@ -1214,45 +1187,45 @@ function WorkspaceComposer({
   );
 }
 
+/**
+ * The wait state holds the space the three starter rows occupied, as three
+ * ruled rows, so the page does not jump when the answer arrives. It states one
+ * honest fact (local sources are being checked) without inventing
+ * step-by-step progress.
+ */
 function AskWorkingPanel({ contextLabel }: { contextLabel: string }) {
   return (
     <div
       data-ask-working-panel
-      className="ask-lock-on min-h-[168px] overflow-hidden rounded-[var(--app-radius-lg)] border"
-      style={{
-        borderColor: "var(--app-border-strong)",
-        background: "var(--app-bg-elevated-solid)",
-        boxShadow: "var(--app-edge), var(--app-hi)",
-      }}
+      className="min-h-[168px] border-t"
+      style={{ borderColor: "var(--app-border)" }}
       aria-hidden
     >
       <div
-        className="ask-lock-on__field relative grid min-h-[112px] place-items-center overflow-hidden border-b px-4 py-5"
+        className="flex min-h-14 items-center gap-3 border-b py-3"
         style={{ borderColor: "var(--app-border)" }}
       >
-        <span className="ask-lock-on__ring ask-lock-on__ring--outer" />
-        <span className="ask-lock-on__ring ask-lock-on__ring--inner" />
-        <AskComposerMark />
         <span
-          className="absolute left-3 top-3 font-mono text-[9px] font-semibold uppercase tracking-[0.12em]"
-          style={{ color: "var(--app-brand-press)" }}
-        >
-          Local check
-        </span>
-        <span
-          className="absolute right-3 top-3 max-w-[45%] truncate text-right font-mono text-[9px]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {contextLabel}
-        </span>
-      </div>
-      <div className="flex min-h-14 items-center gap-2.5 px-3.5 py-3 text-[12px] font-semibold">
-        <span
-          className="ask-lock-on__beacon h-2 w-2 shrink-0 rounded-full"
+          className="pulse-dot h-2 w-2 shrink-0 rounded-full"
           style={{ background: "var(--app-brand)" }}
         />
-        <span style={{ color: "var(--app-ink-2)" }}>{LOADING_MESSAGE}</span>
+        <span
+          className="min-w-0 flex-1 text-[16px] font-medium leading-snug"
+          style={{ color: "var(--app-ink)" }}
+        >
+          {LOADING_MESSAGE}
+        </span>
       </div>
+      <div
+        className="flex min-h-14 items-center border-b py-3 text-[14px]"
+        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+      >
+        <span className="truncate">Local check · {contextLabel}</span>
+      </div>
+      <div
+        className="min-h-14 border-b"
+        style={{ borderColor: "var(--app-border)" }}
+      />
     </div>
   );
 }
@@ -1916,7 +1889,7 @@ export default function AskFrederick({
     if (currentScope) shareUrl.searchParams.set("in", currentScope);
     const url = shareUrl.toString();
 
-    // Share the ANSWER when one is on screen, not just the question — a
+    // Share the ANSWER when one is on screen, not just the question. A
     // plan texted to a friend only works if the plan itself rides in the
     // message (owner ask, 2026-07-18: "text or email plans that are
     // made"). The permalink still comes along for the tap-through; the
@@ -2021,10 +1994,10 @@ export default function AskFrederick({
       className={workspace ? "mx-auto max-w-[760px]" : undefined}
     >
       {workspace ? (
-        <header className="mb-3 max-w-[660px]">
+        <header className="mb-4 max-w-[660px]">
           <h1
             id="ask-radius-heading"
-            className="font-editorial text-[28px] leading-none tracking-[-0.025em] sm:text-[32px]"
+            className="text-[32px] font-semibold leading-tight tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
             Ask Radius.
@@ -2033,13 +2006,13 @@ export default function AskFrederick({
       ) : !hideLabel ? (
         <div className="mb-2.5 flex items-center justify-between gap-3">
           <p
-            className="flex items-center gap-2 text-[12px] font-semibold"
-            style={{ color: "var(--app-ink-2)" }}
+            className="flex items-center gap-1 text-[13px] font-semibold uppercase tracking-[0.08em]"
+            style={{ color: "var(--app-ink-3)" }}
           >
             <AskComposerMark compact />
             Ask Radius
           </p>
-          <p className="text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+          <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
             Answers use Radius listings and cited local sources.
           </p>
         </div>
@@ -2049,17 +2022,11 @@ export default function AskFrederick({
         data-ask-composer-dock={workspace && res ? "sticky" : undefined}
         className={
           workspace && res
-            ? "sticky top-[var(--app-topbar-offset)] z-[var(--z-raised)] -mx-2 border-y bg-[var(--app-bg)]/95 px-2 py-2 backdrop-blur-md"
-            : workspace
-              ? "border-y py-2.5 sm:py-3"
-              : undefined
+            ? "sticky top-[var(--app-topbar-offset)] z-[var(--z-raised)] -mx-2 border-b bg-[var(--app-bg)] px-2 py-2"
+            : undefined
         }
         style={
-          workspace
-            ? {
-                borderColor: "var(--app-border-strong, var(--app-border))",
-              }
-            : undefined
+          workspace && res ? { borderColor: "var(--app-border)" } : undefined
         }
       >
         <form
@@ -2109,7 +2076,7 @@ export default function AskFrederick({
                     res ? "Ask for something closer or different." : placeholder
                   }
                   className={`${ASK_COMPOSER_INPUT_CLASS} h-11`}
-                  style={{ color: "var(--app-ink)" }}
+                  style={ASK_COMPOSER_INPUT_STYLE}
                   aria-label="Ask Radius"
                 />
                 <AskComposerSubmit
@@ -2137,17 +2104,16 @@ export default function AskFrederick({
         {nearbyGateQuery ? (
           <div
             role="status"
-            className="mt-3 rounded-[15px] border-l-2 px-3.5 py-3"
+            className="mt-3 border-b pb-3"
             style={{
-              borderColor: "var(--app-brand)",
-              background: "var(--app-bg-sunken)",
+              borderColor: "var(--app-border)",
               color: "var(--app-ink-2)",
             }}
           >
-            <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            <p className="text-[17px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
               Radius needs a real area for that question.
             </p>
-            <p className="mt-1 text-[11px] leading-relaxed">
+            <p className="mt-1 text-[14px] leading-normal">
               Use your device location or choose a town from the area control.
             </p>
           </div>
@@ -2161,9 +2127,9 @@ export default function AskFrederick({
                 type="button"
                 onClick={() => void ask(prompt.query)}
                 disabled={loading}
-                className="tap-44 min-h-11 shrink-0 rounded-full border px-3 text-[10.5px] font-semibold transition active:scale-[0.98] disabled:opacity-45"
+                className="tap-44 min-h-11 shrink-0 rounded-[var(--app-radius-md)] border px-3 text-[14px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:opacity-75 disabled:opacity-45"
                 style={{
-                  borderColor: "var(--app-border)",
+                  borderColor: "var(--app-control-border)",
                   background: "transparent",
                   color: "var(--app-ink-2)",
                 }}
@@ -2197,13 +2163,13 @@ export default function AskFrederick({
       {workspace && !res && !nearbyGateQuery ? (
         <section
           aria-labelledby="ask-start-heading"
-          className="mt-3"
+          className="mt-5"
           data-ask-empty-state
         >
           <div className="flex min-h-11 items-center justify-between gap-3">
             <h2
               id="ask-start-heading"
-              className="text-[11px] font-semibold uppercase tracking-[0.08em]"
+              className="text-[13px] font-semibold uppercase tracking-[0.08em]"
               style={{ color: "var(--app-ink-3)" }}
             >
               {loading ? "Checking Frederick" : "Questions to try"}
@@ -2211,15 +2177,15 @@ export default function AskFrederick({
             {!loading ? (
               <Link
                 href="/compass"
-                className="tap-44 inline-flex min-h-11 items-center gap-1 px-1 text-[10.5px] font-semibold"
-                style={{ color: "var(--app-brand-press)" }}
+                className="tap-44 inline-flex min-h-11 items-center gap-1 text-[14px] font-semibold hover:underline hover:underline-offset-[3px]"
+                style={{ color: "var(--app-link)" }}
               >
                 Browse tools
-                <ArrowRight className="h-3 w-3" aria-hidden />
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
               </Link>
             ) : (
               <span
-                className="max-w-[45%] truncate text-right font-mono text-[9.5px]"
+                className="max-w-[45%] truncate text-right text-[13px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 {contextLabel}
@@ -2230,26 +2196,30 @@ export default function AskFrederick({
             <AskWorkingPanel contextLabel={contextLabel} />
           ) : (
             <div
-              className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] sm:grid sm:grid-cols-3"
+              className="border-t"
               style={{ borderColor: "var(--app-border)" }}
               role="group"
               aria-label="Questions to try"
             >
-              {WORKSPACE_ASKS.map((prompt, index) => (
+              {WORKSPACE_ASKS.map((prompt) => (
                 <button
                   key={prompt.label}
                   type="button"
                   onClick={() => runIntent(prompt.query)}
-                  className="tap-44 flex min-h-14 w-full items-center justify-between gap-3 border-b px-3.5 text-left text-[12px] font-semibold transition last:border-b-0 hover:bg-[var(--app-bg-sunken)] active:bg-[var(--app-bg-sunken)] sm:min-h-[60px] sm:border-b-0 sm:border-r sm:last:border-r-0"
+                  className="group flex min-h-14 w-full items-center justify-between gap-3 border-b text-left text-[16px] font-medium leading-snug transition-colors active:bg-[var(--app-bg-sunken)]"
                   style={{
                     borderColor: "var(--app-border)",
-                    background:
-                      index === 0 ? "var(--app-bg-sunken)" : "transparent",
-                    color: "var(--app-ink-2)",
+                    color: "var(--app-ink)",
                   }}
                 >
-                  <span>{prompt.label}</span>
-                  <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span className="group-hover:underline group-hover:decoration-1 group-hover:underline-offset-[3px]">
+                    {prompt.label}
+                  </span>
+                  <ArrowRight
+                    className="h-4 w-4 shrink-0"
+                    style={{ color: "var(--app-ink-3)" }}
+                    aria-hidden
+                  />
                 </button>
               ))}
             </div>
@@ -2263,18 +2233,13 @@ export default function AskFrederick({
         </span>
         {loading && !workspace ? (
           <div
-            className={
-              workspace
-                ? "mt-5 border-y px-1 py-4 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-                : "mt-3 border-l-2 px-3 py-2 outline-none"
-            }
+            className="mt-3 border-b py-3"
             style={{
               color: "var(--app-ink-2)",
-              borderColor: "var(--app-brand)",
-              background: "var(--app-bg-sunken)",
+              borderColor: "var(--app-border)",
             }}
           >
-            <div className="flex min-w-0 items-center gap-2.5 text-[12px] font-semibold">
+            <div className="flex min-w-0 items-center gap-2.5 text-[14px] font-medium">
               <span
                 className="pulse-dot h-2 w-2 shrink-0 rounded-full"
                 style={{ background: "var(--app-brand)" }}
@@ -2295,16 +2260,7 @@ export default function AskFrederick({
         >
           <section
             aria-labelledby="ask-answer-heading"
-            className={workspace ? "border-y px-1 py-4 sm:py-5" : undefined}
-            style={
-              workspace
-                ? {
-                    borderColor: "var(--app-border)",
-                    background:
-                      "color-mix(in srgb, var(--app-bg-elevated-solid) 52%, transparent)",
-                  }
-                : undefined
-            }
+            className={workspace ? "pt-2" : undefined}
           >
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h2
@@ -2313,8 +2269,8 @@ export default function AskFrederick({
                 tabIndex={-1}
                 className={
                   workspace
-                    ? "font-serif text-[20px] font-semibold tracking-tight"
-                    : "text-[12px] font-semibold"
+                    ? "font-sans text-[22px] font-bold leading-tight tracking-[-0.02em]"
+                    : "text-[17px] font-semibold leading-snug"
                 }
                 style={{ color: "var(--app-ink)" }}
               >
@@ -2323,13 +2279,10 @@ export default function AskFrederick({
               <div className="flex flex-wrap items-center justify-end gap-1.5">
                 {res.context ? (
                   <span
-                    className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold"
-                    style={{
-                      borderColor: "var(--app-border)",
-                      color: "var(--app-ink-3)",
-                    }}
+                    className="inline-flex items-center gap-1 text-[14px]"
+                    style={{ color: "var(--app-ink-2)" }}
                   >
-                    <MapPin className="h-3 w-3" aria-hidden />
+                    <MapPin className="h-3.5 w-3.5" aria-hidden />
                     {res.context}
                   </span>
                 ) : null}
@@ -2337,8 +2290,8 @@ export default function AskFrederick({
                   <button
                     type="button"
                     onClick={() => void shareQuestion()}
-                    className="tap-44 inline-flex min-h-9 items-center gap-1.5 rounded-full px-2.5 text-[10.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
-                    style={{ color: "var(--app-brand-press)" }}
+                    className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-md)] px-2 text-[14px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:opacity-75"
+                    style={{ color: "var(--app-link)" }}
                   >
                     {shareStatus === "copied" || shareStatus === "shared" ? (
                       <Check className="h-3.5 w-3.5" aria-hidden />
@@ -2371,7 +2324,7 @@ export default function AskFrederick({
                   <p
                     key={section}
                     data-ask-section={section}
-                    className="whitespace-pre-wrap px-1 text-[15px] leading-[1.58] sm:text-[16px]"
+                    className="whitespace-pre-wrap text-[16px] leading-[1.58] sm:text-[17px]"
                     style={{ color: "var(--app-ink)" }}
                   >
                     {visibleSummary}
@@ -2393,27 +2346,24 @@ export default function AskFrederick({
                             selfContained: true,
                           });
                         }}
-                        className="mt-3 flex w-full items-center gap-2.5 rounded-[13px] border px-3 py-2.5 text-left transition active:scale-[0.99]"
-                        style={{
-                          borderColor: "var(--app-border-strong)",
-                          background: "var(--app-bg-sunken)",
-                        }}
+                        className="group mt-3 flex min-h-14 w-full items-center gap-3 border-y py-3 text-left transition-colors active:bg-[var(--app-bg-sunken)]"
+                        style={{ borderColor: "var(--app-border)" }}
                       >
                         <MapPin
                           className="h-4 w-4 shrink-0"
                           strokeWidth={2.2}
-                          style={{ color: "var(--app-brand-press)" }}
+                          style={{ color: "var(--app-link)" }}
                           aria-hidden
                         />
                         <span className="min-w-0 flex-1">
                           <span
-                            className="block text-[12.5px] font-semibold"
+                            className="block text-[17px] font-semibold leading-snug group-hover:underline group-hover:decoration-1 group-hover:underline-offset-[3px]"
                             style={{ color: "var(--app-ink)" }}
                           >
                             Your answer is still here.
                           </span>
                           <span
-                            className="block text-[11.5px] leading-snug"
+                            className="mt-0.5 block text-[14px] leading-snug"
                             style={{ color: "var(--app-ink-2)" }}
                           >
                             Update it for {contextLabel}.
@@ -2422,7 +2372,7 @@ export default function AskFrederick({
                         <ArrowRight
                           className="h-4 w-4 shrink-0"
                           strokeWidth={2.2}
-                          style={{ color: "var(--app-brand-press)" }}
+                          style={{ color: "var(--app-link)" }}
                           aria-hidden
                         />
                       </button>
@@ -2432,22 +2382,18 @@ export default function AskFrederick({
                         type="button"
                         onClick={localizeAnswer}
                         disabled={geolocation.state.status === "loading"}
-                        className="mt-3 flex w-full items-center gap-2.5 rounded-[13px] border px-3 py-2.5 text-left transition active:scale-[0.99] disabled:opacity-60"
-                        style={{
-                          borderColor: "var(--app-brand)",
-                          background:
-                            "color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-elevated-solid))",
-                        }}
+                        className="group mt-3 flex min-h-14 w-full items-center gap-3 border-y py-3 text-left transition-colors active:bg-[var(--app-bg-sunken)] disabled:opacity-60"
+                        style={{ borderColor: "var(--app-border)" }}
                       >
                         <LocateFixed
                           className="h-4 w-4 shrink-0"
                           strokeWidth={2.2}
-                          style={{ color: "var(--app-brand-press)" }}
+                          style={{ color: "var(--app-link)" }}
                           aria-hidden
                         />
                         <span className="min-w-0 flex-1">
                           <span
-                            className="block text-[12.5px] font-semibold"
+                            className="block text-[17px] font-semibold leading-snug group-hover:underline group-hover:decoration-1 group-hover:underline-offset-[3px]"
                             style={{ color: "var(--app-ink)" }}
                           >
                             {geolocation.state.status === "loading"
@@ -2455,7 +2401,7 @@ export default function AskFrederick({
                               : "These are county-wide picks."}
                           </span>
                           <span
-                            className="block text-[11.5px] leading-snug"
+                            className="mt-0.5 block text-[14px] leading-snug"
                             style={{ color: "var(--app-ink-2)" }}
                           >
                             Share your location to put the closest ones first.
@@ -2464,7 +2410,7 @@ export default function AskFrederick({
                         <ArrowRight
                           className="h-4 w-4 shrink-0"
                           strokeWidth={2.2}
-                          style={{ color: "var(--app-brand-press)" }}
+                          style={{ color: "var(--app-link)" }}
                           aria-hidden
                         />
                       </button>
@@ -2489,12 +2435,14 @@ export default function AskFrederick({
                   <div
                     key={section}
                     data-ask-section={section}
-                    className="mt-4 border-t pt-3"
-                    style={{ borderColor: "var(--app-border)" }}
+                    className="mt-5"
                   >
                     <p
-                      className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-[0.11em]"
-                      style={{ color: "var(--app-brand-press)" }}
+                      className="border-b pb-2 text-[13px] font-semibold uppercase tracking-[0.08em]"
+                      style={{
+                        borderColor: "var(--app-border)",
+                        color: "var(--app-brand-text)",
+                      }}
                     >
                       {responsePresentation.layout === "civic"
                         ? "Official source"
@@ -2503,15 +2451,15 @@ export default function AskFrederick({
                     {evidenceLabels?.hoursLimitation ? (
                       <p
                         data-ask-hours-limitation
-                        className="mb-2 flex items-start gap-2 rounded-[var(--app-radius-sm)] px-3 py-2 text-[11.5px] font-medium leading-snug"
+                        className="flex items-start gap-2 border-b py-2.5 text-[14px] font-medium leading-snug"
                         style={{
-                          background:
-                            "color-mix(in srgb, var(--app-warning) 10%, var(--app-bg-elevated-solid))",
+                          borderColor: "var(--app-border)",
                           color: "var(--app-ink-2)",
                         }}
                       >
                         <Clock3
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                          className="mt-0.5 h-4 w-4 shrink-0"
+                          style={{ color: "var(--app-warning)" }}
                           aria-hidden
                         />
                         <span>{evidenceLabels.hoursLimitation}</span>
@@ -2534,10 +2482,10 @@ export default function AskFrederick({
                       data-ask-section={section}
                       type="button"
                       onClick={retryLastQuestion}
-                      className="tap-44 mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-sm)] border px-4 text-[11.5px] font-semibold transition active:scale-[0.98]"
+                      className="tap-44 mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-4 text-[14px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:opacity-75"
                       style={{
-                        borderColor: "var(--app-brand-press)",
-                        color: "var(--app-brand-press)",
+                        borderColor: "var(--app-ink)",
+                        color: "var(--app-ink)",
                       }}
                     >
                       Try again
@@ -2555,10 +2503,10 @@ export default function AskFrederick({
                       data-ask-section={section}
                       type="button"
                       onClick={() => inputRef.current?.focus()}
-                      className="tap-44 mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-sm)] border px-4 text-[11.5px] font-semibold transition active:scale-[0.98]"
+                      className="tap-44 mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-4 text-[14px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:opacity-75"
                       style={{
-                        borderColor: "var(--app-brand-press)",
-                        color: "var(--app-brand-press)",
+                        borderColor: "var(--app-ink)",
+                        color: "var(--app-ink)",
                       }}
                     >
                       Change the question
@@ -2592,15 +2540,12 @@ export default function AskFrederick({
                         ? true
                         : undefined
                     }
-                    className="group mt-5 overflow-hidden rounded-[var(--app-radius-md)] border"
-                    style={{
-                      borderColor: "var(--app-border)",
-                      background: "var(--app-bg-elevated)",
-                    }}
+                    className="group mt-6 border-t"
+                    style={{ borderColor: "var(--app-border)" }}
                   >
-                    <summary className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3">
+                    <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 py-2 [&::-webkit-details-marker]:hidden">
                       <span
-                        className="text-[13px] font-semibold"
+                        className="text-[17px] font-semibold leading-snug"
                         style={{ color: "var(--app-ink)" }}
                       >
                         {responsePresentation.layout === "place"
@@ -2610,23 +2555,23 @@ export default function AskFrederick({
                             : "Sources behind this answer"}
                       </span>
                       <span
-                        className="inline-flex items-center gap-2 font-mono text-[10px]"
-                        style={{ color: "var(--app-ink-3)" }}
+                        className="inline-flex shrink-0 items-center gap-2 text-[14px] tabular-nums"
+                        style={{ color: "var(--app-ink-2)" }}
                       >
                         {supportingSources.length}{" "}
                         {supportingSources.length === 1 ? "source" : "sources"}
                         <ChevronDown
-                          className="h-4 w-4 transition-transform group-open:rotate-180"
+                          className="h-4 w-4 motion-safe:transition-transform group-open:rotate-180"
                           strokeWidth={2.2}
                           aria-hidden
                         />
                       </span>
                     </summary>
                     <div
-                      className="grid gap-2.5 border-t p-3"
+                      className="border-t pb-1"
                       style={{ borderColor: "var(--app-border)" }}
                     >
-                      <div className="grid gap-2.5">
+                      <div>
                         {visibleSources.map((source, index) => (
                           <AskSourceCard
                             key={`${source.category}-${source.slug}-${source.href}`}
@@ -2640,10 +2585,10 @@ export default function AskFrederick({
                         <button
                           type="button"
                           onClick={() => setShowAllSources((value) => !value)}
-                          className="tap-44 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-sm)] border text-[11.5px] font-semibold transition active:opacity-75"
+                          className="tap-44 mt-3 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-md)] border text-[14px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:opacity-75"
                           style={{
-                            borderColor: "var(--app-border)",
-                            color: "var(--app-brand-press)",
+                            borderColor: "var(--app-control-border)",
+                            color: "var(--app-link)",
                           }}
                         >
                           {showAllSources
@@ -2675,17 +2620,17 @@ export default function AskFrederick({
                   <div
                     key={section}
                     data-ask-section={section}
-                    className="mt-4 border-t px-1 pt-3"
+                    className="mt-6 border-t pt-3"
                     style={{ borderColor: "var(--app-border)" }}
                   >
                     <p
-                      className="text-[10px] font-bold uppercase tracking-[0.11em]"
+                      className="text-[13px] font-semibold uppercase tracking-[0.08em]"
                       style={{ color: "var(--app-ink-3)" }}
                     >
                       More context
                     </p>
                     <p
-                      className="mt-1 whitespace-pre-wrap text-[13px] leading-[1.58]"
+                      className="mt-1.5 whitespace-pre-wrap text-[15px] leading-[1.58]"
                       style={{ color: "var(--app-ink-2)" }}
                     >
                       {responsePresentation.detail}
@@ -2705,14 +2650,14 @@ export default function AskFrederick({
             ) : null}
           </section>
 
-          <div className="mt-3 flex justify-end">
+          <div className="mt-4 flex justify-end">
             <Link
               href="/compass"
-              className="tap-44 inline-flex items-center gap-1 px-1 text-[10.5px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
+              className="tap-44 inline-flex min-h-11 items-center gap-1 text-[14px] font-semibold hover:underline hover:underline-offset-[3px]"
+              style={{ color: "var(--app-link)" }}
             >
               Browse tools
-              <ArrowRight className="h-3 w-3" aria-hidden />
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
           </div>
         </div>
