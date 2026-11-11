@@ -3,11 +3,13 @@ import { ArrowRight } from "lucide-react";
 
 /**
  * SectionHeading — the one strong category header, reused by Shelf and
- * the Radius results grid (and available to any future surface). A
- * tick + system-sans title + a quiet count, optional trailing action.
+ * the Radius results grid (and available to any future surface). A bold
+ * system-sans title + a quiet count + one hairline, optional trailing
+ * action. Plain tool direction: no accent tick; type and the rule carry
+ * the break.
  *
- * The tick color reads from `--section-accent` if a parent has set it
- * (so a whole route can theme its headings with one declaration on the
+ * The action color reads from `--section-accent` if a parent has set it
+ * (so a whole route can theme its actions with one declaration on the
  * outer `<main>` or page wrapper), and falls back to `--app-brand`. An
  * explicit `accent` prop overrides per-instance.
  */

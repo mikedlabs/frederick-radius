@@ -3,7 +3,6 @@ import Link from "next/link";
 import { ChevronRight, LogOut, Mail } from "lucide-react";
 import PreferencesPanel from "@/components/settings/PreferencesPanel";
 import DataBackup from "@/components/settings/DataBackup";
-import PageBloom from "@/components/ui/PageBloom";
 import { getServerUser } from "@/lib/auth";
 
 /**
@@ -30,7 +29,6 @@ export default async function SettingsPage() {
   const user = await getServerUser();
   return (
     <div className="relative space-y-5">
-      <PageBloom variant="cool" />
       <header className="space-y-2">
         {/* No page-level Back — the TopBar already renders a ChevronLeft
             back control for every deep (non-tab) page like Settings, and it
@@ -55,20 +53,20 @@ export default async function SettingsPage() {
           not the former. */}
       <section
         aria-label="Account"
-        className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
+        className="border-y py-4"
         style={{ borderColor: "var(--app-border)" }}
       >
         {user ? (
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p
-                className="text-[11px] font-bold uppercase tracking-[0.12em]"
-                style={{ color: "var(--app-ink-3)" }}
+                className="text-[13px] font-semibold uppercase tracking-[0.09em]"
+                style={{ color: "var(--app-ink-2)" }}
               >
                 Account
               </p>
               <p
-                className="mt-1 truncate font-serif text-[16px] font-semibold leading-tight"
+                className="mt-1 truncate font-sans text-[17px] font-semibold leading-tight"
                 style={{ color: "var(--app-ink)" }}
               >
                 {user.email ?? "Signed in"}
@@ -83,11 +81,11 @@ export default async function SettingsPage() {
             <form action="/auth/signout" method="post">
               <button
                 type="submit"
-                className="tactile tactile-interactive tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-md)] border px-3 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
                 style={{
-                  borderColor: "var(--app-border)",
-                  background: "var(--app-bg-sunken)",
-                  color: "var(--app-ink-2)",
+                  borderColor: "var(--app-control-border)",
+                  background: "var(--app-bg)",
+                  color: "var(--app-ink)",
                 }}
               >
                 <LogOut className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
@@ -102,11 +100,8 @@ export default async function SettingsPage() {
           >
             <span
               aria-hidden
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-              style={{
-                background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
-                color: "var(--app-brand)",
-              }}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center"
+              style={{ color: "var(--app-ink-2)" }}
             >
               <Mail className="h-4 w-4" strokeWidth={2} aria-hidden />
             </span>

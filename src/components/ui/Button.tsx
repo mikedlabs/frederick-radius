@@ -8,14 +8,16 @@ import type {
 } from "react";
 
 /**
- * Button — the canonical action (Visual System v2).
+ * Button — the canonical action.
  *
- * Kills the hand-repeated CTA classNames. Tactile by construction:
- * filled variants get layered elevation + the inner top highlight
- * (which over the brick reads as a soft gloss) + brief press feedback; quiet
- * stays flat. Polymorphic: pass `href` to render a Next link, else a
- * real <button>. It can be imported by a client component for interactive
- * actions, so those callers no longer need to rebuild the button grammar.
+ * Kills the hand-repeated CTA classNames. Plain tool direction: every
+ * variant is flat with a 6px corner. Primary is the one filled coral action
+ * a view may have (press coral under white text for AA). Secondary is an
+ * outlined control on the page ground. Quiet is text with a hover ground.
+ * No gloss, lip, glow or lift. Polymorphic: pass `href` to render a Next
+ * link, else a real <button>. It can be imported by a client component for
+ * interactive actions, so those callers no longer need to rebuild the
+ * button grammar.
  */
 
 type Variant = "primary" | "secondary" | "quiet";
@@ -31,13 +33,13 @@ function variantOf(v: Variant): { cls: string; style: CSSProperties } {
   switch (v) {
     case "primary":
       return {
-        cls: "tactile tactile-lift tactile-glow-brand",
+        cls: "border border-transparent transition-[filter] duration-[var(--app-dur-fast)] hover:brightness-[0.94] active:brightness-90",
         style: { backgroundColor: "var(--app-brand-press)", color: "var(--app-on-brand)", "--press-ack-color": "var(--app-on-brand)" } as CSSProperties,
       };
     case "secondary":
       return {
-        cls: "tactile",
-        style: { backgroundColor: "var(--app-bg-elevated)", color: "var(--app-ink)" },
+        cls: "border transition-colors duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)]",
+        style: { backgroundColor: "var(--app-bg)", borderColor: "var(--app-control-border)", color: "var(--app-ink)" },
       };
     case "quiet":
       return {

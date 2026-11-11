@@ -300,14 +300,9 @@ export default function Passport({ placesBySlug }: { placesBySlug: Map<string, P
   return (
     <section aria-label="Passport" className="space-y-3">
       <header className="flex items-baseline gap-2.5">
-        <span
-          aria-hidden
-          className="block h-[3px] w-7 rounded-full"
-          style={{ background: "var(--app-accent-press)" }}
-        />
         <h2
-          className="text-[11px] font-bold uppercase tracking-[0.12em]"
-          style={{ color: "var(--app-accent-press)" }}
+          className="text-[13px] font-semibold uppercase tracking-[0.09em]"
+          style={{ color: "var(--app-ink-2)" }}
         >
           Passport
         </h2>
@@ -316,15 +311,11 @@ export default function Passport({ placesBySlug }: { placesBySlug: Map<string, P
         </span>
       </header>
 
-      {/* The passport spread: an elevated paper plate with a ghost county
-          seal watermarked behind the pressed stamps. */}
+      {/* The passport spread: stamps on the page ground between two
+          hairlines, with a ghost county seal behind them. No plate. */}
       <div
-        className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] px-4 py-5"
-        style={{
-          backgroundColor: "var(--app-bg-elevated-solid)",
-          backgroundImage: "var(--app-paper-light)",
-          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-        }}
+        className="relative overflow-hidden border-y py-5"
+        style={{ borderColor: "var(--app-border)" }}
       >
         <svg
           aria-hidden
@@ -346,7 +337,7 @@ export default function Passport({ placesBySlug }: { placesBySlug: Map<string, P
         </svg>
 
         <p
-          className="relative mb-3 font-serif text-[15px] italic"
+          className="relative mb-3 font-sans text-[14px]"
           style={{ color: "var(--app-ink-2)" }}
         >
           These stamps mark what you have explored nearby.

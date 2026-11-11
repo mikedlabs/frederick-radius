@@ -295,6 +295,18 @@
     --app-live-text: var(--app-amber);
     --app-hi: 0 0 0 0 transparent;
     --app-paper-light: linear-gradient(transparent, transparent);
+    /* The zeroed decorative tiers stay zero in dark. The tiers that separate
+       a sheet, popover or toast from the page use black at a higher alpha,
+       because a Charcoal-tinted shadow disappears on the Charcoal ground. */
+    --app-shadow-3:
+      0 2px 6px rgba(0, 0, 0, 0.32),
+      0 18px 36px -8px rgba(0, 0, 0, 0.5);
+    --app-elev-3:
+      0 3px 8px rgba(0, 0, 0, 0.32),
+      0 18px 38px -20px rgba(0, 0, 0, 0.55);
+    --app-elev-4:
+      0 4px 10px rgba(0, 0, 0, 0.36),
+      0 24px 52px -24px rgba(0, 0, 0, 0.6);
 }
 
 /* Neutral listing grammar belongs only to the four primary destinations.
@@ -371,11 +383,14 @@
 /* The existing wallet still raises and discloses its real saved records.
  * Neutral stock replaces the category paint, gloss, and entrance animation;
  * overlap margins and 44px disclosure/action targets retain their geometry. */
+/* Plain tool: each wallet face is a white sheet with one hairline and a 6px
+ * corner. With no lift, the overlapping lips read as ruled rows; the hairline
+ * at each face's top edge is the only seam. */
 [data-app-primary-tab="/my-radius"] .sw-card,
 [data-app-primary-tab="/my-radius"] .sw-card.is-open {
   color: var(--app-ink);
-  border-radius: var(--app-radius-lg);
-  box-shadow: inset 0 0 0 1px var(--app-border), var(--app-shadow-1);
+  border-radius: var(--app-radius-md);
+  box-shadow: inset 0 0 0 1px var(--app-border);
   animation: none;
 }
 [data-app-primary-tab="/my-radius"] .sw-card::before,
@@ -395,7 +410,11 @@
 [data-app-primary-tab="/my-radius"] .sw-disclosure:focus-visible {
   outline-color: var(--app-link);
 }
-[data-app-primary-tab="/my-radius"] .sw-disclosure { background: var(--app-bg-sunken); }
+[data-app-primary-tab="/my-radius"] .sw-disclosure {
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-sunken);
+}
+[data-app-primary-tab="/my-radius"] .sw-brand { border-radius: var(--app-radius-sm); }
 [data-app-primary-tab="/my-radius"] .sw-tip {
   color: var(--app-ink);
   text-shadow: none;
@@ -425,8 +444,17 @@
 [data-app-primary-tab="/my-radius"] .sw-stub::after { display: none; }
 [data-app-primary-tab="/my-radius"] .sw-star { color: var(--app-ink-3); }
 [data-app-primary-tab="/my-radius"] .sw-act-primary {
+  border-radius: var(--app-radius-md);
   background: var(--app-brand-press);
   box-shadow: none;
+}
+[data-app-primary-tab="/my-radius"] .sv-gear {
+  border: 0;
+  background: transparent;
+  color: var(--app-ink);
+}
+@media (hover: hover) {
+  [data-app-primary-tab="/my-radius"] .sv-gear:hover { background: var(--app-bg-sunken); }
 }
 [data-app-primary-tab="/my-radius"] .sv-planline .go,
 [data-app-primary-tab="/my-radius"] .sv-colophon-row .v.link { color: var(--app-link); }
@@ -9139,14 +9167,16 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
   }
 }
 
+/* This referenced a token that never existed, so the popup painted no
+   ground at all. Plain tool: map popups sit on the solid surface. */
 .glass-popup .mapboxgl-popup-content {
-  background: var(--app-bg-elevated-translucent) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+  background: var(--app-bg-elevated-solid) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .glass-popup .mapboxgl-popup-tip {
-  border-top-color: var(--app-bg-elevated-translucent) !important;
+  border-top-color: var(--app-bg-elevated-solid) !important;
 }
 
 /* Map refinement: keep the one thumb-level chooser legible while a query is
@@ -9353,29 +9383,256 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
 }
 
 /* Map controls speak the same flat language as the chrome: 6px corners, one
-   hairline, solid white, no lift. Compact filter chips stay capsules. Sheets
-   and the peek keep shadow-3 because they genuinely sit over the map. */
+   control-weight border, a solid ground, no lift, no blur and no glow.
+   Controls that sit over map imagery keep a solid background because tiles
+   can be any color. Compact filter chips and status badges stay capsules.
+   Sheets and the peek keep shadow-3 because they genuinely float over the
+   map; everything else relies on its border. */
 .dock .dock-head,
 .dock.dock-open .dock-head,
 .map-edge-tool,
 .map-context-rail,
 .map-location-offer,
 .map-smart-note,
+.map-top-action,
+.map-locate-fab,
+.map-reset-fab,
+.map-results-here,
+.map-overlay-loading,
+.map-overlay-keyboard-nav:focus-within {
+  border: 1px solid var(--app-control-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-elevated-solid);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+.map-top-action {
+  background: var(--app-bg-elevated-solid) !important;
+}
 .dock-content-list {
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-md);
-  background: var(--app-bg);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  background: var(--app-bg-elevated-solid);
   box-shadow: none;
 }
 .map-edge-tool {
   color: var(--app-ink);
   opacity: 1;
 }
-.map-location-offer-actions button {
+.map-edge-tool[data-attention="true"]::after {
+  border-radius: calc(var(--app-radius-md) + 3px);
+}
+.map-edge-tool-label {
+  border-color: var(--app-control-border);
+  border-radius: var(--app-radius-sm);
+  background: var(--app-bg-elevated-solid);
+  box-shadow: none;
+}
+@media (max-width: 767.98px) {
+  .map-edge-tool-locate {
+    border-color: var(--app-control-border);
+    box-shadow: none;
+  }
+}
+.map-context-rail-icon,
+.dock-discovery-mark {
+  border-radius: var(--app-radius-sm);
+}
+.map-location-offer-actions button,
+.map-overlay-error button,
+.map-overlay-keyboard-nav select,
+.dock-source-health button,
+.dock-clear {
   border-radius: var(--app-radius-md);
   box-shadow: none;
+}
+.map-location-offer-actions button {
+  border-color: var(--app-control-border);
+  background: var(--app-bg-elevated-solid);
+  color: var(--app-ink);
+}
+.map-location-offer-actions button:first-child {
+  border-color: var(--app-ink);
+  background: var(--app-ink);
+  color: var(--app-bg);
+}
+@media (max-width: 639.98px) {
+  .map-location-offer,
+  .map-location-offer-actions button:focus-visible {
+    border-radius: var(--app-radius-md);
+  }
+}
+@media (max-width: 1023.98px) {
+  .dock-contents {
+    border-radius: 0 calc(var(--app-radius-md) - 1px) calc(var(--app-radius-md) - 1px) 0;
+  }
+}
+
+/* The command sheet and its panes float over the map, so they keep the
+   sheet shadow and a hairline, with plain solid grounds and 8px corners. */
+.dock-pane {
+  border-radius: var(--app-radius-lg);
+  background: var(--app-bg-elevated-solid);
+  box-shadow: var(--app-shadow-3);
+}
+.dock-pane-head,
+.dock-search-results {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+@media (max-width: 1023.98px) {
+  .dock-content-primary,
+  .dock-pane[data-pane="contents"] .dock-content-row-secondary {
+    border-radius: var(--app-radius-md);
+  }
+  .dock-pane[data-pane="contents"] .dock-content-icon {
+    border-radius: var(--app-radius-sm);
+  }
+}
+.dock-ready-views,
+.dock-scene,
+.dock-essential-origin,
+.dock-essential-choice,
+.dock-essentials-more {
+  border-radius: var(--app-radius-md);
+}
+/* Category tiles and discovery rows are plain solid tiles. The category hue
+   stays as the border and mark color, never a gradient wash. */
+.dock-cat {
+  background: var(--app-bg-elevated-solid);
+}
+.dock-cat[data-on] {
+  background: color-mix(in srgb, var(--c) 10%, var(--app-bg-elevated-solid));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent);
+}
+.dock-discovery-card {
+  background: var(--app-bg-elevated-solid);
+  box-shadow: none;
+}
+.dock-discovery-card:hover {
+  box-shadow: none;
+}
+/* The Where pane's single filled action. White text on coral sits on the
+   AA-safe press shade. */
+.dock-findme {
+  border-radius: var(--app-radius-md);
+  background: var(--app-brand-press);
+  box-shadow: none;
+}
+.dock-findme[data-on] {
+  background: var(--app-cool);
+}
+
+/* Selection peeks keep a hairline and the sheet shadow over the map. Their
+   own controls are 6px squares; the one filled action is the press coral. */
+.map-peek {
+  border-radius: var(--app-radius-lg);
+  background: var(--app-bg-elevated-solid);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: var(--app-shadow-3);
+}
+.map-finding-peek {
+  border-color: var(--app-border);
+  background: var(--app-bg-elevated-solid);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.map-result-surface {
+  border-color: var(--app-border);
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-shadow-3);
+}
+.map-peek-close,
+.map-finding-nav-btn {
+  border-radius: var(--app-radius-md);
+}
+.map-peek-act,
+.map-finding-open {
+  border-radius: var(--app-radius-md);
+}
+.map-peek-act[data-on] {
+  background: var(--app-brand-press);
+  border-color: var(--app-brand-press);
+  color: var(--app-on-brand);
+}
+.map-peek-act-go {
+  background-image: none;
+  box-shadow: none;
+}
+.map-finding-open {
+  background: var(--app-brand-press);
+}
+.map-peek-category-mark {
+  background: color-mix(in srgb, var(--map-peek-color) 12%, var(--app-bg-elevated-solid));
+}
+
+/* Floating aggregates and the map's own engine controls get the same solid,
+   bordered, unlifted treatment. */
+.map-live-status,
+.map-live-bus-aggregate {
+  box-shadow: none;
+}
+.mapboxgl-ctrl-group,
+.maplibregl-ctrl-group {
+  border-color: var(--app-control-border) !important;
+  background: var(--app-bg-elevated-solid) !important;
+  box-shadow: none !important;
+}
+.mapboxgl-popup-content,
+.maplibregl-popup-content {
+  background: var(--app-bg-elevated-solid) !important;
+  box-shadow: var(--app-shadow-3) !important;
+}
+.mapboxgl-popup-tip {
+  border-top-color: var(--app-bg-elevated-solid) !important;
+}
+.mapboxgl-popup-close-button {
+  border-radius: var(--app-radius-md) !important;
+  background: transparent !important;
+  box-shadow: none;
+}
+
+/* The map header and the tab bar beneath the map are the same flat chrome
+   as every other page: a solid ground and one hairline, no frosted glass. */
+header[data-map-header="true"] {
+  border-bottom-color: var(--app-border) !important;
+  background: var(--app-bg) !important;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+header[data-map-header="true"] [data-location-chip][data-compact="true"] {
+  border-radius: var(--app-radius-sm);
+  color: var(--app-ink) !important;
+}
+@media (max-width: 1023.98px) {
+  [data-map-bottom-nav="true"] {
+    background: var(--app-bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  /* The shell already draws the hairline; the nav must not add a second
+     line or a lift. */
+  [data-map-bottom-nav="true"] nav {
+    border-top: 0 !important;
+    box-shadow: none !important;
+  }
+  .map-reset-fab {
+    border-color: var(--app-control-border);
+    background: var(--app-bg-elevated-solid);
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .dock-host .maplibregl-ctrl-attrib-button,
+  .dock-host .mapboxgl-ctrl-attrib-button {
+    border-color: var(--app-control-border);
+    border-radius: var(--app-radius-md);
+    background-color: var(--app-bg-elevated-solid);
+    box-shadow: none;
+  }
 }
 .map-error-fallback-head {
   border-bottom: 1px solid var(--app-border);

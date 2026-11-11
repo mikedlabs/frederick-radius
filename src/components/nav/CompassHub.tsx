@@ -852,8 +852,8 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
             <button
               type="button"
               onClick={() => changeDeckView("all")}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full px-2 text-[12px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
+              className="inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-2 text-[12px] font-semibold"
+              style={{ color: "var(--app-link)" }}
             >
               <ArrowLeft className="h-4 w-4" strokeWidth={2.2} aria-hidden />
               All tools
@@ -941,8 +941,8 @@ function PinnedTools({
           // tap-44 widens the hit area to 44px: the label is short enough
           // that the painted box measures ~43px ACROSS, and the rule is 44
           // effective in both dimensions, not just height.
-          className="tap-44 inline-flex min-h-11 items-center rounded-full px-3 text-[13px] font-semibold"
-          style={{ color: "var(--app-brand-press)" }}
+          className="tap-44 inline-flex min-h-11 items-center rounded-[var(--app-radius-sm)] px-3 text-[13px] font-semibold"
+          style={{ color: "var(--app-link)" }}
         >
           Edit
         </button>
@@ -1101,9 +1101,9 @@ function RecentTools({
                 prefetch={false}
                 {...externalLinkProps(item)}
                 {...intentProps(item)}
-                className="tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated-solid)] px-3 text-[12px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 text-[13px] font-semibold outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                 style={{
-                  borderColor: "var(--app-border)",
+                  borderColor: "var(--app-control-border)",
                   color: "var(--app-ink)",
                 }}
               >
@@ -1427,7 +1427,7 @@ function CompassIntentBoard({
           onOpen("all");
         }}
         disabled={!ready}
-        className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[14px] font-semibold"
+        className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-2.5 text-[14px] font-semibold"
         style={{ color: "var(--app-link)" }}
       >
         Browse the full tool index
@@ -1525,10 +1525,10 @@ function DeckToolBrowser({
                   // density for a nine-chip rail) but must HIT 44, per the
                   // repo's own tap-target rule. The invisible extender adds
                   // the missing 4px of touch without changing the paint.
-                  className="tactile-interactive tap-44 inline-flex min-h-10 shrink-0 snap-start items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                  className="tap-44 inline-flex min-h-10 shrink-0 snap-start items-center gap-1.5 rounded-[var(--app-radius-md)] border px-2.5 text-[12px] font-semibold outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                   style={{
-                    borderColor: "var(--app-border)",
-                    color: "var(--app-ink-2)",
+                    borderColor: "var(--app-control-border)",
+                    color: "var(--app-ink)",
                     background: "var(--app-bg)",
                   }}
                 >
@@ -1588,7 +1588,7 @@ function DeckToolBrowser({
                   rememberNativeRequest({ draft: { kind: "tools", query: "" } });
                 }}
                 aria-label="Clear section search"
-                className="absolute right-0 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full"
+                className="absolute right-0 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-[var(--app-radius-sm)]"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 <X className="h-4 w-4" strokeWidth={2} aria-hidden />
@@ -1717,7 +1717,7 @@ function ToolLedger({
                 aria-pressed={pinned}
                 data-tool-pin
                 onClick={() => onTogglePin(item)}
-                className="grid min-h-11 w-12 shrink-0 place-items-center self-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                className="grid min-h-11 w-12 shrink-0 place-items-center self-center rounded-[var(--app-radius-sm)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                 style={{
                   color: pinned
                     ? "var(--app-brand-press)"

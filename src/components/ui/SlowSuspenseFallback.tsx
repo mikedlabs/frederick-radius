@@ -43,8 +43,8 @@ export default function SlowSuspenseFallback({
         <div
           role="status"
           aria-live="polite"
-          className="mt-3 flex flex-col items-center gap-2 rounded-[var(--app-radius-md)] border px-4 py-4 text-center"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+          className="mt-3 flex flex-col items-start gap-2 border-t py-4"
+          style={{ borderColor: "var(--app-border)" }}
         >
           <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             {label}
@@ -55,7 +55,7 @@ export default function SlowSuspenseFallback({
               onClick={() => {
                 if (typeof window !== "undefined") window.location.reload();
               }}
-              className="rounded-full px-3 py-1.5 text-[12px] font-semibold"
+              className="min-h-11 rounded-[var(--app-radius-md)] px-4 text-[13px] font-semibold"
               style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
             >
               Reload
@@ -63,8 +63,8 @@ export default function SlowSuspenseFallback({
             {altHref && (
               <Link
                 href={altHref}
-                className="rounded-full border px-3 py-1.5 text-[12px] font-semibold"
-                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+                className="inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] border px-4 text-[13px] font-semibold"
+                style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
               >
                 {altLabel ?? "Browse instead"}
               </Link>

@@ -68,7 +68,9 @@ export default function ReasonChip({
   const t = TONE_TOKENS[tone];
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-tight ${className}`}
+      // Plain tool: a reason is an informational tag, not a filter, so it
+      // takes the 4px utility corner instead of a capsule.
+      className={`inline-flex items-center gap-1 rounded-[var(--app-radius-sm)] px-1.5 py-0.5 text-[10px] font-semibold tracking-tight ${className}`}
       style={{
         background: t.bg,
         // Keep tone colors in the ring and dot while the label remains readable in either theme.

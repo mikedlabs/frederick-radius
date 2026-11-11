@@ -4837,15 +4837,15 @@ export default function AppMap({
             was silent (it lived inside the collapsed Where pane). */}
         {geoMsg && (
           <div
-            className={`z-[var(--z-map-control)] flex items-center gap-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-1 pl-3 pr-1 text-[13px] font-medium leading-snug shadow-[var(--app-shadow-1)] ${
+            className={`z-[var(--z-map-control)] flex items-center gap-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-1 pl-3 pr-1 text-[13px] font-medium leading-snug ${
               dock ? "map-geo-toast" : "absolute bottom-3 left-1/2 -translate-x-1/2"
             }`}
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+            style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
           >
             <span role="status" aria-live="polite">{geoMsg}</span>
             <button
               type="button"
-              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
+              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] transition-colors hover:bg-[var(--app-bg-sunken)]"
               onClick={() => {
                 setGeoMsg(null);
                 setLocateMsg(null);
@@ -4877,7 +4877,7 @@ export default function AppMap({
               "href" in smartDefault.action ? (
                 <Link
                   href={smartDefault.action.href}
-                  className="tap-44-y shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-semibold"
+                  className="tap-44-y shrink-0 whitespace-nowrap rounded-[var(--app-radius-sm)] px-2 py-1 font-semibold"
                   style={{ color: "var(--app-cool)" }}
                 >
                   {smartDefault.action.label}
@@ -4885,7 +4885,7 @@ export default function AppMap({
               ) : (
                 <button
                   type="button"
-                  className="tap-44-y shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-semibold"
+                  className="tap-44-y shrink-0 whitespace-nowrap rounded-[var(--app-radius-sm)] px-2 py-1 font-semibold"
                   style={{ color: "var(--app-cool)" }}
                   onClick={() => {
                     haptic("light");
@@ -4900,7 +4900,7 @@ export default function AppMap({
             )}
             <button
               type="button"
-              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
+              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] transition-colors hover:bg-[var(--app-bg-sunken)]"
               onClick={() => {
                 setSmartNoteDismissed(true);
                 // Saying no is a real choice: the seeded layers turn off and
@@ -4924,10 +4924,10 @@ export default function AppMap({
             on a healthy map nothing shows here now. */}
         {(osmLoading || osmError) && (
           <div
-            className={`absolute left-3 z-[var(--z-map-control)] inline-flex items-center gap-2 rounded-full bg-[var(--app-bg-elevated-solid)] px-2.5 py-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur ${
+            className={`absolute left-3 z-[var(--z-map-control)] inline-flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated-solid)] px-2.5 py-1 text-[11px] font-medium ${
               dock ? "top-[168px]" : "top-3"
             }`}
-            style={{ color: "var(--app-ink-2)" }}
+            style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink-2)" }}
             aria-live="polite"
           >
             {osmLoading ? (
@@ -4974,8 +4974,8 @@ export default function AppMap({
             the What pane; the floating strip serves dock-less maps only. */}
         {visibleAerial && !dock && (
           <div
-            className="absolute bottom-[116px] left-1/2 z-[var(--z-map-control)] flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-full border px-1.5 py-1.5 shadow-[var(--app-shadow-2)] backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)" }}
+            className="absolute bottom-[116px] left-1/2 z-[var(--z-map-control)] flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-[var(--app-radius-md)] border px-1.5 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{ borderColor: "var(--app-control-border)", background: "var(--app-bg-elevated-solid)" }}
             role="group"
             aria-label="Aerial photos by season"
           >

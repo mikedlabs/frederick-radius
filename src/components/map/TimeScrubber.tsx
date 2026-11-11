@@ -113,10 +113,10 @@ export default function TimeScrubber({
       <button
         type="button"
         onClick={() => onChange(currentFrederickHour())}
-        className="tap-44 pointer-events-auto inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[12.5px] font-semibold shadow-[var(--app-shadow-1)]"
+        className="tap-44 pointer-events-auto inline-flex items-center gap-2 rounded-[var(--app-radius-md)] px-3.5 py-2 text-[12.5px] font-semibold"
         style={{
-          background: "var(--app-bg-elevated)",
-          border: "1px solid var(--app-border)",
+          background: "var(--app-bg-elevated-solid)",
+          border: "1px solid var(--app-control-border)",
           color: "var(--app-ink-2)",
         }}
       >
@@ -154,14 +154,12 @@ export default function TimeScrubber({
     <div
       className={
         floating
-          ? "pointer-events-auto w-full max-w-[420px] rounded-[var(--app-radius-lg)] px-3.5 pb-3 pt-2.5 shadow-[var(--app-shadow-2)] backdrop-blur"
+          ? "pointer-events-auto w-full max-w-[420px] rounded-[var(--app-radius-md)] px-3.5 pb-3 pt-2.5"
           : "w-full rounded-[var(--app-radius-sm)] px-3.5 pb-3 pt-2.5"
       }
       style={{
-        background: floating
-          ? "color-mix(in srgb, var(--app-bg-elevated) 90%, transparent)"
-          : "var(--app-bg-elevated)",
-        border: "1px solid var(--app-border)",
+        background: floating ? "var(--app-bg-elevated-solid)" : "var(--app-bg-elevated)",
+        border: `1px solid ${floating ? "var(--app-control-border)" : "var(--app-border)"}`,
       }}
     >
       <div className="mb-1 flex items-center justify-between">
@@ -172,7 +170,7 @@ export default function TimeScrubber({
           <button
             type="button"
             onClick={() => { setPlaying(false); onChange(currentFrederickHour()); }}
-            className="inline-flex min-h-11 items-center rounded-full px-2.5 py-1 text-[11px] font-semibold"
+            className="inline-flex min-h-11 items-center rounded-[var(--app-radius-sm)] px-2.5 py-1 text-[11px] font-semibold"
             style={{ color: "var(--app-cool)" }}
           >
             Now
@@ -181,7 +179,7 @@ export default function TimeScrubber({
             type="button"
             onClick={() => setPlaying((p) => !p)}
             aria-label={playing ? "Pause" : "Play the day"}
-            className="grid h-11 w-11 place-items-center rounded-full"
+            className="grid h-11 w-11 place-items-center rounded-[var(--app-radius-md)]"
             style={{ background: playing ? "var(--app-brand-press)" : "var(--app-brand-tint-14)", color: playing ? "var(--app-on-brand)" : "var(--app-brand-press)" }}
           >
             {playing ? <Pause className="h-3.5 w-3.5" strokeWidth={2.5} /> : <Play className="h-3.5 w-3.5" strokeWidth={2.5} />}
@@ -190,7 +188,7 @@ export default function TimeScrubber({
             type="button"
             onClick={() => { setPlaying(false); onChange(null); }}
             aria-label="Back to now"
-            className="grid h-11 w-11 place-items-center rounded-full"
+            className="grid h-11 w-11 place-items-center rounded-[var(--app-radius-md)]"
             style={{ color: "var(--app-ink-3)" }}
           >
             <X className="h-4 w-4" strokeWidth={2} />

@@ -51,7 +51,7 @@ function RouteBadge({ route }: { route?: TransitRoute }) {
   return (
     <span
       aria-label={route ? `Route ${route.short}` : "TransIT bus"}
-      className="grid h-7 min-w-8 shrink-0 place-items-center rounded-full px-2 font-mono text-[11px] font-bold tabular-nums"
+      className="grid h-7 min-w-8 shrink-0 place-items-center rounded-[var(--app-radius-sm)] px-2 font-mono text-[11px] font-bold tabular-nums"
       style={{
         background: color,
         color: route ? readableTextOn(route.color) : "#FFFFFF",
@@ -156,13 +156,8 @@ function SavedStopTracker({
   return (
     <article
       id="saved-stop-tracker"
-      className="rounded-[var(--app-radius-md)] border p-3"
-      style={{
-        borderColor:
-          "color-mix(in srgb, var(--app-cool) 28%, var(--app-border))",
-        background:
-          "linear-gradient(145deg, color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 62%)",
-      }}
+      className="border-y py-3"
+      style={{ borderColor: "var(--app-border)" }}
     >
       <div className="flex items-start gap-2.5">
         <span
@@ -170,7 +165,7 @@ function SavedStopTracker({
           className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
           style={{
             color: "var(--app-cool)",
-            background: "var(--app-cool-tint-10)",
+            background: "var(--app-cool-tint-6)",
           }}
         >
           <MapPin className="h-4 w-4" strokeWidth={2.2} />
@@ -210,12 +205,11 @@ function SavedStopTracker({
           <button
             type="button"
             onClick={() => onTrack(exactFocus)}
-            className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold"
+            className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-md)] border px-3 text-[12px] font-semibold"
             style={{
-              borderColor:
-                "color-mix(in srgb, var(--app-cool) 38%, var(--app-border))",
-              color: "var(--app-link)",
-              background: "var(--app-cool-tint-6)",
+              borderColor: "var(--app-control-border)",
+              color: "var(--app-cool-text)",
+              background: "var(--app-bg)",
             }}
           >
             <LocateFixed className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
@@ -224,7 +218,7 @@ function SavedStopTracker({
         ) : null}
         <Link
           href={`/transit?stop=${encodeURIComponent(stop.id)}#my-stop-heading`}
-          className="tap-44 inline-flex min-h-11 items-center rounded-full border px-3 text-[11px] font-semibold"
+          className="tap-44 inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] border px-3 text-[12px] font-semibold"
           style={{
             borderColor: "var(--app-control-border)",
             color: "var(--app-link)",
@@ -237,7 +231,7 @@ function SavedStopTracker({
           type="button"
           onClick={() => onRemove(stop)}
           aria-label={`Remove ${stop.name} from Saved`}
-          className="tap-44 ml-auto inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 text-[10.5px] font-semibold"
+          className="tap-44 ml-auto inline-flex min-h-11 items-center gap-1 rounded-[var(--app-radius-sm)] px-2.5 text-[12px] font-semibold"
           style={{ color: "var(--app-ink-3)" }}
         >
           <BookmarkMinus className="h-3.5 w-3.5" strokeWidth={2.1} aria-hidden />
@@ -323,11 +317,8 @@ function SavedBusCard({
 
   return (
     <li
-      className="rounded-[var(--app-radius-md)] border p-3"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated)",
-      }}
+      className="border-b py-3"
+      style={{ borderColor: "var(--app-border)" }}
     >
       <div className="flex items-start gap-2.5">
         <RouteBadge route={route} />
@@ -375,14 +366,11 @@ function SavedBusCard({
         <button
           type="button"
           onClick={openTransit}
-          className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold"
+          className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-md)] border px-3 text-[12px] font-semibold"
           style={{
-            borderColor:
-              "color-mix(in srgb, var(--app-cool) 38%, var(--app-border))",
-            color: "var(--app-cool)",
-            background: exactRun
-              ? "var(--app-cool-tint-6)"
-              : "var(--app-bg-elevated-solid)",
+            borderColor: "var(--app-control-border)",
+            color: "var(--app-cool-text)",
+            background: "var(--app-bg)",
           }}
         >
           {exactRun && focusStop ? (
@@ -399,7 +387,7 @@ function SavedBusCard({
         {bus.targetStop ? (
           <Link
             href={`/transit?stop=${encodeURIComponent(bus.targetStop.id)}#my-stop-heading`}
-            className="tap-44 inline-flex min-h-11 items-center rounded-full border px-3 text-[11px] font-semibold"
+            className="tap-44 inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] border px-3 text-[12px] font-semibold"
             style={{
               borderColor: "var(--app-control-border)",
               color: "var(--app-ink-2)",
@@ -413,7 +401,7 @@ function SavedBusCard({
           type="button"
           onClick={() => onRemove(bus)}
           aria-label={`Remove bus ${bus.vehicleId} from Saved`}
-          className="tap-44 ml-auto inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 text-[10.5px] font-semibold"
+          className="tap-44 ml-auto inline-flex min-h-11 items-center gap-1 rounded-[var(--app-radius-sm)] px-2.5 text-[12px] font-semibold"
           style={{ color: "var(--app-ink-3)" }}
         >
           <BookmarkMinus className="h-3.5 w-3.5" strokeWidth={2.1} aria-hidden />
@@ -527,7 +515,7 @@ export default function SavedTransitSection({
         className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
         style={{
           color: "var(--app-cool)",
-          background: "var(--app-cool-tint-10)",
+          background: "var(--app-cool-tint-6)",
         }}
       >
         <BusFront className="h-4 w-4" strokeWidth={2.2} />
@@ -624,7 +612,7 @@ export default function SavedTransitSection({
           >
             Saved bus trips
           </h3>
-          <ul className="space-y-2">
+          <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
             {buses.map((bus) => (
               <SavedBusCard
                 key={bus.watchId}

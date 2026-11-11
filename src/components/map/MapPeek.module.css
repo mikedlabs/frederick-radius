@@ -3,7 +3,9 @@
   max-height: min(62dvh, 480px, calc(100% - 24px));
   gap: 10px;
   padding: 12px;
-  border-radius: 24px;
+  /* Plain tool: the peek floats over the map, so it keeps a thin border and
+     the sheet shadow, but its corners match the other 8px surfaces. */
+  border-radius: var(--app-radius-lg);
   scroll-padding-block: 8px 88px;
   --press-focus-offset: -3px;
 }
@@ -27,13 +29,13 @@
   min-width: 44px;
   min-height: 44px;
   flex-basis: 64px;
-  border-radius: 14px;
+  border-radius: var(--app-radius-md);
 }
 
 .body.body[data-has-photo] :global(.map-peek-visual) {
   width: 100%;
   height: clamp(132px, 42vw, 184px);
-  border-radius: var(--app-radius-lg);
+  border-radius: var(--app-radius-md);
 }
 
 .photoFace {
@@ -132,9 +134,10 @@
   margin-bottom: -54px;
   margin-right: 2px;
   border: 1px solid var(--app-control-border);
+  border-radius: var(--app-radius-md);
   background: var(--app-bg-elevated-solid);
   color: var(--app-ink);
-  box-shadow: var(--app-shadow-1);
+  box-shadow: none;
 }
 
 .preview.preview :global(.map-peek-acts) {

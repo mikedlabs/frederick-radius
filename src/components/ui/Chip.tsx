@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
 /**
- * Chip — small tonal pill (Visual System v2).
+ * Chip — small tonal tag.
  *
  * One source of truth for the count / status / category pills that
  * were inlined everywhere. The fill is a tokenized color-mix wash of
@@ -61,7 +61,9 @@ export function Chip({
   return (
     <span
       title={title}
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+      // Plain tool: informational tags take the 4px utility corner. Full
+      // capsules belong to compact filters, status badges and toggles.
+      className={`inline-flex items-center gap-1 rounded-[var(--app-radius-sm)] px-2 py-0.5 text-[10px] font-semibold ${
         tabular ? "tabular-nums" : ""
       } ${className}`.trim()}
       style={{

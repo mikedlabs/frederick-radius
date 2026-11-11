@@ -1055,10 +1055,9 @@ export default function SavedList({
       {followsTruncated && (
         <p
           role="status"
-          className="rounded-xl border px-3 py-2 text-[12px] leading-relaxed"
+          className="border-l-2 py-1 pl-3 text-[13px] leading-relaxed"
           style={{
-            borderColor: "var(--app-border)",
-            background: "var(--app-bg-sunken)",
+            borderColor: "var(--app-control-border)",
             color: "var(--app-ink-2)",
           }}
         >
@@ -1125,7 +1124,7 @@ export default function SavedList({
           <header className="flex items-baseline gap-2.5">
             <h2
               id="saved-places-heading"
-              className="text-[11px] font-bold uppercase tracking-[0.12em]"
+              className="text-[13px] font-semibold uppercase tracking-[0.09em]"
               style={{ color: "var(--app-ink)" }}
             >
               Saved places
@@ -1152,13 +1151,8 @@ export default function SavedList({
           aria-busy={eventsPending || undefined}
         >
           <header className="flex items-baseline gap-2.5">
-            <span
-              aria-hidden
-              className="block h-[3px] w-7 rounded-full"
-              style={{ background: "var(--app-brand)" }}
-            />
             <h2
-              className="text-[11px] font-bold uppercase tracking-[0.12em]"
+              className="text-[13px] font-semibold uppercase tracking-[0.09em]"
               style={{ color: "var(--app-ink-3)" }}
             >
               Upcoming
@@ -1285,8 +1279,8 @@ export default function SavedList({
             <div
               role="tablist"
               aria-label="Organize saved places as a list or map"
-              className="inline-flex rounded-full border p-0.5"
-              style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+              className="inline-flex rounded-[var(--app-radius-md)] border p-0.5"
+              style={{ borderColor: "var(--app-control-border)", background: "var(--app-bg)" }}
             >
               {(["list", "map"] as const).map((v) => {
                 const active = organizerView === v;
@@ -1297,11 +1291,10 @@ export default function SavedList({
                     role="tab"
                     aria-selected={active}
                     onClick={() => setViewAndStore(v)}
-                    className="tap-44-y flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                    className="tap-44-y flex items-center gap-1 rounded-[var(--app-radius-sm)] px-2.5 py-1 text-[12px] font-semibold transition-colors"
                     style={{
-                      background: active ? "var(--app-bg-elevated)" : "transparent",
-                      color: active ? "var(--app-ink)" : "var(--app-ink-3)",
-                      boxShadow: active ? "var(--app-edge), var(--app-hi)" : "none",
+                      background: active ? "var(--app-ink)" : "transparent",
+                      color: active ? "var(--app-bg)" : "var(--app-ink-2)",
                     }}
                   >
                     {v === "map" && <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
@@ -1468,14 +1461,9 @@ export default function SavedList({
       {notedPlaces.length > 0 && (
         <section aria-label="Your notes" className="space-y-2">
           <header className="flex items-baseline gap-2.5">
-            <span
-              aria-hidden
-              className="block h-[3px] w-7 rounded-full"
-              style={{ background: "var(--app-accent)" }}
-            />
             <h2
-              className="text-[11px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-accent-press)" }}
+              className="text-[13px] font-semibold uppercase tracking-[0.09em]"
+              style={{ color: "var(--app-ink-2)" }}
             >
               Your notes
             </h2>
@@ -1488,7 +1476,7 @@ export default function SavedList({
               <li key={place.slug} className="space-y-1">
                 <PlaceCard place={place} />
                 <p
-                  className="ml-3 border-l-2 pl-2.5 font-serif text-[13px] italic leading-snug"
+                  className="ml-3 border-l-2 pl-2.5 font-sans text-[14px] italic leading-snug"
                   style={{ borderColor: "var(--app-accent)", color: "var(--app-ink-2)" }}
                 >
                   {note.text}
@@ -1505,13 +1493,8 @@ export default function SavedList({
       {visitedPlaces.length > 0 && (
         <section aria-label="Visited" className="space-y-2">
           <header className="flex items-baseline gap-2.5">
-            <span
-              aria-hidden
-              className="block h-[3px] w-7 rounded-full"
-              style={{ background: "var(--app-cool)" }}
-            />
             <h2
-              className="text-[11px] font-bold uppercase tracking-[0.12em]"
+              className="text-[13px] font-semibold uppercase tracking-[0.09em]"
               style={{ color: "var(--app-ink-3)" }}
             >
               Visited
@@ -1541,13 +1524,8 @@ export default function SavedList({
       {recentPlaces.length > 0 && (
         <section aria-label="Recently viewed" className="space-y-2">
           <header className="flex items-baseline gap-2.5">
-            <span
-              aria-hidden
-              className="block h-[3px] w-7 rounded-full"
-              style={{ background: "var(--app-ink-3)" }}
-            />
             <h2
-              className="text-[11px] font-bold uppercase tracking-[0.12em]"
+              className="text-[13px] font-semibold uppercase tracking-[0.09em]"
               style={{ color: "var(--app-ink-3)" }}
             >
               Recently viewed
@@ -1631,32 +1609,30 @@ export function EmptyState() {
       >
         Save an outing, place, event, bus trip, or stop to keep it here for later.
       </p>
-      <div className="flex flex-wrap gap-2">
-        <Link
-          href="/search"
-          className="tap-44 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[12.5px] font-semibold"
-          style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
-        >
-          <Search className="h-4 w-4" strokeWidth={2} aria-hidden />
-          Find something to save
-          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-        </Link>
+      {/* Plain tool: one action, then the other two routes as plain text
+          links rather than a row of competing buttons. */}
+      <Link
+        href="/search"
+        className="inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[14px] font-semibold"
+        style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
+      >
+        <Search className="h-4 w-4" strokeWidth={2} aria-hidden />
+        Find something to save
+        <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+      </Link>
+      <div className="flex flex-wrap gap-x-6">
         <Link
           href={withBrowseReturnTo("/plan", "/my-radius")}
-          className="tap-44 inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-[12.5px] font-semibold"
-          style={{ borderColor: "var(--app-control-border)", color: "var(--app-link)", background: "var(--app-bg-elevated-solid)" }}
+          className="inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold underline-offset-[3px] hover:underline"
+          style={{ color: "var(--app-link)" }}
         >
           Plan an outing
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
         </Link>
         <Link
           href="/transit"
-          className="tap-44 inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-[12.5px] font-semibold"
-          style={{
-            borderColor: "var(--app-control-border)",
-            color: "var(--app-link)",
-            background: "var(--app-bg-elevated-solid)",
-          }}
+          className="inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold underline-offset-[3px] hover:underline"
+          style={{ color: "var(--app-link)" }}
         >
           <BusFront className="h-4 w-4" strokeWidth={2} aria-hidden />
           Find a bus or stop

@@ -39,8 +39,9 @@
   font-weight: 500;
   letter-spacing: 0;
 }
-/* The selected destination is marked by a 3px rule across the top of its
-   column, inset 6px from each side, laid over the bar's hairline. */
+/* The selected destination is marked by a coral rule across the top of its
+   column, inset 6px from each side. It starts 1px up so it replaces the
+   bar's hairline there and reads as one 2px rule below it. */
 .destinationRule {
   position: absolute;
   top: -1px;
@@ -52,17 +53,41 @@
 .destination[data-selected="true"] {
   color: var(--app-ink);
 }
+/* Weight carries the selection as much as the rule does: 500 to 700 is a
+   change a glance can read at 11px. */
 .destination[data-selected="true"] .destinationLabel {
-  font-weight: 600;
+  font-weight: 700;
 }
 .destination[data-selected="true"] .destinationRule {
   background: var(--app-brand);
 }
+/* Pending (tapped, route not committed yet): the same rule in ink at reduced
+   opacity, so the tap is acknowledged without claiming the destination. */
 .destination[data-pending="true"]:not([data-selected="true"]) {
   color: var(--app-ink);
 }
 .destination[data-pending="true"]:not([data-selected="true"]) .destinationRule {
-  background: var(--app-control-border);
+  background: var(--app-ink);
+  opacity: 0.45;
+}
+.destination[data-pending="true"]:not([data-selected="true"]) .destinationLabel {
+  font-weight: 600;
+}
+/* Desktop side rail: the same marks on the rail's content-facing edge. */
+.railRule {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  right: -1px;
+  width: 3px;
+  background: transparent;
+}
+.destination[data-selected="true"] .railRule {
+  background: var(--app-brand);
+}
+.destination[data-pending="true"]:not([data-selected="true"]) .railRule {
+  background: var(--app-ink);
+  opacity: 0.45;
 }
 .tool:focus-visible,
 .search:focus-visible {

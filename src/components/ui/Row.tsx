@@ -11,8 +11,8 @@ import type { CSSProperties, ReactNode } from "react";
  * other directories — parks, amenities, parking, contacts — that were
  * rendering as full-width cards (Parks was ~13 phone-screens tall).
  *
- * A RowList is one elevated, rounded container with hairline dividers
- * between rows (the established "compact list" look), so a long list
+ * A RowList is a run of ruled rows on the page ground with hairline
+ * dividers, closed by one hairline above and below, so a long list
  * reads as a single tidy block instead of a stack of separate cards.
  * Server-component safe (no hooks) — drops straight into server pages.
  *
@@ -34,11 +34,10 @@ export function RowList({
 }) {
   return (
     <ul
-      className={`reveal-up overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&>li:last-child>*]:border-b-0 ${className}`.trim()}
-      style={{
-        borderColor: "var(--app-border)",
-        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-      }}
+      // Plain tool: ruled rows on the page ground, closed by one hairline
+      // above and below. No rounded container or lift.
+      className={`border-y [&>li:last-child>*]:border-b-0 ${className}`.trim()}
+      style={{ borderColor: "var(--app-border)" }}
     >
       {children}
     </ul>
@@ -67,19 +66,19 @@ function RowInner({ title, subtitle, meta, leading, trailing, href, external }: 
       {leading && <span className="shrink-0">{leading}</span>}
       <span className="min-w-0 flex-1">
         <span
-          className="block truncate text-[14px] font-semibold leading-tight"
+          className="block truncate text-[17px] font-semibold leading-snug tracking-[-0.01em]"
           style={{ color: "var(--app-ink)" }}
         >
           {title}
         </span>
         {subtitle && (
-          <span className="mt-0.5 block truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+          <span className="mt-0.5 block truncate text-[14px]" style={{ color: "var(--app-ink-2)" }}>
             {subtitle}
           </span>
         )}
       </span>
       {meta && (
-        <span className="shrink-0 text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+        <span className="shrink-0 text-[13px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
           {meta}
         </span>
       )}
@@ -98,7 +97,7 @@ function RowInner({ title, subtitle, meta, leading, trailing, href, external }: 
 export function Row(props: RowProps) {
   const { href, external, className = "", style } = props;
   const cls =
-    `flex w-full items-center gap-3 border-b px-3.5 py-2.5 text-left transition active:bg-[var(--app-bg-sunken)] ${className}`.trim();
+    `flex min-h-14 w-full items-center gap-3 border-b py-3 text-left transition-colors active:bg-[var(--app-bg-sunken)] ${className}`.trim();
   const merged: CSSProperties = { borderColor: "var(--app-border)", ...style };
 
   if (href) {
@@ -136,8 +135,7 @@ export function IconTile({
       aria-hidden
       className="grid h-9 w-9 place-items-center rounded-[var(--app-radius-sm)]"
       style={{
-        background: `color-mix(in srgb, ${tone} 7%, transparent)`,
-        boxShadow: `inset 2px 0 0 ${tone}, inset 0 0 0 1px color-mix(in srgb, ${tone} 18%, transparent)`,
+        background: "var(--app-bg-sunken)",
       }}
     >
       <Icon className="h-4 w-4" strokeWidth={2} style={{ color: tone }} />

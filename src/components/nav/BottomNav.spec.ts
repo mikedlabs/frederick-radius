@@ -52,6 +52,25 @@ describe("BottomNav contextual chrome", () => {
     expect(isPlainPrimaryNavigation({ ...plain, button: 1 })).toBe(false);
   });
 
+  it("draws a flat bar on the screen edge that marks the current and pending tabs plainly", () => {
+    const source = readFileSync("src/components/nav/BottomNav.tsx", "utf8");
+    const chrome = readFileSync("src/components/nav/NavChrome.module.css", "utf8").replace(/\s+/g, " ");
+    // Attached to the edge: no floating inset, no capsule, no slab.
+    expect(source).toContain('paddingBottom: "env(safe-area-inset-bottom, 0px)"');
+    expect(source).not.toMatch(/rounded-(full|\[var\(--app-radius-(lg|xl)\)\])/);
+    expect(chrome).toContain(".dockShell { background: var(--app-bg); border-top: 1px solid var(--app-border); }");
+    expect(chrome).not.toMatch(/\.destination\[data-selected="true"\] \{[^}]*background/);
+    // Current: a coral rule, a 700 label and a heavier icon stroke.
+    expect(chrome).toContain('.destination[data-selected="true"] .destinationRule { background: var(--app-brand); }');
+    expect(chrome).toContain('.destination[data-selected="true"] .destinationLabel { font-weight: 700; }');
+    expect(source).toContain("strokeWidth={active ? 2.5 : 1.75}");
+    // Pending: the same rule in ink at reduced opacity.
+    expect(chrome).toContain('.destination[data-pending="true"]:not([data-selected="true"]) .destinationRule { background: var(--app-ink); opacity: 0.45; }');
+    // Every destination keeps a 56px row and a visible focus ring.
+    expect(source).toContain("relative flex h-14 w-full");
+    expect(chrome).toContain(".destination:focus-visible { outline: 2px solid var(--app-brand); outline-offset: -3px; }");
+  });
+
   it("clears optimistic state when a touch gesture is cancelled", () => {
     const source = readFileSync("src/components/nav/BottomNav.tsx", "utf8");
     expect(source).toContain("onPointerCancel={() => setPendingIdx(null)}");

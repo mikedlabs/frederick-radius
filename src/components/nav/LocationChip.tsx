@@ -249,8 +249,8 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
               type="button"
               onClick={() => closePicker()}
               aria-label="Done choosing an area"
-              className="inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-[12px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
+              className="inline-flex min-h-11 items-center gap-1 rounded-[var(--app-radius-sm)] px-2 text-[12px] font-semibold"
+              style={{ color: "var(--app-link)" }}
             >
               Done
               <X className="h-4 w-4" strokeWidth={2.2} aria-hidden />

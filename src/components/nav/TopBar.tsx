@@ -370,7 +370,7 @@ export default function TopBar() {
               onClick={goBack}
               aria-label="Back"
               data-header-back
-              className="-ml-1.5 inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-1 font-semibold tracking-tight transition active:scale-[0.96] min-[390px]:justify-start min-[390px]:pl-1 min-[390px]:pr-2.5"
+              className="-ml-1.5 inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-[var(--app-radius-sm)] px-1 font-semibold tracking-tight transition-colors hover:bg-[var(--app-bg-sunken)] min-[390px]:justify-start min-[390px]:pl-1 min-[390px]:pr-2.5"
               style={{ color: "var(--app-ink)" }}
             >
               <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
@@ -459,8 +459,8 @@ export default function TopBar() {
                 }}
                 aria-label="Ask or find across Frederick County"
                 aria-keyshortcuts={appleKeyboard === null ? undefined : appleKeyboard ? "Meta+K" : "Control+K"}
-                className={`${styles.search} tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] disabled:cursor-wait disabled:opacity-60 lg:flex`}
-                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+                className={`${styles.search} tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] disabled:cursor-wait disabled:opacity-60 lg:flex`}
+                style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink-2)" }}
               >
                 <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
                 <span className="truncate text-left">What do you need?</span>
@@ -649,7 +649,7 @@ function SearchOverlayFallback({
           aria-hidden
         />
         <span
-          className="min-w-0 flex-1 font-serif text-[20px] font-semibold"
+          className="min-w-0 flex-1 font-sans text-[20px] font-bold tracking-[-0.02em]"
           style={{ color: "var(--app-ink)" }}
         >
           Ask or find
@@ -660,8 +660,8 @@ function SearchOverlayFallback({
           onClick={dismiss}
           className="grid h-11 w-11 place-items-center rounded-[var(--app-radius-sm)] border"
           style={{
-            borderColor: "var(--app-border)",
-            color: "var(--app-ink-2)",
+            borderColor: "var(--app-control-border)",
+            color: "var(--app-ink)",
           }}
           aria-label="Close search"
         >
@@ -677,7 +677,7 @@ function SearchOverlayFallback({
         />
         <div
           aria-hidden
-          className="mt-5 h-3 w-28 animate-pulse rounded-full"
+          className="mt-5 h-3 w-28 animate-pulse rounded-[var(--app-radius-sm)]"
           style={{ background: "var(--app-bg-sunken)" }}
         />
         <div

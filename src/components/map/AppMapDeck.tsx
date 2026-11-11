@@ -64,11 +64,10 @@ export default function AppMapDeck({
             dropdown that drops below it. */}
         <div className="relative">
           <div
-            className="flex w-full items-center overflow-hidden rounded-full border backdrop-blur"
+            className="flex min-h-12 w-full items-center overflow-hidden rounded-[var(--app-radius-md)] border"
             style={{
-              borderColor: "var(--app-border)",
-              background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
-              boxShadow: "var(--app-shadow-2)",
+              borderColor: "var(--app-control-border)",
+              background: "var(--app-bg-elevated-solid)",
             }}
           >
             <SearchIcon
@@ -93,7 +92,7 @@ export default function AppMapDeck({
                 aria-label="Find places near me"
                 aria-busy={locating || undefined}
                 title={locating ? "Locating…" : "Find places near me"}
-                className="mr-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-[0.92]"
+                className="tap-44 mr-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--app-radius-sm)] transition-colors"
                 style={{
                   color: userLoc ? "var(--app-brand)" : "var(--app-ink-2)",
                   background: userLoc
@@ -112,10 +111,10 @@ export default function AppMapDeck({
           </div>
           {displayMatches.length > 0 && (
             <ul
-              className="absolute inset-x-0 top-full z-[var(--z-dropdown)] mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border backdrop-blur"
+              className="absolute inset-x-0 top-full z-[var(--z-dropdown)] mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border"
               style={{
                 borderColor: "var(--app-border)",
-                background: "color-mix(in srgb, var(--app-bg-elevated) 92%, transparent)",
+                background: "var(--app-bg-elevated-solid)",
                 boxShadow: "var(--app-shadow-3)",
               }}
             >

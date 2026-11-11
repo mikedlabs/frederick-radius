@@ -339,7 +339,7 @@ export default function MapListPeek({
 
   return (
     <section
-      className="overflow-hidden rounded-[var(--app-radius-md)] border border-[var(--app-border)] bg-[var(--app-bg-elevated-solid)] shadow-[var(--app-shadow-2)]"
+      className="overflow-hidden rounded-[var(--app-radius-lg)] border border-[var(--app-border)] bg-[var(--app-bg-elevated-solid)] shadow-[var(--app-shadow-3)]"
       aria-labelledby={titleId}
       data-map-list-peek
       data-expanded={expanded ? "true" : "false"}

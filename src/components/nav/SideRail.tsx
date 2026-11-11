@@ -24,12 +24,15 @@ export default function SideRail() {
 
   return (
     <div
-      className="pointer-events-none fixed bottom-0 left-0 top-0 hidden py-4 pl-3 lg:flex lg:items-center"
-      style={{ zIndex: "var(--z-nav)" }}
+      className="pointer-events-none fixed bottom-0 left-0 hidden lg:flex lg:items-center"
+      // Start below the header so the rail never paints over its hairline.
+      style={{ zIndex: "var(--z-nav)", top: "calc(env(safe-area-inset-top, 0px) + var(--app-topbar-h))" }}
     >
+      {/* Plain tool: the rail is attached to the screen edge with one
+          hairline, not a floating panel. */}
       <nav
         aria-label="Primary"
-        className={`${styles.rail} pointer-events-auto relative overflow-hidden rounded-[var(--app-radius-lg)]`}
+        className={`${styles.rail} pointer-events-auto relative flex h-full items-center`}
       >
         <ul className="flex flex-col items-stretch gap-1 px-1 py-1">
           {TABS.map(({ href, label, icon: Icon, prefetch, fillOnActive }, idx) => {
@@ -67,22 +70,21 @@ export default function SideRail() {
                     }
                   }}
                   aria-current={isAtDestination ? "page" : undefined}
-                  className={`${styles.destination} relative flex h-14 w-14 flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition`}
-                  data-selected={active ? "true" : "false"}
+                  className={`${styles.destination} relative flex h-14 w-14 flex-col items-center justify-center gap-1 text-center transition`}
+                  data-selected={isRealActive ? "true" : "false"}
+                  data-pending={pendingIdx === idx && !isRealActive ? "true" : "false"}
                 >
-                  <span
-                    aria-hidden
-                    className="absolute inset-y-2 left-0 w-[2px]"
-                    style={{ background: active ? "var(--app-on-brand)" : "transparent", opacity: 0.5 }}
-                  />
+                  {/* The same coral rule as the bottom bar, on the edge that
+                      faces the content. */}
+                  <span aria-hidden className={styles.railRule} />
                   <Icon
                     width={20}
                     height={20}
-                    strokeWidth={active ? 2.25 : 2}
+                    strokeWidth={active ? 2.5 : 1.75}
                     fill={active && fillOnActive ? "currentColor" : "none"}
                     aria-hidden
                   />
-                  <span className="text-[10px] font-medium leading-tight tracking-tight">
+                  <span className={`${styles.destinationLabel} text-[10px] leading-tight`}>
                     {label}
                   </span>
                 </Link>

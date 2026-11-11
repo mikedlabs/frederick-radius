@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import NotificationsCard from "@/components/settings/NotificationsCard";
-import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
   robots: { index: false },
@@ -14,7 +13,6 @@ export const metadata: Metadata = {
 export default function NotificationsSettingsPage() {
   return (
     <div className="relative space-y-5">
-      <PageBloom variant="cool" />
       <header className="space-y-2">
         <Link
           href="/settings"

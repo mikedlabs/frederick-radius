@@ -52,25 +52,35 @@ describe("TopBar search ownership", () => {
     expect(location).toContain(
       'className="hidden min-w-0 truncate sm:block sm:max-w-[160px]"',
     );
-    expect(location).toContain("text-[12px] font-semibold leading-none");
+    expect(location).toContain("text-[13px] font-semibold leading-none");
     expect(styles).toContain('[data-location-scope-label="compact"]');
     expect(styles).toContain('[data-location-scope-label="full"]');
     expect(topBar).toContain('className="contents"');
     expect(topBar).toContain("{showMobileSearch && (");
   });
 
-  it("draws every bordered header control with the one utility corner", () => {
+  it("keeps the header flat: unboxed tools, borders only on fields, no capsules", () => {
     const source = ["TopBar.tsx", "LocationChip.tsx"]
       .map((file) => readFileSync(`src/components/nav/${file}`, "utf8"))
       .join("\n");
-    // Desktop search field, phone search, Tools, the loading Close, and the
-    // location chip. The round search and location buttons were drift beside
-    // the square status, appearance and Tools controls, never a decision.
-    const controls = source.split("\n").filter((line) => /className=.*\sh-(9|11)\s.*\sborder[\s"]/.test(line));
-    expect(controls).toHaveLength(5);
+    // Back, desktop search field, phone search, Tools, the loading Close, and
+    // the location chip. Every one keeps a 44px row (h-11) or the desktop
+    // field's tap-44 extender, and a utility corner rather than a capsule.
+    const controls = source.split("\n").filter((line) => /className=.*\sh-(9|11)\s/.test(line));
+    expect(controls).toHaveLength(6);
     for (const control of controls) {
-      expect(control).toContain("rounded-[var(--app-radius-sm)]");
+      expect(control).toMatch(/rounded-\[var\(--app-radius-(sm|md)\)\]/);
       expect(control).not.toContain("rounded-full");
+      expect(control).toMatch(/\sh-11\s|\stap-44\s/);
+    }
+    // Plain tool chrome: only the two text fields carry a border. Icon tools
+    // are ink glyphs on the bar's own ground.
+    const bordered = controls.filter((line) => /\sborder[\s"]/.test(line));
+    expect(bordered).toHaveLength(2);
+    expect(bordered.some((line) => line.includes("styles.search"))).toBe(true);
+    expect(bordered.some((line) => line.includes("rounded-[var(--app-radius-md)]"))).toBe(true);
+    for (const tool of controls.filter((line) => line.includes("styles.tool"))) {
+      expect(tool).not.toMatch(/\sborder[\s"]/);
     }
   });
 

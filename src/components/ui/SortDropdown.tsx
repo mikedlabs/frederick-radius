@@ -118,10 +118,10 @@ export default function SortDropdown<K extends string = string>({
         aria-controls={choicesId}
         aria-label={`${label}: ${current?.label ?? ""}`}
         title={label}
-        className="tap-44 inline-flex items-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 py-1 text-[12px] font-semibold transition"
+        className="tap-44 inline-flex items-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 py-1 text-[12px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
         style={{
-          borderColor: "var(--app-border)",
-          color: "var(--app-ink-2)",
+          borderColor: "var(--app-control-border)",
+          color: "var(--app-ink)",
         }}
       >
         <ArrowDownAZ
@@ -149,7 +149,7 @@ export default function SortDropdown<K extends string = string>({
           aria-label={label}
           // A popover is opaque (the solid token) and never wider than the
           // screen less its gutters.
-          className={`absolute z-[var(--z-dropdown)] mt-1 min-w-[180px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-1 shadow-[var(--app-shadow-2)] ${
+          className={`absolute z-[var(--z-dropdown)] mt-1 min-w-[180px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-1 shadow-[var(--app-shadow-3)] ${
             align === "right" ? "right-0" : "left-0"
           }`}
           style={{ borderColor: "var(--app-border)" }}
@@ -168,13 +168,11 @@ export default function SortDropdown<K extends string = string>({
                 }}
                 className="flex min-h-[44px] w-full items-start gap-2 px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--app-bg-sunken)]"
                 style={{
-                  // Brick on its own 10% tint is 3.83:1 at 13px. The link token
-                  // is the pressed brick in light (5.80:1 on that ground) and
-                  // the light coral in dark, where the pressed brick is too dim.
-                  color: active ? "var(--app-link)" : "var(--app-ink)",
-                  background: active
-                    ? "color-mix(in srgb, var(--app-brand) 10%, transparent)"
-                    : "transparent",
+                  // Plain tool: the current choice is ink on the sunken
+                  // ground with a check, not a coral tint. Ink clears AA on
+                  // both grounds in light and dark.
+                  color: "var(--app-ink)",
+                  background: active ? "var(--app-bg-sunken)" : "transparent",
                   fontWeight: active ? 600 : 500,
                 }}
               >
@@ -184,7 +182,7 @@ export default function SortDropdown<K extends string = string>({
                   aria-hidden
                   style={{
                     opacity: active ? 1 : 0,
-                    color: "var(--app-brand)",
+                    color: "var(--app-ink)",
                   }}
                 />
                 <span className="min-w-0 flex-1">

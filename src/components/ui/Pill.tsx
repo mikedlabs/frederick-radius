@@ -21,8 +21,9 @@ import { haptic } from "@/lib/haptics";
  * and toggles. Navigation and ordinary actions use the flatter button/row
  * vocabulary instead.
  *
- * Tones:
- *   brand      — brand fill (the default "selected facet")
+ * Tones (plain tool: a selected facet is an ink fill, so coral stays
+ * reserved for the one bold block and the one filled action per page):
+ *   brand      — brand fill, for a caller that deliberately needs it
  *   cool       — cool fill (town / place lane)
  *   ink        — ink fill on paper text (TimeToggle's "when?" lane)
  */
@@ -131,7 +132,7 @@ function LinkBody(props: {
 export default function Pill({
   children,
   active = false,
-  tone = "brand",
+  tone = "ink",
   icon,
   count,
   size = "md",
@@ -148,7 +149,9 @@ export default function Pill({
   // Keep compact label sizes and movement on the owned inner face.
   const base =
     `inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold tracking-tight transition-colors ${pad}`;
-  const inactiveCls = active || bare ? "border border-transparent" : "border border-[var(--app-border-strong)]";
+  // Plain tool: an unselected chip is a hairline outline on the page ground;
+  // the capsule shape alone marks it as a compact filter.
+  const inactiveCls = active || bare ? "border border-transparent" : "border border-[var(--app-control-border)]";
   const cls = `${base} ${inactiveCls} ${className}`.trim();
   const fillStyle: CSSProperties = active
     ? {
@@ -157,8 +160,8 @@ export default function Pill({
         transitionTimingFunction: "var(--app-ease-spring)",
       }
     : {
-        background: bare ? "transparent" : "var(--app-bg-elevated)",
-        color: "var(--app-ink-2)",
+        background: bare ? "transparent" : "var(--app-bg)",
+        color: "var(--app-ink)",
         transitionTimingFunction: "var(--app-ease-spring)",
       };
   const merged = {

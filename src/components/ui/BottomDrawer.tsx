@@ -340,7 +340,7 @@ export default function BottomDrawer({
               type="button"
               onClick={() => haptic("light")}
               aria-label={`Close ${title}`}
-              className="absolute top-2 z-10 grid h-11 w-11 place-items-center rounded-full border transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-95"
+              className="absolute top-2 z-10 grid h-11 w-11 place-items-center rounded-[var(--app-radius-md)] border transition-colors hover:bg-[var(--app-bg-sunken)]"
               style={{
                 right: "max(0.75rem, env(safe-area-inset-right, 0px))",
                 borderColor: "var(--app-control-border)",

@@ -108,7 +108,7 @@ export default function SaveButton({
         tabIndex={-1}
         className={barLabel
           ? "tap-44 flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none"
-          : "tap-44 grid h-9 w-9 place-items-center rounded-full"}
+          : "tap-44 grid h-9 w-9 place-items-center rounded-[var(--app-radius-md)]"}
         style={{ color: "var(--app-ink-3)" }}
       >
         <Bookmark className="h-4 w-4" strokeWidth={1.75} />
@@ -191,7 +191,7 @@ export default function SaveButton({
       title={eventSaveUnavailable ? "Saved state unavailable" : mutation === "unconfirmed" ? "This change could not be confirmed." : renderedSaved ? "Saved" : "Save"}
       className={barLabel
         ? "tap-44 relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
-        : "tap-44 relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92]"}
+        : "tap-44 relative grid h-9 w-9 place-items-center rounded-[var(--app-radius-md)] transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92] motion-reduce:active:scale-100"}
       style={{
         // A labeled Save reads as an action in ink; the saved state uses the
         // link color everywhere, matching the place page's Saved control.
@@ -211,7 +211,7 @@ export default function SaveButton({
       {celebrate && (
         <span
           aria-hidden
-          className="save-ring pointer-events-none absolute inset-0 rounded-full"
+          className="save-ring pointer-events-none absolute inset-0 rounded-[inherit]"
         />
       )}
     </button>

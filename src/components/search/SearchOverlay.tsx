@@ -713,18 +713,18 @@ export default function SearchOverlay({
       {/* Sheet. One fixed desktop height: a panel that grows and shrinks with
           each response moves the field's surroundings while someone types. */}
       <div
-        className="relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden sm:mt-[8dvh] sm:h-[min(84dvh,46rem)] sm:max-w-screen-sm sm:rounded-[var(--app-radius-xl)] sm:shadow-[var(--app-shadow-3)] backdrop-blur-2xl"
-        style={{ background: "color-mix(in srgb, var(--app-bg) 85%, transparent)" }}
+        className="relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden sm:mt-[8dvh] sm:h-[min(84dvh,46rem)] sm:max-w-screen-sm sm:rounded-[var(--app-radius-lg)] sm:border sm:border-[var(--app-border)] sm:shadow-[var(--app-shadow-3)]"
+        style={{ background: "var(--app-bg)" }}
       >
         <div
           className="flex min-h-14 items-center justify-between gap-3 px-4 sm:px-5"
           style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
         >
           <div className="min-w-0">
-            <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-2)" }}>
               Ask or find
             </p>
-            <h2 id="radius-find-title" className="truncate font-serif text-[20px] font-semibold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
+            <h2 id="radius-find-title" className="truncate font-sans text-[22px] font-extrabold leading-tight tracking-[-0.03em]" style={{ color: "var(--app-ink)" }}>
               What do you need?
             </h2>
           </div>
@@ -732,8 +732,8 @@ export default function SearchOverlay({
             type="button"
             onClick={dismiss}
             aria-label="Close Find"
-            className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 text-[13px] font-semibold transition active:scale-95"
-            style={{ color: "var(--app-ink-2)" }}
+            className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-2 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+            style={{ color: "var(--app-ink)" }}
           >
             <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
             Close
@@ -742,10 +742,12 @@ export default function SearchOverlay({
 
         {/* Input */}
         <div
-          className="search-field-shell mx-4 mb-3 flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] px-3 shadow-[var(--app-shadow-1)] transition focus-within:ring-2 focus-within:ring-[color-mix(in_srgb,var(--app-brand)_18%,transparent)] sm:mx-5 backdrop-blur-md"
-          style={{ background: "color-mix(in srgb, var(--app-bg-elevated-solid) 70%, transparent)", boxShadow: "inset 0 1px 3px rgba(34,28,21,0.04), 0 2px 8px rgba(34,28,21,0.04)" }}
+          // Plain tool: a 6px field with a control border on the page ground.
+          // The focus ring is the brand outline the other fields use.
+          className="search-field-shell mx-4 mb-3 flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] border px-3 transition-colors focus-within:border-[var(--app-ink)] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--app-brand)] sm:mx-5"
+          style={{ background: "var(--app-bg)", borderColor: "var(--app-control-border)" }}
         >
-          <Search className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: "var(--app-link)" }} aria-hidden />
+          <Search className="h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink)" }} aria-hidden />
           <input
             ref={inputRef}
             type="text"
@@ -779,7 +781,7 @@ export default function SearchOverlay({
               type="button"
               onClick={() => updateQuery("")}
               aria-label="Clear search"
-              className="tap-44 shrink-0 rounded-full p-1 transition hover:bg-[var(--app-bg-sunken)]"
+              className="tap-44 shrink-0 rounded-[var(--app-radius-sm)] p-1 transition hover:bg-[var(--app-bg-sunken)]"
             >
               <X className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
             </button>
@@ -787,16 +789,16 @@ export default function SearchOverlay({
         </div>
 
         {/* Results */}
-        <div className="min-h-0 flex-1 overflow-y-auto" style={{ boxShadow: "inset 0 4px 12px rgba(34,28,21,0.04)" }}>
+        <div className="min-h-0 flex-1 overflow-y-auto border-t" style={{ borderColor: "var(--app-border)" }}>
           {/* Direct answer — "ask Frederick" routes a buried-gov question
               (recycling, permits, potholes, animal control…) straight to
               the right department + phone + source, ABOVE place results.
               The North Star front door, on real data. */}
           {hasAnswer && (
-            <div className="px-3 py-2.5 pb-4 shadow-sm" style={{ background: "color-mix(in srgb, var(--app-brand) 4%, transparent)" }}>
+            <div className="border-b px-4 py-2.5 pb-4 sm:px-5" style={{ borderColor: "var(--app-border)" }}>
               <p className="eyebrow mb-2 px-1" style={{ color: "var(--app-ink-3)" }}>Direct answer</p>
               {visibleQuickAnswers.length > 0 && (
-                <ul className="mb-1.5 space-y-1.5">
+                <ul className="mb-1.5 divide-y divide-[var(--app-border)]">
                   {visibleQuickAnswers.map((qa) => {
                     const Icon = QUICK_ICON[qa.icon];
                     return (
@@ -808,14 +810,11 @@ export default function SearchOverlay({
                             event.preventDefault();
                             navigateFromSearch(qa.href);
                           }}
-                          className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5 transition active:scale-[0.99]"
-                          style={{ borderColor: "var(--app-border)" }}
+                          className="group flex min-h-14 items-center gap-3 py-2.5"
                         >
-                          <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-brand) 12%, transparent)", color: "var(--app-link)" }}>
-                            <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
-                          </span>
+                          <Icon aria-hidden className="h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-link)" }} />
                           <span className="min-w-0 flex-1">
-                            <span className="block text-body font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{qa.title}</span>
+                            <span className="block text-[17px] font-semibold leading-tight tracking-[-0.01em] group-hover:underline group-hover:underline-offset-[3px]" style={{ color: "var(--app-ink)" }}>{qa.title}</span>
                             <span className="block text-meta-lg leading-snug" style={{ color: "var(--app-ink-2)" }}>{qa.sub}</span>
                           </span>
                           <ArrowRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
@@ -825,25 +824,20 @@ export default function SearchOverlay({
                   })}
                 </ul>
               )}
-              <ul className="space-y-1.5">
+              <ul className="divide-y divide-[var(--app-border)]">
                 {govAnswers.map((d) => {
                   const website = safeOfficialAnswerHref(d.website);
                   return (
                   <li key={d.slug}>
-                    <div
-                      className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5"
-                      style={{ borderColor: "var(--app-border)" }}
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <span aria-hidden className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-link)" }}>
-                          <Building2 className="h-3.5 w-3.5" strokeWidth={2.25} />
-                        </span>
+                    <div className="py-3">
+                      <div className="flex items-start gap-3">
+                        <Building2 aria-hidden className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-cool-text)" }} />
                         <div className="min-w-0 flex-1">
-                          <p className="text-body font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{d.name}</p>
+                          <p className="text-[17px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>{d.name}</p>
                           <p className="mt-0.5 text-meta-lg leading-snug" style={{ color: "var(--app-ink-2)" }}>{d.about}</p>
                           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                             {d.phone && (
-                              <a href={`tel:${d.phone}`} className="tactile-interactive inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 py-1 text-meta font-semibold text-white" style={{ background: "var(--app-cool)" }}>
+                              <a href={`tel:${d.phone}`} className="inline-flex min-h-11 items-center gap-1 rounded-[var(--app-radius-md)] px-3 py-1 text-meta font-semibold" style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}>
                                 <Phone className="h-3 w-3" strokeWidth={2.5} aria-hidden /> {formatPhone(d.phone)}
                               </a>
                             )}
@@ -857,8 +851,8 @@ export default function SearchOverlay({
                                   event.preventDefault();
                                   openOfficialAnswer(website);
                                 }}
-                                className="tactile-interactive inline-flex min-h-11 items-center gap-1 rounded-full border px-2.5 py-1 text-meta font-semibold"
-                                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+                                className="inline-flex min-h-11 items-center gap-1 rounded-[var(--app-radius-md)] border px-3 py-1 text-meta font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                                style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
                               >
                                 Open site <ArrowRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
                               </a>
@@ -875,7 +869,7 @@ export default function SearchOverlay({
                 })}
               </ul>
               {civicAnswers.length > 0 && (
-                <ul className="mt-1.5 space-y-1.5">
+                <ul className="mt-1.5 divide-y divide-[var(--app-border)] border-t" style={{ borderColor: "var(--app-border)" }}>
                   {civicAnswers.map((c) => {
                     const officialHref = safeOfficialAnswerHref(c.href);
                     if (!officialHref) return null;
@@ -890,14 +884,11 @@ export default function SearchOverlay({
                           event.preventDefault();
                           openOfficialAnswer(officialHref);
                         }}
-                        className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5 transition active:scale-[0.99]"
-                        style={{ borderColor: "var(--app-border)" }}
+                        className="group flex min-h-14 items-center gap-3 py-2.5"
                       >
-                        <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-link)" }}>
-                          <Building2 className="h-3.5 w-3.5" strokeWidth={2.25} />
-                        </span>
+                        <Building2 aria-hidden className="h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-cool-text)" }} />
                         <span className="min-w-0 flex-1">
-                          <span className="block text-body font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{c.title}</span>
+                          <span className="block text-[17px] font-semibold leading-tight tracking-[-0.01em] group-hover:underline group-hover:underline-offset-[3px]" style={{ color: "var(--app-ink)" }}>{c.title}</span>
                           <span className="block text-meta-lg leading-snug" style={{ color: "var(--app-ink-2)" }}>{c.subtitle}</span>
                         </span>
                         <ArrowRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
@@ -998,13 +989,13 @@ export default function SearchOverlay({
                 <button
                   type="button"
                   onClick={submitCommand}
-                  className="tactile-interactive flex min-h-[72px] w-full items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] p-3 text-left shadow-[var(--app-shadow-1)] transition active:scale-[0.99]"
-                  style={{ borderColor: "color-mix(in srgb, var(--app-brand) 28%, var(--app-border))" }}
+                  className="group flex min-h-[72px] w-full items-center gap-3 border-y py-3 text-left"
+                  style={{ borderColor: "var(--app-border)" }}
                 >
                   <span
                     aria-hidden
-                    className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
-                    style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-md)]"
+                    style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
                   >
                     <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
                   </span>
@@ -1081,7 +1072,7 @@ export default function SearchOverlay({
                   if (r.type === "place" && r.thumbnailSource) {
                     return <SearchPlaceVisual key={r.id} source={r.thumbnailSource} lead><li
                       id="search-opt-0" data-idx={0}
-                      className="mx-3 mb-3 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)]"
+                      className="mx-4 mb-3 border-b pt-3 sm:mx-5"
                       style={{ borderColor: "var(--app-border)" }}
                     >
                       <SearchPlaceLead fallback={<Icon className="h-5 w-5" aria-hidden />} actions={<>
@@ -1110,19 +1101,19 @@ export default function SearchOverlay({
                     <SearchPlaceVisual key={r.id} source={r.thumbnailSource ?? null}><li
                       id="search-opt-0"
                       data-idx={0}
-                      className="mx-3 mb-2 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] shadow-[var(--app-shadow-1)]"
-                      style={{ borderColor: "color-mix(in srgb, var(--app-brand) 26%, var(--app-border))" }}
+                      className="mx-4 mb-2 border-b sm:mx-5"
+                      style={{ borderColor: "var(--app-border)" }}
                     >
-                      <div className="flex items-start gap-3 p-3">
+                      <div className="flex items-start gap-3 py-3">
                         {art}
                         <div className="min-w-0 flex-1">
-                          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-2)" }}>
                             Best match · {LABEL_BY_TYPE[r.type]}
                           </p>
-                          <p className="mt-1 line-clamp-2 font-serif text-[19px] font-semibold leading-[1.05] tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
+                          <p className="mt-1 line-clamp-2 font-sans text-[22px] font-bold leading-[1.1] tracking-[-0.025em]" style={{ color: "var(--app-ink)" }}>
                             {r.type === "action" ? r.title : highlight(r.title, query)}
                           </p>
-                          <p className="mt-1 line-clamp-2 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                          <p className="mt-1 line-clamp-2 text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
                             {r.subtitle}{distance ? ` · ${distance}` : ""}
                           </p>
                           {trust && <TrustChip signal={trust} className="mt-1.5" />}
@@ -1210,16 +1201,16 @@ export default function SearchOverlay({
                     `/ask?q=${encodeURIComponent(query.trim())}`,
                   );
                 }}
-                className="tactile-interactive flex min-h-14 items-center gap-3 border-y px-1 py-3 transition active:opacity-75"
+                className="group flex min-h-14 items-center gap-3 border-y py-3 transition active:opacity-75"
                 style={{
-                  borderColor: "var(--app-border-strong)",
+                  borderColor: "var(--app-border)",
                 }}
               >
                 <span
                   aria-hidden
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-md)]"
                   style={{
-                    background: "var(--app-brand)",
+                    background: "var(--app-brand-press)",
                     color: "var(--app-on-brand, #fff)",
                   }}
                 >
@@ -1399,8 +1390,8 @@ function EmptyHint({
               key={`recent-${s}`}
               type="button"
               onClick={() => onPick(s)}
-              className="flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[12.5px] font-medium transition hover:bg-[var(--app-bg-sunken)] active:scale-95"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+              className="flex min-h-11 cursor-pointer items-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 text-[13px] font-medium transition-colors hover:bg-[var(--app-bg-sunken)]"
+              style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
             >
               <Clock className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
               <span className="truncate max-w-[140px]">{s}</span>

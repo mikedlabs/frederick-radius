@@ -13,7 +13,7 @@ const meta = {
     layout: "fullscreen",
     docs: {
       description: {
-        component: "The shared navigation keeps four pages and the existing search doorway. A filled Brick state identifies the selected page; raised Cream surfaces keep controls legible over the page.",
+        component: "The shared navigation keeps four pages and the existing search doorway. The chrome is flat: unboxed ink tools in the header and a tab bar attached to the screen edge. A 2px coral rule, a 700 label and a heavier icon stroke mark the selected page; a pending tap shows the same rule in ink at reduced opacity.",
       },
     },
   },
@@ -69,6 +69,15 @@ export const SavedAt390: Story = {
     expect(map).not.toHaveAttribute("aria-current");
     expect(saved).toHaveAttribute("data-selected", "true");
     expect(map).toHaveAttribute("data-selected", "false");
+    // Plain tool marks: a visible rule on both, solid coral for the current
+    // page and translucent ink for the pending one, with a 700 current label.
+    const rule = (link: HTMLElement) => getComputedStyle(link.firstElementChild as HTMLElement);
+    expect(rule(saved).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    expect(Number(rule(saved).opacity)).toBe(1);
+    expect(rule(map).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    expect(Number(rule(map).opacity)).toBeLessThan(1);
+    expect(getComputedStyle(within(saved).getByText("Saved")).fontWeight).toBe("700");
+    expect(getComputedStyle(saved).backgroundImage).toBe("none");
     map.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true, pointerType: "touch", isPrimary: true }));
     await waitFor(() => expect(navigation).toHaveAttribute("aria-busy", "false"));
     expect(map).toHaveAttribute("data-pending", "false");

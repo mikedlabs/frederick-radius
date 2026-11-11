@@ -405,17 +405,14 @@ export default async function SearchPage({
       {query && !answer && rankedHits.length === 0 && !suppressLocalHits && govAnswers.length === 0 ? (
         <Link
           href={`/ask?${new URLSearchParams({ q: query, in: town ?? "county" }).toString()}`}
-          className="tactile-interactive flex min-h-12 items-center gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2"
-          style={{
-            borderColor: "color-mix(in srgb, var(--app-brand) 28%, var(--app-border))",
-            background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated))",
-          }}
+          className="group flex min-h-12 items-center gap-2.5 border-y py-2"
+          style={{ borderColor: "var(--app-border)" }}
         >
-          <MessageCircleQuestion className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
-          <span className="min-w-0 flex-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          <MessageCircleQuestion className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-link)" }} aria-hidden />
+          <span className="min-w-0 flex-1 text-[14px] leading-snug group-hover:underline group-hover:underline-offset-[3px]" style={{ color: "var(--app-ink)" }}>
             Need a recommendation or a plan? Ask Radius about this.
           </span>
-          <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+          <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-link)" }} aria-hidden />
         </Link>
       ) : null}
 
@@ -425,21 +422,15 @@ export default async function SearchPage({
         <Link
           href={answer.href}
           aria-label={`${answer.label}: ${answer.kicker}`}
-          className="tactile-interactive flex min-h-[64px] items-center gap-3 border-y px-1 py-3"
-          style={{ borderColor: `color-mix(in srgb, ${answerColor} 34%, var(--app-border))` }}
+          className="group flex min-h-[64px] items-center gap-3 border-y py-3"
+          style={{ borderColor: "var(--app-border)" }}
         >
-          <span
-            aria-hidden
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
-            style={{ background: `color-mix(in srgb, ${answerColor} 15%, transparent)`, color: answerColor }}
-          >
-            <DoorOpen className="h-5 w-5" strokeWidth={2} />
-          </span>
+          <DoorOpen aria-hidden className="h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: answerColor }} />
           <span className="min-w-0 flex-1">
-            <span className="block font-serif text-[17px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+            <span className="block font-sans text-[17px] font-semibold leading-tight tracking-[-0.01em] group-hover:underline group-hover:underline-offset-[3px]" style={{ color: "var(--app-ink)" }}>
               {answer.label}
             </span>
-            <span className="mt-0.5 block truncate text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+            <span className="mt-0.5 block truncate text-[14px]" style={{ color: "var(--app-ink-2)" }}>
               {answer.kicker}
             </span>
           </span>
@@ -465,17 +456,15 @@ export default async function SearchPage({
               href={c.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="tactile-interactive flex min-h-[56px] items-center gap-3 px-3.5 py-2.5"
+              className="group flex min-h-[56px] items-center gap-3 py-3"
               style={index > 0
                 ? { borderTop: "1px solid var(--app-border)" }
                 : undefined}
             >
-              <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-cool)" }}>
-                <Building2 className="h-4 w-4" strokeWidth={2.25} />
-              </span>
+              <Building2 aria-hidden className="h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-cool-text)" }} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{c.title}</span>
-                <span className="block truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>{c.subtitle}</span>
+                <span className="block truncate text-[17px] font-semibold leading-tight tracking-[-0.01em] group-hover:underline group-hover:underline-offset-[3px]" style={{ color: "var(--app-ink)" }}>{c.title}</span>
+                <span className="mt-0.5 block truncate text-[14px]" style={{ color: "var(--app-ink-2)" }}>{c.subtitle}</span>
               </span>
               <ArrowRight aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} />
             </a>
@@ -483,25 +472,23 @@ export default async function SearchPage({
           {govAnswers.map((d, index) => (
             <div
               key={d.slug}
-              className="p-3.5"
+              className="py-3.5"
               style={civicAnswers.length > 0 || index > 0
                 ? { borderTop: "1px solid var(--app-border)" }
                 : undefined}
             >
               <div className="flex items-start gap-3">
-                <span aria-hidden className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-cool)" }}>
-                  <Building2 className="h-4 w-4" strokeWidth={2.25} />
-                </span>
+                <Building2 aria-hidden className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-cool-text)" }} />
                 <div className="min-w-0 flex-1">
-                  <p className="font-serif text-[16px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{d.name}</p>
-                  <p className="mt-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{d.about}</p>
+                  <p className="font-sans text-[17px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>{d.name}</p>
+                  <p className="mt-0.5 text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{d.about}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     {d.phone && (
-                      <a href={`tel:${d.phone}`} className="tactile-interactive tap-44-y inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold text-white" style={{ background: "var(--app-cool)" }}>
+                      <a href={`tel:${d.phone}`} className="tap-44-y inline-flex items-center gap-1 rounded-[var(--app-radius-md)] px-2.5 py-1.5 text-[13px] font-semibold" style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}>
                         <Phone className="h-3 w-3" strokeWidth={2.5} aria-hidden /> {formatPhone(d.phone)}
                       </a>
                     )}
-                    <a href={d.website} target="_blank" rel="noopener noreferrer" className="tactile-interactive tap-44-y inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
+                    <a href={d.website} target="_blank" rel="noopener noreferrer" className="tap-44-y inline-flex items-center gap-1 rounded-[var(--app-radius-md)] border px-2.5 py-1.5 text-[13px] font-semibold" style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}>
                       Open site <ArrowRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
                     </a>
                     <span className="ml-auto text-[10px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
@@ -541,8 +528,8 @@ export default async function SearchPage({
               <li key={p.label} className="border-b odd:border-r" style={{ borderColor: "var(--app-border)" }}>
                 <Link
                   href={p.href}
-                  className="tactile-interactive flex min-h-[52px] items-center gap-2 px-3 py-2 text-[13px] font-semibold"
-                  style={{ color: "var(--app-ink-2)" }}
+                  className="flex min-h-[52px] items-center gap-2 px-3 py-2 text-[14px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                  style={{ color: "var(--app-ink)" }}
                 >
                   <span className="min-w-0 flex-1">{p.label}</span>
                   <ArrowRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />

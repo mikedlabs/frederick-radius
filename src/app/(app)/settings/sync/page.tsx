@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, LockKeyhole, Mail, Smartphone } from "lucide-react";
-import PageBloom from "@/components/ui/PageBloom";
 import SignOutButton from "@/components/settings/SignOutButton";
 import SyncStatus from "@/components/settings/SyncStatus";
 import { requireServerUser } from "@/lib/auth";
@@ -22,7 +21,6 @@ export default async function SyncSettingsPage({
 
   return (
     <div className="relative space-y-5">
-      <PageBloom variant="warm-cool" />
       <header className="space-y-2">
         <Link
           href="/settings"
@@ -62,7 +60,7 @@ export default async function SyncSettingsPage({
       <SyncStatus />
 
       <section
-        className="grid gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 shadow-[var(--app-shadow-1)] sm:grid-cols-2 sm:p-5"
+        className="grid gap-3 border-y py-4 sm:grid-cols-2 sm:py-5"
         style={{ borderColor: "var(--app-border)" }}
       >
         <div className="flex gap-3">
@@ -90,13 +88,13 @@ export default async function SyncSettingsPage({
       </section>
 
       <section
-        className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 sm:p-5"
+        className="border-b pb-4 sm:pb-5"
         style={{ borderColor: "var(--app-border)" }}
       >
         <div className="flex gap-3">
           <Smartphone className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
           <div className="min-w-0 flex-1">
-            <h2 className="font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            <h2 className="font-sans text-[18px] font-bold tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
               What Frederick Radius keeps
             </h2>
             <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>

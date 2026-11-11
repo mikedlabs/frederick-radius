@@ -57,6 +57,30 @@ export const ActionHierarchy: Story = {
     </div>
   ),
 };
+/** Plain tool shape: every variant is a flat 6px rectangle with no lift.
+ *  Secondary carries a control border so it reads as a button on white. */
+export const PlainShape: Story = {
+  render: () => (
+    <div className="flex flex-wrap items-center justify-center gap-2.5 p-4">
+      <Button>Get directions</Button>
+      <Button variant="secondary">Open the map</Button>
+      <Button variant="quiet">Not now</Button>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    for (const name of ["Get directions", "Open the map", "Not now"]) {
+      const button = canvas.getByRole("button", { name });
+      const style = getComputedStyle(button);
+      await expect(style.borderTopLeftRadius).toBe("6px");
+      await expect(style.boxShadow).toBe("none");
+      await expect(style.backgroundImage).toBe("none");
+      await expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    }
+    await expect(getComputedStyle(canvas.getByRole("button", { name: "Open the map" })).borderTopWidth).toBe("1px");
+  },
+};
+
 export const LoadingAndDisabled: Story = {
   render: () => (
     <div className="flex flex-col items-stretch gap-3 p-4 min-[360px]:flex-row min-[360px]:items-center">
