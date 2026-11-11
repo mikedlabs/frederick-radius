@@ -654,12 +654,14 @@ export default function PlaceCard({
       <div className="flex items-stretch gap-3 py-3 pr-1">
         {/* MEDIA IN ROWS: a thumbnail only when a real photo exists. Without
             one the slot keeps the photo's width, so titles stay aligned down
-            a mixed list, and holds the bare category glyph beside the title's
-            first line: no tile, tint, border or corner. */}
+            a mixed list, and holds the bare category glyph level with the
+            title's first line: no tile, tint, border or corner. The glyph is
+            centered in the slot. Left-aligned it sat far from the title and
+            read as a missing image. */}
         <div
           ref={photoAnchorRef}
           data-place-row-media={photo ? "photo" : "glyph"}
-          className={`pointer-events-none relative z-10 shrink-0 ${photo ? "self-center" : "self-start"}`}
+          className={`pointer-events-none relative z-10 shrink-0 ${photo ? "self-center" : "flex justify-center self-start"}`}
           style={photo ? undefined : { width: photoWidth }}
         >
           {photo ? (
