@@ -94,13 +94,17 @@ async function card(context: Context, expectedSource: string) {
   const source = new URL(image.currentSrc || image.src, document.baseURI);
   expect(decodeURIComponent(source.searchParams.get("url") ?? source.pathname)).toBe(expectedSource);
   expect(getComputedStyle(image).objectFit).toBe("cover");
-  const frame = article.querySelector("figure")!.getBoundingClientRect(), box = article.getBoundingClientRect();
-  expect(frame.width).toBeGreaterThanOrEqual(box.width - 3);
-  expect(frame.width / frame.height).toBeCloseTo(1.6, 2);
+  // A fixed square thumbnail filled edge to edge (no letterbox bands). It sits
+  // beside the title, or above it when enlarged text stacks the facts, and
+  // never overlaps it.
+  const frame = article.querySelector("figure")!.getBoundingClientRect();
+  expect(frame.width / frame.height).toBeCloseTo(1, 2);
   const title = article.querySelector<HTMLElement>("h3")!, time = article.querySelector<HTMLElement>("[data-event-card-time]")!, venue = article.querySelector<HTMLElement>("[data-event-card-venue]")!;
-  expect(frame.bottom).toBeLessThanOrEqual(title.getBoundingClientRect().top);
+  const titleBox = title.getBoundingClientRect();
+  expect(frame.left >= titleBox.right - 1 || frame.bottom <= titleBox.top + 1).toBe(true);
   expect(article.textContent).toContain(context.args.event.title);
-  expect(time.textContent).toBe("Wed OCT 10 · 7:00 PM–9:00 PM");
+  expect(article.querySelector("[data-event-row-when]")?.textContent).toBe("7:00PMWed OCT 10");
+  expect(time.textContent).toBe("Until 9:00 PM");
   const heading = article.querySelector<HTMLElement>("[data-event-card-heading]")!;
   expect(title.parentElement).toBe(heading);
   const titleBounds = title.getBoundingClientRect(), headingBounds = heading.getBoundingClientRect();
@@ -167,7 +171,7 @@ export const NoPhotoCancelledAt320: Story = {
     const article = canvasElement.querySelector<HTMLElement>("article")!;
     expect(article).toHaveAttribute("data-event-media", "none");
     expect(article.querySelector("figure, img, [data-event-photo-credit], .live-dot")).toBeNull();
-    expect(article.textContent).toContain("Cancelled"); expect(article.textContent).toContain("end time not listed");
+    expect(article.textContent).toContain("Cancelled"); expect(article.textContent).toContain("End time not listed");
     expect(article.textContent).not.toContain("Happening now");
     await ownsTarget(article.querySelector<HTMLAnchorElement>('a[data-decision-action="open"]')!);
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(innerWidth + 1);

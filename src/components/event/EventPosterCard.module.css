@@ -1,23 +1,9 @@
-/* PLAIN TOOL: a pictured lead is the photograph with its facts set below on
-   the white ground. No card border, no shadow. */
-.poster {
-  container-name: event-poster;
-  container-type: inline-size;
-  border: 0;
-  border-bottom: 1px solid var(--app-border);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.layout {
-  display: grid;
-  min-width: 0;
-}
-
+/* PLAIN TOOL: a pictured lead is the approved picture set above the lead
+   row's facts on the white ground. No card border, no shadow. */
 .photo {
   position: relative;
   min-width: 0;
+  margin: 0;
   aspect-ratio: 16 / 10;
   overflow: hidden;
   border-radius: var(--app-radius-md);
@@ -28,42 +14,18 @@
   min-width: 0;
 }
 
+/* Publisher art stays whole (object-fit: contain). The frame takes the white
+   ground, so the space around a portrait poster reads as page, not as gray
+   letterbox bands. */
 .artwork > div {
   border-radius: var(--app-radius-md);
+  background: transparent;
 }
 
-.body {
-  min-width: 0;
-  padding: var(--app-space-3) 0 var(--app-space-4);
-  overflow-wrap: anywhere;
-}
-
-.heading {
-  display: flex;
-  min-width: 0;
-  align-items: flex-start;
-  gap: 0.75rem;
-}
-
-.facts {
-  margin-top: 0.5rem;
-  color: var(--app-ink);
-}
-
-@container event-poster (min-width: 42rem) {
-  .hasMedia {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-    column-gap: var(--app-space-5);
-  }
-
-  .hasMedia .photo,
-  .hasMedia .artwork > div {
-    height: 100%;
-    min-height: 216px;
-    aspect-ratio: auto;
-  }
-
-  .body {
-    padding: 0 0 var(--app-space-4);
+/* On a wide column a 16:10 picture would push the facts below the fold. */
+@media (min-width: 640px) {
+  .photo,
+  .artwork > div {
+    aspect-ratio: 2 / 1;
   }
 }
