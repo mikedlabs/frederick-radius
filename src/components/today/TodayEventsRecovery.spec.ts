@@ -67,6 +67,21 @@ describe("TodayEventsRecoveryView", () => {
     expect(html).not.toContain("Event picks are unavailable here");
   });
 
+  it("counts an open on every later event row", () => {
+    const later = { ...event, slug: "later-pick-2026-08-27", title: "Later pick", time: "8:00 PM" };
+    const html = renderToStaticMarkup(
+      createElement(TodayEventsRecoveryView, {
+        response: { partial: false, events: [event, later] },
+      }),
+    );
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const row = doc.querySelector('article[data-today-event-row="row"][data-decision-id="later-pick-2026-08-27"]');
+    expect(row).not.toBeNull();
+    expect(row!.getAttribute("data-decision-surface")).toBe("today");
+    const link = row!.querySelector('a[href="/events/later-pick-2026-08-27"]');
+    expect(link?.getAttribute("data-decision-action")).toBe("open");
+  });
+
   it("keeps partial coverage explicit when usable rows survive", () => {
     const html = renderToStaticMarkup(
       createElement(TodayEventsRecoveryView, {
