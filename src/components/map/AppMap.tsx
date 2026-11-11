@@ -4779,7 +4779,7 @@ export default function AppMap({
                   <button
                     type="button"
                     onClick={() => window.location.reload()}
-                    className="tap-44 inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                    className="tap-44 inline-flex items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
                     style={{
                       borderColor: "var(--app-border)",
                       color: "var(--app-ink-2)",
@@ -4790,8 +4790,8 @@ export default function AppMap({
                 )}
                 <Link
                   href="/places"
-                  className="tap-44 inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-semibold text-white"
-                  style={{ background: "var(--app-brand-press)" }}
+                  className="tap-44 inline-flex min-h-9 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                  style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
                 >
                   All places
                 </Link>

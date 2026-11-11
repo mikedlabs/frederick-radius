@@ -288,14 +288,15 @@
 }
 
 .discoveryPlace[data-today-discovery-role="lead"] .discoveryName {
-  font-size: clamp(1.375rem, 5.5cqi, 1.75rem);
-  font-weight: 650;
+  font-size: clamp(1.5rem, 6cqi, 1.75rem);
+  font-weight: 700;
   line-height: 1.12;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.03em;
 }
 
-/* Save is an icon and a word, with no capsule. It sits at the right of the
-   caption line and keeps a full 44px target. */
+/* Save is an icon and a word, with no capsule, and keeps a full 44px target.
+   Its color comes from the shared Save control, so a saved place reads the
+   same here as on the place page. */
 .discoverySave {
   position: absolute;
   right: 0;
@@ -315,7 +316,6 @@
   min-height: 44px;
   padding: 8px 0 8px 8px;
   border-radius: var(--app-radius-sm);
-  color: var(--app-ink) !important;
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.35;
@@ -323,7 +323,57 @@
 
 .discoverySave > button:hover {
   background: transparent;
-  color: var(--app-link) !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* The lead is a grid: the photograph spans the full width, then the name
+   and town sit in the first column with Save beside the name. The link uses
+   subgrid tracks so it stays one real focusable box around photo and name. */
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  column-gap: var(--app-space-3);
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink,
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-row: 1 / 3;
+  grid-template-columns: subgrid;
+  grid-template-rows: subgrid;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPhoto {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryCaption {
+  grid-column: 1;
+  grid-row: 2;
+  padding: var(--app-space-3) 0 var(--app-space-1, 4px);
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoverySave {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  /* Center the 44px target on the first line of the 28px name. */
+  margin-top: calc(var(--app-space-3) - 6px);
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] .discoveryCaption {
+  padding-top: 0;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] + .discoverySave {
+  margin-top: -6px;
 }
 
 /* Secondary places: a thumbnail row between hairlines. */

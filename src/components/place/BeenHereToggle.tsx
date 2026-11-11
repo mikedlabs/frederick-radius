@@ -15,10 +15,10 @@ export default function BeenHereToggle({ placeSlug, label }: { placeSlug: string
         type="button"
         aria-hidden
         tabIndex={-1}
-        className="tap-44-y inline-flex items-center gap-2 rounded-[var(--app-radius-sm)] px-1 py-1.5 text-[14px] font-medium transition-colors"
-        style={{ color: "var(--app-ink-2)" }}
+        className="tap-44-y inline-flex h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[15px] font-semibold transition-colors"
+        style={{ color: "var(--app-ink)" }}
       >
-        <Circle className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        <Circle className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-2)" }} />
         Mark as visited
       </button>
     );
@@ -34,13 +34,13 @@ export default function BeenHereToggle({ placeSlug, label }: { placeSlug: string
           ? `Been here: ${label}. Mark as not visited`
           : `Mark as visited: ${label}`
       }
-      className="tap-44-y inline-flex items-center gap-2 rounded-[var(--app-radius-sm)] px-1 py-1.5 text-[14px] font-medium transition-colors"
-      style={{ color: been ? "var(--app-cool-text)" : "var(--app-ink-2)" }}
+      className="tap-44-y inline-flex h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[15px] font-semibold transition-colors hover:underline"
+      style={{ color: been ? "var(--app-cool-text)" : "var(--app-ink)" }}
     >
       {been ? (
-        <CheckCircle2 className="h-4 w-4" strokeWidth={2} aria-hidden />
+        <CheckCircle2 className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
       ) : (
-        <Circle className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        <Circle className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-2)" }} />
       )}
       {been ? "Been here" : "Mark as visited"}
     </button>

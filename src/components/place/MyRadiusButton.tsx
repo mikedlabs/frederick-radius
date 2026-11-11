@@ -227,7 +227,7 @@ export default function MyRadiusButton({
         </>
       ) : (
         <>
-          <Bookmark className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
+          <Bookmark className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-2)" }} />
           Save
         </>
       )}

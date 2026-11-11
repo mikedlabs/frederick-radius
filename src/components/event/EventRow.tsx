@@ -37,6 +37,8 @@ export default function EventRow({
   where,
   extra,
   lead = false,
+  showDate = true,
+  media,
   position = "result",
   surface = "events",
 }: {
@@ -55,6 +57,12 @@ export default function EventRow({
   where?: string | null;
   extra?: ReactNode;
   lead?: boolean;
+  /** The day line repeats inside a one-day group. Callers hide it on rows
+   * whose day matches the row above, so the column carries the time alone. */
+  showDate?: boolean;
+  /** An approved picture (thumbnail and its credit), placed by the row grid.
+   * Rows without one remain purely typographic. */
+  media?: ReactNode;
   position?: "result" | "lead";
   surface?: "events" | "today";
 }) {
@@ -68,14 +76,19 @@ export default function EventRow({
       data-decision-id={slug}
       data-decision-position={position}
       data-event-row={lead ? "lead" : "row"}
-      className={`${styles.row} ${lead ? styles.lead : ""} ${cancelled ? styles.cancelled : ""}`}
+      data-event-media={media ? "thumb" : "none"}
+      className={`${styles.row} ${lead ? styles.lead : ""} ${media ? styles.withMedia : ""} ${cancelled ? styles.cancelled : ""}`}
     >
       <div className={styles.when}>
         <span className={styles.time} data-clock={meridiem ? "clock" : "label"}>
-          {clock}
-          {meridiem ? <span style={{ fontSize: lead ? "0.5em" : "0.8em", fontWeight: 600, marginLeft: lead ? 3 : 2, letterSpacing: 0 }}>{meridiem}</span> : null}
+          <span className={styles.clock}>{clock}</span>
+          {meridiem ? <span className={styles.meridiem}>{meridiem}</span> : null}
         </span>
-        <span className={styles.date}>{weekday} {month} {day}</span>
+        {showDate ? (
+          <span className={styles.date}>{weekday} {month} {day}</span>
+        ) : (
+          <span className="sr-only">{weekday} {month} {day}</span>
+        )}
       </div>
       <div className={styles.body}>
         {(category || live || status) && (
@@ -99,6 +112,7 @@ export default function EventRow({
         {note ? <p data-event-card-time className={styles.note}>{note}</p> : null}
         {extra}
       </div>
+      {media}
     </article>
   );
 }

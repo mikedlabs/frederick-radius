@@ -53,7 +53,8 @@
   min-height: 48px;
   padding: 0 var(--app-space-3);
   gap: var(--app-space-2);
-  border: 1px solid var(--app-control-border);
+  /* The heaviest control on the page, in ink rather than coral. */
+  border: 1.5px solid var(--app-ink);
   border-radius: var(--app-radius-md);
   color: var(--app-ink);
   background: var(--app-bg);
@@ -62,7 +63,7 @@
 .arrival .launcher:hover {
   color: var(--app-ink);
   border-color: var(--app-ink);
-  background: var(--app-bg);
+  background: var(--app-bg-sunken);
 }
 
 .arrival .launcher:focus-visible {
@@ -71,15 +72,16 @@
 
 .arrival .launcherArrow {
   padding: 0;
-  color: var(--app-link);
+  color: var(--app-ink);
   background: transparent;
 }
 
+/* An instruction, not a placeholder: ink at reading weight. */
 .arrival .prompt {
-  color: var(--app-ink-2);
-  font-size: 1rem;
-  font-weight: 400;
-  letter-spacing: 0;
+  color: var(--app-ink);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   line-height: 1.3;
 }
 

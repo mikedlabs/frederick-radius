@@ -18,7 +18,8 @@ import { statusLabel } from "@/lib/event-status";
 import DatePlate from "@/components/event/DatePlate";
 import { eventDecisionLocation, eventDecisionTime } from "@/lib/events/decision-facts";
 import { communicationAccessLabels } from "@/lib/events/communication-access";
-import type { EventCardVisual } from "@/components/event/eventVisuals";
+import { eventCardVisual, type EventCardVisual } from "@/components/event/eventVisuals";
+import EventRowMedia from "@/components/event/EventRowMedia";
 import EventPosterCard from "@/components/event/EventPosterCard";
 import EventRow from "@/components/event/EventRow";
 import {
@@ -40,7 +41,8 @@ export default function EventCard({
   priorityImage = true,
   visual,
   nowISO,
-  venuePhotos: _venuePhotos = "all-approved",
+  venuePhotos = "all-approved",
+  showDate = true,
 }: {
   event: EventWithMeta;
   /**
@@ -95,6 +97,8 @@ export default function EventCard({
   nowISO?: string;
   /** Supplementary-card policy; discovery always uses free reviewed media. */
   venuePhotos?: "all-approved" | "free-reviewed";
+  /** Row variants only: hide the day line when the row above shows the same day. */
+  showDate?: boolean;
 }) {
   const displayTitle = eventDisplayTitle(event);
   const status = event.status ?? "scheduled";
@@ -163,9 +167,13 @@ export default function EventCard({
     "data-decision-position": "result",
   } as const;
 
-  // PLAIN TOOL: events carry no photographs, so both browsing variants are
-  // one typographic row. A time column in tabular numerals leads, then the
-  // title and one muted location line. Supporting facts follow in one line.
+  // PLAIN TOOL: most events carry no photographs, so both browsing variants
+  // are one typographic row. A time column in tabular numerals leads, then the
+  // title and one muted location line. An approved venue photo or publisher
+  // artwork keeps its place as a small square at the right of the row.
+  const cardVisual = variant === "discovery" || variant === "glance"
+    ? eventCardVisual(event, { venuePhotos: variant === "discovery" ? "free-reviewed" : venuePhotos })
+    : null;
   const rowExtras = [
     event.is_recurring && event.recurrence_text ? event.recurrence_text : null,
     event.is_free ? "Free" : event.price_text || null,
@@ -188,6 +196,8 @@ export default function EventCard({
         statusColor={statusForeground}
         cancelled={isCancelled}
         where={venueLabel}
+        showDate={showDate}
+        media={cardVisual ? <EventRowMedia visual={cardVisual} /> : undefined}
         extra={rowExtras.length > 0 ? (
           <p className="mt-1 text-[13px] leading-snug tabular-nums" style={{ color: "var(--app-ink-2)" }}>
             {rowExtras.join(" · ")}

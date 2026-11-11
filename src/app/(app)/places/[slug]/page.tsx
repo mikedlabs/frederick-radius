@@ -329,7 +329,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               action, not an icon pair crowding the title. Sharing
               stays in the footer ShareButton. */}
           <div className="min-w-0">
-            <h1 className="text-[30px] font-bold leading-[1.08] tracking-[-0.03em] sm:text-[38px]" style={{ color: "var(--app-ink)" }}>
+            <h1 className="text-[34px] font-extrabold leading-[1.04] tracking-[-0.04em] max-[359px]:text-[30px] sm:text-[44px]" style={{ color: "var(--app-ink)" }}>
               {place.name}
             </h1>
             {/* Identity line: what it is + where, at a glance. The street
@@ -378,13 +378,16 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           <Suspense fallback={null}>
             <PendingFollowApplier slug={place.slug} name={place.name} />
           </Suspense>
-          <div className="-mt-1 flex flex-wrap items-center gap-2">
+          {/* One ruled strip holds the personal actions, so three unboxed
+              text actions read as a set rather than stray labels. */}
+          <div data-place-action-strip className="flex flex-wrap items-center justify-between gap-x-1 border-y sm:justify-start sm:gap-x-6" style={{ borderColor: "var(--app-border)" }}>
             <MyRadiusButton slug={place.slug} name={place.name} />
             {isDestinationCategory(place.category) && isRecommendable(place) && place.is_operational !== "closed_permanently" && (
               <Suspense fallback={null}>
                 <PlanFromPlaceLink slug={place.slug} name={place.name} />
               </Suspense>
             )}
+            <BeenHereToggle placeSlug={place.slug} label={place.name} />
           </div>
           {desc && (
             <div>
@@ -441,12 +444,6 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         placeSlug={place.slug}
         placeName={place.name}
       />
-
-      {/* Personal "been here" marker — demoted below the directional/contact
-          grid; it's a quiet device-local note, not a primary action. */}
-      <div className="flex">
-        <BeenHereToggle placeSlug={place.slug} label={place.name} />
-      </div>
 
       {/* Secondary visit context is outside the identity hero and follows
           closure + action controls, so the first screen answers whether the

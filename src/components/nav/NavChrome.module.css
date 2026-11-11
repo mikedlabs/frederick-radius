@@ -39,12 +39,14 @@
   font-weight: 500;
   letter-spacing: 0;
 }
+/* The selected destination is marked by a 3px rule across the top of its
+   column, inset 6px from each side, laid over the bar's hairline. */
 .destinationRule {
   position: absolute;
   top: -1px;
-  left: 18%;
-  right: 18%;
-  height: 2px;
+  left: 6px;
+  right: 6px;
+  height: 3px;
   background: transparent;
 }
 .destination[data-selected="true"] {
@@ -60,7 +62,7 @@
   color: var(--app-ink);
 }
 .destination[data-pending="true"]:not([data-selected="true"]) .destinationRule {
-  background: var(--app-border-strong);
+  background: var(--app-control-border);
 }
 .tool:focus-visible,
 .search:focus-visible {
