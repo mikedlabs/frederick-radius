@@ -155,7 +155,7 @@ describe("GET /api/cron/data-health-retention", () => {
         },
       });
       expect(mocks.pruneOldSnapshots).not.toHaveBeenCalled();
-        expect(mocks.pruneNfcEvents).not.toHaveBeenCalled();
+      expect(mocks.pruneNfcEvents).not.toHaveBeenCalled();
       expect(mocks.pruneExpiredReports).not.toHaveBeenCalled();
     } finally {
       now.mockRestore();

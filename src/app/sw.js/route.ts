@@ -1,5 +1,3 @@
-
-
 /**
  * /sw.js — the service worker, served dynamically so the CACHE_VERSION
  * embedded inside it bumps on every deploy.
