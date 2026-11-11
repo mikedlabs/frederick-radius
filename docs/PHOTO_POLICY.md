@@ -2,7 +2,7 @@
 
 **Status:** Current owner-approved photographic discovery direction.
 **Scope:** Photography in the UI, source identity and attribution.
-**Updated:** October 20, 2026. This document does not add another plan-approval step to already authorized product work.
+**Updated:** November 10, 2026. This document does not add another plan-approval step to already authorized product work.
 
 ## Current direction, approved October 9, 2026
 

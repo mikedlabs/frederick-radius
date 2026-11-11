@@ -93,13 +93,20 @@ behavior. Cite the rule number in PRs that lean on one.
     the neighboring section. If the same action is already obvious and within
     reach, the duplicate is clutter rather than discoverability.
 
-15. **A row must change a decision.** Since the November 10, 2026 interface
-    update, content that can be chosen, compared, saved, or acted on is a
-    ruled row on the page ground, not a bordered card. A border and
-    background are reserved for fields, menus, sheets, and floating layers
-    over the map. Copy that merely restates the heading belongs in the
-    heading or should be removed. Prefer a rule or a type change when no
-    separate object exists.
+15. **A row must change a decision.** On Today, Map, Events, Saved, Find,
+    Tools, Settings, Ask, place pages, event pages and town pages, content
+    that can be chosen, compared, saved, or acted on is a ruled row on the
+    page ground, not a bordered card. A border or a filled background is
+    reserved for fields, menus, sheets, floating layers over the map, and
+    the controls and marks the Interface shape section of
+    `docs/brand/BRAND_GUIDE.md` allows: buttons, compact filter chips,
+    status badges and toggle switches, a view's single filled coral action,
+    the coral name plate on Today, and the lead event's time block on
+    Events. Specialty guide pages still carry older treatments
+    until their own pass; do not copy those into the pages listed here.
+    Copy that merely restates the heading belongs in the heading or should
+    be removed. Prefer a rule or a type change when no separate object
+    exists.
 
 ## Applied so far (evidence)
 

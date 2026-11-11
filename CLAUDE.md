@@ -43,11 +43,11 @@ truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
   `-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`. This includes
   page titles, text, controls, source notes, and tabular data. Public Sans
   remains the installed print/export text family, with its real variable
-  italic. Libre Caslon Display Regular is the wordmark and a rare
-  editorial signature on a few specialty guide pages. It never appears on
-  Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages or
-  event pages; every title there is heavy system sans. Do not synthesize
-  bold or italic Caslon, rename
+  italic. Libre Caslon Display Regular sets the header wordmark in the top
+  bar and is a rare editorial signature on a few specialty guide pages. No
+  page title or content on Today, Map, Events, Saved, Find, Tools,
+  Settings, Ask, place pages or event pages uses it; every title there is
+  heavy system sans. Do not synthesize bold or italic Caslon, rename
   packaged Public Sans as a system font, or download a new family.
 - **Palette (Brand System 1.4, October 16, 2026, owner-approved):** Always use
   `var(--app-*)` in app UI. White `--app-bg #FFFFFF`, Charcoal `--app-ink #22221F`,
@@ -103,9 +103,10 @@ truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
   organized, calm and immediately useful. Type carries the hierarchy: heavy
   system sans page titles, 17px semibold row titles, 14px muted meta lines and
   13px uppercase section labels, before any box, border or badge. Chrome is
-  flat. Each page has one solid Deep Coral block (the name plate on Today,
-  the lead time block on Events) and no other coral field except its single
-  filled coral action. A selected filter chip is filled ink (background
+  flat. A page may hold one solid Deep Coral block. Only Today (the name
+  plate) and Events (the lead event's time block) have one, and no other
+  page should gain one. Apart from that block, the only coral field on a
+  page is its single filled coral action. A selected filter chip is filled ink (background
   `--app-ink`, text `--app-bg`), never coral. Coral text uses `--app-link` or
   `--app-brand-text`, Creek text `--app-cool-text` and forest text
   `--app-forest-text`; `--app-brand`, `--app-brand-press` and `--app-cool`
