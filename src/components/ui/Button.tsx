@@ -8,7 +8,7 @@ import type {
 } from "react";
 
 /**
- * Button — the canonical action.
+ * Button: the canonical action.
  *
  * Kills the hand-repeated CTA classNames. Plain tool direction: every
  * variant is flat with a 6px corner. Primary is the one filled coral action

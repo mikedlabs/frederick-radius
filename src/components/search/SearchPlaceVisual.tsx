@@ -60,8 +60,21 @@ export function SearchPlaceVisualImage({ fallback, size = 56, className = "", fr
     if (deferred && bytes.status === "fallback") visual?.resolve("failed");
   }, [bytes.status, deferred, visual]);
   const reportLoad = (image: HTMLImageElement) => visual?.resolve(isPlacePhotoFailureSignal(image) ? "failed" : "loaded");
+  // A row shows a thumbnail only when a real photo exists. Without one, the
+  // slot keeps its width so titles stay aligned down the list, and the
+  // category glyph sits alone beside the title's first line with no tile.
+  if (frame === "thumbnail" && (!source || !src || visual?.failed)) {
+    return (
+      <span aria-hidden className={`grid shrink-0 place-items-center ${className}`}
+        style={{ width: size, height: 24, color: "var(--app-ink-3)" }}
+        data-search-place-visual={source?.kind ?? "none"} data-search-place-photo-frame={frame}
+        data-search-place-photo-state="glyph">
+        {fallback}
+      </span>
+    );
+  }
   return (
-    <span ref={frameRef} aria-hidden className={`relative block shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] ${frame === "lead" ? styles.leadPhoto : ""} ${className}`}
+    <span ref={frameRef} aria-hidden className={`relative block shrink-0 overflow-hidden rounded-[var(--app-radius-md)] ${frame === "lead" ? styles.leadPhoto : ""} ${className}`}
       style={frame === "lead" ? undefined : { width: size, height: size }} data-search-place-visual={source?.kind ?? "none"}
       data-search-place-photo-frame={frame} data-search-place-photo-bytes={deferred ? bytes.status : undefined}>
       <span className="absolute inset-0 grid place-items-center">{fallback}</span>

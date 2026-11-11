@@ -180,8 +180,8 @@ export default function FloodContext({
               <span
                 className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
                 style={{
-                  background: "color-mix(in srgb, var(--app-cool) 16%, white)",
-                  color: "var(--app-cool)",
+                  background: "color-mix(in srgb, var(--app-cool) 16%, var(--app-bg-elevated-solid))",
+                  color: "var(--app-cool-text)",
                 }}
               >
                 <Waves className="h-4 w-4" strokeWidth={2.2} aria-hidden />

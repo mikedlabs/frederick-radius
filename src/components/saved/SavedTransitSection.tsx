@@ -164,7 +164,7 @@ function SavedStopTracker({
           aria-hidden
           className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
           style={{
-            color: "var(--app-cool)",
+            color: "var(--app-cool-text)",
             background: "var(--app-cool-tint-6)",
           }}
         >
@@ -514,7 +514,7 @@ export default function SavedTransitSection({
         aria-hidden
         className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
         style={{
-          color: "var(--app-cool)",
+          color: "var(--app-cool-text)",
           background: "var(--app-cool-tint-6)",
         }}
       >
@@ -548,7 +548,7 @@ export default function SavedTransitSection({
           <Link
             href="/transit"
             className="tap-44-y inline-flex items-center text-[11px] font-semibold"
-            style={{ color: "var(--app-cool)" }}
+            style={{ color: "var(--app-cool-text)" }}
           >
             Open transit
           </Link>
@@ -656,7 +656,7 @@ export default function SavedTransitSection({
             <Link
               href="/transit"
               className="tap-44-y shrink-0 text-[11px] font-semibold"
-              style={{ color: "var(--app-cool)" }}
+              style={{ color: "var(--app-cool-text)" }}
             >
               Open transit
             </Link>

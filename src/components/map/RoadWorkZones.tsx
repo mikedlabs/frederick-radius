@@ -242,7 +242,7 @@ export default function RoadWorkZones({
               <span
                 className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
                 style={{
-                  background: "color-mix(in srgb, var(--app-warning) 18%, white)",
+                  background: "color-mix(in srgb, var(--app-warning) 18%, var(--app-bg-elevated-solid))",
                   color: "var(--app-warning-press)",
                 }}
               >

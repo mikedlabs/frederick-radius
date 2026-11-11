@@ -277,7 +277,7 @@ export default function AppMapSelectionSurfaces({
             <Link
               href="/transit"
               className="tap-44 mt-3 inline-flex items-center gap-1.5 rounded-[var(--app-radius-md)] border px-3.5 py-2 text-[12px] font-semibold"
-              style={{ borderColor: "var(--app-control-border)", color: "var(--app-cool)" }}
+              style={{ borderColor: "var(--app-control-border)", color: "var(--app-cool-text)" }}
             >
               Open Transit
               <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
@@ -324,14 +324,14 @@ export default function AppMapSelectionSurfaces({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="tap-44 inline-flex items-center rounded-[var(--app-radius-md)] border px-3 py-2 text-[12px] font-semibold"
-                  style={{ borderColor: "var(--app-control-border)", color: "var(--app-cool)" }}
+                  style={{ borderColor: "var(--app-control-border)", color: "var(--app-cool-text)" }}
                 >
                   Directions
                 </a>
                 <Link
                   href="/transit"
                   className="tap-44 inline-flex items-center rounded-[var(--app-radius-md)] border px-3 py-2 text-[12px] font-semibold"
-                  style={{ borderColor: "var(--app-control-border)", color: "var(--app-cool)" }}
+                  style={{ borderColor: "var(--app-control-border)", color: "var(--app-cool-text)" }}
                 >
                   Open Transit
                 </Link>

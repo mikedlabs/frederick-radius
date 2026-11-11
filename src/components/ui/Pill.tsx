@@ -6,7 +6,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { haptic } from "@/lib/haptics";
 
 /**
- * Pill — the canonical compact selector.
+ * Pill: the canonical compact selector.
  *
  * One primitive for the "tap to narrow / pivot" control that was
  * hand-rolled ~40 times across the app with five slightly different
@@ -23,9 +23,9 @@ import { haptic } from "@/lib/haptics";
  *
  * Tones (plain tool: a selected facet is an ink fill, so coral stays
  * reserved for the one bold block and the one filled action per page):
- *   brand      — brand fill, for a caller that deliberately needs it
- *   cool       — cool fill (town / place lane)
- *   ink        — ink fill on paper text (TimeToggle's "when?" lane)
+ *   brand      : brand fill, for a caller that deliberately needs it
+ *   cool       : cool fill (town / place lane)
+ *   ink        : ink fill on paper text (TimeToggle's "when?" lane)
  */
 
 type Tone = "brand" | "cool" | "ink";
@@ -50,7 +50,7 @@ type PillProps = {
   /** A PRE-RENDERED icon element, e.g. `icon={<Zap className="h-3.5 w-3.5" />}`.
    *  It's a ReactNode (not a component function) on purpose: Pill is a
    *  client component, and a server-component caller (TimeToggle,
-   *  MapTimeChips) cannot pass a function across the RSC boundary —
+   *  MapTimeChips) cannot pass a function across the RSC boundary,
    *  but it CAN pass an already-rendered element. */
   icon?: ReactNode;
   /** Trailing count badge (tabular, tone-aware). */

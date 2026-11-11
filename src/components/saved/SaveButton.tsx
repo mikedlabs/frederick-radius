@@ -191,7 +191,10 @@ export default function SaveButton({
       title={eventSaveUnavailable ? "Saved state unavailable" : mutation === "unconfirmed" ? "This change could not be confirmed." : renderedSaved ? "Saved" : "Save"}
       className={barLabel
         ? "tap-44 relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
-        : "tap-44 relative grid h-9 w-9 place-items-center rounded-[var(--app-radius-md)] transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92] motion-reduce:active:scale-100"}
+        // Icon only: an unboxed glyph with a real 44px target. The -m-1
+        // keeps the 36px layout footprint the rows were built around; hover
+        // dims the glyph slightly instead of drawing a tile.
+        : "tap-44 relative -m-1 grid h-11 w-11 place-items-center rounded-[var(--app-radius-sm)] transition-opacity hover:opacity-75 active:scale-[0.92] motion-reduce:active:scale-100"}
       style={{
         // A labeled Save reads as an action in ink; the saved state uses the
         // link color everywhere, matching the place page's Saved control.
@@ -200,7 +203,7 @@ export default function SaveButton({
       }}
     >
       <Bookmark
-        className={`h-4 w-4 transition-transform ${
+        className={`${barLabel ? "h-4 w-4" : "h-5 w-5"} transition-transform ${
           celebrate ? "save-pop" : ""
         }`}
         strokeWidth={renderedSaved ? 0 : 1.75}

@@ -320,7 +320,7 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
           {isGauge ? (
             <Link
               href="/rivers"
-              style={{ fontSize: 11, color: "var(--app-cool)", fontWeight: 700 }}
+              style={{ fontSize: 11, color: "var(--app-cool-text)", fontWeight: 700 }}
             >
               Live reading
             </Link>
@@ -329,7 +329,7 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
               href={directionsHref(p.lat, p.lng)}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ fontSize: 11, color: "var(--app-cool)", fontWeight: 700 }}
+              style={{ fontSize: 11, color: "var(--app-cool-text)", fontWeight: 700 }}
             >
               Directions
             </a>
@@ -399,7 +399,7 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
       )}
       <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
         {p.phone && (
-          <a href={`tel:${p.phone}`} style={{ fontSize: 11, color: "var(--app-cool)", fontWeight: 600 }}>
+          <a href={`tel:${p.phone}`} style={{ fontSize: 11, color: "var(--app-cool-text)", fontWeight: 600 }}>
             Call
           </a>
         )}
@@ -408,7 +408,7 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
             href={p.website}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ fontSize: 11, color: "var(--app-cool)", fontWeight: 600 }}
+            style={{ fontSize: 11, color: "var(--app-cool-text)", fontWeight: 600 }}
           >
             Website ↗
           </a>

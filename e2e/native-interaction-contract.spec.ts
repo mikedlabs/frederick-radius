@@ -1116,9 +1116,14 @@ test.describe("stable native press surfaces", () => {
     const destination = nav.getByRole("link", { name: "Map", exact: true });
     await expect(current).toHaveAttribute("aria-current", "page");
     await expect(current).toHaveAttribute("data-selected", "true");
+    // Plain tool chrome: the bar is flat, so the pending mark is the tab's
+    // own 2px rule (ink at reduced opacity) rather than a lifted shadow.
     const style = () => destination.evaluate((node) => {
       const css = getComputedStyle(node);
-      return { color: css.color, background: css.backgroundColor, shadow: css.boxShadow };
+      const rule = node.querySelector<HTMLElement>('[class*="destinationRule"]');
+      const ruleCss = rule ? getComputedStyle(rule) : null;
+      return { color: css.color, background: css.backgroundColor, shadow: css.boxShadow,
+        rule: ruleCss ? { background: ruleCss.backgroundColor, opacity: ruleCss.opacity } : null };
     });
     const before = await style();
     const geometry = await pressAndDragOut(page, destination, false);
@@ -1151,7 +1156,10 @@ test.describe("stable native press surfaces", () => {
       await expect(destination).toHaveAttribute("data-selected", "false");
       await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
       pending = await style();
-      expect(pending.shadow).not.toBe("none");
+      expect(before.rule?.background).toBe("rgba(0, 0, 0, 0)");
+      expect(pending.rule?.background).not.toBe("rgba(0, 0, 0, 0)");
+      expect(Number(pending.rule?.opacity)).toBeGreaterThan(0.5);
+      expect(Number(pending.rule?.opacity)).toBeLessThan(1);
       expect(pending).not.toEqual(before);
       expect(await destination.evaluate((node) => node.getAnimations({ subtree: true }).some((animation) => animation.effect?.getTiming().iterations === Infinity)), "pending feedback is a static mark, without an indefinite progress animation").toBe(false);
       await page.screenshot({ path: info.outputPath("provisional-map-destination.png") });

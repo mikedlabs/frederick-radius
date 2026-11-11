@@ -17,14 +17,29 @@ async function still(layers: Locator) {
 async function open(page: Page) {
   await page.route("**/*", (route) => ["127.0.0.1", "localhost"].includes(new URL(route.request().url()).hostname)
     ? route.continue() : route.abort());
-  await page.goto("/compass");
+  // The plain tool direction removed the wash from Tools and the primary
+  // tabs, and hides it everywhere with a global rule. Ask still mounts the
+  // primitive, so its motion and visibility contract is exercised there.
+  await page.goto("/ask");
   const bloom = page.locator("[data-page-bloom]").first();
   const layers = bloom.locator("[data-ambient-layer]");
   await expect(layers).toHaveCount(2);
   await expect(bloom.locator(".aurora-grain")).toHaveCount(1);
   await expect(bloom).toHaveAttribute("aria-hidden", "true");
+  // Decoration never paints in the plain tool: the ground stays plain.
+  await expect(bloom).toHaveCSS("display", "none");
   return { bloom, layers };
 }
+
+test("Tools and the radius map mount no decorative wash on the plain ground", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route("**/*", (route) => ["127.0.0.1", "localhost"].includes(new URL(route.request().url()).hostname)
+    ? route.continue() : route.abort());
+  for (const path of ["/compass", "/map?mode=radius"]) {
+    await page.goto(path, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-page-bloom]")).toHaveCount(0);
+  }
+});
 
 for (const width of [390, 1366]) {
   test.describe(`Decorative motion at ${width}px`, () => {

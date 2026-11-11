@@ -283,10 +283,9 @@ export function SavedEventRefreshNotice({
   return (
     <div
       role="status"
-      className="space-y-1 rounded-[var(--app-radius-sm)] border px-3 py-2 text-[12.5px] leading-relaxed"
+      className="space-y-1 border-y py-2 text-[13px] leading-relaxed"
       style={{
         borderColor: "var(--app-border)",
-        background: "var(--app-bg-sunken)",
         color: "var(--app-ink-2)",
       }}
     >
@@ -1246,13 +1245,10 @@ export default function SavedList({
         <summary className="tap-44 flex cursor-pointer list-none items-center gap-3 py-3 [&::-webkit-details-marker]:hidden">
           <span
             aria-hidden
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px]"
-            style={{
-              color: "var(--app-ink-2)",
-              background: "var(--app-bg-sunken)",
-            }}
+            className="grid h-6 w-6 shrink-0 place-items-center"
+            style={{ color: "var(--app-ink-3)" }}
           >
-            <Layers className="h-4 w-4" strokeWidth={2.1} />
+            <Layers className="h-5 w-5" strokeWidth={2} />
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
@@ -1291,7 +1287,7 @@ export default function SavedList({
                     role="tab"
                     aria-selected={active}
                     onClick={() => setViewAndStore(v)}
-                    className="tap-44-y flex items-center gap-1 rounded-[var(--app-radius-sm)] px-2.5 py-1 text-[12px] font-semibold transition-colors"
+                    className="tap-44-y flex min-w-11 items-center justify-center gap-1 rounded-[var(--app-radius-sm)] px-2.5 py-1 text-[12px] font-semibold transition-colors"
                     style={{
                       background: active ? "var(--app-ink)" : "transparent",
                       color: active ? "var(--app-bg)" : "var(--app-ink-2)",

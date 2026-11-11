@@ -58,14 +58,14 @@ export default function MapSpotPeek({
             display: "grid",
             placeItems: "center",
             background: "color-mix(in srgb, var(--app-cool) 12%, var(--app-bg-sunken))",
-            color: "var(--app-cool)",
+            color: "var(--app-cool-text)",
           }}
           aria-hidden
         >
           <Crosshair className="h-6 w-6" strokeWidth={1.9} />
         </span>
         <span className="map-peek-text">
-          <span className="map-peek-cat" style={{ color: "var(--app-cool)" }}>
+          <span className="map-peek-cat" style={{ color: "var(--app-cool-text)" }}>
             {temporary ? "Temporary map result" : "Local read"}
           </span>
           <span className="map-peek-name font-serif">{label || "At this spot"}</span>

@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
 /**
- * Chip — small tonal tag.
+ * Chip: small tonal tag.
  *
  * One source of truth for the count / status / category pills that
  * were inlined everywhere. The fill is a tokenized color-mix wash of

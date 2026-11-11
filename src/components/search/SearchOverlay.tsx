@@ -313,14 +313,6 @@ function highlight(haystack: string, needle: string): React.ReactNode {
   return parts;
 }
 
-const COLOR_BY_TYPE: Record<SearchResultType, string> = {
-  place: "var(--app-brand)",
-  event: "var(--app-accent)",
-  category: "var(--app-cool)",
-  municipality: "var(--app-positive)",
-  action: "var(--app-cool)",
-};
-
 function isPlainNavigationClick(
   event: ReactMouseEvent<HTMLAnchorElement>,
 ): boolean {
@@ -744,7 +736,7 @@ export default function SearchOverlay({
         <div
           // Plain tool: a 6px field with a control border on the page ground.
           // The focus ring is the brand outline the other fields use.
-          className="search-field-shell mx-4 mb-3 flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] border px-3 transition-colors focus-within:border-[var(--app-ink)] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--app-brand)] sm:mx-5"
+          className="search-field-shell mx-4 mb-3 flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] border px-3 transition-colors focus-within:border-[var(--app-ink)] sm:mx-5"
           style={{ background: "var(--app-bg)", borderColor: "var(--app-control-border)" }}
         >
           <Search className="h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink)" }} aria-hidden />
@@ -1026,7 +1018,6 @@ export default function SearchOverlay({
             <ul ref={listRef} id="search-results" aria-label="Search results" className="py-2">
               {rankedResults.map(({ r, idx }) => {
                 const Icon = ICON_BY_TYPE[r.type];
-                const color = COLOR_BY_TYPE[r.type];
                 const trust = r.trust ?? null;
                 const distance = coords && r.lat != null && r.lng != null
                   ? formatDistance(haversineMeters(coords, { lng: r.lng, lat: r.lat }))
@@ -1038,9 +1029,14 @@ export default function SearchOverlay({
                   track("search_pick", { type: r.type });
                   navigateFromSearch(r.href);
                 };
+                // A row shows a thumbnail only when a real photo exists. A row
+                // without one keeps the same slot width and shows the glyph in
+                // ink-3 beside the title's first line, with no tile behind it.
+                const glyphOffset = idx === 0 ? "mt-5" : "mt-3.5";
                 const art = r.thumbnailSource ? (
                   <SearchPlaceVisualImage size={idx === 0 ? 64 : 40}
-                    fallback={<Icon className={idx === 0 ? "h-6 w-6" : "h-4 w-4"} strokeWidth={1.9} style={{ color: "var(--app-link)" }} aria-hidden />} />
+                    className={idx === 0 ? "" : "mt-0.5"}
+                    fallback={<Icon className="h-6 w-6" strokeWidth={1.8} aria-hidden />} />
                 ) : r.thumbnail ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -1051,17 +1047,16 @@ export default function SearchOverlay({
                     className={idx === 0
                       ? "h-16 w-16 shrink-0 rounded-[var(--app-radius-md)] object-cover"
                       : "mt-0.5 h-10 w-10 shrink-0 rounded-[var(--app-radius-sm)] object-cover"}
-                    style={{ background: `${color}1A`, boxShadow: "inset 0 0 0 1px var(--app-border)" }}
+                    style={{ boxShadow: "inset 0 0 0 1px var(--app-border)" }}
                   />
                 ) : (
                   <span
                     aria-hidden
-                    className={idx === 0
-                      ? "grid h-16 w-16 shrink-0 place-items-center rounded-[var(--app-radius-md)]"
-                      : "mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"}
-                    style={{ background: `color-mix(in srgb, ${color} 12%, var(--app-bg-sunken))`, color: "var(--app-link)" }}
+                    data-search-result-glyph
+                    className={`${glyphOffset} grid h-6 shrink-0 place-items-center ${idx === 0 ? "w-16" : "w-10"}`}
+                    style={{ color: "var(--app-ink-3)" }}
                   >
-                    <Icon className={idx === 0 ? "h-6 w-6" : "h-4 w-4"} strokeWidth={1.9} />
+                    <Icon className="h-6 w-6" strokeWidth={1.8} />
                   </span>
                 );
 
@@ -1075,7 +1070,7 @@ export default function SearchOverlay({
                       className="mx-4 mb-3 border-b pt-3 sm:mx-5"
                       style={{ borderColor: "var(--app-border)" }}
                     >
-                      <SearchPlaceLead fallback={<Icon className="h-5 w-5" aria-hidden />} actions={<>
+                      <SearchPlaceLead fallback={<Icon className="h-6 w-6" strokeWidth={1.8} aria-hidden />} actions={<>
                         <Link href={r.href} onClick={pick}
                           onMouseEnter={() => setHoverIdx(0)} onMouseLeave={() => setHoverIdx(null)}>
                           View place <ArrowRight aria-hidden />

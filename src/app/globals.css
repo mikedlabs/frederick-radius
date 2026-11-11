@@ -296,17 +296,18 @@
     --app-hi: 0 0 0 0 transparent;
     --app-paper-light: linear-gradient(transparent, transparent);
     /* The zeroed decorative tiers stay zero in dark. The tiers that separate
-       a sheet, popover or toast from the page use black at a higher alpha,
-       because a Charcoal-tinted shadow disappears on the Charcoal ground. */
+       a sheet, popover or toast from the page use the media ink token at a
+       much higher strength than in light, because a faint Charcoal shadow
+       disappears on the Charcoal ground. Tokens only, no raw colors. */
     --app-shadow-3:
-      0 2px 6px rgba(0, 0, 0, 0.32),
-      0 18px 36px -8px rgba(0, 0, 0, 0.5);
+      0 2px 6px color-mix(in srgb, var(--app-media-ink) 45%, transparent),
+      0 18px 36px -8px color-mix(in srgb, var(--app-media-ink) 70%, transparent);
     --app-elev-3:
-      0 3px 8px rgba(0, 0, 0, 0.32),
-      0 18px 38px -20px rgba(0, 0, 0, 0.55);
+      0 3px 8px color-mix(in srgb, var(--app-media-ink) 45%, transparent),
+      0 18px 38px -20px color-mix(in srgb, var(--app-media-ink) 75%, transparent);
     --app-elev-4:
-      0 4px 10px rgba(0, 0, 0, 0.36),
-      0 24px 52px -24px rgba(0, 0, 0, 0.6);
+      0 4px 10px color-mix(in srgb, var(--app-media-ink) 50%, transparent),
+      0 24px 52px -24px color-mix(in srgb, var(--app-media-ink) 80%, transparent);
 }
 
 /* Neutral listing grammar belongs only to the four primary destinations.
@@ -365,12 +366,6 @@
   padding: var(--app-space-3) 0;
 }
 [data-app-primary-tab] .map-list-event { background: transparent; }
-[data-app-primary-tab] .map-list-event-icon,
-[data-app-primary-tab] .map-list-place-visual {
-  color: var(--app-ink-2);
-  background: var(--app-bg-sunken);
-  box-shadow: none;
-}
 
 /* Real place photographs need enough area to identify the storefront. */
 [data-app-primary-tab] .map-list-place-visual[data-photo-state="ready"] {
@@ -2147,9 +2142,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .hover-lift:hover {
     box-shadow: var(--app-edge), var(--app-elev-2);
   }
-  .tactile-interactive:hover {
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--section-accent, var(--app-brand)) 34%, transparent), var(--app-elev-1);
-  }
+  /* Plain tool: hover draws no ring. Rows that need a hover cue show a
+     faint sunken ground on their own, and focus-visible rings (outlines and
+     ring utilities) are left untouched because this rule sets nothing. */
 }
 .tactile-interactive:active {
   /* Legacy whole-surface feedback. New shared controls put movement on an
@@ -2807,13 +2802,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-bottom: 1px solid;
   border-right: 1px solid;
   border-bottom-right-radius: 2px;
-}
-
-/* The current product uses clear surfaces. Keep this legacy paint layer
- * inert so it cannot tint photos or add texture to the new page ground. */
-.app-paper-fx {
-  display: none;
-  pointer-events: none;
 }
 
 /* Invisible 44px tap-zone extender (WCAG 2.5.5 / Apple HIG). Visual size
@@ -9231,12 +9219,15 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
   [data-app-primary-tab="/today"] [data-today-masthead] h1 { font-size: 34px; }
 }
 
-/* Events dock: a flat white header with one hairline under it. */
+/* Events dock: a flat header on the page ground with one hairline under it.
+   The dock component paints an inline elevated-surface background, which in
+   dark appearance is lighter than the page and drew a box around the title,
+   so the page-ground token is forced here in both appearances. */
 .eb-head,
 [data-app-primary-tab] .eb-head,
 .eb-dock.eb-collapsed .eb-head,
 [data-app-primary-tab] .eb-dock.eb-collapsed .eb-head {
-  background: var(--app-bg);
+  background: var(--app-bg) !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border-radius: 0;
@@ -9423,6 +9414,10 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
   border-radius: var(--app-radius-md);
   box-shadow: none;
 }
+/* White text on coral sits on the AA-safe press shade. */
+.map-overlay-error button {
+  background: var(--app-brand-press);
+}
 .map-location-offer-actions button {
   border-color: var(--app-control-border);
   background: var(--app-bg-elevated-solid);
@@ -9528,10 +9523,13 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
 .map-finding-open {
   border-radius: var(--app-radius-md);
 }
+/* Saved is drawn the way SaveButton draws it: a coral glyph and label on the
+   control ground, so Directions stays the one coral field in the row. The
+   filled bookmark and aria-pressed carry the state. */
 .map-peek-act[data-on] {
-  background: var(--app-brand-press);
-  border-color: var(--app-brand-press);
-  color: var(--app-on-brand);
+  background: var(--app-bg-elevated-solid);
+  border-color: var(--app-control-border);
+  color: var(--app-link);
 }
 .map-peek-act-go {
   background-image: none;
@@ -9630,4 +9628,52 @@ header[data-map-header="true"] [data-location-chip][data-compact="true"] {
 /* Map list rows are ruled rows; a rounded corner bends the hairline. */
 .map-list-row {
   border-radius: 0;
+}
+
+/* Media in rows: a row shows a photo only when a real one exists. Without
+   one, the 72px slot keeps its width so titles stay aligned down the list
+   (and, for places, its height, so a failed photo never moves the row). The
+   category glyph sits alone in ink-3 beside the title's first line, with no
+   fill, border, tint or corner. */
+.map-list-row,
+[data-app-primary-tab] .map-list-row {
+  align-items: flex-start;
+}
+.map-list-event {
+  background: transparent;
+}
+.map-list-row:hover,
+.map-list-event:hover {
+  background: var(--app-bg-sunken);
+}
+.map-list-event-icon,
+.map-list-place-visual,
+[data-app-primary-tab] .map-list-event-icon,
+[data-app-primary-tab] .map-list-place-visual {
+  width: 72px;
+  place-items: start center;
+  border-radius: 0;
+  color: var(--app-ink-3);
+  background: transparent;
+  box-shadow: none;
+}
+.map-list-event-icon,
+[data-app-primary-tab] .map-list-event-icon {
+  height: 24px;
+}
+.map-list-place-visual[data-photo-state="ready"],
+[data-app-primary-tab] .map-list-place-visual[data-photo-state="ready"] {
+  border-radius: var(--app-radius-md);
+}
+.map-list-event-icon > svg,
+.map-list-place-visual > svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Search and Find rows follow the same rule: the glyph frame has no tile. */
+[data-search-place-photo-state="glyph"] > svg {
+  width: 24px;
+  height: 24px;
+  color: var(--app-ink-3);
 }

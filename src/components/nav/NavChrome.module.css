@@ -68,17 +68,19 @@
 }
 .destination[data-pending="true"]:not([data-selected="true"]) .destinationRule {
   background: var(--app-ink);
-  opacity: 0.45;
+  opacity: 0.6;
 }
 .destination[data-pending="true"]:not([data-selected="true"]) .destinationLabel {
   font-weight: 600;
 }
-/* Desktop side rail: the same marks on the rail's content-facing edge. */
+/* Desktop side rail: the same marks on the rail's content-facing edge. The
+   tab sits 4px inside the list padding, so -5px lands the 3px rule on the
+   rail's 1px hairline, the way the bar's rule replaces its top hairline. */
 .railRule {
   position: absolute;
   top: 8px;
   bottom: 8px;
-  right: -1px;
+  right: -5px;
   width: 3px;
   background: transparent;
 }
@@ -87,7 +89,7 @@
 }
 .destination[data-pending="true"]:not([data-selected="true"]) .railRule {
   background: var(--app-ink);
-  opacity: 0.45;
+  opacity: 0.6;
 }
 .tool:focus-visible,
 .search:focus-visible {

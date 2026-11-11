@@ -11,13 +11,8 @@
   place-items: center;
   overflow: hidden;
   border-radius: inherit;
-  background:
-    radial-gradient(
-      circle at 54% 43%,
-      color-mix(in srgb, var(--app-bg-elevated-solid) 76%, transparent) 0 10%,
-      transparent 42%
-    ),
-    linear-gradient(142deg, var(--app-bg-elevated-solid), var(--app-bg-sunken));
+  /* Plain tool: a flat ground with no glow or wash behind the loading map. */
+  background: var(--app-bg-sunken);
   color: var(--app-ink);
   pointer-events: none;
   opacity: 1;

@@ -448,7 +448,7 @@ export default function LiveRotorcraft({
             }}
             className="grid h-11 w-11 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2"
             style={{
-              color: "var(--app-cool)",
+              color: "var(--app-cool-text)",
               outlineColor: "var(--app-cool)",
             }}
           >
@@ -548,7 +548,7 @@ export default function LiveRotorcraft({
                 aria-hidden
                 className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
                 style={{
-                  color: "var(--app-cool)",
+                  color: "var(--app-cool-text)",
                   background:
                     "color-mix(in srgb, var(--app-cool) 12%, transparent)",
                 }}

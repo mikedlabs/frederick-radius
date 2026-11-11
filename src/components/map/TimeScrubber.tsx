@@ -120,7 +120,7 @@ export default function TimeScrubber({
           color: "var(--app-ink-2)",
         }}
       >
-        <Clock className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
+        <Clock className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-cool-text)" }} aria-hidden />
         See the day
       </button>
     );
@@ -171,7 +171,7 @@ export default function TimeScrubber({
             type="button"
             onClick={() => { setPlaying(false); onChange(currentFrederickHour()); }}
             className="inline-flex min-h-11 items-center rounded-[var(--app-radius-sm)] px-2.5 py-1 text-[11px] font-semibold"
-            style={{ color: "var(--app-cool)" }}
+            style={{ color: "var(--app-cool-text)" }}
           >
             Now
           </button>

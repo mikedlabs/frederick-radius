@@ -104,7 +104,7 @@ function MapListPlaceRow({ p, userLoc, onPick }: {
             data-photo-source={photo?.kind}
             // Keep every row stable while metadata arrives or a source fails.
             style={{ "--map-list-place-color": color, width: 72, height: 72 } as CSSProperties}>
-            <CategoryIcon slug={p.category} className="h-5 w-5" strokeWidth={1.8} />
+            <CategoryIcon slug={p.category} className="h-6 w-6" strokeWidth={1.8} />
             {photo && <CompactPlacePhoto src={photo.src} size={72} onResult={onPhotoResult}
               objectPosition={photo.kind !== "google" ? photo.objectPosition : undefined} />}
           </span>
@@ -274,7 +274,7 @@ export default function MapList({
                         }}
                       >
                         <span aria-hidden className="map-list-event-icon">
-                          <CalendarDays className="h-4 w-4" strokeWidth={2.1} />
+                          <CalendarDays className="h-6 w-6" strokeWidth={1.8} />
                         </span>
                         <span className="map-list-main">
                           <span className="map-list-name">{eventDisplayTitle(event)}</span>

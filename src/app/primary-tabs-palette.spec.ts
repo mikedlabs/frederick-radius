@@ -208,7 +208,10 @@ describe("primary tab palette contrast", () => {
       template.innerHTML = renderToStaticMarkup(createElement(ReasonChipRow, { reasons }));
       const chip = [...template.content.querySelectorAll<HTMLSpanElement>("span[style]")].find((node) => node.textContent === "Weekend");
       expect(chip).toBeDefined();
-      expect(expressionContrast(values, chip!.style.color, chip!.style.background, "var(--app-bg-elevated-solid)")).toBeGreaterThanOrEqual(4.5);
+      // Plain tool: a reason is plain text with no fill of its own, so its
+      // label is measured against the card ground it sits on.
+      expect(chip!.style.background).toBe("");
+      expect(expressionContrast(values, chip!.style.color, "var(--app-bg-elevated-solid)")).toBeGreaterThanOrEqual(4.5);
     });
     it(`${mode} rendered Today fallback and Tonight actions clear AA on the page ground`, () => {
       for (const element of [

@@ -73,12 +73,17 @@ describe("TopBar search ownership", () => {
       expect(control).not.toContain("rounded-full");
       expect(control).toMatch(/\sh-11\s|\stap-44\s/);
     }
-    // Plain tool chrome: only the two text fields carry a border. Icon tools
-    // are ink glyphs on the bar's own ground.
+    // Plain tool chrome: only two controls carry a border, the desktop search
+    // field (a 6px field) and the Close button in the search loading
+    // fallback. Icon tools are ink glyphs on the bar's own ground.
     const bordered = controls.filter((line) => /\sborder[\s"]/.test(line));
     expect(bordered).toHaveLength(2);
-    expect(bordered.some((line) => line.includes("styles.search"))).toBe(true);
-    expect(bordered.some((line) => line.includes("rounded-[var(--app-radius-md)]"))).toBe(true);
+    const desktopField = bordered.find((line) => line.includes("styles.search"));
+    expect(desktopField).toContain("rounded-[var(--app-radius-md)]");
+    const loadingClose = bordered.find((line) => !line.includes("styles.search"));
+    expect(loadingClose).toContain("grid h-11 w-11 place-items-center rounded-[var(--app-radius-sm)] border");
+    const topBarSource = readFileSync("src/components/nav/TopBar.tsx", "utf8");
+    expect(topBarSource).toMatch(/grid h-11 w-11 place-items-center rounded-\[var\(--app-radius-sm\)\] border"[\s\S]{0,200}aria-label="Close search"/);
     for (const tool of controls.filter((line) => line.includes("styles.tool"))) {
       expect(tool).not.toMatch(/\sborder[\s"]/);
     }

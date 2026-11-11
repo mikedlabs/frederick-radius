@@ -4878,7 +4878,7 @@ export default function AppMap({
                 <Link
                   href={smartDefault.action.href}
                   className="tap-44-y shrink-0 whitespace-nowrap rounded-[var(--app-radius-sm)] px-2 py-1 font-semibold"
-                  style={{ color: "var(--app-cool)" }}
+                  style={{ color: "var(--app-cool-text)" }}
                 >
                   {smartDefault.action.label}
                 </Link>
@@ -4886,7 +4886,7 @@ export default function AppMap({
                 <button
                   type="button"
                   className="tap-44-y shrink-0 whitespace-nowrap rounded-[var(--app-radius-sm)] px-2 py-1 font-semibold"
-                  style={{ color: "var(--app-cool)" }}
+                  style={{ color: "var(--app-cool-text)" }}
                   onClick={() => {
                     haptic("light");
                     setShowRadar(true);

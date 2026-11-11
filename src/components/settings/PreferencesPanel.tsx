@@ -341,7 +341,7 @@ export default function PreferencesPanel() {
                   type="button"
                   onClick={() => toggleInterest(opt.slug)}
                   aria-pressed={on}
-                  className="flex w-full items-center gap-2 rounded-[var(--app-radius-md)] border p-2.5 text-left transition active:scale-[0.99]"
+                  className="flex min-h-12 w-full items-center gap-2.5 rounded-[var(--app-radius-md)] border p-2.5 text-left transition active:scale-[0.99] motion-reduce:active:scale-100"
                   style={{
                     borderColor: on ? opt.color : "var(--app-border)",
                     background: on
@@ -349,14 +349,12 @@ export default function PreferencesPanel() {
                       : "var(--app-bg-elevated)",
                   }}
                 >
+                  {/* A plain glyph: the toggle's own border is the only box. */}
                   <span
-                    className="grid h-7 w-7 shrink-0 place-items-center rounded-lg"
-                    style={{
-                      background: `color-mix(in srgb, ${opt.color} 16%, transparent)`,
-                      color: opt.color,
-                    }}
+                    className="grid h-6 w-6 shrink-0 place-items-center"
+                    style={{ color: opt.color }}
                   >
-                    <opt.Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                    <opt.Icon className="h-5 w-5" strokeWidth={2} aria-hidden />
                   </span>
                   <span
                     className="min-w-0 flex-1 text-[13px] font-semibold"

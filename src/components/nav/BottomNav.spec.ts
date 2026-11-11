@@ -65,7 +65,7 @@ describe("BottomNav contextual chrome", () => {
     expect(chrome).toContain('.destination[data-selected="true"] .destinationLabel { font-weight: 700; }');
     expect(source).toContain("strokeWidth={active ? 2.5 : 1.75}");
     // Pending: the same rule in ink at reduced opacity.
-    expect(chrome).toContain('.destination[data-pending="true"]:not([data-selected="true"]) .destinationRule { background: var(--app-ink); opacity: 0.45; }');
+    expect(chrome).toContain('.destination[data-pending="true"]:not([data-selected="true"]) .destinationRule { background: var(--app-ink); opacity: 0.6; }');
     // Every destination keeps a 56px row and a visible focus ring.
     expect(source).toContain("relative flex h-14 w-full");
     expect(chrome).toContain(".destination:focus-visible { outline: 2px solid var(--app-brand); outline-offset: -3px; }");

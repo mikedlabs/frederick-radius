@@ -180,7 +180,7 @@ function SearchResultRow({
     const placeMapHref = withBrowseReturnTo(`/map?${mapParams.toString()}`, mapReturnTo);
     return <li className="pb-2 pt-4">
       <SearchPlaceVisual source={placePhoto} lead>
-        <SearchPlaceLead fallback={<CategoryIcon slug={hit.place.category} className="h-5 w-5" aria-hidden />} actions={<>
+        <SearchPlaceLead fallback={<CategoryIcon slug={hit.place.category} className="h-6 w-6" strokeWidth={1.8} aria-hidden />} actions={<>
           <Link href={href} prefetch={false}
             aria-label={`View place: ${d.title}`}
             data-decision-impression="true" data-decision-surface="search" data-decision-entity="place"
@@ -215,8 +215,8 @@ function SearchResultRow({
       >
         <SearchPlaceVisualImage size={48} fallback={
           d.categorySlug
-            ? <CategoryIcon slug={d.categorySlug} className="h-5 w-5" strokeWidth={1.8} style={{ color: d.badge.color }} />
-            : <Icon className="h-5 w-5" strokeWidth={2} style={{ color: d.badge.color }} />
+            ? <CategoryIcon slug={d.categorySlug} className="h-6 w-6" strokeWidth={1.8} />
+            : <Icon className="h-6 w-6" strokeWidth={1.8} />
         } />
         <span className="min-w-0 flex-1">
           <span className="block text-[17px] font-semibold leading-snug tracking-[-0.01em] group-hover:underline group-hover:decoration-1 group-hover:underline-offset-[3px]" style={{ color: "var(--app-ink)" }}>

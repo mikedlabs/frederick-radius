@@ -352,7 +352,7 @@ export default function TopBar() {
       <header
         data-map-header={pathname === "/map" ? "true" : undefined}
         data-dense-mobile-header={showMobileSearch || pathname === "/compass" ? "true" : undefined}
-        className={`${styles.bar} sticky top-0 border-b border-[var(--app-border)] backdrop-blur-xl pt-[env(safe-area-inset-top)]`}
+        className={`${styles.bar} sticky top-0 border-b border-[var(--app-border)] pt-[env(safe-area-inset-top)]`}
         style={{
           // Tokenized z-index — see globals.css :root --z-* scale.
           zIndex: "var(--z-sticky)",

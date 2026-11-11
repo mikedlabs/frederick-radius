@@ -1026,23 +1026,27 @@ function ContextualToolSuggestion({
   intentProps: (item: DirectoryItem) => LinkIntentProps;
 }) {
   return (
-    <section aria-labelledby="compass-suggestion-heading">
+    <section
+      aria-labelledby="compass-suggestion-heading"
+      data-compass-suggestion
+      className="border-b"
+      style={{ borderColor: "var(--app-border)" }}
+    >
+      {/* A ruled status row on the page ground: no fill and no box. The small
+          uppercase label carries the coral text color, which stays readable
+          in dark appearance. */}
       <Link
         href={item.href}
         prefetch={false}
         {...externalLinkProps(item)}
         {...intentProps(item)}
-        className="tactile-interactive group flex min-h-[64px] items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-        style={{
-          borderColor: "color-mix(in srgb, var(--app-brand) 24%, var(--app-border))",
-          background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated-solid))",
-        }}
+        className="group flex min-h-[64px] items-center gap-3 py-3 outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] motion-reduce:transition-none"
+        style={{ color: "var(--app-ink)" }}
       >
         {/* The destination's own glyph, bare: a road incident is a County
-            Pulse reading, not a generated suggestion. It shares the eyebrow's
-            link color, which stays readable in dark appearance. */}
+            Pulse reading, not a generated suggestion. */}
         <span
-          className="grid h-9 w-9 shrink-0 place-items-center"
+          className="grid w-6 shrink-0 place-items-center"
           style={{ color: "var(--app-link)" }}
           aria-hidden
         >
@@ -1051,23 +1055,24 @@ function ContextualToolSuggestion({
         <span className="min-w-0 flex-1">
           <span
             id="compass-suggestion-heading"
-            className="block text-[11px] font-semibold uppercase tracking-[0.08em]"
+            className="block text-[12px] font-semibold uppercase tracking-[0.08em]"
             style={{ color: "var(--app-link)" }}
           >
             {eyebrow}
           </span>
-          <span className="mt-0.5 block text-[14px] font-semibold leading-tight">
+          <span className="mt-1 block text-[17px] font-semibold leading-tight">
             {item.label}
           </span>
           <span
-            className="mt-0.5 block text-[12px] leading-snug"
-            style={{ color: "var(--app-ink-3)" }}
+            className="mt-0.5 block text-[14px] leading-snug"
+            style={{ color: "var(--app-ink-2)" }}
           >
             {reason}
           </span>
         </span>
         <ArrowRight
-          className="h-4 w-4 shrink-0 opacity-45 transition-transform group-hover:translate-x-0.5"
+          className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+          style={{ color: "var(--app-ink-2)" }}
           strokeWidth={2.2}
           aria-hidden
         />
@@ -1346,7 +1351,9 @@ function CompassIntentBoard({
       <h2 id="compass-browse-heading" className="text-[16px] font-semibold tracking-tight">
         Choose a direction
       </h2>
-      <ul className="grid gap-2.5 sm:grid-cols-2">
+      {/* Ruled rows on the page ground: a hairline between directions, no
+          boxes. Each row is a 44px-plus disclosure with one muted line. */}
+      <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
         {intents.map((intent) => {
           const actions = intent.featuredIds.flatMap((id) => {
             const item = itemById.get(id);
@@ -1357,12 +1364,8 @@ function CompassIntentBoard({
           const contentId = `compass-intent-${intent.id}`;
           const line = liveLineForIntent(intent.id, liveKeys);
           return (
-            <li key={intent.id}>
-              <section
-                data-compass-intent={intent.id}
-                className="overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)]"
-                style={{ borderColor: open ? "var(--app-brand)" : "var(--app-border)" }}
-              >
+            <li key={intent.id} className="border-b" style={{ borderColor: "var(--app-border)" }}>
+              <section data-compass-intent={intent.id}>
                 <button
                   type="button"
                   disabled={!ready}
@@ -1373,17 +1376,17 @@ function CompassIntentBoard({
                     chooseChapter(open ? null : intent.id);
                     track("compass_intent_toggle", { intent: intent.id, open: !open });
                   }}
-                  className="tactile-interactive flex min-h-[76px] w-full items-center gap-3 p-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                  className="flex min-h-16 w-full items-center gap-3 py-3 text-left outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] motion-reduce:transition-none"
                 >
                   <intent.icon className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: intentColor[intent.id] }} aria-hidden />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-semibold leading-tight">{intent.label}</span>
-                    {line ? <span className="mt-1 block text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{line}</span> : null}
+                    <span className="block text-[17px] font-semibold leading-tight">{intent.label}</span>
+                    {line ? <span className="mt-1 block text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{line}</span> : null}
                   </span>
                   <ChevronDown className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} strokeWidth={2} style={{ color: "var(--app-ink-2)" }} aria-hidden />
                 </button>
                 <div id={contentId} hidden={!open}>
-                  <ul className="border-t px-3 py-1" style={{ borderColor: "var(--app-border)" }}>
+                  <ul className="pb-1 pl-8">
                     {actions.map((item) => (
                       <li key={item.id}>
                         <Link
@@ -1391,7 +1394,7 @@ function CompassIntentBoard({
                           prefetch={false}
                           {...externalLinkProps(item)}
                           {...intentProps(item)}
-                          className="tactile-interactive flex min-h-12 items-center justify-between gap-3 rounded-[var(--app-radius-sm)] px-1 text-[14px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                          className="flex min-h-12 items-center justify-between gap-3 px-1 text-[15px] font-semibold outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] motion-reduce:transition-none"
                           style={{ color: "var(--app-link)" }}
                         >
                           <span>{item.label}</span>
@@ -1409,7 +1412,7 @@ function CompassIntentBoard({
                       onOpen(intent.id);
                     }}
                     disabled={!ready}
-                    className="min-h-11 w-full px-4 py-2 text-left text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                    className="mb-2 ml-8 min-h-11 px-1 py-2 text-left text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
                     style={{ color: "var(--app-ink-2)" }}
                   >
                     {intent.moreLabel}

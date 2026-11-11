@@ -78,7 +78,7 @@ export default function MapParkingPeek({
           <SquareParking className="h-7 w-7" strokeWidth={2} aria-hidden />
         </span>
         <span className="map-peek-text">
-          <span className="map-peek-cat" style={{ color: "var(--app-cool)" }}>
+          <span className="map-peek-cat" style={{ color: "var(--app-cool-text)" }}>
             Parking garage
           </span>
           <span className="map-peek-name font-serif">{pin.name}</span>

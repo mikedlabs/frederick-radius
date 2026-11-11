@@ -85,10 +85,11 @@
   font-weight: 650;
 }
 
+/* Saved reads like SaveButton: coral text on the control ground. */
 .surface :global(.map-peek-act[data-on]) {
   border-color: var(--app-control-border);
-  background: var(--app-bg-sunken);
-  color: var(--app-ink);
+  background: var(--app-bg-elevated-solid);
+  color: var(--app-link);
 }
 
 .surface :global(.map-peek-act-go) {
