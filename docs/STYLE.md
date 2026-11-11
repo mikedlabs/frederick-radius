@@ -24,7 +24,7 @@ changing for the task. Each PR carries one concern.
 |-------------------|-------------------|----------------------------------------|
 | `--font-sans`     | System sans (`-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`) | Product titles, body, navigation, labels, controls |
 | `--font-serif`    | System sans | Compatibility alias for older interface components |
-| `--font-display`  | Libre Caslon Display | Wordmark and rare editorial or campaign moments, used through `.font-brand` or `.font-editorial` |
+| `--font-display`  | Libre Caslon Display | The wordmark and a rare editorial signature on a few specialty guide pages, used through `.font-brand` or `.font-editorial`. Never on Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages, or event pages |
 | `--font-mono`, `--font-data` | System sans (tabular numerals come from the `.font-mono` and `.font-data` classes) | Times, distances, counts, tabular data |
 
 Product UI uses the system sans already on the device. Public Sans is not
@@ -35,7 +35,8 @@ Regular only; never simulate a bold or italic display cut. Technical data uses
 the same system sans with tabular numerals through `.font-mono` or
 `.font-data`, so a separate mono family is unnecessary. Legacy `.font-serif`
 components intentionally compute to system sans. Use `.font-brand` for the
-wordmark and `.font-editorial` only for a deliberate editorial hero. Do not
+wordmark and `.font-editorial` only for a rare editorial signature on a
+specialty guide page. Do not
 download a new family or rename packaged Public Sans as a system font.
 
 Map canvas labels use the cartographic face supplied by Mapbox. That exception
@@ -52,7 +53,7 @@ are baked in, so don't set `leading-*` on these.
 | `.text-caption`  | 11   | 1.4         | short timestamps and attribution only            |
 | `.text-meta`     | 12   | 1.45        | short metadata and helper text                   |
 | `.text-meta-lg`  | 13   | 1.5         | prominent metadata and compact explanations      |
-| `.text-body`     | 15   | 1.55        | compact card and drawer copy                     |
+| `.text-body`     | 15   | 1.55        | compact row and drawer copy                      |
 | `.text-body-lg`  | 16   | 1.6         | normal reading copy and page introductions       |
 | `.text-lead`     | 18   | 1.55        | pull quotes and editorial introductions          |
 | `.text-title-sm` | 16   | 1.25        | compact system sans item title                   |
@@ -63,9 +64,11 @@ are baked in, so don't set `leading-*` on these.
 
 Normal paragraph text on a phone should be 15 to 16 px. Eleven to 13 px is
 reserved for short supporting data, never instructions or a multi-sentence
-explanation. Product headings use system sans. Libre Caslon Display begins at
-18 px and appears only where the wordmark or a deliberately editorial moment
-earns it.
+explanation. Product headings use system sans. Libre Caslon Display is the
+wordmark and a rare editorial signature on a few specialty guide pages, at
+18 px or larger. It never appears on Today, Map, Events, Saved, Find, Tools,
+Settings, Ask, place pages, or event pages; every title there is heavy system
+sans.
 
 Plus `.eyebrow` for uppercase 11px with `0.1em` tracking.
 
@@ -75,8 +78,9 @@ The interface update approved on November 10, 2026 fixes three list roles.
 A row title is 17px at weight 600 in `--app-ink`. A row meta line is 14px in
 `--app-ink-2` or `--app-ink-3`. A section label is 13px uppercase at weight
 600 with `0.1em` tracking in `--app-ink-3`, as `PlaceSectionLabel` draws it.
-Page titles are heavy system sans (weight 700 to 800). Type carries the
-hierarchy, so a heading does not need a tick, box, or tinted band.
+Page titles are heavy system sans (weight 700 to 800), 28 to 40px on phones
+and up to 48px on wide screens. Type carries the hierarchy, so a heading does
+not need a tick, box, or tinted band.
 
 ### Color is NOT baked into typography classes
 
@@ -247,8 +251,8 @@ A page may hold one solid Deep Coral block. On Today it is the coral name
 plate over the lead photograph. On Events it is the lead event's time block
 (`EventRow` with `lead`). No other coral field appears on the page except the
 single filled coral action the view already has, such as Directions in a
-place page's `MobileActionBar`. A selected filter chip is an ink fill, not
-coral. White text on a coral fill sits on `--app-brand-press` with
+place page's `MobileActionBar`. A selected filter chip is filled ink
+(background `--app-ink`, text `--app-bg`), never coral. White text on a coral fill sits on `--app-brand-press` with
 `--app-on-brand`.
 
 ### Text colors on a theme ground
@@ -256,7 +260,7 @@ coral. White text on a coral fill sits on `--app-brand-press` with
 Coral text uses `--app-link` or `--app-brand-text`. Creek text uses
 `--app-cool-text`, and Catoctin Forest text uses `--app-forest-text`. Never
 set `--app-brand-press`, `--app-brand`, or `--app-cool` as a text color; they
-fail contrast in dark appearance.
+are fill colors, and they fail contrast in dark appearance.
 
 ### Decoration and image fallbacks
 
@@ -307,9 +311,10 @@ Pick from **three** vertical-rhythm classes. Drop the rest.
 | `space-y-3` | Between loose blocks that are not rows    |
 | `space-y-6` | Between page sections (the spine)         |
 
-A list of rows takes no gap at all. Rule it instead: a `border-t` on the list
-and a `border-b` hairline on each row (`RowList` does this), so the rows read
-as one ruled block.
+A list of rows takes no gap at all. Rule it instead: one hairline above and
+below the list, and a hairline between rows. `RowList` does this with
+`border-y` on the list and a `border-b` on each row except the last, so the
+rows read as one ruled block.
 
 Avoid `space-y-4` and `space-y-5`, which are ambiguous middle values.
 

@@ -15,7 +15,15 @@ and shadow tables are in [`docs/STYLE.md`](STYLE.md). Content is rows on the
 page ground separated by a hairline or by space. Fields and buttons use the
 6px `--app-radius-md`. A full capsule survives only on compact filter chips,
 status badges and toggle switches. Type carries the hierarchy. A page has one
-solid Deep Coral block and, at most, its one filled coral action. A row shows
+solid Deep Coral block and, at most, its one filled coral action. A selected
+filter chip is filled ink (background `--app-ink`, text `--app-bg`), never
+coral. Coral text uses `--app-link` or `--app-brand-text`, Creek text uses
+`--app-cool-text`, and forest text uses `--app-forest-text`; the fill tokens
+`--app-brand`, `--app-brand-press` and `--app-cool` are never text colors.
+Libre Caslon Display is the wordmark and a rare editorial signature on a few
+specialty guide pages. It never appears on Today, Map, Events, Saved, Find,
+Tools, Settings, Ask, place pages or event pages, where every title is heavy
+system sans. A row shows
 a thumbnail only when a real photograph exists; otherwise it keeps the media
 slot and shows a plain `--app-ink-3` glyph with no tile behind it. A rounded,
 bordered card around ordinary content is a regression. The primitives below
@@ -60,19 +68,19 @@ is bound to the item before it, so a wrapped line never starts with one.
 ### `Pill`: the compact filter chip
 `src/components/ui/Pill.tsx`. The one capsule-shaped control, for a "tap to
 narrow or pivot" choice. An unselected chip is a hairline
-`--app-control-border` outline on the page ground. A selected chip is a
-solid fill, ink by default, so coral stays reserved for the page's one bold
-block and one filled action. The box is a real 44px minimum in both
+`--app-control-border` outline on the page ground. A selected filter chip is
+filled ink (background `--app-ink`, text `--app-bg`), never coral, so coral
+stays reserved for the page's one bold block and one filled action. The box is a real 44px minimum in both
 dimensions, so it survives a clipped scrolling rail.
 
 ```tsx
 <Pill active={on} onClick={toggle} icon={<Zap className="h-3.5 w-3.5" aria-hidden />} count={3}>Music</Pill>
 <Pill size="sm" href="/today?t=tonight" active={mode==="tonight"}>Tonight</Pill>
 ```
-- **tones:** `ink` is the default and the normal selected state. `cool`
-  is a Creek fill for a town or place lane. `brand` is a press coral fill
-  for a caller that deliberately needs it. Do not use it on an ordinary
-  filter, because it would add a second coral field to the page.
+- **tones:** `ink` is the default and the selected state for every filter
+  chip. `cool` is a Creek fill for a town or place lane. `brand` is a press
+  coral fill for a caller that deliberately needs it. Never use `brand` on a
+  filter chip, because it would add a second coral field to the page.
 - **`href`** renders a Next `<Link>` with `aria-current`. While its
   navigation is pending, a spinner replaces the icon when an `icon` was
   passed. Without `href` it renders a `<button>` with `aria-pressed`,
@@ -136,7 +144,8 @@ box, halo or gradient.
 
 ### `Row` / `RowList` / `IconTile`: dense directory rows
 `src/components/ui/Row.tsx`. A `RowList` is a run of ruled rows on the page
-ground, closed by one hairline above and below, with no rounded container or
+ground, closed by one hairline above and below (`border-y` on the list), with
+a `border-b` hairline on each row except the last and no rounded container or
 lift. Each `Row` is at least 56px tall, with a leading slot, a 17px semibold
 title, a 14px subtitle, a quiet tabular `meta`, and a chevron (or an external
 glyph) when it links somewhere. It is server-component safe. Use it for
@@ -156,9 +165,9 @@ generic directory data (parks, trails, amenities, contacts). Use
 - The leading slot holds a real photograph thumbnail when one exists, and
   otherwise a plain category glyph in `--app-ink-3` at about 24px with no
   background. Keep the slot the same width down the list so titles align.
-- `IconTile` still draws a soft gray tile, which the November 10 media rule
-  retires for lists. Use a plain glyph in new rows until `IconTile` itself
-  is flattened.
+- `IconTile` is a plain glyph slot: the category icon in `--app-ink-3` with
+  no tile, tint, border or radius behind it. Never draw a gray or tinted tile
+  or a letter monogram in a row's leading slot.
 - Pair it with `CollapsibleSection` to collapse long lists by group (the
   largest group `defaultOpen`, the rest tucked away, the choice persisted).
 - Do not add a gap between rows or wrap a row in a card; the hairline is
@@ -170,18 +179,34 @@ column (the start clock with a smaller meridiem, then the date unless the
 group heading already states the day), the facts (an optional category,
 live or status eyebrow, the title as the event link, the venue, and a timing
 note such as "Until 9:00 PM"), and an optional right-hand thumbnail placed by
-the row grid. It carries the decision telemetry attributes
+the row grid (or the muted category glyph in that slot). It carries the
+decision telemetry attributes
 (`data-decision-*`) and the stable `data-event-*` hooks that earlier card
 contracts used.
 
 - **`lead`** turns the time column into the solid Deep Coral block, the one
   bold field on Events. Set it on one row per page at most. Every other row
   keeps an ink time column.
-- **`media`** is passed only when an approved photograph exists. A row
-  without one stays purely typographic. Its time column already holds the
-  leading position, so it needs no glyph.
+- **`media`** is passed only when an approved photograph or publisher
+  artwork exists, with `mediaKind` (`photo`, `artwork` or `none`) and an
+  optional `mediaCredit` that follows the facts outside the event link. It
+  renders as a 64px square at the right of the row (56px below 360px).
+- **`glyph`** takes the event's category slug. A row with no approved
+  picture keeps the 64px media slot and shows the muted `--app-ink-3`
+  category glyph there at 24px, with no tile, tint or border, so titles line
+  up down the list. The lead row and banner rows never show it. Below 360px
+  wide the glyph is hidden and its slot goes back to the title. `EventCard`
+  passes `glyph: event.category` on every list row.
 - **`banner`** places a full-width picture above the facts for a pictured
   lead.
+- The other props are the facts (`slug`, `title`, `weekday`, `month`, `day`,
+  `startTime`, `timing`, `category`, `where`, `extra`), state (`live`,
+  `status` with `statusColor`, `cancelled`), `showDate` (false when the group
+  heading already states the day; the date stays available to screen
+  readers), `action` (a control such as Save that keeps its own tap target
+  above the row link), `headingLevel` (`3` under a group heading, `2` for a
+  lead directly under the page title), and the telemetry hooks `position`,
+  `surface`, `layout` and `poster`.
 - Use it on Today, Events, Saved and the map list. Do not rebuild an event
   card, and do not give a second row the coral block.
 
@@ -285,10 +310,14 @@ under its icon. `MobileBarControl` wraps a reused client control such as
 
 ### Other canonical pieces (already existed, keep using)
 `CollapsibleSection` (a group wrapper that hides what is not needed) and the
-`.text-*`/`.display-*` type scale. `Chip`, `TrustChip` and `FreshnessChip`
-still draw informational tags as tinted capsules, which the November 10 rule
-retires. Render a new informational tag as plain text, and treat those three
-as pending conversion rather than as a pattern to copy. The weight rule is
+`.text-*`/`.display-*` type scale. `TrustChip` is already plain text: an
+11px semibold label in `--app-ink-2` after a small colored level dot, with
+the basis as a tooltip or, in detail mode, a second muted line. It has no
+border, fill or capsule. `FreshnessChip` is also plain text: an 11px label
+after a small state icon, with no background or radius. `Chip` still draws a
+small tinted tag with the 4px `--app-radius-sm` corner (not a capsule), and
+it is the only one of the three still pending conversion. Render a new
+informational tag as plain text rather than copying `Chip`. The weight rule is
 400 for quiet text, 500 for labels, 600 for row titles, and 700 or heavier
 for page and section titles and numerics.
 

@@ -107,8 +107,10 @@ The product should read like a field guide, not a stack of floating SaaS cards.
 - Headlines use solid ink instead of gradient-filled text.
 - Product UI uses the System sans stack defined in `src/lib/brand.ts`. This is
   the approved Brand System 1.4 choice, so do not replace it with a downloaded
-  typeface. Libre Caslon Display Regular is limited to the wordmark and rare
-  editorial signatures, and Public Sans is the print and export family.
+  typeface. Libre Caslon Display Regular is limited to the wordmark and a
+  rare editorial signature on a few specialty guide pages. It never appears
+  on Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages or
+  event pages. Public Sans is the print and export family.
 - Deep Coral, White, Charcoal, Catoctin Forest, Creek, Plum, and Ochre Amber
   come from the Radius brand tokens in `src/lib/brand.ts`. The `brick`,
   `cream`, and `ink` keys are compatibility names for Deep Coral, White, and
