@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Bookmark, ChevronRight, MapPin, RefreshCw } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
-import PageBloom from "@/components/ui/PageBloom";
 import Skeleton from "@/components/ui/Skeleton";
 
 /**
@@ -45,22 +44,14 @@ export default function SharedRadiusView({ slugs }: { slugs: string[] }) {
 
   return (
     <div className="relative space-y-4">
-      <PageBloom variant="warm-cool" />
-
       <header className="pt-0.5">
         <div className="flex items-center gap-2">
-          <span
-            aria-hidden
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-            style={{ background: "color-mix(in srgb, var(--app-brand) 16%, transparent)", color: "var(--app-brand)" }}
-          >
-            <Bookmark className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-          </span>
-          <p className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+          <Bookmark className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-2)" }} />
+          <p className="text-[13px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-2)" }}>
             A shared Frederick list
           </p>
         </div>
-        <h1 className="mt-2 font-serif text-[24px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <h1 className="mt-2 font-sans text-[28px] font-extrabold leading-tight tracking-[-0.03em]" style={{ color: "var(--app-ink)" }}>
           Someone shared these Frederick places.
         </h1>
         {places && places.length > 0 && (
@@ -74,7 +65,7 @@ export default function SharedRadiusView({ slugs }: { slugs: string[] }) {
       {loadError ? (
         <section
           role="alert"
-          className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5 text-center"
+          className="border-t py-5"
           style={{ borderColor: "var(--app-border)" }}
         >
           <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
@@ -92,7 +83,7 @@ export default function SharedRadiusView({ slugs }: { slugs: string[] }) {
                 setRetryKey((key) => key + 1);
               }}
               className="tap-44 inline-flex items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-3 py-2 text-[13px] font-semibold"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+              style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
             >
               <RefreshCw className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
               Retry
@@ -114,7 +105,7 @@ export default function SharedRadiusView({ slugs }: { slugs: string[] }) {
         </div>
       ) : places.length === 0 ? (
         <section
-          className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5 text-center"
+          className="border-t py-5"
           style={{ borderColor: "var(--app-border)" }}
         >
           <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
@@ -138,25 +129,19 @@ export default function SharedRadiusView({ slugs }: { slugs: string[] }) {
       {!loadError ? (
         <Link
           href="/today"
-          className="tactile tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-lg)] border p-3.5"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
+          className="group flex min-h-14 items-center gap-3 border-y py-3"
+          style={{ borderColor: "var(--app-border)" }}
         >
-          <span
-            aria-hidden
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-            style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand)" }}
-          >
-            <MapPin className="h-4 w-4" strokeWidth={2} aria-hidden />
-          </span>
+          <MapPin className="h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-2)" }} aria-hidden />
           <span className="min-w-0 flex-1">
-            <span className="block text-[13.5px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+            <span className="block text-[17px] font-semibold leading-snug tracking-[-0.01em] group-hover:underline group-hover:underline-offset-[3px]" style={{ color: "var(--app-ink)" }}>
               Build your own Frederick radius
             </span>
-            <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+            <span className="block text-[14px]" style={{ color: "var(--app-ink-2)" }}>
               Find food, events, and the places worth your time
             </span>
           </span>
-          <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+          <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-2)" }} aria-hidden />
         </Link>
       ) : null}
     </div>

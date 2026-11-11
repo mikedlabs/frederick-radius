@@ -5,7 +5,6 @@ import Image from "next/image";
 import { Sparkles, Flag, TriangleAlert, Star, Info, ExternalLink, CloudSun } from "lucide-react";
 import { CIVIC_MOMENTS, momentBySlug, type MomentItem, type MomentItemKind } from "@/data/civic-moments";
 import InTheStreetsWorkspace from "@/components/in-the-streets/InTheStreetsWorkspace";
-import PageBloom from "@/components/ui/PageBloom";
 import { jsonLdScript } from "@/lib/seo/jsonld";
 import { easternDayKey } from "@/lib/tz";
 
@@ -133,7 +132,6 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
 
   return (
     <div className="relative mx-auto max-w-screen-sm space-y-6 pb-10">
-      <PageBloom variant="warm-cool" />
 
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link href="/today" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline" style={{ color: "var(--app-ink-3)" }}>

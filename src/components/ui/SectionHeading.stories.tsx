@@ -193,8 +193,15 @@ export const ExplicitContextOverrides: Story = {
     const title = within(canvas.getByRole("heading", { level: 2 })).getByText(args.title, { exact: true });
     await expect(getComputedStyle(title).backgroundImage).toContain("linear-gradient");
     await expect(getComputedStyle(title).getPropertyValue("-webkit-text-fill-color")).toBe("rgba(0, 0, 0, 0)");
+    // Plain tool: the accent tick is gone, so the context's action color is
+    // checked against the token it names rather than against the tick.
     const action = canvas.getByRole("link", { name: "See all" });
-    const tick = canvas.getByRole("heading", { level: 2 }).querySelector<HTMLElement>('[aria-hidden="true"]')!;
-    await expect(getComputedStyle(action).color).toBe(getComputedStyle(tick).backgroundColor);
+    const probe = document.createElement("span");
+    probe.style.color = "var(--app-cool)";
+    canvasElement.append(probe);
+    try {
+      await expect(getComputedStyle(action).color).toBe(getComputedStyle(probe).color);
+    } finally { probe.remove(); }
+    await expect(canvas.getByRole("heading", { level: 2 }).querySelector('[aria-hidden="true"]')).toBeNull();
   },
 };

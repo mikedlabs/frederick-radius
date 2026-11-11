@@ -29,35 +29,35 @@ export default class ErrorBoundary extends Component<Props, State> {
     return (
       <div
         role="alert"
-        className="mx-auto mt-12 max-w-md space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-6 text-center"
+        className="mx-auto mt-12 max-w-md space-y-3 border-t px-1 pt-6"
         style={{ borderColor: "var(--app-border)" }}
       >
         <AlertTriangle
           aria-hidden
-          className="mx-auto h-6 w-6"
+          className="h-6 w-6"
           strokeWidth={1.5}
           style={{ color: "var(--app-warning)" }}
         />
-        <h2 className="font-serif text-xl font-semibold" style={{ color: "var(--app-ink)" }}>
+        <h2 className="font-sans text-xl font-bold tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
           Something glitched
         </h2>
         <p className="text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           A piece of this page failed to render on your device. The site itself is fine.
         </p>
-        <div className="flex justify-center gap-2 pt-2">
+        <div className="flex flex-wrap gap-2 pt-2">
           <button
             type="button"
             onClick={this.reset}
-            className="rounded-full border px-3 py-1.5 text-xs font-medium"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+            className="min-h-11 rounded-[var(--app-radius-md)] border px-4 text-sm font-semibold"
+            style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)", background: "var(--app-bg)" }}
           >
             Try again
           </button>
           <button
             type="button"
             onClick={() => { if (typeof window !== "undefined") window.location.reload(); }}
-            className="rounded-full px-3 py-1.5 text-xs font-medium text-white"
-            style={{ background: "var(--app-brand)" }}
+            className="min-h-11 rounded-[var(--app-radius-md)] px-4 text-sm font-semibold"
+            style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
           >
             Reload page
           </button>

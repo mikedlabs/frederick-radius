@@ -17,7 +17,6 @@ import type { LngLat } from "@/lib/geo";
 import { resolveServerTownRankingContext } from "@/lib/scope";
 import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import PlaceIndex, { type IndexRow, type IndexSection } from "@/components/place/PlaceIndex";
-import PageBloom from "@/components/ui/PageBloom";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 
 /**
@@ -211,7 +210,6 @@ export default async function OpenNowPage() {
 
   return (
     <div className="relative space-y-6">
-      <PageBloom variant="single" />
       <FreshnessGuard renderedAtIso={now.toISOString()} />
 
       <nav aria-label="Breadcrumb" className="text-xs">

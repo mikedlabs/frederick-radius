@@ -67,7 +67,7 @@ export default function PlaceHeroMedia({
             onClick={() => setViewer({ source, name })}>
             {image}
             <span aria-hidden className="pointer-events-none absolute inset-1 z-20 rounded-sm border-2 border-transparent group-focus-visible:border-[var(--app-brand)]" />
-            <span aria-hidden className="pointer-events-none absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1.5 text-[11px] font-semibold text-white backdrop-blur-sm">
+            <span aria-hidden className="pointer-events-none absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-[var(--app-radius-sm)] bg-black/70 px-2.5 py-1.5 text-[11px] font-semibold text-white backdrop-blur-sm">
               <Expand className="h-3.5 w-3.5" /> View photo
             </span>
           </button>

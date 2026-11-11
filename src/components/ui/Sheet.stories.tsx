@@ -105,13 +105,13 @@ function SheetFixture({ initiallyOpen = true }: { initiallyOpen?: boolean }) {
           <div className="flex items-center gap-3 p-4">
             <span
               aria-hidden
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
-              style={{ color: "var(--app-cool)", background: "var(--app-cool-tint-14)" }}
+              className="grid h-11 w-11 shrink-0 place-items-center"
+              style={{ color: "var(--app-ink-3)" }}
             >
-              <CloudSun className="h-5 w-5" />
+              <CloudSun className="h-6 w-6" />
             </span>
             <div className="min-w-0">
-              <p className="font-editorial text-3xl leading-none" style={{ color: "var(--app-ink)" }}>
+              <p className="font-sans text-3xl font-extrabold leading-none" style={{ color: "var(--app-ink)" }}>
                 72°
               </p>
               <p className="mt-1 text-sm font-semibold" style={{ color: "var(--app-ink-2)" }}>
@@ -124,7 +124,7 @@ function SheetFixture({ initiallyOpen = true }: { initiallyOpen?: boolean }) {
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
             <span>Sample data for component review</span>
-            <span className="inline-flex items-center gap-1 font-semibold" style={{ color: "var(--app-brand-press)" }}>
+            <span className="inline-flex items-center gap-1 font-semibold" style={{ color: "var(--app-link)" }}>
               Source
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />
             </span>

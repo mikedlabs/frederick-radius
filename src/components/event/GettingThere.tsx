@@ -19,28 +19,28 @@ export default function GettingThere({ geom, venuePlaceSlug, geoPrecise, parking
 
   return (
     <section aria-label="Getting there" className="space-y-3 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
-      <h2 className="text-[16px] font-semibold" style={{ color: "var(--app-ink)" }}>Getting there</h2>
+      <h2 className="font-sans text-[20px] font-bold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>Getting there</h2>
       <ul className="space-y-3 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         {(parkingNote || garageLine) && (
           <li className="flex items-start gap-2.5">
-            <CarFront className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
+            <CarFront className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool-text)" }} aria-hidden />
             <div>
               <p>{parkingNote?.text ?? garageLine}</p>
               <div className="flex flex-wrap items-center gap-x-3 text-[12px]">
-                {parkingNote?.source_url && <a href={parkingNote.source_url} target="_blank" rel="noopener noreferrer" className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool)" }}>Parking source</a>}
+                {parkingNote?.source_url && <a href={parkingNote.source_url} target="_blank" rel="noopener noreferrer" className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool-text)" }}>Parking source</a>}
                 {verified && <span>Checked {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" }).format(new Date(verified))}</span>}
-                {!parkingNote && parkingDecision && <Link prefetch={false} href={`/places/${parkingDecision.slug}`} className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool)" }}>See garage &amp; directions</Link>}
-                {!parkingNote && <Link prefetch={false} href="/parking" className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool)" }}>Check parking rates</Link>}
+                {!parkingNote && parkingDecision && <Link prefetch={false} href={`/places/${parkingDecision.slug}`} className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool-text)" }}>See garage &amp; directions</Link>}
+                {!parkingNote && <Link prefetch={false} href="/parking" className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool-text)" }}>Check parking rates</Link>}
               </div>
             </div>
           </li>
         )}
         {station && (
           <li className="flex items-start gap-2.5">
-            <TrainFront className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
+            <TrainFront className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool-text)" }} aria-hidden />
             <div>
               <p>{station.name} MARC station is {station.distanceLabel} away in a straight line. Check outbound and return service for the event date before planning the trip.</p>
-              <Link prefetch={false} href="/transit" className="tap-44 inline-flex items-center text-[12px] font-semibold underline" style={{ color: "var(--app-cool)" }}>Check train schedules</Link>
+              <Link prefetch={false} href="/transit" className="tap-44 inline-flex items-center text-[12px] font-semibold underline" style={{ color: "var(--app-cool-text)" }}>Check train schedules</Link>
             </div>
           </li>
         )}

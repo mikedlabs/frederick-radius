@@ -118,7 +118,7 @@ export default function MapInViewPlacesDisclosure({
         >
           <span
             aria-hidden
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-[11px] bg-[color-mix(in_srgb,var(--app-cool)_11%,transparent)] text-[var(--app-cool)]"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-[11px] bg-[color-mix(in_srgb,var(--app-cool)_11%,transparent)] text-[var(--app-cool-text)]"
           >
             <MapPin className="h-[17px] w-[17px]" strokeWidth={2.2} />
           </span>
@@ -224,7 +224,7 @@ export default function MapInViewPlacesDisclosure({
               {remaining > 0 && (
                 <button
                   type="button"
-                  className="mt-1 flex w-full items-center justify-center rounded-[var(--app-radius-sm)] px-3 py-1.5 text-[11.5px] font-semibold text-[var(--app-cool)] transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--app-brand)] motion-reduce:transition-none"
+                  className="mt-1 flex w-full items-center justify-center rounded-[var(--app-radius-sm)] px-3 py-1.5 text-[11.5px] font-semibold text-[var(--app-cool-text)] transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--app-brand)] motion-reduce:transition-none"
                   style={{ minHeight: 44 }}
                   aria-controls={listId}
                   onClick={() => {

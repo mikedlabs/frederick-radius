@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import MapLoadingScene from "./MapLoadingScene";
-import PageBloom from "@/components/ui/PageBloom";
 
 // The default browse entry must not statically import the legacy radius
 // interface, its live-bus renderer or its complete static transit datasets.
@@ -32,7 +31,6 @@ export default function MapModeGate({ browse }: { browse: ReactNode }) {
   if (mode !== "radius") return <>{browse}</>;
   return (
     <div className="relative mx-auto max-w-screen-md space-y-3 lg:max-w-screen-lg">
-      <PageBloom variant="cool" />
       <DeferredRadiusBuilder />
     </div>
   );

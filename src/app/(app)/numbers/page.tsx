@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { computeCountyNumbers, type LeaderRow } from "@/lib/county-numbers";
-import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/numbers" },
@@ -122,7 +121,6 @@ export default function NumbersPage() {
   const n = computeCountyNumbers();
   return (
     <div className="relative space-y-9 pb-4">
-      <PageBloom variant="warm-cool" />
 
       <header className="space-y-2">
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>

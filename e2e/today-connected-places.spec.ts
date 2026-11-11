@@ -105,7 +105,8 @@ for (const width of [320, 375, 390, 430]) {
     })).toBe(true);
     const recommendation = page.locator("article[data-today-place-preview]");
     await expect(recommendation.locator("[data-today-pick-name]")).toHaveText("Ibiza Cafe");
-    await expect(recommendation.locator("[data-place-category-art]")).toHaveCount(1);
+    await expect(recommendation).toHaveAttribute("data-has-photo", "false");
+    await expect(recommendation.locator("[data-place-category-art], [data-place-card-photo]")).toHaveCount(0);
     await touch(recommendation.locator(`button[data-save-ref="place:${merchant}"]`));
     const savedMerchant = page.locator(`[data-today-saved-place="${merchant}"]`);
     await expect(savedMerchant).toHaveCount(1);

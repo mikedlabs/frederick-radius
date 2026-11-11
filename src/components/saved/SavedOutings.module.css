@@ -9,17 +9,18 @@
 .header h2 { font-size: 18px; font-weight: 650; letter-spacing: -.02em; }
 .header > span { color: var(--app-ink-2); font-size: 13px; font-variant-numeric: tabular-nums; }
 .intro { font-size: 13px; line-height: 1.55; color: var(--app-ink-2); }
-.list { display: grid; gap: 12px; list-style: none; }
-.card { padding: 18px; border: 1px solid var(--app-border); border-radius: var(--app-radius-lg); background: var(--app-bg-elevated); box-shadow: var(--app-shadow-1); min-width: 0; }
+.list { display: grid; gap: 0; list-style: none; border-top: 1px solid var(--app-border); }
+/* Plain tool: a saved outing is a ruled row on the page ground, not a card. */
+.card { padding: 16px 0; border-bottom: 1px solid var(--app-border); min-width: 0; }
 .eyebrow { color: var(--app-link); font-size: 11px; font-weight: 650; line-height: 1.5; letter-spacing: .05em; }
 .card h3 { margin-top: 5px; color: var(--app-ink); font-size: 22px; font-weight: 650; line-height: 1.15; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .metadata { margin-top: 10px; color: var(--app-ink-2); font-size: 13px; line-height: 1.55; }
 .actions { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
 .open, .remove { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 14px; border-radius: var(--app-radius-md); font-size: 13px; font-weight: 600; }
-.open { background: var(--app-bg-sunken); color: var(--app-link); }
-.remove { color: var(--app-ink-2); border: 1px solid var(--app-border); }
+.open { border: 1px solid var(--app-control-border); background: var(--app-bg); color: var(--app-ink); }
+.remove { color: var(--app-ink-2); }
 .remove:disabled { opacity: .65; }
-@media (min-width: 800px) { .list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 800px) { .list { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; } }
 @media (prefers-reduced-motion: no-preference) {
  .saveButton, .open, .remove { transition: background-color 160ms var(--app-ease-out), transform 160ms var(--app-ease-out); }
  .saveButton:not(:disabled):active, .open:active, .remove:not(:disabled):active { transform: scale(.985); }

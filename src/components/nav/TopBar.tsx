@@ -352,7 +352,7 @@ export default function TopBar() {
       <header
         data-map-header={pathname === "/map" ? "true" : undefined}
         data-dense-mobile-header={showMobileSearch || pathname === "/compass" ? "true" : undefined}
-        className={`${styles.bar} sticky top-0 border-b border-[var(--app-border)] backdrop-blur-xl pt-[env(safe-area-inset-top)]`}
+        className={`${styles.bar} sticky top-0 border-b border-[var(--app-border)] pt-[env(safe-area-inset-top)]`}
         style={{
           // Tokenized z-index — see globals.css :root --z-* scale.
           zIndex: "var(--z-sticky)",
@@ -370,7 +370,7 @@ export default function TopBar() {
               onClick={goBack}
               aria-label="Back"
               data-header-back
-              className="-ml-1.5 inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-1 font-semibold tracking-tight transition active:scale-[0.96] min-[390px]:justify-start min-[390px]:pl-1 min-[390px]:pr-2.5"
+              className="-ml-1.5 inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-[var(--app-radius-sm)] px-1 font-semibold tracking-tight transition-colors hover:bg-[var(--app-bg-sunken)] min-[390px]:justify-start min-[390px]:pl-1 min-[390px]:pr-2.5"
               style={{ color: "var(--app-ink)" }}
             >
               <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
@@ -384,7 +384,7 @@ export default function TopBar() {
               onFocus={() => router.prefetch("/")}
               aria-label={pathname === "/map" ? "Frederick Radius, home" : "Frederick Radius beta, home"}
               className={`${styles.home} tap-44 flex items-center gap-2 font-brand text-[18px] tracking-[-0.015em]`}
-              style={{ color: "var(--app-brand)" }}
+              style={{ color: "var(--app-brand-text)" }}
             >
               {/* Canonical horizontal lockup: the 24px+ two-arc Ripple beside
                   a one-line Libre Caslon wordmark. The app-icon tile belongs
@@ -407,12 +407,8 @@ export default function TopBar() {
                 <span
                   data-product-status="beta"
                   aria-hidden="true"
-                  className="inline-flex h-[18px] shrink-0 items-center rounded-[4px] border px-1.5 font-sans text-[8px] font-bold uppercase leading-none tracking-[0.16em]"
-                  style={{
-                    borderColor: "var(--app-brand-tint-22)",
-                    background: "var(--app-brand-tint-6)",
-                    color: "var(--app-ink-3)",
-                  }}
+                  className="inline-flex shrink-0 items-center font-sans text-[10px] font-semibold uppercase leading-none tracking-[0.14em]"
+                  style={{ color: "var(--app-ink-3)" }}
                 >
                   Beta
                 </span>
@@ -463,8 +459,8 @@ export default function TopBar() {
                 }}
                 aria-label="Ask or find across Frederick County"
                 aria-keyshortcuts={appleKeyboard === null ? undefined : appleKeyboard ? "Meta+K" : "Control+K"}
-                className={`${styles.search} tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] disabled:cursor-wait disabled:opacity-60 lg:flex`}
-                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+                className={`${styles.search} tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] disabled:cursor-wait disabled:opacity-60 lg:flex`}
+                style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink-2)" }}
               >
                 <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
                 <span className="truncate text-left">What do you need?</span>
@@ -497,14 +493,13 @@ export default function TopBar() {
                 pointerScrollYRef.current = null;
                 openPrimaryFind(event.currentTarget, returnScrollY);
               }}
-              className="relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 disabled:cursor-wait disabled:opacity-60 lg:hidden"
-              style={{
-                borderColor: searchOpen ? "var(--app-brand)" : "var(--app-border)",
-                color: searchOpen ? "var(--app-link)" : "var(--app-ink-2)",
-                background: searchOpen ? "var(--app-brand-tint-6)" : undefined,
-              }}
+              className={`${styles.tool} relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] disabled:cursor-wait disabled:opacity-60 lg:hidden`}
+              style={{ color: searchOpen ? "var(--app-link)" : "var(--app-ink)" }}
             >
-              <Search className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+              <Search className="h-[20px] w-[20px]" strokeWidth={1.75} aria-hidden />
+              {/* Top bar icons stay unboxed. An open tool is marked by a 2px
+                  rule under the glyph, the way the bottom bar marks its tab. */}
+              {searchOpen ? <span aria-hidden data-top-tool-rule className="pointer-events-none absolute inset-x-2.5 bottom-1 h-0.5" style={{ background: "var(--app-link)" }} /> : null}
             </button>
           )}
 
@@ -547,14 +542,11 @@ export default function TopBar() {
               aria-label="Open tools"
               aria-current={pathname === "/compass" ? "page" : undefined}
               title="Tools"
-              className={`${styles.tool} relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 hover:bg-[var(--app-bg-sunken)] sm:px-3`}
-              style={{
-                borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
-                color: pathname === "/compass" ? "var(--app-link)" : "var(--app-ink-2)",
-                background: pathname === "/compass" ? "var(--app-brand-tint-6)" : undefined,
-              }}
+              className={`${styles.tool} relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] px-2 sm:px-3`}
+              style={{ color: pathname === "/compass" ? "var(--app-link)" : "var(--app-ink)" }}
             >
-              <Compass className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
+              <Compass className="h-[20px] w-[20px] shrink-0" strokeWidth={1.75} aria-hidden />
+              {pathname === "/compass" ? <span aria-hidden data-top-tool-rule className="pointer-events-none absolute inset-x-2.5 bottom-1 h-0.5" style={{ background: "var(--app-link)" }} /> : null}
               {/* Keep the name beyond narrow phone widths so location,
                   appearance and Tools retain separate 44px touch targets. */}
               <span className="hidden text-[12px] font-semibold leading-none min-[460px]:inline sm:hidden">Tools</span>
@@ -655,7 +647,7 @@ function SearchOverlayFallback({
           aria-hidden
         />
         <span
-          className="min-w-0 flex-1 font-serif text-[20px] font-semibold"
+          className="min-w-0 flex-1 font-sans text-[20px] font-bold tracking-[-0.02em]"
           style={{ color: "var(--app-ink)" }}
         >
           Ask or find
@@ -666,8 +658,8 @@ function SearchOverlayFallback({
           onClick={dismiss}
           className="grid h-11 w-11 place-items-center rounded-[var(--app-radius-sm)] border"
           style={{
-            borderColor: "var(--app-border)",
-            color: "var(--app-ink-2)",
+            borderColor: "var(--app-control-border)",
+            color: "var(--app-ink)",
           }}
           aria-label="Close search"
         >
@@ -683,7 +675,7 @@ function SearchOverlayFallback({
         />
         <div
           aria-hidden
-          className="mt-5 h-3 w-28 animate-pulse rounded-full"
+          className="mt-5 h-3 w-28 animate-pulse rounded-[var(--app-radius-sm)]"
           style={{ background: "var(--app-bg-sunken)" }}
         />
         <div

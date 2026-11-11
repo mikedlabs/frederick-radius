@@ -26,12 +26,13 @@ export const revalidate = 600;
  *
  * The page answers "what's this town like, and what's worth going for?" —
  * NOT "list every place." Spine, top → bottom:
- *   1. Curated SeasonalPhoto hero — a quiet {type} · Frederick County tag,
- *      the town name, and ONE short blurb. No pop./est. metadata lead.
+ *   1. Curated SeasonalPhoto hero with 6px corners and no scrim, then a
+ *      quiet {type} · Frederick County label, the town name in heavy sans
+ *      and ONE short blurb. No pop./est. metadata lead.
  *   2. A town-scoped ask/search pill — the first action.
  *   3. A field-guide locator line (mono caps centroid coordinates).
- *   4. Worth your time — the LEAD answer: one lead card + a
- *      2-up grid of compact cells, then a demoted "All places →" link.
+ *   4. Start here: the lead pick and the next handful as one ruled list of
+ *      place rows, then a demoted "All places" link.
  *   5. Sibling-town nav (TownStrip) as a slim row.
  *   6. Upcoming events (honest empty-state preserved).
  *   7. Living here — civic + town links merged into ONE demoted block.
@@ -129,7 +130,7 @@ export default async function MunicipalityPage(
     })
     .map((x) => x.p);
 
-  // The lead pick is the answer card; the next handful fill a compact 2-up grid.
+  // The lead pick heads the list; the next handful follow it as rows.
   const lead = worthYourTime[0];
   const grid = worthYourTime.slice(1, 5);
 
@@ -179,47 +180,49 @@ export default async function MunicipalityPage(
         </Link>
       </nav>
 
-      {/* 1 — Town hero. CURATED imagery only (Photo Policy, Phase 3): our
-          own seasonal county photography, never a random place's Google
-          photo. The overlay leads with a quiet {type} tag, the name, and
-          ONE blurb — the pop./est. metadata lead is gone. */}
-      <header className="relative overflow-hidden rounded-[var(--app-radius-lg)]">
-        <div className="relative h-52 w-full sm:h-72">
-          {townPhoto ? (
-            <Image
-              src={wikimediaUrl(townPhoto.file, 1200)}
-              alt={townPhoto.alt}
-              fill
-              priority
-              sizes="(max-width: 720px) 100vw, 720px"
-              className="absolute inset-0 object-cover"
-            />
-          ) : (
-            <SeasonalPhoto
-              season="auto"
-              alt={`Frederick County (near ${m.name})`}
-              priority
-              sizes="(max-width: 720px) 100vw, 720px"
-              className="absolute inset-0"
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
-          {townPhoto && (
-            <p className="absolute right-2 top-2 z-10 font-mono text-[9px] tracking-wide text-white/70">
-              {townPhoto.author} · {townPhoto.license} · Wikimedia
-            </p>
-          )}
-          <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75">
-              {m.type === "city" ? "City" : m.type === "town" ? "Town" : m.type === "village" ? "Village" : "Community"} · Frederick County
-            </p>
-            <h1 className="font-serif text-[34px] font-semibold leading-tight tracking-tight text-white sm:text-[40px]">
-              {m.name}
-            </h1>
-            <p className="font-serif text-[15px] italic leading-snug text-white/90 sm:text-[16px]">
-              {m.hero_blurb}
-            </p>
+      {/* 1. Town hero, PLAIN TOOL. CURATED imagery only (Photo Policy,
+          Phase 3): our own seasonal county photography, never a random
+          place's Google photo. The photograph keeps 6px corners with no
+          scrim, and the town's identity reads below it in heavy sans on the
+          page ground. The coral name plate belongs to Today alone. */}
+      <header className="space-y-3">
+        <figure className="space-y-1.5">
+          <div className="relative h-52 w-full overflow-hidden rounded-[var(--app-radius-md)] sm:h-72" style={{ background: "var(--app-bg-sunken)" }}>
+            {townPhoto ? (
+              <Image
+                src={wikimediaUrl(townPhoto.file, 1200)}
+                alt={townPhoto.alt}
+                fill
+                priority
+                sizes="(max-width: 720px) 100vw, 720px"
+                className="absolute inset-0 object-cover"
+              />
+            ) : (
+              <SeasonalPhoto
+                season="auto"
+                alt={`Frederick County (near ${m.name})`}
+                priority
+                sizes="(max-width: 720px) 100vw, 720px"
+                className="absolute inset-0"
+              />
+            )}
           </div>
+          {townPhoto && (
+            <figcaption className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              {townPhoto.author} · {townPhoto.license} · Wikimedia
+            </figcaption>
+          )}
+        </figure>
+        <div className="space-y-1.5">
+          <p className="text-[0.8125rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>
+            {m.type === "city" ? "City" : m.type === "town" ? "Town" : m.type === "village" ? "Village" : "Community"} · Frederick County
+          </p>
+          <h1 className="break-words text-[2rem] font-extrabold leading-[1.08] tracking-[-0.025em] sm:text-[2.5rem]" style={{ color: "var(--app-ink)" }}>
+            {m.name}
+          </h1>
+          <p className="max-w-[60ch] text-[0.9375rem] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            {m.hero_blurb}
+          </p>
         </div>
       </header>
 
@@ -231,41 +234,40 @@ export default async function MunicipalityPage(
           in {town}" link in Worth-your-time below already pre-fills a
           town-scoped browse, so the redundant slab came out. */}
 
-      {/* 4 — Worth your time: the LEAD answer — the PLACES lead the page now
-          (owner call: open with what's actionable + visual, not the town's
-          history). One lead card, then a compact 2-up grid of cells, then a
+      {/* 4. Worth your time: the PLACES lead the page (owner call: open with
+          what's actionable, not the town's history). The picks are one ruled
+          list of place rows, a photo only where a real one exists, then a
           demoted "all places" link. */}
       {lead ? (
         <section className="space-y-3">
           <div className="flex items-baseline gap-2.5">
-            <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            <h2 className="text-[1.25rem] font-bold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
               Start here
             </h2>
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+            <span className="text-[0.875rem]" style={{ color: "var(--app-ink-2)" }}>
               in {m.name}
             </span>
           </div>
 
-          {/* The selected pick. Its size and top rule mark it as the lead. */}
-          <PlaceCard place={lead} variant="answer" />
-
-          {/* Compact 2-up grid of the next handful. */}
-          {grid.length > 0 && (
-            <ul className="grid grid-cols-2 gap-2">
-              {grid.map((p) => (
-                <li key={p.slug}>
-                  <PlaceCard place={p} variant="grid" />
-                </li>
-              ))}
-            </ul>
-          )}
+          {/* The selected pick leads the list; the next handful follow as the
+              same rows. One hairline above the list and one between rows. */}
+          <ul
+            className="max-w-[45rem] border-t [&>li:last-child>*]:border-b-0!"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            {[lead, ...grid].map((p) => (
+              <li key={p.slug}>
+                <PlaceCard place={p} variant="row" />
+              </li>
+            ))}
+          </ul>
 
           {/* Demoted directory door — NOT the inline browse chrome. Search
               is the canonical "see everything" surface; pre-fill the town. */}
           <Link
             href={`/search?q=${encodeURIComponent(m.name)}`}
             className="tap-44 inline-flex items-center gap-1 text-[13px] font-semibold"
-            style={{ color: "var(--app-brand-press)" }}
+            style={{ color: "var(--app-link)" }}
           >
             All places in {m.name}
             <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
@@ -274,7 +276,7 @@ export default async function MunicipalityPage(
       ) : (
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
           No places are listed for {m.name} yet. Check back later, or{" "}
-          <Link href="/submit/place" className="font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-brand-press)" }}>
+          <Link href="/submit/place" className="font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-link)" }}>
             submit a place you love
           </Link>
           .
@@ -294,41 +296,43 @@ export default async function MunicipalityPage(
           surfaces the submit door + a nearby fallback. */}
       {(upcomingEvents.length > 0 || BY_TOWN_ENABLED) && (
         <section className="space-y-2.5">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          {/* The row wraps: with enlarged text the heading and the link cannot
+              share a 320px line, and an unwrapped row pushed the link off screen. */}
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <h2 className="min-w-0 text-[1.25rem] font-bold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
               Upcoming in {m.name}
             </h2>
             <Link
               href={BY_TOWN_ENABLED ? `/events?view=town&m=${m.slug}` : "/events"}
               className="tap-44 inline-flex items-center text-[13px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
+              style={{ color: "var(--app-link)" }}
             >
               All events <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           </div>
           {upcomingEvents.length > 0 ? (
-            <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+            // One column of ruled rows at a reading measure. Each row draws
+            // its own hairline, so the list needs no gap between rows.
+            <ul className="max-w-[45rem]">
               {upcomingEvents.map((e) => (
                 <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>
               ))}
             </ul>
           ) : (
-            <div
-              className="space-y-3 rounded-[var(--app-radius-lg)] border border-dashed p-4"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              <p className="text-sm font-medium" style={{ color: "var(--app-ink-2)" }}>
-                Nothing is listed for {m.name} yet.
+            <div className="space-y-2">
+              <p className="text-[0.9375rem] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                Nothing is listed for {m.name} yet.{" "}
+                <Link
+                  href={`/submit/event?m=${m.slug}`}
+                  className="font-semibold underline underline-offset-2"
+                  style={{ color: "var(--app-link)" }}
+                >
+                  Submit an event for {m.name}
+                </Link>
+                .
               </p>
-              <Link
-                href={`/submit/event?m=${m.slug}`}
-                className="tap-44 inline-flex items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
-                style={{ background: "var(--app-brand)" }}
-              >
-                Submit an event for {m.name}
-              </Link>
               {nearbyEvents.length > 0 && (
-                <p className="border-t pt-3 text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+                <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
                   Nearby:{" "}
                   <Link
                     href="/events"

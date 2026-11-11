@@ -80,14 +80,12 @@ export default function MyRadiusButton({
         data-place-save={slug}
         aria-hidden
         tabIndex={-1}
-        className="tap-44 inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
-        style={{
-          borderColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          color: "var(--app-ink-3)",
-        }}
+        className="tap-44-y inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[0.9375rem] font-semibold"
+        style={{ color: "var(--app-ink)" }}
       >
-        <Bookmark className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+        {/* Matches the mounted unsaved control exactly, so hydration does
+            not shift the action strip's color or width. */}
+        <Bookmark className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-2)" }} />
         Save
       </button>
     );
@@ -186,26 +184,26 @@ export default function MyRadiusButton({
         aria-busy={busy}
         aria-label={busy ? `${saving ? "Saving" : "Removing"} ${name}` : `Saved. Tap to remove ${name}`}
         title={mutation === "unconfirmed" ? "This change could not be confirmed." : undefined}
-        className="tactile tactile-interactive inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
+        className="tap-44-y inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[0.9375rem] font-semibold transition-colors hover:underline disabled:opacity-60"
         style={{
-          borderColor: showRemove ? "var(--app-danger)" : "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          color: showRemove ? "var(--app-danger)" : "var(--app-ink-2)",
+          // The saved state keeps the link color and a checked bookmark, so
+          // it reads as different from the ink "Save" at a glance.
+          color: showRemove ? "var(--app-danger-text)" : "var(--app-link)",
         }}
       >
         {busy ? (
           <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
+            <Loader2 className="h-[18px] w-[18px] animate-spin motion-reduce:animate-none" strokeWidth={2} aria-hidden />
             {saving ? "Saving…" : "Removing…"}
           </>
         ) : showRemove ? (
           <>
-            <X className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+            <X className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
             Remove
           </>
         ) : (
           <>
-            <BookmarkCheck className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+            <BookmarkCheck className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
             Saved
           </>
         )}
@@ -223,17 +221,17 @@ export default function MyRadiusButton({
       aria-busy={busy}
       aria-label={busy ? `${saving ? "Saving" : "Removing"} ${name}` : `Save ${name}`}
       title={mutation === "unconfirmed" ? "This change could not be confirmed." : undefined}
-      className="tap-44-y tactile tactile-interactive tactile-glow-brand inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
-      style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
+      className="tap-44-y inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[0.9375rem] font-semibold transition-colors hover:underline disabled:opacity-60"
+      style={{ color: "var(--app-ink)" }}
     >
       {busy ? (
         <>
-          <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
+          <Loader2 className="h-[18px] w-[18px] animate-spin motion-reduce:animate-none" strokeWidth={2} aria-hidden />
           {saving ? "Saving…" : "Removing…"}
         </>
       ) : (
         <>
-          <Bookmark className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          <Bookmark className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-2)" }} />
           Save
         </>
       )}

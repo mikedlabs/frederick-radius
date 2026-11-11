@@ -27,7 +27,7 @@ export default function HolidayNote({ now }: { now: Date }) {
         style={{
           background: "color-mix(in srgb, var(--app-cool) 15%, var(--app-bg-elevated))",
           boxShadow: "var(--app-edge), var(--app-hi)",
-          color: "var(--app-cool)",
+          color: "var(--app-cool-text)",
         }}
       >
         <Flag className="h-4 w-4" strokeWidth={2} />

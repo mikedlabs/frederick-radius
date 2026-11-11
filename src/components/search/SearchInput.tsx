@@ -48,7 +48,7 @@ export default function SearchInput({
         const next = q.trim();
         router.push(searchHref(next, returnTo, scope, kind));
       }}
-      className="search-field-shell flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3"
+      className="search-field-shell flex min-h-12 items-center gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3"
       style={{ borderColor: "var(--app-control-border)" }}
     >
       <label htmlFor="site-search-input" className="sr-only">

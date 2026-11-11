@@ -4,7 +4,6 @@ import { connection } from "next/server";
 import Link from "next/link";
 import { AlertCircle, type LucideIcon } from "lucide-react";
 import { SOURCE_BADGE_META, type SourceBadgeTier } from "@/components/place/SourceBadge";
-import PageBloom from "@/components/ui/PageBloom";
 import CostTransparency from "@/components/trust/CostTransparency";
 import { publicDataSnapshot } from "@/lib/public-data-snapshot";
 import { getDb } from "@/lib/db/client";
@@ -126,7 +125,6 @@ export default async function TrustPage() {
   }).format(new Date(snapshot.lastSuccessfulDataPromotion));
   return (
     <div className="relative space-y-6">
-      <PageBloom variant="cool" />
 
       <header className="space-y-2">
         <p

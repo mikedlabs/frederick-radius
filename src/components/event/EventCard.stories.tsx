@@ -31,6 +31,51 @@ export const MissingEndAt320: Story = {
 };
 export const Online: Story = { args: { event: { ...sample, attendance_mode: "online" }, variant: "glance" } };
 
+/** A row without a picture keeps the picture's slot so titles line up down
+ * the list. The category glyph sits in it, muted and unboxed, level with the
+ * title's first line. */
+export const GlyphSlot390: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  args: { variant: "glance" },
+  play: async ({ canvasElement }) => {
+    const glyph = canvasElement.querySelector<HTMLElement>("[data-event-row-glyph]")!;
+    await expect(glyph).not.toBeNull();
+    const style = getComputedStyle(glyph);
+    await expect(style.backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    await expect(style.borderTopWidth).toBe("0px");
+    await expect(style.borderRadius).toBe("0px");
+    await expect(glyph.getBoundingClientRect().width).toBe(64);
+    const icon = glyph.querySelector("svg")!.getBoundingClientRect();
+    await expect(icon.width).toBe(24);
+    const title = canvasElement.querySelector<HTMLElement>("article h3")!;
+    const range = document.createRange();
+    // Measure the title's text line boxes. Selecting the link would also
+    // return the block press face's own box, which spans every line.
+    range.selectNodeContents(title.querySelector("a [data-press-face]")!);
+    const firstLine = range.getClientRects()[0];
+    await expect(Math.abs(icon.top + icon.height / 2 - (firstLine.top + firstLine.height / 2))).toBeLessThanOrEqual(4);
+  },
+};
+
+/** The legacy tile and itinerary row variants are the same flat row. */
+export const LegacyRowWithSave: Story = {
+  args: { variant: "row" },
+  play: async ({ canvasElement }) => {
+    const article = canvasElement.querySelector<HTMLElement>("article")!;
+    await expect(getComputedStyle(article).boxShadow).toBe("none");
+    await expect(getComputedStyle(article).borderTopWidth).toBe("0px");
+    const save = canvasElement.querySelector<HTMLElement>('[data-save-ref="event:story-concert"]')!;
+    await expect(save).not.toBeNull();
+    // A 36px control whose invisible .tap-44 extender gives it a 44px target.
+    await expect(save.classList.contains("tap-44")).toBe(true);
+    await expect(save.getBoundingClientRect().height).toBeGreaterThanOrEqual(36);
+    // It sits above the row link's overlay, so a tap saves instead of opening.
+    const box = save.getBoundingClientRect();
+    await expect(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)?.closest("button")).toBe(save);
+  },
+};
+export const LegacyTile: Story = { args: { variant: "tile" } };
+
 const longVenue = {
   ...sample, title: "Weeknight trivia", venue_name: "JoJo's Restaurant & Tap House",
   address: "16 East Patrick Street, Frederick, MD", municipality: "frederick", municipality_name: "Frederick",

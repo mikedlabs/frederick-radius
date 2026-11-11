@@ -126,8 +126,8 @@ export default function ReportLinkButton({
           type="button"
           onClick={send}
           disabled={state === "sending"}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-3 py-1.5 text-[12px] font-semibold disabled:opacity-60"
-          style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-[var(--app-radius-md)] px-4 text-[14px] font-semibold disabled:opacity-60"
+          style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
         >
           {state === "sending" ? "Sending…" : "Send report"}
         </button>

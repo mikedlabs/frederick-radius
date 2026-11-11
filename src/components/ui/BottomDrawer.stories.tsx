@@ -67,16 +67,16 @@ function DrawerFixture({ initiallyOpen = false, surface, width, historyLayerId }
         <div className="mx-auto max-w-xl space-y-5 px-4 py-4">
           <SectionHeading title="Closest mapped amenities" count={2} size="sm" />
 
-          <ul aria-label="Closest mapped amenities" className="space-y-3">
+          <ul aria-label="Closest mapped amenities" className="border-t" style={{ borderColor: "var(--app-border)" }}>
             <li
-              className="rounded-[var(--app-radius-md)] border p-3"
-              style={{ background: "var(--app-bg-elevated)", borderColor: "var(--app-border)" }}
+              className="border-b py-3"
+              style={{ borderColor: "var(--app-border)" }}
             >
               <div className="flex items-start gap-3">
                 <span
                   aria-hidden
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
-                  style={{ background: "var(--app-cool-tint-14)", color: "var(--app-cool)" }}
+                  className="grid h-6 w-6 shrink-0 place-items-center"
+                  style={{ color: "var(--app-ink-3)" }}
                 >
                   <Toilet className="h-5 w-5" />
                 </span>
@@ -96,14 +96,14 @@ function DrawerFixture({ initiallyOpen = false, surface, width, historyLayerId }
             </li>
 
             <li
-              className="rounded-[var(--app-radius-md)] border p-3"
-              style={{ background: "var(--app-bg-elevated)", borderColor: "var(--app-border)" }}
+              className="border-b py-3"
+              style={{ borderColor: "var(--app-border)" }}
             >
               <div className="flex items-start gap-3">
                 <span
                   aria-hidden
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
-                  style={{ background: "var(--app-cool-tint-14)", color: "var(--app-cool)" }}
+                  className="grid h-6 w-6 shrink-0 place-items-center"
+                  style={{ color: "var(--app-ink-3)" }}
                 >
                   <Droplets className="h-5 w-5" />
                 </span>

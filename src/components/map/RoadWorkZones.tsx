@@ -242,7 +242,7 @@ export default function RoadWorkZones({
               <span
                 className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
                 style={{
-                  background: "color-mix(in srgb, var(--app-warning) 18%, white)",
+                  background: "color-mix(in srgb, var(--app-warning) 18%, var(--app-bg-elevated-solid))",
                   color: "var(--app-warning-press)",
                 }}
               >
@@ -308,7 +308,7 @@ export default function RoadWorkZones({
               target="_blank"
               rel="noopener noreferrer"
               className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-[12px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
+              style={{ color: "var(--app-link)" }}
             >
               Open the official source
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />

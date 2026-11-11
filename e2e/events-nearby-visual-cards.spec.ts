@@ -4,6 +4,7 @@ import type { EventWithMeta } from "../src/lib/loaders/events";
 import { eventCardVisual } from "../src/components/event/eventVisuals";
 import { eventDateBlock } from "../src/lib/events/format";
 import { eventDecisionTime } from "../src/lib/events/decision-facts";
+import { eventRowClockParts, eventRowTimingNote } from "../src/components/event/eventRowTiming";
 import { nearbyParksPhotoPlan } from "../src/lib/nearby-parks-layout";
 import { dismissReturnBridge, emptyReturnBridgeState, RETURN_BRIDGE_STORAGE_KEY } from "../src/lib/return-bridge";
 import { EVENTS } from "../src/data/events";
@@ -243,6 +244,51 @@ async function exactImage(card: Locator, expected: string, ratio: number) {
   return image;
 }
 
+/** An Events row's photograph is a square thumbnail at the right of the row,
+ * filled edge to edge, beside the title rather than above it. */
+async function exactThumbnail(card: Locator, expected: string) {
+  const image = card.locator("img").filter({ visible: true }).first();
+  await image.scrollIntoViewIfNeeded();
+  await expect.poll(() => image.evaluate(async (node) => {
+    const photo = node as HTMLImageElement;
+    await photo.decode().catch(() => undefined);
+    return photo.complete && photo.naturalWidth > 1 && photo.naturalHeight > 1;
+  })).toBe(true);
+  const measurement = await image.evaluate((node) => {
+    const photo = node as HTMLImageElement;
+    const url = new URL(photo.currentSrc || photo.src, document.baseURI);
+    const frame = photo.getBoundingClientRect();
+    const heading = photo.closest("article")!.querySelector("h3")!.getBoundingClientRect();
+    return { source: decodeURIComponent(url.searchParams.get("url") ?? url.pathname), naturalWidth: photo.naturalWidth,
+      naturalHeight: photo.naturalHeight, frame: { left: frame.left, width: frame.width, height: frame.height },
+      headingRight: heading.right, fit: getComputedStyle(photo).objectFit };
+  });
+  receipts.get(card.page())!.measurements[`thumbnail:${expected}`] = measurement;
+  expect(measurement.source, "The actual decoded photograph must identify this exact venue or place").toBe(expected);
+  expect(measurement.frame.width / measurement.frame.height).toBeCloseTo(1, 1);
+  expect(measurement.frame.width).toBeGreaterThanOrEqual(56);
+  expect(measurement.frame.left).toBeGreaterThanOrEqual(measurement.headingRight);
+  expect(measurement.fit).toBe("cover");
+  return image;
+}
+
+/** A row states its date and time in its own time column: the start clock and
+ * the day (visible, or screen-reader text when the group heading already
+ * names the day). The note line carries only what the full timing adds, such
+ * as the end time. Together they read the same facts the old single
+ * "Wed OCT 10 · 7:00 PM–9:00 PM" line did. */
+async function rowDateAndTime(card: Locator, event: EventWithMeta) {
+  const date = eventDateBlock(event);
+  const when = card.locator("[data-event-row-when]");
+  const { clock, meridiem } = eventRowClockParts(date.time);
+  await expect(when).toContainText(clock);
+  if (meridiem) await expect(when).toContainText(meridiem);
+  await expect(when).toContainText(`${date.weekday} ${date.month} ${date.day}`);
+  const note = eventRowTimingNote(date.time, eventDecisionTime(event));
+  if (note) await expect(card.locator("[data-event-card-time]")).toHaveText(note);
+  else await expect(card.locator("[data-event-card-time]")).toHaveCount(0);
+}
+
 async function reducedPress(page: Page, control: Locator) {
   const face = control.locator(":scope > [data-press-face]");
   await expect(face).toHaveCount(1);
@@ -321,10 +367,9 @@ for (const width of [390, 320]) {
       const venue = VENUES.find((candidate) => candidate.slug === event.venue_place_slug)!;
       expect(eventCardVisual(event, { venuePhotos: "free-reviewed" })?.src).toBe(venue.image);
       await expect(card).toHaveAttribute("data-event-media", "photo");
-      await exactImage(card, venue.image, 16 / 10);
+      await exactThumbnail(card, venue.image);
       await expect(card.getByRole("heading", { name: event.title, exact: true })).toBeVisible();
-      const date = eventDateBlock(event);
-      await expect(card.locator("[data-event-card-time]")).toHaveText(`${date.weekday} ${date.month} ${date.day} · ${eventDecisionTime(event)}`);
+      await rowDateAndTime(card, event);
       const titleWidth = await card.locator("h3").evaluate((title) => {
         const box = title.getBoundingClientRect(), row = title.closest("[data-event-card-heading]")!.getBoundingClientRect();
         return { titleLeft: box.left, rowLeft: row.left, titleWidth: box.width, rowWidth: row.width,
@@ -611,8 +656,7 @@ test("declared Events image failure keeps the real card facts and actions at 320
   const slug = (await card.getAttribute("data-decision-id"))!;
   const event = events.find((item) => item.slug === slug)!;
   await expect(card.getByRole("heading", { name: event.title, exact: true })).toBeVisible();
-  const date = eventDateBlock(event);
-  await expect(card.locator("[data-event-card-time]")).toHaveText(`${date.weekday} ${date.month} ${date.day} · ${eventDecisionTime(event)}`);
+  await rowDateAndTime(card, event);
   await expect(card.locator("[data-event-card-venue]")).toContainText(event.venue_name!);
   await expect(card.locator("img,[data-event-photo-credit]")).toHaveCount(0);
   const open = card.locator('a[data-decision-action="open"]');

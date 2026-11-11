@@ -1,16 +1,20 @@
-import { Clock3, Tag, Sparkles, Award, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { BusinessInfo } from "@/lib/loaders/businessInfo";
 import { freshnessLabel } from "@/lib/loaders/businessInfo";
+import PlaceSectionLabel, { PLACE_SECTION_LABEL_CLASS } from "./PlaceSectionLabel";
 
 /**
- * BusinessExtrasCard — the buried-info moat, made visible.
+ * BusinessExtrasCard: the buried-info moat, made visible.
  *
  * Surfaces what the business-info agent (ingest-business-info.ts) pulled
  * from a place's OWN website that Google's listing doesn't carry: happy
  * hour, recurring specials, and one notable detail. Complements
- * KnownForCard (which is review-derived "what people say") — this is
- * "straight from the source," so it carries an explicit attribution +
+ * KnownForCard (which is review-derived "what people say"). This is
+ * "straight from the source," so it carries an explicit attribution and
  * freshness line ("via theirsite.com · updated 2w ago").
+ *
+ * It is a ruled section on the page ground, not a box: a 13px label over
+ * each fact, with the page drawing the one hairline between sections.
  *
  * Renders nothing until the agent has data for this place (it's empty
  * until ANTHROPIC_API_KEY is set and the cron runs), so the place page
@@ -39,58 +43,26 @@ export default function BusinessExtrasCard({ info }: { info: BusinessInfo | null
   const fresh = freshnessLabel(source.fetchedAt);
 
   return (
-    <section
-      aria-labelledby="extras-heading"
-      className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
-      style={{ borderColor: "var(--app-border)" }}
-    >
-      <h3
-        id="extras-heading"
-        className="text-[11px] font-bold uppercase tracking-[0.12em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
+    <section aria-labelledby="extras-heading" className="space-y-3">
+      <PlaceSectionLabel as="h3" id="extras-heading">
         Good to know
-      </h3>
+      </PlaceSectionLabel>
 
-      <dl className="mt-3 space-y-2.5">
-        {/* What they're known for, straight from their own site — the most
-            on-point answer to "what do they offer?" Leads the card. */}
-        {knownFor && (
-          <Row
-            icon={<Award className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-brand-press)" }} />}
-            label="Known for"
-            value={knownFor}
-          />
-        )}
-        {happy && (
-          <Row
-            icon={<Clock3 className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-positive)" }} />}
-            label="Happy hour"
-            value={happy}
-          />
-        )}
-        {specials.length > 0 && (
-          <Row
-            icon={<Tag className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-cool)" }} />}
-            label="Specials"
-            value={specials.join(" · ")}
-          />
-        )}
-        {notable && (
-          <Row
-            icon={<Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-accent-press)" }} />}
-            label="Notable"
-            value={notable}
-          />
-        )}
+      <dl className="space-y-3">
+        {/* What they're known for, straight from their own site, is the most
+            on-point answer to "what do they offer?" It leads the section. */}
+        {knownFor && <Row label="Known for" value={knownFor} />}
+        {happy && <Row label="Happy hour" value={happy} />}
+        {specials.length > 0 && <Row label="Specials" value={specials.join(" · ")} />}
+        {notable && <Row label="Notable" value={notable} />}
       </dl>
 
       <a
         href={source.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="tap-44-y mt-3 inline-flex items-center gap-1 text-[11px]"
-        style={{ color: "var(--app-ink-3)" }}
+        className="tap-44-y inline-flex items-center gap-1 text-[13px] underline-offset-2 hover:underline"
+        style={{ color: "var(--app-ink-2)" }}
       >
         via {host}
         {fresh ? ` · ${fresh}` : ""}
@@ -100,20 +72,13 @@ export default function BusinessExtrasCard({ info }: { info: BusinessInfo | null
   );
 }
 
-function Row({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <dt
-        className="flex items-start gap-2.5 text-[11px] font-semibold uppercase tracking-[0.08em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        <span className="mt-0.5 shrink-0">{icon}</span>
-        <span>{label}</span>
+      <dt className={PLACE_SECTION_LABEL_CLASS} style={{ color: "var(--app-ink-3)" }}>
+        {label}
       </dt>
-      <dd
-        className="ml-6 text-[13px] leading-snug"
-        style={{ color: "var(--app-ink)" }}
-      >
+      <dd className="mt-0.5 text-[15px] leading-snug" style={{ color: "var(--app-ink)" }}>
         {value}
       </dd>
     </div>

@@ -66,7 +66,7 @@ export default function Sheet({
             >
               {title ? (
                 <h2
-                  className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
+                  className="font-sans text-[20px] font-bold leading-tight tracking-[-0.02em]"
                   style={{ color: "var(--app-ink)" }}
                 >
                   {title}

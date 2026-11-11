@@ -163,7 +163,7 @@ export default function PhotoLightbox({
           type="button"
           onClick={(e) => { e.stopPropagation(); dismiss(); }}
           aria-label="Close photo"
-          className="absolute top-[max(env(safe-area-inset-top,0px)+12px,12px)] z-10 inline-flex h-11 w-11 items-center justify-center rounded-full active:scale-95"
+          className="absolute top-[max(env(safe-area-inset-top,0px)+12px,12px)] z-10 inline-flex h-11 w-11 items-center justify-center rounded-[var(--app-radius-md)] active:scale-95 motion-reduce:active:scale-100"
           style={{ ...chrome, right: "max(12px, env(safe-area-inset-right, 0px))" }}
         >
           <X className="h-5 w-5" strokeWidth={2.25} aria-hidden />
@@ -175,7 +175,7 @@ export default function PhotoLightbox({
               type="button"
               onClick={(e) => { e.stopPropagation(); go(-1); }}
               aria-label="Previous photo"
-              className="absolute top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full active:scale-95"
+              className="absolute top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-[var(--app-radius-md)] active:scale-95 motion-reduce:active:scale-100"
               style={{ ...chrome, left: "max(8px, env(safe-area-inset-left, 0px))" }}
             >
               <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
@@ -184,7 +184,7 @@ export default function PhotoLightbox({
               type="button"
               onClick={(e) => { e.stopPropagation(); go(1); }}
               aria-label="Next photo"
-              className="absolute top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full active:scale-95"
+              className="absolute top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-[var(--app-radius-md)] active:scale-95 motion-reduce:active:scale-100"
               style={{ ...chrome, right: "max(8px, env(safe-area-inset-right, 0px))" }}
             >
               <ChevronRight className="h-6 w-6" strokeWidth={2.25} aria-hidden />

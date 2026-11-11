@@ -64,11 +64,11 @@ export default function ItineraryButton({
       aria-pressed={savedState === null ? undefined : mounted && isSaved}
       aria-label={busy ? `${isSaved ? "Removing" : "Saving"} ${eventName}` : savedState === null ? `Saved state unavailable for ${eventName}` : isSaved ? `Remove ${eventName} from Saved` : `Save ${eventName}`}
       title={savedState === null ? "Saved state unavailable" : isSaved ? "Saved" : "Save"}
-      className={`tap-44 relative grid h-9 w-9 shrink-0 place-items-center rounded-full border transition-colors ${className}`}
+      className={`tap-44 relative grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-md)] border transition-colors ${className}`}
       style={{
-        color: isSaved ? "var(--app-link)" : "var(--app-ink-2)",
-        background: "var(--app-bg-elevated-solid)",
-        borderColor: "var(--app-border)",
+        color: isSaved ? "var(--app-link)" : "var(--app-ink)",
+        background: "var(--app-bg)",
+        borderColor: "var(--app-control-border)",
       }}
     >
       <Bookmark className="h-4 w-4" strokeWidth={isSaved ? 0 : 1.75} fill={isSaved ? "currentColor" : "none"} aria-hidden />

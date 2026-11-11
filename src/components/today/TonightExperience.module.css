@@ -112,13 +112,13 @@
 }
 
 .intent[aria-current="page"] {
-  color: var(--app-brand-press);
+  color: var(--app-link);
   background: var(--app-bg-elevated-solid);
   box-shadow: var(--app-shadow-1);
 }
 
 .intent:hover {
-  color: var(--app-brand-press);
+  color: var(--app-link);
   background: var(--app-brand-tint-6);
 }
 
@@ -141,7 +141,7 @@
 
 .eyebrow {
   margin-bottom: 0.65rem;
-  color: var(--app-brand-press);
+  color: var(--app-link);
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -310,7 +310,7 @@
 .alternativeHeading svg {
   flex: 0 0 auto;
   margin-top: 0.1rem;
-  color: var(--app-brand-press);
+  color: var(--app-link);
 }
 
 .alternativeWhy {
@@ -329,7 +329,7 @@
   align-items: center;
   gap: 0.4rem;
   margin-top: 0.75rem;
-  color: var(--app-brand-press);
+  color: var(--app-link);
   font-size: 0.75rem;
   font-weight: 600;
 }

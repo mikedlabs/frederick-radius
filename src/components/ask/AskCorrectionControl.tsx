@@ -83,7 +83,7 @@ export default function AskCorrectionControl({
   if (status === "sent") {
     return (
       <p
-        className="mt-4 border-t px-1 pt-3 text-[11.5px]"
+        className="mt-6 border-t pt-3 text-[14px]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
         role="status"
         data-ask-correction-sent
@@ -95,15 +95,15 @@ export default function AskCorrectionControl({
 
   return (
     <div
-      className="mt-4 border-t px-1 pt-3"
+      className="mt-6 border-t pt-1"
       style={{ borderColor: "var(--app-border)" }}
       data-ask-correction
     >
       <div className="flex items-center gap-3">
         <button
           type="button"
-          className="tap-44 inline-flex min-h-11 items-center text-[11px] font-semibold transition active:opacity-70"
-          style={{ color: "var(--app-ink-3)" }}
+          className="tap-44 inline-flex min-h-11 items-center text-[14px] font-semibold transition-opacity hover:underline hover:underline-offset-[3px] active:opacity-70"
+          style={{ color: "var(--app-ink-2)" }}
           onClick={() => {
             haptic("success");
             recordDecisionFeedback("helpful");
@@ -114,8 +114,8 @@ export default function AskCorrectionControl({
         </button>
         <button
           type="button"
-          className="tap-44 inline-flex min-h-11 items-center text-[11px] font-semibold transition active:opacity-70"
-          style={{ color: "var(--app-ink-3)" }}
+          className="tap-44 inline-flex min-h-11 items-center text-[14px] font-semibold transition-opacity hover:underline hover:underline-offset-[3px] active:opacity-70"
+          style={{ color: "var(--app-ink-2)" }}
           aria-expanded={expanded}
           aria-controls={reasonsId}
           onClick={() => {
@@ -131,23 +131,22 @@ export default function AskCorrectionControl({
       {expanded ? (
         <div id={reasonsId} className="pb-1">
           <p
-            className="mb-2 text-[11px] font-semibold"
-            style={{ color: "var(--app-ink-2)" }}
+            className="mb-2 text-[14px] font-semibold"
+            style={{ color: "var(--app-ink)" }}
           >
             What was off?
           </p>
-          <div className="flex flex-wrap gap-1.5" aria-busy={status === "sending"}>
+          <div className="flex flex-wrap gap-2" aria-busy={status === "sending"}>
             {CORRECTION_OPTIONS.map(([reason, label]) => (
               <button
                 key={reason}
                 type="button"
                 disabled={status === "sending"}
                 onClick={() => void sendCorrection(reason)}
-                className="tap-44 min-h-11 rounded-full border px-3 text-[10.5px] font-semibold transition active:scale-[0.98] disabled:opacity-50"
+                className="tap-44 min-h-11 rounded-[var(--app-radius-md)] border bg-transparent px-3 text-[14px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:opacity-75 disabled:opacity-50"
                 style={{
-                  borderColor: "var(--app-border)",
+                  borderColor: "var(--app-control-border)",
                   color: "var(--app-ink-2)",
-                  background: "var(--app-bg-elevated-solid)",
                 }}
               >
                 {label}
@@ -156,8 +155,8 @@ export default function AskCorrectionControl({
           </div>
           {status === "error" ? (
             <p
-              className="mt-2 text-[11px]"
-              style={{ color: "var(--app-danger, #9f2f24)" }}
+              className="mt-2 text-[14px]"
+              style={{ color: "var(--app-danger-text)" }}
               role="alert"
             >
               That did not send. Choose a reason to try again.

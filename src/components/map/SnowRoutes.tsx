@@ -174,8 +174,8 @@ export default function SnowRoutes({
                 className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
                 style={{
                   background:
-                    "color-mix(in srgb, var(--app-cool) 16%, white)",
-                  color: "var(--app-cool)",
+                    "color-mix(in srgb, var(--app-cool) 16%, var(--app-bg-elevated-solid))",
+                  color: "var(--app-cool-text)",
                 }}
               >
                 <Snowflake className="h-4 w-4" strokeWidth={2.2} aria-hidden />
@@ -232,7 +232,7 @@ export default function SnowRoutes({
               target="_blank"
               rel="noopener noreferrer"
               className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-[12px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
+              style={{ color: "var(--app-link)" }}
             >
               Open Frederick County GIS
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />

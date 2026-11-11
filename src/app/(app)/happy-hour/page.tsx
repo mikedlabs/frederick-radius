@@ -5,7 +5,6 @@ import { placesWithFieldHappyHour, fieldNotesFor, verifiedLabel } from "@/lib/lo
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { parseHappyHour } from "@/lib/happyHour";
-import PageBloom from "@/components/ui/PageBloom";
 import FieldStamp from "@/components/ui/FieldStamp";
 import HappyHourGuide from "@/components/happy/HappyHourGuide";
 import { type HHRow } from "@/components/happy/HappyHourBrowser";
@@ -75,7 +74,6 @@ export default function HappyHourPage() {
 
   return (
     <div className="relative space-y-5">
-      <PageBloom variant="warm-cool" />
 
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link
