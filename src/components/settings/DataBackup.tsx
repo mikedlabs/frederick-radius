@@ -3,18 +3,20 @@
 import { useRef, useState } from "react";
 import { Download, Upload, Check } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import { Button } from "@/components/ui/Button";
+import { SettingsRow, SettingsSection } from "@/components/settings/SettingsSection";
 
 /**
- * DataBackup — the escape hatch for device-only data.
+ * DataBackup: the escape hatch for device-only data.
  *
  * A signed-out user's saves, passport stamps, notes, and home town live
  * only in this browser's storage, and browsers may clear that without
  * asking (iOS Safari does after about seven idle days). Signing in
- * syncs saved places only. This card protects the remaining local data
+ * syncs saved places only. This section protects the remaining local data
  * with a file the user can download and restore on any device.
  *
  * The file is plain JSON of the app's own localStorage keys (fr:*),
- * nothing more — readable, inspectable, no account required.
+ * nothing more: readable, inspectable, no account required.
  */
 const PREFIXES = ["fr:", "fr.", "fr-"];
 const FORMAT = "frederick-radius-backup";
@@ -72,7 +74,7 @@ export default function DataBackup() {
       }
       let wrote = 0;
       for (const [key, value] of Object.entries(parsed.data)) {
-        // Only the app's own keys, only strings — a hand-edited or
+        // Only the app's own keys, only strings, so a hand-edited or
         // foreign file can't plant anything outside the fr:* namespace.
         if (!PREFIXES.some((p) => key.startsWith(p))) continue;
         if (typeof value !== "string") continue;
@@ -93,66 +95,61 @@ export default function DataBackup() {
   }
 
   return (
-    <section
-      aria-label="Back up your data"
-      className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
-      style={{ borderColor: "var(--app-border)" }}
-    >
-      <p className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-        Your data
-      </p>
-      <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-        Most personal data stays on this device. Signing in syncs saved places,
-        but events and everything else still need a backup file. Browsers can
-        clear local storage without asking.
-      </p>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={exportBackup}
-          className="tactile tactile-interactive tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}
-        >
-          <Download className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          Download backup
-        </button>
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="tactile tactile-interactive tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}
-        >
-          <Upload className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          Restore from file
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json,.json"
-          className="sr-only"
-          aria-label="Choose a backup file to restore"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void restoreBackup(file);
-            e.target.value = "";
-          }}
-        />
-        {done === "exported" && (
-          <span className="inline-flex items-center gap-1 text-[12px] font-medium" style={{ color: "var(--app-positive)" }}>
-            <Check className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden /> Backup downloaded
-          </span>
-        )}
-        {done === "restored" && (
-          <span className="inline-flex items-center gap-1 text-[12px] font-medium" style={{ color: "var(--app-positive)" }}>
-            <Check className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden /> Restored, reloading
-          </span>
-        )}
-        {done === "error" && (
-          <span className="text-[12px] font-medium" style={{ color: "var(--app-danger)" }}>
-            That file did not look like a Radius backup.
-          </span>
-        )}
-      </div>
-    </section>
+    <SettingsSection title="Your data" ariaLabel="Back up your data">
+      <SettingsRow>
+        <p className="text-[1rem] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Most personal data stays on this device. Signing in syncs saved places,
+          but events and everything else still need a backup file. Browsers can
+          clear local storage without asking.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={exportBackup}
+            className="text-[0.875rem]"
+            iconLeft={<Download className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
+          >
+            Download backup
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => fileRef.current?.click()}
+            className="text-[0.875rem]"
+            iconLeft={<Upload className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
+          >
+            Restore from file
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            className="sr-only"
+            aria-label="Choose a backup file to restore"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void restoreBackup(file);
+              e.target.value = "";
+            }}
+          />
+          {done === "exported" && (
+            <span className="inline-flex items-center gap-1 text-[0.875rem] font-medium" style={{ color: "var(--app-forest-text)" }}>
+              <Check className="h-4 w-4" strokeWidth={2.25} aria-hidden /> Backup downloaded
+            </span>
+          )}
+          {done === "restored" && (
+            <span className="inline-flex items-center gap-1 text-[0.875rem] font-medium" style={{ color: "var(--app-forest-text)" }}>
+              <Check className="h-4 w-4" strokeWidth={2.25} aria-hidden /> Restored, reloading
+            </span>
+          )}
+          {done === "error" && (
+            <span className="text-[0.875rem] font-medium" style={{ color: "var(--app-danger-text)" }}>
+              That file did not look like a Radius backup.
+            </span>
+          )}
+        </div>
+      </SettingsRow>
+    </SettingsSection>
   );
 }
