@@ -282,16 +282,13 @@
   overflow-wrap: anywhere;
 }
 
-/* The arrow was decoration; the whole row is the link. */
+/* Secondary rows are links already; only the lead's plate carries an arrow. */
 .discoveryAction {
   display: none;
 }
 
-.discoveryPlace[data-today-discovery-role="lead"] .discoveryName {
-  font-size: clamp(1.5rem, 6cqi, 1.75rem);
-  font-weight: 700;
-  line-height: 1.12;
-  letter-spacing: -0.03em;
+.discoverySaveSlot {
+  display: none;
 }
 
 /* Save is an icon and a word, with no capsule, and keeps a full 44px target.
@@ -327,53 +324,115 @@
   text-underline-offset: 3px;
 }
 
-/* The lead is a grid: the photograph spans the full width, then the name
-   and town sit in the first column with Save beside the name. The link uses
-   subgrid tracks so it stays one real focusable box around photo and name. */
+/* THE CORAL NAME PLATE: Today's one bold moment. The 16:10 photograph keeps
+   its 6px corners inside the gutter. A solid Deep Coral plate carries the
+   name, hugs its content, starts 14px inside the photo's left edge and sits
+   across the photo's bottom edge. Photo and plate are one link.
+
+   The link is a wrapping flex row: the photo takes a whole line, then the
+   plate and an empty slot the width of Save. Save is anchored to the card's
+   bottom-right corner, which is always where that slot ends up: beside the
+   plate when both fit, or on its own line under a wide plate. */
 .discoveryPlace[data-today-discovery-role="lead"] .discoveryCard {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto auto;
-  column-gap: var(--app-space-3);
+  --lead-plate-inset: 14px;
+  /* Roughly half of a one- or two-line plate sits on the photograph. */
+  --lead-plate-overlap: 2.25rem;
+  --lead-save-width: 5.5rem;
 }
 
 .discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink,
 .discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-row: 1 / 3;
-  grid-template-columns: subgrid;
-  grid-template-rows: subgrid;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  column-gap: var(--app-space-3);
 }
 
 .discoveryPlace[data-today-discovery-role="lead"] .discoveryPhoto {
-  grid-column: 1 / -1;
-  grid-row: 1;
+  flex: 0 0 100%;
 }
 
 .discoveryPlace[data-today-discovery-role="lead"] .discoveryCaption {
-  grid-column: 1;
-  grid-row: 2;
-  padding: var(--app-space-3) 0 var(--app-space-1, 4px);
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  column-gap: var(--app-space-4);
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: calc(100% - 2 * var(--lead-plate-inset) - 4px);
+  margin: calc(-1 * var(--lead-plate-overlap)) 0 0 var(--lead-plate-inset);
+  padding: 12px 14px 12px 16px;
+  border-radius: var(--app-radius-sm);
+  color: var(--app-on-brand);
+  background: var(--app-brand-press);
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryName {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  color: var(--app-on-brand);
+  /* About 24px on a 390px phone, 20px at 320px. */
+  font-size: clamp(1.25rem, 6.7cqi, 1.75rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryTown {
+  margin-top: 6px;
+  color: var(--app-on-brand);
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryAction {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  /* Sit on the town line, the plate's last line. */
+  margin-bottom: 1px;
+  color: var(--app-on-brand);
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink:hover .discoveryName {
+  text-decoration-color: currentColor;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoverySaveSlot {
+  display: block;
+  flex: 0 0 var(--lead-save-width);
+  height: 44px;
+  margin-left: auto;
+  align-self: flex-end;
 }
 
 .discoveryPlace[data-today-discovery-role="lead"] .discoverySave {
-  position: relative;
-  right: auto;
-  bottom: auto;
-  grid-column: 2;
-  grid-row: 2;
-  align-self: start;
-  /* Center the 44px target on the first line of the 28px name. */
-  margin-top: calc(var(--app-space-3) - 6px);
+  right: 0;
+  bottom: 0;
+  width: var(--lead-save-width);
 }
 
+.discoveryPlace[data-today-discovery-role="lead"] .discoverySave > button {
+  justify-content: flex-end;
+  width: 100%;
+  padding: 8px 0;
+}
+
+/* Without an approved photograph the plate stands on the white ground,
+   aligned to the gutter, with no empty photo box above it. */
 .discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] .discoveryCaption {
-  padding-top: 0;
-}
-
-.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] + .discoverySave {
-  margin-top: -6px;
+  max-width: calc(100% - var(--lead-plate-inset));
+  margin: 0;
+  padding-top: 12px;
 }
 
 /* Secondary places: a thumbnail row between hairlines. */
@@ -406,17 +465,18 @@
   transform: translateY(-50%);
 }
 
-/* Exhausted images become complete factual links. */
-.discoveryPlace[data-today-discovery-role] .discoveryPlaceLink[data-photo-state="failed"] {
+/* Exhausted images become complete factual links. The lead keeps its plate
+   (see above); a secondary row keeps its ink caption. */
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink[data-photo-state="failed"] {
   display: block;
 }
 
-.discoveryPlaceLink[data-photo-state="failed"] .discoveryCaption {
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink[data-photo-state="failed"] .discoveryCaption {
   padding-top: 0;
   color: var(--app-ink);
 }
 
-.discoveryPlaceLink[data-photo-state="failed"] .discoveryTown {
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink[data-photo-state="failed"] .discoveryTown {
   color: var(--app-ink-2);
 }
 
@@ -528,7 +588,7 @@
 /* No foreign town or photo claims before the browser's area is resolved. */
 .geographicPending {
   min-height: 180px;
-  border-radius: var(--app-radius-lg);
+  border-radius: var(--app-radius-md);
   background: var(--app-bg-sunken);
 }
 
@@ -617,11 +677,6 @@
     grid-template-columns: minmax(0, 1fr);
     gap: var(--app-space-5);
   }
-
-  .weather {
-    max-width: 46rem;
-  }
-
 }
 
 @media (max-width: 359px) {

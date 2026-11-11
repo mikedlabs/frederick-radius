@@ -47,13 +47,17 @@ function DiscoveryPlace({ place, scope, returnTo, lead }: { place: LocalDiscover
           <PlaceCardPhoto key={source.src} source={source} onResult={onResult}
             sizes="(min-width: 640px) 520px, calc(100vw - 32px)" />
         </span>}
-        <div data-today-geographic-caption className={styles.discoveryCaption}>
+        <div data-today-geographic-caption data-today-name-plate={lead || undefined} className={styles.discoveryCaption}>
           <div className="min-w-0">
             <h3 className={styles.discoveryName}>{place.shortName ?? place.name}</h3>
             <p className={styles.discoveryTown}>{place.town}</p>
           </div>
-          <span aria-hidden className={styles.discoveryAction}><ArrowUpRight className="h-4 w-4" /></span>
+          <span aria-hidden className={styles.discoveryAction}><ArrowUpRight className="h-4 w-4" strokeWidth={2.25} /></span>
         </div>
+        {/* Holds Save's place in the lead's last line. When the plate and Save
+            no longer fit side by side, this wraps to its own line and Save,
+            which is anchored to the same corner, follows it. */}
+        {lead && <span aria-hidden className={styles.discoverySaveSlot} />}
       </Link>
       <div className={styles.discoverySave}>
         <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} barLabel="Save" importLocalSavesOnMount={false} />

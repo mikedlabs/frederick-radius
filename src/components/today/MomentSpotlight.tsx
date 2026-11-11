@@ -158,7 +158,7 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
         )}
 
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Link href={`/moments/${moment.slug}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-3.5 text-[13px] font-semibold" style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }} onClick={() => {
+          <Link href={`/moments/${moment.slug}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-3.5 text-[13px] font-semibold" style={{ background: "var(--app-ink)", color: "var(--app-bg)" }} onClick={() => {
             trackDecision(momentSpotlightDecision(moment.slug, "open", "open"));
             track("moment_spotlight_open", { slug: moment.slug, day_of: isDayOf ? "true" : "false" });
           }}>
@@ -201,7 +201,7 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
         background: "var(--app-bg-elevated-solid)",
       }}
     >
-      <figure className="relative aspect-[16/9] overflow-hidden" style={{ background: "var(--app-brand-press)" }}>
+      <figure className="relative aspect-[16/9] overflow-hidden" style={{ background: "var(--app-media-ink)" }}>
         <Image
           src={image.src}
           alt={image.alt}
@@ -257,7 +257,7 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
           <Link
             href={`/moments/${moment.slug}`}
             className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] px-4 text-[13px] font-semibold sm:w-auto"
-            style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}
+            style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
             onClick={() => {
               trackDecision(momentSpotlightDecision(moment.slug, "open", "open"));
               track("moment_spotlight_open", { slug: moment.slug, day_of: "true" });
