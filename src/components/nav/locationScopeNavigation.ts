@@ -46,9 +46,15 @@ export function commitLocationScope(next: Scope | null, transport: LocationScope
     // Refining the current Tools workspace must not intercept itself.
     replaceNativeWorkspaceScope(href);
   } else if (NATIVE_HISTORY_ROUTES.has(window.location.pathname)) {
-    // Keep this entry's own state (focus, layer and selection continuity);
-    // Next merges its router fields into whatever is passed here.
-    window.history.replaceState(window.history.state, "", href);
+    // Keep this entry's own state (focus, layer and selection continuity),
+    // but drop Next's own markers: with them present its native-history
+    // adapter treats the call as its own and skips syncing useSearchParams.
+    // It copies its internal fields back onto the object passed here.
+    const current: unknown = window.history.state;
+    const state: Record<string, unknown> = current && typeof current === "object" ? { ...current } : {};
+    delete state.__NA;
+    delete state._N;
+    window.history.replaceState(state, "", href);
   } else {
     transport.replace(href, { scroll: false });
   }
