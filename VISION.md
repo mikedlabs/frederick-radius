@@ -30,8 +30,8 @@ This is not a prototype stack. It is what most local apps never reach for:
 - **Mapbox GL** real maps · **Framer Motion** real motion · **Vaul / cmdk /
   nuqs / Sonner** modern interaction primitives.
 - **Supabase + Drizzle + PostGIS** (auth + geo) · **Sentry + Plausible +
-  Speed Insights** (observability) · **PWA** (manifest, service worker,
-  web-push) — installable, works offline in the park.
+  Speed Insights** (observability) · **PWA** (manifest, service worker)
+  — installable, works offline in the park.
 - **The Vercel AI SDK + the ingest agents** (feed → image → render → Claude
   vision) — the rare one. Most apps scrape; this has a data-acquisition
   platform.

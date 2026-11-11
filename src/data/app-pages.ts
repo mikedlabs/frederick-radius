@@ -85,6 +85,5 @@ export const APP_PAGES: AppPage[] = [
 
   // ── Yours ──
   { href: "/my-radius", title: "Saved", blurb: "Review your saved places, events, routes, and taps.", keywords: ["saved", "favorites", "bookmarks"] },
-  { href: "/settings", title: "Settings", blurb: "Choose your home area and tune Radius for your needs.", keywords: ["settings", "home town", "home area", "preferences"] },
-  { href: "/settings/notifications", title: "Alerts & feedback", blurb: "Choose local alerts, quiet hours, and phone feedback for this device.", keywords: ["alerts", "notifications", "quiet hours", "phone feedback", "haptics"] },
+  { href: "/settings", title: "Settings", blurb: "Choose your home area and tune Radius for your needs.", keywords: ["settings", "home town", "home area", "preferences", "phone feedback", "haptics"] },
 ];

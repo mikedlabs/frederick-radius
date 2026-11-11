@@ -126,7 +126,6 @@ describe("Radius tool registry", () => {
       "collections",
       "saved",
       "keep-radius",
-      "notifications",
       "rivers",
       "overhead",
       "beer-tools",

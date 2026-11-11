@@ -23,7 +23,7 @@
 | `ANTHROPIC_CIVIC_API_KEY`                     | **GitHub Data Enrichment secret** | Powers reviewed municipal civic extraction               | Civic source refreshes fail before model calls.          |
 | `ANTHROPIC_VENUE_EVENTS_API_KEY`              | **GitHub Data Enrichment secret** | Powers reviewed venue-event extraction                   | Venue refreshes fail before model calls.                 |
 | Vercel Firewall rules                         | **Vercel**                        | Edge limits for Ask, paid APIs, signup, and public forms | Paid endpoints lose their shared production guardrail.   |
-| `DATABASE_URL` (or `POSTGRES_URL`)            | **Vercel**                        | Postgres (follows, claims, submissions, push)            | Those features no-op                                     |
+| `DATABASE_URL` (or `POSTGRES_URL`)            | **Vercel**                        | Postgres (follows, claims, submissions)                  | Those features no-op                                     |
 | RLS migration (`drizzle/0007_enable_rls.sql`) | **Supabase → SQL editor**         | Locks the public anon-key door                           | Anyone with the public key can read your tables          |
 | DB backups / PITR                             | **Supabase → Database → Backups** | Disaster recovery                                        | No recovery if data is wiped                             |
 
@@ -46,7 +46,6 @@
 | `DATA_RETENTION_PRUNE=1`                                   | Vercel | Allows an authenticated operator-only bounded 90-day retention run. It is deliberately absent from `vercel.json`; leave unset until a recent Supabase backup is confirmed. |
 | `TICKETMASTER_API_KEY`                                     | Vercel | Concert + Keys-game events                                                                                                                                                    |
 | `BANDSINTOWN_APP_ID`                                       | Vercel | Venue lineups (Bentztown etc.)                                                                                                                                                |
-| `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` + `VAPID_SUBJECT` | Vercel | Web push notifications                                                                                                                                                        |
 | `CRON_SECRET`                                              | Vercel | Authorizes the cron API routes                                                                                                                                                |
 | `NEXT_PUBLIC_BASE_URL`                                     | Vercel | OG images, absolute links, share previews                                                                                                                                     |
 

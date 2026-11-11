@@ -36,7 +36,7 @@ Four primary tabs (the bottom nav; single source of truth in `src/components/nav
 - `/business/claim` · `/business/manage/[token]` · `/submit/place` · `/submit/event`
 - `/admin/*` — Basic Auth gated dashboards (claims, data-health, dedup-review, etc.)
 
-Plus: dynamic per-place OG images via `/api/og`, Event + LocalBusiness JSON-LD, full sitemap, robots.txt, manifest with PWA install icons, push-notification scaffolding.
+Plus: dynamic per-place OG images via `/api/og`, Event + LocalBusiness JSON-LD, full sitemap, robots.txt, manifest with PWA install icons.
 
 ## Stack
 
@@ -76,7 +76,7 @@ src/
 │   │   ├── og/              # dynamic OG image generator
 │   │   ├── isochrone/       # Mapbox isochrone proxy
 │   │   ├── events/[slug]/ics
-│   │   └── push/, /discover/, /cron/, /ingest/
+│   │   └── cron/, ingest/
 │   ├── icon.tsx · apple-icon.tsx · manifest.ts · sitemap.ts · robots.ts
 │   └── layout.tsx           # root: fonts, Toaster, NuqsAdapter, SW register
 ├── components/

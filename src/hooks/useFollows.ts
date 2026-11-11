@@ -5,7 +5,6 @@ import { useSavedList, useToggleSave, useIsSaved, savedChangeDescription } from 
 import { track } from "@/lib/track";
 import { createAbortDeadline, withDeadlineOutcome } from "@/lib/promise-deadline";
 import { documentReadIsActive, scheduleDocumentRead } from "@/lib/document-read-lifecycle";
-import { businessTopic } from "@/lib/push-topics";
 import {
   cancelPendingReturnBridgeValue,
   signalReturnBridgeValue,
@@ -143,7 +142,6 @@ type FollowWriteQueue = {
   pending: number;
   uncertain: boolean;
   transport: FollowTransport | null;
-  topicDirty: boolean;
   reconciling: Promise<void> | null;
 };
 const followWrites = new Map<string, FollowWriteQueue>();
@@ -579,43 +577,6 @@ export function useIsFollowed(slug: string, options?: FollowReadOptions): boolea
   return slugs.has(slug);
 }
 
-/**
- * Mirror a place follow into the DEVICE's push topics, so a claimed business
- * can later reach the people who followed it via the `biz:<slug>` channel
- * (push-topics.ts). push_subscriptions is device-keyed (no user_id), so the
- * server-side follow write can't find the subscription — this runs client-side
- * against the device's own subscription through the existing /api/push/topics
- * merge endpoint.
- *
- * Consent is respected automatically: if this device has no push subscription
- * (the user never granted notifications), getSubscription() is null and we do
- * nothing — we never call subscribe(), so no permission prompt is forced. We
- * subscribe on EVERY follow (not just already-claimed places): the claim can
- * happen after the follow, and the publish side is what gates on a verified
- * owner, so an unclaimed `biz:<slug>` simply never fires. Best-effort and
- * fire-and-forget — a failed topic sync must never affect the follow itself.
- */
-async function syncFollowPushTopic(slug: string, follow: boolean, isCurrent: () => boolean): Promise<void> {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
-  try {
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
-    if (!sub || !isCurrent()) return; // no notification consent on this device → nothing to wire
-    const topic = businessTopic(slug);
-    await fetch("/api/push/topics", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        follow
-          ? { endpoint: sub.endpoint, add: [topic] }
-          : { endpoint: sub.endpoint, remove: [topic] },
-      ),
-    });
-  } catch {
-    /* best-effort side channel; never surface or block the follow */
-  }
-}
-
 export const FOLLOW_WRITE_TIMEOUT_MS = 15_000;
 const UNCONFIRMED = "We could not confirm this change. Please try again.";
 const FULL_LIST = `You have saved ${MAX_FOLLOWED_PLACES} places. Remove a place from Saved before adding another.`;
@@ -649,30 +610,10 @@ function getFollowQueue(userId: string, slug: string, confirmed: boolean): Follo
   const key = JSON.stringify([userId, slug]);
   let queue = followWrites.get(key);
   if (!queue) {
-    queue = { userId, slug, confirmed, desired: confirmed, latest: 0, tail: Promise.resolve(), pending: 0, uncertain: false, transport: null, topicDirty: false, reconciling: null };
+    queue = { userId, slug, confirmed, desired: confirmed, latest: 0, tail: Promise.resolve(), pending: 0, uncertain: false, transport: null, reconciling: null };
     followWrites.set(key, queue);
   }
   return queue;
-}
-
-/** Sync only a settled, confirmed intent, including a failed newer rollback. */
-function syncConfirmedFollowTopic(queue: FollowWriteQueue) {
-  if (!queue.topicDirty || queue.pending || queue.uncertain || queue.transport) return;
-  const epoch = followWriteEpoch;
-  const followed = queue.confirmed;
-  const key = JSON.stringify([queue.userId, queue.slug]);
-  const isCurrent = () => {
-    const currentQueue = followWrites.get(key);
-    // A same-account snapshot can still confirm this device operation. A new
-    // pending intent cannot: wait for its own confirmed topic sync instead.
-    return followWriteEpoch === epoch && remoteStoreUserId === queue.userId
-      && remoteStore?.has(queue.slug) === followed
-      && (!currentQueue || (!currentQueue.pending && !currentQueue.uncertain
-        && !currentQueue.transport && currentQueue.confirmed === followed));
-  };
-  if (!isCurrent()) return;
-  queue.topicDirty = false;
-  void syncFollowPushTopic(queue.slug, followed, isCurrent);
 }
 
 /** A cancelled read is safe; a cancelled mutation is not proof of rollback. */
@@ -728,7 +669,6 @@ function reconcileFollowQueue(queue: FollowWriteQueue): Promise<void> {
       queue.uncertain = false;
       queue.transport = null;
       writeFollowMembership(queue.slug, followed);
-      syncConfirmedFollowTopic(queue);
       releaseFollowQueue(queue);
     })
     .catch(() => {
@@ -763,7 +703,6 @@ function persistFollowToggle(
   onFailure?: (description: string) => void,
 ): Promise<boolean> {
   const activeQueue = getFollowQueue(userId, slug, wasFollowed);
-  activeQueue.topicDirty = true;
   const revision = ++activeQueue.latest;
   activeQueue.pending++;
   activeQueue.desired = followed;
@@ -833,9 +772,6 @@ function persistFollowToggle(
       return followed;
     } finally {
       activeQueue.pending--;
-      // The operation may be obsolete while a fresh read has confirmed this
-      // account. The helper validates that settled membership independently.
-      syncConfirmedFollowTopic(activeQueue);
       releaseFollowQueue(activeQueue);
     }
   });
