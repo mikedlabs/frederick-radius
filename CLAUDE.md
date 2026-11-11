@@ -43,8 +43,11 @@ truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
   `-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`. This includes
   page titles, text, controls, source notes, and tabular data. Public Sans
   remains the installed print/export text family, with its real variable
-  italic. Libre Caslon Display Regular remains the wordmark and rare
-  editorial signature. Do not synthesize bold or italic Caslon, rename
+  italic. Libre Caslon Display Regular is the wordmark and a rare
+  editorial signature on a few specialty guide pages. It never appears on
+  Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages or
+  event pages; every title there is heavy system sans. Do not synthesize
+  bold or italic Caslon, rename
   packaged Public Sans as a system font, or download a new family.
 - **Palette (Brand System 1.4, October 16, 2026, owner-approved):** Always use
   `var(--app-*)` in app UI. White `--app-bg #FFFFFF`, Charcoal `--app-ink #22221F`,
@@ -77,7 +80,11 @@ truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
 - **Current look:** the owner approved the "Plain tool, with the coral plate"
   interface on November 10, 2026 (see Interface shape in
   `docs/brand/BRAND_GUIDE.md`). A rounded, bordered card around ordinary
-  content is now a regression.
+  content is now a regression. The November 10, 2026 interface update covers
+  Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages, event
+  pages and town pages. Specialty guide pages (for example food trucks,
+  deals, amenities, parks, happy hour and beer) still carry older treatments
+  and are the next pass.
 - **Voice:** calm local expert. No em dashes in user-facing copy
   (`cleanFeedText` converts them). Verb-first chip labels ("Eat & drink",
   "Open now"). Counts are supporting detail, never the headline. Full rules
@@ -98,7 +105,12 @@ truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
   13px uppercase section labels, before any box, border or badge. Chrome is
   flat. Each page has one solid Deep Coral block (the name plate on Today,
   the lead time block on Events) and no other coral field except its single
-  filled coral action. Honest empty states. If a change reads like a generic
+  filled coral action. A selected filter chip is filled ink (background
+  `--app-ink`, text `--app-bg`), never coral. Coral text uses `--app-link` or
+  `--app-brand-text`, Creek text `--app-cool-text` and forest text
+  `--app-forest-text`; `--app-brand`, `--app-brand-press` and `--app-cool`
+  are fill colors and never text colors. White text on coral sits on
+  `--app-brand-press` with `--app-on-brand`. Honest empty states. If a change reads like a generic
   SaaS template, it's wrong.
 
 ## Owner's public voice (Reddit, social, email — anything Mike posts)
