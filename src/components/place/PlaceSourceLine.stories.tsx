@@ -38,8 +38,9 @@ export const CheckedAtSource: Story = {
     await expect(await canvas.findByText(/^Listing last checked /)).toBeVisible();
     const updated = canvas.getByText(/^Updated on /);
     await expect(updated).toBeVisible();
-    // A dot separates it from the visible listing check before it.
-    await expect(window.getComputedStyle(updated, "::before").content).toBe('"·"');
+    // A dot separates it from the visible listing check before it. The dot
+    // carries empty alternative text, so a screen reader skips it.
+    await expect(window.getComputedStyle(updated, "::before").content).toBe('"·" / ""');
     const doc = canvasElement.ownerDocument;
     const root = doc.documentElement;
     const fontSize = root.style.getPropertyValue("font-size");
