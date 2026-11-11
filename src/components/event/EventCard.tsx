@@ -171,40 +171,44 @@ export default function EventCard({
   // are one typographic row. A time column in tabular numerals leads, then the
   // title and one muted location line. An approved venue photo or publisher
   // artwork keeps its place as a small square at the right of the row.
-  const cardVisual = variant === "discovery" || variant === "glance"
-    ? eventCardVisual(event, { venuePhotos: variant === "discovery" ? "free-reviewed" : venuePhotos })
-    : null;
-  const rowExtras = [
-    event.is_recurring && event.recurrence_text ? event.recurrence_text : null,
-    event.is_free ? "Free" : event.price_text || null,
-    accessLabel || null,
-    event.distance_m !== undefined ? `${formatDistance(event.distance_m)} away` : null,
-  ].filter(Boolean) as string[];
   if (variant === "discovery" || variant === "glance") {
-    return (
-      <EventRow
-        slug={event.slug}
-        title={displayTitle}
-        weekday={date.weekday}
-        month={date.month}
-        day={date.day}
-        startTime={date.time}
-        timing={timingText}
-        category={categoryLabel}
-        live={confirmedLive}
-        status={statusText}
-        statusColor={statusForeground}
-        cancelled={isCancelled}
-        where={venueLabel}
-        showDate={showDate}
-        media={cardVisual ? <EventRowMedia visual={cardVisual} /> : undefined}
-        extra={rowExtras.length > 0 ? (
-          <p className="mt-1 text-[13px] leading-snug tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-            {rowExtras.join(" · ")}
-          </p>
-        ) : null}
-      />
-    );
+    const cardVisual = eventCardVisual(event, { venuePhotos: variant === "discovery" ? "free-reviewed" : venuePhotos });
+    // Recurrence is its own line; the decision facts (price, access,
+    // distance) share one muted line under it.
+    const facts = [
+      event.is_free ? "Free" : event.price_text || null,
+      accessLabel || null,
+      event.distance_m !== undefined ? `${formatDistance(event.distance_m)} away` : null,
+    ].filter(Boolean) as string[];
+    const recurrence = event.is_recurring && event.recurrence_text ? event.recurrence_text : null;
+    const row = {
+      slug: event.slug,
+      title: displayTitle,
+      weekday: date.weekday,
+      month: date.month,
+      day: date.day,
+      startTime: date.time,
+      timing: timingText,
+      category: categoryLabel,
+      live: confirmedLive,
+      status: statusText,
+      statusColor: statusForeground,
+      cancelled: isCancelled,
+      where: venueLabel,
+      showDate,
+      layout: variant,
+      extra: recurrence || facts.length > 0 ? (
+        <>
+          {recurrence ? <p data-event-card-recurrence className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{recurrence}</p> : null}
+          {facts.length > 0 ? (
+            <p className="mt-1 text-[13px] leading-snug tabular-nums" style={{ color: "var(--app-ink-2)" }}>{facts.join(" · ")}</p>
+          ) : null}
+        </>
+      ) : null,
+    };
+    return cardVisual
+      ? <EventRowMedia {...row} visual={cardVisual} compactCredit={variant === "glance"} />
+      : <EventRow {...row} mediaKind="none" />;
   }
 
   // Utility variant — TINY single muted line for the civic / municipal
@@ -269,7 +273,7 @@ export default function EventCard({
     return (
       <article
         {...decisionAttributes}
-        className="tactile-interactive group relative flex items-center gap-3 border-b px-3 py-2 transition-transform duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] hover:scale-[1.02] active:scale-[0.98]"
+        className="group relative flex items-center gap-3 border-b py-2"
         style={{ borderColor: "var(--app-border)" }}
       >
         {/* Date / time pill — anchors each row. Date numerals first

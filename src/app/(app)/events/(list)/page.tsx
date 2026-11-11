@@ -117,7 +117,7 @@ export default async function EventsIndexPage() {
 
       {/* ── Honesty footer — static, so it never waits on the feeds. ──── */}
       <footer
-        className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
+        className="max-w-[720px] space-y-1 border-t pt-3 text-[11px]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
       >
         {/* Honesty footer = TRUE sources only (June-9 automation audit):
@@ -282,7 +282,7 @@ async function EventsBoard({
           defaultOpen={false}
           className="[&>button]:min-h-11"
         >
-          <ol className="space-y-2">
+          <ol className="max-w-[720px]">
             {civicEvents.slice(0, 24).map((e) => (
               <li key={`${e.slug}-${e.starts_at}`}>
                 <EventCard
@@ -309,7 +309,7 @@ async function EventsBoard({
           defaultOpen={false}
           className="[&>button]:min-h-11"
         >
-          <ol className="space-y-2">
+          <ol className="max-w-[720px]">
             {reminderEvents.slice(0, 24).map((e) => (
               <li key={`${e.slug}-${e.starts_at}`}>
                 <EventCard

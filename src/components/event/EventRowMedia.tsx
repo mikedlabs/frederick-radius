@@ -3,17 +3,23 @@
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
+import EventRow, { type EventRowProps } from "./EventRow";
 import EventVisualCredit from "./EventVisualCredit";
 import type { EventCardVisual } from "./eventVisuals";
 import { useEventVisualLifecycle } from "./useEventVisualLifecycle";
 import styles from "./EventRow.module.css";
 
-/** An approved event picture inside a typographic row: a 64px square at the
- * right edge and its credit under the facts. A failed image removes both and
- * leaves the row's facts in place. */
-export default function EventRowMedia({ visual }: { visual: EventCardVisual | null }) {
+/** An event row with an approved picture: a square thumbnail at the right
+ * edge and its credit under the facts. A failed image removes both, marks the
+ * row media-free, and leaves the row's facts and link in place. */
+export default function EventRowMedia({ visual, compactCredit = false, ...row }: Omit<EventRowProps, "media" | "mediaCredit" | "mediaKind"> & {
+  visual: EventCardVisual | null;
+  /** Glance rows keep the small credit they always had; discovery rows use
+   * reading-size credit copy that grows with enlarged text. */
+  compactCredit?: boolean;
+}) {
   const { identity, visibleVisual, failImage, inspectLoadedImage } = useEventVisualLifecycle(visual);
-  if (!visibleVisual) return null;
+  if (!visibleVisual) return <EventRow {...row} mediaKind="none" />;
   let src = proxyPhotoAtWidth(visibleVisual.src, 132);
   if (src.startsWith("/api/place-photo")) {
     const proxy = new URL(src, "https://frederickradius.local");
@@ -21,25 +27,29 @@ export default function EventRowMedia({ visual }: { visual: EventCardVisual | nu
     src = `${proxy.pathname}${proxy.search}${proxy.hash}`;
   }
   return (
-    <>
-      <figure className={styles.thumb} data-event-row-thumb={visibleVisual.presentation}>
-        <Image
-          key={identity}
-          src={src}
-          alt=""
-          fill
-          unoptimized={src.startsWith("/api/place-photo")}
-          loading="lazy"
-          sizes="64px"
-          placeholder="blur"
-          blurDataURL={PAPER_CREAM_BLUR}
-          className={visibleVisual.presentation === "artwork" ? styles.thumbArtwork : styles.thumbPhoto}
-          style={visibleVisual.objectPosition ? { objectPosition: visibleVisual.objectPosition } : undefined}
-          onLoad={(event) => inspectLoadedImage(event.currentTarget)}
-          onError={failImage}
-        />
-      </figure>
-      <EventVisualCredit visual={visibleVisual} compact inlineLicensed className={styles.credit} />
-    </>
+    <EventRow
+      {...row}
+      mediaKind={visibleVisual.presentation}
+      media={
+        <figure className={styles.thumb} data-event-row-thumb={visibleVisual.presentation}>
+          <Image
+            key={identity}
+            src={src}
+            alt=""
+            fill
+            unoptimized={src.startsWith("/api/place-photo")}
+            loading="lazy"
+            sizes="64px"
+            placeholder="blur"
+            blurDataURL={PAPER_CREAM_BLUR}
+            className={`${styles.thumbImage} object-cover`}
+            style={visibleVisual.objectPosition ? { objectPosition: visibleVisual.objectPosition } : undefined}
+            onLoad={(event) => inspectLoadedImage(event.currentTarget)}
+            onError={failImage}
+          />
+        </figure>
+      }
+      mediaCredit={<EventVisualCredit visual={visibleVisual} compact={compactCredit} inlineLicensed className={styles.credit} />}
+    />
   );
 }

@@ -21,6 +21,50 @@ export function eventRowTimingNote(startTime: string, timing: string): string | 
   return timing;
 }
 
+export type EventRowMediaKind = "photo" | "artwork" | "none";
+
+export type EventRowProps = {
+  slug: string;
+  title: string;
+  weekday: string;
+  month: string;
+  day: string;
+  startTime: string;
+  timing: string;
+  category?: string;
+  live?: boolean;
+  status?: string | null;
+  statusColor?: string;
+  cancelled?: boolean;
+  where?: string | null;
+  /** Supporting lines under the facts (recurrence, price, access). */
+  extra?: ReactNode;
+  /** The page's one lead row. Its time column becomes the solid coral block,
+   * the single bold field on Events. Every other row keeps an ink column. */
+  lead?: boolean;
+  /** The surrounding group heading already states the day ("Today",
+   * "Happening now"), so the visible date line would only repeat it. The
+   * date stays available to screen readers. */
+  showDate?: boolean;
+  /** An approved thumbnail and its credit, placed by the row grid. Rows
+   * without one remain purely typographic. */
+  media?: ReactNode;
+  /** The picture's credit. It follows the facts in reading order and stays
+   * outside the event link. */
+  mediaCredit?: ReactNode;
+  mediaKind?: EventRowMediaKind;
+  /** A full-width picture above the facts (the pictured lead). */
+  banner?: ReactNode;
+  position?: "result" | "lead";
+  /** Rows sit under a group heading (h2) and use h3. The page lead can sit
+   * directly under the page title, so it uses h2. */
+  headingLevel?: 2 | 3;
+  surface?: "events" | "today";
+  layout?: string;
+  /** Stable hooks kept from the poster and card contracts. */
+  poster?: { kind: "photo" | "artwork" | "category"; layout: "hero" | "shelf" };
+};
+
 export default function EventRow({
   slug,
   title,
@@ -39,35 +83,36 @@ export default function EventRow({
   lead = false,
   showDate = true,
   media,
+  mediaCredit,
+  mediaKind,
+  banner,
   position = "result",
+  headingLevel = 3,
   surface = "events",
-}: {
-  slug: string;
-  title: string;
-  weekday: string;
-  month: string;
-  day: string;
-  startTime: string;
-  timing: string;
-  category?: string;
-  live?: boolean;
-  status?: string | null;
-  statusColor?: string;
-  cancelled?: boolean;
-  where?: string | null;
-  extra?: ReactNode;
-  lead?: boolean;
-  /** The day line repeats inside a one-day group. Callers hide it on rows
-   * whose day matches the row above, so the column carries the time alone. */
-  showDate?: boolean;
-  /** An approved picture (thumbnail and its credit), placed by the row grid.
-   * Rows without one remain purely typographic. */
-  media?: ReactNode;
-  position?: "result" | "lead";
-  surface?: "events" | "today";
-}) {
+  layout,
+  poster,
+}: EventRowProps) {
   const { clock, meridiem } = clockParts(startTime);
   const note = eventRowTimingNote(startTime, timing);
+  const Heading = headingLevel === 2 ? "h2" : "h3";
+  const eyebrowItems: ReactNode[] = [];
+  if (category) eyebrowItems.push(<span key="category">{category}</span>);
+  if (live) {
+    eyebrowItems.push(
+      <span key="live" className={styles.live}>
+        <span aria-hidden className={styles.liveDot} />
+        Happening now
+      </span>,
+    );
+  }
+  if (status) eyebrowItems.push(<span key="status" style={{ color: statusColor, fontWeight: 600 }}>{status}</span>);
+  const className = [
+    styles.row,
+    lead ? styles.lead : "",
+    media ? styles.withMedia : "",
+    banner ? styles.withBanner : "",
+    cancelled ? styles.cancelled : "",
+  ].filter(Boolean).join(" ");
   return (
     <article
       data-decision-impression="true"
@@ -76,43 +121,47 @@ export default function EventRow({
       data-decision-id={slug}
       data-decision-position={position}
       data-event-row={lead ? "lead" : "row"}
-      data-event-media={media ? "thumb" : "none"}
-      className={`${styles.row} ${lead ? styles.lead : ""} ${media ? styles.withMedia : ""} ${cancelled ? styles.cancelled : ""}`}
+      data-event-media={mediaKind ?? (media ? "photo" : "none")}
+      data-event-card-layout={layout}
+      data-event-poster={poster?.kind}
+      data-event-fallback={poster?.kind === "category" ? "date-category" : undefined}
+      data-event-poster-layout={poster?.layout}
+      className={className}
     >
-      <div className={styles.when}>
+      {banner ? <div className={styles.banner}>{banner}</div> : null}
+      {/* The thumbnail leads the DOM so the picture is announced and loaded
+          before the facts; the grid places it at the right of the row. */}
+      {media}
+      <div className={styles.when} data-event-row-when>
         <span className={styles.time} data-clock={meridiem ? "clock" : "label"}>
           <span className={styles.clock}>{clock}</span>
           {meridiem ? <span className={styles.meridiem}>{meridiem}</span> : null}
         </span>
         {showDate ? (
-          <span className={styles.date}>{weekday} {month} {day}</span>
+          <span className={styles.date}>
+            <span>{weekday}</span>{" "}
+            <span className={styles.monthDay}><span>{month}</span>{" "}<span>{day}</span></span>
+          </span>
         ) : (
           <span className="sr-only">{weekday} {month} {day}</span>
         )}
       </div>
-      <div className={styles.body}>
-        {(category || live || status) && (
+      <div className={styles.body} data-event-card-heading>
+        {eyebrowItems.length > 0 && (
           <p className={styles.eyebrow}>
-            {category ? <span>{category}</span> : null}
-            {live ? (
-              <span className={styles.live}>
-                <span aria-hidden className={styles.liveDot} />
-                Happening now
-              </span>
-            ) : null}
-            {status ? <span style={{ color: statusColor, fontWeight: 600 }}>{status}</span> : null}
+            {eyebrowItems.flatMap((item, index) => (index === 0 ? [item] : [" ", item]))}
           </p>
         )}
-        <h3 className={styles.title}>
+        <Heading className={styles.title}>
           <Link href={`/events/${slug}`} data-decision-action="open" data-press-target="card" prefetch={false} className={styles.link}>
             {title}
           </Link>
-        </h3>
+        </Heading>
         {where ? <p data-event-card-venue className={styles.where}>{where}</p> : null}
         {note ? <p data-event-card-time className={styles.note}>{note}</p> : null}
         {extra}
       </div>
-      {media}
+      {mediaCredit}
     </article>
   );
 }

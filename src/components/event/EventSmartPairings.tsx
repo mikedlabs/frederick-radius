@@ -77,16 +77,12 @@ export default async function EventSmartPairings({
   return (
     <section
       aria-label="Around the event"
-      className="rounded-[var(--app-radius-md)] border p-3.5"
-      style={{
-        borderColor: "var(--app-border)",
-        background:
-          "color-mix(in srgb, var(--app-brand) 5%, var(--app-bg-elevated))",
-      }}
+      className="max-w-[720px] border-t pt-4"
+      style={{ borderColor: "var(--app-border)" }}
     >
       <p
-        className="text-[10px] font-bold uppercase tracking-[0.12em]"
-        style={{ color: "var(--app-ink-3)" }}
+        className="text-[13px] font-semibold uppercase tracking-[0.06em]"
+        style={{ color: "var(--app-ink-2)" }}
       >
         Around the event
       </p>
@@ -96,7 +92,7 @@ export default async function EventSmartPairings({
             <CloudSun
               className="mt-0.5 h-4 w-4 shrink-0"
               strokeWidth={2}
-              style={{ color: "var(--app-brand)" }}
+              style={{ color: "var(--app-ink-2)" }}
               aria-hidden
             />
             <span>{weather}<span className="mt-1 block text-[12px]" style={{ color: "var(--app-ink-3)" }}>National Weather Service{forecast?.asOf ? ` · issued ${new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(forecast.asOf))}` : " · issue time unavailable"}</span></span>
@@ -107,7 +103,7 @@ export default async function EventSmartPairings({
             <ParkingSquare
               className="mt-0.5 h-4 w-4 shrink-0"
               strokeWidth={2}
-              style={{ color: "var(--app-brand)" }}
+              style={{ color: "var(--app-ink-2)" }}
               aria-hidden
             />
             <span>{parking}</span>
@@ -118,7 +114,7 @@ export default async function EventSmartPairings({
             <Utensils
               className="mt-0.5 h-4 w-4 shrink-0"
               strokeWidth={2}
-              style={{ color: "var(--app-brand)" }}
+              style={{ color: "var(--app-ink-2)" }}
               aria-hidden
             />
             <span>{eat}{nearbyFood[0] && <Link prefetch={false} href={`/places/${nearbyFood[0].slug}`} className="tap-44 flex w-fit items-center text-[12px] font-semibold underline" style={{ color: "var(--app-brand-press)" }}>Check hours &amp; details</Link>}</span>

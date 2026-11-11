@@ -19,7 +19,7 @@ export default function GettingThere({ geom, venuePlaceSlug, geoPrecise, parking
 
   return (
     <section aria-label="Getting there" className="space-y-3 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
-      <h2 className="text-[16px] font-semibold" style={{ color: "var(--app-ink)" }}>Getting there</h2>
+      <h2 className="font-sans text-[20px] font-bold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>Getting there</h2>
       <ul className="space-y-3 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         {(parkingNote || garageLine) && (
           <li className="flex items-start gap-2.5">

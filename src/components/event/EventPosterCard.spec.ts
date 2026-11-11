@@ -114,7 +114,30 @@ describe("EventPosterCard visual trust", () => {
     expect(facts).toContain("$12 admission");
     expect(html).not.toContain("absolute inset-x-0 bottom-0 p-4");
     expect(html).not.toContain("line-clamp");
-    expect(html).toContain("text-[1.375rem]");
+    // The lead is the page's one standout row: the coral time block follows
+    // the picture, and the facts never sit on the photograph.
+    expect(html).toContain('data-event-row="lead"');
+    expect(html.indexOf("data-event-row-when")).toBeGreaterThan(photoEnd);
+    expect(html).not.toContain("ken-burns");
+  });
+
+  it("gives only the hero lead the coral time block and keeps a shelf poster plain", () => {
+    const hero = renderToStaticMarkup(createElement(EventPosterCard, { event: event() }));
+    const shelf = renderToStaticMarkup(createElement(EventPosterCard, { event: event(), layout: "shelf" }));
+    const row = renderToStaticMarkup(createElement(EventCard, { event: event({ hero_image: undefined }), variant: "glance" }));
+    expect(hero).toContain('data-event-row="lead"');
+    expect(shelf).toContain('data-event-row="row"');
+    expect(row).toContain('data-event-row="row"');
+    expect(row).not.toContain('data-event-row="lead"');
+  });
+
+  it("splits the lead clock from its meridiem and keeps word labels whole", () => {
+    const clock = renderToStaticMarkup(createElement(EventPosterCard, { event: event({ hero_image: undefined }) }));
+    expect(clock).toContain('data-clock="clock"');
+    expect(clock).toMatch(/>6:00<\/span><span[^>]*>PM</);
+    const allDay = renderToStaticMarkup(createElement(EventPosterCard, { event: event({ hero_image: undefined, is_all_day: true }) }));
+    expect(allDay).toContain('data-clock="label"');
+    expect(allDay).toContain(">All day<");
   });
 
   it("keeps the complete archival venue credit outside the event action", () => {
@@ -211,8 +234,11 @@ describe("EventPosterCard visual trust", () => {
     expect(html).toContain('loading="lazy"');
     expect(html).toContain('alt=""');
     expect(html).toContain("text-[9px]");
-    expect(html).toContain("object-contain");
-    expect(html).not.toContain("object-cover");
+    // A fixed square thumbnail filled edge to edge: no letterbox bands.
+    expect(html).toContain('data-event-row-thumb="artwork"');
+    expect(html).toContain('data-event-media="artwork"');
+    expect(html).toContain("object-cover");
+    expect(html).not.toContain("object-contain");
     expect(html).not.toContain("group-hover:scale-105");
   });
 
