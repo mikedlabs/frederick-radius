@@ -842,8 +842,7 @@ function IntegrationRow({
             href={a.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="border bg-transparent text-[15px]"
-            style={{ borderColor: "var(--app-control-border)", backgroundColor: "transparent", color: "var(--app-ink)" }}
+            className="text-[15px]"
             iconRight={<ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />}
           >
             {a.label}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useState, type CSSProperties, type RefObject } from "react";
 import Link from "next/link";
 import { ExternalLink, MapPin, Navigation, Ticket, CalendarCheck } from "lucide-react";
 import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
@@ -265,18 +265,22 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 }}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold"
+                data-press-target="control"
+                className="flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold"
                 style={{
                   backgroundColor: "var(--app-brand-press)",
                   color: "var(--app-on-brand)",
-                }}
+                  "--press-ack-color": "var(--app-on-brand)",
+                } as CSSProperties}
               >
-                {event.ticket_url ? (
-                  <Ticket className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                ) : (
-                  <CalendarCheck className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                )}
-                {ticketLabel}
+                <span data-press-face className="inline-flex min-w-0 items-center justify-center gap-2">
+                  {event.ticket_url ? (
+                    <Ticket className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                  ) : (
+                    <CalendarCheck className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                  )}
+                  {ticketLabel}
+                </span>
               </a>
             )}
             {preciseGeo && canAttend && (
@@ -295,7 +299,8 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 }}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold ${
+                data-press-target="control"
+                className={`flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold ${
                   ticketHref && canAttend ? "border" : ""
                 }`}
                 style={
@@ -304,24 +309,27 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                         borderColor: "var(--app-border-strong)",
                         color: "var(--app-ink)",
                       }
-                    : {
+                    : ({
                         backgroundColor: "var(--app-brand-press)",
                         color: "var(--app-on-brand)",
-                      }
+                        "--press-ack-color": "var(--app-on-brand)",
+                      } as CSSProperties)
                 }
               >
-                <Navigation
-                  className="h-4 w-4"
-                  strokeWidth={2.25}
-                  style={{
-                    color:
-                      ticketHref && canAttend
-                        ? "var(--app-link)"
-                        : "var(--app-on-brand)",
-                  }}
-                  aria-hidden
-                />
-                Directions
+                <span data-press-face className="inline-flex min-w-0 items-center justify-center gap-2">
+                  <Navigation
+                    className="h-4 w-4"
+                    strokeWidth={2.25}
+                    style={{
+                      color:
+                        ticketHref && canAttend
+                          ? "var(--app-link)"
+                          : "var(--app-on-brand)",
+                    }}
+                    aria-hidden
+                  />
+                  Directions
+                </span>
               </a>
             )}
             {(!ticketHref || !canAttend) && sourceHref && (

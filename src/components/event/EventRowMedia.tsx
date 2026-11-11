@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
+import { placePhotoFailureSignalSrc } from "@/lib/place-card-photo";
 import EventRow, { type EventRowProps } from "./EventRow";
 import EventVisualCredit from "./EventVisualCredit";
 import type { EventCardVisual } from "./eventVisuals";
@@ -23,12 +24,7 @@ export default function EventRowMedia({ visual, compactCredit = false, ...row }:
   const { identity, visibleVisual, failImage, inspectLoadedImage } = useEventVisualLifecycle(visual);
   if (!visibleVisual) return <EventRow {...row} mediaKind="none" />;
   const fit = visibleVisual.presentation === "photo" ? "object-cover" : "object-contain";
-  let src = proxyPhotoAtWidth(visibleVisual.src, 132);
-  if (src.startsWith("/api/place-photo")) {
-    const proxy = new URL(src, "https://frederickradius.local");
-    proxy.searchParams.set("fallback", "signal");
-    src = `${proxy.pathname}${proxy.search}${proxy.hash}`;
-  }
+  const src = placePhotoFailureSignalSrc(proxyPhotoAtWidth(visibleVisual.src, 132));
   return (
     <EventRow
       {...row}

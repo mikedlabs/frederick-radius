@@ -110,8 +110,7 @@ export default function CommerceActions({
               target="_blank"
               rel="noopener noreferrer"
               data-decision-action={decisionActionForCommerce(l.type)}
-              className="border bg-transparent text-[15px]"
-              style={{ borderColor: "var(--app-control-border)", backgroundColor: "transparent", color: "var(--app-ink)" }}
+              className="text-[15px]"
               iconLeft={<Icon className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-2)" }} />}
               iconRight={<ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />}
             >
