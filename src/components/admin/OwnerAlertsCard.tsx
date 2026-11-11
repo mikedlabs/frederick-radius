@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OwnerAlertsCard — "alert this device" toggle on /admin/beta.
+ * OwnerAlertsCard — "alert this device" toggle on /admin/feedback.
  *
  * Grants THIS browser's push subscription the owner-alerts topic via the
  * Basic-Auth-gated /admin/api/owner-alerts endpoint (the public subscribe
@@ -107,8 +107,8 @@ export default function OwnerAlertsCard() {
               : state === "error"
                 ? "Could not update. Reload and try again."
                 : on
-                  ? "New feedback and signups will push to this device the moment they arrive."
-                  : "Get a push here the moment a tester sends feedback or signs up."}
+                  ? "New feedback will push to this device the moment it arrives."
+                  : "Get a push here the moment someone sends feedback."}
         </p>
       </div>
       {state !== "unsupported" && state !== "denied" ? (

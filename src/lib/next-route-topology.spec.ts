@@ -34,7 +34,7 @@ function topology(includeChildrenDefault: boolean) {
 describe("complete app routes with the Tools modal reset", () => {
   it("reproduces the outside-group loss when implicit children has no default", () => {
     const withoutDefault = topology(false);
-    for (const route of ["/beta", "/concept/wlr", "/admin", "/auth/login", "/offline", "/report"]) {
+    for (const route of ["/submit/place", "/concept/wlr", "/admin", "/auth/login", "/offline", "/report"]) {
       expect(withoutDefault.result.unmatchedAppPages).toContain(`${route}/page`);
       expect(withoutDefault.routes[route]).toBeUndefined();
     }

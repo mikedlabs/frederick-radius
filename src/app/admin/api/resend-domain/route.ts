@@ -3,7 +3,7 @@
  *
  * The RESEND_API_KEY is a sensitive env var (readable only inside deployed
  * functions), so domain setup has to happen where the key lives. Basic-Auth
- * gated via the /admin middleware like its send-invites sibling.
+ * gated via the /admin middleware like the other /admin/api routes.
  *
  *   GET                        → domains with status + required DNS records
  *   POST { action: "create" }  → register frederickradius.app with Resend
