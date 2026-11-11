@@ -84,7 +84,7 @@ describe("place sheet task-first actions", () => {
       google_hours: ["Thursday: 9:00 AM to 5:00 PM"],
     }));
     const provenance = host.querySelector("[data-place-hours-provenance]");
-    expect(provenance?.textContent).toMatch(/^Hours from .+, observed /);
+    expect(provenance?.textContent).toBe("Hours from Google, observed Oct 28, 2026 at 8:00 AM ET.");
   });
 
   it("prints no second provenance line for an official schedule, which HoursBlock already dates", async () => {

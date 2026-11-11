@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import SourceBadge, { sourceBadgeTier } from "@/components/place/SourceBadge";
 import FreshnessChip from "@/components/ui/FreshnessChip";
+import { SOURCE_LINE_ITEM } from "@/components/ui/sourceLineItem";
 import { formatChecked, formatCheckedDay, placeFreshnessEvidence } from "@/lib/trust";
 
 /**
@@ -43,25 +44,21 @@ export default function PlaceSourceLine({
       style={{ color: "var(--app-ink-3)" }}
     >
       {hasBadge && (
-        <span className={ITEM}>
+        <span className={SOURCE_LINE_ITEM}>
           <SourceBadge place={place} size="md" />
         </span>
       )}
-      {googleMatch && <span className={ITEM}>Confirmed by Google</span>}
+      {googleMatch && <span className={SOURCE_LINE_ITEM}>Confirmed by Google</span>}
       {listing && (
-        // FreshnessChip renders nothing before hydration; the wrapper then
-        // collapses with its separator instead of leaving an orphaned dot.
-        <span className={ITEM}>
+        // FreshnessChip renders nothing before hydration or for a date it
+        // cannot print; the empty wrapper hides and lends no dot to the
+        // item after it.
+        <span className={SOURCE_LINE_ITEM}>
           <FreshnessChip iso={listing} subject="Listing" />
         </span>
       )}
-      {updated && <span className={ITEM}>{updated}</span>}
-      {children ? <span className={ITEM}>{children}</span> : null}
+      {updated && <span className={SOURCE_LINE_ITEM}>{updated}</span>}
+      {children ? <span className={SOURCE_LINE_ITEM}>{children}</span> : null}
     </p>
   );
 }
-
-/** Each item owns the separator before it, so a missing or not-yet-hydrated
- * item never leaves a dangling middle dot. The first item has none. */
-const ITEM =
-  "inline-flex min-w-0 items-center gap-2 empty:hidden [&:not(:first-child)]:before:content-['·']";

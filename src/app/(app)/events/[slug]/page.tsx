@@ -83,6 +83,7 @@ import { isDateOnlyEventAnchor } from "@/lib/eventWhenLabel";
 import { eventPlanEligibility } from "@/lib/plan/event-plan-eligibility";
 import { withBrowseReturnTo } from "@/lib/browse-return";
 import { googleMapsDirections, googleMapsDirectionsToAddress } from "@/lib/integrations/deeplinks";
+import { SOURCE_LINE_ITEM } from "@/components/ui/sourceLineItem";
 import { looksLikeStreetAddress } from "@/lib/integrations/mapboxGeocode";
 
 function splitDescription(text: string, limit = 300): { preview: string; rest: string } {
@@ -375,14 +376,20 @@ export default async function EventPage({
   // postponed or past event keeps its address as a record, without a link.
   const canGo = eventStatus === "scheduled" && !hasEnded;
   const goDirectionsUrl = canGo && physicalAttendance ? directionsUrl : null;
-  // The street address under the venue line. iCal feeds join the venue and
-  // the street ("Frederick Fairgrounds, 797 E Patrick St, ..."), so a leading
-  // venue name is stripped rather than hiding the whole address. What is
-  // left prints only when it still holds a street and the venue line does
-  // not already say it (some feeds put the street itself in the venue field,
-  // as in "121 N Bentz St").
+  // The address under the venue line. iCal feeds join the venue and the
+  // street ("Frederick Fairgrounds, 797 E Patrick St, ..."), so a leading
+  // venue name is stripped rather than hiding the whole address. The venue
+  // must end at a word boundary, so a venue "Carroll" never cuts
+  // "Carrollton Blvd" into "ton Blvd" or "Carroll's Cafe" into "'s Cafe". An address with no venue prefix prints
+  // as the publisher wrote it; a stripped remainder prints only when it
+  // still holds a street, so stripping never leaves a bare town. Neither
+  // prints when the venue line already says it (some feeds put the street
+  // itself in the venue field, as in "121 N Bentz St").
   const venueKey = (event.venue_name ?? "").trim().toLocaleLowerCase();
-  const addressRest = venueKey && eventAddress.toLocaleLowerCase().startsWith(venueKey)
+  const startsWithVenue = Boolean(venueKey)
+    && eventAddress.toLocaleLowerCase().startsWith(venueKey)
+    && !/[\p{L}\p{N}\p{M}'’-]/u.test(eventAddress.charAt(venueKey.length));
+  const addressRest = startsWithVenue
     ? eventAddress.slice(venueKey.length).replace(/^[\s,·–-]+/, "")
     : eventAddress;
   const whereAddress =
@@ -700,11 +707,11 @@ export default async function EventPage({
             className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-snug"
             style={{ color: "var(--app-ink-3)" }}
           >
-            <span className={EVENT_SOURCE_ITEM}><TrustChip signal={trust} /></span>
-            <span className={EVENT_SOURCE_ITEM}>{trust.basis}</span>
+            <span className={SOURCE_LINE_ITEM}><TrustChip signal={trust} /></span>
+            <span className={SOURCE_LINE_ITEM}>{trust.basis}</span>
             {/* FreshnessChip fills its slot after hydration; the empty
                 wrapper collapses with its separator until then. */}
-            <span className={EVENT_SOURCE_ITEM}>
+            <span className={SOURCE_LINE_ITEM}>
               <FreshnessChip iso={event.last_verified_at ?? undefined} subject="Event" />
             </span>
             {/* On desktop the action row may already link this exact page
@@ -1208,11 +1215,6 @@ export default async function EventPage({
 /* The desktop action row matches the place page: one filled Deep Coral
    action, then unboxed icon-and-label links on the page ground. Each keeps a
    48px target. */
-/** One item of the event source line. Each item after the first owns the
- * separator before it, and an empty item (FreshnessChip before hydration)
- * collapses with its separator. */
-const EVENT_SOURCE_ITEM =
-  "inline-flex min-w-0 items-center gap-2 empty:hidden [&:not(:first-child)]:before:content-['·']";
 const DESKTOP_ACTION_ROW ="hidden flex-wrap items-center gap-x-6 gap-y-1 lg:flex";
 const DESKTOP_PRIMARY_CLASS = "tap-44 flex min-h-12 items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[15px] font-semibold";
 const DESKTOP_PRIMARY_STYLE = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };

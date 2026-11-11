@@ -84,7 +84,7 @@ export const DatedClosure: Story = {
  * the title carries the caveat and the date the hours were last checked. */
 export const NoScheduleStatusLine: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
-  parameters: { docs: { description: { story: "A place with no usable schedule shows no hours block. The status line keeps the plain caveat and follows it with the date the hours themselves were last checked." } } },
+  parameters: { docs: { description: { story: "A place with no usable schedule shows no hours block. The status line keeps the plain caveat, with the date the hours themselves were last checked on its own line under it." } } },
   render: () => (
     <div className="flex flex-wrap items-center gap-2 text-xs">
       <LiveOpenStatus verified={false} initial={{ state: "unknown" }} hoursCheckedAt={new Date(+now - 30 * 86_400_000).toISOString()} />
@@ -101,8 +101,11 @@ export const NoScheduleStatusLine: Story = {
     await expect(checked).toBeVisible();
     await expect(canvas.queryByText(/Check with the business/)).not.toBeInTheDocument();
     await expect(canvas.queryByText(/Hours today/)).not.toBeInTheDocument();
-    // The caveat and its date share one line, and the line wraps instead of
-    // overflowing a 320px phone, including at 200 percent text.
+    // The date sits on its own line under the caveat, so a wrapped row never
+    // starts with a separator dot, and nothing overflows a 320px phone,
+    // including at 200 percent text.
+    await expect(checked.getBoundingClientRect().top).toBeGreaterThanOrEqual(caveat.getBoundingClientRect().bottom - 1);
+    await expect(window.getComputedStyle(checked, "::before").content).toBe("none");
     const doc = canvasElement.ownerDocument;
     const root = doc.documentElement;
     const fontSize = root.style.getPropertyValue("font-size");
@@ -229,6 +232,10 @@ export const QualifiedMuseum: Story = {
     try {
       root.style.setProperty("font-size", "200%");
       await expect(note).toBeVisible();
+      // Opening the disclosure starts the chevron's rotation. A square turning
+      // through 45 degrees is briefly wider than itself, so measure the
+      // section at rest rather than mid-turn on a slow runner.
+      await Promise.all(section.getAnimations({ subtree: true }).map((animation) => animation.finished));
       await expect(section.scrollWidth).toBeLessThanOrEqual(section.clientWidth);
     } finally {
       if (fontSize) root.style.setProperty("font-size", fontSize);

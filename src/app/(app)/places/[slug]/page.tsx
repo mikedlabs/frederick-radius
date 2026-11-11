@@ -62,7 +62,7 @@ import { placeVisitDetails } from "@/lib/loaders/placeVisitDetails";
 import PlanFromPlaceLink from "@/components/plan/PlanFromPlaceLink";
 import { isDestinationCategory, isRecommendable } from "@/lib/relevance";
 import type { DecisionAction } from "@/lib/decision/telemetry";
-import { needsWebsiteHoursLink, phoneBarHasWebsite } from "@/lib/place-phone-bar";
+import { needsWebsiteLink, phoneBarHasWebsite } from "@/lib/place-phone-bar";
 
 /**
  * Phase 2: never render scraped second-person copy (quality bar 9,
@@ -208,9 +208,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           : null;
   // The phone bar's last cell is the commerce action when there is one, else
   // Website when the place has no email. One flag drives both the bar and the
-  // no-hours fallback link, so the official website is never unreachable.
+  // page's plain website link, so the official website is never unreachable
+  // on a phone.
   const mobileBarHasCommerce = Boolean(mobileCommerceLink && mobileCommerceAction);
   const mobileBarHasWebsite = phoneBarHasWebsite(place, mobileBarHasCommerce);
+  const hasGoogleHours = Boolean(place.google_hours && place.google_hours.length > 0);
   // Drop anything that has already ended before mapping. place.upcoming_events
   // is baked at data-build time, so without this a venue can show a past
   // event as "upcoming" once the build is a day or two old (the audit caught
@@ -540,15 +542,19 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       {/* With no schedule to show, the status line under the title already
           says "Hours not recently confirmed" with its date, so there is no
           second hours block repeating it. The phone bar and the desktop row
-          carry Call and Website. The one exception keeps a plain link: on a
-          phone whose bar has no Website cell (the place has an email or a
-          commerce link), this is the only way to reach the official site. */}
+          carry Call and Website. */}
       {place.hours ? (
         <HoursBlock hours={place.hours} verified={place.hours_verified ?? false} provenance={hoursConfirmed ?? undefined} />
-      ) : place.google_hours && place.google_hours.length > 0 ? (
-        <GoogleHours lines={place.google_hours} />
-      ) : needsWebsiteHoursLink(place, mobileBarHasCommerce) ? (
-        <p className="lg:hidden" data-place-hours-website>
+      ) : hasGoogleHours ? (
+        <GoogleHours lines={place.google_hours!} />
+      ) : null}
+
+      {/* On a phone whose bar has no Website cell (the place has an email or a
+          commerce link), this plain link is the only way to the official
+          site, with or without a posted schedule. The desktop row always
+          carries Website. */}
+      {needsWebsiteLink(place, mobileBarHasCommerce) && (
+        <p className="lg:hidden" data-place-website-link>
           <a
             href={place.website}
             target="_blank"
@@ -558,10 +564,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             style={{ color: "var(--app-ink)" }}
           >
             <Globe className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-2)" }} />
-            Check hours on the official website
+            {place.hours || hasGoogleHours ? "Official website" : "Check hours on the official website"}
           </a>
         </p>
-      ) : null}
+      )}
 
       <PlacePhotoGallery
         key={place.slug}

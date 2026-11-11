@@ -210,6 +210,26 @@ describe("event detail where and the phone bar", () => {
     expect(nodes.find((node) => node.props["data-event-address"] !== undefined)?.props.children).toBe("Community Park, 21 Frederick Rd, Thurmont, MD 21788");
   });
 
+  it("strips the venue only at a word boundary", async () => {
+    mocks.venue.mockReturnValue(null);
+    const nodes = await render({ ...library, venue_name: "Carroll", address: "Carrollton Blvd 5, Frederick, MD 21701" });
+    expect(nodes.find((node) => node.props["data-event-address"] !== undefined)?.props.children).toBe("Carrollton Blvd 5, Frederick, MD 21701");
+  });
+
+  it("treats an apostrophe or hyphen as part of the venue's word", async () => {
+    mocks.venue.mockReturnValue(null);
+    for (const address of ["Carroll's Creek Cafe, 50 Carroll Creek Way, Frederick", "Carroll-Creek Park, 50 Carroll Creek Way, Frederick"]) {
+      const nodes = await render({ ...library, venue_name: "Carroll", address });
+      expect(nodes.find((node) => node.props["data-event-address"] !== undefined)?.props.children).toBe(address);
+    }
+  });
+
+  it("prints no remainder that is only a town once the venue is stripped", async () => {
+    mocks.venue.mockReturnValue(null);
+    const nodes = await render({ ...library, venue_name: "Baker Park", address: "Baker Park, Frederick" });
+    expect(nodes.find((node) => node.props["data-event-address"] !== undefined)).toBeUndefined();
+  });
+
   it("does not repeat the address when the venue line already is the street", async () => {
     mocks.venue.mockReturnValue(null);
     const nodes = await render({ ...library, venue_name: "121 N Bentz St", address: "121 N Bentz St, Frederick, MD 21701" });
