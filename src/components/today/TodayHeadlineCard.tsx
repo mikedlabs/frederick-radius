@@ -10,6 +10,7 @@ import EventArtwork from "@/components/event/EventArtwork";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
 import type { EventCardVisual } from "@/components/event/eventVisuals";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
 
 /** Keep optional media and its credit together while the factual headline
  * remains server-rendered children. Failed media never removes the event.
@@ -19,9 +20,12 @@ import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
  * answers a pointer with a surface change instead of the arrow nudge.
  * Keyboard focus rings the whole card from the article, because the article
  * clips an outline drawn by the link under the media. The link keeps its own
- * inset ring only where `:has()` is unavailable. */
+ * inset ring only where `:has()` is unavailable.
+ *
+ * `layout="row"` is the follow-up form: the same ruled row, with an approved
+ * picture as a 64px square at the right edge instead of a wide image above. */
 export default function TodayHeadlineCard({
-  eventSlug, titleId, detailId, visual, accent: _accent, priority, actionCue = true, children,
+  eventSlug, titleId, detailId, visual, priority, actionCue = true, layout = "headline", children,
 }: {
   eventSlug: string;
   titleId: string;
@@ -30,9 +34,43 @@ export default function TodayHeadlineCard({
   accent: string;
   priority: boolean;
   actionCue?: boolean;
+  layout?: "headline" | "row";
   children: ReactNode;
 }) {
   const { identity, visibleVisual, failImage: unavailable, inspectLoadedImage } = useEventVisualLifecycle(visual);
+
+  if (layout === "row") {
+    const thumbSrc = visibleVisual ? placePhotoFailureSignalSrc(proxyPhotoAtWidth(visibleVisual.src, 132)) : null;
+    return (
+      <article data-decision-impression="true" data-decision-surface="today" data-decision-entity="event" data-decision-id={eventSlug} data-decision-position="result" data-today-event-row="row" className="min-w-0 border-b has-[>a:focus-visible]:outline-2 has-[>a:focus-visible]:outline-offset-2 has-[>a:focus-visible]:outline-[var(--app-focus)]" style={{ borderColor: "var(--app-border)" }}>
+        <Link
+          href={`/events/${eventSlug}`}
+          prefetch={false}
+          aria-labelledby={titleId}
+          aria-describedby={detailId}
+          className="focus-ring-inset group flex min-w-0 items-start gap-4 py-4 supports-[selector(:has(*))]:outline-none!"
+        >
+          <div className="min-w-0 flex-1 [overflow-wrap:anywhere] group-hover:[&_h3]:underline">
+            {children}
+          </div>
+          {visibleVisual && thumbSrc && (
+            <figure className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)]">
+              <Image key={identity} src={thumbSrc} alt="" fill loading="lazy"
+                unoptimized={thumbSrc.startsWith("/api/place-photo")}
+                sizes="64px"
+                placeholder="blur" blurDataURL={PAPER_CREAM_BLUR}
+                className={visibleVisual.presentation === "artwork" ? "object-contain p-1" : "object-cover"}
+                style={visibleVisual.objectPosition ? { objectPosition: visibleVisual.objectPosition } : undefined}
+                onLoad={(event) => inspectLoadedImage(event.currentTarget)}
+                onError={unavailable}
+              />
+            </figure>
+          )}
+        </Link>
+        {visibleVisual && <EventVisualCredit visual={visibleVisual} className="-mt-2 pb-3" />}
+      </article>
+    );
+  }
 
   return (
     <article data-decision-impression="true" data-decision-surface="today" data-decision-entity="event" data-decision-id={eventSlug} data-decision-position="result" data-today-event-row className="min-w-0 border-b has-[>a:focus-visible]:outline-2 has-[>a:focus-visible]:outline-offset-2 has-[>a:focus-visible]:outline-[var(--app-focus)]" style={{ borderColor: "var(--app-border)" }}>

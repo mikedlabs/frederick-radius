@@ -6,8 +6,10 @@ import { ArrowRight } from "lucide-react";
  * The shared heading anatomy for Today’s main briefing sections.
  *
  * It keeps the page feeling like one edited field guide: a quiet classification
- * line when needed, a display title, one compact status line, and a solid
- * registration rule. The component is intentionally a header, not another card.
+ * line when needed, a display title, one compact status line, and a plain
+ * hairline under the header. The short accent bar that used to start that
+ * line was decoration, so the rule is now one hairline. The component is
+ * intentionally a header, not another card.
  */
 export default function TodaySectionHeading({
   title,
@@ -55,8 +57,8 @@ export default function TodaySectionHeading({
           </h2>
           {meta && (
             <p
-              className="mt-1.5 font-mono text-xs leading-snug tabular-nums tracking-[0.03em]"
-              style={{ color: "var(--app-ink-3)" }}
+              className="mt-1.5 text-sm leading-snug tabular-nums"
+              style={{ color: "var(--app-ink-2)" }}
             >
               {meta}
             </p>
@@ -86,13 +88,6 @@ export default function TodaySectionHeading({
         className="today-section-heading__registration mt-3 flex items-center gap-2"
         aria-hidden
       >
-        <span
-          className="today-section-heading__registration-accent h-[3px] w-8 shrink-0 rounded-full"
-          style={{
-            background:
-              "var(--app-heading-rule, var(--today-section-accent, var(--app-brand)))",
-          }}
-        />
         <span
           className="today-section-heading__registration-rule h-px flex-1"
           style={{ background: "var(--app-border)" }}

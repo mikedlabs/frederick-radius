@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, MapPin } from "lucide-react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
-import PlaceCategoryArtwork from "@/components/place/PlaceCategoryArtwork";
 import SaveButton from "@/components/saved/SaveButton";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { DaypartPick } from "@/lib/loaders/daypartPicks";
@@ -87,10 +86,12 @@ export default function TodayPlacePreview({ place, category, hydratePhoto = fals
       data-place-availability={availability === "opening-soon" ? availability : undefined}
       data-has-photo={Boolean(photo.source)} className={`${styles.preview} ${className}`}>
       <div className={styles.content}>
+      {/* A real photograph only. Without one the row is type alone, with no
+          gray tile or category drawing standing in for a picture. */}
       {photo.source ? <div className={styles.media}>
         <PlaceCardPhoto key={photo.source.src} decodeIdentity={photo.sourceKey} source={photo.source} onResult={photo.onResult}
-          width={360} deferGoogleBytes sizes="(min-width: 640px) 520px, calc(100vw - 32px)" />
-      </div> : <div className={styles.artwork}><PlaceCategoryArtwork category={category} /></div>}
+          width={360} deferGoogleBytes sizes="(min-width: 640px) 128px, 96px" />
+      </div> : null}
       <div className={styles.facts}>
         <p className={styles.category}>{CATEGORY_BY_SLUG[category]?.name ?? category.replace(/-/g, " ")}</p>
         <h3 data-today-pick-name className={styles.name}>{place.name}</h3>
