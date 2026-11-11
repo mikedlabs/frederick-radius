@@ -19,7 +19,8 @@ describe("reviewed photograph source credit", () => {
   it("keeps County source and permission accurate in one short place credit line", () => {
     const source = placeCardPhotoPlan({ slug }, 360).sources[0];
     const markup = renderToStaticMarkup(<PlaceCardPhotoCredit source={source} loaded />);
-    expect(markup).toContain(`>Frederick County Parks &amp; Recreation</span> · `);
+    // The facts line ends with a hidden separator before the links line.
+    expect(markup).toContain(`>Frederick County Parks &amp; Recreation</span><span class="sr-only"> · </span>`);
     expect(markup).toContain(`<a href="${image.license.url}" target="_blank" rel="noopener noreferrer">${image.license.label}</a>`);
     expect(markup).toContain(`<a href="${image.source_url}" target="_blank" rel="noopener noreferrer">Frederick County</a>`);
     expect(markup).toContain("Photo provided by ");
