@@ -9607,6 +9607,19 @@ header[data-map-header="true"] [data-location-chip][data-compact="true"] {
   border-radius: var(--app-radius-sm);
   color: var(--app-ink) !important;
 }
+/* The flat header's larger 20px glyphs and 13px label leave no room for a
+   wide town name beside five tools below 390px. Cap the chip there so the
+   full name truncates and the header stays one row. */
+@media (min-width: 360px) and (max-width: 389.98px) {
+  header[data-map-header="true"] [data-location-chip][data-compact="true"] {
+    max-width: 104px;
+    min-width: 0;
+    padding-inline: 5px;
+  }
+  header[data-map-header="true"] [data-location-chip][data-compact="true"] > span {
+    max-width: 64px;
+  }
+}
 @media (max-width: 1023.98px) {
   [data-map-bottom-nav="true"] {
     background: var(--app-bg);

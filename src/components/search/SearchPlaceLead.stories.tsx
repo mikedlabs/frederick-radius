@@ -68,9 +68,10 @@ const usableLead: NonNullable<Story["play"]> = async ({ canvasElement, args }) =
     await expect(frame.width).toBeGreaterThanOrEqual(300);
     await expect(header.width).toBeGreaterThanOrEqual(300);
   } else {
-    // A narrow result stays stacked even in a wide workshop viewport.
+    // A narrow result stays stacked even in a wide workshop viewport. Plain
+    // tool: the stacked photograph is a 16:10 frame at the column width.
+    await expect(Math.abs(frame.height - frame.width / 1.6)).toBeLessThanOrEqual(1);
     await expect(frame.height).toBeGreaterThanOrEqual(150);
-    await expect(frame.height).toBeLessThanOrEqual(180);
     await expect(header.top).toBeGreaterThanOrEqual(frame.bottom);
     await expect(frame.width).toBe(leadBounds.width);
   }
