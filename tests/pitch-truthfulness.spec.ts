@@ -66,7 +66,7 @@ describe("pitch truthfulness guardrails", () => {
 
     expect(vision).toContain('href="/today"');
     expect(vision).not.toContain("/api/beta");
-    expect(vision).not.toContain("<form");
+    expect(vision).not.toMatch(/<(?:motion\.)?form\b/);
     expect(vision).not.toMatch(/access code is (?:on its way|in your inbox)|personal (?:beta|access) code|Request beta access/);
     expect(vision).not.toContain("window.location.href");
   });

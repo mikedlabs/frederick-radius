@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { Check, X, Inbox, Flag } from "lucide-react";
 import { getDb, getSql } from "@/lib/db/client";
 import { submissions } from "@/lib/db/schema";
+import { feedbackSourcePath } from "@/lib/feedback-source-path";
 import OwnerAlertsCard from "@/components/admin/OwnerAlertsCard";
 import {
   AdminShell,
@@ -27,8 +28,15 @@ export const dynamic = "force-dynamic";
 
 type FeedbackRow = typeof submissions.$inferSelect;
 
+/** How many resolved notes the page reads for its "Recently resolved" log. */
+const RESOLVED_LOG_LIMIT = 15;
+
 type Data = {
-  feedback: FeedbackRow[];
+  /** Every note still waiting, oldest first. Never capped: a cap here hides
+   *  the people who have waited longest and can make the inbox read as clear. */
+  pending: FeedbackRow[];
+  /** The newest resolved notes, for the short log under the inbox. */
+  resolved: FeedbackRow[];
   pushDevices: number;
   followCount: number;
   saveCount: number;
@@ -50,12 +58,17 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
     // pipelined down the one pooled connection, which Supavisor does not
     // answer, so the render hangs. One-at-a-time always completes. The four
     // counts travel as one statement.
-    const feedback = await db
+    const pending = await db
       .select()
       .from(submissions)
-      .where(eq(submissions.kind, "feedback"))
+      .where(and(eq(submissions.kind, "feedback"), eq(submissions.status, "pending")))
+      .orderBy(asc(submissions.created_at));
+    const resolved = await db
+      .select()
+      .from(submissions)
+      .where(and(eq(submissions.kind, "feedback"), ne(submissions.status, "pending")))
       .orderBy(desc(submissions.created_at))
-      .limit(200);
+      .limit(RESOLVED_LOG_LIMIT);
     const counts = (
       await raw`
         select
@@ -68,7 +81,8 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
     return {
       ok: true,
       data: {
-        feedback,
+        pending,
+        resolved,
         pushDevices: counts.push_devices ?? 0,
         followCount: counts.follow_count ?? 0,
         saveCount: counts.save_count ?? 0,
@@ -126,11 +140,8 @@ function FeedbackSkeleton() {
 
 function Dashboard({ data }: { data: Data }) {
   // The inbox is a queue: oldest note first, so the person who has waited
-  // longest is answered first (the fetch is newest-first for the resolved log).
-  const pending = data.feedback
-    .filter((f) => f.status === "pending")
-    .sort((a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime());
-  const resolved = data.feedback.filter((f) => f.status !== "pending");
+  // longest is answered first. The resolved log is newest-first.
+  const { pending, resolved } = data;
 
   return (
     <>
@@ -205,7 +216,7 @@ function FeedbackInbox({ pending, resolved, now }: { pending: FeedbackRow[]; res
         <div className="mt-5">
           <SectionLabel>Recently resolved</SectionLabel>
           <HairlineList>
-            {resolved.slice(0, 15).map((f, i) => {
+            {resolved.map((f, i) => {
               const p = feedbackPayload(f);
               return (
                 <HairlineRow
@@ -304,7 +315,7 @@ function feedbackPayload(row: FeedbackRow): {
   const p = (row.payload ?? {}) as Record<string, unknown>;
   return {
     message: typeof p.message === "string" && p.message.trim() ? p.message : "(empty note)",
-    pathname: typeof p.pathname === "string" && p.pathname.startsWith("/") ? p.pathname : null,
+    pathname: feedbackSourcePath(p.pathname),
     commit: typeof p.commit === "string" && p.commit.trim() ? p.commit : null,
   };
 }
