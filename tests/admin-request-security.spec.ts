@@ -1,13 +1,11 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 import { POST as updateResendDomain } from "@/app/admin/api/resend-domain/route";
-import { POST as sendInvites } from "@/app/admin/api/send-invites/route";
 import { requireJsonRequest } from "@/lib/security/admin-request";
 
 describe("admin JSON request boundary", () => {
   it.each([
     ["Resend domain", "/admin/api/resend-domain", updateResendDomain],
-    ["invite sender", "/admin/api/send-invites", sendInvites],
   ])(
     "rejects a text/plain simple request before %s can mutate",
     async (_label, path, post) => {

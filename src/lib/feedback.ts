@@ -30,8 +30,8 @@ export type AskCorrectionReason = keyof typeof ASK_CORRECTION_REASONS;
 export type FeedbackSource = "feedback-widget" | "ask-correction";
 
 // Deliberately simple: catches typos ("a@b", no TLD) without rejecting valid
-// unusual addresses. Mirrors /api/beta/email. Email is optional; we only run
-// this when the tester actually typed one.
+// unusual addresses. Email is optional; we only run this when the visitor
+// actually typed one.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 type ParsedFeedbackBase = {

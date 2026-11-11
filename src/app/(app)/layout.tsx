@@ -5,7 +5,6 @@ import RouteAccent from "@/components/nav/RouteAccent";
 import AppMain from "@/components/nav/AppMain";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import FeedbackWidget from "@/components/feedback/FeedbackWidget";
-import BetaTelemetry from "@/components/beta/BetaTelemetry";
 import PageViewTracker from "@/components/analytics/PageViewTracker";
 import PullToRefresh from "@/components/today/PullToRefresh";
 import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
@@ -77,9 +76,6 @@ export default function AppLayout({ children, modal }: {
           <BottomNav />
           <SideRail />
           <InstallPrompt />
-          {/* Counts aggregate beta activity and refreshes internal access-use
-              timing once per session. No personal code goes to analytics. */}
-          <BetaTelemetry />
           {/* Logs a page_view per route change to the first-party per-member
               event log (via track(), so opt-out + NFC attribution apply).
               Renders nothing. */}

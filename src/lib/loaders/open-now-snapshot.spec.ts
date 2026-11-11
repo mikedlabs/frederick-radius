@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { betaOpenNowSnapshot } from "@/lib/loaders/betaPulse";
 import {
   buildOpenNowSnapshot,
   countOpenNow,
@@ -49,16 +48,13 @@ const LEISURE = [
 describe("county open-now snapshot", () => {
   it("drives every county count from one untruncated population and instant", () => {
     const snapshot = getOpenNowSnapshot(NOW);
-    const beta = betaOpenNowSnapshot(NOW);
     const compatibility = openNowHighlights(3, NOW);
 
     expect(snapshot.count).toBe(snapshot.places.length);
     expect(countOpenNow(NOW)).toBe(snapshot.count);
     expect(compatibility.count).toBe(snapshot.count);
-    expect(beta.inventoryCount).toBe(snapshot.count);
     expect(snapshot.asOf).toBe(NOW.toISOString());
     expect(compatibility.asOf).toBe(snapshot.asOf);
-    expect(beta.asOf).toBe(snapshot.asOf);
   });
 
   it("keeps non-leisure inventory searchable without promoting it as a pick", () => {
@@ -82,7 +78,7 @@ describe("county open-now snapshot", () => {
       expect(inventorySlugs.has(slug), `${slug} should remain in inventory`).toBe(
         true,
       );
-      expect(proofSlugs.has(slug), `${slug} must not become beta proof`).toBe(
+      expect(proofSlugs.has(slug), `${slug} must not become open-now proof`).toBe(
         false,
       );
     }

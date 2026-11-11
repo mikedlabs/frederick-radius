@@ -117,7 +117,7 @@ describe("parseFeedback", () => {
 
     for (const resultRef of [
       "https://example.com/places/cafe",
-      "/admin/beta",
+      "/admin/feedback",
       "/places/../../private",
     ]) {
       const badRef = parseFeedback({

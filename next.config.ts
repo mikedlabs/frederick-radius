@@ -448,6 +448,15 @@ const nextConfig: NextConfig = {
       // page is gone, and its one surviving control (phone feedback) now
       // lives on /settings.
       { source: "/settings/notifications", destination: "/settings", permanent: true },
+      // The legacy beta invite page and its admin desks were retired once the
+      // access gate had been gone for months. Invite emails, social posts and
+      // old bookmarks still carry /beta, so it lands on Today. The admin pages
+      // fold into the surviving admin desk; the feedback inbox moved to
+      // /admin/feedback. A trailing ":path*" also matches the bare address.
+      { source: "/beta/:path*", destination: "/today", permanent: true },
+      { source: "/admin/beta", destination: "/admin/feedback", permanent: true },
+      { source: "/admin/beta-codes/:path*", destination: "/admin", permanent: true },
+      { source: "/admin/beta-emails/:path*", destination: "/admin", permanent: true },
     ];
   },
 };
