@@ -23,7 +23,10 @@ import { proxyPhotoAtWidth } from "@/lib/format/img";
  * inset ring only where `:has()` is unavailable.
  *
  * `layout="row"` is the follow-up form: the same ruled row, with an approved
- * picture as a 64px square at the right edge instead of a wide image above. */
+ * picture as a 64px square at the right edge instead of a wide image above.
+ * The square and its gap stay 64px and 16px when text is enlarged, so the
+ * event facts keep most of the row instead of a narrow column. Its link
+ * carries the open action that decision telemetry counts. */
 export default function TodayHeadlineCard({
   eventSlug, titleId, detailId, visual, priority, actionCue = true, layout = "headline", children,
 }: {
@@ -48,13 +51,14 @@ export default function TodayHeadlineCard({
           prefetch={false}
           aria-labelledby={titleId}
           aria-describedby={detailId}
-          className="focus-ring-inset group flex min-w-0 items-start gap-4 py-4 supports-[selector(:has(*))]:outline-none!"
+          data-decision-action="open"
+          className="focus-ring-inset group flex min-w-0 items-start gap-[16px] py-4 supports-[selector(:has(*))]:outline-none!"
         >
           <div className="min-w-0 flex-1 [overflow-wrap:anywhere] group-hover:[&_h3]:underline">
             {children}
           </div>
           {visibleVisual && thumbSrc && (
-            <figure className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)]">
+            <figure className="relative h-[64px] w-[64px] shrink-0 overflow-hidden rounded-[var(--app-radius-sm)]">
               <Image key={identity} src={thumbSrc} alt="" fill loading="lazy"
                 unoptimized={thumbSrc.startsWith("/api/place-photo")}
                 sizes="64px"

@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpRight, Trees, Utensils } from "lucide-react";
+import { ArrowUpRight, MapPin, Trees, Utensils } from "lucide-react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
 import SaveButton from "@/components/saved/SaveButton";
 import { withBrowseReturnTo } from "@/lib/browse-return";
@@ -43,10 +43,10 @@ function DiscoveryPlace({ place, scope, returnTo, lead }: { place: LocalDiscover
         data-today-geographic-place={place.slug} data-today-discovery-action="place"
         data-photo-state={loaded ? "loaded" : source ? "pending" : "failed"}
         className={styles.discoveryPlaceLink}>
-        {source && <span className={styles.discoveryPhoto} data-today-photo-lead={lead || undefined}>
+        {source ? <span className={styles.discoveryPhoto} data-today-photo-lead={lead || undefined}>
           <PlaceCardPhoto key={source.src} source={source} onResult={onResult}
             sizes="(min-width: 640px) 520px, calc(100vw - 32px)" />
-        </span>}
+        </span> : !lead && <MapPin aria-hidden data-today-discovery-glyph className={styles.discoveryGlyph} strokeWidth={1.75} />}
         <div data-today-geographic-caption data-today-name-plate={lead || undefined} className={styles.discoveryCaption}>
           <div className="min-w-0">
             <h3 className={styles.discoveryName}>{place.shortName ?? place.name}</h3>
@@ -54,10 +54,6 @@ function DiscoveryPlace({ place, scope, returnTo, lead }: { place: LocalDiscover
           </div>
           <span aria-hidden className={styles.discoveryAction}><ArrowUpRight className="h-4 w-4" strokeWidth={2.25} /></span>
         </div>
-        {/* Holds Save's place in the lead's last line. When the plate and Save
-            no longer fit side by side, this wraps to its own line and Save,
-            which is anchored to the same corner, follows it. */}
-        {lead && <span aria-hidden className={styles.discoverySaveSlot} />}
       </Link>
       <div className={styles.discoverySave}>
         <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} barLabel="Save" importLocalSavesOnMount={false} />

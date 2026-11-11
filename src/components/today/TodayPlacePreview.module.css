@@ -93,8 +93,9 @@
   color: var(--app-ink-2);
 }
 
-/* One line of quiet text actions. Each keeps a 44px target; the line wraps
-   rather than squeezing a label when text is enlarged. */
+/* One line of quiet text actions. Each keeps the 48px target the earlier
+   row offered (above the 44px floor); the line wraps rather than squeezing a
+   label when text is enlarged. */
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -108,7 +109,7 @@
   align-items: center;
   gap: 6px;
   min-width: 44px;
-  min-height: 44px;
+  min-height: 48px;
   color: var(--app-ink);
   font-size: 0.9375rem;
   font-weight: 600;
@@ -151,7 +152,7 @@
   flex-direction: row;
   gap: 6px;
   min-width: 44px;
-  min-height: 44px;
+  min-height: 48px;
   padding: 0;
   border-radius: var(--app-radius-sm);
   font-size: 0.9375rem;
