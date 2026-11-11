@@ -93,6 +93,13 @@
   flex: 1 1 100%;
 }
 
+/* Without a photograph the header leads with the 48px glyph slot and a 12px
+   gap. The actions start under the title instead of at the page gutter, and
+   keep wrapping inside the narrower column. */
+.lead[data-has-photo="false"] > .leadActions {
+  padding-inline-start: calc(48px + 12px);
+}
+
 /* The result's own width controls the split, including narrow desktop dialogs. */
 .lead > .leadPhoto,
 .lead > .leadHeader {
@@ -106,13 +113,11 @@
   min-width: 0;
 }
 
+/* The header keeps align-items: flex-start at every width, so a glyph sits
+   beside the title's first lines exactly as it does in the rows below. */
 @container (min-width: 600px) {
   .leadPhoto {
     height: 240px;
     aspect-ratio: auto;
-  }
-
-  .leadHeader {
-    align-items: center;
   }
 }

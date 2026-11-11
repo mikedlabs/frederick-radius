@@ -755,7 +755,10 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
     >
       <div hidden={embeddedInToolsDrawer && deckView !== null} className="space-y-5">
         <header
-          className="-mx-4 -mt-4 border-b px-4 pb-4 pt-4 sm:-mx-5 sm:-mt-6 sm:px-5 sm:pt-5 lg:mx-0 lg:mt-0"
+          // No horizontal bleed: the header text, the Find field and this
+          // rule share the rows' left edge, and the rule is inset like every
+          // other rule on the page.
+          className="-mt-4 border-b pb-4 pt-4 sm:-mt-6 sm:pt-5 lg:mt-0"
           style={{ borderColor: "var(--app-border)" }}
         >
           <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
@@ -1430,7 +1433,9 @@ function CompassIntentBoard({
           onOpen("all");
         }}
         disabled={!ready}
-        className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-2.5 text-[14px] font-semibold"
+        // The negative margin puts the label on the rows' left edge while
+        // the padding keeps room around the focus ring.
+        className="tap-44 -ml-2.5 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-2.5 text-[14px] font-semibold"
         style={{ color: "var(--app-link)" }}
       >
         Browse the full tool index

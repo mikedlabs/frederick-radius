@@ -140,5 +140,12 @@ export const FailedPhotoKeepsPlaceAndActions: Story = {
     await expect(canvas.getByRole("heading", { name: destinations.schifferstadt.name })).toBeVisible();
     await expect(canvas.getByRole("link", { name: "View place" })).toHaveAttribute("href", `/places/${destinations.schifferstadt.slug}`);
     await expect(canvas.getByRole("link", { name: /^Map$/ })).toBeVisible();
+    // Without a photo the actions start under the title, not at the gutter,
+    // and the glyph stays top-aligned beside the text column like a row's.
+    const glyph = canvasElement.querySelector<HTMLElement>("[data-search-place-photo-state='glyph']")!;
+    const column = glyph.nextElementSibling!.getBoundingClientRect();
+    const firstAction = canvas.getByRole("link", { name: "View place" }).getBoundingClientRect();
+    await expect(Math.abs(firstAction.left - column.left)).toBeLessThanOrEqual(1);
+    await expect(Math.abs(glyph.getBoundingClientRect().top - column.top)).toBeLessThanOrEqual(1);
   },
 };

@@ -10,16 +10,12 @@
   background: var(--app-bg-sunken);
 }
 
+/* Publisher art stays whole (object-fit: contain). EventArtwork's poster
+   frame is transparent and left-aligned, so the space beside a narrow poster
+   reads as page, not as gray letterbox bands, and the art starts at the same
+   left edge as the time block below it. */
 .artwork {
   min-width: 0;
-}
-
-/* Publisher art stays whole (object-fit: contain). The frame takes the white
-   ground, so the space around a portrait poster reads as page, not as gray
-   letterbox bands. */
-.artwork > div {
-  border-radius: var(--app-radius-md);
-  background: transparent;
 }
 
 /* The picture's credit spans the row under the facts, inside the row's

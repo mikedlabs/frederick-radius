@@ -250,9 +250,11 @@ export default async function MunicipalityPage(
           </div>
 
           {/* The selected pick leads the list; the next handful follow as the
-              same rows. One hairline above the list and one between rows. */}
+              same rows. One hairline above the list and one between rows. The
+              list spans the same column as the hero, so the page keeps one
+              right edge on desktop. */}
           <ul
-            className="max-w-[45rem] border-t [&>li:last-child>*]:border-b-0!"
+            className="border-t [&>li:last-child>*]:border-b-0!"
             style={{ borderColor: "var(--app-border)" }}
           >
             {[lead, ...grid].map((p) => (
@@ -262,7 +264,7 @@ export default async function MunicipalityPage(
             ))}
           </ul>
 
-          {/* Demoted directory door — NOT the inline browse chrome. Search
+          {/* Demoted directory door, NOT the inline browse chrome. Search
               is the canonical "see everything" surface; pre-fill the town. */}
           <Link
             href={`/search?q=${encodeURIComponent(m.name)}`}
@@ -284,7 +286,7 @@ export default async function MunicipalityPage(
       )}
 
       {/* Cliff notes: the verified almanac (one-liner + FAQ + fun facts +
-          local insight) — what the town IS, set BELOW the place reel now so
+          local insight): what the town IS, set BELOW the place reel now so
           the visual answer leads and the history is here for the curious. */}
       <TownAlmanac slug={m.slug} townName={m.name} />
 
@@ -311,9 +313,9 @@ export default async function MunicipalityPage(
             </Link>
           </div>
           {upcomingEvents.length > 0 ? (
-            // One column of ruled rows at a reading measure. Each row draws
-            // its own hairline, so the list needs no gap between rows.
-            <ul className="max-w-[45rem]">
+            // One column of ruled rows, as wide as the hero above. Each row
+            // draws its own hairline, so the list needs no gap between rows.
+            <ul>
               {upcomingEvents.map((e) => (
                 <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>
               ))}

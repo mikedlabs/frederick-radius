@@ -493,6 +493,12 @@
 [data-app-primary-tab="/my-radius"] .sv-colophon .inner > :last-child {
   border-bottom: 0;
 }
+/* When the empty page ends on the Home Screen row, the app footer's own top
+   rule closes that row. Its usual top margin would leave a 32px blank band
+   between two rules that reads as one oversized row. */
+[data-app-primary-tab="/my-radius"]:has([data-saved-empty-state] + .sv-colophon) > footer {
+  margin-top: 0;
+}
 
 /* Vaul ships its own physics at runtime (a 0.5s cubic-bezier(0.32,0.72,0,1)
    transform plus 0.5s slide keyframes), so a bottom drawer opens slower and
@@ -2571,9 +2577,15 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    * arts/culture accent. Keep this local to the glyph rather than widening the
    * global palette or changing warning colors elsewhere in the app. */
   --sky-sun-color: #C77918;
+  /* The moon and stars need a readable tone on the white ground. Dark
+   * appearance keeps the cream they were drawn in. */
+  --sky-moon-color: var(--app-ink-3);
   position: relative;
   display: inline-block;
   flex-shrink: 0;
+}
+:root[data-appearance="dark"] .sky-glyph {
+  --sky-moon-color: #E9E3D2;
 }
 .sky-glyph > svg {
   position: absolute;
@@ -3196,9 +3208,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    ledger. Namespaced sv-*.
    ========================================================================== */
 .sv-mast { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-top: 2px; }
+/* The same heavy page title Settings uses. */
 .sv-mast h1 {
-  font-family: var(--font-sans-base), ui-sans-serif, system-ui, sans-serif; font-size: 27px; font-weight: 650;
-  letter-spacing: -.015em; line-height: 1.05; color: var(--app-ink);
+  font-family: var(--font-sans-base), ui-sans-serif, system-ui, sans-serif; font-size: min(2.125rem, 13vw); font-weight: 800;
+  letter-spacing: -0.04em; line-height: 1.04; color: var(--app-ink);
 }
 .sv-stand {
   margin-top: 5px; font-family: var(--font-mono, monospace); font-size: 10.5px;
@@ -3221,7 +3234,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    one instrument. */
 .sv-onnow {
   border-top: 1px solid var(--app-border); border-bottom: 1px solid var(--app-border);
-  display: flex; align-items: center; gap: 10px; padding: 0 2px; min-height: 46px;
+  display: flex; align-items: center; gap: 10px; padding: 0; min-height: 46px;
 }
 .sv-onnow-label {
   flex: none; display: inline-flex; align-items: center; gap: 7px;
@@ -3243,7 +3256,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 /* Plan-a-day — one ruled line, demoted from a sparkles module. */
 .sv-planline {
   border-top: 1px solid var(--app-border); border-bottom: 1px solid var(--app-border);
-  min-height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 2px;
+  min-height: 52px; display: flex; align-items: center; gap: 10px; padding: 0;
   text-decoration: none;
 }
 .sv-planline .txt { min-width: 0; flex: 1; font-size: 12.5px; color: var(--app-ink-2); line-height: 1.35; }
@@ -3278,7 +3291,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .sv-colophon { border-top: 2px solid var(--app-ink); padding-top: 3px; }
 .sv-colophon .inner { border-top: 1px solid var(--app-border); }
 .sv-colophon-row {
-  display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 2px;
+  display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0;
   border-bottom: 1px solid var(--app-border); text-decoration: none;
 }
 .sv-colophon-row .k { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--app-ink-2); }
@@ -5009,6 +5022,16 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* MapDock sets an inline 80px (52px while a query is typed) track for this
+   button, sized for the phone layout. Above phone width the button keeps a
+   wider minimum (80px on tablets, 116px on desktop), so a fixed track let it
+   spill past the field's right border and pushed "Filters" across it. Wider
+   layouts size the track from the button. */
+@media (min-width: 431px) {
+  .dock-head:has(> .dock-contents) {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+}
 @media (min-width: 360px) and (max-width: 1023.98px) {
   .dock-contents {
     min-width: 80px;
@@ -5243,23 +5266,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    and leaves active layers visible. Inactive chrome softens after a few quiet
    seconds; map movement, hover, touch, focus, or keyboard use wakes it. The
    one flat flyout is intentionally not another nested MapDock pane. ── */
-/* The maps-app top fade: overlay chrome reads against a soft wash of the
-   canvas color, never against arbitrary tile contrast. Non-interactive. */
-.map-top-scrim {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 96px;
-  z-index: 1;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--app-bg) 82%, transparent),
-    color-mix(in srgb, var(--app-bg) 38%, transparent) 52%,
-    transparent
-  );
-  pointer-events: none;
-}
 .map-edge-tools {
   position: absolute;
   top: 50%;
@@ -7400,6 +7406,15 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   box-shadow: var(--app-shadow-3);
   transition: max-height 0.32s ease;
 }
+/* Closed, the pane is a zero-height box under the head, but its side and
+   bottom borders and its shadow still painted: a second rule and a faint
+   shade right under the head's own hairline. Only the open sheet draws them. */
+.eb-dock:not(.eb-open) .eb-pane {
+  border-color: transparent;
+  box-shadow: none;
+  /* Hold the edge until the collapse ends, so a closing sheet keeps it. */
+  transition: max-height 0.32s ease, border-color 0s linear 0.32s, box-shadow 0s linear 0.32s;
+}
 .eb-dock.eb-open .eb-pane {
   max-height: min(
     70dvh,
@@ -9031,6 +9046,13 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
   .dock-host:has(.dock[data-search-keyboard="true"]) .mapboxgl-ctrl-bottom-left,
   .dock-host:has(.dock[data-search-keyboard="true"]) .mapboxgl-ctrl-bottom-right {
     top: calc(max(8px, env(safe-area-inset-top, 0px)) + 62px) !important;
+  }
+
+  /* The base attribution margin is a left one, written for the lower-left
+     corner. Moved to the upper-right shelf here, it needs the 16px side
+     gutter on its right so the info control does not touch the screen edge. */
+  .dock-host .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-attrib {
+    margin: 0 16px 0 0 !important;
   }
 
   .dock-host .mapboxgl-ctrl-attrib-button {

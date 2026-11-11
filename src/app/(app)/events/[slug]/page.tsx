@@ -361,6 +361,23 @@ export default async function EventPage({
   // treatment; ended-ness only speaks for events that actually ran.
   const hasEnded =
     eventStatus === "scheduled" && isEventListingEnded(event, new Date());
+  // When the desktop action row already links the publisher's page, the
+  // Source row's inline link would be a second copy of the same link one
+  // screen apart. Keep the inline link on phone, where the bottom bar has no
+  // such action, and drop it at the row's breakpoint. This mirrors the row's
+  // own choice of link below and compares the address, because several
+  // labels can point at the source page: "Official page", "Online details"
+  // when an online event has no separate link, and a cancelled or postponed
+  // event's "Organizer's announcement" unless the notice names its own.
+  const desktopRowLinkHref =
+    eventStatus !== "scheduled" ? (notice?.source_url ?? event.source_url)
+    : hasEnded ? (event.venue_place_slug ? null : event.source_url)
+    : event.ticket_url ? event.ticket_url
+    : event.rsvp_url ? event.rsvp_url
+    : attendance !== "physical" && onlineActionUrl ? onlineActionUrl
+    : event.venue_place_slug ? null
+    : event.source_url;
+  const desktopRowHasSourceLink = Boolean(event.source_url) && desktopRowLinkHref === event.source_url;
   const eventVisual = eventCardVisual(event);
   const photoVisual = eventVisual?.presentation === "photo" ? eventVisual : null;
   // Server component: request-time clock is correct here, not impure render.
@@ -586,13 +603,17 @@ export default async function EventPage({
             )}
             <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
               <dt className="pt-0.5 text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>Source</dt>
-              <dd className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs" style={{ color: "var(--app-ink-2)" }}>
+              {/* Trust, freshness and the source link stack at every width,
+                  as they do on phone, instead of running side by side. */}
+              <dd className="flex min-w-0 flex-col items-start gap-y-1 text-xs" style={{ color: "var(--app-ink-2)" }}>
                 <TrustChip signal={eventTrust(event)} detail />
                 <FreshnessChip
                   iso={event.last_verified_at ?? undefined}
                   subject="Event"
                 />
-                {event.source_url && <EventSourceLink href={event.source_url} />}
+                {event.source_url && (desktopRowHasSourceLink
+                  ? <span className="lg:hidden"><EventSourceLink href={event.source_url} /></span>
+                  : <EventSourceLink href={event.source_url} />)}
               </dd>
             </div>
           </dl>

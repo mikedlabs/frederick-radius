@@ -60,8 +60,8 @@ export default function AppLayout({ children, modal }: {
           <TopBar />
           {/* Content column. Most routes sit in a centered reading
               column; full-bleed routes (the browse map) opt out inside
-              AppMain so the map can fill the viewport on desktop. The
-              lg:pl-24 clears the SideRail. */}
+              AppMain so the map can fill the viewport on desktop.
+              AppMain owns the left padding that clears the SideRail. */}
           <AppMain>{children}</AppMain>
           {modal}
           {/* Two navs, one shows at a time:

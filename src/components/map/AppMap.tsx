@@ -4859,9 +4859,6 @@ export default function AppMap({
             </button>
           </div>
         )}
-        {/* Cream fade under the top chrome so pills and rails always sit on
-            quiet ground instead of raw basemap. Paint only. */}
-        {dock && !mapError && <div className="map-top-scrim" aria-hidden />}
         {/* The smart default explains itself in one sentence (map program
             phase 1). A suggestion may include a shareable one-tap lens rather
             than pretending the lens is a layer that was already switched on. */}
