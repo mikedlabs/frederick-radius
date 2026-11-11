@@ -4,6 +4,11 @@ import { useState } from "react";
 import { LogOut, X } from "lucide-react";
 import { resetFollowsSyncFlag } from "@/hooks/useFollows";
 
+// The base fill is a class, not an inline style, so the hover fill can
+// replace it. An inline background would outrank the hover class.
+const OUTLINE_BUTTON =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-4 text-[0.875rem] font-semibold transition-colors motion-reduce:transition-none hover:bg-[var(--app-bg-sunken)]";
+
 export default function SignOutButton({ email }: { email: string | null }) {
   const [confirming, setConfirming] = useState(false);
 
@@ -12,10 +17,9 @@ export default function SignOutButton({ email }: { email: string | null }) {
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-4 text-[0.875rem] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+        className={OUTLINE_BUTTON}
         style={{
           borderColor: "var(--app-control-border)",
-          background: "var(--app-bg)",
           color: "var(--app-ink)",
         }}
       >
@@ -65,8 +69,8 @@ export default function SignOutButton({ email }: { email: string | null }) {
         <button
           type="button"
           onClick={() => setConfirming(false)}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-4 text-[0.875rem] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
-          style={{ borderColor: "var(--app-control-border)", background: "var(--app-bg)", color: "var(--app-ink)" }}
+          className={OUTLINE_BUTTON}
+          style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
         >
           <X className="h-4 w-4" strokeWidth={2.1} aria-hidden />
           Cancel
