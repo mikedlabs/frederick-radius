@@ -235,9 +235,11 @@
 }
 
 /* An approved picture keeps its place as a 64px square at the right of the
-   row. object-fit: cover fills the square, so there are no letterbox bands. */
+   row. A photograph fills the square (object-fit: cover). Publisher artwork
+   stays whole (object-fit: contain) on a transparent ground, so the page
+   white surrounds the poster and there are no gray bands. */
 .withMedia {
-  grid-template-columns: 4.75rem minmax(0, 1fr) auto;
+  grid-template-columns: 4.75rem minmax(0, 1fr) 64px;
 }
 
 .thumb {
@@ -252,8 +254,37 @@
   background: var(--app-bg-sunken);
 }
 
-.thumbImage {
-  object-fit: cover;
+.thumb[data-event-row-thumb="artwork"] {
+  background: transparent;
+}
+
+/* A row with no picture keeps the picture's slot so titles line up down the
+   list. The category glyph sits in it, unboxed and muted, level with the
+   title's first line. */
+.glyph {
+  display: flex;
+  grid-column: 3;
+  grid-row: 1;
+  justify-content: center;
+  width: 64px;
+  color: var(--app-ink-3);
+}
+
+/* The eyebrow line (13px at 1.35 plus its 4px margin) sits above the title,
+   so the glyph drops by that much to meet the title's first line. */
+.glyphAfterEyebrow {
+  padding-top: calc(0.8125rem * 1.35 + 4px);
+}
+
+.glyphIcon {
+  width: 24px;
+  height: 24px;
+}
+
+.action {
+  position: relative;
+  z-index: 1;
+  margin-top: var(--app-space-2);
 }
 
 .credit {
@@ -288,12 +319,23 @@
   }
 
   .withMedia {
-    grid-template-columns: 4.25rem minmax(0, 1fr) auto;
+    grid-template-columns: 4.25rem minmax(0, 1fr) 56px;
   }
 
   .thumb {
     width: 56px;
     height: 56px;
+  }
+
+  /* On a 320px phone the reserved slot would leave a text-only title about
+     140px wide. The glyph is decoration, so a row without a picture gives
+     its slot back to the title there. */
+  .withGlyph {
+    grid-template-columns: 4.25rem minmax(0, 1fr);
+  }
+
+  .glyph {
+    display: none;
   }
 
   .lead {

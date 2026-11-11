@@ -402,8 +402,9 @@ export default async function EventPage({
   return (
     // AppMain owns the one shared mobile-chrome reserve. Adding another page
     // pad here created a large empty tail beneath every event.
+    // One 720px reading column for the whole page, matching the header.
     <div
-      className="space-y-5 sm:space-y-6"
+      className="max-w-[720px] space-y-5 sm:space-y-6"
       data-decision-surface="events"
       data-decision-entity="event"
       data-decision-id={event.slug}
@@ -775,7 +776,7 @@ export default async function EventPage({
             )}
             prefetch={false}
             className="tap-44 mt-1 inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4"
-            style={{ color: "var(--app-brand-press)" }}
+            style={{ color: "var(--app-link)" }}
           >
             Plan around this event
             <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -898,7 +899,7 @@ export default async function EventPage({
           </ul>
           {moreLineupDates.length > 0 ? (
             <details className="group">
-              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-link)" }}>
                 Show {moreLineupDates.length} more dates
                 <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
               </summary>
@@ -932,7 +933,7 @@ export default async function EventPage({
               prefetch={false}
               href="/events"
               className="tap-44 inline-flex items-center text-[12px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
+              style={{ color: "var(--app-link)" }}
             >
               See all <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
@@ -949,7 +950,7 @@ export default async function EventPage({
           </ul>
           {remainingUpcoming.length > 0 ? (
             <details className="group">
-              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-link)" }}>
                 Show {remainingUpcoming.length} more
                 <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
               </summary>
@@ -973,7 +974,7 @@ export default async function EventPage({
             {nearbyFood.length > 0 ? (
               <section className="space-y-2.5">
                 <h2 className="font-sans text-[20px] font-bold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>Eat &amp; drink nearby</h2>
-                <ul className="space-y-2">
+                <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
                   {nearbyFood.map((p) => <li key={p.slug}><PlaceCard place={p} variant="row" /></li>)}
                 </ul>
               </section>
@@ -981,7 +982,7 @@ export default async function EventPage({
             {nearbyParking.length > 0 ? (
               <section className="space-y-2.5">
                 <h2 className="font-sans text-[20px] font-bold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>Parking nearby</h2>
-                <ul className="space-y-2">
+                <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
                   {nearbyParking.map((p) => <li key={p.slug}><PlaceCard place={p} variant="row" /></li>)}
                 </ul>
               </section>

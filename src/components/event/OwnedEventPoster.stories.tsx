@@ -104,7 +104,11 @@ async function ownedPoster(context: Context, venue: Venue) {
   expect(decodeURIComponent(selected.searchParams.get("url") ?? selected.pathname)).toBe(venue.src);
   expect(getComputedStyle(image).objectFit).toBe("cover"); expect(getComputedStyle(image).objectPosition).toBe(venue.position);
   const caption = within(canvasElement).getByText(venue.caption, { exact: true });
-  expect(p.article.contains(caption)).toBe(false); expect(p.link.contains(caption)).toBe(false);
+  // The credit sits inside the lead row, above its hairline, and never
+  // inside the event link or over the photograph.
+  expect(p.article.contains(caption)).toBe(true); expect(p.link.contains(caption)).toBe(false);
+  expect(image.closest("figure")?.contains(caption)).toBe(false);
+  expect(caption.getBoundingClientRect().bottom).toBeLessThanOrEqual(p.article.getBoundingClientRect().bottom + 1);
   expect(canvasElement.querySelectorAll("[data-event-photo-credit]")).toHaveLength(1);
   await expect(caption).toBeVisible();
   readableFragments(caption, caption.parentElement!);

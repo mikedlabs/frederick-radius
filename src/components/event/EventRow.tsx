@@ -1,25 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import CategoryIcon from "@/components/place/CategoryIcon";
 import styles from "./EventRow.module.css";
+import { eventRowClockParts as clockParts, eventRowTimingNote } from "./eventRowTiming";
 
-/** Splits a start clock such as "6:00 PM" so the numerals can carry the
- * column. Labels such as "All day" or "Time not listed" stay whole. */
-function clockParts(time: string): { clock: string; meridiem: string | null } {
-  const match = /^(\d{1,2}:\d{2})\s?(AM|PM)$/i.exec(time.trim());
-  return match ? { clock: match[1], meridiem: match[2].toUpperCase() } : { clock: time, meridiem: null };
-}
-
-/** The full timing line repeats the start clock. Keep only what it adds:
- * an end time, a started disclosure, or a missing-end caution. */
-export function eventRowTimingNote(startTime: string, timing: string): string | null {
-  if (!timing || timing === startTime) return null;
-  if (timing.startsWith(`${startTime}–`)) return `Until ${timing.slice(startTime.length + 1)}`;
-  if (timing.startsWith(`${startTime} · `)) {
-    const rest = timing.slice(startTime.length + 3);
-    return rest.charAt(0).toUpperCase() + rest.slice(1);
-  }
-  return timing;
-}
+export { eventRowTimingNote };
 
 export type EventRowMediaKind = "photo" | "artwork" | "none";
 
@@ -53,6 +38,13 @@ export type EventRowProps = {
    * outside the event link. */
   mediaCredit?: ReactNode;
   mediaKind?: EventRowMediaKind;
+  /** The event's category slug. A list row without a picture keeps the
+   * picture's slot and shows this category's glyph there, so the right edge
+   * of every title in a list lines up. The lead row never reserves it. */
+  glyph?: string;
+  /** A control that belongs to the row (Save on the itinerary). It sits
+   * above the row's link overlay so it keeps its own tap target. */
+  action?: ReactNode;
   /** A full-width picture above the facts (the pictured lead). */
   banner?: ReactNode;
   position?: "result" | "lead";
@@ -85,6 +77,8 @@ export default function EventRow({
   media,
   mediaCredit,
   mediaKind,
+  glyph,
+  action,
   banner,
   position = "result",
   headingLevel = 3,
@@ -106,10 +100,12 @@ export default function EventRow({
     );
   }
   if (status) eyebrowItems.push(<span key="status" style={{ color: statusColor, fontWeight: 600 }}>{status}</span>);
+  const showGlyph = !media && !lead && !banner && Boolean(glyph);
   const className = [
     styles.row,
     lead ? styles.lead : "",
-    media ? styles.withMedia : "",
+    media || showGlyph ? styles.withMedia : "",
+    showGlyph ? styles.withGlyph : "",
     banner ? styles.withBanner : "",
     cancelled ? styles.cancelled : "",
   ].filter(Boolean).join(" ");
@@ -132,6 +128,15 @@ export default function EventRow({
       {/* The thumbnail leads the DOM so the picture is announced and loaded
           before the facts; the grid places it at the right of the row. */}
       {media}
+      {showGlyph && glyph ? (
+        <span
+          aria-hidden
+          data-event-row-glyph
+          className={`${styles.glyph} ${eyebrowItems.length > 0 ? styles.glyphAfterEyebrow : ""}`}
+        >
+          <CategoryIcon slug={glyph} className={styles.glyphIcon} strokeWidth={1.75} />
+        </span>
+      ) : null}
       <div className={styles.when} data-event-row-when>
         <span className={styles.time} data-clock={meridiem ? "clock" : "label"}>
           <span className={styles.clock}>{clock}</span>
@@ -160,6 +165,7 @@ export default function EventRow({
         {where ? <p data-event-card-venue className={styles.where}>{where}</p> : null}
         {note ? <p data-event-card-time className={styles.note}>{note}</p> : null}
         {extra}
+        {action ? <div className={styles.action}>{action}</div> : null}
       </div>
       {mediaCredit}
     </article>

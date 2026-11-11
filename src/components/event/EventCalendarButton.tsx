@@ -12,7 +12,8 @@ import { barCellClass, barCellStyle, barIconStyle } from "@/components/ui/Mobile
  * cannot be served there. This builds the same ICS in the browser (the
  * proven path already used by EventActions) and keeps the seed route
  * untouched, so seed events stay byte-identical. Visually it matches the
- * seed cell's anchor exactly so the three-up grid is unchanged.
+ * seed cell's anchor exactly (a flat 6px outlined button on the page ground)
+ * so the three-up grid is unchanged.
  */
 type CalendarEvent = {
   slug: string;
@@ -75,7 +76,7 @@ export default function EventCalendarButton({
       className={
         inBar
           ? barCellClass(primary)
-          : "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
+          : "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
       }
       style={inBar ? barCellStyle(primary) : { borderColor: "var(--app-border)", color: "var(--app-ink)" }}
     >

@@ -14,8 +14,8 @@ export default function EventNotFound() {
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-5 px-6 py-16 text-center">
       <span
-        className="inline-flex h-14 w-14 items-center justify-center rounded-full tactile"
-        style={{ background: "var(--app-bg-elevated)", color: "var(--app-brand)" }}
+        className="inline-flex items-center justify-center"
+        style={{ color: "var(--app-ink-3)" }}
       >
         <CalendarX2 className="h-7 w-7" strokeWidth={1.5} aria-hidden />
       </span>

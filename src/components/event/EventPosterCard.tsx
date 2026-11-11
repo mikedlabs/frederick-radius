@@ -32,6 +32,9 @@ export type EventPosterCardProps = {
   /** "hero" is the page's one lead and carries the coral time block. A
    * "shelf" poster keeps the plain ink time column. */
   layout?: "hero" | "shelf";
+  /** The lead uses h2 when it stands directly under the page title and h3
+   * when it sits inside a group section under that group's own h2. */
+  headingLevel?: 2 | 3;
 };
 
 /** Never permit an explicit visual to bypass its source or venue binding. */
@@ -61,10 +64,11 @@ export function eventPosterPhotoSrc(src: string): string {
  * time block (the only coral field on Events), then the title and facts. An
  * approved picture sits above the facts, never behind them, so facts never
  * depend on image pixels. Publisher art stays intact, including text at its
- * edges. The credit follows the row, outside the event link.
+ * edges. The credit follows the facts inside the row, above its hairline and
+ * outside the event link.
  */
 export default function EventPosterCard({ event, visual, priorityImage = true, whyItMatters,
-  live = false, nowISO, layout = "hero" }: EventPosterCardProps) {
+  live = false, nowISO, layout = "hero", headingLevel = 2 }: EventPosterCardProps) {
   const cardNow = nowISO ? new Date(nowISO) : null;
   const approved = posterVisualForEvent(event, visual);
   const { identity, visibleVisual, failImage, inspectLoadedImage } = useEventVisualLifecycle(approved);
@@ -111,11 +115,11 @@ export default function EventPosterCard({ event, visual, priorityImage = true, w
       frame="poster" className={styles.artwork} onUnavailable={failImage} />
   ) : null;
 
-  return <>
+  return (
     <EventRow
       lead={layout === "hero"}
       position="lead"
-      headingLevel={2}
+      headingLevel={headingLevel}
       poster={poster}
       banner={banner}
       slug={event.slug}
@@ -135,7 +139,7 @@ export default function EventPosterCard({ event, visual, priorityImage = true, w
         {whyItMatters ? <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{whyItMatters}</p> : null}
         {facts.length > 0 ? <p className="mt-1 text-[13px] leading-snug tabular-nums" style={{ color: "var(--app-ink-2)" }}>{facts.join(" · ")}</p> : null}
       </> : null}
+      mediaCredit={visibleVisual ? <EventVisualCredit visual={visibleVisual} className={styles.credit} /> : null}
     />
-    {visibleVisual && <EventVisualCredit visual={visibleVisual} className="mt-1.5" />}
-  </>;
+  );
 }
