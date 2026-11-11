@@ -184,18 +184,24 @@ export default function PlacesIndexPage() {
           Editorial collections so the page's two non-directory rows
           (taste + utility) read as a pair before the by-category and
           by-town breakdowns. */}
-      {/* One ruled row; the Creek glyph keeps its civic meaning. */}
+      {/* One ruled row; the Creek glyph keeps its civic meaning. It closes
+          with its own bottom hairline only: the favorites list above already
+          ends in one, so a top rule here would double it. The glyph sits in
+          the same 88px slot as the place rows' glyphs, so this row's text
+          lines up with theirs. */}
       <Link
         href="/contacts"
-        className="flex min-h-12 items-center gap-3 border-y py-3"
+        className="flex min-h-12 items-center gap-3 border-b py-3"
         style={{ borderColor: "var(--app-border)" }}
       >
-        <Phone
-          className="h-[18px] w-[18px] shrink-0"
-          strokeWidth={2}
-          style={{ color: "var(--app-cool-text)" }}
-          aria-hidden
-        />
+        <span aria-hidden className="flex w-[88px] shrink-0 justify-center">
+          <Phone
+            className="h-6 w-6"
+            strokeWidth={1.75}
+            style={{ color: "var(--app-cool-text)" }}
+            aria-hidden
+          />
+        </span>
         <span className="min-w-0 flex-1">
           <span
             className="block text-[17px] font-semibold"

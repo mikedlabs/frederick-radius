@@ -360,7 +360,7 @@ export default async function CivicAlerts({ includeWeather = true, compact = fal
           </a>
         )}
         {notices.map((notice) => (
-          <a key={notice.slug} href={withBrowseReturnTo(`/events/${notice.slug}`, returnTo)} className="flex min-h-11 items-center gap-2 px-3 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+          <a key={notice.slug} href={withBrowseReturnTo(`/events/${notice.slug}`, returnTo)} className="flex min-h-11 items-center gap-2 px-3 text-[13px] font-semibold" style={{ color: "var(--app-link)" }}>
             <CalendarX className="h-4 w-4 shrink-0" aria-hidden />{notice.headline}<ArrowRight className="ml-auto h-4 w-4 shrink-0" aria-hidden />
           </a>
         ))}

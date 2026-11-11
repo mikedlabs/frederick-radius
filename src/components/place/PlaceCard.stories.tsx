@@ -85,13 +85,14 @@ export const EachFactOnce: Story = {
   render: (args) => <div style={{ display: "grid", gap: 12 }}>
     {(["answer", "grid", "row"] as const).map((variant) => <div key={variant} data-variant={variant}><PlaceCard {...args} variant={variant} /></div>)}
     <div data-variant="row-dog-chip"><PlaceCard {...args} variant="row" place={{ ...openNearby, open_status: { state: "unknown" } }} /></div>
-    {/* 140px is the two-up town grid cell on a 320px phone. */}
-    <div data-variant="grid-narrow" style={{ width: 140 }}><PlaceCard {...args} variant="grid" /></div>
+    {/* 112px: a narrow two-up grid cell, tight enough that the category and
+        the distance cannot share a line now that the cell has no padding. */}
+    <div data-variant="grid-narrow" style={{ width: 112 }}><PlaceCard {...args} variant="grid" /></div>
     <div data-variant="tile-long-fact"><PlaceCard {...args} variant="tile" place={{ ...openNearby, known_for: ["The taproom pours barrel-aged sours and a long guest list."] }} /></div>
   </div>,
   play: async ({ canvasElement }) => {
     const card = (variant: string) => canvasElement.querySelector<HTMLElement>(`[data-variant="${variant}"] article`)!;
-    const chips = (variant: string) => [...card(variant).querySelectorAll('[aria-label="Reasons this is shown"] > span')].map((chip) => chip.textContent);
+    const chips = (variant: string) => [...card(variant).querySelectorAll('[aria-label="Reasons this is shown"] > span:not([data-place-reason-separator])')].map((chip) => chip.textContent);
     for (const variant of ["answer", "grid", "row", "row-dog-chip", "grid-narrow", "tile-long-fact"]) {
       await expect(card(variant).textContent?.match(/0\.3 mi/g)).toHaveLength(1);
       await expect(card(variant).textContent).not.toContain("away");
@@ -152,7 +153,8 @@ export const EachFactOnce: Story = {
 /** MEDIA IN ROWS: a row shows a thumbnail only for a real photo. A row with
  * no photo keeps the same slot width, so titles align down a mixed list, and
  * shows the bare category glyph in ink-3 with no tile, tint, border or
- * corner. Its reasons are plain uppercase text labels, not boxed chips. */
+ * corner. Its reasons are one line of plain sentence-case text, not boxed
+ * chips. */
 export const RowsWithAndWithoutPhoto: Story = {
   args: { variant: "row", place: openNearby },
   parameters: { a11y: { test: "error" } },
@@ -185,15 +187,21 @@ export const RowsWithAndWithoutPhoto: Story = {
     await expect(Math.round(glyphBox.height)).toBe(24);
     const title = row("row-glyph").querySelector("h3")!.getBoundingClientRect();
     await expect(Math.abs(glyphBox.top - title.top)).toBeLessThanOrEqual(4);
-    // Reasons are plain text labels.
+    // Reasons are one line of plain sentence-case text. Only the first label
+    // carries a semantic color; any later label reads in the line's muted ink.
     const labels = [...row("row-glyph").querySelectorAll<HTMLElement>("[data-place-reason-label]")];
     await expect(labels.length).toBeGreaterThan(0);
+    const line = labels[0].closest("p")!;
     for (const label of labels) {
+      await expect(label.closest("p")).toBe(line);
       const style = view.getComputedStyle(label);
       await expect(style.backgroundColor).toBe("rgba(0, 0, 0, 0)");
       await expect(style.boxShadow).toBe("none");
       await expect(style.borderTopLeftRadius).toBe("0px");
-      await expect(style.textTransform).toBe("uppercase");
+      await expect(style.textTransform).toBe("none");
+    }
+    for (const label of labels.slice(1)) {
+      await expect(view.getComputedStyle(label).color).toBe(view.getComputedStyle(line).color);
     }
   },
 };

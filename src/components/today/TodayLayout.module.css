@@ -377,6 +377,8 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   line-clamp: 3;
+  /* Clear the arrow that sits at the end of the name's first line. */
+  padding-right: 26px;
   color: var(--app-on-brand);
   /* Measured on the lead card: about 24px on a 390px phone, 20px at 320px. */
   font-size: clamp(1.25rem, 6.7cqi, 1.75rem);
@@ -386,22 +388,29 @@
   letter-spacing: -0.01em;
 }
 
+/* The town line stays on one line. The arrow sits on the name's line, so the
+   town has the plate's full width, and its tracking is tight enough that
+   "Frederick City" fits a 320px plate. A longer name ends in an ellipsis
+   rather than breaking under itself; the link's label still names the town. */
 .discoveryPlace[data-today-discovery-role="lead"] .discoveryTown {
   margin-top: 6px;
-  /* Clear the arrow that sits at the end of this line. */
-  padding-right: 26px;
+  overflow: hidden;
   color: var(--app-on-brand);
   font-size: 0.75rem;
   font-weight: 650;
   line-height: 1.35;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .discoveryPlace[data-today-discovery-role="lead"] .discoveryAction {
   position: absolute;
+  /* Centered on the name's first line: the plate's 12px top padding plus
+     half the difference between that line's height and the arrow's. */
+  top: calc(12px + (clamp(1.25rem, 6.7cqi, 1.75rem) * 1.18 - 18px) / 2);
   right: 12px;
-  bottom: 13px;
   display: grid;
   width: 18px;
   height: 18px;
@@ -474,6 +483,20 @@
   .discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] .discoveryCaption {
     max-width: 100%;
     margin: 0;
+  }
+
+  /* The plate already grows downward here, so the whole name and town show. */
+  .discoveryPlace[data-today-discovery-role="lead"] .discoveryName {
+    display: block;
+    overflow: visible;
+    -webkit-line-clamp: unset;
+    line-clamp: none;
+  }
+
+  .discoveryPlace[data-today-discovery-role="lead"] .discoveryTown {
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .discoveryPlace[data-today-discovery-role="lead"] .discoverySave,
@@ -671,6 +694,50 @@
   .discoveryPlace[data-today-discovery-role="secondary"] .discoveryCard {
     border-top: 0;
     padding-top: 0;
+  }
+}
+
+/* Wide screens: the place grid shares its rows with the outer layout, so the
+   lead photograph spans the left column while the secondary places and then
+   the browse links stack in the right column. The last row takes the slack,
+   so the links sit directly under the places rather than at the bottom. */
+@container today-discovery (min-width: 36rem) {
+  .discoveryLayout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+    grid-template-rows: repeat(3, auto) 1fr;
+    column-gap: var(--app-space-6);
+  }
+
+  .discoveryLayout > .discoveryPlaceGrid {
+    grid-column: 1 / -1;
+    grid-row: 1 / -1;
+    grid-template-columns: subgrid;
+    grid-template-rows: subgrid;
+    row-gap: var(--app-space-3);
+  }
+
+  .discoveryLayout > .discoveryPlaceGrid > [data-today-discovery-role="lead"] {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+
+  .discoveryLayout > .discoveryPlaceGrid > [data-today-discovery-role="secondary"] {
+    grid-column: 2;
+  }
+
+  .discoveryLayout > .discoveryTasks {
+    grid-column: 2;
+    grid-row: -2;
+    align-self: start;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* With no place grid (a town without accepted imagery) the links keep the
+     full width. */
+  .discoveryLayout > .discoveryTasks:only-child {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

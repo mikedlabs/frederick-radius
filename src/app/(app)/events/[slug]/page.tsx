@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
-import { Accessibility, AlertTriangle, ArrowRight, Ban, Calendar, ChevronDown, ExternalLink, MapPin, Navigation, Ticket, Utensils, Wine } from "lucide-react";
+import { AlertTriangle, ArrowRight, Ban, Calendar, Captions, ChevronDown, ExternalLink, MapPin, Navigation, Ticket, Utensils, Wine } from "lucide-react";
 import { EVENTS } from "@/data/events";
 import { formatEventWhen, seriesOccurrenceLabel, eventDateBlock } from "@/lib/loaders/events";
 import {
@@ -569,10 +569,14 @@ export default async function EventPage({
               </div>
             )}
             {communicationAccess.length > 0 && (
-              <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
-                <dt className="flex items-start gap-1 pt-0.5 text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
-                  <Accessibility className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                  Access
+              // "Communication access" is wider than the 6rem label column, so
+              // this one row puts its label above the value instead of
+              // breaking the word. The captions glyph names ASL and
+              // captioning, not wheelchair access.
+              <div className="grid grid-cols-1 gap-y-1 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
+                <dt className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
+                  <Captions className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                  Communication access
                 </dt>
                 <dd className="min-w-0">
                   <span className="block text-[15px] leading-snug" style={{ color: "var(--app-ink)" }}>{communicationAccess.join(" · ")}</span>
@@ -617,22 +621,18 @@ export default async function EventPage({
           // all invite a trip that won't happen. The two honest actions
           // are the organizer's own word and a way back to tonight.
           const announceUrl = notice?.source_url ?? event.source_url ?? null;
-          const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
-          const quietStyle = { borderColor: "var(--app-border)", color: "var(--app-ink)" };
-          const primaryCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-3 text-xs font-semibold transition";
-          const primaryStyle = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
           return (
-            <div className={`hidden ${announceUrl ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-2 lg:grid`}>
+            <div className={DESKTOP_ACTION_ROW}>
+              <Link prefetch={false} href="/events?lens=today" className={DESKTOP_PRIMARY_CLASS} style={DESKTOP_PRIMARY_STYLE}>
+                <Calendar className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_PRIMARY_ICON} aria-hidden />
+                Find something else
+              </Link>
               {announceUrl && (
-                <a href={announceUrl} target="_blank" rel="noopener noreferrer" className={quietCls} style={quietStyle}>
-                  <ExternalLink className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <a href={announceUrl} target="_blank" rel="noopener noreferrer" className={DESKTOP_QUIET_CLASS} style={DESKTOP_QUIET_STYLE}>
+                  <ExternalLink className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_QUIET_ICON} aria-hidden />
                   Organizer&rsquo;s announcement
                 </a>
               )}
-              <Link prefetch={false} href="/events?lens=today" className={primaryCls} style={primaryStyle}>
-                <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-on-brand)" }} aria-hidden />
-                Find something else
-              </Link>
             </div>
           );
         })()
@@ -642,10 +642,6 @@ export default async function EventPage({
         // gone. The record stays; the actions become the venue's page (the
         // durable thing a reader can still visit) and a way back to tonight.
         (() => {
-          const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
-          const quietStyle = { borderColor: "var(--app-border)", color: "var(--app-ink)" };
-          const primaryCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-3 text-xs font-semibold transition";
-          const primaryStyle = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
           const recordAction =
             event.venue_place_slug
               ? { href: `/places/${event.venue_place_slug}`, external: false, label: "Venue page" }
@@ -653,22 +649,22 @@ export default async function EventPage({
                 ? { href: event.source_url, external: true, label: "Official page" }
                 : null;
           return (
-            <div className={`hidden ${recordAction ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-2 lg:grid`}>
+            <div className={DESKTOP_ACTION_ROW}>
+              <Link prefetch={false} href="/events?lens=today" className={DESKTOP_PRIMARY_CLASS} style={DESKTOP_PRIMARY_STYLE}>
+                <Calendar className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_PRIMARY_ICON} aria-hidden />
+                Find something else
+              </Link>
               {recordAction && (recordAction.external ? (
-                <a href={recordAction.href} target="_blank" rel="noopener noreferrer" className={quietCls} style={quietStyle}>
-                  <ExternalLink className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <a href={recordAction.href} target="_blank" rel="noopener noreferrer" className={DESKTOP_QUIET_CLASS} style={DESKTOP_QUIET_STYLE}>
+                  <ExternalLink className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_QUIET_ICON} aria-hidden />
                   {recordAction.label}
                 </a>
               ) : (
-                <Link prefetch={false} href={recordAction.href} className={quietCls} style={quietStyle}>
-                  <MapPin className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <Link prefetch={false} href={recordAction.href} className={DESKTOP_QUIET_CLASS} style={DESKTOP_QUIET_STYLE}>
+                  <MapPin className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_QUIET_ICON} aria-hidden />
                   {recordAction.label}
                 </Link>
               ))}
-              <Link prefetch={false} href="/events?lens=today" className={primaryCls} style={primaryStyle}>
-                <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-on-brand)" }} aria-hidden />
-                Find something else
-              </Link>
             </div>
           );
         })()
@@ -686,20 +682,49 @@ export default async function EventPage({
           null;
         const hasThird = thirdAction !== null;
         const dirPrimary = physicalAttendance && hasPreciseLocation && !hasThird;
-        const gridCols =
-          1 +
-          (physicalAttendance && hasPreciseLocation ? 1 : 0) +
-          (hasThird ? 1 : 0);
 
-        const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
-        const quietStyle = { borderColor: "var(--app-border)", color: "var(--app-ink)" };
-        const primaryCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-3 text-xs font-semibold transition";
-        const primaryStyle = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
-        const iconBrand = { color: "var(--app-brand)" };
-        const iconOnBrand = { color: "var(--app-on-brand)" };
 
         return (
-          <div className={`hidden ${gridCols >= 3 ? "lg:grid-cols-3" : gridCols === 2 ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-2 lg:grid`}>
+          <div className={DESKTOP_ACTION_ROW}>
+            {/* The single filled action comes first, in reading order and on
+                screen; the others follow as unboxed icon-and-label links. */}
+            {thirdAction && (thirdAction.external ? (
+              <a
+                href={thirdAction.href}
+                data-decision-action={
+                  event.ticket_url
+                    ? "ticket"
+                    : event.rsvp_url
+                      ? "reservation"
+                      : "website"
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className={DESKTOP_PRIMARY_CLASS}
+                style={DESKTOP_PRIMARY_STYLE}
+              >
+                <thirdAction.Icon className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_PRIMARY_ICON} aria-hidden />
+                {thirdAction.label}
+              </a>
+            ) : (
+              <Link prefetch={false} href={thirdAction.href} data-decision-action="open" className={DESKTOP_PRIMARY_CLASS} style={DESKTOP_PRIMARY_STYLE}>
+                <thirdAction.Icon className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_PRIMARY_ICON} aria-hidden />
+                {thirdAction.label}
+              </Link>
+            ))}
+            {physicalAttendance && hasPreciseLocation && directionsUrl && (
+              <a
+                href={directionsUrl}
+                data-decision-action="directions"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={dirPrimary ? DESKTOP_PRIMARY_CLASS : DESKTOP_QUIET_CLASS}
+                style={dirPrimary ? DESKTOP_PRIMARY_STYLE : DESKTOP_QUIET_STYLE}
+              >
+                <Navigation className="h-[18px] w-[18px]" strokeWidth={1.75} style={dirPrimary ? DESKTOP_PRIMARY_ICON : DESKTOP_QUIET_ICON} aria-hidden />
+                Directions
+              </a>
+            )}
             {isLive ? (
               <EventCalendarButton
                 event={{
@@ -714,48 +739,11 @@ export default async function EventPage({
                 }}
               />
             ) : (
-              <a href={icsUrl} download className={quietCls} style={quietStyle}>
-                <Calendar className="h-5 w-5" strokeWidth={1.75} style={iconBrand} aria-hidden />
+              <a href={icsUrl} download className={DESKTOP_QUIET_CLASS} style={DESKTOP_QUIET_STYLE}>
+                <Calendar className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_QUIET_ICON} aria-hidden />
                 Add to calendar
               </a>
             )}
-            {physicalAttendance && hasPreciseLocation && directionsUrl && (
-              <a
-                href={directionsUrl}
-                data-decision-action="directions"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={dirPrimary ? primaryCls : quietCls}
-                style={dirPrimary ? primaryStyle : quietStyle}
-              >
-                <Navigation className="h-5 w-5" strokeWidth={1.75} style={dirPrimary ? iconOnBrand : iconBrand} aria-hidden />
-                Directions
-              </a>
-            )}
-            {thirdAction && (thirdAction.external ? (
-              <a
-                href={thirdAction.href}
-                data-decision-action={
-                  event.ticket_url
-                    ? "ticket"
-                    : event.rsvp_url
-                      ? "reservation"
-                      : "website"
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className={primaryCls}
-                style={primaryStyle}
-              >
-                <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={iconOnBrand} aria-hidden />
-                {thirdAction.label}
-              </a>
-            ) : (
-              <Link prefetch={false} href={thirdAction.href} data-decision-action="open" className={primaryCls} style={primaryStyle}>
-                <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={iconOnBrand} aria-hidden />
-                {thirdAction.label}
-              </Link>
-            ))}
           </div>
         );
       })()}
@@ -823,7 +811,7 @@ export default async function EventPage({
           >
             {event.info.admission && (
               <li className="flex items-start gap-3 py-2.5" style={{ borderColor: "var(--app-border)" }}>
-                <Ticket className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <Ticket className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand-text)" }} aria-hidden />
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>Admission</p>
                   <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>{event.info.admission}</p>
@@ -832,7 +820,7 @@ export default async function EventPage({
             )}
             {event.info.drinks && (
               <li className="flex items-start gap-3 py-2.5" style={{ borderColor: "var(--app-border)" }}>
-                <Wine className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <Wine className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand-text)" }} aria-hidden />
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>Drinks</p>
                   <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>{event.info.drinks}</p>
@@ -844,7 +832,7 @@ export default async function EventPage({
                 "rotating vendors" right above the actual lineup. */}
             {event.info.food && !(event.food_trucks && event.food_trucks.length > 0) && (
               <li className="flex items-start gap-3 py-2.5" style={{ borderColor: "var(--app-border)" }}>
-                <Utensils className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <Utensils className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand-text)" }} aria-hidden />
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>Food vendors</p>
                   <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>{event.info.food}</p>
@@ -1059,7 +1047,9 @@ export default async function EventPage({
                 is_all_day: event.is_all_day,
               }}
               barVariant={event.ticket_url || onlineActionUrl ? "quiet" : "primary"}
-              label="Add to calendar"
+              // The short visible label keeps four cells inside a 320px bar;
+              // the button's accessible name stays "Add to calendar".
+              label="Calendar"
             />
             {event.ticket_url && (
               <MobileBarLink
@@ -1100,3 +1090,14 @@ export default async function EventPage({
     </div>
   );
 }
+
+/* The desktop action row matches the place page: one filled Deep Coral
+   action, then unboxed icon-and-label links on the page ground. Each keeps a
+   48px target. */
+const DESKTOP_ACTION_ROW = "hidden flex-wrap items-center gap-x-6 gap-y-1 lg:flex";
+const DESKTOP_PRIMARY_CLASS = "tap-44 flex min-h-12 items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[15px] font-semibold";
+const DESKTOP_PRIMARY_STYLE = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
+const DESKTOP_PRIMARY_ICON = { color: "var(--app-on-brand)" };
+const DESKTOP_QUIET_CLASS = "tap-44 flex min-h-12 items-center justify-start gap-2 px-1 text-[15px] font-semibold hover:underline";
+const DESKTOP_QUIET_STYLE = { color: "var(--app-ink)" };
+const DESKTOP_QUIET_ICON = { color: "var(--app-ink-2)" };

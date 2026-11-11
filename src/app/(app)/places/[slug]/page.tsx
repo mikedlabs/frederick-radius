@@ -587,7 +587,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             ))}
           </ul>
           {moreVenueEvents.length > 0 ? (
-            <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
+            <details className="group max-w-[45rem] border-t" style={{ borderColor: "var(--app-border)" }}>
               <summary className={SHOW_MORE_SUMMARY} style={{ color: "var(--app-link)" }}>
                 Show {moreVenueEvents.length} more
                 <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" strokeWidth={2} aria-hidden />
@@ -615,7 +615,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           ))}
         </ul>
         {moreNearbyPlaces.length > 0 ? (
-          <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
+          <details className="group max-w-[45rem] border-t" style={{ borderColor: "var(--app-border)" }}>
             <summary className={SHOW_MORE_SUMMARY} style={{ color: "var(--app-link)" }}>
               Show {moreNearbyPlaces.length} more nearby
               <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" strokeWidth={2} aria-hidden />
@@ -744,14 +744,15 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   );
 }
 
-/** A list of ruled rows (place rows, event rows). Each row ends in its own
- * hairline; the last one drops it because the section rule or a following
- * "Show more" rule already closes the list. The override is important on
+/** A list of ruled rows (place rows, event rows) in one column at a reading
+ * measure, so the hairlines form one ruled list instead of two staggered
+ * columns. Each row ends in its own hairline; the last one drops it because
+ * the section rule or a following "Show more" rule already closes the list. The override is important on
  * purpose: EventRow draws its hairline from an unlayered CSS module, which
  * beats any normal declaration in Tailwind's utilities layer, so without the
  * trailing ! the last event row and the next rule stacked into a double line. */
 const RULED_LIST =
-  "grid grid-cols-1 lg:grid-cols-2 lg:gap-x-8 [&>li:last-child>*]:border-b-0!";
+  "grid max-w-[45rem] grid-cols-1 [&>li:last-child>*]:border-b-0!";
 
 const SHOW_MORE_SUMMARY =
   "tap-44 flex min-h-11 cursor-pointer list-none items-center justify-between text-[14px] font-semibold [&::-webkit-details-marker]:hidden";

@@ -80,7 +80,7 @@ export default function MyRadiusButton({
         data-place-save={slug}
         aria-hidden
         tabIndex={-1}
-        className="tap-44-y inline-flex h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[15px] font-semibold"
+        className="tap-44-y inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[0.9375rem] font-semibold"
         style={{ color: "var(--app-ink)" }}
       >
         {/* Matches the mounted unsaved control exactly, so hydration does
@@ -184,7 +184,7 @@ export default function MyRadiusButton({
         aria-busy={busy}
         aria-label={busy ? `${saving ? "Saving" : "Removing"} ${name}` : `Saved. Tap to remove ${name}`}
         title={mutation === "unconfirmed" ? "This change could not be confirmed." : undefined}
-        className="tap-44-y inline-flex h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[15px] font-semibold transition-colors hover:underline disabled:opacity-60"
+        className="tap-44-y inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[0.9375rem] font-semibold transition-colors hover:underline disabled:opacity-60"
         style={{
           // The saved state keeps the link color and a checked bookmark, so
           // it reads as different from the ink "Save" at a glance.
@@ -221,7 +221,7 @@ export default function MyRadiusButton({
       aria-busy={busy}
       aria-label={busy ? `${saving ? "Saving" : "Removing"} ${name}` : `Save ${name}`}
       title={mutation === "unconfirmed" ? "This change could not be confirmed." : undefined}
-      className="tap-44-y inline-flex h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[15px] font-semibold transition-colors hover:underline disabled:opacity-60"
+      className="tap-44-y inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[0.9375rem] font-semibold transition-colors hover:underline disabled:opacity-60"
       style={{ color: "var(--app-ink)" }}
     >
       {busy ? (

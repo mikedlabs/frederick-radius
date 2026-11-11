@@ -12,8 +12,8 @@ import { barCellClass, barCellStyle, barIconStyle } from "@/components/ui/Mobile
  * cannot be served there. This builds the same ICS in the browser (the
  * proven path already used by EventActions) and keeps the seed route
  * untouched, so seed events stay byte-identical. Visually it matches the
- * seed cell's anchor exactly (a flat 6px outlined button on the page ground)
- * so the three-up grid is unchanged.
+ * seed cell's anchor exactly (an unboxed icon-and-label link on the page
+ * ground with a 48px target), so the desktop action row is unchanged.
  */
 type CalendarEvent = {
   slug: string;
@@ -76,15 +76,15 @@ export default function EventCalendarButton({
       className={
         inBar
           ? barCellClass(primary)
-          : "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
+          : "tap-44 flex min-h-12 items-center justify-start gap-2 px-1 text-[15px] font-semibold hover:underline"
       }
-      style={inBar ? barCellStyle(primary) : { borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+      style={inBar ? barCellStyle(primary) : { color: "var(--app-ink)" }}
     >
       <Calendar
-        className="h-5 w-5"
+        className={inBar ? "h-5 w-5" : "h-[18px] w-[18px]"}
         strokeWidth={1.75}
         aria-hidden
-        style={inBar ? barIconStyle(primary) : { color: "var(--app-brand)" }}
+        style={inBar ? barIconStyle(primary) : { color: "var(--app-ink-2)" }}
       />
       {label}
     </button>

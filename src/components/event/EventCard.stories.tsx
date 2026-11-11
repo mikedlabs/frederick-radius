@@ -49,7 +49,9 @@ export const GlyphSlot390: Story = {
     await expect(icon.width).toBe(24);
     const title = canvasElement.querySelector<HTMLElement>("article h3")!;
     const range = document.createRange();
-    range.selectNodeContents(title.querySelector("a")!);
+    // Measure the title's text line boxes. Selecting the link would also
+    // return the block press face's own box, which spans every line.
+    range.selectNodeContents(title.querySelector("a [data-press-face]")!);
     const firstLine = range.getClientRects()[0];
     await expect(Math.abs(icon.top + icon.height / 2 - (firstLine.top + firstLine.height / 2))).toBeLessThanOrEqual(4);
   },

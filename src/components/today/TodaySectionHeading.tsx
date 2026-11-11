@@ -36,8 +36,14 @@ export default function TodaySectionHeading({
       data-today-section-heading="true"
       className="today-section-heading mb-3 min-w-0 max-w-full"
     >
-      <div className="today-section-heading__copy flex min-w-0 max-w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 px-0.5">
-        <div className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+      {/* The heading sits on the content edge, and its action shares the
+          title's first baseline at the right. The title column has a zero
+          flex basis, so its length never pushes the action onto a line of
+          its own: "See all" stays level with the title on a 320px phone and a
+          long title wraps inside its column. Only an action wider than the
+          whole row (enlarged text) takes its own line. */}
+      <div className="today-section-heading__copy flex min-w-0 max-w-full flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0 flex-[1_1_0%] [overflow-wrap:anywhere]">
           {eyebrow && <p className="fg-eyebrow mb-1.5">{eyebrow}</p>}
           <h2
             className="flex min-w-0 max-w-full items-center gap-2 font-sans text-xl font-semibold leading-none tracking-tight sm:text-[1.3125rem]"
@@ -53,7 +59,7 @@ export default function TodaySectionHeading({
                 }}
               />
             )}
-            <span className="min-w-0 [overflow-wrap:anywhere]">{title}</span>
+            <span className="min-w-0 self-baseline [overflow-wrap:anywhere]">{title}</span>
           </h2>
           {meta && (
             <p
@@ -69,10 +75,13 @@ export default function TodaySectionHeading({
             href={href}
             prefetch={prefetch}
             aria-label={`${cta}: ${title}`}
-            className="today-section-heading__cta tap-44-y inline-flex min-h-11 min-w-0 max-w-full shrink-0 items-center gap-1 rounded-[var(--app-radius-sm)] px-1.5 text-sm font-semibold tracking-tight outline-none"
+            // The 44px box keeps its full target, with the label centered in
+            // it; baseline alignment puts the label on the title's baseline.
+            // The 2px end padding holds the arrow's hover and focus nudge.
+            className="today-section-heading__cta tap-44-y inline-flex min-h-11 min-w-0 max-w-full items-center gap-1 rounded-[var(--app-radius-sm)] pr-0.5 text-sm font-semibold leading-5 tracking-tight outline-none"
             style={{
               color:
-                "var(--app-heading-action, var(--today-section-ink, var(--app-brand-press)))",
+                "var(--app-heading-action, var(--today-section-ink, var(--app-link)))",
             }}
           >
             <span className="min-w-0 [overflow-wrap:anywhere]">{cta}</span>

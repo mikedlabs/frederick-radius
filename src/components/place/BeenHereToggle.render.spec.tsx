@@ -44,12 +44,13 @@ describe("BeenHereToggle render stability", () => {
 
     expect(buttonText(fallback)).toBe("Mark as visited");
     expect(buttonText(mounted)).toBe("Mark as visited");
-    // Plain tool action strip: an unboxed ink text action with a 44px
-    // target, no capsule and no fill, identical before and after mount.
+    // Plain tool action strip: an unboxed ink text action with a 44px minimum
+    // target that grows with enlarged text, no capsule and no fill, identical
+    // before and after mount.
     for (const markup of [fallback, mounted]) {
       expect(markup).toContain("tap-44-y");
-      expect(markup).toContain("h-11");
-      expect(markup).toContain("text-[15px]");
+      expect(markup).toContain("min-h-11");
+      expect(markup).toContain("text-[0.9375rem]");
       expect(markup).toContain("font-semibold");
       expect(markup).toContain("color:var(--app-ink)");
       expect(markup).not.toContain("rounded-full");
