@@ -149,6 +149,55 @@ export const EachFactOnce: Story = {
   },
 };
 
+/** MEDIA IN ROWS: a row shows a thumbnail only for a real photo. A row with
+ * no photo keeps the same slot width, so titles align down a mixed list, and
+ * shows the bare category glyph in ink-3 with no tile, tint, border or
+ * corner. Its reasons are plain uppercase text labels, not boxed chips. */
+export const RowsWithAndWithoutPhoto: Story = {
+  args: { variant: "row", place: openNearby },
+  parameters: { a11y: { test: "error" } },
+  render: (args) => <div>
+    <div data-variant="row-photo"><PlaceCard {...args} place={place} neutral /></div>
+    <div data-variant="row-glyph"><PlaceCard {...args} /></div>
+  </div>,
+  play: async ({ canvasElement }) => {
+    const view = canvasElement.ownerDocument.defaultView!;
+    const row = (variant: string) => canvasElement.querySelector<HTMLElement>(`[data-variant="${variant}"] article`)!;
+    await expect(row("row-photo").querySelector("[data-place-row-media='photo']")).not.toBeNull();
+    const slot = row("row-glyph").querySelector<HTMLElement>("[data-place-row-media='glyph']")!;
+    const photoSlot = row("row-photo").querySelector<HTMLElement>("[data-place-row-media='photo']")!;
+    await expect(Math.abs(slot.getBoundingClientRect().width - photoSlot.getBoundingClientRect().width)).toBeLessThanOrEqual(0.5);
+    // Titles start at the same x down the list.
+    const titleLeft = (variant: string) => row(variant).querySelector("h3")!.getBoundingClientRect().left;
+    await expect(Math.abs(titleLeft("row-photo") - titleLeft("row-glyph"))).toBeLessThanOrEqual(0.5);
+    // The glyph has no tile: no fill, border, ring or corner on it or its slot.
+    const glyph = slot.querySelector<HTMLElement>("[data-place-row-glyph]")!;
+    for (const node of [slot, glyph]) {
+      const style = view.getComputedStyle(node);
+      await expect(style.backgroundColor).toBe("rgba(0, 0, 0, 0)");
+      await expect(style.backgroundImage).toBe("none");
+      await expect(style.borderTopWidth).toBe("0px");
+      await expect(style.boxShadow).toBe("none");
+      await expect(style.borderTopLeftRadius).toBe("0px");
+    }
+    // About 24px, aligned with the title's first line.
+    const glyphBox = glyph.getBoundingClientRect();
+    await expect(Math.round(glyphBox.height)).toBe(24);
+    const title = row("row-glyph").querySelector("h3")!.getBoundingClientRect();
+    await expect(Math.abs(glyphBox.top - title.top)).toBeLessThanOrEqual(4);
+    // Reasons are plain text labels.
+    const labels = [...row("row-glyph").querySelectorAll<HTMLElement>("[data-place-reason-label]")];
+    await expect(labels.length).toBeGreaterThan(0);
+    for (const label of labels) {
+      const style = view.getComputedStyle(label);
+      await expect(style.backgroundColor).toBe("rgba(0, 0, 0, 0)");
+      await expect(style.boxShadow).toBe("none");
+      await expect(style.borderTopLeftRadius).toBe("0px");
+      await expect(style.textTransform).toBe("uppercase");
+    }
+  },
+};
+
 export const PhotographLedGrid: Story = { args: { variant: "grid" } };
 export const MapRow: Story = { args: { variant: "row", neutral: true } };
 export const WithoutPhotography: Story = { args: { place: { ...place, slug: "place-without-photography", google_photo_url: undefined } } };

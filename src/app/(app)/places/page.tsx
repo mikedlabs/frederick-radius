@@ -130,8 +130,9 @@ export default function PlacesIndexPage() {
       <section className="space-y-2">
         <SectionHeading title="Start with a need" />
         {/* Ruled link rows in two columns (one on a 320px phone). The glyph
-            is a quiet ink mark; the label carries the choice. */}
-        <ul className="grid grid-cols-2 gap-x-6 border-t max-[359px]:grid-cols-1 md:grid-cols-4" style={{ borderColor: "var(--app-border)" }}>
+            is a quiet ink mark; the label carries the choice. The heading's
+            own hairline opens the list, so the list adds no top rule. */}
+        <ul className="grid grid-cols-2 gap-x-6 max-[359px]:grid-cols-1 md:grid-cols-4">
           {[
             { label: "Open now", href: "/open-now", icon: Clock },
             { label: "Eat & drink", href: "/map?intent=eat", icon: UtensilsCrossed },
@@ -165,8 +166,9 @@ export default function PlacesIndexPage() {
       {favorites.length >= 3 && (
         <section aria-label="Local favorites" className="space-y-2">
           <SectionHeading title="Local favorites" />
-          {/* Ruled place rows; the first is not singled out with a glow. */}
-          <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
+          {/* Ruled place rows; the first is not singled out with a glow. The
+              heading's own hairline opens the list, so it adds no top rule. */}
+          <ul>
             {favorites.map((p) => (
               <li key={p.slug}>
                 <PlaceCard place={p} variant="row" />
@@ -250,7 +252,7 @@ export default function PlacesIndexPage() {
                 />
                 <span className="min-w-0 flex-1">
                   <span
-                    className="block truncate text-[15px] font-semibold"
+                    className="block text-[15px] font-semibold leading-snug"
                     style={{ color: "var(--app-ink)" }}
                   >
                     {c.name}

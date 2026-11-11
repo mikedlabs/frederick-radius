@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { Globe, Mail, Navigation, Phone, ShoppingBag } from "lucide-react";
+import { CalendarCheck, Globe, Mail, Navigation, Phone, ShoppingBag } from "lucide-react";
 import { expect, within } from "storybook/test";
 
 import { MobileActionBar, MobileBarLink, MOBILE_ACTION_BAR_HEIGHT_PX } from "./MobileActionBar";
@@ -10,7 +10,7 @@ import { MobileActionBar, MobileBarLink, MOBILE_ACTION_BAR_HEIGHT_PX } from "./M
  * The page content above it carries the shell's bottom reserve, so the last
  * line of the page always scrolls clear of the bar.
  */
-function PlaceBar({ cells }: { cells: 3 | 4 }) {
+function PlaceBar({ cells, lastAction = "Order" }: { cells: 3 | 4; lastAction?: "Order" | "Reserve" }) {
   return (
     <div style={{ minHeight: "100vh", background: "var(--app-bg)" }}>
       <main
@@ -39,7 +39,11 @@ function PlaceBar({ cells }: { cells: 3 | 4 }) {
         )}
         <MobileBarLink href="tel:3015550100" icon={Phone} label="Call" ariaLabel="Call Baker Park" decisionAction="call" />
         {cells === 4 ? (
-          <MobileBarLink href="https://example.org/order" icon={ShoppingBag} label="Order" ariaLabel="Order at Baker Park" external decisionAction="order" />
+          lastAction === "Reserve" ? (
+            <MobileBarLink href="https://example.org/reserve" icon={CalendarCheck} label="Reserve" ariaLabel="Reserve at Baker Park" external decisionAction="reservation" />
+          ) : (
+            <MobileBarLink href="https://example.org/order" icon={ShoppingBag} label="Order" ariaLabel="Order at Baker Park" external decisionAction="order" />
+          )
         ) : (
           <MobileBarLink href="https://example.org/" icon={Globe} label="Website" ariaLabel="Baker Park website" external decisionAction="website" />
         )}
@@ -73,6 +77,9 @@ async function expectFlatAttachedBar(canvasElement: HTMLElement) {
 
   const toolbar = within(bar).getByRole("toolbar", { name: "Actions for Baker Park" });
   const toolbarBox = toolbar.getBoundingClientRect();
+  // The toolbar itself never runs past the screen edge, even with four cells.
+  await expect(toolbarBox.left).toBeGreaterThanOrEqual(-0.5);
+  await expect(toolbarBox.right).toBeLessThanOrEqual(view.innerWidth + 0.5);
   const links = within(toolbar).getAllByRole("link");
   let filled = 0;
   for (const link of links) {
@@ -109,6 +116,14 @@ export const Phone320: Story = {
 export const FourActions375: Story = {
   args: { cells: 4 },
   globals: { viewport: { value: "radiusMobileCompact", isRotated: false } },
+  play: async ({ canvasElement }) => expectFlatAttachedBar(canvasElement),
+};
+
+/** The tightest real case: four cells with the longest commerce label on a
+ * 320px phone. Every cell keeps its 44px target and an unclipped label. */
+export const FourActions320: Story = {
+  args: { cells: 4, lastAction: "Reserve" },
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   play: async ({ canvasElement }) => expectFlatAttachedBar(canvasElement),
 };
 

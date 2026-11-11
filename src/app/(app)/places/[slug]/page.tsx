@@ -384,13 +384,16 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           </Suspense>
           {/* One ruled strip holds the personal actions, so three unboxed
               text actions read as one set: 15px semibold ink, 18px icons,
-              44px rows. They sit left-aligned with an even gap and wrap to a
-              second line on a 320px phone instead of spreading apart or
-              clipping. Without a description below, the sections' top rule
-              closes the strip, so it draws only its top hairline. */}
+              44px rows. Below sm the strip tightens the gap between actions
+              and each action's own padding and icon gap, so all three fit on
+              one row at 375px and wider; they wrap to a second line only on
+              a narrower phone instead of spreading apart or clipping. Height
+              stays 44px, so targets are unchanged. Without a description
+              below, the sections' top rule closes the strip, so it draws only
+              its top hairline. */}
           <div
             data-place-action-strip
-            className={`flex flex-wrap items-center gap-x-5 sm:gap-x-6 ${desc ? "border-y" : "border-t"}`}
+            className={`flex flex-wrap items-center gap-x-3 *:gap-1.5 *:px-0 sm:gap-x-6 sm:*:gap-2 sm:*:px-1 ${desc ? "border-y" : "border-t"}`}
             style={{ borderColor: "var(--app-border)" }}
           >
             <MyRadiusButton slug={place.slug} name={place.name} />
@@ -743,9 +746,12 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
 /** A list of ruled rows (place rows, event rows). Each row ends in its own
  * hairline; the last one drops it because the section rule or a following
- * "Show more" rule already closes the list. */
+ * "Show more" rule already closes the list. The override is important on
+ * purpose: EventRow draws its hairline from an unlayered CSS module, which
+ * beats any normal declaration in Tailwind's utilities layer, so without the
+ * trailing ! the last event row and the next rule stacked into a double line. */
 const RULED_LIST =
-  "grid grid-cols-1 lg:grid-cols-2 lg:gap-x-8 [&>li:last-child>*]:border-b-0";
+  "grid grid-cols-1 lg:grid-cols-2 lg:gap-x-8 [&>li:last-child>*]:border-b-0!";
 
 const SHOW_MORE_SUMMARY =
   "tap-44 flex min-h-11 cursor-pointer list-none items-center justify-between text-[14px] font-semibold [&::-webkit-details-marker]:hidden";

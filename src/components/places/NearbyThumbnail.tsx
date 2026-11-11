@@ -30,8 +30,7 @@ export default function NearbyThumbnail({ src }: { src: string }) {
       alt=""
       width={56}
       height={56}
-      className="mt-0.5 h-14 w-14 shrink-0 rounded-[var(--app-radius-sm)] object-cover"
-      style={{ boxShadow: "var(--app-edge)" }}
+      className="mt-0.5 h-14 w-14 shrink-0 rounded-[var(--app-radius-md)] object-cover"
       onError={() => setFailedSrc(src)}
     />
   );
