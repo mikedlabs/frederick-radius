@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db/client";
 import { submissions } from "@/lib/db/schema";
 
 /**
- * Resolve one feedback note from the beta dashboard. Feedback shares the
+ * Resolve one feedback note from the admin feedback inbox. Feedback shares the
  * `submissions` status flow (pending/approved/rejected) so the claims queue
  * and this inbox stay in sync, but the semantics here are "done"/"dismissed",
  * not moderation. Scoped to kind="feedback" so this action can never flip a
@@ -25,6 +25,6 @@ export async function resolveFeedback(formData: FormData): Promise<void> {
     .set({ status: decision, reviewed_at: new Date() })
     .where(and(eq(submissions.id, id), eq(submissions.kind, "feedback")));
 
-  revalidatePath("/admin/beta");
+  revalidatePath("/admin/feedback");
   revalidatePath("/admin/claims");
 }

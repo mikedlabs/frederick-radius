@@ -3292,30 +3292,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* ============================================================================
-   /beta launch cover — the "living almanac" landing (beta/page.tsx). Namespaced
-   bt-*. Motion is cheap + reduced-motion-gated (no heavy backdrop-blur, per the
-   perf pass): a guilloché specimen texture and a slow drift on the hero glow.
-   (The towns marquee was retired for a static county plate, Jul 2026.)
-   ========================================================================== */
-
-/* Engraved guilloché fill for the specimen preview cards — reuses the wallet's
-   security-print motif so the landing and the app read as one brand. */
-.bt-guilloche { position: absolute; inset: 0; pointer-events: none; opacity: .9; z-index: 0;
-  background-image:
-    repeating-radial-gradient(circle at 116% 128%, transparent 0 12px, rgba(255,255,255,.055) 12px 13px),
-    repeating-radial-gradient(circle at -14% -22%, transparent 0 17px, rgba(255,255,255,.04) 17px 18px);
-  -webkit-mask-image: linear-gradient(to bottom, #000 0 64%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0 64%, transparent 100%); }
-.bt-sheen { position: absolute; inset: 0; pointer-events: none; z-index: 2; mix-blend-mode: soft-light; border-radius: inherit;
-  background: linear-gradient(118deg, rgba(255,255,255,.2) 0%, rgba(255,255,255,0) 34%, rgba(255,255,255,0) 70%, rgba(255,255,255,.08) 100%); }
-
-.bt-drift { animation: bt-drift 14s ease-in-out infinite alternate; }
-@keyframes bt-drift { from { transform: translate(-50%, -50%) scale(1); opacity: .85; } to { transform: translate(-50%, -54%) scale(1.08); opacity: 1; } }
-
-@media (prefers-reduced-motion: reduce) {
-  .bt-drift { animation: none; }
-}
-
-/* ============================================================================
    /map dock — one instrument for the browse map (MapDock.tsx). Namespaced
    dock-*. The cold map exposes one search and one Browse door; every other
    choice is progressively disclosed in one phone panel or desktop inspector.

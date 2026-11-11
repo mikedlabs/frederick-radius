@@ -16,7 +16,6 @@ const SURFACES = [
   "/compass",
   "/my-radius",
   "/deals",
-  "/beta",
 ] as const;
 
 const CONTROL_SELECTOR = "main a[href], main button, main [role='tab']";

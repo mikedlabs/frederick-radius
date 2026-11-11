@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
         {
           title: alert.title,
           body: alert.body,
-          url: "/admin/beta",
+          url: "/admin/feedback",
         },
       );
       if (!delivery.claimed || delivery.sent === 0) {

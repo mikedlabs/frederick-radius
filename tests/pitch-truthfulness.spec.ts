@@ -61,12 +61,13 @@ describe("pitch truthfulness guardrails", () => {
     expect(renderedPitchSource).toContain("Official transactions stay on official government websites.");
   });
 
-  it("confirms beta email delivery only from the real endpoint response", () => {
+  it("sends people into the open app instead of collecting an email for a retired access code", () => {
     const vision = read("src/components/marketing/scenes/Scene10_Vision.tsx");
 
-    expect(vision).toContain('fetch("/api/beta/email"');
-    expect(vision).toContain("if (result.sent)");
-    expect(vision).toContain("Access email accepted");
+    expect(vision).toContain('href="/today"');
+    expect(vision).not.toContain("/api/beta");
+    expect(vision).not.toMatch(/<(?:motion\.)?form\b/);
+    expect(vision).not.toMatch(/access code is (?:on its way|in your inbox)|personal (?:beta|access) code|Request beta access/);
     expect(vision).not.toContain("window.location.href");
   });
 });

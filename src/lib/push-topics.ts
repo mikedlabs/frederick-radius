@@ -134,11 +134,11 @@ export function applyPublicTopicChanges(
 }
 
 /**
- * The owner's ops-alert topic (new beta feedback, new signups). NOT in
+ * The owner's ops-alert topic (new feedback). NOT in
  * TOPIC_LABELS on purpose — it must never render as a user-facing choice,
  * and the public subscribe route strips it so only the Basic-Auth-gated
  * /admin/api/owner-alerts endpoint can grant it. Feedback alerts may carry
- * submitted text; signup alerts deliberately contain no email address.
+ * submitted text.
  */
 export const OWNER_ALERTS_TOPIC = "owner-alerts";
 

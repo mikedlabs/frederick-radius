@@ -52,8 +52,8 @@ export async function mintCards(_prev: MintResult, formData: FormData): Promise<
 
 /**
  * Turn a card on or off. `active=false` is the ONLY kill switch the /j tap route
- * honors — an inactive card redirects to /beta exactly like an unknown code and
- * grants no access, so a leaked or over-shared card can be shut off from here
+ * honors. An inactive card redirects to /today with no cookies, exactly like an
+ * unknown code, so a leaked or over-shared card can be shut off from here
  * without a SQL console. Gated by /admin/*'s Basic Auth like every action here.
  */
 export async function setCardActive(formData: FormData): Promise<void> {
