@@ -12,11 +12,11 @@ export default function SignOutButton({ email }: { email: string | null }) {
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="tactile tactile-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-4 text-[12px] font-semibold"
+        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-4 text-[0.875rem] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
         style={{
-          borderColor: "var(--app-border)",
-          background: "var(--app-bg-sunken)",
-          color: "var(--app-ink-2)",
+          borderColor: "var(--app-control-border)",
+          background: "var(--app-bg)",
+          color: "var(--app-ink)",
         }}
       >
         <LogOut className="h-4 w-4" strokeWidth={2.1} aria-hidden />
@@ -29,16 +29,11 @@ export default function SignOutButton({ email }: { email: string | null }) {
     <div
       role="group"
       aria-label="Confirm sign out"
-      className="rounded-[var(--app-radius-md)] border p-3.5"
-      style={{
-        borderColor: "color-mix(in srgb, var(--app-danger) 28%, var(--app-border))",
-        background: "color-mix(in srgb, var(--app-danger) 6%, var(--app-bg-elevated))",
-      }}
     >
-      <p className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+      <p className="text-[1.0625rem] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
         Stop syncing here?
       </p>
-      <p className="mt-1 text-[11.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+      <p className="mt-1 text-[0.875rem] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
         Places already with {email ?? "your account"} stay there. Saved events,
         routes, settings, and recent views stay on this device.
       </p>
@@ -60,8 +55,8 @@ export default function SignOutButton({ email }: { email: string | null }) {
         >
           <button
             type="submit"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-[12px] font-semibold text-white"
-            style={{ background: "var(--app-danger)" }}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[0.875rem] font-semibold"
+            style={{ background: "var(--app-danger)", color: "var(--app-on-brand)" }}
           >
             <LogOut className="h-4 w-4" strokeWidth={2.1} aria-hidden />
             Sign out here
@@ -70,8 +65,8 @@ export default function SignOutButton({ email }: { email: string | null }) {
         <button
           type="button"
           onClick={() => setConfirming(false)}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-4 text-[12px] font-semibold"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-4 text-[0.875rem] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+          style={{ borderColor: "var(--app-control-border)", background: "var(--app-bg)", color: "var(--app-ink)" }}
         >
           <X className="h-4 w-4" strokeWidth={2.1} aria-hidden />
           Cancel

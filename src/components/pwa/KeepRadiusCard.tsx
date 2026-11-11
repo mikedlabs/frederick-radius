@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import { ArrowRight, Check, Download } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import {
+  ROW_HELP,
+  SettingsRow,
+  SettingsSection,
+  helpStyle,
+} from "@/components/settings/SettingsSection";
 import { isStandalone } from "@/lib/pwa-display";
 import {
   RETURN_BRIDGE_INSTALLED_EVENT,
@@ -93,57 +100,45 @@ export default function KeepRadiusCard({
     );
   }
 
+  // Settings and /install: a labelled ruled row on the page ground. "Add" is
+  // a 6px outlined button, so the page carries no coral field.
   return (
-    <section
+    <SettingsSection
       id={id}
-      aria-label="Add Frederick Radius to your Home Screen"
-      className="rounded-[var(--app-radius-lg)] border p-4"
-      style={{
-        borderColor: installed
-          ? "color-mix(in srgb, var(--app-positive) 32%, var(--app-border))"
-          : "var(--app-border)",
-        background: "var(--app-bg-elevated)",
-        scrollMarginTop: "calc(var(--app-topbar-h) + 1rem)",
-      }}
+      ariaLabel="Add Frederick Radius to your Home Screen"
+      title={installed ? "Radius is on this device" : "Add Radius to your Home Screen"}
+      style={{ scrollMarginTop: "calc(var(--app-topbar-h) + 1rem)" }}
     >
-      <div className="flex items-center gap-3">
-        <span
-          aria-hidden
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl"
-          style={{
-            background: installed
-              ? "color-mix(in srgb, var(--app-positive) 14%, transparent)"
-              : "color-mix(in srgb, var(--app-brand) 12%, transparent)",
-            color: installed ? "var(--app-positive)" : "var(--app-brand)",
-          }}
-        >
+      <SettingsRow
+        trailing={
+          !installed ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={openReturnBridge}
+              className="text-[0.875rem]"
+            >
+              Add
+            </Button>
+          ) : undefined
+        }
+      >
+        <p className={`flex items-start gap-2 ${ROW_HELP}`} style={helpStyle}>
           {installed ? (
-            <Check className="h-4 w-4" strokeWidth={2.5} />
-          ) : (
-            <Download className="h-4 w-4" strokeWidth={2.25} />
-          )}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-            {installed ? "Radius is on this device" : "Add Radius to your Home Screen"}
-          </span>
-          <span className="mt-0.5 block text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+            <Check
+              aria-hidden
+              className="mt-[0.2em] h-4 w-4 shrink-0"
+              strokeWidth={2.5}
+              style={{ color: "var(--app-forest-text)" }}
+            />
+          ) : null}
+          <span className="min-w-0">
             {installed
               ? "Open it from your Home Screen whenever you need it."
               : "Open Radius like an app with one tap from your phone."}
           </span>
-        </span>
-        {!installed ? (
-          <button
-            type="button"
-            onClick={openReturnBridge}
-            className="min-h-11 shrink-0 rounded-full px-3 text-[12px] font-semibold"
-            style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}
-          >
-            Add
-          </button>
-        ) : null}
-      </div>
-    </section>
+        </p>
+      </SettingsRow>
+    </SettingsSection>
   );
 }
