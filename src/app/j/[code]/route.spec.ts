@@ -62,41 +62,42 @@ describe("GET /j/<code> tap route", () => {
     delete process.env.BETA_CODE_SECRET;
   });
 
-  it("rate-limits a malformed code before redirecting to /beta, and never touches the DB", async () => {
+  it("rate-limits a malformed code before redirecting to /today, and never touches the DB", async () => {
     const res = await call(request("Bad Code!"), "Bad Code!");
     expect(res.status).toBe(307);
-    expect(locationPath(res)).toBe("/beta");
+    expect(locationPath(res)).toBe("/today");
     // The limiter runs BEFORE the regex, so garbage probes still cost a slot.
     expect(mocks.isRateLimited).toHaveBeenCalled();
     expect(mocks.getDb).not.toHaveBeenCalled();
   });
 
-  it("redirects to /beta when rate-limited, before any DB work", async () => {
+  it("redirects to /today when rate-limited, before any DB work", async () => {
     mocks.isRateLimited.mockResolvedValue(true);
     const res = await call(request());
-    expect(locationPath(res)).toBe("/beta");
+    expect(locationPath(res)).toBe("/today");
     expect(mocks.getDb).not.toHaveBeenCalled();
   });
 
-  it("fails closed to /beta when the database is unconfigured", async () => {
+  it("fails closed to /today when the database is unconfigured", async () => {
     mocks.getDb.mockReturnValue(null);
     const res = await call(request());
-    expect(locationPath(res)).toBe("/beta");
+    expect(locationPath(res)).toBe("/today");
   });
 
-  it("redirects an unknown card to /beta and never creates a member", async () => {
+  it("redirects an unknown card to /today with no cookies and never creates a member", async () => {
     const { db, insertMock } = fakeDb({});
     mocks.getDb.mockReturnValue(db);
     const res = await call(request());
-    expect(locationPath(res)).toBe("/beta");
+    expect(locationPath(res)).toBe("/today");
+    expect(res.cookies.getAll()).toEqual([]);
     expect(insertMock).not.toHaveBeenCalled();
   });
 
-  it("redirects an inactive card to /beta (same response as unknown)", async () => {
+  it("redirects an inactive card to /today (same response as unknown)", async () => {
     const { db, insertMock } = fakeDb({ card: { code: CODE, active: false } });
     mocks.getDb.mockReturnValue(db);
     const res = await call(request());
-    expect(locationPath(res)).toBe("/beta");
+    expect(locationPath(res)).toBe("/today");
     expect(insertMock).not.toHaveBeenCalled();
   });
 
@@ -156,12 +157,13 @@ describe("GET /j/<code> tap route", () => {
     expect(res.cookies.get(MEMBER_COOKIE)?.value).not.toContain("forged-member-id-9999");
   });
 
-  it("fails closed to /beta when no signing secret is configured", async () => {
+  it("fails closed to /today with no cookies when no signing secret is configured", async () => {
     delete process.env.BETA_CODE_SECRET;
     delete process.env.BETA_PASSWORD;
     const { db } = fakeDb({ card: { code: CODE, active: true } });
     mocks.getDb.mockReturnValue(db);
     const res = await call(request());
-    expect(locationPath(res)).toBe("/beta");
+    expect(locationPath(res)).toBe("/today");
+    expect(res.cookies.getAll()).toEqual([]);
   });
 });
