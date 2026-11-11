@@ -108,8 +108,9 @@ export default function DataBackup() {
             size="sm"
             onClick={exportBackup}
             // The label may wrap: with enlarged text a one-line button is wider
-            // than a 320px screen.
-            className="max-w-full whitespace-normal text-left text-[0.875rem]"
+            // than a 320px screen. The height grows with it, so a second line
+            // stays inside the button instead of spilling past a fixed 44px.
+            className="h-auto min-h-11 max-w-full whitespace-normal py-2 text-left text-[0.875rem]"
             iconLeft={<Download className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
           >
             Download backup
@@ -119,8 +120,9 @@ export default function DataBackup() {
             size="sm"
             onClick={() => fileRef.current?.click()}
             // The label may wrap: with enlarged text a one-line button is wider
-            // than a 320px screen.
-            className="max-w-full whitespace-normal text-left text-[0.875rem]"
+            // than a 320px screen. The height grows with it, so a second line
+            // stays inside the button instead of spilling past a fixed 44px.
+            className="h-auto min-h-11 max-w-full whitespace-normal py-2 text-left text-[0.875rem]"
             iconLeft={<Upload className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
           >
             Restore from file
