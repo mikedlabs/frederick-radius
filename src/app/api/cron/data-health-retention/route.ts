@@ -5,10 +5,6 @@ import {
   SNAPSHOT_PRUNE_BATCH_SIZE,
 } from "@/lib/integrations/feed-snapshot";
 import {
-  prunePushLog,
-  PUSH_LOG_PRUNE_BATCH_SIZE,
-} from "@/lib/push-fanout";
-import {
   pruneNfcEvents,
   NFC_EVENT_PRUNE_BATCH_SIZE,
 } from "@/lib/nfc-retention";
@@ -35,7 +31,6 @@ const RETENTION_STATEMENT_TIMEOUT_MS = 5_000;
 
 type RetentionTaskName =
   | "feed_snapshots"
-  | "push_log"
   | "nfc_events"
   | "community_reports";
 
@@ -69,7 +64,6 @@ export async function GET(request: Request) {
     runStart.status === "fulfilled" ? runStart.value : null;
   const caps = {
     feed_snapshots: SNAPSHOT_PRUNE_BATCH_SIZE,
-    push_log: PUSH_LOG_PRUNE_BATCH_SIZE,
     nfc_events: NFC_EVENT_PRUNE_BATCH_SIZE,
     community_reports: COMMUNITY_REPORT_PRUNE_BATCH_SIZE,
   };
@@ -93,7 +87,7 @@ export async function GET(request: Request) {
   }
 
   // Each helper is oldest-first and row-capped. Run them sequentially because
-  // production's max:1 Supabase pool serializes them anyway. Starting all four
+  // production's max:1 Supabase pool serializes them anyway. Starting them all
   // at once left later DELETEs queued behind the first while their independent
   // timers expired; the route could then reply while queued destructive work
   // was still eligible to run. The shared budget prevents starting another
@@ -112,16 +106,6 @@ export async function GET(request: Request) {
         pruneOldSnapshots(
           RETENTION_DAYS,
           SNAPSHOT_PRUNE_BATCH_SIZE,
-          RETENTION_STATEMENT_TIMEOUT_MS,
-        ),
-    },
-    {
-      name: "push_log",
-      maxStatements: 1,
-      run: () =>
-        prunePushLog(
-          RETENTION_DAYS,
-          PUSH_LOG_PRUNE_BATCH_SIZE,
           RETENTION_STATEMENT_TIMEOUT_MS,
         ),
     },
@@ -182,7 +166,7 @@ export async function GET(request: Request) {
   const finish = await withDeadlineOutcome(
     finishIngestRunStrict(runId, {
       status,
-      records_in: 4,
+      records_in: tasks.length,
       records_upserted: deletedRows,
       records_failed: failedTasks.length,
       error:

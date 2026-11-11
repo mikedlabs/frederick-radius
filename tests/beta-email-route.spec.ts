@@ -6,7 +6,6 @@ const mocks = vi.hoisted(() => ({
   isRateLimited: vi.fn(),
   isSameOriginMutationRequest: vi.fn(),
   inviteEmail: vi.fn(),
-  fanoutToTopic: vi.fn(),
 }));
 
 vi.mock("@/lib/db/client", () => ({ getDb: mocks.getDb }));
@@ -19,7 +18,6 @@ vi.mock("@/lib/origin-check", async (importOriginal) => {
   };
 });
 vi.mock("@/lib/beta-invite", () => ({ inviteEmail: mocks.inviteEmail }));
-vi.mock("@/lib/push-fanout", () => ({ fanoutToTopic: mocks.fanoutToTopic }));
 
 import { POST } from "@/app/api/beta/email/route";
 
@@ -31,9 +29,8 @@ function request(email = "tester@example.com", next: unknown = "/today") {
   });
 }
 
-function dbReturning(inserted: Array<{ id: string }>) {
-  const returning = vi.fn().mockResolvedValue(inserted);
-  const onConflictDoNothing = vi.fn(() => ({ returning }));
+function dbReturning() {
+  const onConflictDoNothing = vi.fn().mockResolvedValue(undefined);
   const values = vi.fn(() => ({ onConflictDoNothing }));
   return { insert: vi.fn(() => ({ values })) };
 }
@@ -43,11 +40,10 @@ describe("POST /api/beta/email", () => {
     vi.clearAllMocks();
     mocks.isSameOriginMutationRequest.mockReturnValue(true);
     mocks.isRateLimited.mockResolvedValue(false);
-    mocks.fanoutToTopic.mockResolvedValue(undefined);
   });
 
   it("retains a new signup without claiming an undelivered invite was sent", async () => {
-    mocks.getDb.mockReturnValue(dbReturning([{ id: "signup-1" }]));
+    mocks.getDb.mockReturnValue(dbReturning());
     mocks.inviteEmail.mockResolvedValue({ code: "frederick-abcd", sent: false });
 
     const response = await POST(request());
@@ -62,7 +58,7 @@ describe("POST /api/beta/email", () => {
   });
 
   it("retries delivery for a duplicate signup and reports success only after send", async () => {
-    mocks.getDb.mockReturnValue(dbReturning([]));
+    mocks.getDb.mockReturnValue(dbReturning());
     mocks.inviteEmail.mockResolvedValue({ code: "frederick-abcd", sent: true });
 
     const response = await POST(request(" Tester@Example.com "));
@@ -73,11 +69,10 @@ describe("POST /api/beta/email", () => {
       stored: true,
     });
     expect(mocks.inviteEmail).toHaveBeenCalledWith("tester@example.com", "/today");
-    expect(mocks.fanoutToTopic).not.toHaveBeenCalled();
   });
 
   it("preserves a shared destination in the emailed access link", async () => {
-    mocks.getDb.mockReturnValue(dbReturning([]));
+    mocks.getDb.mockReturnValue(dbReturning());
     mocks.inviteEmail.mockResolvedValue({ code: "frederick-abcd", sent: true });
 
     await POST(request("tester@example.com", "/events/alive-at-five?from=share"));
@@ -89,7 +84,7 @@ describe("POST /api/beta/email", () => {
   });
 
   it("rejects an external return destination", async () => {
-    mocks.getDb.mockReturnValue(dbReturning([]));
+    mocks.getDb.mockReturnValue(dbReturning());
     mocks.inviteEmail.mockResolvedValue({ code: "frederick-abcd", sent: true });
 
     await POST(request("tester@example.com", "https://evil.example/phish"));

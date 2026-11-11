@@ -125,12 +125,11 @@ export const TOOL_DECK_GROUP_DEFINITIONS = [
   {
     id: "yours",
     label: "Saved & settings",
-    description: "Saved items, notifications, settings, and submissions.",
+    description: "Saved items, settings, and submissions.",
     toolIds: [
       "saved",
       "settings",
       "keep-radius",
-      "notifications",
       "mark-a-spot",
       "add-event",
       "add-place",

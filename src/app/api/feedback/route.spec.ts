@@ -6,7 +6,6 @@ const mocks = vi.hoisted(() => ({
   isRateLimited: vi.fn(),
   readJsonBodyWithLimit: vi.fn(),
   getDb: vi.fn(),
-  fanoutToTopic: vi.fn(),
 }));
 
 vi.mock("@/lib/origin-check", () => ({
@@ -15,9 +14,6 @@ vi.mock("@/lib/origin-check", () => ({
   readJsonBodyWithLimit: mocks.readJsonBodyWithLimit,
 }));
 vi.mock("@/lib/db/client", () => ({ getDb: mocks.getDb }));
-vi.mock("@/lib/push-fanout", () => ({
-  fanoutToTopic: mocks.fanoutToTopic,
-}));
 
 import { POST } from "./route";
 
@@ -68,13 +64,6 @@ describe("POST /api/feedback durable receipt", () => {
         pathname: "/food-trucks",
       },
     });
-    mocks.fanoutToTopic.mockResolvedValue({
-      claimed: true,
-      attempted: 1,
-      sent: 1,
-      gone: 0,
-      held: 0,
-    });
   });
 
   afterEach(() => {
@@ -93,7 +82,6 @@ describe("POST /api/feedback durable receipt", () => {
       ok: false,
       error: "feedback-storage-unavailable",
     });
-    expect(mocks.fanoutToTopic).not.toHaveBeenCalled();
     expect(loggedText(error)).not.toContain(PRIVATE_MESSAGE);
     expect(loggedText(error)).not.toContain(PRIVATE_EMAIL);
   });
@@ -114,51 +102,20 @@ describe("POST /api/feedback durable receipt", () => {
       ok: false,
       error: "feedback-storage-unavailable",
     });
-    expect(mocks.fanoutToTopic).not.toHaveBeenCalled();
     expect(loggedText(error)).toContain("durable storage failed");
     expect(loggedText(error)).not.toContain(PRIVATE_MESSAGE);
     expect(loggedText(error)).not.toContain(PRIVATE_EMAIL);
   });
 
-  it("keeps a stored report successful when owner push throws", async () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
-    const { db, returning } = fakeDb();
+  it("returns a receipt only after the report is stored", async () => {
+    const { db, values, returning } = fakeDb();
     mocks.getDb.mockReturnValue(db);
-    mocks.fanoutToTopic.mockRejectedValue(
-      new Error(`push failed for ${PRIVATE_MESSAGE} ${PRIVATE_EMAIL}`),
-    );
 
     const response = await POST(request());
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true });
+    expect(values).toHaveBeenCalledTimes(1);
     expect(returning).toHaveBeenCalledTimes(1);
-    expect(mocks.fanoutToTopic).toHaveBeenCalledTimes(1);
-    expect(loggedText(error)).toContain("owner alert failed");
-    expect(loggedText(error)).toContain("feedback-id-123");
-    expect(loggedText(error)).not.toContain(PRIVATE_MESSAGE);
-    expect(loggedText(error)).not.toContain(PRIVATE_EMAIL);
-  });
-
-  it("records a safely bounded delivery summary when no owner push arrives", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const { db } = fakeDb();
-    mocks.getDb.mockReturnValue(db);
-    mocks.fanoutToTopic.mockResolvedValue({
-      claimed: true,
-      attempted: 1,
-      sent: 0,
-      gone: 1,
-      held: 0,
-    });
-
-    const response = await POST(request());
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true });
-    expect(loggedText(warn)).toContain("owner alert not delivered");
-    expect(loggedText(warn)).toContain("feedback-id-123");
-    expect(loggedText(warn)).not.toContain(PRIVATE_MESSAGE);
-    expect(loggedText(warn)).not.toContain(PRIVATE_EMAIL);
   });
 });

@@ -7,8 +7,8 @@ import { ArrowRight, CircleParking } from "lucide-react";
  * When a crowd-drawing event is coming up downtown, the closest garage tends to
  * fill, so this names it and offers the backups: "Heading to [event]? Carroll
  * Creek Deck fills fast. Court Street and Church Street are good backups." It's
- * the same predictive logic the parking-forecast push uses, surfaced on the
- * page for anyone who didn't opt into alerts. A PREDICTION ("fills fast"), never
+ * the predictive logic in lib/parking-forecast, surfaced on the page. A
+ * PREDICTION ("fills fast"), never
  * a live count. Renders nothing when no qualifying event is near (the slot in
  * /today passes null then).
  */

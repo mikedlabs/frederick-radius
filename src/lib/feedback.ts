@@ -209,29 +209,3 @@ export function buildFeedbackRow(value: ParsedFeedback, commit: string | null): 
     submitter_email: value.email,
   };
 }
-
-export const FEEDBACK_OWNER_ALERT_MAX_BODY = 160;
-
-function boundedAlertBody(value: string): string {
-  if (value.length <= FEEDBACK_OWNER_ALERT_MAX_BODY) return value;
-  return `${value.slice(0, FEEDBACK_OWNER_ALERT_MAX_BODY - 1).trimEnd()}…`;
-}
-
-/** Keeps the phone alert useful while leaving the durable, full note in admin. */
-export function buildFeedbackOwnerAlert(value: ParsedFeedback): {
-  title: string;
-  body: string;
-} {
-  if (value.source === "ask-correction") {
-    return {
-      title: "Ask correction",
-      body: boundedAlertBody(value.message),
-    };
-  }
-
-  const where = value.pathname ? ` · ${value.pathname}` : "";
-  return {
-    title: "Site feedback",
-    body: boundedAlertBody(`${value.message}${where}`),
-  };
-}

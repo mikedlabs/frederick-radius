@@ -19,8 +19,6 @@ import {
   isSameOriginMutationRequest,
   readJsonBodyWithLimit,
 } from "@/lib/origin-check";
-import { fanoutToTopic } from "@/lib/push-fanout";
-import { OWNER_ALERTS_TOPIC } from "@/lib/push-topics";
 import { inviteEmail } from "@/lib/beta-invite";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 
@@ -65,37 +63,11 @@ export async function POST(req: NextRequest) {
     );
   }
   try {
-    const inserted = await db
-      .insert(beta_emails)
-      .values({ email })
-      .onConflictDoNothing()
-      .returning({ id: beta_emails.id });
+    await db.insert(beta_emails).values({ email }).onConflictDoNothing();
     // Always try delivery, including on a duplicate request. mintCodeForEmail
     // reuses the existing non-revoked code, which makes a retry useful after a
     // transient Resend/configuration failure without creating a second signup.
     const invite = await inviteEmail(email, next);
-    // Owner alert on genuinely NEW signups only (a duplicate signup inserts
-    // nothing and stays silent). Push failure never fails the signup.
-    const id = inserted[0]?.id;
-    if (id) {
-      try {
-        await fanoutToTopic(OWNER_ALERTS_TOPIC, `signup:${id}`, {
-          title: "New beta signup",
-          // Push payloads and push_log are operational channels, not a safe
-          // place to duplicate a tester's email address. Review the record in
-          // the Basic-Auth-gated Beta Desk instead.
-          body: invite.sent
-            ? "A new access request is ready in Beta Desk."
-            : "A new access request needs attention in Beta Desk.",
-          url: "/admin/beta",
-        });
-      } catch (err) {
-        console.error(
-          "[beta/email] owner alert failed:",
-          err instanceof Error ? err.message : err,
-        );
-      }
-    }
     // `stored` describes the fail-soft signup retention; `sent` (and therefore
     // `ok`) is true only when Resend accepted the invite. The client must never
     // turn a stored-but-unsent request into a "Sent" confirmation.

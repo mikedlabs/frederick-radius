@@ -51,7 +51,6 @@ describe("SaveButton with the real follow persistence hook", () => {
   let blockedRead: ReturnType<typeof deferred<Response>> | undefined;
   let reads: Array<{ signal?: AbortSignal }>;
   let imports: Array<{ slugs: string[]; request: ReturnType<typeof deferred<Response>> }>;
-  let topics: Array<{ add?: string[]; remove?: string[] }>;
   let frames: Map<number, FrameRequestCallback>;
   let nextFrame = 0;
   const flushFrames = async () => {
@@ -74,7 +73,6 @@ describe("SaveButton with the real follow persistence hook", () => {
     writes = [];
     reads = [];
     imports = [];
-    topics = [];
     serverSlugs = new Set();
     identity = undefined;
     blockedRead = undefined;
@@ -84,10 +82,6 @@ describe("SaveButton with the real follow persistence hook", () => {
         const request = deferred<Response>();
         imports.push({ slugs: JSON.parse(String(init?.body)).slugs, request });
         return request.promise;
-      }
-      if (String(input) === "/api/push/topics") {
-        topics.push(JSON.parse(String(init?.body)));
-        return Promise.resolve(response());
       }
       if (String(input) === "/api/auth/me" && identity) return identity.promise;
       if (String(input) === "/api/follows" && !init?.method) {
@@ -312,22 +306,17 @@ describe("SaveButton with the real follow persistence hook", () => {
     });
   });
 
-  it("keeps the device topic aligned with a confirmed save after a later removal fails", async () => {
-    vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: async () => ({ endpoint: "https://push.example.test/consented" }) } }) } });
+  it("keeps a confirmed save after a later removal fails", async () => {
     await render();
     await click(0);
     await click(1);
     await settle(0);
-    expect(topics).toEqual([expect.objectContaining({ add: ["biz:test-stop"] })]);
-    topics.length = 0;
     await click(1);
     await settle(1, 503);
     expect(saved()).toBe("test-stop");
-    expect(topics).toEqual([expect.objectContaining({ add: ["biz:test-stop"] })]);
   });
 
-  it("keeps the final confirmed device topic after an old-generation queued intent settles", async () => {
-    vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: async () => ({ endpoint: "https://push.example.test/consented" }) } }) } });
+  it("keeps the final confirmed save after an old-generation queued intent settles", async () => {
     await render([], Array.from({ length: 8 }, () => "test-stop"));
     for (let index = 0; index < 8; index++) await click(index);
     await render(["fresh-snapshot"], ["test-stop"]);
@@ -335,7 +324,6 @@ describe("SaveButton with the real follow persistence hook", () => {
     expect(writes).toHaveLength(1);
     expect(saved()).toBe("fresh-snapshot,test-stop");
     expect(mocks.toast.success).not.toHaveBeenCalled();
-    expect(topics).toEqual([expect.objectContaining({ add: ["biz:test-stop"] })]);
   });
 
   it("releases an import reservation canceled before send so the same account can try its first import", async () => {
@@ -358,48 +346,30 @@ describe("SaveButton with the real follow persistence hook", () => {
     expect(imports).toHaveLength(1);
   });
 
-  it.each(["ready", "subscription"])("keeps one confirmed topic sync across a same-account bootstrap during delayed %s", async (phase) => {
-    const ready = deferred<{ pushManager: { getSubscription: () => Promise<{ endpoint: string }> } }>();
-    const subscription = deferred<{ endpoint: string }>();
-    const getSubscription = vi.fn(() => phase === "subscription" ? subscription.promise : Promise.resolve({ endpoint: "https://push.example.test/consented" }));
-    const registration = { pushManager: { getSubscription } };
-    vi.stubGlobal("navigator", { serviceWorker: { ready: phase === "ready" ? ready.promise : Promise.resolve(registration) } });
+  it("sends one write when a same-account bootstrap repeats after a confirmed save", async () => {
     await render();
     await click();
     await settle(0);
     expect(button().disabled).toBe(false);
     expect(mocks.toast.success).toHaveBeenCalledTimes(1);
-    expect(topics).toHaveLength(0);
     await render(["test-stop"]);
     await render(["test-stop"]);
-    await act(async () => {
-      ready.resolve(registration);
-      subscription.resolve({ endpoint: "https://push.example.test/consented" });
-    });
-    expect(topics).toEqual([expect.objectContaining({ add: ["biz:test-stop"] })]);
-    expect(getSubscription).toHaveBeenCalledTimes(1);
     expect(writes).toHaveLength(1);
     expect(mocks.toast.success).toHaveBeenCalledTimes(1);
   });
 
-  it.each(["opposite", "other-account", "same-account-reset"])("does not send a delayed topic for an obsolete %s confirmation", async (replacement) => {
-    const subscription = deferred<{ endpoint: string }>();
-    vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: () => subscription.promise } }) } });
+  it.each(["opposite", "other-account", "same-account-reset"])("does not repeat a confirmed save for a later %s snapshot", async (replacement) => {
     await render();
     await click();
     await settle(0);
     if (replacement === "other-account") bootstrap = { ...bootstrap, user: { id: `other-${accountSequence}`, email: null } };
     if (replacement === "same-account-reset") resetFollowsSyncFlag();
     await render(replacement === "opposite" ? [] : ["test-stop"]);
-    await act(async () => subscription.resolve({ endpoint: "https://push.example.test/consented" }));
-    expect(topics).toHaveLength(0);
     expect(writes).toHaveLength(1);
     expect(mocks.toast.success).toHaveBeenCalledTimes(1);
   });
 
-  it("does not send a delayed confirmed topic against a matching but unsettled optimistic intent", async () => {
-    const subscription = deferred<{ endpoint: string }>();
-    vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: () => subscription.promise } }) } });
+  it("keeps a confirmed save when a matching optimistic intent later fails", async () => {
     await render();
     await click(0);
     await settle(0);
@@ -407,10 +377,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     await click(1);
     expect(writes).toHaveLength(2);
     expect(saved()).toBe("test-stop");
-    await act(async () => subscription.resolve({ endpoint: "https://push.example.test/consented" }));
-    expect(topics).toHaveLength(0);
     await settle(1, 503);
-    expect(topics).toEqual([expect.objectContaining({ add: ["biz:test-stop"] })]);
     expect(writes).toHaveLength(2);
     expect(saved()).toBe("test-stop");
   });

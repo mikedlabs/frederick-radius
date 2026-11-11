@@ -5,8 +5,7 @@
  * (both call the shared helpers), exposed as an admin-gated endpoint so the
  * backfill can be triggered and VERIFIED from tooling: the response says
  * exactly how many codes were minted, how many emails Resend accepted, and
- * which addresses failed. Basic Auth via the /admin middleware, like
- * /admin/api/owner-alerts.
+ * which addresses failed. Basic Auth via the /admin middleware.
  *
  * Optional body { probe: "email@x" } invites ONLY that address (canary before
  * a batch). Idempotent: an address with a live code is skipped by the batch,

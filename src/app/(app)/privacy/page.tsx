@@ -33,7 +33,7 @@ export default function PrivacyPage() {
         <p>
           Frederick Radius is designed to collect little personal information.
           This policy explains what is processed when you use the app, request
-          beta access, sign in, enable notifications, or send something to us.
+          beta access, sign in, or send something to us.
         </p>
 
         <div className="space-y-2">
@@ -131,12 +131,12 @@ export default function PrivacyPage() {
             Notifications
           </h2>
           <p>
-            If you enable push notifications, we store a browser-generated push
-            endpoint and encryption keys, the topics you choose, basic device and
-            browser labels, your selected home town if provided, and delivery or
-            interaction timestamps. This information is used only to manage and
-            deliver the notifications you request. You can disable notifications
-            in the app or your browser settings.
+            Frederick Radius no longer sends push notifications. If you turned
+            them on before they were retired, the browser push endpoint, topics,
+            and settings saved at that time may still be stored, but the app no
+            longer uses them. The current version of the app also removes its
+            push subscription from your browser. You can ask us to delete those
+            records using the contact details below.
           </p>
         </div>
 
@@ -208,7 +208,7 @@ export default function PrivacyPage() {
           </h2>
           <p>
             We use service providers to host the app, store data, authenticate
-            users, send email and push notifications, measure aggregate use,
+            users, send email, measure aggregate use,
             monitor errors, and provide maps or place information. These
             providers currently include Vercel and Vercel AI Gateway, Supabase,
             Resend, Plausible, Sentry, Mapbox, Google, OpenAI, and Anthropic.
@@ -276,8 +276,8 @@ export default function PrivacyPage() {
             </a>
             . We may need to verify the request. Some information may be kept
             when the law permits or requires it. You can also clear browser data,
-            revoke location permission, unsubscribe from email, disable push
-            notifications, or sign out using the relevant controls.
+            revoke location permission, unsubscribe from email, or sign out using
+            the relevant controls.
           </p>
         </div>
 

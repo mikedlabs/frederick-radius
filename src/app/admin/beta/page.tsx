@@ -6,7 +6,6 @@ import { Check, X, Mail, KeyRound, Inbox, Flag } from "lucide-react";
 import { getDb, getSql } from "@/lib/db/client";
 import { beta_codes, beta_emails, submissions } from "@/lib/db/schema";
 import { easternDayKey } from "@/lib/tz";
-import OwnerAlertsCard from "@/components/admin/OwnerAlertsCard";
 import {
   AdminShell,
   Section,
@@ -43,9 +42,7 @@ type Data = {
   feedback: FeedbackRow[];
   signups: SignupRow[];
   codes: CodeRow[];
-  pushDevices: number;
   followCount: number;
-  saveCount: number;
   reportsPending: number;
   /** Load-time epoch ms; components stay pure by reading time from here. */
   now: number;
@@ -63,8 +60,8 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
     // with max:1 + prepare:false, and concurrent queries (Promise.all) get
     // pipelined down the one pooled connection, which Supavisor does not
     // answer — the render hangs forever. One-at-a-time always completes.
-    // The three row reads stay separate; the four counts that used to be
-    // four more round trips travel as one statement.
+    // The three row reads stay separate; the counts that used to be
+    // separate round trips travel as one statement.
     const feedback = await db
       .select()
       .from(submissions)
@@ -89,9 +86,7 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
     const counts = (
       await raw`
         select
-          (select count(*)::int from push_subscriptions) as push_devices,
           (select count(*)::int from follows) as follow_count,
-          (select count(*)::int from saved_events) as save_count,
           (select count(*)::int from community_reports where status = 'pending') as reports_pending
       `
     )[0] as Record<string, number>;
@@ -101,9 +96,7 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
         feedback,
         signups,
         codes,
-        pushDevices: counts.push_devices ?? 0,
         followCount: counts.follow_count ?? 0,
-        saveCount: counts.save_count ?? 0,
         reportsPending: counts.reports_pending ?? 0,
         now,
       },
@@ -176,12 +169,8 @@ function Dashboard({ data }: { data: Data }) {
   return (
     <>
       <section className="mt-6">
-        <OwnerAlertsCard />
-      </section>
-
-      <section className="mt-6">
         <SectionLabel>The vitals</SectionLabel>
-        <div className="stagger-children grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="stagger-children grid grid-cols-2 gap-2 sm:grid-cols-3">
           <Stat
             label="Signups"
             value={data.signups.length}
@@ -197,7 +186,6 @@ function Dashboard({ data }: { data: Data }) {
             value={data.reportsPending}
             tone={data.reportsPending > 0 ? "warning" : undefined}
           />
-          <Stat label="Push devices" value={data.pushDevices} />
         </div>
       </section>
 
@@ -206,7 +194,6 @@ function Dashboard({ data }: { data: Data }) {
       <Activity
         codes={data.codes}
         followCount={data.followCount}
-        saveCount={data.saveCount}
         now={data.now}
       />
 
@@ -472,12 +459,10 @@ const QUIET_WINDOW_MS = 14 * 86_400_000;
 function Activity({
   codes,
   followCount,
-  saveCount,
   now,
 }: {
   codes: CodeRow[];
   followCount: number;
-  saveCount: number;
   now: number;
 }) {
   const cutoff = now - ACTIVE_WINDOW_MS;
@@ -502,7 +487,6 @@ function Activity({
             { value: quietCodes.length, label: "Gone quiet, 14d", tone: quietCodes.length > 0 ? "warning" : "positive" },
             { value: neverUsed.length, label: "Never used", tone: neverUsed.length > 0 ? "muted" : "positive" },
             { value: followCount, label: "Follows" },
-            { value: saveCount, label: "Event saves" },
           ]}
         />
       </div>

@@ -11,8 +11,8 @@ describe("Vercel cron delivery budget", () => {
     const config = JSON.parse(readFileSync("vercel.json", "utf8"));
     const result = auditCronDeliveryBudget(config);
     expect(result.failures).toEqual([]);
-    expect(result.summary.weekly).toBe(4_474);
-    expect(result.summary.peakDay).toBe(640);
+    expect(result.summary.weekly).toBe(2_612);
+    expect(result.summary.peakDay).toBe(374);
   });
 
   it("detects a new high-frequency schedule", () => {

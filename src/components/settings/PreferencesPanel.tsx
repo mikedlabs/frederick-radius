@@ -1,11 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useId, useState, useSyncExternalStore } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   MapPin,
-  Bell,
   RotateCcw,
   ChevronRight,
   Check,
@@ -19,6 +17,7 @@ import {
   Hotel,
 } from "lucide-react";
 import KeepRadiusCard from "@/components/pwa/KeepRadiusCard";
+import PhoneFeedbackCard from "@/components/settings/PhoneFeedbackCard";
 import { resetModeState } from "@/hooks/useMode";
 import { ACCENTS } from "@/data/categories";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -54,7 +53,7 @@ import {
  * PreferencesPanel — the editable settings hub.
  *
  * Surfaces every device-local pick the user made (Where, Fit, Interests,
- * Community notes, Appearance, Notifications topic) in one place so they
+ * Community notes, Appearance, Phone feedback) in one place so they
  * can see what's been saved and change anything. The chips on Today + the pre-expanded
  * sections on Radius are the AMBIENT view of these picks; this panel
  * is the CONTROL view.
@@ -436,45 +435,9 @@ export default function PreferencesPanel() {
         </p>
       </SectionShell>
 
-      {/* NOTIFICATIONS — link to the existing dedicated page */}
-      <Link
-        href="/settings/notifications"
-        onClick={() => haptic("light")}
-        className="flex items-center justify-between gap-3 rounded-[var(--app-radius-lg)] border p-4 transition active:scale-[0.99]"
-        style={{
-          borderColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-        }}
-      >
-        <span className="inline-flex items-center gap-3">
-          <span
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-md)]"
-            style={{
-              background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
-              color: "var(--app-cool)",
-            }}
-          >
-            <Bell className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          </span>
-          <span>
-            <span
-              className="block text-[14px] font-semibold"
-              style={{ color: "var(--app-ink)" }}
-            >
-              Alerts & feedback
-            </span>
-            <span className="block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-              Choose local alerts, quiet hours, and phone feedback.
-            </span>
-          </span>
-        </span>
-        <ChevronRight
-          className="h-4 w-4 shrink-0"
-          strokeWidth={2.5}
-          aria-hidden
-          style={{ color: "var(--app-ink-3)" }}
-        />
-      </Link>
+      {/* PHONE FEEDBACK: the device-local haptics switch. It moved here from
+          the retired /settings/notifications page. */}
+      <PhoneFeedbackCard />
 
       <KeepRadiusCard id="keep-radius" openFromHash />
 
