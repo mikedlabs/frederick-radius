@@ -101,6 +101,39 @@ function CategoryMark({
   );
 }
 
+/** Each reason tone's readable text color in both appearances. */
+const REASON_TEXT: Record<PlaceReasonChip["tone"], string> = {
+  open: "var(--app-forest-text)",
+  verified: "var(--app-forest-text)",
+  near: "var(--app-cool-text)",
+  free: "var(--app-cool-text)",
+  rated: "var(--app-accent-text)",
+  neutral: "var(--app-ink-2)",
+};
+
+/**
+ * The row's reasons as plain informational labels: small uppercase text in
+ * each reason's semantic color, separated by a middle dot, with no box, fill,
+ * ring or capsule. Filters and status badges keep their own shapes.
+ */
+function ReasonLabels({ reasons }: { reasons: PlaceReasonChip[] }) {
+  if (reasons.length === 0) return null;
+  return (
+    <span className="inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5" aria-label="Reasons this is shown">
+      {reasons.map((r, i) => (
+        <span
+          key={`${r.label}-${i}`}
+          data-place-reason-label
+          className={`text-[12px] font-semibold uppercase leading-snug tracking-[0.06em] ${i > 0 ? "before:mr-1.5 before:text-[var(--app-ink-3)] before:content-['·']" : ""}`}
+          style={{ color: REASON_TEXT[r.tone] }}
+        >
+          {r.label}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 /**
  * One text line for the narrow cards: a lead fact, then the distance. The
  * lead truncates and the distance never does, because this line is the only
@@ -619,10 +652,28 @@ export default function PlaceCard({
       {/* pr-1 leaves room for the Save control's 44px hit extender, so the
           row never scrolls sideways now that it no longer clips. */}
       <div className="flex items-stretch gap-3 py-3 pr-1">
-        <div ref={photoAnchorRef} className="pointer-events-none relative z-10 shrink-0 self-center">
+        {/* MEDIA IN ROWS: a thumbnail only when a real photo exists. Without
+            one the slot keeps the photo's width, so titles stay aligned down
+            a mixed list, and holds the bare category glyph beside the title's
+            first line: no tile, tint, border or corner. */}
+        <div
+          ref={photoAnchorRef}
+          data-place-row-media={photo ? "photo" : "glyph"}
+          className={`pointer-events-none relative z-10 shrink-0 ${photo ? "self-center" : "self-start"}`}
+          style={photo ? undefined : { width: photoWidth }}
+        >
           {photo ? (
             <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={photoWidth} frame={compact ? "compact-row" : "row"} deferGoogleBytes={lazyPhoto} />
-          ) : <CategoryMark category={place.category} color={color} size={compact ? 40 : 46} />}
+          ) : (
+            <span data-place-row-glyph className="block h-6 w-6" aria-hidden>
+              <CategoryIcon
+                slug={place.category}
+                strokeWidth={1.75}
+                className={`h-6 w-6 ${compact ? "" : "-mt-px"}`}
+                style={{ color: "var(--app-ink-3)" }}
+              />
+            </span>
+          )}
         </div>
         <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col justify-center">
           <div className="flex items-start gap-2">
@@ -654,14 +705,14 @@ export default function PlaceCard({
             </span>
           </p>
           {place.market_day && (
-            <p className="mt-0.5 truncate text-[12px] font-medium" style={{ color: "var(--app-brand-press)" }}>
+            <p className="mt-0.5 truncate text-[12px] font-medium" style={{ color: "var(--app-brand-text)" }}>
               {place.market_day}{place.market_hours ? ` · ${place.market_hours}` : ""}
             </p>
           )}
           {!compact && (
             rowReasons.length > 0 ? (
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                <ReasonChipRow reasons={rowReasons} />
+              <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                <ReasonLabels reasons={rowReasons} />
                 {inlineTag}
               </div>
             ) : (
