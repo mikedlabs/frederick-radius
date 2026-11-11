@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 /**
- * EmptyState — the canonical "nothing here yet" surface.
+ * EmptyState: the canonical "nothing here yet" surface.
  *
  * Empty states used to vary across the app: some had copy + an
  * icon, some had a tinted block, others rendered as bare bordered
@@ -54,7 +54,7 @@ export default function EmptyState({
   className,
 }: {
   icon: LucideIcon;
-  /** Serif sentence ending in a period. */
+  /** A system-sans sentence ending in a period. */
   title: string;
   /** Optional explanation paragraph. */
   body?: ReactNode;

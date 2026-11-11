@@ -14,18 +14,27 @@ type Story = StoryObj<typeof meta>;
 
 // Plain tool: a selected facet is an ink capsule and an unselected one is a
 // hairline outline on the page ground. Capsules stay on compact filters only.
+// A legacy "cool" or "brand" tone renders the same ink fill, never a colored
+// capsule, so no selected chip becomes a second coral field on a page.
 export const Choices: Story = { render: () => <div className="flex flex-wrap items-center gap-3 p-4">
-  <Pill active>Today</Pill><Pill>Tomorrow</Pill><Pill tone="cool" active>Frederick</Pill>
+  <Pill active>Today</Pill><Pill>Tomorrow</Pill><Pill tone="cool" active>Frederick</Pill><Pill tone="brand" active>Brunswick</Pill>
 </div>, play: async ({ canvasElement }) => {
   const canvas = within(canvasElement);
   const today = canvas.getByRole("button", { name: "Today" });
   const tomorrow = canvas.getByRole("button", { name: "Tomorrow" });
+  const town = canvas.getByRole("button", { name: "Frederick" });
+  const brand = canvas.getByRole("button", { name: "Brunswick" });
   const probe = document.createElement("span");
   probe.style.color = "var(--app-ink)";
-  canvasElement.append(probe);
+  const ground = document.createElement("span");
+  ground.style.color = "var(--app-bg)";
+  canvasElement.append(probe, ground);
   try {
-    await expect(getComputedStyle(today).backgroundColor).toBe(getComputedStyle(probe).color);
-  } finally { probe.remove(); }
+    for (const selected of [today, town, brand]) {
+      await expect(getComputedStyle(selected).backgroundColor).toBe(getComputedStyle(probe).color);
+      await expect(getComputedStyle(selected).color).toBe(getComputedStyle(ground).color);
+    }
+  } finally { probe.remove(); ground.remove(); }
   await expect(getComputedStyle(tomorrow).borderTopWidth).toBe("1px");
   for (const chip of [today, tomorrow]) {
     await expect(getComputedStyle(chip).boxShadow).toBe("none");

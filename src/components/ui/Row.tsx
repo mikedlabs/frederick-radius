@@ -3,18 +3,23 @@ import { ChevronRight, ExternalLink } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 
 /**
- * Row + RowList — the canonical DENSE directory row (Visual System v2).
+ * Row and RowList: the canonical dense directory row.
  *
  * The antidote to the "directory of big cards that goes on forever"
  * problem: where PlaceCard (variant="row") is for place data with
  * photos + hours, this is the generic ~56px scannable row for the
- * other directories — parks, amenities, parking, contacts — that were
+ * other directories (parks, amenities, parking, contacts) that were
  * rendering as full-width cards (Parks was ~13 phone-screens tall).
  *
- * A RowList is a run of ruled rows on the page ground with hairline
- * dividers, closed by one hairline above and below, so a long list
- * reads as a single tidy block instead of a stack of separate cards.
- * Server-component safe (no hooks) — drops straight into server pages.
+ * A RowList is a run of ruled rows on the page ground: `border-y` on the
+ * list and a `border-b` hairline on each row except the last, so the list
+ * is closed by one hairline above and one below and reads as a single tidy
+ * block instead of a stack of separate cards. Server-component safe (no
+ * hooks), so it drops straight into server pages.
+ *
+ * The leading slot holds a real photograph when one exists. Otherwise it
+ * holds the plain glyph (IconTile): a 24px icon in ink-3 with no tile,
+ * tint, border or fill.
  *
  *   <RowList>
  *     {parks.map((p) => (
@@ -47,9 +52,9 @@ export function RowList({
 type RowProps = {
   title: ReactNode;
   subtitle?: ReactNode;
-  /** Small trailing fact (acres, distance, count) — quiet, tabular. */
+  /** Small trailing fact (acres, distance, count), quiet and tabular. */
   meta?: ReactNode;
-  /** Leading slot — an IconTile, a tiny thumbnail, etc. */
+  /** Leading slot: a real thumbnail, or the plain IconTile glyph. */
   leading?: ReactNode;
   /** Trailing slot. Defaults to a chevron (internal) / external glyph. */
   trailing?: ReactNode;
@@ -122,23 +127,27 @@ export function Row(props: RowProps) {
   );
 }
 
-/** Small rounded icon tile for a Row's leading slot. */
+/**
+ * The plain glyph for a Row's leading slot when no photograph exists: a 24px
+ * icon in ink-3 with no tile, tint, border or fill. The name is kept for
+ * existing callers. `tone` is accepted so they still compile, but it is
+ * ignored: a category hue is not a glyph color in a plain row.
+ */
 export function IconTile({
   icon: Icon,
-  tone = "var(--app-ink-3)",
 }: {
   icon: React.ComponentType<{ className?: string; strokeWidth?: number; style?: CSSProperties }>;
+  /** Ignored. Rows draw every glyph in ink-3. */
   tone?: string;
 }) {
   return (
     <span
       aria-hidden
-      className="grid h-9 w-9 place-items-center rounded-[var(--app-radius-sm)]"
-      style={{
-        background: "var(--app-bg-sunken)",
-      }}
+      data-row-glyph
+      className="grid h-6 w-6 place-items-center"
+      style={{ color: "var(--app-ink-3)" }}
     >
-      <Icon className="h-4 w-4" strokeWidth={2} style={{ color: tone }} />
+      <Icon className="h-6 w-6" strokeWidth={1.8} />
     </span>
   );
 }

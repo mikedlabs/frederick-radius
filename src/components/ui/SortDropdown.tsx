@@ -4,29 +4,30 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ArrowDownAZ, Check, ChevronDown } from "lucide-react";
 
 /**
- * SortDropdown — a small button that opens a single-select menu of
- * sort options. Lives next to layout toggles / item counts in list
+ * SortDropdown: a small button that opens a single-select menu of
+ * sort options. Lives next to layout toggles and item counts in list
  * page toolbars (/saved, /events, /category/[slug]).
  *
  * Why a custom component instead of <select> or Radix:
- *   - Native <select> can't be styled to match the brand pill
- *     vocabulary (rounded-full, brand accent on the active choice).
- *   - Radix DropdownMenu would be overkill here — this is one
- *     popup, one set of radio choices, no submenus, no triggers
- *     scattered around the page. Hand-rolled is ~80 lines and has
- *     no runtime dependency.
+ *   - Native <select> cannot be styled to match the plain tool controls
+ *     (a 6px corner, a control-weight hairline, and the current choice
+ *     marked in ink on the sunken ground).
+ *   - Radix DropdownMenu would be overkill here: this is one popup, one
+ *     set of radio choices, no submenus and no triggers scattered around
+ *     the page. Hand-rolled is about 80 lines and has no runtime
+ *     dependency.
  *
  * Behavior:
  *   - Closed by default; clicking the trigger toggles open state.
  *   - Clicking an option commits the value and closes.
  *   - Esc closes; a press outside closes; focus moving on to another
  *     control closes; Enter/Space on the trigger toggles. Roving focus
- *     inside the menu uses native browser tab order — the items are
+ *     inside the menu uses native browser tab order; the items are
  *     real buttons in DOM order so VO/NVDA announce them correctly.
  *   - The Escape this menu consumes is marked `defaultPrevented`, so a
  *     disclosure that contains it (the Events Display panel) leaves
  *     that press alone and stays open.
- *   - The selected option is highlighted with the brand accent so
+ *   - The selected option is ink on the sunken ground with a check, so
  *     a returning user sees their current sort in one glance.
  *
  * State ownership is the caller's. This component is presentational;
@@ -39,7 +40,7 @@ export type SortOption<K extends string = string> = {
   key: K;
   /** Short user-facing label. ≤16 chars to fit the button + menu nicely. */
   label: string;
-  /** Optional short hint shown under the label in the menu — e.g.
+  /** Optional short hint shown under the label in the menu, e.g.
    *  "Most recently saved" under "Recent". */
   hint?: string;
 };

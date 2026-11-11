@@ -384,7 +384,7 @@ export default function TopBar() {
               onFocus={() => router.prefetch("/")}
               aria-label={pathname === "/map" ? "Frederick Radius, home" : "Frederick Radius beta, home"}
               className={`${styles.home} tap-44 flex items-center gap-2 font-brand text-[18px] tracking-[-0.015em]`}
-              style={{ color: "var(--app-brand)" }}
+              style={{ color: "var(--app-brand-text)" }}
             >
               {/* Canonical horizontal lockup: the 24px+ two-arc Ripple beside
                   a one-line Libre Caslon wordmark. The app-icon tile belongs
@@ -494,12 +494,12 @@ export default function TopBar() {
                 openPrimaryFind(event.currentTarget, returnScrollY);
               }}
               className={`${styles.tool} relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] disabled:cursor-wait disabled:opacity-60 lg:hidden`}
-              style={{
-                color: searchOpen ? "var(--app-link)" : "var(--app-ink)",
-                background: searchOpen ? "var(--app-bg-sunken)" : undefined,
-              }}
+              style={{ color: searchOpen ? "var(--app-link)" : "var(--app-ink)" }}
             >
               <Search className="h-[20px] w-[20px]" strokeWidth={1.75} aria-hidden />
+              {/* Top bar icons stay unboxed. An open tool is marked by a 2px
+                  rule under the glyph, the way the bottom bar marks its tab. */}
+              {searchOpen ? <span aria-hidden data-top-tool-rule className="pointer-events-none absolute inset-x-2.5 bottom-1 h-0.5" style={{ background: "var(--app-link)" }} /> : null}
             </button>
           )}
 
@@ -543,12 +543,10 @@ export default function TopBar() {
               aria-current={pathname === "/compass" ? "page" : undefined}
               title="Tools"
               className={`${styles.tool} relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] px-2 sm:px-3`}
-              style={{
-                color: pathname === "/compass" ? "var(--app-link)" : "var(--app-ink)",
-                background: pathname === "/compass" ? "var(--app-bg-sunken)" : undefined,
-              }}
+              style={{ color: pathname === "/compass" ? "var(--app-link)" : "var(--app-ink)" }}
             >
               <Compass className="h-[20px] w-[20px] shrink-0" strokeWidth={1.75} aria-hidden />
+              {pathname === "/compass" ? <span aria-hidden data-top-tool-rule className="pointer-events-none absolute inset-x-2.5 bottom-1 h-0.5" style={{ background: "var(--app-link)" }} /> : null}
               {/* Keep the name beyond narrow phone widths so location,
                   appearance and Tools retain separate 44px touch targets. */}
               <span className="hidden text-[12px] font-semibold leading-none min-[460px]:inline sm:hidden">Tools</span>

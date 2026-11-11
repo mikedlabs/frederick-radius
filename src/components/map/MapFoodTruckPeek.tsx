@@ -50,13 +50,15 @@ export default function MapFoodTruckPeek({ pin, onClose }: { pin: FoodTruckMapPi
       onClose={onClose}
     >
       <div className="map-peek-body" style={{ cursor: "default" }}>
-        <span className="map-peek-thumb" style={{ background: "var(--app-brand)", display: "grid", placeItems: "center", color: "var(--app-on-brand)" }}>
-          <Truck className="h-7 w-7" strokeWidth={2} aria-hidden />
+        {/* No photograph exists for a truck stop, so the slot holds the plain
+            glyph in muted ink with no tile or fill. */}
+        <span className="map-peek-thumb" data-map-peek-glyph>
+          <Truck className="h-6 w-6" strokeWidth={1.8} aria-hidden />
         </span>
         <span className="map-peek-text">
           <span
             className="map-peek-cat"
-            style={{ color: live ? "var(--app-positive)" : "var(--app-brand-press)" }}
+            style={{ color: live ? "var(--app-forest-text)" : "var(--app-link)" }}
           >
             {live ? (
               <Radio className="mr-1 inline h-3 w-3" strokeWidth={2.2} aria-hidden />

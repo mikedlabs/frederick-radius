@@ -52,17 +52,13 @@ export default function MapSpotPeek({
       onClose={onClose}
     >
       <div className="map-peek-body" style={{ cursor: "default" }}>
+        {/* No photograph: the plain glyph in muted ink, with no tile. */}
         <span
           className="map-peek-thumb"
-          style={{
-            display: "grid",
-            placeItems: "center",
-            background: "color-mix(in srgb, var(--app-cool) 12%, var(--app-bg-sunken))",
-            color: "var(--app-cool-text)",
-          }}
+          data-map-peek-glyph
           aria-hidden
         >
-          <Crosshair className="h-6 w-6" strokeWidth={1.9} />
+          <Crosshair className="h-6 w-6" strokeWidth={1.8} />
         </span>
         <span className="map-peek-text">
           <span className="map-peek-cat" style={{ color: "var(--app-cool-text)" }}>

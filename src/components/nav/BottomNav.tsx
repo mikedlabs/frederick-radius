@@ -31,9 +31,10 @@ export function shouldShowBottomNav(
 /**
  * Mobile primary navigation as a compact field-guide index strip.
  *
- * Four stable destinations sit on a raised Cream strip. The selected
- * destination has a filled Brick control, while search keeps its single
- * doorway in the page or top bar.
+ * Four stable destinations sit on a flat bar on the page ground with one
+ * top hairline. The selected destination is marked by a 2px coral rule
+ * across the top of its column, a 700 label and a heavier icon stroke,
+ * while search keeps its single doorway in the page or top bar.
  */
 export default function BottomNav() {
   const pathname = usePathname();
@@ -155,7 +156,7 @@ export default function BottomNav() {
                         fill={active && fillOnActive ? "currentColor" : "none"}
                         aria-hidden
                       />
-                      <span className={`${styles.destinationLabel} text-[11px] leading-tight`}>
+                      <span className={`${styles.destinationLabel} text-[0.6875rem] leading-tight`}>
                         {label}
                       </span>
                     </span>

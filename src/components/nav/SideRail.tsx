@@ -76,7 +76,7 @@ export default function SideRail() {
                 >
                   {/* The same coral rule as the bottom bar, on the edge that
                       faces the content. */}
-                  <span aria-hidden className={styles.railRule} />
+                  <span aria-hidden data-destination-rule className={styles.railRule} />
                   <Icon
                     width={20}
                     height={20}

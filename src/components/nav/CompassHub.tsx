@@ -68,26 +68,26 @@ export function compassShortcutGridClass(itemCount: number): string {
 }
 
 const TONE_COLOR: Record<RadiusToolTone, string> = {
-  accent: "var(--app-accent-press)",
-  brand: "var(--app-brand-press)",
-  civic: "var(--app-civic)",
-  cool: "var(--app-cool)",
-  positive: "var(--app-positive)",
+  accent: "var(--app-accent-text)",
+  brand: "var(--app-brand-text)",
+  civic: "var(--app-cool-text)",
+  cool: "var(--app-cool-text)",
+  positive: "var(--app-forest-text)",
 };
 
 const GROUP_META: Record<
   ToolDeckGroupId,
   { icon: LucideIcon; color: string }
 > = {
-  decide: { icon: ListChecks, color: "var(--app-brand-press)" },
-  food: { icon: UtensilsCrossed, color: "var(--app-accent-press)" },
-  events: { icon: CalendarDays, color: "var(--app-brand-press)" },
-  "getting-around": { icon: Route, color: "var(--app-cool)" },
-  amenities: { icon: MapPinned, color: "var(--app-civic)" },
-  live: { icon: RadioTower, color: "var(--app-brand-press)" },
-  community: { icon: Landmark, color: "var(--app-civic)" },
-  stories: { icon: History, color: "var(--app-accent-press)" },
-  yours: { icon: Bookmark, color: "var(--app-positive)" },
+  decide: { icon: ListChecks, color: "var(--app-brand-text)" },
+  food: { icon: UtensilsCrossed, color: "var(--app-accent-text)" },
+  events: { icon: CalendarDays, color: "var(--app-brand-text)" },
+  "getting-around": { icon: Route, color: "var(--app-cool-text)" },
+  amenities: { icon: MapPinned, color: "var(--app-cool-text)" },
+  live: { icon: RadioTower, color: "var(--app-brand-text)" },
+  community: { icon: Landmark, color: "var(--app-cool-text)" },
+  stories: { icon: History, color: "var(--app-accent-text)" },
+  yours: { icon: Bookmark, color: "var(--app-forest-text)" },
 };
 
 export const COMPASS_INTENT_DEFINITIONS = [
@@ -205,7 +205,7 @@ const ASK_RADIUS: DirectoryItem = {
   label: "Ask Radius",
   description: "Get help choosing, planning, or finding the right local answer.",
   icon: MessageCircleQuestion,
-  color: "var(--app-brand-press)",
+  color: "var(--app-brand-text)",
   keywords: ["ask", "help me choose", "plan", "recommendation"],
 };
 
@@ -215,7 +215,7 @@ const TIME_MACHINE: DirectoryItem = {
   label: "Time Machine",
   description: "Scrub a block through decades of aerial imagery.",
   icon: History,
-  color: "var(--app-cool)",
+  color: "var(--app-cool-text)",
   keywords: ["time machine", "aerial", "historic imagery"],
 };
 
@@ -1340,10 +1340,10 @@ function CompassIntentBoard({
   };
   const itemById = new Map(groups.flatMap((group) => group.items.map((item) => [item.id, item] as const)));
   const intentColor: Record<CompassIntentId, string> = {
-    "go-out": "var(--app-accent-press)",
-    "get-around": "var(--app-cool)",
-    "local-help": "var(--app-civic)",
-    "explore-yours": "var(--app-positive)",
+    "go-out": "var(--app-accent-text)",
+    "get-around": "var(--app-cool-text)",
+    "local-help": "var(--app-cool-text)",
+    "explore-yours": "var(--app-forest-text)",
   };
 
   return (

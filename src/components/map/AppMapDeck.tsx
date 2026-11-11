@@ -94,10 +94,8 @@ export default function AppMapDeck({
                 title={locating ? "Locating…" : "Find places near me"}
                 className="tap-44 mr-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--app-radius-sm)] transition-colors"
                 style={{
-                  color: userLoc ? "var(--app-brand)" : "var(--app-ink-2)",
-                  background: userLoc
-                    ? "color-mix(in srgb, var(--app-brand) 12%, transparent)"
-                    : "transparent",
+                  color: userLoc ? "var(--app-link)" : "var(--app-ink-2)",
+                  background: "transparent",
                 }}
               >
                 <NavIcon

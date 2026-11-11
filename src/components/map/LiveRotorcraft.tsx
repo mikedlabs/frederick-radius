@@ -369,8 +369,8 @@ export default function LiveRotorcraft({
           }}
           className="relative grid h-11 w-11 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2"
           style={{
-            color: "var(--app-brand-press)",
-            outlineColor: "var(--app-brand-press)",
+            color: "var(--app-link)",
+            outlineColor: "var(--app-focus)",
           }}
         >
           {fmhAttention && (

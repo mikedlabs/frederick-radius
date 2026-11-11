@@ -348,15 +348,19 @@
   box-shadow: none;
 }
 [data-app-primary-tab] .eb-subbar { padding-inline: 0; }
+/* A selected filter chip is filled ink, never coral, so the page's one solid
+   coral block (the Events time block, the Today plate) stays the only one. */
 [data-app-primary-tab] .eb-chip[data-on],
 [data-app-primary-tab] .dock-chip[data-on],
 [data-app-primary-tab] .dock-chip[data-on][data-ink] {
-  background: var(--app-brand-press);
-  border-color: var(--app-brand-press);
-  color: var(--app-on-brand);
+  background: var(--app-ink);
+  border-color: var(--app-ink);
+  color: var(--app-bg);
 }
+[data-app-primary-tab] .eb-chip[data-on] .eb-chip-dot,
+[data-app-primary-tab] .dock-chip[data-on] .dock-chip-dot,
 [data-app-primary-tab] .dock-chip[data-on][data-ink] .dock-chip-dot {
-  background: var(--app-on-brand);
+  background: var(--app-bg);
 }
 [data-app-primary-tab] .map-list { padding-inline: var(--app-space-4); }
 [data-app-primary-tab] .map-list-section + .map-list-section { margin-top: var(--app-space-6); }
@@ -462,6 +466,28 @@
 }
 [data-app-primary-tab="/my-radius"] .sv-evrow .cal span,
 [data-app-primary-tab="/my-radius"] .sv-evrow .who span.is-today { color: var(--app-ink-3); }
+/* The standfirst under "Saved" is plain supporting text: sentence case, 14px
+   muted sans, no tracked uppercase. */
+[data-app-primary-tab="/my-radius"] .sv-stand {
+  margin-top: 4px;
+  font-family: var(--font-sans-base), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--app-ink-2);
+}
+/* Exactly one hairline between sections. The colophon and the Home Screen
+   row open with a single 1px rule (no 2px ink rule above it), and the last
+   row draws no bottom rule, because the next section or the page footer
+   brings its own. */
+[data-app-primary-tab="/my-radius"] .sv-colophon {
+  border-top: 0;
+  padding-top: 0;
+}
+[data-app-primary-tab="/my-radius"] .sv-colophon .inner > :last-child {
+  border-bottom: 0;
+}
 
 /* Vaul ships its own physics at runtime (a 0.5s cubic-bezier(0.32,0.72,0,1)
    transform plus 0.5s slide keyframes), so a bottom drawer opens slower and
@@ -1269,9 +1295,15 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-size: 18px;
   padding: 4px 8px;
 }
+/* The attribution follows the theme: a solid sheet ground with ink-2 text
+   in light and dark, never a hard-coded white pill. */
 .maplibregl-ctrl-attrib {
-  background: rgba(255,255,255,0.85) !important;
+  background: var(--app-bg-elevated-solid) !important;
+  color: var(--app-ink-2);
   font-size: 10px !important;
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--app-ink-2) !important;
 }
 .maplibregl-ctrl-group {
   border-radius: var(--app-radius-md) !important;
@@ -1297,7 +1329,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   transform: scale(0.96);
 }
 .maplibregl-ctrl-attrib {
-  border-radius: 999px !important;
+  border-radius: var(--app-radius-sm) !important;
   margin: 0 0 12px 12px !important;
 }
 
@@ -3812,16 +3844,17 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   height: 30px;
   place-items: center;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--app-brand) 10%, transparent);
+  /* A plain glyph beside the copy, with no tinted tile. */
+  background: transparent;
   color: var(--app-link);
 }
 .map-context-rail[data-map-state-line] .map-context-rail-icon {
-  background: color-mix(in srgb, var(--app-cool) 12%, transparent);
-  color: var(--app-cool);
+  background: transparent;
+  color: var(--app-cool-text);
 }
 .map-context-rail[data-live-transit] .map-context-rail-icon {
-  background: color-mix(in srgb, var(--app-cool) 14%, transparent);
-  color: var(--app-cool);
+  background: transparent;
+  color: var(--app-cool-text);
 }
 .map-context-rail-copy {
   min-width: 0;
@@ -4603,8 +4636,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   display: grid;
   place-items: center;
   border-radius: 10px;
-  color: var(--app-brand);
-  background: color-mix(in srgb, var(--app-brand) 11%, var(--app-bg-sunken));
+  color: var(--app-brand-text);
+  background: transparent;
 }
 .dock-discovery-copy {
   min-width: 0;
@@ -4762,9 +4795,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   gap: 5px;
   white-space: nowrap;
 }
+/* A selected sub-choice is ink text on a 2.5px ink rule. A category hue is
+   not a text color, and coral is a fill, so neither marks the selection. */
 .dock-subrow button[data-on] {
-  color: var(--c, var(--app-brand-press));
-  border-bottom-color: var(--c, var(--app-brand-press));
+  color: var(--app-ink);
+  border-bottom-color: var(--app-ink);
 }
 .dock-subrow .dock-chip-n {
   font-size: 10px;
@@ -5661,9 +5696,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 .map-locate-fab[data-on] {
-  color: var(--app-brand);
-  background: color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated));
-  border-color: color-mix(in srgb, var(--app-brand) 40%, var(--app-border));
+  color: var(--app-link);
+  background: var(--app-bg-elevated-solid);
+  border-color: var(--app-link);
 }
 /* Hidden while a dock pane is open (the scrim owns the surface). */
 .dock-host[data-dock-pane="open"] .map-locate-fab {
@@ -6047,18 +6082,17 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background: var(--app-bg-sunken);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-bg-elevated) 38%, transparent);
 }
+/* A place with no photograph shows its plain category glyph in muted ink at
+   the slot's top left, beside the name's first line, with no tile, tint,
+   border or letter monogram. */
 .map-peek-category-mark {
   display: grid;
   width: 100%;
   height: 100%;
-  place-items: center;
-  color: var(--map-peek-color);
-  background:
-    radial-gradient(circle at 70% 20%, color-mix(in srgb, var(--map-peek-color) 18%, transparent), transparent 42%),
-    color-mix(in srgb, var(--map-peek-color) 9%, var(--app-bg-sunken));
-  font-family: var(--font-display), Georgia, serif;
-  font-size: 32px;
-  line-height: 1;
+  place-items: start;
+  padding-top: 2px;
+  color: var(--app-ink-3);
+  background: transparent;
 }
 .map-raw-photo {
   width: 100%;
@@ -6362,21 +6396,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .map-entity-peek .map-peek-acts {
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }
-.map-entity-town-icon {
-  color: var(--app-cool);
-  background: color-mix(in srgb, var(--app-cool) 9%, var(--app-bg-sunken));
-}
-.map-entity-aerial-icon {
-  color: var(--app-link);
-  background: var(--app-brand-tint-6);
-}
-.map-entity-history-icon {
-  color: var(--app-ink-2);
-  background: color-mix(in srgb, var(--app-ink-2) 8%, var(--app-bg-sunken));
-}
+/* A peek without a photograph shows its plain glyph in muted ink, with no
+   tinted tile behind it. */
+.map-entity-town-icon,
+.map-entity-aerial-icon,
+.map-entity-history-icon,
 .map-entity-transit-icon {
-  color: var(--app-cool);
-  background: color-mix(in srgb, var(--app-cool) 9%, var(--app-bg-sunken));
+  color: var(--app-ink-3);
+  background: transparent;
 }
 .map-entity-contact-list,
 .map-entity-departures {
@@ -6402,7 +6429,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   align-items: center;
   justify-content: flex-end;
   padding-inline-start: 8px;
-  color: var(--app-cool);
+  color: var(--app-cool-text);
   font-weight: 700;
 }
 .map-entity-departures strong {
@@ -7508,7 +7535,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: var(--app-ink-2);
 }
 .eb-jumpwk svg {
-  color: var(--app-cool);
+  color: var(--app-cool-text);
 }
 
 /* Reduced motion: no fold, no drop animation, no scrim fade — the masthead
@@ -8896,9 +8923,13 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
 
 .mapboxgl-ctrl-attrib {
   margin: 0 0 12px 12px !important;
-  border-radius: 999px !important;
-  background: color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent) !important;
+  border-radius: var(--app-radius-sm) !important;
+  background: var(--app-bg-elevated-solid) !important;
+  color: var(--app-ink-2);
   font-size: 10px !important;
+}
+.mapboxgl-ctrl-attrib a {
+  color: var(--app-ink-2) !important;
 }
 
 .mapboxgl-ctrl-group {
@@ -9206,22 +9237,37 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
   border-radius: 0;
   box-shadow: none;
 }
-[data-app-primary-tab] .eb-masthead { padding: var(--app-space-3) 0 var(--app-space-2); }
+/* The title is sized in rem so it grows with the reader's text size. At rest
+   the masthead's cap is also in rem and sits well above the title's height
+   at any text size, so "What's on" is never clipped. The cap exists only so
+   the collapsed and open states can fold the masthead to 0 with a
+   transition; the rule after the title sizes sets that 0. */
+[data-app-primary-tab] .eb-masthead {
+  padding: var(--app-space-3) 0 var(--app-space-2);
+  max-height: 8rem;
+}
 .eb-title,
 [data-app-primary-tab] .eb-title {
-  font-size: 48px;
+  font-size: 3rem;
   font-weight: 800;
   line-height: 1.02;
   letter-spacing: -0.04em;
 }
 @media (max-width: 480px) {
   .eb-title,
-  [data-app-primary-tab] .eb-title { font-size: 40px; }
-  [data-app-primary-tab] .eb-masthead { max-height: 64px; }
+  [data-app-primary-tab] .eb-title { font-size: 2.5rem; }
+  .eb-masthead,
+  [data-app-primary-tab] .eb-masthead { max-height: 8rem; }
 }
 @media (max-width: 359.98px) {
   .eb-title,
-  [data-app-primary-tab] .eb-title { font-size: 34px; }
+  [data-app-primary-tab] .eb-title { font-size: 2.125rem; }
+}
+.eb-dock.eb-collapsed .eb-masthead,
+.eb-dock.eb-open .eb-masthead,
+[data-app-primary-tab] .eb-dock.eb-collapsed .eb-masthead,
+[data-app-primary-tab] .eb-dock.eb-open .eb-masthead {
+  max-height: 0;
 }
 
 /* Quick date chips stay capsules, but compact: a 32px visible pill inside a
@@ -9441,14 +9487,25 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
 .dock-essentials-more {
   border-radius: var(--app-radius-md);
 }
-/* Category tiles and discovery rows are plain solid tiles. The category hue
-   stays as the border and mark color, never a gradient wash. */
+/* Category choices in the Browse pane are plain bordered controls on the
+   sheet ground: no category tint, wash or colored edge. A selected choice
+   takes a 2px ink edge, the way a selected chip takes the ink fill, and its
+   watermark glyph stays neutral ink. */
 .dock-cat {
+  border-color: var(--app-control-border);
   background: var(--app-bg-elevated-solid);
+  box-shadow: none;
 }
 .dock-cat[data-on] {
-  background: color-mix(in srgb, var(--c) 10%, var(--app-bg-elevated-solid));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent);
+  border-color: var(--app-ink);
+  background: var(--app-bg-elevated-solid);
+  box-shadow: inset 0 0 0 1px var(--app-ink);
+}
+.dock-cat-art {
+  color: var(--app-ink-3);
+}
+.dock-cat-n {
+  color: var(--app-ink-2);
 }
 .dock-discovery-card {
   background: var(--app-bg-elevated-solid);
@@ -9512,7 +9569,26 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
   background: var(--app-brand-press);
 }
 .map-peek-category-mark {
-  background: color-mix(in srgb, var(--map-peek-color) 12%, var(--app-bg-elevated-solid));
+  background: transparent;
+}
+/* Other photo-less peeks (food truck stops, towns, aerial, history and
+   transit) hold their plain glyph the same way: no tile, border or fill. */
+.map-peek-thumb[data-map-peek-glyph],
+.map-peek-thumb.map-entity-town-icon,
+.map-peek-thumb.map-entity-aerial-icon,
+.map-peek-thumb.map-entity-history-icon,
+.map-peek-thumb.map-entity-transit-icon {
+  display: grid;
+  width: auto;
+  height: auto;
+  flex: 0 0 auto;
+  place-items: start;
+  padding-top: 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--app-ink-3);
 }
 
 /* Floating aggregates and the map's own engine controls get the same solid,
@@ -9603,11 +9679,12 @@ header[data-map-header="true"] [data-location-chip][data-compact="true"] {
   border-radius: 0;
 }
 
-/* Media in rows: a row shows a photo only when a real one exists. Without
-   one, the 72px slot keeps its width so titles stay aligned down the list
-   (and, for places, its height, so a failed photo never moves the row). The
-   category glyph sits alone in ink-3 beside the title's first line, with no
-   fill, border, tint or corner. */
+/* Media in rows: a row shows a photo only when a real one exists. A row with
+   an approved photo source reserves a 72px square, so a slow or failed
+   photo never moves the row. Without one, the category glyph sits alone in
+   ink-3 in a 24px column at the row's left edge, beside the title's first
+   line, with no fill, border, tint, corner or reserved height, so the text
+   column takes the rest of the width. */
 .map-list-row,
 [data-app-primary-tab] .map-list-row {
   align-items: flex-start;
@@ -9623,20 +9700,35 @@ header[data-map-header="true"] [data-location-chip][data-compact="true"] {
 .map-list-place-visual,
 [data-app-primary-tab] .map-list-event-icon,
 [data-app-primary-tab] .map-list-place-visual {
-  width: 72px;
-  place-items: start center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  place-items: start;
   border-radius: 0;
   color: var(--app-ink-3);
   background: transparent;
   box-shadow: none;
 }
-.map-list-event-icon,
-[data-app-primary-tab] .map-list-event-icon {
-  height: 24px;
+.map-list-place-visual[data-media="photo"],
+[data-app-primary-tab] .map-list-place-visual[data-media="photo"] {
+  width: 72px;
+  height: 72px;
+  place-items: start center;
 }
 .map-list-place-visual[data-photo-state="ready"],
 [data-app-primary-tab] .map-list-place-visual[data-photo-state="ready"] {
   border-radius: var(--app-radius-md);
+}
+/* The meta line is one run of inline text that wraps as a sentence does,
+   with its separators inline, never side-by-side columns. */
+.map-list-sub,
+[data-app-primary-tab] .map-list-sub {
+  display: block;
+  min-width: 0;
+  line-height: 1.4;
+}
+.map-list-sub .map-list-mid {
+  margin-inline: 5px;
 }
 .map-list-event-icon > svg,
 .map-list-place-visual > svg {
@@ -9649,4 +9741,66 @@ header[data-map-header="true"] [data-location-chip][data-compact="true"] {
   width: 24px;
   height: 24px;
   color: var(--app-ink-3);
+}
+
+/* Selected filter chips, everywhere: an ink fill with page-ground text.
+   Coral stays reserved for the page's one solid block and its one filled
+   action, and a category hue is never a chip fill. The quick-date chips on
+   Events draw the same ink fill on their own ::before capsule. */
+.eb-chip[data-on],
+.dock-chip[data-on],
+.dock-chip[data-on][data-ink] {
+  background: var(--app-ink);
+  border-color: var(--app-ink);
+  color: var(--app-bg);
+}
+.eb-chip[data-on] .eb-chip-dot,
+.dock-chip[data-on] .dock-chip-dot,
+.dock-chip[data-on][data-ink] .dock-chip-dot {
+  background: var(--app-bg);
+}
+
+/* Events desktop view switch: unboxed icon buttons. The active view is ink
+   with a 2px ink rule under it, with no tint and no surrounding box. */
+.eb-lensseg {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.eb-lensseg button + button {
+  border-left: 0;
+}
+.eb-lensseg button.on {
+  color: var(--app-ink);
+  background: var(--app-bg);
+  box-shadow: inset 0 -2px 0 var(--app-ink);
+}
+
+/* Mobile action bar: no cell can be pushed past the screen edge. The
+   toolbar is a size container. Below 18.75rem of bar width, which a 320px
+   phone reaches as soon as text is enlarged, the quiet cells keep only their
+   icon (each cell's accessible name still carries its label) and may shrink,
+   and the filled cell's label may wrap between words. */
+[data-mobile-action-toolbar] {
+  container: app-action-bar / inline-size;
+}
+@container app-action-bar (max-width: 18.75rem) {
+  .app-bar-cell-quiet {
+    min-width: 0;
+    gap: 0;
+    padding-inline: 0;
+    font-size: 0;
+  }
+  .app-bar-cell-quiet svg {
+    width: 20px;
+    height: 20px;
+  }
+  .app-bar-cell-primary {
+    gap: 6px;
+    padding-inline: 8px;
+    text-align: center;
+  }
+  .app-bar-cell-primary > span {
+    white-space: normal;
+  }
 }

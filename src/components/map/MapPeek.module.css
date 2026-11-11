@@ -38,6 +38,19 @@
   border-radius: var(--app-radius-md);
 }
 
+/* No photograph: the slot holds only the plain category glyph. It keeps a
+   44px target for opening details, but draws no tile, border or fill, so the
+   text column takes the width the old 64px tile held. */
+.body.body[data-glyph-only] :global(.map-peek-visual) {
+  width: 44px;
+  height: 44px;
+  flex-basis: 44px;
+  border: 0;
+  border-radius: var(--app-radius-sm);
+  background: transparent;
+  box-shadow: none;
+}
+
 .photoFace {
   position: absolute;
   inset: 0;

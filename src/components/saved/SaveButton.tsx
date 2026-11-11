@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useIsSaved, useToggleSave, useMounted, useSavedList, useSetEventSaved, useEventSavedState, savedChangeDescription } from "@/hooks/useSaved";
 import { useFollowMutationState, useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { Bookmark } from "lucide-react";
+import { BAR_QUIET_CELL_CLASS } from "@/components/ui/MobileActionBar";
 import { haptic } from "@/lib/haptics";
 import {
   isInstallPromptSuppressedPath,
@@ -107,7 +108,7 @@ export default function SaveButton({
         aria-hidden
         tabIndex={-1}
         className={barLabel
-          ? "tap-44 flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none"
+          ? `${BAR_QUIET_CELL_CLASS} tap-44 flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[0.6875rem] font-semibold leading-none`
           : "tap-44 grid h-9 w-9 place-items-center rounded-[var(--app-radius-md)]"}
         style={{ color: "var(--app-ink-3)" }}
       >
@@ -190,7 +191,7 @@ export default function SaveButton({
       }
       title={eventSaveUnavailable ? "Saved state unavailable" : mutation === "unconfirmed" ? "This change could not be confirmed." : renderedSaved ? "Saved" : "Save"}
       className={barLabel
-        ? "tap-44 relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
+        ? `${BAR_QUIET_CELL_CLASS} tap-44 relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[0.6875rem] font-semibold leading-none transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]`
         // Icon only: an unboxed glyph with a real 44px target. The -m-1
         // keeps the 36px layout footprint the rows were built around; hover
         // dims the glyph slightly instead of drawing a tile.

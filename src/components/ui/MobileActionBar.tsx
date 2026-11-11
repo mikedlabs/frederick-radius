@@ -68,7 +68,10 @@ export function MobileActionBar({
       <div
         role="toolbar"
         aria-label={ariaLabel}
-        className="mx-auto flex max-w-screen-md items-stretch gap-2 px-3 py-1 max-[359px]:gap-1.5"
+        data-mobile-action-toolbar
+        // Gaps and side padding stay in px: enlarged text grows the labels,
+        // not the gutters that would push the last cell off screen.
+        className="mx-auto flex max-w-screen-md items-stretch gap-[8px] px-[12px] py-1 max-[359px]:gap-[6px] max-[359px]:px-[8px]"
       >
         {children}
       </div>
@@ -76,14 +79,25 @@ export function MobileActionBar({
   );
 }
 
-// Cells keep their content's minimum width (no min-w-0), so a label is never
-// clipped: the quiet cells give up space before the filled one does.
+// At normal text sizes, cells keep their content's minimum width, so a label
+// is never clipped or broken inside a word: the quiet cells give up space
+// before the filled one does. The toolbar is a size container. When text is
+// enlarged, or the bar is narrower than 18.75rem, the quiet cells drop their
+// visible labels and keep the icon (each cell's accessible name already
+// carries the label) and may shrink, and the filled label may wrap between
+// words, so no cell can be pushed past the screen edge. Those rules live with
+// `.app-bar-cell` in globals.css. Sizes are in rem so the bar grows with the
+// reader's text size.
 const CELL_BASE =
-  "flex min-h-12 items-center justify-center rounded-[var(--app-radius-md)] font-semibold leading-none tap-44";
+  "app-bar-cell flex min-h-12 items-center justify-center rounded-[var(--app-radius-md)] font-semibold leading-none tap-44";
 // The one filled action reads as a button (icon beside its label); the
 // others are quiet stacked text actions in ink.
-const CELL_PRIMARY = `${CELL_BASE} flex-[1.4] flex-row gap-2 px-2 text-[15px] max-[359px]:gap-1.5 max-[359px]:text-[14px]`;
-const CELL = `${CELL_BASE} flex-1 flex-col gap-1 px-1 text-[12px]`;
+const CELL_PRIMARY = `${CELL_BASE} app-bar-cell-primary flex-[1.4] flex-row gap-2 px-2 text-[0.9375rem] max-[359px]:gap-1.5 max-[359px]:text-[0.875rem]`;
+const CELL = `${CELL_BASE} app-bar-cell-quiet flex-1 flex-col gap-1 px-1 text-[0.75rem]`;
+
+/** Added by a reused control that reads as a quiet bar cell (SaveButton's
+ * bar mode), so it shrinks and drops its visible label with the others. */
+export const BAR_QUIET_CELL_CLASS = "app-bar-cell app-bar-cell-quiet";
 
 /**
  * Shared cell chrome so a link cell (MobileBarLink) and a reused control
@@ -139,7 +153,7 @@ export function MobileBarLink({
       style={barCellStyle(primary)}
     >
       <Icon className={primary ? "h-[18px] w-[18px] shrink-0" : "h-5 w-5 shrink-0"} strokeWidth={1.75} aria-hidden style={barIconStyle(primary)} />
-      <span className="whitespace-nowrap">{label}</span>
+      <span className={primary ? "whitespace-nowrap" : undefined}>{label}</span>
     </a>
   );
 }
@@ -157,7 +171,7 @@ export function MobileBarControl({
   label: string;
 }) {
   return (
-    <div className="flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-md)] px-2 text-[12px] font-semibold leading-none">
+    <div className={`${BAR_QUIET_CELL_CLASS} flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-md)] px-2 text-[0.75rem] font-semibold leading-none`}>
       {children}
       <span style={{ color: "var(--app-ink)" }}>{label}</span>
     </div>

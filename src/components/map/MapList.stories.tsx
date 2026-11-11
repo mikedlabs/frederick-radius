@@ -158,8 +158,13 @@ export const StableVisualFrameAcrossPhotoFailure: Story = {
     };
     await expect(before.frame.width).toBe(72);
     await expect(before.frame.height).toBe(72);
-    await expect(emptyFrame.getBoundingClientRect().width).toBe(72);
-    await expect(emptyFrame.getBoundingClientRect().height).toBe(72);
+    // A row with no photo source draws only the 24px glyph column and
+    // reserves no photo height, so its text column is wider.
+    await expect(emptyFrame).toHaveAttribute("data-media", "glyph");
+    await expect(emptyFrame.getBoundingClientRect().width).toBe(24);
+    await expect(emptyFrame.getBoundingClientRect().height).toBe(24);
+    await expect(second.querySelector<HTMLElement>(".map-list-main")!.getBoundingClientRect().width)
+      .toBeGreaterThan(before.text.width + 40);
     image.dispatchEvent(new Event("error"));
     await waitFor(() => expect(frame).toHaveAttribute("data-photo-state", "fallback"));
     await expect(frame.querySelector("img")).toBeNull();
@@ -176,5 +181,39 @@ export const StableVisualFrameAcrossPhotoFailure: Story = {
     await expect(first).toHaveTextContent("Hours not confirmed");
     await userEvent.click(first);
     await expect(args.onPick).toHaveBeenCalledWith(args.places[0]);
+  },
+};
+
+/** A long category, town and hours note wrap as one line of text with inline
+ * separators. No meta part becomes its own ragged column, and a photo-less
+ * row reserves no 72px height below its text. */
+export const MetaLineWrapsAsTextAt320: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { preserveOrder: true, places: [
+    { slug: "story-worship", name: "Sample Frederick congregation", category: "worship", subcategories: [], geom: { lat: 39.414, lng: -77.41 }, open_status: { state: "unknown" }, source: "manual", is_verified: true, municipality: "frederick", short_blurb: "" },
+  ] },
+  play: async ({ canvasElement }) => {
+    await document.fonts.ready;
+    const canvas = within(canvasElement);
+    const row = canvas.getByRole("button", { name: /Sample Frederick congregation/ });
+    const sub = row.querySelector<HTMLElement>(".map-list-sub")!;
+    await expect(getComputedStyle(sub).display).toBe("block");
+    const parts = [...sub.children] as HTMLElement[];
+    for (const part of parts) await expect(getComputedStyle(part).display).toBe("inline");
+    // Inline runs share line boxes: the town begins on the category's last
+    // line or the next one, never in a column beside a two-line category.
+    const category = sub.querySelector<HTMLElement>(".map-list-category")!;
+    const categoryRects = category.getClientRects();
+    const town = parts.find((part) => part.textContent === "Frederick City");
+    if (town) {
+      const townTop = town.getClientRects()[0].top;
+      await expect(townTop).toBeGreaterThanOrEqual(categoryRects[categoryRects.length - 1].top - 0.5);
+    }
+    const visual = row.querySelector<HTMLElement>(".map-list-place-visual")!;
+    await expect(visual).toHaveAttribute("data-media", "glyph");
+    const main = row.querySelector<HTMLElement>(".map-list-main")!.getBoundingClientRect();
+    const box = row.getBoundingClientRect();
+    // No dead band: the row ends just below its text.
+    await expect(box.bottom - main.bottom).toBeLessThanOrEqual(16);
   },
 };

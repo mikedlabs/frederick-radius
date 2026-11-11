@@ -2,16 +2,17 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 /**
- * SectionHeading — the one strong category header, reused by Shelf and
+ * SectionHeading: the one strong category header, reused by Shelf and
  * the Radius results grid (and available to any future surface). A bold
- * system-sans title + a quiet count + one hairline, optional trailing
- * action. Plain tool direction: no accent tick; type and the rule carry
- * the break.
+ * system-sans title, a quiet count and one hairline, with an optional
+ * trailing action. Plain tool direction: no accent tick; type and the rule
+ * carry the break.
  *
- * The action color reads from `--section-accent` if a parent has set it
- * (so a whole route can theme its actions with one declaration on the
- * outer `<main>` or page wrapper), and falls back to `--app-brand`. An
- * explicit `accent` prop overrides per-instance.
+ * The action color is `--app-heading-action` when a parent sets it (the
+ * four primary tabs set it to `--app-link`). Otherwise it blends the route
+ * accent (`--section-accent`, else `--app-brand`) 60% toward the theme's
+ * ink so small action text stays readable in both appearances. An explicit
+ * `accent` prop replaces the route accent for one heading.
  */
 export default function SectionHeading({
   title,
@@ -33,15 +34,15 @@ export default function SectionHeading({
   trailing?: React.ReactNode;
   /** Override the route accent for a single heading. */
   accent?: string;
-  /** Heading register. Both use the device's System Sans. `lg` is the bold
-   * 22px primary title with a full tick; `sm` is the semibold 16px subhead
-   * with a shorter tick. */
+  /** Heading register. Both use the device's System Sans and neither draws
+   * a tick. `lg` is the bold 20px section title; `sm` is the bold 16px
+   * subhead. */
   size?: "lg" | "sm";
 }) {
-  const tickColor = accent ?? "var(--section-accent, var(--app-brand))";
-  // The tick keeps the true accent. Small action text blends it toward the
-  // theme's ink unless its context supplies an explicit readable action color.
-  const ctaColor = `color-mix(in srgb, ${tickColor} 60%, var(--app-ink))`;
+  const accentColor = accent ?? "var(--section-accent, var(--app-brand))";
+  // Small action text blends the accent toward the theme's ink unless its
+  // context supplies an explicit readable action color.
+  const ctaColor = `color-mix(in srgb, ${accentColor} 60%, var(--app-ink))`;
   const small = size === "sm";
   const hasTrailingAction = Boolean(trailing || onCtaClick || href);
   return (

@@ -102,8 +102,11 @@ function MapListPlaceRow({ p, userLoc, onPick }: {
           <span aria-hidden className="map-list-place-visual"
             data-photo-state={photo ? photoLoaded ? "ready" : "pending" : "fallback"}
             data-photo-source={photo?.kind}
-            // Keep every row stable while metadata arrives or a source fails.
-            style={{ "--map-list-place-color": color, width: 72, height: 72 } as CSSProperties}>
+            // A row with an approved photo source reserves the 72px frame, so
+            // a slow or failed source never moves the row. A row with no
+            // photo source shows a 24px glyph column and no reserved height.
+            data-media={plan.sources.length > 0 ? "photo" : "glyph"}
+            style={{ "--map-list-place-color": color } as CSSProperties}>
             <CategoryIcon slug={p.category} className="h-6 w-6" strokeWidth={1.8} />
             {photo && <CompactPlacePhoto src={photo.src} size={72} onResult={onPhotoResult}
               objectPosition={photo.kind !== "google" ? photo.objectPosition : undefined} />}

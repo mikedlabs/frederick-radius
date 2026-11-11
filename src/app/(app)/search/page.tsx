@@ -372,8 +372,8 @@ export default async function SearchPage({
   const answerColor = answer
     ? answer.key === "open-now"
       ? "var(--app-positive)"
-      : CRAVING_BY_KEY[answer.key]?.color ?? "var(--app-brand)"
-    : "var(--app-brand)";
+      : CRAVING_BY_KEY[answer.key]?.color ?? "var(--app-brand-text)"
+    : "var(--app-brand-text)";
 
   return (
     <div className="space-y-5">
@@ -558,7 +558,7 @@ export default async function SearchPage({
             const params = new URLSearchParams(resultParams);
             if (value === "all") params.delete("kind"); else params.set("kind", value);
             const active = (kind || "all") === value;
-            return <Link key={value} href={`/search?${params.toString()}`} aria-current={active ? "page" : undefined} className="min-h-11 shrink-0 border-b-2 px-3 py-3 text-[13px] font-semibold" style={{ borderColor: active ? "var(--app-brand)" : "transparent", color: active ? "var(--app-brand-press)" : "var(--app-ink-2)" }}>{label}</Link>;
+            return <Link key={value} href={`/search?${params.toString()}`} aria-current={active ? "page" : undefined} className="min-h-11 shrink-0 border-b-2 px-3 py-3 text-[13px] font-semibold" style={{ borderColor: active ? "var(--app-brand)" : "transparent", color: active ? "var(--app-link)" : "var(--app-ink-2)" }}>{label}</Link>;
           })}
         </nav>
       )}
@@ -571,7 +571,7 @@ export default async function SearchPage({
             {town ? ` · ${context.filterMunicipality === town ? context.label : MUNICIPALITY_BY_SLUG[town]?.name ?? town.replace(/-/g, " ")}` : " · Frederick County"}
             {result.meta.eventWindow?.label ? ` · ${result.meta.eventWindow.label}` : ""}
           </p>
-          {hasPlaceHits && <Link href={mapHref} className="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}><MapPin className="h-4 w-4" aria-hidden />View on map</Link>}
+          {hasPlaceHits && <Link href={mapHref} className="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold" style={{ color: "var(--app-link)" }}><MapPin className="h-4 w-4" aria-hidden />View on map</Link>}
           </div>
           <ul
             className="reveal-up overflow-hidden border-y"
@@ -592,7 +592,7 @@ export default async function SearchPage({
           </ul>
           {remainingHits.length > 0 && (
             <details data-search-more className="group border-b" style={{ borderColor: "var(--app-border)" }}>
-              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-link)" }}>
                 Show {remainingHits.length} more matches
                 <ChevronDown aria-hidden className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} />
               </summary>

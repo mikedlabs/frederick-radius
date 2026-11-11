@@ -21,25 +21,23 @@ import { haptic } from "@/lib/haptics";
  * and toggles. Navigation and ordinary actions use the flatter button/row
  * vocabulary instead.
  *
- * Tones (plain tool: a selected facet is an ink fill, so coral stays
- * reserved for the one bold block and the one filled action per page):
- *   brand      : brand fill, for a caller that deliberately needs it
- *   cool       : cool fill (town / place lane)
- *   ink        : ink fill on paper text (TimeToggle's "when?" lane)
+ * Selected state (plain tool): every selected chip is an ink fill with
+ * page-ground text, so coral stays reserved for the page's one solid block
+ * and its one filled action. The `tone` prop is kept so existing callers
+ * still compile, but "brand" and "cool" now render the same ink fill as
+ * "ink"; a town or category lane no longer earns its own colored chip.
  */
 
 type Tone = "brand" | "cool" | "ink";
 
-// Light-text fills use --app-brand-press (the AA-safe darker vermilion): white
-// on plain --app-brand is only 4.17:1 (fails AA for the small pill label).
 const ACTIVE_BG: Record<Tone, string> = {
-  brand: "var(--app-brand-press)",
-  cool: "var(--app-cool)",
+  brand: "var(--app-ink)",
+  cool: "var(--app-ink)",
   ink: "var(--app-ink)",
 };
 const ACTIVE_FG: Record<Tone, string> = {
-  brand: "var(--app-on-brand)",
-  cool: "var(--app-on-brand)",
+  brand: "var(--app-bg)",
+  cool: "var(--app-bg)",
   ink: "var(--app-bg)",
 };
 
@@ -69,7 +67,7 @@ type PillProps = {
 };
 
 function CountBadge({ count, active, tone }: { count: number; active: boolean; tone: Tone }) {
-  const onInk = active && tone === "ink";
+  const onInk = active && ACTIVE_BG[tone] === "var(--app-ink)";
   return (
     <span
       className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums"

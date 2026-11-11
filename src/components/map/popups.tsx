@@ -160,7 +160,7 @@ export function PlacePopup({ p }: { p: SelectedPlace }) {
       )}
       <Link
         href={`/places/${p.slug}`}
-        style={{ fontSize: 12, fontWeight: 600, color: "var(--app-brand-press)" }}
+        style={{ fontSize: 12, fontWeight: 600, color: "var(--app-link)" }}
       >
         Open page <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
       </Link>
@@ -228,7 +228,7 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
         )}
         <p style={{
           fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-          textTransform: "uppercase", color: cat?.color ?? "var(--app-cool, #285D73)", marginBottom: 4,
+          textTransform: "uppercase", color: cat?.color ?? "var(--app-cool-text, #285D73)", marginBottom: 4,
         }}>
           {cat?.name ?? p.category_slug}
         </p>
@@ -292,7 +292,7 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
       <div style={{ minWidth: 216, padding: 4 }}>
         <p style={{
           fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-          textTransform: "uppercase", color: cat?.color ?? "var(--app-cool)", marginBottom: 4,
+          textTransform: "uppercase", color: cat?.color ?? "var(--app-cool-text)", marginBottom: 4,
         }}>
           {isGauge ? "River gauge" : "EV charging"}
         </p>

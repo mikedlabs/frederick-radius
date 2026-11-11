@@ -139,7 +139,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
         ? `Near ${nearestMuni.name}`
         : `${formatDistance(nearestMuni.distance_km * 1000)} from ${nearestMuni.name}`;
       LabelIcon = Navigation;
-      labelColor = "var(--app-cool)";
+      labelColor = "var(--app-cool-text)";
     } else if (state.status === "loading") {
       label = "Locating…";
       LabelIcon = Loader2;
@@ -269,9 +269,9 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
             }}
             aria-pressed={scope === "nearme"}
             className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ color: scope === "nearme" ? "var(--app-brand)" : "var(--app-ink-2)" }}
+            style={{ color: scope === "nearme" ? "var(--app-link)" : "var(--app-ink-2)" }}
           >
-            <Navigation className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: scope === "nearme" ? "var(--app-brand)" : "var(--app-cool)" }} />
+            <Navigation className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: scope === "nearme" ? "var(--app-link)" : "var(--app-cool-text)" }} />
             Near me
             {scope === "nearme" && <Check className="ml-auto h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />}
           </button>
@@ -282,7 +282,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
             onClick={() => applyScope("county")}
             aria-pressed={scope === "county"}
             className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ color: scope === "county" ? "var(--app-brand)" : "var(--app-ink-2)" }}
+            style={{ color: scope === "county" ? "var(--app-link)" : "var(--app-ink-2)" }}
           >
             <Globe className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
             Whole county
@@ -294,7 +294,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
           {!showTowns && scopeTown && MUNICIPALITY_BY_SLUG[scopeTown] ? (
             <div
               className="flex min-h-[44px] items-center gap-2 px-3 py-2 text-[12px] font-medium"
-              style={{ color: "var(--app-brand-press)" }}
+              style={{ color: "var(--app-link)" }}
             >
               <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
               {MUNICIPALITY_BY_SLUG[scopeTown].name}
@@ -350,7 +350,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
                     onClick={() => applyScope(`town:${m.slug}`)}
                     aria-pressed={isActive}
                     className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-[12px] transition hover:bg-[var(--app-bg-sunken)]"
-                    style={{ color: isActive ? "var(--app-brand)" : "var(--app-ink-2)" }}
+                    style={{ color: isActive ? "var(--app-link)" : "var(--app-ink-2)" }}
                   >
                     {isActive ? (
                       <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
@@ -383,7 +383,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
                 prefetch={false}
                 onClick={() => setOpen(false)}
                 className="flex min-h-[44px] items-center gap-2 px-3 py-2 text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
-                style={{ color: "var(--app-brand-press)" }}
+                style={{ color: "var(--app-link)" }}
               >
                 <ArrowUpRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
                 Open {MUNICIPALITY_BY_SLUG[scopeTown].name} guide

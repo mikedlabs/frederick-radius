@@ -66,16 +66,9 @@ export default function MapParkingPeek({
       onClose={onClose}
     >
       <div className="map-peek-body" style={{ cursor: "default" }}>
-        <span
-          className="map-peek-thumb"
-          style={{
-            background: "var(--app-cool)",
-            display: "grid",
-            placeItems: "center",
-            color: "var(--app-on-brand, #FCFBF8)",
-          }}
-        >
-          <SquareParking className="h-7 w-7" strokeWidth={2} aria-hidden />
+        {/* No photograph: the plain glyph in muted ink, with no tile. */}
+        <span className="map-peek-thumb" data-map-peek-glyph>
+          <SquareParking className="h-6 w-6" strokeWidth={1.8} aria-hidden />
         </span>
         <span className="map-peek-text">
           <span className="map-peek-cat" style={{ color: "var(--app-cool-text)" }}>

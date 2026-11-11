@@ -113,4 +113,22 @@ describe("MobileActionBar cells", () => {
     expect(html).toContain('data-decision-action="directions"');
     expect(html.match(/background:var\(--app-brand-press\)/g)).toHaveLength(1);
   });
+
+  it("cannot overflow: quiet cells shrink to their icon when the bar is narrow or text is enlarged", () => {
+    expect(barCellClass(false)).toContain("app-bar-cell-quiet");
+    expect(barCellClass(true)).toContain("app-bar-cell-primary");
+    // Text sizes follow the reader's text size.
+    expect(barCellClass(false)).toContain("text-[0.75rem]");
+    expect(barCellClass(true)).toContain("text-[0.9375rem]");
+    const html = renderBar(createElement("button", { type: "button" }, "Save"));
+    expect(html).toContain("data-mobile-action-toolbar");
+    const css = readFileSync("src/app/globals.css", "utf8");
+    expect(css).toMatch(/\[data-mobile-action-toolbar\]\s*\{\s*container:\s*app-action-bar \/ inline-size;/);
+    const query = /@container app-action-bar \(max-width: (\d+(?:\.\d+)?)rem\)\s*\{([\s\S]*?)\n\}/.exec(css);
+    expect(query).not.toBeNull();
+    // The threshold is in rem so it trips when text grows, not only on
+    // narrow screens.
+    expect(Number(query?.[1])).toBeGreaterThan(18);
+    expect(query?.[2]).toMatch(/\.app-bar-cell-quiet\s*\{[^}]*min-width:\s*0;[^}]*font-size:\s*0;/);
+  });
 });

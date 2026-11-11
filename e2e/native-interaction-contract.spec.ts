@@ -1120,7 +1120,7 @@ test.describe("stable native press surfaces", () => {
     // own 2px rule (ink at reduced opacity) rather than a lifted shadow.
     const style = () => destination.evaluate((node) => {
       const css = getComputedStyle(node);
-      const rule = node.querySelector<HTMLElement>('[class*="destinationRule"]');
+      const rule = node.querySelector<HTMLElement>("[data-destination-rule]");
       const ruleCss = rule ? getComputedStyle(rule) : null;
       return { color: css.color, background: css.backgroundColor, shadow: css.boxShadow,
         rule: ruleCss ? { background: ruleCss.backgroundColor, opacity: ruleCss.opacity } : null };

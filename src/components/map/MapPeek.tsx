@@ -45,6 +45,7 @@ import {
 import MapResultSurface from "./MapResultSurface";
 import { curatedPhotoUrl } from "@/lib/integrations/wikimedia";
 import styles from "./MapPeek.module.css";
+import CategoryIcon from "@/components/place/CategoryIcon";
 
 type MapCardDetails = {
   slug: string;
@@ -70,13 +71,17 @@ function isBundledPlacePhoto(source: PlaceCardPhotoSource): boolean {
  * identities reset readiness without replacing the heading or actions.
  * Credits follow the heading row without overlapping its details hit target. */
 export function MapPeekPhoto({
-  plan, placeName, glyph, color,
+  plan, placeName, glyph,
   slug, photoPending = false, onOpenDetails, children,
 }: {
   plan: PlaceCardPhotoPlan;
   placeName: string;
+  /** The place's category slug. Without a photograph the slot shows that
+   * category's plain glyph in muted ink (an unknown slug draws a map pin). */
   glyph: string;
-  color: string;
+  /** Retained for existing callers. A photo-less slot no longer paints a
+   * category hue, so this value is unused. */
+  color?: string;
   slug?: string;
   photoPending?: boolean;
   onOpenDetails: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -115,7 +120,7 @@ export function MapPeekPhoto({
   };
   return (
     <>
-      <div className={`map-peek-body ${styles.body}`} data-map-place-slug={slug} data-has-photo={Boolean(source) || undefined} data-photo-kind={source?.kind}>
+      <div className={`map-peek-body ${styles.body}`} data-map-place-slug={slug} data-has-photo={Boolean(source) || undefined} data-glyph-only={!source || undefined} data-photo-kind={source?.kind}>
         <button
           type="button"
           className="map-peek-visual"
@@ -144,13 +149,14 @@ export function MapPeekPhoto({
               onError={() => reportState("failed")}
             />
           ) : (
+            // No photograph: the plain category glyph in muted ink, with no
+            // tile, tint, border or letter monogram.
             <span
               aria-hidden
               data-map-peek-photo-state={photo.planKey === plan.key && plan.sources.length > 0 ? "failed" : undefined}
               className="map-peek-category-mark"
-              style={{ "--map-peek-color": color } as React.CSSProperties}
             >
-              {glyph}
+              <CategoryIcon slug={glyph} className="h-6 w-6" strokeWidth={1.8} />
             </span>
           )}
           </span>
@@ -260,7 +266,6 @@ export default function MapPeek({
   onDetails: () => void;
 }) {
   const cat = CATEGORY_BY_SLUG[place.category];
-  const catColor = cat?.color ?? "var(--app-brand)";
   const saved = useIsFollowed(place.slug);
   const failureDescriptionRef = useRef<string | null>(null);
   const toggleSave = useToggleFollow(place.slug, "map_peek", (description) => { failureDescriptionRef.current = description; });
@@ -445,8 +450,7 @@ export default function MapPeek({
         key={place.slug}
         plan={photoPlan}
         placeName={place.name}
-        glyph={place.name.slice(0, 1)}
-        color={catColor}
+        glyph={place.category}
         slug={place.slug}
         photoPending={photoPending}
         onOpenDetails={openDetails}
