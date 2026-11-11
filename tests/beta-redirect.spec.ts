@@ -38,7 +38,9 @@ describe("retired beta addresses", () => {
   it("keeps /beta out of the config redirects, which would forward the query string", async () => {
     const redirects = (await config.redirects?.()) ?? [];
     for (const rule of redirects) {
-      expect(rule.source === "/beta" || rule.source.startsWith("/beta/")).toBe(false);
+      // "/beta", "/beta/...", "/beta:path*" and "/beta(.*)" all match the
+      // public address. "/beta-something" would be a different page.
+      expect(rule.source).not.toMatch(/^\/beta(?:$|[/:(])/);
     }
   });
 

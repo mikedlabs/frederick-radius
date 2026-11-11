@@ -31,10 +31,19 @@ type FeedbackRow = typeof submissions.$inferSelect;
 /** How many resolved notes the page reads for its "Recently resolved" log. */
 const RESOLVED_LOG_LIMIT = 15;
 
+/**
+ * The most waiting notes one page load reads. /api/feedback is a public write
+ * route, so the read needs a ceiling, but the ceiling must never make the
+ * inbox look emptier than it is: the page reads the oldest notes first, counts
+ * every waiting note separately, and says so when some are not shown.
+ */
+const PENDING_PAGE_LIMIT = 500;
+
 type Data = {
-  /** Every note still waiting, oldest first. Never capped: a cap here hides
-   *  the people who have waited longest and can make the inbox read as clear. */
+  /** The notes still waiting, oldest first, up to PENDING_PAGE_LIMIT. */
   pending: FeedbackRow[];
+  /** Every waiting note, including any past the page limit. */
+  pendingTotal: number;
   /** The newest resolved notes, for the short log under the inbox. */
   resolved: FeedbackRow[];
   pushDevices: number;
@@ -62,7 +71,8 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
       .select()
       .from(submissions)
       .where(and(eq(submissions.kind, "feedback"), eq(submissions.status, "pending")))
-      .orderBy(asc(submissions.created_at));
+      .orderBy(asc(submissions.created_at))
+      .limit(PENDING_PAGE_LIMIT);
     const resolved = await db
       .select()
       .from(submissions)
@@ -73,6 +83,7 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
       await raw`
         select
           (select count(*)::int from push_subscriptions) as push_devices,
+          (select count(*)::int from submissions where kind = 'feedback' and status = 'pending') as feedback_pending,
           (select count(*)::int from follows) as follow_count,
           (select count(*)::int from saved_events) as save_count,
           (select count(*)::int from community_reports where status = 'pending') as reports_pending
@@ -82,6 +93,8 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
       ok: true,
       data: {
         pending,
+        // Never report fewer waiting notes than the page is about to show.
+        pendingTotal: Math.max(counts.feedback_pending ?? 0, pending.length),
         resolved,
         pushDevices: counts.push_devices ?? 0,
         followCount: counts.follow_count ?? 0,
@@ -141,7 +154,7 @@ function FeedbackSkeleton() {
 function Dashboard({ data }: { data: Data }) {
   // The inbox is a queue: oldest note first, so the person who has waited
   // longest is answered first. The resolved log is newest-first.
-  const { pending, resolved } = data;
+  const { pending, pendingTotal, resolved } = data;
 
   return (
     <>
@@ -154,7 +167,7 @@ function Dashboard({ data }: { data: Data }) {
         <StatCards
           cols={3}
           items={[
-            { value: pending.length, label: "Feedback waiting", tone: pending.length > 0 ? "warning" : "positive" },
+            { value: pendingTotal, label: "Feedback waiting", tone: pendingTotal > 0 ? "warning" : "positive" },
             { value: data.reportsPending, label: "Reports pending", tone: data.reportsPending > 0 ? "warning" : "positive" },
             { value: data.pushDevices, label: "Push devices" },
             { value: data.followCount, label: "Follows" },
@@ -163,7 +176,7 @@ function Dashboard({ data }: { data: Data }) {
         />
       </section>
 
-      <FeedbackInbox pending={pending} resolved={resolved} now={data.now} />
+      <FeedbackInbox pending={pending} pendingTotal={pendingTotal} resolved={resolved} now={data.now} />
 
       <Section title="Related tools">
         <div className="mt-3">
@@ -197,9 +210,27 @@ function Dashboard({ data }: { data: Data }) {
 
 /* ---------------------------------------------------------------- feedback */
 
-function FeedbackInbox({ pending, resolved, now }: { pending: FeedbackRow[]; resolved: FeedbackRow[]; now: number }) {
+function FeedbackInbox({
+  pending,
+  pendingTotal,
+  resolved,
+  now,
+}: {
+  pending: FeedbackRow[];
+  pendingTotal: number;
+  resolved: FeedbackRow[];
+  now: number;
+}) {
   return (
     <Section title="Feedback inbox">
+      {pendingTotal > pending.length ? (
+        <div className="mt-3">
+          <Notice tone="warning">
+            Showing the {pending.length.toLocaleString("en-US")} notes that have waited longest, out of{" "}
+            {pendingTotal.toLocaleString("en-US")} waiting. The rest appear as you clear these.
+          </Notice>
+        </div>
+      ) : null}
       {pending.length === 0 ? (
         <AllClear>There is no unread feedback.</AllClear>
       ) : (
