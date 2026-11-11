@@ -41,6 +41,14 @@ not fail the command.
 
 ## Current baseline
 
+> **Note, November 10, 2026.** The interface update the owner approved on
+> November 10, 2026 shrinks the radius tokens to 4, 6, 8 and 10px, keeps full
+> capsules only on compact filter chips, status badges and toggle switches,
+> and resolves the lower shadow tiers to transparent. It removes most of the
+> capsule and rounding tells counted below. The baseline below was taken
+> before that update and is being regenerated; do not quote its counts as
+> current.
+
 The November 10, 2026 public-product scan, taken with the UI defect pass
 (#1945) applied, covered 2,510 files and excluded 85 files that belong to the
 separate surfaces above. Without that pass the same scan reports 348 medium
@@ -68,18 +76,22 @@ The product should read like a field guide, not a stack of floating SaaS cards.
 
 - White is the normal canvas and soft gray is the inset surface (`--app-bg`
   and `--app-bg-sunken`). Dark appearance uses its own canvas and surface
-  tokens. Use rules, spacing, type, and registration
-  marks to establish hierarchy before adding another container.
-- Use the named radius tokens from `src/app/globals.css` (`--app-radius-sm`,
-  `--app-radius-md`, `--app-radius-lg`, `--app-radius-xl`) instead of a
-  hand-set pixel value. Match the nearest shared primitive: `Button` uses
-  `--app-radius-md`, `SortDropdown` pairs a full-capsule filter trigger with
-  a `--app-radius-md` menu, and `Row`, `EmptyState` and `BottomSheet` use
-  `--app-radius-lg`.
-- Full capsules are reserved for status, toggles, and compact filters. A normal
-  action, navigation item, content card, or source row should not be a pill.
+  tokens. Content is rows on the canvas separated by a hairline or space.
+  Use rules, spacing, and type to establish hierarchy before adding a
+  container, and do not put a card around ordinary content.
+- Use the named radius tokens from `src/app/globals.css` (`--app-radius-sm`
+  4px, `--app-radius-md` 6px, `--app-radius-lg` 8px, `--app-radius-xl` 10px)
+  instead of a hand-set pixel value. Match the nearest shared primitive:
+  `Button`, fields, and the `SortDropdown` trigger and menu use
+  `--app-radius-md`; `BottomSheet` and `BottomDrawer` use `--app-radius-lg`
+  at their top corners; `Row` and `EmptyState` have no box and no radius.
+- Full capsules are reserved for compact filter chips, status badges, and
+  toggle switches. A normal action, navigation item, row, source line, or
+  informational tag should not be a pill. An informational tag is plain text.
 - Shadows indicate a real layer such as a menu or sheet. Routine content stays
   flat. Decorative glows are not part of the public product.
+- A row without a real photograph shows a plain category glyph in muted ink,
+  not a gray or coral-tinted icon tile.
 - Missing photography is labeled honestly. Do not simulate a photo with random
   gradients, generated textures, arbitrary initials, or seed-based artwork.
 - Motion should explain a state change or spatial relationship. A repeated

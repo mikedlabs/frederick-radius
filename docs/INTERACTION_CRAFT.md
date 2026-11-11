@@ -93,10 +93,13 @@ behavior. Cite the rule number in PRs that lean on one.
     the neighboring section. If the same action is already obvious and within
     reach, the duplicate is clutter rather than discoverability.
 
-15. **A card must change a decision.** A border and background are earned by
-    content that can be chosen, compared, saved, or acted on. Copy that merely
-    restates the heading belongs in the heading or should be removed. Prefer a
-    row, rule, or type change when no separate object exists.
+15. **A row must change a decision.** Since the November 10, 2026 interface
+    update, content that can be chosen, compared, saved, or acted on is a
+    ruled row on the page ground, not a bordered card. A border and
+    background are reserved for fields, menus, sheets, and floating layers
+    over the map. Copy that merely restates the heading belongs in the
+    heading or should be removed. Prefer a rule or a type change when no
+    separate object exists.
 
 ## Applied so far (evidence)
 

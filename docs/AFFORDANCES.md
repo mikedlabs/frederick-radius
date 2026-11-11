@@ -19,11 +19,14 @@ Enforced by `tests/design/affordance-glyphs.spec.ts`.
 3. **Leaves the app** (external site) → lucide `<ArrowUpRight>`. Never
    used for internal navigation.
 
-4. **Cards carry no arrow.** PlaceCard / EventCard and their variants are
-   whole-surface tap targets; a consistent absence is itself the rule.
-   What they must NEVER do is the inverse: nothing non-tappable may wear
-   the elevated-card + pill styling that signals "tap me." If a display
-   surface starts to look like a control, either make it one or flatten it.
+4. **Result rows carry no arrow.** PlaceCard and EventRow results (and
+   their variants) are whole-row tap targets; a consistent absence is
+   itself the rule. What they must NEVER do is the inverse: nothing
+   non-tappable may wear control styling that signals "tap me" (an outlined
+   or filled 6px button shape, or a capsule). Since the November 10, 2026
+   interface update, results are ruled rows rather than elevated cards, and
+   an informational tag is plain text. If a display surface starts to look
+   like a control, either make it one or flatten it.
 
 5. **Data notation is not an affordance.** "A→Z" sort labels and
    route/range separators ("BWI → DCA", "72° → 85°") keep the glyph;

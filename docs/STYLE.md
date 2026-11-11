@@ -1,4 +1,4 @@
-# Design system — Frederick Radius
+# Design system for Frederick Radius
 
 Current foundation: Frederick Radius Brand System 1.4, October 16, 2026. The full identity, logo, voice,
 photography, social, and governance rules live in
@@ -45,7 +45,7 @@ sheet, popup, and list uses system sans.
 ### Role-based scale
 
 Pick by **semantic role**, never by pixel. The line-height pairings
-are baked in — don't set `leading-*` on these.
+are baked in, so don't set `leading-*` on these.
 
 | Class            | Size | Line height | Use                                              |
 |------------------|------|-------------|--------------------------------------------------|
@@ -56,7 +56,7 @@ are baked in — don't set `leading-*` on these.
 | `.text-body-lg`  | 16   | 1.6         | normal reading copy and page introductions       |
 | `.text-lead`     | 18   | 1.55        | pull quotes and editorial introductions          |
 | `.text-title-sm` | 16   | 1.25        | compact system sans item title                   |
-| `.text-title`    | 20   | 1.15        | system sans section title inside a card header   |
+| `.text-title`    | 20   | 1.15        | system sans section title                        |
 | `.display-3`     | 22–26 (clamp) | 1.12 | page subhead, between body and `.display-2`  |
 | `.display-2`     | 24–36 (clamp) | 1.1  | page hero subhead                                |
 | `.display-1`     | 35–58 (clamp) | 1.02 | page hero headline                               |
@@ -67,8 +67,16 @@ explanation. Product headings use system sans. Libre Caslon Display begins at
 18 px and appears only where the wordmark or a deliberately editorial moment
 earns it.
 
-Plus `.eyebrow` for uppercase 11px with `0.1em` tracking (already
-canonical — kept).
+Plus `.eyebrow` for uppercase 11px with `0.1em` tracking.
+
+### List and section roles (November 10, 2026)
+
+The interface update approved on November 10, 2026 fixes three list roles.
+A row title is 17px at weight 600 in `--app-ink`. A row meta line is 14px in
+`--app-ink-2` or `--app-ink-3`. A section label is 13px uppercase at weight
+600 with `0.1em` tracking in `--app-ink-3`, as `PlaceSectionLabel` draws it.
+Page titles are heavy system sans (weight 700 to 800). Type carries the
+hierarchy, so a heading does not need a tick, box, or tinted band.
 
 ### Color is NOT baked into typography classes
 
@@ -84,9 +92,9 @@ context. Callers set color explicitly (Tailwind `color:` or `style`).
 | Token | Light | Dark appearance | Use |
 |---|---|---|---|
 | `--app-bg` | #FFFFFF | #1C1C19 | White ground, the normal canvas |
-| `--app-bg-elevated-solid` | #FFFFFF | #292925 | Cards, popovers, drawers |
-| `--app-bg-sunken` | #F4F4F3 | #242420 | Soft gray inset surfaces, tracks, nested cards |
-| `--app-border` | #E1E1DD | #464640 | Decorative rules and card edges |
+| `--app-bg-elevated-solid` | #FFFFFF | #292925 | Sheets, popovers, drawers |
+| `--app-bg-sunken` | #F4F4F3 | #242420 | Soft gray inset surfaces, tracks, hover and pressed grounds |
+| `--app-border` | #E1E1DD | #464640 | Hairline rules between rows and sections |
 | `--app-control-border` | #818178 | #A5A59A | Control boundaries that must meet 3:1 contrast |
 | `--app-ink` | #22221F | #F7F7F4 | Charcoal. Headlines and important body |
 | `--app-ink-2` | #62625C | #C1C1B8 | Default body and secondary copy |
@@ -124,7 +132,7 @@ dark appearance.
 |------------------|----------|------------------------------------------|
 | `--app-positive` | #315A43  | Small positive or open state             |
 | `--app-warning`  | #925E16  | Text-safe Ochre warning                  |
-| `--app-danger`   | **#B4231E** | **was #A02929** — too close to brand brown; now unmistakably stop-sign red |
+| `--app-danger`   | **#B4231E** | **was #A02929**, too close to brand brown; now unmistakably stop-sign red |
 | `--app-info`     | #285D73  | Supporting information                   |
 
 ### Tint utilities
@@ -160,47 +168,95 @@ appearances, and review new UI in both.
 
 ## Surface and shape
 
-The visual model is a printed field guide. Most information sits directly on
-the page canvas (`--app-bg`, White in light appearance) and is organized with
-typography, spacing, and ruled edges.
-Do not solve every grouping problem with another floating card.
+The interface update approved on November 10, 2026 ("Plain tool, with the
+coral plate") sets the shape rules below. The canonical statement is the
+Interface shape section of [`docs/brand/BRAND_GUIDE.md`](brand/BRAND_GUIDE.md).
+
+Content is rows on the page canvas (`--app-bg`, White in light appearance),
+separated by a 1px hairline (`--app-border`) or by space. Typography and
+spacing carry the hierarchy. Do not solve a grouping problem with a card. A
+rounded, bordered card around ordinary content is a regression.
 
 ### Surface roles
 
 | Role | Treatment | Use |
 |---|---|---|
 | Page ground | Page canvas (`--app-bg`), no shadow | Page background and normal reading flow |
-| Ruled section | Top, bottom, or side rule with spacing | Lists, answer sources, launchers, and editorial groupings |
-| Card | `--app-bg-elevated-solid`, `--app-radius-md` or `--app-radius-lg`, quiet edge | One bounded item that must remain intact or move as a unit |
-| Panel | `--app-bg-elevated-solid`, `--app-radius-lg` | Dense local controls or a contained workspace |
-| Sheet | `--app-bg-elevated-solid`, `--app-radius-lg` (the shared `BottomSheet`) or a literal 24px (the shared `BottomDrawer`, the same value as `--app-radius-xl`) at its exposed corners | Mobile drawers, menus, and overlays that own a temporary layer |
+| Row | No box. A 1px `--app-border` hairline below, or space | Every list item: places, events, results, tools, settings, sources |
+| Ruled section | A hairline and a 13px section label, or a `SectionHeading` | A group of rows, an answer's sources, a detail page section |
+| Field | `--app-bg`, a 1px `--app-control-border` edge, `--app-radius-md` | Text inputs, selects, and the `SortDropdown` trigger |
+| Floating layer over the map | `--app-bg-elevated-solid`, a hairline edge, `--app-radius-lg` (or `--app-radius-md` for a compact control), and `--app-shadow-3` only where it must separate from the map imagery | Map controls, map status, and map panels that sit on the canvas |
+| Menu | `--app-bg-elevated-solid`, a hairline edge, `--app-radius-md`, `--app-shadow-3` | A popover anchored to its trigger |
+| Sheet | `--app-bg-elevated-solid`, `--app-radius-lg` at the exposed top corners | `BottomSheet` and `BottomDrawer`, which own a temporary layer |
+
+A bordered surface is right only when it is a control boundary (a field) or a
+real layer above the page (a menu, a sheet, or a panel over the map). It is
+never right for an ordinary list item, a section, or an informational tag.
 
 The pixel values for each token are listed once, in the Radius policy table
 below.
 
-Use elevation only when the surface is actually above another surface. Menus,
-sheets, and temporary overlays need depth. Normal rows and page sections do
-not. The existing `tactile*` names are compatibility hooks, not permission to
-add gloss, lift, or glow to routine content.
+### Shadow and elevation
+
+A shadow means a layer is actually above another surface. Ordinary rows and
+page sections stay flat. The tokens enforce this:
+
+| Token | Value | Use |
+|---|---|---|
+| `--app-shadow-1`, `--app-shadow-2` | Transparent (`0 0 0 0 transparent`) | Compatibility only. Content does not float |
+| `--app-elev-1`, `--app-elev-2` | Transparent | Compatibility only |
+| `--app-shadow-3` | A soft two-part shadow | Menus, popovers, and `BottomSheet` |
+| `--app-elev-3`, `--app-elev-4` | Deeper layer shadows | `BottomDrawer` and other overlays that own the screen |
+
+The transparent tiers resolve to an invisible value rather than `none`, so
+they stay valid inside a comma list. Do not raise them, and do not add a new
+shadow to make a row, card, or button lift. The existing `tactile*` names are
+compatibility hooks, not permission to add gloss, lift, or glow.
 
 ### Radius policy
 
 | Token | Value | Intended role |
 |---|---:|---|
-| `--app-radius-sm` | 8px | Small utility controls, icon tiles, and small markers |
-| `--app-radius-md` | 12px | Buttons (the shared `Button` primitive), most inputs, cards, and grouped content |
-| `--app-radius-lg` | 18px | Panels, larger cards, and compact drawers (the shared `BottomSheet`) |
-| `--app-radius-xl` | 24px | Large mobile sheets and rare feature surfaces |
+| `--app-radius-sm` | 4px | Small markers, focus outlines inside rows, and the coral time block on Events |
+| `--app-radius-md` | 6px | Fields, buttons (the shared `Button` primitive), menus, and row thumbnails |
+| `--app-radius-lg` | 8px | Sheets and drawers (`BottomSheet`, `BottomDrawer`) and floating panels over the map |
+| `--app-radius-xl` | 10px | A rare larger feature surface |
 
 Use the named token instead of a pixel value, so a token change reaches every
 surface. The values live in `:root` in `src/app/globals.css`. If this table
 disagrees with that file, the file is correct.
 
-A full capsule is a semantic shape. Reserve it for status, a selected toggle,
-or a compact filter. Ordinary calls to action, navigation items, source rows,
-content cards, and search results do not become pills. A true circle is still
-correct for geometry that is inherently circular, such as a map location
-button, avatar, dot, or the round portion of the Radius mark.
+A full capsule is a semantic shape. It survives only on compact filter chips
+(`Pill`, `FilterChip`), status badges, and toggle switches. Ordinary calls to
+action, navigation items, rows, source lines, search results, and
+informational tags do not become capsules. An informational tag, such as what
+a place is known for, is plain text (see `PlaceDotList`). A true circle is
+still correct for geometry that is inherently circular, such as a map
+location button, avatar, dot, or the round portion of the Radius mark.
+
+### Chrome
+
+The top bar uses unboxed ink icons with no tile, ring, or fill behind them.
+The bottom tab bar and `MobileActionBar` are flat bars attached to the screen
+edge: the page ground with one top hairline, no floating offset, radius, or
+shadow. The active tab carries a 2px Deep Coral rule.
+
+### The one bold block
+
+A page may hold one solid Deep Coral block. On Today it is the coral name
+plate over the lead photograph. On Events it is the lead event's time block
+(`EventRow` with `lead`). No other coral field appears on the page except the
+single filled coral action the view already has, such as Directions in a
+place page's `MobileActionBar`. A selected filter chip is an ink fill, not
+coral. White text on a coral fill sits on `--app-brand-press` with
+`--app-on-brand`.
+
+### Text colors on a theme ground
+
+Coral text uses `--app-link` or `--app-brand-text`. Creek text uses
+`--app-cool-text`, and Catoctin Forest text uses `--app-forest-text`. Never
+set `--app-brand-press`, `--app-brand`, or `--app-cool` as a text color; they
+fail contrast in dark appearance.
 
 ### Decoration and image fallbacks
 
@@ -210,8 +266,12 @@ button, avatar, dot, or the round portion of the Radius mark.
   ambient blobs. A feature state may use one solid registration rule.
 - Do not create fake visual variety with seeded gradients, randomized icon
   angles, artificial textures, or giant initials that resemble photography.
-- A missing image is a data state. Label it honestly and use one stable brand
-  plate until a licensed or owner-supplied photograph is available.
+- A missing image is a data state. In a row, show a thumbnail only when a
+  real photograph exists. A row without one keeps the same media slot width,
+  so titles stay aligned down the list, and shows its category glyph in
+  `--app-ink-3` at about 24px, level with the title's first line. The glyph
+  has no background, border, tint, or radius. Do not use a gray tile or a
+  coral-tinted tile in any list.
 
 ---
 
@@ -243,11 +303,15 @@ Pick from **three** vertical-rhythm classes. Drop the rest.
 
 | Class       | Use                                       |
 |-------------|-------------------------------------------|
-| `space-y-2` | Within a card / section internals         |
-| `space-y-3` | Between rows in a list                    |
+| `space-y-2` | Within a section's internals              |
+| `space-y-3` | Between loose blocks that are not rows    |
 | `space-y-6` | Between page sections (the spine)         |
 
-Avoid `space-y-4` and `space-y-5` — ambiguous middlings.
+A list of rows takes no gap at all. Rule it instead: a `border-t` on the list
+and a `border-b` hairline on each row (`RowList` does this), so the rows read
+as one ruled block.
+
+Avoid `space-y-4` and `space-y-5`, which are ambiguous middle values.
 
 ### Z-index scale
 
