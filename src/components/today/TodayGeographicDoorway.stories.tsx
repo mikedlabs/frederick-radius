@@ -76,6 +76,10 @@ async function checkLeadGeometry(link: HTMLElement, save: HTMLButtonElement, enl
   const photo = link.querySelector<HTMLElement>("[data-place-card-photo]")!.getBoundingClientRect();
   const plate = plateElement.getBoundingClientRect(), box = link.getBoundingClientRect(), target = save.getBoundingClientRect();
   await expect(Math.abs(photo.width / photo.height - 1.6)).toBeLessThanOrEqual(0.02);
+  // The lead photograph keeps its prominence: at least 55% of its column's
+  // width tall (16:10 gives 62.5%), and at least 170px even at 320px.
+  await expect(photo.height).toBeGreaterThanOrEqual(box.width * 0.55);
+  await expect(photo.height).toBeGreaterThanOrEqual(170);
   await expect(plate.top).toBeLessThan(photo.bottom);
   await expect(plate.bottom).toBeGreaterThan(photo.bottom);
   await expect(plate.top).toBeGreaterThanOrEqual(photo.top - 1);
@@ -88,10 +92,17 @@ async function checkLeadGeometry(link: HTMLElement, save: HTMLButtonElement, enl
   await expect(target.right).toBeLessThanOrEqual(photo.right + 1);
   await expect(getComputedStyle(plateElement).backgroundColor).toBe(tokenColor(plateElement, "backgroundColor", "--app-brand-press"));
   await expect(getComputedStyle(link.querySelector("h3")!).color).toBe(tokenColor(plateElement, "color", "--app-on-brand"));
+  const name = link.querySelector<HTMLElement>("h3")!, town = name.nextElementSibling as HTMLElement;
   if (enlarged) {
     await expect(target.top).toBeGreaterThanOrEqual(plate.bottom - 1);
+    // Enlarged text lifts the three-line clamp, so the whole name shows.
+    await expect(getComputedStyle(name).webkitLineClamp).not.toBe("3");
+    await expect(name.scrollHeight).toBeLessThanOrEqual(name.clientHeight + 1);
     return;
   }
+  // The town line stays on one line, even on a 320px phone.
+  const townLine = parseFloat(getComputedStyle(town).lineHeight);
+  await expect(town.getBoundingClientRect().height).toBeLessThanOrEqual(townLine * 1.5);
   // The plate hangs exactly 36px below the photo, inside a band of 44 to 48px.
   await expect(Math.abs(plate.bottom - (photo.bottom + 36))).toBeLessThanOrEqual(1);
   await expect(box.bottom - photo.bottom).toBeGreaterThanOrEqual(44);

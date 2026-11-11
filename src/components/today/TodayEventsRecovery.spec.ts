@@ -82,6 +82,25 @@ describe("TodayEventsRecoveryView", () => {
     expect(link?.getAttribute("data-decision-action")).toBe("open");
   });
 
+  it("gives every later event row the shared press target and one direct face", () => {
+    const later = { ...event, slug: "later-pick-2026-08-27", title: "Later pick", time: "8:00 PM" };
+    const html = renderToStaticMarkup(
+      createElement(TodayEventsRecoveryView, {
+        response: { partial: false, events: [event, later] },
+      }),
+    );
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const link = doc.querySelector(
+      'article[data-today-event-row="row"] a[href="/events/later-pick-2026-08-27"]',
+    );
+    expect(link).not.toBeNull();
+    expect(link!.getAttribute("data-press-target")).toBe("card");
+    // The link's hit rectangle stays still; exactly one direct child moves.
+    expect(link!.querySelectorAll(":scope > [data-press-face]")).toHaveLength(1);
+    expect(link!.children).toHaveLength(1);
+    expect(link!.querySelector("[data-press-face]")!.textContent).toContain("Later pick");
+  });
+
   it("keeps partial coverage explicit when usable rows survive", () => {
     const html = renderToStaticMarkup(
       createElement(TodayEventsRecoveryView, {

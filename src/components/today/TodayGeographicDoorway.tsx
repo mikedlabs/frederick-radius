@@ -78,6 +78,9 @@ export function TodayGeographicDoorwayView({ scope = null, returnTo }: {
   return (
     <section id="today-discovery" data-today-local-discovery data-today-geographic-mosaic aria-labelledby="today-discovery-heading" className={styles.geographicMosaic}>
       <h2 id="today-discovery-heading" className="sr-only">Explore local</h2>
+      {/* On a wide screen the browse links fill the column beside the lead
+          photograph instead of leaving a blank band there. */}
+      <div className={styles.discoveryLayout}>
       {places.length > 0 && <div data-today-discovery-grid className={styles.discoveryPlaceGrid}>
         {places.map((place, index) => <DiscoveryPlace key={`${active}:${place.photoPlan.key}`} place={place} scope={active} returnTo={origin} lead={index === 0} />)}
       </div>}
@@ -93,6 +96,7 @@ export function TodayGeographicDoorwayView({ scope = null, returnTo }: {
           <span>Get outside</span><ArrowUpRight aria-hidden className="h-4 w-4 shrink-0" />
         </Link>
       </nav>
+      </div>
     </section>
   );
 }

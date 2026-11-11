@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
  * rule, tick or box.
  */
 export const PLACE_SECTION_LABEL_CLASS =
-  "text-[13px] font-semibold uppercase leading-tight tracking-[0.1em]";
+  "text-[0.8125rem] font-semibold uppercase leading-tight tracking-[0.1em]";
 
 export default function PlaceSectionLabel({
   as: Tag = "h2",
@@ -52,7 +52,7 @@ export function PlaceDotList({
   return (
     <ul
       aria-label={label}
-      className={`text-[15px] leading-relaxed${className ? ` ${className}` : ""}`}
+      className={`text-[0.9375rem] leading-relaxed${className ? ` ${className}` : ""}`}
       style={{ color: "var(--app-ink)" }}
     >
       {items.map((item, i) => (

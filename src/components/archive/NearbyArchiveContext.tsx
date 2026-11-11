@@ -52,13 +52,24 @@ export default function NearbyArchiveContext({
 
   return (
     <section aria-labelledby="nearby-archive-title" className="space-y-3">
-      <header className="flex items-baseline justify-between gap-3">
-        <PlaceSectionLabel id="nearby-archive-title">
-          Primary source nearby
-        </PlaceSectionLabel>
-        <span className="shrink-0 text-[14px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-          {distance} away
-        </span>
+      {/* The eyebrow keeps the section label style; the section's heading
+          is the title under it. */}
+      <header>
+        <div className="flex items-baseline justify-between gap-3">
+          <PlaceSectionLabel as="p">
+            Primary source nearby
+          </PlaceSectionLabel>
+          <span className="shrink-0 text-[14px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+            {distance} away
+          </span>
+        </div>
+        <h2
+          id="nearby-archive-title"
+          className="mt-1.5 text-[1.25rem] font-bold leading-tight tracking-[-0.01em]"
+          style={{ color: "var(--app-ink)" }}
+        >
+          This block, documented
+        </h2>
       </header>
 
       <article className="flex items-start gap-3">

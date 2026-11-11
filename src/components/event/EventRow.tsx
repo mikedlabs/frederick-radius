@@ -139,7 +139,7 @@ export default function EventRow({
       ) : null}
       <div className={styles.when} data-event-row-when>
         <span className={styles.time} data-clock={meridiem ? "clock" : "label"}>
-          <span className={styles.clock}>{clock}</span>
+          <span>{clock}</span>
           {meridiem ? <span className={styles.meridiem}>{meridiem}</span> : null}
         </span>
         {showDate ? (

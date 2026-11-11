@@ -287,7 +287,7 @@ export default function PlaceList({
           type="button"
           onClick={() => setVisibleCount((count) => count + safePageSize)}
           className="tap-44 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-sm)] border px-4 text-[12px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+          style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
         >
           Show {Math.min(safePageSize, filteredPlaces.length - visibleCount)} more
         </button>

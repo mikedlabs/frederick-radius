@@ -15,7 +15,7 @@ export default function BeenHereToggle({ placeSlug, label }: { placeSlug: string
         type="button"
         aria-hidden
         tabIndex={-1}
-        className="tap-44-y inline-flex h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[15px] font-semibold transition-colors"
+        className="tap-44-y inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[0.9375rem] font-semibold transition-colors"
         style={{ color: "var(--app-ink)" }}
       >
         <Circle className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-2)" }} />
@@ -34,7 +34,7 @@ export default function BeenHereToggle({ placeSlug, label }: { placeSlug: string
           ? `Been here: ${label}. Mark as not visited`
           : `Mark as visited: ${label}`
       }
-      className="tap-44-y inline-flex h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[15px] font-semibold transition-colors hover:underline"
+      className="tap-44-y inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[0.9375rem] font-semibold transition-colors hover:underline"
       style={{ color: been ? "var(--app-cool-text)" : "var(--app-ink)" }}
     >
       {been ? (

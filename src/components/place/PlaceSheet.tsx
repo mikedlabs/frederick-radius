@@ -524,7 +524,7 @@ function PlaceSheetContent({
             {travel.walkMin === 0 ? (
               /* A sub-minute walk should not turn into "0 min." */
               <span className="inline-flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
+                <MapPin className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool-text)" }} aria-hidden />
                 You are here
               </span>
             ) : (
@@ -535,13 +535,13 @@ function PlaceSheetContent({
                     data readout, not a recommendation — the 2026-06 audit). */}
                 {travel.walkMin != null && travel.walkMin >= 1 && travel.walkMin <= 35 && (
                   <span className="inline-flex items-center gap-1">
-                    <Footprints className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
+                    <Footprints className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool-text)" }} aria-hidden />
                     <span className="font-mono tabular-nums">{travel.walkMin}</span> min walk
                   </span>
                 )}
                 {travel.driveMin != null && (
                   <span className="inline-flex items-center gap-1">
-                    <Car className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
+                    <Car className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-brand-text)" }} aria-hidden />
                     <span className="font-mono tabular-nums">{travel.driveMin}</span> min drive
                   </span>
                 )}
@@ -726,7 +726,7 @@ function PlaceSheetContent({
             href={fullPageHref}
             prefetch={false}
             className="inline-flex items-center gap-1 font-medium"
-            style={{ color: "var(--app-brand-press)" }}
+            style={{ color: "var(--app-link)" }}
           >
             See full page <ExternalLink className="h-3 w-3" aria-hidden />
           </Link>
@@ -768,7 +768,7 @@ function PlaceSheetContent({
                 `What I noticed about ${place.name}:\n\n\n(Optional) where I saw it: `,
               )}`}
               className="underline"
-              style={{ color: "var(--app-cool)" }}
+              style={{ color: "var(--app-cool-text)" }}
             >
               Tell us
             </a>

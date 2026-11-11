@@ -407,6 +407,11 @@ for (const width of [320, 375, 390, 430, 1366]) {
     }
     expect(photoBox.width).toBeGreaterThanOrEqual(doorwayBox.width * 0.95);
     expect(photoBox.height).toBeGreaterThan(90);
+    // The lead photograph's prominence. At 16:10 it is 62.5% of its column's
+    // width tall; it never drops below 55% of that column (the full content
+    // width on a phone), and never below 170px, even on a 320px phone.
+    expect(photoBox.height).toBeGreaterThanOrEqual(geometry.subjects[0].box.width * 0.55);
+    expect(photoBox.height).toBeGreaterThanOrEqual(170);
     await expect(doorway.locator("img")).toHaveAttribute("alt", diningSubjects[0].alt);
     await expect(doorway.getByRole("heading", { name: diningSubjects[0].title, exact: true })).toBeVisible();
     await expect(diningGrid).toContainText(diningSubjects[1].title);

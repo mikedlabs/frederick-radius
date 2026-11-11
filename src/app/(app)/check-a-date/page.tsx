@@ -179,7 +179,7 @@ export default async function CheckADatePage({
                     <span className="font-serif text-[16px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
                       {labelFor(key, { day: "numeric" })}
                     </span>
-                    <span className="font-mono text-[10px] tabular-nums" style={{ color: n > 0 ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>
+                    <span className="font-mono text-[10px] tabular-nums" style={{ color: n > 0 ? "var(--app-link)" : "var(--app-ink-3)" }}>
                       {n}
                     </span>
                   </Link>
@@ -199,14 +199,14 @@ export default async function CheckADatePage({
             </div>
 
             {dayEvents.length > 0 ? (
-              <ul className="space-y-2.5">
+              <ul className="max-w-[45rem]">
                 {dayEvents.slice(0, 20).map((e) => (
                   <li key={`${e.slug}-${e.starts_at}`}>
                     <EventCard event={e} variant="glance" />
                   </li>
                 ))}
                 {dayEvents.length > 20 && (
-                  <li className="text-center text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                  <li className="pt-3 text-center text-[12px]" style={{ color: "var(--app-ink-3)" }}>
                     <Link href={`/events?d=${picked}`} className="underline">
                       All {dayEvents.length} on the board <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
                     </Link>
@@ -231,14 +231,14 @@ export default async function CheckADatePage({
               A quiet day here is a good sign, not a promise. Some events
               publish late or spread through private channels before they hit
               any public calendar. When yours is set,{" "}
-              <Link href="/submit/event" className="underline" style={{ color: "var(--app-brand-press)" }}>
+              <Link href="/submit/event" className="underline" style={{ color: "var(--app-link)" }}>
                 add it here
               </Link>{" "}
               so the next planner sees it.
             </div>
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] font-semibold">
-              <Link href={`/events?d=${picked}`} style={{ color: "var(--app-brand-press)" }}>
+              <Link href={`/events?d=${picked}`} style={{ color: "var(--app-link)" }}>
                 See this day on the board <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
               </Link>
               <Link href="/submit/event" style={{ color: "var(--app-ink-3)" }}>

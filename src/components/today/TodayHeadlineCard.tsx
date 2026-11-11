@@ -52,8 +52,12 @@ export default function TodayHeadlineCard({
           aria-labelledby={titleId}
           aria-describedby={detailId}
           data-decision-action="open"
-          className="focus-ring-inset group flex min-w-0 items-start gap-[16px] py-4 supports-[selector(:has(*))]:outline-none!"
+          data-press-target="card"
+          className="focus-ring-inset group block min-w-0 supports-[selector(:has(*))]:outline-none!"
         >
+          {/* The press contract, as on the Events row: the link's hit
+              rectangle stays still and only this one face responds. */}
+          <div data-press-face className="flex min-w-0 items-start gap-[16px] py-4">
           <div className="min-w-0 flex-1 [overflow-wrap:anywhere] group-hover:[&_h3]:underline">
             {children}
           </div>
@@ -70,6 +74,7 @@ export default function TodayHeadlineCard({
               />
             </figure>
           )}
+          </div>
         </Link>
         {visibleVisual && <EventVisualCredit visual={visibleVisual} className="-mt-2 pb-3" />}
       </article>

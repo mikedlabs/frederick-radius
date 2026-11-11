@@ -28,7 +28,7 @@ export default function MapReturnLink() {
         markBrowseScrollReturn(returnTo);
       }}
       className="tap-44-y -ml-1 inline-flex items-center gap-1.5 px-1 text-[12.5px] font-semibold"
-      style={{ color: "var(--app-brand-press)" }}
+      style={{ color: "var(--app-link)" }}
     >
       <ArrowLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
       {browseReturnLabel(returnTo)}
