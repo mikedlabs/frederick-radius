@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 /** The facts every reviewed photograph credit prints, in reading order. */
 export type PhotoCreditFacts = {
@@ -17,8 +17,8 @@ export type PhotoCreditFacts = {
 };
 
 /**
- * One short muted credit line for a reviewed licensed photograph:
- * author · year · license · source · edited. License and source stay real,
+ * The short muted credit for a reviewed licensed photograph: author and year
+ * on one line, then license · source · edited. License and source stay real,
  * underlined links with 44px targets. Render it outside any destination link.
  * The full change record stays in the data and is never printed here.
  */
@@ -36,20 +36,31 @@ export default function PhotoCreditLine({ credit, className = "", style }: {
       style={style}
     >
       <span className="sr-only">{countyProvided ? "Photo provided by " : "Photo by "}</span>
-      {/* Flex rows with a small row gap keep wrapped 44px link targets apart. */}
-      <span data-photo-credit-text className="flex flex-wrap items-center gap-x-1 gap-y-1">
-        <span data-photo-credit-author>{credit.author}</span>
-        {credit.year && <> · <span data-photo-credit-year>{credit.year}</span></>}
-        {" · "}
-        <a href={credit.licenseHref} target="_blank" rel="noopener noreferrer">{credit.license}</a>
-        {" · "}
-        <a href={credit.sourceHref} target="_blank" rel="noopener noreferrer">{credit.sourceLabel}</a>
-        {credit.originalSourceHref && <>
-          {" · "}
-          <a href={credit.originalSourceHref} target="_blank" rel="noopener noreferrer">Original photograph</a>
-        </>}
-        {credit.edited && <> · <span data-photo-credit-edited>edited</span></>}
+      {/* Two lines: the plain facts, then the links. Only the links line
+          needs 44px targets, so the facts line stays at text height, and no
+          line starts or ends on a dangling dot. A hidden separator keeps the
+          whole credit reading and copying as "a · b · c". */}
+      <span data-photo-credit-text className="flex flex-col items-start">
+        <span>
+          <span data-photo-credit-author>{credit.author}</span>
+          {credit.year && <>{" · "}<span data-photo-credit-year>{credit.year}</span></>}
+          <span className="sr-only">{" · "}</span>
+        </span>
+        <span className="flex flex-wrap items-center gap-x-1 gap-y-1">
+          <a href={credit.licenseHref} target="_blank" rel="noopener noreferrer">{credit.license}</a>
+          <CreditPart><a href={credit.sourceHref} target="_blank" rel="noopener noreferrer">{credit.sourceLabel}</a></CreditPart>
+          {credit.originalSourceHref && (
+            <CreditPart><a href={credit.originalSourceHref} target="_blank" rel="noopener noreferrer">Original photograph</a></CreditPart>
+          )}
+          {credit.edited && <CreditPart><span data-photo-credit-edited>edited</span></CreditPart>}
+        </span>
       </span>
     </span>
   );
+}
+
+/** One credit item with its leading separator, kept on the same row. The
+ * separator stays text, so the line reads and copies as "a · b · c". */
+function CreditPart({ children }: { children: ReactNode }) {
+  return <span className="whitespace-nowrap">{" · "}{children}</span>;
 }

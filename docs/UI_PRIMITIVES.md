@@ -317,9 +317,11 @@ under its icon. `MobileBarControl` wraps a reused client control such as
 ### `PhotoCreditLine`: the one reviewed photograph credit
 `src/components/place/PhotoCreditLine.tsx`. Every reviewed licensed
 photograph (curated place photos, licensed event venue photos and the town
-hero) prints one short muted line under its photo, in this order: author,
-the capture year when the record has a valid one, the license, the source,
-then `edited` when the stored file differs from the source file. Build its
+hero) prints a short muted credit under its photo: author and the capture
+year (when the record has a valid one) on one plain line, then the license,
+the source and `edited` (when the stored file differs from the source file)
+on a second line of links. Only that second line carries 44px link targets,
+so the credit stays compact, and no line starts or ends on a separator dot. Build its
 facts with `curatedPhotoCredit` or `eventPhotoCredit` from
 `src/lib/curated-photo-source.ts`; `PlaceCardPhotoCredit` and
 `EventVisualCredit` already do. A record with an earlier publication adds an
