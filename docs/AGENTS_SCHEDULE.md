@@ -8,7 +8,7 @@
 > runs on GitHub Actions; if it's a safe, idempotent refresh of a known
 > source, it runs on Vercel cron.
 
-**Last updated:** 2026-10-19
+**Last updated:** 2026-11-10
 
 ---
 

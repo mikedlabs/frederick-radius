@@ -42,9 +42,10 @@ export function isAdminEmail(
 }
 
 /**
- * Validate + normalize the publish request body. Pure — the route does the
- * auth + persistence. Titles and bodies are clamped to short, rail-sized
- * lengths up front.
+ * Validate and normalize the publish request body. Pure: the route does the
+ * auth and persistence. A title over 120 characters or a body over 280 is
+ * rejected, never shortened, so an update is always short enough for the rail
+ * and the sender knows it was not accepted.
  */
 export function parsePublishBody(
   raw: unknown,

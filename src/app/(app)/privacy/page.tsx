@@ -132,11 +132,14 @@ export default function PrivacyPage() {
           </h2>
           <p>
             Frederick Radius no longer sends push notifications. If you turned
-            them on before they were retired, the browser push endpoint, topics,
-            and settings saved at that time may still be stored, but the app no
-            longer uses them. The current version of the app also removes its
-            push subscription from your browser. You can ask us to delete those
-            records using the contact details below.
+            them on before they were retired, we may still hold the record
+            created at that time: a browser-generated push endpoint and
+            encryption keys, the topics you chose, basic device and browser
+            labels, your selected home town and quiet hours if you set them,
+            and delivery or interaction timestamps. The app no longer uses
+            this information. The current version of the app also removes its
+            push subscription from your browser. You can ask us to delete
+            those records using the contact details below.
           </p>
         </div>
 

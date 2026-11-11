@@ -76,7 +76,7 @@ src/
 │   │   ├── og/              # dynamic OG image generator
 │   │   ├── isochrone/       # Mapbox isochrone proxy
 │   │   ├── events/[slug]/ics
-│   │   └── /discover/, /cron/, /ingest/
+│   │   └── cron/, ingest/
 │   ├── icon.tsx · apple-icon.tsx · manifest.ts · sitemap.ts · robots.ts
 │   └── layout.tsx           # root: fonts, Toaster, NuqsAdapter, SW register
 ├── components/
