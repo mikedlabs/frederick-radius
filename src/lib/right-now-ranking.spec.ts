@@ -1,3 +1,4 @@
+import { NEARBY_DISTANCE_WINDOW_M } from "@/lib/decision/nearby-place-ranking";
 import { describe, expect, it } from "vitest";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import {
@@ -5,7 +6,8 @@ import {
   compareRightNowCandidates,
   resolveRightNowAvailabilityMode,
   rightNowQualityScore,
-  rightNowSortLabel,
+  rightNowHasOpenTier,
+  rightNowOrderSentence,
   smartNearbyScore,
 } from "./right-now-ranking";
 
@@ -179,20 +181,59 @@ describe("right-now no-origin ranking", () => {
     expect(ranked.map(({ p }) => p.slug)).toEqual(["closest", "richer"]);
   });
 
-  it("keeps the explicit required-hours tier for food and open-now decisions", () => {
+  it("lets close by win over a far confirmed-open place when an origin exists", () => {
     const nearbyUnknown = place("Nearby unknown", {
       open_status: { state: "unknown" },
     });
     const farOpen = place("Far open", {
       open_status: { state: "open", closesAt: "23:00", closingSoon: false },
     });
+    for (const sort of ["smart", "nearest"] as const) {
+      const ranked = [
+        { p: farOpen, dist: 10_000, open: true },
+        { p: nearbyUnknown, dist: 100, open: false },
+      ].sort((a, b) =>
+        compareRightNowCandidates(a, b, sort, true, {}, "required"),
+      );
+      expect(ranked.map(({ p }) => p.name)).toEqual(["Nearby unknown", "Far open"]);
+    }
+    expect(rightNowHasOpenTier("required", true)).toBe(false);
+  });
+
+  it("still sinks a confirmed closure below a farther open place when an origin exists", () => {
+    const nearbyClosed = place("Nearby closed", {
+      open_status: { state: "closed" },
+    });
+    const farOpen = place("Far open", {
+      open_status: { state: "open", closesAt: "23:00", closingSoon: false },
+    });
     const ranked = [
-      { p: nearbyUnknown, dist: 100, open: false },
-      { p: farOpen, dist: 12_000, open: true },
+      { p: nearbyClosed, dist: 100, open: false },
+      { p: farOpen, dist: 10_000, open: true },
     ].sort((a, b) =>
-      compareRightNowCandidates(a, b, "nearest", true, {}, "required"),
+      compareRightNowCandidates(a, b, "smart", true, {}, "required"),
     );
-    expect(ranked[0]?.p.name).toBe("Far open");
+    expect(ranked.map(({ p }) => p.name)).toEqual(["Far open", "Nearby closed"]);
+  });
+
+  it("keeps the confirmed-open tier for required hours when no origin can rank by distance", () => {
+    const strongUnknown = place("Strong unknown", {
+      open_status: { state: "unknown" },
+      feature_score: 10,
+      local_favorite: true,
+    });
+    const plainOpen = place("Plain open", {
+      open_status: { state: "open", closesAt: "23:00", closingSoon: false },
+    });
+    const ranked = [
+      { p: strongUnknown, dist: Infinity, open: false },
+      { p: plainOpen, dist: Infinity, open: true },
+    ].sort((a, b) =>
+      compareRightNowCandidates(a, b, "smart", false, {}, "required"),
+    );
+    expect(ranked[0]?.p.name).toBe("Plain open");
+    expect(rightNowHasOpenTier("required", false)).toBe(true);
+    expect(rightNowHasOpenTier("bonus", false)).toBe(false);
   });
 
   it("puts places with real review evidence ahead of unrated places in Top rated", () => {
@@ -208,16 +249,27 @@ describe("right-now no-origin ranking", () => {
     expect(ranked.map(({ p }) => p.name)).toEqual(["Known 3.9", "Unrated"]);
   });
 
-  it("labels the availability tier instead of promising a false nearest-first list", () => {
-    expect(rightNowSortLabel("smart", true, "open")).toBe("open first, then best fit");
-    expect(rightNowSortLabel("nearest", true, "open")).toBe("open first, then nearest");
-    expect(rightNowSortLabel("nearest", true, "available")).toBe(
-      "available first, then nearest",
+  it("describes the order it shows in one complete sentence", () => {
+    const none = { openFirst: false, closedLast: false };
+    // "The same block" describes the comparator's 150 m distance window.
+    expect(NEARBY_DISTANCE_WINDOW_M).toBe(150);
+    expect(rightNowOrderSentence("smart", true, none)).toBe(
+      "The closest places come first, and places on the same block are ordered by best match.",
     );
-    expect(rightNowSortLabel("nearest", true, null)).toBe("nearest first");
-    expect(rightNowSortLabel("rated", false, "open")).toBe("open first, then top rated");
-    expect(rightNowSortLabel("rated", false, "available")).toBe(
-      "available first, then top rated",
+    expect(rightNowOrderSentence("nearest", true, none)).toBe(
+      "Places are sorted by distance, nearest first.",
+    );
+    expect(rightNowOrderSentence("rated", true, none)).toBe("The top rated places come first.");
+    expect(rightNowOrderSentence("smart", false, none)).toBe("The best matches come first.");
+    expect(rightNowOrderSentence("nearest", false, none)).toBe("The best matches come first.");
+    expect(rightNowOrderSentence("smart", true, { openFirst: false, closedLast: true })).toBe(
+      "The closest places come first, and places on the same block are ordered by best match. Places confirmed closed come last.",
+    );
+    expect(rightNowOrderSentence("smart", false, { openFirst: true, closedLast: true })).toBe(
+      "Places confirmed open come first, then the best matches.",
+    );
+    expect(rightNowOrderSentence("rated", false, { openFirst: true, closedLast: false })).toBe(
+      "Places confirmed open come first, then the top rated.",
     );
   });
 });

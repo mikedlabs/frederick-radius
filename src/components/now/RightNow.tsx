@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Coffee,
   IceCream,
@@ -35,10 +35,12 @@ import {
   SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
-import Link from "next/link";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
+import { Button } from "@/components/ui/Button";
+import FilterChip from "@/components/ui/FilterChip";
+import { commitLocationScope } from "@/components/nav/locationScopeNavigation";
 import { navigateAfterHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import styles from "./RightNow.module.css";
 import { nearbyParksRows } from "@/lib/nearby-parks-layout";
@@ -52,19 +54,23 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { cuisinesOf, cuisineLabel } from "@/lib/cuisine";
 import { mealForKey, matchMeal } from "@/lib/meal";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { haversineMeters, isInFrederickCountyArea } from "@/lib/geo";
+import { formatDistance, haversineMeters, isInFrederickCountyArea } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
+import { mayAssertNoneOpen } from "@/lib/hours-availability";
 import {
-  mayAssertNoneOpen,
-  openNowCountLabel,
-} from "@/lib/hours-availability";
+  nearbyCountSentence,
+  OPEN_NOW_NEARBY_RADIUS_M,
+  OPEN_NOW_THIN_COUNT,
+  openNowThinNote,
+} from "@/lib/nearby-summary";
 import { haptic } from "@/lib/haptics";
-import { setScope, subscribeScopeChange, scopeTownSlug, type DecisionOriginSource, type Scope } from "@/lib/scope";
+import { scopeLabel, subscribeScopeChange, scopeTownSlug, type DecisionOriginSource, type Scope } from "@/lib/scope";
 import {
   canUseOriginForRanking,
   compareRightNowCandidates,
   resolveRightNowAvailabilityMode,
-  rightNowSortLabel,
+  rightNowHasOpenTier,
+  rightNowOrderSentence,
   type RightNowAvailabilityMode,
 } from "@/lib/right-now-ranking";
 import { useSavedList } from "@/hooks/useSaved";
@@ -102,6 +108,10 @@ function writeNearbyQuery(next: NearbyQueryState, mode: "push" | "replace" = "re
  * Distance is honest: we only print "min walk / distance" when we actually
  * have the user's location. Without a valid town, device, or in-county IP
  * origin, results stay county-wide rather than silently ranking from Downtown.
+ *
+ * The area is the header's. This page has no chooser of its own: its empty
+ * state's "Search the whole county" and its precise-location request both
+ * write through `commitLocationScope`, the one area writer.
  */
 
 // Keyed by the `icon` strings in src/data/cravings.ts. Every craving icon must
@@ -195,6 +205,7 @@ export default function RightNow({
   approxStatus?: "available" | "missing" | "outside-county";
 }) {
   const { state, request } = useGeolocation();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [storedScope, setStoredScope] = useState<Scope | null>(initialScope);
   // The address bar owns every meaningful selection. A same-URL sheet Back
@@ -227,9 +238,10 @@ export default function RightNow({
   function applyFilters(dismiss: () => void) {
     if (!filterDraft || applyPendingRef.current) return;
     const draft = filterDraft;
+    // Open now lives outside the sheet, so applying the sheet never
+    // overrides a chip change made while it was open.
     const patch = {
       facetKey: draft.facetKey,
-      openOnly: draft.openOnly,
       closingSoonOnly: draft.closingSoonOnly,
       sort: draft.sort,
     };
@@ -276,15 +288,15 @@ export default function RightNow({
     });
   }, [initialScope]);
 
-  function chooseTown(nextTown: string | null) {
-    const nextScope: Scope = nextTown ? `town:${nextTown}` : "county";
-    updateQuery({ scope: nextScope });
-    setScope(nextScope);
+  // The header owns the area. These two escapes (an empty town, a missing
+  // precise fix) use the same writer, which stores the area and then brings
+  // this page's own ?in= in line.
+  function searchWholeCounty() {
+    commitLocationScope("county", router);
   }
 
   function activateMyLocation() {
-    updateQuery({ scope: "nearme" });
-    setScope("nearme");
+    if (scope !== "nearme") commitLocationScope("nearme", router);
     request();
   }
   const saved = useSavedList();
@@ -514,10 +526,33 @@ export default function RightNow({
       }).length
     : closingSoonCount;
 
+  // Open now must not leave one far result with nothing after it (the audit's
+  // 6.2 mile dinner). "Nearby" is about three miles of a device fix, the whole
+  // town for a town lens, and the whole set without an origin. When fewer than
+  // OPEN_NOW_THIN_COUNT places there are confirmed open, the nearest places
+  // stay listed under one plain line, and confirmed-open rows are marked.
+  const openNearbyCount = useMemo(
+    () => matched.filter((m) => m.open && (!hasFix || m.dist <= OPEN_NOW_NEARBY_RADIUS_M)).length,
+    [matched, hasFix],
+  );
+  const openThin = openOnly && supportsHours && !closingSoonOnly &&
+    openNearbyCount < OPEN_NOW_THIN_COUNT && matched.length > openNearbyCount;
+  const closestOpenBeyond = useMemo(() => {
+    if (!openThin || openNearbyCount > 0 || !hasFix) return null;
+    const nearest = matched
+      .filter((m) => m.open && Number.isFinite(m.dist))
+      .sort((a, b) => a.dist - b.dist)[0];
+    if (!nearest) return null;
+    return {
+      distance_m: nearest.dist,
+      town: MUNICIPALITY_BY_SLUG[nearest.p.municipality ?? ""]?.name ?? nearest.p.city ?? null,
+    };
+  }, [openThin, openNearbyCount, hasFix, matched]);
+
   const results = useMemo(() => {
     const list = closingSoonOnly
       ? matched.filter((m) => m.p.open_status.state === "closing-soon")
-      : openOnly
+      : openOnly && !openThin
         ? matched.filter((m) => m.open)
         : matched;
     return (
@@ -527,7 +562,7 @@ export default function RightNow({
         // print a distance measured from a place the user isn't standing at.
         .map(({ p, dist }) => ({ ...p, distance_m: hasFix ? dist : undefined }))
     );
-  }, [matched, openOnly, closingSoonOnly, hasFix]);
+  }, [matched, openOnly, openThin, closingSoonOnly, hasFix]);
 
   const parksRows = useMemo(() => parksExplorer ? nearbyParksRows(results) : [], [parksExplorer, results]);
 
@@ -616,13 +651,34 @@ export default function RightNow({
   // vintage") when one is set, otherwise the craving/meal ("Shops"). Without
   // this, arriving from a Today sub like Shop → Thrift still read "Shops".
   const headingNoun = facetDefs.find((f) => f.key === facetKey)?.label ?? active.label;
-  const availabilityLead = openOnly || craving?.alwaysOpen
-    ? null
-    : rankingAvailability === "required"
-      ? "open" as const
-      : "available" as const;
-  const sortLabel = rightNowSortLabel(sort, hasRankingOrigin, availabilityLead);
-  const activeFilterCount = Number(Boolean(facetKey)) + Number(openOnly) + Number(closingSoonOnly) + Number(sort !== "smart");
+  const openFirst = !openOnly && !craving?.alwaysOpen &&
+    rightNowHasOpenTier(rankingAvailability, hasRankingOrigin);
+  const orderSentence = rightNowOrderSentence(sort, hasRankingOrigin, {
+    openFirst,
+    closedLast: !openFirst && results.some((place) => place.open_status.state === "closed"),
+  });
+  const countSentence = nearbyCountSentence({
+    mode: legacyHoursFilter
+      ? "legacy-filter"
+      : !supportsHours
+        ? "no-hours"
+        : closingSoonOnly
+          ? "closing-soon"
+          : openOnly && !openThin
+            ? "open-only"
+            : "hours",
+    total: matched.length,
+    openCount: closingSoonOnly ? closingSoonCount : openCount,
+    mayReportNoneOpen,
+    phrase: meal?.phrase,
+  });
+  const summary = matched.length === 0
+    ? `No places ${townName ? `in ${townName}` : "in the county"} match.`
+    : `${orderSentence} ${countSentence}`;
+  const thinArea = townName ? `in ${townName}` : hasFix ? "nearby" : "in the county";
+  // Open now sits outside the sheet, so the sheet's badge counts only what
+  // the sheet itself holds.
+  const activeFilterCount = Number(Boolean(facetKey)) + Number(closingSoonOnly) + Number(sort !== "smart");
   const areaLabel = scope === "county"
     ? "across Frederick County"
     : townName
@@ -677,28 +733,11 @@ export default function RightNow({
           >
             {headingNoun} {areaLabel}
           </h1>
-          {/* Meals frame the count on the CLOCK fact ("open for dinner now")
-              — never a service claim. Nouns keep the plain "open now". */}
-          <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
-            {matched.length === 0
-              ? `No matching places ${townName ? `in ${townName}` : "in the county"} · ${sortLabel}`
-              : legacyHoursFilter
-                ? `${closingSoonOnly ? closingSoonCount : openCount} places match this hours filter · ${sortLabel}`
-              : requestedAvailability === "not-applicable"
-                ? `${matched.length} ${matched.length === 1 ? "place" : "places"} ${origin ? "nearby" : "in the county"} · ${sortLabel}`
-              : meal
-              ? openCount > 0
-                ? `${openCount} open ${meal.phrase} right now · ${sortLabel}`
-                : mayReportNoneOpen
-                  ? `No matches are open ${meal.phrase} right now · ${sortLabel}`
-                  : `No matches are confirmed open ${meal.phrase} right now · ${sortLabel}`
-                : craving?.alwaysOpen
-                ? `${matched.length} ${matched.length === 1 ? "place" : "places"} · ${sortLabel}`
-                : openOnly
-                  ? `${openNowCountLabel(openCount, mayReportNoneOpen)} · ${sortLabel}`
-                  : townName
-                    ? `${openNowCountLabel(openCount, mayReportNoneOpen)} · ${matched.length} in ${townName} · ${sortLabel}`
-                    : `${openNowCountLabel(openCount, mayReportNoneOpen)} · ${matched.length} ${origin ? "nearby" : "in the county"} · ${sortLabel}`}
+          {/* The order the list really shows, then the counts as supporting
+              detail. Meals frame the count on the clock fact ("open for
+              dinner"), never a service claim. */}
+          <p className={styles.answerSummary} data-nearby-summary>
+            {summary}
           </p>
         </div>
       </header>
@@ -712,13 +751,18 @@ export default function RightNow({
         </button>
       </aside>}
 
-      <div className={styles.mobileFilters} data-nearby-filter-dock>
-        <p className={styles.filterSummary}>
-          {[
-            facetDefs.find((facet) => facet.key === facetKey)?.label ?? (facetDefs.length > 0 ? "All types" : "All places"),
-            closingSoonOnly ? "Closing soon" : openOnly ? "Confirmed open" : null,
-          ].filter(Boolean).join(" · ")}
-        </p>
+      <div className={styles.filterDock} data-nearby-filter-dock>
+        <div className={styles.quickFilters}>
+          {supportsHours && (
+            <FilterChip label="Open now" active={openOnly} onClick={() => updateQuery({ openOnly: !openOnly })} />
+          )}
+          <p className={styles.filterSummary}>
+            {[
+              facetDefs.find((facet) => facet.key === facetKey)?.label ?? (facetDefs.length > 0 ? "All types" : "All places"),
+              closingSoonOnly ? "Closing soon" : null,
+            ].filter(Boolean).join(" · ")}
+          </p>
+        </div>
         <button
           ref={filterOpenerRef}
           type="button"
@@ -769,7 +813,7 @@ export default function RightNow({
               <SheetHandle onClose={dismiss} closeLabel="Close filters & sort" />
               <header className={styles.sheetHeader}>
                 <h2>Filters &amp; sort</h2>
-                <p>{active.label} · {townName ?? (scope === "county" ? "Whole county" : "Nearby")}</p>
+                <p>{active.label} · {scopeLabel(scope)}</p>
               </header>
               <div className={styles.sheetBody}>
                 <NearbyRefinementControls
@@ -786,7 +830,7 @@ export default function RightNow({
                   type="button"
                   className={styles.resetFilters}
                   onClick={() => setFilterDraft((draft) => draft ? changeNearbyQuery(draft, {
-                    facetKey: null, openOnly: false, closingSoonOnly: false, sort: "smart",
+                    facetKey: null, closingSoonOnly: false, sort: "smart",
                   }) : draft)}
                 >
                   Reset
@@ -809,16 +853,18 @@ export default function RightNow({
           town (a town scope makes "nearest to you" moot). With a fix we silently
           show real walk times; without one we say so and offer the button —
           never a distance we can't stand behind. */}
-      {!hasFix && !townKey && (
+      {/* In Whole county the header is the way to switch to Near me, so this
+          row only appears where it refines the area already chosen. */}
+      {!hasFix && !townKey && scope !== "county" && (
         state.status === "denied" || state.status === "unavailable" ? (
           <div
             role="status"
-            className="flex min-h-[48px] items-center gap-2.5 border-y px-1 py-2.5"
+            className={`flex min-h-[48px] items-center gap-2.5 border-b px-1 py-2.5 ${styles.underDock}`}
             style={{ borderColor: "var(--app-border)" }}
           >
             <Navigation className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
             <span className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-              Location is off. Showing {scope === "county" || approxStatus === "outside-county"
+              Location is off. Showing {approxStatus === "outside-county"
                 ? "county-wide results"
                 : usableApproxCity
                   ? `results approximately near ${usableApproxCity}`
@@ -830,10 +876,10 @@ export default function RightNow({
             type="button"
             onClick={activateMyLocation}
             disabled={state.status === "loading"}
-            className="tactile-interactive flex min-h-[48px] w-full items-center gap-2.5 border-y px-1 py-2.5 text-left disabled:cursor-wait disabled:opacity-70"
+            className={`tactile-interactive flex min-h-[48px] w-full items-center gap-2.5 border-b px-1 py-2.5 text-left disabled:cursor-wait disabled:opacity-70 ${styles.underDock}`}
             style={{ borderColor: "var(--app-border)" }}
           >
-            <Navigation className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
+            <Navigation className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-link)" }} aria-hidden />
             <span className="min-w-0 flex-1 text-[13px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
               {state.status === "loading"
                 ? "Getting your location…"
@@ -847,55 +893,38 @@ export default function RightNow({
         )
       )}
 
+      {openThin && (
+        <p className={styles.thinNote} data-nearby-open-thin role="status">
+          {openNowThinNote({ nearbyOpen: openNearbyCount, area: thinArea, phrase: meal?.phrase, closestOpen: closestOpenBeyond })}
+        </p>
+      )}
+
       {results.length === 0 && townName && matched.length === 0 && nearbyTownFallback.length > 0 ? (
-        <section aria-labelledby="nearby-town-fallback-heading" className="space-y-3">
-          <div
-            className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5"
-            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-          >
-            <h2 id="nearby-town-fallback-heading" className="text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              Nearby options beyond town
-            </h2>
-            <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              Radius has no matching listing for {activeNoun} in {townName} yet. These are the closest matches outside town; each card shows what Radius can confirm about its hours.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => chooseTown(null)}
-                className="tactile-interactive inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
-                style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
-              >
-                Search all towns
-              </button>
-              <Link
-                href="/submit/place"
-                className="tactile-interactive inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
-                style={{ background: "var(--app-bg-elevated)", color: "var(--app-brand-press)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
-              >
-                Tell us what&rsquo;s missing
-              </Link>
-            </div>
+        <section aria-labelledby="nearby-town-fallback-heading" className={styles.emptyState}>
+          <h2 id="nearby-town-fallback-heading" className={styles.emptyTitle}>
+            Nearby options beyond {townName}
+          </h2>
+          <p className={styles.emptyText}>
+            Radius has no matching listing for {activeNoun} in {townName} yet. These are the closest matches outside town, and each row shows what Radius can confirm about its hours.
+          </p>
+          <div className={styles.emptyActions}>
+            <Button variant="secondary" onClick={searchWholeCounty}>Search the whole county</Button>
+            <Button variant="quiet" href="/submit/place">Tell us what&rsquo;s missing</Button>
           </div>
-          <ul className="space-y-2" aria-label={`${activeNoun} options outside ${townName}`}>
+          <ul className={styles.rowList} aria-label={`${activeNoun} options outside ${townName}`}>
             {nearbyTownFallback.map(({ place, distance }) => (
               <li key={place.slug}>
-                <p className="mb-1 px-2 font-mono text-[9px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-                  {MUNICIPALITY_BY_SLUG[place.municipality ?? ""]?.name ?? place.city}
-                  {` · ${(distance / 1609).toFixed(distance < 16090 ? 1 : 0)} mi from ${townName}`}
+                <p className={styles.rowContext}>
+                  {MUNICIPALITY_BY_SLUG[place.municipality ?? ""]?.name ?? place.city}, {formatDistance(distance)} from {townName}
                 </p>
-                <PlaceCard place={place} variant="discovery" discoverySurface="nearby" lazyPhoto={!parksExplorer}
-                  discoveryIntent={parksExplorer ? "parks" : undefined} />
+                <PlaceCard place={place} variant="row" hoursInMeta lazyPhoto />
               </li>
             ))}
           </ul>
         </section>
       ) : results.length === 0 ? (
-        <div
-          className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <p className="text-sm" style={{ color: "var(--app-ink-3)" }}>
+        <div className={styles.emptyState}>
+          <p className={styles.emptyText}>
             {townName
               ? matched.length === 0
                 ? `Radius has no verified listing for ${activeNoun} in ${townName} yet.`
@@ -910,48 +939,26 @@ export default function RightNow({
                     ? `No matches for ${activeNoun} ${meal.phrase} are confirmed open near you right now.`
                     : `Radius found no options for ${activeNoun} ${hasFix ? "near you" : "in range"} right now.`}
           </p>
-          {/* Clear the town scope, the closing-soon filter, or (when Open-now
-              hides matches that are closed or have unknown hours) offer the
-              complete result set — never dead-end. */}
+          {/* Clear the town lens, the closing-soon filter, or Open now. Never
+              dead-end. */}
           {townName ? (
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => chooseTown(null)}
-                className="tactile-interactive inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
-                style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
-              >
-                Search all towns
-              </button>
+            <div className={styles.emptyActions}>
+              <Button variant="secondary" onClick={searchWholeCounty}>Search the whole county</Button>
               {matched.length === 0 ? (
-                <Link
-                  href="/submit/place"
-                  className="tactile-interactive inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
-                  style={{ background: "var(--app-bg-elevated)", color: "var(--app-brand-press)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
-                >
-                  Tell us what&rsquo;s missing
-                </Link>
+                <Button variant="quiet" href="/submit/place">Tell us what&rsquo;s missing</Button>
               ) : null}
             </div>
           ) : closingSoonOnly ? (
-            <button
-              type="button"
-              onClick={() => updateQuery({ closingSoonOnly: false })}
-              className="tactile-interactive mt-3 inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
-              style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
-            >
-              Show all open
-            </button>
+            <div className={styles.emptyActions}>
+              <Button variant="secondary" onClick={() => updateQuery({ closingSoonOnly: false })}>Show all open</Button>
+            </div>
           ) : (
             openOnly && matched.length > 0 && (
-              <button
-                type="button"
-                onClick={() => updateQuery({ openOnly: false })}
-                className="tactile-interactive mt-3 inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
-                style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
-              >
-                Show all {matched.length} matches
-              </button>
+              <div className={styles.emptyActions}>
+                <Button variant="secondary" onClick={() => updateQuery({ openOnly: false })}>
+                  Show all {matched.length} matches
+                </Button>
+              </div>
             )
           )}
         </div>
@@ -963,10 +970,14 @@ export default function RightNow({
             <PlaceCard place={place} variant="discovery" discoverySurface="nearby" discoveryIntent="parks" />
             {place.distance_m !== undefined && <span className="sr-only">{walkLabel(place.distance_m)}</span>}
           </li>))}
-        </ul> : <ul className="space-y-2">
+        </ul> : <ul className={styles.rowList} data-nearby-results aria-label={`${headingNoun} ${areaLabel}`}>
           {results.map((p) => (
             <li key={p.slug}>
-              <PlaceCard place={p} variant="discovery" discoverySurface="nearby" lazyPhoto />
+              {/* Ruled rows: a photo only when a real one exists, the town
+                  and any unknown hours in the muted line, and a status line
+                  only for hours Radius can state. Directions live in the
+                  place sheet, so no row carries a filled action. */}
+              <PlaceCard place={p} variant="row" hoursInMeta lazyPhoto />
               {p.distance_m !== undefined && <span className="sr-only">{walkLabel(p.distance_m)}</span>}
             </li>
           ))}
@@ -999,9 +1010,9 @@ function NearbyRefinementControls({
         <fieldset className={styles.controlSection}>
           <legend className={styles.controlTitle}>Type</legend>
           <div className={styles.controlChoices}>
-            <FacetChip label="All" active={value.facetKey === null} color="var(--app-brand)" onClick={() => onChange({ facetKey: null })} />
+            <FilterChip label="All" active={value.facetKey === null} onClick={() => onChange({ facetKey: null })} />
             {facets.map((facet) => (
-              <FacetChip key={facet.key} label={facet.label} active={value.facetKey === facet.key} color="var(--app-brand)" onClick={() => onChange({ facetKey: facet.key })} />
+              <FilterChip key={facet.key} label={facet.label} active={value.facetKey === facet.key} onClick={() => onChange({ facetKey: facet.key })} />
             ))}
           </div>
         </fieldset>
@@ -1017,62 +1028,25 @@ function NearbyRefinementControls({
             }}>Show all matches</button>
         </fieldset>
       )}
-      {supportsHours && (
+      {supportsHours && (value.closingSoonOnly || closingSoonCount > 0) && (
         <fieldset className={styles.controlSection}>
           <legend className={styles.controlTitle}>Hours</legend>
           <div className={styles.controlChoices}>
-            <FacetChip label="Open now" active={value.openOnly} color="var(--app-brand)" onClick={() => onChange({ openOnly: !value.openOnly })} />
-            {(value.closingSoonOnly || closingSoonCount > 0) && (
-              <FacetChip label="Closing soon" active={value.closingSoonOnly} color="var(--app-brand)" onClick={() => onChange({ closingSoonOnly: !value.closingSoonOnly })} />
-            )}
+            <FilterChip label="Closing soon" active={value.closingSoonOnly} onClick={() => onChange({ closingSoonOnly: !value.closingSoonOnly })} />
           </div>
-          <p className={styles.controlHelp}>Open now includes places with confirmed current hours.</p>
+          <p className={styles.controlHelp}>Places with confirmed hours that close within the hour.</p>
         </fieldset>
       )}
       <fieldset ref={sortGroupRef} tabIndex={-1} className={styles.controlSection}>
         <legend className={styles.controlTitle}>Sort</legend>
         <div className={styles.controlChoices}>
-          <FacetChip label="Smart" active={value.sort === "smart"} color="var(--app-brand)" onClick={() => onChange({ sort: "smart" })} />
+          <FilterChip label="Smart" active={value.sort === "smart"} onClick={() => onChange({ sort: "smart" })} />
           {hasRankingOrigin && (
-            <FacetChip label="Nearest" active={value.sort === "nearest"} color="var(--app-brand)" onClick={() => onChange({ sort: "nearest" })} />
+            <FilterChip label="Nearest" active={value.sort === "nearest"} onClick={() => onChange({ sort: "nearest" })} />
           )}
-          <FacetChip label="Top rated" active={value.sort === "rated"} color="var(--app-brand)" onClick={() => onChange({ sort: "rated" })} />
+          <FilterChip label="Top rated" active={value.sort === "rated"} onClick={() => onChange({ sort: "rated" })} />
         </div>
       </fieldset>
     </div>
-  );
-}
-
-/** A sub-facet pill on the results page. Active = a wash of the craving's own
- *  ink with an ink label; inactive = a quiet outline. Pure + presentational. */
-function FacetChip({
-  label,
-  active,
-  color,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  color: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className="tap-44-y tactile-interactive min-h-11 min-w-11 rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
-      style={
-        active
-          ? {
-              background: `color-mix(in srgb, ${color} 15%, transparent)`,
-              color: "var(--app-ink)",
-              boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 34%, transparent)`,
-            }
-          : { background: "var(--app-bg-elevated)", color: "var(--app-ink-3)", boxShadow: "inset 0 0 0 1px var(--app-border)" }
-      }
-    >
-      {label}
-    </button>
   );
 }
