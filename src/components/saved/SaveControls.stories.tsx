@@ -343,7 +343,9 @@ const sourcedEvent = {
   title: "Evening concert",
   source: "weinberg",
   source_url: "https://weinbergcenter.org/events/evening-concert",
-  last_verified_at: "2029-10-08T10:00:00-04:00",
+  // FreshnessChip reads the real clock, not the wallet's `now`, so the check
+  // time is two hours before the moment the story renders.
+  last_verified_at: new Date(Date.now() - 2 * 3_600_000).toISOString(),
   is_verified: false,
 } satisfies Event;
 
@@ -357,8 +359,10 @@ export const RaisedEventSourceNote: Story = {
     const canvas = within(canvasElement);
     // The raised stub fades in. Wait for that reveal before asserting.
     await waitFor(() => expect(canvas.getByText(
-      "This listing comes from Weinberg Center for the Arts. It was checked at the source 2 hours ago.",
+      "This listing comes from Weinberg Center for the Arts.",
     )).toBeVisible());
+    // The shared chip, the same wording the event page and place sheet use.
+    await expect(canvas.getByText("Event checked at source · 2h ago")).toBeVisible();
     const source = canvas.getByRole("link", { name: /Official event page/ });
     await expect(source).toHaveAttribute("href", "https://weinbergcenter.org/events/evening-concert");
     await expect(source).toHaveAttribute("target", "_blank");

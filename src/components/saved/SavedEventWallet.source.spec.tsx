@@ -39,12 +39,13 @@ function markup(events: Event[]) {
 }
 
 describe("saved event wallet source note", () => {
-  it("shows the publisher, the Radius check, and a safe official page link", () => {
+  it("shows the publisher and a safe official page link", () => {
     const html = markup([event()]);
     expect(html).toContain("data-event-listing-note");
-    expect(html).toContain(
-      "This listing comes from Weinberg Center for the Arts. It was checked at the source 2 hours ago.",
-    );
+    expect(html).toContain("This listing comes from Weinberg Center for the Arts.");
+    // The check time comes from the shared FreshnessChip, which renders only
+    // after hydration, so the server markup never carries a stale age.
+    expect(html).not.toContain("checked at source");
     expect(html).toContain('href="https://weinbergcenter.org/events/sample-show"');
     expect(html).toContain("Official event page");
     expect(html).toContain('target="_blank"');
@@ -54,6 +55,13 @@ describe("saved event wallet source note", () => {
   it("omits the note when the saved row has no source", () => {
     const html = markup([event({ source: undefined, source_url: "javascript:alert(1)", last_verified_at: undefined })]);
     expect(html).not.toContain("data-event-listing-note");
+    expect(html).not.toContain("Official event page");
+    expect(html).not.toContain("javascript:");
+  });
+
+  it("never links a javascript: source URL", () => {
+    const html = markup([event({ source_url: "javascript:alert(1)" })]);
+    expect(html).toContain("This listing comes from Weinberg Center for the Arts.");
     expect(html).not.toContain("Official event page");
     expect(html).not.toContain("javascript:");
   });
