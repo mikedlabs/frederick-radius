@@ -123,6 +123,27 @@ describe("classifyEvent", () => {
     }
   });
 
+  // Review finding (PR 1967): a reason the word list does not know made a
+  // clear office closure public again. After the subject, the verb and a
+  // reason joiner, the rest of the title is the reason.
+  it("lanes closures that state a reason the word list does not know", () => {
+    for (const title of [
+      "Office Closed for Primary Election",
+      "Office Closed due to a water main break",
+      "Town Offices Closed for Annual Inventory",
+      "Centers are Closed due to Winter Storm Warning",
+      "FCPL Libraries Closed because of a power failure",
+      "Thurmont Town Office Closed on Account of Staff Shortage",
+      "Government Office Closed in Observance of Maryland Day",
+      "Library Closes Early for Building Maintenance",
+      "Town Hall Closed for Repairs",
+    ]) {
+      expect(isClosureNotice(title), title).toBe(true);
+      expect(classifyEvent({ title }), title).toBe("closure_notice");
+      expect(isPublicEvent({ title }), title).toBe(false);
+    }
+  });
+
   it("does not treat a title that merely mentions closing as a closure", () => {
     for (const title of [
       "Office Closed: The Musical",
@@ -145,6 +166,9 @@ describe("classifyEvent", () => {
       "Thurmont Closed",
       "Closed Captioned Screening at the Library",
       "Ice Cream Social - Closed Early",
+      // A reason joiner without a facility subject is still not a closure.
+      "Closed for Good: A Farewell Concert",
+      "Office Hours for New Businesses",
     ]) {
       expect(isClosureNotice(title), title).toBe(false);
       expect(classifyEvent({ title }), title).not.toBe("closure_notice");

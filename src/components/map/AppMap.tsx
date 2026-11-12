@@ -289,6 +289,8 @@ import { useInitialPlaceCameraFocus } from "./useInitialPlaceCameraFocus";
 import {
   arrivalSearchFrameKey,
   intentFrameKey,
+  navigatedSearchFrameKey,
+  searchFramePointsFromRows,
   searchFrameRequest,
   useSearchResultFraming,
   type SearchFrameRequest,
@@ -870,6 +872,13 @@ export default function AppMap({
   const searchFramePendingRef = useRef<SearchFrameRequest | null>(null);
   const searchFrameGestureRef = useRef(false);
   const searchFrameArrivalCheckedRef = useRef(false);
+  // Arm one frame request for a search that arrived in the URL: on mount, and
+  // again when a navigation replaces the search while this map stays mounted.
+  const armSearchFrame = useCallback((key: string | null) => {
+    if (!isBrowseMap || !key) return;
+    searchFrameGestureRef.current = false;
+    searchFramePendingRef.current = searchFrameRequest(key);
+  }, [isBrowseMap]);
   // `reuseMaps` keeps the GL instance warm across route changes. That is a
   // major speed win, but Mapbox can then retain the camera from the previous
   // mount and ignore the new component's `initialViewState`. Re-apply an
@@ -1261,12 +1270,15 @@ export default function AppMap({
       }
     }
     if (liveRouteQuery !== searchLiveQueryRef.current) {
+      // A navigation that replaced the search frames its results once, the
+      // same as a fresh arrival, even though this reused map stayed mounted.
+      armSearchFrame(navigatedSearchFrameKey(window.location.search, searchLiveQueryRef.current));
       searchLiveQueryRef.current = liveRouteQuery;
       invalidateTemporaryMapboxRetrieve();
       setQ(liveRouteQuery);
       setSubmittedQuery(liveRouteQuery.trim());
     }
-  }, [invalidateTemporaryMapboxRetrieve, routeQuery]);
+  }, [armSearchFrame, invalidateTemporaryMapboxRetrieve, routeQuery]);
   // Back and Forward are browser actions, so restore their exact query from
   // the address bar immediately instead of waiting for Next's route snapshot
   // to settle. Under a busy map load that snapshot can arrive late enough for
@@ -1279,13 +1291,14 @@ export default function AppMap({
       ).slice(0, 160);
       setSubmittedQuery(next.trim());
       if (next === searchLiveQueryRef.current) return;
+      armSearchFrame(navigatedSearchFrameKey(window.location.search, searchLiveQueryRef.current));
       searchLiveQueryRef.current = next;
       invalidateTemporaryMapboxRetrieve();
       setQ(next);
     };
     window.addEventListener("popstate", restoreBrowserQuery);
     return () => window.removeEventListener("popstate", restoreBrowserQuery);
-  }, [invalidateTemporaryMapboxRetrieve]);
+  }, [armSearchFrame, invalidateTemporaryMapboxRetrieve]);
   const [searchMatches, setSearchMatches] = useState<SearchResult[]>([]);
   const [searchMatchesQuery, setSearchMatchesQuery] = useState("");
   const [searchSettledQuery, setSearchSettledQuery] = useState("");
@@ -4487,19 +4500,14 @@ export default function AppMap({
     : submittedQuery.length >= 2 && submittedQuery === q.trim()
       ? searchSettledQuery === submittedQuery ? `q:${submittedQuery}` : null
       : dock?.intentKey ? intentFrameKey(dock.intentKey, dock.subKey) : null;
-  const searchFramePoints = [
-    ...(rankedPlaces ?? []).map((place) => place.geom),
-    ...(rankedEvents ?? []).map((event) => ({ lng: event.lng, lat: event.lat })),
-  ];
+  // The list's own ranking decides the frame, so leading events count ahead
+  // of lower-ranked places within the frame's result limit.
+  const searchFramePoints = searchFramePointsFromRows(taskList?.rows);
   useEffect(() => {
     if (!isBrowseMap || !mapLoaded || searchFrameArrivalCheckedRef.current) return;
     searchFrameArrivalCheckedRef.current = true;
-    const key = arrivalSearchFrameKey(window.location.search);
-    if (key) {
-      searchFrameGestureRef.current = false;
-      searchFramePendingRef.current = searchFrameRequest(key);
-    }
-  }, [isBrowseMap, mapLoaded]);
+    armSearchFrame(arrivalSearchFrameKey(window.location.search));
+  }, [armSearchFrame, isBrowseMap, mapLoaded]);
   useSearchResultFraming({
     pendingRef: searchFramePendingRef,
     settledKey: searchFrameSettledKey,
@@ -4511,12 +4519,14 @@ export default function AppMap({
       nearbyArrivalFitPending({
         autoFitNearbyScope,
         fitApplied: nearbyRouteCameraAppliedRef.current,
-        scope: getScope(),
+        search: window.location.search,
+        storedScope: getScope(),
       }) ||
       activeSceneId !== null ||
       Boolean(sceneCameraPendingRef.current) ||
       Boolean(initialPlaceCameraPendingRef.current) ||
-      Boolean(selectedSlug),
+      Boolean(selectedSlug) ||
+      Boolean(selectedEvent),
     markCameraIntent: () => { cameraIntentRef.current = true; },
   });
 

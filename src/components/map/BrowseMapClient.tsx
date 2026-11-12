@@ -126,6 +126,23 @@ function isTimeMode(s: string | undefined): s is TimeMode {
   return s === "now" || s === "tonight" || s === "weekend" || s === "all";
 }
 
+/** True when the arrival URL already chose a view (layers, windows, lenses,
+ * filters, searches, targets), so the cold-open smart default stays silent.
+ * `place` and `event` count only when they name an entity: an arrival from a
+ * place or event page must open on it, not on a suggested scene that owns the
+ * camera, while an empty `?place=` names nothing. */
+export function mapArrivalCarriesExplicitView(
+  sp: Pick<URLSearchParams, "has" | "get">,
+): boolean {
+  const explicitStateKeys = [
+    "show", "t", "music", "deals", "intent", "sub", "open", "q", "at",
+    "c", "in", "amenity", "aerial", "scene",
+  ];
+  const arrivalEntityKeys = ["place", "event"];
+  return explicitStateKeys.some((key) => sp.has(key)) ||
+    arrivalEntityKeys.some((key) => Boolean(sp.get(key)?.trim()));
+}
+
 export default function BrowseMapClient({
   dealSlugsToday,
   countyBoundary,
@@ -474,14 +491,8 @@ export default function BrowseMapClient({
   const [smartDefault, setSmartDefault] = useState<SmartMapDefault | null>(null);
   useEffect(() => {
     if (smartDefaultResolved.current || !smartSignals) return;
-    const explicitStateKeys = [
-      // `place` and `event`: an arrival from a place or event page must open
-      // on that entity, not on a suggested scene that owns the camera.
-      "show", "t", "music", "deals", "intent", "sub", "open", "q", "at",
-      "c", "in", "amenity", "aerial", "scene", "place", "event",
-    ];
     smartDefaultResolved.current = true;
-    if (explicitStateKeys.some((key) => sp.has(key))) return;
+    if (mapArrivalCarriesExplicitView(sp)) return;
     const timer = window.setTimeout(() => {
       setSmartDefault(
         smartMapDefault(easternMoment(now), {

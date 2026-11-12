@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import MapListPeek, { eventTimePlate } from "./MapListPeek";
+import MapListPeek, { eventTimePlate, searchSubtitleBeyondLocation } from "./MapListPeek";
 import type { MapTaskList } from "./mapListTask";
 import type { EventPin, MapPinPlace } from "./types";
 
@@ -70,6 +70,19 @@ describe("MapListPeek", () => {
 
     const withFix = render({ userLoc: { lng: -77.42, lat: 39.414 } });
     expect(withFix).toContain("from you");
+  });
+
+  it("keeps a qualified search caveat without repeating the category and town", () => {
+    expect(searchSubtitleBeyondLocation("Coffee · Brunswick · Not confirmed: Wi-Fi.", "Coffee · Brunswick"))
+      .toBe("Not confirmed: Wi-Fi.");
+    expect(searchSubtitleBeyondLocation("Coffee · Brunswick", "Coffee · Brunswick")).toBeNull();
+    expect(searchSubtitleBeyondLocation("Drive-through window", "Coffee · Brunswick")).toBe("Drive-through window");
+    expect(searchSubtitleBeyondLocation("  ", "Coffee · Brunswick")).toBeNull();
+
+    const html = render({ list: list({ rows: [{ kind: "place", place: place("wifi-cafe", { municipality: "brunswick" }),
+      searchSubtitle: "Coffee · Brunswick · Not confirmed: noise level." }] }) });
+    expect(html.match(/Coffee · Brunswick/g)).toHaveLength(1);
+    expect(html).toContain("Not confirmed: noise level.");
   });
 
   it("keeps an immediate category fallback for places without an exact reviewed photo", () => {

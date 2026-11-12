@@ -161,5 +161,6 @@ describe("smart default wiring contracts (map program phase 1)", () => {
       expect(browse).toContain(key);
     }
     expect(browse).toContain("explicitStateKeys.some((key) => sp.has(key))");
+    expect(browse).toContain("if (mapArrivalCarriesExplicitView(sp)) return;");
   });
 });

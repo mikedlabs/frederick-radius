@@ -86,6 +86,11 @@ export default function MapSpotPeek({
             paddingTop: 9,
           }}
         >
+          {/* Every distance below is measured from the selected spot, so the
+              group names that origin once instead of on each line. */}
+          <p data-map-spot-distance-origin style={{ color: "var(--app-ink-2)" }}>
+            Distances are measured from this spot.
+          </p>
           {context.place && (
             <button
               type="button"

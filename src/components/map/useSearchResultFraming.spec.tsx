@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   arrivalSearchFrameKey,
   intentFrameKey,
+  navigatedSearchFrameKey,
+  searchFramePointsFromRows,
   searchFrameRequest,
   SEARCH_FRAME_TTL_MS,
   useSearchResultFraming,
@@ -29,6 +31,38 @@ describe("arrivalSearchFrameKey", () => {
     expect(arrivalSearchFrameKey("?intent=eat&c=-77.41,39.41,13")).toBeNull();
     expect(arrivalSearchFrameKey("?q=pizza&place=brewers-alley-frederick")).toBeNull();
     expect(arrivalSearchFrameKey("")).toBeNull();
+  });
+});
+
+describe("navigatedSearchFrameKey", () => {
+  it("re-arms framing when a navigation replaces the reused map's search", () => {
+    expect(navigatedSearchFrameKey("?q=pizza", "coffee")).toBe("q:pizza");
+    expect(navigatedSearchFrameKey("?intent=eat&sub=coffee", "pizza")).toBe(intentFrameKey("eat", "coffee"));
+  });
+  it("leaves the map's own typing, a chip toggle and a restored camera alone", () => {
+    // Typing and chips update the live query before they write the URL.
+    expect(navigatedSearchFrameKey("?q=pizza", "pizza")).toBeNull();
+    expect(navigatedSearchFrameKey("?q=pizza", "pizza ")).toBeNull();
+    expect(navigatedSearchFrameKey("?intent=eat", "")).toBeNull();
+    // Back to a map URL with a camera restores that camera instead.
+    expect(navigatedSearchFrameKey("?q=pizza&c=-77.41,39.41,13", "coffee")).toBeNull();
+  });
+});
+
+describe("searchFramePointsFromRows", () => {
+  it("keeps the result list's ranking across places and events", () => {
+    const rows = [
+      { kind: "event", event: { lng: -77.3, lat: 39.5 } },
+      { kind: "place", place: { geom: { lng: -77.41, lat: 39.41 } } },
+      { kind: "event-link", result: {} },
+      { kind: "event", event: { lng: -77.2, lat: 39.6 } },
+    ] as unknown as Parameters<typeof searchFramePointsFromRows>[0];
+    expect(searchFramePointsFromRows(rows)).toEqual([
+      { lng: -77.3, lat: 39.5 },
+      { lng: -77.41, lat: 39.41 },
+      { lng: -77.2, lat: 39.6 },
+    ]);
+    expect(searchFramePointsFromRows(null)).toEqual([]);
   });
 });
 
@@ -90,6 +124,18 @@ describe("useSearchResultFraming", () => {
     expect(fitBounds).toHaveBeenCalledOnce();
   });
 
+  it("eases to a single result instead of fitting bounds, then consumes the request", async () => {
+    await render({ settledKey: intentFrameKey("eat", "coffee"), points: [coffee[0]] });
+    expect(fitBounds).not.toHaveBeenCalled();
+    expect(easeTo).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ center: [-77.4105, 39.4143], zoom: 15, essential: true }),
+    );
+    expect(markCameraIntent).toHaveBeenCalledOnce();
+    expect(pendingRef.current).toBeNull();
+    await render({ settledKey: intentFrameKey("eat", "coffee"), points: [{ ...coffee[0] }] });
+    expect(easeTo).toHaveBeenCalledOnce();
+  });
+
   it("never moves the camera after the visitor pans or zooms", async () => {
     gestured = true;
     await render({ settledKey: intentFrameKey("eat", "coffee") });
@@ -115,7 +161,7 @@ describe("useSearchResultFraming", () => {
         getMap: () => ({ getZoom: () => 10, easeTo, fitBounds }),
         hasUserGestureSincePending: () => gestured,
         hasOtherCameraOwner: () =>
-          nearbyArrivalFitPending({ autoFitNearbyScope: true, fitApplied: nearbyFitApplied, scope: "nearme" }),
+          nearbyArrivalFitPending({ autoFitNearbyScope: true, fitApplied: nearbyFitApplied, search: "?in=nearme", storedScope: null }),
         markCameraIntent,
       });
       return null;

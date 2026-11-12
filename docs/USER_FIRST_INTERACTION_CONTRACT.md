@@ -128,7 +128,9 @@ The map is an answer surface, not a layer manager.
   arrival URL takes precedence over Near me fitting and the cold-open smart
   default.
 - Every distance says what it is measured from: "from you" for the device fix,
-  "from map center" without one, or the selected place or venue it describes.
+  "from map center" without one, or the selected place, venue or map spot it
+  describes. A group of distances from one selected spot may name that origin
+  once above the group, as the spot peek does.
 - A task returns a small ranked set of candidates, not pins alone.
 - A selected result opens one complete mobile surface.
 - Browser Back closes that result before it leaves the map.

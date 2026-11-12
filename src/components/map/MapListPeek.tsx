@@ -67,6 +67,18 @@ export function eventTimePlate(event: Pick<EventPin, "starts_at" | "is_all_day">
   return { time, period };
 }
 
+/**
+ * The part of a search subtitle the row does not already print. Qualified
+ * search results carry "Category · Town · Not confirmed: Wi-Fi." while the
+ * location line above prints "Category · Town", so only the caveat remains.
+ */
+export function searchSubtitleBeyondLocation(subtitle: string | undefined, locationLine: string): string | null {
+  const text = subtitle?.trim();
+  if (!text || text === locationLine) return null;
+  const prefix = `${locationLine} · `;
+  return (text.startsWith(prefix) ? text.slice(prefix.length).trim() : text) || null;
+}
+
 function PlaceRow({
   place,
   userLoc,
@@ -104,6 +116,7 @@ function PlaceRow({
   const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name;
   const locationLine = [category?.name ?? place.category, town].filter(Boolean).join(" · ");
   const status = placeStatus(place);
+  const subtitle = searchSubtitleBeyondLocation(searchSubtitle, locationLine);
   // Distance is a promise about where the reader is. Without a real device
   // fix there is no honest origin, so the row says nothing about distance.
   const hasDestination = isValidCoord(place.geom);
@@ -164,10 +177,10 @@ function PlaceRow({
               </>
             )}
           </span>
-          {/* Search results often carry "Category · Town" as their subtitle,
-              which the location line above already prints. */}
-          {searchSubtitle && searchSubtitle.trim() !== locationLine && (
-            <span className="mt-0.5 block text-[12px] leading-snug text-[var(--app-ink-2)]">{searchSubtitle}</span>
+          {/* Search results often lead with "Category · Town", which the
+              location line above already prints. */}
+          {subtitle && (
+            <span className="mt-0.5 block text-[12px] leading-snug text-[var(--app-ink-2)]">{subtitle}</span>
           )}
         </span>
       </button>

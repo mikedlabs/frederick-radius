@@ -27,17 +27,28 @@ vi.mock("@/hooks/useGeolocation", async (importOriginal) => {
 const downtownFix = { lng: -77.4105, lat: 39.4143, accuracy: 25 };
 
 describe("nearbyArrivalFitPending", () => {
+  const pending = (fitApplied: boolean, storedScope: Parameters<typeof nearbyArrivalFitPending>[0]["storedScope"], search = "", autoFitNearbyScope = true) =>
+    nearbyArrivalFitPending({ autoFitNearbyScope, fitApplied, search, storedScope });
   it("owns the camera only until the one-time Near me arrival fit lands", () => {
-    expect(nearbyArrivalFitPending({ autoFitNearbyScope: true, fitApplied: false, scope: "nearme" })).toBe(true);
+    expect(pending(false, "nearme")).toBe(true);
     // Once the fit has landed, a later submitted search frames its results.
-    expect(nearbyArrivalFitPending({ autoFitNearbyScope: true, fitApplied: true, scope: "nearme" })).toBe(false);
+    expect(pending(true, "nearme")).toBe(false);
   });
   it("releases the camera when Near me falls back to the county or a town", () => {
-    expect(nearbyArrivalFitPending({ autoFitNearbyScope: true, fitApplied: false, scope: "county" })).toBe(false);
-    expect(nearbyArrivalFitPending({ autoFitNearbyScope: true, fitApplied: false, scope: "town:brunswick" })).toBe(false);
+    expect(pending(false, "county")).toBe(false);
+    expect(pending(false, "town:brunswick")).toBe(false);
+  });
+  it("reads an explicit `in=nearme` arrival from the URL when that scope is not stored", () => {
+    // A shared Near me link does not persist its scope, so the stored county
+    // choice must not release the camera before the Near me fit lands.
+    expect(pending(false, "county", "?in=nearme&q=coffee")).toBe(true);
+    expect(pending(false, null, "?in=nearme")).toBe(true);
+    // The fallback deletes `in=` and stores the county, which releases it.
+    expect(pending(false, "county", "?q=coffee")).toBe(false);
+    expect(pending(false, "nearme", "?in=town:brunswick")).toBe(false);
   });
   it("never claims the camera for an entry that was not a Near me arrival", () => {
-    expect(nearbyArrivalFitPending({ autoFitNearbyScope: false, fitApplied: false, scope: "nearme" })).toBe(false);
+    expect(pending(false, "nearme", "?in=nearme", false)).toBe(false);
   });
 });
 

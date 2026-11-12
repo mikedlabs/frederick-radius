@@ -57,7 +57,9 @@ const RE_ADMIN_NOTICE = /\b(?:newsletter\s+)?articles?\s+(?:(?:is|are)\s+)?due\s
 // Any other word makes the title public. That is what keeps "Office Closed:
 // The Musical", "Closed Loop Recycling Workshop", "Closing Reception" and
 // "Library Closed Stacks Tour" public. A title with no facility subject also
-// needs a reason, so "Closed" and "Closed for Business" stay public too.
+// needs a reason, so "Closed" and "Closed for Business" stay public too. The
+// one exception to the closed word list is a reason stated after a joiner,
+// handled by RE_CLOSURE_TERMINAL_REASON below.
 const HOLIDAY =
   "(?:new\\s+year(?:'s|s)?(?:\\s+(?:day|eve))?|(?:dr\\.?\\s+)?martin\\s+luther\\s+king(?:,?\\s+jr\\.?)?(?:'s)?(?:\\s+day)?|mlk(?:\\s+day)?|president(?:s|'s|s')?\\s+day|washington'?s\\s+birthday|good\\s+friday|easter(?:\\s+(?:sunday|monday))?|memorial\\s+day|juneteenth|independence\\s+day|(?:the\\s+)?fourth\\s+of\\s+july|july\\s+4(?:th)?|labor\\s+day|columbus\\s+day|indigenous\\s+people(?:s|'s|s')?\\s+day|veteran(?:s|'s|s')?\\s+day|election\\s+day|(?:the\\s+)?day\\s+after\\s+thanksgiving|thanksgiving(?:\\s+day)?|american\\s+indian\\s+heritage\\s+day|christmas(?:\\s+(?:day|eve))?|(?:winter|spring)\\s+break|holidays?|observed|observance)";
 // Places that lead a facility name: the county's towns and library branches.
@@ -134,8 +136,23 @@ function closureTokenKinds(title: string): ClosureTokenKind[] | null {
   return kinds;
 }
 
+// A facility subject, a closure verb and then "for", "on", "due to",
+// "because of" or "in observance of" start a stated reason, and whatever
+// follows is that reason: "Office Closed for Primary Election", "Office
+// Closed due to a water main break". The title must open with the subject
+// and the verb, so "Closed for Business" (no subject), "Office Closed: The
+// Musical" (a colon, not a reason joiner) and "Library Closed Stacks Tour"
+// (no joiner) stay public.
+const RE_CLOSURE_TERMINAL_REASON = new RegExp(
+  `^${CLOSURE_SUBJECT}\\s+(?:(?:is|are|will\\s+be)\\s+)?${CLOSURE_VERB}\\s+` +
+    "(?:for|on|due\\s+to|because\\s+of|in\\s+observance\\s+of)\\s+[a-z0-9]",
+  "i",
+);
+
 /** True when a feed title announces a closure rather than an event. Pure. */
 export function isClosureNotice(title: string): boolean {
+  const normalized = (title ?? "").replace(/[‘’]/g, "'").trim();
+  if (RE_CLOSURE_TERMINAL_REASON.test(normalized)) return true;
   const kinds = closureTokenKinds(title);
   if (!kinds || !kinds.includes("verb")) return false;
   return kinds.includes("subject") || kinds.includes("reason");

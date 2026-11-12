@@ -16,7 +16,7 @@ import {
   readCachedPosition,
   useGeolocation,
 } from "@/hooks/useGeolocation";
-import { getScope, setScope, subscribeScopeChange, SCOPE_PARAM, type Scope } from "@/lib/scope";
+import { getScope, parseScope, setScope, subscribeScopeChange, SCOPE_PARAM, type Scope } from "@/lib/scope";
 import { replaceMapUrl } from "@/lib/map-url-state";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
@@ -30,16 +30,25 @@ import {
 /** The latched Near me arrival fit owns the camera only while it is still
  * pending: once its one-mile fit has landed, or the scope has left Near me (a
  * missing, denied or out-of-county fix falls back to the county), it releases
- * the camera so a later submitted search can frame its own results. */
+ * the camera so a later submitted search can frame its own results.
+ *
+ * The scope is read the way the arrival latch reads it: the URL's `in=` first,
+ * then the stored choice. A shared `?in=nearme` link does not persist its
+ * scope, so the stored value alone would release the camera too early and let
+ * a search frame that the late Near me fit then displaces. */
 export function nearbyArrivalFitPending({
   autoFitNearbyScope,
   fitApplied,
-  scope,
+  search,
+  storedScope,
 }: {
   autoFitNearbyScope: boolean;
   fitApplied: boolean;
-  scope: Scope | null;
+  /** The live map URL's query string (`window.location.search`). */
+  search: string;
+  storedScope: Scope | null;
 }): boolean {
+  const scope = parseScope(new URLSearchParams(search).get(SCOPE_PARAM)) ?? storedScope;
   return autoFitNearbyScope && !fitApplied && scope === "nearme";
 }
 

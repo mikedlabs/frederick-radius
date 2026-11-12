@@ -5,6 +5,7 @@ import type { LngLat } from "@/lib/geo";
 import { mapCameraDuration } from "@/lib/motion";
 import { CAM_EASE, smoothFocus } from "./constants";
 import { countyFitPadding } from "./mapCameraHelpers";
+import type { MapTaskListRow } from "./mapListTask";
 import { searchResultFrame } from "./searchResultFrame";
 
 type FrameMap = Parameters<typeof smoothFocus>[0] & {
@@ -43,6 +44,25 @@ export function arrivalSearchFrameKey(search: string): string | null {
   if (q.length >= 2) return `q:${q.slice(0, 160)}`;
   const intent = params.get("intent");
   return intent ? intentFrameKey(intent, params.get("sub")) : null;
+}
+
+/** The request key for a URL search that replaced the map's own query while
+ * the map stayed mounted (Find, Back, another search link), or null. The
+ * map's typing and its dock chips update the live query before they write the
+ * URL, so they never re-arm framing and a chip toggle never moves the camera. */
+export function navigatedSearchFrameKey(search: string, liveQuery: string): string | null {
+  const routeQuery = (new URLSearchParams(search).get("q") ?? "").slice(0, 160);
+  if (routeQuery.trim() === liveQuery.trim()) return null;
+  return arrivalSearchFrameKey(search);
+}
+
+/** The points that decide a search frame, in the result list's own ranking.
+ * Rows without coordinates (an event link) are skipped. */
+export function searchFramePointsFromRows(rows: readonly MapTaskListRow[] | null | undefined): LngLat[] {
+  return (rows ?? []).flatMap((row): LngLat[] =>
+    row.kind === "place" ? [row.place.geom]
+      : row.kind === "event" ? [{ lng: row.event.lng, lat: row.event.lat }]
+        : []);
 }
 
 /**
