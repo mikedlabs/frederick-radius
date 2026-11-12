@@ -192,6 +192,7 @@ export default function PlaceCard({
   lazyPhoto = false,
   discoverySurface,
   discoveryIntent,
+  hoursInMeta = false,
 }: {
   place: PlaceCardData;
   compact?: boolean;
@@ -203,6 +204,12 @@ export default function PlaceCard({
   discoverySurface?: "nearby";
   /** Parks uses only exact bundled imagery and a compact contextual card. */
   discoveryIntent?: "parks";
+  /** Row only, for lists that answer "open now, near me" (Nearby). The muted
+   *  meta line names the town and folds in "Hours not confirmed" when hours
+   *  are unknown, and the status line appears only for known hours (open,
+   *  closing soon, closed), so a confirmed-open place stands out in its row.
+   *  Distance leads the meta line and reason labels are left out. */
+  hoursInMeta?: boolean;
   /** Show the source/trust badge. Defaults by variant (off in dense lists,
    *  on for the lead); the full trust tier still lives on the detail sheet. */
   showSource?: boolean;
@@ -215,7 +222,10 @@ export default function PlaceCard({
    *  the canonical hero only; kept in the type so existing callers compile. */
   galleryPhotos?: string[];
 }) {
-  const photoWidth = variant === "row" ? (compact ? 56 : 88) : variant === "grid" ? 180 : variant === "tile" ? 244 : 360;
+  // Nearby answer rows use the compact media slot so a 320px phone keeps room
+  // for the name, the distance and the hours note.
+  const compactMedia = compact || (variant === "row" && hoursInMeta);
+  const photoWidth = variant === "row" ? (compactMedia ? 56 : 88) : variant === "grid" ? 180 : variant === "tile" ? 244 : 360;
   const parksDiscovery = variant === "discovery" && discoverySurface === "nearby" && discoveryIntent === "parks";
   const inlinePlan = parksDiscovery ? nearbyParksPhotoPlan(place.slug, photoWidth) : placeCardPhotoPlan(place, photoWidth);
   // Reviewed owner/landmark images are already available locally. Hydrate
@@ -651,6 +661,23 @@ export default function PlaceCard({
   ) : place.field_notes ? (
     <FieldNoteTag compact />
   ) : null;
+  const rowHoursUnknown = place.open_status.state === "unknown" || place.open_status.state === "unverified";
+  const rowTown = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? place.city;
+  const rowRated = Boolean(place.google_rating && (place.google_rating_count ?? 0) >= 20);
+  // Nearby rows keep this line to hours, rating and price; the field-notes
+  // or deal tag stays on the place sheet so a dense answer list stays calm.
+  const rowFacts = (
+    <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+      <PlaceStatus status={place.open_status} />
+      <Rave rating={place.google_rating} count={place.google_rating_count} />
+      {place.price_band && (
+        <span className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+          {"$".repeat(place.price_band)}
+        </span>
+      )}
+      {!hoursInMeta && inlineTag}
+    </div>
+  );
   return (
     // PLAIN TOOL: a ruled row on the page ground. No card, no lift, no
     // category stripe; the row ends in one hairline and the list's last row
@@ -685,7 +712,7 @@ export default function PlaceCard({
           style={photo ? undefined : { width: photoWidth }}
         >
           {photo ? (
-            <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={photoWidth} frame={compact ? "compact-row" : "row"} deferGoogleBytes={lazyPhoto} />
+            <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={photoWidth} frame={compactMedia ? "compact-row" : "row"} deferGoogleBytes={lazyPhoto} />
           ) : (
             <span data-place-row-glyph className="block h-6 w-6" aria-hidden>
               <CategoryIcon
@@ -706,13 +733,27 @@ export default function PlaceCard({
               {place.name}
             </h3>
             {showSource && <SourceBadge place={place} size="sm" />}
-            {place.distance_m !== undefined && (
+            {place.distance_m !== undefined && !hoursInMeta && (
               <span className="ml-auto mt-[2px] shrink-0 whitespace-nowrap text-[14px] font-medium tabular-nums" style={{ color: "var(--app-ink-2)" }}>
                 {formatDistance(place.distance_m)}
               </span>
             )}
           </div>
-          <p className="mt-0.5 flex items-center gap-1 text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          {hoursInMeta ? (
+            <p data-place-row-meta className="mt-0.5 text-[14px] leading-snug [text-wrap:pretty]" style={{ color: "var(--app-ink-3)" }}>
+              {/* Distance leads the meta line here, so a long name keeps the
+                  full width beside the media slot on a 320px phone. */}
+              {place.distance_m !== undefined && (
+                <><span data-place-distance className="font-medium tabular-nums" style={{ color: "var(--app-ink-2)" }}>{formatDistance(place.distance_m)}</span> · </>
+              )}
+              {cat?.name ?? place.category}
+              {rowTown && <> · {rowTown}</>}
+              {/* These rows hide reason chips, so the dog-friendly signal the
+                  paw carries elsewhere joins the muted line as words. */}
+              {(place.tags ?? []).includes("dog-friendly") && <> · <span data-place-row-dog-friendly>Dog-friendly</span></>}
+              {rowHoursUnknown && <> · <span data-place-row-hours-unknown>Hours not confirmed</span></>}
+            </p>
+          ) : <p className="mt-0.5 flex items-center gap-1 text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
             {showPaw && (
               <PawPrint
                 className="h-3 w-3 shrink-0"
@@ -725,29 +766,20 @@ export default function PlaceCard({
               {cat?.name ?? place.category}
               {kf && <> · {kf}</>}
             </span>
-          </p>
+          </p>}
           {place.market_day && (
             <p className="mt-0.5 truncate text-[12px] font-medium" style={{ color: "var(--app-brand-text)" }}>
               {place.market_day}{place.market_hours ? ` · ${place.market_hours}` : ""}
             </p>
           )}
           {!compact && (
-            rowReasons.length > 0 ? (
+            hoursInMeta ? (
+              (!rowHoursUnknown || rowRated || place.price_band) ? rowFacts : null
+            ) : rowReasons.length > 0 ? (
               <div className="mt-1">
                 <ReasonLabels reasons={rowReasons} tag={rowTag} />
               </div>
-            ) : (
-              <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                <PlaceStatus status={place.open_status} />
-                <Rave rating={place.google_rating} count={place.google_rating_count} />
-                {place.price_band && (
-                  <span className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
-                    {"$".repeat(place.price_band)}
-                  </span>
-                )}
-                {inlineTag}
-              </div>
-            )
+            ) : rowFacts
           )}
         </div>
         <div className="relative z-10 self-start">

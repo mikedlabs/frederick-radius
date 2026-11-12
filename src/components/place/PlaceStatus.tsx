@@ -47,8 +47,13 @@ export default function PlaceStatus({
         : "var(--app-ink-3)"; // closed
 
   // Closing-soon amber fails AA as small text on cream; keep the hue on the
-  // dot, drop the label to ink-2. Open/closed tones already pass.
-  const textColor = status.state === "closing-soon" ? "var(--app-ink-2)" : tone;
+  // dot, drop the label to ink-2. Open text uses the theme-readable forest
+  // token: the raw positive fill is too dark to read on the dark canvas.
+  const textColor = status.state === "closing-soon"
+    ? "var(--app-ink-2)"
+    : status.state === "open"
+      ? "var(--app-forest-text)"
+      : tone;
 
   const label = formatHoursLine(status);
 

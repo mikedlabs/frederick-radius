@@ -834,13 +834,15 @@ test.describe("stable native press surfaces", () => {
   async function books(page: Page) {
     await replaceDocument(page, "/nearby?c=shops&facet=book-store&sort=rated&in=frederick");
     await expect(page.locator('[data-nearby-interaction-ready="true"]')).toBeVisible();
-    const card = page.locator('article[data-place-card-variant="discovery"]').filter({ has: page.getByRole("heading", { name: placeName, exact: true }) });
+    // Nearby results are ruled rows (lists pass, November 2026). Directions
+    // live in the place sheet, so Save is the row's one sibling action.
+    const card = page.locator("article[data-place-row]").filter({ has: page.getByRole("heading", { name: placeName, exact: true }) });
     await expect(card).toHaveCount(1);
     const trigger = card.getByRole("button", { name: /^View Curious Iguana .*details$/ });
     await expect(trigger).toHaveAttribute("data-press-target", "card");
     expect(await trigger.locator("[data-save-ref], a, button").count(), "independent actions never become nested in the detail control").toBe(0);
     await expect(card.locator(`[data-save-ref="place:${placeSlug}"]`)).toBeVisible();
-    await expect(card.getByRole("link", { name: /Directions/ })).toBeVisible();
+    await expect(card.getByRole("link", { name: /Directions/ })).toHaveCount(0);
     return { trigger, card };
   }
 
@@ -1089,7 +1091,7 @@ test.describe("stable native press surfaces", () => {
 
       const { trigger, card } = await books(page);
       const placePress = await pressAndDragOut(page, trigger, reducedMotion === "reduce");
-      expect(placePress.before.siblings.length, "Save and directions are independently owned sibling actions").toBeGreaterThanOrEqual(2);
+      expect(placePress.before.siblings.length, "Save is an independently owned sibling action").toBeGreaterThanOrEqual(1);
       await expect(page.getByRole("dialog")).toHaveCount(0);
       const tabsToPlace = await reachByKeyboard(page, trigger);
       await page.keyboard.press("Space");
@@ -1211,7 +1213,7 @@ test.describe("stable native press surfaces", () => {
         const museumSlug = "schifferstadt-architectural-museum-frederick";
         await replaceDocument(page, "/nearby?c=art&facet=museum&sort=rated&in=frederick");
         await expect(page.locator('[data-nearby-interaction-ready="true"]')).toBeVisible();
-        const card = page.locator('main article[data-place-card-variant="discovery"]').filter({ has: page.getByRole("heading", { name: "Schifferstadt Architectural Museum", exact: true }) });
+        const card = page.locator("main article[data-place-row]").filter({ has: page.getByRole("heading", { name: "Schifferstadt Architectural Museum", exact: true }) });
         await expect(card).toHaveCount(1);
         const image = card.locator("img");
         await expect(image).toHaveCount(1);

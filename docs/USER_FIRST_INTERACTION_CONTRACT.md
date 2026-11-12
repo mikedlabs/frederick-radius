@@ -44,10 +44,10 @@ pizza filter, including the selected town.
 
 Every location-aware answer states its scope as **Near me**, **Whole county**,
 or a named municipality. Those three are the names for the area, and an unset
-area reads as **Whole county**. Three older surfaces do not use them yet and
+area reads as **Whole county**. Two older surfaces do not use them yet and
 are being retired with their choosers: the map dock's Where pane ("County"),
-the /nearby filter sheet ("Nearby"), and the short form "County" where the
-narrow header chip and Ask's composer chip cannot fit "Whole county". A
+and the short form "County" where the narrow header chip and Ask's composer
+chip cannot fit "Whole county". A
 location request must explain the benefit before the browser permission
 prompt appears. Declining location always leaves a working county or town
 fallback.
@@ -57,8 +57,27 @@ that the header area control is the only place to change it. Today that is
 true of the header control, Today's area select and the list-page ScopeBar,
 which all write through `commitLocationScope`: it stores the value and then
 updates the current page's own `?in=`. The in-page choosers on Search,
-Events, the map dock, Ask and /nearby still write the value directly. They
-are being retired onto the header control; until then, do not add another.
+Events, the map dock and Ask still write the value directly. They are being
+retired onto the header control; until then, do not add another.
+
+/nearby reads the header's area and has no chooser. Its only area writes
+are two escapes, and both go through `commitLocationScope`: "Search the
+whole county" when a town has no match, and the precise-location row, which
+appears only in Near me (or an unset area) and asks for the device fix that
+Near me needs. In Whole county the page shows no location row, because the
+header is where a visitor switches to Near me.
+
+A nearby answer list says the order it shows, in a complete sentence, before
+any count. When a trustworthy origin exists (a device fix or a chosen town),
+close by wins over confirmed open: a confirmed-open place never sorts above
+nearer places, a confirmed closure sorts after usable choices, and each row
+marks hours Radius can state ("Open until 9pm", "Closing soon", "Closed").
+Unknown hours read "Hours not confirmed" inside the row's muted line. Open
+now is a top-level chip beside the list, not a sheet choice. When it finds
+fewer than three confirmed-open places nearby (about three miles of a device
+fix, or the chosen town), the nearest places stay listed under one plain line
+that says so and, with a device fix, how far the closest confirmed-open place
+is. It never leaves one far result with nothing after it.
 
 Find names the area it actually searches, in its field and on every answer.
 With no area chosen, the search endpoint ranks around a location the browser

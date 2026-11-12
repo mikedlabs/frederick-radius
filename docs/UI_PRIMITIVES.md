@@ -159,6 +159,16 @@ generic directory data (parks, trails, amenities, contacts). Use
 `PlaceCard variant="row"` for place data with photos and hours, and
 `EventRow` for events.
 
+`PlaceCard variant="row" hoursInMeta` is the answer-list form Nearby uses
+(the food and other "open now, near me" lists). Its muted meta line leads
+with the distance when one is known, then the category and the town, and
+ends with "Hours not confirmed" when hours are unknown. The status line
+appears only for hours Radius can state, so a confirmed-open place stands out
+in its row, and reason labels and the field-notes tag stay on the place
+sheet. It uses the 56px media slot so a 320px phone keeps room for the name.
+The row carries no Directions button: that lives in the place sheet, which
+keeps the list free of a filled action per row.
+
 ```tsx
 <RowList>
   {parks.map((p) => (

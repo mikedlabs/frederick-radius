@@ -32,7 +32,7 @@ async function expectSelectedBooks(page: Page, scope: "county" | "frederick") {
   await expect(page.getByRole("heading", {
     level: 1, name: scope === "county" ? "Books across Frederick County" : "Books in Frederick City", exact: true,
   })).toBeVisible();
-  await expect(page.getByRole("main").locator("header p").filter({ hasText: /first, then top rated|top rated first/ })).toBeVisible();
+  await expect(page.getByRole("main").locator("header p").filter({ hasText: /The top rated places come first\.|then the top rated\./ })).toBeVisible();
   await expect(page.getByRole("main").getByRole("button", { name: /^Filters & sort/ })).toBeVisible();
   await expect.poll(() => {
     const url = new URL(page.url());
@@ -58,7 +58,9 @@ async function chooseBooks(page: Page, scope: "county" | "frederick") {
   await dialog.getByRole("button", { name: "Top rated", exact: true }).click();
   await expect(dialog.getByRole("button", { name: "Books", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(dialog.getByRole("button", { name: "Top rated", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect(dialog.getByRole("button", { name: "Open now", exact: true })).toHaveAttribute("aria-pressed", "false");
+  // Open now is a top-level chip beside the sheet trigger, not a sheet choice.
+  await expect(dialog.getByRole("button", { name: "Open now", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("main").getByRole("button", { name: "Open now", exact: true })).toHaveAttribute("aria-pressed", "false");
   await dialog.getByRole("button", { name: "Done", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expectSelectedBooks(page, scope);
@@ -382,8 +384,9 @@ for (const dismissal of ["Back", "Close", "Escape"] as const) {
 
 test.describe("Nearby scope and category Back", () => {
 
-// Rosemont has no bookstore in the real catalog. Search all towns exercises
-// native scope updates without a reload concealing an obsolete town origin.
+// Rosemont has no bookstore in the real catalog. Search the whole county
+// exercises the shared area writer without a reload concealing an obsolete
+// town origin.
 test.use({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
 test.setTimeout(90_000);
 
@@ -422,7 +425,7 @@ async function expectNoPreciseOrigin(page: Page) {
   await closeFilters(page);
   const root = page.locator('[data-nearby-interaction-ready="true"]');
   await expect(root.getByRole("heading", { level: 1 })).toHaveText(COUNTY_BOOKS);
-  await expect(root).not.toContainText(/first, then nearest|nearest first|nearest to you|approximately near Rosemont/i);
+  await expect(root).not.toContainText(/closest places come first|sorted by distance|the nearest places|nearest first|nearest to you|approximately near Rosemont/i);
   // A distance must not be inferred from a town/IP centroid after refusal.
   await expect(root.locator("article").first()).toBeVisible();
   await expect.poll(async () => (await root.locator("article").allTextContents()).some((text) => /\b\d+(?:\.\d+)?\s*(?:min walk|mi)\b/i.test(text))).toBe(false);
@@ -512,8 +515,8 @@ test("empty-town recovery and denied Near me never reuse a former town as precis
   await dialog.getByRole("button", { name: "Nearest", exact: true }).click();
   await closeFilters(page);
   await expect.poll(() => new URL(page.url()).searchParams.get("sort")).toBe("nearest");
-  await expect(page.getByRole("main").getByRole("button", { name: "Search all towns", exact: true })).toBeVisible();
-  await page.getByRole("main").getByRole("button", { name: "Search all towns", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("button", { name: "Search the whole county", exact: true })).toBeVisible();
+  await page.getByRole("main").getByRole("button", { name: "Search the whole county", exact: true }).click();
   await scopeIs(page, "county");
   await expectNoPreciseOrigin(page);
   await expect(page.getByRole("heading", { name: "Curious Iguana", exact: true })).toBeVisible();
@@ -536,9 +539,17 @@ test("empty-town recovery and denied Near me never reuse a former town as precis
         }, options);
       };
     });
-    // Exercise Nearby's actual native scope update rather than the shared header
-    // router navigation, which would refresh away the obsolete server context.
-    await page.getByRole("main").getByRole("button", { name: /^Use my location\b/ }).click();
+    // Nearby has no area chooser of its own: in Whole county the page offers
+    // no location row, and Near me is chosen in the shared header control.
+    // That is now the only path a visitor can take to Near me here, so this
+    // test exercises it on purpose. The header commits through
+    // commitLocationScope, which replaces the URL with router.replace rather
+    // than reloading, and the obsolete town origin this test guards against
+    // would still be in client state at that point. expectNoPreciseOrigin
+    // below then proves no former town is reused as a precise origin.
+    await expect(page.getByRole("main").getByRole("button", { name: /^Use my location\b/ })).toHaveCount(0);
+    await page.getByRole("button", { name: /^Change town or location scope/ }).click();
+    await page.getByRole("button", { name: "Near me", exact: true }).click();
     await scopeIs(page, "nearme");
     await expect.poll(() => page.evaluate(() => (window as unknown as { __nearbyNativeLocation: { errorCodes: number[] } }).__nearbyNativeLocation.errorCodes)).toContain(1);
     expect(await page.evaluate(() => (window as unknown as { __nearbyNativeLocation: { successCount: number } }).__nearbyNativeLocation.successCount)).toBe(0);
