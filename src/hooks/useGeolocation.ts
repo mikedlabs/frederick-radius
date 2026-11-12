@@ -33,6 +33,25 @@ const TTL_MS = 1000 * 60 * 30; // 30 min cache
  * sync. */
 export const GEOLOCATION_CHANGE_EVENT = "fr:geolocation-change";
 
+/**
+ * The last refusal in this document, shared like a granted fix so every
+ * surface explains it. A denial asked for in the header must reach the page
+ * under it, which no longer has a location control of its own. Kept in
+ * memory only: a reload starts fresh, and a later grant clears it.
+ */
+let lastRefusal: "denied" | "unavailable" | null = null;
+
+/** Record a refusal and tell every same-tab surface. */
+export function announceLocationRefusal(status: "denied" | "unavailable"): void {
+  lastRefusal = status;
+  announceLocationChange();
+}
+
+/** Test seam: forget the shared refusal between cases. */
+export function resetLocationRefusalForTests(): void {
+  lastRefusal = null;
+}
+
 function announceLocationChange(): void {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(GEOLOCATION_CHANGE_EVENT));
@@ -46,6 +65,7 @@ function announceLocationChange(): void {
  */
 export function cacheGeolocationPosition(position: GeoPosition): void {
   if (typeof window === "undefined") return;
+  lastRefusal = null;
   try {
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(position));
   } catch {
@@ -113,7 +133,11 @@ export function useGeolocation() {
     const syncCachedPosition = () => {
       const cached = readCachedGeoPosition();
       setState(
-        cached ? { status: "granted", position: cached } : { status: "idle" },
+        cached
+          ? { status: "granted", position: cached }
+          : lastRefusal
+            ? { status: lastRefusal }
+            : { status: "idle" },
       );
     };
     syncCachedPosition();
@@ -125,6 +149,7 @@ export function useGeolocation() {
   const requestPosition = useCallback((enableHighAccuracy: boolean) => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
       setState({ status: "unavailable" });
+      announceLocationRefusal("unavailable");
       return;
     }
     setState({ status: "loading" });
@@ -154,6 +179,7 @@ export function useGeolocation() {
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {
           setState({ status: "denied" });
+          announceLocationRefusal("denied");
         } else {
           setState({ status: "error", message: err.message });
         }

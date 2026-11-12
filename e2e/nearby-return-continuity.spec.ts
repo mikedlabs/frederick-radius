@@ -32,7 +32,7 @@ async function expectSelectedBooks(page: Page, scope: "county" | "frederick") {
   await expect(page.getByRole("heading", {
     level: 1, name: scope === "county" ? "Books across Frederick County" : "Books in Frederick City", exact: true,
   })).toBeVisible();
-  await expect(page.getByRole("main").locator("header p").filter({ hasText: /first, then top rated|top rated first/ })).toBeVisible();
+  await expect(page.getByRole("main").locator("header p").filter({ hasText: /The top rated places come first\.|then the top rated\./ })).toBeVisible();
   await expect(page.getByRole("main").getByRole("button", { name: /^Filters & sort/ })).toBeVisible();
   await expect.poll(() => {
     const url = new URL(page.url());
@@ -425,7 +425,7 @@ async function expectNoPreciseOrigin(page: Page) {
   await closeFilters(page);
   const root = page.locator('[data-nearby-interaction-ready="true"]');
   await expect(root.getByRole("heading", { level: 1 })).toHaveText(COUNTY_BOOKS);
-  await expect(root).not.toContainText(/first, then nearest|nearest first|nearest to you|approximately near Rosemont/i);
+  await expect(root).not.toContainText(/closest places come first|sorted by distance|the nearest places|nearest first|nearest to you|approximately near Rosemont/i);
   // A distance must not be inferred from a town/IP centroid after refusal.
   await expect(root.locator("article").first()).toBeVisible();
   await expect.poll(async () => (await root.locator("article").allTextContents()).some((text) => /\b\d+(?:\.\d+)?\s*(?:min walk|mi)\b/i.test(text))).toBe(false);

@@ -861,9 +861,11 @@ export default function RightNow({
           town (a town scope makes "nearest to you" moot). With a fix we silently
           show real walk times; without one we say so and offer the button —
           never a distance we can't stand behind. */}
-      {/* In Whole county the header is the way to switch to Near me, so this
-          row only appears where it refines the area already chosen. */}
-      {!hasFix && !townKey && scope !== "county" && (
+      {/* A refused or unavailable location is always explained, including
+          after a header Near me request falls back to Whole county. The
+          button only appears where it refines the area already chosen: in
+          Whole county the header is the way to switch to Near me. */}
+      {!hasFix && !townKey && (
         state.status === "denied" || state.status === "unavailable" ? (
           <div
             role="status"
@@ -872,14 +874,14 @@ export default function RightNow({
           >
             <Navigation className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
             <span className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-              Location is off. Showing {approxStatus === "outside-county"
+              Location is off. Showing {scope === "county" || approxStatus === "outside-county"
                 ? "county-wide results"
                 : usableApproxCity
                   ? `results approximately near ${usableApproxCity}`
                   : "county-wide results"}.
             </span>
           </div>
-        ) : (
+        ) : scope === "county" ? null : (
           <button
             type="button"
             onClick={activateMyLocation}

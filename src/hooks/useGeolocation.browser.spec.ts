@@ -4,8 +4,10 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  announceLocationRefusal,
   cacheGeolocationPosition,
   readCachedPosition,
+  resetLocationRefusalForTests,
   useGeolocation,
 } from "./useGeolocation";
 
@@ -31,6 +33,7 @@ describe("shared browser geolocation state", () => {
 
   beforeEach(() => {
     window.sessionStorage.clear();
+    resetLocationRefusalForTests();
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -70,6 +73,20 @@ describe("shared browser geolocation state", () => {
     expect(container.querySelector("#two")?.getAttribute("data-status")).toBe(
       "granted",
     );
+  });
+
+  it("tells every mounted surface when another surface's request is refused, until a later grant", async () => {
+    await act(async () => {
+      root.render(createElement("div", null, createElement(Probe, { id: "one" }), createElement(Probe, { id: "two" })));
+    });
+    await act(async () => announceLocationRefusal("denied"));
+    expect(container.querySelector("#one")?.getAttribute("data-status")).toBe("denied");
+    expect(container.querySelector("#two")?.getAttribute("data-status")).toBe("denied");
+
+    await act(async () => {
+      cacheGeolocationPosition({ lng: -77.4105, lat: 39.4143, accuracy: 18, timestamp: Date.now() });
+    });
+    expect(container.querySelector("#two")?.getAttribute("data-status")).toBe("granted");
   });
 
   it("refreshes only an already-granted permission and reuses that device fix", async () => {
