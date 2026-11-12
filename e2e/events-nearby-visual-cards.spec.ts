@@ -940,9 +940,10 @@ test("native Nearby full-document Back restores its exact place opener after a B
   await expect(breadcrumbs.getByRole("link", { name: canonicalTown.name, exact: true }))
     .toHaveAttribute("href", `/m/${canonicalPlace.municipality}`);
   const areaMap = page.getByRole("link", { name: "View area", exact: true });
-  // Same pure catalog resolver and five-decimal camera formatting as the real
-  // canonical Place document; never infer its expected target from the DOM.
-  const canonicalMapHref = `/map?c=${canonicalPlace.geom.lng.toFixed(5)},${canonicalPlace.geom.lat.toFixed(5)},15.5`;
+  // Same pure catalog resolver as the real canonical Place document; never
+  // infer its expected target from the DOM. The map selects and frames the
+  // place itself rather than opening on a bare camera.
+  const canonicalMapHref = `/map?place=${encodeURIComponent(canonicalPlace.slug)}`;
   await expect(areaMap).toBeVisible(); await expect(areaMap).toHaveAttribute("href", canonicalMapHref);
   evidence.measurements.canonicalPlaceNavigationLinks = {
     breadcrumbs: await breadcrumbs.locator("a").evaluateAll(links => links.map(link => ({

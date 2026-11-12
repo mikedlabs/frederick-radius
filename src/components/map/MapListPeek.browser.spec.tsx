@@ -57,6 +57,15 @@ describe("MapListPeek native directions", () => {
     vi.restoreAllMocks(); vi.unstubAllGlobals(); history.replaceState(null, "", "/");
   });
 
+  it("prints a search subtitle only when it adds something beyond the category and town", async () => {
+    await mount({ list: list([
+      { kind: "place", place: place(0), searchSubtitle: "Coffee · Brunswick" },
+      { kind: "place", place: place(1), searchSubtitle: "Drive-through window" },
+    ]) });
+    expect(details("coffee-0").textContent?.match(/Coffee · Brunswick/g)).toHaveLength(1);
+    expect(details("coffee-1").textContent).toContain("Drive-through window");
+  });
+
   it("makes the exact destination a separately named native link outside the place button", async () => {
     await mount();
     const link = directions();

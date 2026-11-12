@@ -98,6 +98,33 @@ describe("official-feed classification and venue corrections", () => {
     });
   });
 
+  // November 11, 2026 hierarchy audit: Delaplaine Arts Center's Photo Party
+  // was filed under Bars because its description mentions photo trivia.
+  it("keeps an arts center party out of Bars when only the description says trivia", () => {
+    const delaplaine: FeedSpec = {
+      ...DFP_FEED,
+      source: "delaplaine",
+      source_label: "Delaplaine Arts Center",
+      url: "https://delaplaine.org/events/?ical=1",
+      format: "ical",
+      default_venue: "Delaplaine Arts Center",
+      default_category: "gallery",
+    };
+    expect(feedCategory(delaplaine, "Photo Party",
+      "Party like it's 1826 and celebrate the photographic arts! Join us for photo trivia, funky/cool/niche gear show-and-tell, print swapping, photo book oohing and a cash bar.",
+    )).toBe("gallery");
+    expect(feedCategory(delaplaine, "Opening Reception",
+      "Beer and wine will be served.",
+    )).toBe("gallery");
+  });
+
+  it("still files a titled trivia night, pub night or tasting under its venue category", () => {
+    expect(feedCategory(DFP_FEED, "Trivia Night at Olde Towne", "Teams of up to six.")).toBe("bar");
+    expect(feedCategory(DFP_FEED, "Pub Crawl", "Starts downtown at 7.")).toBe("bar");
+    expect(feedCategory(DFP_FEED, "Fall Beer Release", "New seasonal pours.")).toBe("brewery");
+    expect(feedCategory(DFP_FEED, "Linganore Wine Weekend", "Tastings all afternoon.")).toBe("winery");
+  });
+
   it("does not find the word art inside Partner Hours", () => {
     expect(
       feedCategory(

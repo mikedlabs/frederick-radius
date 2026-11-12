@@ -519,7 +519,13 @@ const FEEDS: FeedSpec[] = [
   // venues that scraper should target.
 ];
 
-const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
+// `titleOnly` marks the categories named after a kind of venue. A feed's
+// description mentions "photo trivia", "a cash bar" or "beer and wine" in
+// passing, and the November 11, 2026 hierarchy audit found Delaplaine Arts
+// Center's "Photo Party" filed under Bars for exactly that reason. Only the
+// event's own title can make it a bar, brewery or winery event; otherwise the
+// feed's default category (gallery, for an arts center) stands.
+const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[]; titleOnly?: boolean }> = [
   // Fitness/recreation classes FIRST (first match wins): a rec-center
   // description like "a great workout with diverse music" or "utilizing
   // bands, light weights" otherwise substring-matches the music words, and
@@ -537,10 +543,10 @@ const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
   { slug: "market", words: ["market", "vendor", "farmers", "makers", "fair"] },
   { slug: "family", words: ["kids", "family", "children", "story time", "all ages", "scout", "youth"] },
   { slug: "outdoors", words: ["hike", "trail", "outdoor", "park", "ranger", "nature", "catoctin", "cunningham"] },
-  { slug: "brewery", words: ["brewery", "beer", "tasting", "tap"] },
-  { slug: "winery", words: ["wine", "winery", "vineyard", "linganore"] },
+  { slug: "brewery", words: ["brewery", "beer", "tasting", "tap"], titleOnly: true },
+  { slug: "winery", words: ["wine", "winery", "vineyard", "linganore"], titleOnly: true },
   { slug: "food", words: ["food truck", "dinner", "brunch", "tasting", "in the streets"] },
-  { slug: "bar", words: ["trivia", "pub", "bar"] },
+  { slug: "bar", words: ["trivia", "pub", "bar"], titleOnly: true },
   { slug: "civic", words: ["council", "meeting", "public hearing", "town hall", "voting", "planning commission"] },
 ];
 
@@ -566,8 +572,10 @@ function inferCategory(title: string, description: string, fallback: string): st
   if (/\bmusic\s+and\s+lyrics\s+by\b/.test(text) && /\bbook\s+by\b/.test(text)) {
     return "theater";
   }
-  for (const { slug, words } of CATEGORY_KEYWORDS) {
-    if (words.some((word) => containsCategoryKeyword(text, word))) return slug;
+  const titleText = title.toLowerCase();
+  for (const { slug, words, titleOnly } of CATEGORY_KEYWORDS) {
+    const haystack = titleOnly ? titleText : text;
+    if (words.some((word) => containsCategoryKeyword(haystack, word))) return slug;
   }
   return fallback;
 }

@@ -119,7 +119,16 @@ The map is an answer surface, not a layer manager.
 - Common tasks apply immediately and close their chooser.
 - Advanced data layers stay behind one secondary control.
 - Search does not move the camera until the person selects a result or submits
-  the query.
+  the query. A submitted search (typed, or arriving as `?q=` or `?intent=`
+  without a `c` camera) frames its leading results once, through
+  `useSearchResultFraming`. A dock filter chip never moves the camera, and a
+  pan or zoom made after the submission cancels the framing.
+- A link from a place opens the map with that place selected and framed above
+  its card (`mapPlaceHref`, `/map?place=<slug>`). A place or event in the
+  arrival URL takes precedence over Near me fitting and the cold-open smart
+  default.
+- Every distance says what it is measured from: "from you" for the device fix,
+  "from map center" without one, or the selected place or venue it describes.
 - A task returns a small ranked set of candidates, not pins alone.
 - A selected result opens one complete mobile surface.
 - Browser Back closes that result before it leaves the map.

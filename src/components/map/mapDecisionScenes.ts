@@ -817,7 +817,7 @@ export function buildMapPeekDecisionSurface({
       }],
       reasons: [{
         id: `nearest:${utility.label.toLowerCase()}`,
-        label: `The nearest mapped ${utility.label.toLowerCase()} is ${formatDistance(utility.distM)} away.`,
+        label: `The nearest mapped ${utility.label.toLowerCase()} is ${formatDistance(utility.distM)} from here.`,
         weight: 80,
         evidenceIds: [evidenceId],
         overlay: `amenity:${utility.label.toLowerCase()}`,
@@ -825,8 +825,8 @@ export function buildMapPeekDecisionSurface({
     });
     cues.set(id, {
       kind: "utility",
-      headline: `${short(utility.label, 20)} · ${formatDistance(utility.distM)}`,
-      detail: `The nearest mapped ${utility.label.toLowerCase()} is ${formatDistance(utility.distM)} away.`,
+      headline: `${short(utility.label, 20)} · ${formatDistance(utility.distM)} from here`,
+      detail: `The nearest mapped ${utility.label.toLowerCase()} is ${formatDistance(utility.distM)} from here.`,
     });
   }
 
@@ -850,7 +850,7 @@ export function buildMapPeekDecisionSurface({
       }],
       reasons: [{
         id: `parking-near:${place.slug}`,
-        label: `${nearestGarage.name} is mapped ${formatDistance(nearestGarage.distM)} away.`,
+        label: `${nearestGarage.name} is mapped ${formatDistance(nearestGarage.distM)} from here.`,
         weight: 70,
         evidenceIds: [evidenceId],
         overlay: "parking",
@@ -862,8 +862,8 @@ export function buildMapPeekDecisionSurface({
         : "";
     cues.set(id, {
       kind: "parking",
-      headline: `Parking · ${formatDistance(nearestGarage.distM)}`,
-      detail: `${availabilityDetail}${nearestGarage.name} is mapped ${formatDistance(nearestGarage.distM)} away.`,
+      headline: `Parking · ${formatDistance(nearestGarage.distM)} from here`,
+      detail: `${availabilityDetail}${nearestGarage.name} is mapped ${formatDistance(nearestGarage.distM)} from here.`,
       sourceLabel: "City of Frederick parking map",
       sourceUrl: "https://www.cityoffrederickmd.gov/207/Parking",
     });

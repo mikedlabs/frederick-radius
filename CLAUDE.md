@@ -203,6 +203,12 @@ update its implementation, relevant contract and tests together.
   states and promoted fallback records. Keep live publisher fanout out of the
   visitor path. Application builds use reviewed promoted artifacts, validate
   them and never refresh live sources.
+- **Event lanes live in `src/lib/events/classify.ts`.** Closure notices
+  ("Town Offices Closed", "Veterans Day - Library Closed") are the
+  `closure_notice` lane and appear in no event list, including Government &
+  notices (owner decision, November 11, 2026). Today's holiday note already
+  states county closures. Bar, brewery and winery categories come from an
+  event's title only, never from its description or venue.
 - **After changing place data or its cleaning:** regenerate the client
   dataset — `npm run build:client-places` (search/map/funnel read
   `places-client.json`, not the loaders), run its gates, then update the

@@ -63,6 +63,7 @@ import PlanFromPlaceLink from "@/components/plan/PlanFromPlaceLink";
 import { isDestinationCategory, isRecommendable } from "@/lib/relevance";
 import type { DecisionAction } from "@/lib/decision/telemetry";
 import { needsWebsiteLink, phoneBarHasWebsite } from "@/lib/place-phone-bar";
+import { mapPlaceHref } from "@/lib/map-url-state";
 
 /**
  * Phase 2: never render scraped second-person copy (quality bar 9,
@@ -233,8 +234,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   const firstNearbyPlaces = place.nearby_places.slice(0, 3);
   const moreNearbyPlaces = place.nearby_places.slice(3, 5);
   // Preserve the exact place context. A municipality-wide list can silently
-  // jump several miles away, especially near town boundaries.
-  const exploreAreaHref = `/map?c=${place.geom.lng.toFixed(5)},${place.geom.lat.toFixed(5)},15.5`;
+  // jump several miles away, especially near town boundaries. The map selects
+  // this place and frames it above its card; a bare camera link opened the map
+  // with nothing selected (November 11, 2026 hierarchy audit).
+  const exploreAreaHref = mapPlaceHref(place.slug);
 
   const jsonLd = {
     "@context": "https://schema.org",

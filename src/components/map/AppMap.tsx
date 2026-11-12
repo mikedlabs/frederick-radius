@@ -283,8 +283,16 @@ import WeatherRadar from "./WeatherRadar";
 import LightningDensity from "./LightningDensity";
 import MapboxTraffic from "./MapboxTraffic";
 import { useMapRendererLifecycle } from "./useMapRendererLifecycle";
-import { shouldApplyInitialMapSelection } from "./mapInitialSelection";
+import { entryNamesMapEntity, shouldApplyInitialMapSelection } from "./mapInitialSelection";
+import { mapDistanceOriginLabel } from "./distanceOrigin";
 import { useInitialPlaceCameraFocus } from "./useInitialPlaceCameraFocus";
+import {
+  arrivalSearchFrameKey,
+  intentFrameKey,
+  searchFrameRequest,
+  useSearchResultFraming,
+  type SearchFrameRequest,
+} from "./useSearchResultFraming";
 import LiveIncidents from "./LiveIncidents";
 import LiveRotorcraft, {
   type RotorcraftLayerStatus,
@@ -832,11 +840,14 @@ export default function AppMap({
   // Latch the entry contract before camera state starts writing `?c=`. Near me
   // always needs this device's location, even when a shared or back-stack URL
   // also carries someone else's last camera.
+  // A link that names a place or event is a destination: it frames that
+  // entity instead, so Near me never pulls the camera away from it.
   const [autoFitNearbyScope] = useState(
     () =>
       isBrowseMap &&
       (parseScope(routeScopeParam) ?? getScope()) === "nearme" &&
-      recenterToKnownLocation,
+      recenterToKnownLocation &&
+      !entryNamesMapEntity(typeof window === "undefined" ? "" : window.location.search),
   );
   // A pooled Mapbox instance can emit the camera it retained from an older
   // route before the requested `?c=` camera is restored. Do not let that
@@ -848,6 +859,12 @@ export default function AppMap({
   const [entryHasCamera] = useState(() => Boolean(urlCamera));
   const initialPlaceCameraPendingRef = useRef<string | null>(null);
   const initialPlaceCameraGestureRef = useRef(false);
+  // One submitted search frames its results once (useSearchResultFraming).
+  // The gesture flag resets at each submission, so only a camera move made
+  // after the search cancels its framing.
+  const searchFramePendingRef = useRef<SearchFrameRequest | null>(null);
+  const searchFrameGestureRef = useRef(false);
+  const searchFrameArrivalCheckedRef = useRef(false);
   // `reuseMaps` keeps the GL instance warm across route changes. That is a
   // major speed win, but Mapbox can then retain the camera from the previous
   // mount and ignore the new component's `initialViewState`. Re-apply an
@@ -4109,6 +4126,8 @@ export default function AppMap({
       clearMapSelection();
       setMapQuery("");
       setSubmittedQuery("");
+      searchFrameGestureRef.current = false;
+      searchFramePendingRef.current = searchFrameRequest(intentFrameKey(route.intentKey, route.subKey));
       replaceMapUrl((params) => {
         applyMapIntentToParams(params, route.intentKey, route.subKey);
         for (const key of ["place", "event", "result", MAP_SELECTION_TOKEN_PARAM]) params.delete(key);
@@ -4123,6 +4142,8 @@ export default function AppMap({
     exitRadiusScene();
     clearMapSelection();
     setSubmittedQuery(term);
+    searchFrameGestureRef.current = false;
+    searchFramePendingRef.current = searchFrameRequest(`q:${term}`);
     replaceMapUrl((params) => {
       applyMapTaskToParams(params, null);
       for (const key of ["place", "event", "result", MAP_SELECTION_TOKEN_PARAM]) params.delete(key);
@@ -4448,6 +4469,43 @@ export default function AppMap({
   }) : null;
   const rankedPlaces = taskList?.rows.flatMap((row) => row.kind === "place" ? [row.place] : []) ?? null;
   const rankedEvents = taskList?.rows.flatMap((row) => row.kind === "event" ? [row.event] : []) ?? null;
+
+  // After a submitted category or text search, frame its leading results once
+  // (November 11, 2026 hierarchy audit: the map stayed at county zoom). A
+  // dock chip toggle never sets a request, so filters still leave the camera.
+  const searchFrameSettledKey = !isBrowseMap
+    ? null
+    : submittedQuery.length >= 2 && submittedQuery === q.trim()
+      ? searchSettledQuery === submittedQuery ? `q:${submittedQuery}` : null
+      : dock?.intentKey ? intentFrameKey(dock.intentKey, dock.subKey) : null;
+  const searchFramePoints = [
+    ...(rankedPlaces ?? []).map((place) => place.geom),
+    ...(rankedEvents ?? []).map((event) => ({ lng: event.lng, lat: event.lat })),
+  ];
+  useEffect(() => {
+    if (!isBrowseMap || !mapLoaded || searchFrameArrivalCheckedRef.current) return;
+    searchFrameArrivalCheckedRef.current = true;
+    const key = arrivalSearchFrameKey(window.location.search);
+    if (key) {
+      searchFrameGestureRef.current = false;
+      searchFramePendingRef.current = searchFrameRequest(key);
+    }
+  }, [isBrowseMap, mapLoaded]);
+  useSearchResultFraming({
+    pendingRef: searchFramePendingRef,
+    settledKey: searchFrameSettledKey,
+    points: searchFramePoints,
+    ready: isBrowseMap && mapLoaded && !mapError,
+    getMap: () => mapRef.current?.getMap() ?? null,
+    hasUserGestureSincePending: () => searchFrameGestureRef.current,
+    hasOtherCameraOwner: () =>
+      autoFitNearbyScope ||
+      activeSceneId !== null ||
+      Boolean(sceneCameraPendingRef.current) ||
+      Boolean(initialPlaceCameraPendingRef.current) ||
+      Boolean(selectedSlug),
+    markCameraIntent: () => { cameraIntentRef.current = true; },
+  });
 
   // The finding engine reads only the entities already authorized for this
   // map payload. It joins them deterministically around the current viewport
@@ -5099,6 +5157,7 @@ export default function AppMap({
             // positive user signal when movestart itself omits originalEvent.
             if (isUserMove) {
               initialPlaceCameraGestureRef.current = true;
+              searchFrameGestureRef.current = true;
               manualViewportGestureRef.current = true;
             } else if (!manualViewportGestureRef.current) {
               setShowResultsHere(false);
@@ -5106,6 +5165,7 @@ export default function AppMap({
           }}
           onDragStart={() => {
             initialPlaceCameraGestureRef.current = true;
+            searchFrameGestureRef.current = true;
             manualViewportGestureRef.current = true;
           }}
           onZoomStart={(e) => {
@@ -5114,6 +5174,7 @@ export default function AppMap({
               cameraControlGestureRef.current
             ) {
               initialPlaceCameraGestureRef.current = true;
+              searchFrameGestureRef.current = true;
               manualViewportGestureRef.current = true;
             }
           }}
@@ -7364,6 +7425,7 @@ export default function AppMap({
             closingSoonCount={closingSoonCount}
             placesInView={inViewPlaces}
             placesInViewOrigin={userLoc ?? viewCenter}
+            placesInViewOriginLabel={mapDistanceOriginLabel(Boolean(userLoc))}
             selectedPlaceSlug={selectedSlug}
             onPickPlaceInView={(place) => {
               const map = mapRef.current?.getMap();

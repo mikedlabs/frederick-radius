@@ -129,4 +129,66 @@ describe("buildRelatedEventSections", () => {
       source_url: publisher,
     });
   });
+
+  // November 11, 2026 hierarchy audit: an Emmitsburg event offered only
+  // Frederick events as "more upcoming".
+  describe("town context", () => {
+    const now = new Date("2030-03-01T12:00:00.000Z");
+    function inTown(
+      slug: string,
+      startsAt: string,
+      municipality: string,
+      venue: string,
+    ): EventWithMeta {
+      return {
+        ...event(slug, startsAt, venue),
+        title: slug.replace(/-/g, " "),
+        is_recurring: false,
+        municipality,
+        municipality_name: municipality === "emmitsburg" ? "Emmitsburg" : "Frederick City",
+      };
+    }
+    const current = inTown("game-time", "2030-03-02T17:00:00.000Z", "emmitsburg", "Emmitsburg Branch Library");
+    const frederickSooner = inTown("downtown-concert", "2030-03-02T19:00:00.000Z", "frederick", "Weinberg Center");
+    const emmitsburgOne = inTown("pancake-breakfast", "2030-03-05T13:00:00.000Z", "emmitsburg", "Vigilant Hose Company");
+    const emmitsburgTwo = inTown("trail-cleanup", "2030-03-07T14:00:00.000Z", "emmitsburg", "Community Park");
+
+    it("leads with the same town even when county events start sooner", () => {
+      const result = buildRelatedEventSections(current, now, [
+        frederickSooner,
+        emmitsburgOne,
+        emmitsburgTwo,
+      ]);
+      expect(result.moreUpcoming.title).toBe("More in Emmitsburg");
+      expect(result.moreUpcoming.items.map((row) => row.slug)).toEqual([
+        "pancake-breakfast",
+        "trail-cleanup",
+      ]);
+    });
+
+    it("names the county when nothing else is scheduled in the town", () => {
+      const result = buildRelatedEventSections(current, now, [frederickSooner]);
+      expect(result.moreUpcoming.title).toBe("Elsewhere in Frederick County");
+      expect(result.moreUpcoming.items.map((row) => row.municipality)).toEqual(["frederick"]);
+    });
+
+    it("puts a single same-town event ahead of county events", () => {
+      const result = buildRelatedEventSections(current, now, [frederickSooner, emmitsburgOne]);
+      expect(result.moreUpcoming.title).toBe("More upcoming events");
+      expect(result.moreUpcoming.items.map((row) => row.slug)).toEqual([
+        "pancake-breakfast",
+        "downtown-concert",
+      ]);
+    });
+
+    it("never offers a closure notice or a meeting as something else to do", () => {
+      const closure = { ...inTown("closure", "2030-03-03T05:00:00.000Z", "emmitsburg", "Emmitsburg"), title: "Town Offices Closed" };
+      const meeting = { ...inTown("meeting", "2030-03-03T23:00:00.000Z", "emmitsburg", "Town Office"), title: "Planning Commission" };
+      const result = buildRelatedEventSections(current, now, [closure, meeting, emmitsburgOne, emmitsburgTwo]);
+      expect(result.moreUpcoming.items.map((row) => row.slug)).toEqual([
+        "pancake-breakfast",
+        "trail-cleanup",
+      ]);
+    });
+  });
 });

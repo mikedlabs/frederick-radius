@@ -475,8 +475,10 @@ export default function BrowseMapClient({
   useEffect(() => {
     if (smartDefaultResolved.current || !smartSignals) return;
     const explicitStateKeys = [
+      // `place` and `event`: an arrival from a place or event page must open
+      // on that entity, not on a suggested scene that owns the camera.
       "show", "t", "music", "deals", "intent", "sub", "open", "q", "at",
-      "c", "in", "amenity", "aerial", "scene",
+      "c", "in", "amenity", "aerial", "scene", "place", "event",
     ];
     smartDefaultResolved.current = true;
     if (explicitStateKeys.some((key) => sp.has(key))) return;

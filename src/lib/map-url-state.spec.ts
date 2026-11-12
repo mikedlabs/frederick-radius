@@ -1,9 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  mapPlaceHref,
   mapUrlAfterMutation,
   replaceMapUrl,
   replaceMapUrlSilently,
 } from "./map-url-state";
+
+describe("mapPlaceHref", () => {
+  it("opens the map with the place selected instead of a bare camera", () => {
+    expect(mapPlaceHref("baker-park-frederick")).toBe("/map?place=baker-park-frederick");
+    expect(mapPlaceHref("baker-park-frederick")).not.toContain("c=");
+  });
+});
 
 describe("map URL state", () => {
   afterEach(() => {

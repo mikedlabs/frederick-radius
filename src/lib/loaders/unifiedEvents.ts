@@ -653,7 +653,10 @@ const cachedAssemble = unstable_cache(
   // tuples must not retain Google venue photos or omit eligible event art.
   // v38: venue occurrence routes and exact official same-day performances
   // survive slug and approximate-title dedupe. Old cached membership is invalid.
-  ["unified-events-v38"],
+  // v39: closure notices leave every event lane, and venue-type categories
+  // (bar, brewery, winery) come from the title only. Cached category and
+  // set membership change.
+  ["unified-events-v39"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.

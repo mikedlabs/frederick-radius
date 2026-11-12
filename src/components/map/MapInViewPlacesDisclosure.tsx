@@ -10,6 +10,7 @@ import { ChevronDown, MapPin } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
+import type { MapDistanceOriginLabel } from "./distanceOrigin";
 import { haptic } from "@/lib/haptics";
 import type { MapPinPlace } from "./types";
 
@@ -57,6 +58,8 @@ export type MapInViewPlacesDisclosureProps = {
   places: readonly MapPinPlace[];
   /** A consented device fix when available, otherwise the committed map center. */
   sortOrigin: LngLat | null;
+  /** What sortOrigin is, printed with the distances. Defaults to the map center. */
+  sortOriginLabel?: MapDistanceOriginLabel;
   /** Opens/focuses the existing map place result; this component owns no sheet. */
   onPick: (place: MapPinPlace) => void;
   selectedSlug?: string | null;
@@ -74,6 +77,7 @@ export type MapInViewPlacesDisclosureProps = {
 export default function MapInViewPlacesDisclosure({
   places,
   sortOrigin,
+  sortOriginLabel = "from map center",
   onPick,
   selectedSlug = null,
   pageSize = DEFAULT_PAGE_SIZE,
@@ -130,7 +134,7 @@ export default function MapInViewPlacesDisclosure({
               Places in this view
             </strong>
             <span className="mt-0.5 block text-[11px] leading-tight text-[var(--app-ink-3)]">
-              {countLabel} · {sortOrigin ? "nearest first" : "current map results"}
+              {countLabel} · {sortOrigin ? `distances ${sortOriginLabel}` : "current map results"}
             </span>
           </span>
           <ChevronDown
@@ -210,6 +214,7 @@ export default function MapInViewPlacesDisclosure({
                         {distance && (
                           <span className="shrink-0 font-mono text-[10px] tabular-nums text-[var(--app-ink-3)]">
                             {distance}
+                            <span className="sr-only"> {sortOriginLabel}</span>
                           </span>
                         )}
                         {place.slug === selectedSlug && (

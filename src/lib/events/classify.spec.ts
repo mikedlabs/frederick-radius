@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyEvent, isPublicEvent } from "./classify";
+import { classifyEvent, isClosureNotice, isPublicEvent } from "./classify";
 
 describe("classifyEvent", () => {
   // Regression: the review found these leaking into public discovery (and
@@ -48,14 +48,59 @@ describe("classifyEvent", () => {
 
   it("keeps administrative notices out of public event discovery", () => {
     for (const title of [
-      "Office Closed",
-      "City Offices Closed for Labor Day",
-      "Government Office Closed in Observance of Election Day",
       "Quarterly Spires Articles Due",
       "Newsletter Article Is Due",
     ]) {
       expect(classifyEvent({ title }), title).toBe("town_reminder");
       expect(isPublicEvent({ title }), title).toBe(false);
+    }
+  });
+
+  // November 11, 2026 hierarchy audit: Thurmont's "Town Offices Closed" sat
+  // under Happening now on Veterans Day. Closures are not events in any lane.
+  it("lanes office, library and holiday closures as closure notices", () => {
+    for (const title of [
+      "Office Closed",
+      "Town Offices Closed",
+      "City Offices Closed for Labor Day",
+      "Government Office Closed in Observance of Election Day",
+      "Town Offices Closed - Veterans Day",
+      "Veterans Day - Town Offices Closed",
+      "Veterans Day \u2013 Town Offices Closed",
+      "Veterans Day (Town Offices Closed)",
+      "Veterans Day Holiday: Offices Closed",
+      "Thanksgiving - Offices Closed",
+      "Town Hall Closed",
+      "Library Closed",
+      "All Branches Closed for Veterans Day",
+      "FCPL Libraries Closed - Thanksgiving Day",
+      "Closed for Veterans Day",
+      "Veterans Day - Closed",
+      "Holiday Closure",
+      "Christmas Eve - Library Closes Early",
+      "Holiday - Office Closed",
+      "Office Closed - Nov 11",
+    ]) {
+      expect(isClosureNotice(title), title).toBe(true);
+      expect(classifyEvent({ title }), title).toBe("closure_notice");
+      expect(isPublicEvent({ title }), title).toBe(false);
+    }
+  });
+
+  it("does not treat a title that merely mentions closing as a closure", () => {
+    for (const title of [
+      "Office Closed: The Musical",
+      "The Office: Closed-Door Mystery Dinner",
+      "Behind Closed Doors",
+      "Closed for Business",
+      "Closed",
+      "Veterans Day Ceremony",
+      "Thanksgiving Day Parade",
+      "Library Closing Party",
+      "Community Center Open House",
+    ]) {
+      expect(isClosureNotice(title), title).toBe(false);
+      expect(classifyEvent({ title }), title).not.toBe("closure_notice");
     }
   });
 
