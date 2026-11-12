@@ -1600,7 +1600,7 @@ export function EmptyState() {
   return (
     <div data-saved-empty-state="true" className="max-w-sm space-y-4 py-2">
       <p
-        className="px-0.5 font-sans text-[18px] font-semibold leading-snug"
+        className="font-sans text-[18px] font-semibold leading-snug"
         style={{ color: "var(--app-ink)" }}
       >
         Save an outing, place, event, bus trip, or stop to keep it here for later.

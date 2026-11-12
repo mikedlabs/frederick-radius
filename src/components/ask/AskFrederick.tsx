@@ -1142,7 +1142,13 @@ function WorkspaceComposer({
         constraint for a more useful answer.
       </span>
       <div className="flex items-center gap-1.5">
-        {!compact ? <AskComposerMark compact /> : null}
+        {/* Below 350px the decorative mark gives its width to the field so
+            "Ask anything." fits beside the area chip. */}
+        {!compact ? (
+          <span className="hidden min-[350px]:contents">
+            <AskComposerMark compact />
+          </span>
+        ) : null}
         <textarea
           ref={(node) => {
             inputRef.current = node;
@@ -1155,7 +1161,9 @@ function WorkspaceComposer({
           onChange={(event) => onQueryChange(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={compact ? "Ask a follow-up." : "Ask anything."}
-          className={`${ASK_COMPOSER_INPUT_CLASS} min-h-11 px-1.5 py-2`}
+          // The placeholder stays on one line, so an empty field never
+          // grows to two rows on a narrow phone.
+          className={`${ASK_COMPOSER_INPUT_CLASS} min-h-11 px-1.5 py-2 placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap`}
           style={ASK_COMPOSER_INPUT_STYLE}
           aria-label="Ask Radius"
           aria-describedby="ask-composer-context"
@@ -1376,9 +1384,15 @@ export default function AskFrederick({
     node.style.height = "auto";
     const minHeight = 44;
     const maxHeight = 120;
-    const nextHeight = Math.min(Math.max(node.scrollHeight, minHeight), maxHeight);
+    // An empty field keeps one line. Otherwise a placeholder that wraps in
+    // the narrow 320px field reports a two-line scrollHeight and grows the
+    // composer before anyone types.
+    const empty = node.value.length === 0;
+    const nextHeight = empty
+      ? minHeight
+      : Math.min(Math.max(node.scrollHeight, minHeight), maxHeight);
     node.style.height = `${nextHeight}px`;
-    node.style.overflowY = node.scrollHeight > maxHeight ? "auto" : "hidden";
+    node.style.overflowY = !empty && node.scrollHeight > maxHeight ? "auto" : "hidden";
   }, [q, res, workspace]);
 
   useEffect(() => {
@@ -1991,7 +2005,9 @@ export default function AskFrederick({
     <section
       aria-labelledby={workspace ? "ask-radius-heading" : undefined}
       data-ask-interaction-ready={interactionReady ? "true" : "false"}
-      className={workspace ? "mx-auto max-w-[760px]" : undefined}
+      // Left-aligned with the shell so the title and rows share Back's and
+      // the footer's edge on desktop instead of a second centered edge.
+      className={workspace ? "max-w-[760px]" : undefined}
     >
       {workspace ? (
         <header className="mb-4 max-w-[660px]">
@@ -2206,7 +2222,9 @@ export default function AskFrederick({
                   key={prompt.label}
                   type="button"
                   onClick={() => runIntent(prompt.query)}
-                  className="group flex min-h-14 w-full items-center justify-between gap-3 border-b text-left text-[16px] font-medium leading-snug transition-colors active:bg-[var(--app-bg-sunken)]"
+                  // The last row drops its rule: the footer's top rule is
+                  // the one separator below the list.
+                  className="group flex min-h-14 w-full items-center justify-between gap-3 border-b text-left text-[16px] font-medium leading-snug transition-colors last:border-b-0 active:bg-[var(--app-bg-sunken)]"
                   style={{
                     borderColor: "var(--app-border)",
                     color: "var(--app-ink)",

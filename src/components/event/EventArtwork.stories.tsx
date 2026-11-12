@@ -75,6 +75,10 @@ export const PosterPortraitAt320: Story = {
     await assertContained(context);
     const image = context.canvasElement.querySelector<HTMLImageElement>("img")!;
     expect(getComputedStyle(image).padding).toBe("0px");
+    // The lead frame sits on the page ground (no soft gray tile) and the art
+    // starts at the row's left edge so it lines up with the facts below.
+    expect(getComputedStyle(image.parentElement!).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    expect(getComputedStyle(image).objectPosition).toBe("0% 50%");
     const frame = image.parentElement!.getBoundingClientRect();
     expect(frame.width / frame.height).toBeCloseTo(1.6, 2);
   },

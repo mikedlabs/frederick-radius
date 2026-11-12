@@ -213,7 +213,9 @@ export default function PreferencesPanel() {
                 haptic("light");
                 setMuniEditing(true);
               }}
-              className="flex min-h-11 w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 text-left"
+              // tap-44-y keeps the 44px target without a 44px box, so the
+              // help line sits as close to this title as in the Sign in row.
+              className="tap-44-y flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 text-left"
             >
               <span className={`min-w-0 [overflow-wrap:anywhere] ${ROW_TITLE}`} style={inkStyle}>
                 {muni
@@ -260,7 +262,7 @@ export default function PreferencesPanel() {
               </ul>
             </div>
           )}
-          <p className={`mt-1 ${ROW_HELP}`} style={helpStyle}>
+          <p className={`${muniEditing ? "mt-2" : "mt-0.5"} ${ROW_HELP}`} style={helpStyle}>
             Sets where Today and the Map start from.
           </p>
         </SettingsRow>
@@ -271,7 +273,7 @@ export default function PreferencesPanel() {
       <SettingsSection title="What fits">
         <SettingsRow>
           <details className="group">
-            <summary className="tap-44 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+            <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
               <span className={`min-w-0 [overflow-wrap:anywhere] ${ROW_TITLE}`} style={inkStyle}>
                 {askFitSummary(fit) ?? "No defaults set"}
               </span>
@@ -282,7 +284,7 @@ export default function PreferencesPanel() {
                 style={{ color: "var(--app-ink-3)" }}
               />
             </summary>
-            <div className="mt-2 space-y-4 pb-1">
+            <div className="mt-3 space-y-4 pb-2">
               <ChoiceGroup
                 label="Nearby"
                 value={fit.travelMode}
@@ -322,7 +324,7 @@ export default function PreferencesPanel() {
               </div>
             </div>
           </details>
-          <p className={`mt-1 ${ROW_HELP}`} style={helpStyle}>
+          <p className={`mt-0.5 ${ROW_HELP}`} style={helpStyle}>
             Ask uses these as quiet defaults. What you type always wins, and no notes or location history are stored.
           </p>
         </SettingsRow>
