@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import AskFrederick from "@/components/ask/AskFrederick";
 import { parseScope } from "@/lib/scope";
-import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/ask" },
@@ -28,7 +27,6 @@ export default async function AskPage({
 
   return (
     <div className="relative">
-      <PageBloom variant="warm" />
       <AskFrederick key={`${initialQuery}:${initialScope}`} mode="workspace" initialQuery={initialQuery} initialScope={initialScope} />
     </div>
   );

@@ -34,53 +34,21 @@
   padding: 0.875rem;
 }
 
-/* Decorative category artwork is not a photograph of this particular place. */
+/* The no-photo stand-in is a flat plate with the category icon. It names the
+   kind of place and never imitates a photograph, a logo or a monogram. The
+   category hue is mixed toward ink so the icon reads in both appearances. */
 .categoryArt {
-  position: relative;
   display: grid;
   width: 100%;
   min-height: 120px;
   place-items: center;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--nearby-category-color) 38%, var(--app-bg-elevated-solid));
-  color: color-mix(in srgb, var(--nearby-category-color) 58%, var(--app-ink));
-  isolation: isolate;
-}
-
-.categoryArt::before,
-.categoryArt::after {
-  position: absolute;
-  z-index: -1;
-  width: 72px;
-  height: 72px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  content: "";
-  opacity: 0.14;
-}
-
-.categoryArt::before {
-  inset: -26px auto auto -28px;
-}
-
-.categoryArt::after {
-  inset: auto -34px -32px auto;
-}
-
-.categoryInitial {
-  font-family: var(--font-sans);
-  font-size: 52px;
-  font-weight: 800;
-  letter-spacing: -0.06em;
-  line-height: 1;
+  background: var(--app-bg-sunken);
+  color: color-mix(in srgb, var(--place-category-color) 58%, var(--app-ink));
 }
 
 .categoryArtIcon {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  width: 18px;
-  height: 18px;
+  width: 28px;
+  height: 28px;
 }
 
 .copy {

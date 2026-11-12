@@ -13,6 +13,15 @@ reconcile useful patches from older work without resetting unrelated changes.
 An edit in another folder or an open PR is not a live update. Verify the exact
 merged revision, ready deployment and public behavior before calling it live.
 
+## Ownership
+
+Agents working here own the codebase, not only the diff in front of them.
+Consolidate into an existing helper or shared primitive instead of adding a
+near-duplicate, remove the dead code a change orphans, and update the story,
+spec and doc that describe what changed. Scope still holds at one concern per
+PR: report an unrelated problem you find instead of fixing it in the same
+change.
+
 ## Design system — this is the truth, not older specs
 
 These describe the currently approved design. When the owner authorizes a
@@ -34,8 +43,11 @@ truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
   `-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`. This includes
   page titles, text, controls, source notes, and tabular data. Public Sans
   remains the installed print/export text family, with its real variable
-  italic. Libre Caslon Display Regular remains the wordmark and rare
-  editorial signature. Do not synthesize bold or italic Caslon, rename
+  italic. Libre Caslon Display Regular sets the header wordmark in the top
+  bar and is a rare editorial signature on a few specialty guide pages. No
+  page title or content on Today, Map, Events, Saved, Find, Tools,
+  Settings, Ask, place pages or event pages uses it; every title there is
+  heavy system sans. Do not synthesize bold or italic Caslon, rename
   packaged Public Sans as a system font, or download a new family.
 - **Palette (Brand System 1.4, October 16, 2026, owner-approved):** Always use
   `var(--app-*)` in app UI. White `--app-bg #FFFFFF`, Charcoal `--app-ink #22221F`,
@@ -53,12 +65,26 @@ truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
   three-arc mark is for 48 px and larger, the compact two-arc mark is for
   24–47 px, and the one-arc favicon is for smaller sizes. Do not redraw it,
   wrap it in the retired circle, or invent a page-specific logo.
-- **Surface:** White and soft gray are the normal light surfaces. Dark appearance
-  uses the separate dark canvas and surface tokens throughout the same app.
-  Favor clean surfaces, clear type, and accurate local photography over paper
-  grain or palette washes. Specialty pages share this identity and preserve
+- **Surface:** Content is rows on the White ground, separated by a 1px
+  `--app-border` hairline or by space. Do not put a bordered, filled or
+  shadowed card around ordinary content, and do not add gradients or glows.
+  A bordered surface is still right for fields, menus, sheets and floating
+  layers over the map. Soft gray is for insets, tracks and pressed states.
+  Dark appearance uses the separate dark canvas and surface tokens throughout
+  the same app. Favor clear type and accurate local photography over paper
+  grain or palette washes. A row shows a thumbnail only when a real photo
+  exists; otherwise it keeps the slot and shows a plain `--app-ink-3` glyph
+  with no tile. Specialty pages share this identity and preserve
   their semantic signals. `/pitch` stays an isolated internal presentation;
   bring it into the current brand system before public use.
+- **Current look:** the owner approved the "Plain tool, with the coral plate"
+  interface on November 10, 2026 (see Interface shape in
+  `docs/brand/BRAND_GUIDE.md`). A rounded, bordered card around ordinary
+  content is now a regression. The November 10, 2026 interface update covers
+  Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages, event
+  pages and town pages. Specialty guide pages (for example food trucks,
+  deals, amenities, parks, happy hour and beer) still carry older treatments
+  and are the next pass.
 - **Voice:** calm local expert. No em dashes in user-facing copy
   (`cleanFeedText` converts them). Verb-first chip labels ("Eat & drink",
   "Open now"). Counts are supporting detail, never the headline. Full rules
@@ -73,10 +99,19 @@ truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
   benefits, adjectives, or matching short sentences because the rhythm sounds
   polished. This is a prose rule, not a product limit. Three results, choices,
   steps, cards, or facts are correct when the data or task calls for three.
-- **Aesthetic bar:** a distinctive local information tool — organized, calm,
-  and immediately useful.
-  Typography carries hierarchy before boxes/borders/badges. One primary
-  action per view. Honest empty states. If a change reads like a generic
+- **Aesthetic bar:** a plain, distinctive local information tool that is
+  organized, calm and immediately useful. Type carries the hierarchy: heavy
+  system sans page titles, 17px semibold row titles, 14px muted meta lines and
+  13px uppercase section labels, before any box, border or badge. Chrome is
+  flat. A page may hold one solid Deep Coral block. Only Today (the name
+  plate) and Events (the lead event's time block) have one, and no other
+  page should gain one. Apart from that block, the only coral field on a
+  page is its single filled coral action. A selected filter chip is filled ink (background
+  `--app-ink`, text `--app-bg`), never coral. Coral text uses `--app-link` or
+  `--app-brand-text`, Creek text `--app-cool-text` and forest text
+  `--app-forest-text`; `--app-brand`, `--app-brand-press` and `--app-cool`
+  are fill colors and never text colors. White text on coral sits on
+  `--app-brand-press` with `--app-on-brand`. Honest empty states. If a change reads like a generic
   SaaS template, it's wrong.
 
 ## Owner's public voice (Reddit, social, email — anything Mike posts)
@@ -123,8 +158,15 @@ update its implementation, relevant contract and tests together.
   before any browser prompt. After that, the shared header location control is
   the sole Near me / Whole county / town scope control. Do not add another
   floating Locate or scope toggle to the map. Radius ("Nearby") mode still exists behind
-  `/map?mode=radius` (isochrone + control sheet) but has no UI entry point;
-  don't re-add the floating toggle without an owner ask. The nav is FOUR
+  `/map?mode=radius` (isochrone + control sheet). It has no floating toggle,
+  but it does have deliberate secondary entries: the "Compare travel reach"
+  row at the end of the map dock's "Find nearby" pane
+  (`src/components/map/MapDock.tsx`), the "Within 15 minutes" travel view in
+  the dock's "Get around" pane (handled by `activateRadiusScene` in
+  `src/components/map/AppMap.tsx`), and two Find results in
+  `src/lib/search/index.ts` (`action:map-within-15` and `action:radius`). The
+  old `/radius` URL also redirects there. Keep those working. Do not re-add
+  the floating toggle without an owner ask. The nav is FOUR
   tabs, `Today · Map · Events · Saved(/my-radius)`, from ONE source of
   truth (`src/components/nav/tabs.ts`). Ask is deliberately NOT a fifth
   tab: it lives at `/ask` as a focused workspace, reached from Today's
@@ -172,27 +214,27 @@ update its implementation, relevant contract and tests together.
 - **The local search index must never depend on memory.**
   `radius_search_documents` is filled incrementally by the gated
   `/api/cron/radius-search` job and can be bootstrapped immediately with
-  `npm run build:radius-search` (both need `DATABASE_URL`; `OPENAI_API_KEY`
-  optionally adds semantic vectors). Full-text search is the required
+  `npm run build:radius-search` (both need `DATABASE_URL`; both build the
+  full-text index only, and add semantic vectors only when
+  `RADIUS_SEARCH_SEMANTIC_ENABLED=1`, a positive
+  `RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT` and `OPENAI_API_KEY` are all
+  set, so a key alone adds nothing). Full-text search is the required
   baseline. AI Gateway offers embedding models, but the current scheduled
   writer imports the direct OpenAI provider and requires `OPENAI_API_KEY` when
   vectors are deliberately enabled. Do not infer transport support from the
   provider catalog or from Ask's text-generation credentials. The larger
-  reason not to rush vectors is still the corpus, though the shape of the
-  problem has changed since #1681 enriched it. Measured 2026-09-16 over all
-  1,570 documents: they average 150 characters, median 137, and only 47 are
-  under 100 — but 1,388 of 1,570 are still under 200, and the growth is mostly
-  address and postal-code boilerplate that appears on nearly every document.
-  What would actually distinguish them is still missing: `place.amenities` is
-  read by the builder and populated for ZERO places, only 14 places carry
-  `search_aliases`, 3 carry a description, and 1 carries `known_for`. So
-  embedding this corpus still yields ~1,500 near-identical "restaurant in
-  Frederick" vectors whose cosine ranking is close to arbitrary. Enrich the
-  documents first; vectors are worth buying only once there is something in
-  them to embed. (Do NOT re-add a note that aliases are missing from the
-  indexed document — they were added in #1634 and are at
-  `src/lib/ask/search-index-document.ts:38`; that claim sent agents to redo
-  finished work.)
+  reason not to rush vectors is the corpus. The indexed documents are short
+  (about 150 characters on average, and roughly nine in ten are under 200),
+  and most of that text is address and postal-code boilerplate shared by
+  nearly every document. The distinguishing fields are sparse: fewer than ten
+  places each carry `amenities`, `known_for` or a description, and about two
+  dozen carry `search_aliases`. Embedding this corpus yields near-identical
+  "restaurant in Frederick" vectors whose cosine ranking is close to
+  arbitrary, so enrich the documents first. Remeasure with
+  `radiusSearchDocuments()` in `src/lib/ask/search-index-document.ts` before
+  quoting counts. Every one of those fields, including `search_aliases`
+  (line 38, added in #1634), is already in the indexed document, so do not
+  report any of them as missing from it.
   `hybridPlaceSearch()` fails soft to `[]`, so an EMPTY index is
   indistinguishable from a healthy one at the call site — it shipped empty
   and Ask ran keyword-only for months before anyone noticed. Keep
@@ -200,6 +242,35 @@ update its implementation, relevant contract and tests together.
   tripwire makes empty or badly stale coverage red on /admin/data-health.
 
 ## Verification norms
+
+### Libraries and shared primitives
+
+Check `package.json` and `docs/UI_PRIMITIVES.md` before building a
+component. The installed UI libraries are sonner, vaul, framer-motion,
+embla-carousel-react and lucide-react. Use the listed library or shared
+primitive instead of hand-building what it already does, and do not add a UI
+dependency without the owner's yes.
+
+- **Toasts:** Sonner only, through `AppToaster` and
+  `src/lib/feedback/notify.ts`. A reversible action gets Undo.
+- **Sheets and drawers:** `BottomSheet` (or its `Sheet` adapter) and
+  `BottomDrawer` (Vaul) are the two shells. Do not hand-build a third, a
+  `role="dialog"` container or a focus trap. Lock scrolling with
+  `useScrollLock`, never with `document.body.style.overflow`.
+- **Menus and selects:** reuse `SortDropdown` and `FilterChip`, or a native
+  `<select>` for one choice from a list. No headless library is installed, so
+  stop and ask before writing new `menu`, `listbox` or `tablist` markup.
+- **Search:** Find (`SearchOverlay`, opened from `TopBar`) is the single
+  request doorway. Do not add a second palette. A printed shortcut must work.
+- **Motion:** plain CSS for hover, press and fade. framer-motion only for
+  springs, layout, exit and gestures, always with a reduced-motion branch. No
+  entrance animation on content that arrives with a navigation.
+- **Shape:** the radius tokens are 4, 6, 8 and 10px (`--app-radius-sm`
+  through `--app-radius-xl`). Fields, buttons and menus use `--app-radius-md`,
+  and sheets and map panels use `--app-radius-lg`. Ordinary content is ruled
+  rows, not cards. A full capsule is only for compact filter chips, status
+  badges and toggle switches; informational tags are plain text. One filled
+  coral action per view.
 
 ### Component workshop
 
@@ -250,8 +321,11 @@ update its implementation, relevant contract and tests together.
   GitHub verifies the PR and Vercel owns the one production build. Manual
   promotion or rollback is only for recovery and must identify the immutable
   deployment being promoted.
-- Tap targets: ≥44px effective. Small controls use the invisible
-  extender — `.tap-44` (globals.css) or a `before:` overlay (Pill).
+- Tap targets: at least 44px effective. Prefer a real 44px box
+  (`min-h-11 min-w-11`, as `Pill` does), because an invisible extender can be
+  cut off by the overflow boundary of a scrolling rail. Where the visible
+  control must stay smaller, use the extender classes in `globals.css`:
+  `.tap-44`, or `.tap-44-y` for controls packed in a horizontal row.
 
 ## Branch & PR conventions
 

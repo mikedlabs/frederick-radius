@@ -30,7 +30,7 @@ export default function ArchiveDoorway() {
         </div>
 
         <div className="flex flex-col p-5 sm:p-6">
-          <p className="eyebrow" style={{ color: "var(--app-brand-press)" }}>Archive Lens</p>
+          <p className="eyebrow" style={{ color: "var(--app-link)" }}>Archive Lens</p>
           <h2 id="archive-doorway-title" className="mt-2 font-serif text-[27px] font-semibold leading-[1.02] tracking-tight sm:text-[31px]" style={{ color: "var(--app-ink)" }}>
             Don&rsquo;t just read Frederick&rsquo;s history. Inspect it.
           </h2>
@@ -39,9 +39,9 @@ export default function ArchiveDoorway() {
           </p>
 
           <ul className="mt-4 grid gap-2 text-[11.5px] font-semibold sm:grid-cols-3 sm:gap-1.5" style={{ color: "var(--app-ink-2)" }}>
-            <li className="inline-flex items-center gap-1.5"><Map className="h-3.5 w-3.5" style={{ color: "var(--app-brand)" }} aria-hidden />1887–1922 maps</li>
+            <li className="inline-flex items-center gap-1.5"><Map className="h-3.5 w-3.5" style={{ color: "var(--app-brand-text)" }} aria-hidden />1887–1922 maps</li>
             <li className="inline-flex items-center gap-1.5"><Ruler className="h-3.5 w-3.5" style={{ color: "var(--app-accent-press)" }} aria-hidden />HABS records</li>
-            <li className="inline-flex items-center gap-1.5"><Newspaper className="h-3.5 w-3.5" style={{ color: "var(--app-cool)" }} aria-hidden />Frederick papers</li>
+            <li className="inline-flex items-center gap-1.5"><Newspaper className="h-3.5 w-3.5" style={{ color: "var(--app-cool-text)" }} aria-hidden />Frederick papers</li>
           </ul>
 
           <Link

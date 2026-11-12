@@ -135,7 +135,7 @@ export default function EventsMapInner({
                   {active.venue_name}
                 </span>
               )}
-              <span className="mt-1 block text-[11px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+              <span className="mt-1 block text-[11px] font-semibold" style={{ color: "var(--app-link)" }}>
                 View event <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
               </span>
             </Link>

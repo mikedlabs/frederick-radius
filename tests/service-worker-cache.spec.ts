@@ -24,9 +24,6 @@ async function workerHarness() {
   const listeners = new Map<string, Listener>();
   const puts: Array<{ cache: string; request: unknown; value: unknown }> = [];
   const offline = { kind: "offline" };
-  const fair = { kind: "fair" };
-  const fairMap = { kind: "fair-map" };
-  const fairRedirect = { kind: "fair-redirect" };
   const errorResponse = { kind: "network-error" };
 
   const cacheFor = (name: string) => ({
@@ -47,24 +44,37 @@ async function workerHarness() {
     delete: vi.fn(async () => true),
     match: vi.fn(async (request: unknown) => {
       if (request === "/offline") return offline;
-      if (request === "/moments/great-frederick-fair-2026") return fair;
-      if (request === "/data/fair/great-frederick-fair-2026-map.geojson") {
-        return fairMap;
-      }
       return undefined;
     }),
   };
   const fetch = vi.fn();
   const openWindow = vi.fn(async () => undefined);
+  const showNotification = vi.fn(async () => undefined);
+  const pushSubscription = { unsubscribe: vi.fn(async () => true) };
   const self = {
     location: { origin: "https://frederick.example" },
-    addEventListener: (type: string, listener: Listener) => listeners.set(type, listener),
+    // A real worker keeps every listener for an event type, so chain them.
+    addEventListener: (type: string, listener: Listener) => {
+      const previous = listeners.get(type);
+      listeners.set(
+        type,
+        previous
+          ? (event) => {
+              previous(event);
+              listener(event);
+            }
+          : listener,
+      );
+    },
     clients: {
       claim: vi.fn(async () => undefined),
       matchAll: vi.fn(async () => []),
       openWindow,
     },
-    registration: { showNotification: vi.fn(async () => undefined) },
+    registration: {
+      showNotification,
+      pushManager: { getSubscription: vi.fn(async () => pushSubscription) },
+    },
     skipWaiting: vi.fn(),
   };
 
@@ -74,10 +84,6 @@ async function workerHarness() {
     fetch,
     Response: {
       error: () => errorResponse,
-      redirect: (url: string, status: number) =>
-        url === "/moments/great-frederick-fair-2026" && status === 302
-          ? fairRedirect
-          : errorResponse,
     },
     URL,
     Set,
@@ -112,11 +118,11 @@ async function workerHarness() {
     fetch,
     puts,
     offline,
-    fair,
-    fairMap,
-    fairRedirect,
     errorResponse,
     openWindow,
+    self,
+    showNotification,
+    pushSubscription,
     dispatchFetch,
   };
 }
@@ -193,32 +199,8 @@ describe("service worker cache boundaries", () => {
     expect(worker.puts).toHaveLength(0);
   });
 
-  it("reloads canonical Fair HTML but reuses HTTP-cached same-origin static assets", async () => {
+  it("ignores the retired Fair warm-up message", async () => {
     const worker = await workerHarness();
-    worker.fetch
-      .mockResolvedValueOnce(
-        response(
-          "https://frederick.example/moments/great-frederick-fair-2026",
-          "public, max-age=0, s-maxage=3600",
-          [
-            '<script src="/_next/static/chunks/fair-a1.js"></script>',
-            '<link href="/_next/static/css/fair-b2.css" rel="stylesheet">',
-            '<script src="https://evil.example/_next/static/chunks/no.js"></script>',
-            '<img src="/fair/private-photo.jpg">',
-          ].join(""),
-        ),
-      )
-      .mockResolvedValueOnce(
-        response("https://frederick.example/_next/static/chunks/fair-a1.js"),
-      )
-      .mockResolvedValueOnce(
-        response("https://frederick.example/_next/static/css/fair-b2.css"),
-      )
-      .mockResolvedValueOnce(
-        response(
-          "https://frederick.example/data/fair/great-frederick-fair-2026-map.geojson",
-        ),
-      );
     let pending: Promise<unknown> | undefined;
     worker.listeners.get("message")!({
       data: { type: "CACHE_FAIR" },
@@ -228,160 +210,18 @@ describe("service worker cache boundaries", () => {
     });
 
     await pending;
-    expect(worker.fetch).toHaveBeenNthCalledWith(
-      1,
-      "/moments/great-frederick-fair-2026",
-      { cache: "reload", credentials: "omit" },
-    );
-    expect(worker.fetch).toHaveBeenNthCalledWith(
-      2,
-      "https://frederick.example/_next/static/chunks/fair-a1.js",
-      { cache: "default", credentials: "omit" },
-    );
-    expect(worker.fetch).toHaveBeenNthCalledWith(
-      3,
-      "https://frederick.example/_next/static/css/fair-b2.css",
-      { cache: "default", credentials: "omit" },
-    );
-    expect(worker.fetch).toHaveBeenNthCalledWith(
-      4,
-      "/data/fair/great-frederick-fair-2026-map.geojson",
-      { cache: "reload", credentials: "omit" },
-    );
-    expect(worker.puts.map((entry) => entry.request)).toEqual([
-      "/moments/great-frederick-fair-2026",
-      "https://frederick.example/_next/static/chunks/fair-a1.js",
-      "https://frederick.example/_next/static/css/fair-b2.css",
-      "/data/fair/great-frederick-fair-2026-map.geojson",
-    ]);
-  });
-
-  it("revalidates the Fair map snapshot and replaces the warmed copy", async () => {
-    const worker = await workerHarness();
-    const currentMap = response(
-      "https://frederick.example/data/fair/great-frederick-fair-2026-map.geojson",
-    );
-    worker.fetch.mockResolvedValueOnce(currentMap);
-
-    const handled = worker.dispatchFetch(
-      "https://frederick.example/data/fair/great-frederick-fair-2026-map.geojson",
-    );
-
-    await expect(handled.result()).resolves.toBe(currentMap);
-    expect(worker.fetch).toHaveBeenCalledWith(handled.request, {
-      cache: "no-cache",
-    });
-    expect(worker.puts).toHaveLength(1);
-    expect(worker.puts[0]).toMatchObject({
-      request: "/data/fair/great-frederick-fair-2026-map.geojson",
-    });
-  });
-
-  it("falls back to the warmed Fair map snapshot when offline", async () => {
-    const worker = await workerHarness();
-    worker.fetch.mockRejectedValueOnce(new Error("offline"));
-
-    const handled = worker.dispatchFetch(
-      "https://frederick.example/data/fair/great-frederick-fair-2026-map.geojson",
-    );
-
-    await expect(handled.result()).resolves.toBe(worker.fairMap);
-    expect(worker.caches.match).toHaveBeenCalledWith(
-      "/data/fair/great-frederick-fair-2026-map.geojson",
-    );
+    expect(pending).toBeUndefined();
+    expect(worker.fetch).not.toHaveBeenCalled();
     expect(worker.puts).toHaveLength(0);
   });
 
   it.each([
-    ["https://frederick.example/beta", "public, max-age=60"],
-    ["https://evil.example/moments/great-frederick-fair-2026", "public, max-age=60"],
-    ["https://frederick.example/moments/great-frederick-fair-2026?private=1", "public, max-age=60"],
-    ["https://frederick.example/moments/great-frederick-fair-2026", "private, max-age=60"],
-    ["https://frederick.example/moments/great-frederick-fair-2026", "no-store"],
-  ])("rejects an unsafe Fair warm response from %s with %s", async (url, cacheControl) => {
-    const worker = await workerHarness();
-    worker.fetch.mockResolvedValueOnce(response(url, cacheControl, ""));
-    let pending: Promise<unknown> | undefined;
-    worker.listeners.get("message")!({
-      data: { type: "CACHE_FAIR" },
-      waitUntil(value: Promise<unknown>) {
-        pending = value;
-      },
-    });
-
-    await pending;
-    expect(worker.puts).toHaveLength(0);
-  });
-
-  it("caps Fair static asset warming at forty unique files", async () => {
-    const worker = await workerHarness();
-    const assets = Array.from(
-      { length: 48 },
-      (_, index) => '<script src="/_next/static/chunks/fair-' + index + '.js"></script>',
-    ).join("");
-    worker.fetch.mockImplementation(async (request: string) =>
-      request === "/moments/great-frederick-fair-2026"
-        ? response(
-            "https://frederick.example/moments/great-frederick-fair-2026",
-            "public, max-age=60",
-            assets,
-          )
-        : response(new URL(request, "https://frederick.example").href),
-    );
-    let pending: Promise<unknown> | undefined;
-    worker.listeners.get("message")!({
-      data: { type: "CACHE_FAIR" },
-      waitUntil(value: Promise<unknown>) {
-        pending = value;
-      },
-    });
-
-    await pending;
-    expect(worker.fetch).toHaveBeenCalledTimes(42);
-    expect(worker.puts).toHaveLength(42);
-    expect(worker.puts.at(-1)?.request).toBe(
-      "/data/fair/great-frederick-fair-2026-map.geojson",
-    );
-  });
-
-  it("uses cached canonical Fair HTML for its exact offline navigation", async () => {
-    const worker = await workerHarness();
-    worker.fetch.mockRejectedValueOnce(new Error("offline"));
-
-    const handled = worker.dispatchFetch(
-      "https://frederick.example/moments/great-frederick-fair-2026",
-      { mode: "navigate" },
-    );
-    await expect(handled.result()).resolves.toBe(worker.fair);
-    expect(worker.caches.match).toHaveBeenCalledWith(
-      "/moments/great-frederick-fair-2026",
-    );
-    expect(worker.caches.match).not.toHaveBeenCalledWith("/offline");
-    expect(worker.puts).toHaveLength(0);
-  });
-
-  it("preserves the /fair redirect before using canonical offline HTML", async () => {
-    const worker = await workerHarness();
-    worker.fetch.mockRejectedValueOnce(new Error("offline"));
-
-    const handled = worker.dispatchFetch("https://frederick.example/fair", {
-      mode: "navigate",
-    });
-    await expect(handled.result()).resolves.toBe(worker.fairRedirect);
-    expect(worker.caches.match).toHaveBeenCalledWith(
-      "/moments/great-frederick-fair-2026",
-    );
-    expect(worker.caches.match).not.toHaveBeenCalledWith("/offline");
-    expect(worker.puts).toHaveLength(0);
-  });
-
-  it.each([
+    "https://frederick.example/fair",
     "https://frederick.example/fair?day=1",
-    "https://frederick.example/fair/",
-    "https://frederick.example/moments/great-frederick-fair-2026?day=1",
+    "https://frederick.example/moments/great-frederick-fair-2026",
     "https://frederick.example/moments/great-frederick-fair-2026/parking",
     "https://frederick.example/today",
-  ])("keeps generic offline behavior for non-exact navigation %s", async (url) => {
+  ])("gives %s only the generic offline page", async (url) => {
     const worker = await workerHarness();
     worker.fetch.mockRejectedValueOnce(new Error("offline"));
 
@@ -400,7 +240,7 @@ describe("service worker cache boundaries", () => {
     "https://frederick.example/settings/avatar.png",
     "https://frederick.example/my-radius/card.png",
     "https://frederick.example/business/manage/secret/photo.png",
-    "https://frederick.example/api/push/topics?endpoint=secret",
+    "https://frederick.example/api/follows?endpoint=secret",
     "https://frederick.example/photo.jpg?token=secret",
   ])("does not intercept or cache sensitive request %s", async (url) => {
     const worker = await workerHarness();
@@ -441,51 +281,34 @@ describe("service worker cache boundaries", () => {
     expect(worker.puts).toHaveLength(0);
   });
 
-  it("normalizes an unsafe push click URL to /today", async () => {
+  it("drops a retired push subscription without showing a notification", async () => {
     const worker = await workerHarness();
-    let pending: Promise<unknown> | undefined;
-    worker.listeners.get("notificationclick")!({
-      notification: {
-        data: { url: "https://evil.example/phish" },
-        close: vi.fn(),
-      },
+    const pending: Array<Promise<unknown>> = [];
+    worker.listeners.get("push")!({
+      data: { json: () => ({ title: "Old alert", url: "/today" }) },
       waitUntil(value: Promise<unknown>) {
-        pending = value;
+        pending.push(value);
       },
     });
 
-    await pending;
-    expect(worker.openWindow).toHaveBeenCalledWith("/today");
+    await Promise.all(pending);
+    expect(worker.pushSubscription.unsubscribe).toHaveBeenCalledTimes(1);
+    expect(worker.showNotification).not.toHaveBeenCalled();
+    expect(worker.listeners.has("notificationclick")).toBe(false);
   });
 
-  it("keeps a same-origin POST open ping alive with the click navigation", async () => {
+  it("drops a retired push subscription on activate and still claims clients", async () => {
     const worker = await workerHarness();
-    worker.fetch.mockResolvedValueOnce(response("https://frederick.example/api/push/opened"));
-    let pending: Promise<unknown> | undefined;
-    worker.listeners.get("notificationclick")!({
-      notification: {
-        data: {
-          url: "/events/alive-at-five",
-          n: "11111111-1111-4111-8111-111111111111",
-        },
-        close: vi.fn(),
-      },
+    const pending: Array<Promise<unknown>> = [];
+    worker.listeners.get("activate")!({
       waitUntil(value: Promise<unknown>) {
-        pending = value;
+        pending.push(value);
       },
     });
 
-    await pending;
-    expect(worker.fetch).toHaveBeenCalledWith(
-      "/api/push/opened?n=11111111-1111-4111-8111-111111111111",
-      expect.objectContaining({
-        method: "POST",
-        mode: "same-origin",
-        credentials: "same-origin",
-        cache: "no-store",
-        keepalive: true,
-      }),
-    );
-    expect(worker.openWindow).toHaveBeenCalledWith("/events/alive-at-five");
+    await Promise.all(pending);
+    expect(pending).toHaveLength(2);
+    expect(worker.pushSubscription.unsubscribe).toHaveBeenCalledTimes(1);
+    expect(worker.self.clients.claim).toHaveBeenCalledTimes(1);
   });
 });

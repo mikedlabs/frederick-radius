@@ -6,7 +6,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { radiusJourneyForPath, type RadiusJourney } from "@/data/radius-tools";
-import { isFairDayPath } from "@/lib/fair/route-policy";
 
 /**
  * Shared primary-tab definition for BottomNav (mobile) + SideRail
@@ -85,7 +84,6 @@ const SECTION_PREFIXES: ReadonlyArray<readonly [string, number]> = [
 
 /** Resolve a pathname to its tab index (or -1 if it isn't under a tab). */
 export function tabIndexForPath(pathname: string): number {
-  if (isFairDayPath(pathname)) return 0;
   const direct = TABS.findIndex(
     (t) => pathname === t.href || pathname.startsWith(t.href + "/"),
   );
@@ -104,4 +102,20 @@ export function tabIndexForPath(pathname: string): number {
     ([p]) => pathname === p || pathname.startsWith(p),
   );
   return section ? section[1] : -1;
+}
+
+/**
+ * Whether the primary tabs may prefetch from this route. Native detail Back
+ * can depart during hydration, so canonical event and place detail pages wait
+ * for a real tab activation before loading another tab.
+ */
+export function shouldPrefetchGlobalNavigation(pathname: string): boolean {
+  const normalized =
+    pathname.length > 1 && pathname.endsWith("/")
+      ? pathname.slice(0, -1)
+      : pathname;
+  const canonicalDetail =
+    /^\/(?:events|places)\/[^/]+$/.test(normalized) &&
+    normalized !== "/events/calendar";
+  return !canonicalDetail;
 }

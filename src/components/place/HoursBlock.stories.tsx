@@ -213,6 +213,10 @@ export const QualifiedMuseum: Story = {
     try {
       root.style.setProperty("font-size", "200%");
       await expect(note).toBeVisible();
+      // Opening the disclosure starts the chevron's rotation. A square turning
+      // through 45 degrees is briefly wider than itself, so measure the
+      // section at rest rather than mid-turn on a slow runner.
+      await Promise.all(section.getAnimations({ subtree: true }).map((animation) => animation.finished));
       await expect(section.scrollWidth).toBeLessThanOrEqual(section.clientWidth);
     } finally {
       if (fontSize) root.style.setProperty("font-size", fontSize);

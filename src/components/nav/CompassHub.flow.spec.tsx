@@ -46,8 +46,66 @@ async function type(input: HTMLInputElement, value: string) {
   const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
   await act(async () => { setValue.call(input, value); input.dispatchEvent(new Event("input", { bubbles: true })); });
 }
+async function press(target: HTMLElement, key: string, init: KeyboardEventInit = {}) {
+  const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...init });
+  await act(async () => { target.dispatchEvent(event); });
+  return event;
+}
+function recents(): string[] { return JSON.parse(window.localStorage.getItem("fr.compass.recent.v1") ?? "[]"); }
+function toolLinks(scope: ParentNode) { return [...scope.querySelectorAll<HTMLAnchorElement>("[data-tool-link]")]; }
+async function openFilter(launcher: string, scope: () => ParentNode = () => dialog()!) {
+  await click(button(launcher)); await act(async () => vi.advanceTimersByTimeAsync(32));
+  const input = scope().querySelector<HTMLInputElement>('[role="searchbox"]')!;
+  input.focus(); return input;
+}
 
 describe("Tools request-to-action flow", () => {
+  it("runs the single tool a filter leaves when Enter is pressed", async () => {
+    await render(); const input = await openFilter("Browse the full tool index");
+    expect(input.getAttribute("enterkeyhint")).toBe("go");
+    expect((await press(input, "Enter")).defaultPrevented).toBe(false);
+    await type(input, "bus");
+    expect(toolLinks(dialog()!).map((link) => link.getAttribute("href"))).toEqual(["/transit"]);
+    for (const ignored of [{ isComposing: true }, { keyCode: 229 }, { shiftKey: true }, { metaKey: true }]) {
+      expect((await press(input, "Enter", ignored)).defaultPrevented).toBe(false);
+    }
+    expect(recents()).toEqual([]); expect(document.activeElement).toBe(input);
+    expect((await press(input, "Enter")).defaultPrevented).toBe(true);
+    expect(recents()).toEqual(["/transit"]);
+  });
+  it("moves focus to the first match when Enter or ArrowDown leaves several", async () => {
+    await render(); const input = await openFilter("Browse the full tool index");
+    expect((await press(input, "ArrowDown")).defaultPrevented).toBe(false); expect(document.activeElement).toBe(input);
+    await type(input, "map");
+    const links = toolLinks(dialog()!); expect(links.length).toBeGreaterThan(1);
+    expect((await press(input, "Enter")).defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(links[0]); expect(recents()).toEqual([]);
+    input.focus(); await press(input, "ArrowDown");
+    expect(document.activeElement).toBe(links[0]); expect(recents()).toEqual([]);
+    await type(input, "bus"); input.focus(); await press(input, "ArrowDown");
+    expect(document.activeElement).toBe(toolLinks(dialog()!)[0]); expect(recents()).toEqual([]);
+    await type(input, "no such tool here"); input.focus();
+    expect((await press(input, "Enter")).defaultPrevented).toBe(false); expect(document.activeElement).toBe(input);
+  });
+  it("keeps Enter inside the shortcut editor by focusing the Pin control", async () => {
+    await render(); const input = await openFilter("Edit");
+    expect(input.hasAttribute("enterkeyhint")).toBe(false);
+    await type(input, "brunch");
+    expect(toolLinks(dialog()!)).toHaveLength(1);
+    const pin = dialog()!.querySelector<HTMLButtonElement>('button[aria-label="Pin Brunch guide"]')!;
+    for (const key of ["Enter", "ArrowDown"]) {
+      input.focus(); expect((await press(input, key)).defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(pin);
+    }
+    expect(recents()).toEqual([]); expect(window.location.search).toBe("?deck=all");
+    await click(pin);
+    expect(dialog()!.querySelector('button[aria-label="Unpin Brunch guide"]')?.getAttribute("aria-pressed")).toBe("true");
+  });
+  it("runs the single match from the index inside an existing Tools drawer", async () => {
+    await render(true); const input = await openFilter("Browse the full tool index", () => host);
+    await type(input, "bus"); await press(input, "Enter");
+    expect(recents()).toEqual(["/transit"]);
+  });
   it("restores exact native index editing words and input focus after a popped entry remount", async () => {
     await render(true); await click(button("Browse the full tool index"));
     let field = host.querySelector<HTMLInputElement>('[role="searchbox"]')!;

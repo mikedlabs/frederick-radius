@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { ArrowRight, Bookmark } from "lucide-react";
-import { toast } from "sonner";
+import { notifyRemoved } from "@/lib/feedback/notify";
 import { refreshSavedOutings, removeOuting, savedOutingErrorDescription, type SavedOutingsSnapshot } from "@/hooks/useSavedOutings";
 import { savedOutingDetails, savedOutingHref } from "@/lib/saved-outings";
+import { restoreOuting } from "./SaveOutingButton";
 import styles from "./SavedOutings.module.css";
 
 export default function SavedOutings({ snapshot }: { snapshot: SavedOutingsSnapshot }) {
@@ -15,7 +16,7 @@ export default function SavedOutings({ snapshot }: { snapshot: SavedOutingsSnaps
   const [error, setError] = useState<string | null>(null);
   if (snapshot.status === "ready" && snapshot.outings.length === 0) return null;
 
-  async function remove(token: string, button: HTMLButtonElement) {
+  async function remove(token: string, title: string, button: HTMLButtonElement) {
     const restoreFocus = document.activeElement === button;
     const links = [...(sectionRef.current?.querySelectorAll<HTMLAnchorElement>("a[data-saved-outing-open]") ?? [])];
     const index = links.findIndex((link) => link === button.closest("article")?.querySelector("a[data-saved-outing-open]"));
@@ -26,7 +27,9 @@ export default function SavedOutings({ snapshot }: { snapshot: SavedOutingsSnaps
     setError(null);
     try {
       await removeOuting(token);
-      toast("The outing was removed from Saved on this device.");
+      // Undo runs after the card is gone, and after this section is gone when
+      // it was the last outing, so restoreOuting reports a failure as a toast.
+      notifyRemoved({ label: title, onUndo: () => void restoreOuting(token, title), item: { type: "outing", id: token } });
       if (restoreFocus) window.requestAnimationFrame(() => {
         // The confirmed store update removes the old control. Orient keyboard
         // users after React commits, including the last-card empty state.
@@ -69,7 +72,7 @@ export default function SavedOutings({ snapshot }: { snapshot: SavedOutingsSnaps
             <p className={styles.metadata}>{details.stopCount} saved {details.stopCount === 1 ? "stop" : "stops"} · {details.dateLabel}</p>
             <div className={styles.actions}>
               <Link href={href} data-saved-outing-open className={styles.open} prefetch={false} aria-label={`Open outing: ${outing.title}`}>Open outing <ArrowRight aria-hidden className="h-4 w-4" /></Link>
-              <button type="button" onClick={(event) => remove(outing.token, event.currentTarget)} disabled={pending !== null || snapshot.status !== "ready"} className={styles.remove} aria-label={`Remove outing: ${outing.title}`}>{pending === outing.token ? "Removing…" : "Remove"}</button>
+              <button type="button" onClick={(event) => remove(outing.token, outing.title, event.currentTarget)} disabled={pending !== null || snapshot.status !== "ready"} className={styles.remove} aria-label={`Remove outing: ${outing.title}`}>{pending === outing.token ? "Removing…" : "Remove"}</button>
             </div>
           </article>
         </li>;

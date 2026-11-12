@@ -118,6 +118,8 @@ test("Tools persists pinned tools through the deliberate editor", async ({ page 
 
 test("Tools sends a typed need through shared Find without making people choose Search or AI", async ({ page }) => {
   await page.goto("/compass", { waitUntil: "domcontentloaded" });
+  // Wait for hydration, or the tap follows the plain link to /search.
+  await expect(page.locator("[data-compass-ready]")).toHaveAttribute("data-compass-ready", "true");
   await activate(page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }));
   const find = page.getByRole("dialog", { name: "What do you need?" });
   await expect(find).toBeVisible(); await expect(page.getByRole("dialog")).toHaveCount(1);

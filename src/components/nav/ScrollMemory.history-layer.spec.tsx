@@ -2,7 +2,7 @@
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
+import { releaseAbandonedHistoryLayer, useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import ScrollMemory from "./ScrollMemory";
 
 const route = vi.hoisted(() => ({ pathname: "/events", search: "when=today&in=frederick&free=true" }));
@@ -150,6 +150,26 @@ describe("temporary layer and browse scroll ownership", () => {
     await advance(500); expect(sessionStorage.getItem(key)).toBe("19");
     position = 866; window.dispatchEvent(new Event("scroll")); await advance(4000);
     expect(position).toBe(866); expect(sessionStorage.getItem(key)).toBe("866");
+  });
+  it("leaves the page where it is when an abandoned layer entry is removed", async () => {
+    const beneath = history.state;
+    await act(async () => root.render(<Fixture preserve={false} />));
+    const href = window.location.href;
+    // A stale coordinate for this same page, which a page Back would restore.
+    sessionStorage.setItem(key, "612");
+    vi.spyOn(history, "back").mockImplementation(() => {
+      window.setTimeout(() => {
+        history.replaceState(beneath, "", href);
+        window.dispatchEvent(new PopStateEvent("popstate", { state: beneath }));
+      }, 0);
+    });
+    // The slot holding the layer is replaced while the layer is still open.
+    await act(async () => root.render(<ScrollMemory />));
+    releaseAbandonedHistoryLayer("actual-layer", href);
+    await advance(4000);
+    expect(history.back).toHaveBeenCalledTimes(1);
+    expect(window.scrollTo).not.toHaveBeenCalled();
+    expect(position).toBe(19);
   });
   it("releases the owned decision for a genuinely new query and its later native Back", async () => {
     await act(async () => root.render(<Fixture preserve />));

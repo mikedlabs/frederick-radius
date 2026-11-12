@@ -411,15 +411,13 @@ export function DaypartEmptyState({
       />
       <div
         role="status"
-        className="rounded-[var(--app-radius-md)] border px-3 py-2.5"
+        className="border-y py-3"
         style={{
           borderColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          boxShadow: "var(--app-hi)",
           color: "var(--app-ink-2)",
         }}
       >
-        <p className="text-[12px] leading-snug">
+        <p className="text-sm leading-snug">
           {daypartEmptyCopy(
             contextLabel,
             countywide,
@@ -986,11 +984,11 @@ function DaypartNeedsShelf({
             {leadReason ? (
               <p
                 data-today-decision-reason="true"
-                className="mt-2 flex items-baseline gap-2 px-0.5 text-[11.5px] leading-snug"
+                className="mt-2 flex items-baseline gap-2 text-[13px] leading-snug"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 <span
-                  className="shrink-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.1em]"
+                  className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.1em]"
                   style={{ color: "var(--app-ink-3)" }}
                 >
                   Why it leads
@@ -1002,14 +1000,10 @@ function DaypartNeedsShelf({
         ) : (
           <div
             role="status"
-            className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5"
-            style={{
-              borderColor: "var(--app-border)",
-              background: "var(--app-bg-elevated)",
-              boxShadow: "var(--app-hi)",
-            }}
+            className="mt-2 flex min-h-11 items-center justify-between gap-3 border-y py-2.5"
+            style={{ borderColor: "var(--app-border)" }}
           >
-            <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            <p className="text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
               {daypartEmptyCopy(
                 contextLabel,
                 isDaypartCountywideContext(contextSource),

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Building2, Camera, Library, Map, Newspaper, ShieldCheck } from "lucide-react";
 import ArchiveLens, { type ArchiveViewRecord } from "@/components/archive/ArchiveLens";
 import { PageWide } from "@/components/layout/Page";
-import PageBloom from "@/components/ui/PageBloom";
 import {
   FSA_OWI_PHOTOS,
   FREDERICK_COUNTY_LANDOWNER_MAP,
@@ -123,7 +122,6 @@ export default function ArchivePage() {
 
   return (
     <PageWide className="relative">
-      <PageBloom variant="cool" />
 
       <header
         className="relative isolate overflow-hidden rounded-[var(--app-radius-xl)] border px-5 py-7 sm:px-8 sm:py-9 lg:px-10 lg:py-11"

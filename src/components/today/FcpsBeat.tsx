@@ -35,9 +35,9 @@ export default async function FcpsBeat({ now }: { now: Date }) {
 
   return (
     <p className="flex flex-wrap items-center gap-x-1.5 text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
-      <School className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-cool)" }} />
+      <School className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-cool-text)" }} />
       <span className="font-semibold" style={{ color: "var(--app-ink)" }}>FCPS {ACTIONABLE[hit.status]}.</span>
-      <Link href={hit.url} className="font-semibold" style={{ color: "var(--app-brand-press)" }}>
+      <Link href={hit.url} className="font-semibold" style={{ color: "var(--app-link)" }}>
         Details <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
       </Link>
     </p>

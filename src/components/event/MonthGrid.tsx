@@ -95,7 +95,7 @@ export default function MonthGrid({
           prefetch={false}
           onClick={() => haptic("light")}
           aria-label="Previous month"
-          className="grid h-11 w-11 place-items-center rounded-full border transition hover:bg-[var(--app-bg-sunken)]"
+          className="grid h-11 w-11 place-items-center rounded-[var(--app-radius-md)] border transition hover:bg-[var(--app-bg-sunken)]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
         >
           <ChevronLeft className="h-4 w-4" strokeWidth={2} aria-hidden />
@@ -113,7 +113,7 @@ export default function MonthGrid({
           prefetch={false}
           onClick={() => haptic("light")}
           aria-label="Next month"
-          className="grid h-11 w-11 place-items-center rounded-full border transition hover:bg-[var(--app-bg-sunken)]"
+          className="grid h-11 w-11 place-items-center rounded-[var(--app-radius-md)] border transition hover:bg-[var(--app-bg-sunken)]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
         >
           <ChevronRight className="h-4 w-4" strokeWidth={2} aria-hidden />
@@ -122,7 +122,7 @@ export default function MonthGrid({
 
       {/* Grid */}
       <div
-        className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
+        className="border-y"
         style={{ borderColor: "var(--app-border)" }}
       >
         <div className="grid grid-cols-7 border-b" style={{ borderColor: "var(--app-border)" }}>
@@ -183,7 +183,7 @@ export default function MonthGrid({
                 prefetch={false}
                 scroll={false}
                 onClick={() => haptic("light")}
-                className="relative aspect-square min-h-11 border-b border-r p-1 text-left transition focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--app-brand)] active:scale-[0.97]"
+                className="relative aspect-square min-h-11 border-b border-r p-1 text-left transition focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--app-focus)] active:scale-[0.97]"
                 style={{
                   borderColor: "var(--app-border)",
                   background: cellBg,
@@ -201,12 +201,11 @@ export default function MonthGrid({
                     style={{ background: "var(--app-brand)" }}
                   />
                 )}
+                {/* Today keeps only the thin coral rule above; its numeral is
+                 *  bold coral text, not a filled coral disc. */}
                 <span
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums"
-                  style={{
-                    background: isToday ? "var(--app-brand)" : "transparent",
-                    color: isToday ? "white" : "var(--app-ink)",
-                  }}
+                  className={`inline-flex h-5 w-5 items-center justify-center text-[11px] tabular-nums ${isToday ? "font-bold" : "font-semibold"}`}
+                  style={{ color: isToday ? "var(--app-brand-text)" : "var(--app-ink)" }}
                 >
                   {dayNum}
                 </span>
@@ -242,18 +241,18 @@ export default function MonthGrid({
           </h3>
           {selectedEvents.length === 0 ? (
             <p
-              className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-sm"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+              className="py-3 text-sm"
+              style={{ color: "var(--app-ink-2)" }}
             >
               {degraded ? "No listings are available for this day." : "No events are scheduled for this day."}
             </p>
           ) : (
-            <ul className="space-y-1.5">
+            <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
               {selectedEvents.map((e) => {
                 const time = e.allDay ? "All day" : formatEventTime(e.startUtc);
                 const Inner = (
                   <div
-                    className="flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5"
+                    className="flex min-h-11 items-center gap-3 border-b py-2.5"
                     style={{ borderColor: "var(--app-border)" }}
                   >
                     <span className="w-16 shrink-0 text-xs font-semibold tabular-nums" style={{ color: "var(--app-ink-3)" }}>

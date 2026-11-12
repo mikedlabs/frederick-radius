@@ -32,7 +32,6 @@ vi.mock("next/dynamic", async () => {
 vi.mock("@/components/radius/DeferredRadiusBuilder", () => ({
   default: () => <section aria-label="Radius controls"><button type="button">Adjust the radius</button></section>,
 }));
-vi.mock("@/components/ui/PageBloom", () => ({ default: () => null }));
 
 let container: HTMLDivElement;
 let root: Root;

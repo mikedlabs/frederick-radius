@@ -11,7 +11,6 @@ import {
   NONPROFIT_CATEGORY_BY_SLUG,
   type NonprofitCategory,
 } from "@/data/ntee-categories";
-import PageBloom from "@/components/ui/PageBloom";
 import FieldStamp from "@/components/ui/FieldStamp";
 import NonprofitList from "@/components/nonprofits/NonprofitList";
 
@@ -53,7 +52,6 @@ export default async function NonprofitsPage({
 
   return (
     <div className="relative space-y-5">
-      <PageBloom variant="warm-cool" />
 
       <header className="pt-0.5">
         <div

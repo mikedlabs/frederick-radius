@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpRight, Trees, Utensils } from "lucide-react";
+import { ArrowUpRight, MapPin, Trees, Utensils } from "lucide-react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
 import SaveButton from "@/components/saved/SaveButton";
 import { withBrowseReturnTo } from "@/lib/browse-return";
@@ -43,16 +43,16 @@ function DiscoveryPlace({ place, scope, returnTo, lead }: { place: LocalDiscover
         data-today-geographic-place={place.slug} data-today-discovery-action="place"
         data-photo-state={loaded ? "loaded" : source ? "pending" : "failed"}
         className={styles.discoveryPlaceLink}>
-        {source && <span className={styles.discoveryPhoto} data-today-photo-lead={lead || undefined}>
+        {source ? <span className={styles.discoveryPhoto} data-today-photo-lead={lead || undefined}>
           <PlaceCardPhoto key={source.src} source={source} onResult={onResult}
             sizes="(min-width: 640px) 520px, calc(100vw - 32px)" />
-        </span>}
-        <div data-today-geographic-caption className={styles.discoveryCaption}>
+        </span> : !lead && <MapPin aria-hidden data-today-discovery-glyph className={styles.discoveryGlyph} strokeWidth={1.75} />}
+        <div data-today-geographic-caption data-today-name-plate={lead || undefined} className={styles.discoveryCaption}>
           <div className="min-w-0">
             <h3 className={styles.discoveryName}>{place.shortName ?? place.name}</h3>
             <p className={styles.discoveryTown}>{place.town}</p>
           </div>
-          <span aria-hidden className={styles.discoveryAction}><ArrowUpRight className="h-4 w-4" /></span>
+          <span aria-hidden className={styles.discoveryAction}><ArrowUpRight className="h-4 w-4" strokeWidth={2.25} /></span>
         </div>
       </Link>
       <div className={styles.discoverySave}>
@@ -78,6 +78,9 @@ export function TodayGeographicDoorwayView({ scope = null, returnTo }: {
   return (
     <section id="today-discovery" data-today-local-discovery data-today-geographic-mosaic aria-labelledby="today-discovery-heading" className={styles.geographicMosaic}>
       <h2 id="today-discovery-heading" className="sr-only">Explore local</h2>
+      {/* On a wide screen the browse links fill the column beside the lead
+          photograph instead of leaving a blank band there. */}
+      <div className={styles.discoveryLayout}>
       {places.length > 0 && <div data-today-discovery-grid className={styles.discoveryPlaceGrid}>
         {places.map((place, index) => <DiscoveryPlace key={`${active}:${place.photoPlan.key}`} place={place} scope={active} returnTo={origin} lead={index === 0} />)}
       </div>}
@@ -93,6 +96,7 @@ export function TodayGeographicDoorwayView({ scope = null, returnTo }: {
           <span>Get outside</span><ArrowUpRight aria-hidden className="h-4 w-4 shrink-0" />
         </Link>
       </nav>
+      </div>
     </section>
   );
 }

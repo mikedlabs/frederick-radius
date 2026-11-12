@@ -543,7 +543,7 @@ export default function CityMobilityOverlay({
                 href={popupSource?.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: "var(--app-cool)", fontWeight: 700 }}
+                style={{ color: "var(--app-cool-text)", fontWeight: 700 }}
               >
                 {popupSourceLabel} ↗
               </a>

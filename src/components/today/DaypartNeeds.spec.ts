@@ -344,7 +344,10 @@ describe("DaypartNeeds", () => {
     );
     expect(html).toContain("Browse places");
     expect(html).toContain('href="/open-now"');
-    expect(html).toContain("rounded-[var(--app-radius-md)]");
+    // A ruled status line on the white ground, not a boxed panel.
+    expect(html).toContain("border-y");
+    expect(html).not.toContain("var(--app-bg-elevated)");
+    expect(html).not.toContain("rounded-[var(--app-radius-md)]");
     expect(html).not.toContain("border-dashed");
     expect(html).not.toContain(">0 confirmed open<");
   });

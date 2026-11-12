@@ -19,11 +19,22 @@ reference, even when the CSS is identical. The spec includes the platform in
 every filename, and the manual workflow keeps capture separate from compare.
 No visual job runs on every pull request yet.
 
+> **Note, November 10, 2026.** No Linux/Chromium references are committed
+> today. The `e2e/visual-contract.spec.ts-snapshots/` directory does not exist
+> yet, and the **Visual contract candidates** workflow runs only when someone
+> starts it by hand, so no visual comparison blocks a pull request. The owner
+> approved an interface update on November 10, 2026 that changed corners, rows,
+> chrome and the Find, Ask and map surfaces. Any capture made before that date,
+> including a downloaded candidate artifact or a local Darwin capture, shows
+> the old interface and must not be promoted. Take the first reviewed
+> references from a `capture` run made after the update, then follow the steps
+> below.
+
 ## Review and promote the Linux references
 
 1. Run **Visual contract candidates** from GitHub Actions with `capture`.
 2. Download the `visual-contract-capture-*` artifact and review every PNG
-   from its `visual-contract-candidates` directory — ten of them: five
+   from its `visual-contract-candidates` directory. There are ten of them: five
    surfaces (find-empty, ask-empty, ask-working, pulse-bus-sheet,
    compass-directions) at both viewports. The workflow summary records the
    outcome and explicitly excludes the working styled-map reference.

@@ -82,7 +82,7 @@ const TOOL_META: Record<
     label: "Scanner reports",
     shortLabel: "Reports",
     title: "Current public road-impact reports from FrederickScanner",
-    color: "var(--app-brand)",
+    color: "var(--app-brand-text)",
     icon: Siren,
   },
   aviation: {
@@ -105,21 +105,21 @@ const TOOL_META: Record<
     shortLabel: "Radar",
     title:
       "RainViewer precipitation radar with NOAA lightning density when current",
-    color: "var(--app-cool)",
+    color: "var(--app-cool-text)",
     icon: CloudRain,
   },
   parking: {
     label: "Parking",
     shortLabel: "Parking",
     title: "Downtown garages and live availability",
-    color: "var(--app-cool)",
+    color: "var(--app-cool-text)",
     icon: CircleParking,
   },
   transit: {
     label: "Transit",
     shortLabel: "Transit",
     title: "TransIT routes, stops, and live buses",
-    color: "var(--app-cool)",
+    color: "var(--app-cool-text)",
     icon: BusFront,
   },
   trails: {
@@ -133,14 +133,14 @@ const TOOL_META: Record<
     label: "Traffic cameras",
     shortLabel: "Cameras",
     title: "Live Maryland CHART road cameras",
-    color: "var(--app-cool)",
+    color: "var(--app-cool-text)",
     icon: Camera,
   },
   aerial: {
     label: "Aerial photos",
     shortLabel: "Aerial",
     title: "Frederick Radius seasonal aerial photo archive",
-    color: "var(--app-brand-press)",
+    color: "var(--app-brand-text)",
     icon: Images,
   },
 };

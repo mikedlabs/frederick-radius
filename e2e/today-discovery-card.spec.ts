@@ -60,7 +60,9 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await article.scrollIntoViewIfNeeded();
     await expect(article.locator("img")).toHaveCount(0);
     await expect(article).toHaveAttribute("data-has-photo", "false");
-    await expect(article.locator('[data-place-category-art][aria-hidden="true"]')).toHaveCount(1);
+    // Without a photograph the row is type alone: no category tile or media.
+    await expect(article.locator("[data-place-category-art]")).toHaveCount(0);
+    await expect(article.locator("[data-place-card-photo], picture, figure")).toHaveCount(0);
     await expect(article.locator(".place-card-photo-credit")).toHaveCount(0);
     const category = page.locator(`[data-today-geographic-place="${scenicSlug}"]`);
     await expect(category).toHaveAttribute("data-photo-state", "loaded");
@@ -162,7 +164,8 @@ for (const failure of ["pixel", "error"] as const) {
     await expect(article).toContainText("Hours not confirmed");
     await expect(article).toContainText("Brunswick · 6 min walk");
     await expect(article).toHaveAttribute("data-has-photo", "false");
-    await expect(article.locator('[data-place-category-art][aria-hidden="true"]')).toHaveCount(1);
+    await expect(article.locator("[data-place-category-art]")).toHaveCount(0);
+    await expect(article.locator("[data-place-card-photo], picture, figure")).toHaveCount(0);
     await expect(article.getByRole("link", { name: "Google Maps", exact: true })).toHaveCount(0);
     await expect(article.locator(".place-card-photo-credit")).toHaveCount(0);
     await place.scrollIntoViewIfNeeded();

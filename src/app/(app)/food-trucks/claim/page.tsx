@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { FOOD_TRUCKS } from "@/data/food-trucks";
-import PageBloom from "@/components/ui/PageBloom";
 import ClaimForm from "./ClaimForm";
 
 /**
@@ -37,7 +36,6 @@ export default async function FoodTruckClaimPage({
 
   return (
     <div className="relative space-y-6">
-      <PageBloom variant="single" />
 
       <header className="space-y-2">
         <p className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>

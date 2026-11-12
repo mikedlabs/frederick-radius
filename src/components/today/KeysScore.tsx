@@ -384,7 +384,7 @@ export default function KeysScore({
         <Link
           href="/sports"
           className="tap-44-y group mt-1.5 flex items-center justify-end gap-1 text-[12px] font-semibold"
-          style={{ color: "var(--app-brand-press)" }}
+          style={{ color: "var(--app-link)" }}
         >
           More Frederick sports
           <ChevronRight

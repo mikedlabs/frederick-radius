@@ -30,13 +30,15 @@ export default function HoursBlock({
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
+  // PLAIN TOOL: a ruled block on the page ground. The heading, the sentence
+  // and two quiet underlined text actions; no surrounding border or fill.
   if (!hours) return (
-    <section aria-label="Hours" className="rounded-[var(--app-radius-md)] border p-3" style={{ borderColor: "var(--app-border)" }}>
-      <p className="text-sm font-medium">Hours not recently confirmed</p>
-      <p className="mt-1 text-xs" style={{ color: "var(--app-ink-2)" }}>Check with the business before going.</p>
-      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-        {website && <a href={website} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline">Check the official website</a>}
-        {phone && <a href={`tel:${phone.replace(/[^+\d]/g, "")}`} className="inline-flex min-h-11 items-center underline">Call to check hours</a>}
+    <section aria-label="Hours" data-hours-unconfirmed>
+      <p className="text-[17px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>Hours not recently confirmed</p>
+      <p className="mt-1 text-[15px] leading-snug" style={{ color: "var(--app-ink-2)" }}>Check with the business before going.</p>
+      <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1 text-[15px]">
+        {website && <a href={website} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline underline-offset-2" style={{ color: "var(--app-ink)" }}>Check the official website</a>}
+        {phone && <a href={`tel:${phone.replace(/[^+\d]/g, "")}`} className="inline-flex min-h-11 items-center underline underline-offset-2" style={{ color: "var(--app-ink)" }}>Call to check hours</a>}
       </div>
     </section>
   );
@@ -49,16 +51,14 @@ export default function HoursBlock({
   const needsNewCheck = qualification ? !scheduleCurrent : (!verified || status.state === "unknown");
 
   const disclosure = (
-    <details
-      className="group/hours rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
-      style={{ borderColor: "var(--app-border)" }}
-    >
-      <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-[var(--app-radius-md)] px-3 py-2.5 list-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-focus)]">
+    // PLAIN TOOL: an unboxed disclosure; the page's hairlines frame it.
+    <details className="group/hours">
+      <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-[var(--app-radius-sm)] py-1 list-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-focus)] [&::-webkit-details-marker]:hidden">
         <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           {/* The SCHEDULE fact, not open/closed: the header's LiveOpenStatus
               is the page's one status voice, and this summary used to
               restate it (the duplicate the July 2026 review flagged). */}
-          <span className="text-sm font-medium" style={{ color: "var(--app-ink)" }}>
+          <span className="text-[17px] font-semibold" style={{ color: "var(--app-ink)" }}>
             {qualification ? `${qualification.label} today` : "Hours today"} · {today ? formatWindows(today) : "Hours not confirmed"}
           </span>
           <TrustChip signal={placeHoursTrust(status, { hours, verified, now })} className="shrink-0" />
@@ -71,7 +71,7 @@ export default function HoursBlock({
           }}
         />
       </summary>
-      <div className="px-3 pb-3 pt-1">
+      <div className="pt-2">
         {needsNewCheck && (
           <p
             className="mb-2 flex items-start gap-1.5 text-[11px] leading-relaxed"
@@ -96,9 +96,9 @@ export default function HoursBlock({
               : <>{exception && today ? `${exception.reason}. ` : ""}The table shows normal weekly hours. Dated closures take priority.</>}
           </p>
         )}
-        <ul aria-label={qualification ? `${qualification.label} by day` : "Weekly hours"} className="divide-y border-t text-sm" style={{ borderColor: "var(--app-border)" }}>
+        <ul aria-label={qualification ? `${qualification.label} by day` : "Weekly hours"} className="divide-y divide-[var(--app-border)] border-t text-[15px]" style={{ borderColor: "var(--app-border)" }}>
           {week.map((row) => (
-            <li key={row.day} className="flex items-center justify-between gap-3 py-1.5">
+            <li key={row.day} className="flex items-center justify-between gap-3 py-2">
               <span style={{ color: "var(--app-ink-2)" }}>{row.label}</span>
               <span className="text-right tabular-nums" style={{ color: "var(--app-ink)" }}>
                 {formatWindows(row.windows)}

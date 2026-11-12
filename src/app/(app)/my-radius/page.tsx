@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import SavedList from "@/components/saved/SavedList";
-import PageBloom from "@/components/ui/PageBloom";
 import { getServerUser } from "@/lib/auth";
 import { getDb } from "@/lib/db/client";
 import { readFollowedPlaceSnapshot } from "@/lib/follows.server";
@@ -64,7 +63,6 @@ export default async function MyRadiusPage() {
 
   return (
     <div className="relative">
-      <PageBloom variant="warm-cool" />
       <SavedList
         userId={user?.id ?? null}
         userEmail={user?.email ?? null}

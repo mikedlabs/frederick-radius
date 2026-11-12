@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from "node:fs";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -156,6 +157,54 @@ describe("SaveButton truthful save feedback", () => {
     await act(async () => fail(new Error("Unavailable")));
     expect(button().getAttribute("aria-pressed")).toBe("true");
     expect(mocks.toast.error).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks the first save, then names the item on removal, on one toast id with Undo for six seconds", async () => {
+    mocks.togglePlace.mockImplementationOnce(async () => { mocks.saved = true; return true; });
+    render();
+    await act(async () => button().click());
+    expect(mocks.toast.success).toHaveBeenCalledWith("Your saved list starts here", {
+      id: "save:place:test-stop", description: "Anything you save stays together under Saved.", duration: 6000,
+      action: { label: "Undo", onClick: expect.any(Function) },
+    });
+    mocks.togglePlace.mockImplementationOnce(async () => { mocks.saved = false; return false; });
+    await act(async () => button().click());
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Test stop", {
+      id: "save:place:test-stop", duration: 6000, action: { label: "Undo", onClick: expect.any(Function) },
+    });
+    expect(button().getAttribute("aria-pressed")).toBe("false");
+
+    // Undo on the removal toast restores the same place.
+    const removal = mocks.toast.mock.calls.at(-1)![1] as { action: { onClick: () => void } };
+    mocks.togglePlace.mockImplementationOnce(async () => { mocks.saved = true; return true; });
+    await act(async () => removal.action.onClick());
+    expect(mocks.togglePlace).toHaveBeenCalledTimes(3);
+    expect(mocks.togglePlace).toHaveBeenLastCalledWith(true);
+    // The mocked store is not reactive, so render again to read the restored row.
+    render();
+    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(mocks.toast.error).not.toHaveBeenCalled();
+  });
+
+  it("keeps a title that begins with Save intact in the toast and the control name", async () => {
+    mocks.saved = true;
+    act(() => root.render(<SaveButton refType="place" refId="test-stop" label="Save Save the Date Gala" />));
+    expect(button().getAttribute("aria-label")).toBe("Remove Save the Date Gala from Saved");
+    mocks.togglePlace.mockImplementationOnce(async () => { mocks.saved = false; return false; });
+    await act(async () => button().click());
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Save the Date Gala", expect.anything());
+
+    // Event detail passes the same "Save {name}" shape as every other caller.
+    const eventPage = readFileSync("src/app/(app)/events/[slug]/page.tsx", "utf8");
+    expect(eventPage).not.toContain("label={eventDisplayTitle(event)}");
+    expect(eventPage.match(/label=\{`Save \$\{eventDisplayTitle\(event\)\}`\}/g)).toHaveLength(2);
+  });
+
+  it("keeps a failure on screen for eight seconds with its reason", async () => {
+    mocks.togglePlace.mockRejectedValueOnce(new Error("Storage unavailable"));
+    render();
+    await act(async () => button().click());
+    expect(mocks.toast.error).toHaveBeenCalledWith("Could not save this item", { description: "We could not confirm this change. Please try again.", duration: 8000 });
   });
 
   it("keeps a saved item selected when removal or Undo fails", async () => {

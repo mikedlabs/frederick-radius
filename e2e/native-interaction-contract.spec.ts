@@ -251,13 +251,18 @@ test("the place-page Save CTA names its pending action immediately", async ({
   ]);
 });
 
-test("declared fixture: an event sheet keeps its route and restores the event trigger", async ({
-  page, context, baseURL, browserName,
-}) => {
-  await prepareOriginalFlow(page, context, baseURL, browserName);
+const SHEET_EVENT_TITLE = "Interaction contract event";
+/** The declared fixture's own card. /events renders its first cards from the
+ * server archive, which page routing cannot replace, so the first card on the
+ * page can be a real event until the routed browse request lands. */
+const SHEET_EVENT_TRIGGER = 'article a[href^="/events/interaction-contract-event"]';
+
+/** One clearly fictional event behind the real Events page, card, and sheet.
+ * Only its HTTP record is controlled; the shell under test is the shipped one. */
+async function routeDeclaredSheetEvent(page: Page) {
   const instant = Date.now();
   const event: EventWithMeta = {
-    slug: "interaction-contract-event", title: "Interaction contract event",
+    slug: "interaction-contract-event", title: SHEET_EVENT_TITLE,
     description: "Declared fictional HTTP event used only to protect sheet behavior.",
     starts_at: new Date(instant - 15 * 60_000).toISOString(), ends_at: new Date(instant + 2 * 3_600_000).toISOString(),
     timezone: "America/New_York", venue_name: "Carroll Creek", address: "Fictional fixture at a real venue",
@@ -271,9 +276,99 @@ test("declared fixture: an event sheet keeps its route and restores the event tr
     events: [event], liveSlugs: [event.slug], generatedAt: new Date().toISOString(), sourceHealth: { degraded: false, issues: [] },
   } }));
   await page.route(`**/api/events/${event.slug}/summary*`, (route) => route.fulfill({ status: 200, json: { event } }));
+}
+
+type SheetGeometry = { top: number; scrim: number };
+
+/** Where the open sheet's panel sits and how dark its scrim is right now. */
+function readSheet(page: Page): Promise<SheetGeometry | null> {
+  return page.evaluate(() => {
+    const panel = document.querySelector("[data-bottom-sheet-panel]");
+    const scrim = document.querySelector("[data-bottom-sheet-backdrop]");
+    if (!panel || !scrim) return null;
+    return { top: panel.getBoundingClientRect().top, scrim: Number(getComputedStyle(scrim).opacity) };
+  });
+}
+
+/** Open the declared event's sheet from its real card and wait until the
+ * entrance has finished, so a rest position means something. */
+async function openDeclaredEventSheet(page: Page): Promise<SheetGeometry> {
+  await page.goto("/events", { waitUntil: "domcontentloaded" });
+  const trigger = page.locator(SHEET_EVENT_TRIGGER).first();
+  await expect(trigger).toBeVisible();
+  await trigger.scrollIntoViewIfNeeded();
+  await trigger.click();
+  await expect(page.getByRole("dialog", { name: SHEET_EVENT_TITLE })).toBeVisible();
+  await expect.poll(async () => {
+    const before = await readSheet(page);
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    const after = await readSheet(page);
+    return Boolean(before && after && Math.abs(before.top - after.top) < 0.1 && Math.abs(after.scrim - 0.45) < 0.005);
+  }, { message: "the sheet finishes its entrance with a 0.45 scrim" }).toBe(true);
+  const rest = await readSheet(page);
+  expect(rest, "the settled sheet is still open").not.toBeNull();
+  return rest!;
+}
+
+/** Pull the handle row down 60px with a real mouse and let go while it is
+ * still moving, slowly enough that it is not a flick to dismiss. The return
+ * is timed inside the page from the release, so a busy test host cannot
+ * shorten or stretch what the visitor would see. */
+async function pullHandleAndRelease(page: Page) {
+  const handle = page.locator("[data-bottom-sheet-panel] [data-sheet-handle]");
+  const box = await handle.boundingBox();
+  expect(box, "the sheet has its shared handle row").not.toBeNull();
+  const x = box!.x + box!.width / 2;
+  const y = box!.y + box!.height / 2;
+  const settle = page.evaluate(() => {
+    const read = () => {
+      const panel = document.querySelector("[data-bottom-sheet-panel]");
+      const scrim = document.querySelector("[data-bottom-sheet-backdrop]");
+      return panel && scrim
+        ? { top: panel.getBoundingClientRect().top, scrim: Number(getComputedStyle(scrim).opacity) }
+        : null;
+    };
+    const rest = read();
+    return new Promise<{
+      released: { top: number; scrim: number } | null;
+      final: { top: number; scrim: number } | null;
+      atRest: boolean; frames: number; elapsedMs: number;
+    }>((resolve) => {
+      window.addEventListener("pointerup", () => {
+        const released = read();
+        const start = performance.now();
+        let frames = 0;
+        const tick = () => {
+          frames += 1;
+          const final = read();
+          const elapsedMs = performance.now() - start;
+          const atRest = Boolean(rest && final
+            && Math.abs(final.top - rest.top) <= 0.5 && Math.abs(final.scrim - rest.scrim) <= 0.005);
+          if (atRest || !final || elapsedMs > 3_000) resolve({ released, final, atRest, frames, elapsedMs });
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }, { capture: true, once: true });
+    });
+  });
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let step = 1; step <= 10; step += 1) {
+    await page.waitForTimeout(30);
+    await page.mouse.move(x, y + step * 6);
+  }
+  await page.mouse.up();
+  return settle;
+}
+
+test("declared fixture: an event sheet keeps its route and restores the event trigger", async ({
+  page, context, baseURL, browserName,
+}) => {
+  await prepareOriginalFlow(page, context, baseURL, browserName);
+  await routeDeclaredSheetEvent(page);
 
   await page.goto("/events", { waitUntil: "domcontentloaded" });
-  const trigger = page.locator('article a[href^="/events/"]').first();
+  const trigger = page.locator(SHEET_EVENT_TRIGGER).first();
   await expect(trigger).toBeVisible();
   await trigger.scrollIntoViewIfNeeded();
   const scrollY = await page.evaluate(() => window.scrollY);
@@ -283,17 +378,17 @@ test("declared fixture: an event sheet keeps its route and restores the event tr
     await trigger.focus();
     await trigger.click();
     await expect(
-      page.getByRole("dialog", { name: "Interaction contract event" }),
+      page.getByRole("dialog", { name: SHEET_EVENT_TITLE }),
     ).toBeVisible();
   };
-  const close = page
-    .getByRole("button", { name: "Close", exact: true })
-    .filter({ hasText: "Close" });
+  // The scrim is hidden from the accessibility tree, so this role query can
+  // only find the handle row's labeled button: the sheet has one Close.
+  const close = page.getByRole("button", { name: "Close", exact: true });
 
   await openEvent();
   await close.click();
   await expect(
-    page.getByRole("dialog", { name: "Interaction contract event" }),
+    page.getByRole("dialog", { name: SHEET_EVENT_TITLE }),
   ).toHaveCount(0);
   await expect(trigger).toBeFocused();
   await expectRouteAndScroll(page, url, scrollY);
@@ -301,7 +396,7 @@ test("declared fixture: an event sheet keeps its route and restores the event tr
   await openEvent();
   await page.keyboard.press("Escape");
   await expect(
-    page.getByRole("dialog", { name: "Interaction contract event" }),
+    page.getByRole("dialog", { name: SHEET_EVENT_TITLE }),
   ).toHaveCount(0);
   await expect(trigger).toBeFocused();
   await expectRouteAndScroll(page, url, scrollY);
@@ -309,10 +404,92 @@ test("declared fixture: an event sheet keeps its route and restores the event tr
   await openEvent();
   await page.goBack();
   await expect(
-    page.getByRole("dialog", { name: "Interaction contract event" }),
+    page.getByRole("dialog", { name: SHEET_EVENT_TITLE }),
   ).toHaveCount(0);
   await expect(trigger).toBeFocused();
   await expectRouteAndScroll(page, url, scrollY);
+});
+
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+  test(`declared fixture: a short pull on the sheet handle returns to rest with its scrim, ${reducedMotion} motion`, async ({
+    page, context, baseURL, browserName,
+  }) => {
+    await prepareOriginalFlow(page, context, baseURL, browserName);
+    await routeDeclaredSheetEvent(page);
+    await page.emulateMedia({ reducedMotion });
+    const rest = await openDeclaredEventSheet(page);
+
+    // Release momentum used to carry the sheet down and park it there with
+    // the scrim faded out and an unseen Close layer over the page.
+    const settle = await pullHandleAndRelease(page);
+    expect(settle.released, "the sheet was still open at release").not.toBeNull();
+    expect(settle.released!.top - rest.top, "the pull really moved the sheet").toBeGreaterThan(30);
+    expect(settle.atRest, `the sheet returns to rest: ${JSON.stringify(settle)}`).toBe(true);
+    expect(Math.abs(settle.final!.top - rest.top)).toBeLessThanOrEqual(0.5);
+    expect(settle.final!.scrim).toBeCloseTo(0.45, 2);
+    if (reducedMotion === "reduce") {
+      expect(settle.frames, "reduced motion returns without a glide").toBeLessThanOrEqual(2);
+    } else {
+      expect(settle.elapsedMs, "the return spring settles promptly").toBeLessThanOrEqual(500);
+    }
+
+    // It stays there: no late momentum, and the dialog is still the open one.
+    await page.waitForTimeout(400);
+    const later = await readSheet(page);
+    expect(later, "the sheet is still open").not.toBeNull();
+    expect(Math.abs(later!.top - rest.top)).toBeLessThanOrEqual(0.5);
+    expect(later!.scrim).toBeCloseTo(0.45, 2);
+    await expect(page.getByRole("dialog", { name: SHEET_EVENT_TITLE })).toBeVisible();
+  });
+}
+
+test("declared fixture: the page holds still behind an open sheet", async ({
+  page, context, baseURL, browserName,
+}) => {
+  test.skip(browserName !== "chromium", "Wheel input needs Chromium's browser input protocol; mobile WebKit does not offer page.mouse.wheel.");
+  await prepareOriginalFlow(page, context, baseURL, browserName);
+  await routeDeclaredSheetEvent(page);
+  // A short viewport keeps the page scrollable whatever the Events layout is.
+  await page.setViewportSize({ width: 390, height: 560 });
+  await page.goto("/events", { waitUntil: "domcontentloaded" });
+  const trigger = page.locator(SHEET_EVENT_TRIGGER).first();
+  await expect(trigger).toBeVisible();
+  // Start from a scrolled position that has stopped moving, so the page has
+  // room to travel in both directions if the lock fails.
+  await expect.poll(async () => {
+    await trigger.evaluate((node) => node.scrollIntoView({ block: "center", behavior: "instant" }));
+    const placed = await page.evaluate(() => window.scrollY);
+    await page.waitForTimeout(200);
+    return placed === await page.evaluate(() => window.scrollY) ? placed : 0;
+  }, { message: "the page starts scrolled, so an unlocked page has room to move" }).toBeGreaterThan(40);
+  const scrollY = await page.evaluate(() => window.scrollY);
+  const url = page.url();
+
+  // Activate the card's own link directly. Playwright's pointer click may
+  // scroll a centered target clear of the bottom navigation first, and that
+  // would move the page before the sheet under test has opened.
+  await trigger.evaluate((node: HTMLElement) => { node.focus({ preventScroll: true }); node.click(); });
+  await expect(page.getByRole("dialog", { name: SHEET_EVENT_TITLE })).toBeVisible();
+  // The lock holds the document's real scroll root. A body lock holds nothing
+  // here, because the document scrolls on <html>.
+  await expect.poll(() => page.evaluate(() => document.documentElement.style.overflowY)).toBe("hidden");
+  const overScrim = await page.evaluate(() => document.elementFromPoint(195, 24)?.hasAttribute("data-bottom-sheet-backdrop") ?? false);
+  expect(overScrim, "the wheel point is on the scrim, above the panel").toBe(true);
+  expect(await page.evaluate(() => window.scrollY), "opening the sheet leaves the page where it was").toBe(scrollY);
+  await page.mouse.move(195, 24);
+  for (const deltaY of [-300, 300]) {
+    await page.mouse.wheel(0, deltaY);
+    await page.waitForTimeout(250);
+    expect(await page.evaluate(() => window.scrollY), `a ${deltaY}px wheel on the scrim leaves the page where it was`).toBe(scrollY);
+  }
+
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: SHEET_EVENT_TITLE })).toHaveCount(0);
+  await expectRouteAndScroll(page, url, scrollY);
+  // The lock is released with the sheet: the page scrolls again.
+  await expect.poll(() => page.evaluate(() => document.documentElement.style.overflowY)).toBe("");
+  await page.mouse.wheel(0, -300);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(scrollY);
 });
 
 test("event filters acknowledge taps and the map retains requested layer intent during recovery", async ({
@@ -939,9 +1116,14 @@ test.describe("stable native press surfaces", () => {
     const destination = nav.getByRole("link", { name: "Map", exact: true });
     await expect(current).toHaveAttribute("aria-current", "page");
     await expect(current).toHaveAttribute("data-selected", "true");
+    // Plain tool chrome: the bar is flat, so the pending mark is the tab's
+    // own 2px rule (ink at reduced opacity) rather than a lifted shadow.
     const style = () => destination.evaluate((node) => {
       const css = getComputedStyle(node);
-      return { color: css.color, background: css.backgroundColor, shadow: css.boxShadow };
+      const rule = node.querySelector<HTMLElement>("[data-destination-rule]");
+      const ruleCss = rule ? getComputedStyle(rule) : null;
+      return { color: css.color, background: css.backgroundColor, shadow: css.boxShadow,
+        rule: ruleCss ? { background: ruleCss.backgroundColor, opacity: ruleCss.opacity } : null };
     });
     const before = await style();
     const geometry = await pressAndDragOut(page, destination, false);
@@ -974,7 +1156,10 @@ test.describe("stable native press surfaces", () => {
       await expect(destination).toHaveAttribute("data-selected", "false");
       await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
       pending = await style();
-      expect(pending.shadow).not.toBe("none");
+      expect(before.rule?.background).toBe("rgba(0, 0, 0, 0)");
+      expect(pending.rule?.background).not.toBe("rgba(0, 0, 0, 0)");
+      expect(Number(pending.rule?.opacity)).toBeGreaterThan(0.5);
+      expect(Number(pending.rule?.opacity)).toBeLessThan(1);
       expect(pending).not.toEqual(before);
       expect(await destination.evaluate((node) => node.getAnimations({ subtree: true }).some((animation) => animation.effect?.getTiming().iterations === Infinity)), "pending feedback is a static mark, without an indefinite progress animation").toBe(false);
       await page.screenshot({ path: info.outputPath("provisional-map-destination.png") });
@@ -1085,7 +1270,16 @@ test.describe("stable native press surfaces", () => {
       }
       during = await snapshot(destination);
       fixedOuter(before, during);
-      expect(during.shadow, "the actual touched destination has a static provisional mark").not.toBe("none");
+      // The flat bar acknowledges a tap with its rule in ink, where the old
+      // floating bar used an inset ring. The mark must be painted, tall
+      // enough to see, and must not move the destination.
+      const mark = await destination.locator("[data-destination-rule]").evaluate((node) => {
+        const css = getComputedStyle(node);
+        return { background: css.backgroundColor, opacity: Number(css.opacity), height: node.getBoundingClientRect().height };
+      });
+      expect(mark.background, "the actual touched destination has a static provisional mark").not.toBe("rgba(0, 0, 0, 0)");
+      expect(mark.opacity, "the provisional mark is clearly visible").toBeGreaterThanOrEqual(0.6);
+      expect(mark.height, "the provisional mark is at least 2px tall").toBeGreaterThanOrEqual(2);
       await protocol.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
       touchStarted = false;
       await expect(destination).toHaveAttribute("data-pending", "false");

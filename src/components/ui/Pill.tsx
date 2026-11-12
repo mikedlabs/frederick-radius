@@ -6,7 +6,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { haptic } from "@/lib/haptics";
 
 /**
- * Pill — the canonical compact selector.
+ * Pill: the canonical compact selector.
  *
  * One primitive for the "tap to narrow / pivot" control that was
  * hand-rolled ~40 times across the app with five slightly different
@@ -21,28 +21,24 @@ import { haptic } from "@/lib/haptics";
  * and toggles. Navigation and ordinary actions use the flatter button/row
  * vocabulary instead.
  *
- * Tones:
- *   brand      — brand fill (the default "selected facet")
- *   cool       — cool fill (town / place lane)
- *   ink        — ink fill on paper text (TimeToggle's "when?" lane)
- *   prominent  — a stronger brick selection, without a decorative gradient
+ * Selected state (plain tool): every selected chip is an ink fill with
+ * page-ground text, so coral stays reserved for the page's one solid block
+ * and its one filled action. The `tone` prop is kept so existing callers
+ * still compile, but "brand" and "cool" now render the same ink fill as
+ * "ink"; a town or category lane no longer earns its own colored chip.
  */
 
-type Tone = "brand" | "cool" | "ink" | "prominent";
+type Tone = "brand" | "cool" | "ink";
 
-// Light-text fills use --app-brand-press (the AA-safe darker vermilion): white
-// on plain --app-brand is only 4.17:1 (fails AA for the small pill label).
 const ACTIVE_BG: Record<Tone, string> = {
-  brand: "var(--app-brand-press)",
-  cool: "var(--app-cool)",
+  brand: "var(--app-ink)",
+  cool: "var(--app-ink)",
   ink: "var(--app-ink)",
-  prominent: "var(--app-brand-press)",
 };
 const ACTIVE_FG: Record<Tone, string> = {
-  brand: "var(--app-on-brand)",
-  cool: "var(--app-on-brand)",
+  brand: "var(--app-bg)",
+  cool: "var(--app-bg)",
   ink: "var(--app-bg)",
-  prominent: "var(--app-on-brand)",
 };
 
 type PillProps = {
@@ -52,7 +48,7 @@ type PillProps = {
   /** A PRE-RENDERED icon element, e.g. `icon={<Zap className="h-3.5 w-3.5" />}`.
    *  It's a ReactNode (not a component function) on purpose: Pill is a
    *  client component, and a server-component caller (TimeToggle,
-   *  MapTimeChips) cannot pass a function across the RSC boundary —
+   *  MapTimeChips) cannot pass a function across the RSC boundary,
    *  but it CAN pass an already-rendered element. */
   icon?: ReactNode;
   /** Trailing count badge (tabular, tone-aware). */
@@ -71,7 +67,7 @@ type PillProps = {
 };
 
 function CountBadge({ count, active, tone }: { count: number; active: boolean; tone: Tone }) {
-  const onInk = active && tone === "ink";
+  const onInk = active && ACTIVE_BG[tone] === "var(--app-ink)";
   return (
     <span
       className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums"
@@ -134,7 +130,7 @@ function LinkBody(props: {
 export default function Pill({
   children,
   active = false,
-  tone = "brand",
+  tone = "ink",
   icon,
   count,
   size = "md",
@@ -151,7 +147,9 @@ export default function Pill({
   // Keep compact label sizes and movement on the owned inner face.
   const base =
     `inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold tracking-tight transition-colors ${pad}`;
-  const inactiveCls = active || bare ? "border border-transparent" : "border border-[var(--app-border-strong)]";
+  // Plain tool: an unselected chip is a hairline outline on the page ground;
+  // the capsule shape alone marks it as a compact filter.
+  const inactiveCls = active || bare ? "border border-transparent" : "border border-[var(--app-control-border)]";
   const cls = `${base} ${inactiveCls} ${className}`.trim();
   const fillStyle: CSSProperties = active
     ? {
@@ -160,8 +158,8 @@ export default function Pill({
         transitionTimingFunction: "var(--app-ease-spring)",
       }
     : {
-        background: bare ? "transparent" : "var(--app-bg-elevated)",
-        color: "var(--app-ink-2)",
+        background: bare ? "transparent" : "var(--app-bg)",
+        color: "var(--app-ink)",
         transitionTimingFunction: "var(--app-ease-spring)",
       };
   const merged = {
