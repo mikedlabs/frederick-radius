@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import { getOwnedPlacePhoto } from "../src/lib/owned-place-photos";
 import {
   dismissReturnBridge,
   emptyReturnBridgeState,
@@ -8,6 +9,7 @@ import {
 
 const origin = `http://localhost:${Number(process.env.PW_PORT) || 3010}`;
 const route = "/today/tonight?intent=dinner&in=county";
+const areaPhoto = getOwnedPlacePhoto("carroll-creek-linear-park-frederick")!;
 
 test.beforeEach(async ({ page }) => {
   // Exercise Tonight as someone who already declined the install invitation.
@@ -37,11 +39,19 @@ test("keeps the owned area photo and real recommendation useful at phone and des
   for (const [width, height] of [[320, 740], [375, 812], [390, 844], [430, 932], [1440, 1000]]) {
     await page.setViewportSize({ width, height });
     const photo = page.locator("[data-tonight-area-photo]");
-    await expect(photo.locator("img")).toHaveAttribute("alt", "Carroll Creek in Frederick.");
+    const image = photo.locator("img");
+    await expect(image).toHaveAttribute("alt", areaPhoto.alt);
+    await expect(image).toHaveAccessibleName(/Carroll Creek/);
     await expect(photo.locator("figcaption")).toHaveCount(0);
     await expect.poll(() => photo.locator("img").evaluate((image) =>
       image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0 && image.naturalHeight > 0,
     )).toBe(true);
+    const actualSource = await image.evaluate((node) => {
+      const image = node as HTMLImageElement;
+      const url = new URL(image.currentSrc || image.src, document.baseURI);
+      return decodeURIComponent(url.searchParams.get("url") ?? url.pathname);
+    });
+    expect(actualSource).toBe(areaPhoto.src);
     const box = (await photo.boundingBox())!;
     expect(box.y + box.height).toBeLessThan(height - 80);
     await expect.poll(() => page.evaluate(() =>

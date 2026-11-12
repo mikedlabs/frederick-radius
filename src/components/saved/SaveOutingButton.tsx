@@ -3,9 +3,20 @@
 import { useId, useRef, useState } from "react";
 import { Bookmark, Check } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError, notifyRemoved } from "@/lib/feedback/notify";
 import { decodeSavedPlanToken } from "@/lib/plan/plan-token";
 import { refreshSavedOutings, removeOuting, saveOuting, savedOutingErrorDescription, useSavedOutings } from "@/hooks/useSavedOutings";
 import styles from "./SavedOutings.module.css";
+
+/** Undo for a removed outing. It can run after the control that removed the
+ *  outing has unmounted, so its failure is a toast instead of component state. */
+export async function restoreOuting(token: string, title: string) {
+  try {
+    await saveOuting(token, title);
+  } catch (failure) {
+    notifyError({ title: "Could not undo this change", description: savedOutingErrorDescription(failure), onRetry: () => void restoreOuting(token, title) });
+  }
+}
 
 export default function SaveOutingButton({ token, title, disabled = false }: { token: string; title: string; disabled?: boolean }) {
   const saved = useSavedOutings();
@@ -23,12 +34,16 @@ export default function SaveOutingButton({ token, title, disabled = false }: { t
     setBusy(true);
     setError(null);
     setMessage(null);
+    // Undo restores the saved row as it was. The planner title can have
+    // changed since the outing was saved, so read the stored one first.
+    const savedTitle = saved.outings.find((outing) => outing.token === token)?.title ?? title;
     try {
       if (isSaved) await removeOuting(token);
       else await saveOuting(token, title);
       const confirmation = { saved: !isSaved, text: isSaved ? "Removed from Saved on this device." : "Saved on this device. Open this outing from Saved." };
       setMessage(confirmation);
-      toast(confirmation.text);
+      if (isSaved) notifyRemoved({ label: savedTitle, onUndo: () => void restoreOuting(token, savedTitle), item: { type: "outing", id: token } });
+      else toast(confirmation.text);
     } catch (failure) {
       setError(savedOutingErrorDescription(failure));
     } finally {

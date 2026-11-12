@@ -30,7 +30,8 @@ import {
 import { isTimedActivityRequest } from "@/lib/ask/intent";
 import { expandQuery, type QueryExpansion } from "@/lib/search/synonyms";
 import { searchEventWindow, type SearchEventWindow } from "@/lib/search/eventWindow";
-import { isNamedFairVendorPlace, namedFairVendorMatches } from "@/lib/search/fair-vendors";
+import { isExactPlaceNameQuery } from "@/lib/search/place-name";
+export { isExactPlaceNameQuery } from "@/lib/search/place-name";
 
 export type SearchHit =
   | {
@@ -700,8 +701,6 @@ export type SearchOptions = {
   rankEventsByDistance?: boolean;
   eventMunicipality?: string | null;
   eventFilter?: (event: Event) => boolean;
-  /** Narrow regional/downtown requests must not acquire an out-of-area booth. */
-  includeNamedFairVendors?: boolean;
   /** The original question retains time language after location cleaning. */
   eventQuery?: string;
   /** Injectable clock for deterministic evaluations and time-scoped callers. */
@@ -743,7 +742,7 @@ export function search(
 
   const hits: SearchHit[] = [];
   let livePlaces = options.placePool;
-  const getPlaces = () => livePlaces ??= clientPlaces();
+  const getPlaces = () => livePlaces ??= clientPlaces(options.now);
   const intent = detectIntent(query);
   const expansion = expandQuery(query);
   const shortIntent = recognizedShortIntent(query);
@@ -756,11 +755,6 @@ export function search(
   const eventWindow = searchEventWindow(options.eventQuery ?? query, now);
   const explicitEventSearch = options.resultKind === "event" || options.resultKind === "all";
   const datedEventRequest = Boolean((eventIntent || options.resultKind === "event") && eventWindow.meta.label && !options.onlyPlaces);
-  const fairVendors = options.includeNamedFairVendors === false || options.resultKind === "place" || options.resultKind === "event"
-    ? []
-    : namedFairVendorMatches(query, options.eventMunicipality);
-  const fairVendorHrefs = new Set(fairVendors.map((match) => match.page.href));
-  for (const match of fairVendors) hits.push({ type: "page", page: match.page, score: 30 });
 
   for (const p of datedEventRequest || options.resultKind === "event" || options.resultKind === "page" ? [] : getPlaces()) {
     if (options.placeFilter && !options.placeFilter(p)) continue;
@@ -1044,19 +1038,15 @@ export function search(
     }
   }
 
-  // A reviewed named exhibitor beats loose words like "pies" or "rad" in
-  // unrelated records. A bare White Rabbit lookup still leads with its real
-  // restaurant; an explicit Fair request leads with the dated vendor guide.
-  // This tier applies only to recognized Fair brands, not ordinary searches.
-  const explicitFair = fairVendors.some((match) => match.explicitFair);
-  const namedFairPriority = (hit: SearchHit): number => {
-    if (hit.type === "page" && fairVendorHrefs.has(hit.page.href)) return explicitFair ? 3 : 2;
-    if (hit.type === "place" && isNamedFairVendorPlace(hit.place.name, fairVendors)) return explicitFair ? 2 : 3;
-    return 0;
-  };
+  const exactNamedPlaces = new Set(!eventIntent ? hits.filter((hit) =>
+    hit.type === "place" && isExactPlaceNameQuery(query, hit.place.name),
+  ) : []);
   hits.sort((a, b) => {
-    const namedFairDifference = namedFairPriority(b) - namedFairPriority(a);
-    if (namedFairDifference !== 0) return namedFairDifference;
+    // Once a place passes the real scope/eligibility filters, its complete
+    // canonical name beats an incidental prefix match before truncation. Keep
+    // event-shaped requests on their own path.
+    const exactPlaceDifference = Number(exactNamedPlaces.has(b)) - Number(exactNamedPlaces.has(a));
+    if (exactPlaceDifference !== 0) return exactPlaceDifference;
     // Keep one transitive ordering across mixed result types. The previous
     // comparator sorted event-vs-event pairs by distance but event-vs-place
     // pairs by relevance, which could push a higher-scoring event below a
@@ -1175,11 +1165,13 @@ export function qualifiedSearch(
 ): { hits: SearchHit[]; meta: QualifiedSearchMeta } {
   const namedMunicipality = namedMunicipalityScope(query);
   const scopedQuery = withoutMunicipalityScope(query, namedMunicipality);
-  const needsLiteralPlaceLookup = hasSearchFeatureTerms(query) &&
-    context.resultKind !== "event" && context.resultKind !== "page" &&
+  const allowLiteralPlaceLookup = context.resultKind !== "event" && context.resultKind !== "page" &&
     !(detectEventIntent(query) && searchEventWindow(query, context.now).meta.label);
-  const placePool = needsLiteralPlaceLookup ? clientPlaces() : undefined;
-  const literalPlace = (placePool ?? [])
+  // Reuse this decorated pool in search below: detecting a complete name must
+  // not decorate the full catalog twice or freeze its live hours in a cache.
+  const placePool = allowLiteralPlaceLookup ? clientPlaces(context.now) : undefined;
+  const exactName = placePool?.find((place) => isExactPlaceNameQuery(query, place.name))?.name;
+  const literalPlace = (hasSearchFeatureTerms(query) ? placePool ?? [] : [])
     .map((place) => ({ place, match: place.name.length >= 4
       ? new RegExp(`(?:^|\\s)${place.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|\\s|[,.!?])`, "i").exec(query)
       : null }))
@@ -1190,7 +1182,7 @@ export function qualifiedSearch(
     new Set(["", "please", "find", "show", "me", "i", "want", "need", "a", "an", "the", "looking", "for", "does", "do", "is", "can", "could", "would", "you", "tell", "us", "if"]).has(word),
   );
   const qualifiers = parseSearchQualifiers(query, {
-    literalPlaceName: literalPlace?.place.name,
+    literalPlaceName: exactName ?? literalPlace?.place.name,
     namedPlaceSlug: primaryNamedPlace ? literalPlace?.place.slug : undefined,
   });
   if (!qualifiers.constrained) {
@@ -1318,7 +1310,6 @@ export function qualifiedSearch(
     rankPlacesByDistance: Boolean(rankingOrigin),
     rankEventsByDistance: Boolean(rankingOrigin),
     eventMunicipality: municipality,
-    includeNamedFairVendors: !downtownApplied && (!regionalScope || municipalityMatchesRegions("frederick", qualifiers.regions)),
     eventFilter: (event) =>
       municipalityMatchesRegions(event.municipality, qualifiers.regions) &&
       (!downtownApplied || haversineMeters(FREDERICK_CENTER, event.geom) <= downtownRadiusMeters),

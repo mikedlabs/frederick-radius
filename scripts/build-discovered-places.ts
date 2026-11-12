@@ -186,7 +186,7 @@ function main() {
   }
 
   writeFileSync(OUT_PLACES, JSON.stringify(places, null, 2));
-  writeFileSync(ENRICHMENT, JSON.stringify(enrichment, null, 2));
+  writeFileSync(ENRICHMENT, JSON.stringify(enrichment));
   writeFileSync(
     OUT_REJECTED,
     JSON.stringify(

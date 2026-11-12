@@ -1,6 +1,6 @@
 # Hours refresh review
 
-Generated from the committed baseline and the refreshed artifacts at 2026-08-22T17:16:36.471Z.
+Compared committed baseline with the current artifacts. Provider snapshot timestamp: 2026-08-22T17:16:36.471Z; this does not redate retained observations or first-party evidence.
 This report is a review aid. It does not approve, reject, or change a place status.
 
 **No unreviewed public catalog or public closure transition requires manual review.**
@@ -10,10 +10,13 @@ This report is a review aid. It does not approve, reject, or change a place stat
 | Metric | Before | After | Change |
 | --- | ---: | ---: | ---: |
 | Public places | 1571 | 1571 | 0 |
-| Public places with publishable verified hours | 9 | 12 | +3 |
+| Public places with publishable verified hours | 38 | 34 | -4 |
+| Public places with qualified schedules | 4 | 3 | -1 |
 | Hours snapshot rows | 1522 | 1522 | 0 |
 | Fresh schedule rows in snapshot | 1160 | 1160 | 0 |
 | Unmatched database rows ignored | — | 14 | — |
+
+Qualified schedules retain their service or admission conditions and do not establish venue opening. They are excluded from the general verified-hours total and Open now coverage.
 
 ## Public catalog changes
 

@@ -1,14 +1,45 @@
-import type { Hours, Place } from "@/data/places";
+import type { Hours, HoursDateException, HoursQualification, Place } from "@/data/places";
 import { HOURS_MAX_AGE_DAYS, isHoursFresh } from "@/lib/hours-freshness";
 import { isCalendarDate, WEEKDAYS } from "@/lib/official-hours";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import { easternDayKey, easternWallToUtcISO } from "@/lib/tz";
+import { hasQualifiedHoursOwner, QUALIFIED_HOURS_SOURCES } from "@/lib/qualified-hours-sources";
 
 /** Reviewed exact identities. Adding a source requires code and source review. */
 export const MERCHANT_HOURS_SOURCES = [
   { slug: "brewers-alley-frederick", name: "Brewer's Alley", ledger_id: "brewers_alley_hours", category: "restaurant", url: "https://brewers-alley.com/", kind: "dated_week" },
   { slug: "gravel-and-grind-frederick", name: "Gravel & Grind", ledger_id: "gravel_grind_hours", category: "coffee", url: "https://www.gravelandgrind.com/", kind: "weekly" },
   { slug: "beans-in-the-belfry-brunswick", name: "Beans in the Belfry", ledger_id: "beans_belfry_hours", category: "coffee", url: "https://beansinthebelfry.com/", kind: "weekly" },
+  { slug: "dublin-roasters-frederick", name: "Dublin Roasters Coffee", ledger_id: "dublin_roasters_hours", category: "coffee", url: "https://dublinroasterscoffee.com", kind: "weekly" },
+  { slug: "pistarros", name: "Pistarro’s", ledger_id: "pistarros_hours", category: "restaurant", url: "https://pistarro.com/", kind: "weekly" },
+  { slug: "jojos-restaurant-tap-house", name: "JoJo's Restaurant & Tap House", ledger_id: "jojos_hours", category: "restaurant", url: "https://jojosrestauranttaphouse.com/", kind: "weekly" },
+  { slug: "thai-table-frederick", name: "Thai Table", ledger_id: "thai_table_hours", category: "restaurant", url: "https://thaitablecuisine.com/", kind: "weekly" },
+  { slug: "thai-meric-eatery-bar-frederick", name: "Thai Meric Eatery & Bar", ledger_id: "thai_meric_hours", category: "restaurant", url: "https://www.thaimeric.com/", kind: "weekly" },
+  { slug: "white-rabbit-gastropub", name: "White Rabbit Gastropub", ledger_id: "white_rabbit_hours", category: "restaurant", url: "https://www.whiterabbitgastropub.com/readme", kind: "weekly" },
+  { slug: "il-porto-restaurant", name: "Il Porto Restaurant", ledger_id: "il_porto_frederick_hours", category: "restaurant", url: "https://www.ilportorestaurant.com/location-frederick/", kind: "weekly" },
+  { slug: "sumittra-thai-cuisine", name: "Sumittra Thai Cuisine", ledger_id: "sumittra_hours", category: "restaurant", url: "https://www.sumittra.com/", kind: "weekly", collection: "manual" },
+  { slug: "the-curious-iguana-frederick", name: "Curious Iguana", ledger_id: "curious_iguana_hours", category: "book-store", url: "https://curiousiguana.com/", kind: "weekly", collection: "manual" },
+  { slug: "kulfi-ice-creams-frederick", name: "Kulfi Ice Creams", ledger_id: "kulfi_hours", category: "ice-cream", url: "https://kulfi-icecream.com/", kind: "weekly" },
+  { slug: "delaplaine-arts-center-frederick", name: "Delaplaine Arts Center", ledger_id: "delaplaine_hours", category: "gallery", url: "https://delaplaine.org/", kind: "weekly" },
+  // This exact reviewed Wix page exceeds the ordinary 512000-byte transport cap.
+  { slug: "alekos-middletown", name: "Aleko's Village Cafe", ledger_id: "alekos_hours", category: "restaurant", url: "https://www.alekosvillagecafe.com/", kind: "weekly", max_response_bytes: 1_048_576 },
+  { slug: "safeway-middletown", name: "Safeway Middletown", ledger_id: "safeway_middletown_hours", category: "market", url: "https://local.safeway.com/safeway/md/middletown/815-e-main-st.html", kind: "weekly" },
+  { slug: "safeway-walkersville", name: "Safeway Walkersville", ledger_id: "safeway_walkersville_hours", category: "market", url: "https://local.safeway.com/safeway/md/walkersville/151-walkers-village-way.html", kind: "weekly" },
+  // One reviewed official page, with independent exact grocery identities.
+  { slug: "common-market-frederick", name: "Common Market Co-op (Route 85)", ledger_id: "common_market_hours", category: "market", url: "https://www.commonmarket.coop/", kind: "weekly" },
+  { slug: "common-market", name: "Common Market (7th Street)", ledger_id: "common_market_hours", category: "market", url: "https://www.commonmarket.coop/", kind: "weekly" },
+  ...QUALIFIED_HOURS_SOURCES,
+  { slug: "food-lion-crestwood-frederick", name: "Food Lion Crestwood", ledger_id: "food_lion_crestwood_hours", category: "market", url: "https://stores.foodlion.com/md/frederick/6920-crestwood-blvd", kind: "weekly" },
+  { slug: "food-lion-yellow-springs-frederick", name: "Food Lion Yellow Springs", ledger_id: "food_lion_yellow_springs_hours", category: "market", url: "https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd.", kind: "weekly" },
+  { slug: "food-lion-thurmont", name: "Food Lion Thurmont", ledger_id: "food_lion_thurmont_hours", category: "market", url: "https://stores.foodlion.com/md/thurmont/231-tippin-dr", kind: "weekly" },
+  {"slug": "firebirds-wood-fired-grill-frederick", "name": "Firebirds Wood Fired Grill", "ledger_id": "firebirds_wood_fired_grill_frederick_hours", "category": "restaurant", "url": "https://firebirdsrestaurants.com/frederick", "kind": "weekly"},
+  {"slug": "fratellis-italian-seafood-middletown", "name": "Fratelli's Italian & Seafood", "ledger_id": "fratellis_italian_seafood_middletown_hours", "category": "restaurant", "url": "https://www.fratellispasta.com/location/fratellis-middletown/", "kind": "weekly"},
+  {"slug": "hinzis-kitchen", "name": "Hinzi's Kitchen", "ledger_id": "hinzis_kitchen_hours", "category": "restaurant", "url": "https://hinzis.com/", "kind": "weekly"},
+  {"slug": "hoffman-brothers-ice-cream", "name": "Hoffman Brothers Ice Cream", "ledger_id": "hoffman_brothers_ice_cream_hours", "category": "ice-cream", "url": "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr", "kind": "weekly"},
+  {"slug": "frederick-fudge-ice-cream", "name": "Frederick Fudge Ice Cream", "ledger_id": "frederick_fudge_ice_cream_hours", "category": "ice-cream", "url": "https://fredicecream.com/", "kind": "weekly"},
+  {"slug": "carriage-house-inn-restaurant-catering-emmitsburg", "name": "Carriage House Inn Restaurant & Catering", "ledger_id": "carriage_house_inn_restaurant_catering_emmitsburg_hours", "category": "restaurant", "url": "https://chouseinn.com/", "kind": "weekly"},
+  {"slug": "el-rancho-restaurant-walkersville", "name": "El Rancho Restaurant", "ledger_id": "el_rancho_restaurant_walkersville_hours", "category": "restaurant", "url": "https://elrancho-restaurant.com/", "kind": "weekly"},
+  { slug: "mamma-angela-mount-airy", name: "Mamma Angela", ledger_id: "mamma_angela_hours", category: "restaurant", url: "https://www.mammaangelamtairymd.com/", kind: "weekly" },
 ] as const;
 export type MerchantHoursSource = typeof MERCHANT_HOURS_SOURCES[number];
 export type MerchantHoursRecord = {
@@ -22,6 +53,9 @@ export type MerchantHoursRecord = {
   coverage_through: string;
   kind: "weekly" | "dated_week";
   hours: Hours;
+  qualification?: HoursQualification;
+  /** Actual dated source notices; absent preserves the ordinary weekly schedule. */
+  exceptions?: HoursDateException[];
 };
 export type MerchantHoursArtifact = {
   schema_version: 1;
@@ -36,12 +70,57 @@ export type MerchantHoursArtifact = {
 };
 const validStamp = (value: string) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) && Number.isFinite(Date.parse(value));
 const clock = (value: string) => typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+const plainText = (value: unknown, limit: number): value is string => typeof value === "string" && value === value.trim() && value.length > 0 && value.length <= limit && !/[<>\u0000-\u001f\u007f]/.test(value);
+function validateQualification(value: unknown): asserts value is HoursQualification {
+  const q = value as HoursQualification;
+  if (!q || typeof q !== "object" || Array.isArray(q)
+    || Object.keys(q).some((key) => !["scope", "label", "note", "usage"].includes(key))
+    || !["venue", "kitchen", "bar", "brunch", "admission"].includes(q.scope)
+    || q.usage !== "display_only" || !plainText(q.label, 80) || !plainText(q.note, 500)) throw new Error("Invalid merchant hours qualification.");
+}
+function validateExceptions(value: unknown): asserts value is HoursDateException[] {
+  if (!Array.isArray(value) || value.length > 80) throw new Error("Invalid merchant date exceptions.");
+  let previous = "";
+  for (const exception of value) {
+    if (!exception || typeof exception !== "object" || Array.isArray(exception)
+      || Object.keys(exception).some((key) => !["date", "reason", "closed", "closes_at"].includes(key))
+      || !isCalendarDate(exception.date) || exception.date <= previous || !plainText(exception.reason, 160)
+      || (exception.closed !== undefined && exception.closed !== true)
+      || (exception.closed === true) === (exception.closes_at !== undefined)
+      || (exception.closes_at !== undefined && !clock(exception.closes_at))) throw new Error("Invalid or ambiguous merchant date exception.");
+    previous = exception.date;
+  }
+}
 export function merchantHoursExpiry(observedAt: string, coverageThrough?: string): string {
   const limit = Date.parse(observedAt) + HOURS_MAX_AGE_DAYS * 86_400_000;
   if (!coverageThrough) return new Date(limit).toISOString();
   const nextDate = new Date(Date.parse(`${coverageThrough}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
   const [year, month, day] = nextDate.split("-").map(Number);
   return new Date(Math.min(limit, Date.parse(easternWallToUtcISO(year, month, day, 0, 0)))).toISOString();
+}
+/** Ordinary Iguana Saturdays cannot describe its longer first Saturday.
+ * Keep that date outside the evidence rather than invent an extension in the
+ * closure-only exception model. Native sources retain their exact seven days.
+ */
+export function merchantWeeklyHoursWindow(slug: string, observedAt: string): { expires_at: string; coverage_through: string } {
+  const expires = merchantHoursExpiry(observedAt);
+  const ordinary = { expires_at: expires, coverage_through: easternDayKey(new Date(expires)) };
+  if (slug !== "the-curious-iguana-frederick") return ordinary;
+  const from = easternDayKey(new Date(observedAt));
+  for (let offset = 0; offset <= 7; offset++) {
+    const day = new Date(Date.parse(`${from}T12:00:00Z`) + offset * 86_400_000);
+    if (day.getUTCDay() !== 6 || day.getUTCDate() > 7) continue;
+    if (offset === 0) throw new Error("First-Saturday hours require separate dated review.");
+    const date = day.toISOString().slice(0, 10);
+    const [year, month, dateOfMonth] = date.split("-").map(Number);
+    const boundary = easternWallToUtcISO(year, month, dateOfMonth, 0, 0);
+    if (Date.parse(boundary) <= Date.parse(expires)) return {
+      expires_at: new Date(boundary).toISOString(),
+      coverage_through: new Date(day.getTime() - 86_400_000).toISOString().slice(0, 10),
+    };
+    break;
+  }
+  return ordinary;
 }
 export function validateMerchantHoursArtifact(value: unknown): asserts value is MerchantHoursArtifact {
   const artifact = value as MerchantHoursArtifact;
@@ -51,16 +130,22 @@ export function validateMerchantHoursArtifact(value: unknown): asserts value is 
     const source = MERCHANT_HOURS_SOURCES.find((item) => item.slug === row.slug);
     if (!source || seen.has(row.slug) || row.source_url !== source.url || row.source_name !== source.name || row.kind !== source.kind || !/^[a-f0-9]{64}$/.test(row.source_sha256) || !validStamp(row.observed_at) || !validStamp(row.expires_at) || !isCalendarDate(row.coverage_from) || !isCalendarDate(row.coverage_through) || row.coverage_from > row.coverage_through || !row.hours || Object.keys(row.hours).length !== 7) throw new Error("Mismatched merchant source, week or observation.");
     seen.add(row.slug);
+    if (hasQualifiedHoursOwner(row.slug) && row.qualification === undefined) throw new Error("Qualified source hours must retain their display-only qualification.");
+    if (row.qualification !== undefined) validateQualification(row.qualification);
+    if (row.exceptions !== undefined) validateExceptions(row.exceptions);
     if (row.kind === "dated_week") {
       if (Date.parse(row.coverage_through) - Date.parse(row.coverage_from) !== 6 * 86_400_000 || row.expires_at !== merchantHoursExpiry(row.observed_at, row.coverage_through)) throw new Error("A dated merchant week cannot renew beyond its actual dates.");
-    } else if (row.coverage_from !== easternDayKey(new Date(row.observed_at)) || row.expires_at !== merchantHoursExpiry(row.observed_at) || row.coverage_through !== easternDayKey(new Date(row.expires_at))) throw new Error("Weekly merchant evidence must retain its actual seven-day limit.");
+    } else {
+      const window = merchantWeeklyHoursWindow(source.slug, row.observed_at);
+      if (row.coverage_from !== easternDayKey(new Date(row.observed_at)) || row.expires_at !== window.expires_at || row.coverage_through !== window.coverage_through) throw new Error("Weekly merchant evidence must retain its actual source-specific limit.");
+    }
     const observedDay = easternDayKey(new Date(row.observed_at));
     if (observedDay < row.coverage_from || observedDay > row.coverage_through) throw new Error("Merchant observation is outside the published week.");
     for (const day of WEEKDAYS) {
       const slots = row.hours[day];
       if (!Array.isArray(slots) || slots.length > 2 || slots.some((slot) => !clock(slot.open) || !clock(slot.close) || slot.open === slot.close)) throw new Error("Incomplete or invalid merchant schedule.");
     }
-    if (!mayPublishVisitabilityHours(row.slug, row.hours, new Date(row.observed_at))) throw new Error("Merchant hours require separate visitability review.");
+    if (!row.qualification && !mayPublishVisitabilityHours(row.slug, row.hours, new Date(row.observed_at))) throw new Error("Merchant hours require separate visitability review.");
   }
   const reviewSeen = new Set<string>();
   for (const item of artifact.review) {
@@ -83,7 +168,7 @@ export function merchantHoursForPlace(place: Pick<Place, "slug" | "website" | "c
   const row = value.places.find((item) => item.slug === source.slug);
   const date = easternDayKey(now);
   if (!row || value.review.some((item) => item.slug === source.slug) || place.category !== source.category || host(place.website) !== host(source.url) || !isHoursFresh(row.observed_at, now) || now.getTime() >= Date.parse(row.expires_at) || date < row.coverage_from || date > row.coverage_through) return { enrolled: true };
-  return { enrolled: true, observedAt: row.observed_at, hours: { ...row.hours, _official: { slug: row.slug, kind: "merchant", schedule_kind: row.kind, source_name: row.source_name, source_url: row.source_url, observed_at: row.observed_at, expires_at: row.expires_at, coverage_from: row.coverage_from, coverage_through: row.coverage_through, exceptions: [] } } };
+  return { enrolled: true, observedAt: row.observed_at, hours: { ...row.hours, _official: { slug: row.slug, kind: "merchant", schedule_kind: row.kind, source_name: row.source_name, source_url: row.source_url, observed_at: row.observed_at, expires_at: row.expires_at, coverage_from: row.coverage_from, coverage_through: row.coverage_through, exceptions: row.exceptions ?? [], ...(row.qualification ? { qualification: row.qualification } : {}) } } };
 }
 
 /** Manual review operation only. The scheduled collector never calls this.

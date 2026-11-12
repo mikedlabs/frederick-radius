@@ -52,19 +52,21 @@ const INITIAL: StopArrivalsSnapshot = {
   checkedAt: null,
 };
 
-function providerTimeFrom(payload: {
+/** Only the GTFS source clock can establish provider freshness. API updatedAt
+ * is Radius's receipt time, not a replacement for an absent source clock. */
+export function providerTimeFrom(payload: {
   feedTimestamp?: number;
   updatedAt?: number;
-}): number {
-  if (
-    typeof payload.feedTimestamp === "number" &&
-    payload.feedTimestamp > 0
-  ) {
-    return payload.feedTimestamp * 1000;
-  }
-  return typeof payload.updatedAt === "number"
-    ? payload.updatedAt
-    : Date.now();
+}, receivedAt: number): number | null {
+  const providerTime = typeof payload.feedTimestamp === "number"
+    ? payload.feedTimestamp * 1000
+    : NaN;
+  // Match the rider board's existing 90-second clock-skew window. Preserve
+  // genuinely old observations as stale; implausible future clocks are unknown.
+  return Number.isFinite(providerTime) && providerTime > 0 &&
+    providerTime <= receivedAt + PROVIDER_STALE_MS
+    ? providerTime
+    : null;
 }
 
 /**
@@ -124,8 +126,8 @@ export function useStopArrivals(stopId: string): {
             markUnavailable();
             return;
           }
-          const providerUpdatedAt = providerTimeFrom(payload);
           const receivedAt = Date.now();
+          const providerUpdatedAt = providerTimeFrom(payload, receivedAt);
           const predictions = Array.isArray(payload.predictions)
             ? payload.predictions.filter(
                 (prediction) => prediction.stopId === stopId,
@@ -134,7 +136,8 @@ export function useStopArrivals(stopId: string): {
           setSnapshot({
             predictions,
             status:
-              receivedAt - providerUpdatedAt > PROVIDER_STALE_MS
+              providerUpdatedAt == null ||
+              Math.abs(receivedAt - providerUpdatedAt) > PROVIDER_STALE_MS
                 ? "stale"
                 : "live",
             providerUpdatedAt,
@@ -177,5 +180,11 @@ export function useStopArrivals(stopId: string): {
     return () => window.clearInterval(tick);
   }, []);
 
-  return { snapshot, nowMs };
+  const effectiveSnapshot: StopArrivalsSnapshot =
+    snapshot.status === "live" &&
+    (snapshot.providerUpdatedAt == null || nowMs <= 0 ||
+      Math.abs(nowMs - snapshot.providerUpdatedAt) > PROVIDER_STALE_MS)
+      ? { ...snapshot, status: "stale" }
+      : snapshot;
+  return { snapshot: effectiveSnapshot, nowMs };
 }

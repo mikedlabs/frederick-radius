@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { featuredEventSlugs } from "@/lib/events/featured";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, ChevronDown, LocateFixed, X } from "lucide-react";
+import { ArrowRight, ChevronDown, LocateFixed, X } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import EventsRestorePreview from "@/components/event/EventsRestorePreview";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
@@ -12,6 +11,7 @@ import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
 import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/event/EventsBoardDock";
 import SectionHeading from "@/components/ui/SectionHeading";
+import { easternDayKey } from "@/lib/tz";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon, isRangeListing, RANGE_LISTING_STALE_AFTER_MS } from "@/lib/eventHorizon";
@@ -34,6 +34,7 @@ import { parseViewState, toQuery, type ViewState, type When } from "@/lib/view-s
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { EventSourceHealth } from "@/lib/loaders/unifiedEvents";
 import { getEventsTown, setEventsTown } from "@/lib/personalize";
+import { readResumedEventsTabView, rememberEventsTabView } from "@/lib/primary-tab-session";
 import {
   getScope,
   parseScope,
@@ -51,6 +52,7 @@ import { eventCardVisual, type EventCardVisual } from "@/components/event/eventV
 import {
   horizonLeadVariant,
   primaryLeadPrecedesInterestRail,
+  rowShowsDate,
   splitHorizonLead,
 } from "@/components/event/eventsExplorerLayout";
 import { compareForRecommendation, rankRecommendations } from "@/lib/events/lead-rank";
@@ -64,6 +66,7 @@ import {
 } from "@/hooks/useGeolocation";
 import type { LngLat } from "@/lib/geo";
 import { fetchEventsBrowse } from "@/lib/events/fetchBrowse";
+import { HISTORY_LAYER_URL_RESTORED, replaceHistoryLayerUrl } from "@/hooks/useReversibleHistoryLayer";
 
 export type TimeKey = "all" | "today" | "weekend" | "week";
 
@@ -584,10 +587,18 @@ export default function EventsExplorer({
     // before a person can meaningfully interact.
     queueMicrotask(() => {
       if (!active) return;
+      const resumedView = readResumedEventsTabView(
+        `${window.location.pathname}${window.location.search}${window.location.hash}`,
+      );
       applyBrowserState();
+      if (resumedView) {
+        setQ(resumedView.q);
+        setView(resumedView.view);
+      }
       setUrlReady(true);
     });
     window.addEventListener("popstate", applyBrowserState);
+    window.addEventListener(HISTORY_LAYER_URL_RESTORED, applyBrowserState);
     const unsubscribeScope = subscribeScopeChange((nextScope) => {
       setActiveScope(nextScope);
       setTown(scopeTownSlug(nextScope));
@@ -595,6 +606,7 @@ export default function EventsExplorer({
     return () => {
       active = false;
       window.removeEventListener("popstate", applyBrowserState);
+      window.removeEventListener(HISTORY_LAYER_URL_RESTORED, applyBrowserState);
       unsubscribeScope();
     };
   }, [applyBrowserState]);
@@ -673,6 +685,7 @@ export default function EventsExplorer({
 
   const live = useMemo(() => new Set(currentLiveSlugs), [currentLiveSlugs]);
   const now = +new Date(nowISO);
+  const todayKey = easternDayKey(new Date(now));
   const nearMeActive = eventScopeNeedsCompleteData(activeScope);
   const contentFilterActive =
     cat !== null || intent !== null || sub !== null || town !== null ||
@@ -934,8 +947,20 @@ export default function EventsExplorer({
     if (sort !== "recommended") sp.set("sort", sort);
     const full = sp.toString();
     const url = full ? `${window.location.pathname}?${full}` : window.location.pathname;
-    window.history.replaceState(null, "", url);
+    replaceHistoryLayerUrl(url);
   }, [viewState, activeScope, day, time, tod, intent, sub, freeOnly, happyOnly, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly, sort, urlReady]);
+
+  // Capture after the URL mirror above has committed the current filters.
+  // This small in-document handoff keeps private search/view state through a
+  // deliberate tab switch, without adding it to URLs or persistent storage.
+  // Each settled render also covers filter-only changes with unchanged q/view.
+  useEffect(() => {
+    if (!urlReady || window.location.pathname !== "/events") return;
+    rememberEventsTabView(
+      `${window.location.pathname}${window.location.search}${window.location.hash}`,
+      { q, view },
+    );
+  });
 
   // The bounded preview is sufficient for the default list. Every operation
   // that promises a complete answer promotes the cached continuation exactly
@@ -1100,7 +1125,7 @@ export default function EventsExplorer({
             aria-hidden
             className="h-4 w-4 shrink-0"
             strokeWidth={2.2}
-            style={{ color: "var(--app-brand-press)" }}
+            style={{ color: "var(--app-link)" }}
           />
           <span className="min-w-0 flex-1">
             <span className="block text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
@@ -1129,7 +1154,7 @@ export default function EventsExplorer({
               onClick={() => geolocation.request()}
               disabled={geolocation.state.status === "loading"}
               className="tap-44-y inline-flex min-h-11 shrink-0 items-center px-1 text-[11px] font-semibold disabled:opacity-55"
-              style={{ color: "var(--app-brand-press)" }}
+              style={{ color: "var(--app-link)" }}
             >
               {geolocation.state.status === "loading"
                 ? "Locating…"
@@ -1142,13 +1167,14 @@ export default function EventsExplorer({
       ) : null}
 
       {showPrimaryLeadBeforeRail && primaryLead && (
-        <div data-events-primary-lead="before-interest" data-events-visual-shortlist>
+        <div data-events-primary-lead="before-interest" data-events-visual-shortlist className="max-w-[720px]">
           <PromotedEvent
             event={primaryLead}
             visual={eventCardVisual(primaryLead)}
             live={live.has(primaryLead.slug)}
             priorityImage
             nowISO={nowISO}
+            headingLevel={2}
           />
         </div>
       )}
@@ -1208,7 +1234,7 @@ export default function EventsExplorer({
             type="button"
             onClick={() => void ensureAllEvents(true)}
             className="tap-44-y inline-flex min-h-11 shrink-0 items-center font-semibold underline"
-            style={{ color: "var(--app-cool)" }}
+            style={{ color: "var(--app-link)" }}
           >
             Retry
           </button>
@@ -1227,11 +1253,8 @@ export default function EventsExplorer({
         // ~⅕ the height of a feature card. The user is here for
         // density, not browsing.
         <ol
-          className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
-          style={{
-            borderColor: "var(--app-border)",
-            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-          }}
+          className="max-w-[720px] border-t"
+          style={{ borderColor: "var(--app-border)" }}
         >
           {filtered.slice(0, 200).map((e) => (
             <li key={`${e.slug}-${e.starts_at}`}>
@@ -1248,32 +1271,19 @@ export default function EventsExplorer({
           )}
         </ol>
       ) : filtered.length === 0 ? (
-        // Composed empty state — soft category-tinted block, serif line,
-        // one quiet sentence, primary action. Replaces the bare bordered
-        // text-only message.
+        // The Saved empty grammar: a left-aligned title, one sentence, then
+        // the actions. No icon, tinted halo or card around a state that only
+        // has to say what happened and what to do next.
         <div className="space-y-4">
-          <div
-            className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-6 text-center shadow-sm"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <span
-              aria-hidden
-              className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full"
-              style={{
-                background: "color-mix(in srgb, var(--section-accent, var(--app-brand)) 15%, var(--app-bg-sunken))",
-                color: "var(--section-accent, var(--app-brand))",
-              }}
-            >
-              <CalendarDays className="h-6 w-6" strokeWidth={1.5} />
-            </span>
+          <div data-events-empty-state className="max-w-sm py-2">
             <h3
-              className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
+              className="font-sans text-[18px] font-semibold leading-snug"
               style={{ color: "var(--app-ink)" }}
             >
               {emptyState.title}
             </h3>
             <p
-              className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-pretty"
+              className="mt-1.5 text-[13.5px] leading-relaxed text-pretty"
               style={{ color: "var(--app-ink-2)" }}
             >
               {emptyState.description}
@@ -1282,14 +1292,14 @@ export default function EventsExplorer({
               <button
                 type="button"
                 onClick={() => void ensureAllEvents(true)}
-                className="tap-44 mt-3 inline-flex min-h-11 items-center px-3 text-[13px] font-semibold underline"
-                style={{ color: "var(--app-cool)" }}
+                className="tap-44-y mt-1 flex min-h-11 w-fit items-center text-[13px] font-semibold underline"
+                style={{ color: "var(--app-link)" }}
               >
                 Check the calendar again
               </button>
             ) : null}
             {showOfficialCalendars && (
-              <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
+              <div className="flex flex-wrap gap-x-5">
                 <a
                   href="https://www.frederickcountymd.gov/calendar.aspx"
                   target="_blank"
@@ -1311,36 +1321,29 @@ export default function EventsExplorer({
               </div>
             )}
           </div>
-          
-          {/* Honest relaxations — Bento-grid for quick actions */}
+
+          {/* Honest relaxations: each active filter can be dropped on its own. */}
           {relaxations.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="flex flex-wrap items-center gap-2">
               {relaxations.map((r) => (
                 <button
                   key={r.key}
                   type="button"
                   onClick={r.drop}
                   aria-label={`Remove ${r.label} filter`}
-                  className="tap-44-y tactile tactile-interactive flex min-h-[44px] items-center justify-between rounded-[var(--app-radius-md)] border bg-[var(--app-bg-surface)] px-4 py-2 text-[13px] font-semibold transition active:scale-95"
-                  style={{
-                    borderColor: "var(--app-border)",
-                    color: "var(--app-ink)",
-                  }}
+                  className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border bg-[var(--app-bg-elevated-solid)] px-4 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                  style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
                 >
-                  <span className="truncate pr-2">{r.label}</span>
-                  <X className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+                  <span className="truncate">{r.label}</span>
+                  <X className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
                 </button>
               ))}
               {relaxations.length > 1 && (
                 <button
                   type="button"
                   onClick={clear}
-                  className="tap-44-y tactile tactile-interactive flex min-h-[44px] items-center justify-center rounded-[var(--app-radius-md)] border px-4 py-2 text-[13px] font-semibold transition active:scale-95 sm:col-span-3"
-                  style={{ 
-                    borderColor: "transparent",
-                    background: "color-mix(in srgb, var(--section-accent, var(--app-brand)) 10%, var(--app-bg-surface))", 
-                    color: "var(--section-accent, var(--app-brand))" 
-                  }}
+                  className="inline-flex min-h-11 items-center px-2 text-[13px] font-semibold underline"
+                  style={{ color: "var(--app-link)" }}
                 >
                   Clear all filters
                 </button>
@@ -1357,21 +1360,18 @@ export default function EventsExplorer({
         // — a bare `grid` leaves an auto track that a card with a wide
         // min-content (one long unbroken token) stretches past the page edge
         // (397px track in a 358px column, Jul-9 mobile audit).
-        <motion.ul layout className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-          <AnimatePresence>
-            {filtered.slice(0, 100).map((e) => (
-              <motion.li
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                key={`${e.slug}-${e.starts_at}`}
-              >
-                <EventCard event={e} nowISO={nowISO} />
-              </motion.li>
-            ))}
-          </AnimatePresence>
+        // A chosen sort or filter is a full re-rank, so the list swaps
+        // directly. Animating up to 100 rows kept it shuffling for most of
+        // a second after every chip tap.
+        // One column up to the 720px measure: each row draws its own
+        // hairline, and a second column let rows of different heights
+        // stagger those rules.
+        <ul data-events-sorted-list={sort} className="grid max-w-[720px] grid-cols-1">
+          {filtered.slice(0, 100).map((e) => (
+            <li key={`${e.slug}-${e.starts_at}`}>
+              <EventCard event={e} nowISO={nowISO} />
+            </li>
+          ))}
           {filtered.length > 100 && (
             <li
               className="col-span-full pt-2 text-center text-[11px]"
@@ -1380,7 +1380,7 @@ export default function EventsExplorer({
               Showing the first 100. Use filters or the calendar view to narrow further.
             </li>
           )}
-        </motion.ul>
+        </ul>
       ) : (
         // Grouped by human time horizon — "what's on now / today / this
         // weekend / later" — so the page is navigable at a glance, not
@@ -1417,8 +1417,9 @@ export default function EventsExplorer({
             const preview = rest.slice(0, PEEK);
             const expanded = isOpen ? rest.slice(PEEK, EXPANDED_CAP) : [];
             const overflow = isOpen ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
+            const showDate = (event: EventWithMeta) => rowShowsDate(g.key, event, todayKey);
             return (
-              <section key={g.key} className="space-y-3">
+              <section key={g.key} className="max-w-[720px] space-y-3">
                 <SectionHeading title={g.label} count={groupCount} />
                 {lead && !leadMovedBeforeRail && leadVariant === "feature" ? (
                   <PromotedEvent
@@ -1427,11 +1428,13 @@ export default function EventsExplorer({
                     live={live.has(lead.slug)}
                     priorityImage
                     nowISO={nowISO}
+                    headingLevel={3}
                   />
                 ) : lead && !leadMovedBeforeRail ? (
                   <EventCard
                     event={lead}
                     variant="glance"
+                    showDate={showDate(lead)}
                     live={live.has(lead.slug)}
                     nowISO={nowISO}
                   />
@@ -1439,13 +1442,26 @@ export default function EventsExplorer({
                 {totalRest > 0 && (
                   <>
                     {preview.length > 0 && (
-                      sort === "recommended" ? <ul data-events-discovery-grid className="grid min-w-0 grid-cols-1 items-start gap-4 sm:grid-cols-2">
-                        {preview.map((event) => <li key={eventIdentity(event)} className="min-w-0"><EventCard event={event} variant="discovery" venuePhotos="free-reviewed" live={live.has(event.slug)} nowISO={nowISO} /></li>)}
-                      </ul> : <CompactEventList events={preview} live={live} nowISO={nowISO} />
+                      // One column at every width, capped by the section's
+                      // 720px measure: each row draws its own hairline, so a
+                      // single column keeps every rule aligned.
+                      // Every sort uses the same row as the group's lead, so
+                      // one group never mixes two row styles.
+                      sort === "recommended" ? <ul data-events-discovery-grid className="grid min-w-0 grid-cols-1">
+                        {preview.map((event) => (
+                          <li key={eventIdentity(event)} className="min-w-0"><EventCard event={event} variant="discovery" venuePhotos="free-reviewed" showDate={showDate(event)} live={live.has(event.slug)} nowISO={nowISO} /></li>
+                        ))}
+                      </ul> : <GroupEventList events={preview} variant="glance" showDate={showDate} live={live} nowISO={nowISO} />
                     )}
                     {expanded.length > 0 && (
                       <div className="reveal-up">
-                        <CompactEventList events={expanded} live={live} nowISO={nowISO} />
+                        <GroupEventList
+                          events={expanded}
+                          variant={sort === "recommended" ? "discovery" : "glance"}
+                          showDate={showDate}
+                          live={live}
+                          nowISO={nowISO}
+                        />
                       </div>
                     )}
                     {/* Only when the window holds MORE than the default peek —
@@ -1460,12 +1476,8 @@ export default function EventsExplorer({
                           }}
                           aria-expanded={isOpen}
                           disabled={isOpen && loadingAll}
-                          className="tactile tactile-interactive flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-4 py-2.5 text-[13px] font-semibold"
-                          style={{
-                            borderColor: "var(--app-border)",
-                            background: "var(--app-bg-elevated)",
-                            color: "var(--app-cool)",
-                          }}
+                          className="flex min-h-11 w-fit items-center gap-1.5 rounded-[var(--app-radius-sm)] text-[13px] font-semibold underline-offset-4 hover:underline disabled:opacity-60"
+                          style={{ color: "var(--app-link)" }}
                         >
                           {isOpen && !dataComplete
                             ? loadingAll
@@ -1482,11 +1494,11 @@ export default function EventsExplorer({
                           />
                         </button>
                         {overflow > 0 && (
-                          <div className="px-1 pt-1 text-center">
+                          <div className="pt-1">
                             <Link
                               href="/events/calendar"
-                              className="tap-44 inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
-                              style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
+                              className="tap-44 inline-flex items-center gap-1.5 text-[13px] font-semibold underline-offset-4 hover:underline"
+                              style={{ color: "var(--app-link)" }}
                             >
                               {dataComplete ? `${overflow} more on the calendar` : "See more on the calendar"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
                             </Link>
@@ -1515,7 +1527,7 @@ export default function EventsExplorer({
               className="[&>button]:min-h-11"
             >
               <ol
-                className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
+                className="max-w-[720px] border-t"
                 style={{ borderColor: "var(--app-border)" }}
               >
                 {utilityFiltered.slice(0, 80).map((e) => (
@@ -1529,7 +1541,7 @@ export default function EventsExplorer({
                       type="button"
                       onClick={() => void ensureAllEvents()}
                       className="tap-44-y px-3 text-[12px] font-semibold underline"
-                      style={{ color: "var(--app-cool)" }}
+                      style={{ color: "var(--app-link)" }}
                     >
                       Load all {summary.utilityCount} civic events
                     </button>
@@ -1547,51 +1559,39 @@ export default function EventsExplorer({
   );
 }
 
-function CompactEventList({
+function GroupEventList({
   events,
+  variant,
+  showDate,
   live,
   nowISO,
 }: {
   events: EventWithMeta[];
+  /** Recommended discovery rows use free reviewed media; other sorts use the
+   * glance row. Both are the same EventRow, so a group reads as one list. */
+  variant: "discovery" | "glance";
+  showDate: (event: EventWithMeta) => boolean;
   live: ReadonlySet<string>;
   nowISO: string;
 }) {
   if (events.length === 0) return null;
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.05 }
-    }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 15, scale: 0.98 },
-    show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring" as const, bounce: 0, duration: 0.4 } }
-  };
-
+  // Rows on the white ground, each carrying its own bottom hairline. The
+  // section heading or the row above supplies the rule on top.
   return (
-    <motion.ol
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
-      style={{
-        borderColor: "var(--app-border)",
-        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-      }}
-    >
+    <ol className="grid min-w-0 grid-cols-1">
       {events.map((event) => (
-        <motion.li variants={item} key={`${event.slug}-${event.starts_at}`}>
+        <li key={`${event.slug}-${event.starts_at}`} className="min-w-0">
           <EventCard
             event={event}
-            variant="compact"
+            variant={variant}
+            venuePhotos={variant === "discovery" ? "free-reviewed" : undefined}
+            showDate={showDate(event)}
             live={live.has(event.slug)}
             nowISO={nowISO}
           />
-        </motion.li>
+        </li>
       ))}
-    </motion.ol>
+    </ol>
   );
 }
 
@@ -1601,19 +1601,21 @@ function PromotedEvent({
   priorityImage,
   live,
   nowISO,
+  headingLevel,
 }: {
   event: EventWithMeta;
   visual: EventCardVisual | null;
   priorityImage: boolean;
   live: boolean;
   nowISO: string;
+  /** 2 above the interest rail, 3 inside a group under the group's h2. */
+  headingLevel: 2 | 3;
 }) {
+  // A plain wrapper, so the lead is server-rendered visible instead of
+  // waiting for hydration to fade in. It keeps the poster and its photo
+  // credit together as one child of the horizon section.
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: "spring", bounce: 0.1, duration: 0.5 }}
-    >
+    <div>
       <EventCard
         event={event}
         variant="feature"
@@ -1621,7 +1623,8 @@ function PromotedEvent({
         nowISO={nowISO}
         priorityImage={priorityImage}
         visual={visual ?? undefined}
+        headingLevel={headingLevel}
       />
-    </motion.div>
+    </div>
   );
 }

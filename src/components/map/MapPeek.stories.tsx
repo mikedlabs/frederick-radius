@@ -33,6 +33,32 @@ async function expectDecodedImage(image: HTMLImageElement) {
   }, { timeout: 5000 });
 }
 
+/** Healthy selected photos use the same frame regardless of source kind.
+ * These are decoded local transport fixtures, not claims about a provider. */
+async function expectFullWidthPhoto(root: HTMLElement, image: HTMLImageElement) {
+  const body = root.querySelector<HTMLElement>(".map-peek-body")!;
+  const frame = root.querySelector<HTMLElement>(".map-peek-visual")!;
+  const text = root.querySelector<HTMLElement>(".map-peek-text")!;
+  const frameBox = frame.getBoundingClientRect();
+  await expect(frameBox.width).toBeGreaterThan(body.clientWidth - 1);
+  await expect(frameBox.height).toBeGreaterThanOrEqual(132);
+  await expect(text.getBoundingClientRect().top).toBeGreaterThanOrEqual(frameBox.bottom);
+  await expect(image.getBoundingClientRect().width).toBeGreaterThan(frameBox.width - 2);
+  await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
+}
+
+/** Storybook's synthetic focus selector omits summary. Exercise the native
+ * pointer in browser tests without repairing focus after the interaction. */
+async function clickPhotoEdits(summary: HTMLElement) {
+  if ((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) {
+    const browser = await import("vitest/browser");
+    let trusted = false;
+    summary.addEventListener("pointerdown", event => { trusted = event.isTrusted; }, { once: true });
+    await browser.userEvent.click(summary);
+    await expect(trusted).toBe(true);
+  } else summary.click();
+}
+
 const plan: PlaceCardPhotoPlan = {
   key: "map-peek-source-transition-component-fixture",
   sources: [
@@ -57,8 +83,8 @@ const meta = {
   } },
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   args: {
-    plan, placeName: "Sample selected place near Brunswick station", glyph: "S",
-    color: "var(--app-brand)", onOpenDetails: fn(),
+    plan, placeName: "Sample selected place near Brunswick station", glyph: "coffee",
+    onOpenDetails: fn(),
   },
   render: args => (
     <div data-app-primary-tab="/map" style={{ padding: "12px 10px", width: "100%", height: "calc(100dvh - 56px - 68px - env(safe-area-inset-top) - env(safe-area-inset-bottom))" }}>
@@ -104,6 +130,7 @@ export const FallbackAndExhaustionAt320: Story = {
       await expect(image?.naturalWidth).toBeGreaterThan(1);
       await expect(image?.naturalHeight).toBeGreaterThan(1);
     }, { timeout: 5000 });
+    await expectFullWidthPhoto(root, currentImage()!);
     await expect(canvas.getByText("Component Google fixture")).toBeVisible();
     await expect(root.querySelector("button a, a button")).toBeNull();
     await expect(root.querySelectorAll("img")).toHaveLength(1);
@@ -120,19 +147,35 @@ export const FallbackAndExhaustionAt320: Story = {
       await expect(image?.naturalWidth).toBeGreaterThan(1);
       await expect(image?.naturalHeight).toBeGreaterThan(1);
     }, { timeout: 5000 });
+    await expectFullWidthPhoto(root, currentImage()!);
     await expect(canvas.queryByText("Component Google fixture")).not.toBeInTheDocument();
-    await expect(canvas.getByText("Photo by Component Commons fixture.")).toBeVisible();
-    await expect(canvas.getByText("The image is resized for display; previews may be cropped.")).toBeVisible();
-    await expect(canvas.getByRole("link", { name: "Wikimedia Commons" })).toHaveAttribute("href", "https://commons.wikimedia.org/wiki/File:Component_fixture.jpg");
+    const sourceLink = canvas.getByRole("link", { name: "Photo by Component Commons fixture. Wikimedia Commons" });
+    await expect(sourceLink).toHaveTextContent("Component Commons fixture");
+    const editSummary = canvas.getByText("Edited photo", { exact: true });
+    const fullEdits = canvas.getByText("The image is resized for display; previews may be cropped.");
+    await expect(editSummary).toBeVisible();
+    await expect(fullEdits).not.toBeVisible();
+    await expect(sourceLink).toHaveAttribute("href", "https://commons.wikimedia.org/wiki/File:Component_fixture.jpg");
     await expect(canvas.getByRole("link", { name: "CC BY-SA 4.0" })).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0");
     await expect(details).toHaveFocus();
+    editSummary.focus();
+    await clickPhotoEdits(editSummary);
+    await expect(editSummary.closest("details")).toHaveAttribute("open");
+    await expect(fullEdits).toBeVisible();
+    await expect(canvas.getByText("The photo is by Component Commons fixture on Wikimedia Commons.")).toBeVisible();
+    await expect(editSummary).toHaveFocus();
+    await clickPhotoEdits(editSummary);
+    await expect(editSummary.closest("details")).not.toHaveAttribute("open");
+    await expect(fullEdits).not.toBeVisible();
+    await expect(editSummary).toHaveFocus();
+    details.focus();
     await expect(canvas.getByText("Hours not confirmed")).toBeVisible();
     await expect(root.querySelectorAll("img")).toHaveLength(1);
     const document = canvasElement.ownerDocument;
     await document.fonts.ready;
     await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
-    for (const target of [details, ...root.querySelectorAll<HTMLAnchorElement>(".map-peek-source-credit a")]) {
+    for (const target of [details, editSummary, ...root.querySelectorAll<HTMLAnchorElement>(".map-peek-source-credit a")]) {
       target.scrollIntoView({ block: "nearest" });
       const box = target.getBoundingClientRect();
       await expect(box.width).toBeGreaterThanOrEqual(44);
@@ -155,6 +198,16 @@ export const FallbackAndExhaustionAt320: Story = {
 export const FallbackAndExhaustionAt375: Story = {
   ...FallbackAndExhaustionAt320,
   globals: { viewport: { value: "radiusMobileCompact", isRotated: false } },
+};
+
+export const FallbackAndExhaustionAt390: Story = {
+  ...FallbackAndExhaustionAt320,
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+};
+
+export const FallbackAndExhaustionAt430: Story = {
+  ...FallbackAndExhaustionAt320,
+  globals: { viewport: { value: "radiusMobileLarge", isRotated: false } },
 };
 
 export const OwnedPhotoAt390: Story = {
@@ -182,4 +235,44 @@ export const OwnedPhotoAt390: Story = {
 export const OwnedPhotoAt430: Story = {
   ...OwnedPhotoAt390,
   globals: { viewport: { value: "radiusMobileLarge", isRotated: false } },
+};
+
+/** A place with no photograph: the slot shows the plain category glyph in
+ * muted ink, with no tile, tint, border, serif or letter monogram, and the
+ * name column takes the width a tile used to hold. Details stays a 44px
+ * target. */
+export const NoPhotoPlainGlyphAt320: Story = {
+  args: { plan: { key: "map-peek-no-photo-component-fixture", sources: [] } },
+  play: async ({ canvasElement }) => {
+    const root = canvasElement.querySelector<HTMLElement>(".map-peek")!;
+    const body = root.querySelector<HTMLElement>(".map-peek-body")!;
+    const visual = root.querySelector<HTMLElement>(".map-peek-visual")!;
+    const mark = root.querySelector<HTMLElement>(".map-peek-category-mark")!;
+    await expect(root.querySelector("img")).toBeNull();
+    await expect(body).toHaveAttribute("data-glyph-only");
+    await expect(mark.querySelector("svg")).not.toBeNull();
+    await expect(mark.textContent).toBe("");
+    const view = canvasElement.ownerDocument.defaultView!;
+    const visualStyle = view.getComputedStyle(visual);
+    const markStyle = view.getComputedStyle(mark);
+    for (const value of [visualStyle.backgroundColor, markStyle.backgroundColor]) {
+      await expect(value).toBe("rgba(0, 0, 0, 0)");
+    }
+    await expect(visualStyle.borderTopWidth).toBe("0px");
+    await expect(markStyle.backgroundImage).toBe("none");
+    await expect(markStyle.fontFamily.toLowerCase()).not.toContain("caslon");
+    const probe = canvasElement.ownerDocument.createElement("span");
+    probe.style.color = "var(--app-ink-3)";
+    root.append(probe);
+    try {
+      await expect(markStyle.color).toBe(view.getComputedStyle(probe).color);
+    } finally { probe.remove(); }
+    const box = visual.getBoundingClientRect();
+    await expect(box.width).toBeGreaterThanOrEqual(44);
+    await expect(box.width).toBeLessThanOrEqual(45);
+    await expect(box.height).toBeGreaterThanOrEqual(44);
+    const text = root.querySelector<HTMLElement>(".map-peek-text")!.getBoundingClientRect();
+    await expect(text.left - box.right).toBeLessThanOrEqual(16);
+    await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
+  },
 };

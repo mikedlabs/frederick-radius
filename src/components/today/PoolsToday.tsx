@@ -73,7 +73,7 @@ export default async function PoolsToday({ now }: { now: Date }) {
           );
         })}
       </ul>
-      <Link href="/nearby?c=pools" className="tap-44 inline-flex items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+      <Link href="/nearby?c=pools" className="tap-44 inline-flex items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-link)" }}>
         All pools <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
       </Link>
     </section>

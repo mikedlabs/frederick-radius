@@ -1,5 +1,5 @@
 import type { Hours } from "@/data/places";
-import { isScheduleEvidenceCurrent, type OpenStatus } from "@/lib/hours";
+import { isDisplayOnlyHours, isScheduleEvidenceCurrent, type OpenStatus } from "@/lib/hours";
 import { mayAssertOpenState } from "@/lib/hours-freshness";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 
@@ -92,6 +92,7 @@ export function hasReliableHours(
 ): boolean {
   return Boolean(
     place.hours &&
+      !isDisplayOnlyHours(place.hours) &&
       Object.keys(place.hours).length > 0 &&
       mayAssertOpenState(
         place.hours_verified,

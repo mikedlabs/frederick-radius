@@ -1,13 +1,19 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  splitBestMatch,
   firstSafeOfficialAnswerHref,
+  exactQuestionLookupQuery,
+  isExactQuestionPlaceResult,
   isCompoundLookup,
   isNaturalLanguageRequest,
   safeOfficialAnswerHref,
   unifiedRequestDestination,
+  visibleFindQuickAnswers,
 } from "./SearchOverlay";
 import { searchCivicActions } from "@/lib/search/civic";
+import { qualifiedSearchIndex } from "@/lib/search/index";
+import { findQuickAnswers } from "@/lib/answers/intents";
 
 describe("one Find doorway", () => {
   it("keeps names and categories in deterministic search", () => {
@@ -177,5 +183,125 @@ describe("global search responsive chrome", () => {
     expect(source).toContain("openOfficialAnswer(destination)");
     expect(source).toContain("openOfficialAnswer(website)");
     expect(source).toContain("openOfficialAnswer(officialHref)");
+  });
+});
+
+
+describe("Find exact place Enter destination", () => {
+  it.each([
+    ["Baker Park", "baker-park-frederick"],
+    ["Baker Park Bandshell", "baker-park-bandshell"],
+  ])("opens the same exact %s that leads the visible list", (query, slug) => {
+    const { best } = splitBestMatch(qualifiedSearchIndex(query, 12, []).results);
+    const quick = findQuickAnswers(query)[0];
+    expect(quick).toBeUndefined();
+    expect(isNaturalLanguageRequest(query)).toBe(false);
+    expect(best?.id).toBe(`place:${slug}`);
+    expect(unifiedRequestDestination({ query, quickHref: quick?.href, quickKey: quick?.key,
+      bestHref: best?.href, status: "done" })).toBe(`/places/${slug}`);
+  });
+
+  it.each(["National Museum of Civil War Medicine", "Schifferstadt Architectural Museum", "Frederick Coffee Company", "Sophie & Madigan's Playground"])("lets the complete %s name own its visible answer and Enter", (query) => {
+    const { best } = splitBestMatch(qualifiedSearchIndex(query, 12, []).results);
+    expect(best?.type).toBe("place");
+    const visible = visibleFindQuickAnswers(query, "done", best);
+    expect(visible).toEqual([]);
+    expect(unifiedRequestDestination({ query, quickHref: visible[0]?.href, quickKey: visible[0]?.key,
+      bestHref: best?.href, status: "done" })).toBe(best?.href);
+  });
+
+  it("does not guess a category while a new name is still loading", () => {
+    const query = "National Museum of Civil War Medicine";
+    const visible = visibleFindQuickAnswers(query, "loading");
+    expect(visible).toEqual([]);
+    expect(unifiedRequestDestination({ query, status: "loading" })).toBe(`/search?q=${encodeURIComponent(query)}`);
+  });
+
+  it("retains category discovery and immediate utility answers when no exact place owns the words", () => {
+    expect(visibleFindQuickAnswers("museums", "done")[0]?.key).toBe("craving:art");
+    expect(visibleFindQuickAnswers("bus", "loading")[0]?.key).toBe("transit");
+    expect(visibleFindQuickAnswers("what's open now?", "done")[0]?.key).toBe("open-now");
+  });
+});
+
+
+describe("retrieval before reasoning for simple requests", () => {
+  it.each(["pizza?", "coffee?", "I need pizza", "I want coffee", "I'm looking for pizza", "I am looking for coffee", "I am looking for some ice cream?"])(
+    "uses the canonical category answer for %s without a reasoning round trip", (query) => {
+      expect(isNaturalLanguageRequest(query)).toBe(false);
+      expect(exactQuestionLookupQuery(query)).toBeNull();
+      const quick = visibleFindQuickAnswers(query, "done")[0];
+      expect(quick?.key).toMatch(/^craving:/);
+      expect(unifiedRequestDestination({ query, quickHref: quick?.href, quickKey: quick?.key,
+        status: "done" })).toBe(quick?.href);
+    },
+  );
+
+  it.each([
+    ["museums?", "museums", "Bjorlee Museum"],
+    ["I'm looking for a museum", "museum", "Bjorlee Museum"],
+    ["I need tacos", "tacos", "Big Papi's Real Good Tacos"],
+    ["I need sushi", "sushi", "Sushi Nomu"],
+    ["I need a bed and breakfast", "bed and breakfast", "Hollerstown Hill Bed and Breakfast"],
+  ])("keeps %s on its actual subtype matches instead of a wider directory", (query, lookup, firstName) => {
+    const results = qualifiedSearchIndex(lookup, 12, []).results;
+    expect(results[0]?.title).toBe(firstName);
+    expect(visibleFindQuickAnswers(query, "done", results[0])).toEqual([]);
+    expect(unifiedRequestDestination({ query, bestHref: results[0]?.href, bestResult: results[0], status: "done" }))
+      .toBe(results[0]?.href);
+    expect(unifiedRequestDestination({ query, status: "done" })).toBe(`/ask?q=${encodeURIComponent(query)}`);
+  });
+
+  it.each(["I need gelato", "I need a cidery", "I need a meadery", "I want wine trail", "I need espresso"])(
+    "does not replace the subtype in %s with a wider directory", query => {
+      expect(visibleFindQuickAnswers(query, "done").filter(answer => answer.key.startsWith("craving:"))).toEqual([]);
+    },
+  );
+
+  it("keeps an unverified facility feature as the complete question", () => {
+    const query = "I need sauna";
+    expect(isNaturalLanguageRequest(query)).toBe(true);
+    expect(unifiedRequestDestination({ query, bestHref: "/places/odin-crossfit", status: "done" }))
+      .toBe(`/ask?q=${encodeURIComponent(query)}`);
+  });
+
+  it("retrieves the canonical business behind question punctuation without accepting partial matches", () => {
+    const query = "Gravel & Grind?";
+    const lookup = exactQuestionLookupQuery(query);
+    expect(lookup).toBe("Gravel & Grind");
+    const best = qualifiedSearchIndex(lookup!, 12, []).results[0];
+    expect(best?.type).toBe("place");
+    expect(isExactQuestionPlaceResult(query, best)).toBe(true);
+    expect(visibleFindQuickAnswers(query, "done", best)).toEqual([]);
+    expect(unifiedRequestDestination({ query, bestHref: best?.href, bestResult: best,
+      status: "done" })).toBe(best?.href);
+    expect(isExactQuestionPlaceResult("Gravel?", best)).toBe(false);
+    expect(unifiedRequestDestination({ query: "Gravel?", bestHref: best?.href, bestResult: best,
+      status: "done" })).toBe("/ask?q=Gravel%3F");
+  });
+
+  it.each(["idle", "loading", "error"] as const)("keeps %s Enter on full Search until exact retrieval settles", status => {
+    const query = "Gravel & Grind?";
+    const stale = qualifiedSearchIndex("Baker Park", 12, []).results[0];
+    expect(unifiedRequestDestination({ query, bestHref: stale?.href, bestResult: stale, status }))
+      .toBe(`/search?q=${encodeURIComponent(query)}`);
+  });
+
+  it.each([
+    "I want coffee and bikes", "I need coffee open tonight", "I need wheelchair accessible coffee",
+    "I want a quiet museum", "I need pizza without cheese", "I need food within 10 minutes",
+    "I want happy hour", "I need overnight", "Where should I get breakfast?", "Plan a coffee and lunch outing",
+  ])("keeps all constraints in the original reasoning request: %s", query => {
+    expect(isNaturalLanguageRequest(query)).toBe(true);
+    expect(unifiedRequestDestination({ query, quickHref: "/nearby?c=coffee", quickKey: "craving:coffee",
+      bestHref: "/places/unrelated", status: "done" })).toBe(`/ask?q=${encodeURIComponent(query)}`);
+  });
+
+  it("keeps compound retrieval and immediate utilities on their established routes", () => {
+    expect(unifiedRequestDestination({ query: "coffee and bikes", quickHref: "/nearby?c=coffee",
+      quickKey: "craving:coffee", bestHref: "/places/gravel-and-grind-frederick", status: "done" }))
+      .toBe("/places/gravel-and-grind-frederick");
+    expect(unifiedRequestDestination({ query: "where is the nearest trash can?", quickHref: "/amenities?need=trash",
+      quickKey: "trash", status: "loading" })).toBe("/amenities?need=trash");
   });
 });

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import PageBloom from "@/components/ui/PageBloom";
 import TownPicker from "@/components/town/TownPicker";
 import { townStats } from "@/lib/guided/town-stats";
 import { getNextSevenDayPublicEventCountsByMunicipality } from "@/lib/guided/town-event-counts";
@@ -18,7 +17,6 @@ export default async function TownsPage() {
   const stats = townStats(eventCounts);
   return (
     <div className="relative space-y-6">
-      <PageBloom variant="warm-cool" />
 
       <header className="space-y-2">
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>

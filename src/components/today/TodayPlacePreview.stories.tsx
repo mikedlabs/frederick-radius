@@ -9,7 +9,7 @@ const unknownPlace: DaypartPick = {
 };
 const meta = {
   title: "Today/Place preview", component: TodayPlacePreview,
-  parameters: { layout: "centered", a11y: { test: "error" }, docs: { description: { component: "The shared Today lead preview. Hours and rankings are isolated fixtures; existing exact-place owned/Commons assets retain their source records." } } },
+  parameters: { layout: "centered", a11y: { test: "error" }, docs: { description: { component: "The shared Today lead preview. Hours and rankings are isolated fixtures. Owned or licensed reference images stay held until an exact current-appearance review is accepted." } } },
   decorators: [(Story) => <div style={{ width: "min(520px, calc(100vw - 32px))" }}><Story /></div>],
   args: { place: unknownPlace, category: "coffee" },
 } satisfies Meta<typeof TodayPlacePreview>;
@@ -35,7 +35,10 @@ const usablePreview: NonNullable<Story["play"]> = async ({ canvasElement, args }
   }
   await expect(canvasElement.querySelector("a a")).toBeNull();
   await expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth + 1);
-  for (const control of [canvas.getByRole("link", { name: `View place: ${args.place.name}` }), canvas.getByRole("link", { name: `Map: ${args.place.name}` })]) {
+  const save = card.querySelector<HTMLButtonElement>(`button[data-save-ref="place:${args.place.slug}"]`)!;
+  await expect(save).not.toBeNull();
+  await expect(save.closest("a")).toBeNull();
+  for (const control of [canvas.getByRole("link", { name: `View place: ${args.place.name}` }), canvas.getByRole("link", { name: `Map: ${args.place.name}` }), save]) {
     control.scrollIntoView({ block: "center" });
     const bounds = control.getBoundingClientRect();
     await expect(bounds.width).toBeGreaterThanOrEqual(44);
@@ -49,6 +52,10 @@ const usablePreview: NonNullable<Story["play"]> = async ({ canvasElement, args }
   } else {
     await expect(card.querySelector("[data-place-card-photo]")).toBeNull();
     await expect(card.querySelector(".place-card-photo-credit")).toBeNull();
+    // A row without a real photograph is type alone: no category tile, gray
+    // box or other stand-in for a picture.
+    await expect(card.querySelector("[data-place-category-art]")).toBeNull();
+    await expect(card.querySelector("img, picture, figure")).toBeNull();
   }
 };
 
@@ -60,20 +67,25 @@ export const ShortNameWithoutPhoto: Story = {
     await usablePreview(context);
     const card = context.canvasElement.querySelector<HTMLElement>("[data-today-place-preview]")!;
     await expect(card.getAttribute("data-has-photo")).toBe("false");
-    // A short factual recommendation should fit without becoming a tall panel.
+    // A short factual recommendation without a photograph is a compact row
+    // of type: the facts span the full row and all three actions follow.
     const bounds = card.getBoundingClientRect();
     await expect(bounds.width).toBeGreaterThanOrEqual(350);
     await expect(bounds.width).toBeLessThanOrEqual(360);
     const height = bounds.height;
     await expect(height).toBeGreaterThanOrEqual(140);
-    await expect(height).toBeLessThanOrEqual(190);
+    await expect(height).toBeLessThanOrEqual(240);
+    await expect(card.querySelector("[data-place-category-art]")).toBeNull();
+    const facts = card.querySelector<HTMLElement>("[data-today-pick-name]")!.parentElement!.getBoundingClientRect();
+    await expect(Math.abs(facts.left - bounds.left)).toBeLessThanOrEqual(1);
+    await expect(Math.abs(facts.right - bounds.right)).toBeLessThanOrEqual(1);
     const name = card.querySelector<HTMLElement>("[data-today-pick-name]")!;
     const nameSize = parseFloat(getComputedStyle(name).fontSize);
-    await expect(nameSize).toBeGreaterThanOrEqual(22);
-    await expect(nameSize).toBeLessThanOrEqual(26);
+    await expect(nameSize).toBeGreaterThanOrEqual(20);
+    await expect(nameSize).toBeLessThanOrEqual(22);
     const fact = card.querySelector<HTMLElement>("[data-today-pick-fact]")!;
     const location = card.querySelector<HTMLElement>("[data-today-pick-location]")!;
-    await expect(Math.abs(fact.getBoundingClientRect().top - location.getBoundingClientRect().top)).toBeLessThanOrEqual(1);
+    await expect(location.getBoundingClientRect().top).toBeGreaterThanOrEqual(fact.getBoundingClientRect().bottom - 1);
   },
 };
 
@@ -94,39 +106,30 @@ export const EnlargedText320: Story = {
     const name = context.canvasElement.querySelector<HTMLElement>("[data-today-pick-name]")!;
     const fact = context.canvasElement.querySelector<HTMLElement>("[data-today-pick-fact]")!;
     await expect(parseFloat(getComputedStyle(document.documentElement).fontSize)).toBe(32);
-    await expect(parseFloat(getComputedStyle(name).fontSize)).toBeGreaterThanOrEqual(44);
-    await expect(parseFloat(getComputedStyle(name).fontSize)).toBeLessThanOrEqual(52);
-    await expect(parseFloat(getComputedStyle(fact).fontSize)).toBeGreaterThanOrEqual(30);
+    await expect(parseFloat(getComputedStyle(name).fontSize)).toBeGreaterThanOrEqual(40);
+    await expect(parseFloat(getComputedStyle(name).fontSize)).toBeLessThanOrEqual(44);
+    // The 14px meta line doubles with the root as well.
+    await expect(parseFloat(getComputedStyle(fact).fontSize)).toBeGreaterThanOrEqual(28);
   },
 };
-export const OwnedExactPlace: Story = {
+export const OwnedReferenceNeedsAppearanceReview: Story = {
   args: { place: { ...unknownPlace, slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park", where: "Frederick", distance: null }, category: "outdoors" },
   play: async (context) => {
     await usablePreview(context);
-    const frame = context.canvasElement.querySelector("[data-place-card-photo]")!;
-    await expect(frame.getAttribute("data-place-card-photo-source")).toBe("owned");
+    const card = context.canvasElement.querySelector("[data-today-place-preview]")!;
+    await expect(card).toHaveAttribute("data-has-photo", "false");
+    await expect(card.querySelector("img, [data-place-card-photo]")).toBeNull();
     await expect(context.canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
   },
 };
-export const LicensedExactPlace: Story = {
+export const LicensedReferenceNeedsAppearanceReview: Story = {
   args: { place: { ...unknownPlace, slug: "schifferstadt-architectural-museum-frederick", name: "Schifferstadt Architectural Museum", where: "Frederick", distance: null }, category: "museum" },
   play: async (context) => {
     await usablePreview(context);
-    const canvas = within(context.canvasElement);
-    // Browser decoding can finish before Next's onLoad and React's credit
-    // commit. Require the real accessible credit state, not just DOM text.
-    await waitFor(async () => {
-      const credit = context.canvasElement.querySelector(".place-card-photo-credit");
-      await expect(credit).toBeVisible();
-      await expect(credit).not.toHaveAttribute("aria-hidden", "true");
-      await expect(credit).not.toHaveAttribute("inert");
-      await expect(canvas.getByText("Photo by Pete Giove-Fourwinds.", { exact: true })).toBeVisible();
-    });
-    await expect(canvas.getByText("Resized and converted for display; cards may crop the image responsively.")).toBeVisible();
-    for (const control of [canvas.getByRole("link", { name: "Wikimedia Commons" }), canvas.getByRole("link", { name: "CC BY-SA 3.0" })]) {
-      control.scrollIntoView({ block: "center" });
-      await expect(control.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
-      await expect(control.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
-    }
+    // Identity and a license do not establish current appearance. The shared
+    // source/credit components retain positive browser coverage elsewhere.
+    const card = context.canvasElement.querySelector("[data-today-place-preview]")!;
+    await expect(card).toHaveAttribute("data-has-photo", "false");
+    await expect(card.querySelector("img, [data-place-card-photo], .place-card-photo-credit")).toBeNull();
   },
 };

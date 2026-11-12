@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { haptic } from "@/lib/haptics";
-import { shouldPrefetchGlobalNavigation } from "@/lib/fair/route-policy";
-import { TABS, tabIndexForPath } from "./tabs";
+import { cancelPrimaryTabResume, preparePrimaryTabResume, rememberPrimaryTab } from "@/lib/primary-tab-session";
+import { isPlainPrimaryNavigation } from "./BottomNav";
+import { TABS, shouldPrefetchGlobalNavigation, tabIndexForPath } from "./tabs";
 import styles from "./NavChrome.module.css";
 
 /** Desktop counterpart to the mobile field-guide index strip. */
@@ -23,12 +24,18 @@ export default function SideRail() {
 
   return (
     <div
-      className="pointer-events-none fixed bottom-0 left-0 top-0 hidden py-4 pl-3 lg:flex lg:items-center"
-      style={{ zIndex: "var(--z-nav)" }}
+      className="pointer-events-none fixed bottom-0 left-0 hidden lg:flex lg:items-center"
+      // Start below the header's 1px hairline. --app-topbar-h measures the
+      // row alone, without the header's bottom border, and the rail sits
+      // above the header in z-order, so without the extra pixel its ground
+      // would cover the hairline across the rail's width.
+      style={{ zIndex: "var(--z-nav)", top: "calc(env(safe-area-inset-top, 0px) + var(--app-topbar-h) + 1px)" }}
     >
+      {/* Plain tool: the rail is attached to the screen edge with one
+          hairline, not a floating panel. */}
       <nav
         aria-label="Primary"
-        className={`${styles.rail} pointer-events-auto relative overflow-hidden rounded-[var(--app-radius-lg)]`}
+        className={`${styles.rail} pointer-events-auto relative flex h-full items-center`}
       >
         <ul className="flex flex-col items-stretch gap-1 px-1 py-1">
           {TABS.map(({ href, label, icon: Icon, prefetch, fillOnActive }, idx) => {
@@ -40,12 +47,19 @@ export default function SideRail() {
               <li key={href} className="flex">
                 <Link
                   href={href}
-                  prefetch={allowPrefetch ? prefetch : false}
-                  onPointerDown={() => {
-                    if (!isAtDestination) setPendingIdx(idx);
+                  prefetch={allowPrefetch && pathname !== href ? prefetch : false}
+                  onPointerDown={event => {
+                    if (!isAtDestination && isPlainPrimaryNavigation(event.nativeEvent)) setPendingIdx(idx);
                   }}
                   onClick={(event) => {
-                    if (isAtDestination) return;
+                    if (event.defaultPrevented || !isPlainPrimaryNavigation(event.nativeEvent)) { setPendingIdx(null); return; }
+                    rememberPrimaryTab(`${window.location.pathname}${window.location.search}${window.location.hash}`, window.scrollY);
+                    if (pathname === href) {
+                      event.preventDefault(); cancelPrimaryTabResume(); setPendingIdx(null); return;
+                    }
+                    const resume = preparePrimaryTabResume(href);
+                    const destination = resume?.href ?? href;
+                    const navigate = () => resume ? router.push(destination, { scroll: false }) : router.push(destination);
                     setPendingIdx(idx);
                     haptic("light");
                     if (typeof document !== "undefined" && "startViewTransition" in document) {
@@ -53,26 +67,27 @@ export default function SideRail() {
                       const doc = document as Document & {
                         startViewTransition?: (callback: () => void) => unknown;
                       };
-                      doc.startViewTransition?.(() => router.push(href));
+                      doc.startViewTransition?.(navigate);
+                    } else if (resume) {
+                      event.preventDefault(); navigate();
                     }
                   }}
                   aria-current={isAtDestination ? "page" : undefined}
-                  className={`${styles.destination} relative flex h-14 w-14 flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition`}
-                  data-selected={active ? "true" : "false"}
+                  className={`${styles.destination} relative flex h-14 w-14 flex-col items-center justify-center gap-1 text-center transition`}
+                  data-selected={isRealActive ? "true" : "false"}
+                  data-pending={pendingIdx === idx && !isRealActive ? "true" : "false"}
                 >
-                  <span
-                    aria-hidden
-                    className="absolute inset-y-2 left-0 w-[2px]"
-                    style={{ background: active ? "var(--app-on-brand)" : "transparent", opacity: 0.5 }}
-                  />
+                  {/* The same coral rule as the bottom bar, on the edge that
+                      faces the content. */}
+                  <span aria-hidden data-destination-rule className={styles.railRule} />
                   <Icon
                     width={20}
                     height={20}
-                    strokeWidth={active ? 2.25 : 2}
+                    strokeWidth={active ? 2.5 : 1.75}
                     fill={active && fillOnActive ? "currentColor" : "none"}
                     aria-hidden
                   />
-                  <span className="text-[10px] font-medium leading-tight tracking-tight">
+                  <span className={`${styles.destinationLabel} text-[10px] leading-tight`}>
                     {label}
                   </span>
                 </Link>

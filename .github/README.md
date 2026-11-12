@@ -14,20 +14,29 @@ runs once for each Production promotion; the daily health alert is the single
 external uptime backstop.
 
 `main` requires `verify` and `style-lint`. Do not bypass those contexts.
-Automated data PRs dispatch the same secret-free gates. After `verify` ends,
-`automated-pr-status-bridge.yml` validates the bot branch and the exact paired
-workflow run IDs, then copies the real job conclusions to the merge revision
-evaluated by the ruleset. A six-hour, API-only reconciliation pass fails stale
-missing statuses closed after a whole-workflow cancellation; it never turns a
-missing check into success.
+Automated data PRs use eligible native `pull_request` jobs. The isolated
+`automated-pr-checks.yml` caller loads the current protected-main helper, validates
+the exact same-repository PR/main/head/merge/path identity and approves only its
+existing held CI/style runs. It observes running/completed runs without reruns.
+Uncertain or failed approval is held with a durable receipt and exact run IDs;
+a GitHub owner may need to approve those native runs manually on HTTP 403.
+There is no dispatch or copied-check fallback, new credential or ruleset change.
 
-The automated `verify` path is intentionally artifact-specific. The publisher
-and bridge both revalidate an exact allowlisted bot branch, then CI checks the
-release manifest, county/data contracts, source registry, size budget, transit,
-and data-focused tests. It does not pay for typecheck, the full application
-build, Storybook, and browsers when no code or dependency can have changed.
-Vercel still performs the post-merge production build and will retain the prior
-healthy deployment if that build fails.
+Before checkout or npm, native CI uses the same protected-main policy to decide
+whether the exact allowlisted PR qualifies for artifact-focused verification.
+Code PRs and workflow dispatches keep all full application gates. Recognized
+publisher bot PRs with uncertain bootstrap/API/current-main evidence fail
+preflight and stay held; a full build does not grant data publication authority.
+The data-only job repeats current-main/PR proof after its artifact gates so
+movement during execution remains held. The focused gate checks the release manifest, county/data contracts, source
+registry, size budget, transit and data tests. Vercel still builds after merge.
+Starting tests never accepts source facts or expands existing auto-merge policy.
+
+The historical status bridge retains explicit manual attach/stale-failure
+recovery and receipt tests, without an automatic caller or reconciliation
+schedule. Synthetic check attachment did not establish ruleset eligibility.
+The native path is unproven until a genuine eligible data-only protected merge
+succeeds, followed separately by the exact ready production deployment.
 
 ## Data automation
 

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 
 /**
@@ -10,7 +10,7 @@ import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
  * different motion, focus, swipe, and touch-target behavior. Keeping this
  * small adapter preserves their simple API while BottomSheet owns the actual
  * dialog contract everywhere: focus trap and return, reduced motion, Escape,
- * backdrop and drag dismissal, route cleanup, safe areas, and body scroll.
+ * backdrop and drag dismissal, route cleanup, safe areas, and page scroll.
  */
 export default function Sheet({
   open,
@@ -21,6 +21,8 @@ export default function Sheet({
   children,
   maxHeight = "85dvh",
   historyLayerId,
+  returnFocusRef,
+  focusReturnHref,
 }: {
   open: boolean;
   onClose: () => void;
@@ -32,6 +34,10 @@ export default function Sheet({
   maxHeight?: string;
   /** Optional native Back-button layer for route-owned temporary surfaces. */
   historyLayerId?: string;
+  /** Explicit launcher for pointer openings that do not move browser focus. */
+  returnFocusRef?: RefObject<HTMLElement | null>;
+  /** Exact same-path location restored by a caller-owned close controller. */
+  focusReturnHref?: string;
 }) {
   const label = title?.trim() || "Details";
 
@@ -41,6 +47,8 @@ export default function Sheet({
       onClose={onClose}
       ariaLabel={label}
       historyLayerId={historyLayerId}
+      returnFocusRef={returnFocusRef}
+      focusReturnHref={focusReturnHref}
       maxHeight={maxHeight}
     >
       {(dismiss) => (
@@ -58,7 +66,7 @@ export default function Sheet({
             >
               {title ? (
                 <h2
-                  className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
+                  className="font-sans text-[20px] font-bold leading-tight tracking-[-0.02em]"
                   style={{ color: "var(--app-ink)" }}
                 >
                   {title}

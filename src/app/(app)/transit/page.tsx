@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import {
   Bus,
@@ -93,11 +94,7 @@ const TRANSIT_REFERENCE: TransitIntent[] = [
     href: `tel:${COUNTY_TRANSIT_PHONE.replace(/[^0-9]/g, "")}`,
   },
 ];
-import {
-  getFrederickTransitRoutes,
-  getFrederickTransitRouteShapes,
-  getTransitFreshness,
-} from "@/lib/integrations/transitFrederick";
+import { officialTransitRouteShapesFC } from "@/lib/integrations/transitFrederick";
 import { getMarcBoard, getMarcAlerts } from "@/lib/integrations/marcTrains";
 import TransitMap from "@/components/transit/TransitMapClient";
 import TransitNow from "@/components/transit/TransitNow";
@@ -119,12 +116,12 @@ export const metadata: Metadata = {
 };
 
 // 60s so the live MARC next-train board and the schedule-derived hero
-// countdown stay fresh; the route + shape loaders keep their own weekly fetch
-// cache, and the MARC realtime fetch carries its own 30s cache.
+// countdown stay fresh. The official route network is committed, and MARC
+// realtime reads retain their existing cache lifetimes.
 export const revalidate = 60;
 
 /**
- * /transit — a map-led transit dashboard.
+ * /transit — departures first, with the network map available on demand.
  *
  * The page answers the rider's stop-level decision before any network-wide
  * reference: where is my stop, what is inbound, and do I have enough time to
@@ -137,23 +134,6 @@ export const revalidate = 60;
  * TransIT also publishes official schedules and a static GTFS feed. Radius uses
  * that static feed for the network snapshot, but does not present it as live.
  */
-function relativeAge(iso: string | null): string | null {
-  if (!iso) return null;
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return null;
-  const days = Math.floor((Date.now() - t) / (1000 * 60 * 60 * 24));
-  if (days < 0) return null;
-  if (days < 1) return "today";
-  if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
-  const weeks = Math.floor(days / 7);
-  if (weeks < 5) return `${weeks} week${weeks === 1 ? "" : "s"} ago`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months} month${months === 1 ? "" : "s"} ago`;
-  if (days < 365) return "12 months ago";
-  const years = Math.max(1, Math.floor(days / 365));
-  return `${years} year${years === 1 ? "" : "s"} ago`;
-}
-
 function sourceDate(iso: string | undefined): string | null {
   if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
   const date = new Date(`${iso}T00:00:00Z`);
@@ -196,31 +176,27 @@ function IntentTile({ intent, layout = "rail" }: { intent: TransitIntent; layout
   );
 }
 
-export default async function TransitPage() {
-  // All network fetches run in parallel; each revalidates on its own schedule.
-  // The shared shape loader returns committed official GTFS first for this
-  // page, Pulse, and the main map. Maryland Open Data is only its named,
-  // fail-soft fallback if a future generated snapshot lacks drawable shapes.
-  const [shapes, routes, freshness, board, alerts] = await Promise.all([
-    getFrederickTransitRouteShapes(),
-    getFrederickTransitRoutes(),
-    getTransitFreshness(),
-    getMarcBoard(new Date()),
-    getMarcAlerts(),
-  ]);
-  const routesAge = relativeAge(freshness.routesUpdatedAt);
+type MarcBoardPromise = ReturnType<typeof getMarcBoard>;
 
-  // Group routes by name so variations of one route collapse to one entry in
-  // the finder. Variations stay distinct on the map.
-  const byName = new Map<string, typeof routes>();
-  for (const r of routes) {
-    const arr = byName.get(r.name) ?? [];
-    arr.push(r);
-    byName.set(r.name, arr);
-  }
-  const grouped = Array.from(byName.entries())
-    .map(([name, variations]) => ({ name, variations }))
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+async function NetworkStatus({ board }: { board: MarcBoardPromise }) {
+  return <TransitNow board={await board} />;
+}
+
+async function MarcStations({ board, alerts }: {
+  board: MarcBoardPromise;
+  alerts: ReturnType<typeof getMarcAlerts>;
+}) {
+  const [resolvedBoard, resolvedAlerts] = await Promise.all([board, alerts]);
+  return <NextTrainBoard board={resolvedBoard} alerts={resolvedAlerts} />;
+}
+
+export default async function TransitPage() {
+  // The stop finder and route catalog use the committed official network.
+  // Slow secondary train data must not hold the rider's first useful screen.
+  // Share one board request between its two consumers instead of refetching.
+  const board = getMarcBoard(new Date());
+  const alerts = getMarcAlerts();
+  const shapes = officialTransitRouteShapesFC();
   const staticRoutes = (
     TRANSIT_RAW as {
       routes: Array<{ id: string; short: string; name: string }>;
@@ -278,10 +254,10 @@ export default async function TransitPage() {
                 className="text-[18px] font-semibold tracking-tight"
                 style={{ color: "var(--app-ink)" }}
               >
-                Live network
+                Network map
               </h2>
               <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-                Follow buses on the map, tap another stop, or frame a route.
+                Open the map to follow a bus or explore its route.
               </p>
             </div>
             <span className="shrink-0 text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
@@ -309,12 +285,15 @@ export default async function TransitPage() {
             highlightRoutes
             interactiveStops
             hideBadge
+            deferUntilRequested
           />
         </section>
       </div>
 
       {/* Network-wide context follows the rider's own stop decision. */}
-      <TransitNow board={board} />
+      <Suspense fallback={<p className="text-[13px]" style={{ color: "var(--app-ink-2)" }} role="status">Loading the wider network… Your stop remains available above.</p>}>
+        <NetworkStatus board={board} />
+      </Suspense>
 
       <a
         href="https://frederickcountymd.gov/222/Accessibility-Features"
@@ -387,12 +366,14 @@ export default async function TransitPage() {
             />
           </summary>
           <div className="px-3 pb-3 pt-1">
-            <NextTrainBoard board={board} alerts={alerts} />
+            <Suspense fallback={<p className="text-[13px]" style={{ color: "var(--app-ink-2)" }} role="status">Loading MARC departures…</p>}>
+              <MarcStations board={board} alerts={alerts} />
+            </Suspense>
           </div>
         </details>
       </div>
 
-      {/* Where each bus is along its run — a secondary, exploratory view. */}
+      {/* Approximate mapped positions, never a trip's ordered stop sequence. */}
       <details
         className="group rounded-[var(--app-radius-md)] border"
         style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
@@ -408,10 +389,10 @@ export default async function TransitPage() {
             </span>
             <span className="min-w-0">
               <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                Where each bus is on its run
+                Route overview
               </span>
               <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
-                Follow every active route as a live progress line
+                Reported bus locations on a schematic route line
               </span>
             </span>
           </span>
@@ -465,32 +446,28 @@ export default async function TransitPage() {
 
       {/* The full route catalog — reference, searchable. */}
       <TransitRouteFinder
-        routes={staticRoutes.map((route) => {
-          const match = grouped.find(
-            ({ name }) => name.localeCompare(route.name, undefined, { sensitivity: "base" }) === 0,
+        routes={staticRoutes.flatMap((route) => {
+          const variations = shapes.features.filter(
+            (feature) => feature.properties.routeId === route.id,
           );
-          const variations = match?.variations ?? [];
-          return {
+          if (variations.length === 0) return [];
+          return [{
             id: route.id,
             short: route.short,
             name: route.name,
             destinations: Array.from(
               new Set(
                 variations
-                  .map((variation) => variation.destination?.trim())
+                  .flatMap((variation) => typeof variation.properties.headsigns === "string"
+                    ? variation.properties.headsigns.split(" · ").map((headsign) => headsign.trim())
+                    : [])
                   .filter((destination): destination is string => Boolean(destination)),
               ),
             ),
-            variationCount: Math.max(1, variations.length),
-          };
+            variationCount: variations.length,
+          }];
         })}
       />
-
-      {routesAge && (
-        <p className="text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-          The map uses the official TransIT GTFS network. Maryland Open Data was last updated {routesAge} and is used as a secondary comparison.
-        </p>
-      )}
 
       <footer
         className={`${styles.sourceNotes} space-y-1`}

@@ -174,10 +174,10 @@ export default function TodayScopeStatus({ dateline, density = "standard" }: {
             type="button"
             onClick={useMyLocation}
             disabled={location.status === "loading"}
-            className="tap-44 inline-flex h-11 shrink-0 items-center rounded-full px-2.5 text-[13px] font-semibold transition active:scale-[0.98] disabled:opacity-55"
+            className="tap-44 inline-flex h-11 shrink-0 items-center px-0 text-[14px] font-semibold underline decoration-1 underline-offset-4 transition disabled:opacity-55"
             style={{
               color: "var(--app-link)",
-              background: "var(--app-brand-tint-6)",
+              textDecorationColor: "var(--app-brand-tint-22)",
             }}
           >
             {location.status === "loading" ? "Finding you…" : "Use my location"}

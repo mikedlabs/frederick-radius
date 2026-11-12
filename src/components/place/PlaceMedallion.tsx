@@ -8,6 +8,7 @@ import CategoryIcon from "@/components/place/CategoryIcon";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import { hasTodayPhotoAppearanceReview } from "@/lib/today/place-photo-appearance";
 
 type PlaceMedallionPlace = Pick<
   PlaceCardData,
@@ -20,6 +21,9 @@ type PlaceMedallionProps = {
   shape?: "circle" | "rounded";
   surface?: "paper" | "inverse";
   className?: string;
+  /** Today decision rows cannot treat identity/rights as current appearance. */
+  requireCurrentAppearance?: boolean;
+  appearanceAsOf?: Date;
 };
 
 /**
@@ -48,6 +52,8 @@ export function PlaceMedallion({
   shape = "rounded",
   surface = "paper",
   className = "",
+  requireCurrentAppearance = false,
+  appearanceAsOf,
 }: PlaceMedallionProps) {
   const categoryColor =
     CATEGORY_BY_SLUG[place.category]?.color ?? "var(--app-brand)";
@@ -57,7 +63,8 @@ export function PlaceMedallion({
   // on cards/sheets that can display their full source and license links.
   const owned = getOwnedPlacePhoto(place.slug);
   const sources = [owned?.src, place.google_photo_url ? medallionPhotoSrc(place.google_photo_url, size) : undefined]
-    .filter((src, index, all): src is string => Boolean(src) && all.indexOf(src) === index);
+    .filter((src, index, all): src is string => Boolean(src) && all.indexOf(src) === index)
+    .filter(src => !requireCurrentAppearance || hasTodayPhotoAppearanceReview(place.slug, src, undefined, appearanceAsOf));
   const planKey = JSON.stringify([place.slug, sources]);
   const currentPlan = useRef(planKey);
   useLayoutEffect(() => { currentPlan.current = planKey; }, [planKey]);

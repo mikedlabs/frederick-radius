@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { clientPlaces, clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { isPaidGooglePhotoUrl } from "@/lib/google-photo-policy";
 import { placeCardPhotoPlan } from "@/lib/place-card-photo";
-import { OWNED_PLACE_PHOTOS } from "@/lib/owned-place-photos";
+import { getOwnedPlacePhoto, OWNED_PLACE_PHOTOS } from "@/lib/owned-place-photos";
 import { LANDMARK_PHOTOS, curatedPhotoUrl } from "@/lib/integrations/wikimedia";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 import { freeSearchPlaceVisual } from "./place-visual";
@@ -13,8 +13,28 @@ const place = (slug: string) => clientPlaceBySlug(slug)!;
 describe("free exact place photography in Find", () => {
   it("uses the owner's exact Creek photograph without a credit requirement", () => {
     expect(freeSearchPlaceVisual(place("carroll-creek-linear-park-frederick"))).toMatchObject({
-      kind: "owned", src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg", alt: "Carroll Creek in Frederick.",
+      kind: "owned", src: "/images/places/carroll-creek-aerial.jpg",
+      alt: "An aerial view of Carroll Creek, its bridges and tree-lined paths in Frederick.",
     });
+  });
+
+  it("carries exact museum entrance framing and source rights through the real Find result", () => {
+    const slug = "national-museum-civil-war-medicine-frederick";
+    const photo = freeSearchPlaceVisual(place(slug));
+    expect(photo).toMatchObject({ kind: "curated", src: "/place-photos/civil-war-medicine-frontage.jpg", objectPosition: "bottom",
+      photo: { author: "NatMuseCivMed", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/" } });
+    const result = searchIndex("National Museum of Civil War Medicine", 20, []).find(row => row.id === `place:${slug}`);
+    expect(result?.thumbnailSource).toEqual(photo);
+    expect(result?.thumbnail).toBe(photo?.src);
+    expect(isPaidGooglePhotoUrl(photo!.src)).toBe(false);
+  });
+
+  it("uses the owned City Hall view for the same canonical Find identity without inventing a credit", () => {
+    const photo = freeSearchPlaceVisual(place("city-hall-8"));
+    expect(photo).toMatchObject({ kind: "owned", src: "/images/seasons/winter/013.jpg", objectPosition: "center" });
+    expect(photo).not.toHaveProperty("photo");
+    const result = searchIndex("City Hall", 20, []).find(row => row.id === "place:city-hall-8");
+    expect(result?.thumbnailSource).toEqual(photo);
   });
 
   it.each([
@@ -37,12 +57,46 @@ describe("free exact place photography in Find", () => {
     expect(result?.thumbnailSource).toEqual(photo);
   });
 
-  it.each(["cunningham-falls-state-park-thurmont", "baker-park-frederick", "barbara-fritchie-house-frederick", "catoctin-furnace-thurmont"])("preserves the exact reviewed Commons source and credit for %s", (slug) => {
+  it.each([
+    ["Baker Park", "baker-park-frederick", "An aerial view of Baker Park's lawns, carillon and bandshell in Frederick at dusk."],
+    ["Baker Park Bandshell", "baker-park-bandshell", "The Baker Park Bandshell and outdoor seating in Frederick."],
+  ])("carries the reviewed owned photo through the real Find place result for %s", (query, slug, alt) => {
+    const input = place(slug);
+    const photo = freeSearchPlaceVisual(input);
+    expect(photo).toMatchObject({ kind: "owned", src: slug === "baker-park-bandshell"
+      ? "/images/seasons/fall/018.jpg" : "/images/places/baker-park-detail.jpg", alt,
+      objectPosition: slug === "baker-park-bandshell" ? "right" : "center" });
+    expect(photo).not.toHaveProperty("attribution");
+    expect(isPaidGooglePhotoUrl(photo!.src)).toBe(false);
+    expect(placeCardPhotoPlan(input, 360).sources[0]).toEqual(photo);
+    // Existing intent results may lead a broad park query; inspect its exact
+    // place result without changing or asserting a new ranking contract.
+    const result = searchIndex(query, 20, []).find(row => row.id === `place:${slug}`);
+    expect(result).toBeDefined();
+    expect(result?.thumbnail).toBe(photo!.src);
+    expect(result?.thumbnailSource).toEqual(photo);
+  });
+
+  it("reuses the exact canonical carillon photograph in Find without borrowing it for the suppressed alias", () => {
+    const slug = "joseph-dill-baker-memorial-carillon-bell-tower";
+    const input = place(slug);
+    expect(input).toBeDefined();
+    const photo = freeSearchPlaceVisual(input);
+    expect(photo).toMatchObject({ kind: "owned", src: "/images/places/carillon-sunset.jpg", objectPosition: "right" });
+    expect(photo).not.toHaveProperty("attribution");
+    const result = searchIndex(input.name, 20, []).find(row => row.id === `place:${slug}`);
+    expect(result?.thumbnailSource).toEqual(photo);
+    expect(result?.thumbnail).toBe(photo!.src);
+    expect(getOwnedPlacePhoto("bell-tower-baker-park")).toBeNull();
+  });
+
+  it.each(["cunningham-falls-state-park-thurmont", "historic-utica-covered-bridge-thurmont", "barbara-fritchie-house-frederick", "catoctin-furnace-thurmont"])("preserves the exact reviewed Commons source and credit for %s", (slug) => {
     const photo = freeSearchPlaceVisual(place(slug));
     expect(photo?.kind).toBe("curated");
     if (photo?.kind !== "curated") throw new Error("Expected a reviewed landmark source.");
     expect(photo.photo.verified).toBe(true);
-    expect(photo.src).toContain("https://commons.wikimedia.org/wiki/Special:FilePath/");
+    if (photo.photo.localSrc) expect(photo.src).toBe(photo.photo.localSrc);
+    else expect(photo.src).toContain("https://commons.wikimedia.org/wiki/Special:FilePath/");
     expect(photo.photo.source_url).toContain("https://commons.wikimedia.org/wiki/File:");
     expect(photo.photo.author).toBeTruthy();
     expect(photo.photo.license).toBeTruthy();

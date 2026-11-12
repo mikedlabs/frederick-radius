@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlaceCardPhotoSource } from "@/lib/place-card-photo";
 import { freeSearchPlaceVisual } from "@/lib/search/place-visual";
+import { wikimediaUrl } from "@/lib/integrations/wikimedia";
 import Link from "next/link";
 
 const pendingLoads = vi.hoisted(() => new Map<string, ImgHTMLAttributes<HTMLImageElement>["onLoad"]>());
@@ -45,11 +46,13 @@ describe("Find source identity and failure recovery", () => {
 
   it("shows the exact credit only after a usable image loads, outside the real result anchor", async () => {
     await render();
+    expect(host.querySelector("img")?.getAttribute("src")).toBe("/place-photos/cunningham-falls.jpg");
     expect(host.querySelector(".place-card-photo-credit")).toBeNull();
     await load(host.querySelector("img")!);
     expect(host.textContent).toContain("Photo by Alyson Hurt.");
-    expect(host.querySelector('a[href^="https://commons.wikimedia.org/wiki/File:"]')).not.toBeNull();
-    expect(host.querySelector('a[href^="https://creativecommons.org/"]')).not.toBeNull();
+    expect(host.textContent).toContain("Historical photograph from February 2005. Display may resize or crop.");
+    expect(host.querySelector('a[href="https://commons.wikimedia.org/wiki/File:Cunningham_Falls.jpg"]')).not.toBeNull();
+    expect(host.querySelector('a[href="https://creativecommons.org/licenses/by/2.0/"]')).not.toBeNull();
     expect(host.querySelector("a a")).toBeNull();
     expect(host.querySelector('a[href^="/places/"]')?.textContent).toContain("Cunningham Falls");
   });
@@ -103,6 +106,7 @@ describe("Find source identity and failure recovery", () => {
     const image = host.querySelector("img")!;
     expect(image.getAttribute("src")).toBe("/history-photos/schifferstadt.jpg");
     expect(host.querySelector('[data-search-place-photo-frame="lead"]')).not.toBeNull();
+    expect(host.querySelector("[data-search-place-lead]")?.getAttribute("data-has-photo")).toBe("true");
     expect(host.querySelector(".place-card-photo-credit")).toBeNull();
     await load(image);
     expect(host.textContent).toContain("Pete Giove-Fourwinds");
@@ -112,6 +116,8 @@ describe("Find source identity and failure recovery", () => {
     await act(async () => image.dispatchEvent(new Event("error")));
     expect(host.querySelector("img")).toBeNull();
     expect(host.querySelector('[data-search-place-photo-frame="lead"]')).toBeNull();
+    // The stylesheet insets the actions under the title from this flag.
+    expect(host.querySelector("[data-search-place-lead]")?.getAttribute("data-has-photo")).toBe("false");
     expect(host.querySelector(".place-card-photo-credit")).toBeNull();
     expect(host.querySelector("h2")?.textContent).toBe("Schifferstadt Architectural Museum");
     expect(host.textContent).toContain("Unconfirmed");
@@ -120,15 +126,23 @@ describe("Find source identity and failure recovery", () => {
   });
 
   it("uses a single sharper width of the same free Commons source without changing its record", async () => {
-    const original = commons.src;
-    await renderLead(commons);
+    // This rendering contract is independent of whether any real destination
+    // later gains a preferred, bundled photograph.
+    const photo = { file: "Controlled remote search fixture.jpg", alt: "A controlled remote search venue.",
+      author: "Controlled search photographer", license: "CC BY-SA 4.0", verified: true,
+      source_url: "https://commons.wikimedia.org/wiki/File:Controlled_remote_search_fixture.jpg" };
+    const remote: PlaceCardPhotoSource = { kind: "curated", src: wikimediaUrl(photo.file, 256), alt: photo.alt, photo };
+    const original = remote.src;
+    await renderLead(remote, "Controlled search venue");
     expect(host.querySelectorAll("img")).toHaveLength(1);
     const src = host.querySelector("img")!.getAttribute("src")!;
     expect(new URL(src).searchParams.get("width")).toBe("720");
     expect(new URL(src).pathname).toBe(new URL(original).pathname);
-    expect(commons.src).toBe(original);
+    expect(remote.src).toBe(original);
     await load(host.querySelector("img")!);
-    expect(host.textContent).toContain("Alyson Hurt");
+    expect(host.textContent).toContain("Controlled search photographer");
+    expect(host.querySelector(`a[href="${photo.source_url}"]`)).not.toBeNull();
+    expect(host.querySelector('a[href="https://creativecommons.org/licenses/by-sa/4.0"]')).not.toBeNull();
   });
 
   it("ignores an old A callback after switching from A to B and back to A", async () => {

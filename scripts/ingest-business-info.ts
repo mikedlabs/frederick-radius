@@ -27,7 +27,8 @@
  *
  * Never fabricates — the shared extractor omits anything not on the page.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
+import { withBusinessInfoRunLock } from "./lib/business-info-run-lock";
 import { resolve } from "node:path";
 import {
   extractJson,
@@ -201,7 +202,7 @@ function placeImportance(place: PublicPlace): number {
   return editorial + popularity + local + discovery + destination;
 }
 
-async function main() {
+async function mainUnlocked(commit: ((value: unknown) => void) | null) {
   const positional = process.argv[2];
   const only =
     positional && !positional.startsWith("--") ? positional : undefined;
@@ -495,11 +496,17 @@ async function main() {
     console.log(`  ✓ ${slug}${tags ? ` [${tags}]` : ""}`);
   }
 
-  writeFileSync(OUT, JSON.stringify(existing, null, 2) + "\n");
+  if (!commit) throw new Error("Business-info run lock is required before writing.");
+  commit(existing);
   console.log(
     `\nDone. ${updated} updated, ${unchanged} unchanged source(s) skipped, ` +
       `${Object.keys(existing).length} total → src/data/business-info.json`,
   );
+}
+
+async function main() {
+  if (process.argv.includes("--plan")) return mainUnlocked(null);
+  return withBusinessInfoRunLock(OUT, (commit) => mainUnlocked(commit));
 }
 
 main().catch((e) => {

@@ -651,7 +651,9 @@ const cachedAssemble = unstable_cache(
   // v37: source/account-bound Squarespace publisher artwork precedes the
   // venue-photo fallback. Cached hero_image identities now change, so old
   // tuples must not retain Google venue photos or omit eligible event art.
-  ["unified-events-v37"],
+  // v38: venue occurrence routes and exact official same-day performances
+  // survive slug and approximate-title dedupe. Old cached membership is invalid.
+  ["unified-events-v38"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.

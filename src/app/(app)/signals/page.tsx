@@ -3,7 +3,6 @@ import Link from "next/link";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import CivicSignalCard from "@/components/signals/CivicSignalCard";
 import SourceReadiness from "@/components/signals/SourceReadiness";
-import PageBloom from "@/components/ui/PageBloom";
 import { loadCivicSignals } from "@/lib/civic-signals";
 import type { PublicCivicSourceHealth } from "@/lib/civic-signals";
 import { PRODUCT_NAMES } from "@/lib/product-names";
@@ -43,7 +42,6 @@ export default async function CivicSignalsPage() {
 
   return (
     <div className="relative mx-auto max-w-2xl space-y-7 pb-6 pt-1">
-      <PageBloom variant="warm-cool" />
 
       <header className="relative">
         <div className="flex items-center justify-between gap-4">

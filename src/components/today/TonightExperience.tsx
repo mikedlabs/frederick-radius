@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 import { scopeToParam, type Scope } from "@/lib/scope";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 import type {
   TonightIntent,
   TonightPick,
@@ -76,6 +77,7 @@ export default function TonightExperience({
 }: TonightExperienceProps) {
   const [lead, ...alternatives] = data.picks;
   const showFrederickPhoto = !data.town || data.town === "frederick";
+  const areaPhoto = getOwnedPlacePhoto("carroll-creek-linear-park-frederick");
 
   return (
     <section className={styles.experience} aria-labelledby="tonight-title" data-tonight-experience>
@@ -91,16 +93,17 @@ export default function TonightExperience({
             {data.scopeLabel}
           </p>
         </div>
-        {lead && showFrederickPhoto ? (
+        {lead && showFrederickPhoto && areaPhoto ? (
           <figure className={styles.localPhoto} data-tonight-area-photo>
             <div className={styles.photoFrame}>
               <Image
-                src="/images/seasons/summer/SUMMER CARROL CREEK.jpg"
-                alt="Carroll Creek in Frederick."
+                src={areaPhoto.src}
+                alt={areaPhoto.alt}
                 fill
                 loading="eager"
                 sizes="(min-width: 768px) 240px, (max-width: 359px) 104px, 128px"
                 className={styles.photo}
+                style={{ objectPosition: areaPhoto.objectPosition ?? "center" }}
               />
             </div>
           </figure>

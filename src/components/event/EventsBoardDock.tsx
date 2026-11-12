@@ -43,6 +43,8 @@ const INTENT_ICONS: Record<string, any> = {
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import EventWeekRibbon from "@/components/event/EventWeekRibbon";
 import { haptic } from "@/lib/haptics";
+import { acquireScrollLock } from "@/lib/scroll-lock";
+import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import {
@@ -218,12 +220,16 @@ function EventDisplayControls({
   sort,
   setSort,
   onSelect,
+  align = "right",
 }: {
   view: ViewKey;
   setView: (value: ViewKey) => void;
   sort: EventSortKey;
   setSort: (value: EventSortKey) => void;
   onSelect?: () => void;
+  /** Which edge of the Order button its menu hangs from. The phone panel
+   *  starts at the button's left edge so the wider menu stays on screen. */
+  align?: "left" | "right";
 }) {
   return (
     <>
@@ -234,7 +240,7 @@ function EventDisplayControls({
           setSort(value);
           onSelect?.();
         }}
-        align="right"
+        align={align}
         label="Order"
       />
       <div className="eb-lensseg" role="group" aria-label="View">
@@ -261,6 +267,16 @@ function EventDisplayControls({
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Close the native Display disclosure. Its controls stop rendering, so when
+ *  one of them held focus (a choice, or Escape) focus goes to the summary. An
+ *  outside press passes `false` and leaves focus with what was pressed. */
+function closeDisplay(display: HTMLDetailsElement | null, keepFocus = true) {
+  if (!display?.open) return;
+  const heldFocus = display.contains(document.activeElement);
+  display.open = false;
+  if (keepFocus && heldFocus) display.querySelector("summary")?.focus({ preventScroll: true });
+}
 
 export default function EventsBoardDock(props: EventsBoardDockProps) {
   const {
@@ -317,7 +333,14 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   const paneOpen = pane !== null;
   const whenRibbonRef = useRef<HTMLDivElement>(null);
   const mobileDisplayRef = useRef<HTMLDetailsElement>(null);
+  const [displayOpen, setDisplayOpen] = useState(false);
   const restoreRef = useRef<HTMLElement | null>(null);
+  const historyLayer = useReversibleHistoryLayer({
+    active: paneOpen,
+    id: "events-filters",
+    onDismiss: () => setPane(null),
+    preserveUrlOnDismiss: true,
+  });
 
   // ── Collapse the nameplate on scroll (window scroll). Under
   //    prefers-reduced-motion the masthead stays static — no fold, no
@@ -372,11 +395,10 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     // open. Observe only ancestor child lists, not every change in the page.
     const observer = new MutationObserver(isolateBackground);
     isolateBackground();
-    // Lock the document scroll root. Setting body overflow would make body a
-    // new scroll container and break this pane's viewport-sticky dock.
-    const root = document.documentElement;
-    const previousOverflow = root.style.overflowY;
-    root.style.overflowY = "hidden";
+    // The shared lock holds the document scroll root (html). Setting body
+    // overflow would make body a new scroll container and break this pane's
+    // viewport-sticky dock.
+    const releaseScroll = acquireScrollLock();
     paneRef.current.querySelector<HTMLElement>(FOCUSABLE)?.focus({ preventScroll: true });
     return () => {
       observer.disconnect();
@@ -386,29 +408,62 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
         if (value === null) element.removeAttribute("inert");
         else element.setAttribute("inert", value);
       }
-      root.style.overflowY = previousOverflow;
+      releaseScroll();
     };
   }, [paneOpen]);
 
-  const closePane = () => setPane(null);
+  // The Display disclosure floats over the list on phones. A native details
+  // element has no light dismissal, so while it is open a press anywhere else
+  // and Escape both close it.
+  useEffect(() => {
+    if (!displayOpen) return;
+    const onPress = (event: PointerEvent) => {
+      const display = mobileDisplayRef.current;
+      if (display && !display.contains(event.target as Node)) closeDisplay(display, false);
+    };
+    const onEscape = (event: KeyboardEvent) => {
+      // The open Order menu marks the Escape it consumed. That press closes
+      // the menu only; the next one closes Display.
+      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
+      closeDisplay(mobileDisplayRef.current);
+    };
+    // Capture, so a control that stops the press from bubbling still counts.
+    document.addEventListener("pointerdown", onPress, true);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.removeEventListener("pointerdown", onPress, true);
+      document.removeEventListener("keydown", onEscape);
+    };
+  }, [displayOpen]);
+
+  const closePane = () => historyLayer.dismiss();
+  useEffect(() => {
+    if (!paneOpen) return;
+    // WebKit touch activation can leave focus on the document body. The
+    // owned modal still handles Escape even when no descendant has focus.
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.isComposing) return;
+      event.preventDefault();
+      event.stopPropagation();
+      historyLayer.dismiss();
+    };
+    document.addEventListener("keydown", onEscape, true);
+    return () => document.removeEventListener("keydown", onEscape, true);
+  }, [paneOpen, historyLayer]);
   const toggle = (p: Pane) => {
     haptic("light");
     if (pane === p) {
       closePane();
     } else {
+      if (historyLayer.isDismissing()) return;
       if (mobileDisplayRef.current) mobileDisplayRef.current.open = false;
       restoreRef.current = filterTriggerRef.current ?? document.activeElement as HTMLElement | null;
       setPane(p);
     }
   };
 
-  // Esc closes; Tab is trapped within the open pane.
+  // Tab is trapped within the open pane; its Escape owner is above.
   const onPaneKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      closePane();
-      return;
-    }
     if (e.key !== "Tab" || !paneRef.current) return;
     const nodes = Array.from(
       paneRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
@@ -597,9 +652,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     setTod(null);
     setDay(null);
   };
-  const closeMobileDisplay = () => {
-    if (mobileDisplayRef.current) mobileDisplayRef.current.open = false;
-  };
+  const closeMobileDisplay = () => closeDisplay(mobileDisplayRef.current);
   const viewLabel = VIEW_ITEMS.find((item) => item.key === view)?.label ?? "List";
   const sortLabel = SORT_OPTIONS.find((item) => item.key === sort)?.label ?? "Recommended";
 
@@ -700,7 +753,19 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           <span className="eb-countline" aria-live="polite">
             {line}
           </span>
-          <details ref={mobileDisplayRef} className="eb-display-options">
+          <details
+            ref={mobileDisplayRef}
+            className="eb-display-options"
+            onToggle={(event) => setDisplayOpen(event.currentTarget.open)}
+            // Focus moving on to another control closes the panel, as it does
+            // for the Order menu. Safari does not focus a button on press; it
+            // reports no target, or parks focus on the focusable <main> around
+            // this dock. Neither is a reason to close.
+            onBlur={(event) => {
+              const next = event.relatedTarget;
+              if (next instanceof Node && !event.currentTarget.contains(next) && !next.contains(event.currentTarget)) closeDisplay(event.currentTarget, false);
+            }}
+          >
             <summary
               className="tap-44"
               style={{ minHeight: 44 }}
@@ -716,6 +781,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                 sort={sort}
                 setSort={setSort}
                 onSelect={closeMobileDisplay}
+                align="left"
               />
             </div>
           </details>
@@ -788,11 +854,12 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
               </label>
 
               <Sect>Interest</Sect>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" aria-label="Event interests">
+              {/* Interests are compact filter chips like every other group in
+                  this pane, not tall boxed tiles. */}
+              <div className="eb-chips" role="group" aria-label="Event interests">
                 <EbChip
                   on={!intent && !cat && !sub}
                   onClick={pickEverything}
-                  className="col-span-full justify-center !rounded-[var(--app-radius-md)]"
                 >
                   Any interest
                 </EbChip>
@@ -805,7 +872,6 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                       color={item.tucked ? "var(--app-civic)" : "var(--app-brand)"}
                       onClick={() => pickIntent(item.id)}
                       icon={Icon}
-                      className="!flex-col !items-start !justify-between !h-20 !p-3 !rounded-[var(--app-radius-lg)] !w-full"
                     >
                       {item.label}
                     </EbChip>
@@ -867,7 +933,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
               </div>
 
               {categories.length > 0 && (
-                <details className="group mt-4 rounded-[var(--app-radius-md)] border px-3" style={{ borderColor: "var(--app-border)" }}>
+                <details className="group mt-4 border-y" style={{ borderColor: "var(--app-border)" }}>
                   <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-[12px] font-semibold text-[var(--app-ink-2)]">
                     <span>
                       {cat
@@ -964,7 +1030,11 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
 
               <p className="dock-hint">
                 Planning an event of your own?{" "}
-                <Link href="/check-a-date" prefetch={false} style={{ color: "var(--app-link)", fontWeight: 600 }}>
+                <Link href="/check-a-date" prefetch={false} style={{ color: "var(--app-link)", fontWeight: 600 }} onClick={(event) => {
+                  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                  event.preventDefault();
+                  historyLayer.leaveTo("/check-a-date");
+                }}>
                   Check a date
                 </Link>{" "}
                 to see what&rsquo;s already scheduled.

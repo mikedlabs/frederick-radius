@@ -77,3 +77,14 @@ describe("all-day windows", () => {
     expect(formatHoursLine(status)).toBe("Open 24 hours");
   });
 });
+
+
+describe("unconfirmed status labels", () => {
+  it.each(["unknown", "unverified"] as const)("labels %s without claiming that no hours were posted", (state) => {
+    expect(formatHoursLine({ state })).toBe("Hours not confirmed");
+  });
+  it("keeps unknown and unverified as distinct states despite their shared public label", () => {
+    expect(getOpenStatus(undefined, { verified: true })).toEqual({ state: "unknown" });
+    expect(getOpenStatus({ mon: [{ open: "09:00", close: "17:00" }] }, { verified: false })).toEqual({ state: "unverified" });
+  });
+});

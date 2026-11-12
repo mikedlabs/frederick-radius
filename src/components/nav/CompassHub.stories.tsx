@@ -74,6 +74,72 @@ export const IntentAt320: Story = { globals: { viewport: { value: "radiusMobileN
 export const IntentAt375: Story = { globals: { viewport: { value: "radiusMobileCompact", isRotated: false } }, play: intentFlow };
 export const IntentAt390: Story = { globals: { viewport: { value: "radiusMobile", isRotated: false } }, play: intentFlow };
 export const IntentAt430ReducedMotion: Story = { globals: { viewport: { value: "radiusMobileLarge", isRotated: false }, motion: "reduce" }, play: intentFlow };
+
+/**
+ * The full index as a phone sheet. The Storybook canvas uses the story's
+ * viewport; the browser gate resizes its own frame to the same size.
+ */
+function indexSheetAt(width: number, height: number, viewport: string): Story {
+  return {
+    globals: { viewport: { value: viewport, isRotated: false } },
+    play: async ({ canvasElement }) => {
+      const gate = (globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__
+        ? await import("vitest/browser")
+        : null;
+      const previous = { width: window.innerWidth, height: window.innerHeight };
+      try {
+        if (gate) {
+          await gate.page.viewport(width, height);
+          await waitFor(() => expect(window.innerWidth).toBe(width));
+        }
+        const launcher = within(canvasElement).getByRole("button", { name: "Browse the full tool index" });
+        await waitFor(() => expect(launcher).toBeEnabled()); await userEvent.click(launcher);
+        const sheet = await within(document.body).findByRole("dialog", { name: "All tools" });
+        const index = within(sheet);
+        // Wait for the entrance transform before measuring the resting sheet.
+        await waitFor(() => expect(Math.round(sheet.getBoundingClientRect().bottom)).toBe(window.innerHeight));
+        const box = sheet.getBoundingClientRect();
+        await expect(Math.round(box.left)).toBe(0);
+        await expect(Math.round(box.width)).toBe(document.documentElement.clientWidth);
+        await expect(box.top).toBeGreaterThanOrEqual(window.innerHeight * 0.1 - 1);
+        // The sheet does not drag, so its first element is the header, not a grab pill.
+        await expect(sheet.firstElementChild?.tagName).toBe("HEADER");
+        // Measure the Close control at rest. A bounding box read while a press
+        // or entrance transform is still settling reports the transformed
+        // size, which made this check fail on a slower CI runner.
+        const closeButton = index.getByRole("button", { name: "Close All tools" });
+        await waitFor(() => {
+          const settling = closeButton.getBoundingClientRect();
+          expect(Math.min(settling.width, settling.height)).toBeGreaterThanOrEqual(44);
+        });
+        const close = closeButton.getBoundingClientRect();
+        await expect(close.right).toBeLessThanOrEqual(window.innerWidth);
+        const filter = index.getByRole("searchbox", { name: "Search tools in this section" });
+        await expect(filter).toHaveAttribute("enterkeyhint", "go");
+        await expect(filter.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+        // Several matches: Enter moves focus to the first row and opens nothing.
+        await userEvent.type(filter, "map");
+        const rows = index.getAllByRole("link");
+        await expect(rows.length).toBeGreaterThan(1);
+        await userEvent.keyboard("{Enter}");
+        await expect(rows[0]).toHaveFocus();
+        await expect(within(document.body).getAllByRole("dialog")).toHaveLength(1);
+        for (const node of [sheet, ...sheet.querySelectorAll<HTMLElement>("*")]) {
+          if (node.scrollWidth - node.clientWidth > 1 && getComputedStyle(node).overflowX !== "hidden") {
+            throw new Error(`The ${width}px index sheet scrolls sideways at <${node.tagName.toLowerCase()} class="${node.className}">.`);
+          }
+        }
+      } finally {
+        if (gate) await gate.page.viewport(previous.width, previous.height);
+      }
+    },
+  };
+}
+export const IndexSheetAt320 = indexSheetAt(320, 568, "radiusMobileNarrow");
+export const IndexSheetAt375 = indexSheetAt(375, 667, "radiusMobileCompact");
+export const IndexSheetAt390 = indexSheetAt(390, 844, "radiusMobile");
+export const IndexSheetAt430 = indexSheetAt(430, 932, "radiusMobileLarge");
+
 export const FullIndex: Story = {
   play: async ({ canvasElement }) => {
     const launcher = within(canvasElement).getByRole("button", { name: "Browse the full tool index" });
@@ -94,9 +160,16 @@ export const ShortcutEditor: Story = {
     await waitFor(() => expect(edit).toBeEnabled()); await userEvent.click(edit);
     const dialog = await within(document.body).findByRole("dialog", { name: "Edit shortcuts" });
     const editor = within(dialog);
-    await userEvent.type(editor.getByRole("searchbox", { name: "Search tools in this section" }), "brunch");
+    const filter = editor.getByRole("searchbox", { name: "Search tools in this section" });
+    // People filter here in order to pin, so the keyboard never offers "go".
+    await expect(filter).not.toHaveAttribute("enterkeyhint");
+    await userEvent.type(filter, "brunch");
     const pin = editor.getByRole("button", { name: "Pin Brunch guide" });
-    await userEvent.click(pin);
+    // Enter lands on the row's Pin control instead of leaving the editor; a second Enter pins.
+    await userEvent.keyboard("{Enter}");
+    await expect(pin).toHaveFocus();
+    await expect(within(document.body).getByRole("dialog", { name: "Edit shortcuts" })).toBeVisible();
+    await userEvent.keyboard("{Enter}");
     await expect(editor.getByRole("button", { name: "Unpin Brunch guide" })).toHaveAttribute("aria-pressed", "true");
   },
 };

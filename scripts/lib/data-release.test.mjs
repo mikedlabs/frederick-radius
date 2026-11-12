@@ -3,6 +3,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
+import ts from "typescript";
 
 import {
   DATA_RELEASE_STREAMS,
@@ -16,6 +17,24 @@ import {
 } from "./data-release.mjs";
 
 const FIXED_PROMOTION = "2026-08-12T12:00:00Z";
+
+test("every primary and gallery-only owned photograph is protected by the places release", () => {
+  const source = readFileSync(new URL("../../src/lib/owned-place-photos.ts", import.meta.url), "utf8");
+  const file = ts.createSourceFile("owned-place-photos.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const photos = new Set();
+  const visit = node => {
+    if (ts.isPropertyAssignment(node) && node.name.getText(file).replace(/['"]/g, "") === "src") {
+      assert.ok(ts.isStringLiteral(node.initializer), "Owned photo src must be a reviewable literal local path.");
+      const src = node.initializer.text;
+      assert.ok(src.startsWith("/images/") && !src.includes("..") && !src.includes("?"));
+      photos.add(`public${src}`);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  assert.ok(photos.size > 0);
+  assert.deepEqual([...photos].filter(path => !PLACE_RELEASE_ARTIFACTS.includes(path)), []);
+});
 
 function fixtureRoot() {
   const root = mkdtempSync(join(tmpdir(), "radius-data-release-"));
@@ -85,8 +104,34 @@ test("the place release covers canonical server and place-page inputs", () => {
     "src/lib/integrations/closures.ts",
     "src/lib/integrations/wikimedia.ts",
     "src/data/credited-local-place-photos.ts",
+    "public/place-photos/civil-war-medicine-frontage.jpg",
+    "public/history-photos/schifferstadt.jpg",
+    "public/history-photos/hessian-barracks.jpg",
+    "public/history-photos/co-canal.jpg",
+    "public/place-photos/delaplaine-exterior.jpg",
+    "public/place-photos/weinberg-exterior.jpg",
+    "public/place-photos/c-burr-artz-exterior.jpg",
+    "public/history-photos/new-market-antiques.jpg",
+    "public/history-photos/catoctin-mountain-park.jpg",
     "public/place-photos/brewers-alley-2004.jpg",
     "src/lib/owned-place-photos.ts",
+    "public/images/places/visitation-hotel-sunset.jpg",
+    "public/images/places/visitation-hotel-detail.jpg",
+    "public/images/places/carroll-creek-aerial.jpg",
+    "public/images/places/baker-park-sunset.jpg",
+    "public/images/places/baker-park-detail.jpg",
+    "public/images/places/carillon-sunset.jpg",
+    "public/images/places/church-street-sunset.jpg",
+    "public/images/places/weinberg-patrick-street.jpg",
+    "public/images/seasons/winter/IMG_2732.jpg",
+    "public/images/seasons/spring/010.jpg",
+    "public/images/seasons/fall/001.jpg",
+    "public/images/seasons/fall/018.jpg",
+    "public/images/seasons/fall/021.jpg",
+    "public/images/seasons/winter/013.jpg",
+    "public/images/seasons/winter/PG134 Replacement.jpg",
+    "public/images/seasons/spring/016.jpg",
+    "public/images/seasons/winter/WINTER NEW 7.jpg",
     "public/images/seasons/spring/aerial-view-baseball-field.jpg",
     "public/images/fair/fairgrounds-night-mike-d-1920.jpg",
     "src/data/business-info.json",
@@ -96,12 +141,23 @@ test("the place release covers canonical server and place-page inputs", () => {
     "src/data/loc-archive.ts",
     "public/images/seasons/aerial-manifest.json",
     "src/data/places-client.json",
+    "src/data/copy-scores.json",
   ];
 
   assert.deepEqual(
     required.filter((path) => !PLACE_RELEASE_ARTIFACTS.includes(path)),
     [],
   );
+});
+
+test("a changed derived copy scorecard invalidates the protected places release", () => {
+  const root = fixtureRoot();
+  const manifest = fixtureManifest(root);
+  const target = resolve(root, "src/data/copy-scores.json");
+  writeFileSync(target, JSON.stringify({ counts: { none: 1 }, bySlug: { seasonal: "none" } }));
+  const result = validateDataRelease(manifest, root);
+  assert.equal(result.dataVersion, null);
+  assert.ok(result.errors.some(error => error.includes("src/data/copy-scores.json") && error.includes("digest differs")));
 });
 
 test("the published amenity map is a dedicated protected release stream", () => {
@@ -255,3 +311,38 @@ test("unregistered JPEG paths and unsupported formats are still rejected", () =>
     assert.throws(() => inspectArtifact(root, photoPath), /unsupported release artifact type/);
   }
 });
+
+
+for (const imagePath of [
+  "public/history-photos/schifferstadt.jpg",
+  "public/history-photos/hessian-barracks.jpg",
+  "public/history-photos/co-canal.jpg",
+  "public/place-photos/delaplaine-exterior.jpg",
+  "public/place-photos/weinberg-exterior.jpg",
+  "public/place-photos/c-burr-artz-exterior.jpg",
+  "public/history-photos/new-market-antiques.jpg",
+  "public/history-photos/catoctin-mountain-park.jpg",
+  "public/images/seasons/fall/021.jpg",
+  "public/images/seasons/winter/013.jpg",
+  "public/images/seasons/winter/IMG_2732.jpg",
+  "public/images/seasons/spring/010.jpg",
+  "public/images/seasons/fall/001.jpg",
+  "public/place-photos/civil-war-medicine-frontage.jpg"
+]) {
+  test(`reviewed local photo bytes ${imagePath} require their own places promotion`, () => {
+    const root = fixtureRoot();
+    const manifest = fixtureManifest(root);
+    const target = resolve(root, imagePath);
+    writeFileSync(target, Buffer.concat([readFileSync(target), Buffer.from([0x01])]));
+    const result = validateDataRelease(manifest, root);
+    assert.equal(result.dataVersion, null);
+    assert.ok(result.errors.some(error => error.includes(imagePath) && error.includes("digest differs")));
+    assert.ok(result.errors.every(error => error.includes(imagePath)));
+    const promoted = refreshDataReleaseStream(manifest, "places", root, "2026-08-13T12:00:00Z");
+    assert.deepEqual(validateDataRelease(promoted, root).errors, []);
+    assert.notEqual(promoted.data_version, manifest.data_version);
+    for (const [name, stream] of Object.entries(manifest.streams)) {
+      if (name !== "places") assert.deepEqual(promoted.streams[name], stream);
+    }
+  });
+}

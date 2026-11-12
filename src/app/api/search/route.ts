@@ -6,8 +6,9 @@ import {
 import { isEventSearchIntent } from "@/lib/search";
 import {
   loadEventArchiveSnapshot,
-  TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
+  EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
 } from "@/lib/loaders/todayEventSnapshot";
+import { searchEventsFromSnapshot, type SearchEventCoverage } from "@/lib/search/event-coverage";
 import { approxLocation } from "@/lib/ip-geo";
 import { roundCoord } from "@/lib/walkTime";
 import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
@@ -97,10 +98,8 @@ export async function GET(request: NextRequest) {
   };
   const base = qualifiedSearchIndex(q, limit, undefined, searchContext);
   const mapRequest = request.nextUrl.searchParams.get("origin") === "map";
-  // Most map searches already have a complete answer in Radius's local place
-  // and control index. Do not make "coffee nearby" wait for a countywide live
-  // calendar. Event-shaped and genuinely unanswered phrases retain the live
-  // enrichment path.
+  // Map searches and proven local Find needs can already have a complete
+  // answer. Event-shaped and ambiguous phrases retain archive enrichment.
   const normalizedQuery = normalizedSearchText(q);
   const qualifiers = base.meta.qualifiers;
   const normalizedQualifiedQuery = normalizedSearchText(
@@ -122,41 +121,52 @@ export async function GET(request: NextRequest) {
       (result.type === "place" || result.type === "municipality") &&
       normalizedSearchText(result.title) === normalizedQuery,
   );
+  const eventIndependentMapAction = isLiveEventIndependentMapActionQuery(q);
   const baseAnswersMap =
-    isLiveEventIndependentMapActionQuery(q) ||
+    eventIndependentMapAction ||
     Boolean(qualifiers.compoundIntent || qualifiers.strictPlaceKind) ||
     directCategoryRequest ||
     exactEntityAnswer;
   const baseHasAtmHandoff = base.results.some(
     (result) => result.id === "action:map-atm",
   );
+  // With no event intent, the shared qualified ranker already constrains
+  // these queries to places. A calendar cannot improve their ranked facts.
+  // Require an actual local answer; bare names and unanswered phrases stay
+  // mixed searches so an archived event title remains discoverable.
+  const qualifiedLocalAnswer = qualifiers.constrained &&
+    base.results.some((result) => result.type === "place");
   const skipLiveEventAssembly =
     !isEventSearchIntent(q) &&
-    ((mapRequest && baseAnswersMap) || baseHasAtmHandoff ||
+    (qualifiedLocalAnswer || (mapRequest && baseAnswersMap) || baseHasAtmHandoff ||
       base.results.some((result) => result.id.startsWith("civic:") || result.id.startsWith("department:")));
   // Rank against the promoted event archive, not just the small curated seed
   // set. The archive is refreshed in the background and has a cancellable
-  // sub-second read budget, so a search can discover current events without
+  // 2.5-second browse budget, so a search can discover current events without
   // starting publisher fan-out in a visitor request.
   let searchResult = base;
-  let liveEventsUnavailable = false;
+  let eventCoverage: SearchEventCoverage = "complete";
   if (!skipLiveEventAssembly) {
     try {
       // Both Map and global Find use the same durable archive contract. A
       // resolved snapshot may still be degraded because the archive is stale,
       // missing, or timed out; that state is not a healthy empty calendar.
       const snapshot = await loadEventArchiveSnapshot(new Date(), {
-        timeoutMs: TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
+        timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
       });
-      liveEventsUnavailable = snapshot.sourceHealth?.degraded === true;
+      const events = searchEventsFromSnapshot(snapshot);
+      eventCoverage = events.coverage;
       searchResult = qualifiedSearchIndex(
         q,
         limit,
-        snapshot.publicEvents,
+        events.publicEvents,
         searchContext,
       );
     } catch {
-      liveEventsUnavailable = true;
+      eventCoverage = "unavailable";
+      // `base` used the default curated event set. An archive failure must
+      // preserve place/page matches without ranking those seeds as live data.
+      searchResult = qualifiedSearchIndex(q, limit, [], searchContext);
     }
   }
   // The global ATM action is a handoff into Map's live provider search. Once
@@ -167,9 +177,11 @@ export async function GET(request: NextRequest) {
     ? searchResult.results.filter((result) => result.id !== "action:map-atm")
     : searchResult.results;
   const { meta } = searchResult;
-  const responseMeta = liveEventsUnavailable
-    ? { ...meta, liveEventsUnavailable: true }
-    : meta;
+  const responseMeta = eventCoverage === "complete"
+    ? meta
+    // AppMap still consumes the legacy flag as an incomplete-calendar caveat.
+    // Newer consumers use eventCoverage to distinguish usable partial rows.
+    : { ...meta, eventCoverage, liveEventsUnavailable: true };
 
   // A degraded event archive plus an empty result set used to answer 503, and
   // the overlay treats any non-ok as a transport failure: it rendered "Check

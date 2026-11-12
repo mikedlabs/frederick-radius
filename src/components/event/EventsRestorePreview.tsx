@@ -31,9 +31,8 @@ export default function EventsRestorePreview({ events, nowISO, degraded }: {
   const now = new Date(nowISO);
   return (
     <section data-events-restoring-view data-events-restore-preview aria-labelledby="events-restore-heading"
-      className="min-w-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)]"
-      style={{ borderColor: "var(--app-border)" }}>
-      <div className="space-y-2 px-4 py-4">
+      className="min-w-0 max-w-[720px]">
+      <div className="space-y-2 py-4">
         <h1 id="events-restore-heading" className="text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
           County calendar preview
         </h1>
@@ -48,20 +47,20 @@ export default function EventsRestorePreview({ events, nowISO, degraded }: {
         </p>}
       </div>
       {preview.length > 0 ? (
-        <ol className="space-y-2 px-2 pb-2" aria-label="Public county calendar preview">
+        <ol className="border-t" style={{ borderColor: "var(--app-border)" }} aria-label="Public county calendar preview">
           {preview.map(event => {
             const date = eventDateBlock(event);
             const status = statusLabel(event.status ?? "scheduled");
             return <li key={event.slug}>
               <a data-events-preview-link href={`/events/${event.slug}`}
-                className="block min-h-[44px] min-w-0 space-y-1 rounded-[var(--app-radius-md)] px-3 py-3 [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-offset-2"
-                style={{ color: "var(--app-ink)", outlineColor: "var(--app-focus)", background: "var(--app-bg-sunken)" }}>
+                className="block min-h-[44px] min-w-0 space-y-1 border-b py-4 [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-offset-2"
+                style={{ color: "var(--app-ink)", outlineColor: "var(--app-focus)", borderColor: "var(--app-border)" }}>
                 {status && <p data-events-preview-status className="text-sm font-semibold" style={{ color: event.status === "cancelled" ? "var(--app-danger-text)" : "var(--app-ink)" }}>{status}</p>}
                 <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>
                   <time dateTime={event.starts_at}>{date.weekday} {date.month} {date.day}</time>
                   <span data-events-preview-time> · {eventDecisionTime(event, now)}</span>
                 </p>
-                <h2 className={`text-base font-semibold leading-snug ${event.status === "cancelled" ? "line-through" : ""}`}>
+                <h2 className={`text-[17px] font-semibold leading-snug ${event.status === "cancelled" ? "line-through" : ""}`}>
                   {eventDisplayTitle(event)}
                 </h2>
                 <p data-events-preview-location className="text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
@@ -71,10 +70,10 @@ export default function EventsRestorePreview({ events, nowISO, degraded }: {
             </li>;
           })}
         </ol>
-      ) : <p className="px-4 pb-3 text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+      ) : <p className="pb-3 text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         Preview listings are unavailable. You can check an official calendar while your view loads.
       </p>}
-      {(degraded || preview.length === 0) && <div className="flex flex-wrap gap-x-4 px-4 pb-3 text-sm" style={{ color: "var(--app-link)" }}>
+      {(degraded || preview.length === 0) && <div className="flex flex-wrap gap-x-4 pb-3 text-sm" style={{ color: "var(--app-link)" }}>
         <a href="https://www.frederickcountymd.gov/calendar.aspx" target="_blank" rel="noopener noreferrer"
           className="inline-flex min-h-[44px] items-center underline">County calendar</a>
         <a href="https://www.celebratefrederick.com/events/" target="_blank" rel="noopener noreferrer"

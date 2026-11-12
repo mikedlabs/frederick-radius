@@ -12,6 +12,7 @@ vi.mock("@/lib/db/client", () => ({ getSql: mocks.getSql }));
 // Real installed Next cache + App Router work store. A pass-through cache mock
 // cannot prove that rejected foreground revalidation retains the prior entry.
 import { workAsyncStorage } from "next/dist/server/app-render/work-async-storage.external.js";
+import { workUnitAsyncStorage } from "next/dist/server/app-render/work-unit-async-storage.external.js";
 import { loadEventArchiveSnapshot, TODAY_EVENT_SNAPSHOT_MAX_AGE_MS } from "./todayEventSnapshot";
 import { decodeArchiveEnvelope, encodeArchiveEnvelope,
   EVENT_ARCHIVE_CACHE_DECODED_MAX_BYTES, EVENT_ARCHIVE_CACHE_ENTRY_MAX_BYTES } from "./eventArchiveCacheCodec";
@@ -44,13 +45,17 @@ const cache = {
   set: vi.fn(async (key: string, value: Entry) => { entries.set(key, value); }),
 };
 type WorkStore = NonNullable<ReturnType<typeof workAsyncStorage.getStore>>;
-async function inApp<T>(run: () => Promise<T>): Promise<T> {
+async function inApp<T>(run: () => Promise<T>, mode: "foreground" | "background" = "foreground"): Promise<T> {
   const store = { incrementalCache: cache, isStaticGeneration: true, pendingRevalidates: {}, route: "/events" } as unknown as WorkStore;
-  return workAsyncStorage.run(store, async () => {
+  type WorkUnitStore = NonNullable<ReturnType<typeof workUnitAsyncStorage.getStore>>;
+  const unit = (mode === "foreground"
+    ? { type: "prerender-legacy", phase: "render", revalidate: 1800, tags: null }
+    : { type: "request", phase: "render", url: { pathname: "/events", search: "" } }) as WorkUnitStore;
+  return workAsyncStorage.run(store, () => workUnitAsyncStorage.run(unit, async () => {
     const result = await run();
     await Promise.all(Object.values(store.pendingRevalidates ?? {}));
     return result;
-  });
+  }));
 }
 const runtime = globalThis as typeof globalThis & { __incrementalCache?: unknown };
 let previousCache: unknown;
@@ -102,6 +107,58 @@ describe("durable archive cache through installed Next App Router revalidation",
     const retained = await cached(NOW, { timeoutMs: 100 });
     expect(cancel).toHaveBeenCalledOnce(); expect(cache.set).toHaveBeenCalledOnce();
     expect(retained.publicEvents.some(e => e.slug === event().slug)).toBe(true);
+  });
+  it.each(["foreground", "background"] as const)("shares simultaneous %s stale refresh SQL between App Router requests", async mode => {
+    const sql = vi.fn().mockResolvedValue([envelope()]); mocks.getSql.mockReturnValue(sql);
+    await cached(); stale = true;
+    let resolveRead!: (rows: ReturnType<typeof envelope>[]) => void;
+    sql.mockImplementationOnce(() => new Promise(resolve => { resolveRead = resolve; }));
+    const readers = Array.from({ length: 4 }, () => inApp(() => loadEventArchiveSnapshot(NOW, { cache: true }), mode));
+    await vi.waitFor(() => expect(sql).toHaveBeenCalledTimes(2));
+    resolveRead([envelope()]);
+    const results = await Promise.all(readers);
+    expect(sql).toHaveBeenCalledTimes(2);
+    expect(results.every(result => result.publicEvents.some(e => e.slug === event().slug))).toBe(true);
+  });
+  it("does not let an earlier caller deadline abort another request's shared archive read", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    try {
+    const cancel = vi.fn();
+    let resolveRead!: (rows: ReturnType<typeof envelope>[]) => void;
+    const sql = vi.fn(() => Object.assign(new Promise(resolve => { resolveRead = resolve; }), { cancel }));
+    mocks.getSql.mockReturnValue(sql);
+    // The first lookup spends most of its budget before starting SQL. The
+    // second request joins the same SQL with a fresh independent deadline.
+    cache.get.mockImplementationOnce(async () => { await new Promise(resolve => setTimeout(resolve, 100)); return null; });
+    const first = cached(NOW, { timeoutMs: 200 });
+    // Both requests must have joined before advancing the earlier deadline.
+    // Polling against real time can start the second request too late under
+    // suite-wide CPU load, which tests scheduling rather than cancellation.
+    await vi.advanceTimersByTimeAsync(100);
+    expect(sql).toHaveBeenCalledOnce();
+    const second = cached(NOW, { timeoutMs: 200 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(cache.get).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(100);
+    expect((await first).sourceHealth.issues[0].code).toBe("event_archive_timeout");
+    expect(cancel).not.toHaveBeenCalled();
+    resolveRead([envelope()]);
+    expect((await second).publicEvents.some(e => e.slug === event().slug)).toBe(true);
+    expect(sql).toHaveBeenCalledOnce(); expect(cancel).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("removes a fully timed-out shared flight so the next cold read can recover", async () => {
+    const cancel = vi.fn();
+    const sql = vi.fn().mockReturnValueOnce(Object.assign(new Promise(() => {}), { cancel })).mockResolvedValue([envelope()]);
+    mocks.getSql.mockReturnValue(sql);
+    const failures = await Promise.all([cached(NOW, { timeoutMs: 100 }), cached(NOW, { timeoutMs: 100 })]);
+    expect(failures.every(result => result.sourceHealth.issues[0].code === "event_archive_timeout")).toBe(true);
+    expect(sql).toHaveBeenCalledOnce(); expect(cancel).toHaveBeenCalledOnce(); expect(cache.set).not.toHaveBeenCalled();
+    expect((await cached(NOW, { timeoutMs: 100 })).sourceHealth.degraded).toBe(false);
+    expect(sql).toHaveBeenCalledTimes(2);
   });
   it("bounds a never-settling cache lookup without starting SQL", async () => {
     const sql = vi.fn(); mocks.getSql.mockReturnValue(sql);

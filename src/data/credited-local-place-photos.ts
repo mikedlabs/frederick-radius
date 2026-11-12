@@ -2,7 +2,195 @@
  * Keep their public source, license and change records when reusing local bytes.
  * This small module is client-safe; it does not import the History collection. */
 export const CREDITED_LOCAL_PLACE_PHOTOS = {
+  // The exact 223 storefront is visible on the right of this dated row view.
+  // Its current Commons credit and date were checked on October 23; this does
+  // not establish current business operations, opening hours or access.
+  "chappelle-co": {
+    file: "209-225 N. Market St. Frederick MD1.jpg",
+    preferLocal: true,
+    objectPosition: "right",
+    review: {
+      captured_on: "2022-11-18",
+      reviewed_on: "2026-10-23",
+      sha256: "c2aa53508b566d5c377636c22d06a787e350613ab0d28178d6f0ec665081fc8f",
+    },
+    image: {
+      src: "/history-photos/ransom-of-frederick.jpg",
+      alt: "Chappelle & Co's storefront at 223 North Market Street, on the right of the photographed row, in November 2022.",
+      creator: "Acroterion",
+      source_url: "https://commons.wikimedia.org/wiki/File:209-225_N._Market_St._Frederick_MD1.jpg",
+      license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
+      modifications: "November 18, 2022 storefront reference. Existing local rendition stored unchanged; display may resize or crop.",
+    },
+  },
+  // One bounded Commons metadata batch and the original rendition bytes were
+  // reviewed together on October 22. These are dated establishing views, not
+  // evidence of current opening hours, service, access or weather.
+  "frederick-station": {
+    file: "Frederick MARC station, July 2015.jpg",
+    preferLocal: true,
+    objectPosition: "center",
+    review: {
+      captured_on: "2015-07-19",
+      reviewed_on: "2026-10-22",
+      sha256: "bbf2d77adbcb5ddb7049661f77582806b9159469da7b341231afa88f5bddeca6",
+    },
+    image: {
+      src: "/place-photos/frederick-marc-station-2015.jpg",
+      alt: "Frederick MARC station, its platform and curving railway tracks, photographed in July 2015.",
+      creator: "Art Anderson",
+      source_url: "https://commons.wikimedia.org/wiki/File:Frederick_MARC_station,_July_2015.jpg",
+      license: { label: "CC BY-SA 3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" },
+      modifications: "July 2015 architectural reference. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+    },
+  },
+  "heritage-frederick": {
+    file: "Loats Orphanage.jpg",
+    preferLocal: true,
+    objectPosition: "center",
+    review: {
+      captured_on: "2009-09-28",
+      reviewed_on: "2026-10-22",
+      sha256: "e78293fb6ad0966b1a6ff80fd2716ce81d51a73be132d4bae5d29e2a4b10321c",
+    },
+    image: {
+      src: "/place-photos/heritage-frederick-exterior-2009.jpg",
+      alt: "Heritage Frederick's historic building at 24 East Church Street, photographed in 2009.",
+      creator: "ZeWrestler",
+      source_url: "https://commons.wikimedia.org/wiki/File:Loats_Orphanage.jpg",
+      license: { label: "CC BY 3.0", url: "https://creativecommons.org/licenses/by/3.0/" },
+      modifications: "Historical exterior, September 2009. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+    },
+  },
+  "thurmont-square-park-thurmont": {
+    file: "Thurmont Town Square Park.jpg",
+    preferLocal: true,
+    objectPosition: "top",
+    review: {
+      captured_on: "2012-05-31",
+      reviewed_on: "2026-10-22",
+      sha256: "600544504046f04b67ae20f2a6078d7bb17cf3947f4c06610397a6a30696b4fe",
+    },
+    image: {
+      src: "/place-photos/thurmont-square-park-2012.jpg",
+      alt: "The town clock, gazebo and planting beds at Thurmont Square Park, photographed in 2012.",
+      creator: "CraigShipp.com Photos - Events / People / Places from Sarasota, FL & Thurmont, MD, USA",
+      source_url: "https://commons.wikimedia.org/wiki/File:Thurmont_Town_Square_Park.jpg",
+      license: { label: "CC BY-SA 2.0", url: "https://creativecommons.org/licenses/by-sa/2.0/" },
+      modifications: "May 2012 park photograph. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+    },
+  },
+  "heritage-farm-park-walkersville": {
+    file: "Harris Farmhouse Walkersville, MD1.jpg",
+    preferLocal: true,
+    objectPosition: "right",
+    review: {
+      captured_on: "2010-04-02",
+      reviewed_on: "2026-10-22",
+      sha256: "420a43367dc690e4fc320149b342ebf45fa969ef5e9211d94e3d8dfdb0924a71",
+    },
+    image: {
+      src: "/place-photos/heritage-farm-park-harris-farmhouse-2010.jpg",
+      alt: "The Harris farmhouse at Walkersville's Heritage Farm Park, photographed in 2010.",
+      creator: "Acroterion",
+      source_url: "https://commons.wikimedia.org/wiki/File:Harris_Farmhouse_Walkersville,_MD1.jpg",
+      license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
+      modifications: "April 2010 exterior photograph. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+    },
+  },
+  "sabor-de-cuba-restaurant-frederick": {
+    file: "Sabor de Cuba 02.jpg",
+    preferLocal: true,
+    // The complete hanging restaurant sign is in the portrait's upper third.
+    objectPosition: "top",
+    review: {
+      captured_on: "2018-04-01",
+      reviewed_on: "2026-10-22",
+      sha256: "fc0d9af140bc841b50961d89aadb46cbdf1c037ec46df625bdadda3ca180d114",
+    },
+    image: {
+      src: "/place-photos/sabor-de-cuba-entrance-2018.jpg",
+      alt: "Sabor de Cuba's hanging restaurant sign and blue awning on East Patrick Street, photographed in 2018.",
+      creator: "Bohemian Baltimore",
+      source_url: "https://commons.wikimedia.org/wiki/File:Sabor_de_Cuba_02.jpg",
+      license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
+      modifications: "April 2018 storefront photograph. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+    },
+  },
+  "francis-scott-key-grave-and-monument": {
+    file: "Francis Scott Key Monument (March 2024).jpg",
+    preferLocal: true,
+    objectPosition: "left",
+    review: {
+      captured_on: "2024-03-02",
+      reviewed_on: "2026-10-22",
+      sha256: "138b07aebb5e16aca7ccf428c84b70c1475a874fc7ed882363b0231c4a3f7f82",
+    },
+    image: {
+      src: "/place-photos/francis-scott-key-monument-2024.jpg",
+      alt: "The Francis Scott Key Monument at Mount Olivet Cemetery in Frederick, photographed in March 2024.",
+      creator: "Engineerchange",
+      source_url: "https://commons.wikimedia.org/wiki/File:Francis_Scott_Key_Monument_(March_2024).jpg",
+      license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
+      modifications: "March 2024 monument photograph. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+    },
+  },
+  "rose-hill-manor-park-museums-frederick": {
+    file: "Rose Hill Manor - Front of Mansion.jpg",
+    preferLocal: true,
+    objectPosition: "center",
+    review: {
+      captured_on: "2019-09-05",
+      reviewed_on: "2026-10-22",
+      sha256: "34f8b85edc496cdfcd765968c639d5c3a03b175127ff0db582b0da1943f09089",
+    },
+    image: {
+      src: "/place-photos/rose-hill-manor-exterior-2019.jpg",
+      alt: "The mansion and columned front porch at Rose Hill Manor in Frederick, photographed in 2019.",
+      creator: "LittleLuckyMd",
+      source_url: "https://commons.wikimedia.org/wiki/File:Rose_Hill_Manor_-_Front_of_Mansion.jpg",
+      license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
+      modifications: "September 2019 exterior photograph. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+    },
+  },
+  "historic-utica-covered-bridge-thurmont": {
+    file: "Utica covered bridge MD1.jpg",
+    preferLocal: true,
+    objectPosition: "right",
+    review: {
+      captured_on: "2022-06-17",
+      reviewed_on: "2026-10-22",
+      sha256: "b794b20d7cf3444786ebe4bdcaf451b9b9ef6608975617035966eee892b2c0a1",
+    },
+    image: {
+      src: "/place-photos/utica-covered-bridge-2022.jpg",
+      alt: "The red Utica Covered Bridge and its timber-framed portal in Frederick County, photographed in 2022.",
+      creator: "Acroterion",
+      source_url: "https://commons.wikimedia.org/wiki/File:Utica_covered_bridge_MD1.jpg",
+      license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
+      modifications: "June 2022 bridge photograph. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+    },
+  },
+  "national-museum-civil-war-medicine-frederick": {
+    file: "National_Museum_of_Civil_War_Medicine_frontage.jpg",
+    preferLocal: true,
+    // The portrait's lower facade contains the museum entrance and sign.
+    objectPosition: "bottom",
+    review: {
+      reviewed_on: "2026-10-22",
+      sha256: "dc82253150252d479cd61b150b9a6498053aa7c7a1ecbeb8ad6bc032776d17c9",
+    },
+    image: {
+      src: "/place-photos/civil-war-medicine-frontage.jpg",
+      alt: "The National Museum of Civil War Medicine facade and entrance at 48 East Patrick Street in Frederick.",
+      creator: "NatMuseCivMed",
+      source_url: "https://commons.wikimedia.org/wiki/File:National_Museum_of_Civil_War_Medicine_frontage.jpg",
+      license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
+      modifications: "Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+    },
+  },
   "schifferstadt-architectural-museum-frederick": {
+    preferLocal: true,
     file: "Schifferstadt_House_and_Architectural_Museum.JPG",
     image: {
       src: "/history-photos/schifferstadt.jpg",
@@ -14,6 +202,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     },
   },
   "hessian-barracks-frederick-maryland": {
+    preferLocal: true,
     file: "Hessian_Barracks_MD1.jpg",
     image: {
       src: "/history-photos/hessian-barracks.jpg",
@@ -25,6 +214,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     },
   },
   "co-canal-lock-30-brunswick": {
+    preferLocal: true,
     file: "C&O_Canal_Lock_30_West_Side_Brunswick_Maryland.jpg",
     image: {
       src: "/history-photos/co-canal.jpg",
@@ -36,6 +226,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     },
   },
   "brewers-alley-frederick": {
+    preferLocal: true,
     file: "Downtown_frederick_maryland.jpg",
     provenance: {
       title: "Brewer's Alley, Frederick",
@@ -54,6 +245,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     },
   },
   "delaplaine-arts-center-frederick": {
+    preferLocal: true,
     "file": "Delaplaine Arts Center Frederick MD1.jpg",
     "review": {
       "captured_on": "2017-04-02",
@@ -75,6 +267,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     }
   },
   "weinberg-center-for-the-arts-frederick": {
+    preferLocal: true,
     "file": "Weinberg Center for the Arts 02.jpg",
     "review": {
       "captured_on": "2018-04-01",
@@ -96,6 +289,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     }
   },
   "c-burr-artz-public-library-frederick": {
+    preferLocal: true,
     "file": "C Burr Artz Public Library viewed from Carroll Creek.jpg",
     "review": {
       "captured_on": "2026-04-11",
@@ -117,6 +311,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     }
   },
   "new-market-historic-district-new-market": {
+    preferLocal: true,
     file: "New_Market_HD_MD1.jpg",
     image: {
       src: "/history-photos/new-market-antiques.jpg",
@@ -128,6 +323,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
     },
   },
   "catoctin-mountain-park": {
+    preferLocal: true,
     file: "Chimney_rock_catoctin.JPG",
     image: {
       src: "/history-photos/catoctin-mountain-park.jpg",
@@ -137,5 +333,336 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       license: { label: "CC0 1.0", url: "https://creativecommons.org/publicdomain/zero/1.0/" },
       modifications: "Resized and converted for display; cards may crop the image responsively.",
     },
+  },
+  // Existing licensed History bytes, visually reviewed for the exact public
+  // identities. These are establishing views, not a current-activity claim.
+  "city-hall-8": {
+    file: "Frederick_City_Hall_MD4.jpg",
+    preferLocal: true,
+    review: {
+      reviewed_on: "2026-10-20",
+      sha256: "dce5b9246b9dffee8ad50bd6417f9919aa0cf36fa8ca7acba0d668b7b6d7b39d",
+    },
+    image: {
+      src: "/history-photos/frederick-county-established.jpg",
+      alt: "Frederick City Hall, the 1862 Italianate brick building that served as the Frederick County Courthouse",
+      creator: "Acroterion",
+      source_url: "https://commons.wikimedia.org/wiki/File:Frederick_City_Hall_MD4.jpg",
+      license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
+      modifications: "Resized and converted for display; cards may crop the image responsively.",
+    },
+  },
+  "mount-st-marys-university-emmitsburg": {
+    file: "UNIV_CHAPEL.jpg",
+    preferLocal: true,
+    review: {
+      reviewed_on: "2026-10-20",
+      sha256: "a8bea45385bd9a1e6a18ff3015db03672c96307cc8fcb7b99f0a5de728ed22ad",
+    },
+    image: {
+      src: "/history-photos/mount-st-marys-founded.jpg",
+      alt: "The stone Gothic Chapel of the Immaculate Conception on the Mount St. Mary's University campus near Emmitsburg, MD",
+      creator: "Steven C. Berger",
+      source_url: "https://commons.wikimedia.org/wiki/File:UNIV_CHAPEL.jpg",
+      license: { label: "CC BY-SA 3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" },
+      modifications: "Resized and converted for display; cards may crop the image responsively.",
+    },
+  },
+  "barbara-fritchie-house-frederick": {
+    file: "Barbara_Fritchie_House,_exterior_(30378964054).jpg",
+    review: {
+      reviewed_on: "2026-10-20",
+      sha256: "e54e4ff55a6e2a98a1e065ccabb4a8a5a253be0b0a1c71d3c89d7f59ba5d3768",
+    },
+    image: {
+      src: "/history-photos/barbara-fritchie-flag.jpg",
+      alt: "Exterior of the Barbara Fritchie House, a brick historic house museum with a white picket fence in downtown Frederick, MD",
+      creator: "Preservation Maryland",
+      source_url: "https://commons.wikimedia.org/wiki/File:Barbara_Fritchie_House,_exterior_(30378964054).jpg",
+      license: { label: "CC BY-SA 2.0", url: "https://creativecommons.org/licenses/by-sa/2.0/" },
+      modifications: "Resized and converted for display; cards may crop the image responsively.",
+    },
+  },
+  // Individually reviewed County-provided images. Written reuse permission was
+  // confirmed by the owner; remaining attachments and source facts stay held.
+  "ballenger-creek-park-frederick": {
+    "file": "county-ballenger-creek-park-frederick.jpg",
+    "preferLocal": true,
+    "objectPosition": "50% 54%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "59bd22ff0b19abb8161050e84f044ded3dc02afc97ce659db19207a851c596b7"
+    },
+    "image": {
+      "src": "/place-photos/county-ballenger-creek-park-frederick.jpg",
+      "alt": "The Ballenger Creek Park entrance sign and landscaped lawn.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/229/attachments/1",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/200/Ballenger-Creek-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "buckeystown-park-frederick": {
+    "file": "county-buckeystown-park-frederick.jpg",
+    "preferLocal": true,
+    "objectPosition": "50% 50%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "a5a9bb7740e334f1fe73815fb6c1af7dce526ca64033420c4981552c9f2bd881"
+    },
+    "image": {
+      "src": "/place-photos/county-buckeystown-park-frederick.jpg",
+      "alt": "The Buckeystown Park entrance sign at 7221 Michaels Mill Road.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/230/attachments/2",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/204/Buckeystown-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "catoctin-creek-park-nature-center-burkittsville": {
+    "file": "county-catoctin-creek-park-nature-center-burkittsville.jpg",
+    "preferLocal": true,
+    "objectPosition": "46% 55%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "9fab2d0a2fc32a9ba13bd364428736f0af161d5623f6f2b82999d33e7257cbcc"
+    },
+    "image": {
+      "src": "/place-photos/county-catoctin-creek-park-nature-center-burkittsville.jpg",
+      "alt": "The entrance sign for Catoctin Creek Park and Nature Center.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/231/attachments/3",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/151/Catoctin-Creek-Nature-Center"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "kemptown-park-new-market": {
+    "file": "county-kemptown-park-new-market.jpg",
+    "preferLocal": true,
+    "objectPosition": "48% 52%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "79d1c89c81bf7284c9b61d9b331083ae7027731fca26823f2e8ae6c6269cd17c"
+    },
+    "image": {
+      "src": "/place-photos/county-kemptown-park-new-market.jpg",
+      "alt": "The Kemptown Park entrance sign at 3456-B Kemptown Church Road.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/237/attachments/9",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/229/Kemptown-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "loys-station-park-thurmont": {
+    "file": "county-loys-station-park-thurmont.jpg",
+    "preferLocal": true,
+    "objectPosition": "65% 50%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "d92c89cc5572bdfe2d00eb2d0622e1599066f8e877ec8c64c50836a576370cc9"
+    },
+    "image": {
+      "src": "/place-photos/county-loys-station-park-thurmont.jpg",
+      "alt": "The Loys Station Park entrance sign with its red covered bridge behind it.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/239/attachments/11",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/234/Loys-Station-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "middletown-park-middletown": {
+    "file": "county-middletown-park-middletown.jpg",
+    "preferLocal": true,
+    "objectPosition": "50% 52%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "130e058963bcc74c0842919b06751ee751aeafd678d9c9202d01c46247114d1e"
+    },
+    "image": {
+      "src": "/place-photos/county-middletown-park-middletown.jpg",
+      "alt": "The Middletown Park entrance sign beside a tree-lined path.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/240/attachments/12",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/240/Middletown-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "othello-regional-park-brunswick": {
+    "file": "county-othello-regional-park-brunswick.jpg",
+    "preferLocal": true,
+    "objectPosition": "50% 50%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "291b671dc03040e50da4c3eec81a6de7610213d5e30108a7051e592407cb5d77"
+    },
+    "image": {
+      "src": "/place-photos/county-othello-regional-park-brunswick.jpg",
+      "alt": "The Othello Regional Park entrance sign at 1901A Jefferson Pike.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/242/attachments/14",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/705/Othello-Regional-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "pinecliff-park-frederick": {
+    "file": "county-pinecliff-park-frederick.jpg",
+    "preferLocal": true,
+    "objectPosition": "50% 50%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "2ee6aea289ed41989b0710c31272003b56b791b6aa694827d82068ce5e3476e9"
+    },
+    "image": {
+      "src": "/place-photos/county-pinecliff-park-frederick.jpg",
+      "alt": "The Pinecliff Park entrance sign among trees and lawn.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/243/attachments/15",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/255/Pinecliff-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "point-of-rocks-community-commons-park-brunswick": {
+    "file": "county-point-of-rocks-community-commons-park-brunswick.jpg",
+    "preferLocal": true,
+    "objectPosition": "50% 53%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "8a4230b49673af46462fc231e8809f12fcd0da401402eb3ebf43de17c80bc573"
+    },
+    "image": {
+      "src": "/place-photos/county-point-of-rocks-community-commons-park-brunswick.jpg",
+      "alt": "The Point of Rocks Community Commons Park sign at 3700 Commerce Street.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/245/attachments/17",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/704/Point-of-Rocks-Community-Commons-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "utica-park-walkersville": {
+    "file": "county-utica-park-walkersville.jpg",
+    "preferLocal": true,
+    "objectPosition": "50% 52%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "3d9270db8f9dc5bcdd2e1ceaa9d7993bf89aa27e83c9f8b7dc61ea026cb3c4b0"
+    },
+    "image": {
+      "src": "/place-photos/county-utica-park-walkersville.jpg",
+      "alt": "The Utica District Park entrance sign and roadside planting.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/251/attachments/23",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/276/Utica-District-Park"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "fountain-rock-nature-center-walkersville": {
+    "file": "county-fountain-rock-nature-center-walkersville.jpg",
+    "preferLocal": true,
+    "objectPosition": "52% 48%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "cf9ac28dbb56ea8bb04f33d9a0d44c64bd8fc1378e717169130c2b22807b3378"
+    },
+    "image": {
+      "src": "/place-photos/county-fountain-rock-nature-center-walkersville.jpg",
+      "alt": "The Fountain Rock Nature Center entrance, brick walkway and surrounding trees.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/258/attachments/30",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/294/Fountain-Rock-Park-Nature-Center"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "thurmont-recreation-center-thurmont": {
+    "file": "county-thurmont-recreation-center-thurmont.jpg",
+    "preferLocal": true,
+    "objectPosition": "right",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "215d5947c6b252fe92be02e986253b0e505e7355bc5b594f40290e619dc4e01e"
+    },
+    "image": {
+      "src": "/place-photos/county-thurmont-recreation-center-thurmont.jpg",
+      "alt": "The blue-canopied entrance to Thurmont Recreation Center.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/265/attachments/37",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/398/Thurmont-Recreation-Center"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "walkersville-recreation-center-walkersville": {
+    "file": "county-walkersville-recreation-center-walkersville.jpg",
+    "preferLocal": true,
+    "objectPosition": "right",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "27d3ec60654a371746a7658883850cc6f4845943e9669ac7176c91b91f575eaa"
+    },
+    "image": {
+      "src": "/place-photos/county-walkersville-recreation-center-walkersville.jpg",
+      "alt": "The Walkersville Recreation Center entrance and wall sign.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/268/attachments/40",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://www.recreater.com/274/Walkersville-Recreation-Center"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
+  },
+  "brunswick-recreation-center-brunswick": {
+    "file": "county-brunswick-recreation-center-brunswick.jpg",
+    "preferLocal": true,
+    "objectPosition": "35% 55%",
+    "review": {
+      "reviewed_on": "2026-10-24",
+      "sha256": "d66f657b972e9f62f11e1b1beb668229f7f20a97447637462ee852feb61e10d0"
+    },
+    "image": {
+      "src": "/place-photos/county-brunswick-recreation-center-brunswick.jpg",
+      "alt": "The Brunswick Recreation Center sign and entrance at Door 2.",
+      "creator": "Frederick County Parks & Recreation",
+      "source_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/430/attachments/207",
+      "license": {
+        "label": "Used with permission",
+        "url": "https://recreater.com/951/Brunswick-Recreation-Center"
+      },
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+    }
   },
 } as const;

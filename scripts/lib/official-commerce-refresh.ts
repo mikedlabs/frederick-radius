@@ -264,6 +264,28 @@ export function filterCommerceLinksForPlace(
   if (!postalCode || !/^\d{5}$/.test(postalCode)) return links;
   return links.filter((link) => {
     let value = link.url;
+    if (link.type === "menu") {
+      try {
+        const comparison = new URL(value);
+        const segments = comparison.pathname.split("/");
+        const filename = decodeURIComponent(segments.at(-1) ?? "");
+        if (/\.pdf$/i.test(filename)) {
+          // Long hexadecimal asset IDs are not location ZIP evidence. Ignore
+          // only those filename tokens; parent paths and queries stay intact.
+          const postalFilename = filename.replace(
+            /(^|[^a-z0-9])[a-f0-9]{16,}(?=[^a-z0-9]|$)/gi,
+            "$1opaque-asset",
+          );
+          if (postalFilename !== filename) {
+            segments[segments.length - 1] = postalFilename;
+            comparison.pathname = segments.join("/");
+            value = comparison.toString();
+          }
+        }
+      } catch {
+        // Keep the existing literal-URL fallback for malformed encodings.
+      }
+    }
     try {
       value = decodeURIComponent(value);
     } catch {

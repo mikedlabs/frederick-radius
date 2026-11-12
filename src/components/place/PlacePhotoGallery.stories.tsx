@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PlaceCardPhotoCredit } from "./PlaceCardPhoto";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
-import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
+import { getOwnedPlacePhoto, getOwnedPlacePhotos } from "@/lib/owned-place-photos";
 import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import type { PlaceCardPhotoSource } from "@/lib/place-card-photo";
 import { PlacePhotoGalleryView } from "./PlacePhotoGallery";
@@ -46,12 +46,40 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+export const ReviewedOwnerLibraryPhotos: Story = {
+  args: { sources: getOwnedPlacePhotos("visitation-hotel"), name: "Visitation Hotel" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(document.body);
+    const opener = canvas.getByRole("button", { name: "View Visitation Hotel photo 2" });
+    const thumbnail = opener.querySelector<HTMLImageElement>("img")!;
+    await thumbnail.decode();
+    await expect(thumbnail.naturalWidth).toBeGreaterThan(1);
+    const box = opener.getBoundingClientRect();
+    await expect(box.width).toBeGreaterThanOrEqual(44);
+    await expect(box.height).toBeGreaterThanOrEqual(44);
+    const previousState = window.history.state;
+    await userEvent.click(opener);
+    const viewer = await body.findByRole("dialog", { name: "Photo viewer" });
+    await waitFor(() => expect(viewer).toHaveFocus());
+    await expect(viewer).toHaveAttribute("data-lightbox-photo-source", "owned");
+    const image = within(viewer).getByRole("img") as HTMLImageElement;
+    await image.decode();
+    await expect(image.naturalWidth).toBeGreaterThan(1);
+    await expect(viewer.querySelector("[data-lightbox-photo-credit]")).toBeNull();
+    await userEvent.click(within(viewer).getByRole("button", { name: "Close photo" }));
+    await waitFor(() => expect(body.queryByRole("dialog", { name: "Photo viewer" })).toBeNull());
+    await waitFor(() => expect(window.history.state).toEqual(previousState));
+    await waitFor(() => expect(opener).toHaveFocus());
+  },
+};
+
 export const LateThumbnailFailureKeepsViewerAndNativeBack: Story = {
   render: () => <GalleryFixture />,
   play: async ({ canvasElement }) => {
     const originalHref = window.location.href;
     const originalState = window.history.state;
-    const originalOverflow = document.body.style.overflow;
+    const originalOverflow = document.documentElement.style.overflowY;
     const canvas = within(canvasElement);
     const body = within(document.body);
     const fixture = canvasElement.querySelector<HTMLElement>("[data-gallery-lifecycle-fixture]")!;
@@ -92,6 +120,7 @@ export const LateThumbnailFailureKeepsViewerAndNativeBack: Story = {
       await waitFor(() => expect(viewer).toHaveFocus());
       const viewerState = window.history.state;
       await expect(viewerState?.__frederickRadiusLayer).toMatch(/^photo:/);
+      await expect(document.documentElement.style.overflowY).toBe("hidden");
       fixture.dataset.releaseGalleryFailures = "true";
       thumbnail.dispatchEvent(new Event("error"));
       await waitFor(() => expect(canvas.queryByRole("heading", { name: "Photos" })).toBeNull());
@@ -112,7 +141,7 @@ export const LateThumbnailFailureKeepsViewerAndNativeBack: Story = {
       await waitFor(() => expect(body.queryByRole("dialog", { name: "Photo viewer" })).toBeNull());
       await waitFor(() => expect(window.history.state).toEqual(originalState));
       await expect(window.location.href).toBe(originalHref);
-      await expect(document.body.style.overflow).toBe(originalOverflow);
+      await waitFor(() => expect(document.documentElement.style.overflowY).toBe(originalOverflow));
       await expect(canvas.getByRole("heading", { name })).toBeVisible();
       await expect(canvas.getByText("Carroll Creek, Frederick, MD")).toBeVisible();
     } finally {
@@ -120,8 +149,8 @@ export const LateThumbnailFailureKeepsViewerAndNativeBack: Story = {
       if (remaining) await userEvent.click(remaining);
       delete fixture.dataset.releaseGalleryFailures;
       // Cleanup is separate from the history equality assertions above.
+      // The viewer releases its own counted page lock when it unmounts.
       window.history.replaceState(originalState, "", originalHref);
-      document.body.style.overflow = originalOverflow;
     }
   },
 };

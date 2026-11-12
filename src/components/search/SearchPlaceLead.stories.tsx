@@ -9,6 +9,7 @@ const destinations = {
   schifferstadt: { slug: "schifferstadt-architectural-museum-frederick", name: "Schifferstadt Architectural Museum", where: "Museums · Frederick City" },
   lock30: { slug: "co-canal-lock-30-brunswick", name: "C&O Canal Lock 30", where: "Parks · Brunswick" },
   barracks: { slug: "hessian-barracks-frederick-maryland", name: "Hessian Barracks Frederick Maryland", where: "Civic · Frederick City" },
+  museum: { slug: "national-museum-civil-war-medicine-frederick", name: "National Museum of Civil War Medicine", where: "Museums · Frederick City" },
 };
 function LeadWorkshop({ destination = "schifferstadt", width = 358 }: { destination?: keyof typeof destinations; width?: number }) {
   const place = destinations[destination];
@@ -67,9 +68,10 @@ const usableLead: NonNullable<Story["play"]> = async ({ canvasElement, args }) =
     await expect(frame.width).toBeGreaterThanOrEqual(300);
     await expect(header.width).toBeGreaterThanOrEqual(300);
   } else {
-    // A narrow result stays stacked even in a wide workshop viewport.
+    // A narrow result stays stacked even in a wide workshop viewport. Plain
+    // tool: the stacked photograph is a 16:10 frame at the column width.
+    await expect(Math.abs(frame.height - frame.width / 1.6)).toBeLessThanOrEqual(1);
     await expect(frame.height).toBeGreaterThanOrEqual(150);
-    await expect(frame.height).toBeLessThanOrEqual(180);
     await expect(header.top).toBeGreaterThanOrEqual(frame.bottom);
     await expect(frame.width).toBe(leadBounds.width);
   }
@@ -110,6 +112,13 @@ export const WidePlace900: Story = {
   play: usableLead,
 };
 export const ExactPlace320: Story = { args: { width: 288, destination: "lock30" }, play: usableLead };
+export const MuseumEntrance320: Story = {
+  args: { width: 288, destination: "museum" },
+  play: async context => {
+    await usableLead(context);
+    await expect(getComputedStyle(context.canvasElement.querySelector("img")!).objectPosition).toBe("50% 100%");
+  },
+};
 export const EnlargedText320: Story = {
   args: { width: 288, destination: "barracks" },
   beforeEach: () => {
@@ -131,5 +140,12 @@ export const FailedPhotoKeepsPlaceAndActions: Story = {
     await expect(canvas.getByRole("heading", { name: destinations.schifferstadt.name })).toBeVisible();
     await expect(canvas.getByRole("link", { name: "View place" })).toHaveAttribute("href", `/places/${destinations.schifferstadt.slug}`);
     await expect(canvas.getByRole("link", { name: /^Map$/ })).toBeVisible();
+    // Without a photo the actions start under the title, not at the gutter,
+    // and the glyph stays top-aligned beside the text column like a row's.
+    const glyph = canvasElement.querySelector<HTMLElement>("[data-search-place-photo-state='glyph']")!;
+    const column = glyph.nextElementSibling!.getBoundingClientRect();
+    const firstAction = canvas.getByRole("link", { name: "View place" }).getBoundingClientRect();
+    await expect(Math.abs(firstAction.left - column.left)).toBeLessThanOrEqual(1);
+    await expect(Math.abs(glyph.getBoundingClientRect().top - column.top)).toBeLessThanOrEqual(1);
   },
 };

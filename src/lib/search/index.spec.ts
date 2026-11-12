@@ -455,3 +455,110 @@ it("serializes compact canonical event evidence without a photo or fabricated pl
   const unresolved = searchIndex(candidate.title, 12, [{ ...candidate, placement: "needs_review" }]).find(result => result.id === `event:${candidate.slug}`);
   if (unresolved) expect(unresolved.event).not.toHaveProperty("point");
 });
+
+
+describe("exact eligible places before incidental map layers", () => {
+  it.each([
+    ["Sophie & Madigan's Playground", "sophie-madigans-playground-frederick"],
+    ["Sophie & Madigan’s Playground", "sophie-madigans-playground-frederick"],
+    ["Edward P Thomas Memorial Pool Playground", "edward-p-thomas-memorial-pool-playground"],
+  ])("leads a complete %s name before generic park doors at one-result and normal limits", (query, slug) => {
+    for (const limit of [1, 12]) {
+      for (const results of [searchIndex(query, limit, []), qualifiedSearchIndex(query, limit, [], { municipality: "frederick" }).results]) {
+        expect(results[0]).toMatchObject({ type: "place", id: `place:${slug}`, href: `/places/${slug}` });
+        expect(results.length).toBeLessThanOrEqual(limit);
+        expect(new Set(results.map((result) => result.href)).size).toBe(results.length);
+        if (limit > 1) expect(results.some((result) => result.id === "action:map-parks")).toBe(true);
+      }
+    }
+  });
+
+  it.each(["park", "parks", "playground", "playgrounds", "dog park", "public parks", "county parks"])("keeps the generic %s map shortcut even when a listing has that generic name", (query) => {
+    for (const results of [searchIndex(query, 12, []), qualifiedSearchIndex(query, 12, []).results]) {
+      expect(results[0]?.id).toBe("action:map-parks");
+    }
+  });
+
+  it("cannot restore an out-of-scope, hours-filtered or event-kind playground result", () => {
+    const name = "Sophie & Madigan's Playground", id = "place:sophie-madigans-playground-frederick";
+    const town = qualifiedSearchIndex(name, 12, [], { municipality: "brunswick" });
+    expect(town.results.some((result) => result.id === id)).toBe(false);
+    expect(town.results[0]?.href).toContain("in=brunswick");
+    const playground = placeLoader.clientPlaces().find((place) => `place:${place.slug}` === id)!;
+    for (const state of ["unknown", "closed"] as const) {
+      const mock = vi.spyOn(placeLoader, "clientPlaces").mockReturnValue([
+        { ...playground, hours: undefined, hours_verified: false, open_status: { state } },
+      ]);
+      try {
+        const open = qualifiedSearchIndex(`${name} open now`, 12, []);
+        expect(open.meta.qualifiers.openNow).toBe(true);
+        expect(open.results.some((result) => result.id === id)).toBe(false);
+      } finally { mock.mockRestore(); }
+    }
+    const events = qualifiedSearchIndex(name, 12, [], { resultKind: "event" });
+    expect(events.results.some((result) => result.type === "place")).toBe(false);
+    expect(searchIndex(`show ${name} on the map`, 12, [])[0]?.id).toBe("action:map-parks");
+  });
+
+  it.each([
+    ["National Museum of Civil War Medicine", "national-museum-civil-war-medicine-frederick"],
+    ["Schifferstadt Architectural Museum", "schifferstadt-architectural-museum-frederick"],
+  ])("does not turn the complete %s name into an art-category expansion", (query, slug) => {
+    const { results, meta } = qualifiedSearchIndex(query, 12, []);
+    expect(results[0]?.id).toBe(`place:${slug}`);
+    expect(meta.qualifiers).toMatchObject({ categoryKey: null, categoryLabel: null, constrained: false });
+    expect(qualifiedSearchIndex(query, 12, [], { municipality: "brunswick" }).results.some(row => row.id === `place:${slug}`)).toBe(false);
+  });
+
+  it("keeps same-name branches available and scoped instead of arbitrarily pinning the first slug", () => {
+    const base = placeLoader.clientPlaces()[0];
+    const branches = ["frederick", "brunswick"].map(municipality => ({ ...base,
+      slug: `sample-cafe-${municipality}`, name: "Sample Cafe", municipality, category: "coffee",
+    }));
+    const mock = vi.spyOn(placeLoader, "clientPlaces").mockReturnValue(branches);
+    try {
+      const county = qualifiedSearchIndex("Sample Cafe", 12, []);
+      expect(county.meta.qualifiers.namedPlaceSlug).toBeNull();
+      expect(county.results.filter(row => row.type === "place").map(row => row.id).sort())
+        .toEqual(branches.map(place => `place:${place.slug}`).sort());
+      const town = qualifiedSearchIndex("Sample Cafe", 12, [], { municipality: "brunswick" });
+      expect(town.results.filter(row => row.type === "place").map(row => row.id)).toEqual(["place:sample-cafe-brunswick"]);
+    } finally { mock.mockRestore(); }
+  });
+
+  it.each([
+    ["Baker Park", "baker-park-frederick"],
+    ["Baker Park Bandshell", "baker-park-bandshell"],
+  ])("leads %s with its own canonical destination at normal and one-result limits", (query, slug) => {
+    for (const limit of [1, 12]) {
+      for (const results of [searchIndex(query, limit, []), qualifiedSearchIndex(query, limit, []).results]) {
+        expect(results[0]).toMatchObject({ id: `place:${slug}`, href: `/places/${slug}` });
+        expect(results.length).toBeLessThanOrEqual(limit);
+        expect(new Set(results.map((row) => row.href)).size).toBe(results.length);
+        if (limit > 1) expect(results.some((row) => row.id === "layer:parks")).toBe(true);
+      }
+    }
+  });
+
+  it("does not move a filtered-out Frederick place into Brunswick results", () => {
+    const { results, meta } = qualifiedSearchIndex("Baker Park Bandshell", 12, [], { municipality: "brunswick" });
+    expect(meta.scopeMunicipality).toBe("brunswick");
+    expect(results.some((row) => row.id === "place:baker-park-bandshell")).toBe(false);
+    expect(results[0]?.id).toBe("layer:parks");
+  });
+
+  it("retains an explicit event-kind search and a same-named scheduled event", () => {
+    const event: Event = {
+      slug: "baker-park-bandshell-event", title: "Baker Park Bandshell", description: "A scheduled community gathering.",
+      starts_at: "2099-07-15T23:00:00Z", ends_at: "2099-07-16T01:00:00Z", timezone: "America/New_York",
+      venue_name: "Baker Park Bandshell", address: "Frederick, MD", geom: { lng: -77.417, lat: 39.416 },
+      municipality: "frederick", category: "community", audience: [], is_free: true, source: "manual", is_verified: true,
+    };
+    const explicit = qualifiedSearchIndex(event.title, 12, [event], { resultKind: "event" }).results;
+    expect(explicit.some((row) => row.type === "place")).toBe(false);
+    expect(explicit).toContainEqual(expect.objectContaining({ id: `event:${event.slug}` }));
+    const mixed = qualifiedSearchIndex(event.title, 12, [event]).results;
+    expect(mixed[0]?.id).toBe("place:baker-park-bandshell");
+    expect(mixed).toContainEqual(expect.objectContaining({ id: `event:${event.slug}` }));
+  });
+});

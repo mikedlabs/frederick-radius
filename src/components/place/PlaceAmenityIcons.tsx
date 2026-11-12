@@ -1,131 +1,71 @@
 /**
- * PlaceAmenityIcons — Waze-style horizontal amenity icon row.
+ * PlaceAmenityIcons: the "What you'll find" list on a place page.
  *
- * Replaces the text-pill amenity list with iconography. A reader's
- * eye lands on three rows of icons in milliseconds — far faster than
- * scanning "Outdoor seating · Dog friendly · Wheelchair accessible."
- * The detail page's busiest section becomes its quietest.
- *
- * Visual register
- *   Each amenity gets a 36px circle with a tinted bg in the brand
- *   family + a 18px stroke icon. Below each, a tiny 10px caption so
- *   the icon never has to do the work alone (mobile thumbs are bad
- *   at long-press for tooltips). The row wraps onto multiple lines
- *   on narrow viewports rather than scrolling — every amenity should
- *   be visible without panning.
+ * A plain two-column checklist (one column on a 320px phone). Each line is a
+ * small check glyph in the Forest text color, the terrain and positive cue,
+ * followed by the amenity name in 15px ink, left-aligned. The labels carry
+ * the meaning; the glyph only marks the line as something the place has.
  *
  * Coverage
- *   We map the curated amenity slugs from src/data/places-overrides.json
- *   and the seed data. Unknown slugs fall through to a neutral
- *   placeholder so a new amenity slug doesn't break the page; it just
- *   gets a quiet "(slug)" rendering until someone adds an icon mapping.
+ *   Curated amenity slugs from src/data/places-overrides.json and the seed
+ *   data map to short labels. An unknown slug falls back to a humanized form
+ *   of the slug itself, so a new amenity never breaks the page.
  */
-import {
-  Wifi,
-  Trees,
-  Dog,
-  ParkingCircle,
-  Bike,
-  Sun,
-  Music,
-  ShoppingBag,
-  Truck,
-  CalendarClock,
-  Wine,
-  Accessibility,
-  CheckCircle2,
-  type LucideIcon,
-} from "lucide-react";
-import RestroomMark from "@/components/icons/RestroomMark";
+import { Check } from "lucide-react";
+import PlaceSectionLabel from "./PlaceSectionLabel";
 
-type AmenityMeta = {
-  /** Lucide icon component. */
-  icon: LucideIcon;
-  /** Short label for the caption under each icon. ≤12 chars to fit. */
-  label: string;
+// Slug to label. Keeping the slugs as the canonical key means a slug rename
+// in the data file is the only place a change needs to land.
+const AMENITY_LABEL: Record<string, string> = {
+  wifi: "Wi-Fi",
+  "outdoor-seating": "Outdoor",
+  "dog-friendly": "Dogs OK",
+  "parking-lot": "Parking",
+  "bike-rack": "Bike",
+  restroom: "Restroom",
+  patio: "Patio",
+  "live-music": "Live music",
+  takeout: "Takeout",
+  delivery: "Delivery",
+  reservations: "Reservations",
+  byob: "BYOB",
+  accessible: "Accessible",
 };
 
-// Slug → icon + caption. Sourced from the place data's `amenities`
-// arrays and prettyAmenity()'s existing map. Keeping the slugs as
-// the canonical key means a slug rename in the data file is the only
-// place a change needs to land.
-const AMENITY_META: Record<string, AmenityMeta> = {
-  wifi: { icon: Wifi, label: "Wi-Fi" },
-  "outdoor-seating": { icon: Trees, label: "Outdoor" },
-  "dog-friendly": { icon: Dog, label: "Dogs OK" },
-  "parking-lot": { icon: ParkingCircle, label: "Parking" },
-  "bike-rack": { icon: Bike, label: "Bike" },
-  restroom: { icon: RestroomMark, label: "Restroom" },
-  patio: { icon: Sun, label: "Patio" },
-  "live-music": { icon: Music, label: "Live music" },
-  takeout: { icon: ShoppingBag, label: "Takeout" },
-  delivery: { icon: Truck, label: "Delivery" },
-  reservations: { icon: CalendarClock, label: "Reservations" },
-  byob: { icon: Wine, label: "BYOB" },
-  accessible: { icon: Accessibility, label: "Accessible" },
-};
-
-function metaFor(slug: string): AmenityMeta {
+export function amenityLabel(slug: string): string {
   return (
-    AMENITY_META[slug] ?? {
-      icon: CheckCircle2,
-      // Best-effort caption from the slug itself; humanized.
-      label: slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-    }
+    AMENITY_LABEL[slug] ??
+    // Best-effort label from the slug itself; humanized.
+    slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
   );
 }
 
 export default function PlaceAmenityIcons({
   amenities,
-  accent = "var(--app-brand)",
 }: {
   /** Curated amenity slugs from the place record. Empty arrays should
-   *  cause the parent to skip rendering this component — we still
-   *  return null defensively. */
+   *  cause the parent to skip rendering this component; it still returns
+   *  null defensively. */
   amenities: readonly string[];
-  /** Icon tint. Defaults to brand brick; pass a category color when
-   *  the parent wants the row to match the place's category accent. */
-  accent?: string;
 }) {
   if (!amenities || amenities.length === 0) return null;
   return (
-    <section aria-label="Amenities">
-      <h2 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>
+    <section aria-labelledby="place-amenities-heading" className="space-y-2">
+      <PlaceSectionLabel id="place-amenities-heading">
         What you&rsquo;ll find
-      </h2>
-      <ul
-        // grid-cols layout instead of a wrapped flex row keeps every
-        // tile the same width — the labels under the icons align
-        // cleanly across rows regardless of label length.
-        className="grid grid-cols-4 gap-x-2 gap-y-3 sm:grid-cols-6"
-      >
-        {amenities.map((slug) => {
-          const m = metaFor(slug);
-          const Icon = m.icon;
-          return (
-            <li
-              key={slug}
-              className="flex flex-col items-center gap-1"
-            >
-              <span
-                aria-hidden
-                className="grid h-9 w-9 place-items-center rounded-full"
-                style={{
-                  background: `color-mix(in srgb, ${accent} 14%, transparent)`,
-                  color: accent,
-                }}
-              >
-                <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
-              </span>
-              <span
-                className="text-center text-[11px] font-semibold leading-tight tracking-tight"
-                style={{ color: "var(--app-ink-2)" }}
-              >
-                {m.label}
-              </span>
-            </li>
-          );
-        })}
+      </PlaceSectionLabel>
+      <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 max-[359px]:grid-cols-1">
+        {amenities.map((slug) => (
+          <li key={slug} className="flex min-w-0 items-start gap-2 text-[15px] leading-snug" style={{ color: "var(--app-ink)" }}>
+            <Check
+              aria-hidden
+              className="mt-[3px] h-4 w-4 shrink-0"
+              strokeWidth={2.25}
+              style={{ color: "var(--app-forest-text)" }}
+            />
+            <span className="min-w-0">{amenityLabel(slug)}</span>
+          </li>
+        ))}
       </ul>
     </section>
   );

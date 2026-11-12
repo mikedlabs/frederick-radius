@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import PageBloom from "@/components/ui/PageBloom";
 import SubmitForm from "./SubmitForm";
 
 /**
@@ -24,7 +23,6 @@ export const metadata: Metadata = {
 export default function DearFrederickSubmitPage() {
   return (
     <div className="relative space-y-6">
-      <PageBloom variant="warm-cool" />
 
       <header className="max-w-[42rem] space-y-3">
         <h1 className="display-1 font-editorial" style={{ color: "var(--app-ink)" }}>

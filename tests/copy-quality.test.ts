@@ -9,6 +9,7 @@ import { classifyDescription } from "../src/lib/copy-quality";
 import DESCRIPTIONS_RAW from "../src/data/descriptions.json" with { type: "json" };
 import PLACES_RAW from "../src/data/places-client.json" with { type: "json" };
 import SCORES from "../src/data/copy-scores.json" with { type: "json" };
+import { buildCopyScorecard, parseCopyScorecard } from "../scripts/lib/copy-scorecard";
 import {
   publicPlaces,
   type PlaceCardData,
@@ -85,16 +86,62 @@ test("committed copy scorecard matches the current dataset", () => {
     auto_clean: 0,
     reviewed: 0,
   };
+  const bySlug: Record<string, string> = {};
   for (const place of places) {
-    actual[classifyDescription(
+    const quality = classifyDescription(
       place.name,
       place.short_blurb,
       Boolean(place.description_reviewed),
-    )]++;
+    );
+    actual[quality]++;
+    bySlug[place.slug] = quality;
   }
   assert.deepEqual(committed, actual, "run npm run copy:scores after place or copy changes");
+  assert.deepEqual(SCORES.bySlug, bySlug, "copy scorecard must match exact classified membership, not just totals");
   const share = actual.scraped / places.length;
   console.log(`dataset: ${actual.scraped}/${places.length} scraped (${(share * 100).toFixed(1)}%)`);
+});
+
+test("routine scorecard computation preserves its clock and bytes for unchanged classifications", () => {
+  const places = [{ slug: "a", name: "A", short_blurb: "" }, { slug: "b", name: "B", short_blurb: "" }];
+  const previous = buildCopyScorecard(places, undefined, new Date("2026-10-31T12:00:00Z"));
+  const next = buildCopyScorecard([...places].reverse(), previous, new Date("2026-11-01T12:00:00Z"));
+  assert.equal(next, previous);
+  assert.equal(JSON.stringify(next), JSON.stringify(previous));
+});
+
+test("equal-count seasonal membership swaps require a newly computed exact scorecard", () => {
+  const before = [{ slug: "summer", name: "Summer", short_blurb: "" }];
+  const previous = buildCopyScorecard(before, undefined, new Date("2026-10-31T12:00:00Z"));
+  const next = buildCopyScorecard([{ slug: "winter", name: "Winter", short_blurb: "" }], previous, new Date("2026-11-01T12:00:00Z"));
+  assert.deepEqual(next.counts, previous.counts);
+  assert.deepEqual(next.bySlug, { winter: "none" });
+  assert.equal(next.computed_at, "2026-11-01T12:00:00.000Z");
+  assert.notEqual(next, previous);
+});
+
+test("duplicate scorecard identities cannot be silently collapsed", () => {
+  const place = { slug: "duplicate", name: "Duplicate", short_blurb: "" };
+  assert.throws(() => buildCopyScorecard([place, place]), /Duplicate copy-scorecard identity/);
+});
+
+test("corrupt or malformed derived scores rebuild from the current classified catalog", () => {
+  const places = [{ slug: "current", name: "Current", short_blurb: "" }];
+  for (const source of ['{"computed_at":', "null", "[]", JSON.stringify({ computed_at: "2026-10-31T12:00:00Z", counts: {}, bySlug: {} })]) {
+    const previous = parseCopyScorecard(source);
+    assert.equal(previous, undefined);
+    const repaired = buildCopyScorecard(places, previous, new Date("2026-11-01T12:00:00Z"));
+    assert.deepEqual(repaired.bySlug, { current: "none" });
+    assert.equal(repaired.computed_at, "2026-11-01T12:00:00.000Z");
+  }
+});
+
+test("valid cached classifications keep their original computation clock", () => {
+  const places = [{ slug: "current", name: "Current", short_blurb: "" }];
+  const original = buildCopyScorecard(places, undefined, new Date("2026-10-31T12:00:00Z"));
+  const previous = parseCopyScorecard(JSON.stringify(original));
+  assert.deepEqual(previous, original);
+  assert.equal(buildCopyScorecard(places, previous, new Date("2026-11-01T12:00:00Z")), previous);
 });
 
 test("every committed approval passes the public loader trust boundary", () => {
@@ -113,4 +160,28 @@ test("every committed approval passes the public loader trust boundary", () => {
     [],
     "approved entries must be safe, sourced, documented, and loadable",
   );
+});
+
+
+test("noncanonical cached computation clocks are rejected instead of preserved", () => {
+  const places = [{ slug: "current", name: "Current", short_blurb: "" }];
+  const canonical = buildCopyScorecard(places, undefined, new Date("2026-10-31T12:00:00Z"));
+  for (const clock of ["1", "2026-10-31", "2026-10-31T12:00:00Z", "2026-10-31T12:00:00.000+00:00", "2026-02-30T12:00:00.000Z", "", "not-a-date"]) {
+    const previous = { ...canonical, computed_at: clock };
+    assert.equal(parseCopyScorecard(JSON.stringify(previous)), undefined, clock);
+    const rebuilt = buildCopyScorecard(places, previous, new Date("2026-11-01T12:00:00Z"));
+    assert.notEqual(rebuilt, previous, clock);
+    assert.equal(rebuilt.computed_at, "2026-11-01T12:00:00.000Z", clock);
+    assert.deepEqual(rebuilt.counts, canonical.counts);
+    assert.deepEqual(rebuilt.bySlug, canonical.bySlug);
+  }
+});
+
+test("canonical cached computation clocks retain their exact original bytes", () => {
+  const places = [{ slug: "current", name: "Current", short_blurb: "" }];
+  const original = buildCopyScorecard(places, undefined, new Date("2026-10-31T12:00:00.123Z"));
+  const parsed = parseCopyScorecard(JSON.stringify(original));
+  assert.deepEqual(parsed, original);
+  assert.equal(buildCopyScorecard(places, parsed, new Date("2026-11-01T12:00:00Z")), parsed);
+  assert.equal(JSON.stringify(parsed), JSON.stringify(original));
 });

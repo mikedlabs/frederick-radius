@@ -1,7 +1,8 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { Event, EventHeroImageAttribution } from "@/data/events";
 import { approvedVenueFeedImage, STEINHARDT_EVENT_ART } from "@/lib/events/feed-image";
-import { getOwnedPlacePhoto, type OwnedPlacePhoto } from "@/lib/owned-place-photos";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
+import type { WikimediaPhoto } from "@/lib/integrations/wikimedia";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 
 export type EventPhotoLicenseCredit = {
@@ -30,8 +31,8 @@ export type EventCardVisual = {
   caption: string;
   /** Unclassified publisher art stays intact; only verified photos may crop. */
   presentation: "artwork" | "photo";
-  /** Exact reviewed owned-photo framing; never inferred from event artwork. */
-  objectPosition?: NonNullable<OwnedPlacePhoto["objectPosition"]>;
+  /** Exact reviewed photo framing; never inferred from event artwork. */
+  objectPosition?: NonNullable<WikimediaPhoto["objectPosition"]>;
   /** Stable identity used to avoid repeating the same photograph in a group. */
   key: string;
   /** Present when the image is a credited Google Maps photograph of a venue. */
@@ -46,26 +47,32 @@ type EventVisualSource = Pick<Event,
   "source" | "source_url" | "hero_image" | "hero_image_attribution" | "venue_place_slug"
 >;
 
-const VENUE_VISUALS: Readonly<Record<string, EventCardVisual>> = {
+// Preserve the established recovery keys and venue labels while the reviewed
+// owned registry remains the only source of image bytes for these venues.
+const VENUE_VISUALS: Readonly<Record<string, Pick<EventCardVisual, "caption" | "key" | "presentation">>> = {
   "carroll-creek-linear-park-frederick": {
-    src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
     caption: "Venue · Carroll Creek Linear Park",
     key: "radius-carroll-creek-summer",
     presentation: "photo",
   },
   "baker-park-frederick": {
-    src: "/images/seasons/fall/018.jpg",
     caption: "Venue · Baker Park",
     key: "radius-baker-park-bandshell",
     presentation: "photo",
   },
   "baker-park-bandshell": {
-    src: "/images/seasons/fall/018.jpg",
     caption: "Venue · Baker Park Bandshell",
     key: "radius-baker-park-bandshell",
     presentation: "photo",
   },
 };
+
+function legacyEventVenueVisual(venueSlug: string | undefined): EventCardVisual | null {
+  if (!venueSlug || !Object.hasOwn(VENUE_VISUALS, venueSlug)) return null;
+  const photo = getOwnedPlacePhoto(venueSlug);
+  if (!photo) return null;
+  return { src: photo.src, ...VENUE_VISUALS[venueSlug] };
+}
 
 // Only these existing canonical place identities join the event visual path.
 // Reuse the owned registry for bytes and framing; do not guess from event names
@@ -73,6 +80,7 @@ const VENUE_VISUALS: Readonly<Record<string, EventCardVisual>> = {
 const OWNED_EVENT_VENUE_LABELS: Readonly<Record<string, string>> = {
   "frederick-fairgrounds-home-of-the-great-frederick-fair-frederick": "Frederick Fairgrounds during The Great Frederick Fair",
   "mccurdy-field": "McCurdy Field",
+  "visitation-hotel": "Visitation Hotel",
 };
 
 function ownedEventVenueVisual(venueSlug: string | undefined): EventCardVisual | null {
@@ -89,6 +97,30 @@ function ownedEventVenueVisual(venueSlug: string | undefined): EventCardVisual |
 }
 
 const LICENSED_EVENT_VENUE_LABELS: Readonly<Record<keyof typeof CREDITED_LOCAL_PLACE_PHOTOS, string>> = {
+  "ballenger-creek-park-frederick": "Ballenger Creek Park entrance",
+  "buckeystown-park-frederick": "Buckeystown Park entrance",
+  "catoctin-creek-park-nature-center-burkittsville": "Catoctin Creek Park entrance",
+  "kemptown-park-new-market": "Kemptown Park entrance",
+  "loys-station-park-thurmont": "Loy\u2019s Station Park entrance",
+  "middletown-park-middletown": "Middletown Park entrance",
+  "othello-regional-park-brunswick": "Othello Regional Park entrance",
+  "pinecliff-park-frederick": "Pinecliff Park entrance",
+  "point-of-rocks-community-commons-park-brunswick": "Point of Rocks Community Commons Park entrance",
+  "utica-park-walkersville": "Utica District Park entrance",
+  "fountain-rock-nature-center-walkersville": "Fountain Rock Nature Center exterior",
+  "thurmont-recreation-center-thurmont": "Thurmont Rec Center exterior",
+  "walkersville-recreation-center-walkersville": "Walkersville Rec Center exterior",
+  "brunswick-recreation-center-brunswick": "Brunswick Recreation Center exterior",
+  "chappelle-co": "North Market Street storefront row with Chappelle & Co, photographed in November 2022",
+  "frederick-station": "Frederick MARC station, photographed in 2015",
+  "heritage-frederick": "Heritage Frederick exterior, photographed in 2009",
+  "thurmont-square-park-thurmont": "Thurmont Square Park, photographed in 2012",
+  "heritage-farm-park-walkersville": "Harris farmhouse at Heritage Farm Park, photographed in 2010",
+  "sabor-de-cuba-restaurant-frederick": "Sabor de Cuba entrance, photographed in 2018",
+  "francis-scott-key-grave-and-monument": "Francis Scott Key Monument, photographed in 2024",
+  "rose-hill-manor-park-museums-frederick": "Rose Hill Manor exterior, photographed in 2019",
+  "historic-utica-covered-bridge-thurmont": "Utica Covered Bridge, photographed in 2022",
+  "national-museum-civil-war-medicine-frederick": "National Museum of Civil War Medicine exterior",
   "schifferstadt-architectural-museum-frederick": "Schifferstadt Architectural Museum",
   "hessian-barracks-frederick-maryland": "Hessian Barracks",
   "co-canal-lock-30-brunswick": "C&O Canal Lock 30 in Brunswick",
@@ -98,6 +130,9 @@ const LICENSED_EVENT_VENUE_LABELS: Readonly<Record<keyof typeof CREDITED_LOCAL_P
   "c-burr-artz-public-library-frederick": "C. Burr Artz Public Library exterior",
   "new-market-historic-district-new-market": "New Market Historic District streetscape",
   "catoctin-mountain-park": "Chimney Rock at Catoctin Mountain Park",
+  "city-hall-8": "Frederick City Hall exterior",
+  "mount-st-marys-university-emmitsburg": "Mount St. Mary's University campus chapel",
+  "barbara-fritchie-house-frederick": "Barbara Fritchie House exterior",
 };
 
 function licensedEventVenueVisual(venueSlug: string | undefined): EventCardVisual | null {
@@ -110,7 +145,7 @@ function licensedEventVenueVisual(venueSlug: string | undefined): EventCardVisua
     caption: `Venue · ${LICENSED_EVENT_VENUE_LABELS[slug]}`,
     key: `licensed-venue:${slug}`,
     presentation: "photo",
-    objectPosition: "center",
+    objectPosition: "objectPosition" in photo ? photo.objectPosition : "center",
     licensedCredit: { creator: image.creator, source_url: image.source_url,
       license: { ...image.license }, modifications: image.modifications,
       ...("provenance" in photo ? { original_source_url: photo.provenance.original_source_url } : {}) },
@@ -239,7 +274,7 @@ export function eventCardVisual(
   if (providerVisual) return providerVisual;
 
   // Event-specific publisher art stays first. Exact owned venue photographs
-  // avoid activating the existing Google path for these two reviewed places.
+  // avoid activating the existing Google path for these reviewed places.
   const ownedVisual = ownedEventVenueVisual(event.venue_place_slug);
   if (ownedVisual) return ownedVisual;
 
@@ -249,9 +284,7 @@ export function eventCardVisual(
   const venueVisual = venuePhotos === "all-approved" ? approvedVenueVisual(event) : null;
   if (venueVisual) return venueVisual;
 
-  if (!event.venue_place_slug) return null;
-  return Object.hasOwn(VENUE_VISUALS, event.venue_place_slug)
-    ? VENUE_VISUALS[event.venue_place_slug] : null;
+  return legacyEventVenueVisual(event.venue_place_slug);
 }
 
 /** Slim recovery payloads may carry existing owned, licensed or publisher visuals.
@@ -275,8 +308,9 @@ export function parseRecoveryEventVisual(value: unknown): EventCardVisual | null
     const known = ownedEventVenueVisual(slug);
     if (known && sameTuple(known) && visual.sourceHref === undefined) return { ...known };
   }
-  for (const known of Object.values(VENUE_VISUALS)) {
-    if (sameTuple(known) && visual.sourceHref === undefined) return { ...known };
+  for (const slug of Object.keys(VENUE_VISUALS)) {
+    const known = legacyEventVenueVisual(slug);
+    if (known && sameTuple(known) && visual.sourceHref === undefined) return { ...known };
   }
   if (visual.presentation !== "artwork" || typeof visual.sourceHref !== "string") return null;
   try {

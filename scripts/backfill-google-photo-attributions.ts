@@ -186,7 +186,7 @@ async function main() {
     await new Promise((resolve) => setTimeout(resolve, 60));
   }
 
-  writeFileSync(OUT, `${JSON.stringify(output, null, 2)}\n`);
+  writeFileSync(OUT, `${JSON.stringify(output)}\n`);
   console.log(`Wrote ${updated} updated rows to ${OUT}.`);
   console.log(
     "Run npm run build:client-places, review the diff, then deploy.\n",

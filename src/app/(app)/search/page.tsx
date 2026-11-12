@@ -4,7 +4,8 @@ import SearchBrowsePosition from "@/components/search/SearchBrowsePosition";
 import { cookies } from "next/headers";
 import { formatHoursLine } from "@/lib/hours";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { loadEventArchiveSnapshot, TODAY_EVENT_SNAPSHOT_TIMEOUT_MS } from "@/lib/loaders/todayEventSnapshot";
+import { loadEventArchiveSnapshot, EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS } from "@/lib/loaders/todayEventSnapshot";
+import { searchEventsFromSnapshot, searchEventCoverageMessage, searchEventRecoveryHref, searchEventRecoveryLabel, type SearchEventCoverage } from "@/lib/search/event-coverage";
 import { resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 import SearchRefinements from "@/components/search/SearchRefinements";
 import { withBrowseReturnTo } from "@/lib/browse-return";
@@ -105,7 +106,7 @@ function displayFor(hit: SearchHit, showBranchAddress = false): Display {
         href: `/events/${hit.event.slug}`,
         title: hit.event.title,
         subtitle: [hit.event.venue_name, MUNICIPALITY_BY_SLUG[hit.event.municipality]?.name ?? hit.event.municipality, new Date(hit.event.starts_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/New_York" })].filter(Boolean).join(" · "),
-        badge: { label: "Event", color: "var(--app-cool)" },
+        badge: { label: "Event", color: "var(--app-cool-text)" },
         Icon: Calendar,
       };
     case "municipality":
@@ -113,7 +114,7 @@ function displayFor(hit: SearchHit, showBranchAddress = false): Display {
         href: `/m/${hit.municipality.slug}`,
         title: hit.municipality.name,
         subtitle: hit.municipality.hero_blurb || hit.municipality.description,
-        badge: { label: "Town", color: "var(--app-cool)" },
+        badge: { label: "Town", color: "var(--app-cool-text)" },
         Icon: Building2,
       };
     case "category":
@@ -129,7 +130,7 @@ function displayFor(hit: SearchHit, showBranchAddress = false): Display {
         href: hit.page.href,
         title: hit.page.title,
         subtitle: hit.page.blurb,
-        badge: { label: "Guide", color: "var(--app-brand)" },
+        badge: { label: "Guide", color: "var(--app-brand-text)" },
         Icon: DoorOpen,
       };
   }
@@ -177,9 +178,9 @@ function SearchResultRow({
       in: new URL(mapReturnTo ?? "/search", "https://frederickradius.app").searchParams.get("in") ?? "county",
     });
     const placeMapHref = withBrowseReturnTo(`/map?${mapParams.toString()}`, mapReturnTo);
-    return <li className="my-3 overflow-hidden rounded-[var(--app-radius-lg)] border" style={{ borderColor: "var(--app-border)" }}>
+    return <li className="pb-2 pt-4">
       <SearchPlaceVisual source={placePhoto} lead>
-        <SearchPlaceLead fallback={<CategoryIcon slug={hit.place.category} className="h-5 w-5" aria-hidden />} actions={<>
+        <SearchPlaceLead fallback={<CategoryIcon slug={hit.place.category} className="h-6 w-6" strokeWidth={1.8} aria-hidden />} actions={<>
           <Link href={href} prefetch={false}
             aria-label={`View place: ${d.title}`}
             data-decision-impression="true" data-decision-surface="search" data-decision-entity="place"
@@ -210,35 +211,32 @@ function SearchResultRow({
         data-decision-position={lead ? "lead" : "result"}
         data-decision-action="open"
         prefetch={false}
-        className="group flex min-h-[88px] items-start gap-3 px-1 py-4 sm:gap-4 transition-[background-color,transform] duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)] active:scale-[0.995]"
+        className="group flex min-h-[76px] items-start gap-3 py-4 sm:gap-4"
       >
-        <SearchPlaceVisualImage size={56} fallback={
+        <SearchPlaceVisualImage size={48} fallback={
           d.categorySlug
-            ? <CategoryIcon slug={d.categorySlug} className="h-5 w-5" strokeWidth={1.8} style={{ color: d.badge.color }} />
-            : <Icon className="h-5 w-5" strokeWidth={2} style={{ color: d.badge.color }} />
+            ? <CategoryIcon slug={d.categorySlug} className="h-6 w-6" strokeWidth={1.8} />
+            : <Icon className="h-6 w-6" strokeWidth={1.8} />
         } />
         <span className="min-w-0 flex-1">
-          <span className="block text-[18px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <span className="block text-[17px] font-semibold leading-snug tracking-[-0.01em] group-hover:underline group-hover:decoration-1 group-hover:underline-offset-[3px]" style={{ color: "var(--app-ink)" }}>
             {d.title}
           </span>
           {d.subtitle && (
-            <span className="mt-1 block text-[13px] leading-normal" style={{ color: "var(--app-ink-3)" }}>
+            <span className="mt-0.5 block text-[14px] leading-normal" style={{ color: "var(--app-ink-2)" }}>
               {d.subtitle}
             </span>
           )}
           {hit.type === "place" && (
-            <span className="mt-1.5 block text-[12px] leading-normal" style={{ color: hit.place.open_status?.state === "open" ? "var(--state-open)" : "var(--app-ink-2)" }}>
+            <span className="mt-0.5 block text-[13px] leading-normal" style={{ color: hit.place.open_status?.state === "open" ? "var(--state-open)" : "var(--app-ink-2)" }}>
               {hit.place.open_status ? formatHoursLine(hit.place.open_status) : "Hours not posted"}
             </span>
           )}
         </span>
         {hit.type !== dominantType && (
           <span
-            className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em]"
-            style={{
-              background: `color-mix(in srgb, ${d.badge.color} 10%, transparent)`,
-              color: "var(--app-ink-2)",
-            }}
+            className="shrink-0 pt-1 text-[11px] font-semibold uppercase tracking-[0.09em]"
+            style={{ color: "var(--app-ink-2)" }}
           >
             {d.badge.label}
           </span>
@@ -264,18 +262,33 @@ export default async function SearchPage({
   // a power user can refine the query.
   const cookieStore = await cookies();
   const context = resolveDecisionContext({ scopeRaw: scopeParam ?? cookieStore.get(SCOPE_COOKIE)?.value ?? "county", homeMuniRaw: null });
+  // Complete resident tasks already lead with their authoritative local
+  // action and suppress unrelated matches. Decide that before awaiting an
+  // event archive whose results this view would discard.
+  const civicCandidates = query ? searchCivicActions(query, 2) : [];
+  const suppressLocalHits = isHighConfidenceCivicIntent(query, civicCandidates);
+  const civicOnly = kind === "all" && suppressLocalHits;
   let eventPool;
-  let eventsUnavailable = false;
+  let eventCoverage: SearchEventCoverage = "complete";
   // All results also searches exact event titles that carry no event keyword.
   // This is the bounded archive reader, without a publisher refresh fan-out.
-  if (query && (kind === "all" || kind === "event")) {
-    const snapshot = await loadEventArchiveSnapshot(new Date(), { timeoutMs: TODAY_EVENT_SNAPSHOT_TIMEOUT_MS });
-    eventPool = snapshot.publicEvents;
-    eventsUnavailable = snapshot.sourceHealth.degraded;
+  if (query && !civicOnly && (kind === "all" || kind === "event")) {
+    try {
+      const snapshot = await loadEventArchiveSnapshot(new Date(), { timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS });
+      const events = searchEventsFromSnapshot(snapshot);
+      eventPool = events.publicEvents;
+      eventCoverage = events.coverage;
+    } catch {
+      eventPool = [];
+      eventCoverage = "unavailable";
+    }
   }
-  const result = qualifiedSearch(query, 80, eventPool, { municipality: context.filterMunicipality, contextLabel: context.label, resultKind: kind });
+  // Keep the existing query/location interpretation for refinement and Back
+  // links; civic-only results need neither live nor curated event candidates.
+  const result = qualifiedSearch(query, 80, civicOnly ? [] : eventPool, { municipality: context.filterMunicipality, contextLabel: context.label, resultKind: kind });
   const hits = query ? result.hits : [];
   const town = result.meta.scopeMunicipality ?? context.filterMunicipality;
+  const eventCoverageMessage = searchEventCoverageMessage(eventCoverage);
   const resultParams = new URLSearchParams();
   if (query) resultParams.set("q", query);
   resultParams.set("in", town ?? scopeParam ?? "county");
@@ -300,8 +313,6 @@ export default async function SearchPage({
   // (stray token) with no county answer in sight. Departments with their
   // phone numbers + the county's own How-Do-I links lead the list.
   const departmentCandidates = query ? findDepartments(query) : [];
-  const civicCandidates = query ? searchCivicActions(query, 2) : [];
-  const suppressLocalHits = isHighConfidenceCivicIntent(query, civicCandidates);
   // A one-word overlap is not a trustworthy resident-task answer. Keep the
   // official action row for complete civic intents; otherwise let a clearly
   // requested department fallback handle the question without inventing a
@@ -361,8 +372,8 @@ export default async function SearchPage({
   const answerColor = answer
     ? answer.key === "open-now"
       ? "var(--app-positive)"
-      : CRAVING_BY_KEY[answer.key]?.color ?? "var(--app-brand)"
-    : "var(--app-brand)";
+      : CRAVING_BY_KEY[answer.key]?.color ?? "var(--app-brand-text)"
+    : "var(--app-brand-text)";
 
   return (
     <div className="space-y-5">
@@ -394,17 +405,14 @@ export default async function SearchPage({
       {query && !answer && rankedHits.length === 0 && !suppressLocalHits && govAnswers.length === 0 ? (
         <Link
           href={`/ask?${new URLSearchParams({ q: query, in: town ?? "county" }).toString()}`}
-          className="tactile-interactive flex min-h-12 items-center gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2"
-          style={{
-            borderColor: "color-mix(in srgb, var(--app-brand) 28%, var(--app-border))",
-            background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated))",
-          }}
+          className="group flex min-h-12 items-center gap-2.5 border-y py-2"
+          style={{ borderColor: "var(--app-border)" }}
         >
-          <MessageCircleQuestion className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
-          <span className="min-w-0 flex-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          <MessageCircleQuestion className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-link)" }} aria-hidden />
+          <span className="min-w-0 flex-1 text-[14px] leading-snug group-hover:underline group-hover:underline-offset-[3px]" style={{ color: "var(--app-ink)" }}>
             Need a recommendation or a plan? Ask Radius about this.
           </span>
-          <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+          <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-link)" }} aria-hidden />
         </Link>
       ) : null}
 
@@ -414,21 +422,15 @@ export default async function SearchPage({
         <Link
           href={answer.href}
           aria-label={`${answer.label}: ${answer.kicker}`}
-          className="tactile-interactive flex min-h-[64px] items-center gap-3 border-y px-1 py-3"
-          style={{ borderColor: `color-mix(in srgb, ${answerColor} 34%, var(--app-border))` }}
+          className="group flex min-h-[64px] items-center gap-3 border-y py-3"
+          style={{ borderColor: "var(--app-border)" }}
         >
-          <span
-            aria-hidden
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
-            style={{ background: `color-mix(in srgb, ${answerColor} 15%, transparent)`, color: answerColor }}
-          >
-            <DoorOpen className="h-5 w-5" strokeWidth={2} />
-          </span>
+          <DoorOpen aria-hidden className="h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: answerColor }} />
           <span className="min-w-0 flex-1">
-            <span className="block font-serif text-[17px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+            <span className="block font-sans text-[17px] font-semibold leading-tight tracking-[-0.01em] group-hover:underline group-hover:underline-offset-[3px]" style={{ color: "var(--app-ink)" }}>
               {answer.label}
             </span>
-            <span className="mt-0.5 block truncate text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+            <span className="mt-0.5 block truncate text-[14px]" style={{ color: "var(--app-ink-2)" }}>
               {answer.kicker}
             </span>
           </span>
@@ -454,17 +456,15 @@ export default async function SearchPage({
               href={c.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="tactile-interactive flex min-h-[56px] items-center gap-3 px-3.5 py-2.5"
+              className="group flex min-h-[56px] items-center gap-3 py-3"
               style={index > 0
                 ? { borderTop: "1px solid var(--app-border)" }
                 : undefined}
             >
-              <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-cool)" }}>
-                <Building2 className="h-4 w-4" strokeWidth={2.25} />
-              </span>
+              <Building2 aria-hidden className="h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-cool-text)" }} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{c.title}</span>
-                <span className="block truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>{c.subtitle}</span>
+                <span className="block truncate text-[17px] font-semibold leading-tight tracking-[-0.01em] group-hover:underline group-hover:underline-offset-[3px]" style={{ color: "var(--app-ink)" }}>{c.title}</span>
+                <span className="mt-0.5 block truncate text-[14px]" style={{ color: "var(--app-ink-2)" }}>{c.subtitle}</span>
               </span>
               <ArrowRight aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} />
             </a>
@@ -472,25 +472,23 @@ export default async function SearchPage({
           {govAnswers.map((d, index) => (
             <div
               key={d.slug}
-              className="p-3.5"
+              className="py-3.5"
               style={civicAnswers.length > 0 || index > 0
                 ? { borderTop: "1px solid var(--app-border)" }
                 : undefined}
             >
               <div className="flex items-start gap-3">
-                <span aria-hidden className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-cool)" }}>
-                  <Building2 className="h-4 w-4" strokeWidth={2.25} />
-                </span>
+                <Building2 aria-hidden className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-cool-text)" }} />
                 <div className="min-w-0 flex-1">
-                  <p className="font-serif text-[16px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{d.name}</p>
-                  <p className="mt-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{d.about}</p>
+                  <p className="font-sans text-[17px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>{d.name}</p>
+                  <p className="mt-0.5 text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{d.about}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     {d.phone && (
-                      <a href={`tel:${d.phone}`} className="tactile-interactive tap-44-y inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold text-white" style={{ background: "var(--app-cool)" }}>
+                      <a href={`tel:${d.phone}`} className="tap-44-y inline-flex items-center gap-1 rounded-[var(--app-radius-md)] px-2.5 py-1.5 text-[13px] font-semibold" style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}>
                         <Phone className="h-3 w-3" strokeWidth={2.5} aria-hidden /> {formatPhone(d.phone)}
                       </a>
                     )}
-                    <a href={d.website} target="_blank" rel="noopener noreferrer" className="tactile-interactive tap-44-y inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
+                    <a href={d.website} target="_blank" rel="noopener noreferrer" className="tap-44-y inline-flex items-center gap-1 rounded-[var(--app-radius-md)] border px-2.5 py-1.5 text-[13px] font-semibold" style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}>
                       Open site <ArrowRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
                     </a>
                     <span className="ml-auto text-[10px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
@@ -530,8 +528,8 @@ export default async function SearchPage({
               <li key={p.label} className="border-b odd:border-r" style={{ borderColor: "var(--app-border)" }}>
                 <Link
                   href={p.href}
-                  className="tactile-interactive flex min-h-[52px] items-center gap-2 px-3 py-2 text-[13px] font-semibold"
-                  style={{ color: "var(--app-ink-2)" }}
+                  className="flex min-h-[52px] items-center gap-2 px-3 py-2 text-[14px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                  style={{ color: "var(--app-ink)" }}
                 >
                   <span className="min-w-0 flex-1">{p.label}</span>
                   <ArrowRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
@@ -542,7 +540,7 @@ export default async function SearchPage({
         </div>
       )}
 
-      {query && rankedHits.length === 0 && govAnswers.length === 0 && civicAnswers.length === 0 && (
+      {query && !eventCoverageMessage && rankedHits.length === 0 && govAnswers.length === 0 && civicAnswers.length === 0 && (
         <div className="space-y-2 border-y px-2 py-8 text-center text-sm" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
           <p>There are no matches for &ldquo;{query}&rdquo;. Try a shorter search or add a town.</p>
           <p>
@@ -555,16 +553,19 @@ export default async function SearchPage({
       )}
 
       {query && !suppressLocalHits && (
-        <nav aria-label="Result types" className="flex gap-1 overflow-x-auto border-b" style={{ borderColor: "var(--app-border)" }}>
-          {[["all", "All matches"], ["place", "Places"], ["event", "Events"], ["page", "Tools & areas"]].map(([value, label]) => {
+        // The four tabs fit one 320px line at default text with the short
+        // "All" label and tighter padding below sm. With enlarged text the row
+        // wraps instead of scrolling, so no tab is ever cut at the edge.
+        <nav aria-label="Result types" className="flex flex-wrap gap-x-1 border-b" style={{ borderColor: "var(--app-border)" }}>
+          {[["all", "All"], ["place", "Places"], ["event", "Events"], ["page", "Tools & areas"]].map(([value, label]) => {
             const params = new URLSearchParams(resultParams);
             if (value === "all") params.delete("kind"); else params.set("kind", value);
             const active = (kind || "all") === value;
-            return <Link key={value} href={`/search?${params.toString()}`} aria-current={active ? "page" : undefined} className="min-h-11 shrink-0 border-b-2 px-3 py-3 text-[13px] font-semibold" style={{ borderColor: active ? "var(--app-brand)" : "transparent", color: active ? "var(--app-brand-press)" : "var(--app-ink-2)" }}>{label}</Link>;
+            return <Link key={value} href={`/search?${params.toString()}`} aria-current={active ? "page" : undefined} className="min-h-11 shrink-0 whitespace-nowrap border-b-2 px-2 py-3 text-[13px] font-semibold sm:px-3" style={{ borderColor: active ? "var(--app-brand)" : "transparent", color: active ? "var(--app-link)" : "var(--app-ink-2)" }}>{label}</Link>;
           })}
         </nav>
       )}
-      {eventsUnavailable && <p role="status" className="border-l-2 pl-3 text-[14px] leading-relaxed" style={{ borderColor: "var(--app-amber)", color: "var(--app-ink-2)" }}>The current event schedule is unavailable, so these matches may be incomplete. <Link href={contextualSearchResult({ type: "action", id: "events", title: "Events", subtitle: "", href: "/events" }, { ...result.meta, scopeMunicipality: town }, query, "county").href} className="underline underline-offset-2">Check the events board.</Link></p>}
+      {eventCoverageMessage && <p role="status" data-search-event-coverage={eventCoverage} className="border-l-2 pl-3 text-[14px] leading-relaxed" style={{ borderColor: "var(--app-amber)", color: "var(--app-ink-2)" }}>{eventCoverageMessage} <Link href={searchEventRecoveryHref(town, result.meta.eventWindow)} className="inline-flex min-h-11 items-center underline underline-offset-2">{searchEventRecoveryLabel(result.meta.eventWindow)}</Link></p>}
       {rankedHits.length > 0 && (
         <section className="space-y-2" aria-label={`${rankedHits.length} results for ${query}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -573,7 +574,7 @@ export default async function SearchPage({
             {town ? ` · ${context.filterMunicipality === town ? context.label : MUNICIPALITY_BY_SLUG[town]?.name ?? town.replace(/-/g, " ")}` : " · Frederick County"}
             {result.meta.eventWindow?.label ? ` · ${result.meta.eventWindow.label}` : ""}
           </p>
-          {hasPlaceHits && <Link href={mapHref} className="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}><MapPin className="h-4 w-4" aria-hidden />View on map</Link>}
+          {hasPlaceHits && <Link href={mapHref} className="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold" style={{ color: "var(--app-link)" }}><MapPin className="h-4 w-4" aria-hidden />View on map</Link>}
           </div>
           <ul
             className="reveal-up overflow-hidden border-y"
@@ -594,7 +595,7 @@ export default async function SearchPage({
           </ul>
           {remainingHits.length > 0 && (
             <details data-search-more className="group border-b" style={{ borderColor: "var(--app-border)" }}>
-              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-link)" }}>
                 Show {remainingHits.length} more matches
                 <ChevronDown aria-hidden className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} />
               </summary>

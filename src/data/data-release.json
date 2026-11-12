@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:527c21b87c94fc2c709e1744e81920b3705641250868243f82618bb25f55a268",
+  "data_version": "sha256:f7783bf3d832d7c73af32c2e07ed26cec97b760c9c1b433d8683bbf8bb3bbf9a",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,13 +14,13 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-20T00:04:40.256Z",
+      "promoted_at": "2026-11-12T15:47:17.179Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
-          "sha256": "90ea45683334010e94f1276d32c208ceb9756442f397046da77766e6ae6724e3",
+          "sha256": "1ddc611f62b72b60f1855c9ab2d7d6499a72b356f05c3bd713ce0530fff8f6fa",
           "records": null,
-          "bytes": 126962
+          "bytes": 127242
         },
         {
           "path": "src/data/places-dfp.json",
@@ -36,9 +36,9 @@
         },
         {
           "path": "src/data/places-enrichment.json",
-          "sha256": "a44fd6a7ad5c241b2cb2f2cab3332fc56e35a37f3fac08f1642a743632bd8b77",
+          "sha256": "204b0767c5c8f8362160fb83ca967dc40b7ea43efab81fb975bf18a35f00c43e",
           "records": 2434,
-          "bytes": 11307460
+          "bytes": 10345286
         },
         {
           "path": "src/data/places-dedup.json",
@@ -48,9 +48,9 @@
         },
         {
           "path": "src/data/places-overrides.json",
-          "sha256": "48e1d60aa9618d52b8a877c0280ab7dcbf8062279f47900634523de37389bfa7",
+          "sha256": "60ab389711d2ac6ea915fae98c60bbe01a363745d40a93d3a88f8b87196bc29c",
           "records": 4,
-          "bytes": 43539
+          "bytes": 44688
         },
         {
           "path": "src/data/place-status-overrides.json",
@@ -66,15 +66,15 @@
         },
         {
           "path": "src/data/places-official-hours.json",
-          "sha256": "6207149090b85dfcdabd044c499cb64d21c570940e6fdf8541fba99eb5a20f58",
+          "sha256": "35ff329590c882399cb212f0bb64d6399d63cc4c63405c20720e504413ff2ce7",
           "records": 9,
           "bytes": 12142
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "2e5c396c0064a4d5bf74d84cffade0401b397dad7201dd8713cecd39dbef5d5f",
-          "records": 3,
-          "bytes": 3764
+          "sha256": "5ffe12e8c5f0a0f1e9dfe62d4814d5d8a657ac8dfc989e7d338fed2d750b767a",
+          "records": 34,
+          "bytes": 43975
         },
         {
           "path": "src/data/business-status.json",
@@ -174,15 +174,201 @@
         },
         {
           "path": "src/lib/integrations/wikimedia.ts",
-          "sha256": "9ecbf4bb0a95a84c9363c8c4889bc95bc1c769190b5411314798863cb61a6078",
+          "sha256": "12631b45e07cbb2ec3fc711563325428b2fc1b3e1347524de34bba3ec4ca57c4",
           "records": null,
-          "bytes": 10323
+          "bytes": 11135
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
-          "sha256": "31a7376f9eded27ca2b97371bcef70904192a657e4c76aa7224356af50d056c4",
+          "sha256": "82aebdd9655e5a30269884a3c504d8974b535d3c20e34f3440c6eb85b0bfb206",
           "records": null,
-          "bytes": 8170
+          "bytes": 33521
+        },
+        {
+          "path": "public/place-photos/county-ballenger-creek-park-frederick.jpg",
+          "sha256": "59bd22ff0b19abb8161050e84f044ded3dc02afc97ce659db19207a851c596b7",
+          "records": null,
+          "bytes": 171527
+        },
+        {
+          "path": "public/place-photos/county-buckeystown-park-frederick.jpg",
+          "sha256": "a5a9bb7740e334f1fe73815fb6c1af7dce526ca64033420c4981552c9f2bd881",
+          "records": null,
+          "bytes": 209678
+        },
+        {
+          "path": "public/place-photos/county-catoctin-creek-park-nature-center-burkittsville.jpg",
+          "sha256": "9fab2d0a2fc32a9ba13bd364428736f0af161d5623f6f2b82999d33e7257cbcc",
+          "records": null,
+          "bytes": 195172
+        },
+        {
+          "path": "public/place-photos/county-kemptown-park-new-market.jpg",
+          "sha256": "79d1c89c81bf7284c9b61d9b331083ae7027731fca26823f2e8ae6c6269cd17c",
+          "records": null,
+          "bytes": 156626
+        },
+        {
+          "path": "public/place-photos/county-loys-station-park-thurmont.jpg",
+          "sha256": "d92c89cc5572bdfe2d00eb2d0622e1599066f8e877ec8c64c50836a576370cc9",
+          "records": null,
+          "bytes": 231981
+        },
+        {
+          "path": "public/place-photos/county-middletown-park-middletown.jpg",
+          "sha256": "130e058963bcc74c0842919b06751ee751aeafd678d9c9202d01c46247114d1e",
+          "records": null,
+          "bytes": 222537
+        },
+        {
+          "path": "public/place-photos/county-othello-regional-park-brunswick.jpg",
+          "sha256": "291b671dc03040e50da4c3eec81a6de7610213d5e30108a7051e592407cb5d77",
+          "records": null,
+          "bytes": 97654
+        },
+        {
+          "path": "public/place-photos/county-pinecliff-park-frederick.jpg",
+          "sha256": "2ee6aea289ed41989b0710c31272003b56b791b6aa694827d82068ce5e3476e9",
+          "records": null,
+          "bytes": 175207
+        },
+        {
+          "path": "public/place-photos/county-point-of-rocks-community-commons-park-brunswick.jpg",
+          "sha256": "8a4230b49673af46462fc231e8809f12fcd0da401402eb3ebf43de17c80bc573",
+          "records": null,
+          "bytes": 313981
+        },
+        {
+          "path": "public/place-photos/county-utica-park-walkersville.jpg",
+          "sha256": "3d9270db8f9dc5bcdd2e1ceaa9d7993bf89aa27e83c9f8b7dc61ea026cb3c4b0",
+          "records": null,
+          "bytes": 133586
+        },
+        {
+          "path": "public/place-photos/county-fountain-rock-nature-center-walkersville.jpg",
+          "sha256": "cf9ac28dbb56ea8bb04f33d9a0d44c64bd8fc1378e717169130c2b22807b3378",
+          "records": null,
+          "bytes": 211742
+        },
+        {
+          "path": "public/place-photos/county-thurmont-recreation-center-thurmont.jpg",
+          "sha256": "215d5947c6b252fe92be02e986253b0e505e7355bc5b594f40290e619dc4e01e",
+          "records": null,
+          "bytes": 97383
+        },
+        {
+          "path": "public/place-photos/county-walkersville-recreation-center-walkersville.jpg",
+          "sha256": "27d3ec60654a371746a7658883850cc6f4845943e9669ac7176c91b91f575eaa",
+          "records": null,
+          "bytes": 113128
+        },
+        {
+          "path": "public/place-photos/county-brunswick-recreation-center-brunswick.jpg",
+          "sha256": "d66f657b972e9f62f11e1b1beb668229f7f20a97447637462ee852feb61e10d0",
+          "records": null,
+          "bytes": 486108
+        },
+        {
+          "path": "public/place-photos/frederick-marc-station-2015.jpg",
+          "sha256": "bbf2d77adbcb5ddb7049661f77582806b9159469da7b341231afa88f5bddeca6",
+          "records": null,
+          "bytes": 526603
+        },
+        {
+          "path": "public/place-photos/heritage-frederick-exterior-2009.jpg",
+          "sha256": "e78293fb6ad0966b1a6ff80fd2716ce81d51a73be132d4bae5d29e2a4b10321c",
+          "records": null,
+          "bytes": 383963
+        },
+        {
+          "path": "public/place-photos/thurmont-square-park-2012.jpg",
+          "sha256": "600544504046f04b67ae20f2a6078d7bb17cf3947f4c06610397a6a30696b4fe",
+          "records": null,
+          "bytes": 330516
+        },
+        {
+          "path": "public/place-photos/heritage-farm-park-harris-farmhouse-2010.jpg",
+          "sha256": "420a43367dc690e4fc320149b342ebf45fa969ef5e9211d94e3d8dfdb0924a71",
+          "records": null,
+          "bytes": 495793
+        },
+        {
+          "path": "public/place-photos/sabor-de-cuba-entrance-2018.jpg",
+          "sha256": "fc0d9af140bc841b50961d89aadb46cbdf1c037ec46df625bdadda3ca180d114",
+          "records": null,
+          "bytes": 752989
+        },
+        {
+          "path": "public/place-photos/francis-scott-key-monument-2024.jpg",
+          "sha256": "138b07aebb5e16aca7ccf428c84b70c1475a874fc7ed882363b0231c4a3f7f82",
+          "records": null,
+          "bytes": 348832
+        },
+        {
+          "path": "public/place-photos/rose-hill-manor-exterior-2019.jpg",
+          "sha256": "34f8b85edc496cdfcd765968c639d5c3a03b175127ff0db582b0da1943f09089",
+          "records": null,
+          "bytes": 286166
+        },
+        {
+          "path": "public/place-photos/utica-covered-bridge-2022.jpg",
+          "sha256": "b794b20d7cf3444786ebe4bdcaf451b9b9ef6608975617035966eee892b2c0a1",
+          "records": null,
+          "bytes": 463387
+        },
+        {
+          "path": "public/place-photos/civil-war-medicine-frontage.jpg",
+          "sha256": "dc82253150252d479cd61b150b9a6498053aa7c7a1ecbeb8ad6bc032776d17c9",
+          "records": null,
+          "bytes": 511207
+        },
+        {
+          "path": "public/history-photos/schifferstadt.jpg",
+          "sha256": "47252f431893d172bba9684de27ebec43e2d66c58cca5caf4616bf4b708cf97c",
+          "records": null,
+          "bytes": 555332
+        },
+        {
+          "path": "public/history-photos/hessian-barracks.jpg",
+          "sha256": "afdfb489d4d90a281c373cc9711b39a0b755d20a42ecf56d5f4f7a65b2d81a10",
+          "records": null,
+          "bytes": 331214
+        },
+        {
+          "path": "public/history-photos/co-canal.jpg",
+          "sha256": "c25b97915142a0a18cd339fcabe84891edda5c343017f758620fdc2ccb12ef1f",
+          "records": null,
+          "bytes": 536413
+        },
+        {
+          "path": "public/place-photos/delaplaine-exterior.jpg",
+          "sha256": "d64f8b365780e8a11d0af6e289b564e65ff01ce0fb4e6bf9b5f211d3bd2882a9",
+          "records": null,
+          "bytes": 382537
+        },
+        {
+          "path": "public/place-photos/weinberg-exterior.jpg",
+          "sha256": "97115f0d8d2432ed63b712e4b60bc56a93fc6b956924837d33b53fec8c83137f",
+          "records": null,
+          "bytes": 373960
+        },
+        {
+          "path": "public/place-photos/c-burr-artz-exterior.jpg",
+          "sha256": "2342a2518be168a56376b569b0c4850fc6db0c333114c33eda8a95ea7576ed0a",
+          "records": null,
+          "bytes": 456913
+        },
+        {
+          "path": "public/history-photos/new-market-antiques.jpg",
+          "sha256": "879775deabe7c5fe4d2653b928b287a794ea37e2aa431843e2efb745c79f9334",
+          "records": null,
+          "bytes": 385375
+        },
+        {
+          "path": "public/history-photos/catoctin-mountain-park.jpg",
+          "sha256": "60e2d812bceedb309d4ed1a8a98c99fa18895c8b8fd377beee6ee3eb1254d3de",
+          "records": null,
+          "bytes": 430067
         },
         {
           "path": "public/place-photos/brewers-alley-2004.jpg",
@@ -191,10 +377,142 @@
           "bytes": 272332
         },
         {
-          "path": "src/lib/owned-place-photos.ts",
-          "sha256": "4ec75b06583c198fe472ecb7973b337fa6159e9e794387cec8b1b2fde17272e0",
+          "path": "public/history-photos/frederick-county-established.jpg",
+          "sha256": "dce5b9246b9dffee8ad50bd6417f9919aa0cf36fa8ca7acba0d668b7b6d7b39d",
           "records": null,
-          "bytes": 1661
+          "bytes": 577379
+        },
+        {
+          "path": "public/history-photos/mount-st-marys-founded.jpg",
+          "sha256": "a8bea45385bd9a1e6a18ff3015db03672c96307cc8fcb7b99f0a5de728ed22ad",
+          "records": null,
+          "bytes": 397616
+        },
+        {
+          "path": "public/history-photos/barbara-fritchie-flag.jpg",
+          "sha256": "e54e4ff55a6e2a98a1e065ccabb4a8a5a253be0b0a1c71d3c89d7f59ba5d3768",
+          "records": null,
+          "bytes": 489737
+        },
+        {
+          "path": "public/history-photos/ransom-of-frederick.jpg",
+          "sha256": "c2aa53508b566d5c377636c22d06a787e350613ab0d28178d6f0ec665081fc8f",
+          "records": null,
+          "bytes": 482899
+        },
+        {
+          "path": "src/lib/owned-place-photos.ts",
+          "sha256": "3fa17c971271cee91399781bdeb3f2eef8ad0223eda6493659947cd79c6ab677",
+          "records": null,
+          "bytes": 8661
+        },
+        {
+          "path": "public/images/seasons/summer/SUMMER CARROL CREEK.jpg",
+          "sha256": "df942f4735a8684176e95da0a29dbc0a62788bf1818bd3851418b98faeba8bbc",
+          "records": null,
+          "bytes": 339748
+        },
+        {
+          "path": "public/images/places/visitation-hotel-sunset.jpg",
+          "sha256": "167b0ccf0e41173cc3b932348bb0e509a3b73a616ca6d46ab4cf833c59a8122d",
+          "records": null,
+          "bytes": 228207
+        },
+        {
+          "path": "public/images/places/visitation-hotel-detail.jpg",
+          "sha256": "740c911739a7ae4192d3fbbd18f3bc5961069ef9d7b0c0dd06c1b44ba954497a",
+          "records": null,
+          "bytes": 86194
+        },
+        {
+          "path": "public/images/places/carroll-creek-aerial.jpg",
+          "sha256": "20116f94967b675ddb8748468f130c0ba48dac581113a536ac191fb98b301e5c",
+          "records": null,
+          "bytes": 509553
+        },
+        {
+          "path": "public/images/places/baker-park-sunset.jpg",
+          "sha256": "3514a04022be1bcfdfe439b3352e7a74b02b0bbeb38a5ec5f8fee5ecfdd9bd91",
+          "records": null,
+          "bytes": 240937
+        },
+        {
+          "path": "public/images/places/baker-park-detail.jpg",
+          "sha256": "1e93286116404984c6ab447256a414ed469db3869dfb592267de5def016f6b77",
+          "records": null,
+          "bytes": 136923
+        },
+        {
+          "path": "public/images/places/carillon-sunset.jpg",
+          "sha256": "4ea55ecfc68ac8e08fc2f8aa05973935b763108144b48261bd8916669935f80a",
+          "records": null,
+          "bytes": 329527
+        },
+        {
+          "path": "public/images/places/church-street-sunset.jpg",
+          "sha256": "d9b7687faed484d5d688f27a2827c8072ff04285a86ddcefbde665762076f316",
+          "records": null,
+          "bytes": 189674
+        },
+        {
+          "path": "public/images/places/weinberg-patrick-street.jpg",
+          "sha256": "e6bdd6c64f55411a2e77886e4e6684fe7533a0f72dee6573c0d3457c14e7e440",
+          "records": null,
+          "bytes": 358053
+        },
+        {
+          "path": "public/images/seasons/winter/IMG_2732.jpg",
+          "sha256": "784d12b622f5ad4ccd4e7160c863f7511eface0ae7a936a1dc4cf89ce198ea97",
+          "records": null,
+          "bytes": 733997
+        },
+        {
+          "path": "public/images/seasons/spring/010.jpg",
+          "sha256": "5f14890de91e95ae044b6daf15b26d96f7fafd4fd9b43bdee79e247b96882b6b",
+          "records": null,
+          "bytes": 397653
+        },
+        {
+          "path": "public/images/seasons/fall/001.jpg",
+          "sha256": "b34a2a727b290a25dba3b68a39baf2f083103c0938f3f8ad133cc38efc794365",
+          "records": null,
+          "bytes": 1386462
+        },
+        {
+          "path": "public/images/seasons/fall/018.jpg",
+          "sha256": "00a10a8a498e7b09bff6887dc881329c3542860e754b25db37a6aa12af05845c",
+          "records": null,
+          "bytes": 294430
+        },
+        {
+          "path": "public/images/seasons/fall/021.jpg",
+          "sha256": "32eecff2e02913ad7b0093ef599318936b8a6694cdacda39623c393399732967",
+          "records": null,
+          "bytes": 409846
+        },
+        {
+          "path": "public/images/seasons/winter/013.jpg",
+          "sha256": "9cc3ee90f95c47d5f20428b9d5ffc8812a17497117902657dd8bf8d725664984",
+          "records": null,
+          "bytes": 713746
+        },
+        {
+          "path": "public/images/seasons/winter/PG134 Replacement.jpg",
+          "sha256": "0bb200d81c80ba948bd0407b67e9a91c4d81bc0c4fe4566617844078d3d3c627",
+          "records": null,
+          "bytes": 235065
+        },
+        {
+          "path": "public/images/seasons/spring/016.jpg",
+          "sha256": "a20beee8a0129ba4f59cec2913e6b298c52110a05530a008c9ed3761e7aa6602",
+          "records": null,
+          "bytes": 212315
+        },
+        {
+          "path": "public/images/seasons/winter/WINTER NEW 7.jpg",
+          "sha256": "a828148c8d16dca6dafa62c9cabe87b9911faef2a86f4afcb200139e9dc37183",
+          "records": null,
+          "bytes": 233126
         },
         {
           "path": "public/images/seasons/spring/aerial-view-baseball-field.jpg",
@@ -216,9 +534,9 @@
         },
         {
           "path": "src/data/business-info.json",
-          "sha256": "460370d2c65e13b5081d753307ab21481817e709d73530a120500e3704f40000",
-          "records": 142,
-          "bytes": 115622
+          "sha256": "56a0a59554ed37c9f17947675f13c979f66226ce8abaade4551ed1ccdd637b76",
+          "records": 159,
+          "bytes": 127040
         },
         {
           "path": "src/data/field-notes.json",
@@ -258,66 +576,72 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "0170809408cea2276bf8609bbc75cd21da5119b58eae5a41955cbe8901fa38a4",
+          "sha256": "1adc1c198b62e926aa2de3bd12e7cdea57051dc8ebf2ae5a0b2c50bbbc0dfde5",
           "records": 1571,
-          "bytes": 2292243
+          "bytes": 2315217
+        },
+        {
+          "path": "src/data/copy-scores.json",
+          "sha256": "8af12133b266c0d6414769212d534baa4393171d1a2c2cca1e4b6ca319ac2744",
+          "records": 3,
+          "bytes": 62914
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "ea495912a31a5e320426d5ff4c08dafcccdafa025d504e18c740945002b5029a",
-          "records": 12,
-          "bytes": 26266
+          "sha256": "a17869e2f3bbfdeb98cacb4881ecb72842263c4c61f9c16b8f8ec0d1ff8aa46f",
+          "records": 37,
+          "bytes": 46294
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
-          "sha256": "1685cb116333e160af32dfc25652988c19c326bb2ee676ec924dc3f25c1dbbf0",
-          "records": 1328,
-          "bytes": 894186
+          "sha256": "54611788f68e08b4c11bea27b9cb5c4086f4e5511d60dfea1d56df7adad22c34",
+          "records": 1327,
+          "bytes": 893493
         }
       ]
     },
     "sources": {
-      "promoted_at": "2026-10-19T23:53:08.422Z",
+      "promoted_at": "2026-11-02T08:40:12.466Z",
       "artifacts": [
         {
           "path": "src/data/source-registry.generated.json",
-          "sha256": "770059942ea3c88841d63b67c1408c22bae3e3b5278865c983a074e32a2ed9e6",
-          "records": 131,
-          "bytes": 85724
+          "sha256": "2c5f3b1a202b733347e4de971fb46f2fc0092a2e94349d6edf08cf05460c8528",
+          "records": 161,
+          "bytes": 108289
         }
       ]
     },
     "transit": {
-      "promoted_at": "2026-10-17T00:10:41.346Z",
+      "promoted_at": "2026-11-10T07:26:35.703Z",
       "artifacts": [
         {
           "path": "src/data/transit.json",
-          "sha256": "9a0634a49dea3ce837de04ff69aef3fec575fd23be999126321c68a78050fa66",
+          "sha256": "da6dfa297892a279b14c7f4508aacbe59784f1b0a7e4a67c3084c809adb25826",
           "records": 8,
-          "bytes": 77612
+          "bytes": 81533
         },
         {
           "path": "src/data/transit-network.json",
-          "sha256": "648943cc4f48ce1916eee12a49e3c8f360a602334494411845fbdb3ca0e3c229",
+          "sha256": "536ff457c65bef50fe38dc1d3b7410b986be3a45b9fbf3a45b2de3e0b04094fd",
           "records": 2,
-          "bytes": 91059
+          "bytes": 91051
         },
         {
           "path": "src/data/transit-trips.json",
-          "sha256": "8453f0ba465465da0c7c7f553f2076e0ba2ce2cc3e6e7161494c767349475b78",
+          "sha256": "b502395dfa492388b230f541f57271a8ba0de73e3e3dfe281741eac9184129f3",
           "records": 917,
-          "bytes": 104780
+          "bytes": 104692
         }
       ]
     },
     "venue-events": {
-      "promoted_at": "2026-08-02T04:38:26Z",
+      "promoted_at": "2026-10-26T15:21:12.053Z",
       "artifacts": [
         {
           "path": "src/data/venue-event-source-inventory.json",
-          "sha256": "c1620253be2f2ed936a1876552e153bcf0a9b8dd0913076510d846a1f1f388f1",
-          "records": 29,
-          "bytes": 17423
+          "sha256": "33fc7477f9745f77c44a14db286180c81bd8cab272ca3085d2bb80827992ebe6",
+          "records": 147,
+          "bytes": 87097
         },
         {
           "path": "src/data/venue-event-source-state.json",
@@ -327,9 +651,9 @@
         },
         {
           "path": "src/data/venue-events.json",
-          "sha256": "b9388f6baa467ba0021125980cc57a0e97ce8f80022b68a1e93bd52548041db8",
-          "records": 26,
-          "bytes": 15404
+          "sha256": "33fc7477f9745f77c44a14db286180c81bd8cab272ca3085d2bb80827992ebe6",
+          "records": 147,
+          "bytes": 87097
         }
       ]
     },

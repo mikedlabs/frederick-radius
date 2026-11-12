@@ -11,6 +11,7 @@ import {
   recordPlaceCardPhotoResult,
   selectedPlaceCardPhoto,
   type PlaceCardPhotoPlan,
+  type PlaceCardPhotoSource,
   type PlaceCardPhotoState,
 } from "@/lib/place-card-photo";
 import {
@@ -44,6 +45,7 @@ import {
 import MapResultSurface from "./MapResultSurface";
 import { curatedPhotoUrl } from "@/lib/integrations/wikimedia";
 import styles from "./MapPeek.module.css";
+import CategoryIcon from "@/components/place/CategoryIcon";
 
 type MapCardDetails = {
   slug: string;
@@ -59,42 +61,66 @@ type MapCardDetails = {
   hours_updated_at?: string;
 };
 
-/** Only the selected-place identity is keyed. Source changes reset image and
- * credit readiness while retaining the heading/actions and keyboard focus.
+function isBundledPlacePhoto(source: PlaceCardPhotoSource): boolean {
+  return source.kind === "owned" ||
+    (source.kind === "curated" && Boolean(source.photo.localSrc?.startsWith("/")));
+}
+
+/** Only the selected-place identity is keyed. An unchanged local source keeps
+ * its decoded bytes when fallback metadata arrives; changed source/credit
+ * identities reset readiness without replacing the heading or actions.
  * Credits follow the heading row without overlapping its details hit target. */
 export function MapPeekPhoto({
-  plan, placeName, glyph, color,
+  plan, placeName, glyph,
   slug, photoPending = false, onOpenDetails, children,
 }: {
   plan: PlaceCardPhotoPlan;
   placeName: string;
+  /** The place's category slug. Without a photograph the slot shows that
+   * category's plain glyph in muted ink (an unknown slug draws a map pin). */
   glyph: string;
-  color: string;
+  /** Retained for existing callers. A photo-less slot no longer paints a
+   * category hue, so this value is unused. */
+  color?: string;
   slug?: string;
   photoPending?: boolean;
   onOpenDetails: (event: MouseEvent<HTMLButtonElement>) => void;
   children?: React.ReactNode;
 }) {
-  const [photo, setPhoto] = useState<PlaceCardPhotoState & { generation: number }>(() => ({
-    planKey: plan.key, failedSources: [], loadedSrc: null, generation: 0,
+  const [photo, setPhoto] = useState<PlaceCardPhotoState & { generation: number; plan: PlaceCardPhotoPlan }>(() => ({
+    planKey: plan.key, failedSources: [], loadedSrc: null, generation: 0, plan,
   }));
   if (photo.planKey !== plan.key) {
-    // Keep heading/actions mounted while resetting this plan's readiness.
-    // A→B→A receives a new generation, so A's late callbacks cannot mark
-    // the new A ready or discard its image.
-    setPhoto({ planKey: plan.key, failedSources: [], loadedSrc: null, generation: photo.generation + 1 });
+    // A late fallback must not retry an exhausted URL. Only candidates in the
+    // current approved plan survive; a removed local image cannot stay sticky.
+    const failedSources = photo.failedSources.filter(src => plan.sources.some(source => source.src === src));
+    const next = { ...photo, planKey: plan.key, failedSources, plan };
+    const previousSource = selectedPlaceCardPhoto(photo.plan, photo);
+    const nextSource = selectedPlaceCardPhoto(plan, next);
+    const keepLocal = previousSource && isBundledPlacePhoto(previousSource) &&
+      JSON.stringify(previousSource) === JSON.stringify(nextSource);
+    // Changed credit, resources and A→B→A selections receive a new generation
+    // so an old load/error callback cannot settle the replacement image.
+    setPhoto({ ...next, loadedSrc: keepLocal ? photo.loadedSrc : null,
+      generation: photo.generation + (keepLocal ? 0 : 1) });
   }
   const source = selectedPlaceCardPhoto(plan, photo);
   const ready = Boolean(source && photo.planKey === plan.key && photo.loadedSrc === source.src);
   const reportState = (result: "loaded" | "failed") => {
     if (!source) return;
-    setPhoto(current => current.planKey === plan.key && current.generation === photo.generation
-      ? { ...recordPlaceCardPhotoResult(plan, current, source.src, result), generation: current.generation }
-      : current);
+    setPhoto(current => {
+      if (current.generation !== photo.generation) return current;
+      // Next Image can finish decode with a retained callback before its
+      // callback ref updates. A new fallback plan must not strand the exact
+      // same bundled image; changed sources, credits and generations stay out.
+      if (current.planKey !== plan.key && !(isBundledPlacePhoto(source) &&
+        JSON.stringify(selectedPlaceCardPhoto(current.plan, current)) === JSON.stringify(source))) return current;
+      return { ...current, ...recordPlaceCardPhotoResult(current.plan, current, source.src, result) };
+    });
   };
   return (
     <>
-      <div className={`map-peek-body ${styles.body}`} data-map-place-slug={slug} data-has-photo={Boolean(source) || undefined}>
+      <div className={`map-peek-body ${styles.body}`} data-map-place-slug={slug} data-has-photo={Boolean(source) || undefined} data-glyph-only={!source || undefined} data-photo-kind={source?.kind}>
         <button
           type="button"
           className="map-peek-visual"
@@ -118,27 +144,28 @@ export function MapPeekPhoto({
               placeholder="blur"
               blurDataURL={PAPER_CREAM_BLUR}
               className="absolute inset-0 h-full w-full object-cover"
-              style={source.kind === "owned" ? { objectPosition: source.objectPosition } : undefined}
+              style={source.kind !== "google" ? { objectPosition: source.objectPosition } : undefined}
               onLoad={(event) => reportState(isPlacePhotoFailureSignal(event.currentTarget) ? "failed" : "loaded")}
               onError={() => reportState("failed")}
             />
           ) : (
+            // No photograph: the plain category glyph in muted ink, with no
+            // tile, tint, border or letter monogram.
             <span
               aria-hidden
               data-map-peek-photo-state={photo.planKey === plan.key && plan.sources.length > 0 ? "failed" : undefined}
               className="map-peek-category-mark"
-              style={{ "--map-peek-color": color } as React.CSSProperties}
             >
-              {glyph}
+              <CategoryIcon slug={glyph} className="h-6 w-6" strokeWidth={1.8} />
             </span>
           )}
           </span>
         </button>
         {children}
       </div>
-      {ready && source && source.kind !== "owned" && (
+      {ready && source && (source.kind !== "owned" || source.referenceContext === "appearance-unverified") && (
         <div className="map-peek-source-credit">
-          <PlaceCardPhotoCredit source={source} loaded touchTarget />
+          <PlaceCardPhotoCredit source={source} loaded touchTarget discloseModifications />
         </div>
       )}
     </>
@@ -239,7 +266,6 @@ export default function MapPeek({
   onDetails: () => void;
 }) {
   const cat = CATEGORY_BY_SLUG[place.category];
-  const catColor = cat?.color ?? "var(--app-brand)";
   const saved = useIsFollowed(place.slug);
   const failureDescriptionRef = useRef<string | null>(null);
   const toggleSave = useToggleFollow(place.slug, "map_peek", (description) => { failureDescriptionRef.current = description; });
@@ -266,27 +292,32 @@ export default function MapPeek({
   const address = activeDetails?.address?.trim();
   const locationLine = address || town;
   // Exact owned or locally bundled licensed images need no metadata trip. The
-  // selected route remains the only Google URL/credit transport, with the
-  // existing proxy size unchanged. Only free reviewed sources gain detail.
+  // selected route remains the only Google URL/credit transport. One selected
+  // image uses a bounded 360 CSS px target (at most 720 provider pixels),
+  // without adding requests to browse lists or changing provider allowances.
   const selectedPhotoPlan = placeCardPhotoPlan({
     slug: place.slug,
     google_photo_url: activeDetails?.google_photo_url ?? activeDetails?.hero_image,
     google_photo_attribution: activeDetails?.google_photo_attribution,
-  }, 104);
+  }, 360);
   // Avoid starting a remote Commons request before the selected route can
   // provide its preferred Google photo. Local reviewed bytes have no such wait.
   const eligibleSources = activeDetails || detailsResolvedSlug === place.slug
     ? selectedPhotoPlan.sources
     : selectedPhotoPlan.sources.filter(source => source.kind === "owned" ||
       (source.kind === "curated" && source.photo.localSrc));
-  const photoSources = eligibleSources.map(source => source.kind === "curated"
+  // Reuse only free files already admitted by the shared policy. Map can show
+  // those exact bytes immediately without buying a replacement on metadata load.
+  const photoSources = [
+    ...eligibleSources.filter(isBundledPlacePhoto),
+    ...eligibleSources.filter(source => !isBundledPlacePhoto(source)),
+  ].map(source => source.kind === "curated"
     ? { ...source, src: curatedPhotoUrl(source.photo, 720) }
     : source);
   const photoPlan: PlaceCardPhotoPlan = {
-    // Adding selected metadata cannot replace an already decoded owned image.
-    key: photoSources[0]?.kind === "owned"
-      ? JSON.stringify([place.slug, photoSources[0]])
-      : JSON.stringify([selectedPhotoPlan.key, photoSources.map(source => source.src)]),
+    // Include every active source and its credit so policy/identity changes
+    // reach the display boundary even when the first local URL is unchanged.
+    key: JSON.stringify([place.slug, photoSources]),
     sources: photoSources,
   };
   const photoPending = photoPlan.sources.length === 0 && !activeDetails && detailsResolvedSlug !== place.slug;
@@ -419,22 +450,24 @@ export default function MapPeek({
         key={place.slug}
         plan={photoPlan}
         placeName={place.name}
-        glyph={place.name.slice(0, 1)}
-        color={catColor}
+        glyph={place.category}
         slug={place.slug}
         photoPending={photoPending}
         onOpenDetails={openDetails}
       >
         <div className="map-peek-text">
-          <span className="map-peek-cat" style={{ color: "var(--app-ink-3)" }}>
-            {cat?.name ?? place.category}
-          </span>
-          <button type="button" className="map-peek-title-button" data-press-target="control" onClick={openDetails}>
-            <span data-press-face id={nameId} className="map-peek-name">{place.name}</span>
-          </button>
-          {locationLine && <span className="map-peek-address">{locationLine}</span>}
+          <div className={styles.heading}>
+            <button type="button" className="map-peek-title-button" data-press-target="control" onClick={openDetails}>
+              <span data-press-face id={nameId} className="map-peek-name">{place.name}</span>
+            </button>
+            <button type="button" className="map-peek-details-link" data-press-target="control" onClick={openDetails}>
+              <span data-press-face className={styles.actionFace}>Details
+                <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+              </span>
+            </button>
+          </div>
           <span className="map-peek-meta">
-            <span style={{ color: statusTone(status), fontWeight: 650 }}>{hoursLine}</span>
+            <span className={styles.status} data-map-place-status={status.state} style={{ color: statusTone(status) }}>{hoursLine}</span>
             {dist && (
               <>
                 <span aria-hidden className="map-peek-dot">·</span>
@@ -442,11 +475,7 @@ export default function MapPeek({
               </>
             )}
           </span>
-          <button type="button" className="map-peek-details-link" data-press-target="control" onClick={openDetails}>
-            <span data-press-face className={styles.actionFace}>Details
-              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
-            </span>
-          </button>
+          {locationLine && <span className="map-peek-address">{locationLine}</span>}
         </div>
       </MapPeekPhoto>
 

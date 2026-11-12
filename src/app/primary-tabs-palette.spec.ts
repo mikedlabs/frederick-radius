@@ -159,7 +159,10 @@ describe("primary tab palette contrast", () => {
     });
     for (const surface of ["--app-bg", "--app-bg-elevated-solid", "--app-bg-sunken"]) {
       it(`${mode} text, links, and actual status copy clear AA on ${surface}`, () => {
-        for (const foreground of ["--app-ink", "--app-ink-2", "--app-ink-3", "--app-link", "--state-open", "--state-closing", "--app-danger-text", "--app-live-text"]) {
+        for (const foreground of [
+          "--app-ink", "--app-ink-2", "--app-ink-3", "--app-link", "--state-open", "--state-closing", "--app-danger-text", "--app-live-text",
+          "--app-brand-text", "--app-cool-text", "--app-accent-text", "--app-forest-text",
+        ]) {
           expect(contrast(values, foreground, surface), `${foreground} on ${surface}`).toBeGreaterThanOrEqual(4.5);
         }
         expect(contrast(values, "--app-control-border-safe", surface)).toBeGreaterThanOrEqual(3);
@@ -179,6 +182,19 @@ describe("primary tab palette contrast", () => {
       expect(resolveColor(light, `var(${token})`)).toEqual(resolveColor(dark, `var(${token})`));
     }
   });
+  it("gives colored text its own role tokens: the fill color in light, a lifted foreground in dark", () => {
+    const light = palette(false);
+    const dark = palette(true);
+    for (const [role, fill] of [
+      ["--app-brand-text", "--app-brand"], ["--app-cool-text", "--app-cool"],
+      ["--app-accent-text", "--app-accent"], ["--app-forest-text", "--app-brand-2"],
+    ]) {
+      expect(resolveColor(light, `var(${role})`), role).toEqual(resolveColor(light, `var(${fill})`));
+      expect(resolveColor(dark, `var(${role})`), role).not.toEqual(resolveColor(dark, `var(${fill})`));
+    }
+    expect(resolveColor(dark, "var(--app-brand-text)")).toEqual(resolveColor(dark, "var(--app-link)"));
+    expect(dark.get("--app-link")).toBe("#FFAAA0");
+  });
 
   for (const mode of ["light", "dark"] as const) {
     const values = palette(mode === "dark");
@@ -192,7 +208,10 @@ describe("primary tab palette contrast", () => {
       template.innerHTML = renderToStaticMarkup(createElement(ReasonChipRow, { reasons }));
       const chip = [...template.content.querySelectorAll<HTMLSpanElement>("span[style]")].find((node) => node.textContent === "Weekend");
       expect(chip).toBeDefined();
-      expect(expressionContrast(values, chip!.style.color, chip!.style.background, "var(--app-bg-elevated-solid)")).toBeGreaterThanOrEqual(4.5);
+      // Plain tool: a reason is plain text with no fill of its own, so its
+      // label is measured against the card ground it sits on.
+      expect(chip!.style.background).toBe("");
+      expect(expressionContrast(values, chip!.style.color, "var(--app-bg-elevated-solid)")).toBeGreaterThanOrEqual(4.5);
     });
     it(`${mode} rendered Today fallback and Tonight actions clear AA on the page ground`, () => {
       for (const element of [
@@ -287,9 +306,13 @@ describe("primary tab palette contrast", () => {
         const markup = renderToStaticMarkup(createElement(MapPeek, {
           place, distanceOrigin: null, distanceOriginLabel: "from you", onClose: () => {}, onDetails: () => {},
         }));
-        const foreground = markup.match(/class="map-peek-meta"><span style="color:([^;]+);/);
-        expect(foreground, "rendered hours status").not.toBeNull();
-        expect(expressionContrast(values, foreground![1], declaration(stylesheet, ".map-peek", "background")), open_status.state).toBeGreaterThanOrEqual(4.5);
+        const rendered = document.createElement("template");
+        rendered.innerHTML = markup;
+        const status = rendered.content.querySelector<HTMLElement>(`[data-map-place-status="${open_status.state}"]`);
+        expect(status, "rendered hours status").not.toBeNull();
+        const foreground = status!.style.getPropertyValue("color");
+        expect(foreground, "rendered status foreground").not.toBe("");
+        expect(expressionContrast(values, foreground, declaration(stylesheet, ".map-peek", "background")), open_status.state).toBeGreaterThanOrEqual(4.5);
       }
     });
   }

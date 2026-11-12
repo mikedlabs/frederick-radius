@@ -5,7 +5,6 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 import PlaceHero from "./PlaceHero";
-import { TodayGeographicDoorwayView } from "@/components/today/TodayGeographicDoorway";
 import PlaceSheet from "./PlaceSheet";
 import PhotoLightbox from "@/components/ui/PhotoLightbox";
 
@@ -22,6 +21,37 @@ async function expectDecodedImage(image: HTMLImageElement) {
     await expect(image.naturalWidth, transport).toBeGreaterThan(1);
     await expect(image.naturalHeight, transport).toBeGreaterThan(1);
   }, { timeout: 5000 });
+}
+
+/** Prove the same actual control is painted, settled and owns 44px input. */
+async function expectReadySave(save: HTMLButtonElement) {
+  await waitFor(async () => {
+    await expect(save).toBeVisible();
+    const before = save.getBoundingClientRect();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const bounds = save.getBoundingClientRect();
+    await expect(Math.abs(bounds.x - before.x)).toBeLessThanOrEqual(0.25);
+    await expect(Math.abs(bounds.y - before.y)).toBeLessThanOrEqual(0.25);
+    await expect(bounds.height).toBeGreaterThanOrEqual(44);
+    await expect(bounds.width).toBeGreaterThanOrEqual(44);
+    const x = bounds.x + bounds.width / 2;
+    const y = bounds.y + bounds.height / 2;
+    for (const [px, py] of [[x, y], [x - 21, y], [x + 21, y], [x, y - 21], [x, y + 21]]) {
+      await expect(px).toBeGreaterThanOrEqual(0);
+      await expect(px).toBeLessThan(document.documentElement.clientWidth);
+      await expect(py).toBeGreaterThanOrEqual(0);
+      await expect(py).toBeLessThan(document.documentElement.clientHeight);
+      const hit = document.elementFromPoint(px, py);
+      if (hit?.closest("button") !== save) {
+        throw new Error(`Save 44px hit missed: ${JSON.stringify({
+          bounds: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
+          point: { x: px, y: py }, viewport: { width: document.documentElement.clientWidth, height: document.documentElement.clientHeight },
+          hit: hit ? { tag: hit.tagName, role: hit.getAttribute("role"), label: hit.getAttribute("aria-label") } : null,
+        })}`);
+      }
+      await expect(hit?.closest("button")).toBe(save);
+    }
+  });
 }
 
 const slug = "carroll-creek-linear-park-frederick";
@@ -78,10 +108,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const OwnedFullHero: Story = {
-  render: (args) => <><TodayGeographicDoorwayView scope="county" /><PlaceHero {...args} /></>,
+  render: (args) => <PlaceHero {...args} />,
   play: async ({ canvasElement }) => {
     const images = within(canvasElement).getAllByRole("img", { name: owned.alt }) as HTMLImageElement[];
-    await expect(images).toHaveLength(2);
+    await expect(images).toHaveLength(1);
     for (const image of images) {
       await expectDecodedImage(image);
       const url = new URL(image.currentSrc, window.location.href);
@@ -144,6 +174,9 @@ export const ExhaustedHeroCollapses: Story = {
 export const OwnedSheetKeepsFactsAfterFailure: Story = {
   render: () => <SheetFixture />,
   play: async ({ canvasElement }) => {
+    const originalHref = window.location.href;
+    const originalState = window.history.state;
+    const originalOverflow = document.documentElement.style.overflowY;
     const canvas = within(canvasElement);
     const opener = canvas.getByRole("button", { name: "View Creek details" });
     await userEvent.click(opener);
@@ -160,6 +193,10 @@ export const OwnedSheetKeepsFactsAfterFailure: Story = {
     await expect(sheet.getAllByRole("heading", { name: place.name })).toHaveLength(1);
     const directions = sheet.getByRole("link", { name: "Directions" });
     const directionsHref = directions.getAttribute("href");
+    // Failures arriving after an actually painted, usable Save control must
+    // preserve that same control. Image decode alone can precede its staggered
+    // entrance; do not inject late errors into an unready opening animation.
+    await expectReadySave(save);
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const current = dialog.querySelector("[data-place-sheet-photo] img");
       if (!current) break;
@@ -168,43 +205,25 @@ export const OwnedSheetKeepsFactsAfterFailure: Story = {
       await waitFor(() => expect(dialog.querySelector("[data-place-sheet-photo] img")?.getAttribute("src")).not.toBe(src));
     }
     await expect(dialog.querySelector("[data-place-sheet-photo]")).toBeNull();
+    await expect(save.isConnected).toBe(true);
+    await expect(dialog.querySelector(`button[data-save-ref="place:${slug}"]`)).toBe(save);
     await expect(sheet.getByRole("heading", { name: place.name })).toBeVisible();
     await expect(save).toBeVisible();
     await expect(save).toHaveAttribute("aria-label", saveLabel!);
-    // A visible dialog/image may still be entering. Measure the actual
-    // enlarged Save hit area only after its painted coordinates settle.
-    await waitFor(async () => {
-      const before = save.getBoundingClientRect();
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-      const bounds = save.getBoundingClientRect();
-      await expect(Math.abs(bounds.x - before.x)).toBeLessThanOrEqual(0.25);
-      await expect(Math.abs(bounds.y - before.y)).toBeLessThanOrEqual(0.25);
-      const extender = getComputedStyle(save, "::after");
-      await expect(Math.max(bounds.height, Number.parseFloat(extender.height))).toBeGreaterThanOrEqual(44);
-      await expect(Math.max(bounds.width, Number.parseFloat(extender.width))).toBeGreaterThanOrEqual(44);
-      const x = bounds.x + bounds.width / 2;
-      const y = bounds.y - 2;
-      await expect(x).toBeGreaterThanOrEqual(0);
-      await expect(x).toBeLessThan(document.documentElement.clientWidth);
-      await expect(y).toBeGreaterThanOrEqual(0);
-      await expect(y).toBeLessThan(document.documentElement.clientHeight);
-      const hit = document.elementFromPoint(x, y);
-      if (hit?.closest("button") !== save) {
-        throw new Error(`Save enlarged hit missed: ${JSON.stringify({
-          bounds: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
-          point: { x, y }, viewport: { width: document.documentElement.clientWidth, height: document.documentElement.clientHeight },
-          hit: hit ? { tag: hit.tagName, role: hit.getAttribute("role"), label: hit.getAttribute("aria-label") } : null,
-        })}`);
-      }
-      await expect(hit?.closest("button")).toBe(save);
-    });
+    await expectReadySave(save);
     await expect(directions).toHaveAttribute("href", directionsHref!);
     await expect(sheet.getByText("Monday", { exact: true })).toBeInTheDocument();
     await expect(sheet.getByText("7:00 AM – 10:00 PM", { exact: true })).toBeInTheDocument();
     await expect(sheet.getByText(/Carroll Creek, Frederick, MD/)).toBeVisible();
     await expect(sheet.getByText("Radius reviewed", { exact: false })).toBeInTheDocument();
     await userEvent.click(sheet.getByRole("button", { name: "Close place details" }));
+    await waitFor(() => expect(body.queryByRole("dialog", { name: place.name })).toBeNull());
     await waitFor(() => expect(opener).toHaveFocus());
+    // Close consumes this exact owned history entry before the next story
+    // observes the document; focus return alone may precede traversal.
+    await waitFor(() => expect(window.history.state).toEqual(originalState));
+    await expect(window.location.href).toBe(originalHref);
+    await expect(document.documentElement.style.overflowY).toBe(originalOverflow);
   },
 };
 
@@ -230,7 +249,7 @@ export const FullHeroReturnsOnBrowserBack: Story = {
   play: async ({ canvasElement }) => {
     const originalHref = window.location.href;
     const originalState = window.history.state;
-    const originalOverflow = document.body.style.overflow;
+    const originalOverflow = document.documentElement.style.overflowY;
     const opener = within(canvasElement).getByRole("button", { name: `View ${place.name} photo` });
     await userEvent.click(opener);
     const body = within(document.body);
@@ -238,7 +257,9 @@ export const FullHeroReturnsOnBrowserBack: Story = {
     await waitFor(() => expect(viewer).toHaveFocus());
     await expect(window.history.state?.__frederickRadiusLayer).toMatch(/^photo:/);
     await expect(window.location.href).toBe(originalHref);
-    await expect(document.body.style.overflow).toBe("hidden");
+    // The page lock holds the document's real scroll root and leaves body alone.
+    await expect(document.documentElement.style.overflowY).toBe("hidden");
+    await expect(document.body.style.overflow).not.toBe("hidden");
 
     // Real browser traversal, not a synthetic popstate or a mocked Back call.
     window.history.back();
@@ -246,7 +267,7 @@ export const FullHeroReturnsOnBrowserBack: Story = {
     await waitFor(() => expect(opener).toHaveFocus());
     await waitFor(() => expect(window.history.state).toEqual(originalState));
     await expect(window.location.href).toBe(originalHref);
-    await expect(document.body.style.overflow).toBe(originalOverflow);
+    await expect(document.documentElement.style.overflowY).toBe(originalOverflow);
     await expect(within(canvasElement).getByRole("img", { name: owned.alt })).toBeVisible();
   },
 };
@@ -292,7 +313,7 @@ export const SheetViewerBackAndEscapeKeepPlaceOpen: Story = {
   play: async ({ canvasElement }) => {
     const originalHref = window.location.href;
     const originalState = window.history.state;
-    const originalOverflow = document.body.style.overflow;
+    const originalOverflow = document.documentElement.style.overflowY;
     const sheetOpener = within(canvasElement).getByRole("button", { name: "View Creek details" });
     await userEvent.click(sheetOpener);
     const body = within(document.body);
@@ -310,7 +331,8 @@ export const SheetViewerBackAndEscapeKeepPlaceOpen: Story = {
     await waitFor(() => expect(photoOpener).toHaveFocus());
     await waitFor(() => expect(window.history.state).toEqual(parentState));
     await expect(sheet).toBeVisible();
-    await expect(document.body.style.overflow).toBe("hidden");
+    // The viewer released its hold; the sheet beneath still holds the page.
+    await expect(document.documentElement.style.overflowY).toBe("hidden");
 
     // The viewer is a React portal beneath BottomSheet in the component tree.
     // A real Escape must close only the photo, not bubble into that parent.
@@ -323,7 +345,7 @@ export const SheetViewerBackAndEscapeKeepPlaceOpen: Story = {
     await waitFor(() => expect(window.history.state).toEqual(parentState));
     await expect(sheet).toBeVisible();
     await expect(within(sheet).getByRole("heading", { name: place.name })).toBeVisible();
-    await expect(document.body.style.overflow).toBe("hidden");
+    await expect(document.documentElement.style.overflowY).toBe("hidden");
 
     // Only the next Back dismisses the place and returns to its own opener.
     window.history.back();
@@ -331,6 +353,6 @@ export const SheetViewerBackAndEscapeKeepPlaceOpen: Story = {
     await waitFor(() => expect(sheetOpener).toHaveFocus());
     await waitFor(() => expect(window.history.state).toEqual(originalState));
     await expect(window.location.href).toBe(originalHref);
-    await expect(document.body.style.overflow).toBe(originalOverflow);
+    await expect(document.documentElement.style.overflowY).toBe(originalOverflow);
   },
 };

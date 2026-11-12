@@ -39,8 +39,7 @@ export default function AerialBeat({
 
   return (
     <figure
-      className={`relative overflow-hidden rounded-[var(--app-radius-lg)] ${className}`}
-      style={{ boxShadow: "var(--app-edge), var(--app-elev-2)" }}
+      className={`relative overflow-hidden rounded-[var(--app-radius-md)] ${className}`}
     >
       <div className="relative aspect-[16/10] w-full sm:aspect-[2/1]">
         <Image
@@ -66,7 +65,7 @@ export default function AerialBeat({
               From above
             </p>
             <p
-              className="font-serif text-[18px] font-semibold leading-tight text-white"
+              className="text-[17px] font-semibold leading-tight text-white"
               style={{ textShadow: "0 1px 3px rgba(0,0,0,0.55)" }}
             >
               {label} from the air
@@ -74,7 +73,7 @@ export default function AerialBeat({
           </div>
           {meta && (
             <span
-              className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold backdrop-blur"
+              className="shrink-0 rounded-[var(--app-radius-sm)] px-2 py-0.5 text-[11px] font-semibold backdrop-blur"
               style={{
                 background: "rgba(255,255,255,0.16)",
                 color: "white",

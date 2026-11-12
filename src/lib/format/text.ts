@@ -73,6 +73,59 @@ export function cleanFeedText(raw: string): string {
 }
 
 /**
+ * An apostrophe does not start a new word. Any title-casing pass leaves
+ * "Worman'S" and "D'S" behind, so the contraction and possessive suffixes
+ * go back to lowercase. Surnames such as O'Neill and a quoted 'N' are left
+ * alone. `deshoutTitle` in `src/lib/events/normalize.ts` applies the same
+ * pattern to event titles.
+ */
+export function repairApostropheSuffix(text: string): string {
+  return text.replace(
+    /(\p{L})(['’])(S|T|RE|VE|LL|D|M)\b/giu,
+    (_match, letter: string, apostrophe: string, suffix: string) =>
+      `${letter}${apostrophe}${suffix.toLowerCase()}`,
+  );
+}
+
+const NAME_SMALL_WORD = /(?<=\s)(?:And|At|By|For|From|In|Of|On|The|To|With)(?=\s)/g;
+
+/**
+ * Title-case an ALL-CAPS source name ("WORMAN'S MILL PARK", "C&O CANAL
+ * NATIONAL HISTORICAL PARK (FREDERICK SEGMENTS)") for display. A word starts
+ * at any letter that does not follow another letter or digit, so "C&O",
+ * "U.S." and "(Frederick" keep their capitals and "1st" stays intact. The
+ * suffix repair then undoes the capital an apostrophe would otherwise earn,
+ * which keeps "O'Neill" and fixes "Worman'S". Small joining words stay
+ * lowercase inside a name.
+ */
+export function titleCaseName(raw: string): string {
+  const cased = raw
+    .toLowerCase()
+    .replace(/(?<![\p{L}\p{N}])\p{L}/gu, (letter) => letter.toUpperCase());
+  return repairApostropheSuffix(cased).replace(NAME_SMALL_WORD, (word) =>
+    word.toLowerCase(),
+  );
+}
+
+/**
+ * Tidy the punctuation `cleanFeedText` leaves when a source used dashes as
+ * list bullets or spaced asides. "OPEN: , Infants & Toddlers Program ,
+ * School Based Programs" becomes "OPEN: Infants & Toddlers Program, School
+ * Based Programs". A comma that trails other punctuation is dropped, a
+ * comma never has a space before it, and a comma never opens or closes the
+ * text. An abbreviation's own comma ("St., Frederick") has no space before
+ * it and is kept. Run it after `cleanFeedText`.
+ */
+export function tidyListSeparators(text: string): string {
+  return text
+    .replace(/([:;.!?,])(?:\s+,)+/g, "$1")
+    .replace(/\s+,/g, ",")
+    .replace(/([:;!?,]),+/g, "$1")
+    .replace(/^\s*,\s*|\s*,\s*$/g, "")
+    .trim();
+}
+
+/**
  * Recursively run `cleanFeedText` over every string in a value — the
  * boundary pass for hand-authored/agent-written JSON datasets
  * (field-notes.json, business-info.json) that bypass the feed pipeline

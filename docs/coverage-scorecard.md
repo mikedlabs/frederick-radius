@@ -7,24 +7,28 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-10-20 — 1571 places._
+_Generated 2026-11-12 — 1571 places._
+
+Current checked schedules: 37. Current qualified schedules: 3.
+Qualified venue or service tables retain their conditions and expiry. They
+are counted separately and cannot support generic Open now claims.
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick | 854 | 680 (80%) | 3 (0%) | 710 (83%) | 711 (83%) | 50 | 296 |
-| Thurmont | 110 | 75 (68%) | 1 (1%) | 100 (91%) | 99 (90%) | 3 | 30 |
-| Brunswick | 97 | 65 (67%) | 3 (3%) | 84 (87%) | 77 (79%) | 2 | 24 |
-| Walkersville | 86 | 66 (77%) | 1 (1%) | 81 (94%) | 78 (91%) | 2 | 29 |
-| Middletown | 85 | 52 (61%) | 1 (1%) | 72 (85%) | 74 (87%) | 4 | 27 |
+| Frederick | 855 | 680 (80%) | 17 (2%) | 711 (83%) | 714 (84%) | 50 | 297 |
+| Thurmont | 110 | 75 (68%) | 2 (2%) | 100 (91%) | 99 (90%) | 3 | 30 |
+| Brunswick | 97 | 65 (67%) | 3 (3%) | 84 (87%) | 78 (80%) | 2 | 24 |
+| Walkersville | 86 | 66 (77%) | 3 (3%) | 81 (94%) | 78 (91%) | 2 | 29 |
+| Middletown | 85 | 52 (61%) | 4 (5%) | 72 (85%) | 74 (87%) | 4 | 27 |
 | New Market | 75 | 51 (68%) | 0 (0%) | 62 (83%) | 60 (80%) | 4 | 13 |
-| Mount Airy | 63 | 48 (76%) | 0 (0%) | 58 (92%) | 58 (92%) | 5 | 27 |
-| Emmitsburg | 57 | 39 (68%) | 1 (2%) | 52 (91%) | 51 (89%) | 2 | 18 |
+| Mount Airy | 62 | 47 (76%) | 1 (2%) | 57 (92%) | 57 (92%) | 5 | 26 |
+| Emmitsburg | 57 | 39 (68%) | 2 (4%) | 52 (91%) | 51 (89%) | 2 | 18 |
 | Myersville | 46 | 33 (72%) | 1 (2%) | 40 (87%) | 40 (87%) | 2 | 9 |
 | Woodsboro | 36 | 20 (56%) | 0 (0%) | 30 (83%) | 26 (72%) | 1 | 10 |
 | Urbana | 30 | 21 (70%) | 1 (3%) | 24 (80%) | 25 (83%) | 2 | 10 |
 | Burkittsville | 30 | 15 (50%) | 0 (0%) | 28 (93%) | 30 (100%) | 2 | 8 |
 | Rosemont | 2 | 0 (0%) | 0 (0%) | 1 (50%) | 1 (50%) | 0 | 1 |
-| **Total** | **1571** | 1165 (74%) | 12 (1%) | 1342 (85%) | 1330 (85%) | **79** | **502** |
+| **Total** | **1571** | 1164 (74%) | 34 (2%) | 1342 (85%) | 1333 (85%) | **79** | **502** |
 
 ## Coverage by category
 
@@ -37,25 +41,22 @@ successful image loading is a separate browser check.
 | Category | Places | Fresh hours | Publishable photo | Useful copy | Direct action |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Shopping | 176 | 0 (0%) | 161 (91.5%) | 2 (1.1%) | 169 (96%) |
-| Churches & worship | 162 | 0 (0%) | 129 (79.6%) | 1 (0.6%) | 149 (92%) |
-| Parks | 137 | 0 (0%) | 120 (87.6%) | 16 (11.7%) | 99 (72.3%) |
-| Wellness | 137 | 0 (0%) | 108 (78.8%) | 6 (4.4%) | 135 (98.5%) |
+| Churches & worship | 162 | 0 (0%) | 130 (80.2%) | 1 (0.6%) | 149 (92%) |
+| Parks | 138 | 0 (0%) | 120 (87%) | 16 (11.6%) | 100 (72.5%) |
+| Wellness | 137 | 0 (0%) | 109 (79.6%) | 6 (4.4%) | 135 (98.5%) |
 | Civic & public | 75 | 0 (0%) | 62 (82.7%) | 2 (2.7%) | 67 (89.3%) |
 | Services | 59 | 0 (0%) | 38 (64.4%) | 6 (10.2%) | 55 (93.2%) |
-| Markets | 57 | 0 (0%) | 53 (93%) | 21 (36.8%) | 56 (98.2%) |
 | Yoga & fitness | 42 | 0 (0%) | 40 (95.2%) | 1 (2.4%) | 40 (95.2%) |
 | Family | 39 | 0 (0%) | 32 (82.1%) | 7 (17.9%) | 39 (100%) |
 | Bakeries | 36 | 0 (0%) | 33 (91.7%) | 4 (11.1%) | 33 (91.7%) |
 | Lodging | 34 | 0 (0%) | 31 (91.2%) | 2 (5.9%) | 34 (100%) |
-| Ice cream & treats | 28 | 0 (0%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
 | Salon & barber | 28 | 0 (0%) | 22 (78.6%) | 0 (0%) | 27 (96.4%) |
-| Galleries | 27 | 0 (0%) | 23 (85.2%) | 1 (3.7%) | 26 (96.3%) |
 | Bars | 23 | 0 (0%) | 22 (95.7%) | 2 (8.7%) | 22 (95.7%) |
 | Live music | 23 | 0 (0%) | 20 (87%) | 1 (4.3%) | 21 (91.3%) |
 | Farms & pick-your-own | 22 | 0 (0%) | 19 (86.4%) | 1 (4.5%) | 21 (95.5%) |
 | Trails | 22 | 0 (0%) | 17 (77.3%) | 4 (18.2%) | 11 (50%) |
 | Massage | 19 | 0 (0%) | 15 (78.9%) | 0 (0%) | 19 (100%) |
-| Museums | 18 | 0 (0%) | 14 (77.8%) | 4 (22.2%) | 16 (88.9%) |
+| Museums | 18 | 0 (0%) | 15 (83.3%) | 4 (22.2%) | 16 (88.9%) |
 | Pizza | 18 | 0 (0%) | 18 (100%) | 3 (16.7%) | 16 (88.9%) |
 | Auto care | 16 | 0 (0%) | 9 (56.3%) | 7 (43.8%) | 16 (100%) |
 | Breweries | 16 | 0 (0%) | 12 (75%) | 5 (31.3%) | 16 (100%) |
@@ -73,9 +74,12 @@ successful image loading is a separate browser check.
 | Pharmacies | 3 | 0 (0%) | 3 (100%) | 0 (0%) | 3 (100%) |
 | Community | 2 | 0 (0%) | 0 (0%) | 2 (100%) | 2 (100%) |
 | Tours & rides | 2 | 0 (0%) | 1 (50%) | 2 (100%) | 2 (100%) |
-| Transit | 1 | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) |
-| Restaurants | 177 | 1 (0.6%) | 161 (91%) | 42 (23.7%) | 170 (96%) |
-| Coffee | 39 | 2 (5.1%) | 35 (89.7%) | 6 (15.4%) | 33 (84.6%) |
+| Transit | 1 | 0 (0%) | 1 (100%) | 0 (0%) | 0 (0%) |
+| Galleries | 27 | 1 (3.7%) | 23 (85.2%) | 1 (3.7%) | 26 (96.3%) |
+| Coffee | 37 | 2 (5.4%) | 33 (89.2%) | 6 (16.2%) | 31 (83.8%) |
+| Ice cream & treats | 28 | 2 (7.1%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
+| Restaurants | 178 | 13 (7.3%) | 162 (91%) | 42 (23.6%) | 171 (96.1%) |
+| Markets | 57 | 7 (12.3%) | 53 (93%) | 21 (36.8%) | 56 (98.2%) |
 | Libraries | 15 | 9 (60%) | 12 (80%) | 2 (13.3%) | 14 (93.3%) |
 
 ## Hours refresh artifact

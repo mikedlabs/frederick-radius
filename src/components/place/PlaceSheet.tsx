@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { ExternalLink, Phone, Mail, Globe, Navigation, Expand, ChevronDown, ChevronRight, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
 import {
   groupPlaceActions,
@@ -19,6 +19,7 @@ import OpenClosedDot from "./OpenClosedDot";
 import GoogleHours from "./GoogleHours";
 import HoursBlock from "./HoursBlock";
 import { getOpenStatus } from "@/lib/hours";
+import { placeHoursProvenance } from "@/lib/place-hours-provenance";
 import SaveButton from "@/components/saved/SaveButton";
 import ShareButton from "./ShareButton";
 import SourceBadge from "./SourceBadge";
@@ -59,6 +60,8 @@ import {
  */
 type Props = {
   place: PlaceCardData | null;
+  metadataPending?: boolean;
+  metadataUnavailable?: boolean;
   travelOrigin?: LngLat | null;
   mapReturnTo?: string | null;
   onClose: () => void;
@@ -68,6 +71,8 @@ type Props = {
 
 export default function PlaceSheet({
   place,
+  metadataPending = false,
+  metadataUnavailable = false,
   travelOrigin,
   mapReturnTo,
   onClose,
@@ -86,6 +91,8 @@ export default function PlaceSheet({
         <PlaceSheetContent
           key={place.slug}
           place={place}
+          metadataPending={metadataPending}
+          metadataUnavailable={metadataUnavailable}
           travelOrigin={travelOrigin}
           mapReturnTo={mapReturnTo}
           onClose={dismiss}
@@ -97,11 +104,15 @@ export default function PlaceSheet({
 
 function PlaceSheetContent({
   place,
+  metadataPending,
+  metadataUnavailable,
   travelOrigin,
   mapReturnTo,
   onClose,
 }: {
   place: PlaceCardData;
+  metadataPending: boolean;
+  metadataUnavailable: boolean;
   travelOrigin?: LngLat | null;
   mapReturnTo?: string | null;
   onClose: () => void;
@@ -117,7 +128,6 @@ function PlaceSheetContent({
     : place.open_status;
   const cat = CATEGORY_BY_SLUG[place.category];
   const muni = MUNICIPALITY_BY_SLUG[place.municipality];
-  const color = cat?.color ?? "var(--app-brand)";
   // The sheet mounts only after a client interaction, so its lazy initializer
   // can read the live address bar. That is more precise than a router snapshot:
   // the map writes camera movement and layers through `history.replaceState`.
@@ -202,7 +212,9 @@ function PlaceSheetContent({
     google_photo_attribution?: GooglePhotoAttribution;
     google_maps_uri?: string;
   } | null>(null);
+  const metadataUnresolved = metadataPending || metadataUnavailable;
   const needsBasicEnrichment = Boolean(
+    !metadataUnresolved &&
     !place.google_photo_url &&
     !place.google_hours?.length &&
     !place.phone &&
@@ -223,7 +235,7 @@ function PlaceSheetContent({
   // author/source line in the sheet without making every catalog download pay
   // for every business's profile URLs and report metadata.
   useEffect(() => {
-    if (!place.google_photo_url || place.google_photo_attribution) return;
+    if (metadataUnresolved || !place.google_photo_url || place.google_photo_attribution) return;
     const controller = new AbortController();
     fetch(`/api/places/map-card/${encodeURIComponent(place.slug)}`, {
       signal: controller.signal,
@@ -251,6 +263,7 @@ function PlaceSheetContent({
       .catch(() => {});
     return () => controller.abort();
   }, [
+    metadataUnresolved,
     place.google_photo_attribution,
     place.google_photo_url,
     place.slug,
@@ -258,13 +271,14 @@ function PlaceSheetContent({
 
   // Upcoming events happening AT this venue — a strong "should I go" signal.
   useEffect(() => {
+    if (metadataUnresolved) return;
     let cancelled = false;
     fetch(`/api/place/${place.slug}/events`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (!cancelled && Array.isArray(d?.events)) setVenueEvents(d.events); })
       .catch(() => {});
     return () => { cancelled = true; setVenueEvents([]); };
-  }, [place.slug]);
+  }, [metadataUnresolved, place.slug]);
 
   // Static enrichment wins; on-demand fills the gap.
   const photos = place.google_photos?.length
@@ -337,13 +351,14 @@ function PlaceSheetContent({
        *  the inner had `overflow-y-auto` but no height constraint,
        *  so content past the cap just got clipped — users couldn't
        *  reach the bottom details. */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-6">
+      <div data-place-sheet-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-6"
+        style={{ scrollPaddingTop: "calc(var(--place-sheet-action-height, 0px) + 12px)" }}>
         {/* Exact-place media only. Save and identity are separate from the
             image button, so there are no nested actions or repeated titles. */}
         {heroPhoto && (
           <>
             <div data-place-sheet-photo data-place-sheet-photo-source={heroPhoto.kind}
-              className="relative aspect-[4/3] w-full overflow-hidden">
+              className="relative aspect-[4/3] max-h-[clamp(112px,25dvh,220px)] w-full overflow-hidden sm:max-h-none">
               <button type="button" aria-label={`View ${place.name} photos`}
                 className="absolute inset-0 h-full w-full cursor-zoom-in"
                 onClick={() => { haptic("light"); openPhoto(heroPhoto.src); }}>
@@ -351,6 +366,7 @@ function PlaceSheetContent({
                   fill unoptimized={heroPhoto.kind === "google"} priority
                   sizes="(max-width: 720px) 100vw, 720px" placeholder="blur"
                   blurDataURL={PAPER_CREAM_BLUR} className="object-cover"
+                  style={heroPhoto.kind !== "google" ? { objectPosition: heroPhoto.objectPosition } : undefined}
                   onLoad={(event) => {
                     if (isPlacePhotoFailureSignal(event.currentTarget)) markPhotoFailed(heroPhoto.src);
                     else setLoadedPhotos((current) => new Set([...current, heroPhoto.src]));
@@ -367,10 +383,12 @@ function PlaceSheetContent({
         )}
 
         {/* Below-hero content lives inside the standard padding. */}
-        {/* reveal-up: same settle-in cascade as the event sheet. */}
-        <div className="reveal-up px-5 pt-4">
-          {/* The name and Save stay readable before loading and after exhaustion. */}
-          <header className="mb-3 flex items-start gap-3" data-place-sheet-identity>
+        {/* No entrance of its own: the sheet's spring is the entrance, so
+            the content is already in place as the sheet arrives. */}
+        <div className="px-5 pt-4">
+          {/* Identity and its one action row stay useful before metadata
+              arrives and after every photo candidate has failed. */}
+          <header className="mb-3" data-place-sheet-identity>
             <div className="min-w-0 flex-1">
               <p data-place-sheet-category className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink)" }}>
                 {cat?.name ?? place.category}
@@ -379,10 +397,10 @@ function PlaceSheetContent({
                 {place.name}
               </h2>
             </div>
-            <div className="shrink-0">
-              <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
-            </div>
           </header>
+          <PlaceSheetActions groups={actionGroups} entityId={place.slug} placeName={place.name} />
+          {metadataPending && <p role="status" className="mb-3 text-[13px] text-[var(--app-ink-2)]">Loading place details…</p>}
+          {metadataUnavailable && <p role="status" className="mb-3 text-[13px] text-[var(--app-ink-2)]">More details are unavailable. You can keep browsing or open the full page.</p>}
 
           {/* Address + source provenance + "known for" — three quiet
            *  lines that establish what this place is before the data
@@ -471,6 +489,15 @@ function PlaceSheetContent({
             />
           </div>
 
+        {/* The existing compact official schedule belongs with the decision
+            facts, before optional photographs, aerial context and events.
+            Its source clocks, dated exceptions and qualifications are unchanged. */}
+        {place.hours?._official && (
+          <div className="mt-4" data-place-sheet-official-hours>
+            <HoursBlock hours={place.hours} verified={place.hours_verified} provenance={placeHoursProvenance(place)} />
+          </div>
+        )}
+
         {/* The moat, surfaced where the tap lands: this place's VERIFIED Field
             Notes (happy hour / deal / parking / insider), led high in the sheet
             so the reason-to-open isn't buried on the detail page. Gated by the
@@ -490,13 +517,14 @@ function PlaceSheetContent({
         {/* Real travel time from the user's consented location (Routes API) */}
         {travel && (travel.walkMin != null || travel.driveMin != null) && (
           <div
-            className="mt-3 inline-flex items-center gap-3 rounded-full border px-3 py-1.5 text-xs font-medium"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            // Travel time is information, so it is a plain line, not a capsule.
+            className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] font-medium"
+            style={{ color: "var(--app-ink-2)" }}
           >
             {travel.walkMin === 0 ? (
               /* A sub-minute walk should not turn into "0 min." */
               <span className="inline-flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
+                <MapPin className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool-text)" }} aria-hidden />
                 You are here
               </span>
             ) : (
@@ -507,13 +535,13 @@ function PlaceSheetContent({
                     data readout, not a recommendation — the 2026-06 audit). */}
                 {travel.walkMin != null && travel.walkMin >= 1 && travel.walkMin <= 35 && (
                   <span className="inline-flex items-center gap-1">
-                    <Footprints className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
+                    <Footprints className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool-text)" }} aria-hidden />
                     <span className="font-mono tabular-nums">{travel.walkMin}</span> min walk
                   </span>
                 )}
                 {travel.driveMin != null && (
                   <span className="inline-flex items-center gap-1">
-                    <Car className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
+                    <Car className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-brand-text)" }} aria-hidden />
                     <span className="font-mono tabular-nums">{travel.driveMin}</span> min drive
                   </span>
                 )}
@@ -527,11 +555,10 @@ function PlaceSheetContent({
             type="button"
             onClick={() => void requestTravelTime()}
             disabled={travelStatus === "loading"}
-            className="tap-44 mt-3 inline-flex items-center gap-2 rounded-full border px-3 text-xs font-semibold disabled:opacity-60"
+            className="tap-44 mt-3 inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[14px] font-semibold disabled:opacity-60"
             style={{
-              borderColor: "var(--app-border)",
-              color: "var(--app-ink-2)",
-              background: "var(--app-bg-elevated)",
+              borderColor: "var(--app-control-border)",
+              color: "var(--app-ink)",
             }}
           >
             <Footprints className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
@@ -562,7 +589,7 @@ function PlaceSheetContent({
           </div>
         )}
 
-        <div className="mt-3">
+        {!metadataUnresolved && <div className="mt-3">
           <LiveGooglePlaceContext
             key={place.slug}
             slug={place.slug}
@@ -572,7 +599,7 @@ function PlaceSheetContent({
               place.description_reviewed ?? false,
             ) === "scraped"}
           />
-        </div>
+        </div>}
 
         {place.accessibility?.communication ? (
           <div className="mt-4">
@@ -587,10 +614,10 @@ function PlaceSheetContent({
               <div key={source.src} className="w-32 shrink-0">
                 <button type="button" aria-label={`View ${place.name} photo ${index + 2}`}
                   onClick={() => { haptic("light"); openPhoto(source.src); }}
-                  className="relative h-24 w-32 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] border"
-                  style={{ borderColor: "var(--app-border)" }}>
+                  className="relative block h-24 w-32 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]">
                   <Image src={source.src} alt="" fill unoptimized={source.kind === "google"}
                     loading="lazy" sizes="128px" placeholder="blur" blurDataURL={PAPER_CREAM_BLUR} className="object-cover"
+                    style={source.kind !== "google" ? { objectPosition: source.objectPosition } : undefined}
                     onLoad={(event) => {
                       if (isPlacePhotoFailureSignal(event.currentTarget)) markPhotoFailed(source.src);
                       else setLoadedPhotos((current) => new Set([...current, source.src]));
@@ -618,10 +645,7 @@ function PlaceSheetContent({
           return (
             <div className="mt-5">
               <h3 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>From above</h3>
-              <figure
-                className="relative overflow-hidden rounded-[var(--app-radius-lg)]"
-                style={{ boxShadow: "var(--app-edge), var(--app-elev-1)" }}
-              >
+              <figure className="relative overflow-hidden rounded-[var(--app-radius-md)]">
                 <div className="relative aspect-[16/10] w-full bg-[var(--app-bg-sunken)]">
                   <Image
                     src={aerial.src}
@@ -656,24 +680,22 @@ function PlaceSheetContent({
         {venueEvents.length > 0 && (
           <div className="mt-5">
             <h3 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>Upcoming here</h3>
-            <ul className="flex flex-col gap-1.5">
+            {/* Ruled rows: a tabular date column, then the title and time. */}
+            <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
               {venueEvents.map((ev) => (
-                <li key={ev.slug}>
+                <li key={ev.slug} className="border-b" style={{ borderColor: "var(--app-border)" }}>
                   <Link
                     href={`/events/${ev.slug}`}
                     onClick={() => haptic("light")}
-                    className="tactile flex items-center gap-3 rounded-[var(--app-radius-md)] p-2.5 transition active:scale-[0.99]"
+                    className="flex min-h-11 items-center gap-3 rounded-[var(--app-radius-sm)] py-2.5"
                   >
-                    <div
-                      className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-sm)]"
-                      style={{ background: `color-mix(in srgb, ${color} 13%, var(--app-bg-elevated-solid))`, color }}
-                    >
-                      <span className="text-[9px] font-bold uppercase tracking-[0.08em] leading-none">{ev.month}</span>
-                      <span className="font-serif text-[18px] font-semibold leading-none">{ev.day}</span>
+                    <div className="flex w-10 shrink-0 flex-col items-start tabular-nums" style={{ color: "var(--app-ink)" }}>
+                      <span className="text-[11px] font-semibold uppercase leading-none tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>{ev.month}</span>
+                      <span className="mt-1 text-[18px] font-bold leading-none">{ev.day}</span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>{ev.title}</p>
-                      <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>{ev.weekday} · {ev.time}</p>
+                      <p className="truncate text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>{ev.title}</p>
+                      <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>{ev.weekday} · {ev.time}</p>
                     </div>
                     <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
                   </Link>
@@ -683,22 +705,12 @@ function PlaceSheetContent({
           </div>
         )}
 
-        {place.hours?._official && (
-          <div className="mt-4">
-            <HoursBlock hours={place.hours} verified={place.hours_verified} provenance={`Hours from ${place.hours._official.source_name ?? "Frederick County Public Libraries"}.`} />
-          </div>
-        )}
         {/* Provider text is never a fallback for an expired first-party schedule. */}
         {hoursLines.length > 0 && (
           <div className="mt-4">
             <GoogleHours lines={hoursLines} />
           </div>
         )}
-
-        {/* One reliable lead action, two visible alternatives, and everything
-            else behind a calm disclosure. Provider colors no longer flatten
-            every capability into an equally loud pill. */}
-        <PlaceSheetActions groups={actionGroups} entityId={place.slug} />
 
         {isDestinationCategory(place.category) && isRecommendable(place) && place.is_operational !== "closed_permanently" && (
           <div className="mt-3">
@@ -714,7 +726,7 @@ function PlaceSheetContent({
             href={fullPageHref}
             prefetch={false}
             className="inline-flex items-center gap-1 font-medium"
-            style={{ color: "var(--app-brand-press)" }}
+            style={{ color: "var(--app-link)" }}
           >
             See full page <ExternalLink className="h-3 w-3" aria-hidden />
           </Link>
@@ -756,7 +768,7 @@ function PlaceSheetContent({
                 `What I noticed about ${place.name}:\n\n\n(Optional) where I saw it: `,
               )}`}
               className="underline"
-              style={{ color: "var(--app-cool)" }}
+              style={{ color: "var(--app-cool-text)" }}
             >
               Tell us
             </a>
@@ -805,36 +817,83 @@ function decisionActionForPlaceAction(action: PlaceAction): DecisionAction {
 function PlaceSheetActions({
   groups,
   entityId,
+  placeName,
 }: {
   groups: PlaceActionGroups;
   entityId: string;
+  placeName: string;
 }) {
+  const actionBarRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const bar = actionBarRef.current;
+    const scroller = bar?.closest<HTMLElement>("[data-place-sheet-scroll]");
+    if (!bar || !scroller) return;
+    const previous = scroller.style.getPropertyValue("--place-sheet-action-height");
+    // The actual wrapping row owns the inset. Focus/scrollIntoView must not
+    // put a schedule summary or another control behind sticky actions when
+    // text, viewport width or confirmed membership changes its height.
+    const measure = () => scroller.style.setProperty("--place-sheet-action-height", `${Math.ceil(bar.getBoundingClientRect().height)}px`);
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(bar);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+      if (previous) scroller.style.setProperty("--place-sheet-action-height", previous);
+      else scroller.style.removeProperty("--place-sheet-action-height");
+    };
+  }, []);
   const { primary, secondary, more } = groups;
-  if (!primary) return null;
+  const actions = [primary, ...secondary, ...more].filter((action): action is PlaceAction => Boolean(action));
+  // The validated resolver alone supplies these capabilities. Keep the
+  // existing primary policy (including parking), while bringing Directions
+  // and the exact full-menu destination out of any secondary disclosure.
+  const quick = [primary, actions.find(action => action.key === "directions"), actions.find(action => action.key === "menu")]
+    .filter((action): action is PlaceAction => Boolean(action))
+    .filter((action, index, list) => list.findIndex(candidate => candidate.key === action.key) === index);
+  const quickKeys = new Set(quick.map(action => action.key));
+  const remainingSecondary = secondary.filter(action => !quickKeys.has(action.key));
+  const remainingMore = more.filter(action => !quickKeys.has(action.key));
 
   return (
-    <section className="mt-5 space-y-2" aria-label="Place actions">
-      <PlaceActionLink action={primary} priority="primary" entityId={entityId} />
-      {secondary.length > 0 ? (
-        <div className={`grid gap-2 ${secondary.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
-          {secondary.map((action) => (
+    <>
+      {/* This single row sticks inside the existing sheet scroll root. It
+          never becomes a second fixed bottom bar or duplicates Save, and
+          84px minimum columns retain three actions on a 320px phone even
+          when WebKit reserves scrollbar width. Enlarged labels can still
+          wrap and grow without shrinking the 44px touch targets. */}
+      <div role="group" aria-label={`Actions for ${placeName}`} data-place-sheet-quick-actions
+        ref={actionBarRef}
+        className="sticky top-0 z-10 -mx-5 mt-4 grid gap-2 border-y px-5 py-2"
+        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 84px), 1fr))", background: "var(--app-bg-elevated-solid)", borderColor: "var(--app-border)" }}>
+        {quick.map(action => <PlaceActionLink key={action.key} action={action} priority={action === primary ? "primary" : "secondary"} entityId={entityId} quick />)}
+        <div className="flex min-w-0 rounded-[var(--app-radius-md)] border [&>button]:w-full [&>button]:min-w-0 [&>button]:text-[13px] [&>button]:leading-snug"
+          style={{ borderColor: "var(--app-border-strong)" }}>
+          <SaveButton refType="place" refId={entityId} label={`Save ${placeName}`} barLabel="Save" />
+        </div>
+      </div>
+      {remainingSecondary.length > 0 || remainingMore.length > 0 ? <section className="mt-2 space-y-2" aria-label="Other place actions">
+      {remainingSecondary.length > 0 ? (
+        <div className={`grid gap-2 ${remainingSecondary.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+          {remainingSecondary.map((action) => (
             <PlaceActionLink key={action.key} action={action} priority="secondary" entityId={entityId} />
           ))}
         </div>
       ) : null}
-      {more.length > 0 ? (
+      {remainingMore.length > 0 ? (
         <details
-          className="group overflow-hidden rounded-[var(--app-radius-md)] border"
+          className="group border-y"
           style={{ borderColor: "var(--app-border)" }}
         >
           <summary
-            className="tap-44-y flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-[12.5px] font-semibold [&::-webkit-details-marker]:hidden"
+            className="tap-44-y flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-[var(--app-radius-sm)] text-[14px] font-semibold [&::-webkit-details-marker]:hidden"
             style={{ color: "var(--app-ink-2)" }}
           >
             <span>More actions</span>
             <span className="flex items-center gap-2">
               <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                {more.length}
+                {remainingMore.length}
               </span>
               <ChevronDown
                 className="h-4 w-4 transition-transform group-open:rotate-180"
@@ -843,14 +902,15 @@ function PlaceSheetActions({
               />
             </span>
           </summary>
-          <div className="border-t px-3" style={{ borderColor: "var(--app-border)" }}>
-            {more.map((action) => (
+          <div className="border-t" style={{ borderColor: "var(--app-border)" }}>
+            {remainingMore.map((action) => (
               <PlaceActionLink key={action.key} action={action} priority="row" entityId={entityId} />
             ))}
           </div>
         </details>
       ) : null}
-    </section>
+      </section> : null}
+    </>
   );
 }
 
@@ -858,10 +918,12 @@ function PlaceActionLink({
   action,
   priority,
   entityId,
+  quick = false,
 }: {
   action: PlaceAction;
   priority: "primary" | "secondary" | "row";
   entityId: string;
+  quick?: boolean;
 }) {
   const Icon = ACTION_ICON[action.icon];
   const primary = priority === "primary";
@@ -869,6 +931,7 @@ function PlaceActionLink({
   return (
     <a
       href={action.href}
+      data-place-sheet-action={action.key}
       onClick={() => {
         haptic("light");
         trackDecision({
@@ -885,7 +948,7 @@ function PlaceActionLink({
       className={
         row
           ? "tap-44-y flex min-h-11 items-center gap-2.5 border-b py-2 text-[12.5px] font-semibold last:border-b-0"
-          : `tactile-interactive flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-3 text-[12.5px] font-semibold ${
+          : `tactile-interactive flex min-w-0 items-center justify-center rounded-[var(--app-radius-md)] text-center font-semibold ${quick ? "min-h-[52px] flex-col gap-1 px-2 py-2 text-[13px]" : "min-h-11 gap-2 px-3 text-[12.5px]"} ${
               primary ? "tactile-lift" : "border bg-[var(--app-bg-elevated)]"
             }`
       }
@@ -906,10 +969,11 @@ function PlaceActionLink({
       <Icon
         className="h-4 w-4 shrink-0"
         strokeWidth={2.1}
-        style={{ color: primary ? "var(--app-on-brand)" : "var(--app-brand-press)" }}
+        // Only the filled action carries coral; the rest are ink.
+        style={{ color: primary ? "var(--app-on-brand)" : "var(--app-ink-2)" }}
         aria-hidden
       />
-      <span className={row ? "min-w-0 flex-1" : undefined}>{action.label}</span>
+      <span className={row ? "min-w-0 flex-1" : "min-w-0 max-w-full [overflow-wrap:anywhere]"}>{action.label}</span>
       {row && action.external ? (
         <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-45" strokeWidth={2} aria-hidden />
       ) : null}

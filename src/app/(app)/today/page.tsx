@@ -9,7 +9,6 @@ import KeysScore from "@/components/today/KeysScore";
 import LocalSportsScoreboard from "@/components/today/LocalSportsScoreboard";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
-import TodayFairFeature from "@/components/today/TodayFairFeatureIsland";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -49,12 +48,7 @@ import {
 import { eventCardVisual, parseRecoveryEventVisual } from "@/components/event/eventVisuals";
 import TodayMasthead from "@/components/today/TodayMasthead";
 import TodayGeographicDoorway, { TodayGeographicDoorwayPending } from "@/components/today/TodayGeographicDoorway";
-import PageChapter from "@/components/ui/PageChapter";
 import styles from "@/components/today/TodayLayout.module.css";
-import {
-  TODAY_FAIR_PROMOTION_SLUG,
-  todayFairPromotionPhase,
-} from "@/lib/today/fair-promotion";
 
 /**
  * Now — the daily briefing.
@@ -63,11 +57,13 @@ import {
  *
  *   1. Identity       → active alerts and the time-aware masthead
  *   2. Conditions     → one verified weather glance before browsing
- *   3. Find and see   → one Find doorway, then an exact scoped place photograph
- *                       and four practical shortcuts
- *   4. Follow the day → a short event program and one location-aware place answer
- *   5. Plan the rest  → scheduled utilities, sports, light, and tomorrow
- *   6. Keep exploring → local guides and saved places, collapsed
+ *   3. Find and see   → one Find doorway, then exact scoped place photographs
+ *                       before the current local answers
+ *   4. Current local answers → one location-aware place answer, saved choices,
+ *                             then a short event program
+ *   5. Keep exploring → four practical shortcuts and the category index
+ *   6. Plan the rest  → scheduled utilities, sports, light, and tomorrow
+ *   7. Local guides   → secondary local guides, collapsed
  *
  * (The old generated "best move now" card was removed 2026-06-18 because it
  *  promoted ideas without enough evidence. Today may recommend carefully when
@@ -141,7 +137,6 @@ export const revalidate = 300;
 export default async function HomePage() {
   const now = new Date();
   const frame = todayFrame(easternStartHour(now.toISOString()));
-  const fairPromotionPhase = todayFairPromotionPhase(now);
   const civicMoment = activeMoment(now);
   const civicMomentLeadsToday =
     civicMoment?.slug === "in-the-street-2026" &&
@@ -154,7 +149,7 @@ export default async function HomePage() {
   // assembly here therefore let one pathological feed parser hold /today open
   // for the full 300-second platform timeout. The durable archive is the
   // last-known-good copy of that same unified set. Its read cancels after
-  // 650ms, falls back to curated rows, and carries an honest degraded signal.
+  // one second, falls back to curated rows, and carries an honest degraded signal.
   const eventsPromise = loadTodayEventSnapshot(now);
 
   // WEATHER-CONDITIONAL COMPOSITION — a wet hour leads the daypart shelf with
@@ -239,8 +234,8 @@ export default async function HomePage() {
       </Suspense>
 
       {/* In The Streets is the county's shared plan today, so it takes the
-          lead over the normal daily briefing and the upcoming Fair campaign.
-          Active alerts remain above it because they can change the plan. */}
+          lead over the normal daily briefing. Active alerts remain above it
+          because they can change the plan. */}
       {civicMoment && civicMomentLeadsToday && (
         <div className="mb-5">
           <MomentSpotlight moment={civicMoment} isDayOf />
@@ -282,45 +277,24 @@ export default async function HomePage() {
           </div>
         </div>
 
-      {/* Put an actual place photograph on arrival, before the utility grid
-          and event program. This owned Frederick doorway stays hidden for
-          other town and Near me lenses; it makes no current-conditions claim.
+      {/* Reviewed local photographs lead to their actual places. Task links
+          retain the selected area; imagery never promises current conditions.
           Until the URL lens is known, its fallback is deliberately neutral. */}
       <Suspense fallback={<TodayGeographicDoorwayPending />}>
         <TodayGeographicDoorway />
       </Suspense>
 
-      {/* All four practical actions remain together below the first visual. */}
-      <div className={styles.quickNeeds}>
-        <TodayQuickNeeds />
-      </div>
-
       <div data-today-current-content className={styles.currentContent}>
-      <PageChapter
-        label="Follow the day"
-        variant="plain"
-        className={styles.events}
-      >
-        {/* A second civic moment still matters during the Fair campaign. Keep
-            it with the day's program so it survives without competing with
-            the place choices below. */}
-        {fairPromotionPhase &&
-        civicMoment &&
-        civicMoment.slug !== TODAY_FAIR_PROMOTION_SLUG &&
-        !civicMomentLeadsToday ? (
-          <div className="mb-4">
-            <MomentSpotlight moment={civicMoment} />
-          </div>
-        ) : null}
-        {whatsOn}
-      </PageChapter>
         <div aria-label="Places for your area" className={styles.places}>
-          {/* Keep the real selected-area answer mounted once, including its
-              existing scope and honest availability fallback. */}
+          {/* The selected-area recommendation and personal saves are one
+              visible choice group. Saving a photo or recommendation uses the
+              same confirmed membership, independently of opening hours. */}
           {decisionLead}
+          <Suspense fallback={null}><FromYourSaved /></Suspense>
         </div>
-
-
+      <div data-today-events className={styles.events}>
+        {whatsOn}
+      </div>
       </div>
 
       {/* News follows the first local answers. Feed work stays bounded and
@@ -329,31 +303,23 @@ export default async function HomePage() {
         <LocalNewsBrief />
       </Suspense>
 
-      <section aria-labelledby="today-explore-heading">
+      <section aria-labelledby="today-explore-heading" className={styles.quickNeeds}>
         <h2 id="today-explore-heading" className={styles.utilityHeading}>More ways to explore</h2>
-        <TodayQuickNeeds showShortcuts={false}><CravingStrip /></TodayQuickNeeds>
+        {/* Keep all four utility doors together once, after the current local
+            answers, with the existing category disclosure below them. */}
+        <TodayQuickNeeds><CravingStrip /></TodayQuickNeeds>
         <div className={styles.planLink}>
           <Suspense fallback={null}><TodayPlanTonightLink /></Suspense>
         </div>
       </section>
 
       {/* Secondary context follows the useful place and event answers.
-          Find and nearby choices remain ahead of the seasonal campaign.
-          Fair Day owns this doorway
-          from Sep 2–26, then retires itself on Sep 27. When another civic
-          moment overlaps the Fair campaign, it appears in Follow the day
-          above instead of disappearing. */}
-      {(fairPromotionPhase || civicMoment) && (
+          Find and nearby choices remain ahead of a live civic moment. */}
+      {civicMoment && (
       <div className={styles.context}>
-      {fairPromotionPhase ? (
-        <TodayFairFeature phase={fairPromotionPhase} briefing />
-      ) : civicMoment ? (
         <div>
           <MomentSpotlight moment={civicMoment} />
         </div>
-      ) : null}
-
-
       </div>
       )}
 
@@ -388,9 +354,10 @@ export default async function HomePage() {
           nudge; those made the briefing feel endless without improving the
           immediate decision. Their dedicated routes remain available. */}
       <CollapsibleSection
-        title="Local guides and saved places"
+        title="Local guides"
         storageKey="fr.today.more-ideas"
         defaultOpen={false}
+        mountOnOpen
         headingLevel={2}
         className="today-disclosure mt-6 border-t pt-2 [&>h2>button]:min-h-11"
       >
@@ -404,7 +371,6 @@ export default async function HomePage() {
               </Suspense>
             }
           />
-          <FromYourSaved />
           <Suspense fallback={null}>
             <WeekendPreview now={now} eventsPromise={eventsPromise} />
           </Suspense>

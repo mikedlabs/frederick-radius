@@ -3,12 +3,12 @@ import { getLandmarkPhoto, curatedPhotoUrl, type WikimediaPhoto } from "@/lib/in
 import { googlePhotoNameFromProxyUrl, publishableGooglePhotoAttribution } from "@/lib/google-photo-policy";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
-import { getOwnedPlacePhoto, type OwnedPlacePhoto } from "@/lib/owned-place-photos";
+import { getOwnedPlacePhoto, getOwnedPlacePhotos, type OwnedPlacePhoto } from "@/lib/owned-place-photos";
 
 export type PlaceCardPhotoSource =
-  | { kind: "curated"; src: string; alt: string; photo: WikimediaPhoto }
+  | { kind: "curated"; src: string; alt: string; photo: WikimediaPhoto; objectPosition?: WikimediaPhoto["objectPosition"] }
   | { kind: "google"; src: string; alt: string; attribution: GooglePhotoAttribution }
-  | Pick<OwnedPlacePhoto, "kind" | "src" | "alt" | "objectPosition">;
+  | Pick<OwnedPlacePhoto, "kind" | "src" | "alt" | "objectPosition" | "referenceContext">;
 export type PlaceCardPhotoPlan = { key: string; sources: readonly PlaceCardPhotoSource[] };
 export type PlaceCardPhotoState = { planKey: string; failedSources: readonly string[]; loadedSrc: string | null };
 export type PlaceCardPhotoResult = "loaded" | "failed";
@@ -61,7 +61,7 @@ export function placeCardPhotoPlan(
   const curated = getLandmarkPhoto(place.slug);
   const owned = getOwnedPlacePhoto(place.slug);
   const curatedSource: PlaceCardPhotoSource | null = curated
-    ? { kind: "curated", src: curatedPhotoUrl(curated, width * 2), alt: curated.alt, photo: curated }
+    ? { kind: "curated", src: curatedPhotoUrl(curated, width * 2), alt: curated.alt, photo: curated, objectPosition: curated.objectPosition }
     : null;
   const suppliedSource = suppliedPhotoSource(place.google_photo_url, width,
     [place.google_photo_attribution, ...(place.google_photo_attributions ?? [])]
@@ -70,6 +70,8 @@ export function placeCardPhotoPlan(
   // If they fail, do not bring that known unsuitable image back.
   const fallbacks = curated?.preferCurated && curatedSource
     ? [curatedSource]
+    : curated?.preferLocal && curatedSource
+      ? [curatedSource, suppliedSource].filter((source): source is PlaceCardPhotoSource => source !== null)
     : [suppliedSource, curatedSource].filter((source): source is PlaceCardPhotoSource => source !== null);
   const sources = [owned, ...fallbacks].filter((source): source is PlaceCardPhotoSource => source !== null)
     .filter((source, index, all) => all.findIndex((item) => sourceIdentity(item) === sourceIdentity(source)) === index);
@@ -89,7 +91,8 @@ export function placePhotoGallerySources(place: PlacePhotoInput, width: number):
     (!unsuitableName || googlePhotoNameFromProxyUrl(url) !== unsuitableName))
     .map((url) => suppliedPhotoSource(url, width, attributions))
     .filter((source): source is PlaceCardPhotoSource => source !== null);
-  return [...hero, ...extra].filter((source, index, all) => all.findIndex((item) => sourceIdentity(item) === sourceIdentity(source)) === index);
+  return [...hero, ...getOwnedPlacePhotos(place.slug), ...extra]
+    .filter((source, index, all) => all.findIndex((item) => sourceIdentity(item) === sourceIdentity(source)) === index);
 }
 
 export function selectedPlaceCardPhoto(plan: PlaceCardPhotoPlan, state: PlaceCardPhotoState | null): PlaceCardPhotoSource | null {

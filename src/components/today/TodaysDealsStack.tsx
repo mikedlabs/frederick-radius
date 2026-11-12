@@ -89,6 +89,8 @@ export default function TodaysDealsStack({
                   className="group flex min-h-[88px] items-start gap-3 px-3.5 py-3.5 text-left transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--app-brand)]"
                 >
                   <PlaceMedallion
+                    requireCurrentAppearance
+                    appearanceAsOf={now}
                     place={{
                       slug: deal.slug,
                       name: deal.name,
@@ -158,7 +160,7 @@ export default function TodaysDealsStack({
       <Link
         href="/deals"
         className="tap-44 flex min-h-11 items-center justify-between px-0.5 text-[13px] font-semibold"
-        style={{ color: "var(--app-brand-press)" }}
+        style={{ color: "var(--app-link)" }}
       >
         {actionable.length > shown.length
           ? `See all ${actionable.length} specials still on today`

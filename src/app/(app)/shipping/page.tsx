@@ -3,7 +3,6 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { shippingByKind, SHIP_COUNT } from "@/lib/loaders/shipping";
 import ShippingGuide from "@/components/shipping/ShippingGuide";
-import PageBloom from "@/components/ui/PageBloom";
 
 /**
  * /shipping — every place in Frederick County to mail, ship, or grab a
@@ -35,7 +34,6 @@ export default function ShippingPage() {
 
   return (
     <div className="relative mx-auto max-w-md space-y-6 py-6">
-      <PageBloom variant="warm-cool" />
 
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link href="/amenities" className="tap-44-y inline-flex items-center gap-1 hover:underline" style={{ color: "var(--app-ink-3)" }}>

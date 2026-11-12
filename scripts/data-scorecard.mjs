@@ -78,7 +78,7 @@ const row = (label, val) => lines.push(`  ${label.padEnd(34)} ${val}`);
 lines.push(`\nFREDERICK RADIUS — DATA SCORECARD  (${new Date().toISOString().slice(0, 10)})`);
 lines.push(`Catalog: ${n} live places\n`);
 lines.push("COVERAGE (higher is better):");
-row("verified hours", `${withHours} (${pct(withHours)})  <- the open-now gate`);
+row("stored schedule inventory", `${withHours} (${pct(withHours)})  (not freshness or open-now eligibility)`);
 row("has rating", `${n - noRating} (${pct(n - noRating)})`);
 row("has photo", `${n - noPhoto} (${pct(n - noPhoto)})`);
 row("has website", `${n - noWebsite} (${pct(n - noWebsite)})`);

@@ -103,10 +103,11 @@ describe("transit UI interaction contracts", () => {
     expect(source).toContain(
       'prediction.scheduleRelationship !== "NO_DATA"',
     );
-    // Network geometry is owned by TransitMap. The page passes the official
-    // route-shape loader result instead of duplicating the static network
-    // contract in two components.
-    expect(page).toContain("getFrederickTransitRouteShapes");
+    // The rider shell uses the same committed official network factory;
+    // secondary GIS reads cannot delay stop lookup or introduce segment IDs.
+    expect(page).toContain("officialTransitRouteShapesFC()");
+    expect(page).not.toContain("getFrederickTransitRoutes");
+    expect(page).not.toContain("getTransitFreshness");
     expect(page).toContain("shapes={shapes}");
     expect(mapSource).toContain("TRANSIT_NETWORK");
     expect(mapSource).toContain("shapeVariants");

@@ -90,7 +90,7 @@ jobs:
   ingest:
     needs: review-gate
     if: ${{ needs.review-gate.outputs.should_run == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Healthy runs finish in 8–12 minutes. A 30-minute ceiling leaves more
     # than twice that range while stopping a stalled runner long before the
     # two-hour incident observed on 2026-08-19.
@@ -175,6 +175,7 @@ jobs:
       - name: Extract business deep-info
         if: ${{ success() && steps.firecrawl-budget.outputs.allowed == 'true' }}
         env:
+          BUSINESS_INFO_CONFLICT_PARENT: ${{ runner.temp }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_BUSINESS_INFO_API_KEY }}
           FIRECRAWL_API_KEY: ${{ steps.firecrawl-budget.outputs.allowed == 'true' && steps.firecrawl-budget.outputs.enabled == 'true' && secrets.FIRECRAWL_API_KEY || '' }}
           FIRECRAWL_FETCH_FALLBACK: ${{ vars.BUSINESS_FIRECRAWL_FETCH_FALLBACK || '0' }}
@@ -224,6 +225,7 @@ jobs:
           install -D -m 0644 src/data/event-venue-photo-credits.json "$RUNNER_TEMP/automated-pr-output/src/data/event-venue-photo-credits.json"
           install -D -m 0644 src/data/places-client-hours.json "$RUNNER_TEMP/automated-pr-output/src/data/places-client-hours.json"
           install -D -m 0644 src/data/places-client.json "$RUNNER_TEMP/automated-pr-output/src/data/places-client.json"
+          install -D -m 0644 src/data/copy-scores.json "$RUNNER_TEMP/automated-pr-output/src/data/copy-scores.json"
           install -D -m 0644 src/data/data-release.json "$RUNNER_TEMP/automated-pr-output/src/data/data-release.json"
 
       - name: Pin review artifact name to this generator attempt
@@ -239,6 +241,15 @@ jobs:
           path: ${{ runner.temp }}/automated-pr-output
           if-no-files-found: error
           retention-days: 1
+
+      - name: Preserve held business-info candidate after a write conflict
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: held-business-info-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/radius-business-info-hold-*/
+          if-no-files-found: ignore
+          retention-days: 7
 
   publish:
     needs: ingest
@@ -258,6 +269,7 @@ jobs:
         src/data/event-venue-photo-credits.json
         src/data/places-client-hours.json
         src/data/places-client.json
+        src/data/copy-scores.json
       commit_message: "data: refresh business deep-info (automated)"
       title: "data: refresh business information"
       body: |
@@ -273,6 +285,7 @@ jobs:
     permissions:
       actions: write
       contents: read
+      pull-requests: read
     uses: ./.github/workflows/automated-pr-checks.yml
     with:
       branch: ${{ needs.publish.outputs.pr_branch }}

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { CalendarDays, CheckCircle2, Clock3, MapPinOff } from "lucide-react";
+import { expect, within } from "storybook/test";
 
 import EmptyState from "./EmptyState";
 
@@ -34,7 +35,20 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const NoEventsInRange: Story = {};
+// Plain tool: text on the page ground under a hairline, with one outlined
+// 6px action. No card, halo or gradient.
+export const NoEventsInRange: Story = {
+  play: async ({ canvasElement }) => {
+    const state = canvasElement.querySelector<HTMLElement>("[data-empty-state]")!;
+    const style = getComputedStyle(state);
+    await expect(style.backgroundImage).toBe("none");
+    await expect(style.borderTopLeftRadius).toBe("0px");
+    await expect(style.boxShadow).toBe("none");
+    const action = within(canvasElement).getByRole("link", { name: "See this weekend" });
+    await expect(getComputedStyle(action).borderTopLeftRadius).toBe("6px");
+    await expect(action.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+  },
+};
 
 export const HoursUnknown: Story = {
   args: {

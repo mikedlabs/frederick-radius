@@ -625,7 +625,8 @@ export default function DealsBrowser({
         </div>
 
         <div className="relative" data-deal-day-rail>
-          <div className="-mx-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] sm:mx-0 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
+          <div role="region" aria-label="Deal days" tabIndex={0}
+            className="-mx-4 overflow-x-auto px-4 pb-2 outline-none [scrollbar-width:none] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] sm:mx-0 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
             <div
               className="flex min-w-max gap-2 sm:grid sm:min-w-0 sm:grid-cols-8"
               role="group"

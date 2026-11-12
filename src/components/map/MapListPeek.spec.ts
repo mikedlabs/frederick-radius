@@ -78,6 +78,14 @@ describe("MapListPeek", () => {
     expect(html).toContain("<svg");
   });
 
+  it("keeps the choice to name, status and location while reserving full prose for details", () => {
+    const html = render({ list: list({ rows: [{ kind: "place", place: place("compact-choice", { short_blurb: "A long generic description belongs in the place detail." }) }] }) });
+    expect(html).toContain("Place compact-choice");
+    expect(html).toContain("Hours not confirmed");
+    expect(html).toContain("Frederick");
+    expect(html).not.toContain("A long generic description");
+  });
+
   it.each([
     ["new-market-historic-district-new-market", "/history-photos/new-market-antiques.jpg"],
     ["catoctin-mountain-park", "/history-photos/catoctin-mountain-park.jpg"],

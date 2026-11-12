@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
-import { Toaster, toast } from "sonner";
+import { toast } from "sonner";
+import AppToaster from "@/components/ui/AppToaster";
 import { resetFollowsSyncFlag, useFollowedSlugs, type FollowedSlugsBootstrap } from "@/hooks/useFollows";
 import { useMounted } from "@/hooks/useSaved";
 import type { PlaceCardData } from "@/lib/loaders/places";
@@ -78,7 +79,7 @@ function SaveControls() {
     </div>
     <output aria-label="Confirmed saved places">{slugs.has(SLUG) ? "Workshop stop" : "No saved places"}</output>
     <SavedWallet places={slugs.has(SLUG) ? [place] : []} openSlug={SLUG} />
-    <Toaster />
+    <AppToaster />
   </div>;
 }
 const meta = { title: "Saved/Confirmed save controls", component: SaveControls, tags: ["autodocs"] } satisfies Meta<typeof SaveControls>;
@@ -111,6 +112,32 @@ async function beginSave(canvasElement: HTMLElement) {
   await expect(canvas.getByLabelText("Confirmed saved places")).toHaveTextContent("No saved places");
   return canvas;
 }
+
+function PassiveSaveControls() {
+  const { slugs } = useFollowedSlugs(bootstrap, { importLocalSavesOnMount: false });
+  const ready = useMounted();
+  if (!ready) return null;
+  return <div className="space-y-4 p-4">
+    <SaveButton refType="place" refId={SLUG} label="Save Workshop stop" barLabel="Save" importLocalSavesOnMount={false} />
+    <output aria-label="Confirmed saved places">{slugs.has(SLUG) ? "Workshop stop" : "No saved places"}</output>
+    <AppToaster />
+  </div>;
+}
+
+export const PassiveArrivalStillAllowsSave: Story = {
+  beforeEach: () => sample(), render: () => <PassiveSaveControls />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const save = await canvas.findByRole("button", { name: "Save Workshop stop" });
+    await waitFor(() => expect(save).toBeEnabled());
+    await expect(save).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(save);
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Saving Workshop stop" })).toBeDisabled());
+    await finish(true);
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Remove Workshop stop from Saved" })).toHaveAttribute("aria-pressed", "true"));
+    await expect(canvas.getByLabelText("Confirmed saved places")).toHaveTextContent("Workshop stop");
+  },
+};
 
 export const Unsaved: Story = { beforeEach: () => sample(), play: async ({ canvasElement }) => { await confirmedControls(canvasElement, false); } };
 export const PendingSave: Story = { beforeEach: () => sample(), play: async ({ canvasElement }) => { await beginSave(canvasElement); } };
@@ -177,6 +204,25 @@ export const FailedRemoval: Story = { beforeEach: () => sample(true), play: asyn
   await expect(canvas.getByLabelText("Confirmed saved places")).toHaveTextContent("Workshop stop");
   await confirmedControls(canvasElement, true);
   await waitFor(() => expect(within(document.body).getByText("Could not remove from Saved")).toBeVisible());
+} };
+/** The Saved tab is where a slip of the thumb used to delete a place with no
+ *  acknowledgement. The toast names it, and Undo still works after the card
+ *  that raised it has left the deck. */
+export const WalletRemovalOffersUndo: Story = { beforeEach: () => sample(true), play: async ({ canvasElement }) => {
+  const canvas = await confirmedControls(canvasElement, true);
+  const remove = await canvas.findByRole("button", { name: "Remove Workshop stop from saved" });
+  remove.focus();
+  await userEvent.click(remove); await finish(true);
+  await waitFor(() => expect(canvas.queryByRole("list", { name: "Saved places, as a card wallet" })).toBeNull());
+  await expect(canvas.getByLabelText("Confirmed saved places")).toHaveTextContent("No saved places");
+  const body = within(document.body);
+  const message = await body.findByText("Removed from Saved · Workshop stop", { exact: true });
+  const undo = within(message.closest<HTMLElement>("[data-sonner-toast]")!).getByRole("button", { name: "Undo" });
+  await expect(undo.getBoundingClientRect().height).toBe(32);
+  await userEvent.click(undo); await finish(true);
+  await waitFor(() => expect(canvas.getByLabelText("Confirmed saved places")).toHaveTextContent("Workshop stop"));
+  await expect(canvas.getByRole("list", { name: "Saved places, as a card wallet" })).toBeVisible();
+  await confirmedControls(canvasElement, true);
 } };
 export const ConfirmedRemoval: Story = { beforeEach: () => sample(true), play: async ({ canvasElement }) => {
   const canvas = await confirmedControls(canvasElement, true);

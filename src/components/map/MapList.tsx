@@ -102,11 +102,14 @@ function MapListPlaceRow({ p, userLoc, onPick }: {
           <span aria-hidden className="map-list-place-visual"
             data-photo-state={photo ? photoLoaded ? "ready" : "pending" : "fallback"}
             data-photo-source={photo?.kind}
-            // Keep every row stable while metadata arrives or a source fails.
-            style={{ "--map-list-place-color": color, width: 72, height: 72 } as CSSProperties}>
-            <CategoryIcon slug={p.category} className="h-5 w-5" strokeWidth={1.8} />
-            {photo && <CompactPlacePhoto src={photo.src} size={72} onResult={onPhotoResult}
-              objectPosition={photo.kind === "owned" ? photo.objectPosition : undefined} />}
+            // Every place row uses the same 56px frame whatever its photo
+            // data says, before or after metadata arrives and after a photo
+            // fails. A real photo fills the frame; without one the glyph sits
+            // alone at its top with no tile, so no row changes height.
+            style={{ "--map-list-place-color": color } as CSSProperties}>
+            <CategoryIcon slug={p.category} className="h-6 w-6" strokeWidth={1.8} />
+            {photo && <CompactPlacePhoto src={photo.src} size={56} onResult={onPhotoResult}
+              objectPosition={photo.kind !== "google" ? photo.objectPosition : undefined} />}
           </span>
           <span className="map-list-main">
             <span className="map-list-name">{p.name}</span>
@@ -274,7 +277,7 @@ export default function MapList({
                         }}
                       >
                         <span aria-hidden className="map-list-event-icon">
-                          <CalendarDays className="h-4 w-4" strokeWidth={2.1} />
+                          <CalendarDays className="h-6 w-6" strokeWidth={1.8} />
                         </span>
                         <span className="map-list-main">
                           <span className="map-list-name">{eventDisplayTitle(event)}</span>

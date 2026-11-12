@@ -9,6 +9,7 @@ import { isOpenNow } from "@/lib/hours";
 import { primaryAnswerFor, queryWantsOpenNow } from "@/lib/search/answer";
 import { cleanReservationSearchQuery, parseReservationRequest } from "@/lib/ask/reservations";
 import type { PlaceAccessibility } from "@/data/places";
+import { isExactPlaceNameQuery } from "./place-name";
 
 export type SearchPlaceFeature = "wifi" | "quiet" | "restroom" | "parking" | "outlet" | "water" | "ev-charging" | "wheelchair";
 
@@ -126,6 +127,27 @@ function affirmativeFeatureRequest(query: string, feature: typeof PLACE_FEATURES
 
 export function parseSearchQualifiers(query: string, options: { literalPlaceName?: string; namedPlaceSlug?: string } = {}): SearchQualifiers {
   const q = query.toLowerCase().trim();
+  // A whole catalog name is the destination, not a collection of category,
+  // amenity or hours instructions. Do not pin a slug: several branches can
+  // share the same canonical name and still need normal scope/ranking.
+  if (options.literalPlaceName && isExactPlaceNameQuery(query, options.literalPlaceName)) {
+    return {
+      namedPlaceSlug: null,
+      compoundIntent: null,
+      strictPlaceKind: null,
+      categoryKey: null,
+      categoryLabel: null,
+      openNow: false,
+      nearMe: false,
+      downtown: false,
+      regions: [],
+      requestedFeatures: [],
+      negatedFeatures: [],
+      cleanedQuery: q,
+      includeAllCategoryMatches: false,
+      constrained: false,
+    };
+  }
   const regions = parseCountyRegions(q);
   const decisionQuery = regions.length > 0 ? countyDecisionClause(q) : q;
   const reservationRequest = parseReservationRequest(q);

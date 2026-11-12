@@ -1,5 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
+import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
@@ -35,12 +38,17 @@ type WorkflowDocument = {
     string,
     {
       if?: string;
-      "timeout-minutes"?: number;
+      uses?: string;
+      needs?: string | string[];
+      outputs?: Record<string, string>;
+      with?: Record<string, unknown>;
+      "timeout-minutes"?: number | string;
       "runs-on"?: string | string[];
       env?: Record<string, unknown>;
       secrets?: unknown;
       steps?: Array<{
         name?: string;
+        if?: string;
         uses?: string;
         run?: string;
         with?: Record<string, unknown>;
@@ -57,6 +65,38 @@ type WorkflowDocument = {
 };
 
 describe("scheduled data workflow contracts", () => {
+  it.each([
+    ["data-steward.yml", "steward", "steward-publish", "bot/data-steward"],
+    ["data-steward.yml", "official-hours", "official-hours-publish", "bot/official-library-hours"],
+    ["enrich-places.yml", "enrich", "publish", "bot/curated-place-enrichment"],
+    ["ingest-business-info.yml", "ingest", "publish", "bot/business-info-refresh"],
+    ["photo-attribution-backfill.yml", "backfill", "publish", "bot/google-photo-attribution-backfill"],
+    ["refresh-commerce-links.yml", "refresh", "publish", "bot/official-commerce-link-refresh"],
+  ])("keeps derived copy scores in the exact %s %s publisher artifact", (name, producerId, publisherId, branch) => {
+    const workflow = parse(workflowText(name)) as WorkflowDocument;
+    const publisher = workflow.jobs?.[publisherId];
+    const allowed = String(publisher?.with?.allowed_paths).trim().split(/\s+/).sort();
+    expect(publisher?.with?.branch).toBe(branch);
+    expect(allowed).toContain("src/data/copy-scores.json");
+    const staged = workflow.jobs?.[producerId]?.steps?.filter((step) =>
+      step.run?.includes("install -D") && step.run.includes("src/data/copy-scores.json"),
+    ) ?? [];
+    expect(staged).toHaveLength(1);
+    const stagedPaths = [...new Set(staged[0].run?.match(
+      /(?:src\/data|docs|audit)\/[A-Za-z0-9._/-]+\.(?:json|md)/g,
+    ))].sort();
+    expect(stagedPaths).toEqual(allowed);
+    const require = createRequire(import.meta.url);
+    const { AUTOMATED_PR_ALLOWED_PATHS } = require("../scripts/lib/native-automated-pr-gates.cjs");
+    expect([...AUTOMATED_PR_ALLOWED_PATHS[branch]].sort()).toEqual(allowed);
+    const bridge = workflowText("automated-pr-status-bridge.yml");
+    const phaseMaps = [...bridge.matchAll(new RegExp(`'${branch}':\\s*\\[([^\\]]+)\\]`, "g"))];
+    expect(phaseMaps).toHaveLength(2);
+    for (const phase of phaseMaps) {
+      expect([...phase[1].matchAll(/'([^']+)'/g)].map((part) => part[1]).sort()).toEqual(allowed);
+    }
+  });
+
   it("closes the production health issue on the endpoint's real recovery status", () => {
     const workflow = workflowText("production-health-alert.yml");
 
@@ -108,19 +148,9 @@ describe("scheduled data workflow contracts", () => {
 
     const trustedGenerators = [
       [
-        "build-marc-schedule.yml",
-        "build",
-        "${{ github.ref == 'refs/heads/main' }}",
-      ],
-      [
         "data-steward.yml",
         "steward",
         "${{ github.ref == 'refs/heads/main' && vars.HOURS_REFRESH_CRON == '1' && vars.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL == 'written-google-authorization-confirmed' && vars.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED == '1' }}",
-      ],
-      [
-        "fair-data-steward.yml",
-        "collect",
-        "${{ github.ref == 'refs/heads/main' }}",
       ],
     ] as const;
     expect(radiusDataJobs.sort()).toEqual(
@@ -145,11 +175,11 @@ describe("scheduled data workflow contracts", () => {
     }
 
     const hostedJobs = [
+      ["build-marc-schedule.yml", "build"],
       ["transit-steward.yml", "transit"],
       ["publish-automated-pr.yml", "publish"],
       ["automated-pr-checks.yml", "dispatch"],
       ["ci.yml", "verify"],
-      ["ci.yml", "attach-automated-pr-checks"],
       ["style.yml", "style-lint"],
     ] as const;
     for (const [name, jobName] of hostedJobs) {
@@ -157,8 +187,27 @@ describe("scheduled data workflow contracts", () => {
       expect(
         workflow.jobs?.[jobName]?.["runs-on"],
         `${name}:${jobName} must stay on an isolated hosted runner`,
-      ).toBe("ubuntu-latest");
+      ).toBe(name === "ci.yml" && jobName === "verify" ? "ubuntu-24.04" : "ubuntu-latest");
     }
+  });
+
+  it("passes only existing actions-write plus read-only PR identity permission through every native-gate caller", () => {
+    const callers: string[] = [];
+    for (const name of readdirSync(WORKFLOW_DIR).filter((name) => name.endsWith(".yml"))) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
+        if (job.uses !== "./.github/workflows/automated-pr-checks.yml") continue;
+        callers.push(`${name}:${jobName}`);
+        expect(job.permissions, `${name}:${jobName} cannot raise its caller token permissions`).toEqual({ actions: "write", contents: "read", "pull-requests": "read" });
+        expect(job.secrets).toBeUndefined();
+      }
+    }
+    expect(callers.sort()).toEqual([
+      "build-marc-schedule.yml:checks", "data-steward.yml:official-hours-checks",
+      "data-steward.yml:steward-checks", "enrich-places.yml:checks",
+      "ingest-business-info.yml:checks", "ingest-civic.yml:checks", "ingest-venues.yml:checks",
+      "photo-attribution-backfill.yml:checks", "refresh-commerce-links.yml:checks", "transit-steward.yml:transit-checks",
+    ].sort());
   });
 
   it("keeps hosted public GTFS generation main-only, keyless, bounded and review-gated", () => {
@@ -167,7 +216,7 @@ describe("scheduled data workflow contracts", () => {
     const producer = workflow.jobs?.transit;
 
     expect(Object.keys(workflow.on ?? {}).sort()).toEqual(["schedule", "workflow_dispatch"]);
-    expect(workflow.on?.schedule).toEqual([{ cron: "23 10 * * *" }]);
+    expect(workflow.on?.schedule).toEqual([{ cron: "23 7 * * *" }]);
     expect(workflow.permissions).toEqual({});
     expect(workflow.concurrency).toEqual({
       group: "transit-steward",
@@ -206,7 +255,7 @@ describe("scheduled data workflow contracts", () => {
       actions: "read", contents: "write", "pull-requests": "write",
     });
     expect(workflow.jobs?.["transit-checks"]?.permissions).toEqual({
-      actions: "write", contents: "read",
+      actions: "write", contents: "read", "pull-requests": "read",
     });
   });
 
@@ -331,7 +380,7 @@ describe("scheduled data workflow contracts", () => {
     [
       "ingest-venues.yml",
       "ANTHROPIC_VENUE_EVENTS_API_KEY",
-      'cron: "30 9 * * *"',
+      'cron: "7 11 * * *"',
     ],
   ])(
     "%s isolates its Anthropic key in the Data Enrichment environment",
@@ -343,7 +392,10 @@ describe("scheduled data workflow contracts", () => {
         `ANTHROPIC_API_KEY: \${{ secrets.${secretName} }}`,
       );
       expect(workflow).toContain(schedule);
-      expect(workflow).toContain("if: ${{ github.ref == 'refs/heads/main' }}");
+      if (name === "ingest-venues.yml") {
+        const jobs = (parse(workflow) as WorkflowDocument).jobs;
+        for (const owner of ["native", "review-gate"]) expect(jobs?.[owner].if).toContain("github.ref == 'refs/heads/main'");
+      } else expect(workflow).toContain("if: ${{ github.ref == 'refs/heads/main' }}");
       expect(workflow).not.toContain("secrets.ANTHROPIC_API_KEY");
       expect(workflow).not.toContain("ANTHROPIC_ADMIN_API_KEY");
     },
@@ -377,15 +429,17 @@ describe("scheduled data workflow contracts", () => {
           scope +
           "_FIRECRAWL_FETCH_FALLBACK == '1' && 'operator-firecrawl-fallback-budget'",
       );
-      expect(workflow).toContain(
-        "run-name: " +
-          (name === "ingest-venues.yml"
-            ? "Ingest venue events"
-            : name === "ingest-business-info.yml"
-              ? "Ingest business deep-info"
-              : "Ingest municipal civic data") +
+      if (name === "ingest-venues.yml") {
+        // Native ticks report zero; the paid mode keeps the authenticated title
+        // used by the shared reservation ledger (behavior covered separately).
+        expect(workflow).toContain("run-name: Ingest venue events");
+        expect(parse(workflow)["run-name"]).toContain("inputs.include_model_sources");
+      } else {
+        expect(workflow).toContain(
+          "run-name: " + (name === "ingest-business-info.yml" ? "Ingest business deep-info" : "Ingest municipal civic data") +
           ` (firecrawl=\${{ vars.${scope}_FIRECRAWL_FETCH_FALLBACK || '0' }}, cap=\${{ vars.${scope}_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }})`,
-      );
+        );
+      }
       expect(workflow).toContain("actions: read");
       expect(workflow).toContain(
         "FIRECRAWL_LEGACY_DISABLED_RUN_IDS: ${{ vars.FIRECRAWL_LEGACY_DISABLED_RUN_IDS || '' }}",
@@ -447,12 +501,11 @@ describe("scheduled data workflow contracts", () => {
     ).toBeLessThan(google.indexOf("run: npm ci"));
     expect(google).toContain("Missing GOOGLE_PLACES_API_KEY");
     expect(google).not.toContain("skipping enrichment");
-    expect(
-      venue.indexOf("Require venue extraction configuration"),
-    ).toBeLessThan(venue.indexOf("run: npm ci"));
-    expect(
-      venue.indexOf("Require venue extraction configuration"),
-    ).toBeLessThan(venue.indexOf("Install Chromium"));
+    const paidVenueSteps = (parse(venue) as WorkflowDocument).jobs?.ingest.steps ?? [];
+    const configuration = paidVenueSteps.findIndex((step) => step.name === "Require venue extraction configuration");
+    expect(configuration).toBeGreaterThanOrEqual(0);
+    expect(configuration).toBeLessThan(paidVenueSteps.findIndex((step) => step.run === "npm ci"));
+    expect(configuration).toBeLessThan(paidVenueSteps.findIndex((step) => step.name === "Install Chromium"));
     expect(venue).toContain("Missing ANTHROPIC_VENUE_EVENTS_API_KEY");
   });
 
@@ -597,6 +650,7 @@ describe("scheduled data workflow contracts", () => {
     ["ingest-business-info.yml", "ingest", "publish"],
     ["ingest-civic.yml", "ingest", "publish"],
     ["ingest-venues.yml", "ingest", "publish"],
+    ["ingest-venues.yml", "native", "publish"],
     ["refresh-commerce-links.yml", "refresh", "publish"],
     ["data-refresh.yml", "refresh", "publish"],
   ])(
@@ -618,7 +672,7 @@ describe("scheduled data workflow contracts", () => {
       const generator = workflow.jobs?.[generatorName];
       const publisher = workflow.jobs?.[publisherName];
       const upload = generator?.steps?.find((step) =>
-        step.uses?.startsWith("actions/upload-artifact@"),
+        step.uses?.startsWith("actions/upload-artifact@") && step.with?.name === "${{ steps.artifact-name.outputs.name }}",
       );
 
       expect(generator?.outputs?.artifact_name).toBe(
@@ -628,9 +682,9 @@ describe("scheduled data workflow contracts", () => {
         true,
       );
       expect(upload?.with?.name).toBe("${{ steps.artifact-name.outputs.name }}");
-      expect(publisher?.with?.artifact).toBe(
-        `\${{ needs.${generatorName}.outputs.artifact_name }}`,
-      );
+      expect(publisher?.with?.artifact).toBe(name === "ingest-venues.yml"
+        ? "${{ needs.native.outputs.artifact_name || needs.ingest.outputs.artifact_name }}"
+        : `\${{ needs.${generatorName}.outputs.artifact_name }}`);
       expect(publisher?.with?.artifact).not.toContain("github.run_attempt");
     },
   );
@@ -723,10 +777,177 @@ describe("scheduled data workflow contracts", () => {
         baseShas.length,
         `${name} must bind every artifact to its generation commit`,
       ).toBe(publishers.length);
-      expect(
-        artifactUploads.length,
-        `${name} must stage each PR through an artifact`,
-      ).toBe(publishers.length);
+      // Commerce retains compact outcomes plus private originals, separate
+      // from its publisher.
+      // Official hours separately retain original pages for offline review;
+      // their artifact name is not an input to either exact publisher.
+      if (name === "transit-steward.yml") {
+        const transit = workflow.jobs?.transit;
+        const uploads = transit?.steps?.filter((step) => step.uses === "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a") ?? [];
+        expect(uploads).toHaveLength(2);
+        expect(artifactUploads).toHaveLength(2);
+        const rawReview = uploads.filter((step) => step.name === "Preserve original transit source evidence");
+        expect(rawReview).toHaveLength(1);
+        expect(rawReview[0].if).toBe("always()");
+        expect(rawReview[0].with).toEqual({
+          name: "transit-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}",
+          path: "${{ runner.temp }}/transit-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}",
+          "if-no-files-found": "warn",
+          "retention-days": 7,
+        });
+        const publicationUploads = uploads.filter((step) => step !== rawReview[0]);
+        expect(publicationUploads).toHaveLength(1);
+        expect(publicationUploads[0].if).toBeUndefined();
+        expect(publicationUploads[0].with).toEqual({
+          name: "${{ steps.artifact-name.outputs.name }}",
+          path: "${{ runner.temp }}/data-steward-transit-output",
+          "if-no-files-found": "error",
+          "retention-days": 1,
+        });
+        expect(transit?.outputs?.artifact_name).toBe("${{ steps.artifact-name.outputs.name }}");
+        expect(transit?.steps?.find((step) => step.env?.ARTIFACT_NAME)?.env?.ARTIFACT_NAME)
+          .toBe("data-steward-transit-output-${{ github.run_id }}-${{ github.run_attempt }}");
+        const publish = workflow.jobs?.["transit-publish"];
+        expect(publish?.needs).toBe("transit");
+        expect(publish?.with?.artifact).toBe("${{ needs.transit.outputs.artifact_name }}");
+        expect(String(publish?.with?.allowed_paths).trim().split(/\s+/)).toEqual([
+          "src/data/transit.json",
+          "src/data/transit-network.json",
+          "src/data/transit-trips.json",
+          "src/data/data-release.json",
+        ]);
+        expect(text).not.toMatch(/artifact:\s+transit-source-evidence/);
+        const checks = workflow.jobs?.["transit-checks"];
+        expect(checks?.needs).toBe("transit-publish");
+        expect(checks?.uses).toBe("./.github/workflows/automated-pr-checks.yml");
+        expect(checks?.if).toBe("${{ needs.transit-publish.outputs.pr_operation == 'created' || needs.transit-publish.outputs.pr_operation == 'updated' }}");
+        expect(checks?.with).toEqual({
+          branch: "${{ needs.transit-publish.outputs.pr_branch }}",
+          head_sha: "${{ needs.transit-publish.outputs.pr_head_sha }}",
+        });
+      } else if (name === "build-marc-schedule.yml") {
+        const build = workflow.jobs?.build;
+        const uploads = build?.steps?.filter((step) => step.uses === "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a") ?? [];
+        expect(artifactUploads).toHaveLength(2);
+        expect(uploads).toHaveLength(2);
+        const originals = uploads.filter((step) => step.name === "Preserve original MARC source evidence");
+        expect(originals).toHaveLength(1);
+        expect(originals[0].if).toBe("always()");
+        expect(originals[0].with).toEqual({
+          name: "marc-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}",
+          path: "${{ runner.temp }}/marc-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}",
+          "if-no-files-found": "warn",
+          "retention-days": 7,
+        });
+        const publication = uploads.filter((step) => step !== originals[0]);
+        expect(publication).toHaveLength(1);
+        expect(publication[0].if).toBeUndefined();
+        expect(publication[0].with).toEqual({
+          name: "marc-schedule-output",
+          path: "${{ runner.temp }}/marc-schedule-output",
+          "if-no-files-found": "error",
+          "retention-days": 1,
+        });
+        expect(workflow.jobs?.publish?.with?.artifact).toBe("marc-schedule-output");
+        expect(workflow.jobs?.publish?.with?.allowed_paths).toBe("src/data/marc-schedule.json");
+        expect(text).not.toMatch(/artifact:\s+marc-source-evidence/);
+      } else if (name === "ingest-business-info.yml" || name === "refresh-commerce-links.yml") {
+        const uploads = Object.values(workflow.jobs ?? {}).flatMap((job) => (job.steps ?? []).filter((step) => step.uses === "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"));
+        const held = uploads.filter((step) => step.name === "Preserve held business-info candidate after a write conflict");
+        expect(held).toHaveLength(1);
+        const producer = workflow.jobs?.[name === "ingest-business-info.yml" ? "ingest" : "refresh"];
+        const runStep = producer?.steps?.find((step) => step.name === (name === "ingest-business-info.yml" ? "Extract business deep-info" : "Refresh links from official sites"));
+        expect(runStep?.env?.BUSINESS_INFO_CONFLICT_PARENT).toBe("${{ runner.temp }}");
+        expect(producer?.steps?.at(-1)).toEqual(held[0]);
+        expect(held[0].if).toBe("${{ failure() }}");
+        expect(held[0].with).toEqual({
+          name: (name === "ingest-business-info.yml" ? "held-business-info-" : "held-commerce-business-info-") + "${{ github.run_id }}-${{ github.run_attempt }}",
+          path: "${{ runner.temp }}/radius-business-info-hold-*/",
+          "if-no-files-found": "ignore",
+          "retention-days": 7,
+        });
+        expect(artifactUploads.length).toBe(publishers.length + (name === "refresh-commerce-links.yml" ? 3 : 1));
+        expect(text).not.toMatch(/artifact:\s+held-(?:commerce-)?business-info/);
+      } else if (name !== "ingest-venues.yml") {
+        expect(
+          artifactUploads.length,
+          `${name} must stage every producer through its exact artifact`,
+        ).toBe(name === "data-steward.yml" ? publishers.length + 1 : publishers.length);
+      } else {
+        // Native and paid venue generation are mutually exclusive producers.
+        // Their two exact publication artifacts must not be confused with
+        // the separately retained raw responses used only for source review.
+        const uploadAction = "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
+        const uploads = Object.entries(workflow.jobs ?? {}).flatMap(([job, value]) =>
+          (value.steps ?? []).filter((step) => step.uses === uploadAction).map((step) => ({ job, step })),
+        );
+        const rawReview = uploads.filter(({ step }) => step.name === "Preserve original native venue responses");
+        expect(rawReview).toHaveLength(1);
+        expect(rawReview[0].job).toBe("native");
+        expect(rawReview[0].step.if).toBe("always()");
+        expect(rawReview[0].step.with).toEqual({
+          name: "native-venue-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}",
+          path: "${{ runner.temp }}/native-venue-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}",
+          "if-no-files-found": "warn",
+          "retention-days": 7,
+        });
+        const publicationUploads = uploads.filter(({ step }) => step !== rawReview[0].step);
+        expect(publicationUploads).toHaveLength(2);
+        expect(publicationUploads.map(({ job }) => job).sort()).toEqual(["ingest", "native"]);
+        for (const [job, artifact, directory, retention] of [
+          ["native", "native-venue-review", "native-venue-output", 7],
+          ["ingest", "venue-event-review", "automated-pr-output", 1],
+        ] as const) {
+          const producer = workflow.jobs?.[job];
+          expect(producer?.outputs?.artifact_name).toBe("${{ steps.artifact-name.outputs.name }}");
+          expect(producer?.steps?.find((step) => step.env?.ARTIFACT_NAME)?.env?.ARTIFACT_NAME)
+            .toBe(`${artifact}-` + "${{ github.run_id }}-${{ github.run_attempt }}");
+          const upload = publicationUploads.find((value) => value.job === job)?.step;
+          expect(upload?.with).toEqual({
+            name: "${{ steps.artifact-name.outputs.name }}",
+            path: "${{ runner.temp }}/" + directory,
+            "if-no-files-found": "error",
+            "retention-days": retention,
+          });
+          if (job === "ingest") {
+            expect(upload?.if).toBe("${{ always() && steps.extract.outcome == 'success' && steps.verify.outcome == 'success' }}");
+          } else {
+            expect(upload?.if).toBeUndefined();
+          }
+        }
+        const publish = workflow.jobs?.publish;
+        expect(publish?.needs).toEqual(["native", "ingest"]);
+        expect(publish?.with?.artifact).toBe("${{ needs.native.outputs.artifact_name || needs.ingest.outputs.artifact_name }}");
+        expect(String(publish?.with?.allowed_paths).trim().split(/\s+/)).toEqual([
+          "src/data/venue-event-source-inventory.json",
+          "src/data/venue-events.json",
+          "src/data/venue-event-source-state.json",
+          "src/data/data-release.json",
+        ]);
+        expect(text).not.toMatch(/artifact:\s+native-venue-source-evidence/);
+        const checks = workflow.jobs?.checks;
+        expect(checks?.needs).toBe("publish");
+        expect(checks?.uses).toBe("./.github/workflows/automated-pr-checks.yml");
+        expect(checks?.if).toBe("${{ needs.publish.outputs.pr_operation == 'created' || needs.publish.outputs.pr_operation == 'updated' }}");
+        expect(checks?.with).toEqual({
+          branch: "${{ needs.publish.outputs.pr_branch }}",
+          head_sha: "${{ needs.publish.outputs.pr_head_sha }}",
+        });
+      }
+      if (name === "refresh-commerce-links.yml") {
+        const commerce = parse(text) as WorkflowDocument;
+        const steps = commerce.jobs?.refresh.steps ?? [];
+        const originals = steps.find((step) => step.name === "Preserve original native pages and held listing candidates");
+        const outcomes = steps.find((step) => step.name === "Preserve source-specific collection outcomes");
+        expect(originals?.with).toMatchObject({ name: "official-commerce-source-evidence-${{ github.run_id }}-${{ github.run_attempt }}", path: "${{ runner.temp }}/native-commerce-evidence", "retention-days": 7 });
+        expect(outcomes?.with?.["retention-days"]).toBe(30);
+        expect(text).not.toMatch(/artifact:\s+official-commerce-source-evidence/);
+        expect(text).not.toMatch(/allowed_paths:[\s\S]*?\n\s+native-commerce-evidence\//);
+      }
+      if (name === "data-steward.yml") {
+        expect(text).not.toMatch(/artifact:\s+official-hours-review-evidence/);
+        expect(text).not.toMatch(/allowed_paths:[\s\S]*?\n\s+official-hours-review-evidence\//);
+      }
       expect(
         exactHeads.length,
         `${name} must dispatch checks for the exact published head`,
@@ -792,15 +1013,34 @@ describe("scheduled data workflow contracts", () => {
     expect(ciText).toContain("automated_pr_head_sha:");
     expect(ciText).toContain("automated_pr_style_run_id:");
     expect(ciText).toContain("automated_pr_token:");
-    expect(ciText).toContain("ci_run_id: String(context.runId)");
     expect(ciText).not.toContain("\n  push:");
     expect(ciText).toContain("e2e/critical-dependency-chaos.spec.ts");
     expect(ciText).toContain("e2e/service-worker-upgrade-contract.spec.ts");
-    expect(ciText).not.toContain("\n  browser-chaos:");
-    expect(ciText).toContain("needs: verify");
-    expect(ciText).toContain(
-      "workflow_id: 'automated-pr-status-bridge.yml'",
-    );
+    expect(ciText).not.toContain("attach-automated-pr-checks:");
+    expect(ciText).not.toContain("createWorkflowDispatch");
+    const ci = parse(ciText) as WorkflowDocument;
+    expect(ci.permissions).toEqual({ actions: "read", contents: "read", "pull-requests": "read" });
+    expect(ci.jobs?.verify?.env?.AUTOMATED_DATA_PR).toBe("0");
+    const ciSteps = ci.jobs?.verify?.steps ?? [];
+    const preflightIndex = ciSteps.findIndex((step) => step.name === "Classify native automated data PR before repository execution");
+    const checkoutIndex = ciSteps.findIndex((step) => step.uses?.startsWith("actions/checkout@"));
+    const installIndex = ciSteps.findIndex((step) => step.run === "npm ci");
+    expect(preflightIndex).toBe(0);
+    expect(checkoutIndex).toBeGreaterThan(preflightIndex);
+    expect(installIndex).toBeGreaterThan(checkoutIndex);
+    const preflight = ciSteps[preflightIndex];
+    expect(preflight).toMatchObject({ if: "${{ github.event_name == 'pull_request' }}" });
+    expect(preflight.with?.script).toContain("classifyNativeAutomatedPr");
+    expect(preflight.with?.script).toContain("receipt.verified === true && receipt.mode === 'data-only'");
+    expect(preflight.with?.script).toContain("else if (candidateHint || receipt.mode === 'held')");
+    expect(preflight.with?.script).toContain("ref: trustedMainSha");
+    expect(ciText).not.toContain("github.event_name == 'workflow_dispatch' && inputs.automated_pr_branch");
+    const finalIndex = ciSteps.findIndex((step) => step.name === "Revalidate native automated data PR after artifact gates");
+    const artifactGateIndex = ciSteps.findIndex((step) => step.run === "npm run test:data-artifacts");
+    expect(finalIndex).toBeGreaterThan(artifactGateIndex);
+    expect(ciSteps[finalIndex]).toMatchObject({ if: "${{ env.AUTOMATED_DATA_PR == '1' }}" });
+    expect(ciSteps[finalIndex].with?.script).toContain("classifyNativeAutomatedPr");
+
     const uxText = workflowText("ux-audit.yml");
     expect(uxText).toContain("workflow_dispatch:");
     expect(uxText).not.toContain("\n  schedule:");
@@ -808,68 +1048,33 @@ describe("scheduled data workflow contracts", () => {
     expect(uxText).not.toContain("matrix:");
     expect(uxText).not.toContain("--shard=");
     expect(workflowText("style.yml")).not.toContain("\n  push:");
-    expect(workflowText("style.yml")).toContain("style / automated {0}");
-    const dispatcher = workflowText("automated-pr-checks.yml");
-    expect(dispatcher).toContain("actions: write");
-    expect(dispatcher).toContain("contents: read");
-    expect(dispatcher).toContain("workflow_id: 'ci.yml'");
-    expect(dispatcher).toContain("workflow_id: 'style.yml'");
-    expect(dispatcher).toContain(
-      "actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3",
-    );
-    expect(dispatcher).toContain("ref.data.object.sha !== expectedHead");
-    expect(dispatcher).toContain("compareCommitsWithBasehead");
-    expect(dispatcher).toContain("comparison.data.behind_by !== 0");
-    expect(dispatcher).toContain("allowedByBranch");
-    expect(dispatcher).toContain("automated_pr_head_sha: expectedHead");
-    expect(dispatcher).toContain("automated_pr_style_run_id: String(styleRun.id)");
-    expect(dispatcher).toContain("run.display_title === `style / automated ${dispatchToken}`");
-    expect(dispatcher).not.toContain(
-      "workflow_id: 'automated-pr-status-bridge.yml'",
-    );
-    expect(dispatcher).not.toContain("actions/checkout");
-
-    // GITHUB_TOKEN can start workflow_dispatch runs, but their completion does
-    // not reliably create another workflow_run hop. The bridge must therefore
-    // be explicitly dispatched on trusted main after CI finishes. The bridge
-    // receives the exact paired run IDs and a one-time run-name token, while a
-    // cheap schedule fails a whole-workflow cancellation closed.
+    const dispatcherText = workflowText("automated-pr-checks.yml");
+    const dispatcher = parse(dispatcherText) as WorkflowDocument;
+    expect(dispatcher.permissions).toEqual({ actions: "write", contents: "read", "pull-requests": "read" });
+    expect(dispatcherText).toContain("actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3");
+    expect(dispatcherText).toContain("approveNativeAutomatedPrRuns");
+    expect(dispatcherText).toContain("context.sha !== trustedMainSha");
+    expect(dispatcherText).toContain("ref: trustedMainSha");
+    expect(dispatcherText).not.toMatch(/createWorkflowDispatch|createCommitStatus|checks\.(?:create|update)|actions\/checkout/);
+    expect(dispatcherText).not.toContain("npm ci");
+    // Synthetic transport remains explicit historical recovery, never scheduled
+    // or called after native CI. The saved bootstrap tests still exercise both modes.
     const bridgeText = workflowText("automated-pr-status-bridge.yml");
     const bridge = parse(bridgeText) as WorkflowDocument;
-    expect(bridge.permissions).toEqual({
-      actions: "read",
-      contents: "read",
-      "pull-requests": "read",
-      statuses: "write",
-    });
-    expect(bridgeText).toContain("workflow_dispatch:");
+    expect(bridge.permissions).toEqual({ actions: "read", contents: "read", "pull-requests": "read", statuses: "write", checks: "write" });
+    expect(Object.keys(bridge.on ?? {})).toEqual(["workflow_dispatch"]);
     expect(bridgeText).not.toContain("workflow_run:");
-    expect(bridgeText).toContain('cron: "23 */6 * * *"');
-    expect(bridgeText).toContain("context.ref !== 'refs/heads/main'");
-    expect(bridgeText).toContain("candidate.head_sha !== headSha");
-    expect(bridgeText).toContain("candidate.head_branch !== branch");
-    expect(bridgeText).toContain("candidate.id !== spec.runId");
-    expect(bridgeText).toContain(
-      "candidate.path?.split('@')[0] !== `.github/workflows/${spec.workflowId}`",
-    );
-    expect(bridgeText).not.toContain("candidate.name !== spec.workflowName");
-    expect(bridgeText).toContain("candidate.display_title !== spec.displayTitle");
-    expect(bridgeText).toContain("github.rest.actions.getWorkflowRun");
-    expect(bridgeText).not.toContain("acceptedAfter");
-    expect(bridgeText).toContain("comparison.data.behind_by !== 0");
-    expect(bridgeText).toContain("latestMain.data.object.sha !== mainSha");
-    expect(bridgeText).toContain("latestBot.data.object.sha !== headSha");
-    expect(bridgeText).toContain("writeAllStatuses('pending'");
-    expect(bridgeText).toContain("contexts: ['verify']");
-    expect(bridgeText).toContain("contexts: ['style-lint']");
-    expect(bridge.jobs?.attach?.["timeout-minutes"]).toBe(8);
-    expect(bridgeText).toContain(
-      "const completionDeadline = Date.now() + 5 * 60_000",
-    );
-    expect(bridgeText).toContain("Fail stale automated PR checks closed");
-    expect(bridgeText).toContain("Date.now() - 90 * 60_000");
-    expect(bridgeText).toContain("latest.state !== 'pending'");
+    expect(bridgeText).not.toContain("schedule:");
+    expect(bridgeText).not.toContain("default: attach");
+    expect(bridge.jobs?.attach?.if).toBe("${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'attach' }}");
+    expect(bridge.jobs?.["reconcile-stale"]?.if).toBe("${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'reconcile-stale' }}");
+    expect(bridgeText).toContain("path: helperPath, ref: context.sha");
+    expect(bridgeText).toContain("file.size > 65536");
+    expect(bridgeText).toContain("source.length !== file.size");
+    expect(bridgeText).toContain("trusted.exports.attachAutomatedPrStatuses");
+    expect(bridgeText).toContain("trusted.exports.reconcileStaleAutomatedPrStatuses");
     expect(bridgeText).not.toContain("actions/checkout");
+    expect(bridge.jobs?.attach?.["timeout-minutes"]).toBe(8);
 
     // Validation attachment does not broaden the publication policy: only a
     // caller that deliberately passes auto_merge may queue a reviewed-safe PR.
@@ -1006,6 +1211,118 @@ describe("scheduled data workflow contracts", () => {
     );
   });
 
+  it("lists the faster Ubuntu mirror first while keeping signed browser setup, both mirrors and its bounds", () => {
+    const ci = parse(workflowText("ci.yml")) as WorkflowDocument;
+    const job = ci.jobs!.verify;
+    const step = job.steps!.find((candidate) => candidate.name === "Install browsers") as {
+      run: string;
+      if: string;
+      "timeout-minutes": number;
+    };
+    // The complete protected pipeline needs room beyond its observed 45m run;
+    // the signed browser-install step retains its separate ten-minute bound.
+    expect(job["timeout-minutes"]).toBe(60);
+    expect(step["timeout-minutes"]).toBe(10);
+    expect(step.if).toBe("${{ env.AUTOMATED_DATA_PR != '1' }}");
+    expect(step.run).toContain("if [ -f /etc/apt/apt-mirrors.txt ]; then");
+    expect(step.run.trim().endsWith("npx playwright install --with-deps chromium webkit")).toBe(true);
+    // The step never weakens package signing, never fetches anything itself
+    // and never loops. Its one privileged command rewrites the mirror list
+    // from text the decision script printed.
+    const commands = step.run.split("\n").filter((line) => !line.trim().startsWith("#")).join("\n");
+    expect(commands).not.toMatch(/trusted=yes|allow-unauthenticated|AllowInsecure|sources\.list|keyrings|curl|wget|\bwhile\b|\buntil\b|\bfor\b|\beval\b/);
+    expect(commands.match(/\bsudo\b/g)).toEqual(["sudo"]);
+    expect(step.run).toContain("| sudo tee /etc/apt/apt-mirrors.txt > /dev/null");
+    expect(step.run).toContain('if [ "$(bash scripts/ci-pick-apt-mirror.sh)" = "archive" ]; then');
+    expect(step.run).toContain("bash scripts/ci-pick-apt-mirror.sh --archive-first < /etc/apt/apt-mirrors.txt");
+  });
+
+  it("keeps the mirror decision script a read-only timing check of the two Ubuntu mirrors", () => {
+    const script = readFileSync(resolve(process.cwd(), "scripts/ci-pick-apt-mirror.sh"), "utf8");
+    const code = script.split("\n").filter((line) => !line.trim().startsWith("#")).join("\n");
+    // Signing stays on, nothing is installed or executed from the network, and
+    // the script holds no privileges and writes no file.
+    expect(code).not.toMatch(/trusted=yes|allow-unauthenticated|AllowInsecure|sources\.list|keyrings|wget|\bsudo\b|\beval\b|\bapt(-get)?\s+(install|update|upgrade)\b|\bdpkg\b|\bwhile\b|\buntil\b|\btee\b|\bchmod\b/);
+    expect(code).not.toMatch(/\|\s*(ba)?sh\b/);
+    expect(code.replace(/>&2/g, "").replace(/--output \/dev\/null/g, "")).not.toMatch(/(^|[^-=<])>{1,2}\s*[^\s&]/m);
+    // One bounded request per mirror, discarded, to the signed index only.
+    const requests = code.match(/\bcurl\b[^\n]*/g) ?? [];
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toContain("--fail");
+    expect(requests[0]).toContain("--output /dev/null");
+    expect(requests[0]).toContain("--max-time 8");
+    expect(requests[0]).toContain('"$1/dists/${release}/InRelease"');
+    expect(code.match(/https?:\/\/[^\s"']+/g)).toEqual([
+      "http://azure.archive.ubuntu.com/ubuntu",
+      "https://archive.ubuntu.com/ubuntu",
+    ]);
+    expect(code.match(/probe "\$[A-Z_]+"/g)).toEqual(['probe "$AZURE_MIRROR"', 'probe "$ARCHIVE_MIRROR"']);
+  });
+
+  it("chooses the mirror that answers faster and leaves the runner's order alone when unsure", () => {
+    const pick = (azure: string, archive: string) =>
+      execFileSync("bash", ["scripts/ci-pick-apt-mirror.sh", azure, archive], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    expect(pick("0.412", "0.201")).toBe("archive");
+    expect(pick("failed", "0.9")).toBe("archive");
+    // The 2026-11-11 outage: archive.ubuntu.com timed out while Azure answered.
+    expect(pick("0.650", "failed")).toBe("azure");
+    expect(pick("0.201", "0.412")).toBe("azure");
+    expect(pick("0.2", "0.2")).toBe("azure");
+    expect(pick("failed", "failed")).toBe("azure");
+    expect(pick("", "")).toBe("azure");
+    // Results are compared as numbers only; anything else counts as no answer.
+    expect(pick("abc", "0.1; touch /tmp/never")).toBe("azure");
+    expect(pick("1e3", "0.1")).toBe("archive");
+    expect(pick("10", "9.99")).toBe("archive");
+    expect(pick("9.99", "10")).toBe("azure");
+  });
+
+  it("puts archive.ubuntu.com first in the runner's mirror list without dropping a mirror", () => {
+    const reorder = (list: string) =>
+      execFileSync("bash", ["scripts/ci-pick-apt-mirror.sh", "--archive-first"], { input: list, encoding: "utf8" });
+    const runner = "http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://archive.ubuntu.com/ubuntu/\tpriority:2\nhttps://security.ubuntu.com/ubuntu/\tpriority:3\n";
+    expect(Buffer.byteLength(runner)).toBe(144);
+    const expected = "http://azure.archive.ubuntu.com/ubuntu/\tpriority:2\nhttps://archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://security.ubuntu.com/ubuntu/\tpriority:3\n";
+    expect(reorder(runner)).toBe(expected);
+    expect(reorder(expected)).toBe(expected);
+    // A list with no archive line gains one; comments, other hosts and
+    // look-alike names pass through untouched.
+    const sparse = [
+      "# CI",
+      "http://azure.archive.ubuntu.com/ubuntu priority:1",
+      "http://azureXarchiveXubuntuXcom/ubuntu priority:1",
+      "http://azure.archive.ubuntu.com/ubuntu-other priority:1",
+      "# http://azure.archive.ubuntu.com/ubuntu priority:1",
+      "http://security.ubuntu.com/ubuntu priority:3",
+    ].join("\n") + "\n";
+    expect(reorder(sparse)).toBe(
+      sparse.replace("http://azure.archive.ubuntu.com/ubuntu priority:1\n", "http://azure.archive.ubuntu.com/ubuntu priority:2\n")
+        + "https://archive.ubuntu.com/ubuntu/\tpriority:1\n",
+    );
+    expect(reorder("  http://archive.ubuntu.com/ubuntu\n")).toBe("  http://archive.ubuntu.com/ubuntu\tpriority:1\n");
+  });
+
+  it("pins the six direct Playwright installer jobs to supported Ubuntu without changing other hosted jobs", () => {
+    const expected = ["ci.yml:verify", "ux-audit.yml:mobile-ux", "ingest-business-info.yml:ingest", "refresh-commerce-links.yml:refresh", "visual-contract.yml:chromium", "ingest-venues.yml:ingest"].sort();
+    const browserJobs: string[] = [];
+    for (const name of readdirSync(WORKFLOW_DIR).filter((name) => /\.ya?ml$/.test(name))) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
+        if (!job.steps?.some((step) => typeof step.run === "string" && /\bnpx playwright install\b/.test(step.run))) continue;
+        browserJobs.push(`${name}:${jobName}`);
+        expect(job["runs-on"], `${name}:${jobName} must use a Playwright-supported browser image`).toBe("ubuntu-24.04");
+        expect(job.env ?? {}).not.toHaveProperty("PLAYWRIGHT_HOST_PLATFORM_OVERRIDE");
+      }
+    }
+    expect(browserJobs.sort()).toEqual(expected);
+    for (const name of new Set(expected.map((entry) => entry.split(":")[0]))) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
+        if (job["runs-on"] && !expected.includes(`${name}:${jobName}`)) expect(job["runs-on"]).toBe("ubuntu-latest");
+      }
+    }
+  });
+
   it("pins the scheduled discovery boundary and does not persist credentials", () => {
     const discovery = workflowText("discovery.yml");
 
@@ -1030,10 +1347,18 @@ describe("scheduled data workflow contracts", () => {
       const workflow = parse(text) as WorkflowDocument;
       for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
         if (!job["runs-on"]) continue;
-        expect(
-          job["timeout-minutes"],
-          `${name}:${jobName} needs an explicit timeout`,
-        ).toBeGreaterThan(0);
+        const timeout = job["timeout-minutes"];
+        if (typeof timeout === "string") {
+          // Evaluate the one reviewed conditional ceiling in both real modes;
+          // a template string alone is not evidence of a finite time budget.
+          expect(`${name}:${jobName}`).toBe("refresh-commerce-links.yml:refresh");
+          const expression = timeout.replace(/^\$\{\{|\}\}$/g, "").trim();
+          for (const [event, native, expected] of [["schedule", true, 15], ["workflow_dispatch", true, 15], ["workflow_dispatch", false, 40]] as const) {
+            expect(runInNewContext(`(${expression})`, { github: { event_name: event }, inputs: { native_daily: native } }, { timeout: 1000 })).toBe(expected);
+          }
+        } else {
+          expect(timeout, `${name}:${jobName} needs an explicit timeout`).toBeGreaterThan(0);
+        }
       }
     }
   });

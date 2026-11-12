@@ -10,7 +10,7 @@ import { plausibleKeys, fetchAggregate } from "@/lib/integrations/plausible-stat
 import { PLACES } from "@/data/places";
 import VENUE_EVENTS from "@/data/venue-events.json" with { type: "json" };
 import TRANSIT from "@/data/transit.json" with { type: "json" };
-import SCORES_RAW from "@/data/copy-scores.json" with { type: "json" };
+import DATA_RELEASE_RAW from "@/data/data-release.json" with { type: "json" };
 import { getNeedsReviewPlaces } from "@/lib/loaders/places";
 import { getNeedsReviewEvents } from "@/lib/loaders/events";
 import { easternDayKey } from "@/lib/tz";
@@ -34,7 +34,6 @@ import { easternDayKey } from "@/lib/tz";
  *                    the database work instead of after it.
  */
 
-const SCORES = SCORES_RAW as { computed_at: string; counts: Record<string, number> };
 
 // ── Shared view atoms (used by page.tsx skeletons too) ──────────────────
 
@@ -122,13 +121,7 @@ type Core = {
   submissionsPending: number;
   claimsPending: number;
   reportsPending: number;
-  codesActive: number;
-  codesTotal: number;
-  codesSeen7d: number;
-  signupsTotal: number;
-  signups1w: number;
-  signupsPrev1w: number;
-  new24h: { signups: number; feedback: number; claims: number; subs: number };
+  new24h: { feedback: number; claims: number; subs: number };
   fieldPoints: number;
   fieldPoints7d: number;
 };
@@ -162,13 +155,6 @@ async function loadDesk(): Promise<{
           (select count(*)::int from submissions where status = 'pending' and kind = 'business_claim') as claims_pending,
           (select count(*)::int from submissions where status = 'pending' and kind not in ('feedback', 'business_claim')) as submissions_pending,
           (select count(*)::int from community_reports where status = 'pending') as reports_pending,
-          (select count(*)::int from beta_codes) as codes_total,
-          (select count(*)::int from beta_codes where not revoked) as codes_active,
-          (select count(*)::int from beta_codes where last_seen_at > now() - interval '7 days') as codes_seen_7d,
-          (select count(*)::int from beta_emails) as signups_total,
-          (select count(*)::int from beta_emails where created_at > now() - interval '7 days') as signups_1w,
-          (select count(*)::int from beta_emails where created_at > now() - interval '14 days' and created_at <= now() - interval '7 days') as signups_prev_1w,
-          (select count(*)::int from beta_emails where created_at > now() - interval '24 hours') as new_signups_24h,
           (select count(*)::int from submissions where kind = 'feedback' and created_at > now() - interval '24 hours') as new_feedback_24h,
           (select count(*)::int from submissions where kind = 'business_claim' and created_at > now() - interval '24 hours') as new_claims_24h,
           (select count(*)::int from submissions where kind in ('place', 'event') and created_at > now() - interval '24 hours') as new_subs_24h,
@@ -181,14 +167,7 @@ async function loadDesk(): Promise<{
       claimsPending: r.claims_pending ?? 0,
       submissionsPending: r.submissions_pending ?? 0,
       reportsPending: r.reports_pending ?? 0,
-      codesTotal: r.codes_total ?? 0,
-      codesActive: r.codes_active ?? 0,
-      codesSeen7d: r.codes_seen_7d ?? 0,
-      signupsTotal: r.signups_total ?? 0,
-      signups1w: r.signups_1w ?? 0,
-      signupsPrev1w: r.signups_prev_1w ?? 0,
       new24h: {
-        signups: r.new_signups_24h ?? 0,
         feedback: r.new_feedback_24h ?? 0,
         claims: r.new_claims_24h ?? 0,
         subs: r.new_subs_24h ?? 0,
@@ -292,7 +271,10 @@ function datasetTones(): { total: number; fresh: number; aging: number; stale: n
     "none", // client dataset (rebuilt with each edit)
     ageOf(venueLatest, 7, 14).tone,
     ageOf(transit.generatedAt, 60, 120).tone,
-    ageOf(SCORES.computed_at, 7, 21).tone,
+    // The protected derived scorecard is revalidated with the places release.
+    // Unchanged classifications keep their computation clock; source clocks
+    // remain independent and are never renewed by this release timestamp.
+    ageOf(DATA_RELEASE_RAW.streams.places.promoted_at, 7, 21).tone,
     "none", // human corrections
     "fresh", // event seeds (dates audited Jul 2026)
     "none", // collections
@@ -320,7 +302,7 @@ export async function DeskSections() {
 
   const queueRows: Array<{ label: string; n: number; href: string; icon: LucideIcon }> = desk.core
     ? [
-        { label: "Feedback waiting", n: desk.core.feedbackPending, href: "/admin/beta", icon: MessageSquare },
+        { label: "Feedback waiting", n: desk.core.feedbackPending, href: "/admin/feedback", icon: MessageSquare },
         { label: "Submissions", n: desk.core.submissionsPending, href: "/admin/claims", icon: Inbox },
         { label: "Business claims", n: desk.core.claimsPending, href: "/admin/claims", icon: Store },
         { label: "Community reports", n: desk.core.reportsPending, href: "/admin/reports", icon: Flag },
@@ -335,17 +317,15 @@ export async function DeskSections() {
 
   // "New in 24h" momentum line.
   const n24 = desk.core?.new24h;
-  const new24hTotal = n24 ? n24.signups + n24.feedback + n24.claims + n24.subs : 0;
+  const new24hTotal = n24 ? n24.feedback + n24.claims + n24.subs : 0;
   const new24hParts = n24
     ? [
-        n24.signups ? `${n24.signups} signup${n24.signups === 1 ? "" : "s"}` : null,
         n24.feedback ? `${n24.feedback} feedback` : null,
         n24.claims ? `${n24.claims} claim${n24.claims === 1 ? "" : "s"}` : null,
         n24.subs ? `${n24.subs} submission${n24.subs === 1 ? "" : "s"}` : null,
       ].filter((x): x is string => x !== null)
     : [];
 
-  const signupsDelta = desk.core ? desk.core.signups1w - desk.core.signupsPrev1w : 0;
   const spendSpike = (desk.costs ?? []).some((c) => c.spike);
   const okRun = pipeline.filter((r) => r.status === "ok").sort((a, b) => a.ageH - b.ageH)[0];
 
@@ -393,35 +373,6 @@ export async function DeskSections() {
             <span className="font-semibold" style={{ color: "var(--app-ink)" }}>{new24hTotal} new in 24h</span>
             {new24hParts.length > 0 && <> · {new24hParts.join(", ")}</>}
           </p>
-        )}
-      </section>
-
-      {/* ── The vitals: one glanceable strip, with a week trend on signups. ── */}
-      <section className="mt-6">
-        <SectionHead
-          aside={<Link href="/admin/beta" className="tap-44 inline-flex items-center text-[12px] font-semibold" style={{ color: "var(--app-cool)" }}>Beta →</Link>}
-        >
-          The vitals
-        </SectionHead>
-        {desk.core === null ? (
-          <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>Needs the database ({desk.dbReason}).</p>
-        ) : (
-          <div className="flex items-stretch justify-between rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3" style={{ borderColor: "var(--app-border)" }}>
-            <Vital value={desk.core.codesSeen7d} label="active · 7d" tone="positive" />
-            <VDiv />
-            <Vital value={desk.core.signupsTotal} label="signups" delta={signupsDelta} />
-            <VDiv />
-            <Vital value={`${desk.core.codesActive}/${desk.core.codesTotal}`} label="codes live" />
-            <VDiv />
-            <div className="flex-1 px-1 text-center">
-              {spendSpike ? (
-                <p className="font-serif text-2xl font-semibold leading-none" style={{ color: "var(--app-danger)" }}>!</p>
-              ) : (
-                <CircleCheck className="mx-auto h-[26px] w-[26px]" strokeWidth={2} aria-hidden style={{ color: "var(--app-positive)" }} />
-              )}
-              <p className="mt-1.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>spend {spendSpike ? "spike" : "ok"}</p>
-            </div>
-          </div>
         )}
       </section>
 

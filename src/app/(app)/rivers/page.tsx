@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Droplets, ExternalLink, Clock, MapPin } from "lucide-react";
 import { getFrederickWaterSitesWithHistory, readingTrend, type WaterSite } from "@/lib/integrations/usgsWater";
 import { classifyFlood, nwsGaugeUrl } from "@/lib/integrations/floodStage";
-import PageBloom from "@/components/ui/PageBloom";
 import MetricCard from "@/components/live-data/MetricCard";
 import FloodGauge from "@/components/live-data/FloodGauge";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -100,7 +99,6 @@ export default async function RiversPage() {
 
   return (
     <div className="relative space-y-6 pb-4">
-      <PageBloom variant="cool" />
 
       {/* Hero — county-wide overview. The verb in the headline is the
           read. */}

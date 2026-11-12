@@ -2,12 +2,16 @@ import { writeFile } from "node:fs/promises";
 import { expect, test, type BrowserContext, type Locator, type Page, type TestInfo } from "@playwright/test";
 import type { EventWithMeta } from "../src/lib/loaders/events";
 import { eventCardVisual } from "../src/components/event/eventVisuals";
-import { placeCardPhotoPlan } from "../src/lib/place-card-photo";
+import { eventDateBlock } from "../src/lib/events/format";
+import { eventDecisionTime } from "../src/lib/events/decision-facts";
+import { eventRowClockParts, eventRowTimingNote } from "../src/components/event/eventRowTiming";
+import { nearbyParksPhotoPlan } from "../src/lib/nearby-parks-layout";
 import { dismissReturnBridge, emptyReturnBridgeState, RETURN_BRIDGE_STORAGE_KEY } from "../src/lib/return-bridge";
 import { EVENTS } from "../src/data/events";
 import { MUNICIPALITY_BY_SLUG } from "../src/data/municipalities";
 import { getPlaceBySlug } from "../src/lib/loaders/places";
 import { BROWSE_FOCUS_RETURN_KEY } from "../src/lib/browse-focus-return";
+import { TABS } from "../src/components/nav/tabs";
 
 /** Declared event DTOs travel through the existing browse/summary APIs and real
  * production components. Their photographs are the actual licensed local bytes.
@@ -15,9 +19,9 @@ import { BROWSE_FOCUS_RETURN_KEY } from "../src/lib/browse-focus-return";
  * Nearby uses the actual catalog and its real public place detail document. */
 const CREEK = "carroll-creek-linear-park-frederick";
 const CREEK_NAME = "Carroll Creek Linear Park";
-const CREEK_IMAGE = "/images/seasons/summer/SUMMER CARROL CREEK.jpg";
+const CREEK_IMAGE = "/images/places/carroll-creek-aerial.jpg";
 const SAVED_KEY = "fr:saved:v1";
-const CREEK_FAILURE_SOURCES = placeCardPhotoPlan({ slug: CREEK }, 360).sources.map(({ src }) => decodeURIComponent(src));
+const CREEK_FAILURE_SOURCES = nearbyParksPhotoPlan(CREEK, 360).sources.map(({ src }) => decodeURIComponent(src));
 const ONE_PIXEL = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jZ6kAAAAASUVORK5CYII=", "base64");
 const VENUES = [
   { slug: "delaplaine-arts-center-frederick", name: "Delaplaine Arts Center", image: "/place-photos/delaplaine-exterior.jpg" },
@@ -56,7 +60,7 @@ test.afterEach(async ({ page }, info) => {
 function declaredEvents(): EventWithMeta[] {
   const now = Date.now();
   return VENUES.map((venue, index) => ({
-    slug: `declared-visual-card-${index}`, title: `Declared visual fixture at ${venue.name}`,
+    slug: `declared-visual-card-${index}`, title: `Declared community performance and artist conversation at ${venue.name}`,
     description: "Fictional acceptance event at a real named venue; not a public event listing.",
     starts_at: new Date(now - 15 * 60_000 + index * 60_000).toISOString(),
     ends_at: new Date(now + 2 * 3_600_000).toISOString(), timezone: "America/New_York",
@@ -240,6 +244,51 @@ async function exactImage(card: Locator, expected: string, ratio: number) {
   return image;
 }
 
+/** An Events row's photograph is a square thumbnail at the right of the row,
+ * filled edge to edge, beside the title rather than above it. */
+async function exactThumbnail(card: Locator, expected: string) {
+  const image = card.locator("img").filter({ visible: true }).first();
+  await image.scrollIntoViewIfNeeded();
+  await expect.poll(() => image.evaluate(async (node) => {
+    const photo = node as HTMLImageElement;
+    await photo.decode().catch(() => undefined);
+    return photo.complete && photo.naturalWidth > 1 && photo.naturalHeight > 1;
+  })).toBe(true);
+  const measurement = await image.evaluate((node) => {
+    const photo = node as HTMLImageElement;
+    const url = new URL(photo.currentSrc || photo.src, document.baseURI);
+    const frame = photo.getBoundingClientRect();
+    const heading = photo.closest("article")!.querySelector("h3")!.getBoundingClientRect();
+    return { source: decodeURIComponent(url.searchParams.get("url") ?? url.pathname), naturalWidth: photo.naturalWidth,
+      naturalHeight: photo.naturalHeight, frame: { left: frame.left, width: frame.width, height: frame.height },
+      headingRight: heading.right, fit: getComputedStyle(photo).objectFit };
+  });
+  receipts.get(card.page())!.measurements[`thumbnail:${expected}`] = measurement;
+  expect(measurement.source, "The actual decoded photograph must identify this exact venue or place").toBe(expected);
+  expect(measurement.frame.width / measurement.frame.height).toBeCloseTo(1, 1);
+  expect(measurement.frame.width).toBeGreaterThanOrEqual(56);
+  expect(measurement.frame.left).toBeGreaterThanOrEqual(measurement.headingRight);
+  expect(measurement.fit).toBe("cover");
+  return image;
+}
+
+/** A row states its date and time in its own time column: the start clock and
+ * the day (visible, or screen-reader text when the group heading already
+ * names the day). The note line carries only what the full timing adds, such
+ * as the end time. Together they read the same facts the old single
+ * "Wed OCT 10 · 7:00 PM–9:00 PM" line did. */
+async function rowDateAndTime(card: Locator, event: EventWithMeta) {
+  const date = eventDateBlock(event);
+  const when = card.locator("[data-event-row-when]");
+  const { clock, meridiem } = eventRowClockParts(date.time);
+  await expect(when).toContainText(clock);
+  if (meridiem) await expect(when).toContainText(meridiem);
+  await expect(when).toContainText(`${date.weekday} ${date.month} ${date.day}`);
+  const note = eventRowTimingNote(date.time, eventDecisionTime(event));
+  if (note) await expect(card.locator("[data-event-card-time]")).toHaveText(note);
+  else await expect(card.locator("[data-event-card-time]")).toHaveCount(0);
+}
+
 async function reducedPress(page: Page, control: Locator) {
   const face = control.locator(":scope > [data-press-face]");
   await expect(face).toHaveCount(1);
@@ -318,9 +367,17 @@ for (const width of [390, 320]) {
       const venue = VENUES.find((candidate) => candidate.slug === event.venue_place_slug)!;
       expect(eventCardVisual(event, { venuePhotos: "free-reviewed" })?.src).toBe(venue.image);
       await expect(card).toHaveAttribute("data-event-media", "photo");
-      await exactImage(card, venue.image, 16 / 10);
+      await exactThumbnail(card, venue.image);
       await expect(card.getByRole("heading", { name: event.title, exact: true })).toBeVisible();
-      await expect(card.locator("[data-event-card-time]")).not.toBeEmpty();
+      await rowDateAndTime(card, event);
+      const titleWidth = await card.locator("h3").evaluate((title) => {
+        const box = title.getBoundingClientRect(), row = title.closest("[data-event-card-heading]")!.getBoundingClientRect();
+        return { titleLeft: box.left, rowLeft: row.left, titleWidth: box.width, rowWidth: row.width,
+          scrollWidth: title.scrollWidth, clientWidth: title.clientWidth };
+      });
+      expect(titleWidth.titleLeft).toBeCloseTo(titleWidth.rowLeft, 1);
+      expect(titleWidth.titleWidth).toBeCloseTo(titleWidth.rowWidth, 1);
+      expect(titleWidth.scrollWidth).toBeLessThanOrEqual(titleWidth.clientWidth + 1);
       await expect(card.locator("[data-event-card-venue]")).toContainText(venue.name);
       await expect(card).toContainText("Free");
       const link = card.locator('a[data-decision-action="open"]');
@@ -478,7 +535,12 @@ for (const width of [390, 320]) {
     await expect(page.locator('[data-nearby-interaction-ready="true"]')).toBeVisible();
     const filters = await nearbyFilters(page);
     const { card, open, save, directions } = await creekCard(page);
-    const image = await exactImage(card, CREEK_IMAGE, 16 / 9);
+    const parksGrid = page.locator("[data-nearby-parks-grid]");
+    await expect(parksGrid).toBeVisible();
+    expect(await parksGrid.evaluate(node => getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/).length))
+      .toBe(width === 390 ? 2 : 1);
+    if (width === 390) expect(await card.evaluate(node => node.closest("[data-nearby-parks-row]")?.getAttribute("data-nearby-parks-row"))).toBe("pair");
+    const image = await exactImage(card, CREEK_IMAGE, width === 390 ? 4 / 3 : 16 / 9);
     await expect(card).toHaveAttribute("data-place-card-has-photo", "true");
     await expect(card.locator(".place-card-photo-credit")).toHaveCount(0);
     // Creek is the first Top rated park and can fit without any implicit
@@ -487,7 +549,10 @@ for (const width of [390, 320]) {
       // Mobile WebKit does not implement Playwright mouse.wheel. Use real
       // native key scrolling and observe its actual smooth-scroll completion.
       const travel: number[] = [];
-      for (let key = 0; key < 4; key += 1) {
+      // Some early key presses may not move the document in local WebKit.
+      // Keep using real key input, but allow a few more presses to reach the
+      // same strict scroll threshold before measuring the sticky controls.
+      for (let key = 0; key < 8; key += 1) {
         await page.keyboard.press("ArrowDown");
         const deadline = Date.now() + 1500;
         let prior = await page.evaluate(() => scrollY), stable = 0;
@@ -498,6 +563,7 @@ for (const width of [390, 320]) {
           prior = current;
         }
         travel.push(prior);
+        if (prior > 80) break;
       }
       evidence.measurements.nativeArrowDownScroll = travel;
     } else {
@@ -562,14 +628,14 @@ for (const width of [390, 320]) {
     await expect(page.locator('[data-nearby-interaction-ready="true"]')).toBeVisible();
     await expect(save).toHaveAttribute("aria-pressed", "true");
     await expect.poll(async () => Math.abs(await page.evaluate(() => scrollY) - before.scrollY)).toBeLessThan(80);
-    await exactImage(card, CREEK_IMAGE, 16 / 9);
+    await exactImage(card, CREEK_IMAGE, width === 390 ? 4 / 3 : 16 / 9);
     if (context.browser()?.browserType().name() === "webkit") await page.waitForLoadState("networkidle", { timeout: 10_000 });
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.locator('[data-nearby-interaction-ready="true"]')).toBeVisible();
     await expect(page).toHaveURL(before.url);
     await expect(save).toHaveAttribute("aria-pressed", "true");
     expect(await page.evaluate((key) => localStorage.getItem(key), SAVED_KEY)).toBe(persisted);
-    await exactImage(card, CREEK_IMAGE, 16 / 9);
+    await exactImage(card, CREEK_IMAGE, width === 390 ? 4 / 3 : 16 / 9);
     evidence.measurements.width = await noOverflow(page);
     evidence.measurements.photoAlt = await image.getAttribute("alt");
     expect(evidence.targetPrefetches, "Native-owned detail transitions must not launch unused Next prefetches").toEqual([]);
@@ -590,7 +656,7 @@ test("declared Events image failure keeps the real card facts and actions at 320
   const slug = (await card.getAttribute("data-decision-id"))!;
   const event = events.find((item) => item.slug === slug)!;
   await expect(card.getByRole("heading", { name: event.title, exact: true })).toBeVisible();
-  await expect(card.locator("[data-event-card-time]")).not.toBeEmpty();
+  await rowDateAndTime(card, event);
   await expect(card.locator("[data-event-card-venue]")).toContainText(event.venue_name!);
   await expect(card.locator("img,[data-event-photo-credit]")).toHaveCount(0);
   const open = card.locator('a[data-decision-action="open"]');
@@ -685,10 +751,57 @@ async function documentReturnGeometry(open: Locator) {
   });
 }
 
+async function documentPrefetchState(page: Page) {
+  return page.evaluate(autoPrefetchHrefs => ({
+    url: location.href,
+    timeOrigin: performance.timeOrigin,
+    ordinaryDestinations: [...new Set(Array.from(document.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Primary"] a[href]'))
+      .filter(link => {
+        const box = link.getBoundingClientRect(), current = link.getAttribute("aria-current");
+        return !link.closest('[hidden], [inert], [aria-hidden="true"]') && (!current || current === "false")
+          && getComputedStyle(link).visibility === "visible" && box.width > 0 && box.height > 0
+          && box.right > 0 && box.left < innerWidth && box.bottom > 0 && box.top < innerHeight;
+      })
+      .map(link => new URL(link.href))
+      .filter(url => url.origin === location.origin && url.pathname !== location.pathname)
+      .map(url => { url.searchParams.sort(); return url.pathname + url.search; })
+      .filter(href => autoPrefetchHrefs.includes(href)))],
+  }), TABS.filter(tab => tab.prefetch === "auto").map(tab => tab.href));
+}
+
 test("native Event full-document Back restores its actual opener after a BFCache miss", async ({ page, context, baseURL }, info) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
   const evidence = await prepare(context, page, baseURL);
+  const appOrigin = new URL(baseURL ?? "http://localhost:3010").origin;
+  const optionalBoardPrefetches: Array<Record<string, unknown>> = [];
+  const optionalBoardNavigations: Array<Record<string, unknown>> = [];
+  const nullModalPagePrefetches: Array<{ href: string; at: string; observedAt: number; prefetch: string; segment: string; referrer: string | null }> = [];
+  evidence.measurements.unclickedBoardPrefetchRequests = optionalBoardPrefetches;
+  evidence.measurements.unclickedBoardNavigations = optionalBoardNavigations;
+  evidence.measurements.nullModalCatchAllPrefetchRequests = nullModalPagePrefetches;
+  context.on("request", request => {
+    const url = new URL(request.url()), headers = request.headers();
+    if (url.origin !== appOrigin || request.method() !== "GET") return;
+    const segment = headers["next-router-segment-prefetch"] ?? "";
+    // A config-free null reset follows normal visible-destination prefetching.
+    // Record its actual clocks so a fresh document after Back is not mistaken
+    // for a loop in the original document merely because the URL is the same.
+    if (headers["next-router-prefetch"] && segment.includes("/@modal/")
+      && segment.includes("catchAll") && segment.includes("/__PAGE__")) {
+      const observedAt = Date.now();
+      nullModalPagePrefetches.push({ href: url.pathname + url.search, at: new Date(observedAt).toISOString(), observedAt,
+        prefetch: headers["next-router-prefetch"], segment, referrer: headers.referer ?? null });
+    }
+    if (!["/events", "/today"].includes(url.pathname)) return;
+    url.searchParams.delete("_rsc"); url.searchParams.sort();
+    if (!["/events?in=frederick", "/events?lens=today", "/today"].includes(url.pathname + url.search)) return;
+    const entry = { href: url.pathname + url.search, at: new Date().toISOString(),
+      referrer: headers.referer ?? null, nextUrl: headers["next-url"] ?? null,
+      segment: headers["next-router-segment-prefetch"] ?? null };
+    if (request.isNavigationRequest()) optionalBoardNavigations.push(entry);
+    else optionalBoardPrefetches.push(entry);
+  });
   const seed = EVENTS.find((event) => event.slug === "snallyfest-2026-kickoff")!;
   expect(seed).toBeDefined();
   evidence.fixtureBoundary = "Loopback-only declared Today transport fixture exposes an unchanged historical bundled event solely for native return acceptance; actual summary and full SSR are NOT replaced, no dates or source verification shifted. It is not a current recommendation proof. Supported automatic-return opt-out remains active.";
@@ -704,7 +817,6 @@ test("native Event full-document Back restores its actual opener after a BFCache
   });
   // This exact free seed resolver stays real; neither its DTO nor the actual
   // blocking canonical document is replaced by the declared presentation seam.
-  const appOrigin = new URL(baseURL ?? "http://localhost:3010").origin;
   await context.route(url => url.origin === appOrigin && url.pathname === `/api/events/${seed.slug}/summary`, route => {
     expect(route.request().method()).toBe("GET");
     return route.continue();
@@ -714,6 +826,8 @@ test("native Event full-document Back restores its actual opener after a BFCache
   const open = page.locator(`[data-today-event-shortlist] a[href="/events/${seed.slug}"]`);
   await expect(open).toHaveCount(1); await target(open);
   const before = await documentReturnGeometry(open); evidence.measurements.beforeHistoricalEventDocument = before;
+  const initialDocument = await documentPrefetchState(page);
+  expect(initialDocument.timeOrigin).toBe(before.timeOrigin);
   const summaryRead = page.waitForResponse(response => new URL(response.url()).pathname === `/api/events/${seed.slug}/summary`);
   await open.tap();
   const dialog = page.getByRole("dialog"); await expect(dialog.getByRole("heading", { name: seed.title, exact: true })).toBeVisible();
@@ -738,6 +852,9 @@ test("native Event full-document Back restores its actual opener after a BFCache
   expect(new Date(eventData!.startDate!).toISOString()).toBe(new Date(seed.starts_at).toISOString());
   expect(new Date(eventData!.endDate!).toISOString()).toBe(new Date(seed.ends_at).toISOString());
   evidence.measurements.settledDetailBoundary = await settleLocalWebKitDetail(page, context, appOrigin);
+  const eventDocument = await documentPrefetchState(page);
+  evidence.measurements.historicalEventDetailDocument = eventDocument;
+  expect(eventDocument.timeOrigin).toBeGreaterThan(initialDocument.timeOrigin);
   await page.goBack({ waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(before.url); await expect(dialog).toHaveCount(0); await expect(open).toHaveCount(1);
   evidence.measurements.afterHistoricalEventDocument = await documentReturnGeometry(open);
@@ -745,9 +862,31 @@ test("native Event full-document Back restores its actual opener after a BFCache
   const after = await documentReturnGeometry(open); evidence.measurements.afterHistoricalEventDocument = after;
   expect(after.navigationType).toBe("back_forward");
   expect(after.timeOrigin, "This deliberately covers a fresh document, not retained BFCache refs").not.toBe(before.timeOrigin);
+  const returnedDocument = await documentPrefetchState(page);
+  expect(returnedDocument.timeOrigin).toBe(after.timeOrigin);
+  expect(returnedDocument.timeOrigin).toBeGreaterThan(eventDocument.timeOrigin);
   await expect.poll(async () => Math.abs(await page.evaluate(() => scrollY) - before.scrollY)).toBeLessThan(80);
   expect(await page.evaluate(key => sessionStorage.getItem(key), BROWSE_FOCUS_RETURN_KEY)).toBeNull();
   evidence.measurements.width = await noOverflow(page); await screenshot(page, info, "event-native-document-return-focus");
+  expect(optionalBoardPrefetches, "The unchosen board exits and exact current Today tab must not launch repeated segment prefetches during the real native event journey").toEqual([]);
+  expect(optionalBoardNavigations, "No optional calendar or current-tab exit was chosen; the canonical event page and native Back remain the real navigations").toEqual([]);
+  const documents = [initialDocument, eventDocument, returnedDocument];
+  const perDocument = documents.map(document => ({ ...document, destinationCounts: {} as Record<string, number> }));
+  evidence.measurements.nullModalCatchAllDocumentPrefetches = perDocument;
+  for (const request of nullModalPagePrefetches) {
+    const document = [...perDocument].reverse().find(document => request.observedAt >= document.timeOrigin);
+    expect(document, `Null-reset request has no observed document owner: ${JSON.stringify(request)}`).toBeDefined();
+    const destination = new URL(request.href, appOrigin);
+    destination.searchParams.delete("_rsc"); destination.searchParams.sort();
+    const href = destination.pathname + destination.search;
+    expect(request.prefetch).toBe("1");
+    expect(document!.ordinaryDestinations, `Null-reset prefetch is not an ordinary visible destination in its real document: ${JSON.stringify(request)}`).toContain(href);
+    const ownerUrl = new URL(document!.url); ownerUrl.hash = "";
+    expect(request.referrer, "A null-reset request must belong to its clock-selected document").toBe(ownerUrl.href);
+    const count = (document!.destinationCounts[href] ?? 0) + 1;
+    document!.destinationCounts[href] = count;
+    expect(count, `Null-reset prefetch repeated within one real document: ${JSON.stringify({ timeOrigin: document!.timeOrigin, href, request })}`).toBe(1);
+  }
   expect(evidence.errors).toEqual([]);
 });
 

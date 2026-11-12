@@ -8,6 +8,7 @@ import {
   orderCommerceForDetail,
 } from "@/lib/commerce/links";
 import ReportLinkButton from "./ReportLinkButton";
+import { PLACE_SECTION_LABEL_CLASS } from "./PlaceSectionLabel";
 import type { DecisionAction } from "@/lib/decision/telemetry";
 
 const TYPE_ICON: Record<CommerceLinkType, typeof ShoppingBag> = {
@@ -33,8 +34,8 @@ function decisionActionForCommerce(type: CommerceLinkType): DecisionAction {
 /**
  * The place-detail commerce section — one calm block that supersedes the old
  * separate Reserve/Order rows. Renders resolved commerce links (menu / order /
- * reserve / delivery / catering) with a single brand-filled primary and quiet
- * pills for the rest, honest Toast labeling, trust/freshness where it's real,
+ * reserve / delivery / catering) as outlined 6px buttons with the lead action
+ * first, honest Toast labeling, trust/freshness where it's real,
  * and a broken-link report. Self-hides when a place has no commerce links.
  */
 export default function CommerceActions({
@@ -83,42 +84,35 @@ export default function CommerceActions({
 
   return (
     <section className="space-y-2">
-      <h2 className="eyebrow inline-flex items-center gap-1.5">
-        <UtensilsCrossed className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-cool)" }} />
+      {/* PLAIN TOOL: the Toast handoff note is plain text beside the label,
+          not a tinted capsule. */}
+      <h2 className={`flex flex-wrap items-baseline gap-x-2 ${PLACE_SECTION_LABEL_CLASS}`} style={{ color: "var(--app-ink-3)" }}>
         {title}
         {toastOrdering && (
-          <span
-            className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal"
-            style={{
-              background: "color-mix(in srgb, var(--app-brand) 12%, transparent)",
-              color: "var(--app-brand-press)",
-            }}
-          >
+          <span className="text-[13px] font-medium normal-case tracking-normal" style={{ color: "var(--app-ink-2)" }}>
             Ordering via Toast
           </span>
         )}
       </h2>
 
-      <div className="flex flex-wrap gap-1.5">
+      {/* Directions is the page's one filled coral action, so every commerce
+          link is an outlined 6px button in ink. The lead action (order, else
+          menu, else reserve) still comes first. */}
+      <div className="flex flex-wrap gap-2">
         {displayLinks.map((l) => {
           const Icon = TYPE_ICON[l.type];
-          const isPrimary = l === primary;
           return (
             <Button
               key={`${l.type}-${l.url}`}
-              variant={isPrimary ? "primary" : "secondary"}
-              size="sm"
+              variant="secondary"
+              size="md"
               href={l.url}
               target="_blank"
               rel="noopener noreferrer"
               data-decision-action={decisionActionForCommerce(l.type)}
-              className="rounded-full"
-              iconLeft={<Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />}
-              iconRight={
-                isPrimary ? undefined : (
-                  <ExternalLink className="h-3 w-3" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-                )
-              }
+              className="text-[15px]"
+              iconLeft={<Icon className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-2)" }} />}
+              iconRight={<ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />}
             >
               {commerceActionLabel(l)}
             </Button>
@@ -129,7 +123,7 @@ export default function CommerceActions({
       <div className="flex flex-wrap items-center gap-x-2">
         {trustLine && (
           <>
-            <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+            <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
               {trustLine}
             </p>
             <span aria-hidden className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>

@@ -15,14 +15,22 @@ Pre-computed:
 
 Rules this repo has learned the hard way:
 
-1. **Verify before committing.** `npx tsc --noEmit`, `npx eslint <changed>`, and
-   `npx vitest run` must pass. CI's `verify` / `style-lint` are pre-existing
-   infra reds (account-level Actions limits), so the local run is the gate.
+1. **Verify before committing.** Run `npm run typecheck`, `npx eslint <changed>`,
+   and `npm run test:all` locally. CI's `verify` and `style-lint` checks are
+   required by the `Main production safety` ruleset and block the merge when
+   red, so a clean local run is necessary but does not replace them. On an
+   ordinary PR, CI `verify` also runs the audit, transit data, build,
+   Storybook and browser steps in `.github/workflows/ci.yml`, which the local
+   gate does not cover. Its data-artifact validation step runs only on
+   automated data PRs. Check those results on the PR before merging.
 
-2. **Stage explicitly. Never `git add -A`.** Exploration agents and dev servers
-   write files into this tree — `predev` rewrites `src/data/places-client.json`
-   and `places-client-hours.json` on every dev start, and subagents leave scratch
-   files. `git add -A` bundles them into the wrong PR. Add the exact paths you
+2. **Stage explicitly. Never `git add -A`.** Exploration agents and data builds
+   write files into this tree. `npm run build:client-places` and
+   `npm run dev:refresh-data` rewrite `src/data/places-client.json` and
+   `places-client-hours.json`, and subagents leave scratch files. A plain
+   `npm run dev` does not rewrite place data, because `predev` now validates
+   the committed release and builds the fair photo viewer into a gitignored
+   folder. `git add -A` bundles them into the wrong PR. Add the exact paths you
    changed, then re-read `git status` to confirm nothing else came along.
 
 3. **Branch from CURRENT origin/main.** Fetch first — deploy-wait scripts often
@@ -36,9 +44,11 @@ Rules this repo has learned the hard way:
    audit or finding ID it closes. No em dashes in user-facing copy anywhere in
    the change itself (lint-enforced); `docs/VOICE.md` governs every string.
 
-6. End the commit message with:
-   `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`
-   and PR bodies with:
+6. End the commit message with the `Co-Authored-By` line that this session's
+   attribution instruction provides, because it names the model that is
+   actually running. If the session provides none, use
+   `Co-Authored-By: Claude <noreply@anthropic.com>` and do not name a model.
+   End PR bodies with:
    `🤖 Generated with [Claude Code](https://claude.com/claude-code)`
 
 Confirm the plan with me before pushing or opening the PR — pushing is

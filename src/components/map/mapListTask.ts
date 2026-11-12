@@ -244,7 +244,7 @@ function subMatch(intentKey: IntentKey, subKey: string, place: MapPinPlace): boo
  * window that covers this minute for a place whose hours are not confirmed. */
 export function isLikelyOpenPlace(place: MapPinPlace, now: Date): boolean {
   if (isOpenNow(place.open_status)) return true;
-  return mayUseLikelyOpenFallback(place.open_status) && isLikelyOpenNow(place.slug, now);
+  return mayUseLikelyOpenFallback(place.open_status, place) && isLikelyOpenNow(place.slug, now);
 }
 
 export function mapClientTaskMatches(

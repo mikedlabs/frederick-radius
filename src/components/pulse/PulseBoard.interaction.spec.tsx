@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement } from "react";
+import { act, createElement, type RefObject } from "react";
 import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,8 +13,8 @@ vi.mock("@/lib/track", () => ({ track: vi.fn() }));
 // The canonical Sheet has real browser focus/Back coverage. This controlled
 // double observes whether this board opens exactly one requested detail.
 vi.mock("@/components/ui/Sheet", () => ({
-  default: ({ open, title }: { open: boolean; title: string }) => open
-    ? createElement("section", { role: "dialog", "aria-label": title }, title)
+  default: ({ open, title, focusReturnHref, returnFocusRef }: { open: boolean; title: string; focusReturnHref?: string; returnFocusRef?: RefObject<HTMLElement | null> }) => open
+    ? createElement("section", { role: "dialog", "aria-label": title, "data-focus-return": focusReturnHref, "data-focus-opener": returnFocusRef?.current?.id }, title)
     : null,
 }));
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
@@ -85,6 +85,7 @@ describe("Pulse cold-hydration readiness", () => {
     expect(window.location.search).toBe("?in=county&open=weather");
     expect(container.querySelectorAll('[role="dialog"]')).toHaveLength(1);
     expect(container.querySelector('[role="dialog"]')?.getAttribute("aria-label")).toBe("Weather");
+    expect(container.querySelector('[role="dialog"]')?.getAttribute("data-focus-return")).toBe("/pulse?in=county");
     await act(async () => {
       // Match the location and popstate delivered by native browser Back.
       window.history.replaceState({}, "", "/pulse?in=county");
@@ -102,5 +103,46 @@ describe("Pulse cold-hydration readiness", () => {
     expect(container.querySelectorAll('[role="dialog"]')).toHaveLength(1);
     expect(container.querySelector('[role="dialog"]')?.getAttribute("aria-label")).toBe("Weather");
     expect(window.location.search).toBe("?in=brunswick&open=weather");
+    expect(container.querySelector('[role="dialog"]')?.getAttribute("data-focus-return")).toBe("/pulse?in=brunswick");
+  });
+
+  it("freezes the exact ordinary origin across tile switches while preserving every query and hash", async () => {
+    const origin = "/pulse?in=brunswick&view=morning&query=parks%20nearby#source-status";
+    window.history.replaceState({}, "", origin);
+    serverMarkup(); await hydrate();
+    await act(async () => { container.querySelector<HTMLButtonElement>('[data-pulse-key="weather"]')?.click(); });
+    expect(container.querySelector('[role="dialog"]')?.getAttribute("data-focus-return")).toBe(origin);
+    await act(async () => { root?.render(createElement(PulseBoard, { hero, chips, tiles: [...tiles] })); });
+    expect(container.querySelector('[role="dialog"]')?.getAttribute("data-focus-return")).toBe(origin);
+    await act(async () => { container.querySelector<HTMLButtonElement>('[data-pulse-key="power"]')?.click(); });
+    expect(new URL(window.location.href).searchParams.get("open")).toBe("power");
+    expect(container.querySelector('[role="dialog"]')?.getAttribute("data-focus-return")).toBe(origin);
+  });
+
+  it("deletes only its owned parameter for a direct detail link", async () => {
+    window.history.replaceState({}, "", "/pulse?in=brunswick&view=morning&open=weather&query=parks%20nearby#source-status");
+    serverMarkup(); await hydrate();
+    expect(container.querySelector('[role="dialog"]')?.getAttribute("data-focus-return")).toBe(
+      "/pulse?in=brunswick&view=morning&query=parks+nearby#source-status",
+    );
+    expect(container.querySelector('[role="dialog"]')?.getAttribute("data-focus-opener")).toBeNull();
+  });
+
+  it("retains each actual pointer launcher even when clicking does not move browser focus", async () => {
+    serverMarkup(); await hydrate();
+    const prior = document.createElement("a"); prior.href = "/today"; document.body.append(prior);
+    try {
+      const launchers = [...container.querySelectorAll<HTMLButtonElement>("button")];
+      expect(launchers).toHaveLength(6);
+      for (const [index, launcher] of launchers.entries()) {
+        launcher.id = `pulse-pointer-${index}`;
+        prior.focus(); expect(document.activeElement).toBe(prior);
+        // HTMLElement.click, like WebKit's pointer button click, does not
+        // move focus. The launcher identity must come from currentTarget.
+        await act(async () => launcher.click());
+        expect(document.activeElement).toBe(prior);
+        expect(container.querySelector('[role="dialog"]')?.getAttribute("data-focus-opener")).toBe(launcher.id);
+      }
+    } finally { prior.remove(); }
   });
 });

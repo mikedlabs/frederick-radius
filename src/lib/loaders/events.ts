@@ -1,3 +1,4 @@
+import { areDistinctVenuePerformances } from "@/lib/events/venue-occurrence";
 import { EVENTS as RAW_EVENTS, EVENT_BY_SLUG, type Event } from "@/data/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG, type Municipality } from "@/data/municipalities";
@@ -492,6 +493,7 @@ export function dedupeCuratedClusters(events: EventWithMeta[]): EventWithMeta[] 
   for (const e of events) {
     const t = +new Date(e.starts_at);
     const dupeIdx = out.findIndex((kept) => {
+      if (areDistinctVenuePerformances(kept, e)) return false;
       const kt = +new Date(kept.starts_at);
       if (Math.abs(kt - t) > 60 * 60 * 1000) return false;
       return (

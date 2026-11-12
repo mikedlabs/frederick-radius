@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Hours } from "@/data/places";
 import type { OpenStatus } from "@/lib/hours";
-import { getOpenStatus } from "@/lib/hours";
+import { getOpenStatus, isDisplayOnlyHours } from "@/lib/hours";
 import OpenClosedDot from "@/components/place/OpenClosedDot";
 
 /**
@@ -41,5 +41,10 @@ export default function LiveOpenStatus({
     return () => window.clearInterval(id);
   }, [hours, verified]);
 
+  // A current scoped schedule is not a failed refresh, and a stale initial
+  // open state must never override its display-only qualification before mount.
+  if (isDisplayOnlyHours(hours)) {
+    return <span className="text-xs font-medium" style={{ color: "var(--app-ink-3)" }}>Venue opening not confirmed</span>;
+  }
   return status.state === "unknown" ? <span className="text-xs font-medium" style={{ color: "var(--app-ink-3)" }}>Hours not recently confirmed</span> : <OpenClosedDot status={status} />;
 }

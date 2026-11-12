@@ -1,3 +1,4 @@
+import { venueOccurrenceSlug } from "@/lib/events/venue-occurrence";
 import { stampEventProvenance } from "@/lib/provenance";
 import { audienceFromText } from "@/lib/events/audienceSignals";
 import RAW from "@/data/venue-events.json" with { type: "json" };
@@ -119,7 +120,11 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
     ?? place?.category
     ?? "music";
   const { presenter, title } = normalizeTitle(e.title, { year: etYear(e.starts_at) });
-  const slug = cleanEventSlug({ presenter, title, startsAt: e.starts_at });
+  // Do not assign date-only aliases according to current sibling membership.
+  // The durable source ID remains unchanged so existing aliases keep their owner.
+  const slug = venueOccurrenceSlug(
+    cleanEventSlug({ presenter, title, startsAt: e.starts_at }), e.venue_slug, e.starts_at,
+  );
   // Venue pages rarely expose a publisher event UID. Venue + occurrence time
   // is the stable identity we do have: it stays distinct across recurring
   // dates and survives a later title edit that changes the human-facing slug.

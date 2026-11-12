@@ -287,6 +287,22 @@ describe("Today durable event snapshot", () => {
     expect(values).toContain(1_500);
   });
 
+  it("reads a selected calendar window while judging freshness against the current clock", async () => {
+    const values: unknown[] = [];
+    mocks.getSql.mockReturnValue((_parts: TemplateStringsArray, ...parameters: unknown[]) => {
+      values.push(...parameters);
+      return Promise.resolve([envelope()]);
+    });
+    const result = await loadEventArchiveSnapshot(NOW, {
+      windowStart: new Date("2026-08-25T04:00:00Z"), horizonDays: 44,
+    });
+    expect(values).toContain("2026-08-25T04:00:00.000Z");
+    expect(values).toContain("2026-10-08T04:00:00.000Z");
+    expect(result.sourceHealth.degraded).toBe(false);
+    expect(result.publicEvents.find(row => row.slug === "archive-event-2026-07-31")?.last_verified_at)
+      .toBe("2026-07-31T14:00:00.000Z");
+  });
+
   it("lets a cold archive connection finish without collapsing discovery to curated rows", async () => {
     vi.useFakeTimers();
     mocks.getSql.mockReturnValue(vi.fn(() => new Promise((resolve) => {

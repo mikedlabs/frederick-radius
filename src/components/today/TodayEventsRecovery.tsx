@@ -9,7 +9,6 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import TodayHeadlineCard from "./TodayHeadlineCard";
 import choiceStyles from "./TodayEventChoices.module.css";
 import DismissibleSection from "@/components/today/DismissibleSection";
-import EventGlanceCard from "@/components/event/EventGlanceCard";
 import { parseRecoveryEventVisual, type EventCardVisual } from "@/components/event/eventVisuals";
 import { createAbortDeadline } from "@/lib/promise-deadline";
 import { eventDisplayTitle } from "@/lib/events/display-title";
@@ -86,10 +85,12 @@ function rowTime(event: TodayEvent): string {
 }
 
 /** The caller supplies an approved visual. This pure presentation seam also
- * supports declared offline layout fixtures without weakening API approval. */
+ * supports declared offline layout fixtures without weakening API approval.
+ * Coral marks only an event that is on now, and only the lead carries the
+ * "View event" cue, so the event names lead the list. */
 export function TodayEventBriefCard({ event, visual, lead = false }: { event: TodayEvent; visual: EventCardVisual | null; lead?: boolean }) {
   const facts = <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-    <p className="text-xs font-semibold tabular-nums" style={{ color: "var(--app-brand-press)" }}>
+    <p className="text-xs font-semibold tabular-nums" style={{ color: event.moment === "Now" ? "var(--app-link)" : "var(--app-ink-2)" }}>
       {rowTime(event)}{event.moment === "Now" && event.time !== "All day" ? ` · ${event.time}` : ""}{event.endTime ? `–${event.endTime}` : ""}
     </p>
     <h3 id={`today-choice-${event.slug}`} className={`${lead ? "text-xl" : "text-base"} mt-1 font-semibold leading-snug tracking-tight`} style={{ color: "var(--app-ink)" }}>
@@ -99,11 +100,11 @@ export function TodayEventBriefCard({ event, visual, lead = false }: { event: To
       {event.venue}{event.free ? " · Free" : event.price ? ` · ${event.price}` : ""}
     </p>
   </div>;
-  return lead || !visual ? <TodayHeadlineCard eventSlug={event.slug} titleId={`today-choice-${event.slug}`} detailId={`today-choice-facts-${event.slug}`} visual={visual} accent="var(--app-brand)" priority={false}>
+  // Every choice is a ruled row. The lead may carry a wide picture; a later
+  // row keeps its approved picture as a small square at the right edge.
+  return <TodayHeadlineCard eventSlug={event.slug} titleId={`today-choice-${event.slug}`} detailId={`today-choice-facts-${event.slug}`} visual={visual} accent="var(--app-brand)" priority={false} actionCue={lead} layout={lead ? "headline" : "row"}>
     {facts}
-  </TodayHeadlineCard> : <EventGlanceCard eventSlug={event.slug} visual={visual} cancelled={false} accent="var(--app-brand)" surface="today" compactCredit={false}>
-    {facts}
-  </EventGlanceCard>;
+  </TodayHeadlineCard>;
 }
 
 async function recoverAttempt(parentSignal: AbortSignal, requestPath: string): Promise<RecoveryAttempt> {
@@ -204,6 +205,7 @@ export function TodayEventsRecoveryView({
           </div>
           <Link
             href={eventsHref}
+            prefetch={false}
             aria-label="Open the full events board"
             className="tap-44-y inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-semibold"
             style={{ color: "var(--app-link)" }}
@@ -227,6 +229,7 @@ export function TodayEventsRecoveryView({
         id="upcoming"
         title="Events today"
         href={eventsHref}
+        prefetch={false}
         cta="See all"
         flat
         meta={meta}

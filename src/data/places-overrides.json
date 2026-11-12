@@ -91,30 +91,103 @@
     "baker-park-bandshell"
   ],
   "patch": {
+    "alekos-middletown": {
+      "category": "restaurant"
+    },
+    "thai-table-frederick": {
+      "phone": "(240) 877-7034"
+    },
+    "il-porto-restaurant": {
+      "phone": "(301) 620-7480",
+      "website": "https://www.ilportorestaurant.com/location-frederick/"
+    },
+    "hootch-and-banter-frederick": {
+      "phone": "(301) 732-4971"
+    },
     "frederick-coffee-company-frederick": {
       "website": "https://fredcoffeeco.com/"
     },
     "white-rabbit-gastropub": {
       "category": "restaurant",
-      "subcategories": ["bar", "gastropub", "pizza"],
-      "tags": ["pizza", "takeout", "delivery"],
-      "search_aliases": ["White Rabbit", "Detroit-style pizza", "Detroit pizza", "In Crust We Trust", "craft beer", "weekend brunch"],
-      "amenities": ["takeout", "delivery"]
+      "subcategories": [
+        "bar",
+        "gastropub",
+        "pizza"
+      ],
+      "tags": [
+        "pizza",
+        "takeout",
+        "delivery"
+      ],
+      "search_aliases": [
+        "White Rabbit",
+        "Detroit-style pizza",
+        "Detroit pizza",
+        "In Crust We Trust",
+        "craft beer",
+        "weekend brunch"
+      ],
+      "amenities": [
+        "takeout",
+        "delivery"
+      ]
     },
     "attaboy-beer-frederick": {
-      "tags": ["family", "dog-friendly", "outdoor-seating"],
-      "search_aliases": ["Attaboy", "beer garden", "food trucks", "dog-friendly brewery"],
-      "amenities": ["indoor seating", "heated garage", "heated beer garden", "parking"]
+      "tags": [
+        "family",
+        "dog-friendly",
+        "outdoor-seating"
+      ],
+      "search_aliases": [
+        "Attaboy",
+        "beer garden",
+        "food trucks",
+        "dog-friendly brewery"
+      ],
+      "amenities": [
+        "indoor seating",
+        "heated garage",
+        "heated beer garden",
+        "parking"
+      ]
     },
     "baker-park-frederick": {
       "website": "https://www.cityoffrederickmd.gov/facilities/Facility/Details/78",
-      "search_aliases": ["Baker Park", "Baker Park playground", "Baker Park tennis courts", "Baker Park picnic tables", "Baker Park bathrooms"],
-      "amenities": ["playground", "picnic tables", "tennis courts", "walking and biking paths", "restrooms in bandshell"]
+      "search_aliases": [
+        "Baker Park",
+        "Baker Park playground",
+        "Baker Park tennis courts",
+        "Baker Park picnic tables",
+        "Baker Park bathrooms"
+      ],
+      "amenities": [
+        "playground",
+        "picnic tables",
+        "tennis courts",
+        "walking and biking paths",
+        "restrooms in bandshell"
+      ]
     },
     "c-burr-artz-public-library-frederick": {
       "website": "https://www.fcpl.org/branches-hours/c-burr-artz-public-library",
-      "search_aliases": ["C Burr Artz", "downtown library", "Maryland Room", "local history research", "study rooms", "printing and scanning"],
-      "amenities": ["wireless internet", "study rooms", "meeting rooms", "printing", "scanning", "copying", "fax service", "curbside pickup"]
+      "search_aliases": [
+        "C Burr Artz",
+        "downtown library",
+        "Maryland Room",
+        "local history research",
+        "study rooms",
+        "printing and scanning"
+      ],
+      "amenities": [
+        "wireless internet",
+        "study rooms",
+        "meeting rooms",
+        "printing",
+        "scanning",
+        "copying",
+        "fax service",
+        "curbside pickup"
+      ]
     },
     "beans-in-the-belfry-brunswick": {
       "website": "https://beansinthebelfry.com/",
@@ -309,7 +382,7 @@
     },
     "the-tasting-room-frederick": {
       "short_blurb": "This North Market restaurant serves New American dishes and keeps an extensive wine list.",
-      "website": "https://www.trrestaurant.com/",
+      "website": "https://trrestaurant.com/",
       "commerce_links": [
         {
           "provider": "opentable",
@@ -1047,7 +1120,8 @@
       "name": "McClintock's Back Bar"
     },
     "jojos-restaurant-tap-house": {
-      "name": "JoJo's Restaurant Tap House"
+      "name": "JoJo's Restaurant & Tap House",
+      "address": "16-18 E Patrick St"
     },
     "keeney-and-basford-funeral-homes": {
       "category": "services"
@@ -1384,6 +1458,7 @@
       "name": "Rockwell Brewery Riverside"
     },
     "pistarros": {
+      "name": "Pistarro's",
       "subcategories": [
         "pizza"
       ]
@@ -1563,7 +1638,9 @@
       "subcategories": []
     },
     "smoketown-brewing-brunswick": {
-      "subcategories": ["restaurant"],
+      "subcategories": [
+        "restaurant"
+      ],
       "website": "https://www.smoketownbrewing.com/",
       "search_aliases": [
         "Smoketown Brewing",
@@ -1623,6 +1700,15 @@
       "postal_code": "21704",
       "website": "https://www.fcpl.org/branches-hours/urbana-regional-library",
       "short_blurb": "Urbana Regional Library provides public library services at 9020 Amelung Street."
+    },
+    "kulfi-ice-creams-frederick": {
+      "phone": "(240) 815-5466"
+    },
+    "juliets-italian-market-cafe-frederick": {
+      "phone": "(301) 620-0077"
+    },
+    "monocacy-brewing-frederick": {
+      "phone": "(240) 457-4232"
     }
   }
 }

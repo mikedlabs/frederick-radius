@@ -4,6 +4,53 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const isProduction = process.env.NODE_ENV === "production";
 
+// Next permits at most 25 local patterns; Vercel also limits each compiled
+// pathname regex to 256 characters. Keep these exact reviewed files in small
+// closed unions, preserving the same filenames without wildcards or queries.
+const REVIEWED_LOCAL_PLACE_PHOTO_GROUPS = [
+  [
+    "brewers-alley-2004.jpg",
+    "delaplaine-exterior.jpg",
+    "weinberg-exterior.jpg",
+    "c-burr-artz-exterior.jpg",
+    "frederick-marc-station-2015.jpg",
+    "heritage-frederick-exterior-2009.jpg",
+    "thurmont-square-park-2012.jpg",
+  ],
+  [
+    "heritage-farm-park-harris-farmhouse-2010.jpg",
+    "sabor-de-cuba-entrance-2018.jpg",
+    "francis-scott-key-monument-2024.jpg",
+    "rose-hill-manor-exterior-2019.jpg",
+    "utica-covered-bridge-2022.jpg",
+    "civil-war-medicine-frontage.jpg",
+  ],
+  [
+    "cunningham-falls.jpg",
+    "catoctin-furnace.jpg",
+    "county-ballenger-creek-park-frederick.jpg",
+    "county-buckeystown-park-frederick.jpg",
+    "county-catoctin-creek-park-nature-center-burkittsville.jpg",
+    "county-kemptown-park-new-market.jpg",
+  ],
+  [
+    "county-loys-station-park-thurmont.jpg",
+    "county-middletown-park-middletown.jpg",
+    "county-othello-regional-park-brunswick.jpg",
+    "county-pinecliff-park-frederick.jpg",
+    "county-point-of-rocks-community-commons-park-brunswick.jpg",
+  ],
+  [
+    "county-utica-park-walkersville.jpg",
+    "county-fountain-rock-nature-center-walkersville.jpg",
+    "county-thurmont-recreation-center-thurmont.jpg",
+  ],
+  [
+    "county-walkersville-recreation-center-walkersville.jpg",
+    "county-brunswick-recreation-center-brunswick.jpg",
+  ],
+] as const;
+
 // Enforcing baseline CSP. Next currently needs inline boot scripts and the app
 // uses inline style props, so those two allowances remain explicit. Every
 // other executable/network origin is constrained to the services the product
@@ -155,11 +202,11 @@ const nextConfig: NextConfig = {
       { pathname: "/images/**", search: "" },
       { pathname: "/from-above/**", search: "" },
       { pathname: "/history-photos/**", search: "" },
-      { pathname: "/place-photos/brewers-alley-2004.jpg", search: "" },
-      // Exact reviewed local venue files; arbitrary paths or query strings stay blocked.
-      { pathname: "/place-photos/delaplaine-exterior.jpg", search: "" },
-      { pathname: "/place-photos/weinberg-exterior.jpg", search: "" },
-      { pathname: "/place-photos/c-burr-artz-exterior.jpg", search: "" },
+      // Next's installed picomatch matcher supports this closed brace union.
+      // Only these 29 reviewed files are admitted, within both platform bounds.
+      ...REVIEWED_LOCAL_PLACE_PHOTO_GROUPS.map(files => ({
+        pathname: `/place-photos/{${files.join(",")}}`, search: "",
+      })),
       // Brewery logo marks (the breweries' own site icons, committed with
       // provenance in src/data/brewery-marks.json) — the /beer passport.
       { pathname: "/brewery-marks/**", search: "" },
@@ -254,6 +301,7 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
+          { key: "Content-Security-Policy", value: contentSecurityPolicy },
           // Force HTTPS for two years; reversible (no `preload`, so we
           // never get pinned on a browser preload list we can't undo).
           ...(isProduction
@@ -276,15 +324,6 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "geolocation=(self), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=(), browsing-topics=(), interest-cohort=()",
           },
-        ],
-      },
-      {
-        // The photographic renderer is a separate document with its own
-        // tightly scoped Wasm policy. Two CSP headers would intersect, not
-        // override each other, so the application policy excludes only it.
-        source: "/:path((?!fair-photo-viewer/?$).*)",
-        headers: [
-          { key: "Content-Security-Policy", value: contentSecurityPolicy },
         ],
       },
     ];
@@ -397,6 +436,28 @@ const nextConfig: NextConfig = {
         destination: "/events/first-friday-june-2026-frederick",
         permanent: true,
       },
+      // The 2026 Great Frederick Fair workspace was retired after the fair
+      // ended on September 26, 2026. /fair was printed and spoken, so it stays
+      // a real page that says the fair is over. Every other fair address a
+      // visitor could still hold folds into it. A trailing ":path*" also
+      // matches the bare address.
+      { source: "/moments/great-frederick-fair-2026/:path*", destination: "/fair", permanent: true },
+      { source: "/fair-photo-viewer", destination: "/fair", permanent: true },
+      { source: "/fair/:path+", destination: "/fair", permanent: true },
+      // Push notifications were retired in November 2026. The alert settings
+      // page is gone, and its one surviving control (phone feedback) now
+      // lives on /settings.
+      { source: "/settings/notifications", destination: "/settings", permanent: true },
+      // The legacy beta admin desks were retired once the access gate had been
+      // gone for months. They fold into the surviving admin desk; the feedback
+      // inbox moved to /admin/feedback. A trailing ":path*" also matches the
+      // bare address. The public /beta address is NOT redirected here: a
+      // config redirect forwards the query string, and old invite links carry
+      // a personal code in it. src/app/beta/[[...path]]/route.ts sends /beta
+      // to /today without the query.
+      { source: "/admin/beta", destination: "/admin/feedback", permanent: true },
+      { source: "/admin/beta-codes/:path*", destination: "/admin", permanent: true },
+      { source: "/admin/beta-emails/:path*", destination: "/admin", permanent: true },
     ];
   },
 };

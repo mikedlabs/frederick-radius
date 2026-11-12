@@ -44,10 +44,29 @@ describe("BeenHereToggle render stability", () => {
 
     expect(buttonText(fallback)).toBe("Mark as visited");
     expect(buttonText(mounted)).toBe("Mark as visited");
+    // Plain tool action strip: an unboxed ink text action with a 44px minimum
+    // target that grows with enlarged text, no capsule and no fill, identical
+    // before and after mount.
     for (const markup of [fallback, mounted]) {
       expect(markup).toContain("tap-44-y");
-      expect(markup).toContain("background:var(--app-bg-elevated)");
-      expect(markup).toContain("color:var(--app-ink-2)");
+      expect(markup).toContain("min-h-11");
+      expect(markup).toContain("text-[0.9375rem]");
+      expect(markup).toContain("font-semibold");
+      expect(markup).toContain("color:var(--app-ink)");
+      expect(markup).not.toContain("rounded-full");
+      expect(markup).not.toContain("background:");
     }
+  });
+
+  it("shows the visited state in its own color and announces it as pressed", () => {
+    state.mounted = true;
+    state.been = true;
+    const markup = renderToStaticMarkup(
+      <BeenHereToggle placeSlug="test-place" label="Test Place" />,
+    );
+    expect(buttonText(markup)).toBe("Been here");
+    expect(markup).toContain('aria-pressed="true"');
+    expect(markup).toContain('aria-label="Been here: Test Place. Mark as not visited"');
+    expect(markup).toContain("color:var(--app-cool-text)");
   });
 });

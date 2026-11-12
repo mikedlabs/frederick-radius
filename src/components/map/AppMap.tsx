@@ -38,6 +38,8 @@ import type { OsmPlace } from "@/lib/integrations/overpass";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { useFollowedSlugs } from "@/hooks/useFollows";
+import { useMapTabResumeQuery } from "@/hooks/useMapTabResumeQuery";
+import { rememberMapTabView } from "@/lib/primary-tab-session";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { SearchResult } from "@/lib/search/index";
 import {
@@ -85,7 +87,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 // (the rule that closed the 12MB bundle leak) the points arrive as a
 // server prop and only the Amenity type is imported (erased at build).
 import type { Amenity } from "@/lib/loaders/amenities";
-import { haversineMeters, type LngLat } from "@/lib/geo";
+import type { LngLat } from "@/lib/geo";
 import { readCachedPosition } from "@/hooks/useGeolocation";
 import { sizedImage } from "@/lib/format/img";
 // THE one duplicate rule (pure, no data imports — bundle-safe). The
@@ -223,6 +225,8 @@ const CURATED_CLUSTER_LABEL = curatedClusterLabelExpression();
 // every basemap frame.
 const MAP_RENDER_READINESS_PROBE_INTERVAL_MS = 250;
 const MAP_RENDER_READINESS_MAX_ATTEMPTS = 12;
+// How long a search or selection note stays on the map chip.
+const MAP_NOTE_MS = 6000;
 const MAP_RENDERER_CONFIGURED = MAPBOX_TOKEN.length > 0;
 
 // Types, constants, and popup components are kept in focused siblings so this
@@ -278,7 +282,9 @@ import LiveMarcTrains from "./LiveMarcTrains";
 import WeatherRadar from "./WeatherRadar";
 import LightningDensity from "./LightningDensity";
 import MapboxTraffic from "./MapboxTraffic";
-import { isFatalMapboxError } from "./mapboxFailure";
+import { useMapRendererLifecycle } from "./useMapRendererLifecycle";
+import { shouldApplyInitialMapSelection } from "./mapInitialSelection";
+import { useInitialPlaceCameraFocus } from "./useInitialPlaceCameraFocus";
 import LiveIncidents from "./LiveIncidents";
 import LiveRotorcraft, {
   type RotorcraftLayerStatus,
@@ -837,6 +843,11 @@ export default function AppMap({
   // transient move overwrite the address bar and turn the wrong frame into
   // the new source of truth.
   const cameraUrlWriteReadyRef = useRef(!urlCamera);
+  // A settled map can write its own county camera before the place card mounts.
+  // Only the camera supplied on entry suppresses the initial place focus.
+  const [entryHasCamera] = useState(() => Boolean(urlCamera));
+  const initialPlaceCameraPendingRef = useRef<string | null>(null);
+  const initialPlaceCameraGestureRef = useRef(false);
   // `reuseMaps` keeps the GL instance warm across route changes. That is a
   // major speed win, but Mapbox can then retain the camera from the previous
   // mount and ignore the new component's `initialViewState`. Re-apply an
@@ -902,16 +913,9 @@ export default function AppMap({
       });
     });
   }, [cameraMaxBounds, initialBounds, recenterToKnownLocation, shortLandscapeViewport, urlCamera]);
-  const { openSheet } = usePlaceSheet();
-  // ── Sheet hydration (the /map payload slim). Browse mode ships pin-field
-  // records only; the sheet is the one consumer that wants the full card
-  // (photos, rating, hours, address). Open INSTANTLY with the pin fields —
-  // PlaceSheet optional-chains everything beyond them — then swap in the full
-  // record from /api/places/by-slugs (CDN-cached 1h) when it lands, usually
-  // within a frame or two. Cache per slug so re-taps are instant + offline-
-  // tolerant. Callers holding full records (SavedList, radius mode) just get
-  // one redundant background fetch the first time, served from cache.
-  const hydratedRef = useRef(new globalThis.Map<string, PlaceCardData>());
+  const { openSheetBySlug } = usePlaceSheet();
+  // The provider owns hydration, cancellation and its small visited-place cache.
+  // The slim pin supplies immediate identity while authoritative metadata loads.
   const openPlaceSheet = (pin: MapPinPlace) => {
     // React mirrors the selected slug into the map URL, but a fast Details tap
     // can beat that effect. Commit the selection before the persistent sheet
@@ -928,29 +932,10 @@ export default function AppMap({
       // The sheet still opens if address-bar persistence is unavailable.
     }
 
-    const withDist = (x: PlaceCardData): PlaceCardData =>
-      userLoc ? { ...x, distance_m: haversineMeters(userLoc, x.geom) } : x;
     const travelOrigin = userLoc && locationFixTimestamp
       ? { ...userLoc, timestamp: locationFixTimestamp }
       : null;
-    const cached = hydratedRef.current.get(pin.slug);
-    if (cached) {
-      openSheet(withDist(cached), { travelOrigin });
-      return;
-    }
-    openSheet(withDist(pin as PlaceCardData), { travelOrigin });
-    fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(pin.slug)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { places?: PlaceCardData[] } | null) => {
-        const full = d?.places?.[0];
-        if (full && full.slug === pin.slug) {
-          hydratedRef.current.set(pin.slug, full);
-          openSheet(withDist(full), { travelOrigin });
-        }
-      })
-      .catch(() => {
-        /* offline / transient — the pin-field sheet stays up, still useful */
-      });
+    openSheetBySlug(pin.slug, { initialPlace: pin, travelOrigin });
   };
   // Mode-driven layer defaults. The map mounts client-side via
   // dynamic({ ssr:false }), so the initial mode read here is the
@@ -1018,50 +1003,36 @@ export default function AppMap({
   // prefs are ignored (and cleared on the next write) so no invisible
   // filter can survive without UI to show or clear it.
   const wantsOsmInitially = (initialAmenityGroups ?? []).length > 0;
-  // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
-  // must degrade to a stable branded state, never a blank rectangle. Missing
-  // build-time credentials are known synchronously, so never mount an empty-
-  // token canvas and wait for an avoidable provider/network failure.
-  const [mapError, setMapError] = useState(() => !MAP_RENDERER_CONFIGURED);
-  // A visible canvas is not proof that Mapbox has loaded its style and sources.
-  // This flag deliberately promises only that the load handler ran. Initial
-  // amenity/selection camera work may still follow, so do not call it settled.
-  const [mapLoaded, setMapLoaded] = useState(false);
-  const mapLoadedRef = useRef(false);
-  // A DNS stall or intercepted style request can fail without dispatching a
-  // useful GL error. Never leave the branded loading scene covering the app
-  // forever; after a generous cold-load window, reveal the existing readable
-  // fallback and keep every non-map result available.
-  useEffect(() => {
-    if (mapLoaded || mapError) return;
-    const timeout = window.setTimeout(() => {
-      setMapError(true);
-      onVisualReady?.();
-    }, 10_000);
-    return () => window.clearTimeout(timeout);
-  }, [mapError, mapLoaded, onVisualReady]);
-  useEffect(() => {
-    if (MAP_RENDERER_CONFIGURED) return;
-    onVisualReady?.();
-  }, [onVisualReady]);
-  // A browser with no WebGL (locked-down corporate profile, a headless/bot
-  // client, GPU blocklisted) can never paint the GL canvas — react-map-gl just
-  // renders an empty rectangle, which is exactly the "map failed to load" a
-  // reviewer hit. Distinguish it from a transient token/network error so the
-  // fallback copy is honest: "reload" won't fix an unsupported browser. Checked
-  // once on mount (client only); the same branded overlay covers the dead canvas.
-  const [mapUnsupported, setMapUnsupported] = useState(false);
-  useEffect(() => {
-    if (!MAP_RENDERER_CONFIGURED) return;
-    if (!hasWebGL()) {
-      setMapUnsupported(true);
-      setMapError(true);
-      onVisualReady?.();
-    }
-  }, [onVisualReady]);
+  // Missing config, unsupported WebGL and hard renderer failures are terminal.
+  // A delayed load exposes the same useful list without destroying its map.
+  // Loaded still means only the load handler ran; rendered marks have their
+  // own health probe below and must not inherit that weaker readiness claim.
+  const {
+    mapError,
+    mapLoaded,
+    mapUnsupported,
+    failureKind: mapFailureKind,
+    mountRenderer,
+    markLoaded: markRendererLoaded,
+    reportError: reportRendererError,
+  } = useMapRendererLifecycle({
+    configured: MAP_RENDERER_CONFIGURED,
+    supportsWebGL: hasWebGL,
+    onVisualReady,
+  });
   // P0-10: a graceful note when the user denies (or we cannot get)
   // geolocation, instead of the "Near me" button silently doing nothing.
-  const [geoMsg, setGeoMsg] = useState<string | null>(null);
+  // A locate failure stays until it is dismissed or location recovers.
+  const [locateMsg, setLocateMsg] = useState<string | null>(null);
+  // Search and selection notes share the chip. They are passing information,
+  // so they clear themselves and uncover a locate failure still standing.
+  const [mapNote, setGeoMsg] = useState<string | null>(null);
+  const geoMsg = mapNote ?? locateMsg;
+  useEffect(() => {
+    if (!mapNote) return;
+    const timer = window.setTimeout(() => setGeoMsg(null), MAP_NOTE_MS);
+    return () => window.clearTimeout(timer);
+  }, [mapNote]);
   // Cold open is CLEAN: no layers pre-selected (matching the empty-categories
   // decision above) so the map opens as the live town, not a wall of pins. The
   // mode toggle still applies its curated layers when the user picks a mode.
@@ -1178,12 +1149,16 @@ export default function AppMap({
   // AppMap is mounted with `ssr: false`, so the first client render can safely
   // seed this from the exact URL carried through `returnTo`.
   const routeQuery = (routeSearchParams.get("q") ?? "").slice(0, 160);
+  const tabResumeQuery = useMapTabResumeQuery(isBrowseMap);
   const clientTask = isBrowseMap ? parseMapClientTask(routeSearchParams.get(MAP_TASK_PARAM)) : null;
   // The shared URL owns deliberate result bounds. It restores the same pins
   // and ranked rows through Back without a second in-memory area overriding it.
   const routeTaskArea = routeSearchParams.get(MAP_TASK_AREA_PARAM);
   const committedTaskArea = useMemo(() => isBrowseMap ? parseMapTaskArea(routeTaskArea, resultScope) : null, [isBrowseMap, routeTaskArea, resultScope]);
-  const [submittedQuery, setSubmittedQuery] = useState(() => routeQuery.trim());
+  const [submittedQuery, setSubmittedQuery] = useState(() => {
+    const live = typeof window === "undefined" ? routeSearchParams : new URLSearchParams(window.location.search);
+    return (live.has("q") ? (live.get("q") ?? "").slice(0, 160) : tabResumeQuery ?? routeQuery).trim();
+  });
   const [dockSearchPanelVisible, setDockSearchPanelVisible] = useState(false);
   const routePlaceSelection = routeSearchParams.get("place");
   const routeEventSelection = routeSearchParams.get("event");
@@ -1193,7 +1168,8 @@ export default function AppMap({
   );
   const [q, setQ] = useState(() => {
     if (typeof window === "undefined") return "";
-    return (new URLSearchParams(window.location.search).get("q") ?? "").slice(0, 160);
+    const params = new URLSearchParams(window.location.search);
+    return (params.has("q") ? params.get("q") ?? "" : tabResumeQuery ?? "").slice(0, 160);
   });
   const searchLiveQueryRef = useRef(q);
   const searchRequestRef = useRef(0);
@@ -1225,10 +1201,18 @@ export default function AppMap({
       // representation so a harmless trailing space cannot leave route/back
       // synchronization blocked forever.
       pendingLocalQueryRef.current = next.trim();
+      if (isBrowseMap) rememberMapTabView(`${window.location.pathname}${window.location.search}${window.location.hash}`,
+        { q: next }, Date.now(), { pendingUrlWrite: true });
       setQ(next);
     },
-    [invalidateTemporaryMapboxRetrieve],
+    [invalidateTemporaryMapboxRetrieve, isBrowseMap],
   );
+  useEffect(() => {
+    if (!isBrowseMap) return;
+    const href = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    const liveQuery = new URLSearchParams(window.location.search).get("q") ?? "";
+    rememberMapTabView(href, { q }, Date.now(), { pendingUrlWrite: liveQuery !== q });
+  }, [isBrowseMap, q, routeQuery]);
   // Next keeps recently visited route segments in its client cache. Returning
   // from a full place page can therefore revive this map with its prior local
   // state even though the exact return URL includes a query. Treat the router
@@ -1363,7 +1347,7 @@ export default function AppMap({
       isBrowseMap,
       rankingSeed: locationSeed.ranking,
       autoFitNearbyScope,
-      setGeoMsg,
+      setGeoMsg: setLocateMsg,
       markCameraIntent: () => {
         cameraIntentRef.current = true;
       },
@@ -1789,6 +1773,7 @@ export default function AppMap({
    * coordinating every transition through one gate so stale cards can never
    * reappear under the next selection. */
   const clearMapSelection = useCallback(() => {
+    initialPlaceCameraPendingRef.current = null;
     entitySelectionUrlIntentRef.current = { place: null, event: null };
     historySelectionUrlIntentRef.current = null;
     liveLayerClosersRef.current.closeAll();
@@ -1902,6 +1887,10 @@ export default function AppMap({
 
   const dismissMapSelection = useCallback(() => {
     if (selectionHistoryDismissRequestedRef.current) return;
+    initialPlaceCameraPendingRef.current = null;
+    // Consume initial intent before an asynchronous Back can update the URL.
+    deepLinkPlaceAppliedRef.current = true;
+    deepLinkEventAppliedRef.current = true;
     const shouldCloseHistory =
       selectionHistoryEntryRef.current ||
       isMapSelectionHistoryState(window.history.state);
@@ -2192,6 +2181,9 @@ export default function AppMap({
         );
         return;
       }
+      // A newer explicit pick owns selection even before React/URL settle.
+      deepLinkPlaceAppliedRef.current = true;
+      deepLinkEventAppliedRef.current = true;
       rememberMapSelectionOpener();
       if (addHistory) {
         // Non-entity data lives only in the bounded session store. Browser
@@ -2946,6 +2938,7 @@ export default function AppMap({
         contextLabel: `Nearest mapped ${group.label.toLowerCase()}`,
       });
       setGeoMsg(null);
+      setLocateMsg(null);
       const map = mapRef.current?.getMap();
       if (!map) return;
       cameraIntentRef.current = true;
@@ -3045,6 +3038,18 @@ export default function AppMap({
     () => (selectedSlug ? visiblePlaces.find((place) => place.slug === selectedSlug) ?? null : null),
     [selectedSlug, visiblePlaces],
   );
+  useInitialPlaceCameraFocus({
+    pending: initialPlaceCameraPendingRef,
+    ready: isBrowseMap && mapLoaded && !mapError,
+    selectedPlace: peekPlace?.slug === selectedSlug ? selectedPlace : null,
+    getMap: () => mapRef.current?.getMap() ?? null,
+    hasEntryCamera: entryHasCamera,
+    hasUserCameraIntent: () =>
+      initialPlaceCameraGestureRef.current || cameraIntentRef.current,
+    hasOtherCameraOwner: () =>
+      autoFitNearbyScope || activeSceneId !== null || Boolean(sceneCameraPendingRef.current),
+    markCameraIntent: () => { cameraIntentRef.current = true; },
+  });
   // A cold URL-selected place can open in the renderer fallback before its
   // scoped search resolves. Its temporary empty source is not yet a filter
   // exclusion; retain the card until that same committed query has settled.
@@ -4247,6 +4252,7 @@ export default function AppMap({
   // not buried three levels into Filters. cameraIntentRef stays false: this is
   // a return to the default frame, not a user pan the leash should preserve.
   const fitCounty = () => {
+    initialPlaceCameraGestureRef.current = true;
     setResultScope("county");
     if (getScope() !== "county") setScope("county");
     if (isBrowseMap) {
@@ -4667,6 +4673,7 @@ export default function AppMap({
       data-dock-pane={dock ? (dockPaneOpen ? "open" : "closed") : undefined}
       data-map-peek={dock && selectionOpen ? "open" : undefined}
       data-map-error={mapError || undefined}
+      data-map-failure-kind={mapFailureKind ?? undefined}
       data-map-loaded={dock && mapLoaded ? "true" : undefined}
       data-map-location-accuracy={
         dock && userLoc && clampedAccuracyM ? clampedAccuracyM : undefined
@@ -4772,7 +4779,7 @@ export default function AppMap({
                   <button
                     type="button"
                     onClick={() => window.location.reload()}
-                    className="tap-44 inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                    className="tap-44 inline-flex items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
                     style={{
                       borderColor: "var(--app-border)",
                       color: "var(--app-ink-2)",
@@ -4783,8 +4790,8 @@ export default function AppMap({
                 )}
                 <Link
                   href="/places"
-                  className="tap-44 inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-semibold text-white"
-                  style={{ background: "var(--app-brand-press)" }}
+                  className="tap-44 inline-flex min-h-9 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                  style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
                 >
                   All places
                 </Link>
@@ -4830,26 +4837,28 @@ export default function AppMap({
             was silent (it lived inside the collapsed Where pane). */}
         {geoMsg && (
           <div
-            className={`z-[var(--z-map-control)] flex items-center gap-1 rounded-[var(--app-radius-md)] border bg-white/95 py-1 pl-3 pr-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur ${
+            className={`z-[var(--z-map-control)] flex items-center gap-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-1 pl-3 pr-1 text-[13px] font-medium leading-snug ${
               dock ? "map-geo-toast" : "absolute bottom-3 left-1/2 -translate-x-1/2"
             }`}
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
           >
             <span role="status" aria-live="polite">{geoMsg}</span>
             <button
               type="button"
-              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
-              onClick={() => setGeoMsg(null)}
-              aria-label="Dismiss location message"
+              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] transition-colors hover:bg-[var(--app-bg-sunken)]"
+              onClick={() => {
+                setGeoMsg(null);
+                setLocateMsg(null);
+              }}
+              // The chip shows a search or selection note ahead of a locate
+              // failure, so the action names the message actually on screen.
+              aria-label={mapNote ? "Dismiss map message" : "Dismiss location message"}
               style={{ color: "var(--app-ink-3)" }}
             >
               <X className="h-4 w-4" strokeWidth={2.3} aria-hidden />
             </button>
           </div>
         )}
-        {/* Cream fade under the top chrome so pills and rails always sit on
-            quiet ground instead of raw basemap. Paint only. */}
-        {dock && !mapError && <div className="map-top-scrim" aria-hidden />}
         {/* The smart default explains itself in one sentence (map program
             phase 1). A suggestion may include a shareable one-tap lens rather
             than pretending the lens is a layer that was already switched on. */}
@@ -4865,16 +4874,16 @@ export default function AppMap({
               "href" in smartDefault.action ? (
                 <Link
                   href={smartDefault.action.href}
-                  className="tap-44-y shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-semibold"
-                  style={{ color: "var(--app-cool)" }}
+                  className="tap-44-y shrink-0 whitespace-nowrap rounded-[var(--app-radius-sm)] px-2 py-1 font-semibold"
+                  style={{ color: "var(--app-cool-text)" }}
                 >
                   {smartDefault.action.label}
                 </Link>
               ) : (
                 <button
                   type="button"
-                  className="tap-44-y shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-semibold"
-                  style={{ color: "var(--app-cool)" }}
+                  className="tap-44-y shrink-0 whitespace-nowrap rounded-[var(--app-radius-sm)] px-2 py-1 font-semibold"
+                  style={{ color: "var(--app-cool-text)" }}
                   onClick={() => {
                     haptic("light");
                     setShowRadar(true);
@@ -4888,7 +4897,7 @@ export default function AppMap({
             )}
             <button
               type="button"
-              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
+              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] transition-colors hover:bg-[var(--app-bg-sunken)]"
               onClick={() => {
                 setSmartNoteDismissed(true);
                 // Saying no is a real choice: the seeded layers turn off and
@@ -4912,10 +4921,10 @@ export default function AppMap({
             on a healthy map nothing shows here now. */}
         {(osmLoading || osmError) && (
           <div
-            className={`absolute left-3 z-[var(--z-map-control)] inline-flex items-center gap-2 rounded-full bg-[var(--app-bg-elevated-solid)] px-2.5 py-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur ${
+            className={`absolute left-3 z-[var(--z-map-control)] inline-flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated-solid)] px-2.5 py-1 text-[11px] font-medium ${
               dock ? "top-[168px]" : "top-3"
             }`}
-            style={{ color: "var(--app-ink-2)" }}
+            style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink-2)" }}
             aria-live="polite"
           >
             {osmLoading ? (
@@ -4962,8 +4971,8 @@ export default function AppMap({
             the What pane; the floating strip serves dock-less maps only. */}
         {visibleAerial && !dock && (
           <div
-            className="absolute bottom-[116px] left-1/2 z-[var(--z-map-control)] flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-full border px-1.5 py-1.5 shadow-[var(--app-shadow-2)] backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)" }}
+            className="absolute bottom-[116px] left-1/2 z-[var(--z-map-control)] flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-[var(--app-radius-md)] border px-1.5 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{ borderColor: "var(--app-control-border)", background: "var(--app-bg-elevated-solid)" }}
             role="group"
             aria-label="Aerial photos by season"
           >
@@ -5002,7 +5011,8 @@ export default function AppMap({
           nearby places, current events, travel details, or local conditions.
         </p>
 
-        {!mapError && (
+        {mountRenderer && (
+        <div className="h-full w-full" inert={mapFailureKind === "soft"} aria-hidden={mapFailureKind === "soft" || undefined}>
         <Map
           ref={attachMapRef}
           aria-label="Interactive map of Frederick County"
@@ -5088,12 +5098,14 @@ export default function AppMap({
             // Mapbox can emit dragstart just before movestart. Preserve that
             // positive user signal when movestart itself omits originalEvent.
             if (isUserMove) {
+              initialPlaceCameraGestureRef.current = true;
               manualViewportGestureRef.current = true;
             } else if (!manualViewportGestureRef.current) {
               setShowResultsHere(false);
             }
           }}
           onDragStart={() => {
+            initialPlaceCameraGestureRef.current = true;
             manualViewportGestureRef.current = true;
           }}
           onZoomStart={(e) => {
@@ -5101,11 +5113,15 @@ export default function AppMap({
               Boolean((e as { originalEvent?: unknown }).originalEvent) ||
               cameraControlGestureRef.current
             ) {
+              initialPlaceCameraGestureRef.current = true;
               manualViewportGestureRef.current = true;
             }
           }}
           onClick={onClick}
           onLoad={(e) => {
+            // A late callback must not revive a terminal renderer or mutate
+            // its removed camera. Accepted loads clear only soft fallback.
+            if (!markRendererLoaded()) return;
             // `touchPitch={false}` prevents two-finger tilting, but MapLibre's
             // combined pinch handler can still rotate unless it is disabled
             // directly. Pinch zoom remains available.
@@ -5145,8 +5161,6 @@ export default function AppMap({
             installCountySpotlight(e.target);
             markMapOnLoad();
             commitResultViewport(e.target);
-            setMapLoaded(true);
-            mapLoadedRef.current = true;
             // `load` means Mapbox has a renderable style. Waiting for a later
             // network-idle event kept the decorative loading cover over an
             // already usable map, especially on slow live feeds. Two paint
@@ -5188,12 +5202,16 @@ export default function AppMap({
             }
             if (!deepLinkPlaceAppliedRef.current && initialPlaceSlug) {
               deepLinkPlaceAppliedRef.current = true;
-              const place = places.find((candidate) => candidate.slug === initialPlaceSlug);
+              const place = shouldApplyInitialMapSelection(
+                "place", initialPlaceSlug, window.location.search,
+                peekPlace?.slug === selectedSlug ? selectedSlug : null,
+              ) ? places.find((candidate) => candidate.slug === initialPlaceSlug) : null;
               if (place) {
                 openMapSelection(
                   { kind: "place", value: place },
                   { addHistory: false },
                 );
+                if (isBrowseMap) initialPlaceCameraPendingRef.current = place.slug;
               }
             }
             if (
@@ -5202,9 +5220,12 @@ export default function AppMap({
               !initialPlaceSlug
             ) {
               deepLinkEventAppliedRef.current = true;
-              const event = events.find(
+              const event = shouldApplyInitialMapSelection(
+                "event", initialEventSlug, window.location.search,
+                selectedEvent?.slug ?? null,
+              ) ? events.find(
                 (candidate) => candidate.slug === initialEventSlug,
-              );
+              ) : null;
               if (event) {
                 openMapSelection(
                   { kind: "event", value: event },
@@ -5418,10 +5439,7 @@ export default function AppMap({
           }}
           onError={(e) => {
             const msg = String(e?.error?.message ?? "");
-            if (isFatalMapboxError(msg, mapLoadedRef.current)) {
-              setMapError(true);
-              onVisualReady?.();
-            }
+            reportRendererError(msg);
           }}
           onMouseMove={onHover}
           onMouseLeave={() => setHover(null)}
@@ -7279,6 +7297,7 @@ export default function AppMap({
             <GeolocateControl position="bottom-right" trackUserLocation />
           )}
         </Map>
+        </div>
         )}
 
         <p

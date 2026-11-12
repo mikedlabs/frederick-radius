@@ -6,9 +6,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { mapListPhotoLoader } from "@/components/map/map-list-photo-loader";
 import { curatedPhotoUrl, LANDMARK_PHOTOS } from "@/lib/integrations/wikimedia";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
+import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 
 const actions = vi.hoisted(() => ({ openSheet: vi.fn(), save: vi.fn() }));
 const imageLoads = vi.hoisted(() => new Map<string, ImgHTMLAttributes<HTMLImageElement>["onLoad"]>());
+vi.mock("@/lib/integrations/wikimedia", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/integrations/wikimedia")>();
+  // Generic provider/fallback behavior must not depend on a real place
+  // remaining without preferred local imagery as the catalog improves.
+  const remoteFixture = { file: "Controlled remote landmark fixture.jpg", alt: "A controlled remote landmark fixture.",
+    author: "Controlled Commons photographer", license: "CC BY-SA 4.0", verified: true,
+    source_url: "https://commons.wikimedia.org/wiki/File:Controlled_remote_landmark_fixture.jpg" };
+  return { ...actual, getLandmarkPhoto: (slug: string) => slug === "media-remote-landmark-fixture" ? remoteFixture : actual.getLandmarkPhoto(slug) };
+});
 vi.mock("next/image", () => ({
   // A native image lets the mounted test deliver load/error without a network request.
   default: ({ src, alt, onLoad, onError, sizes }: ImgHTMLAttributes<HTMLImageElement>) => {
@@ -32,12 +43,12 @@ import PlaceCard from "./PlaceCard";
 const photoName = "places/test-place/photos/test-photo";
 const googleSource = "https://www.google.com/maps/place/test/data=!3m1!1e3";
 const place: PlaceCardData = {
-  // An unowned, non-preferred landmark keeps Google → exact Commons coverage.
-  slug: "francis-scott-key-grave-and-monument", name: "Francis Scott Key Grave and Monument",
-  category: "park", city: "Frederick", address: "515 S Market St",
+  // Controlled unowned, non-preferred landmark for Google → Commons coverage.
+  slug: "media-remote-landmark-fixture", name: "Controlled remote landmark",
+  category: "park", city: "Frederick", address: "100 Fixture Way",
   state: "MD", postal_code: "21701", municipality: "frederick", is_verified: false,
   feature_score: 0, source: "manual", updated_at: "2026-09-01",
-  source_id: "media-test:francis-scott-key", source_url: null,
+  source_id: "media-test:remote-landmark", source_url: null,
   license: "Demonstration fixture", confidence: "curated",
   first_seen_at: "2026-09-01T12:00:00Z", last_verified_at: "2026-09-01T12:00:00Z",
   geom: { lng: -77.4127627, lat: 39.4062196 },
@@ -74,6 +85,67 @@ describe("PlaceCard selected media and credit", () => {
   }
   async function fail(image: HTMLImageElement) { await act(async () => image.dispatchEvent(new Event("error"))); }
 
+  it("keeps Parks browse local-only even with supplied provider imagery or a remote landmark", async () => {
+    const hydrate = vi.spyOn(mapListPhotoLoader, "loadData");
+    await act(async () => root.render(<PlaceCard place={place} variant="discovery" discoverySurface="nearby" discoveryIntent="parks" lazyPhoto />));
+    expect(photo()).toBeNull();
+    expect(loadedCredit()).toBeNull();
+    expect(hydrate).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(container.textContent).not.toContain("Hours not confirmed");
+    expect(container.querySelector('[data-nearby-parks-card]')?.getAttribute("data-place-card-has-photo")).toBe("false");
+    expect(container.querySelector("[data-save-ref]")).not.toBeNull();
+    expect(container.querySelector('a[aria-label^="Directions to "]')?.getAttribute("href")).toContain("39.4062196");
+  });
+
+  it("collapses a failed licensed Parks image without provider recovery or lost actions", async () => {
+    const hydrate = vi.spyOn(mapListPhotoLoader, "loadData");
+    const park = { ...place, slug: "ballenger-creek-park-frederick", name: "Ballenger Creek Park" };
+    await act(async () => root.render(<PlaceCard place={park} variant="discovery" discoverySurface="nearby" discoveryIntent="parks" lazyPhoto />));
+    const image = photo()!;
+    expect(image.getAttribute("src")).toBe(CREDITED_LOCAL_PLACE_PHOTOS["ballenger-creek-park-frederick"].image.src);
+    expect(image.getAttribute("sizes")).toMatch(/^auto,/);
+    const lateLoad = imageLoads.get(image.getAttribute("src")!)!;
+    await load(image);
+    const credit = loadedCredit()!;
+    expect(credit.querySelector("summary")?.textContent).toBe("Photo details");
+    expect(credit.closest("button, a")).toBeNull();
+    const directions = container.querySelector<HTMLAnchorElement>('a[aria-label^="Directions to "]')!;
+    expect(directions.compareDocumentPosition(credit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(directions.textContent).toContain("Directions");
+    expect(directions.querySelector("svg")).toBeNull();
+    await fail(image);
+    await act(async () => lateLoad({ currentTarget: image } as SyntheticEvent<HTMLImageElement>));
+    expect(photo()).toBeNull();
+    expect(loadedCredit()).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(hydrate).not.toHaveBeenCalled();
+    const open = container.querySelector<HTMLButtonElement>('button[aria-label^="View "]')!;
+    const save = container.querySelector<HTMLButtonElement>("[data-save-ref]")!;
+    expect(open.contains(save)).toBe(false);
+    expect(open.contains(directions)).toBe(false);
+    await act(async () => save.click());
+    expect(actions.openSheet).not.toHaveBeenCalled();
+    await act(async () => open.click());
+    expect(actions.openSheet).toHaveBeenCalledWith(park, { returnFocus: open });
+  });
+
+  it("keeps confirmed closure information while removing repetitive unknown Parks hours copy", async () => {
+    const park = { ...place, slug: "carroll-creek-promenade", open_status: { state: "closed" as const } };
+    await act(async () => root.render(<PlaceCard place={park} variant="discovery" discoverySurface="nearby" discoveryIntent="parks" />));
+    expect(container.textContent).toContain("Closed");
+    expect(container.textContent).not.toContain(park.address);
+    expect(container.textContent).not.toContain("Hours not confirmed");
+  });
+
+  it("drops an earlier provider selection when the same mounted card becomes Parks", async () => {
+    await render(place, "discovery", true);
+    expect(photo()).not.toBeNull();
+    await act(async () => root.render(<PlaceCard place={place} variant="discovery" discoverySurface="nearby" discoveryIntent="parks" lazyPhoto />));
+    expect(photo()).toBeNull();
+    expect(loadedCredit()).toBeNull();
+  });
+
   it("keeps a Nearby place's address, honest hours, and independent actions after its real photo plan fails", async () => {
     const nearbyPlace = { ...place, slug: "schifferstadt-architectural-museum-frederick", name: "Schifferstadt Architectural Museum",
       address: "1110 Rosemont Ave, Frederick, MD", google_photo_url: undefined, google_photo_attribution: undefined };
@@ -86,6 +158,7 @@ describe("PlaceCard selected media and credit", () => {
     await fail(image);
     expect(photo()).toBeNull();
     expect(loadedCredit()).toBeNull();
+    expect(container.querySelector('[data-place-category-art][aria-hidden="true"] svg')).not.toBeNull();
     expect(container.querySelector("article")?.dataset.placeCardSurface).toBe("nearby");
     expect(container.textContent).toContain(nearbyPlace.address);
     expect(container.textContent?.match(/Hours not confirmed/g)).toHaveLength(1);
@@ -105,6 +178,164 @@ describe("PlaceCard selected media and credit", () => {
     expect(actions.openSheet).toHaveBeenCalledWith(nearbyPlace, { returnFocus: open });
   });
 
+  it("uses decorative category art without inventing photos or changing Nearby actions", async () => {
+    const noPhoto = { ...place, slug: "unpictured-nearby-restaurant", name: "Test Restaurant", category: "restaurant",
+      google_photo_url: undefined, google_photo_attribution: undefined };
+    await render(noPhoto, "discovery", true);
+    expect(photo()).toBeNull();
+    const art = container.querySelector<HTMLElement>('[data-place-category-art][aria-hidden="true"]');
+    expect(art?.querySelector("svg")).not.toBeNull();
+    expect(art?.getAttribute("style")).toContain("--place-category-color");
+    // The plate holds the category icon alone: no initial or other lettering.
+    expect(art?.textContent).toBe("");
+    expect(container.querySelector("[data-place-card-photo]")).toBeNull();
+    expect(container.textContent).toContain("Hours not confirmed");
+    expect(container.textContent).toContain(noPhoto.address);
+    const open = container.querySelector<HTMLButtonElement>('button[aria-label^="View "]')!;
+    const save = container.querySelector<HTMLButtonElement>("[data-save-ref]")!;
+    const directions = container.querySelector<HTMLAnchorElement>('a[aria-label^="Directions to "]')!;
+    expect(open.contains(save)).toBe(false);
+    expect(open.contains(directions)).toBe(false);
+    await act(async () => save.click());
+    expect(actions.save).toHaveBeenCalledWith("place", noPhoto.slug);
+    await act(async () => open.click());
+    expect(actions.openSheet).toHaveBeenCalledWith(noPhoto, { returnFocus: open });
+  });
+
+  describe("each fact once", () => {
+    // 480 m is inside the 1200 m range where placeReasons adds a "0.3 mi away" chip.
+    const close: PlaceCardData = { ...place, slug: "fact-once-fixture", category: "brewery", distance_m: 480,
+      tags: ["dog-friendly"], open_status: { state: "open", closesAt: "21:00", closingSoon: false },
+      google_photo_url: undefined, google_photo_attribution: undefined };
+    const chips = () => [...container.querySelectorAll('[aria-label="Reasons this is shown"] > span')].map((chip) => chip.textContent);
+
+    it.each(["row", "grid", "answer", "feature", "tile"] as const)("prints the distance once on the %s card", async (variant) => {
+      await render(close, variant);
+      expect(container.textContent?.match(/0\.3 mi/g)).toHaveLength(1);
+      expect(container.textContent).not.toContain("away");
+    });
+
+    it.each(["grid", "tile"] as const)("keeps the %s distance out of the truncating part of its line", async (variant) => {
+      // The lead fact may be cut short; the distance is the only one on the card
+      // and must not share its ellipsis. The story measures the painted result.
+      const longFact = "The taproom pours barrel-aged sours and a long guest list.";
+      await render({ ...close, known_for: [longFact] }, variant);
+      const distance = container.querySelectorAll("[data-place-distance]");
+      expect([...distance].map((node) => node.textContent)).toEqual(["0.3 mi"]);
+      expect(distance[0].closest(".truncate")).toBeNull();
+      expect(distance[0].closest("p")?.querySelector(".truncate")?.textContent).toBe(variant === "grid" ? "Breweries" : longFact);
+    });
+
+    it("renders no empty fact line on a tile with neither a known-for nor a distance", async () => {
+      await render({ ...close, distance_m: undefined }, "tile");
+      expect(container.querySelector("[data-place-distance]")).toBeNull();
+      expect([...container.querySelectorAll("p")].filter((p) => !p.textContent)).toEqual([]);
+    });
+
+    it("leaves the freed chip seat empty instead of promoting a third reason", async () => {
+      // placeReasons returns open, distance, dog-friendly. Row and grid cap at two.
+      await render(close, "row");
+      expect(chips()).toEqual(["Open now"]);
+      await render(close, "grid");
+      expect(chips()).toEqual(["Open now"]);
+    });
+
+    it("falls back to the plain status line when distance was the only reason", async () => {
+      await render({ ...close, tags: [], open_status: { state: "closed" } }, "row");
+      expect(container.querySelector('[aria-label="Reasons this is shown"]')).toBeNull();
+      expect(container.textContent).toContain("Closed");
+      expect(container.textContent?.match(/0\.3 mi/g)).toHaveLength(1);
+    });
+
+    it("says dog-friendly once on a row: the chip when it is shown, otherwise the paw", async () => {
+      const paw = () => container.querySelector('svg[aria-label="Dog-friendly"]');
+      await render({ ...close, open_status: { state: "unknown" } }, "row");
+      expect(chips()).toEqual(["Dog-friendly"]);
+      expect(paw()).toBeNull();
+      // Open and distance take both seats, so the chip is not shown and the paw carries it.
+      await render(close, "row");
+      expect(chips()).not.toContain("Dog-friendly");
+      expect(paw()).not.toBeNull();
+      // Compact rows hide chips altogether.
+      await act(async () => root.render(<PlaceCard place={{ ...close, open_status: { state: "unknown" } }} variant="row" compact showSource={false} />));
+      expect(container.querySelector('[aria-label="Reasons this is shown"]')).toBeNull();
+      expect(paw()).not.toBeNull();
+    });
+  });
+
+  it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS))("shows the exact licensed %s source before eligible Google on Nearby, with credit bound to decoded pixels", async (slug, { image: metadata }) => {
+    const hydrate = vi.spyOn(mapListPhotoLoader, "loadData");
+    const nearbyPlace = { ...place, slug };
+    await act(async () => root.render(<PlaceCard place={nearbyPlace} variant="discovery" discoverySurface="nearby" lazyPhoto />));
+    const owned = getOwnedPlacePhoto(slug);
+    if (owned) {
+      const first = photo()!;
+      expect(first.getAttribute("src")).toBe(owned.src);
+      await load(first);
+      expect(loadedCredit()).toBeNull();
+      expect(fetch).not.toHaveBeenCalled();
+      await fail(first);
+    }
+    const local = photo()!;
+    expect(local.getAttribute("src")).toBe(metadata.src);
+    expect(local.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("curated");
+    expect(hydrate).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(loadedCredit()).toBeNull();
+    await load(local);
+    const credit = loadedCredit()!;
+    expect(credit.textContent).toContain(metadata.creator);
+    expect(credit.textContent).toContain(metadata.modifications);
+    expect(credit.querySelector(`a[href="${metadata.source_url}"]`)).not.toBeNull();
+    expect(credit.querySelector(`a[href="${metadata.license.url}"]`)?.textContent).toBe(metadata.license.label);
+    expect(credit.closest("button")).toBeNull();
+    expect(credit.textContent).not.toContain("Photo contributor");
+    await fail(local);
+    expect(loadedCredit()).toBeNull();
+    if (LANDMARK_PHOTOS[slug].preferCurated) {
+      expect(photo()).toBeNull();
+      expect(fetch).not.toHaveBeenCalled();
+    } else {
+      // The already supplied exact provider credit is still eligible only after
+      // the local file fails; no metadata request buys a replacement.
+      await act(async () => { await Promise.resolve(); });
+      const fallback = photo()!;
+      expect(fallback).not.toBeNull();
+      expect(fallback.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("google");
+      await load(fallback);
+      expect(loadedCredit()?.textContent).toContain("Photo contributor");
+      expect(loadedCredit()?.textContent).not.toContain(metadata.creator);
+      expect(loadedCredit()?.querySelector(`a[href="${googleSource}"]`)).not.toBeNull();
+      await load(local);
+      expect(photo()).toBe(fallback);
+      expect(loadedCredit()?.textContent).toContain("Photo contributor");
+      await fail(fallback);
+      expect(photo()).toBeNull();
+      expect(loadedCredit()).toBeNull();
+    }
+    expect(container.querySelector('button[aria-label^="View "]')).not.toBeNull();
+    expect(container.querySelector("[data-save-ref]")).not.toBeNull();
+    expect(container.querySelector('a[aria-label^="Directions to "]')).not.toBeNull();
+  });
+
+  it.each(["baker-park-frederick", "baker-park-bandshell"])("shows the reviewed owned Nearby photo for %s without metadata hydration or Google credits", async slug => {
+    const hydrate = vi.spyOn(mapListPhotoLoader, "loadData");
+    const nearbyPlace = { ...place, slug, name: slug === "baker-park-bandshell" ? "Baker Park Bandshell" : "Baker Park",
+      google_photo_url: undefined, google_photo_attribution: undefined };
+    await act(async () => root.render(<PlaceCard place={nearbyPlace} variant="discovery" discoverySurface="nearby" lazyPhoto />));
+    const image = photo()!;
+    expect(image.getAttribute("src")).toBe(slug === "baker-park-bandshell"
+      ? "/images/seasons/fall/018.jpg" : "/images/places/baker-park-detail.jpg");
+    expect(image.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("owned");
+    await load(image);
+    expect(hydrate).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(container.querySelector(".place-card-photo-credit")).toBeNull();
+    expect(container.querySelector('button[aria-label^="View "]')).not.toBeNull();
+    expect(container.querySelector("[data-save-ref]")).not.toBeNull();
+    expect(container.querySelector('a[aria-label^="Directions to "]')).not.toBeNull();
+  });
+
   it("does not borrow the owned Creek image for a nearby place with a similar name", async () => {
     const promenade = { ...place, slug: "carroll-creek-promenade", name: "Carroll Creek Promenade",
       address: "38 S Market St", google_photo_url: undefined, google_photo_attribution: undefined };
@@ -118,14 +349,19 @@ describe("PlaceCard selected media and credit", () => {
   });
 
   it.each(Object.entries(LANDMARK_PHOTOS))("uses the exact owned source first when present, then the existing curated file for %s", async (slug, metadata) => {
+    // Cunningham's reviewed local source must also win with an eligible
+    // provider image present; the other rows exercise their existing fallback.
+    const localFirst = slug === "cunningham-falls-state-park-thurmont";
     const cardPlace = { ...place, slug,
       name: slug === "carroll-creek-linear-park-frederick" ? "Carroll Creek Linear Park" : place.name,
-      google_photo_url: undefined, google_photo_attribution: undefined };
+      google_photo_url: localFirst ? place.google_photo_url : undefined,
+      google_photo_attribution: localFirst ? place.google_photo_attribution : undefined };
     await render(cardPlace);
-    if (slug === "carroll-creek-linear-park-frederick") {
+    const owned = getOwnedPlacePhoto(slug);
+    if (owned) {
       const ownedImage = photo()!;
-      expect(ownedImage.getAttribute("src")).toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
-      expect(ownedImage.alt).toBe("Carroll Creek in Frederick.");
+      expect(ownedImage.getAttribute("src")).toBe(owned.src);
+      expect(ownedImage.alt).toBe(owned.alt);
       expect(ownedImage.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("owned");
       expect(container.querySelector(".place-card-photo-credit")).toBeNull();
       await load(ownedImage);
@@ -136,6 +372,10 @@ describe("PlaceCard selected media and credit", () => {
     expect(photo()?.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("curated");
     expect(photo()?.getAttribute("src")).toBe(curatedPhotoUrl(metadata, 720));
     expect(photo()?.alt).toBe(metadata.alt);
+    if (localFirst) {
+      expect(metadata.preferLocal).toBe(true);
+      expect(photo()?.getAttribute("src")).toBe("/place-photos/cunningham-falls.jpg");
+    }
     const pendingCredit = container.querySelector(".place-card-photo-credit")!;
     expect(loadedCredit()).toBeNull();
     expect(pendingCredit.getAttribute("aria-hidden")).toBe("true");
@@ -151,8 +391,9 @@ describe("PlaceCard selected media and credit", () => {
     expect(credit.textContent).toContain(metadata.author);
     expect(credit.textContent).toContain(metadata.license);
     if (metadata.license === "CC BY 2.0") {
-      expect(credit.querySelector('a[href="https://creativecommons.org/licenses/by/2.0"]')).not.toBeNull();
+      expect(credit.querySelector(`a[href="${metadata.licenseUrl ?? "https://creativecommons.org/licenses/by/2.0"}"]`)).not.toBeNull();
     }
+    if (localFirst) expect(credit.textContent).toContain(metadata.modifications);
     expect(credit.querySelector(`a[href="${metadata.source_url}"]`)).not.toBeNull();
     if (slug === "carroll-creek-linear-park-frederick") {
       await fail(photo()!);
@@ -206,14 +447,14 @@ describe("PlaceCard selected media and credit", () => {
     await load(googleImage, 1, 1);
     const curatedImage = photo()!;
     expect(curatedImage).not.toBe(googleImage);
-    expect(curatedImage.getAttribute("src")).toContain("Francis%20Scott%20Key%20Monument%20(March%202024).jpg");
+    expect(curatedImage.getAttribute("src")).toContain("Controlled%20remote%20landmark%20fixture.jpg");
     expect(loadedCredit()).toBeNull();
     // A detached old source cannot put its credit beside the new image.
     await load(googleImage);
     expect(loadedCredit()).toBeNull();
     await load(curatedImage);
     const credit = container.querySelector(".place-card-photo-credit")!;
-    expect(credit.textContent).toContain("Engineerchange");
+    expect(credit.textContent).toContain("Controlled Commons photographer");
     expect(credit.textContent).toContain("CC BY-SA 4.0");
     expect(credit.textContent).not.toContain("Photo contributor");
     expect(credit.closest("button")).toBeNull();
@@ -239,7 +480,8 @@ describe("PlaceCard selected media and credit", () => {
 
   it.each(["barbara-fritchie-house-frederick", "catoctin-furnace-thurmont"])("never substitutes the known unsuitable Google photo for preferred curated %s", async (slug) => {
     await render({ ...place, slug });
-    expect(photo()?.getAttribute("src")).toContain(encodeURIComponent(LANDMARK_PHOTOS[slug].file));
+    if (LANDMARK_PHOTOS[slug].localSrc) expect(photo()?.getAttribute("src")).toBe(LANDMARK_PHOTOS[slug].localSrc);
+    else expect(photo()?.getAttribute("src")).toContain(encodeURIComponent(LANDMARK_PHOTOS[slug].file));
     await fail(photo()!);
     expect(photo()).toBeNull();
     expect(container.querySelector(".place-card-photo-credit")).toBeNull();
@@ -257,7 +499,7 @@ describe("PlaceCard selected media and credit", () => {
     await render(place);
     await fail(photo()!); await fail(photo()!);
     await render({ ...place, slug: "catoctin-furnace-thurmont", name: "Catoctin Furnace" });
-    expect(photo()?.getAttribute("src")).toContain("Catoctin%20Iron%20Furnace%20copy.jpg");
+    expect(photo()?.getAttribute("src")).toBe("/place-photos/catoctin-furnace.jpg");
     expect(loadedCredit()).toBeNull();
     await load(photo()!);
     expect(container.querySelector(".place-card-photo-credit")?.textContent).toContain("G Wayne Rhodes");
@@ -272,16 +514,16 @@ describe("PlaceCard selected media and credit", () => {
     await load(photo()!);
     expect(container.querySelector(".place-card-photo-credit")?.textContent).toContain("G Wayne Rhodes");
     await act(async () => oldLoad({ currentTarget: oldImage } as SyntheticEvent<HTMLImageElement>));
-    expect(photo()?.getAttribute("src")).toContain("Catoctin%20Iron%20Furnace%20copy.jpg");
+    expect(photo()?.getAttribute("src")).toBe("/place-photos/catoctin-furnace.jpg");
     expect(container.querySelector(".place-card-photo-credit")?.textContent).toContain("G Wayne Rhodes");
     expect(container.querySelector(".place-card-photo-credit")?.textContent).not.toContain("Photo contributor");
   });
 
   it("does not promote an uncredited Google image when exact photo metadata is missing", async () => {
     await render({ ...place, google_photo_attribution: undefined, google_maps_uri: googleSource });
-    expect(photo()?.getAttribute("src")).toContain("Francis%20Scott%20Key%20Monument%20(March%202024).jpg");
+    expect(photo()?.getAttribute("src")).toContain("Controlled%20remote%20landmark%20fixture.jpg");
     await load(photo()!);
-    expect(loadedCredit()?.textContent).toContain("Engineerchange");
+    expect(loadedCredit()?.textContent).toContain("Controlled Commons photographer");
     expect(loadedCredit()?.textContent).not.toContain("Google Maps");
     await fail(photo()!);
     expect(photo()).toBeNull();
@@ -301,7 +543,7 @@ describe("PlaceCard selected media and credit", () => {
   it("gives a row the exact owned photograph without an owner caption", async () => {
     await render({ ...place, slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park",
       google_photo_url: undefined, google_photo_attribution: undefined }, "row");
-    expect(photo()?.getAttribute("src")).toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+    expect(photo()?.getAttribute("src")).toBe("/images/places/carroll-creek-aerial.jpg");
     expect(photo()?.closest("[data-place-card-photo]")?.getAttribute("data-place-card-photo-source")).toBe("owned");
     await load(photo()!);
     expect(container.querySelector(".place-card-photo-credit")).toBeNull();
@@ -310,7 +552,8 @@ describe("PlaceCard selected media and credit", () => {
 
   it.each(["barbara-fritchie-house-frederick", "catoctin-furnace-thurmont"])("keeps unsuitable Google photos out of %s rows after curated failure", async (slug) => {
     await render({ ...place, slug }, "row");
-    expect(photo()?.getAttribute("src")).toContain(encodeURIComponent(LANDMARK_PHOTOS[slug].file));
+    if (LANDMARK_PHOTOS[slug].localSrc) expect(photo()?.getAttribute("src")).toBe(LANDMARK_PHOTOS[slug].localSrc);
+    else expect(photo()?.getAttribute("src")).toContain(encodeURIComponent(LANDMARK_PHOTOS[slug].file));
     await fail(photo()!);
     expect(photo()).toBeNull();
     expect(container.querySelector(".place-card-photo-credit")).toBeNull();
@@ -405,7 +648,7 @@ describe("PlaceCard selected media and credit", () => {
     const owned = { ...place, slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park",
       google_photo_url: undefined, google_photo_attribution: undefined };
     await render(owned, "discovery");
-    expect(photo()?.getAttribute("src")).toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+    expect(photo()?.getAttribute("src")).toBe("/images/places/carroll-creek-aerial.jpg");
     expect(photo()?.getAttribute("sizes")).toBe("(max-width: 640px) calc(100vw - 32px), 600px");
     expect(container.querySelector('article[data-place-card-has-photo="true"]')).not.toBeNull();
     await load(photo()!);
@@ -460,7 +703,7 @@ describe("PlaceCard selected media and credit", () => {
     await fail(first);
     expect(loadedCredit()).toBeNull();
     await load(photo()!);
-    expect(loadedCredit()?.textContent).toContain("Engineerchange");
+    expect(loadedCredit()?.textContent).toContain("Controlled Commons photographer");
     expect(loadedCredit()?.textContent).not.toContain("Photo contributor");
     await fail(photo()!);
     expect(container.querySelector("[data-place-card-photo]")).toBeNull();

@@ -444,7 +444,7 @@ export function selectOpeningSoonCandidate(
 
   const likely = candidates
     .map((candidate, index) => {
-      if (!mayUseLikelyOpenFallback(candidate.open_status)) return null;
+      if (!mayUseLikelyOpenFallback(candidate.open_status, candidate)) return null;
       const timing = reliableOpeningSoon(candidate.slug, now);
       return timing
         ? { candidate, index, ...timing, confidence: "likely" as const }
@@ -1037,7 +1037,7 @@ export function buildWantAnswer(
           : otherWithoutOpeningSoon
               .filter(
                 (candidate) =>
-                  mayUseLikelyOpenFallback(candidate.open_status) &&
+                  mayUseLikelyOpenFallback(candidate.open_status, candidate) &&
                   isLikelyOpenNow(candidate.slug, now),
               )
               .map((candidate) =>
@@ -1096,7 +1096,7 @@ export function buildWantAnswer(
     open.length === 0
       ? otherWithoutOpeningSoon.filter(
           (candidate) =>
-            mayUseLikelyOpenFallback(candidate.open_status) &&
+            mayUseLikelyOpenFallback(candidate.open_status, candidate) &&
             isLikelyOpenNow(candidate.slug, now),
         )
       : [];

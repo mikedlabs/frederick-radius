@@ -3,10 +3,12 @@ import { expect, waitFor, within } from "storybook/test";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 import EventCard from "./EventCard";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 
 const nowISO = "2029-10-10T16:00:00-04:00";
+const ownedVenueSrc = getOwnedPlacePhoto("baker-park-frederick")!.src;
 const fixture: EventWithMeta = {
-  slug: "offline-photo-discovery", title: "Fictional community performance at Baker Park",
+  slug: "offline-photo-discovery", title: "Fictional community performance, artist conversation and neighborhood gathering at Baker Park",
   description: "This fictional event is only for component acceptance.",
   starts_at: "2029-10-10T19:00:00-04:00", ends_at: "2029-10-10T21:00:00-04:00", timezone: "America/New_York",
   venue_name: "Baker Park", venue_place_slug: "baker-park-frederick", address: "",
@@ -92,13 +94,23 @@ async function card(context: Context, expectedSource: string) {
   const source = new URL(image.currentSrc || image.src, document.baseURI);
   expect(decodeURIComponent(source.searchParams.get("url") ?? source.pathname)).toBe(expectedSource);
   expect(getComputedStyle(image).objectFit).toBe("cover");
-  const frame = article.querySelector("figure")!.getBoundingClientRect(), box = article.getBoundingClientRect();
-  expect(frame.width).toBeGreaterThanOrEqual(box.width - 3);
-  expect(frame.width / frame.height).toBeCloseTo(1.6, 2);
+  // A fixed square thumbnail filled edge to edge (no letterbox bands). It sits
+  // beside the title, or above it when enlarged text stacks the facts, and
+  // never overlaps it.
+  const frame = article.querySelector("figure")!.getBoundingClientRect();
+  expect(frame.width / frame.height).toBeCloseTo(1, 2);
   const title = article.querySelector<HTMLElement>("h3")!, time = article.querySelector<HTMLElement>("[data-event-card-time]")!, venue = article.querySelector<HTMLElement>("[data-event-card-venue]")!;
-  expect(frame.bottom).toBeLessThanOrEqual(title.getBoundingClientRect().top);
+  const titleBox = title.getBoundingClientRect();
+  expect(frame.left >= titleBox.right - 1 || frame.bottom <= titleBox.top + 1).toBe(true);
   expect(article.textContent).toContain(context.args.event.title);
-  expect(time.textContent).toContain("7:00"); expect(time.textContent).toContain("9:00");
+  expect(article.querySelector("[data-event-row-when]")?.textContent).toBe("7:00PMWed OCT 10");
+  expect(time.textContent).toBe("Until 9:00 PM");
+  const heading = article.querySelector<HTMLElement>("[data-event-card-heading]")!;
+  expect(title.parentElement).toBe(heading);
+  const titleBounds = title.getBoundingClientRect(), headingBounds = heading.getBoundingClientRect();
+  expect(titleBounds.left).toBeCloseTo(headingBounds.left, 1);
+  expect(titleBounds.width).toBeCloseTo(headingBounds.width, 1);
+  expect(heading.textContent).not.toContain("OCT");
   expect(venue.textContent).toContain(context.args.event.venue_name);
   const credit = article.querySelector<HTMLElement>("[data-event-photo-credit]")!;
   expect(credit).not.toBeNull(); expect(link.contains(credit)).toBe(false);
@@ -113,18 +125,18 @@ async function card(context: Context, expectedSource: string) {
 }
 
 export const OwnedVenue390: Story = {
-  play: async context => { await viewport(390); await card(context, "/images/seasons/fall/018.jpg"); },
+  play: async context => { await viewport(390); await card(context, ownedVenueSrc); },
 };
 export const OwnedVenue320Reading200: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false }, motion: "reduce" },
   play: async context => {
     await viewport(320);
-    const p = await card(context, "/images/seasons/fall/018.jpg");
+    const p = await card(context, ownedVenueSrc);
     const reading = [p.title, p.time, p.venue, p.credit];
     const normal = reading.map(node => parseFloat(getComputedStyle(node).fontSize));
     document.documentElement.style.fontSize = "200%";
     await waitFor(() => reading.forEach((node, index) => expect(parseFloat(getComputedStyle(node).fontSize) / normal[index]).toBeCloseTo(2, 2)));
-    await card(context, "/images/seasons/fall/018.jpg");
+    await card(context, ownedVenueSrc);
   },
 };
 export const LicensedVenue390: Story = {
@@ -142,7 +154,7 @@ export const LicensedVenue390: Story = {
 };
 export const DeclaredPhotoFailure: Story = {
   play: async context => {
-    await viewport(390); const p = await card(context, "/images/seasons/fall/018.jpg");
+    await viewport(390); const p = await card(context, ownedVenueSrc);
     p.image.dispatchEvent(new Event("error"));
     await waitFor(() => expect(p.article).toHaveAttribute("data-event-media", "none"));
     expect(p.article.querySelector("figure, img, [data-event-photo-credit]")).toBeNull();
@@ -159,7 +171,7 @@ export const NoPhotoCancelledAt320: Story = {
     const article = canvasElement.querySelector<HTMLElement>("article")!;
     expect(article).toHaveAttribute("data-event-media", "none");
     expect(article.querySelector("figure, img, [data-event-photo-credit], .live-dot")).toBeNull();
-    expect(article.textContent).toContain("Cancelled"); expect(article.textContent).toContain("end time not listed");
+    expect(article.textContent).toContain("Cancelled"); expect(article.textContent).toContain("End time not listed");
     expect(article.textContent).not.toContain("Happening now");
     await ownsTarget(article.querySelector<HTMLAnchorElement>('a[data-decision-action="open"]')!);
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(innerWidth + 1);

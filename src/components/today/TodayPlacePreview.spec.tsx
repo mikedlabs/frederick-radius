@@ -11,6 +11,24 @@ import TodayPlacePreview, { type TodayPlaceAvailability } from "./TodayPlacePrev
 type PhotoHandlers = Pick<ImgHTMLAttributes<HTMLImageElement>, "onLoad" | "onError">;
 const photoHandlers = vi.hoisted(() => new Map<string, PhotoHandlers>());
 const routing = vi.hoisted(() => ({ suspend: false }));
+// Explicit OFFLINE approvals isolate existing decode/credit/state tests from
+// the real empty production review list. These are not appearance evidence.
+vi.mock("@/lib/today/place-photo-appearance", async importOriginal => {
+  const actual = await importOriginal<typeof import("@/lib/today/place-photo-appearance")>();
+  const asOf = new Date("2026-10-26T16:00:00.000Z");
+  const provider = `/api/place-photo?name=${encodeURIComponent("places/today-preview/photos/exact-photo")}&w=720&fallback=signal`;
+  const reviews = [
+    ["schifferstadt-architectural-museum-frederick", "/history-photos/schifferstadt.jpg"],
+    ["carroll-creek-linear-park-frederick", "/images/places/carroll-creek-aerial.jpg"],
+    ["hessian-barracks-frederick-maryland", "/history-photos/hessian-barracks.jpg"],
+    ...["unregistered-preview-place", "replacement-selection", "schifferstadt-architectural-museum-frederick"].map(slug => [slug, provider]),
+  ].map(([slug, src]) => ({ slug, src, appearance: "current" as const, reviewedOn: "2026-10-26", validUntil: "2026-10-31",
+    evidence: "Offline media-lifecycle approval fixture only, not production evidence." }));
+  return { ...actual,
+    hasTodayPhotoAppearanceReview: (slug: string, src: string | null) => actual.hasTodayPhotoAppearanceReview(slug, src, reviews, asOf),
+    todayAppearancePhotoPlan: (slug: string, plan: Parameters<typeof actual.todayAppearancePhotoPlan>[1]) => actual.todayAppearancePhotoPlan(slug, plan, reviews, asOf),
+  };
+});
 vi.mock("next/image", () => ({
   default: ({ src, alt = "", onLoad, onError }: { src: string; alt?: string } & PhotoHandlers) => {
     photoHandlers.set(src, { onLoad, onError });
@@ -24,6 +42,10 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
+vi.mock("@/components/saved/SaveButton", () => ({ default: ({ refId, label, barLabel, importLocalSavesOnMount }: {
+  refId: string; label: string; barLabel?: string; importLocalSavesOnMount?: boolean;
+}) => <button type="button" data-save-ref={`place:${refId}`} aria-label={label}
+  data-import-local-saves={String(importLocalSavesOnMount)}>{barLabel}</button> }));
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const photoName = "places/today-preview/photos/exact-photo";
 const rawPhoto = `/api/place-photo?name=${encodeURIComponent(photoName)}&w=800`;
@@ -114,6 +136,11 @@ describe("Today place preview exact media and actions", () => {
     expect(mapUrl.searchParams.get("returnTo")).toBe(origin);
     expect(detail.querySelector("a")).toBeNull();
     expect(map.querySelector("a")).toBeNull();
+    const save = container.querySelector<HTMLButtonElement>(`button[data-save-ref="place:${place.slug}"]`)!;
+    expect(save).not.toBeNull();
+    expect(save.getAttribute("data-import-local-saves")).toBe("false");
+    expect(save.getAttribute("aria-label")).toBe(`Save ${place.name}`);
+    expect(save.closest("a")).toBeNull();
   }
 
   it("keeps the full factual first paint and real native actions when URL parameters suspend", () => {
@@ -138,6 +165,21 @@ describe("Today place preview exact media and actions", () => {
     expect(html).toContain('aria-label="Map: Schifferstadt"');
     expect(html).not.toContain("returnTo=");
     expect(html).not.toContain("in=county");
+  });
+
+  it("retains the exact Today query and section for detail and map returns", async () => {
+    window.history.replaceState(null, "", "/today?in=brunswick&view=morning#today-saved");
+    const place = pick();
+    await render(place);
+    expectActions(place, "/today?in=brunswick&view=morning#today-saved");
+  });
+
+  it("keeps an explicit invalid URL scope at county instead of borrowing a stored town", async () => {
+    window.localStorage.setItem("fr:scope:v1", "town:brunswick");
+    window.history.replaceState(null, "", "/today?in=invalid#today-discovery");
+    const place = pick();
+    await render(place);
+    expectActions(place, "/today?in=county#today-discovery");
   });
 
   it("keeps a qualified opening transition distinct from a current recommendation and retains scoped native actions", async () => {
@@ -199,8 +241,8 @@ describe("Today place preview exact media and actions", () => {
     vi.stubGlobal("fetch", request);
     const place = pick({ slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park", photo: rawPhoto });
     await render(place, true);
-    expect(image()?.getAttribute("src")).toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
-    expect(image()?.alt).toBe("Carroll Creek in Frederick.");
+    expect(image()?.getAttribute("src")).toBe("/images/places/carroll-creek-aerial.jpg");
+    expect(image()?.alt).toBe("An aerial view of Carroll Creek, its bridges and tree-lined paths in Frederick.");
     await decode(image()!);
     expect(credit()).toBeNull();
     expect(request).not.toHaveBeenCalled();

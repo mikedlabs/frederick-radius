@@ -55,6 +55,10 @@ describe("isLiveMusicEvent", () => {
   it("classifies unmistakable market listings without calling them music", () => {
     expect(inferredNonMusicCategory("Vintage Flea Market")).toBe("market");
     expect(inferredNonMusicCategory("Holiday Market")).toBe("market");
+    for (const title of ["Fall Market", "Autumn Market", "Spring Market", "Summer Market", "Winter Market"]) {
+      expect(inferredNonMusicCategory(title)).toBe("market");
+      expect(isLiveMusicEvent({ category: "music", venue_place_slug: VENUE, title })).toBe(false);
+    }
     expect(isNonMusicTitle("Vintage Flea Market")).toBe(true);
     expect(inferredNonMusicCategory("Trivia Night")).toBe("community");
     expect(inferredNonMusicCategory("Market Street Band")).toBeNull();

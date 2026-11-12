@@ -30,6 +30,7 @@ import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { haversineMeters } from "@/lib/geo";
 import { buildWantAnswer } from "@/lib/want-answer";
 import * as municipalLoader from "@/lib/loaders/municipalCivic";
+import * as hoursFormatter from "@/lib/hours";
 
 const downtown = {
   origin: { lng: -77.4105, lat: 39.4143 },
@@ -190,6 +191,26 @@ describe("askFrederick structured answers", () => {
     )).toBe(true);
     if (unknown.length > 0) {
       expect(result.answer).toContain("Wheelchair access is not confirmed");
+    }
+  });
+
+  it.each(["Hours not posted", "Hours not confirmed"])("keeps source-check advice for a nearest utility with the %s label", async (label) => {
+    vi.useFakeTimers();
+    // An intentionally later clock withholds every old stored schedule;
+    // neither this compatibility test nor the UI renews source observations.
+    vi.setSystemTime(new Date("2030-01-15T17:00:00Z"));
+    const original = hoursFormatter.formatHoursLine;
+    const formatter = vi.spyOn(hoursFormatter, "formatHoursLine").mockImplementation(status =>
+      status.state === "unknown" ? label : original(status));
+    try {
+      const result = await askFrederick("Where is the nearest pharmacy?", downtown);
+      expect(result.sources.length).toBeGreaterThan(0);
+      expect(result.sources[0].status).toBe(label);
+      expect(result.answer).toContain("Radius does not have fresh hours for it, so check before you go.");
+      expect(result.usedModel).toBe(false);
+    } finally {
+      formatter.mockRestore();
+      vi.useRealTimers();
     }
   });
 
@@ -562,7 +583,7 @@ describe("askFrederick structured answers", () => {
       expect(result.sources).toContainEqual(
         expect.objectContaining({
           slug: "dutchs-daughter-frederick",
-          status: "At 10:00 PM · Hours not posted",
+          status: "At 10:00 PM · Hours not confirmed",
         }),
       );
       expect(result.answer).toContain("couldn’t verify");

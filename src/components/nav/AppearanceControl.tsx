@@ -15,10 +15,10 @@ export default function AppearanceControl() {
       aria-label={label}
       title={label}
       onClick={() => applyAppearance(dark ? "light" : "dark")}
-      className="relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] border transition hover:bg-[var(--app-bg-sunken)] active:scale-95"
-      style={{ color: "var(--app-ink-2)", borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)" }}
+      className="relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] transition hover:bg-[var(--app-bg-sunken)]"
+      style={{ color: "var(--app-ink)" }}
     >
-      {dark ? <Sun size={18} strokeWidth={1.75} aria-hidden /> : <Moon size={18} strokeWidth={1.75} aria-hidden />}
+      {dark ? <Sun size={20} strokeWidth={1.75} aria-hidden /> : <Moon size={20} strokeWidth={1.75} aria-hidden />}
     </button>
   );
 }

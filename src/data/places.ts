@@ -12,6 +12,13 @@ export type HoursDateException = {
   /** Early closure clips the normal schedule; it never invents an opening. */
   closes_at?: string;
 };
+/** A reviewed service or qualified visit schedule, never a whole-venue status. */
+export type HoursQualification = {
+  scope: "venue" | "kitchen" | "bar" | "brunch" | "admission";
+  label: string;
+  note: string;
+  usage: "display_only";
+};
 export type OfficialHoursEvidence = {
   slug: string;
   source_url: string;
@@ -24,6 +31,7 @@ export type OfficialHoursEvidence = {
   coverage_from: string;
   coverage_through: string;
   exceptions: HoursDateException[];
+  qualification?: HoursQualification;
 };
 export type Hours = Partial<Record<DayOfWeek, HoursWindow[]>> & {
   /** Compact date-aware evidence travels with the schedule to every consumer. */

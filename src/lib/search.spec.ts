@@ -668,7 +668,7 @@ describe("search — app-page guides", () => {
   it("indexes the working tools that were previously missing from global search", () => {
     expect(pageHrefs("map layers")).toContain("/map");
     expect(pageHrefs("event calendar")).toContain("/events/calendar");
-    expect(pageHrefs("quiet hours")).toContain("/settings/notifications");
+    expect(pageHrefs("phone feedback")).toContain("/settings");
     expect(pageHrefs("missing place")).toContain("/submit/place");
     expect(pageHrefs("field note")).toContain("/report");
   });
@@ -686,5 +686,30 @@ describe("guide keyword phrase boundaries", () => {
     ["drop boxes", "/shipping"],
   ])("preserves the existing guide for the plural phrase %s", (query, href) => {
     expect(search(query, 100, []).some((hit) => hit.type === "page" && hit.page.href === href)).toBe(true);
+  });
+});
+
+
+describe("complete canonical place names", () => {
+  it.each([
+    ["Baker Park", "baker-park-frederick"],
+    ["Baker Park Bandshell", "baker-park-bandshell"],
+    ["  BAKER PARK BANDSHELL!  ", "baker-park-bandshell"],
+  ])("keeps %s ahead of incidental name matches before limit one", (query, slug) => {
+    expect(search(query, 1, [])[0]).toMatchObject({ type: "place", place: { slug } });
+  });
+
+  it("does not give a prefix the complete-name tier", () => {
+    const hits = search("Baker Park Band", 4, []);
+    expect(hits[0]).toMatchObject({ type: "place", place: { slug: "baker-park-frederick" } });
+    expect(hits.some((hit) => hit.type === "place" && hit.place.slug === "baker-park-bandshell")).toBe(true);
+  });
+
+  it("does not let exact identity bypass a real municipality filter", () => {
+    const { hits, meta } = qualifiedSearch("Baker Park Bandshell", 12, [], { municipality: "brunswick" });
+    expect(meta.scopeMunicipality).toBe("brunswick");
+    expect(hits.filter((hit) => hit.type === "place").length).toBeGreaterThan(0);
+    expect(hits.every((hit) => hit.type !== "place" || hit.place.municipality === "brunswick")).toBe(true);
+    expect(hits.some((hit) => hit.type === "place" && hit.place.slug === "baker-park-bandshell")).toBe(false);
   });
 });

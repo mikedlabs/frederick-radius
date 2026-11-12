@@ -1,6 +1,7 @@
 import { readCachedPosition } from "@/hooks/useGeolocation";
 import { roundCoord } from "@/lib/walkTime";
 import { getScope, scopeToParam, type Scope } from "@/lib/scope";
+import { startBoundedJsonRequest } from "@/lib/bounded-json-request";
 
 /**
  * Client-side want-answer cache + prefetch.
@@ -26,6 +27,7 @@ import { getScope, scopeToParam, type Scope } from "@/lib/scope";
  *  can shift, and the win we care about is the in-session re-tap + the
  *  pointerdown→mount overlap, not long-term caching. */
 const TTL_MS = 45_000;
+export const WANT_ANSWER_DEADLINE_MS = 6_000;
 
 type Entry = { at: number; promise: Promise<unknown> };
 const cache = new Map<string, Entry>();
@@ -64,10 +66,14 @@ export function getWantAnswer(cKey: string, facet: string | null, scopeOverride?
   // This request is the direct result of a tap and paints the answer panel;
   // keep it ahead of below-the-fold images and speculative page work that may
   // still be settling on /today.
-  const promise = fetch(url, { priority: "high" })
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+  const request = startBoundedJsonRequest(url, { priority: "high" }, {
+    deadlineMs: WANT_ANSWER_DEADLINE_MS,
+    label: "Place answer",
+  });
+  const promise = request.promise
     .catch((err) => {
-      cache.delete(key);
+      // A retired request must not evict a newer flight for this same lens.
+      if (cache.get(key)?.promise === promise) cache.delete(key);
       throw err;
     });
   cache.set(key, { at: Date.now(), promise });

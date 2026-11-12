@@ -3,6 +3,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 import type { Hours } from "@/data/places";
 import { easternDayKey } from "@/lib/tz";
 import HoursBlock from "./HoursBlock";
+import LiveOpenStatus from "./LiveOpenStatus";
 
 const now = new Date();
 const today = easternDayKey(now);
@@ -99,6 +100,51 @@ export const Unconfirmed: Story = {
     await expect(canvas.queryByText(/Hours today/)).not.toBeInTheDocument();
   },
 };
+
+export const NativeBeforeClientListeners: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  parameters: { docs: { description: { story: "The real HoursBlock markup is copied without React listeners, representing native interaction before its JavaScript is ready. Its arrow follows the actual disclosure instead of waiting for a missed client toggle event." } } },
+  render: (args) => <>
+    <div hidden data-hours-markup-reference><HoursBlock {...args} /></div>
+    <div data-hours-native-surface />
+  </>,
+  play: async ({ canvasElement }) => {
+    const original = canvasElement.querySelector("[data-hours-markup-reference] details");
+    const surface = canvasElement.querySelector("[data-hours-native-surface]");
+    if (!original || !surface) throw new Error("The actual hours markup is required for the native disclosure regression.");
+    // cloneNode copies actual markup, but never React's listeners or state.
+    const disclosure = original.cloneNode(true) as HTMLDetailsElement;
+    surface.replaceChildren(disclosure);
+    const summary = disclosure.querySelector("summary")!;
+    const arrow = summary.querySelector("svg")!;
+    const rotated = () => {
+      const style = getComputedStyle(arrow);
+      return style.rotate === "180deg" || style.transform === "matrix(-1, 0, 0, -1, 0, 0)";
+    };
+    await expectTouchDisclosure(summary);
+    await expect(disclosure).not.toHaveAttribute("open");
+    await expect(rotated()).toBe(false);
+    const browser = (globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__
+      ? await import("vitest/browser") : undefined;
+    let trustedPointer = false;
+    summary.addEventListener("pointerdown", event => { trustedPointer = event.isTrusted; }, { once: true });
+    if (browser) await browser.userEvent.click(summary);
+    else await userEvent.click(summary);
+    if (browser) await expect(trustedPointer).toBe(true);
+    await waitFor(async () => {
+      await expect(disclosure).toHaveAttribute("open", "");
+      await expect(rotated()).toBe(true);
+    });
+    await expect(surface.querySelector("details")).toBe(disclosure);
+    summary.focus();
+    if (browser) await browser.userEvent.keyboard("{Enter}");
+    else await userEvent.click(summary);
+    await waitFor(async () => {
+      await expect(disclosure).not.toHaveAttribute("open");
+      await expect(rotated()).toBe(false);
+    });
+  },
+};
 export const MerchantWeek: Story = {
   args: { hours: { ...hours, _official: { ...hours._official!, kind: "merchant", schedule_kind: "weekly", source_name: "Demonstration cafe", source_url: "https://example.org/", closures_url: undefined, exceptions: [] } }, provenance: "Hours from the demonstration cafe." },
   play: async ({ canvasElement }) => {
@@ -107,5 +153,119 @@ export const MerchantWeek: Story = {
     await userEvent.click(canvas.getByText(/Hours today/));
     await expect(canvas.getByRole("link", { name: "Official business hours" })).toBeVisible();
     await expect(canvas.queryByRole("link", { name: "FCPL holiday closures" })).not.toBeInTheDocument();
+  },
+};
+
+const qualifiedMuseum: Hours = {
+  mon: [{ open: "10:00", close: "17:00" }], tue: [{ open: "10:00", close: "17:00" }],
+  wed: [{ open: "10:00", close: "17:00" }], thu: [{ open: "10:00", close: "17:00" }],
+  fri: [{ open: "10:00", close: "17:00" }], sat: [{ open: "10:00", close: "17:00" }], sun: [{ open: "10:00", close: "17:00" }],
+  _official: {
+    ...hours._official!, kind: "merchant", schedule_kind: "weekly", slug: "demonstration-museum",
+    source_name: "Demonstration museum", source_url: "https://example.org/museum-hours", closures_url: undefined, exceptions: [],
+    qualification: {
+      scope: "venue", label: "Museum hours", usage: "display_only",
+      note: "Last admission is at 4:30pm. The museum closes at 5pm.",
+    },
+  },
+};
+
+export const QualifiedMuseum: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { hours: qualifiedMuseum, provenance: "Demonstration of a checked museum schedule with a separate admission cutoff." },
+  render: (args) => <>
+    <div className="mb-3"><LiveOpenStatus hours={args.hours} verified={Boolean(args.verified)} initial={{ state: "unknown" }} /></div>
+    <HoursBlock {...args} />
+  </>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const note = canvas.getByText("Last admission is at 4:30pm. The museum closes at 5pm.");
+    await expect(note).toBeVisible();
+    await expect(note.closest("details")).toBeNull();
+    await expect(canvas.getByText("Venue opening not confirmed")).toBeVisible();
+    await expect(canvas.getByText("Checked at source")).toBeVisible();
+    await expect(canvas.queryByText("Unconfirmed")).not.toBeInTheDocument();
+    const label = canvas.getByText("Museum hours today · 10am–5pm");
+    await expectTouchDisclosure(label);
+    const summary = label.closest("summary")!;
+    const browser = (globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__
+      ? await import("vitest/browser") : undefined;
+    if (browser) {
+      // Synthetic key events do not invoke a browser's native <summary>
+      // activation. Establish the current story frame with trusted input,
+      // then prove the real Enter default action without app key handlers.
+      let trustedPointer = false;
+      note.addEventListener("pointerdown", (event) => { trustedPointer = event.isTrusted; }, { once: true });
+      await browser.userEvent.click(note);
+      await expect(trustedPointer).toBe(true);
+      summary.focus();
+      await expect(summary).toHaveFocus();
+      await browser.userEvent.keyboard("{Enter}");
+    } else {
+      await userEvent.click(summary);
+    }
+    await waitFor(async () => expect(canvas.getByRole("list", { name: "Museum hours by day" })).toBeVisible());
+    await expectTouchLink(canvas.getByRole("link", { name: "Official museum hours" }));
+    await expect(canvas.queryByText(/not current enough/)).not.toBeInTheDocument();
+    const section = canvas.getByRole("region", { name: "Museum hours" });
+    const root = canvasElement.ownerDocument.documentElement;
+    const fontSize = root.style.getPropertyValue("font-size");
+    try {
+      root.style.setProperty("font-size", "200%");
+      await expect(note).toBeVisible();
+      // Opening the disclosure starts the chevron's rotation. A square turning
+      // through 45 degrees is briefly wider than itself, so measure the
+      // section at rest rather than mid-turn on a slow runner.
+      await Promise.all(section.getAnimations({ subtree: true }).map((animation) => animation.finished));
+      await expect(section.scrollWidth).toBeLessThanOrEqual(section.clientWidth);
+    } finally {
+      if (fontSize) root.style.setProperty("font-size", fontSize);
+      else root.style.removeProperty("font-size");
+    }
+    summary.focus();
+    if (browser) await browser.userEvent.keyboard(" ");
+    else await userEvent.click(summary);
+    await waitFor(async () => expect(summary.closest("details")).not.toHaveAttribute("open"));
+    await expect(summary).toHaveFocus();
+    await expect(note).toBeVisible();
+  },
+};
+
+export const QualifiedKitchen: Story = {
+  globals: { viewport: { value: "radiusMobileLarge", isRotated: false } },
+  args: {
+    hours: { ...qualifiedMuseum, _official: { ...qualifiedMuseum._official!, qualification: {
+      scope: "kitchen", label: "Kitchen hours", usage: "display_only", note: "These are kitchen hours. Bar hours may differ.",
+    } } },
+    provenance: "Demonstration of checked kitchen hours.",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("These are kitchen hours. Bar hours may differ.")).toBeVisible();
+    await expectTouchDisclosure(canvas.getByText("Kitchen hours today · 10am–5pm"));
+    await expect(canvas.getByText("Checked at source")).toBeVisible();
+  },
+};
+
+export const ExpiredQualifiedMuseum: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: {
+    hours: { ...qualifiedMuseum, _official: {
+      ...qualifiedMuseum._official!, observed_at: new Date(+now - 8 * 86_400_000).toISOString(),
+      expires_at: new Date(+now - 86_400_000).toISOString(),
+    } },
+    provenance: "Demonstration of a retained schedule that needs a new source check.",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("Last admission is at 4:30pm. The museum closes at 5pm.")).toBeVisible();
+    await expect(canvas.getByText("Needs a new check")).toBeVisible();
+    await expect(canvas.queryByText("Checked at source")).not.toBeInTheDocument();
+    const label = canvas.getByText("Museum hours today · Hours not confirmed");
+    await expectTouchDisclosure(label);
+    await userEvent.click(label);
+    await expect(canvas.getByText("This posted schedule needs a new source check. Check the official source before going.")).toBeVisible();
+    await expect(canvas.getByRole("list", { name: "Museum hours by day" })).toBeVisible();
+    await expectTouchLink(canvas.getByRole("link", { name: "Official museum hours" }));
   },
 };

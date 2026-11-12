@@ -15,15 +15,16 @@
  *   render — JS-rendered/403 page → headless browser → model extraction.
  *   fetch  — static HTML → model extraction.
  *
- * Run:  npm run ingest:venues            (all venues)
- *       npm run ingest:venues banyan     (one venue)
- * Needs: ANTHROPIC_API_KEY (feed-only venues don't, but the run preflights
- * once). Scheduled by .github/workflows/ingest-venues.yml.
+ * Run:  npm run ingest:venues             (three free official sources)
+ *       npm run ingest:venues -- banyan    (one native source)
+ *       npm run ingest:venues -- --include-model-sources (explicit paid mode)
+ * Daily collection has no model, Firecrawl or browser dependency. The manual
+ * model lane uses ANTHROPIC_API_KEY and the existing shared fallback budget.
  *
  * Social-only venues aren't scraped here (ToS/access) — see
  * docs/EXTRACTION_PLATFORM.md for the partnership/vision/human path.
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -61,6 +62,9 @@ import {
 } from "./lib/weinberg-events";
 import { inferredNonMusicCategory } from "../src/lib/events/live-music";
 import { lintSourceText } from "./style-lint";
+import { parseVenueCollectionArgs, selectVenueCollectionSources } from "./lib/venue-collection-mode";
+import { isExpiredVenueEvent, reviewVenueCollection } from "./lib/venue-collection-review";
+import { createNativeSourceReviewEvidence, NativeEvidenceError } from "./lib/native-source-review-evidence";
 
 const OUT = resolve("src/data/venue-events.json");
 const SOURCE_INVENTORY_OUT = resolve(
@@ -97,7 +101,7 @@ export type RawEvent = {
   ticket_url?: string;
   hero_image?: string;
 };
-type VenueEvent = RawEvent & {
+export type VenueEvent = RawEvent & {
   venue_slug: string;
   venue_name: string;
   category?: string;
@@ -569,12 +573,28 @@ export async function collect(
   };
 }
 
-async function main() {
+export async function ingestVenueEvents(args: readonly string[] = process.argv.slice(2), injected: {
+  sources?: VenueSource[];
+  existing?: VenueEvent[];
+  sourceState?: VenueSourceState;
+  collectDependencies?: VenueCollectDependencies;
+  ensureModelReady?: EnsureModelReady;
+  now?: Date;
+  /** Offline tests exercise the real assembly without writing release artifacts. */
+  persist?: boolean;
+} = {}) {
   resetFirecrawlFallbackUsage();
-  const only = process.argv[2];
-  const cfg = JSON.parse(readFileSync(CONFIG, "utf8")) as {
-    venues: VenueSource[];
-  };
+  const options = parseVenueCollectionArgs(args);
+  const sources = injected.sources ?? (JSON.parse(readFileSync(CONFIG, "utf8")) as { venues: VenueSource[] }).venues;
+  // Reject a mistaken selector before collection or any artifact write.
+  const venues = selectVenueCollectionSources(sources, options);
+  if (process.env.NATIVE_VENUE_REVIEW_EVIDENCE_DIR && !options.deterministicOnly) throw new Error("Native review capture cannot admit model sources.");
+  const evidence = process.env.NATIVE_VENUE_REVIEW_EVIDENCE_DIR ? createNativeSourceReviewEvidence(process.env.NATIVE_VENUE_REVIEW_EVIDENCE_DIR, {
+    publisher: "native-venues", sourceRevision: process.env.GITHUB_SHA ?? "unknown",
+    sourceRun: process.env.GITHUB_RUN_ID, sourceAttempt: process.env.GITHUB_RUN_ATTEMPT,
+    sources: sources.filter(source => source.urls.length).map(source => ({ id: source.slug, urls: source.urls, selected: venues.some(venue => venue.slug === source.slug) })),
+    maxResponses: 48, maxResponseBytes: 8_000_000, maxTotalBytes: 96_000_000,
+  }) : undefined;
   // The public artifact intentionally omits exact duplicates from the known
   // Weinberg/New Spire pair. Seed promotion from the unsuppressed source
   // inventory when available so a hidden Weinberg row remains recoverable if
@@ -584,29 +604,32 @@ async function main() {
     ? SOURCE_INVENTORY_OUT
     : OUT;
   const existing = (
-    JSON.parse(readFileSync(existingPath, "utf8")) as VenueEvent[]
+    injected.existing ?? JSON.parse(readFileSync(existingPath, "utf8")) as VenueEvent[]
   ).flatMap((event) => {
     const normalized = normalizeVenueEventTimes(event);
     return normalized ? [normalized] : [];
   });
   const byKey = new Map(existing.map((e) => [keyOf(e), e]));
-  const venues = cfg.venues.filter((v) => (only ? v.slug === only : true));
-  const sourceState = loadVenueSourceState();
+  const sourceState = injected.sourceState ?? loadVenueSourceState();
   const sourceStateBefore = serializeVenueSourceState(sourceState);
 
   let modelReady: boolean | undefined;
   let modelUnavailable = false;
-  const ensureModelReady = async (): Promise<boolean> => {
+  const ensureModelReady = injected.ensureModelReady ?? (async (): Promise<boolean> => {
     if (modelReady !== undefined) return modelReady;
     // The key gates only changed MODEL-ASSISTED sources. Feed collectors and
     // successfully fingerprinted unchanged sources need no Anthropic call.
     modelReady = await preflightKey({ failInCi: false });
     return modelReady;
-  };
+  });
 
   let added = 0;
   let unchangedSources = 0;
-  const runStartedAt = Date.now();
+  const now = injected.now ?? new Date();
+  const runStartedAt = now.getTime();
+  if (!Number.isFinite(runStartedAt)) throw new Error("Venue collection requires a valid observation clock.");
+  const outcomes: { slug: string; status: VenueCollectionStatus }[] = [];
+  const evidenceOutcomes: { sourceId: string; status: "complete" | "failed"; observedAt: string }[] = [];
   for (const venue of venues) {
     const hasSource = venue.urls?.length || venue.imageUrl;
     if (!hasSource) {
@@ -621,23 +644,31 @@ async function main() {
         !Number.isFinite(startsAt) || startsAt >= runStartedAt - 86_400_000
       );
     });
-    const {
-      events,
-      source,
-      status,
-      modelUnavailable: sourceModelUnavailable,
-    } = await collect(
-      venue,
-      sourceState,
-      ensureModelReady,
-      hasRetainedVenueEvents,
-    );
+    let result: CollectResult;
+    try {
+      const dependencies = injected.collectDependencies ?? DEFAULT_COLLECT_DEPENDENCIES;
+      const observedDependencies: VenueCollectDependencies | undefined = evidence ? {
+        ...dependencies,
+        fetchSquarespaceEventsResult: (url, opts) => dependencies.fetchSquarespaceEventsResult(url, { ...opts, onResponse: response => evidence.capture(venue.slug, response) }),
+        fetchWeinbergEventsResult: (url, opts) => dependencies.fetchWeinbergEventsResult(url, { ...opts, onResponse: response => evidence.capture(venue.slug, response) }),
+      } : injected.collectDependencies;
+      result = await collect(venue, sourceState, ensureModelReady,
+        hasRetainedVenueEvents, observedDependencies);
+    } catch (error) {
+      if (error instanceof NativeEvidenceError) throw error;
+      if (!options.deterministicOnly) throw error;
+      console.error(`Native source ${venue.slug} failed; prior rows retained.`, error);
+      result = { events: [], source: directSource(venue.urls[0] ?? ""), status: "failed" };
+    }
+    const { events, source, status, modelUnavailable: sourceModelUnavailable } = result;
+    outcomes.push({ slug: venue.slug, status });
+    const fetchedAt = injected.now?.toISOString() ?? nowISO();
+    evidenceOutcomes.push({ sourceId: venue.slug, status: status === "failed" ? "failed" : "complete", observedAt: fetchedAt });
     if (sourceModelUnavailable) {
       modelUnavailable = true;
       console.log(`  – model unavailable; prior venue data retained`);
     }
     if (status === "unchanged") {
-      const fetchedAt = nowISO();
       for (const [key, event] of byKey) {
         if (event.venue_slug !== venue.slug) continue;
         byKey.set(key, {
@@ -659,7 +690,7 @@ async function main() {
         venue_slug: venue.slug,
         venue_name: venue.name,
         category: inferredNonMusicCategory(ev.title) ?? venue.category,
-        source: { ...source, fetchedAt: nowISO() },
+        source: { ...source, fetchedAt },
       });
     }
     const promotion = promoteVenueInventory({
@@ -678,26 +709,27 @@ async function main() {
     }
   }
 
-  // Keep only future-ish events: drop anything whose date clearly parsed in the past.
-  const futureish = [...byKey.values()].filter((e) => {
-    const t = Date.parse(e.starts_at ?? "");
-    return !Number.isFinite(t) || t >= runStartedAt - 86_400_000; // keep unparseable + within last day
-  });
+  // A focused refresh must not prune a failed or unselected source. Successful
+  // source expiry uses actual end times, retaining multi-day events still active.
+  const verifiedSources = new Set(outcomes.filter((item) => item.status !== "failed").map((item) => item.slug));
+  const futureish = [...byKey.values()].filter((event) =>
+    !verifiedSources.has(event.venue_slug) || !isExpiredVenueEvent(event, now));
   const {
     sourceInventory,
     publishedEvents: kept,
     suppressed,
   } = buildRecoverableVenuePublication(futureish);
 
-  writeFileSync(
-    SOURCE_INVENTORY_OUT,
-    JSON.stringify(sourceInventory, null, 2) + "\n",
-  );
-  writeFileSync(OUT, JSON.stringify(kept, null, 2) + "\n");
   const sourceStateAfter = serializeVenueSourceState(sourceState);
-  if (sourceStateAfter !== sourceStateBefore) {
-    writeFileSync(SOURCE_STATE, sourceStateAfter);
+  evidence?.finish(evidenceOutcomes);
+  if (injected.persist !== false) {
+    writeFileSync(SOURCE_INVENTORY_OUT, JSON.stringify(sourceInventory, null, 2) + "\n");
+    writeFileSync(OUT, JSON.stringify(kept, null, 2) + "\n");
+    if (sourceStateAfter !== sourceStateBefore) writeFileSync(SOURCE_STATE, sourceStateAfter);
+    evidence?.bindOutputs(["src/data/venue-event-source-inventory.json", "src/data/venue-events.json", "src/data/venue-event-source-state.json"]);
   }
+  const review = reviewVenueCollection(existing, sourceInventory, now);
+  const failedSources = outcomes.filter((item) => item.status === "failed").map((item) => item.slug);
   console.log(
     `\nDone. +${added} new, ${unchangedSources} unchanged source(s) skipped, ` +
       `${suppressed} exact cross-venue duplicate(s) suppressed, ` +
@@ -710,19 +742,22 @@ async function main() {
       : "Venue source fingerprints updated.",
   );
   console.log(formatFirecrawlFallbackUsageSummary());
-  if (modelUnavailable && process.env.CI) {
-    console.error(
-      "Deterministic and unchanged venue sources were preserved, but at least one changed model-assisted source could not run.",
-    );
-    process.exitCode = 1;
-  }
+  console.log(JSON.stringify({ ...review, failedSources, selectedSources: venues.map((venue) => venue.slug) }));
+  return { ...review, failedSources, outcomes, modelUnavailable, sourceInventory, publishedEvents: kept, sourceState };
 }
 
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
-  main().catch((e) => {
+  ingestVenueEvents().then((result) => {
+    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT,
+      `review_required=${result.reviewRequired}\nfuture_additions=${result.futureAdditions}\nfuture_removals=${result.futureRemovals}\nexpired_removals=${result.expiredRemovals}\nfailed_sources=${result.failedSources.join(",") || "none"}\n`);
+    if (result.outcomes.length === 0 || result.outcomes.every((item) => item.status === "failed") || (result.modelUnavailable && process.env.CI)) {
+      console.error("No complete source refresh, or an explicitly selected model source was unavailable. Prior source facts and observations were retained.");
+      process.exitCode = 1;
+    }
+  }).catch((e) => {
     console.error(e);
     process.exit(1);
   });

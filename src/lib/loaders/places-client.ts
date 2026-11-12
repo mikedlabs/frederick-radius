@@ -1,10 +1,11 @@
 import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { haversineMeters, type LngLat } from "@/lib/geo";
-import { getOpenStatus, isScheduleEvidenceCurrent } from "@/lib/hours";
+import { getOpenStatus, isDisplayOnlyHours, isScheduleEvidenceCurrent } from "@/lib/hours";
 import { isHoursFresh } from "@/lib/hours-freshness";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import { publishablePlaceWebsite } from "@/lib/place-website-policy";
+import { clientPlaceOperationalState } from "@/lib/place-operational-policy";
 
 type ClientPlaceData = PlaceCardData & {
   /** Build-time policy stamped by build-client-places. This avoids reading a
@@ -54,11 +55,9 @@ const ALL_CLIENT_PLACES = (CLIENT_RAW as unknown as ClientPlaceData[])
  *  directly and were leaking permanently-closed venues into results.
  *  Single predicate, applied at the loader so every consumer is
  *  automatically clean. */
-function isOpen(p: PlaceCardData): boolean {
-  return p.is_operational !== "closed_permanently" && p.is_operational !== "closed_temporarily";
+function isOpen(p: PlaceCardData, now = new Date()): boolean {
+  return clientPlaceOperationalState(p, now).discoverable;
 }
-
-const CLIENT_PLACES = ALL_CLIENT_PLACES.filter(isOpen);
 
 const BY_SLUG: Record<string, PlaceCardData> = (() => {
   const m = Object.create(null) as Record<string, PlaceCardData>;
@@ -77,18 +76,19 @@ const BY_SLUG: Record<string, PlaceCardData> = (() => {
  * few hundred bytes), not the heavy google_hours strings that were
  * dropped to keep this bundle small.
  */
-function withLiveStatus(p: ClientPlaceData): PlaceCardData {
-  const now = new Date();
+function withLiveStatus(p: ClientPlaceData, now: Date = new Date()): PlaceCardData {
+  const operational = clientPlaceOperationalState(p, now);
   const mayAssertHours = Boolean(
-    p.hours_verified &&
+    operational.mayAssertHours && p.hours_verified &&
       p.hours &&
       (!p.hours_policy_strict || isHoursFresh(p.hours_updated_at, now)) &&
-      mayPublishVisitabilityHours(p.slug, p.hours, now) &&
+      ((p.hours._official?.kind === "merchant" && isDisplayOnlyHours(p.hours)) || mayPublishVisitabilityHours(p.slug, p.hours, now)) &&
       (!p.hours._official || p.hours._official.slug === p.slug) &&
       isScheduleEvidenceCurrent(p.hours, now),
   );
   return {
     ...p,
+    is_operational: operational.status,
     hours: mayAssertHours ? p.hours : undefined,
     hours_verified: mayAssertHours,
     open_status: getOpenStatus(
@@ -99,13 +99,13 @@ function withLiveStatus(p: ClientPlaceData): PlaceCardData {
   };
 }
 
-export function clientPlaces(): PlaceCardData[] {
-  return CLIENT_PLACES.map(withLiveStatus);
+export function clientPlaces(now: Date = new Date()): PlaceCardData[] {
+  return ALL_CLIENT_PLACES.filter(place => isOpen(place, now)).map((place) => withLiveStatus(place, now));
 }
 
-export function clientPlaceBySlug(slug: string): PlaceCardData | undefined {
+export function clientPlaceBySlug(slug: string, now = new Date()): PlaceCardData | undefined {
   const p = BY_SLUG[slug];
-  return p ? withLiveStatus(p) : undefined;
+  return p ? withLiveStatus(p, now) : undefined;
 }
 
 /**
@@ -118,8 +118,10 @@ export function clientPlacesWithinRadius(
   origin: LngLat,
   meters: number,
   spatialDistances?: ReadonlyMap<string, number>,
+  now = new Date(),
 ): PlaceCardData[] {
-  return CLIENT_PLACES.flatMap((p) => {
+  return ALL_CLIENT_PLACES.flatMap((p) => {
+    if (!isOpen(p, now)) return [];
     const distance = spatialDistances
       ? spatialDistances.get(p.slug)
       : haversineMeters(origin, p.geom);
@@ -128,7 +130,7 @@ export function clientPlacesWithinRadius(
     if (distance === undefined || !Number.isFinite(distance) || distance > meters) {
       return [];
     }
-    return [{ ...withLiveStatus(p), distance_m: distance }];
+    return [{ ...withLiveStatus(p, now), distance_m: distance }];
   }).sort(
     (a, b) =>
       (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity) ||

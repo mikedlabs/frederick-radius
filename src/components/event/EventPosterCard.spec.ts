@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -36,6 +37,21 @@ function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
 afterEach(() => {
   vi.useRealTimers();
 });
+
+/** The markup after the event link closes. A picture credit belongs here:
+ * inside the row, above its hairline, and never inside the event action. */
+function afterEventLink(html: string, slug = "summer-concert"): string {
+  const linkStart = html.indexOf(`href="/events/${slug}"`);
+  expect(linkStart).toBeGreaterThan(-1);
+  const linkEnd = html.indexOf("</a>", linkStart);
+  expect(linkEnd).toBeGreaterThan(linkStart);
+  return html.slice(linkEnd);
+}
+
+function insideRow(html: string, marker: string): boolean {
+  const index = html.indexOf(marker);
+  return index > -1 && index < html.indexOf("</article>");
+}
 
 describe("EventPosterCard visual trust", () => {
   it("asks the place-photo proxy for a detectable failure signal", () => {
@@ -80,7 +96,8 @@ describe("EventPosterCard visual trust", () => {
 
     expect(html).toContain('data-event-poster="artwork"');
     expect(html).toContain('data-event-artwork-frame="poster"');
-    expect(html).toContain('class="object-contain"');
+    expect(html).toContain('class="object-contain object-left"');
+    expect(html).toContain('aspect-[16/10] bg-transparent');
     expect(html).not.toContain('class="object-contain p-3"');
     expect(html).not.toContain("ken-burns");
     expect(html).not.toContain("object-cover");
@@ -89,7 +106,8 @@ describe("EventPosterCard visual trust", () => {
     expect(titleStart).toBeGreaterThan(artworkEnd);
     expect(html.slice(titleStart)).toContain("Summer concert");
     expect(html.slice(titleStart)).toContain("Baker Park");
-    expect(html.indexOf("data-event-photo-credit")).toBeGreaterThan(html.indexOf("</article>"));
+    expect(afterEventLink(html)).toContain("data-event-photo-credit");
+    expect(insideRow(html, "data-event-photo-credit")).toBe(true);
     expect(html).toContain("Event image · Ticketmaster");
     expect(html).toContain('alt=""');
     expect(html).not.toContain("data-event-fallback");
@@ -114,7 +132,30 @@ describe("EventPosterCard visual trust", () => {
     expect(facts).toContain("$12 admission");
     expect(html).not.toContain("absolute inset-x-0 bottom-0 p-4");
     expect(html).not.toContain("line-clamp");
-    expect(html).toContain("text-[1.375rem]");
+    // The lead is the page's one standout row: the coral time block follows
+    // the picture, and the facts never sit on the photograph.
+    expect(html).toContain('data-event-row="lead"');
+    expect(html.indexOf("data-event-row-when")).toBeGreaterThan(photoEnd);
+    expect(html).not.toContain("ken-burns");
+  });
+
+  it("gives only the hero lead the coral time block and keeps a shelf poster plain", () => {
+    const hero = renderToStaticMarkup(createElement(EventPosterCard, { event: event() }));
+    const shelf = renderToStaticMarkup(createElement(EventPosterCard, { event: event(), layout: "shelf" }));
+    const row = renderToStaticMarkup(createElement(EventCard, { event: event({ hero_image: undefined }), variant: "glance" }));
+    expect(hero).toContain('data-event-row="lead"');
+    expect(shelf).toContain('data-event-row="row"');
+    expect(row).toContain('data-event-row="row"');
+    expect(row).not.toContain('data-event-row="lead"');
+  });
+
+  it("splits the lead clock from its meridiem and keeps word labels whole", () => {
+    const clock = renderToStaticMarkup(createElement(EventPosterCard, { event: event({ hero_image: undefined }) }));
+    expect(clock).toContain('data-clock="clock"');
+    expect(clock).toMatch(/>6:00<\/span><span[^>]*>PM</);
+    const allDay = renderToStaticMarkup(createElement(EventPosterCard, { event: event({ hero_image: undefined, is_all_day: true }) }));
+    expect(allDay).toContain('data-clock="label"');
+    expect(allDay).toContain(">All day<");
   });
 
   it("keeps the complete archival venue credit outside the event action", () => {
@@ -122,8 +163,8 @@ describe("EventPosterCard visual trust", () => {
     const visual = eventCardVisual(row)!;
     const metadata = CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"];
     const html = renderToStaticMarkup(createElement(EventPosterCard, { event: row }));
-    const articleEnd = html.indexOf("</article>");
-    const credit = html.slice(articleEnd);
+    const credit = afterEventLink(html);
+    expect(insideRow(html, "data-event-photo-credit")).toBe(true);
     expect(html).toContain("brewers-alley-2004.jpg");
     expect(credit).toContain("photographed in 2004");
     expect(credit).toContain(metadata.image.creator);
@@ -162,10 +203,9 @@ describe("EventPosterCard visual trust", () => {
     expect(html).toContain("Local photographer");
     expect(html).toContain("Google Maps");
     expect(html).toContain("https://www.google.com/maps/place/example-photo");
-    const posterEnd = html.indexOf("</article>");
-    const creditStart = html.indexOf("data-event-photo-credit");
-    expect(posterEnd).toBeGreaterThan(-1);
-    expect(creditStart).toBeGreaterThan(posterEnd);
+    expect(afterEventLink(html)).toContain("data-event-photo-credit");
+    expect(afterEventLink(html)).toContain("Local photographer");
+    expect(insideRow(html, "data-event-photo-credit")).toBe(true);
     expect(html).not.toContain("bg-black/55");
   });
 
@@ -210,8 +250,15 @@ describe("EventPosterCard visual trust", () => {
     expect(html).toContain("Event image · Ticketmaster");
     expect(html).toContain('loading="lazy"');
     expect(html).toContain('alt=""');
-    expect(html).toContain("text-[9px]");
-    expect(html).toContain("object-contain");
+    // The compact credit is rem-sized so it grows with enlarged text.
+    expect(html).toContain("text-[0.6875rem]");
+    expect(html).not.toContain("text-[9px]");
+    // Unclassified publisher art stays whole (object-fit: contain). The
+    // artwork thumbnail is marked so its frame drops the gray ground and the
+    // page white surrounds the poster instead of letterbox bands.
+    expect(html).toContain('data-event-row-thumb="artwork"');
+    expect(html).toContain('data-event-media="artwork"');
+    expect(html).toContain('class="object-contain"');
     expect(html).not.toContain("object-cover");
     expect(html).not.toContain("group-hover:scale-105");
   });
@@ -374,5 +421,45 @@ describe("owned venue rendering without Google activation", () => {
     const row = fairgroundsEvent(), approved = eventCardVisual(row)!;
     expect(posterVisualForEvent(row, approved)).toEqual(approved);
     expect(posterVisualForEvent(row, { ...approved, objectPosition: "center" })).toBeNull();
+  });
+});
+
+describe("plain event rows", () => {
+  it("frames publisher artwork thumbnails on a transparent ground", () => {
+    const css = readFileSync("src/components/event/EventRow.module.css", "utf8");
+    expect(css).toMatch(/\.thumb\[data-event-row-thumb="artwork"\]\s*\{\s*background: transparent;/);
+  });
+
+  it("keeps a photo-less row's media slot with an unboxed category glyph", () => {
+    const html = renderToStaticMarkup(createElement(EventCard, {
+      event: event({ hero_image: undefined }),
+      variant: "glance",
+    }));
+    expect(html).toContain('data-event-media="none"');
+    expect(html).toMatch(/<span aria-hidden="true" data-event-row-glyph/);
+    const css = readFileSync("src/components/event/EventRow.module.css", "utf8");
+    const start = css.indexOf(".glyph {");
+    const glyph = css.slice(start, css.indexOf("}", start));
+    expect(glyph).toContain("color: var(--app-ink-3)");
+    expect(glyph).not.toMatch(/background|border|radius/);
+    // The lead keeps its coral block and never reserves the slot.
+    const lead = renderToStaticMarkup(createElement(EventPosterCard, { event: event({ hero_image: undefined }) }));
+    expect(lead).not.toContain("data-event-row-glyph");
+  });
+
+  it("nests the lead under its group heading when it sits inside a group", () => {
+    const beforeRail = renderToStaticMarkup(createElement(EventCard, { event: event({ hero_image: undefined }), variant: "feature" }));
+    const inGroup = renderToStaticMarkup(createElement(EventCard, { event: event({ hero_image: undefined }), variant: "feature", headingLevel: 3 }));
+    expect(beforeRail).toMatch(/<h2[^>]*><a[^>]*href="\/events\/summer-concert"/);
+    expect(inGroup).toMatch(/<h3[^>]*><a[^>]*href="\/events\/summer-concert"/);
+    expect(inGroup).not.toContain("<h2");
+  });
+
+  it("renders the legacy tile and row variants as flat rows", () => {
+    for (const variant of ["tile", "row"] as const) {
+      const html = renderToStaticMarkup(createElement(EventCard, { event: event({ hero_image: undefined }), variant }));
+      expect(html).toContain('data-event-row="row"');
+      expect(html).not.toMatch(/shadow|tactile|rounded-\[var\(--app-radius-lg\)\]/);
+    }
   });
 });

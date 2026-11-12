@@ -8,6 +8,32 @@
  * the correct UTC instant, DST-aware, with no dependency.
  */
 
+// Construct ICU formatters once; each call still formats its supplied date.
+const EASTERN_WALL_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+const EASTERN_PARTS_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  hour12: false,
+  weekday: "short",
+});
+const EASTERN_DAY_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/New_York",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 /**
  * Given an America/New_York wall-clock time, return the matching UTC
  * instant as an ISO string. `month` is 1-based.
@@ -27,15 +53,7 @@ export function easternWallToUtcISO(
 ): string {
   const asUTC = Date.UTC(year, month - 1, day, hour, minute, second);
   const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/New_York",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    })
+    EASTERN_WALL_FORMATTER
       .formatToParts(new Date(asUTC))
       .map((p) => [p.type, p.value]),
   ) as Record<string, string>;
@@ -66,15 +84,7 @@ export function easternParts(d: Date): {
   weekday: number;
 } {
   const p = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/New_York",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      hour12: false,
-      weekday: "short",
-    })
+    EASTERN_PARTS_FORMATTER
       .formatToParts(d)
       .map((x) => [x.type, x.value]),
   ) as Record<string, string>;
@@ -90,10 +100,5 @@ export function easternParts(d: Date): {
 
 /** America/New_York calendar-day key ("YYYY-MM-DD") for an instant. */
 export function easternDayKey(d: Date): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(d);
+  return EASTERN_DAY_FORMATTER.format(d);
 }

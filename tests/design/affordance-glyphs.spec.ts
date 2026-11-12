@@ -24,7 +24,6 @@ const SEPARATOR_ALLOWLIST = new Set([
   "components/overhead/PlanesOverhead.tsx", // "BWI → DCA" route separators
   "components/overhead/OverheadMap.tsx", // same route separators in popups
   "components/today/HourlySummary.tsx", // temperature range "72 → 85"
-  "app/(app)/proto/almanac/page.tsx", // proto range display
 ]);
 
 function tsxFiles(dir: string): string[] {

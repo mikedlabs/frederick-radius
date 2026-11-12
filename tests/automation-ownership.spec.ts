@@ -7,7 +7,7 @@ describe("automation ownership", () => {
     expect(auditAutomationOwnership().failures).toEqual([]);
   });
 
-  it.each(["data-refresh.yml", "freshness-check.yml"])(
+  it.each(["data-refresh.yml", "freshness-check.yml", "automated-pr-status-bridge.yml"])(
     "keeps disconnected snapshot workflow %s manual",
     (name) => {
       const workflows = {
@@ -43,17 +43,13 @@ describe("automation ownership", () => {
 
   it("keeps automated data PRs on a focused gate and code PRs on the full gate", () => {
     const ci = readFileSync(".github/workflows/ci.yml", "utf8");
+    expect(ci).toContain('AUTOMATED_DATA_PR: "0"');
+    expect(ci.indexOf("Classify native automated data PR before repository execution")).toBeLessThan(ci.indexOf("actions/checkout@"));
+    expect(ci).toContain("receipt.verified === true && receipt.mode === 'data-only'");
+    expect(ci).toContain("else if (candidateHint || receipt.mode === 'held')");
     expect(ci).toContain("Validate automated data artifacts");
     expect(ci).toContain("run: npm run test:data-artifacts");
     expect(ci).toContain("if: ${{ env.AUTOMATED_DATA_PR != '1' }}");
     expect(ci).toContain("Production browser and connected-journey gate");
-  });
-
-  it("does not promise saved-event pushes while their worker is dormant", () => {
-    const settings = readFileSync(
-      "src/components/settings/NotificationsCard.tsx",
-      "utf8",
-    );
-    expect(settings).not.toContain('topics: ["saved-events"');
   });
 });

@@ -24,10 +24,16 @@ export type WikimediaPhoto = {
   license: string;
   source_url: string;
   verified: boolean;
+  /** Actual capture date from reviewed source metadata, never its review date. */
+  capturedOn?: string;
   /** Existing reviewed local copy; retain the Commons source and attribution. */
   localSrc?: string;
   licenseUrl?: string;
   modifications?: string;
+  /** Retain the reviewed subject when a card or hero crops the photograph. */
+  objectPosition?: "center" | "left" | "right" | "top" | "bottom" | `${number}% ${number}%`;
+  /** Prefer reviewed bundled bytes without claiming the provider image is wrong. */
+  preferLocal?: boolean;
   /** When true, this curated photo WINS over the place's Google photo in
    *  PlaceHero — for landmarks whose Google hero is wrong or weak (verified by
    *  eye, per-place). Default/omitted: the Google photo wins and this only
@@ -43,11 +49,19 @@ export type WikimediaPhoto = {
 // Special:FilePath URL confirmed HTTP 200 image/jpeg (2026-06-20).
 // Later additions record their verification date where added.
 export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
-  ...Object.fromEntries(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).map(([slug, { file, image }]) => [slug, {
-    file, alt: image.alt, author: image.creator, license: image.license.label,
-    source_url: image.source_url, verified: true, localSrc: image.src,
-    licenseUrl: image.license.url, modifications: image.modifications,
-  } satisfies WikimediaPhoto])),
+  ...Object.fromEntries(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS).map(([slug, record]) => {
+    const { file, image } = record;
+    const capturedOn = "review" in record && "captured_on" in record.review ? record.review.captured_on
+      : "provenance" in record && "captured_on" in record.provenance ? record.provenance.captured_on : undefined;
+    return [slug, {
+      file, alt: image.alt, author: image.creator, license: image.license.label,
+      source_url: image.source_url, verified: true, localSrc: image.src,
+      licenseUrl: image.license.url, modifications: image.modifications,
+      ...(capturedOn === undefined ? {} : { capturedOn }),
+      ...("preferLocal" in record ? { preferLocal: record.preferLocal } : {}),
+      ...("objectPosition" in record ? { objectPosition: record.objectPosition } : {}),
+    } satisfies WikimediaPhoto];
+  })),
   "carroll-creek-linear-park-frederick": {
     file: "Carroll Creek Park Frederick MD1.jpg",
     alt: "Carroll Creek Linear Park in downtown Frederick, showing the landscaped creek promenade and footbridges.",
@@ -58,18 +72,14 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
   },
   "cunningham-falls-state-park-thurmont": {
     file: "Cunningham Falls.jpg",
-    alt: "Cunningham Falls cascading over the rocks at Cunningham Falls State Park near Thurmont.",
+    alt: "Cunningham Falls partially frozen in February 2005 at Cunningham Falls State Park near Thurmont.",
     author: "Alyson Hurt",
     license: "CC BY 2.0",
     source_url: "https://commons.wikimedia.org/wiki/File:Cunningham_Falls.jpg",
-    verified: true,
-  },
-  "francis-scott-key-grave-and-monument": {
-    file: "Francis Scott Key Monument (March 2024).jpg",
-    alt: "The Francis Scott Key Monument at Mount Olivet Cemetery in Frederick.",
-    author: "Engineerchange",
-    license: "CC BY-SA 4.0",
-    source_url: "https://commons.wikimedia.org/wiki/File:Francis_Scott_Key_Monument_(March_2024).jpg",
+    localSrc: "/place-photos/cunningham-falls.jpg",
+    licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
+    modifications: "Historical photograph from February 2005. Display may resize or crop.",
+    preferLocal: true,
     verified: true,
   },
   "historic-roddy-road-covered-bridge-thurmont": {
@@ -93,41 +103,31 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
     source_url: "https://commons.wikimedia.org/wiki/File:Baker_Park_Swinging_Bridge_Frederick_MD2.jpg",
     verified: true,
   },
-  "rose-hill-manor-park-museums-frederick": {
-    file: "Rose Hill Manor - Front of Mansion.jpg",
-    alt: "The front of Rose Hill Manor in Frederick.",
-    author: "LittleLuckyMd",
-    license: "CC BY-SA 4.0",
-    source_url: "https://commons.wikimedia.org/wiki/File:Rose_Hill_Manor_-_Front_of_Mansion.jpg",
-    verified: true,
-  },
-  "historic-utica-covered-bridge-thurmont": {
-    file: "Utica covered bridge MD1.jpg",
-    alt: "The red Utica Covered Bridge in Frederick County.",
-    author: "Acroterion",
-    license: "CC BY-SA 4.0",
-    source_url: "https://commons.wikimedia.org/wiki/File:Utica_covered_bridge_MD1.jpg",
-    verified: true,
-  },
 
   // preferCurated — these places HAVE a Google hero, but it's wrong or weak
   // (checked by eye 2026-06-20), so the curated landmark shot wins instead.
   "barbara-fritchie-house-frederick": {
-    file: "Barbara Fritchie House MD1.jpg",
-    alt: "The brick Barbara Fritchie House in downtown Frederick, flag at the eaves.",
-    author: "Acroterion",
-    license: "CC BY-SA 4.0",
-    source_url: "https://commons.wikimedia.org/wiki/File:Barbara_Fritchie_House_MD1.jpg",
+    file: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].file,
+    alt: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.alt,
+    author: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.creator,
+    license: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.license.label,
+    source_url: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.source_url,
+    localSrc: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.src,
+    licenseUrl: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.license.url,
+    modifications: CREDITED_LOCAL_PLACE_PHOTOS["barbara-fritchie-house-frederick"].image.modifications,
     verified: true,
     // Google hero is dominated by a directional park sign, not the house.
     preferCurated: true,
   },
   "catoctin-furnace-thurmont": {
     file: "Catoctin Iron Furnace copy.jpg",
-    alt: "The stone Catoctin Iron Furnace ruins and casting shed near Thurmont.",
+    alt: "The stone Catoctin Iron Furnace ruins and casting shed near Thurmont, photographed in 2017.",
     author: "G Wayne Rhodes",
     license: "CC BY-SA 4.0",
     source_url: "https://commons.wikimedia.org/wiki/File:Catoctin_Iron_Furnace_copy.jpg",
+    localSrc: "/place-photos/catoctin-furnace.jpg",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+    modifications: "Resized to 1,200 px and recompressed as JPEG; display may crop the photograph.",
     verified: true,
     // Google hero is a waterfall, not the iron furnace (misattributed).
     preferCurated: true,

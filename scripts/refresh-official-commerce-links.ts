@@ -12,12 +12,14 @@
  *   npm run refresh:commerce-links -- --limit=60 --concurrency=3
  */
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
+import { withBusinessInfoRunLock } from "./lib/business-info-run-lock";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { clientPlaces } from "@/lib/loaders/places-client";
+import { createNativeCommerceEvidenceWriter, parseNativeCommerceOptions, runNativeCommerceRefresh } from "./lib/native-commerce-refresh";
+import { intakeOfficialListingEvidence } from "./lib/official-listing-intake";
 import { publicPlaces } from "@/lib/loaders/places";
-import {
-  fetchPageSnapshot,
-  type PageSnapshot,
-} from "./lib/extract-agent";
+import type { PageSnapshot } from "./lib/extract-agent";
 import {
   classifyOfficialCommerceLinks,
   type ExtractedBusinessCommerceLink,
@@ -115,6 +117,7 @@ async function fetchAdaptive(
   url: string,
   minChars: number,
 ): Promise<PageSnapshot | null> {
+  const { fetchPageSnapshot } = await import("./lib/extract-agent");
   const plain = await fetchPageSnapshot(url, { maxChars: 12_000 });
   if (
     plain &&
@@ -258,9 +261,35 @@ async function mapConcurrent<T, R>(
   return results;
 }
 
-async function main() {
+async function mainUnlocked(args: string[], commit: ((value: unknown) => void) | null) {
   const cfg = JSON.parse(readFileSync(CFG, "utf8")) as Config;
-  const options = parseOptions(process.argv.slice(2), cfg);
+  if (args.includes("--native-daily")) {
+    const nativeOptions = parseNativeCommerceOptions(args);
+    const existing = JSON.parse(readFileSync(OUT, "utf8")) as Record<string, CommerceRefreshRecord>;
+    const sourceRevision = /^[a-f0-9]{40}$/.test(process.env.GITHUB_SHA ?? "") ? process.env.GITHUB_SHA! : "unknown";
+    const evidenceDirectory = process.env.NATIVE_COMMERCE_EVIDENCE_DIR;
+    const evidence = !nativeOptions.plan && evidenceDirectory ? createNativeCommerceEvidenceWriter(evidenceDirectory, sourceRevision, intakeOfficialListingEvidence) : undefined;
+    const result = await runNativeCommerceRefresh({ places: clientPlaces(), existing, excludedDomains: cfg.excludeDomains, options: nativeOptions,
+      sourceRevision, onEvidence: evidence?.capture });
+    evidence?.finish(result);
+    const { records: _records, ...outcomes } = result;
+    const receipt = { ...outcomes, ...(evidence ? { listing_intake: evidence.summary() } : {}) };
+    void _records;
+    // Private run diagnostics are separate from the bounded publisher artifact.
+    // Only an explicit trusted operator path creates a receipt file.
+    const receiptPath = process.env.NATIVE_COMMERCE_RECEIPT_PATH;
+    if (receiptPath) writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, { mode: 0o600 });
+    console.log(JSON.stringify(receipt, null, 2));
+    const output = process.env.GITHUB_OUTPUT;
+    if (output) appendFileSync(output, [`native_daily=true`, `review_required=${result.review_required}`, `selected_count=${result.selected_count}`, `checked_count=${result.checked_count}`, `failed_count=${result.failed_count}`, `safe_hold_count=${result.safe_hold_count}`, ""].join("\n"));
+    if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Native daily commerce links\n\n${result.selected_count} selected from a ${result.roster.length}-site rotating roster; ${result.checked_count} checked, ${result.safe_hold_count} held for prior destinations not reobserved, ${result.failed_count} failed; ${result.requests} free GETs. Review required: ${result.review_required}. No destination verification, providers, rendering, retries or redirects.\n`);
+    if (!nativeOptions.plan && result.checked_count > 0) {
+      if (!commit) throw new Error("Business-info run lock is required before writing.");
+      commit(result.records);
+    }
+    return result;
+  }
+  const options = parseOptions(args, cfg);
   const existing = JSON.parse(
     readFileSync(OUT, "utf8"),
   ) as Record<string, CommerceRefreshRecord>;
@@ -373,7 +402,8 @@ async function main() {
   }
 
   if (!options.dryRun) {
-    writeFileSync(OUT, `${JSON.stringify(existing, null, 2)}\n`);
+    if (!commit) throw new Error("Business-info run lock is required before writing.");
+    commit(existing);
   }
   const after = commerceCoverage(
     allFoodDrink.map((place) => place.slug),
@@ -417,7 +447,14 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+export async function main(args = process.argv.slice(2)) {
+  if (args.includes("--native-daily") && args.includes("--plan")) return mainUnlocked(args, null);
+  return withBusinessInfoRunLock(OUT, (commit) => mainUnlocked(args, commit));
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}

@@ -411,6 +411,14 @@ function updateOpenParam(key: string | null, mode: "push" | "replace") {
   window.history[mode === "push" ? "pushState" : "replaceState"]({}, "", url);
 }
 
+function closedPulseHref() {
+  const url = new URL(window.location.href);
+  // Preserve the original encoded URL when opening from an ordinary page.
+  // A direct detail URL closes by deleting only the parameter Pulse owns.
+  if (url.searchParams.has("open")) url.searchParams.delete("open");
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 function timeSince(at: number): string {
   const mins = Math.max(1, Math.floor((Date.now() - at) / 60_000));
   if (mins < 60) return `${mins}m ago`;
@@ -451,7 +459,9 @@ function GroupHeading({
 
 /** Live situations stay in a short ledger with a written severity, so color is
  * supportive rather than the only signal. Quiet facts belong in Right now. */
-function AlertLedgerRow({ chip, onOpen, last }: { chip: PulseHeroChip; onOpen: (key: string) => void; last: boolean }) {
+type OpenPulseTile = (key: string, opener?: HTMLButtonElement) => void;
+
+function AlertLedgerRow({ chip, onOpen, last }: { chip: PulseHeroChip; onOpen: OpenPulseTile; last: boolean }) {
   const interactionReady = useContext(PulseInteractionReady);
   const color = CHIP_TONE[chip.tone];
   const meta = [TONE_WORD[chip.tone], chip.meta].filter(Boolean).join(" · ");
@@ -470,7 +480,7 @@ function AlertLedgerRow({ chip, onOpen, last }: { chip: PulseHeroChip; onOpen: (
   return (
     <li>
       {chip.key ? (
-        <button type="button" disabled={!interactionReady} data-pulse-interaction-ready={String(interactionReady)} onClick={() => onOpen(chip.key!)} className={cls} style={border}>{inner}</button>
+        <button type="button" disabled={!interactionReady} data-pulse-interaction-ready={String(interactionReady)} onClick={event => onOpen(chip.key!, event.currentTarget)} className={cls} style={border}>{inner}</button>
       ) : (
         <span className={`${cls} items-center`} style={border}>{inner}</span>
       )}
@@ -478,7 +488,7 @@ function AlertLedgerRow({ chip, onOpen, last }: { chip: PulseHeroChip; onOpen: (
   );
 }
 
-function HeroFacts({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: (key: string) => void }) {
+function HeroFacts({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: OpenPulseTile }) {
   const rows = chips.filter((chip) => chip.tone !== "positive").slice(0, 4);
   if (rows.length === 0) return null;
   return (
@@ -604,7 +614,7 @@ function PulseSmartBlock({
   wideMobile = false,
 }: {
   tile: PulseTile;
-  onOpen: () => void;
+  onOpen: (opener: HTMLButtonElement) => void;
   bankKey: string;
   wideMobile?: boolean;
 }) {
@@ -626,7 +636,7 @@ function PulseSmartBlock({
         type="button"
         disabled={!interactionReady}
         data-pulse-interaction-ready={String(interactionReady)}
-        onClick={onOpen}
+        onClick={event => onOpen(event.currentTarget)}
         data-pulse-key={tile.key}
         aria-haspopup="dialog"
         aria-label={`${tile.label}: ${accessibleReading}. ${state}. Source: ${tile.sourceLabel}`}
@@ -742,7 +752,7 @@ function SecondarySignalRow({
   onOpen,
 }: {
   tile: PulseTile;
-  onOpen: () => void;
+  onOpen: (opener: HTMLButtonElement) => void;
 }) {
   const interactionReady = useContext(PulseInteractionReady);
   const state = pulseTileState(tile);
@@ -758,7 +768,7 @@ function SecondarySignalRow({
         type="button"
         disabled={!interactionReady}
         data-pulse-interaction-ready={String(interactionReady)}
-        onClick={onOpen}
+        onClick={event => onOpen(event.currentTarget)}
         data-pulse-key={tile.key}
         className="group flex min-h-[58px] w-full min-w-0 items-center gap-2.5 border-t px-1 py-2 text-left first:border-t-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)" }}
@@ -814,7 +824,7 @@ function SecondarySignals({
   onOpen,
 }: {
   updates: PulseTile[];
-  onOpen: (key: string) => void;
+  onOpen: OpenPulseTile;
 }) {
   if (updates.length === 0) return null;
   const partial = updates.filter(
@@ -921,7 +931,7 @@ function SecondarySignals({
               <SecondarySignalRow
                 key={tile.key}
                 tile={tile}
-                onOpen={() => onOpen(tile.key)}
+                onOpen={opener => onOpen(tile.key, opener)}
               />
             ))}
           </ul>
@@ -932,14 +942,14 @@ function SecondarySignals({
 }
 
 /** A live situation row with the context the compact readings intentionally omit. */
-function AttentionTile({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
+function AttentionTile({ tile, onOpen }: { tile: PulseTile; onOpen: (opener: HTMLButtonElement) => void }) {
   const interactionReady = useContext(PulseInteractionReady);
   return (
     <button
       type="button"
       disabled={!interactionReady}
       data-pulse-interaction-ready={String(interactionReady)}
-      onClick={onOpen}
+      onClick={event => onOpen(event.currentTarget)}
       data-pulse-key={tile.key}
       className={styles.attentionRow}
       style={{
@@ -979,7 +989,9 @@ export default function PulseBoard({
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const [interactionReady, setInteractionReady] = useState(false);
+  const [focusReturnHref, setFocusReturnHref] = useState<string | undefined>();
   const pushedOpen = useRef(false);
+  const openerRef = useRef<HTMLElement | null>(null);
 
   const current = tiles.find((tile) => tile.key === open) ?? null;
   const lead = hero.leadKey ? tiles.find((tile) => tile.key === hero.leadKey) : null;
@@ -989,6 +1001,7 @@ export default function PulseBoard({
   useEffect(() => {
     const syncFromUrl = () => {
       const key = new URL(window.location.href).searchParams.get("open");
+      if (key && validKeys.has(key) && !pushedOpen.current) setFocusReturnHref(closedPulseHref());
       setOpen(key && validKeys.has(key) ? key : null);
     };
     let mounted = true;
@@ -1003,8 +1016,17 @@ export default function PulseBoard({
     };
   }, [validKeys]);
 
-  const openTile = (key: string) => {
+  const openTile: OpenPulseTile = (key, opener) => {
     if (!validKeys.has(key)) return;
+    // Touch/click on Safari need not focus a button. Retain the actual
+    // launcher instead of guessing from the previously focused page node.
+    openerRef.current = opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    // Freeze the exact closed location before writing our shareable query.
+    // Escape removes it asynchronously after the shared sheet's exit.
+    if (!open) {
+      const url = new URL(window.location.href);
+      setFocusReturnHref(`${url.pathname}${url.search}${url.hash}`);
+    }
     track("pulse_item_open");
     if (open) updateOpenParam(key, "replace");
     else {
@@ -1125,7 +1147,7 @@ export default function PulseBoard({
                 variant="secondary"
                 disabled={!interactionReady}
                 data-decision-action="open-status-details"
-                onClick={() => openTile(lead.key)}
+                onClick={event => openTile(lead.key, event.currentTarget)}
                 className={styles.leadButton}
                 style={{ backgroundColor: "var(--app-bg-elevated-solid)", color: "var(--app-ink)" }}
                 iconRight={<ArrowRight aria-hidden className="h-4 w-4" />}
@@ -1160,7 +1182,7 @@ export default function PulseBoard({
                   }}
                 >
                   {attention.map((tile) => (
-                    <AttentionTile key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
+                    <AttentionTile key={tile.key} tile={tile} onOpen={opener => openTile(tile.key, opener)} />
                   ))}
                 </div>
               )}
@@ -1183,7 +1205,7 @@ export default function PulseBoard({
               }}
             >
               {displayGroups.actionable.map((tile) => (
-                <AttentionTile key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
+                <AttentionTile key={tile.key} tile={tile} onOpen={opener => openTile(tile.key, opener)} />
               ))}
             </div>
           </section>
@@ -1202,7 +1224,7 @@ export default function PulseBoard({
                   tile={tile}
                   bankKey="readings"
                   wideMobile={wideReadingKeys.has(tile.key)}
-                  onOpen={() => openTile(tile.key)}
+                  onOpen={opener => openTile(tile.key, opener)}
                 />
               ))}
             </ul>
@@ -1215,6 +1237,8 @@ export default function PulseBoard({
       <Sheet
         open={open !== null}
         onClose={closeDrawer}
+        focusReturnHref={focusReturnHref}
+        returnFocusRef={openerRef}
         title={current?.label ?? ""}
         subtitle={current ? `Source: ${current.sourceLabel}` : undefined}
         maxHeight="85dvh"

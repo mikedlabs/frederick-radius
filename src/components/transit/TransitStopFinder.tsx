@@ -12,8 +12,6 @@ import {
   BookmarkCheck,
   BusFront,
   ChevronDown,
-  Clock3,
-  ExternalLink,
   LocateFixed,
   MapPin,
   Navigation,
@@ -33,7 +31,6 @@ import {
 import { useMounted } from "@/hooks/useSaved";
 import { haversineMeters } from "@/lib/geo";
 import { haptic } from "@/lib/haptics";
-import { readableTextOn } from "@/lib/color/readableText";
 import {
   findCurrentTransitVehicle,
   requestTransitVehicleFocus,
@@ -43,6 +40,7 @@ import {
   type TransitVehicleFocusDetail,
 } from "@/lib/transit-focus";
 import StopArrivalsPopup, { type SelectedStop } from "./StopArrivalsPopup";
+import TransitDepartureBoard, { type TransitDeparture } from "./TransitDepartureBoard";
 import {
   MAX_SAVED_TRANSIT_BUSES,
   MAX_SAVED_TRANSIT_STOPS,
@@ -50,9 +48,6 @@ import {
   estimateWalkingMinutes,
   isPredictionFresh,
   minutesUntilArrival,
-  transitBusWatchId,
-  type Catchability,
-  type TransitBusRef,
 } from "./transitRiderModel";
 import { useSavedTransitBuses } from "./useSavedTransitBuses";
 import { useSavedTransitStops } from "./useSavedTransitStops";
@@ -60,7 +55,6 @@ import { useLiveVehicles } from "./useLiveVehicles";
 import {
   useStopArrivals,
   type StopArrivalsStatus,
-  type StopPrediction,
 } from "./useStopArrivals";
 
 type StopRecord = {
@@ -76,17 +70,6 @@ type TransitRoute = {
   short: string;
   name: string;
   color: string;
-};
-
-type ArrivalRowData = {
-  key: string;
-  prediction: StopPrediction;
-  route?: TransitRoute;
-  minutes: number;
-  fresh: boolean;
-  catchability: Catchability | null;
-  focus: TransitVehicleFocusDetail | null;
-  busRef: TransitBusRef | null;
 };
 
 const STOPS: SelectedStop[] = CURRENT_TRANSIT_STOPS.map((stop) => ({
@@ -107,13 +90,7 @@ const ROUTE_BY_ID: Record<string, TransitRoute> = Object.fromEntries(
 
 const MAX_RESULTS = 6;
 const MAX_LOCATION_ACCURACY_METERS = 250;
-const COUNTY_TRANSIT_URL =
-  "https://www.frederickcountymd.gov/207/Transit-Routes-Schedule-Information";
-const CLOCK_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  hour: "numeric",
-  minute: "2-digit",
-});
-
+const PROVIDER_STALE_MS = 90_000;
 function milesLabel(meters: number): string {
   const miles = meters / 1609.344;
   return miles < 0.1
@@ -132,45 +109,6 @@ function ageLabel(updatedAt: number | null, nowMs: number): string | null {
   if (seconds < 15) return "just now";
   if (seconds < 90) return `${seconds} sec ago`;
   return `${Math.round(seconds / 60)} min ago`;
-}
-
-function arrivalClock(arrivalEpoch: number | undefined): string {
-  if (arrivalEpoch == null) return "Last estimate";
-  return CLOCK_FORMATTER.format(new Date(arrivalEpoch * 1000));
-}
-
-function RouteBadge({ route }: { route?: TransitRoute }) {
-  const background = route?.color ?? "var(--app-cool)";
-  return (
-    <span
-      aria-label={route ? `Route ${route.short}` : "TransIT bus"}
-      className={styles.routeBadge}
-      style={{
-        background,
-        color: route ? readableTextOn(route.color) : "#FFFFFF",
-        boxShadow: "inset 0 0 0 1px rgba(22, 20, 14, 0.12)",
-      }}
-    >
-      {route?.short ?? "Bus"}
-    </span>
-  );
-}
-
-function CatchabilityLabel({ value }: { value: Catchability }) {
-  const color =
-    value.kind === "likely"
-      ? "var(--state-open)"
-      : value.kind === "tight"
-        ? "var(--state-closing)"
-        : "var(--app-danger-text)";
-  return (
-    <span
-      className={styles.catchability}
-      style={{ color }}
-    >
-      {value.label}
-    </span>
-  );
 }
 
 function FeedBadge({
@@ -231,108 +169,6 @@ function FeedBadge({
   );
 }
 
-function ArrivalRow({
-  row,
-  saved,
-  onTrack,
-  onToggleSaved,
-}: {
-  row: ArrivalRowData;
-  saved: boolean;
-  onTrack: (detail: TransitVehicleFocusDetail) => void;
-  onToggleSaved: (bus: TransitBusRef) => void;
-}) {
-  const timeLabel = row.fresh
-    ? row.minutes === 0
-      ? "Due"
-      : `${row.minutes} min`
-      : arrivalClock(row.prediction.arrivalEpoch);
-  const destination = row.prediction.headsign?.trim();
-
-  return (
-    <li
-      className={styles.arrivalRow}
-    >
-      <RouteBadge route={row.route} />
-      <span className={styles.arrivalDestination}>
-        <span
-          className="block"
-          style={{ color: "var(--app-ink)" }}
-        >
-          {destination
-            ? `To ${destination}`
-            : row.route?.name ?? "TransIT bus"}
-        </span>
-        <span
-          className="block"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {row.route?.name ?? "TransIT bus"} ·{" "}
-          {row.fresh ? "Live estimate" : "Estimate delayed"}
-        </span>
-      </span>
-      <span className={styles.arrivalEta}>
-        <span
-          className={styles.arrivalTime} data-transit-arrival-time
-          style={{
-            color: "var(--app-ink)",
-          }}
-        >
-          {timeLabel}
-        </span>
-        {row.catchability && <CatchabilityLabel value={row.catchability} />}
-      </span>
-      {row.focus && row.busRef && (
-        <div className={styles.arrivalActions}>
-          <button
-            type="button"
-            onClick={() => onTrack(row.focus as TransitVehicleFocusDetail)}
-            aria-label={`Track ${
-              destination
-                ? `${row.route?.name ?? "this bus"} to ${destination}`
-                : row.route?.name ?? "this bus"
-            } on the live map`}
-            className={styles.trackAction}
-          >
-            <LocateFixed
-              className="h-3.5 w-3.5 shrink-0"
-              strokeWidth={2.2}
-              aria-hidden
-            />
-            Track on map
-          </button>
-          <button
-            type="button"
-            onClick={() => onToggleSaved(row.busRef as TransitBusRef)}
-            aria-pressed={saved}
-            aria-label={
-              saved
-                ? `Remove bus ${row.busRef.vehicleId} from Saved`
-                : `Save bus ${row.busRef.vehicleId}`
-            }
-            className={styles.saveAction}
-          >
-            {saved ? (
-              <BookmarkCheck
-                className="h-3.5 w-3.5 shrink-0"
-                strokeWidth={2.2}
-                aria-hidden
-              />
-            ) : (
-              <Bookmark
-                className="h-3.5 w-3.5 shrink-0"
-                strokeWidth={2.2}
-                aria-hidden
-              />
-            )}
-            {saved ? "Saved bus" : "Save bus"}
-          </button>
-        </div>
-      )}
-    </li>
-  );
-}
-
 function StopCommandPanel({
   stop,
   position,
@@ -352,6 +188,12 @@ function StopCommandPanel({
 }) {
   const [showFullDetail, setShowFullDetail] = useState(false);
   const { snapshot, nowMs } = useStopArrivals(stop.id);
+  // A hung refresh must not keep a prior provider observation live forever.
+  // Reuse this owner's clock; no second countdown or request loop is needed.
+  const providerCurrent = nowMs > 0 && snapshot.providerUpdatedAt != null &&
+    Math.abs(nowMs - snapshot.providerUpdatedAt) <= PROVIDER_STALE_MS;
+  const effectiveStatus: StopArrivalsStatus = snapshot.status === "live" && !providerCurrent
+    ? "stale" : snapshot.status;
   const liveVehicles = useLiveVehicles();
   const { buses: savedBuses, toggle: toggleSavedBus } =
     useSavedTransitBuses();
@@ -366,25 +208,16 @@ function StopCommandPanel({
     distanceMeters == null ? null : estimateWalkingMinutes(distanceMeters);
   const wheelchairBoarding = STOP_BY_ID[stop.id]?.wc === true;
 
-  const routes = Array.from(
-    new Set(
-      snapshot.predictions
-        .filter((prediction) =>
-          isPredictionFresh(
-            prediction.timestamp,
-            nowMs,
-            snapshot.status === "live",
-          ),
-        )
-        .map((prediction) => prediction.routeId)
-        .filter((routeId): routeId is string => Boolean(routeId)),
-    ),
-  )
-    .map((routeId) => ROUTE_BY_ID[routeId])
-    .filter((route): route is TransitRoute => Boolean(route));
-
   const arrivals = snapshot.predictions
-    .map((prediction, index): ArrivalRowData | null => {
+    // Withdrawn trips and unusable stop predictions are not next departures.
+    // Keep the owner's raw snapshot intact for source diagnostics.
+    .filter((prediction) =>
+      prediction.tripScheduleRelationship !== "CANCELED" &&
+      prediction.tripScheduleRelationship !== "DELETED" &&
+      prediction.scheduleRelationship !== "SKIPPED" &&
+      prediction.scheduleRelationship !== "NO_DATA",
+    )
+    .map((prediction, index): TransitDeparture | null => {
       const minutes = minutesUntilArrival(
         prediction.arrivalEpoch,
         nowMs,
@@ -398,7 +231,7 @@ function StopCommandPanel({
         isPredictionFresh(
           prediction.timestamp,
           nowMs,
-          snapshot.status === "live",
+          effectiveStatus === "live",
         );
       const currentVehicle = fresh
         ? findCurrentTransitVehicle({
@@ -467,14 +300,9 @@ function StopCommandPanel({
           : null,
       };
     })
-    .filter((row): row is ArrivalRowData => row != null)
+    .filter((row): row is TransitDeparture => row != null)
     .sort((a, b) => a.minutes - b.minutes)
     .slice(0, 4);
-
-  const showScheduleLink =
-    snapshot.status === "stale" ||
-    snapshot.status === "unavailable" ||
-    (snapshot.status === "live" && arrivals.length === 0);
 
   return (
     <div className={styles.boardingCard} data-transit-boarding-card>
@@ -514,7 +342,7 @@ function StopCommandPanel({
                 className="mt-1 text-[13px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
-                Use your location below to compare the walk with arrivals.
+                Add your location in Change stop to compare the walk with arrivals.
               </p>
             )}
             {wheelchairBoarding && (
@@ -527,155 +355,38 @@ function StopCommandPanel({
             )}
           </div>
           <FeedBadge
-            status={snapshot.status}
+            status={effectiveStatus}
             updatedAt={snapshot.providerUpdatedAt}
             nowMs={nowMs}
           />
         </div>
 
-        {routes.length > 0 && (
-          <div>
-            <p
-              className="mb-1 text-[12px] font-semibold"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Routes with live arrivals
-            </p>
-            <div
-              aria-label="Routes with live arrivals"
-              className={styles.servedRoutes}
-            >
-              {routes.map((route) => (
-                <span
-                  key={route.id}
-                  className={styles.servedRoute}
-                >
-                  <RouteBadge route={route} />
-                  <span
-                    className="text-[12.5px] font-medium"
-                    style={{ color: "var(--app-ink-2)" }}
-                  >
-                    {route.name}
-                  </span>
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div>
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <p
-              className="flex items-center gap-1.5 text-[11px] font-bold"
-              style={{ color: "var(--app-ink-2)" }}
-            >
-              <Clock3 className="h-3.5 w-3.5" strokeWidth={2.1} aria-hidden />
-              Next arrivals
-            </p>
-            {walkingMinutes != null && snapshot.status === "live" && (
-              <span
-                className="text-[12px]"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                Walk timing included
-              </span>
-            )}
-          </div>
-
-          {snapshot.status === "loading" ? (
-            <p
-              className="rounded-[var(--app-radius-sm)] px-3 py-3 text-[12px]"
-              style={{
-                color: "var(--app-ink-3)",
-                background: "var(--app-bg-sunken)",
-              }}
-            >
-              Radius is checking for inbound buses.
-            </p>
-          ) : arrivals.length > 0 ? (
-            <ul className={styles.arrivalList}>
-              {arrivals.map((row) => (
-                <ArrivalRow
-                  key={row.key}
-                  row={row}
-                  saved={
-                    row.busRef
-                      ? savedBuses.some(
-                          (bus) =>
-                            bus.watchId === transitBusWatchId(row.busRef!),
-                        )
-                      : false
-                  }
-                  onTrack={onTrackVehicle}
-                  onToggleSaved={(bus) => {
-                    const result = toggleSavedBus(bus);
-                    if (result.limitReached) {
-                      haptic("warning");
-                      onAnnounce(
-                        `You can save up to ${MAX_SAVED_TRANSIT_BUSES} buses. Remove one from Saved before adding another.`,
-                      );
-                      return;
-                    }
-                    haptic(result.saved ? "success" : "light");
-                    onAnnounce(
-                      result.saved
-                        ? result.persistent
-                          ? `Bus ${bus.vehicleId} saved for future tracking.`
-                          : `Bus ${bus.vehicleId} saved for this visit only. Device storage is unavailable.`
-                        : result.persistent
-                          ? `Bus ${bus.vehicleId} removed from Saved.`
-                          : `Bus ${bus.vehicleId} removed for this visit only. Device storage is unavailable.`,
-                    );
-                  }}
-                />
-              ))}
-            </ul>
-          ) : snapshot.status === "unavailable" ? (
-            <p
-              className="rounded-[var(--app-radius-sm)] px-3 py-3 text-[12px] leading-snug"
-              style={{
-                color: "var(--app-ink-2)",
-                background: "var(--app-bg-sunken)",
-              }}
-            >
-              Live arrivals are unavailable for this stop right now.
-            </p>
-          ) : snapshot.status === "stale" ? (
-            <p
-              className="rounded-[var(--app-radius-sm)] px-3 py-3 text-[12px] leading-snug"
-              style={{
-                color: "var(--app-ink-2)",
-                background: "var(--app-bg-sunken)",
-              }}
-            >
-              The last feed update has no usable arrival times.
-            </p>
-          ) : (
-            <p
-              className="rounded-[var(--app-radius-sm)] px-3 py-3 text-[12px] leading-snug"
-              style={{
-                color: "var(--app-ink-2)",
-                background: "var(--app-bg-sunken)",
-              }}
-            >
-              No live arrival is reporting for this stop right now. Check the
-              official schedule before leaving.
-            </p>
-          )}
-
-          {showScheduleLink && (
-            <a
-              href={COUNTY_TRANSIT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="tap-44-y mt-1.5 inline-flex items-center gap-1.5 text-[13px] font-semibold"
-              style={{ color: "var(--app-link)" }}
-            >
-              Check the official schedule
-              <ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden />
-            </a>
-          )}
-        </div>
+        <TransitDepartureBoard
+          arrivals={arrivals}
+          status={effectiveStatus}
+          savedBusWatchIds={savedBuses.map((bus) => bus.watchId)}
+          onTrack={onTrackVehicle}
+          onToggleSaved={(bus) => {
+            const result = toggleSavedBus(bus);
+            if (result.limitReached) {
+              haptic("warning");
+              onAnnounce(
+                `You can save up to ${MAX_SAVED_TRANSIT_BUSES} buses. Remove one from Saved before adding another.`,
+              );
+              return;
+            }
+            haptic(result.saved ? "success" : "light");
+            onAnnounce(
+              result.saved
+                ? result.persistent
+                  ? `Bus ${bus.vehicleId} saved for future tracking.`
+                  : `Bus ${bus.vehicleId} saved for this visit only. Device storage is unavailable.`
+                : result.persistent
+                  ? `Bus ${bus.vehicleId} removed from Saved.`
+                  : `Bus ${bus.vehicleId} removed for this visit only. Device storage is unavailable.`,
+            );
+          }}
+        />
 
         {walkingMinutes != null && (
           <p
@@ -755,7 +466,7 @@ function StopCommandPanel({
             className="border-t px-3.5 py-3"
             style={{ borderColor: "var(--app-border)" }}
           >
-            <StopArrivalsPopup key={stop.id} stop={stop} showName={false} />
+            <StopArrivalsPopup key={stop.id} stop={stop} showName={false} existingSnapshot={{ snapshot, nowMs }} />
           </div>
         )}
       </details>
@@ -836,6 +547,7 @@ export default function TransitStopFinder() {
   const [showNearby, setShowNearby] = useState(false);
   const [selected, setSelected] = useState<SelectedStop | null>(null);
   const [notice, setNotice] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const noticeTimer = useRef<number | null>(null);
   const normalized = query.trim().toLocaleLowerCase();
   const position = geoState.status === "granted" ? geoState.position : null;
@@ -901,8 +613,9 @@ export default function TransitStopFinder() {
       .slice(0, MAX_RESULTS);
   }, [normalized, position, showNearby]);
 
-  const chooseStop = useCallback((stop: SelectedStop) => {
+  const chooseStop = useCallback((stop: SelectedStop, fromSearch = false) => {
     setSelected(stop);
+    setSearchOpen(false);
     setQuery("");
     setShowNearby(false);
     const url = new URL(window.location.href);
@@ -914,6 +627,15 @@ export default function TransitStopFinder() {
     );
     haptic("light");
     announce(`${stop.name} selected.`);
+    // A selected result is hidden when Change stop closes. Safari pointer
+    // clicks need not focus buttons, so use the action's origin rather than
+    // document.activeElement to restore focus to the stable rider heading.
+    if (fromSearch) window.requestAnimationFrame(() => {
+      const heading = document.getElementById("my-stop-heading");
+      const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      heading?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+      heading?.focus({ preventScroll: true });
+    });
   }, [announce]);
 
   useEffect(() => {
@@ -1012,25 +734,7 @@ export default function TransitStopFinder() {
               ? "Nearest mapped stops. Distances are straight-line."
               : null;
 
-  return (
-    <section
-      aria-labelledby="my-stop-heading"
-      aria-busy={!interactionReady}
-      data-transit-stop-interaction-ready={
-        interactionReady ? "true" : "false"
-      }
-      className={styles.stopFinder}
-    >
-      <header className={styles.finderHeader}>
-        <span className={styles.finderIcon} aria-hidden>
-          <BusFront className="h-5 w-5" strokeWidth={2.1} />
-        </span>
-        <div className="min-w-0">
-          <h2 id="my-stop-heading" tabIndex={-1}>My stop</h2>
-          <p>Search by stop or street. Your location is optional.</p>
-        </div>
-      </header>
-
+  const searchControls = (
       <div className={styles.searchArea}>
         <p
           className={styles.searchLabel}
@@ -1160,7 +864,7 @@ export default function TransitStopFinder() {
               <li key={stop.id}>
                 <button
                   type="button"
-                  onClick={() => chooseStop(stop)}
+                  onClick={() => chooseStop(stop, true)}
                   className={styles.result}
                 >
                   <MapPin
@@ -1189,19 +893,29 @@ export default function TransitStopFinder() {
           </ul>
         )}
 
-        <p
-          role="status"
-          aria-live="polite"
-          className={
-            notice
-              ? "mt-2 min-h-5 text-[13px] font-medium"
-              : "sr-only"
-          }
-          style={{ color: "var(--app-link)" }}
-        >
-          {notice}
-        </p>
+
       </div>
+  );
+
+  return (
+    <section
+      aria-labelledby="my-stop-heading"
+      aria-busy={!interactionReady}
+      data-transit-stop-interaction-ready={
+        interactionReady ? "true" : "false"
+      }
+      className={styles.stopFinder}
+    >
+      <header className={styles.finderHeader}>
+        <span className={styles.finderIcon} aria-hidden>
+          <BusFront className="h-5 w-5" strokeWidth={2.1} />
+        </span>
+        <div className="min-w-0">
+          <h2 id="my-stop-heading" tabIndex={-1}>My stop</h2>
+          {!activeStop && <p>Search by stop or street. Your location is optional.</p>}
+        </div>
+      </header>
+
       <SavedStopRail
         stops={currentSavedStops}
         activeStopId={activeStop?.id ?? null}
@@ -1221,6 +935,30 @@ export default function TransitStopFinder() {
         />
       )}
 
+      <div data-transit-stop-search>
+        {activeStop ? (
+          <details className={styles.changeStop} open={searchOpen}
+            onToggle={(event) => setSearchOpen(event.currentTarget.open)}>
+            <summary className={styles.changeStopSummary}>
+              <span>Change stop</span>
+              <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
+            </summary>
+            {searchControls}
+          </details>
+        ) : searchControls}
+      </div>
+        <p
+          role="status"
+          aria-live="polite"
+          className={
+            notice
+              ? "mt-2 min-h-5 text-[13px] font-medium"
+              : "sr-only"
+          }
+          style={{ color: "var(--app-link)" }}
+        >
+          {notice}
+        </p>
     </section>
   );
 }

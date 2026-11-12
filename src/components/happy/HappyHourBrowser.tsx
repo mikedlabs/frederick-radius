@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
 import { townAccent } from "@/lib/townAccent";
 import Link from "next/link";
 import Image from "next/image";
@@ -8,6 +8,7 @@ import { BadgeCheck, Martini } from "lucide-react";
 import DealLines from "@/components/happy/DealLines";
 import { figureCount } from "@/lib/happyHourDeal";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
+import { isPlacePhotoFailureSignal, placePhotoFailureSignalSrc } from "@/lib/place-card-photo";
 import type { Hours } from "@/data/places";
 
 /**
@@ -63,10 +64,53 @@ function fmtWindows(ws: HHWindowLite[]): string {
   return ws.map((w) => (w.start === 0 && w.end >= 1440 ? "All day" : `${fmtMin(w.start)}–${fmtMin(w.end)}`)).join(", ");
 }
 
-function PhotoFallback() {
+/**
+ * Failure tracking for one place photo, shared by the cover and the row thumb.
+ * The photo proxy answers `fallback=signal` with a 1px image when it has no
+ * photograph to give (no key, daily cap, upstream error), so a failed request
+ * drops back to a text or icon state. Without this the proxy's own "photo not
+ * available" plate is painted as if it were the venue.
+ *
+ * `failed` is keyed by the exact src, so a cover that recasts to another venue
+ * never inherits the last photo's result.
+ */
+export function usePlacePhotoFailure(photo: string | undefined, cssWidth?: number) {
+  const src = photo
+    ? placePhotoFailureSignalSrc(cssWidth ? proxyPhotoAtWidth(photo, cssWidth) : photo)
+    : null;
+  const ref = useRef<HTMLImageElement>(null);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  useEffect(() => {
+    const image = ref.current;
+    if (!src || !image?.complete) return;
+    // Hydration can attach after a cached failure or the 1px signal has
+    // already loaded, when neither onLoad nor onError will fire again.
+    queueMicrotask(() => {
+      if (ref.current === image && image.complete && isPlacePhotoFailureSignal(image)) setFailedSrc(src);
+    });
+  }, [src]);
+  return {
+    /** The src to render, or null when there is no photo or it failed. */
+    src: src !== null && failedSrc !== src ? src : null,
+    imageProps: {
+      ref,
+      onLoad: (event: SyntheticEvent<HTMLImageElement>) => {
+        if (isPlacePhotoFailureSignal(event.currentTarget)) setFailedSrc(src);
+      },
+      onError: () => setFailedSrc(src),
+    },
+  };
+}
+
+/** 52px row thumb: the venue photo over a flat tile, so a missing or failed
+ *  photo leaves the icon and never a simulated photograph. */
+function RowThumb({ photo }: { photo?: string }) {
+  // 52px tile: ask the proxy for 52px, not the stored 800px hero.
+  const { src, imageProps } = usePlacePhotoFailure(photo, 52);
   return (
-    <div aria-hidden className="grid h-full w-full place-items-center" style={{ background: "linear-gradient(150deg, color-mix(in srgb, var(--app-accent) 28%, var(--app-brand-2)) 0%, var(--app-brand-2) 70%)" }}>
-      <Martini className="h-5 w-5" strokeWidth={1.75} style={{ color: "color-mix(in srgb, var(--app-accent) 60%, #fff)" }} />
+    <div className="relative grid h-[52px] w-[52px] shrink-0 place-items-center overflow-hidden rounded-[10px]" style={{ background: "var(--app-bg-sunken)" }}>
+      <Martini aria-hidden className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} />
+      {src && <Image key={src} {...imageProps} src={src} alt="" fill sizes="52px" unoptimized={src.startsWith("/api/place-photo")} className="object-cover" />}
     </div>
   );
 }
@@ -92,10 +136,7 @@ function RowCard({ r, when, live, endsAt, accent, hideTown }: { r: HHRow; when: 
       {/* Stretched link needs its own name — the card text is OUTSIDE the
           anchor, so without a label a screen reader announces nothing. */}
       <Link href={`/places/${r.slug}`} aria-label={r.name} className="block outline-none"><span className="absolute inset-0" aria-hidden /></Link>
-      <div className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-[10px]">
-        {/* 52px tile: ask the proxy for 52px, not the stored 800px hero. */}
-        {r.photo ? <Image src={proxyPhotoAtWidth(r.photo, 52)} alt="" fill sizes="52px" unoptimized={r.photo.startsWith("/api/place-photo")} className="object-cover" /> : <PhotoFallback />}
-      </div>
+      <RowThumb photo={r.photo} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="min-w-0 truncate text-[14px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>

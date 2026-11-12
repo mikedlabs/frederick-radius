@@ -45,6 +45,7 @@ export default function PlaceHeroMedia({
       sizes={size === "hero" ? "(max-width: 720px) 100vw, 720px" : "(max-width: 720px) 50vw, 360px"}
       placeholder="blur" blurDataURL={PAPER_CREAM_BLUR}
       className={`absolute inset-0 z-0 h-full w-full object-cover${size === "hero" ? " ken-burns" : ""}`}
+      style={source.kind !== "google" ? { objectPosition: source.objectPosition } : undefined}
       onLoad={(event) => {
         const result = isPlacePhotoFailureSignal(event.currentTarget) ? "failed" : "loaded";
         setState((current) => recordPlaceCardPhotoResult(plan, current, source.src, result));
@@ -66,7 +67,7 @@ export default function PlaceHeroMedia({
             onClick={() => setViewer({ source, name })}>
             {image}
             <span aria-hidden className="pointer-events-none absolute inset-1 z-20 rounded-sm border-2 border-transparent group-focus-visible:border-[var(--app-brand)]" />
-            <span aria-hidden className="pointer-events-none absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1.5 text-[11px] font-semibold text-white backdrop-blur-sm">
+            <span aria-hidden className="pointer-events-none absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-[var(--app-radius-sm)] bg-black/70 px-2.5 py-1.5 text-[11px] font-semibold text-white backdrop-blur-sm">
               <Expand className="h-3.5 w-3.5" /> View photo
             </span>
           </button>

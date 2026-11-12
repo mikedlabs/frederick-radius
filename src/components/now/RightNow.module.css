@@ -237,3 +237,86 @@
     transition: none;
   }
 }
+
+/* Recognition-led Parks browse keeps the existing result order. Its own
+   content width and rem threshold also respond to enlarged reading text. */
+.parksExplorer {
+  container-name: nearby-parks;
+  container-type: inline-size;
+}
+
+.parksGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--app-space-3);
+}
+
+.parkResult {
+  min-width: 0;
+}
+
+/* Native one-li-per-place semantics and unchanged DOM order. Pairs are only
+   adjacent exact candidates; singles never leave a half-row hole. */
+@container nearby-parks (min-width: 22rem) {
+  .parksGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .parkResult[data-nearby-parks-row="single"],
+  .parkResult:has([data-place-card-has-photo="false"]),
+  .parkResult[data-parks-pair-start="true"]:has(+ .parkResult [data-place-card-has-photo="false"]),
+  .parkResult:has([data-place-card-has-photo="false"]) + .parkResult[data-parks-pair-start="false"] {
+    grid-column: 1 / -1;
+  }
+
+  .parkResult[data-nearby-parks-row="pair"] :global([data-place-card-photo]) {
+    aspect-ratio: 4 / 3;
+  }
+
+  .parkResult[data-parks-pair-start="true"]:has(+ .parkResult [data-place-card-has-photo="false"]) :global([data-place-card-photo]),
+  .parkResult:has([data-place-card-has-photo="false"]) + .parkResult[data-parks-pair-start="false"] :global([data-place-card-photo]) {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+.legacyHours {
+  display: grid;
+  min-width: 0;
+  gap: var(--app-space-2);
+  padding: var(--app-space-3);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-sunken);
+  color: var(--app-ink-2);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.legacyHours button,
+.clearLegacyHours {
+  min-width: 44px;
+  min-height: 48px;
+  padding: var(--app-space-2) var(--app-space-3);
+  border: 1px solid var(--app-control-border);
+  border-radius: var(--app-radius-md);
+  color: var(--app-link);
+  background: var(--app-bg-elevated-solid);
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.legacyHours button:focus-visible,
+.clearLegacyHours:focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: 2px;
+}
+
+.controlSection:focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: 4px;
+  border-radius: var(--app-radius-sm);
+}

@@ -1,53 +1,80 @@
+/* PLAIN TOOL: the open-now lead is a row on the white ground, ruled above
+   and below. Type carries it: a category label, the name, the status line
+   and the town, then one line of quiet text actions. A real photograph
+   sits at the row's right edge; without one there is no media at all. */
 .preview {
   display: grid;
   container-type: inline-size;
   width: 100%;
   min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
+  /* Focus rings on the edge actions draw outside the row. */
+  overflow: visible;
+  padding-block: var(--app-space-4) var(--spacing);
+  border: 0;
+  border-block: 1px solid var(--app-border);
+  border-radius: 0;
   color: var(--app-ink);
-  background: var(--app-bg-elevated-solid);
+  background: transparent;
+}
+
+.content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "facts";
+  column-gap: var(--app-space-4);
+  align-items: start;
+  min-width: 0;
+}
+
+.preview[data-has-photo="true"] .content {
+  grid-template-columns: minmax(0, 1fr) 96px;
+  grid-template-areas: "facts media";
 }
 
 .media {
+  grid-area: media;
   min-width: 0;
+  width: 96px;
+  height: 96px;
   overflow: hidden;
+  border-radius: var(--app-radius-sm);
 }
 
 .media > [data-place-card-photo] {
-  height: clamp(170px, 48vw, 230px);
+  width: 100%;
+  height: 100%;
   aspect-ratio: auto;
+  border-radius: inherit;
 }
 
 .facts {
+  grid-area: facts;
   min-width: 0;
-  padding: clamp(18px, 5cqi, 28px);
 }
 
 .category {
-  margin: 0 0 10px;
+  margin: 0 0 6px;
   color: var(--app-ink-2);
   font-size: 0.8125rem;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.4;
 }
 
 .name {
   margin: 0;
   color: var(--app-ink);
-  font-size: clamp(1.625rem, 7cqi, 2.125rem);
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  line-height: 1.12;
+  font-size: clamp(1.25rem, 6cqi, 1.375rem);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
 .context {
   display: grid;
-  gap: 6px;
-  margin-top: 16px;
-  font-size: 0.9375rem;
+  gap: 2px;
+  margin-top: var(--app-space-2);
+  font-size: 0.875rem;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
@@ -66,35 +93,39 @@
   color: var(--app-ink-2);
 }
 
+/* One line of quiet text actions. Each keeps the 48px target the earlier
+   row offered (above the 44px floor); the line wraps rather than squeezing a
+   label when text is enlarged. */
 .actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-top: 1px solid var(--app-border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--app-space-5);
+  margin-top: var(--app-space-2);
 }
 
 .actions > a {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  min-width: 0;
+  min-width: 44px;
   min-height: 48px;
-  padding: 12px;
-  color: var(--app-link);
+  color: var(--app-ink);
   font-size: 0.9375rem;
-  font-weight: 650;
-  line-height: 1.4;
-  text-align: center;
+  font-weight: 600;
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
+/* View place is the row's one primary action. */
 .actions > a:first-child {
-  color: var(--app-on-brand);
-  background: var(--app-brand);
+  color: var(--app-link);
 }
 
-.actions > a + a {
-  border-left: 1px solid var(--app-border);
+.actions > a:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 
 .actions svg {
@@ -104,44 +135,55 @@
 }
 
 .actions > a:focus-visible {
-  outline: 3px solid var(--app-focus);
-  outline-offset: -4px;
+  outline: 2px solid var(--app-focus);
+  outline-offset: 2px;
+  border-radius: var(--app-radius-sm);
 }
 
-.actions > a:first-child:focus-visible {
-  outline-color: var(--app-on-brand);
-}
-
-/* A factual lead stays compact while every line can grow with text size. */
-.preview[data-has-photo="false"] .facts {
-  padding: 16px 18px;
-}
-
-.preview[data-has-photo="false"] .category {
-  margin-bottom: 6px;
-  font-weight: 600;
-}
-
-.preview[data-has-photo="false"] .name {
-  font-size: clamp(1.375rem, 6cqi, 1.625rem);
-  line-height: 1.15;
-}
-
-.preview[data-has-photo="false"] .context {
+.saveControl {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 12px;
-  margin-top: 10px;
-}
-
-.preview[data-has-photo="false"] .context > p {
   min-width: 0;
-  max-width: 100%;
 }
 
-@container (min-width: 600px) {
-  .media > [data-place-card-photo] {
-    height: 260px;
+/* Save reads as Map's twin: icon beside a label of the same size and weight.
+   SaveButton keeps its own color, which is the saved-state signal. */
+.saveControl > button {
+  flex: 0 0 auto;
+  flex-direction: row;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 48px;
+  padding: 0;
+  border-radius: var(--app-radius-sm);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.saveControl > button:hover {
+  background: transparent;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.saveControl > button > span:not([aria-hidden]) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.preview > :global(.place-card-photo-credit) {
+  padding-inline: 0;
+  border-top: 0;
+}
+
+@container (min-width: 36rem) {
+  .preview[data-has-photo="true"] .content {
+    grid-template-columns: minmax(0, 1fr) 128px;
+  }
+
+  .media {
+    width: 128px;
+    height: 128px;
   }
 }

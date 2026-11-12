@@ -29,6 +29,16 @@ export function hasNearbyCategoryBackStep(raw: unknown): boolean {
     (raw as Record<string, unknown>)[NEARBY_CATEGORY_HISTORY_KEY] === true);
 }
 
+/** Whether a newly chosen intent can use general-hours refinements. Old
+ * explicit URL flags remain readable below so the UI can explain/clear them. */
+export function nearbySupportsHours(cravingKey: string | null): boolean {
+  if (!cravingKey) return false;
+  if (isMealKey(cravingKey)) return true;
+  if (!Object.hasOwn(CRAVING_BY_KEY, cravingKey)) return false;
+  const craving = CRAVING_BY_KEY[cravingKey];
+  return !craving.alwaysOpen && craving.availability !== "not-applicable";
+}
+
 /** Preferences only: no device coordinates, computed hours, or live counts. */
 export function readNearbyQuery(
   input: QueryReader | NearbyQueryValues,
@@ -87,6 +97,9 @@ export function changeNearbyQuery(
   const next = {
     ...previous,
     ...(categoryChanged ? { facetKey: null, closingSoonOnly: false } : {}),
+    // An explicit new Parks/lodging choice must not inherit Food's urgency.
+    // Merely opening an old Parks URL does not run this category transition.
+    ...(categoryChanged && !nearbySupportsHours(patch.cravingKey ?? null) ? { openOnly: false } : {}),
     ...patch,
   };
   return readNearbyQuery(queryValues(next));

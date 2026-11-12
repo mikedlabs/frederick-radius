@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useIsSaved, useToggleSave, useMounted, useSavedList, useSetEventSaved, useEventSavedState, savedChangeDescription } from "@/hooks/useSaved";
 import { useFollowMutationState, useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { Bookmark } from "lucide-react";
+import { BAR_QUIET_CELL_CLASS } from "@/components/ui/MobileActionBar";
 import { haptic } from "@/lib/haptics";
 import {
   isInstallPromptSuppressedPath,
@@ -18,27 +19,33 @@ import {
   decisionContextFromPath,
   trackDecision,
 } from "@/lib/decision/telemetry";
-import { toast } from "sonner";
+import { notifyError, notifyRemoved, notifySaved } from "@/lib/feedback/notify";
 
 export default function SaveButton({
   refType,
   refId,
   label,
   barLabel,
+  importLocalSavesOnMount = true,
 }: {
   refType: "place" | "event" | "radius";
   refId: string;
+  /** Always "Save {name}". The control strips that one leading verb, so a
+   *  title that itself begins with "Save" keeps its own words. */
   label: string;
   /** Render as a complete mobile action-bar cell so the visible label is
    *  inside the same button hit area as the bookmark icon. */
   barLabel?: string;
+  /** Read saved membership on arrival without importing unrelated device saves.
+   * Explicit Save/Remove still use the existing confirmed write queue. */
+  importLocalSavesOnMount?: boolean;
 }) {
   const mounted = useMounted();
   // For places, route through the auth-aware useFollows hook: writes
   // hit the DB when signed in, fall back to localStorage when signed
   // out. Events + radii stay on the legacy useSaved hook by design
   // (Phase 1 brief framed sync as "follow PLACES"; broader sync later).
-  const placeFollowed = useIsFollowed(refType === "place" ? refId : "");
+  const placeFollowed = useIsFollowed(refType === "place" ? refId : "", { importLocalSavesOnMount });
   const failureDescriptionRef = useRef<string | null>(null);
   const togglePlace = useToggleFollow(refId, "icon", (description) => { failureDescriptionRef.current = description; });
   const legacyIsSaved = useIsSaved(refType, refId, refType !== "event");
@@ -79,7 +86,8 @@ export default function SaveButton({
       if (failureDescriptionRef.current !== null || nextSaved === wasSaved) throw new Error("Save state did not change");
       return true;
     } catch (error) {
-      toast.error(wasSaved ? "Could not remove from Saved" : "Could not save this item", {
+      notifyError({
+        title: wasSaved ? "Could not remove from Saved" : "Could not save this item",
         description: failureDescriptionRef.current ?? savedChangeDescription(error),
       });
       return false;
@@ -100,11 +108,13 @@ export default function SaveButton({
         aria-hidden
         tabIndex={-1}
         className={barLabel
-          ? "tap-44 flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none"
-          : "tap-44 grid h-9 w-9 place-items-center rounded-full"}
-        style={{ color: "var(--app-ink-3)" }}
+          ? `${BAR_QUIET_CELL_CLASS} tap-44 flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[0.6875rem] font-semibold leading-none`
+          // The placeholder mirrors the mounted unsaved control exactly, so
+          // hydration changes neither the glyph size, the box nor the color.
+          : "tap-44 relative -m-1 grid h-11 w-11 place-items-center rounded-[var(--app-radius-sm)]"}
+        style={{ color: barLabel ? "var(--app-ink)" : "var(--app-ink-3)" }}
       >
-        <Bookmark className="h-4 w-4" strokeWidth={1.75} />
+        <Bookmark className={barLabel ? "h-4 w-4" : "h-5 w-5"} strokeWidth={1.75} />
         {barLabel ? <span>{barLabel}</span> : null}
       </button>
     );
@@ -145,32 +155,28 @@ export default function SaveButton({
             action: "save",
           });
         }
-        // Sonner toast — quiet, brand-aligned acknowledgement so the
-        // user sees something happen even if the bookmark animation
-        // is missed at a glance. Undo action mirrors the toggle so
-        // a mistaken save is one tap to reverse.
+        // A quiet acknowledgement, so the person sees something happen even
+        // when the bookmark animation is missed at a glance. Undo mirrors the
+        // toggle, and the toast names the item so a stack of removals is not
+        // three copies of one sentence.
+        const name = label.replace(/^Save\s+/, "");
+        const item = { type: refType, id: refId };
+        const onUndo = () => void toggle(!wasSaved);
         if (wasSaved) {
-          toast(`Removed from Saved`, {
-            action: { label: "Undo", onClick: () => void toggle(!wasSaved) },
-          });
+          notifyRemoved({ label: name, onUndo, item });
         } else if (totalBefore === 0) {
-          // First add ever — moment worth marking. Editorial copy
-          // instead of the routine acknowledgement, plus a longer
-          // dwell so the user has time to read what just happened.
-          toast.success("Your saved list starts here", {
+          // First add ever: a moment worth marking with its own copy
+          // instead of the routine acknowledgement.
+          notifySaved({
+            label: name,
+            title: "Your saved list starts here",
             description: "Anything you save stays together under Saved.",
-            duration: offerKeepAction ? 7000 : 5000,
-            action: offerKeepAction
-              ? { label: "Keep handy", onClick: openReturnBridge }
-              : { label: "Undo", onClick: () => void toggle(!wasSaved) },
-            cancel: offerKeepAction
-              ? { label: "Undo", onClick: () => void toggle(!wasSaved) }
-              : undefined,
+            onUndo,
+            forward: offerKeepAction ? { label: "Keep handy", onClick: openReturnBridge } : undefined,
+            item,
           });
         } else {
-          toast.success(`Saved · ${label.replace(/^Save\s+/, "")}`, {
-            action: { label: "Undo", onClick: () => void toggle(!wasSaved) },
-          });
+          notifySaved({ label: name, onUndo, item });
         }
       }}
       disabled={busy || eventSaveUnavailable}
@@ -187,15 +193,20 @@ export default function SaveButton({
       }
       title={eventSaveUnavailable ? "Saved state unavailable" : mutation === "unconfirmed" ? "This change could not be confirmed." : renderedSaved ? "Saved" : "Save"}
       className={barLabel
-        ? "tap-44 relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
-        : "tap-44 relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92]"}
+        ? `${BAR_QUIET_CELL_CLASS} tap-44 relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[0.6875rem] font-semibold leading-none transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]`
+        // Icon only: an unboxed glyph with a real 44px target. The -m-1
+        // keeps the 36px layout footprint the rows were built around; hover
+        // dims the glyph slightly instead of drawing a tile.
+        : "tap-44 relative -m-1 grid h-11 w-11 place-items-center rounded-[var(--app-radius-sm)] transition-opacity hover:opacity-75 active:scale-[0.92] motion-reduce:active:scale-100"}
       style={{
-        color: renderedSaved ? "var(--app-link)" : "var(--app-ink-3)",
+        // A labeled Save reads as an action in ink; the saved state uses the
+        // link color everywhere, matching the place page's Saved control.
+        color: renderedSaved ? "var(--app-link)" : barLabel ? "var(--app-ink)" : "var(--app-ink-3)",
         transitionTimingFunction: "var(--app-ease-spring)",
       }}
     >
       <Bookmark
-        className={`h-4 w-4 transition-transform ${
+        className={`${barLabel ? "h-4 w-4" : "h-5 w-5"} transition-transform ${
           celebrate ? "save-pop" : ""
         }`}
         strokeWidth={renderedSaved ? 0 : 1.75}
@@ -206,7 +217,7 @@ export default function SaveButton({
       {celebrate && (
         <span
           aria-hidden
-          className="save-ring pointer-events-none absolute inset-0 rounded-full"
+          className="save-ring pointer-events-none absolute inset-0 rounded-[inherit]"
         />
       )}
     </button>

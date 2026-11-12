@@ -59,8 +59,9 @@ export const SourceOutsideResultLink: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await usableImage(canvasElement);
-    const source = await canvas.findByRole("link", { name: "Wikimedia Commons" });
+    const source = await canvas.findByRole("link", { name: "Photo source" });
     await expect(source).toHaveAttribute("href", "https://example.com/component-photo");
+    await expect(canvas.queryByRole("link", { name: "Wikimedia Commons" })).not.toBeInTheDocument();
     await expect(canvas.getByText("Photo by Component test contributor.")).toBeVisible();
     await expect(canvasElement.querySelector("a a")).toBeNull();
     for (const link of [source, canvas.getByRole("link", { name: "CC BY 2.0" })]) {
@@ -75,7 +76,7 @@ export const FailedImageKeepsRealResult: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await usableImage(canvasElement);
-    await canvas.findByRole("link", { name: "Wikimedia Commons" });
+    await canvas.findByRole("link", { name: "Photo source" });
     canvasElement.querySelector("img")!.dispatchEvent(new Event("error"));
     await waitFor(() => expect(canvasElement.querySelector("img")).toBeNull(), { timeout: 5_000 });
     await expect(canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
@@ -100,7 +101,7 @@ export const SourceChangeDropsOldCredit: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await usableImage(canvasElement);
-    await canvas.findByRole("link", { name: "Wikimedia Commons" });
+    await canvas.findByRole("link", { name: "Photo source" });
     await userEvent.click(canvas.getByRole("button", { name: "Use owned source" }));
     await expect(canvasElement.querySelector(".place-card-photo-credit")).toBeNull();
     await usableImage(canvasElement);

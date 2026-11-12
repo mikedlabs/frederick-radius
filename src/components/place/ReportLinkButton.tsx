@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Flag } from "lucide-react";
 import {
   commerceCardLabel,
   providerLabel,
 } from "@/lib/commerce/links";
 import type { CommerceLink } from "@/lib/commerce/types";
+
+const subscribeReady = () => () => {};
 
 /**
  * A quiet "Report a broken link" affordance for the commerce section. Click to
@@ -23,6 +25,8 @@ export default function ReportLinkButton({
   placeName?: string;
   links?: CommerceLink[];
 }) {
+  // The server preview must not invite a tap before its handler is attached.
+  const interactionReady = useSyncExternalStore(subscribeReady, () => true, () => false);
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -42,7 +46,9 @@ export default function ReportLinkButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="tap-44-y inline-flex items-center gap-1.5 text-[12px] font-medium"
+        disabled={!interactionReady}
+        data-report-interaction-ready={interactionReady ? "true" : "false"}
+        className="inline-flex min-h-11 min-w-11 items-center gap-1.5 text-[12px] font-medium"
         style={{ color: "var(--app-ink-3)" }}
       >
         <Flag className="h-3 w-3" strokeWidth={1.75} aria-hidden />
@@ -86,7 +92,7 @@ export default function ReportLinkButton({
             id="report-link-choice"
             value={selectedIndex}
             onChange={(event) => setSelectedIndex(Number(event.target.value))}
-            className="mt-1 block w-full rounded-[var(--app-radius-sm)] border px-2.5 py-2 text-[13px]"
+            className="mt-1 block h-11 w-full rounded-[var(--app-radius-sm)] border px-2.5 py-2 text-[13px]"
             style={{
               borderColor: "var(--app-border)",
               background: "var(--app-bg-elevated-solid)",
@@ -112,7 +118,7 @@ export default function ReportLinkButton({
         maxLength={280}
         placeholder="e.g. this opens the wrong location"
         aria-label="What is broken about this link?"
-        className="w-full rounded-[var(--app-radius-sm)] border px-2.5 py-2 text-[13px]"
+        className="min-h-11 w-full rounded-[var(--app-radius-sm)] border px-2.5 py-2 text-[13px]"
         style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)" }}
       />
       <div className="flex items-center gap-2">
@@ -120,15 +126,15 @@ export default function ReportLinkButton({
           type="button"
           onClick={send}
           disabled={state === "sending"}
-          className="rounded-full px-3 py-1.5 text-[12px] font-semibold disabled:opacity-60"
-          style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-[var(--app-radius-md)] px-4 text-[14px] font-semibold disabled:opacity-60"
+          style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
         >
           {state === "sending" ? "Sending…" : "Send report"}
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="tap-44-y text-[12px] font-medium"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center text-[12px] font-medium"
           style={{ color: "var(--app-ink-3)" }}
         >
           Cancel

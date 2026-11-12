@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Droplets, MapPin, Navigation, Toilet } from "lucide-react";
 import { useRef, useState } from "react";
+import { Toaster, toast } from "sonner";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import BottomDrawer from "./BottomDrawer";
@@ -17,7 +18,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The shared mobile detail layer. Vaul supplies drag, focus trapping, Escape handling and scroll locking while Radius supplies the surface and content hierarchy.",
+          "The shared mobile detail layer. Vaul supplies drag, focus trapping, Escape handling and scroll locking. Radius supplies an opaque surface, a 760 pixel cap from the tablet breakpoint, the Back rule (`historyLayerId`) and a toast that stays usable above the drawer.",
       },
     },
   },
@@ -30,7 +31,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-function DrawerFixture({ initiallyOpen = false, surface = "default" }: { initiallyOpen?: boolean; surface?: "default" | "solid" }) {
+type DrawerFixtureProps = {
+  initiallyOpen?: boolean;
+  surface?: "solid" | "translucent";
+  width?: "standard" | "wide";
+  historyLayerId?: string;
+};
+
+function DrawerFixture({ initiallyOpen = false, surface, width, historyLayerId }: DrawerFixtureProps) {
   const [open, setOpen] = useState(initiallyOpen);
 
   return (
@@ -53,20 +61,22 @@ function DrawerFixture({ initiallyOpen = false, surface = "default" }: { initial
         title="Nearby essentials"
         subtitle="Example results from a confirmed starting point."
         surface={surface}
+        width={width}
+        historyLayerId={historyLayerId}
       >
         <div className="mx-auto max-w-xl space-y-5 px-4 py-4">
           <SectionHeading title="Closest mapped amenities" count={2} size="sm" />
 
-          <ul aria-label="Closest mapped amenities" className="space-y-3">
+          <ul aria-label="Closest mapped amenities" className="border-t" style={{ borderColor: "var(--app-border)" }}>
             <li
-              className="rounded-[var(--app-radius-md)] border p-3"
-              style={{ background: "var(--app-bg-elevated)", borderColor: "var(--app-border)" }}
+              className="border-b py-3"
+              style={{ borderColor: "var(--app-border)" }}
             >
               <div className="flex items-start gap-3">
                 <span
                   aria-hidden
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
-                  style={{ background: "var(--app-cool-tint-14)", color: "var(--app-cool)" }}
+                  className="grid h-6 w-6 shrink-0 place-items-center"
+                  style={{ color: "var(--app-ink-3)" }}
                 >
                   <Toilet className="h-5 w-5" />
                 </span>
@@ -86,14 +96,14 @@ function DrawerFixture({ initiallyOpen = false, surface = "default" }: { initial
             </li>
 
             <li
-              className="rounded-[var(--app-radius-md)] border p-3"
-              style={{ background: "var(--app-bg-elevated)", borderColor: "var(--app-border)" }}
+              className="border-b py-3"
+              style={{ borderColor: "var(--app-border)" }}
             >
               <div className="flex items-start gap-3">
                 <span
                   aria-hidden
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
-                  style={{ background: "var(--app-cool-tint-14)", color: "var(--app-cool)" }}
+                  className="grid h-6 w-6 shrink-0 place-items-center"
+                  style={{ color: "var(--app-ink-3)" }}
                 >
                   <Droplets className="h-5 w-5" />
                 </span>
@@ -148,11 +158,127 @@ export const OpenAt320: Story = {
   render: () => <DrawerFixture initiallyOpen />,
 };
 
-export const SolidSurface: Story = {
+export const TranslucentSurface: Story = {
   parameters: {
-    docs: { description: { story: "An opaque detail layer for vendor information or dense text over a busy map. Existing drawers retain their default surface." } },
+    docs: { description: { story: "Drawers are opaque by default so the page beneath never reads through the controls. The translucent surface is an explicit choice for a short, light panel over a calm background." } },
   },
-  render: () => <DrawerFixture initiallyOpen surface="solid" />,
+  render: () => <DrawerFixture initiallyOpen surface="translucent" />,
+};
+
+async function openDrawerFrame(): Promise<DOMRect> {
+  const drawer = await within(document.body).findByRole("dialog", { name: "Nearby essentials" });
+  // Vaul slides the panel in. The horizontal frame is final from the first frame.
+  return drawer.getBoundingClientRect();
+}
+
+export const StandardWidthAtDesktop: Story = {
+  globals: {
+    viewport: { value: "radiusDesktop", isRotated: false },
+  },
+  parameters: {
+    docs: { description: { story: "From the tablet breakpoint the drawer is a centered panel no wider than 760 pixels, the same measure as BottomSheet, and it stays attached to the bottom edge." } },
+  },
+  render: () => <DrawerFixture initiallyOpen />,
+  play: async () => {
+    const frame = await openDrawerFrame();
+    await expect(frame.width).toBeLessThanOrEqual(760);
+    await expect(Math.abs(frame.left - (window.innerWidth - frame.width) / 2)).toBeLessThanOrEqual(1);
+  },
+};
+
+export const WideAtDesktop: Story = {
+  globals: {
+    viewport: { value: "radiusDesktop", isRotated: false },
+  },
+  parameters: {
+    docs: { description: { story: "A drawer whose content was laid out for the full window, such as the Fair vendor grid, opts out of the cap." } },
+  },
+  render: () => <DrawerFixture initiallyOpen width="wide" />,
+  play: async () => {
+    const frame = await openDrawerFrame();
+    await expect(Math.round(frame.width)).toBe(document.documentElement.clientWidth);
+  },
+};
+
+export const BackClosesInPlace: Story = {
+  parameters: {
+    docs: { description: { story: "With a history layer the drawer pushes one entry when it opens. Back closes it without leaving the page and returns focus to the opener." } },
+  },
+  render: () => <DrawerFixture historyLayerId="story-nearby-essentials" />,
+  play: async ({ canvasElement }) => {
+    const body = within(document.body);
+    const launcher = within(canvasElement).getByRole("button", { name: "Show nearby essentials" });
+    const here = window.location.href;
+    const originalState: unknown = window.history.state;
+    await userEvent.click(launcher);
+    await body.findByRole("dialog", { name: "Nearby essentials" });
+    // The pushed entry is read from its own state. history.length cannot
+    // prove it: a forward entry left by an earlier Back makes a push replace
+    // that entry, so the count stays the same.
+    await waitFor(() => expect(window.history.state?.__frederickRadiusLayer).toBe("story-nearby-essentials"));
+    window.history.back();
+    await waitFor(() => expect(body.queryByRole("dialog", { name: "Nearby essentials" })).not.toBeInTheDocument());
+    await expect(window.location.href).toBe(here);
+    await expect(window.history.state).toEqual(originalState);
+    await waitFor(() => expect(launcher).toHaveFocus());
+  },
+};
+
+function ToastFixture() {
+  const [open, setOpen] = useState(false);
+  const [undone, setUndone] = useState(0);
+  return (
+    <main className="min-h-screen space-y-3 p-4" style={{ background: "var(--app-bg)" }}>
+      <Button onClick={() => setOpen(true)}>Open drawer with a toast</Button>
+      <p role="status" className="text-sm" style={{ color: "var(--app-ink-2)" }}>
+        Toast actions run: {undone}.
+      </p>
+      <BottomDrawer
+        open={open}
+        onOpenChange={setOpen}
+        title="Toast above a drawer"
+        subtitle="Pressing the toast does not count as pressing outside the drawer."
+      >
+        <div className="p-4">
+          <Button
+            onClick={() => toast("Added to My Day.", {
+              duration: Infinity,
+              action: { label: "Undo", onClick: () => setUndone((count) => count + 1) },
+            })}
+          >
+            Add to My Day
+          </Button>
+        </div>
+      </BottomDrawer>
+      {/* A modal drawer turns pointer events off for the page behind it, so
+          the toast has to turn them back on for itself. */}
+      <Toaster position="top-center" toastOptions={{ style: { pointerEvents: "auto" } }} />
+    </main>
+  );
+}
+
+export const ToastStaysReachable: Story = {
+  parameters: {
+    docs: { description: { story: "A toast raised while the drawer is open takes its own press: the action runs and the drawer stays open. Keyboard focus cannot leave a modal drawer, so feedback that starts inside one should also appear inside it." } },
+  },
+  render: () => <ToastFixture />,
+  play: async ({ canvasElement }) => {
+    const body = within(document.body);
+    const outcomes = within(canvasElement).getByRole("status");
+    await userEvent.click(within(canvasElement).getByRole("button", { name: "Open drawer with a toast" }));
+    const drawer = await body.findByRole("dialog", { name: "Toast above a drawer" });
+    await userEvent.click(within(drawer).getByRole("button", { name: "Add to My Day" }));
+    const undo = await waitFor(() => {
+      const action = document.querySelector<HTMLButtonElement>("[data-sonner-toaster] button[data-action]");
+      if (!action) throw new Error("The toast action has not rendered yet.");
+      return action;
+    });
+    await expect(drawer.contains(undo)).toBe(false);
+    await userEvent.click(undo);
+    await waitFor(() => expect(outcomes).toHaveTextContent("Toast actions run: 1."));
+    await expect(drawer).toHaveAttribute("data-state", "open");
+    await expect(body.getAllByRole("dialog")).toHaveLength(1);
+  },
 };
 
 

@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
+const require = createRequire(import.meta.url);
 const read = (name: string) => readFileSync(`.github/workflows/${name}`, "utf8");
-const expectedPaths = ["docs/coverage-scorecard.md", "docs/hours-refresh-review.md", "src/data/data-release.json", "src/data/event-venue-photo-credits.json", "src/data/place-refresh-identities.json", "src/data/places-client-hours.json", "src/data/places-client.json", "src/data/places-official-hours.json", "src/data/places-merchant-hours.json"].sort();
+const expectedPaths = ["docs/coverage-scorecard.md", "docs/hours-refresh-review.md", "src/data/copy-scores.json", "src/data/data-release.json", "src/data/event-venue-photo-credits.json", "src/data/place-refresh-identities.json", "src/data/places-client-hours.json", "src/data/places-client.json", "src/data/places-official-hours.json", "src/data/places-merchant-hours.json"].sort();
 describe("official library hours delivery boundary", () => {
   it("reuses the existing schedule and credential-isolated publication with a fail-closed semantic gate", () => {
     const workflow = parse(read("data-steward.yml"));
@@ -12,7 +14,11 @@ describe("official library hours delivery boundary", () => {
     expect(producer.permissions).toEqual({ contents: "read" });
     expect(producer.steps.some((step: { with?: Record<string, unknown> }) => step.with?.["node-version"] === 24)).toBe(true);
     const refresh = producer.steps.find((step: { id?: string }) => step.id === "refresh");
-    expect(refresh.run).toBe("npm run refresh:official-hours");
+    expect(refresh.run).toBe('npm run refresh:official-hours -- --review-evidence-dir="${{ runner.temp }}/official-hours-review-evidence"');
+    const evidence = producer.steps.find((step: { name?: string }) => step.name === "Preserve original native pages for offline batch review");
+    expect(evidence.if).toBe("${{ always() }}");
+    expect(evidence.with["retention-days"]).toBe(7);
+    expect(evidence.with.path).toBe("${{ runner.temp }}/official-hours-review-evidence");
     expect(refresh["continue-on-error"]).toBeUndefined();
     expect(producer.outputs.review_required).toBe("${{ steps.refresh.outputs.review_required != 'false' || steps.catalog-review.outputs.review_required != 'false' }}");
     expect(producer.steps.find((step: { id?: string }) => step.id === "catalog-review").run).toBe("npm run review:hours-refresh");
@@ -26,15 +32,17 @@ describe("official library hours delivery boundary", () => {
     expect(checks.with.head_sha).toBe("${{ needs.official-hours-publish.outputs.pr_head_sha }}");
     expect(JSON.stringify(producer)).not.toMatch(/secrets\.|DATABASE_URL|GOOGLE_PLACES|self-hosted/);
   });
-  it("permits exactly the same bounded output paths in both existing trusted check boundaries", () => {
-    for (const name of ["automated-pr-checks.yml", "automated-pr-status-bridge.yml"]) {
-      const text = read(name);
-      const match = text.match(/'bot\/official-library-hours':\s*\[([^\]]+)\]/);
-      expect(match, name).not.toBeNull();
-      const paths = [...match![1].matchAll(/'([^']+)'/g)].map((part) => part[1]).sort();
-      expect(paths, name).toEqual(expectedPaths);
+  it("uses the exact derived-output policy for native classification and approval", () => {
+    const { AUTOMATED_PR_ALLOWED_PATHS } = require("../scripts/lib/native-automated-pr-gates.cjs");
+    expect([...AUTOMATED_PR_ALLOWED_PATHS["bot/official-library-hours"]].sort()).toEqual(expectedPaths);
+    expect(read("ci.yml")).toContain("scripts/lib/native-automated-pr-gates.cjs");
+    expect(read("automated-pr-checks.yml")).toContain("scripts/lib/native-automated-pr-gates.cjs");
+    // Both bridge phases use the same exact reviewed derived-output policy.
+    const bridge = read("automated-pr-status-bridge.yml");
+    for (const match of bridge.matchAll(/'bot\/official-library-hours':\s*\[([^\]]+)\]/g)) {
+      expect([...match[1].matchAll(/'([^']+)'/g)].map((part) => part[1]).sort()).toEqual(expectedPaths);
     }
-    expect(read("automated-pr-status-bridge.yml").match(/'bot\/official-library-hours'/g)).toHaveLength(2);
+    expect(bridge.match(/'bot\/official-library-hours'/g)).toHaveLength(2);
   });
 });
 

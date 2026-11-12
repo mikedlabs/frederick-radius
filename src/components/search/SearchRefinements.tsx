@@ -2,10 +2,11 @@
 
 import { parseAsString, useQueryStates } from "nuqs";
 import { useTransition, useSyncExternalStore } from "react";
-import { MapPin } from "lucide-react";
+import { ChevronDown, MapPin } from "lucide-react";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { setScope } from "@/lib/scope";
 import { queryWithoutSearchArea } from "@/lib/search/refinement";
+import styles from "./SearchRefinements.module.css";
 
 const subscribeReady = () => () => {};
 
@@ -39,12 +40,14 @@ export default function SearchRefinements({ town, query }: { town: string | null
       <label htmlFor="search-area" className="inline-flex min-h-[44px] shrink-0 items-center gap-2 text-[0.8125rem] font-semibold" style={{ color: "var(--app-ink-2)" }}>
         <MapPin className="h-4 w-4 shrink-0" aria-hidden />Search area
       </label>
-      <select id="search-area" value={currentValue} disabled={pending || !ready}
-        onChange={(event) => handleSelect(event.target.value)}
-        className="min-h-[44px] min-w-[min(100%,10rem)] flex-1 rounded-full border px-[12px] py-[8px] text-sm font-semibold disabled:opacity-60"
-        style={{ borderColor: "var(--app-control-border)", background: "var(--app-bg)", color: "var(--app-ink)" }}>
-        {options.map((option) => <option key={option.slug} value={option.slug}>{option.name}</option>)}
-      </select>
+      <span className={styles.control}>
+        <select id="search-area" value={currentValue} disabled={pending || !ready}
+          onChange={(event) => handleSelect(event.target.value)}
+          className={styles.select}>
+          {options.map((option) => <option key={option.slug} value={option.slug}>{option.name}</option>)}
+        </select>
+        <ChevronDown className={styles.chevron} aria-hidden />
+      </span>
       <span role="status" className="sr-only">{pending ? "Updating matches…" : town ? "Only matches in this area are shown." : "Search across Frederick City and the county."}</span>
     </div>
   );

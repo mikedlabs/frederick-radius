@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Request } from "@playwright/test";
 import { readFileSync } from "node:fs";
+import { curatedPhotoUrl, getLandmarkPhoto } from "../src/lib/integrations/wikimedia";
 
 // The route contract independently decodes its actual signal bytes. Here the
 // same transport fixture exercises the mounted card in both browser engines,
@@ -33,7 +34,10 @@ test("a failed photo signal collapses its place face and keeps the real listing 
       });
     }, true);
   });
-  await context.addCookies([{ name: "fr_onboarded", value: "1", url: baseURL! }]);
+  await context.addCookies([
+    { name: "fr_onboarded", value: "1", url: baseURL! },
+    { name: "fr_scope", value: "town:frederick", url: baseURL! },
+  ]);
   let interceptedPhotos = 0;
   let blockedGoogleRequests = 0;
   let blockedEnrichmentRequests = 0;
@@ -47,7 +51,7 @@ test("a failed photo signal collapses its place face and keeps the real listing 
       blockedGoogleRequests += 1;
       return route.abort("blockedbyclient");
     }
-    if (url.pathname === `/api/place/${FALLBACK_PLACE_SLUG}/enrich`) {
+    if (/^\/api\/place\/[^/]+\/enrich$/.test(url.pathname)) {
       blockedEnrichmentRequests += 1;
       return route.abort("blockedbyclient");
     }
@@ -63,11 +67,34 @@ test("a failed photo signal collapses its place face and keeps the real listing 
     }
     return route.continue();
   });
-  const response = await page.goto("/m/frederick", { waitUntil: "domcontentloaded" });
+  // A town's five editorial picks legitimately change as verified hours do.
+  // Use the supported full shopping inventory, independent of that top-five rank.
+  const response = await page.goto("/category/shopping", { waitUntil: "domcontentloaded" });
   expect(response?.status()).toBe(200);
   expect((await response!.allHeaders())["content-security-policy"]).toBeTruthy();
-  const heading = page.getByRole("heading", { name: "Dancing Bear Toys and Games", exact: true });
-  const card = page.locator("article").filter({ has: heading });
+  const browse = page.getByRole("region", { name: "All shopping", exact: true });
+  await browse.getByRole("button", { name: /^All shopping/ }).click();
+  await browse.getByRole("button", { name: /^Sort: / }).click();
+  await browse.getByRole("group", { name: "Sort", exact: true }).getByRole("button", { name: /^A→Z/ }).click();
+  await expect(browse.getByRole("button", { name: "Sort: A→Z", exact: true })).toBeVisible();
+  // The sorted page replaces the ranked one in a single render, with no exit
+  // animation holding old cards in the list. Traverse only real bounded
+  // pagination controls; no fixture can inject this target into the list.
+  await expect(browse.locator("article")).toHaveCount(24);
+  // Choose the large photo face before revealing later alphabetical pages.
+  await browse.getByRole("radio", { name: "Grid", exact: true }).click();
+  await expect(browse.getByRole("radio", { name: "Grid", exact: true })).toHaveAttribute("aria-checked", "true");
+  const heading = browse.getByRole("heading", { name: "Dancing Bear Toys and Games", exact: true });
+  let browsePages = 1;
+  while (await heading.count() === 0 && browsePages < 12) {
+    const before = await browse.locator("article").count();
+    await browse.getByRole("button", { name: /^Show \d+ more$/ }).click();
+    await expect.poll(() => browse.locator("article").count()).toBeGreaterThan(before);
+    browsePages++;
+  }
+  // `has` resolves within each article; keep its heading locator relative
+  // rather than requiring another ancestor browse region inside the card.
+  const card = browse.locator("article").filter({ has: page.getByRole("heading", { name: "Dancing Bear Toys and Games", exact: true }) });
   const open = card.getByRole("button", { name: /^View Dancing Bear Toys and Games .*details$/ });
   await expect(heading).toBeVisible();
   await open.scrollIntoViewIfNeeded();
@@ -92,8 +119,7 @@ test("a failed photo signal collapses its place face and keeps the real listing 
   await expect(card.locator(".place-card-photo-credit")).toHaveCount(0);
   await expect(heading).toBeVisible();
   await expect(open).toBeVisible();
-  // Town rankings can move this place between answer and grid variants.
-  // A grid may show real reason chips instead of a rating. Attribution belongs
+  // The browse grid may show real reason chips instead of a rating. Attribution belongs
   // to displayed Google content, never to an exhausted photograph.
   const displayedRatings = card.getByTitle(/from [\d,]+ Google reviews$/);
   for (const rating of await displayedRatings.all()) {
@@ -111,7 +137,7 @@ test("a failed photo signal collapses its place face and keeps the real listing 
     contentType: "application/json",
     body: JSON.stringify({ loaded, targetLoads: targetLoads(), expectedPhotoName, interceptedPhotos, blockedGoogleRequests, blockedEnrichmentRequests, forwardedGoogleRequests: 0, cspBypassed: bypassCSP,
       securityProof: "Local HTTP transport regression; public HTTPS acceptance separately keeps CSP enforcement enabled.",
-      preservedListing: "Dancing Bear Toys and Games", removedBlankPhotoFace: true }),
+      preservedListing: "Dancing Bear Toys and Games", listingSurface: "/category/shopping", browsePath: "All shopping → A→Z → Grid → real pagination", browsePages, removedBlankPhotoFace: true }),
   });
   await page.screenshot({ path: testInfo.outputPath("place-photo-factual-fallback.png") });
 });
@@ -121,16 +147,27 @@ test("a failed photo signal collapses its place face and keeps the real listing 
 // The six actual Commons files are verified separately in the source receipt.
 const DECODED_IMAGE = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+klEQVR4nO3RQQ0AIAzAwFlCAy7wLwQZe/SSCmhyc97VYrN+EA8AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2n3CYoL+9wOv8gAAAABJRU5ErkJggg==", "base64");
 
-test("a known landmark tries its exact curated file once and credits only the loaded image", async ({ page, context, baseURL }, testInfo) => {
+test("a known landmark prefers its exact bundled file and credits only the loaded image", async ({ page, context, baseURL }, testInfo) => {
   await context.addCookies([
     { name: "fr_onboarded", value: "1", url: baseURL! },
     { name: "fr_scope", value: "town:frederick", url: baseURL! },
   ]);
-  const exactFile = "Francis Scott Key Monument (March 2024).jpg";
-  const exactSource = "https://commons.wikimedia.org/wiki/File:Francis_Scott_Key_Monument_(March_2024).jpg";
+  const exactSlug = "francis-scott-key-grave-and-monument";
+  const curated = getLandmarkPhoto(exactSlug)!;
+  expect(curated.preferLocal).toBe(true);
+  const exactFile = curated.file;
+  const exactSource = curated.source_url;
+  const exactLocalSource = curatedPhotoUrl(curated, 720);
+  expect(exactLocalSource).toBe(curated.localSrc);
+  expect(exactLocalSource.startsWith("/place-photos/")).toBe(true);
   let curatedRequests = 0;
   const curatedRequestsBySource = new Map<string, number>();
+  const curatedOutcomes = new Map<Request, { url: string; completed: boolean; failed?: string; afterFault: boolean }>();
+  let localFaultInjected = false;
+  page.on("requestfinished", request => { const outcome = curatedOutcomes.get(request); if (outcome) outcome.completed = true; });
+  page.on("requestfailed", request => { const outcome = curatedOutcomes.get(request); if (outcome) outcome.failed = request.failure()?.errorText ?? "unknown"; });
   let providerRequests = 0;
+  const targetProxyRequests: string[] = [];
   let releaseCurated: () => void = () => {};
   const ready = new Promise<void>((resolve) => { releaseCurated = resolve; });
   await page.route("**/*", async (route) => {
@@ -142,14 +179,19 @@ test("a known landmark tries its exact curated file once and credits only the lo
       return route.abort("blockedbyclient");
     }
     if (url.pathname === "/api/place-photo") {
+      if (url.searchParams.get("slug") === exactSlug) targetProxyRequests.push(url.href);
       return route.fulfill({ status: 200, contentType: "image/png", body: TRANSPARENT_PIXEL,
         headers: { "X-Photo-Fallback": "upstream-400", "Cache-Control": "no-store" } });
     }
     const imageSource = url.pathname === "/_next/image" ? url.searchParams.get("url") ?? "" : request.url();
-    if (decodeURIComponent(imageSource).includes(`Special:FilePath/${exactFile}`)) {
+    const underlying = new URL(imageSource, baseURL);
+    if (underlying.origin === new URL(baseURL!).origin && decodeURIComponent(underlying.pathname) === exactLocalSource) {
       curatedRequests += 1;
-      const source = new URL(imageSource).href;
+      // Local paths stay the same across responsive source sizes. Count the
+      // complete requested optimizer URL so Row→Grid widths remain distinct.
+      const source = url.href;
       curatedRequestsBySource.set(source, (curatedRequestsBySource.get(source) ?? 0) + 1);
+      curatedOutcomes.set(request, { url: source, completed: false, afterFault: localFaultInjected });
       await ready;
       return route.fulfill({ status: 200, contentType: "image/png", body: DECODED_IMAGE });
     }
@@ -168,13 +210,11 @@ test("a known landmark tries its exact curated file once and credits only the lo
   await open.scrollIntoViewIfNeeded();
   const image = card.locator('[data-place-card-photo-source="curated"] img');
   await expect(image).toHaveCount(1);
-  const mountedSource = await image.evaluate((node) => {
-    const imageUrl = new URL((node as HTMLImageElement).currentSrc || (node as HTMLImageElement).src);
-    return new URL(imageUrl.pathname === "/_next/image" ? imageUrl.searchParams.get("url")! : imageUrl.href).href;
-  });
-  // Opening All parks can mount rows before Grid mounts a differently
-  // sized source. Each exact responsive source may load once, never retry.
-  await expect.poll(() => curatedRequestsBySource.get(mountedSource)).toBe(1);
+  await image.scrollIntoViewIfNeeded();
+  // currentSrc may stay empty until decode. Hold the exact source transport,
+  // then pin the browser's actual responsive URL only after a successful load.
+  await expect.poll(() => curatedRequests).toBeGreaterThan(0);
+  expect(targetProxyRequests).toEqual([]);
   await expect(card.locator(".place-card-photo-credit")).toBeHidden();
   await expect(card.locator(".place-card-photo-credit")).toHaveAttribute("aria-hidden", "true");
   const captionBefore = await card.locator(".place-card-photo-credit").evaluate((node) => {
@@ -199,9 +239,18 @@ test("a known landmark tries its exact curated file once and credits only the lo
     height: (node as HTMLImageElement).naturalHeight,
     currentSrc: (node as HTMLImageElement).currentSrc,
   }));
+  const mounted = await image.evaluate((node) => {
+    const imageUrl = new URL((node as HTMLImageElement).currentSrc);
+    return { request: imageUrl.href, source: new URL(imageUrl.pathname === "/_next/image" ? imageUrl.searchParams.get("url")! : imageUrl.href, imageUrl.origin).href };
+  });
+  const mountedSource = mounted.source;
+  expect(new URL(mountedSource).pathname).toBe(exactLocalSource);
+  await expect.poll(() => [...curatedOutcomes.values()].filter(outcome => outcome.url === mounted.request && outcome.completed).length).toBe(1);
   const credit = card.locator(".place-card-photo-credit");
-  await expect(credit).toContainText("Engineerchange");
-  await expect(credit).toContainText("CC BY-SA 4.0");
+  await expect(credit).toContainText(curated.author);
+  await expect(credit).toContainText(curated.license);
+  await expect(credit).toContainText(curated.modifications!);
+  await expect(credit.getByRole("link", { name: curated.license, exact: true })).toHaveAttribute("href", curated.licenseUrl!);
   const captionAfter = await credit.evaluate((node) => {
     const rect = node.getBoundingClientRect();
     return { width: rect.width, height: rect.height };
@@ -214,18 +263,31 @@ test("a known landmark tries its exact curated file once and credits only the lo
     expect(bounds?.width).toBeGreaterThanOrEqual(44);
     expect(bounds?.height).toBeGreaterThanOrEqual(44);
   }
+  await expect.poll(() => [...curatedOutcomes.values()].every(outcome => outcome.completed || Boolean(outcome.failed))).toBe(true);
+  // Count successful transfers independently of Next's bounded aborted mount
+  // replay under a held fixture, and never admit another request after failure.
+  const requestsBeforeFault = [...curatedRequestsBySource];
+  localFaultInjected = true;
   await image.evaluate((node) => node.dispatchEvent(new Event("error")));
   await expect(card.locator("[data-place-card-photo]")).toHaveCount(0);
   await expect(card.locator(".place-card-photo-credit")).toHaveCount(0);
   await expect(heading).toBeVisible();
   await expect(open).toBeVisible();
-  expect(curatedRequestsBySource.get(mountedSource)).toBe(1);
-  for (const [source, count] of curatedRequestsBySource) {
-    expect(count, `Exact curated source retried: ${source}`).toBe(1);
+  expect([...curatedRequestsBySource]).toEqual(requestsBeforeFault);
+  const outcomes = [...curatedOutcomes.values()];
+  expect(outcomes.filter(outcome => outcome.afterFault)).toEqual([]);
+  for (const source of curatedRequestsBySource.keys()) {
+    expect(outcomes.filter(outcome => outcome.url === source && outcome.completed).length, `Exact curated source completed again: ${source}`).toBe(1);
+    const aborted = outcomes.filter(outcome => outcome.url === source && outcome.failed);
+    expect(aborted.length).toBeLessThanOrEqual(1);
+    for (const outcome of aborted) expect(outcome.failed).toMatch(/abort|cancel/i);
   }
   expect(providerRequests).toBe(0);
+  // Any independently eligible exact Google fallback receives at most one
+  // local transparent response after local failure; it never reaches Google.
+  expect(targetProxyRequests.length).toBeLessThanOrEqual(1);
   await testInfo.attach("curated-photo-source-and-credit", { contentType: "application/json",
-    body: JSON.stringify({ exactFile, exactSource, curatedRequests, curatedRequestsBySource: Object.fromEntries(curatedRequestsBySource), mountedSource, providerRequests, captionBefore, captionAfter, decodedImage,
+    body: JSON.stringify({ exactFile, exactSource, exactLocalSource, curatedRequests, curatedRequestsBySource: Object.fromEntries(curatedRequestsBySource), outcomes, mountedSource, mountedRequest: mounted.request, providerRequests, targetProxyRequests, captionBefore, captionAfter, decodedImage,
       transportFixture: "Opaque decoded 128x128 PNG; actual source identity/license verified separately.",
       preservedListing: "Francis Scott Key Grave and Monument", exhaustedCreditRemoved: true }) });
 });

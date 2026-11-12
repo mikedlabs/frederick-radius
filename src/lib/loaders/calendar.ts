@@ -1,11 +1,7 @@
-/**
- * Calendar feed: every event (ingested municipal + seed + live) flattened
- * to one entry per occurrence, keyed by America/New_York calendar day.
- * Capped to a month window so the grid never renders thousands of nodes.
- */
-import { getIngestedSeries } from "./ingested";
-import { allUpcoming } from "./events";
-import { getCachedLiveEvents } from "@/lib/integrations/ical-live";
+/** The calendar uses the same bounded canonical archive as the Events list. */
+import { loadEventArchiveSnapshot, type EventArchiveSourceHealth } from "./todayEventSnapshot";
+import { easternParts, easternWallToUtcISO } from "@/lib/tz";
+import { classifyEvent, isPublicEvent } from "@/lib/events/classify";
 
 export type CalEvent = {
   id: string;
@@ -14,119 +10,65 @@ export type CalEvent = {
   allDay: boolean;
   municipality: string;
   category: string | null;
-  href: string;          // source_url, event page, or "#"
-  source: "municipal" | "seed" | "live";
+  href: string;
+  source: "archive";
 };
 
 /** "YYYY-MM-DD" in America/New_York for a UTC instant. */
 export function nyDayKey(iso: string): string {
-  const d = new Date(iso);
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(d);
-  const y = parts.find((p) => p.type === "year")!.value;
-  const m = parts.find((p) => p.type === "month")!.value;
-  const da = parts.find((p) => p.type === "day")!.value;
-  return `${y}-${m}-${da}`;
+  const { year, month, day } = easternParts(new Date(iso));
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 /**
- * Returns events grouped by NY day for the calendar month containing
- * `monthStart` (plus a few days padding so prev/next-month cells fill).
+ * `monthStart` carries the requested year/month in UTC. The database window
+ * includes the grid's adjacent-month cells; source health uses the real clock.
+ * No calendar visit can cold-fill an upstream publisher cache.
  */
 export async function getMonthEvents(
-  monthStart: Date
-): Promise<{ byDay: Record<string, CalEvent[]>; total: number }> {
-  // Window: 7 days before the 1st to 7 after the last (covers the grid's
-  // leading/trailing days from adjacent months).
-  const from = new Date(monthStart.getFullYear(), monthStart.getMonth(), 1);
-  from.setDate(from.getDate() - 7);
-  const to = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
-  to.setDate(to.getDate() + 8);
-  const inWindow = (iso: string) => {
-    const t = +new Date(iso);
-    return t >= +from && t <= +to;
-  };
-
-  const events: CalEvent[] = [];
-
-  // Municipal (ingested) — flatten series → occurrences
-  try {
-    const series = await getIngestedSeries();
-    for (const s of series) {
-      for (const o of s.occurrences) {
-        // Ingested lifecycle rows are retained for archive updates, not a
-        // promise that a cancelled date is still on the public calendar.
-        if (o.status === "cancelled" || o.status === "postponed") continue;
-        if (!inWindow(o.startsAtUtc)) continue;
-        events.push({
-          id: `m:${o.sourceUid}`,
-          title: s.title,
-          startUtc: o.startsAtUtc,
-          allDay: o.allDay,
-          municipality: s.municipality,
-          category: s.category,
-          href: o.sourceUrl ?? "#",
-          source: "municipal",
-        });
-      }
-    }
-  } catch {
-    /* municipal feed optional */
-  }
-
-  // Seed events
-  try {
-    for (const e of allUpcoming(new Date(+from))) {
-      if (!inWindow(e.starts_at)) continue;
-      events.push({
-        id: `s:${e.slug}`,
-        title: e.title,
-        startUtc: e.starts_at,
-        allDay: Boolean(e.is_all_day),
-        municipality: e.municipality_name ?? e.municipality,
-        category: e.category_name ?? e.category,
-        href: `/events/${e.slug}`,
-        source: "seed",
-      });
-    }
-  } catch {
-    /* seed optional */
-  }
-
-  // Live feeds
-  try {
-    // Calendar is a public dynamic route, not a source-health probe. Read the
-    // parsed per-source cache so opening a month cannot fan out to every
-    // upstream calendar. The warm-events cron owns refreshing this boundary.
-    const { events: live } = await getCachedLiveEvents(90);
-    for (const e of live) {
-      if (!inWindow(e.starts_at)) continue;
-      events.push({
-        id: `l:${e.id}`,
-        title: e.title,
-        startUtc: e.starts_at,
-        allDay: false,
-        municipality: e.municipality,
-        category: e.category,
-        href: "#",
-        source: "live",
-      });
-    }
-  } catch {
-    /* live optional */
-  }
-
+  monthStart: Date,
+  now = new Date(),
+): Promise<{ byDay: Record<string, CalEvent[]>; total: number; sourceHealth: EventArchiveSourceHealth }> {
+  const year = monthStart.getUTCFullYear();
+  const month = monthStart.getUTCMonth();
+  const fromDay = new Date(Date.UTC(year, month, 1 - 7, 12));
+  const toDay = new Date(Date.UTC(year, month + 1, 1 + 7, 12));
+  const midnight = (date: Date) => new Date(easternWallToUtcISO(
+    date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(), 0, 0,
+  ));
+  const from = midnight(fromDay);
+  const to = midnight(toDay);
+  const snapshot = await loadEventArchiveSnapshot(now, {
+    windowStart: from,
+    // Count calendar days at noon UTC so DST does not shorten a month window.
+    horizonDays: (toDay.getTime() - fromDay.getTime()) / 86_400_000,
+    cache: true,
+  });
   const byDay: Record<string, CalEvent[]> = {};
-  for (const e of events) {
-    const k = nyDayKey(e.startUtc);
-    (byDay[k] ??= []).push(e);
+  let total = 0;
+  for (const event of snapshot.unified) {
+    const lane = classifyEvent(event);
+    // The monthly calendar also carries the civic/reminder lanes retained by
+    // the archive writer. Private bookings and non-events remain withheld.
+    if (!isPublicEvent(event) && lane !== "civic_meeting" && lane !== "town_reminder") continue;
+    const start = Date.parse(event.starts_at);
+    if (event.status === "cancelled" || event.status === "postponed" ||
+        !Number.isFinite(start) || start < from.getTime() || start >= to.getTime()) continue;
+    const row: CalEvent = {
+      id: event.slug,
+      title: event.title,
+      startUtc: event.starts_at,
+      allDay: Boolean(event.is_all_day),
+      municipality: event.municipality_name ?? event.municipality,
+      category: event.category_name ?? event.category,
+      href: `/events/${event.slug}`,
+      source: "archive",
+    };
+    (byDay[nyDayKey(row.startUtc)] ??= []).push(row);
+    total += 1;
   }
-  for (const k of Object.keys(byDay)) {
-    byDay[k].sort((a, b) => +new Date(a.startUtc) - +new Date(b.startUtc));
+  for (const rows of Object.values(byDay)) {
+    rows.sort((a, b) => Date.parse(a.startUtc) - Date.parse(b.startUtc));
   }
-  return { byDay, total: events.length };
+  return { byDay, total, sourceHealth: snapshot.sourceHealth };
 }

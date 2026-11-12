@@ -48,22 +48,23 @@ describe("install prompt policy", () => {
 
   it("stays off focused routes and pages with persistent action docks", () => {
     expect(isInstallPromptSuppressedPath("/map")).toBe(true);
+    expect(isInstallPromptSuppressedPath("/nearby")).toBe(true);
+    expect(isInstallPromptSuppressedPath("/nearby/places")).toBe(true);
+    expect(isInstallPromptSuppressedPath("/search")).toBe(true);
+    expect(isInstallPromptSuppressedPath("/search/places")).toBe(true);
+    expect(isInstallPromptSuppressedPath("/transit")).toBe(true);
+    expect(isInstallPromptSuppressedPath("/transit/stops/162950")).toBe(true);
+    expect(isInstallPromptSuppressedPath("/events")).toBe(true);
     expect(isInstallPromptSuppressedPath("/ask")).toBe(true);
     expect(isInstallPromptSuppressedPath("/ask/breakfast")).toBe(true);
     expect(isInstallPromptSuppressedPath("/places/gravel-and-grind-frederick")).toBe(true);
     expect(isInstallPromptSuppressedPath("/events/alive-at-five")).toBe(true);
-    expect(isInstallPromptSuppressedPath("/fair")).toBe(true);
-    expect(
-      isInstallPromptSuppressedPath(
-        "/moments/great-frederick-fair-2026",
-      ),
-    ).toBe(true);
     expect(isInstallPromptSuppressedPath("/places")).toBe(false);
-    // /today flipped to suppressed. It was the ONLY focused surface left
-    // unprotected, so the panel opened over the landing shelf ten seconds into
-    // a first visit, while the person was reading the answer they came for.
-    // Installing is still reachable from Saved, Compass and Settings, so what
-    // this removes is the interruption, not the capability.
+    expect(isInstallPromptSuppressedPath("/transit-news")).toBe(false);
+    expect(isInstallPromptSuppressedPath("/events-editorial")).toBe(false);
+    expect(isInstallPromptSuppressedPath("/nearby-guide")).toBe(false);
+    expect(isInstallPromptSuppressedPath("/searching")).toBe(false);
+    // Landing discovery also retains its deliberate manual installation door.
     expect(isInstallPromptSuppressedPath("/today")).toBe(true);
   });
 });

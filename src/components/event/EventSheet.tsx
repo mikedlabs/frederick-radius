@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useState, type CSSProperties, type RefObject } from "react";
 import Link from "next/link";
 import { ExternalLink, MapPin, Navigation, Ticket, CalendarCheck } from "lucide-react";
 import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
@@ -168,9 +168,9 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
        *  the footer needs enough padding to clear the floating BottomNav
        *  pill, where the place sheet's long scroll never parks there. */}
       <div className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[88px]">
-        {/* reveal-up: the sheet's blocks settle top-to-bottom on open —
-         *  the one cascade grammar every surface shares. */}
-        <div className="reveal-up px-5 pt-4">
+        {/* No entrance of its own: the sheet's spring is the entrance, so
+         *  the content is already in place as the sheet arrives. */}
+        <div className="px-5 pt-4">
           <header className="min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs font-semibold" style={{ color: "var(--app-ink-3)" }}>{categoryLabel}</p>
@@ -265,18 +265,22 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 }}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="tactile-lift tactile-interactive flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold"
+                data-press-target="control"
+                className="flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold"
                 style={{
                   backgroundColor: "var(--app-brand-press)",
                   color: "var(--app-on-brand)",
-                }}
+                  "--press-ack-color": "var(--app-on-brand)",
+                } as CSSProperties}
               >
-                {event.ticket_url ? (
-                  <Ticket className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                ) : (
-                  <CalendarCheck className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                )}
-                {ticketLabel}
+                <span data-press-face className="inline-flex min-w-0 items-center justify-center gap-2">
+                  {event.ticket_url ? (
+                    <Ticket className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                  ) : (
+                    <CalendarCheck className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                  )}
+                  {ticketLabel}
+                </span>
               </a>
             )}
             {preciseGeo && canAttend && (
@@ -295,10 +299,9 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 }}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`tactile-interactive flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold ${
-                  ticketHref && canAttend
-                    ? "border bg-[var(--app-bg-elevated)]"
-                    : "tactile-lift"
+                data-press-target="control"
+                className={`flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold ${
+                  ticketHref && canAttend ? "border" : ""
                 }`}
                 style={
                   ticketHref && canAttend
@@ -306,24 +309,27 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                         borderColor: "var(--app-border-strong)",
                         color: "var(--app-ink)",
                       }
-                    : {
+                    : ({
                         backgroundColor: "var(--app-brand-press)",
                         color: "var(--app-on-brand)",
-                      }
+                        "--press-ack-color": "var(--app-on-brand)",
+                      } as CSSProperties)
                 }
               >
-                <Navigation
-                  className="h-4 w-4"
-                  strokeWidth={2.25}
-                  style={{
-                    color:
-                      ticketHref && canAttend
-                        ? "var(--app-link)"
-                        : "var(--app-on-brand)",
-                  }}
-                  aria-hidden
-                />
-                Directions
+                <span data-press-face className="inline-flex min-w-0 items-center justify-center gap-2">
+                  <Navigation
+                    className="h-4 w-4"
+                    strokeWidth={2.25}
+                    style={{
+                      color:
+                        ticketHref && canAttend
+                          ? "var(--app-link)"
+                          : "var(--app-on-brand)",
+                    }}
+                    aria-hidden
+                  />
+                  Directions
+                </span>
               </a>
             )}
             {(!ticketHref || !canAttend) && sourceHref && (
@@ -332,7 +338,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 {canAttend ? "Check event details" : "See event source"}
               </a>
             )}
-            {!canAttend && <Link href="/events?lens=today" onClick={onClose} className="flex min-h-11 items-center justify-center rounded-[var(--app-radius-md)] px-4 text-[13px] font-semibold" style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}>Find upcoming events</Link>}
+            {!canAttend && <Link href="/events?lens=today" prefetch={false} onClick={onClose} className="flex min-h-11 items-center justify-center rounded-[var(--app-radius-md)] px-4 text-[13px] font-semibold" style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}>Find upcoming events</Link>}
             <EventActions event={{ ...event, ends_at: eventHasTrustworthyEnd(event) ? event.ends_at : event.starts_at }} actions={canAttend && !isDateOnlyEventAnchor(event) ? ["calendar", "share"] : ["share"]} labeled className="pt-1" />
           </div>
 
@@ -370,11 +376,11 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
            *  which also surfaces the nearest garage line. Only for events
            *  at a KNOWN venue; a guessed point gets no plan built on it. */}
           {preciseGeo && event.venue_place_slug && canAttend && (
-            <div className="mt-4 rounded-[var(--app-radius-md)] border border-dashed p-3" style={{ borderColor: "var(--app-border)" }}>
-              <p className="text-[12.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
+              <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
                 Around the venue
               </p>
-              <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 See food, drinks, and parking around {event.venue_name || "the venue"} on the map.
               </p>
               <Link

@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
+import { MERCHANT_HOURS_SOURCES } from "@/lib/merchant-hours";
+import { buildSourceRegistryArtifact } from "@/../scripts/build-source-registry";
 import {
   auditSourceRows,
   REQUIRED_ACTIVE,
@@ -30,6 +32,55 @@ function manifestRows(): SourceRow[] {
 describe("source registry audit", () => {
   it("accepts the checked-in manifest", () => {
     expect(auditSourceRows(manifestRows())).toEqual([]);
+  });
+
+  it("maps every merchant binding to one source owner, including both Common Market groceries", () => {
+    const registry = buildSourceRegistryArtifact(readFileSync(resolve("data/sources.yaml"), "utf8"));
+    const commonUrl = "https://www.commonmarket.coop/";
+    const bindings = MERCHANT_HOURS_SOURCES.filter((source) => source.url === commonUrl);
+    expect(bindings.map((source) => source.slug)).toEqual(["common-market-frederick", "common-market"]);
+    expect(bindings.map((source) => source.ledger_id)).toEqual(["common_market_hours", "common_market_hours"]);
+    for (const source of MERCHANT_HOURS_SOURCES) {
+      const owners = registry.filter((row) => row.evidenceAliases.includes(source.url));
+      expect(owners.map((row) => row.id)).toEqual([source.ledger_id]);
+      expect(owners[0]?.url).toBe(source.url);
+    }
+  });
+
+  it("still rejects a second ledger owner for the shared Common Market URL", () => {
+    const row = (id: string) => `  - id: ${id}\n    name: Official store hours\n    status: active\n    collection: workflow\n    refresh_cadence: daily\n    evidence_aliases: [https://www.commonmarket.coop/]\n`;
+    expect(() => buildSourceRegistryArtifact(`sources:\n${row("common_market_hours")}${row("other_owner")}`))
+      .toThrow("https://www.commonmarket.coop/: evidence alias belongs to both common_market_hours and other_owner.");
+  });
+
+  it("gives each qualified hours identity one daily native owner without claiming a collection success", () => {
+    const registry = buildSourceRegistryArtifact(readFileSync(resolve("data/sources.yaml"), "utf8"));
+    const ids = ["museum_civil_war_medicine_hours", "tasting_room_hours", "hootch_banter_hours"];
+    for (const id of ids) {
+      const binding = MERCHANT_HOURS_SOURCES.find(source => source.ledger_id === id)!;
+      expect(binding).toBeDefined();
+      const owners = registry.filter(row => row.id === id);
+      expect(owners).toHaveLength(1);
+      expect(owners[0]).toMatchObject({ url: binding.url, collection: "workflow", status: "active", refreshCadence: "daily", snapshotCadence: "daily", manifestLastSuccess: null, schemaFile: "src/lib/merchant-hours.ts", transformFile: "scripts/lib/qualified-merchant-hours.ts", evidenceAliases: [id, binding.url].sort(), publicationApplicability: "required" });
+      expect("max_response_bytes" in binding).toBe(false);
+    }
+  });
+
+  it("binds each Food Lion grocery to its exact daily native owner without claiming publication", () => {
+    const registry = buildSourceRegistryArtifact(readFileSync(resolve("data/sources.yaml"), "utf8"));
+    const bindings = [
+      { slug: "food-lion-crestwood-frederick", name: "Food Lion Crestwood", ledger_id: "food_lion_crestwood_hours", category: "market", url: "https://stores.foodlion.com/md/frederick/6920-crestwood-blvd", kind: "weekly" },
+      { slug: "food-lion-yellow-springs-frederick", name: "Food Lion Yellow Springs", ledger_id: "food_lion_yellow_springs_hours", category: "market", url: "https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd.", kind: "weekly" },
+      { slug: "food-lion-thurmont", name: "Food Lion Thurmont", ledger_id: "food_lion_thurmont_hours", category: "market", url: "https://stores.foodlion.com/md/thurmont/231-tippin-dr", kind: "weekly" },
+    ];
+    for (const expected of bindings) {
+      const binding = MERCHANT_HOURS_SOURCES.find(source => source.slug === expected.slug);
+      expect(binding).toEqual(expected);
+      const owners = registry.filter(row => row.evidenceAliases.includes(expected.url));
+      expect(owners).toHaveLength(1);
+      expect(owners[0]).toMatchObject({ id: expected.ledger_id, url: expected.url, collection: "workflow", status: "active", refreshCadence: "daily", snapshotCadence: "daily", manifestLastSuccess: null, schemaFile: "src/lib/merchant-hours.ts", transformFile: "scripts/lib/merchant-official-hours.ts", evidenceAliases: [expected.ledger_id, expected.url].sort(), publicationApplicability: "required" });
+      expect("max_response_bytes" in binding!).toBe(false);
+    }
   });
 
   it("fails closed on unsupported snapshot and change cadences", () => {

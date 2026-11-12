@@ -39,6 +39,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "alekos_hours",
+    "name": "Aleko's Village Cafe — First-party Hours",
+    "owner": "Aleko's Village Cafe",
+    "url": "https://www.alekosvillagecafe.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "alekos_hours",
+      "https://www.alekosvillagecafe.com/"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "bandsintown",
     "name": "Bandsintown — Live Music",
     "owner": "Bandsintown",
@@ -113,6 +134,27 @@
     "schemaFile": null,
     "transformFile": "scripts/ingest-business-info.ts",
     "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "carriage_house_inn_restaurant_catering_emmitsburg_hours",
+    "name": "Carriage House Inn Restaurant & Catering — First-party Public Hours",
+    "owner": "Carriage House Inn Restaurant & Catering",
+    "url": "https://chouseinn.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "carriage_house_inn_restaurant_catering_emmitsburg_hours",
+      "https://chouseinn.com/"
+    ],
     "rowsRequired": false,
     "publicationApplicability": "required"
   },
@@ -592,6 +634,69 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "common_market_hours",
+    "name": "Common Market — First-party Grocery Hours",
+    "owner": "Common Market",
+    "url": "https://www.commonmarket.coop/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "common_market_hours",
+      "https://www.commonmarket.coop/"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "curious_iguana_hours",
+    "name": "Curious Iguana — First-party Hours",
+    "owner": "Curious Iguana",
+    "url": "https://curiousiguana.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "weekly (manual review before expiry)",
+    "snapshotCadence": "weekly",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "curious_iguana_hours",
+      "https://curiousiguana.com/"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "delaplaine_hours",
+    "name": "Delaplaine Arts Center - First-party Gallery Hours",
+    "owner": "Delaplaine Arts Center",
+    "url": "https://delaplaine.org/",
+    "license": "public first-party visiting hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "delaplaine_hours",
+      "https://delaplaine.org/"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "delaplaine_calendar",
     "name": "Delaplaine Arts Center Events",
     "owner": "Delaplaine Arts Center",
@@ -628,6 +733,48 @@
     "evidenceAliases": [
       "dfp",
       "dfp_ical"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "dublin_roasters_hours",
+    "name": "Dublin Roasters Coffee — First-party Hours",
+    "owner": "Dublin Roasters Coffee",
+    "url": "https://dublinroasterscoffee.com",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "dublin_roasters_hours",
+      "https://dublinroasterscoffee.com"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "el_rancho_restaurant_walkersville_hours",
+    "name": "El Rancho Restaurant — First-party Public Hours",
+    "owner": "El Rancho Restaurant",
+    "url": "https://elrancho-restaurant.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "el_rancho_restaurant_walkersville_hours",
+      "https://elrancho-restaurant.com/"
     ],
     "rowsRequired": false,
     "publicationApplicability": "required"
@@ -671,6 +818,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "firebirds_wood_fired_grill_frederick_hours",
+    "name": "Firebirds Wood Fired Grill — First-party Public Hours",
+    "owner": "Firebirds Wood Fired Grill",
+    "url": "https://firebirdsrestaurants.com/frederick",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "firebirds_wood_fired_grill_frederick_hours",
+      "https://firebirdsrestaurants.com/frederick"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "firstenergy_outages",
     "name": "FirstEnergy Outages, Potomac Edison",
     "owner": "FirstEnergy",
@@ -685,6 +853,90 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/firstenergy.ts",
     "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "food_lion_crestwood_hours",
+    "name": "Food Lion Crestwood - First-party Grocery Hours",
+    "owner": "Food Lion",
+    "url": "https://stores.foodlion.com/md/frederick/6920-crestwood-blvd",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "food_lion_crestwood_hours",
+      "https://stores.foodlion.com/md/frederick/6920-crestwood-blvd"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "food_lion_thurmont_hours",
+    "name": "Food Lion Thurmont - First-party Grocery Hours",
+    "owner": "Food Lion",
+    "url": "https://stores.foodlion.com/md/thurmont/231-tippin-dr",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "food_lion_thurmont_hours",
+      "https://stores.foodlion.com/md/thurmont/231-tippin-dr"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "food_lion_yellow_springs_hours",
+    "name": "Food Lion Yellow Springs - First-party Grocery Hours",
+    "owner": "Food Lion",
+    "url": "https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd.",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "food_lion_yellow_springs_hours",
+      "https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd."
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "fratellis_italian_seafood_middletown_hours",
+    "name": "Fratelli's Italian & Seafood — First-party Public Hours",
+    "owner": "Fratelli's Italian & Seafood",
+    "url": "https://www.fratellispasta.com/location/fratellis-middletown/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "fratellis_italian_seafood_middletown_hours",
+      "https://www.fratellispasta.com/location/fratellis-middletown/"
+    ],
     "rowsRequired": false,
     "publicationApplicability": "required"
   },
@@ -1024,8 +1276,8 @@
     "name": "Frederick County Parks and Recreation Locations",
     "owner": "Frederick County Government",
     "url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0",
-    "license": "publicly readable; written data and attachment-photo reuse approval required",
-    "status": "pending_approval",
+    "license": "written data and attachment-photo reuse permission confirmed by owner; not an open license",
+    "status": "pending_review",
     "collection": null,
     "refreshCadence": "weekly",
     "snapshotCadence": null,
@@ -1167,6 +1419,27 @@
     "transformFile": "src/lib/ingest/fcvfra.ts",
     "evidenceAliases": [
       "fcvfra.com"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "frederick_fudge_ice_cream_hours",
+    "name": "Frederick Fudge Ice Cream — First-party Public Hours",
+    "owner": "Frederick Fudge Ice Cream",
+    "url": "https://fredicecream.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "frederick_fudge_ice_cream_hours",
+      "https://fredicecream.com/"
     ],
     "rowsRequired": false,
     "publicationApplicability": "required"
@@ -1434,6 +1707,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "hinzis_kitchen_hours",
+    "name": "Hinzi's Kitchen — First-party Public Hours",
+    "owner": "Hinzi's Kitchen",
+    "url": "https://hinzis.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "hinzis_kitchen_hours",
+      "https://hinzis.com/"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "fc_historic_cemeteries",
     "name": "Historic Cemeteries of Frederick County",
     "owner": "Frederick County Government",
@@ -1448,6 +1742,27 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/fcCemeteries.ts",
     "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "hoffman_brothers_ice_cream_hours",
+    "name": "Hoffman Brothers Ice Cream — First-party Public Hours",
+    "owner": "Hoffman Brothers Ice Cream",
+    "url": "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "hoffman_brothers_ice_cream_hours",
+      "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr"
+    ],
     "rowsRequired": false,
     "publicationApplicability": "required"
   },
@@ -1490,6 +1805,48 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "hootch_banter_hours",
+    "name": "Hootch & Banter - First-party Qualified Dinner Hours",
+    "owner": "Hootch & Banter",
+    "url": "https://hootchandbanter.com",
+    "license": "public first-party dinner hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/qualified-merchant-hours.ts",
+    "evidenceAliases": [
+      "hootch_banter_hours",
+      "https://hootchandbanter.com"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "il_porto_frederick_hours",
+    "name": "Il Porto Frederick — First-party Hours",
+    "owner": "Il Porto Frederick",
+    "url": "https://www.ilportorestaurant.com/location-frederick/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://www.ilportorestaurant.com/location-frederick/",
+      "il_porto_frederick_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "islamic_society_frederick_calendar",
     "name": "Islamic Society of Frederick Calendar",
     "owner": "Islamic Society of Frederick",
@@ -1505,6 +1862,69 @@
     "transformFile": "src/lib/integrations/ical-live.ts",
     "evidenceAliases": [
       "isf"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "jojos_hours",
+    "name": "JoJo's Restaurant & Tap House — First-party Hours",
+    "owner": "JoJo's Restaurant & Tap House",
+    "url": "https://jojosrestauranttaphouse.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://jojosrestauranttaphouse.com/",
+      "jojos_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "kulfi_hours",
+    "name": "Kulfi Ice Creams — First-party Hours",
+    "owner": "Kulfi Ice Creams",
+    "url": "https://kulfi-icecream.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://kulfi-icecream.com/",
+      "kulfi_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "mamma_angela_hours",
+    "name": "Mamma Angela - First-party Hours",
+    "owner": "Mamma Angela",
+    "url": "https://www.mammaangelamtairymd.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://www.mammaangelamtairymd.com/",
+      "mamma_angela_hours"
     ],
     "rowsRequired": false,
     "publicationApplicability": "required"
@@ -1840,6 +2260,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "monocacy_taproom_hours",
+    "name": "Monocacy Brewing Company - First-party Taproom Hours",
+    "owner": "Monocacy Brewing Company",
+    "url": "https://monocacybrewing.com/",
+    "license": "public first-party taproom hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://monocacybrewing.com/",
+      "monocacy_taproom_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "monocacy_brewing_calendar",
     "name": "Monocacy Brewing Events",
     "owner": "Monocacy Brewing Company",
@@ -1930,6 +2371,27 @@
     "schemaFile": null,
     "transformFile": "scripts/ingest-municipal-civic.ts",
     "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "museum_civil_war_medicine_hours",
+    "name": "National Museum of Civil War Medicine - First-party Qualified Venue Hours",
+    "owner": "National Museum of Civil War Medicine",
+    "url": "https://www.civilwarmed.org/",
+    "license": "public first-party visiting hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/qualified-merchant-hours.ts",
+    "evidenceAliases": [
+      "https://www.civilwarmed.org/",
+      "museum_civil_war_medicine_hours"
+    ],
     "rowsRequired": false,
     "publicationApplicability": "required"
   },
@@ -2080,6 +2542,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "pistarros_hours",
+    "name": "Pistarro's — First-party Hours",
+    "owner": "Pistarro's",
+    "url": "https://pistarro.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://pistarro.com/",
+      "pistarros_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "pulsepoint",
     "name": "PulsePoint Incidents",
     "owner": "PulsePoint Foundation",
@@ -2170,6 +2653,48 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "safeway_middletown_hours",
+    "name": "Safeway Middletown - First-party Grocery Hours",
+    "owner": "Safeway",
+    "url": "https://local.safeway.com/safeway/md/middletown/815-e-main-st.html",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://local.safeway.com/safeway/md/middletown/815-e-main-st.html",
+      "safeway_middletown_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "safeway_walkersville_hours",
+    "name": "Safeway Walkersville - First-party Grocery Hours",
+    "owner": "Safeway",
+    "url": "https://local.safeway.com/safeway/md/walkersville/151-walkers-village-way.html",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://local.safeway.com/safeway/md/walkersville/151-walkers-village-way.html",
+      "safeway_walkersville_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "seatgeek",
     "name": "SeatGeek Events",
     "owner": "SeatGeek",
@@ -2220,6 +2745,90 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "sumittra_hours",
+    "name": "Sumittra Thai Cuisine — First-party Hours",
+    "owner": "Sumittra Thai Cuisine",
+    "url": "https://www.sumittra.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "weekly (manual review before expiry)",
+    "snapshotCadence": "weekly",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://www.sumittra.com/",
+      "sumittra_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "thai_meric_hours",
+    "name": "Thai Meric Eatery & Bar — First-party Hours",
+    "owner": "Thai Meric Eatery & Bar",
+    "url": "https://www.thaimeric.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://www.thaimeric.com/",
+      "thai_meric_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "thai_table_hours",
+    "name": "Thai Table — First-party Hours",
+    "owner": "Thai Table",
+    "url": "https://thaitablecuisine.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://thaitablecuisine.com/",
+      "thai_table_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "tasting_room_hours",
+    "name": "The Tasting Room - First-party Qualified Dinner Hours",
+    "owner": "The Tasting Room",
+    "url": "https://trrestaurant.com/",
+    "license": "public first-party dinner hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/qualified-merchant-hours.ts",
+    "evidenceAliases": [
+      "https://trrestaurant.com/",
+      "tasting_room_hours"
+    ],
     "rowsRequired": false,
     "publicationApplicability": "required"
   },
@@ -2404,6 +3013,27 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/visitfrederick.ts",
     "evidenceAliases": [],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
+    "id": "white_rabbit_hours",
+    "name": "White Rabbit Gastropub — First-party Hours",
+    "owner": "White Rabbit Gastropub",
+    "url": "https://www.whiterabbitgastropub.com/readme",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://www.whiterabbitgastropub.com/readme",
+      "white_rabbit_hours"
+    ],
     "rowsRequired": false,
     "publicationApplicability": "required"
   },

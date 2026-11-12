@@ -4,6 +4,7 @@ import { expect, waitFor, within } from "storybook/test";
 import type { EventCardVisual } from "@/components/event/eventVisuals";
 import type { TodayEvent, TodayEventResponse } from "@/lib/today-events";
 import { TodayEventBriefCard, TodayEventsRecoveryView } from "./TodayEventsRecovery";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 
 const fullTitle = "Offline Layout Ensemble: Live Theatre Production";
 const eventFixture: TodayEvent = {
@@ -29,7 +30,7 @@ const artworkFixture: EventCardVisual = {
   sourceHref: "https://example.test/offline-artwork-fixture",
 };
 const ownedPhoto: EventCardVisual = {
-  src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
+  src: getOwnedPlacePhoto("carroll-creek-linear-park-frederick")!.src,
   key: "radius-carroll-creek-summer",
   presentation: "photo",
   caption: "Venue · Carroll Creek Linear Park",
@@ -110,7 +111,7 @@ async function assertReadable(canvasElement: HTMLElement, event = eventFixture) 
   await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
 }
 
-async function assertArtworkReadingLayout(canvasElement: HTMLElement, stacked: boolean) {
+async function assertArtworkReadingLayout(canvasElement: HTMLElement, enlarged: boolean) {
   const nodes = facts(canvasElement);
   const figure = canvasElement.querySelector<HTMLImageElement>("img")!.closest("figure")!;
   const layout = figure.parentElement!;
@@ -122,15 +123,18 @@ async function assertArtworkReadingLayout(canvasElement: HTMLElement, stacked: b
     const title = nodes.title.getBoundingClientRect(), venue = nodes.venue.getBoundingClientRect();
     const art = figure.getBoundingClientRect(), frame = figure.firstElementChild!.getBoundingClientRect();
     expect(row.width).toBeGreaterThan(0);
-    if (stacked) {
+    if (enlarged) {
+      // At 200% the picture stays a 64px square at the row's right edge, and
+      // the event facts keep most of the row rather than a narrow column.
+      expect(art.left).toBeGreaterThanOrEqual(panel.right + 1);
+      expect(Math.abs(art.right - row.right)).toBeLessThanOrEqual(1);
+      expect(Math.abs(art.width - 64)).toBeLessThanOrEqual(1);
+      expect(Math.abs(frame.width - frame.height)).toBeLessThanOrEqual(1);
+      expect(panel.width).toBeGreaterThanOrEqual(row.width * 0.65);
       expect(Math.abs(title.left - row.left)).toBeLessThanOrEqual(1);
-      expect(Math.abs(title.right - row.right)).toBeLessThanOrEqual(1);
       expect(Math.abs(venue.left - row.left)).toBeLessThanOrEqual(1);
-      expect(Math.abs(venue.right - row.right)).toBeLessThanOrEqual(1);
-      expect(art.top).toBeGreaterThanOrEqual(panel.bottom - 1);
-      expect(art.top).toBeGreaterThanOrEqual(venue.bottom - 1);
-      expect(Math.abs(art.width - row.width)).toBeLessThanOrEqual(1);
-      expect(Math.abs(frame.width / frame.height - 4 / 3)).toBeLessThanOrEqual(0.01);
+      expect(title.right).toBeLessThanOrEqual(art.left);
+      expect(venue.right).toBeLessThanOrEqual(art.left);
     } else {
       // Both ordinary portrait cases retain compact side-by-side discovery.
       expect(art.left).toBeGreaterThanOrEqual(panel.right + 1);
@@ -188,7 +192,7 @@ async function renderedImage(canvasElement: HTMLElement) {
   return canvasElement.querySelector<HTMLImageElement>("img")!;
 }
 
-async function assertIntactArtwork({ canvasElement }: Context, stacked = false) {
+async function assertIntactArtwork({ canvasElement }: Context, enlarged = false) {
   const canvas = within(canvasElement);
   const image = await renderedImage(canvasElement);
   image.scrollIntoView({ block: "center", behavior: "instant" });
@@ -220,7 +224,7 @@ async function assertIntactArtwork({ canvasElement }: Context, stacked = false) 
   await expect(canvasElement.querySelectorAll("[data-event-photo-credit]")).toHaveLength(1);
   await expect(image.closest("figure")!.contains(canvas.getByRole("heading", { name: fullTitle }))).toBe(false);
   await assertReadable(canvasElement);
-  await assertArtworkReadingLayout(canvasElement, stacked);
+  await assertArtworkReadingLayout(canvasElement, enlarged);
   await assertControls(canvasElement);
 }
 
@@ -270,12 +274,84 @@ export const OwnedPhotoFullView390: Story = {
       await expect(image.naturalHeight).toBeGreaterThan(1);
     });
     await expect(getComputedStyle(image).objectFit).toBe("cover");
-    await expect(image.getAttribute("src")).toContain("SUMMER");
+    const source = new URL(image.currentSrc || image.src, document.baseURI);
+    await expect(decodeURIComponent(source.searchParams.get("url") ?? source.pathname)).toBe(ownedPhoto.src);
     await expect(canvas.getByText(ownedPhoto.caption, { exact: true })).toBeVisible();
     await expect(canvas.getByRole("link", { name: "See all: Events today" })).toHaveAttribute("href", "/events");
     await expect(canvasElement.querySelectorAll("[data-event-photo-credit]")).toHaveLength(1);
     await assertReadable(canvasElement, ownedEvent);
     await assertControls(canvasElement);
+  },
+};
+
+// A lead with imageless follow-ups. The lead alone carries the action cue,
+// and coral marks only the event that is on now.
+const imagelessRows: TodayEvent[] = [
+  eventFixture,
+  relativeRows[1],
+  {
+    ...eventFixture, slug: "offline-later-fixture", title: "Offline later fixture",
+    presenter: undefined, time: "8:30 PM", moment: "Tonight", free: false,
+  },
+];
+export const ImagelessFollowUps390: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  args: { response: { events: imagelessRows, partial: false } },
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBe(390);
+    const canvas = within(canvasElement);
+    const cards = Array.from(canvasElement.querySelectorAll<HTMLElement>('article[data-decision-entity="event"]'));
+    await expect(cards).toHaveLength(imagelessRows.length);
+    await expect(canvasElement.querySelector("img")).toBeNull();
+    const [lead, ...followUps] = cards;
+    await expect(canvas.getAllByText("View event", { exact: true })).toHaveLength(1);
+    await expect(within(lead).getByText("View event", { exact: true })).toBeVisible();
+    // Every choice is a flat ruled row: no lift shadow, a hairline below.
+    await expect(getComputedStyle(lead).boxShadow).toBe("none");
+    await expect(getComputedStyle(lead).borderBottomWidth).toBe("1px");
+    for (const card of followUps) {
+      // A flat hairline item keeps the whole-card link, its heading and its facts.
+      await expect(getComputedStyle(card).boxShadow).toBe("none");
+      await expect(getComputedStyle(card).borderBottomWidth).toBe("1px");
+      const link = card.querySelector<HTMLAnchorElement>('a[href^="/events/"]')!;
+      await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+      await expect(link.querySelector("h3")).not.toBeNull();
+      await expect(link.querySelectorAll("p")).toHaveLength(2);
+    }
+    const token = (name: string) => {
+      const probe = canvasElement.appendChild(document.createElement("span"));
+      probe.style.color = `var(${name})`;
+      const color = getComputedStyle(probe).color;
+      probe.remove();
+      return color;
+    };
+    const live = token("--app-link"), quiet = token("--app-ink-2");
+    await expect(live).not.toBe(quiet);
+    const timeColor = (text: string) => getComputedStyle(canvas.getByText(text, { exact: true })).color;
+    await expect(timeColor("Now · 9:17 AM")).toBe(live);
+    await expect(timeColor("7:00 PM")).toBe(quiet);
+    await expect(timeColor("8:30 PM")).toBe(quiet);
+    await assertReadable(canvasElement);
+    await assertControls(canvasElement);
+    // Keyboard focus rings the whole card from the article, which its own
+    // clipping cannot hide, and only the focused card carries it.
+    if (!(globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) return;
+    const browser = await import("vitest/browser");
+    const tab = browser.server.browser === "webkit" && browser.server.platform === "darwin" ? "{Alt>}{Tab}{/Alt}" : "{Tab}";
+    // Trusted input establishes this story frame before native Tab.
+    await browser.userEvent.click(canvas.getByRole("heading", { name: "Events today" }));
+    for (const card of [lead, followUps[0]]) {
+      const link = card.querySelector<HTMLAnchorElement>(":scope > a")!;
+      for (let presses = 0; presses < 8 && document.activeElement !== link; presses++) await browser.userEvent.keyboard(tab);
+      await expect(link).toHaveFocus();
+      await expect(link.matches(":focus-visible")).toBe(true);
+      await expect(getComputedStyle(link).outlineStyle).toBe("none");
+      for (const other of cards) {
+        await expect(getComputedStyle(other).outlineStyle).toBe(other === card ? "solid" : "none");
+      }
+      await expect(parseFloat(getComputedStyle(card).outlineWidth)).toBeGreaterThanOrEqual(2);
+      await expect(parseFloat(getComputedStyle(card).outlineOffset)).toBeGreaterThan(0);
+    }
   },
 };
 

@@ -1,6 +1,32 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
 
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+type LocalAssetFailure = { protocol: string; path: string; resourceType: string; error: string | null };
+const localAssetFailures = new WeakMap<Page, LocalAssetFailure[]>();
+
+test.beforeEach(({ page, browserName, baseURL }) => {
+  if (browserName !== "webkit" || !baseURL) return;
+  const origin = new URL(baseURL);
+  if (origin.protocol !== "http:" || !["localhost", "127.0.0.1"].includes(origin.hostname)) return;
+  const failures: LocalAssetFailure[] = [];
+  localAssetFailures.set(page, failures);
+  page.on("requestfailed", request => {
+    const url = new URL(request.url());
+    if (url.hostname !== origin.hostname || url.port !== origin.port
+      || !["script", "stylesheet"].includes(request.resourceType()) || failures.length >= 40) return;
+    failures.push({ protocol: url.protocol, path: url.pathname, resourceType: request.resourceType(),
+      error: request.failure()?.errorText ?? null });
+  });
+});
+
+test.afterEach(async ({ page }, info) => {
+  const failures = localAssetFailures.get(page);
+  if (failures) await info.attach("search-loopback-script-transport", {
+    contentType: "application/json", body: JSON.stringify({ failures }),
+  });
+});
 
 test("changing the search area refreshes matches and Back restores the previous county search", async ({ page }) => {
   await page.goto("/search?q=coffee&in=county&kind=place", { waitUntil: "domcontentloaded" });
@@ -36,15 +62,61 @@ test("a new area replaces the town embedded in the request without losing the pl
 
 
 for (const width of [320, 390]) {
-  test(`native search area and photographic lead reflow at ${width}px with enlarged text`, async ({ page }) => {
+  test(`native search area and photographic lead reflow at ${width}px with enlarged text`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 844 });
     await page.route("**/api/place-photo?**", (route) => route.abort());
     await page.goto("/search?q=Schifferstadt&in=county&kind=place", { waitUntil: "domcontentloaded" });
-    await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
     const area = page.getByRole("combobox", { name: "Search area", exact: true });
     await expect(area).toBeEnabled();
     await expect(area).toHaveValue("county");
+    // Hydration can reconcile the root style after DOMContentLoaded. Set the
+    // external text-size probe only once the real control is interactive, then
+    // require actual computed growth rather than assuming the mutation stuck.
+    await page.evaluate(() => document.fonts.ready);
+    const paint = () => page.evaluate(() => new Promise<void>(resolve =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    const textSize = () => area.evaluate(node => ({
+      root: parseFloat(getComputedStyle(document.documentElement).fontSize),
+      control: parseFloat(getComputedStyle(node).fontSize),
+    }));
+    await paint();
+    const baseline = await textSize();
+    const growthSamples: Awaited<ReturnType<typeof textSize>>[] = [];
+    await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+    let consecutiveGrowth = 0;
+    try {
+      await expect.poll(async () => {
+        await paint();
+        const sample = await textSize();
+        growthSamples.push(sample);
+        const grown = sample.root >= baseline.root * 2 - 0.25
+          && sample.control >= baseline.control * 2 - 0.25;
+        consecutiveGrowth = grown ? consecutiveGrowth + 1 : 0;
+        return consecutiveGrowth;
+      }, { message: "Root and native area text actually grow to 200% after hydration" }).toBeGreaterThanOrEqual(2);
+    } finally {
+      await info.attach("native-search-text-growth", { contentType: "application/json",
+        body: JSON.stringify({ baseline, growthSamples }) });
+    }
     const bounds = (await area.boundingBox())!;
+    const sizing = await area.evaluate(element => {
+      const style = getComputedStyle(element);
+      const links = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).map(link => ({
+        path: new URL(link.href).pathname, sheetPresent: link.sheet !== null, disabled: link.disabled, media: link.media,
+      }));
+      return { className: element.className, computed: {
+        height: style.height, minHeight: style.minHeight, fontSize: style.fontSize,
+        fontFamily: style.fontFamily, lineHeight: style.lineHeight, boxSizing: style.boxSizing,
+        paddingTop: style.paddingTop, paddingBottom: style.paddingBottom,
+        paddingLeft: style.paddingLeft, paddingRight: style.paddingRight,
+        appearance: style.appearance, webkitAppearance: style.getPropertyValue("-webkit-appearance"),
+      }, rootFontSize: getComputedStyle(document.documentElement).fontSize,
+      documentReadyState: document.readyState, fontStatus: document.fonts.status,
+      styleSheetCount: document.styleSheets.length, stylesheetLinkCount: links.length,
+      stylesheetLinksWithSheet: links.filter(link => link.sheetPresent).length, links };
+    });
+    await info.attach("native-search-area-sizing", { contentType: "application/json",
+      body: JSON.stringify({ width, bounds, ...sizing }) });
     expect(bounds.height).toBeGreaterThanOrEqual(44);
     expect(bounds.width).toBeGreaterThanOrEqual(width - 64);
     expect(bounds.x).toBeGreaterThanOrEqual(0);
@@ -60,3 +132,8 @@ for (const width of [320, 390]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   });
 }
+
+// Production HTTPS remains untouched. Only local HTTP WebKit documents lose
+// their upgrade directive; the shared fixture proves identical response bytes
+// and all other headers, and attaches the original/delivered CSP values.
+registerWebkitLoopbackDocumentSeam();

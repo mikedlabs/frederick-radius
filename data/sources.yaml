@@ -1439,18 +1439,24 @@ sources:
     endpoint_type: arcgis_rest
     format: json
     refresh_cadence: weekly
-    license: publicly readable; written data and attachment-photo reuse approval required
+    license: written data and attachment-photo reuse permission confirmed by owner; not an open license
     contact: https://www.recreater.com
-    status: pending_approval
+    status: pending_review
     last_validated: 2026-07-28
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/fcRecLocations.ts
     notes: |
-      The County dashboard exposes amenity points and attached images, but the
-      exact item carries no recorded reuse grant. Runtime and build pulls
-      require the two-step approval gate. Old committed staging files,
-      attachment URLs, amenity rollups, and GIS-only place rows were removed.
+      The owner explicitly confirmed written permission for this exact County
+      recreation dataset and its attached photographs. On October 24, fourteen
+      exact catalog-place attachments passed individual identity, pixel,
+      privacy and quality review. Those local files retain County credit and
+      the Used with permission label in credited-local-place-photos.ts.
+      Permission alone does not accept remaining source facts or attachments.
+      Runtime and build pulls retain the two-step source gate; the broad source
+      stays pending review. Old staging files, raw attachment URL rollups and
+      GIS-only place rows remain removed. Photo review does not refresh any
+      source observation, hours, amenities, access or coordinates.
 
   - id: fc_county_facilities
     name: Frederick County Facilities Legacy Ingest
@@ -1622,9 +1628,8 @@ sources:
       redistribution terms are confirmed, then set PARKING_OCCUPANCY_URL
       (optionally PARKING_OCCUPANCY_KEY). The runtime loader
       src/lib/integrations/parking-live.ts then lights up the /parking live
-      badges and the /api/cron/parking-alerts fanout. Disabled = graceful
-      no-op, no fabricated counts. (The predictive
-      /api/cron/parking-forecast nudge runs without this feed.) The pipeline schema/transform here remain the
+      badges. Disabled = graceful no-op, no fabricated counts. The pipeline
+      schema/transform here remain the
       batch-ingest mirror of that same model. pending_review by design.
 
   - id: transit_gtfs
@@ -2473,6 +2478,46 @@ sources:
       reads retain old evidence and stage a fail-closed review item. New facts
       require review before promotion; job success is not published freshness.
 
+  - id: mamma_angela_hours
+    name: Mamma Angela - First-party Hours
+    owner: Mamma Angela
+    url: https://www.mammaangelamtairymd.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: Mamma Angela
+    status: active
+    collection: workflow
+    evidence_aliases: [mamma_angela_hours, https://www.mammaangelamtairymd.com/]
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 5 Ridgeside Court, Mount Airy MD 21771 identity and telephone 3018291575.
+      Reviewed visible contact cohort preserves the complete primary week, including the source's explicit thru/to wording. Existing native owner, ordinary 512000-byte cap and seven-day evidence limit. No credentials, redirects, retries or additional provider. Registration and parser replay do not accept facts or renew an observation. Contacts and images have separate review and reuse requirements.
+
+  - id: monocacy_taproom_hours
+    name: Monocacy Brewing Company - First-party Taproom Hours
+    owner: Monocacy Brewing Company
+    url: https://monocacybrewing.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party taproom hours facts; no page or image reuse
+    contact: Monocacy Brewing Company
+    status: active
+    collection: workflow
+    evidence_aliases: [monocacy_taproom_hours, https://monocacybrewing.com/]
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 1781 North Market St, Frederick MD 21701 identity and independently corrected telephone 2404574232. The reviewed visible contact cohort reads only the labeled public taproom week, with its explicit shared-PM range format.
+      Qualified bar scope is display_only, never generic Open now, likely-open ranking, brewery/tour availability or general opening-hours schema. Existing native owner, ordinary 512000-byte cap and seven-day evidence limit. No credentials, redirects, retries or provider. Registration and replay are not acceptance; retain actual source hashes, clocks, holds and all failed/unselected records. No contact or photo acceptance or page/image reuse rights are inferred.
+
   - id: gravel_grind_hours
     name: "Gravel & Grind — First-party Hours"
     owner: "Gravel & Grind"
@@ -2522,6 +2567,221 @@ sources:
       days; a dated merchant week expires at its own end. Failed or ambiguous
       reads retain old evidence and stage a fail-closed review item. New facts
       require review before promotion; job success is not published freshness.
+
+  - id: dublin_roasters_hours
+    name: "Dublin Roasters Coffee — First-party Hours"
+    owner: Dublin Roasters Coffee
+    url: https://dublinroasterscoffee.com
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: Dublin Roasters Coffee
+    status: active
+    collection: workflow
+    evidence_aliases: [dublin_roasters_hours, https://dublinroasterscoffee.com]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: |
+      The exact 1780 N Market Street coffee shop publishes the complete weekly
+      schedule beside its matching address and 240-285-9146 location phone.
+      One bounded static HTML GET per run, no credentials, provider, redirect,
+      retry, scripts or images. Real evidence expires within seven days.
+      Conflicted or failed reads retain old evidence and hold only this source;
+      changed facts require review before promotion. No other Dublin identity
+      or header phone inherits this location's schedule.
+
+  - id: pistarros_hours
+    name: "Pistarro's — First-party Hours"
+    owner: "Pistarro's"
+    url: https://pistarro.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Pistarro's"
+    status: active
+    collection: workflow
+    evidence_aliases: [pistarros_hours, https://pistarro.com/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 221 N East Street restaurant footer publishes all seven weekdays. Happy-hour times do not replace operating hours.
+      One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
+
+  - id: jojos_hours
+    name: "JoJo's Restaurant & Tap House — First-party Hours"
+    owner: "JoJo's Restaurant & Tap House"
+    url: https://jojosrestauranttaphouse.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "JoJo's Restaurant & Tap House"
+    status: active
+    collection: workflow
+    evidence_aliases: [jojos_hours, https://jojosrestauranttaphouse.com/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 16-18 East Patrick Street location. Closed Monday and Tuesday, overnight closes on other days; dining-room and tap-house service remain distinct.
+      One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
+
+  - id: thai_table_hours
+    name: "Thai Table — First-party Hours"
+    owner: "Thai Table"
+    url: https://thaitablecuisine.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Thai Table"
+    status: active
+    collection: workflow
+    evidence_aliases: [thai_table_hours, https://thaitablecuisine.com/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 5221 Buckeystown Pike Suite A restaurant. Monday closed; lunch and dinner remain separate windows rather than falsely open all afternoon.
+      One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
+
+  - id: thai_meric_hours
+    name: "Thai Meric Eatery & Bar — First-party Hours"
+    owner: "Thai Meric Eatery & Bar"
+    url: https://www.thaimeric.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Thai Meric Eatery & Bar"
+    status: active
+    collection: workflow
+    evidence_aliases: [thai_meric_hours, https://www.thaimeric.com/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 1170 W Patrick Street Suite E restaurant. Visible business hours and location-bound structured hours must agree, including the weekday service gap.
+      One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
+
+  - id: white_rabbit_hours
+    name: "White Rabbit Gastropub — First-party Hours"
+    owner: "White Rabbit Gastropub"
+    url: https://www.whiterabbitgastropub.com/readme
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "White Rabbit Gastropub"
+    status: active
+    collection: workflow
+    evidence_aliases: [white_rabbit_hours, https://www.whiterabbitgastropub.com/readme]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 18 Market Space restaurant publishes 11am-10pm every day. Weekend brunch is a subset of operating hours, not a replacement week.
+      One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
+
+  - id: il_porto_frederick_hours
+    name: "Il Porto Frederick — First-party Hours"
+    owner: "Il Porto Frederick"
+    url: https://www.ilportorestaurant.com/location-frederick/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Il Porto Frederick"
+    status: active
+    collection: workflow
+    evidence_aliases: [il_porto_frederick_hours, https://www.ilportorestaurant.com/location-frederick/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact Frederick location at 200 S Market Street and phone 301-620-7480. Never inherit the Gaithersburg location phone or schedule.
+      One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
+
+  - id: kulfi_hours
+    name: "Kulfi Ice Creams — First-party Hours"
+    owner: "Kulfi Ice Creams"
+    url: https://kulfi-icecream.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Kulfi Ice Creams"
+    status: active
+    collection: workflow
+    evidence_aliases: [kulfi_hours, https://kulfi-icecream.com/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 5241 Buckeystown Pike shop and phone 240-815-5466. Both posted weekly schedules must agree; a shared PM suffix is interpreted only for this reviewed source.
+      One bounded static HTML GET per native refresh, no paid provider or model. Failed or conflicted reads retain the old record and real date and require review. No automatic acceptance of changed facts.
+
+  - id: sumittra_hours
+    name: "Sumittra Thai Cuisine — First-party Hours"
+    owner: "Sumittra Thai Cuisine"
+    url: https://www.sumittra.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: weekly (manual review before expiry)
+    snapshot_cadence: weekly
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Sumittra Thai Cuisine"
+    status: active
+    collection: workflow
+    evidence_aliases: [sumittra_hours, https://www.sumittra.com/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 12 E Patrick Street restaurant. Manually reviewed Firecrawl processed HTML supplies ordinary weekly split service; generic holiday/service wording is not a holiday calendar.
+      Native GitHub collection preserves this manual record and actual expiry without a provider call. The existing Codex upkeep owner may refresh it before expiry after the private attempted-credit ledger reserves the read; no automatic paid GitHub job, top-up or model extraction.
+
+  - id: curious_iguana_hours
+    name: "Curious Iguana — First-party Hours"
+    owner: "Curious Iguana"
+    url: https://curiousiguana.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: weekly (manual review before expiry)
+    snapshot_cadence: weekly
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Curious Iguana"
+    status: active
+    collection: workflow
+    evidence_aliases: [curious_iguana_hours, https://curiousiguana.com/]
+    last_validated: 2026-10-20
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 12 N Market Street bookstore. Manually reviewed Firecrawl processed HTML. Ordinary-week evidence ends before First Saturday so its later closing is never represented as an ordinary Saturday. Visible phone identity is not the page placeholder telephone anchor.
+      Native GitHub collection preserves this manual record and actual expiry without a provider call. The existing Codex upkeep owner may refresh it before expiry after the private attempted-credit ledger reserves the read; no automatic paid GitHub job, top-up or model extraction.
 
   - id: fcpl_branch_hours
     name: Frederick County Public Libraries — Official Branch Hours
@@ -2837,3 +3097,391 @@ sources:
       A public-domain alternative for a supporting number is the EIA
       weekly Maryland average (state-level only, no station or county
       granularity) — register it separately if we ever want it.
+
+
+  - id: alekos_hours
+    name: "Aleko's Village Cafe — First-party Hours"
+    owner: "Aleko's Village Cafe"
+    url: https://www.alekosvillagecafe.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Aleko's Village Cafe"
+    status: active
+    collection: workflow
+    evidence_aliases: [alekos_hours, https://www.alekosvillagecafe.com/]
+    last_validated: 2026-10-21
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact 6 N Church Street Middletown restaurant and phone 301-371-3500. Visible complete weekly hours include Monday and Sunday closed.
+      One bounded native HTML GET per daily refresh, no credentials, provider, redirect or retry. Only this reviewed URL has a 1 MiB body cap; other native merchants retain 512000 bytes. Evidence expires within seven days; failed/conflicted reads retain old evidence and stage review, without automatic changed-fact acceptance.
+
+  - id: common_market_hours
+    name: "Common Market — First-party Grocery Hours"
+    owner: Common Market
+    url: https://www.commonmarket.coop/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: Common Market
+    status: active
+    collection: workflow
+    evidence_aliases: [common_market_hours, https://www.commonmarket.coop/]
+    last_validated: 2026-10-21
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Two independent exact grocery bindings at 5728 Buckeystown Pike, Unit B1, Frederick MD 21704 and 927 W 7th Street, Frederick MD 21701 share this one source owner. The official Organization contact card lists both addresses and one unqualified Daily store schedule, separately from cafe contacts.
+      One bounded 512000-byte native GET per unique URL per daily run, reused immutably for the two independent bindings. No credentials, provider, redirect or retry. Seven-day expiry; independent changed-fact and acceptance holds remain blocking. No cafe hours or image reuse rights inferred.
+
+  - id: delaplaine_hours
+    name: "Delaplaine Arts Center - First-party Gallery Hours"
+    owner: Delaplaine Arts Center
+    url: https://delaplaine.org/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party visiting hours facts; no page or image reuse
+    contact: Delaplaine Arts Center
+    status: active
+    collection: workflow
+    evidence_aliases: [delaplaine_hours, https://delaplaine.org/]
+    last_validated: 2026-10-22
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact public gallery at 40 S Carroll Street, Frederick MD 21701, phone 301-698-0656. The two visible OPEN DAILY blocks publish one consistent visiting schedule, separate from individual class and event times.
+      One bounded 512000-byte native GET per daily run with no credentials, provider, redirect or retry. Evidence expires within seven days. Changed, missing or conflicted facts remain held for explicit review; a collection success is not publication.
+
+  - id: safeway_middletown_hours
+    name: "Safeway Middletown - First-party Grocery Hours"
+    owner: Safeway
+    url: https://local.safeway.com/safeway/md/middletown/815-e-main-st.html
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: Safeway Middletown
+    status: active
+    collection: workflow
+    evidence_aliases: [safeway_middletown_hours, https://local.safeway.com/safeway/md/middletown/815-e-main-st.html]
+    last_validated: 2026-10-22
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact grocery at 815 E Main St, Middletown MD 21769, phone 301-371-3126. Its primary GroceryStore identity and labeled Store Hours disclosure must agree with all seven weekday rows, their microdata, table configuration and hero schedule. The source's own collapsed disclosure is reviewed explicitly; arbitrary hidden content is not accepted.
+      One bounded 512000-byte native GET per daily run, no credentials, provider, redirect or retry. Seven-day evidence expiry. Pharmacy or other service hours never fill grocery hours. Missing, conflicting or changed facts remain held for explicit review. No source images are licensed by this registration.
+
+  - id: safeway_walkersville_hours
+    name: "Safeway Walkersville - First-party Grocery Hours"
+    owner: Safeway
+    url: https://local.safeway.com/safeway/md/walkersville/151-walkers-village-way.html
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: Safeway Walkersville
+    status: active
+    collection: workflow
+    evidence_aliases: [safeway_walkersville_hours, https://local.safeway.com/safeway/md/walkersville/151-walkers-village-way.html]
+    last_validated: 2026-10-22
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact grocery at 151 Walkers Village Way, Walkersville MD 21793, phone 301-845-2844. Its primary GroceryStore identity and labeled Store Hours disclosure must agree with all seven weekday rows, their microdata, table configuration and hero schedule. The separately labeled Pharmacy Hours wrapper has different periods and is never a grocery schedule.
+      One bounded 512000-byte native GET per daily run, no credentials, provider, redirect or retry. Seven-day evidence expiry. The source's own collapsed Store Hours disclosure is explicitly reviewed, not a general hidden-content exception. Missing, conflicting or changed facts stay held. No source images are licensed by this registration.
+
+  - id: museum_civil_war_medicine_hours
+    name: "National Museum of Civil War Medicine - First-party Qualified Venue Hours"
+    owner: National Museum of Civil War Medicine
+    url: https://www.civilwarmed.org/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party visiting hours facts; no page or image reuse
+    contact: National Museum of Civil War Medicine
+    status: active
+    collection: workflow
+    evidence_aliases: [museum_civil_war_medicine_hours, https://www.civilwarmed.org/]
+    last_validated: 2026-10-23
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/qualified-merchant-hours.ts
+    notes: >-
+      Exact museum at 48 East Patrick Street, Frederick MD 21701, phone 301-695-1864. Its location card supplies a complete weekly venue schedule and a distinct gallery admission cutoff. The Clara Barton museum card in Washington is not this source identity.
+      Display-only qualified venue hours retain the last-admission and named holiday conditions. They never establish generic Open now, admission availability or SEO openingHoursSpecification. A coverage window spanning a named annual closure is held for explicit dated review; calendar calculations never create observed exceptions.
+      One bounded 512000-byte native GET per daily run with no credentials, provider, redirect or retry. Seven-day expiry, actual observation and original response hash remain mandatory. Changed, missing, hidden, additional or conflicting evidence stays held. No image rights are inferred.
+
+  - id: tasting_room_hours
+    name: "The Tasting Room - First-party Qualified Dinner Hours"
+    owner: The Tasting Room
+    url: https://trrestaurant.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party dinner hours facts; no page or image reuse
+    contact: The Tasting Room
+    status: active
+    collection: workflow
+    evidence_aliases: [tasting_room_hours, https://trrestaurant.com/]
+    last_validated: 2026-10-23
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/qualified-merchant-hours.ts
+    notes: >-
+      Exact restaurant at 101 N. Market Street, Frederick MD 21701, phone 240-379-7772. The contact section labels dinner separately from happy hour and bar times; Sunday is explicitly closed. Other promotional clocks do not supply restaurant weekdays.
+      The complete dinner week is qualified scope kitchen, label Dinner hours, usage display_only. It never establishes generic Open now or SEO openingHoursSpecification. Bar or happy-hour times cannot extend dinner or become whole-venue hours.
+      One bounded 512000-byte native GET per daily run, no credentials, provider, redirect or retry. Seven-day expiry and exact original evidence remain mandatory. Changed service qualifiers, notices, identities, missing days or additional schedules require review. No page or image reuse is licensed.
+
+  - id: hootch_banter_hours
+    name: "Hootch & Banter - First-party Qualified Dinner Hours"
+    owner: Hootch & Banter
+    url: https://hootchandbanter.com
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party dinner hours facts; no page or image reuse
+    contact: Hootch & Banter
+    status: active
+    collection: workflow
+    evidence_aliases: [hootch_banter_hours, https://hootchandbanter.com]
+    last_validated: 2026-10-23
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/qualified-merchant-hours.ts
+    notes: >-
+      Exact restaurant at 49 S Market St, Frederick MD 21701, phone 301-732-4971. Its labeled dinner week is separate from weekend brunch, the drinks-only kitchen gap, late bar service and occasional upstairs private events.
+      Qualified scope kitchen, label Dinner hours, usage display_only never establishes generic Open now or SEO openingHoursSpecification. Preserve the brunch gap and named holiday closures. A coverage window spanning a named annual closure is held for explicit dated review; never infer a closing time from open late or publish calculated holiday exceptions.
+      One bounded 512000-byte native GET per daily run, no credentials, provider, redirect or retry. Seven-day expiry and exact source hash and actual observation remain mandatory. Changed, missing, hidden, duplicated or conflicting schedules and notices remain held. No image rights are inferred.
+
+  - id: food_lion_crestwood_hours
+    name: "Food Lion Crestwood - First-party Grocery Hours"
+    owner: Food Lion
+    url: https://stores.foodlion.com/md/frederick/6920-crestwood-blvd
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: Food Lion Crestwood
+    status: active
+    collection: workflow
+    evidence_aliases: [food_lion_crestwood_hours, https://stores.foodlion.com/md/frederick/6920-crestwood-blvd]
+    last_validated: 2026-10-23
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact primary grocery Food Lion Grocery Store of Crestwood Plaza at 6920 Crestwood Blvd, Frederick MD 21703, phone (301) 846-4704, entity https://stores.foodlion.com/#5046692. Its labeled Store Hours primary grocery week requires seven visible weekdays, GroceryStore microdata and agreeing table configuration and hero/core schedules.
+      The corporate Gift Card Sales Department FAQ schedule is separate support service, never grocery hours. Pharmacy, deli and nearby teaser schedules cannot supply grocery days. No holiday changes or image reuse rights are inferred.
+      Original private source review observed at 2026-10-23T09:09:06.137Z with SHA-256 db312c26ab10dbaabaa7dbf6bb08cba1b5f64f6209cf9c4be9174983419a4497; registration does not accept or publish that evidence and must never restamp it.
+      One bounded 512000-byte native GET per daily run, with no credentials, paid provider, redirect or retry. Seven-day evidence expiry. Missing, additional, conflicting or changed facts remain held for explicit review; collection success is not publication.
+
+  - id: food_lion_yellow_springs_hours
+    name: "Food Lion Yellow Springs - First-party Grocery Hours"
+    owner: Food Lion
+    url: https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd.
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: Food Lion Yellow Springs
+    status: active
+    collection: workflow
+    evidence_aliases: [food_lion_yellow_springs_hours, https://stores.foodlion.com/md/frederick/2060-yellow-springs-rd.]
+    last_validated: 2026-10-23
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact primary grocery Food Lion Grocery Store of Frederick at 2060 Yellow Springs Rd., Frederick MD 21702, phone (301) 846-4623, entity https://stores.foodlion.com/#5046537. Its labeled Store Hours primary grocery week requires seven visible weekdays, GroceryStore microdata and agreeing table configuration and hero/core schedules.
+      The corporate Gift Card Sales Department FAQ schedule is separate support service, never grocery hours. Pharmacy, deli and nearby teaser schedules cannot supply grocery days. No holiday changes or image reuse rights are inferred.
+      Original private source review observed at 2026-10-23T09:12:19.914Z with SHA-256 6603b6d4cfdc7b23063757d8236ad37a004564a17e82f981f38fad804ac48ecc; registration does not accept or publish that evidence and must never restamp it.
+      One bounded 512000-byte native GET per daily run, with no credentials, paid provider, redirect or retry. Seven-day evidence expiry. Missing, additional, conflicting or changed facts remain held for explicit review; collection success is not publication.
+
+  - id: food_lion_thurmont_hours
+    name: "Food Lion Thurmont - First-party Grocery Hours"
+    owner: Food Lion
+    url: https://stores.foodlion.com/md/thurmont/231-tippin-dr
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: Food Lion Thurmont
+    status: active
+    collection: workflow
+    evidence_aliases: [food_lion_thurmont_hours, https://stores.foodlion.com/md/thurmont/231-tippin-dr]
+    last_validated: 2026-10-23
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact primary grocery Food Lion Grocery Store of Thurmont at 231 Tippin Dr, Thurmont MD 21788, phone (301) 271-9949, entity https://stores.foodlion.com/#5046567. Its labeled Store Hours primary grocery week requires seven visible weekdays, GroceryStore microdata and agreeing table configuration and hero/core schedules.
+      The corporate Gift Card Sales Department FAQ schedule is separate support service, never grocery hours. Pharmacy, deli and nearby teaser schedules cannot supply grocery days. No holiday changes or image reuse rights are inferred.
+      Original private source review observed at 2026-10-23T09:12:29.612Z with SHA-256 044ae315fc5267a6744169144c97d0136ef2cac6593763d29659c86fa4955a3e; registration does not accept or publish that evidence and must never restamp it.
+      One bounded 512000-byte native GET per daily run, with no credentials, paid provider, redirect or retry. Seven-day evidence expiry. Missing, additional, conflicting or changed facts remain held for explicit review; collection success is not publication.
+
+  - id: firebirds_wood_fired_grill_frederick_hours
+    name: "Firebirds Wood Fired Grill — First-party Public Hours"
+    owner: "Firebirds Wood Fired Grill"
+    url: "https://firebirdsrestaurants.com/frederick"
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Firebirds Wood Fired Grill"
+    status: active
+    collection: workflow
+    evidence_aliases: ["firebirds_wood_fired_grill_frederick_hours", "https://firebirdsrestaurants.com/frederick"]
+    last_validated: 2026-10-24
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact independently reviewed official identity and complete visible public week, using the shared visible weekly contact-card adapter. All repeated public and matching structured weeks must agree.
+      One bounded 512000-byte native GET per exact URL per daily run; no provider, credential, redirect or retry. Seven-day expiry and explicit changed-fact/candidate acceptance remain required. Contact actions and scraped image URLs establish no new image reuse rights.
+
+  - id: fratellis_italian_seafood_middletown_hours
+    name: "Fratelli's Italian & Seafood — First-party Public Hours"
+    owner: "Fratelli's Italian & Seafood"
+    url: "https://www.fratellispasta.com/location/fratellis-middletown/"
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Fratelli's Italian & Seafood"
+    status: active
+    collection: workflow
+    evidence_aliases: ["fratellis_italian_seafood_middletown_hours", "https://www.fratellispasta.com/location/fratellis-middletown/"]
+    last_validated: 2026-10-24
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact independently reviewed official identity and complete visible public week, using the shared visible weekly contact-card adapter. All repeated public and matching structured weeks must agree.
+      One bounded 512000-byte native GET per exact URL per daily run; no provider, credential, redirect or retry. Seven-day expiry and explicit changed-fact/candidate acceptance remain required. Contact actions and scraped image URLs establish no new image reuse rights.
+
+  - id: hinzis_kitchen_hours
+    name: "Hinzi's Kitchen — First-party Public Hours"
+    owner: "Hinzi's Kitchen"
+    url: "https://hinzis.com/"
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Hinzi's Kitchen"
+    status: active
+    collection: workflow
+    evidence_aliases: ["hinzis_kitchen_hours", "https://hinzis.com/"]
+    last_validated: 2026-10-24
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact independently reviewed official identity and complete visible public week, using the shared visible weekly contact-card adapter. All repeated public and matching structured weeks must agree.
+      One bounded 512000-byte native GET per exact URL per daily run; no provider, credential, redirect or retry. Seven-day expiry and explicit changed-fact/candidate acceptance remain required. Contact actions and scraped image URLs establish no new image reuse rights.
+
+  - id: hoffman_brothers_ice_cream_hours
+    name: "Hoffman Brothers Ice Cream — First-party Public Hours"
+    owner: "Hoffman Brothers Ice Cream"
+    url: "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr"
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Hoffman Brothers Ice Cream"
+    status: active
+    collection: workflow
+    evidence_aliases: ["hoffman_brothers_ice_cream_hours", "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr"]
+    last_validated: 2026-10-24
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact independently reviewed official identity and complete visible public week, using the shared visible weekly contact-card adapter. All repeated public and matching structured weeks must agree.
+      One bounded 512000-byte native GET per exact URL per daily run; no provider, credential, redirect or retry. Seven-day expiry and explicit changed-fact/candidate acceptance remain required. Contact actions and scraped image URLs establish no new image reuse rights.
+
+  - id: frederick_fudge_ice_cream_hours
+    name: "Frederick Fudge Ice Cream — First-party Public Hours"
+    owner: "Frederick Fudge Ice Cream"
+    url: "https://fredicecream.com/"
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Frederick Fudge Ice Cream"
+    status: active
+    collection: workflow
+    evidence_aliases: ["frederick_fudge_ice_cream_hours", "https://fredicecream.com/"]
+    last_validated: 2026-10-24
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact independently reviewed official identity and complete visible public week, using the shared visible weekly contact-card adapter. All repeated public and matching structured weeks must agree.
+      One bounded 512000-byte native GET per exact URL per daily run; no provider, credential, redirect or retry. Seven-day expiry and explicit changed-fact/candidate acceptance remain required. Contact actions and scraped image URLs establish no new image reuse rights.
+
+  - id: carriage_house_inn_restaurant_catering_emmitsburg_hours
+    name: "Carriage House Inn Restaurant & Catering — First-party Public Hours"
+    owner: "Carriage House Inn Restaurant & Catering"
+    url: "https://chouseinn.com/"
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "Carriage House Inn Restaurant & Catering"
+    status: active
+    collection: workflow
+    evidence_aliases: ["carriage_house_inn_restaurant_catering_emmitsburg_hours", "https://chouseinn.com/"]
+    last_validated: 2026-10-24
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact independently reviewed official identity and complete visible public week, using the shared visible weekly contact-card adapter. All repeated public and matching structured weeks must agree.
+      One bounded 512000-byte native GET per exact URL per daily run; no provider, credential, redirect or retry. Seven-day expiry and explicit changed-fact/candidate acceptance remain required. Contact actions and scraped image URLs establish no new image reuse rights.
+
+  - id: el_rancho_restaurant_walkersville_hours
+    name: "El Rancho Restaurant — First-party Public Hours"
+    owner: "El Rancho Restaurant"
+    url: "https://elrancho-restaurant.com/"
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: "El Rancho Restaurant"
+    status: active
+    collection: workflow
+    evidence_aliases: ["el_rancho_restaurant_walkersville_hours", "https://elrancho-restaurant.com/"]
+    last_validated: 2026-10-24
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact independently reviewed official identity and complete visible public week, using the shared visible weekly contact-card adapter. All repeated public and matching structured weeks must agree.
+      One bounded 512000-byte native GET per exact URL per daily run; no provider, credential, redirect or retry. Seven-day expiry and explicit changed-fact/candidate acceptance remain required. Contact actions and scraped image URLs establish no new image reuse rights.

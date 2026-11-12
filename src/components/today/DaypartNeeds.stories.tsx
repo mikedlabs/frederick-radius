@@ -145,7 +145,8 @@ export const OpeningSoonEnlargedText320: Story = {
       }
     }
     await expect(parseFloat(getComputedStyle(document.documentElement).fontSize)).toBe(32);
-    await expect(parseFloat(getComputedStyle(card.querySelector("[data-today-pick-name]")!).fontSize)).toBeGreaterThanOrEqual(44);
-    await expect(parseFloat(getComputedStyle(card.querySelector("[data-today-pick-fact]")!).fontSize)).toBeGreaterThanOrEqual(30);
+    // Both lines double with the root: a 20px row name and a 14px meta line.
+    await expect(parseFloat(getComputedStyle(card.querySelector("[data-today-pick-name]")!).fontSize)).toBeGreaterThanOrEqual(40);
+    await expect(parseFloat(getComputedStyle(card.querySelector("[data-today-pick-fact]")!).fontSize)).toBeGreaterThanOrEqual(28);
   },
 };

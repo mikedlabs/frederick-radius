@@ -5,7 +5,6 @@ import { useSavedList, useToggleSave, useIsSaved, savedChangeDescription } from 
 import { track } from "@/lib/track";
 import { createAbortDeadline, withDeadlineOutcome } from "@/lib/promise-deadline";
 import { documentReadIsActive, scheduleDocumentRead } from "@/lib/document-read-lifecycle";
-import { businessTopic } from "@/lib/push-topics";
 import {
   cancelPendingReturnBridgeValue,
   signalReturnBridgeValue,
@@ -143,7 +142,6 @@ type FollowWriteQueue = {
   pending: number;
   uncertain: boolean;
   transport: FollowTransport | null;
-  topicDirty: boolean;
   reconciling: Promise<void> | null;
 };
 const followWrites = new Map<string, FollowWriteQueue>();
@@ -343,13 +341,22 @@ function invalidateAuthForUser(userId: string) {
 function ensureRemoteHydrated(
   localSlugs: Set<string>,
   userId: string,
+  importLocalSavesOnMount: boolean,
 ): Promise<HydrationResult> {
+  // The shared transport only reads memberships. Each caller owns whether it
+  // may import device saves, including a legacy reader joining a passive read.
+  const finish = (result: HydrationResult): HydrationResult => {
+    if (importLocalSavesOnMount && result === "hydrated"
+      && remoteStoreUserId === userId && remoteStore !== null) {
+      void maybeSync(localSlugs, remoteStore, userId);
+    }
+    return result;
+  };
   if (remoteStoreUserId === userId && remoteStore !== null) {
-    void maybeSync(localSlugs, remoteStore, userId);
-    return Promise.resolve("hydrated");
+    return Promise.resolve(finish("hydrated"));
   }
   if (hydratePromise && hydrateUserId === userId) {
-    return hydratePromise;
+    return hydratePromise.then(finish);
   }
 
   // Account changes must never reuse another account's memberships or an
@@ -371,8 +378,6 @@ function ensureRemoteHydrated(
       if (remoteStoreUserId !== userId) return "hydrated";
       const set = new Set(normalizeFollowSlugs(data.slugs));
       writeAccountRemote(userId, set, data.truncated === true);
-      // First-time sync: push any localStorage follows not yet remote.
-      void maybeSync(localSlugs, set, userId);
       return "hydrated";
     })
     .catch((): HydrationResult => {
@@ -387,17 +392,24 @@ function ensureRemoteHydrated(
       }
     });
   hydratePromise = request;
-  return hydratePromise;
+  return request.then(finish);
 }
+
+export type FollowReadOptions = {
+  /** Passive arrival surfaces read membership without importing device saves.
+   * Defaults to the existing import policy; explicit Save writes are unchanged. */
+  importLocalSavesOnMount?: boolean;
+};
 
 /** Hook-internal helper: list of slugs the user follows.
  *  Reads from the shared store when authed, localStorage when not. */
-export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap): {
+export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap, options?: FollowReadOptions): {
   slugs: Set<string>;
   loading: boolean;
   authed: boolean;
   truncated: boolean;
 } {
+  const importLocalSavesOnMount = options?.importLocalSavesOnMount ?? true;
   const localList = useSavedList();
   const localSlugs = useMemo(
     () => new Set(localList.filter((i) => i.type === "place").map((i) => i.id)),
@@ -452,7 +464,7 @@ export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap): {
       if (bootstrap?.slugs !== undefined && bootstrap.user?.id === a.user.id
         && remoteStoreUserId === a.user.id && remoteStore !== null) return;
       retryNeeded = true;
-      const result = await ensureRemoteHydrated(localSlugs, a.user.id);
+      const result = await ensureRemoteHydrated(localSlugs, a.user.id, importLocalSavesOnMount);
       if (cancelled) return;
       if (result === "transient-error") {
         scheduleTransientRetry();
@@ -471,7 +483,7 @@ export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap): {
       if (refreshed === "unknown") scheduleTransientRetry();
       else if (refreshed !== "anonymous") {
         retryNeeded = true;
-        const retry = await ensureRemoteHydrated(localSlugs, refreshed.user.id);
+        const retry = await ensureRemoteHydrated(localSlugs, refreshed.user.id, importLocalSavesOnMount);
         if (cancelled) return;
         retryNeeded = false;
         if (retry === "transient-error") scheduleTransientRetry();
@@ -517,7 +529,7 @@ export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap): {
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onResume);
     };
-  }, [bootstrap, bootstrapKey, localSlugs, retryAttempt]);
+  }, [bootstrap, bootstrapKey, importLocalSavesOnMount, localSlugs, retryAttempt]);
 
   // A newly arrived server payload wins immediately. Once that payload has
   // committed, live auth state wins so a later 401 can demote the tab instead
@@ -555,51 +567,14 @@ export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap): {
 }
 
 /** Lightweight "is this slug followed?" check. */
-export function useIsFollowed(slug: string): boolean {
-  const { slugs, authed } = useFollowedSlugs();
+export function useIsFollowed(slug: string, options?: FollowReadOptions): boolean {
+  const { slugs, authed } = useFollowedSlugs(undefined, options);
   // When anonymous, delegate to the existing useIsSaved to match the
   // legacy contract exactly (the localList read is identical, but
   // useIsSaved also handles the hydration window).
   const localIsSaved = useIsSaved("place", slug);
   if (!authed) return localIsSaved;
   return slugs.has(slug);
-}
-
-/**
- * Mirror a place follow into the DEVICE's push topics, so a claimed business
- * can later reach the people who followed it via the `biz:<slug>` channel
- * (push-topics.ts). push_subscriptions is device-keyed (no user_id), so the
- * server-side follow write can't find the subscription — this runs client-side
- * against the device's own subscription through the existing /api/push/topics
- * merge endpoint.
- *
- * Consent is respected automatically: if this device has no push subscription
- * (the user never granted notifications), getSubscription() is null and we do
- * nothing — we never call subscribe(), so no permission prompt is forced. We
- * subscribe on EVERY follow (not just already-claimed places): the claim can
- * happen after the follow, and the publish side is what gates on a verified
- * owner, so an unclaimed `biz:<slug>` simply never fires. Best-effort and
- * fire-and-forget — a failed topic sync must never affect the follow itself.
- */
-async function syncFollowPushTopic(slug: string, follow: boolean, isCurrent: () => boolean): Promise<void> {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
-  try {
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
-    if (!sub || !isCurrent()) return; // no notification consent on this device → nothing to wire
-    const topic = businessTopic(slug);
-    await fetch("/api/push/topics", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        follow
-          ? { endpoint: sub.endpoint, add: [topic] }
-          : { endpoint: sub.endpoint, remove: [topic] },
-      ),
-    });
-  } catch {
-    /* best-effort side channel; never surface or block the follow */
-  }
 }
 
 export const FOLLOW_WRITE_TIMEOUT_MS = 15_000;
@@ -612,9 +587,14 @@ const CHECKING_WRITE = "Your saved list must be checked before another change to
 
 /** Set one confirmed membership without overwriting unrelated saves. */
 function writeFollowMembership(slug: string, followed: boolean) {
-  const next = new Set(remoteStore ?? []);
-  if (followed) next.add(slug);
-  else next.delete(slug);
+  const current = remoteStore ?? new Set<string>();
+  // Server snapshots are recent-first. A genuinely new confirmed membership
+  // leads the shared read order too, including after the Today view remounts.
+  // Reconfirming an existing membership never manufactures a new position.
+  const next = followed && !current.has(slug)
+    ? new Set([slug, ...current])
+    : new Set(current);
+  if (!followed) next.delete(slug);
   writeRemote(next);
 }
 
@@ -630,30 +610,10 @@ function getFollowQueue(userId: string, slug: string, confirmed: boolean): Follo
   const key = JSON.stringify([userId, slug]);
   let queue = followWrites.get(key);
   if (!queue) {
-    queue = { userId, slug, confirmed, desired: confirmed, latest: 0, tail: Promise.resolve(), pending: 0, uncertain: false, transport: null, topicDirty: false, reconciling: null };
+    queue = { userId, slug, confirmed, desired: confirmed, latest: 0, tail: Promise.resolve(), pending: 0, uncertain: false, transport: null, reconciling: null };
     followWrites.set(key, queue);
   }
   return queue;
-}
-
-/** Sync only a settled, confirmed intent, including a failed newer rollback. */
-function syncConfirmedFollowTopic(queue: FollowWriteQueue) {
-  if (!queue.topicDirty || queue.pending || queue.uncertain || queue.transport) return;
-  const epoch = followWriteEpoch;
-  const followed = queue.confirmed;
-  const key = JSON.stringify([queue.userId, queue.slug]);
-  const isCurrent = () => {
-    const currentQueue = followWrites.get(key);
-    // A same-account snapshot can still confirm this device operation. A new
-    // pending intent cannot: wait for its own confirmed topic sync instead.
-    return followWriteEpoch === epoch && remoteStoreUserId === queue.userId
-      && remoteStore?.has(queue.slug) === followed
-      && (!currentQueue || (!currentQueue.pending && !currentQueue.uncertain
-        && !currentQueue.transport && currentQueue.confirmed === followed));
-  };
-  if (!isCurrent()) return;
-  queue.topicDirty = false;
-  void syncFollowPushTopic(queue.slug, followed, isCurrent);
 }
 
 /** A cancelled read is safe; a cancelled mutation is not proof of rollback. */
@@ -709,7 +669,6 @@ function reconcileFollowQueue(queue: FollowWriteQueue): Promise<void> {
       queue.uncertain = false;
       queue.transport = null;
       writeFollowMembership(queue.slug, followed);
-      syncConfirmedFollowTopic(queue);
       releaseFollowQueue(queue);
     })
     .catch(() => {
@@ -744,7 +703,6 @@ function persistFollowToggle(
   onFailure?: (description: string) => void,
 ): Promise<boolean> {
   const activeQueue = getFollowQueue(userId, slug, wasFollowed);
-  activeQueue.topicDirty = true;
   const revision = ++activeQueue.latest;
   activeQueue.pending++;
   activeQueue.desired = followed;
@@ -814,9 +772,6 @@ function persistFollowToggle(
       return followed;
     } finally {
       activeQueue.pending--;
-      // The operation may be obsolete while a fresh read has confirmed this
-      // account. The helper validates that settled membership independently.
-      syncConfirmedFollowTopic(activeQueue);
       releaseFollowQueue(activeQueue);
     }
   });

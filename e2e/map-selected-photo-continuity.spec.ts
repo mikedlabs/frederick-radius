@@ -1,52 +1,64 @@
 import { readFile } from "node:fs/promises";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page, type Request } from "@playwright/test";
 import catalog from "../src/data/places-client.json";
-import { getLandmarkPhoto, wikimediaUrl } from "../src/lib/integrations/wikimedia";
+import { curatedPhotoUrl, getLandmarkPhoto } from "../src/lib/integrations/wikimedia";
 import { getOwnedPlacePhoto } from "../src/lib/owned-place-photos";
 
-const bakerSlug = "baker-park-frederick";
+const fallbackSlug = "rose-hill-manor-park-museums-frederick";
 const creekSlug = "carroll-creek-linear-park-frederick";
-const places = [bakerSlug, creekSlug].map((slug) => catalog.find((place) => place.slug === slug)!);
+const places = [fallbackSlug, creekSlug].map((slug) => catalog.find((place) => place.slug === slug)!);
 const returnTo = "/search?q=park&in=frederick&kind=place";
 const mapUrl = `/map?q=park&in=frederick&returnTo=${encodeURIComponent(returnTo)}`;
-const photoName = "places/ChIJlayoutFixture/photos/layout-fixture-baker-park";
+const photoName = "places/ChIJlayoutFixture/photos/layout-fixture-rose-hill";
 const authorUri = "https://www.google.com/maps/contrib/000000000000000000000";
 const googleFixture = {
-  google_photo_url: `/api/place-photo?${new URLSearchParams({ name: photoName, w: "208" })}`,
+  google_photo_url: `/api/place-photo?${new URLSearchParams({ name: photoName, w: "800" })}`,
   google_photo_attribution: {
     photo_name: photoName,
-    google_maps_uri: `${authorUri}/photo/layout-fixture-baker-park`,
+    google_maps_uri: `${authorUri}/photo/layout-fixture-rose-hill`,
     authors: [{ display_name: "LAYOUT FIXTURE author", uri: authorUri }],
   },
 };
 const signal = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
-const labelledBytes = '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#ddd"/><text x="48" y="40" text-anchor="middle" font-size="12">COMMONS</text><text x="48" y="55" text-anchor="middle" font-size="12">LAYOUT</text><text x="48" y="70" text-anchor="middle" font-size="12">FIXTURE</text></svg>';
-
 /** The full application, selected card, registries, credit owner, CSS and
- * history are real. Only local API/image transport is controlled. Commons
- * fixture bytes do not depict Baker Park or prove external image availability.
- * The owned transport reads the already-reviewed local Creek photograph. */
-async function installSelectedBoundary(page: Page, baseURL: string | undefined) {
+ * history are real. Local licensed/owned transport reads the exact reviewed
+ * Rose Hill/Creek bytes. Only metadata, decode timing and the Google failure
+ * signal are controlled; no paid image or upstream availability is tested. */
+async function installSelectedBoundary(page: Page, baseURL: string | undefined, googleTransport: "signal" | "decoded" = "signal") {
   if (!baseURL || !["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname)) {
     throw new Error("Selected-photo geometry checks require a loopback server.");
   }
   const localWebKit = page.context().browser()?.browserType().name() === "webkit"
     && new URL(baseURL).protocol === "http:";
   const localCspAdjustments: Array<{ before: string; after: string }> = [];
-  const curated = getLandmarkPhoto(bakerSlug)!;
+  const curated = getLandmarkPhoto(fallbackSlug)!;
   const owned = getOwnedPlacePhoto(creekSlug)!;
   expect(curated).not.toBeNull();
   expect(owned).not.toBeNull();
-  const commonsSrc = wikimediaUrl(curated.file, 720);
-  const browseCommonsSrc = wikimediaUrl(curated.file, 144);
+  expect(curated.preferLocal).toBe(true);
+  const commonsSrc = curatedPhotoUrl(curated, 720);
+  const browseCommonsSrc = curatedPhotoUrl(curated, 176);
+  expect(commonsSrc).toBe(curated.localSrc);
+  expect(commonsSrc.startsWith("/place-photos/")).toBe(true);
   const metadataRequests: string[] = [];
   const googleRequests: string[] = [];
-  const commonsRequests: string[] = [];
-  const browseCommonsRequests: string[] = [];
+  const googleOutcomes = new Map<Request, { url: string; completed: boolean; failed?: string }>();
+  const allCommonsRequests: string[] = [];
+  const commonsOutcomes = new Map<Request, { url: string; completed: boolean; failed?: string; afterFault: boolean; afterViewportResize: boolean }>();
+  let localFaultInjected = false;
+  let viewportResized = false;
+  page.on("requestfinished", request => { for (const outcomes of [commonsOutcomes, googleOutcomes]) { const outcome = outcomes.get(request); if (outcome) outcome.completed = true; } });
+  page.on("requestfailed", request => { for (const outcomes of [commonsOutcomes, googleOutcomes]) { const outcome = outcomes.get(request); if (outcome) outcome.failed = request.failure()?.errorText ?? "unknown"; } });
+  let browseCommonsUrl: string | undefined;
+  const declareCommonsBrowseRequest = (url: string) => {
+    expect(allCommonsRequests).toContain(url);
+    if (browseCommonsUrl) expect(url).toBe(browseCommonsUrl);
+    browseCommonsUrl = url;
+  };
   const allOwnedRequests: string[] = [];
   let browseOwnedUrl: string | undefined;
   const declareOwnedBrowseRequest = (url: string) => {
-    // Identify the actual decoded72px thumbnail from its currentSrc rather
+    // Identify the actual decoded88px thumbnail from its currentSrc rather
     // than a broad width threshold that could absorb a detail request.
     expect(allOwnedRequests).toContain(url);
     if (browseOwnedUrl) expect(url).toBe(browseOwnedUrl);
@@ -104,31 +116,30 @@ async function installSelectedBoundary(page: Page, baseURL: string | undefined) 
     if (url.pathname.startsWith("/api/places/map-card/")) {
       const slug = decodeURIComponent(url.pathname.split("/").at(-1)!);
       metadataRequests.push(slug);
-      if (slug === bakerSlug) return route.fulfill({ json: { place: { slug, ...googleFixture } } });
+      if (slug === fallbackSlug) return route.fulfill({ json: { place: { slug, ...googleFixture } } });
       // Owned source eligibility is independent of unavailable metadata.
       return route.fulfill({ status: 503, json: { error: "Selected metadata unavailable in the local layout fixture" } });
     }
     if (url.pathname === "/api/place-photo") {
       googleRequests.push(url.href);
+      googleOutcomes.set(request, { url: url.href, completed: false });
       expect(url.searchParams.get("name")).toBe(photoName);
       expect(url.searchParams.get("fallback")).toBe("signal");
-      expect(url.searchParams.get("w")).toBe("208");
+      expect(url.searchParams.get("w")).toBe("720");
       await googleReady;
-      return route.fulfill({ contentType: "image/gif", body: signal });
+      return googleTransport === "decoded"
+        ? route.fulfill({ contentType: "image/jpeg", body: await readFile(`public${owned.src}`), headers: { "Cache-Control": "private, no-store, max-age=0" } })
+        : route.fulfill({ contentType: "image/gif", body: signal, headers: { "Cache-Control": "public, max-age=300", "X-Photo-Fallback": "controlled-signal" } });
     }
     if (url.pathname === "/_next/image") {
       const underlying = new URL(url.searchParams.get("url") ?? "", baseURL);
-      if (underlying.href === browseCommonsSrc) {
-        browseCommonsRequests.push(underlying.href);
-        // The active shortlist now legitimately paints the exact free source.
-        // Its declared layout bytes are independent of the held selected card.
-        return route.fulfill({ contentType: "image/svg+xml", body: labelledBytes });
-      }
-      if (underlying.href === commonsSrc) {
-        commonsRequests.push(underlying.href);
-        await commonsReady;
-        // Intercept before the local optimizer could fetch an external source.
-        return route.fulfill({ contentType: "image/svg+xml", body: labelledBytes });
+      if (decodeURIComponent(underlying.pathname) === commonsSrc) {
+        allCommonsRequests.push(url.href);
+        commonsOutcomes.set(request, { url: url.href, completed: false, afterFault: localFaultInjected, afterViewportResize: viewportResized });
+        // Thumbnail and selected-card requests share one local source path;
+        // distinguish their actual responsive optimizer URLs, as for owned bytes.
+        if (browseCommonsUrl && url.href !== browseCommonsUrl) await commonsReady;
+        return route.fulfill({ contentType: "image/jpeg", body: await readFile(`public${commonsSrc}`) });
       }
       if (decodeURIComponent(underlying.pathname) === owned.src) {
         const optimizerWidth = Number(url.searchParams.get("w"));
@@ -147,7 +158,16 @@ async function installSelectedBoundary(page: Page, baseURL: string | undefined) 
     return route.abort("blockedbyclient");
   });
   return { curated, owned, commonsSrc, browseCommonsSrc, metadataRequests, googleRequests,
-    commonsRequests, browseCommonsRequests, declareOwnedBrowseRequest, localCspAdjustments,
+    get googleOutcomes() { return [...googleOutcomes.values()]; },
+    declareCommonsBrowseRequest, declareOwnedBrowseRequest, localCspAdjustments,
+    get commonsRequests() {
+      if (!browseCommonsUrl) throw new Error("The decoded licensed browse source must be identified first.");
+      return allCommonsRequests.filter(url => url !== browseCommonsUrl);
+    },
+    get browseCommonsRequests() { return allCommonsRequests.filter(url => url === browseCommonsUrl); },
+    get commonsOutcomes() { return [...commonsOutcomes.values()].filter(outcome => outcome.url !== browseCommonsUrl); },
+    markViewportResize() { viewportResized = true; },
+    markLocalFault() { localFaultInjected = true; return allCommonsRequests.filter(url => url !== browseCommonsUrl); },
     get ownedRequests() {
       if (!browseOwnedUrl) throw new Error("The decoded owned browse source must be identified first.");
       return allOwnedRequests.filter(url => url !== browseOwnedUrl);
@@ -218,7 +238,7 @@ async function renderedImageSource(image: Locator, origin: string) {
 for (const viewport of [{ width: 320, height: 568 }, { width: 375, height: 667 }]) {
   test.describe(`Full selected map photo card at ${viewport.width}px`, () => {
     test.use({ viewport });
-    test("Google failure uses exact Commons, credits scroll safely, and owned imagery preserves selection history", async ({ page, baseURL }, testInfo) => {
+    test("reviewed local Commons leads without paid imagery, fallback exhausts safely, and owned imagery preserves history", async ({ page, baseURL }, testInfo) => {
       test.setTimeout(60_000);
       await page.emulateMedia({ reducedMotion: "reduce" });
       const boundary = await installSelectedBoundary(page, baseURL);
@@ -227,46 +247,165 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 375, height: 667 }
       const list = page.getByRole("region", { name: "Available results without the map" });
       await expect(list.locator("[data-map-list-place]")).toHaveCount(2);
       await expect(list.locator("img")).toHaveCount(2);
-      const bakerBrowseRow = list.locator(`[data-map-list-place-row="${bakerSlug}"]`);
+      const fallbackBrowseRow = list.locator(`[data-map-list-place-row="${fallbackSlug}"]`);
       const creekBrowseRow = list.locator(`[data-map-list-place-row="${creekSlug}"]`);
-      for (const [row, kind] of [[bakerBrowseRow, "curated"], [creekBrowseRow, "owned"]] as const) {
+      for (const [row, kind] of [[fallbackBrowseRow, "curated"], [creekBrowseRow, "owned"]] as const) {
+        // Native lazy thumbnails decode after their row enters the scrollable list.
+        await row.scrollIntoViewIfNeeded();
         const frame = row.locator("[data-map-list-photo]");
         await expect(frame).toHaveAttribute("data-photo-state", "ready");
         await expect(frame).toHaveAttribute("data-photo-source", kind);
         const frameBox = await frame.boundingBox();
-        expect(frameBox?.width).toBe(72);
-        expect(frameBox?.height).toBe(72);
+        expect(frameBox?.width).toBe(88);
+        expect(frameBox?.height).toBe(88);
         await expect.poll(() => frame.locator("img").evaluate((node) => {
           const image = node as HTMLImageElement;
           return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1;
         })).toBe(true);
         await expect(row.locator("button a, a button")).toHaveCount(0);
       }
-      expect((await renderedImageSource(bakerBrowseRow.locator("img"), page.url())).href).toBe(boundary.browseCommonsSrc);
+      expect(decodeURIComponent((await renderedImageSource(fallbackBrowseRow.locator("img"), page.url())).pathname)).toBe(boundary.browseCommonsSrc);
       expect(decodeURIComponent((await renderedImageSource(creekBrowseRow.locator("img"), page.url())).pathname)).toBe(boundary.owned.src);
+      const commonsBrowseSrc = await fallbackBrowseRow.locator("img").evaluate(node => (node as HTMLImageElement).currentSrc);
+      boundary.declareCommonsBrowseRequest(commonsBrowseSrc);
       const ownedBrowseSrc = await creekBrowseRow.locator("img").evaluate(node => (node as HTMLImageElement).currentSrc);
       boundary.declareOwnedBrowseRequest(ownedBrowseSrc);
-      const browseCredit = bakerBrowseRow.locator(".place-card-photo-credit");
+      const browseCredit = fallbackBrowseRow.locator(".place-card-photo-credit");
       await expect(browseCredit).toContainText(`Photo by ${boundary.curated.author}.`);
       const browseSource = browseCredit.getByRole("link", { name: "Wikimedia Commons", exact: true });
       const browseLicense = browseCredit.getByRole("link", { name: boundary.curated.license, exact: true });
       await expect(browseSource).toHaveAttribute("href", boundary.curated.source_url);
-      await expect(browseLicense).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0");
+      await expect(browseLicense).toHaveAttribute("href", boundary.curated.licenseUrl!);
       for (const control of [browseSource, browseLicense]) await assert44Reachable(control);
       await expect(creekBrowseRow.locator(".place-card-photo-credit")).toHaveCount(0);
-      expect(boundary.browseCommonsRequests).toEqual([boundary.browseCommonsSrc]);
+      expect(boundary.browseCommonsRequests).toEqual([commonsBrowseSrc]);
       expect(boundary.browseOwnedRequests).toHaveLength(1);
       expect(boundary.metadataRequests).toEqual([]);
       expect(boundary.googleRequests).toEqual([]);
       expect(boundary.commonsRequests).toEqual([]);
       expect(boundary.ownedRequests).toEqual([]);
       const origin = page.url();
-      const baker = places[0];
-      const bakerRow = list.locator(`[data-map-list-place="${bakerSlug}"]`);
-      await bakerRow.click();
+      const fallbackPlace = places[0];
+      const fallbackRow = list.locator(`[data-map-list-place="${fallbackSlug}"]`);
+
+      await fallbackRow.click();
       const card = page.locator(".map-peek[data-map-result-surface]");
       await expect(card).toHaveCount(1);
-      await expect(card.locator(".map-peek-body")).toHaveAttribute("data-map-place-slug", bakerSlug);
+      await expect(card.locator(".map-peek-body")).toHaveAttribute("data-map-place-slug", fallbackSlug);
+      const pendingLocal = card.locator('img[data-map-peek-photo-source="curated"]');
+      await expect(pendingLocal).toHaveAttribute("data-map-peek-photo-state", "loading");
+      await expect(pendingLocal).toHaveAttribute("aria-hidden", "true");
+      await expect.poll(() => boundary.commonsRequests.length).toBe(1);
+
+      expect(boundary.googleRequests).toEqual([]);
+      await expect(card.locator(".map-peek-source-credit")).toHaveCount(0);
+      const details = card.getByRole("button", { name: "Details", exact: true });
+      await details.focus();
+      await expect(details).toBeFocused();
+      await expect(card.locator(".map-peek-source-credit")).toHaveCount(0);
+
+      boundary.releaseCommons();
+      const commonsImage = card.getByRole("img", { name: boundary.curated.alt, exact: true });
+      await assertRealImage(commonsImage, "curated");
+      expect(decodeURIComponent((await renderedImageSource(commonsImage, page.url())).pathname)).toBe(boundary.commonsSrc);
+      const selectedCommonsSrc = await commonsImage.evaluate(node => (node as HTMLImageElement).currentSrc);
+      expect(selectedCommonsSrc).not.toBe(commonsBrowseSrc);
+      await expect.poll(() => boundary.commonsOutcomes.filter(outcome => outcome.completed).map(outcome => outcome.url)).toEqual([selectedCommonsSrc]);
+
+      await expect(details).toBeFocused();
+      await expect(card.locator("img")).toHaveCount(1);
+      const credits = card.locator(".map-peek-source-credit");
+      await expect(credits).toContainText(`The photo is by ${boundary.curated.author} on Wikimedia Commons.`);
+      await expect(credits).toContainText(boundary.curated.modifications!);
+      await expect(credits).not.toContainText("LAYOUT FIXTURE author");
+      const sourceLink = credits.getByRole("link", { name: `Photo by ${boundary.curated.author}. Wikimedia Commons`, exact: true });
+      const licenseLink = credits.getByRole("link", { name: boundary.curated.license, exact: true });
+      await expect(sourceLink).toHaveAttribute("href", boundary.curated.source_url);
+      await expect(sourceLink).toHaveText(boundary.curated.author);
+      await expect(licenseLink).toHaveAttribute("href", boundary.curated.licenseUrl!);
+      const edits = credits.locator("details");
+      const editSummary = edits.locator("summary");
+      const fullEdits = edits.getByText(boundary.curated.modifications!, { exact: true });
+      await expect(edits).toHaveJSProperty("open", false);
+      await expect(editSummary).toHaveText("Edited photo");
+      await expect(fullEdits).not.toBeVisible();
+
+      const initialGeometry = await assertFullCard(card, fallbackPlace.name, [sourceLink, licenseLink, editSummary]);
+
+      await testInfo.attach("full-selected-card-geometry", { body: JSON.stringify(initialGeometry), contentType: "application/json" });
+      await editSummary.focus();
+
+      await page.keyboard.press("Enter");
+      await expect(edits).toHaveJSProperty("open", true);
+      await expect(fullEdits).toBeVisible();
+      await expect(editSummary).toBeFocused();
+      await expect(edits).toContainText(`The photo is by ${boundary.curated.author} on Wikimedia Commons.`);
+
+      const expandedGeometry = await assertFullCard(card, fallbackPlace.name, [sourceLink, licenseLink, editSummary]);
+
+      await testInfo.attach("expanded-photo-credit-geometry", { body: JSON.stringify(expandedGeometry), contentType: "application/json" });
+      await editSummary.focus();
+      await page.keyboard.press("Enter");
+      await expect(edits).toHaveJSProperty("open", false);
+      await expect(fullEdits).not.toBeVisible();
+
+      // A short mobile viewport forces the actual card to scroll, including
+      // its real Close/Share/header topology and loaded source-credit block.
+
+      const selectedNode = await commonsImage.elementHandle();
+      const browseImage = fallbackBrowseRow.locator("img");
+      const browseNode = await browseImage.elementHandle();
+      const sourceAttributes = (image: Locator) => image.evaluate(node => {
+        const image = node as HTMLImageElement;
+        return { src: image.getAttribute("src"), srcset: image.getAttribute("srcset"), sizes: image.getAttribute("sizes"), currentSrc: image.currentSrc };
+      });
+      const selectedBeforeResize = await sourceAttributes(commonsImage);
+      const browseBeforeResize = await sourceAttributes(browseImage);
+      expect(boundary.commonsOutcomes.filter(outcome => outcome.completed).map(outcome => outcome.url)).toEqual([selectedCommonsSrc]);
+      boundary.markViewportResize();
+      await page.setViewportSize({ width: viewport.width, height: 480 });
+      await expect.poll(() => page.evaluate(() => innerHeight)).toBe(480);
+
+      await expect.poll(() => card.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+      const compactGeometry = await assertFullCard(card, fallbackPlace.name, [sourceLink, licenseLink, editSummary]);
+
+      expect(compactGeometry.scrollTop).toBeGreaterThan(0);
+      await testInfo.attach("compact-selected-card-geometry", { body: JSON.stringify(compactGeometry), contentType: "application/json" });
+
+      await testInfo.attach("reviewed-local-commons-bytes", { body: await page.screenshot(), contentType: "image/png" });
+
+      expect(await commonsImage.evaluate((node, previous) => node === previous, selectedNode)).toBe(true);
+      expect(await browseImage.evaluate((node, previous) => node === previous, browseNode)).toBe(true);
+      expect(await sourceAttributes(commonsImage)).toEqual(selectedBeforeResize);
+      const browseAfterResize = await sourceAttributes(browseImage);
+      expect({ ...browseAfterResize, currentSrc: browseBeforeResize.currentSrc }).toEqual(browseBeforeResize);
+      // Under routed HTTP caching, Chromium can choose the already decoded
+      // larger rendition for the SAME 88 px browse node after viewport resize.
+      // Permit its shared URL only when both live DOM consumers prove it;
+      // initial selected decode and all post-failure attempts remain strict.
+      await expect.poll(() => boundary.commonsOutcomes.every(outcome => outcome.completed || Boolean(outcome.failed))).toBe(true);
+      const completedBeforeFault = boundary.commonsOutcomes.filter(outcome => outcome.completed);
+      expect(completedBeforeFault.filter(outcome => !outcome.afterViewportResize).map(outcome => outcome.url)).toEqual([selectedCommonsSrc]);
+      const browseAdoptedSelectedSource = browseBeforeResize.currentSrc !== selectedCommonsSrc && browseAfterResize.currentSrc === selectedCommonsSrc;
+      expect(completedBeforeFault.map(outcome => outcome.url)).toEqual(Array(completedBeforeFault.length).fill(selectedCommonsSrc));
+      expect(completedBeforeFault.length).toBeGreaterThanOrEqual(1);
+      expect(completedBeforeFault.length).toBeLessThanOrEqual(browseAdoptedSelectedSource ? 2 : 1);
+      const completedUrlsBeforeFault = completedBeforeFault.map(outcome => outcome.url);
+      await testInfo.attach("responsive-licensed-image-consumers", { body: JSON.stringify({ selectedBeforeResize, browseBeforeResize, browseAfterResize, browseAdoptedSelectedSource, outcomes: boundary.commonsOutcomes }), contentType: "application/json" });
+      await selectedNode?.dispose();
+      await browseNode?.dispose();
+      const aborted = boundary.commonsOutcomes.filter(outcome => outcome.failed);
+      expect(aborted.length).toBeLessThanOrEqual(1);
+      for (const outcome of aborted) {
+        expect(outcome.url).toBe(selectedCommonsSrc);
+        expect(outcome.failed).toMatch(/abort|cancel/i);
+      }
+      const commonsAttemptsBeforeFault = boundary.markLocalFault();
+      // An actual error on the reviewed local source may try the already
+      // attributed provider fallback once. The provider transport remains a
+      // controlled transparent signal and never contacts a paid service.
+      await details.focus();
+      await commonsImage.evaluate(node => node.dispatchEvent(new Event("error")));
       await expect.poll(() => boundary.googleRequests.length).toBe(1);
       const googleImage = card.locator('img[data-map-peek-photo-source="google"]');
       await expect(googleImage).toHaveAttribute("data-map-peek-photo-state", "loading");
@@ -274,46 +413,22 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 375, height: 667 }
       const actualGoogleSrc = new URL(await googleImage.getAttribute("src") ?? "", page.url());
       expect(actualGoogleSrc.searchParams.get("name")).toBe(googleFixture.google_photo_attribution.photo_name);
       await expect(card.locator(".map-peek-source-credit")).toHaveCount(0);
-      const details = card.getByRole("button", { name: "Details", exact: true });
-      await details.focus();
+      await expect(details).toBeFocused();
       boundary.releaseGoogle();
-      await expect.poll(() => boundary.commonsRequests).toEqual([boundary.commonsSrc]);
-      await expect(details).toBeFocused();
+      await expect(card.locator("img")).toHaveCount(0);
       await expect(card.locator(".map-peek-source-credit")).toHaveCount(0);
-      boundary.releaseCommons();
-      const commonsImage = card.getByRole("img", { name: boundary.curated.alt, exact: true });
-      await assertRealImage(commonsImage, "curated");
-      expect((await renderedImageSource(commonsImage, page.url())).href).toBe(boundary.commonsSrc);
       await expect(details).toBeFocused();
-      await expect(card.locator("img")).toHaveCount(1);
-      const credits = card.locator(".map-peek-source-credit");
-      await expect(credits).toContainText(`Photo by ${boundary.curated.author}.`);
-      await expect(credits).toContainText("The image is resized for display; previews may be cropped.");
-      await expect(credits).not.toContainText("LAYOUT FIXTURE author");
-      const sourceLink = credits.getByRole("link", { name: "Wikimedia Commons", exact: true });
-      const licenseLink = credits.getByRole("link", { name: boundary.curated.license, exact: true });
-      await expect(sourceLink).toHaveAttribute("href", boundary.curated.source_url);
-      await expect(licenseLink).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0");
-      const initialGeometry = await assertFullCard(card, baker.name, [sourceLink, licenseLink]);
-      await testInfo.attach("full-selected-card-geometry", { body: JSON.stringify(initialGeometry), contentType: "application/json" });
-
-      // A short mobile viewport forces the actual card to scroll, including
-      // its real Close/Share/header topology and loaded source-credit block.
-      await page.setViewportSize({ width: viewport.width, height: 480 });
-      await expect.poll(() => page.evaluate(() => innerHeight)).toBe(480);
-      await expect.poll(() => card.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
-      const compactGeometry = await assertFullCard(card, baker.name, [sourceLink, licenseLink]);
-      expect(compactGeometry.scrollTop).toBeGreaterThan(0);
-      await testInfo.attach("compact-selected-card-geometry", { body: JSON.stringify(compactGeometry), contentType: "application/json" });
-      await testInfo.attach("controlled-commons-layout-bytes", { body: await page.screenshot(), contentType: "image/png" });
-      expect(boundary.metadataRequests).toEqual([bakerSlug]);
+      expect(boundary.metadataRequests).toEqual([fallbackSlug]);
       expect(boundary.googleRequests).toHaveLength(1);
-      expect(boundary.commonsRequests).toEqual([boundary.commonsSrc]);
+      await testInfo.attach("local-licensed-request-outcomes", { body: JSON.stringify(boundary.commonsOutcomes), contentType: "application/json" });
+      expect(boundary.commonsRequests).toEqual(commonsAttemptsBeforeFault);
+      expect(boundary.commonsOutcomes.filter(outcome => outcome.afterFault)).toEqual([]);
+      expect(boundary.commonsOutcomes.filter(outcome => outcome.completed).map(outcome => outcome.url)).toEqual(completedUrlsBeforeFault);
       expect(boundary.ownedRequests).toEqual([]);
       await page.goBack();
       await expect(page).toHaveURL(origin);
       await expect(card).toHaveCount(0);
-      await expect(bakerRow).toBeFocused();
+      await expect(fallbackRow).toBeFocused();
       await expect(list.locator("[data-map-list-place]")).toHaveCount(2);
 
       const creek = places[1];
@@ -327,9 +442,9 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 375, height: 667 }
       await expect(card.locator(".map-peek-source-credit")).toHaveCount(0);
       const ownedGeometry = await assertFullCard(card, creek.name);
       await testInfo.attach("owned-selected-card-geometry", { body: JSON.stringify(ownedGeometry), contentType: "application/json" });
-      expect(boundary.metadataRequests).toEqual([bakerSlug, creekSlug]);
+      expect(boundary.metadataRequests).toEqual([fallbackSlug, creekSlug]);
       expect(boundary.googleRequests).toHaveLength(1);
-      expect(boundary.commonsRequests).toEqual([boundary.commonsSrc]);
+      expect(boundary.commonsRequests).toEqual(commonsAttemptsBeforeFault);
       expect(boundary.ownedRequests).toHaveLength(1);
       const selectedOwnedSrc = await ownedImage.evaluate((node) => (node as HTMLImageElement).currentSrc);
       expect(selectedOwnedSrc).not.toBe(ownedBrowseSrc);
@@ -342,14 +457,106 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 375, height: 667 }
       await expect(page.getByRole("combobox", { name: "Search Frederick Radius", exact: true })).toHaveValue("park");
       await expect(page.getByRole("link", { name: "Back to search results", exact: true })).toHaveAttribute("href", returnTo);
       expect(new URL(page.url()).searchParams.get("in")).toBe("frederick");
-      expect(boundary.metadataRequests).toEqual([bakerSlug, creekSlug]);
+      expect(boundary.metadataRequests).toEqual([fallbackSlug, creekSlug]);
       await testInfo.attach("browse-and-selected-photo-requests", { body: JSON.stringify({
         browseCommons: boundary.browseCommonsRequests, selectedCommons: boundary.commonsRequests,
         browseOwned: boundary.browseOwnedRequests, selectedOwned: boundary.ownedRequests,
         google: boundary.googleRequests, selectedMetadata: boundary.metadataRequests,
         localHttpWebKitCspOnly: boundary.localCspAdjustments,
-        scope: "Exact controlled free browse thumbnails are distinct from selected-card bytes. Commons layout SVG does not prove external availability or depict the place.",
+        scope: "Exact reviewed local licensed/owned bytes decode separately for browse and selected sizes. Google receives one controlled transparent response only after local failure; no upstream media request occurs.",
       }), contentType: "application/json" });
     });
+  });
+}
+
+
+for (const width of [320, 375, 390, 430]) {
+  test(`one selected Google image receives a full-width frame and exhausts safely at ${width}px`, async ({ page, baseURL }, testInfo) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const boundary = await installSelectedBoundary(page, baseURL, "decoded");
+    await page.goto(mapUrl, { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".dock-host")).toHaveAttribute("data-map-error", "true", { timeout: 30_000 });
+    const list = page.getByRole("region", { name: "Available results without the map" });
+    const browseRow = list.locator(`[data-map-list-place-row="${fallbackSlug}"]`);
+    await browseRow.scrollIntoViewIfNeeded();
+    const browseImage = browseRow.locator("img");
+    await expect(browseRow.locator("[data-map-list-photo]")).toHaveAttribute("data-photo-state", "ready");
+    const browseSrc = await browseImage.evaluate(node => (node as HTMLImageElement).currentSrc);
+    boundary.declareCommonsBrowseRequest(browseSrc);
+    // The overview list has no paid photo request. The one existing selected
+    // metadata action, not the number of visible pins, owns the source below.
+    expect(boundary.metadataRequests).toEqual([]);
+    expect(boundary.googleRequests).toEqual([]);
+    await list.locator(`[data-map-list-place="${fallbackSlug}"]`).click();
+    const card = page.locator(".map-peek[data-map-result-surface]");
+    const localImage = card.locator('img[data-map-peek-photo-source="curated"]');
+    boundary.releaseCommons();
+    await assertRealImage(localImage, "curated");
+    // Only the preferred local transport is faulted to exercise the admitted
+    // Google fallback. Its decoded response is labelled local fixture bytes,
+    // not proof of Google's live media or a new photograph of Rose Hill.
+    const details = card.getByRole("button", { name: "Details", exact: true });
+    await details.focus();
+    await localImage.evaluate(node => node.dispatchEvent(new Event("error")));
+    await expect.poll(() => boundary.googleRequests.length).toBe(1);
+    const googleImage = card.locator('img[data-map-peek-photo-source="google"]');
+    await expect(googleImage).toHaveAttribute("data-map-peek-photo-state", "loading");
+    await expect(card.locator(".map-peek-source-credit")).toHaveCount(0);
+    const selectedSrc = await googleImage.getAttribute("src");
+    expect(selectedSrc).not.toBeNull();
+    const transport = new URL(selectedSrc!, baseURL);
+    expect(transport.pathname).toBe("/api/place-photo");
+    expect(transport.searchParams.get("name")).toBe(photoName);
+    expect(transport.searchParams.get("w")).toBe("720");
+    expect(transport.searchParams.get("fallback")).toBe("signal");
+    boundary.releaseGoogle();
+    await expect(googleImage).toHaveAttribute("data-map-peek-photo-state", "ready");
+    await expect.poll(() => googleImage.evaluate(node => {
+      const image = node as HTMLImageElement;
+      return image.complete && image.naturalWidth > 1 && image.naturalHeight > 1;
+    })).toBe(true);
+    await expect.poll(() => boundary.googleOutcomes).toEqual([{ url: transport.href, completed: true }]);
+    await expect(card.locator("img")).toHaveCount(1);
+    const credits = card.locator(".map-peek-source-credit");
+    await expect(credits).toContainText("LAYOUT FIXTURE author");
+    await expect(credits.locator(`a[href="${googleFixture.google_photo_attribution.google_maps_uri}"]`)).toHaveCount(1);
+    await expect(details).toBeFocused();
+    const layout = await card.evaluate(element => {
+      const body = element.querySelector<HTMLElement>(".map-peek-body")!;
+      const frame = element.querySelector<HTMLElement>(".map-peek-visual")!;
+      const text = element.querySelector<HTMLElement>(".map-peek-text")!;
+      const imageBox = frame.getBoundingClientRect(), textBox = text.getBoundingClientRect();
+      return { width: imageBox.width, height: imageBox.height, bodyWidth: body.clientWidth,
+        textBelow: textBox.top >= imageBox.bottom, photoKind: body.dataset.photoKind };
+    });
+    expect(layout.photoKind).toBe("google");
+    expect(layout.width).toBeGreaterThan(layout.bodyWidth - 1);
+    expect(layout.height).toBeGreaterThanOrEqual(132);
+    expect(layout.textBelow).toBe(true);
+    await assertFullCard(card, places[0].name, await credits.getByRole("link").all());
+    expect(boundary.metadataRequests).toEqual([fallbackSlug]);
+    expect(boundary.googleRequests).toEqual([transport.href]);
+    await googleImage.scrollIntoViewIfNeeded();
+    await card.screenshot({ path: testInfo.outputPath(`selected-google-full-width-${width}.png`) });
+    await details.focus();
+    await googleImage.evaluate(node => node.dispatchEvent(new Event("error")));
+    await expect(card.locator("img")).toHaveCount(0);
+    await expect(card.locator(".map-peek-source-credit")).toHaveCount(0);
+    await expect(card.locator("[data-map-peek-photo-state=failed]")).toHaveCount(1);
+    await expect(details).toBeFocused();
+    await expect(card.locator(".map-peek-name")).toHaveText(places[0].name);
+    await assertFullCard(card, places[0].name);
+    expect(boundary.metadataRequests).toEqual([fallbackSlug]);
+    expect(boundary.googleRequests).toEqual([transport.href]);
+    expect(boundary.googleOutcomes).toEqual([{ url: transport.href, completed: true }]);
+    await testInfo.attach("selected-google-frame-and-request-budget", { contentType: "application/json", body: JSON.stringify({
+      width, layout, metadataRequests: boundary.metadataRequests.length,
+      selectedPhotoRequests: boundary.googleRequests.length, googleOutcomes: boundary.googleOutcomes,
+      requestedMaxWidth: transport.searchParams.get("w"), decodedLocalFixture: boundary.owned.src,
+      providerAvailabilityProven: false, paidProviderRequestsForwarded: 0,
+      gridPaidRequestsBeforeSelection: 0, retainedFactsAndActionsAfterFailure: true,
+    }) });
   });
 }

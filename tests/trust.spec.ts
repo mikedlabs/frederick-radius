@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { eventTrust, placeHoursTrust, formatChecked, TRUST_COLOR } from "@/lib/trust";
 import type { OpenStatus } from "@/lib/hours";
+import type { Hours } from "@/data/places";
 
 describe("eventTrust", () => {
   it("is_verified wins over any source", () => {
@@ -52,6 +53,22 @@ describe("placeHoursTrust", () => {
   it("never claims verified hours without a confirmed source", () => {
     expect(placeHoursTrust({ state: "unverified" }).basis).toMatch(/not yet confirmed/i);
     expect(placeHoursTrust({ state: "unknown" }).basis).toMatch(/call ahead/i);
+  });
+  it("separates a current checked schedule from the unknown venue opening state", () => {
+    const hours: Hours = { fri: [{ open: "16:00", close: "21:00" }], _official: {
+      slug: "demonstration-kitchen", kind: "merchant", source_url: "https://example.org/",
+      observed_at: "2026-10-23T11:00:00Z", expires_at: "2026-10-30T11:00:00Z",
+      coverage_from: "2026-10-23", coverage_through: "2026-10-29", exceptions: [],
+      qualification: { scope: "kitchen", label: "Kitchen hours", note: "Bar hours may differ.", usage: "display_only" },
+    } };
+    const now = new Date("2026-10-23T16:00:00Z");
+    expect(placeHoursTrust({ state: "unknown" }, { hours, verified: true, now })).toMatchObject({
+      level: "verified", label: "Checked at source", basis: expect.stringContaining("does not confirm whether the venue is open"),
+    });
+    expect(placeHoursTrust({ state: "unknown" }, { hours, verified: false, now }).level).toBe("unconfirmed");
+    const expired = placeHoursTrust({ state: "unknown" }, { hours, verified: true, now: new Date("2026-10-30T16:00:00Z") });
+    expect(expired).toMatchObject({ level: "unconfirmed", label: "Needs a new check" });
+    expect(expired.basis).not.toContain("No posted hours");
   });
 });
 

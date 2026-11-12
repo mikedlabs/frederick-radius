@@ -4,26 +4,30 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ArrowDownAZ, Check, ChevronDown } from "lucide-react";
 
 /**
- * SortDropdown — a small button that opens a single-select menu of
- * sort options. Lives next to layout toggles / item counts in list
+ * SortDropdown: a small button that opens a single-select menu of
+ * sort options. Lives next to layout toggles and item counts in list
  * page toolbars (/saved, /events, /category/[slug]).
  *
  * Why a custom component instead of <select> or Radix:
- *   - Native <select> can't be styled to match the brand pill
- *     vocabulary (rounded-full, brand accent on the active choice).
- *   - Radix DropdownMenu would be overkill here — this is one
- *     popup, one set of radio choices, no submenus, no triggers
- *     scattered around the page. Hand-rolled is ~80 lines and has
- *     no runtime dependency.
+ *   - Native <select> cannot be styled to match the plain tool controls
+ *     (a 6px corner, a control-weight hairline, and the current choice
+ *     marked in ink on the sunken ground).
+ *   - Radix DropdownMenu would be overkill here: this is one popup, one
+ *     set of radio choices, no submenus and no triggers scattered around
+ *     the page. Hand-rolled is about 80 lines and has no runtime
+ *     dependency.
  *
  * Behavior:
  *   - Closed by default; clicking the trigger toggles open state.
  *   - Clicking an option commits the value and closes.
- *   - Esc closes; outside-click closes; Enter/Space on the trigger
- *     toggles. Roving focus inside the menu uses native browser
- *     tab order — the items are real buttons in DOM order so VO/NVDA
- *     announce them correctly.
- *   - The selected option is highlighted with the brand accent so
+ *   - Esc closes; a press outside closes; focus moving on to another
+ *     control closes; Enter/Space on the trigger toggles. Roving focus
+ *     inside the menu uses native browser tab order; the items are
+ *     real buttons in DOM order so VO/NVDA announce them correctly.
+ *   - The Escape this menu consumes is marked `defaultPrevented`, so a
+ *     disclosure that contains it (the Events Display panel) leaves
+ *     that press alone and stays open.
+ *   - The selected option is ink on the sunken ground with a check, so
  *     a returning user sees their current sort in one glance.
  *
  * State ownership is the caller's. This component is presentational;
@@ -36,7 +40,7 @@ export type SortOption<K extends string = string> = {
   key: K;
   /** Short user-facing label. ≤16 chars to fit the button + menu nicely. */
   label: string;
-  /** Optional short hint shown under the label in the menu — e.g.
+  /** Optional short hint shown under the label in the menu, e.g.
    *  "Most recently saved" under "Recent". */
   hint?: string;
 };
@@ -64,31 +68,49 @@ export default function SortDropdown<K extends string = string>({
   const choicesId = useId();
   const current = options.find((o) => o.key === value) ?? options[0];
 
-  // Outside-click + Escape closes the menu. Bound only while open
-  // so we don't add listeners pages don't need.
+  // An outside press + Escape closes the menu. Bound only while open
+  // so we don't add listeners pages don't need. The press is pointerdown,
+  // not mousedown: a finger that starts a scroll never sends mousedown,
+  // which left the menu open behind a swipe.
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => {
+    const onDown = (e: PointerEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      setOpen(false);
+      // Hand focus back only when this control held it. Escape pressed
+      // from elsewhere on the page must not pull focus here.
+      if (ref.current?.contains(document.activeElement)) triggerRef.current?.focus();
     };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    // Capture, so the mark is set before an enclosing layer's bubble-phase
+    // Escape listener reads it.
+    document.addEventListener("keydown", onKey, true);
     return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey, true);
     };
   }, [open]);
 
   return (
-    <div ref={ref} className={`relative inline-block ${className}`}>
+    <div
+      ref={ref}
+      className={`relative inline-block ${className}`}
+      // Tabbing past the last choice leaves the menu, so it closes and
+      // aria-expanded cannot stay true behind the user. Safari does not focus
+      // a button on press; it reports no target, or parks focus on a focusable
+      // ancestor (the page's <main tabindex="-1">). Neither closes the menu,
+      // or the choice would unmount between pointerdown and click.
+      onBlur={(e) => {
+        const next = e.relatedTarget;
+        if (next instanceof Node && !e.currentTarget.contains(next) && !next.contains(e.currentTarget)) setOpen(false);
+      }}
+    >
       <button
         ref={triggerRef}
         type="button"
@@ -97,10 +119,10 @@ export default function SortDropdown<K extends string = string>({
         aria-controls={choicesId}
         aria-label={`${label}: ${current?.label ?? ""}`}
         title={label}
-        className="tap-44 inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 py-1 text-[12px] font-semibold transition active:scale-[0.97]"
+        className="tap-44 inline-flex items-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 py-1 text-[12px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
         style={{
-          borderColor: "var(--app-border)",
-          color: "var(--app-ink-2)",
+          borderColor: "var(--app-control-border)",
+          color: "var(--app-ink)",
         }}
       >
         <ArrowDownAZ
@@ -126,7 +148,9 @@ export default function SortDropdown<K extends string = string>({
           id={choicesId}
           role="group"
           aria-label={label}
-          className={`absolute z-[var(--z-dropdown)] mt-1 min-w-[180px] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-1 shadow-[var(--app-shadow-2)] ${
+          // A popover is opaque (the solid token) and never wider than the
+          // screen less its gutters.
+          className={`absolute z-[var(--z-dropdown)] mt-1 min-w-[180px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-1 shadow-[var(--app-shadow-3)] ${
             align === "right" ? "right-0" : "left-0"
           }`}
           style={{ borderColor: "var(--app-border)" }}
@@ -143,14 +167,14 @@ export default function SortDropdown<K extends string = string>({
                   setOpen(false);
                   triggerRef.current?.focus();
                 }}
-                className="flex min-h-[44px] w-full items-start gap-2 px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--app-bg-sunken)]"
+                className={`flex min-h-[44px] w-full items-start gap-2 px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--app-bg-sunken)] ${
+                  active ? "bg-[var(--app-bg-sunken)]" : "bg-transparent"
+                }`}
                 style={{
-                  // Brick on its own 10% tint is 3.83:1 at 13px. The pressed
-                  // token is the text-on-light signal (5.80:1 on that ground).
-                  color: active ? "var(--app-brand-press)" : "var(--app-ink)",
-                  background: active
-                    ? "color-mix(in srgb, var(--app-brand) 10%, transparent)"
-                    : "transparent",
+                  // Plain tool: the current choice is ink on the sunken
+                  // ground with a check, not a coral tint. Ink clears AA on
+                  // both grounds in light and dark.
+                  color: "var(--app-ink)",
                   fontWeight: active ? 600 : 500,
                 }}
               >
@@ -160,7 +184,7 @@ export default function SortDropdown<K extends string = string>({
                   aria-hidden
                   style={{
                     opacity: active ? 1 : 0,
-                    color: "var(--app-brand)",
+                    color: "var(--app-ink)",
                   }}
                 />
                 <span className="min-w-0 flex-1">

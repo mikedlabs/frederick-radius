@@ -95,7 +95,7 @@ for (const branch of artifact.places) {
       // A later CI run must confirm honest expiry, never assume nine schedules
       // stay fresh forever merely because this pilot once supplied them.
       await expect(summary).toHaveCount(0);
-      await expect(page.locator("main")).toContainText("Hours not posted");
+      await expect(page.locator("main")).toContainText("Hours not recently confirmed");
       const heading = page.locator("main h1");
       await heading.scrollIntoViewIfNeeded();
       await expectReadableInViewport(heading);

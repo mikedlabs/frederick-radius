@@ -4,6 +4,7 @@ import { MERCHANT_HOURS_SOURCES, type MerchantHoursArtifact } from "@/lib/mercha
 import { parseMerchantOfficialHours } from "../../../scripts/lib/merchant-official-hours";
 import type { SourceEvidence } from "./source-ledger";
 import BUSINESS_INFO_RAW from "@/data/business-info.json" with { type: "json" };
+import MERCHANT_HOURS_RAW from "@/data/places-merchant-hours.json" with { type: "json" };
 import {
   businessInfoRowEvidenceTimestamp,
   buildSourceArtifactEvidence,
@@ -13,8 +14,9 @@ import {
 
 const fixtureNow = new Date("2026-10-19T23:30:00.000Z");
 function merchantFixture(): MerchantHoursArtifact {
-  const names = ["brewers-alley", "gravel-and-grind", "beans-in-the-belfry"];
-  return { schema_version: 1, review: [], places: MERCHANT_HOURS_SOURCES.map((source, i) => parseMerchantOfficialHours(source, { url: source.url, observedAt: "2026-10-19T23:24:49.283Z", html: readFileSync(`tests/fixtures/merchant-hours/${names[i]}.html`, "utf8") }, fixtureNow)) };
+  const names = ["brewers-alley", "gravel-and-grind", "beans-in-the-belfry", "dublin-roasters"];
+  return { schema_version: 1, review: [], // Explicit legacy fixture cohort; added sources must not borrow its evidence.
+  places: MERCHANT_HOURS_SOURCES.filter((source) => ["brewers-alley-frederick", "gravel-and-grind-frederick", "beans-in-the-belfry-brunswick", "dublin-roasters-frederick"].includes(source.slug)).map((source, i) => parseMerchantOfficialHours(source, { url: source.url, observedAt: "2026-10-19T23:24:49.283Z", html: readFileSync(`tests/fixtures/merchant-hours/${names[i]}.html`, "utf8") }, fixtureNow)) };
 }
 function expectHonestArtifactOutcomes(evidence: SourceEvidence[]) {
   for (const item of evidence) {
@@ -166,17 +168,27 @@ describe("bundled source artifact evidence", () => {
 
   it("recognizes every workflow artifact currently bundled for monitoring", () => {
     const evidence = bundledSourceArtifactEvidence();
+    const merchantArtifact = MERCHANT_HOURS_RAW as MerchantHoursArtifact;
+    // Registration and publication are separate: an enrolled source can still
+    // be held. Expect only owners with actual retained approval/review rows,
+    // without maintaining a second list that blocks the next reviewed batch.
+    const merchantKeys = [
+      ...merchantArtifact.places.map((row) => row.slug),
+      ...merchantArtifact.review.map((row) => row.slug),
+    ].map((slug) => {
+      const owner = MERCHANT_HOURS_SOURCES.find((source) => source.slug === slug);
+      expect(owner, `Registered owner for retained merchant ${slug}`).toBeDefined();
+      return owner!.ledger_id;
+    });
 
-    expect([...new Set(evidence.map((item) => item.sourceKey))].sort()).toEqual([
-      "beans_belfry_hours",
-      "brewers_alley_hours",
+    expect([...new Set(evidence.map((item) => item.sourceKey))].sort()).toEqual([...new Set([
+      ...merchantKeys,
       "business_info_extraction",
       "fcpl_branch_hours",
-      "gravel_grind_hours",
       "municipal_civic_extraction",
       "transit_gtfs",
       "venue_event_extraction",
-    ]);
+    ])].sort());
     expect(
       evidence.find((item) => item.sourceKey === "business_info_extraction"),
     ).toMatchObject({
@@ -189,12 +201,33 @@ describe("bundled source artifact evidence", () => {
 
 
 describe("merchant source publication evidence", () => {
+  it("counts both accepted Common Market store bindings under one canonical source owner", () => {
+    const artifact = MERCHANT_HOURS_RAW as MerchantHoursArtifact;
+    const slugs = ["common-market-frederick", "common-market"];
+    const rows = slugs.map((slug) => {
+      const row = artifact.places.find((item) => item.slug === slug);
+      expect(row).toBeDefined();
+      return row!;
+    });
+    expect(artifact.review.some((row) => slugs.includes(row.slug))).toBe(false);
+    const expected = rows.map((row) => ({ sourceKey: "common_market_hours", kind: "artifact", attemptedAt: row.observed_at,
+      outcome: "success", succeededAt: row.observed_at, publishedAt: row.observed_at, expiresAt: row.expires_at, recordCount: 1 }));
+    for (const [index, row] of rows.entries()) {
+      expect(merchantSourceArtifactEvidence({ schema_version: 1, places: [row], review: [] })).toEqual([expected[index]]);
+    }
+    const combined = merchantSourceArtifactEvidence(artifact).filter((row) => row.sourceKey === "common_market_hours");
+    expect(combined).toEqual(expected);
+    expect([...new Set(combined.map((row) => row.sourceKey))]).toEqual(["common_market_hours"]);
+    expect(combined.reduce((count, row) => count + (row.recordCount ?? 0), 0)).toBe(2);
+    expectHonestArtifactOutcomes(combined);
+  });
+
   it("preserves the original source observations, expiry, and newer failed review attempt", () => {
     const original = merchantFixture();
     const artifact = structuredClone(original);
     artifact.review.push({ slug: artifact.places[0].slug, checked_at: "2026-10-20T10:00:00.000Z", reason: "unparseable_or_conflicted" });
     const evidence = merchantSourceArtifactEvidence(artifact);
-    expect(evidence.filter((row) => row.outcome === "success")).toHaveLength(3);
+    expect(evidence.filter((row) => row.outcome === "success")).toHaveLength(4);
     expect(evidence.find((row) => row.sourceKey === "brewers_alley_hours" && row.outcome === "success")).toMatchObject({ publishedAt: original.places[0].observed_at, expiresAt: original.places[0].expires_at, recordCount: 1 });
     expect(evidence.find((row) => row.outcome === "failure")).toMatchObject({ sourceKey: "brewers_alley_hours", attemptedAt: "2026-10-20T10:00:00.000Z" });
     expectHonestArtifactOutcomes(evidence);
@@ -211,11 +244,11 @@ describe("merchant source publication evidence", () => {
     try {
       const { bundledSourceArtifactEvidence: bundledHeldEvidence } = await import("./source-artifact-evidence");
       const evidence = bundledHeldEvidence();
-      expect(new Set(evidence.map((row) => row.sourceKey)).size).toBe(8);
+      expect(new Set(evidence.map((row) => row.sourceKey)).size).toBe(9);
       expect(evidence.filter((row) => row.sourceKey === "brewers_alley_hours")).toHaveLength(2);
       expect(evidence.find((row) => row.sourceKey === "brewers_alley_hours" && row.outcome === "success")).toMatchObject({ publishedAt: held.observed_at, succeededAt: held.observed_at, expiresAt: held.expires_at });
       expect(evidence.find((row) => row.outcome === "failure")).toMatchObject({ sourceKey: "brewers_alley_hours", attemptedAt: checkedAt });
-      for (const sourceKey of ["fcpl_branch_hours", "gravel_grind_hours", "beans_belfry_hours"]) expect(evidence.find((row) => row.sourceKey === sourceKey && row.outcome === "success")).toBeDefined();
+      for (const sourceKey of ["fcpl_branch_hours", "gravel_grind_hours", "beans_belfry_hours", "dublin_roasters_hours"]) expect(evidence.find((row) => row.sourceKey === sourceKey && row.outcome === "success")).toBeDefined();
       expectHonestArtifactOutcomes(evidence);
     } finally {
       vi.doUnmock("@/data/places-merchant-hours.json");

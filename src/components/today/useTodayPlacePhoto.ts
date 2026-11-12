@@ -8,6 +8,7 @@ import {
 } from "@/lib/place-card-photo";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { useTodayPhotoCredit } from "./useTodayPhotoCredit";
+import { hasTodayPhotoAppearanceReview, todayAppearancePhotoPlan } from "@/lib/today/place-photo-appearance";
 
 type Selection = Readonly<{ key: string }>;
 type Display = Readonly<{ selection: Selection; sourceKey: string | null }>;
@@ -25,26 +26,28 @@ function resultForPlan(state: SelectionState | null, selection: Selection, plan:
   return { ...state.result, planKey: plan.key, failedSources };
 }
 
-/** Exact free imagery leads. The existing brief lead/OpeningSoon allowance is
- * the only metadata hydration path; supplied exact credit retains its existing
- * eligibility. Rendering and paid byte ownership remain in PlaceCardPhoto. */
+/** Today requires an exact current-appearance review in addition to identity
+ * and rights. The generic category illustration and Parks use other paths. */
 export function useTodayPlacePhoto(place: PhotoInput, width: number, hydrateGoogleCredit: boolean) {
-  const freePlan = placeCardPhotoPlan({
+  const identityFreePlan = placeCardPhotoPlan({
     slug: place.slug,
     google_photo_url: place.photo?.startsWith("/images/") ? place.photo : undefined,
   }, width);
+  const freePlan = todayAppearancePhotoPlan(place.slug, identityFreePlan);
   const selectionKey = String(JSON.stringify([place.slug, width, freePlan.sources]));
   // A return to A after B is a fresh lifecycle, even for an identical URL.
   const selection = useMemo(() => Object.freeze({ key: selectionKey }), [selectionKey]);
   const [state, setState] = useState<SelectionState | null>(null);
   const rawSource = place.photo ? placePhotoFailureSignalSrc(proxyPhotoAtWidth(place.photo, width)) : null;
   const freeSource = selectedPlaceCardPhoto(freePlan, resultForPlan(state, selection, freePlan, rawSource));
-  const unsuitableGoogle = freePlan.sources.some((source) => source.kind === "curated" && source.photo.preferCurated);
+  const unsuitableGoogle = identityFreePlan.sources.some((source) => source.kind === "curated" && source.photo.preferCurated);
   const rawFailed = state?.selection === selection && Boolean(rawSource && state.result.failedSources.includes(rawSource));
   const { credit } = useTodayPhotoCredit(place,
-    hydrateGoogleCredit && !freeSource && !unsuitableGoogle && !rawFailed);
+    hydrateGoogleCredit && hasTodayPhotoAppearanceReview(place.slug, rawSource) &&
+    !freeSource && !unsuitableGoogle && !rawFailed);
   const basePlan = placeCardPhotoPlan({ slug: place.slug, google_photo_url: place.photo ?? undefined, google_photo_attribution: credit }, width);
-  const sources = [...basePlan.sources.filter((source) => source.kind !== "google"), ...basePlan.sources.filter((source) => source.kind === "google")];
+  const reviewedPlan = todayAppearancePhotoPlan(place.slug, basePlan);
+  const sources = [...reviewedPlan.sources.filter((source) => source.kind !== "google"), ...reviewedPlan.sources.filter((source) => source.kind === "google")];
   const plan = { key: JSON.stringify([place.slug, sources]), sources };
   const source = selectedPlaceCardPhoto(plan, resultForPlan(state, selection, plan, rawSource));
   const sourceKey = source ? String(JSON.stringify([selectionKey, source])) : null;

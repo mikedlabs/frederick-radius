@@ -67,16 +67,14 @@ export default function ItineraryClient() {
   if (itineraryItems.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center pt-24 pb-12 px-6 text-center">
-        <div className="w-16 h-16 rounded-full bg-[var(--app-bg-sunken)] flex items-center justify-center mb-4">
-          <Calendar className="w-8 h-8 text-[var(--app-ink-3)]" />
-        </div>
-        <h1 className="text-xl font-display font-bold text-[var(--app-ink)] mb-2">
+        <Calendar className="mb-4 h-8 w-8 text-[var(--app-ink-3)]" strokeWidth={1.75} aria-hidden />
+        <h1 className="mb-2 font-sans text-[1.75rem] font-extrabold leading-tight tracking-[-0.02em] text-[var(--app-ink)]">
           Your day plan is empty
         </h1>
         <p className="text-[var(--app-ink-2)] max-w-sm mb-6">
           Add events to your itinerary to build a chronological timeline or view them on a map.
         </p>
-        <Link href="/events" className="px-6 py-2 bg-[var(--app-ink)] text-white rounded-full font-semibold">
+        <Link href="/events" className="inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] bg-[var(--app-ink)] px-6 py-2 font-semibold text-[var(--app-bg)]">
           See upcoming events
         </Link>
       </div>
@@ -87,7 +85,7 @@ export default function ItineraryClient() {
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
       <header className="px-4 py-4 md:px-6 flex items-center justify-between border-b border-[var(--app-border)] bg-[var(--app-bg)] sticky top-0 z-20">
         <div>
-          <h1 className="text-2xl font-display font-bold text-[var(--app-ink)]">
+          <h1 className="font-sans text-[1.75rem] font-extrabold leading-tight tracking-[-0.02em] text-[var(--app-ink)]">
             Day Plan
           </h1>
           <p className="text-sm text-[var(--app-ink-2)]">

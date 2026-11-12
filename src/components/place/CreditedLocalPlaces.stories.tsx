@@ -3,6 +3,7 @@ import { expect, waitFor, within } from "storybook/test";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "./PlaceCard";
+import { curatedPhotoSourceLabel } from "@/lib/curated-photo-source";
 
 // Factual names/locations match the catalog; source/timestamps below identify
 // a component fixture, never a new verification of hours or conditions.
@@ -10,6 +11,8 @@ const destinations = [
   { slug: "schifferstadt-architectural-museum-frederick", name: "Schifferstadt Architectural Museum", category: "museum", city: "Frederick", municipality: "frederick", address: "1110 Rosemont Ave, Frederick, MD 21701", geom: { lng: -77.4269867, lat: 39.4235725 } },
   { slug: "hessian-barracks-frederick-maryland", name: "Hessian Barracks Frederick Maryland", category: "civic", city: "Frederick", municipality: "frederick", address: "101 Clarke Pl", geom: { lng: -77.4097122, lat: 39.4090337 } },
   { slug: "co-canal-lock-30-brunswick", name: "C&O Canal Lock 30", category: "park", city: "Brunswick", municipality: "brunswick", address: "Chesapeake and Ohio Canal Towpath, Brunswick, MD 21716", geom: { lng: -77.6301124, lat: 39.3113768 } },
+  {"slug": "ballenger-creek-park-frederick", "name": "Ballenger Creek Park", "category": "park", "city": "Frederick", "municipality": "frederick", "address": "5420 Ballenger Creek Pike, Frederick, MD 21703", "geom": {"lng": -77.4488307, "lat": 39.3816616}},
+  {"slug": "fountain-rock-nature-center-walkersville", "name": "Fountain Rock Nature Center", "category": "park", "city": "Walkersville", "municipality": "walkersville", "address": "8511 Nature Ctr Pl, Walkersville, MD 21793", "geom": {"lng": -77.3687127, "lat": 39.4757926}},
 ];
 const places: PlaceCardData[] = destinations.map((place) => ({
   ...place, tags: [], short_blurb: "", state: "MD", postal_code: "", is_verified: false,
@@ -43,11 +46,12 @@ const checkedLocalPhoto: NonNullable<Story["play"]> = async ({ canvasElement, ar
   await expect(src.pathname === metadata.src || src.searchParams.get("url") === metadata.src).toBe(true);
   await expect(image.alt).toBe(metadata.alt);
   await expect(canvas.getByRole("heading", { name: args.place.name })).toBeVisible();
-  const source = await canvas.findByRole("link", { name: "Wikimedia Commons" });
+  const sourceLabel = curatedPhotoSourceLabel(metadata.source_url);
+  const source = await canvas.findByRole("link", { name: sourceLabel });
   await expect(source).toHaveAttribute("href", metadata.source_url);
   const license = canvas.getByRole("link", { name: metadata.license.label });
   await expect(license).toHaveAttribute("href", metadata.license.url);
-  await expect(canvas.getByText(`Photo by ${metadata.creator}.`)).toBeVisible();
+  await expect(canvas.getByText(`${sourceLabel === "Frederick County" ? "Photo provided by" : "Photo by"} ${metadata.creator}.`)).toBeVisible();
   await expect(canvas.getByText(metadata.modifications)).toBeVisible();
   const article = canvasElement.querySelector("article")!;
   await expect(article.scrollWidth).toBeLessThanOrEqual(article.clientWidth);
@@ -62,3 +66,6 @@ const checkedLocalPhoto: NonNullable<Story["play"]> = async ({ canvasElement, ar
 export const Schifferstadt: Story = { play: checkedLocalPhoto };
 export const HessianBarracks: Story = { args: { place: places[1] }, play: checkedLocalPhoto };
 export const CanalLock30: Story = { args: { place: places[2] }, play: checkedLocalPhoto };
+
+export const CountyParkEntrance: Story = { args: { place: places[3] }, play: checkedLocalPhoto };
+export const CountyNatureCenter: Story = { args: { place: places[4] }, play: checkedLocalPhoto };

@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
-import { act, StrictMode, type ComponentProps, type HTMLAttributes, type ReactNode } from "react";
+import { act, StrictMode, type ComponentProps, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import EventsExplorer from "./EventsExplorer";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { summarizeEventsForBrowse } from "@/lib/events/browsePayload";
 import { EVENTS_BROWSE_TIMEOUT_MS } from "@/lib/events/fetchBrowse";
+import { HISTORY_LAYER_URL_RESTORED } from "@/hooks/useReversibleHistoryLayer";
+import { cancelPrimaryTabResume, preparePrimaryTabResume, rememberPrimaryTab } from "@/lib/primary-tab-session";
 
 const recommendationContext = vi.hoisted(() => ({
   origin: null as { lat: number; lng: number } | null,
@@ -17,16 +20,7 @@ vi.mock("@/lib/events/featured", () => ({
 }));
 
 // Keep the real explorer, filtering, request deadline and reconciliation.
-// Presentation-only dependencies do not need animation or map providers here.
-vi.mock("framer-motion", async () => {
-  const { createElement } = await import("react");
-  const box = (tag: string) => function Box({ children, ...props }: HTMLAttributes<HTMLElement>) {
-    const attributes = Object.fromEntries(Object.entries(props).filter(([key]) =>
-      !["initial", "animate", "exit", "transition", "variants", "whileHover", "whileTap", "layout"].includes(key)));
-    return createElement(tag, attributes, children);
-  };
-  return { motion: { div: box("div"), ol: box("ol"), li: box("li") }, AnimatePresence: ({ children }: { children: ReactNode }) => children };
-});
+// Map providers and other presentation-only dependencies are not needed here.
 vi.mock("@/hooks/useGeolocation", () => ({
   GEOLOCATION_CHANGE_EVENT: "fr:geolocation-change",
   readCachedPosition: () => recommendationContext.origin,
@@ -47,8 +41,8 @@ vi.mock("./EventsBoardDock", async (importOriginal) => {
   const ActualDock = (await importOriginal<typeof import("./EventsBoardDock")>()).default;
   return { default: (props: ComponentProps<typeof ActualDock>) => {
     if (recommendationContext.actualDisplay) return <ActualDock {...props} />;
-    const { q, setQ, town, lens, cat, filteredCount, countComplete, setView, setSort } = props;
-    return <div data-test-dock data-town={town ?? "county"} data-time={lens} data-category={cat ?? "all"} data-count={filteredCount} data-complete={String(countComplete)}>
+    const { q, setQ, town, lens, cat, filteredCount, countComplete, view, setView, setSort } = props;
+    return <div data-test-dock data-view={view} data-town={town ?? "county"} data-time={lens} data-category={cat ?? "all"} data-count={filteredCount} data-complete={String(countComplete)}>
       <input aria-label="Filter the events shown" value={q} onChange={(event) => setQ(event.currentTarget.value)} />
       <button type="button" onClick={() => setView("calendar")}>Calendar test view</button>
       <button type="button" onClick={() => setSort("time")}>Soonest test sort</button>
@@ -88,6 +82,8 @@ beforeEach(() => {
   recommendationContext.featured.clear();
   recommendationContext.actualDisplay = false;
   window.localStorage.clear();
+  window.sessionStorage.clear();
+  cancelPrimaryTabResume();
   document.cookie = "fr_scope=; path=/; max-age=0";
   window.history.replaceState(null, "", "/events");
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
@@ -102,6 +98,58 @@ async function render(options = props(), strict = false) {
   await act(async () => root.render(strict ? <StrictMode><EventsExplorer {...options} /></StrictMode> : <EventsExplorer {...options} />));
 }
 const eventLinks = () => [...host.querySelectorAll<HTMLAnchorElement>('a[href^="/events/"]')].map((link) => link.getAttribute("href"));
+
+describe("Events primary-tab continuity", () => {
+  it("reconciles the committed filter URL after an earlier pop read queued old filters", async () => {
+    window.history.replaceState(null, "", "/events?in=thurmont&lens=today&free=true");
+    await render(props([listedEvent(), { ...listedEvent("paid-concert"), is_free: false }], healthy));
+    expect(eventLinks()).toEqual(["/events/recovered-concert"]);
+    await act(async () => {
+      window.history.replaceState(null, "", "/events?in=thurmont&lens=today");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(eventLinks()).toContain("/events/paid-concert");
+    await act(async () => {
+      window.history.replaceState(null, "", "/events?in=thurmont&lens=today&free=true");
+      window.dispatchEvent(new Event(HISTORY_LAYER_URL_RESTORED));
+    });
+    expect(eventLinks()).toEqual(["/events/recovered-concert"]);
+    expect(window.location.search).toContain("free=true");
+  });
+  it.each([false, true])("resumes private search/view after a filter-only URL change, with direct links independent (StrictMode %s)", async strict => {
+    window.history.replaceState(null, "", "/events?in=thurmont&lens=today");
+    const options = props([listedEvent(), listedEvent("needle-concert", "thurmont", "Needle concert")], healthy);
+    await render(options, strict);
+    const input = host.querySelector("input")!;
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => { setValue.call(input, "needle"); input.dispatchEvent(new Event("input", { bubbles: true })); });
+    await act(async () => [...host.querySelectorAll("button")].find(node => node.textContent === "Calendar test view")!.click());
+    await act(async () => [...host.querySelectorAll("button")].find(node => node.textContent === "Soonest test sort")!.click());
+    const href = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    expect(new URLSearchParams(window.location.search).get("sort")).toBe("time");
+    rememberPrimaryTab(href, 215);
+    await act(async () => root.unmount());
+    window.history.replaceState(null, "", "/map");
+    expect(preparePrimaryTabResume("/events")?.href).toBe(href);
+    window.history.replaceState(null, "", href);
+    root = createRoot(host);
+    await render(options, strict);
+    expect(host.querySelector<HTMLInputElement>("input")?.value).toBe("needle");
+    expect(host.querySelector("[data-test-dock]")?.getAttribute("data-view")).toBe("calendar");
+    expect(eventLinks()).not.toContain("/events/recovered-concert");
+    expect(window.location.search).not.toContain("needle");
+    expect(JSON.stringify({ ...window.sessionStorage })).not.toContain("needle");
+
+    await act(async () => root.unmount());
+    cancelPrimaryTabResume();
+    window.history.replaceState(null, "", "/events?in=frederick");
+    root = createRoot(host);
+    await render(options, strict);
+    expect(host.querySelector<HTMLInputElement>("input")?.value).toBe("");
+    expect(host.querySelector("[data-test-dock]")?.getAttribute("data-view")).toBe("list");
+    expect(host.querySelector("[data-test-dock]")?.getAttribute("data-town")).toBe("frederick");
+  });
+});
 
 // These mounted regressions must recover without clicking a filter or retry.
 describe("Events passive empty-snapshot recovery", () => {
@@ -397,5 +445,64 @@ describe("Recommended attendance promotion through the mounted explorer", () => 
     const supplied = JSON.parse(host.querySelector("[data-test-agenda-events]")!.getAttribute("data-test-agenda-events")!);
     expect(supplied).toEqual(rows.map((row) => [row.slug, row.starts_at, row.ends_at]));
     expect(request).not.toHaveBeenCalled();
+  });
+});
+
+describe("A chosen sort re-ranks the list directly", () => {
+  it("drops filtered rows in the same commit as a When chip tap, with no entrance or exit state", async () => {
+    // The real dock supplies the Order menu and the When chips. Motion is
+    // allowed, so a reintroduced exit animation would keep stale rows mounted.
+    recommendationContext.actualDisplay = true;
+    vi.stubGlobal("matchMedia", () => ({ matches: false }));
+    const later = (slug: string, title: string) => ({ ...listedEvent(slug, "frederick", title),
+      starts_at: "2026-10-14T18:00:00.000Z", ends_at: "2026-10-14T20:00:00.000Z" });
+    const rows = [listedEvent("zebra-walk", "frederick", "Zebra walk"), later("apple-fest", "Apple fest"),
+      listedEvent("mango-night", "frederick", "Mango night"), later("birch-talk", "Birch talk")];
+    await render(props(rows, healthy));
+    expect(host.querySelector("[data-events-sorted-list]")).toBeNull();
+
+    const display = host.querySelector<HTMLDetailsElement>("details.eb-display-options")!;
+    await act(async () => display.querySelector("summary")!.click());
+    await act(async () => display.querySelector<HTMLButtonElement>('button[aria-label="Order: Recommended"]')!.click());
+    const order = display.querySelector('[role="group"][aria-label="Order"]')!;
+    await act(async () => [...order.querySelectorAll("button")].find((choice) => choice.textContent?.startsWith("A→Z"))!.click());
+    expect(new URLSearchParams(window.location.search).get("sort")).toBe("az");
+
+    const sorted = () => host.querySelector<HTMLUListElement>('ul[data-events-sorted-list="az"]')!;
+    const hrefs = () => [...sorted().querySelectorAll<HTMLAnchorElement>('a[href^="/events/"]')].map((link) => link.getAttribute("href"));
+    expect(hrefs()).toEqual(["/events/apple-fest", "/events/birch-talk", "/events/mango-night", "/events/zebra-walk"]);
+    expect(sorted().children).toHaveLength(4);
+
+    const today = [...host.querySelectorAll<HTMLButtonElement>('[role="group"][aria-label="When"] button')]
+      .find((chip) => chip.textContent === "Today")!;
+    // The chip acknowledges the tap at once and re-slices on the next frame.
+    await act(async () => {
+      today.click();
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    });
+    expect(today.getAttribute("aria-pressed")).toBe("true");
+    expect(new URLSearchParams(window.location.search).get("lens")).toBe("today");
+    expect(hrefs()).toEqual(["/events/mango-night", "/events/zebra-walk"]);
+    expect(sorted().children).toHaveLength(2);
+    for (const node of [sorted(), ...sorted().children]) {
+      expect(node.getAttribute("style")).toBeNull();
+    }
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("server-renders the promoted lead visible, without a hidden entrance state", async () => {
+    const options = props([{ ...listedEvent("named-concert", "frederick", "Concert"), venue_name: "Community Hall" }], healthy);
+    // The server markup is what a visitor sees before hydration.
+    const markup = renderToString(<EventsExplorer {...options} />);
+    expect(markup).toContain('data-test-card-variant="feature"');
+    expect(markup).not.toMatch(/opacity:\s*0|translateY|scale\(/);
+
+    await render(options);
+    const lead = host.querySelector<HTMLAnchorElement>('[data-test-card-variant="feature"]')!;
+    expect(lead.getAttribute("href")).toBe("/events/named-concert");
+    for (let node: HTMLElement | null = lead; node && node !== host; node = node.parentElement) {
+      expect(node.style.opacity).toBe("");
+      expect(node.style.transform).toBe("");
+    }
   });
 });

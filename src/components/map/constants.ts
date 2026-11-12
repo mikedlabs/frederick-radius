@@ -7,6 +7,7 @@
  * sessionStorage on the client only.
  */
 import type { Map as GLMap } from "mapbox-gl";
+import type { MapCameraPadding } from "./mapCameraPadding";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import type { Amenity } from "@/lib/loaders/amenities";
 import type { LngLat } from "@/lib/geo";
@@ -181,9 +182,9 @@ export const CAM_EASE = (t: number) =>
  * it, so tapping a result or a search hit glides instead of snapping.
  */
 export function smoothFocus(
-  map: GLMap,
+  map: Pick<GLMap, "getZoom" | "easeTo">,
   center: [number, number],
-  opts?: { minZoom?: number; maxStep?: number },
+  opts?: { minZoom?: number; maxStep?: number; padding?: MapCameraPadding },
 ) {
   const cur = map.getZoom();
   const want = Math.max(cur, opts?.minZoom ?? 14.5);
@@ -191,6 +192,9 @@ export function smoothFocus(
   map.easeTo({
     center,
     zoom,
+    // Temporary padding places this target in the measured visible canvas
+    // without inheriting or replacing padding retained by an earlier fit.
+    ...(opts?.padding ? { padding: opts.padding, retainPadding: false } : {}),
     duration: mapCameraDuration("focus"),
     easing: CAM_EASE,
     essential: true,

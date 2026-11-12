@@ -1,0 +1,430 @@
+"use strict";
+
+const AUTOMATED_PR_ALLOWED_PATHS = {
+  'bot/marc-schedule-refresh': ['src/data/marc-schedule.json'],
+  'bot/official-library-hours': [
+    'docs/coverage-scorecard.md',
+    'docs/hours-refresh-review.md',
+    'src/data/data-release.json',
+    'src/data/event-venue-photo-credits.json',
+    'src/data/place-refresh-identities.json',
+    'src/data/places-client-hours.json',
+    'src/data/places-client.json',
+    'src/data/copy-scores.json',
+    'src/data/places-official-hours.json',
+    'src/data/places-merchant-hours.json',
+  ],
+  'bot/data-steward': [
+    'docs/coverage-scorecard.md',
+    'docs/hours-refresh-review.md',
+    'src/data/data-release.json',
+    'src/data/event-venue-photo-credits.json',
+    'src/data/place-refresh-identities.json',
+    'src/data/places-client-hours.json',
+    'src/data/places-client.json',
+    'src/data/copy-scores.json',
+    'src/data/places-hours-refresh.json',
+  ],
+  'bot/transit-steward': [
+    'src/data/data-release.json',
+    'src/data/transit-network.json',
+    'src/data/transit-trips.json',
+    'src/data/transit.json',
+  ],
+  'bot/curated-place-enrichment': [
+    'audit/google-enrichment-attempts.json',
+    'src/data/data-release.json',
+    'src/data/event-venue-photo-credits.json',
+    'src/data/place-refresh-identities.json',
+    'src/data/places-client-hours.json',
+    'src/data/places-client.json',
+    'src/data/copy-scores.json',
+    'src/data/places-enrichment.json',
+  ],
+  'bot/business-info-refresh': [
+    'src/data/business-info.json',
+    'src/data/data-release.json',
+    'src/data/descriptions.json',
+    'src/data/event-venue-photo-credits.json',
+    'src/data/places-client-hours.json',
+    'src/data/places-client.json',
+    'src/data/copy-scores.json',
+  ],
+  'bot/municipal-civic-refresh': ['src/data/municipal-civic.json'],
+  'bot/venue-event-refresh': [
+    'src/data/data-release.json',
+    'src/data/venue-event-source-inventory.json',
+    'src/data/venue-event-source-state.json',
+    'src/data/venue-events.json',
+  ],
+  'bot/venue-native-refresh': [
+    'src/data/data-release.json',
+    'src/data/venue-event-source-inventory.json',
+    'src/data/venue-event-source-state.json',
+    'src/data/venue-events.json',
+  ],
+  'bot/google-photo-attribution-backfill': [
+    'docs/coverage-scorecard.md',
+    'src/data/data-release.json',
+    'src/data/event-venue-photo-credits.json',
+    'src/data/place-refresh-identities.json',
+    'src/data/places-client-hours.json',
+    'src/data/places-client.json',
+    'src/data/copy-scores.json',
+    'src/data/places-enrichment.json',
+  ],
+  'bot/official-commerce-link-refresh': [
+    'src/data/business-info.json',
+    'src/data/data-release.json',
+    'src/data/event-venue-photo-credits.json',
+    'src/data/places-client-hours.json',
+    'src/data/places-client.json',
+    'src/data/copy-scores.json',
+  ],
+};
+
+for (const paths of Object.values(AUTOMATED_PR_ALLOWED_PATHS)) Object.freeze(paths);
+Object.freeze(AUTOMATED_PR_ALLOWED_PATHS);
+
+const SHA = /^[0-9a-f]{40}$/;
+const requireThat = (condition, message) => { if (!condition) throw new Error(message); };
+const safeId = (value) => Number.isSafeInteger(value) && value > 0;
+const workflowSpecs = ["ci.yml", "style.yml"];
+const runningStates = new Set(["queued", "in_progress"]);
+const knownBotHint = (options) => [options.branch, options.context?.payload?.pull_request?.head?.ref]
+  .some((value) => typeof value === "string" && value.startsWith("bot/"));
+
+async function prepare(options, native) {
+  const { github, context, trustedMainSha } = options;
+  const { owner, repo } = context.repo;
+  const repository = `${owner}/${repo}`;
+  const eventPull = context.payload?.pull_request;
+  const branch = options.branch || eventPull?.head?.ref;
+  const headSha = options.headSha || eventPull?.head?.sha;
+  requireThat(Object.hasOwn(AUTOMATED_PR_ALLOWED_PATHS, branch || "") && SHA.test(headSha || "")
+    && SHA.test(trustedMainSha || ""), "Unexpected publisher branch, head or trusted main revision.");
+  if (native) requireThat(context.eventName === "pull_request", "Only a native pull_request can select data-only gates.");
+  else requireThat(context.ref === "refs/heads/main" && context.sha === trustedMainSha,
+    "Approval must execute from the exact trusted main revision.");
+  let pullNumber = options.pullNumber || eventPull?.number;
+  if (!pullNumber) {
+    const rows = (await github.rest.pulls.list({ owner, repo, state: "open", base: "main", head: `${owner}:${branch}`, per_page: 2 })).data;
+    requireThat(Array.isArray(rows) && rows.length === 1 && safeId(rows[0]?.number), "Expected one unambiguous existing publisher PR.");
+    pullNumber = rows[0].number;
+  }
+  requireThat(safeId(pullNumber), "Invalid publisher PR number.");
+  if (native) requireThat(context.ref === `refs/pull/${pullNumber}/merge` && eventPull?.number === pullNumber
+    && eventPull.head?.ref === branch && eventPull.head.sha === headSha
+    && eventPull.head.repo?.full_name === repository && eventPull.base?.repo?.full_name === repository
+    && eventPull.base.ref === "main" && eventPull.base.sha === trustedMainSha,
+  "Native PR event identity does not match the expected publisher.");
+  let requireUnqueuedFallback = false;
+  const currentPull = async () => {
+    const [main, bot, response] = await Promise.all([
+      github.rest.git.getRef({ owner, repo, ref: "heads/main" }),
+      github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` }),
+      github.rest.pulls.get({ owner, repo, pull_number: pullNumber }),
+    ]);
+    const pull = response.data;
+    requireThat(main.data.object.sha === trustedMainSha && bot.data.object.sha === headSha,
+      "Current main or the publisher head moved. Reconcile before running data gates.");
+    requireThat(pull.number === pullNumber && pull.state === "open" && pull.draft === false
+      && pull.head?.ref === branch && pull.head.sha === headSha && pull.head.repo?.full_name === repository
+      && pull.base?.ref === "main" && pull.base.sha === trustedMainSha && pull.base.repo?.full_name === repository,
+    "The publisher PR base, head, repository or state changed.");
+    // The new list/detail fallback is only for explicitly unqueued PRs. Once
+    // selected, recheck this condition through every subsequent approval read.
+    if (!native && requireUnqueuedFallback) requireThat(Object.hasOwn(pull, "auto_merge") && pull.auto_merge === null,
+      "Publisher auto-merge must be positively observed disabled before native run approval.");
+    requireThat(pull.mergeable === true && pull.mergeable_state !== "dirty" && SHA.test(pull.merge_commit_sha || ""),
+      "A current mergeable publisher target is unavailable.");
+    return pull;
+  };
+  const pull = await currentPull();
+  const comparison = (await github.rest.repos.compareCommitsWithBasehead({ owner, repo,
+    basehead: `${trustedMainSha}...${headSha}`, per_page: 100 })).data;
+  const files = comparison.files;
+  const allowlist = AUTOMATED_PR_ALLOWED_PATHS[branch];
+  requireThat(comparison.status === "ahead" && comparison.behind_by === 0 && safeId(comparison.ahead_by)
+    && safeId(comparison.total_commits) && comparison.total_commits <= 100,
+  "The publisher is not an unambiguous current-main descendant.");
+  requireThat(Array.isArray(files) && files.length > 0 && files.length <= allowlist.length
+    && files.length === pull.changed_files && new Set(files.map((file) => file.filename)).size === files.length
+    && files.every((file) => allowlist.includes(file.filename) && ["added", "modified"].includes(file.status)
+      && file.previous_filename == null), "Publisher changes are incomplete, ambiguous or outside the exact existing data allowlist.");
+  const [head, merge] = await Promise.all([
+    github.rest.git.getCommit({ owner, repo, commit_sha: headSha }),
+    github.rest.git.getCommit({ owner, repo, commit_sha: pull.merge_commit_sha }),
+  ]);
+  requireThat(SHA.test(head.data.tree?.sha || "") && head.data.tree.sha === merge.data.tree?.sha
+    && merge.data.parents?.length === 2 && merge.data.parents[0].sha === trustedMainSha && merge.data.parents[1].sha === headSha,
+  "The synthetic merge parents or tree differ from the reviewed current-main data head.");
+  const identity = { owner, repo, branch, pullNumber, mainSha: trustedMainSha, headSha,
+    mergeSha: pull.merge_commit_sha, treeSha: head.data.tree.sha };
+  const revalidate = async () => {
+    const current = await currentPull();
+    requireThat(current.merge_commit_sha === identity.mergeSha && current.changed_files === files.length,
+      "The current publisher target rotated or its changed-file evidence moved.");
+    if (native) requireThat(context.sha === identity.mergeSha, "Native CI is not checking the exact current content-proven merge.");
+  };
+  await revalidate();
+  const enableUnqueuedFallback = async () => {
+    if (!requireUnqueuedFallback) { requireUnqueuedFallback = true; await revalidate(); }
+  };
+  return { identity, files: files.map(({ filename, status }) => ({ filename, status })), revalidate, enableUnqueuedFallback };
+}
+
+async function classifyNativeAutomatedPr(options) {
+  const receipt = { schema_version: 1, mode: knownBotHint(options) ? "held" : "full", verified: false,
+    semanticAcceptance: false, changesAutoMerge: false };
+  if (receipt.mode === "full") { receipt.reason = "Ordinary non-publisher PR requires full application gates."; return receipt; }
+  try {
+    const candidate = await prepare(options, true);
+    receipt.identity = candidate.identity; receipt.files = candidate.files;
+    receipt.mode = "data-only"; receipt.verified = true;
+  } catch (error) { receipt.reason = error.message; }
+  return receipt;
+}
+
+function validateRunSource(run, workflow, identity) {
+  const repository = `${identity.owner}/${identity.repo}`;
+  requireThat(safeId(run.id) && run.workflow_id === workflow.id && run.path?.split("@")[0] === workflow.path
+    && run.event === "pull_request" && run.head_sha === identity.headSha && run.head_branch === identity.branch
+    && run.head_repository?.full_name === repository && run.repository?.full_name === repository
+    && safeId(run.run_attempt) && safeId(run.check_suite_id), "Native workflow source, event, repository, head or attempt is invalid.");
+}
+function associationState(run, identity) {
+  const associations = run.pull_requests;
+  if (!Object.hasOwn(run, "pull_requests")) return "missing-field";
+  if (!Array.isArray(associations)) return "not-array";
+  if (associations.length === 0) return "empty-array";
+  if (associations.length !== 1) return "multiple-associations";
+  const repository = `${identity.owner}/${identity.repo}`;
+  const sameRepository = (record) => record && (!record.full_name || record.full_name === repository)
+    && (!record.url || record.url === `https://api.github.com/repos/${repository}`)
+    && (record.full_name === repository || record.url === `https://api.github.com/repos/${repository}`);
+  return associations[0]?.number === identity.pullNumber
+    && associations[0].head?.sha === identity.headSha && associations[0].head.ref === identity.branch
+    && sameRepository(associations[0].head.repo)
+    && associations[0].base?.sha === identity.mainSha && associations[0].base.ref === "main"
+    && sameRepository(associations[0].base.repo) ? "exact" : "mismatched-association";
+}
+function validateRun(run, workflow, identity) {
+  validateRunSource(run, workflow, identity);
+  requireThat(associationState(run, identity) === "exact",
+    "Native run does not have one exact current publisher PR association.");
+}
+const observeRun = (run, file) => ({ workflow: file, id: run.id, attempt: run.run_attempt, event: run.event,
+  headSha: run.head_sha, suiteId: run.check_suite_id, status: run.status, conclusion: run.conclusion ?? null,
+  htmlUrl: run.html_url, action: "unselected" });
+const alreadyRunningOrPassed = (run) => runningStates.has(run.status) && run.conclusion == null
+  || run.status === "completed" && run.conclusion === "success";
+const heldForApproval = (run) => run.status === "completed" && run.conclusion === "action_required";
+
+async function approveNativeAutomatedPrRuns(options) {
+  const { github } = options;
+  const receipt = { schema_version: 1, mode: "approve-native-runs", state: "held", verified: false,
+    semanticAcceptance: false, changesAutoMerge: false, manualApprovalRequired: true, runs: [], approvalWrites: [],
+    associationReads: [],
+    transportEligibility: "unproven-until-next-reviewed-native-batch" };
+  try {
+    const candidate = await prepare(options, false);
+    receipt.identity = candidate.identity; receipt.files = candidate.files;
+    const { owner, repo, branch, headSha } = candidate.identity;
+    const workflows = [];
+    for (const file of workflowSpecs) {
+      const workflow = (await github.rest.actions.getWorkflow({ owner, repo, workflow_id: file })).data;
+      requireThat(safeId(workflow.id) && workflow.path === `.github/workflows/${file}` && workflow.state === "active",
+        "The existing native workflow identity is unavailable or changed.");
+      workflows.push({ ...workflow, file });
+    }
+    const noteAssociations = (workflow, phase, rows, read) => {
+      receipt.associationReads.push({ workflow: workflow.file, phase, read,
+        runs: rows.map((run) => ({ id: run.id, attempt: run.run_attempt, suiteId: run.check_suite_id,
+          associationState: associationState(run, candidate.identity),
+          associationCount: Array.isArray(run.pull_requests) ? run.pull_requests.length : null })) });
+    };
+    const latest = async (workflow, discovery = false, batchGuard = false) => {
+      let pinnedIdentity;
+      // Listing responses can omit PR associations even when the individual
+      // run response has them. The list discovers run identities; the newest
+      // run's detail must establish its exact PR. Both endpoints must agree on
+      // run, attempt, suite and source. Only a genuinely empty selected-run
+      // detail association gets the existing bounded wait.
+      for (let read = 1; read <= (discovery ? 4 : 1); read += 1) {
+        if (!batchGuard) await candidate.revalidate();
+        const response = (await github.rest.actions.listWorkflowRuns({ owner, repo, workflow_id: workflow.id,
+          branch, head_sha: headSha, event: "pull_request", exclude_pull_requests: false, per_page: 100 })).data;
+        const rows = response.workflow_runs;
+        requireThat(Array.isArray(rows) && safeId(response.total_count) && response.total_count === rows.length
+          && rows.length < 100 && new Set(rows.map((row) => row.id)).size === rows.length,
+        `Missing, ambiguous or incomplete native runs for ${workflow.file}. Manual owner approval is required.`);
+        noteAssociations(workflow, discovery ? "discovery" : "pre-approval", rows, read);
+        rows.forEach((run) => validateRunSource(run, workflow, candidate.identity));
+        const identity = rows.map((run) => `${run.id}:${run.run_attempt}:${run.check_suite_id}`).sort().join(",");
+        requireThat(pinnedIdentity === undefined || pinnedIdentity === identity,
+          "The native discovery run IDs, attempts or check suites changed while waiting for association metadata.");
+        pinnedIdentity = identity;
+        const states = rows.map((run) => associationState(run, candidate.identity));
+        requireThat(states.every((state) => state === "exact" || state === "empty-array"),
+          "Native run does not have one exact current publisher PR association.");
+        if (states.some((state) => state === "empty-array")) {
+          // Empty list metadata is not authority. Permit the detail-backed
+          // fallback only for a PR observed unqueued, and keep that guard on
+          // through all following reads and writes, even if the list settles.
+          await candidate.enableUnqueuedFallback();
+        }
+        // A superseded run cannot authorize the new run. Validate its list
+        // identity above, but require the independent PR association and
+        // state only from the newest run that could receive approval.
+        const latestList = rows.sort((a, b) => b.id - a.id)[0];
+        const latestDetail = (await github.rest.actions.getWorkflowRun({ owner, repo, run_id: latestList.id })).data;
+        noteAssociations(workflow, discovery ? "discovery-detail" : "pre-approval-detail", [latestDetail], read);
+        validateRunSource(latestDetail, workflow, candidate.identity);
+        requireThat(latestDetail.id === latestList.id && latestDetail.run_attempt === latestList.run_attempt
+          && latestDetail.check_suite_id === latestList.check_suite_id,
+        "Independent native run ID, attempt or check suite changed during discovery.");
+        const detailState = associationState(latestDetail, candidate.identity);
+        requireThat(detailState === "exact" || detailState === "empty-array",
+          "Independent native run does not have one exact current publisher PR association.");
+        if (!batchGuard) await candidate.revalidate();
+        if (detailState === "exact") {
+          validateRun(latestDetail, workflow, candidate.identity);
+          // An endpoint reporting a previously running/passed or failed state
+          // cannot silently become an eligible new approval through another.
+          if (!heldForApproval(latestList) && !alreadyRunningOrPassed(latestList)) return latestList;
+          requireThat(!(alreadyRunningOrPassed(latestList) && heldForApproval(latestDetail)),
+            "A previously running or passed native run cannot regress to a new approval.");
+          return latestDetail;
+        }
+        requireThat(discovery && read < 4,
+          "Native run PR association metadata remains empty; exact owner-reviewed native runs remain held.");
+        await (options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms))))(4000);
+      }
+    };
+    const pinned = [];
+    // Discover both native gates before changing either one. A missing second
+    // run cannot justify dispatching or approving a substitute first gate.
+    for (const workflow of workflows) {
+      const run = await latest(workflow, true);
+      pinned.push({ workflow, run }); receipt.runs.push(observeRun(run, workflow.file));
+    }
+    requireThat(new Set(pinned.map(({ run }) => run.id)).size === pinned.length, "Native gate IDs overlap.");
+    for (const { run } of pinned) requireThat(heldForApproval(run) || alreadyRunningOrPassed(run),
+      "An existing native gate failed, was cancelled, skipped or has an uncertain state. Owner attention is required.");
+    const progressed = new Set(pinned.filter(({ run }) => alreadyRunningOrPassed(run)).map(({ run }) => run.id));
+    // Run ID -> the attempt this script approved and GitHub accepted with 201.
+    const approvedAttempts = new Map();
+    // GitHub restarts an approved action_required run as the next attempt of
+    // the same run ID and check suite (run_attempt 1 becomes 2, as observed on
+    // run 42775375255). That restart is the expected result of our own write,
+    // so exactly one transition is accepted: a run this script approved, still
+    // pinned at the approved attempt, observed with the same ID, check suite and
+    // head SHA, at exactly the approved attempt plus 1, and queued, in progress
+    // or completed with success. The entry is then re-pinned to that attempt so
+    // every later read must match it. Everything else is still refused: a jump
+    // of more than one attempt, a different suite or head SHA, any attempt
+    // change on a run this script did not approve (or before its 201), a second
+    // restart, and a restarted attempt that is held or concluded other than
+    // success. A substituted run therefore cannot borrow the original approval.
+    const matchesPinned = (entry, current) => {
+      const run = entry.run;
+      if (current.id === run.id && current.run_attempt === run.run_attempt
+        && current.check_suite_id === run.check_suite_id && current.head_sha === run.head_sha) return true;
+      const approved = approvedAttempts.get(run.id);
+      const restarted = approved !== undefined && run.run_attempt === approved
+        && current.id === run.id && current.check_suite_id === run.check_suite_id && current.head_sha === run.head_sha
+        && current.run_attempt === approved + 1 && alreadyRunningOrPassed(current);
+      if (restarted) {
+        entry.run = current;
+        const write = receipt.approvalWrites.find((row) => row.id === run.id);
+        if (write) write.restartedAttempt = current.run_attempt;
+        // The restart can first appear after the receipt recorded a
+        // same-attempt observation, so the run row is refreshed here too and
+        // shows the attempt that actually ran. Its action is kept.
+        const index = pinned.indexOf(entry);
+        if (receipt.runs[index]) receipt.runs[index] = { ...observeRun(current, entry.workflow.file), action: receipt.runs[index].action };
+      }
+      return restarted;
+    };
+    // Recheck both exact runs before each possible write and the final result.
+    // GitHub cannot atomically couple the checks to an approval operation;
+    // rechecking narrows but cannot eliminate cross-API races.
+    const confirmBoth = async () => {
+      // One PR/branch guard surrounds both workflow snapshots. This retains
+      // independent list + detail reads for each gate, without repeating the
+      // same three PR/ref reads around each individual workflow.
+      await candidate.revalidate();
+      const checked = new Map();
+      for (const entry of pinned) {
+        const { workflow, run } = entry;
+        const current = await latest(workflow, false, true);
+        requireThat(matchesPinned(entry, current) && (heldForApproval(current) || alreadyRunningOrPassed(current)),
+        "A native gate changed identity or has failed before approval.");
+        requireThat(!(progressed.has(run.id) && heldForApproval(current)),
+          "A native gate regressed to held after running or passing.");
+        if (alreadyRunningOrPassed(current)) progressed.add(run.id);
+        checked.set(run.id, current);
+      }
+      await candidate.revalidate();
+      return checked;
+    };
+    for (const [index, { workflow, run }] of pinned.entries()) {
+      const current = (await confirmBoth()).get(run.id);
+      requireThat(current.id === run.id && current.run_attempt === run.run_attempt && current.check_suite_id === run.check_suite_id,
+        "The latest native run ID, attempt or check suite changed before approval.");
+      requireThat(heldForApproval(current) || alreadyRunningOrPassed(current),
+        "A current native gate failed or has uncertain state before approval.");
+      const independent = (await github.rest.actions.getWorkflowRun({ owner, repo, run_id: run.id })).data;
+      noteAssociations(workflow, "independent-pre-approval", [independent], 1);
+      validateRun(independent, workflow, candidate.identity);
+      requireThat(independent.id === run.id && independent.run_attempt === run.run_attempt && independent.check_suite_id === run.check_suite_id,
+        "Independent native run ID, attempt or check suite changed before approval.");
+      if (alreadyRunningOrPassed(independent)) progressed.add(run.id);
+      const finalCurrent = (await confirmBoth()).get(run.id);
+      // The run may start between the independent read and the final batch.
+      // Never send another approval based on the older held observation.
+      if (alreadyRunningOrPassed(finalCurrent)) {
+        receipt.runs[index] = { ...observeRun(finalCurrent, workflow.file), action: "observed" }; continue;
+      }
+      requireThat(heldForApproval(run) && heldForApproval(current) && heldForApproval(independent)
+        && heldForApproval(finalCurrent), "The exact native run is no longer the originally selected held approval.");
+      const write = { id: run.id, workflow: workflow.file, attempt: run.run_attempt, suiteId: run.check_suite_id,
+        headSha, at: new Date((options.now || Date.now)()).toISOString(), responseStatus: null,
+        observationReads: 0, transitionVerified: false };
+      receipt.approvalWrites.push(write);
+      let response;
+      try { response = await github.rest.actions.approveWorkflowRun({ owner, repo, run_id: run.id }); }
+      catch (error) { write.responseStatus = error.status ?? null; throw error; }
+      write.responseStatus = response.status;
+      requireThat(response.status === 201, "Native approval did not return the documented 201 response. Manual owner approval is required.");
+      approvedAttempts.set(run.id, run.run_attempt);
+      let after;
+      // A status read may lag accepted approval. Observe only this approved ID and
+      // attempt, without another write, for at most 2.25 seconds of waiting.
+      for (let observation = 0; observation < 4; observation += 1) {
+        await candidate.revalidate();
+        write.observationReads += 1;
+        after = (await github.rest.actions.getWorkflowRun({ owner, repo, run_id: run.id })).data;
+        noteAssociations(workflow, "approval-observation", [after], write.observationReads);
+        validateRun(after, workflow, candidate.identity);
+        requireThat(matchesPinned(pinned[index], after),
+          "The exact native run ID, attempt or check suite changed during approval observation.");
+        if (alreadyRunningOrPassed(after)) break;
+        requireThat(heldForApproval(after) && observation < 3,
+          "Approval transition is not independently verified for the exact native run and attempt. Do not retry automatically.");
+        await (options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms))))(750);
+      }
+      write.transitionVerified = true;
+      progressed.add(run.id);
+      receipt.runs[index] = { ...observeRun(after, workflow.file), action: "approved" };
+    }
+    await confirmBoth();
+    await candidate.revalidate();
+    receipt.state = receipt.approvalWrites.length ? "approved" : "observed";
+    receipt.manualApprovalRequired = false; receipt.verified = true;
+  } catch (error) { receipt.failure = error.message; receipt.errorStatus = error.status ?? null; }
+  return receipt;
+}
+
+module.exports = { AUTOMATED_PR_ALLOWED_PATHS, classifyNativeAutomatedPr, approveNativeAutomatedPrRuns };

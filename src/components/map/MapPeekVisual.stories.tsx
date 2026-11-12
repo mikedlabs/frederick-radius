@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import MapPeek from "./MapPeek";
 import type { MapPinPlace } from "./types";
+import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 
 const creek: MapPinPlace = {
   slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park",
@@ -61,10 +62,25 @@ async function reachable(target: HTMLElement) {
   });
 }
 
+/** Summary activation needs native input: Storybook's synthetic focus
+ * selector treats this real control as its focusable parent instead. */
+async function clickPhotoEdits(summary: HTMLElement) {
+  if ((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) {
+    const browser = await import("vitest/browser");
+    let trusted = false;
+    summary.addEventListener("pointerdown", event => { trusted = event.isTrusted; }, { once: true });
+    await browser.userEvent.click(summary);
+    await expect(trusted).toBe(true);
+  } else summary.click();
+}
+
 const checkPreview: NonNullable<Story["play"]> = async ({ canvasElement, args }) => {
   const canvas = within(canvasElement);
   const surface = canvasElement.querySelector<HTMLElement>("[data-map-result-surface]")!;
   const image = surface.querySelector<HTMLImageElement>("img")!;
+  // A short landscape scrollport can initially clip a native lazy image.
+  // Bring the actual photo into view before checking its normal load event.
+  image.scrollIntoView({ block: "nearest", inline: "nearest" });
   await waitFor(async () => {
     await image.decode();
     await expect(image.naturalWidth).toBeGreaterThan(1);
@@ -90,6 +106,13 @@ const checkPreview: NonNullable<Story["play"]> = async ({ canvasElement, args })
   const directions = canvas.getByRole("link", { name: /^Directions$/ });
   const save = canvas.getByRole("button", { name: /^Save$/ });
   const share = canvas.getByRole("button", { name: `Share ${args.place.name}` });
+  const heading = surface.querySelector<HTMLElement>(".map-peek-title-button")!;
+  // The name and Details form one row, with current status below it. The
+  // primary destination action gets more space than secondary Save/Share.
+  await expect(Math.abs(details.getBoundingClientRect().top - heading.getBoundingClientRect().top)).toBeLessThanOrEqual(1);
+  await expect(surface.querySelector("[data-map-place-status]")).toHaveTextContent("Hours not confirmed");
+  await expect(surface.querySelector(".map-peek-cat")).toBeNull();
+  await expect(directions.getBoundingClientRect().width).toBeGreaterThan(save.getBoundingClientRect().width);
   // The legacy narrow-screen selector hides direct span children. The new
   // face must remain painted, not merely leave a correctly sized blank button.
   const shareFace = share.querySelector<HTMLElement>(":scope > [data-press-face]")!;
@@ -112,13 +135,36 @@ const checkPreview: NonNullable<Story["play"]> = async ({ canvasElement, args })
   } else await userEvent.click(details);
   await expect(args.onDetails).toHaveBeenCalledOnce();
   await expect(details).toHaveFocus();
-  await expect(canvas.getByText("Hours not posted")).toBeVisible();
+  await expect(canvas.getByText("Hours not confirmed")).toBeVisible();
 };
 
 export const OwnedAt320: Story = { globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } }, play: checkPreview };
 export const OwnedAt375: Story = { ...OwnedAt320, globals: { viewport: { value: "radiusMobileCompact", isRotated: false } } };
 export const OwnedAt390: Story = { ...OwnedAt320, globals: { viewport: { value: "radiusMobile", isRotated: false } } };
 export const OwnedAt430: Story = { ...OwnedAt320, globals: { viewport: { value: "radiusMobileLarge", isRotated: false } } };
+export const UnknownPhotoAt320: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { place: { ...creek, slug: "workshop-unpictured-place", name: "Sample unpictured place", category: "shops" } },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvasElement.querySelector("img")).toBeNull());
+    const surface = canvasElement.querySelector<HTMLElement>("[data-map-result-surface]")!;
+    await canvasElement.ownerDocument.fonts.ready;
+    await waitFor(() => expect(new DOMMatrix(getComputedStyle(surface).transform).isIdentity).toBe(true));
+    // No photograph: a 44px target holding only the plain category glyph,
+    // with no tile, so the name column takes the rest of the width.
+    const frame = canvasElement.querySelector<HTMLElement>(".map-peek-visual")!;
+    await expect(frame.getBoundingClientRect().width).toBe(44);
+    await expect(frame.getBoundingClientRect().height).toBe(44);
+    await expect(getComputedStyle(frame).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    await expect(frame.querySelector(".map-peek-category-mark > svg")).not.toBeNull();
+    await expect(canvas.getByText("Hours not confirmed")).toBeVisible();
+    await expect(canvasElement.querySelector(".map-peek-source-credit")).toBeNull();
+    for (const target of [canvas.getByRole("button", { name: /^Details$/ }), canvas.getByRole("link", { name: /^Directions$/ }), canvas.getByRole("button", { name: `Close ${args.place.name}` })]) await reachable(target);
+    await userEvent.click(canvas.getByRole("button", { name: /^Details$/ }));
+    await expect(args.onDetails).toHaveBeenCalledOnce();
+  },
+};
 export const DoubleTextAt320: Story = {
   ...OwnedAt320,
   beforeEach: () => {
@@ -134,10 +180,79 @@ export const LicensedPlace: Story = {
   play: async context => {
     await checkPreview(context);
     const canvas = within(context.canvasElement);
-    await expect(canvas.getByText(/Side alley exterior, October 26, 2004/)).toBeVisible();
-    for (const name of ["Wikimedia Commons", "CC BY-SA 2.0"]) await reachable(canvas.getByRole("link", { name }));
+    const photo = getLandmarkPhoto(context.args.place.slug)!;
+    const sourceLink = canvas.getByRole("link", { name: `Photo by ${photo.author}. Wikimedia Commons` });
+    await expect(sourceLink).toHaveTextContent(photo.author);
+    await expect(sourceLink).toHaveAttribute("href", photo.source_url);
+    const licenseLink = canvas.getByRole("link", { name: photo.license });
+    const editSummary = canvas.getByText("Edited photo", { exact: true });
+    const fullEdits = canvas.getByText(photo.modifications!, { exact: true });
+    await expect(fullEdits).not.toBeVisible();
+    for (const target of [sourceLink, licenseLink, editSummary]) await reachable(target);
+    editSummary.focus();
+    await clickPhotoEdits(editSummary);
+    await expect(editSummary.closest("details")).toHaveAttribute("open");
+    await expect(fullEdits).toBeVisible();
+    await expect(editSummary).toHaveFocus();
+    for (const target of [sourceLink, licenseLink, editSummary, canvas.getByRole("link", { name: /^Directions$/ }), canvas.getByRole("button", { name: `Close ${context.args.place.name}` })]) await reachable(target);
+    await clickPhotoEdits(editSummary);
+    await expect(editSummary.closest("details")).not.toHaveAttribute("open");
+    await expect(fullEdits).not.toBeVisible();
+    await expect(editSummary).toHaveFocus();
     await expect(context.args.onDetails).toHaveBeenCalledOnce();
   },
+};
+
+export const CatoctinAt390: Story = {
+  ...LicensedPlace,
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  args: { place: { ...creek, slug: "catoctin-furnace-thurmont", name: "Catoctin Furnace", municipality: "thurmont" } },
+};
+
+export const MuseumEntranceAt375: Story = {
+  ...LicensedPlace,
+  args: { place: { ...creek, slug: "national-museum-civil-war-medicine-frederick", name: "National Museum of Civil War Medicine", category: "museum" } },
+  play: async context => {
+    await LicensedPlace.play!(context);
+    const image = context.canvasElement.querySelector<HTMLImageElement>("[data-map-result-surface] img")!;
+    const url = new URL(image.currentSrc, window.location.href);
+    await expect(url.pathname === "/place-photos/civil-war-medicine-frontage.jpg" || url.searchParams.get("url") === "/place-photos/civil-war-medicine-frontage.jpg").toBe(true);
+    await expect(getComputedStyle(image).objectPosition).toBe("50% 100%");
+  },
+};
+
+export const ChappelleWithMetadataAt320: Story = {
+  ...LicensedPlace,
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { place: { ...creek, slug: "chappelle-co", name: "Chappelle Co", category: "shopping" } },
+  beforeEach: () => {
+    const original = window.fetch;
+    window.fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, window.location.href);
+      if (url.pathname === "/api/places/map-card/chappelle-co") return Response.json({ place: {
+        slug: "chappelle-co",
+        google_photo_url: "/api/place-photo?name=places%2Fworkshop%2Fphotos%2Ffallback&w=800",
+        google_photo_attribution: { photo_name: "places/workshop/photos/fallback",
+          google_maps_uri: "https://www.google.com/maps/contrib/123/photo/456",
+          authors: [{ display_name: "Workshop fallback fixture", uri: "https://www.google.com/maps/contrib/123" }] },
+      } });
+      return original(input, init);
+    };
+    return () => { window.fetch = original; };
+  },
+  play: async context => {
+    await LicensedPlace.play!(context);
+    const image = context.canvasElement.querySelector<HTMLImageElement>("[data-map-result-surface] img")!;
+    await expect(image.dataset.mapPeekPhotoSource).toBe("curated");
+    await expect(image.alt).toContain("November 2022");
+    await expect(getComputedStyle(image).objectPosition).toBe("100% 50%");
+    await expect(context.canvasElement.textContent).not.toContain("Workshop fallback fixture");
+  },
+};
+
+export const ChappelleWithMetadataAt390: Story = {
+  ...ChappelleWithMetadataAt320,
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
 };
 
 export const ShortScreenAt320: Story = {
@@ -159,7 +274,7 @@ export const FailedLicensedPhoto: Story = {
     await waitFor(() => expect(context.canvasElement.querySelector("img")).toBeNull());
     await expect(context.canvasElement.querySelector(".map-peek-source-credit")).toBeNull();
     await expect(canvas.getByText("Brewer's Alley")).toBeVisible();
-    await expect(canvas.getByText("Hours not posted")).toBeVisible();
+    await expect(canvas.getByText("Hours not confirmed")).toBeVisible();
     for (const target of [canvas.getByRole("button", { name: /^Details$/ }), canvas.getByRole("link", { name: /^Directions$/ }), canvas.getByRole("button", { name: /^Save$/ })]) await reachable(target);
     await expect(context.args.onDetails).toHaveBeenCalledOnce();
   },

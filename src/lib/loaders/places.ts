@@ -10,8 +10,8 @@ import MERCHANT_HOURS_RAW from "@/data/places-merchant-hours.json" with { type: 
 import { merchantHoursForPlace } from "@/lib/merchant-hours";
 import OFFICIAL_HOURS_RAW from "@/data/places-official-hours.json" with { type: "json" };
 import { officialHoursForPlace } from "@/lib/official-hours";
-import { isScheduleEvidenceCurrent } from "@/lib/hours";
-import { PLACES, type Place } from "@/data/places";
+import { isDisplayOnlyHours, isScheduleEvidenceCurrent } from "@/lib/hours";
+import { PLACES, type Place, type OperationalStatus } from "@/data/places";
 import { CATEGORY_BY_SLUG, CATEGORIES } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsAtVenue, type Event } from "@/data/events";
@@ -77,14 +77,12 @@ import {
   placementRejectionReason,
   type PlacementRejectionReason,
 } from "@/lib/placement-trust";
-import {
-  getHoursAvailability,
-  hasReliableHours,
-} from "@/lib/hours-availability";
+import { getHoursAvailability } from "@/lib/hours-availability";
 import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
 import { chooseCanonicalGooglePlaceId } from "@/lib/quality/enrichmentBinding";
 import { publishablePlaceWebsite } from "@/lib/place-website-policy";
 import { compareNearbyPlaceCandidates } from "@/lib/decision/nearby-place-ranking";
+import { compactOperationalCorrection, type CompactOperationalCorrection } from "@/lib/place-operational-policy";
 import type { DecisionOriginSource } from "@/lib/scope";
 
 // Official Maryland farmers-market schedule snapshot (built by
@@ -702,6 +700,8 @@ const photoProxy = (name: string, w = 800, slug?: string) =>
   `/api/place-photo?name=${encodeURIComponent(name)}&w=${w}${slug ? `&slug=${encodeURIComponent(slug)}` : ""}`;
 
 export type PlaceCardData = Place & PlaceEnriched & {
+  /** Compact build policy; no heavy provider evidence reaches the client. */
+  operational_correction?: CompactOperationalCorrection;
   open_status: OpenStatus;
   distance_m?: number;
   /** "verified" = Google hours confirm open. "likely" = curated window. */
@@ -1146,7 +1146,7 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   const hoursVerifiedAt = official.enrolled ? official.observedAt : refreshedHours ? refresh?.refreshed_at : hours_updated_at;
   const mayAssertHours =
     mayAssertOpenState(hoursVerified, hoursVerifiedAt, now) &&
-    mayPublishVisitabilityHours(p.slug, hours, now) &&
+    ((official.enrolled && isDisplayOnlyHours(hours)) || mayPublishVisitabilityHours(p.slug, hours, now)) &&
     (!hours || isScheduleEvidenceCurrent(hours, now));
   const manualStatus = activeManualPlaceStatusOverride(p.slug, now);
   const refreshedStatus = refreshedBusinessStatus(
@@ -1431,18 +1431,17 @@ export function curationScore(featureScore: number, localFavorite: boolean | und
   return Math.min(1, base + boost);
 }
 
+/** Reuse the formatter while formatting each caller's exact instant. */
+const DAYPART_CLOCK = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  hour: "numeric",
+  hour12: false,
+});
+
 /** Coarse Eastern daypart for moment-fit. Local copy so the loader has
  *  no dependency cycle with now-picks.ts (which imports rankPlaces). */
 function dayPartLocal(d: Date): "morning" | "midday" | "evening" {
-  const hour =
-    parseInt(
-      new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/New_York",
-        hour: "numeric",
-        hour12: false,
-      }).format(d),
-      10,
-    ) % 24;
+  const hour = parseInt(DAYPART_CLOCK.format(d), 10) % 24;
   if (hour < 10) return "morning";
   if (hour < 16) return "midday";
   return "evening";
@@ -1505,27 +1504,39 @@ export function isOperational(p: Place): boolean {
   const manualStatus = activeManualPlaceStatusOverride(p.slug);
   if (manualStatus?.status === "operational") return true;
   if (isManualPlaceClosureOverride(manualStatus)) return false;
-  if (isKnownClosed(p.name)) return false; // manual override of last resort
+  const status = acceptedBaseOperationalStatus(p);
+  return status !== "closed_permanently" && status !== "closed_temporarily";
+}
+
+/** The same accepted fallback used when a reviewed operational correction expires. */
+function acceptedBaseOperationalStatus(p: Place): OperationalStatus | undefined {
+  if (isKnownClosed(p.name)) return "closed_permanently";
   const acceptedIdentity = acceptedEnrichmentIdentity(p);
   const refreshedStatus = refreshedBusinessStatus(
     p.slug,
     acceptedIdentity.googlePlaceId,
   )?.status;
-  if (refreshedStatus) {
-    return (
-      refreshedStatus !== "closed_permanently" &&
-      refreshedStatus !== "closed_temporarily"
-    );
-  }
+  if (refreshedStatus) return refreshedStatus;
   // Google enrichment is the SOURCE OF TRUTH for closure. DFP-scraped
   // records hardcode is_operational: "operational" at load time so the
   // raw Place field can lie (Serendipity Market, Brass Copper Shop,
   // …). Read the live enrichment business_status first; only fall
   // back to the Place field when there is no enrichment.
   const e = acceptedIdentity.enrichment;
-  if (e?.business_status === "CLOSED_PERMANENTLY") return false;
-  if (e?.business_status === "CLOSED_TEMPORARILY") return false;
-  return p.is_operational !== "closed_permanently" && p.is_operational !== "closed_temporarily";
+  if (e?.business_status === "CLOSED_PERMANENTLY") return "closed_permanently";
+  if (e?.business_status === "CLOSED_TEMPORARILY") return "closed_temporarily";
+  return p.is_operational;
+}
+
+export function clientOperationalCorrectionForPlace(p: Place, now = new Date()): CompactOperationalCorrection | undefined {
+  const fallback = acceptedBaseOperationalStatus(p);
+  const identity = acceptedEnrichmentIdentity(p);
+  const refreshed = refreshedBusinessStatus(p.slug, identity.googlePlaceId)?.status;
+  // Raw imported "operational" can be a loader default, not an independent
+  // accepted verdict. Only bound provider evidence can remove the dependency.
+  const independent = fallback === "operational" &&
+    (refreshed === "operational" || (!refreshed && identity.enrichment?.business_status === "OPERATIONAL"));
+  return compactOperationalCorrection(p.slug, fallback, now, independent);
 }
 
 // Default ON by owner directive (2026-05-17: "hide the businesses most
@@ -1786,7 +1797,7 @@ export function likelyOpenPlaces(
     originSource: ranking.originSource,
   })
     .filter((p) => p.slug in RELIABLE_OPEN_WINDOWS && isLikelyOpenNow(p.slug, now))
-    .filter((p) => mayUseLikelyOpenFallback(p.open_status))
+    .filter((p) => mayUseLikelyOpenFallback(p.open_status, p))
     .map((p) => ({ ...p, open_confidence: "likely" as const }));
 }
 
@@ -1812,7 +1823,7 @@ const BUSINESS_NOUN = new Set([
 /**
  * A discovered row whose NAME reads as a bare person ("Noah Stevens",
  * "Nicole K Albertson") — a solo-practitioner listing, not a recognizable
- * business. Used ONLY to keep the /beta open-now highlight SAMPLE honest;
+ * business. Used ONLY to keep the open-now highlight SAMPLE honest;
  * such rows still count, map, and search normally. Requires BOTH a
  * person-shaped name (2-3 capitalized name words, optional initial,
  * optional Dr/MD-style credential) AND practice-flavored typing, so
@@ -2061,7 +2072,7 @@ export function buildOpenNowSnapshot(
 
 /**
  * The canonical county-wide open-now snapshot. Every public county count,
- * the /beta proof, and /open-now consume this exact untruncated population
+ * and /open-now consume this exact untruncated population
  * and its single as-of instant. The inventory includes every recommendable,
  * discoverable place whose recently checked schedule confirms it is open.
  * `worthConsidering` is a separate, stricter editorial sample; a gym,
@@ -2096,7 +2107,7 @@ export function countOpenNow(now: Date = new Date()): number {
 /**
  * Compatibility shape for older server consumers. The count is the complete
  * snapshot inventory; the names are the same module-diverse leisure proof
- * used by the beta cover. Professional and clinical rows remain in the count
+ * that /open-now uses. Professional and clinical rows remain in the count
  * and catalog but cannot become editorial examples.
  */
 export function openNowHighlights(
@@ -2109,34 +2120,6 @@ export function openNowHighlights(
     names: snapshot.worthConsidering.map((pick) => pick.name),
     asOf: snapshot.asOf,
   };
-}
-
-/**
- * Total + open-right-now counts of public recommendable places within
- * `radiusM` of each point. One decorate pass over the catalog, then a
- * cheap haversine per point — built for the /beta cover flight, where
- * every drone frame states what Radius knows about the ground below it.
- */
-export function nearbyOpenCounts(
-  points: ReadonlyArray<{ lat: number; lng: number }>,
-  radiusM: number,
-  now: Date = new Date(),
-): { total: number; reliable: number; open: number }[] {
-  const decorated = publicPlaces()
-    .filter(isRecommendable)
-    .map((p) => decoratePlace(p, undefined, now));
-  return points.map((pt) => {
-    let total = 0;
-    let reliable = 0;
-    let open = 0;
-    for (const p of decorated) {
-      if (haversineMeters({ lng: pt.lng, lat: pt.lat }, p.geom) > radiusM) continue;
-      total++;
-      if (hasReliableHours(p, now)) reliable++;
-      if (isOpenNow(p.open_status)) open++;
-    }
-    return { total, reliable, open };
-  });
 }
 
 export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
@@ -2180,7 +2163,12 @@ export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
   }
 
   if (ctx.profile === "visitor") {
-    results.sort((a, b) => visitorScore(b, now) - visitorScore(a, now));
+    // Score each eligible place once. The unchanged descending comparator
+    // preserves native stable-sort input order when scores tie.
+    results = results
+      .map((place) => ({ place, score: visitorScore(place, now) }))
+      .sort((a, b) => b.score - a.score)
+      .map(({ place }) => place);
   } else {
     // Every axis lives on 0–1 for the no-origin fallback. When a deliberate
     // origin exists, the shared nearby contract adds an evidence gate and

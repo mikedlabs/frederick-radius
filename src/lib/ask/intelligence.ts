@@ -36,6 +36,7 @@ import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { FREDERICK_CENTER, formatDistance, haversineMeters } from "@/lib/geo";
 import { formatHoursLine } from "@/lib/hours";
+import { askScopedSchedule } from "@/lib/ask/scoped-schedule";
 import { isChainName } from "@/lib/category-ranking";
 import { isRecommendable } from "@/lib/relevance";
 import {
@@ -448,6 +449,7 @@ Truth rules:
 - If you tell the user to call or confirm by phone, include the phone number returned by the tool. Never invent one.
 - Do not claim that a place is quiet, lively, intimate, or suitable for conversation unless a tool returned explicit evidence for that trait. If the user asks and the evidence is absent, say that the noise level is unverified.
 - Unknown hours are unknown. Do not turn them into an open claim.
+- A scoped_schedule is display_only. Identify it by its label and scope, and retain its note. Its service periods never establish general venue opening or admission availability. Do not extend the evidence past expires_at.
 - Event search returns calendarCoverage plus per-event confidence and eligibleAsLead. Never lead with an event whose eligibleAsLead is false. It may be included only as a clearly qualified option that needs confirmation.
 - When calendarCoverage is partial, do not claim that the returned list is complete or that nothing else is happening.
 - Explicit fit defaults are constraints. If wheelchair access is selected, never recommend a place whose wheelchair value is false. A place whose wheelchair value is null may remain only when the answer says that its wheelchair access is not confirmed. Apply the same honesty rule to unknown communication access.
@@ -502,6 +504,7 @@ export async function runRadiusAgent(
       return hits.flatMap((hit) => {
         if (hit.type !== "place") return [];
         placeEvidence.set(hit.place.slug, hit.place);
+        const scopedSchedule = askScopedSchedule(hit.place, now);
         return [{
           slug: hit.place.slug,
           name: hit.place.name,
@@ -509,6 +512,7 @@ export async function runRadiusAgent(
           town: hit.place.city || hit.place.municipality,
           distance: hit.place.distance_m != null ? formatDistance(hit.place.distance_m) : null,
           hours: formatHoursLine(hit.place.open_status),
+          ...(scopedSchedule ? { scoped_schedule: scopedSchedule } : {}),
           phone: hit.place.phone ?? null,
           email: hit.place.email ?? null,
           priceBand: hit.place.price_band ?? null,

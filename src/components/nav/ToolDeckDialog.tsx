@@ -11,6 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import { ArrowLeft, X } from "lucide-react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { prefersReducedMotion } from "@/lib/motion";
 
 export type ToolDeckDialogProps = {
@@ -75,14 +76,8 @@ export default function ToolDeckDialog({
     };
   }, [open, presentation]);
 
-  useEffect(() => {
-    if (!open || presentation === "inline") return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open, presentation]);
+  // The inline presentation lives in a drawer that already holds the page.
+  useScrollLock(open && presentation === "modal");
 
   useEffect(() => {
     if (!open || presentation === "inline") return;
@@ -141,7 +136,7 @@ export default function ToolDeckDialog({
             ref={closeRef}
             type="button"
             onClick={onClose}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full px-2 text-[13px] font-semibold"
+            className="inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-2 text-[13px] font-semibold"
             style={{ color: "var(--app-link)" }}
           >
             <ArrowLeft className="h-4 w-4" strokeWidth={2} aria-hidden />
@@ -183,19 +178,14 @@ export default function ToolDeckDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className={`absolute inset-x-0 bottom-0 flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[var(--app-radius-xl)] border-t bg-[var(--app-bg-elevated-solid)] shadow-[var(--app-shadow-3)] outline-none transition-transform duration-[var(--app-dur-med)] ease-[var(--app-ease-out)] motion-reduce:transition-none lg:inset-y-0 lg:left-auto lg:right-0 lg:max-h-none lg:w-[30rem] lg:max-w-[calc(100vw-6rem)] lg:rounded-l-[var(--app-radius-xl)] lg:rounded-tr-none lg:border-l lg:border-t-0 ${
+        className={`absolute inset-x-0 bottom-0 flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated-solid)] shadow-[var(--app-shadow-3)] outline-none transition-transform duration-[var(--app-dur-med)] ease-[var(--app-ease-out)] motion-reduce:transition-none lg:inset-y-0 lg:left-auto lg:right-0 lg:max-h-none lg:w-[30rem] lg:max-w-[calc(100vw-6rem)] lg:rounded-l-[var(--app-radius-lg)] lg:rounded-tr-none lg:border-l lg:border-t-0 ${
           entered
             ? "translate-y-0 lg:translate-x-0"
             : "translate-y-full lg:translate-x-full lg:translate-y-0"
         }`}
         style={{ borderColor: "var(--app-border)" }}
       >
-        <div
-          aria-hidden
-          className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full lg:hidden"
-          style={{ background: "var(--app-border-strong)" }}
-        />
-
+        {/* No grab pill: this panel does not drag, so it does not promise to. */}
         <header
           className="flex shrink-0 items-start gap-3 border-b pb-3 pt-3"
           style={{
@@ -228,12 +218,7 @@ export default function ToolDeckDialog({
             type="button"
             onClick={onClose}
             aria-label={`Close ${title}`}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border transition active:scale-95"
-            style={{
-              borderColor: "var(--app-control-border)",
-              background: "var(--app-bg-elevated-solid)",
-              color: "var(--app-ink-2)",
-            }}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-md)] border border-[var(--app-control-border)] bg-[var(--app-bg-elevated-solid)] text-[var(--app-ink-2)] transition-colors hover:bg-[var(--app-bg-sunken)]"
           >
             <X className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
           </button>
