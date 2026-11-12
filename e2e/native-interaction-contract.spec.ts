@@ -1116,9 +1116,14 @@ test.describe("stable native press surfaces", () => {
     const destination = nav.getByRole("link", { name: "Map", exact: true });
     await expect(current).toHaveAttribute("aria-current", "page");
     await expect(current).toHaveAttribute("data-selected", "true");
+    // Plain tool chrome: the bar is flat, so the pending mark is the tab's
+    // own 2px rule (ink at reduced opacity) rather than a lifted shadow.
     const style = () => destination.evaluate((node) => {
       const css = getComputedStyle(node);
-      return { color: css.color, background: css.backgroundColor, shadow: css.boxShadow };
+      const rule = node.querySelector<HTMLElement>("[data-destination-rule]");
+      const ruleCss = rule ? getComputedStyle(rule) : null;
+      return { color: css.color, background: css.backgroundColor, shadow: css.boxShadow,
+        rule: ruleCss ? { background: ruleCss.backgroundColor, opacity: ruleCss.opacity } : null };
     });
     const before = await style();
     const geometry = await pressAndDragOut(page, destination, false);
@@ -1151,7 +1156,10 @@ test.describe("stable native press surfaces", () => {
       await expect(destination).toHaveAttribute("data-selected", "false");
       await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
       pending = await style();
-      expect(pending.shadow).not.toBe("none");
+      expect(before.rule?.background).toBe("rgba(0, 0, 0, 0)");
+      expect(pending.rule?.background).not.toBe("rgba(0, 0, 0, 0)");
+      expect(Number(pending.rule?.opacity)).toBeGreaterThan(0.5);
+      expect(Number(pending.rule?.opacity)).toBeLessThan(1);
       expect(pending).not.toEqual(before);
       expect(await destination.evaluate((node) => node.getAnimations({ subtree: true }).some((animation) => animation.effect?.getTiming().iterations === Infinity)), "pending feedback is a static mark, without an indefinite progress animation").toBe(false);
       await page.screenshot({ path: info.outputPath("provisional-map-destination.png") });
@@ -1262,7 +1270,16 @@ test.describe("stable native press surfaces", () => {
       }
       during = await snapshot(destination);
       fixedOuter(before, during);
-      expect(during.shadow, "the actual touched destination has a static provisional mark").not.toBe("none");
+      // The flat bar acknowledges a tap with its rule in ink, where the old
+      // floating bar used an inset ring. The mark must be painted, tall
+      // enough to see, and must not move the destination.
+      const mark = await destination.locator("[data-destination-rule]").evaluate((node) => {
+        const css = getComputedStyle(node);
+        return { background: css.backgroundColor, opacity: Number(css.opacity), height: node.getBoundingClientRect().height };
+      });
+      expect(mark.background, "the actual touched destination has a static provisional mark").not.toBe("rgba(0, 0, 0, 0)");
+      expect(mark.opacity, "the provisional mark is clearly visible").toBeGreaterThanOrEqual(0.6);
+      expect(mark.height, "the provisional mark is at least 2px tall").toBeGreaterThanOrEqual(2);
       await protocol.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
       touchStarted = false;
       await expect(destination).toHaveAttribute("data-pending", "false");

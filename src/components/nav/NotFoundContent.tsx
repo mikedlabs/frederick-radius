@@ -26,31 +26,18 @@ const DOORWAYS: Array<{ label: string; href: string }> = [
 export default function NotFoundContent() {
   return (
     <div
-      className="relative min-h-screen overflow-hidden"
-      style={{
-        background:
-          "linear-gradient(180deg, color-mix(in srgb, var(--app-cool) 18%, var(--app-bg)) 0%, var(--app-bg) 100%)",
-        color: "var(--app-ink)",
-      }}
+      // Plain tool: the page ground is the plain surface token. No wash.
+      // No full-screen height: inside the app shell a 100vh box centered
+      // the content under the top bar and left large blank bands above it
+      // and above the footer. The surrounding main supplies the page
+      // gutters and top padding (AppMain in the shell, the standalone
+      // not-found route outside it), so this adds only a little breathing
+      // room and never doubles the side padding on a narrow phone.
+      className="relative overflow-hidden"
+      style={{ background: "var(--app-bg)", color: "var(--app-ink)" }}
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(60% 40% at 20% 10%, color-mix(in srgb, var(--app-cool) 22%, transparent), transparent 60%), radial-gradient(50% 30% at 80% 20%, color-mix(in srgb, var(--app-accent) 22%, transparent), transparent 60%)",
-        }}
-      />
-      <div className="relative mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-6 px-6 py-16 text-center">
-        <span
-          className="inline-flex h-16 w-16 items-center justify-center rounded-full tactile"
-          style={{
-            background: "var(--app-bg-elevated)",
-            color: "var(--app-cool)",
-          }}
-        >
-          <Compass className="h-8 w-8" strokeWidth={1.5} aria-hidden />
-        </span>
+      <div className="relative mx-auto flex max-w-md flex-col items-center gap-6 pb-8 pt-4 text-center sm:pt-6">
+        <Compass className="h-8 w-8" strokeWidth={1.5} aria-hidden style={{ color: "var(--app-cool-text)" }} />
         <div className="space-y-2">
           <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
             Page not found
@@ -67,7 +54,7 @@ export default function NotFoundContent() {
           </p>
         </div>
         {/* Search is the fastest way forward for someone who landed on a
-            dead link — one field, straight into the ranked results. */}
+            dead link: one field, straight into the ranked results. */}
         <div className="w-full max-w-sm">
           <SearchInput />
         </div>
@@ -81,18 +68,14 @@ export default function NotFoundContent() {
           </Button>
         </div>
 
-        {/* Contextual doorways — a few popular ways back in. */}
+        {/* Contextual doorways: a few popular ways back in. */}
         <nav aria-label="Popular pages" className="flex flex-wrap items-center justify-center gap-2">
           {DOORWAYS.map((d) => (
             <Link
               key={d.href}
               href={d.href}
-              className="tap-44 rounded-full border px-3.5 py-2 text-[13px] font-semibold"
-              style={{
-                borderColor: "var(--app-border)",
-                background: "var(--app-bg-elevated)",
-                color: "var(--app-ink-2)",
-              }}
+              className="inline-flex min-h-11 items-center px-2 text-[14px] font-semibold underline underline-offset-[3px]"
+              style={{ color: "var(--app-link)" }}
             >
               {d.label}
             </Link>

@@ -68,26 +68,26 @@ export function compassShortcutGridClass(itemCount: number): string {
 }
 
 const TONE_COLOR: Record<RadiusToolTone, string> = {
-  accent: "var(--app-accent-press)",
-  brand: "var(--app-brand-press)",
-  civic: "var(--app-civic)",
-  cool: "var(--app-cool)",
-  positive: "var(--app-positive)",
+  accent: "var(--app-accent-text)",
+  brand: "var(--app-brand-text)",
+  civic: "var(--app-cool-text)",
+  cool: "var(--app-cool-text)",
+  positive: "var(--app-forest-text)",
 };
 
 const GROUP_META: Record<
   ToolDeckGroupId,
   { icon: LucideIcon; color: string }
 > = {
-  decide: { icon: ListChecks, color: "var(--app-brand-press)" },
-  food: { icon: UtensilsCrossed, color: "var(--app-accent-press)" },
-  events: { icon: CalendarDays, color: "var(--app-brand-press)" },
-  "getting-around": { icon: Route, color: "var(--app-cool)" },
-  amenities: { icon: MapPinned, color: "var(--app-civic)" },
-  live: { icon: RadioTower, color: "var(--app-brand-press)" },
-  community: { icon: Landmark, color: "var(--app-civic)" },
-  stories: { icon: History, color: "var(--app-accent-press)" },
-  yours: { icon: Bookmark, color: "var(--app-positive)" },
+  decide: { icon: ListChecks, color: "var(--app-brand-text)" },
+  food: { icon: UtensilsCrossed, color: "var(--app-accent-text)" },
+  events: { icon: CalendarDays, color: "var(--app-brand-text)" },
+  "getting-around": { icon: Route, color: "var(--app-cool-text)" },
+  amenities: { icon: MapPinned, color: "var(--app-cool-text)" },
+  live: { icon: RadioTower, color: "var(--app-brand-text)" },
+  community: { icon: Landmark, color: "var(--app-cool-text)" },
+  stories: { icon: History, color: "var(--app-accent-text)" },
+  yours: { icon: Bookmark, color: "var(--app-forest-text)" },
 };
 
 export const COMPASS_INTENT_DEFINITIONS = [
@@ -205,7 +205,7 @@ const ASK_RADIUS: DirectoryItem = {
   label: "Ask Radius",
   description: "Get help choosing, planning, or finding the right local answer.",
   icon: MessageCircleQuestion,
-  color: "var(--app-brand-press)",
+  color: "var(--app-brand-text)",
   keywords: ["ask", "help me choose", "plan", "recommendation"],
 };
 
@@ -215,7 +215,7 @@ const TIME_MACHINE: DirectoryItem = {
   label: "Time Machine",
   description: "Scrub a block through decades of aerial imagery.",
   icon: History,
-  color: "var(--app-cool)",
+  color: "var(--app-cool-text)",
   keywords: ["time machine", "aerial", "historic imagery"],
 };
 
@@ -755,7 +755,10 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
     >
       <div hidden={embeddedInToolsDrawer && deckView !== null} className="space-y-5">
         <header
-          className="-mx-4 -mt-4 border-b px-4 pb-4 pt-4 sm:-mx-5 sm:-mt-6 sm:px-5 sm:pt-5 lg:mx-0 lg:mt-0"
+          // No horizontal bleed: the header text, the Find field and this
+          // rule share the rows' left edge, and the rule is inset like every
+          // other rule on the page.
+          className="-mt-4 border-b pb-4 pt-4 sm:-mt-6 sm:pt-5 lg:mt-0"
           style={{ borderColor: "var(--app-border)" }}
         >
           <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
@@ -852,8 +855,8 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
             <button
               type="button"
               onClick={() => changeDeckView("all")}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full px-2 text-[12px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
+              className="inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-2 text-[12px] font-semibold"
+              style={{ color: "var(--app-link)" }}
             >
               <ArrowLeft className="h-4 w-4" strokeWidth={2.2} aria-hidden />
               All tools
@@ -941,8 +944,8 @@ function PinnedTools({
           // tap-44 widens the hit area to 44px: the label is short enough
           // that the painted box measures ~43px ACROSS, and the rule is 44
           // effective in both dimensions, not just height.
-          className="tap-44 inline-flex min-h-11 items-center rounded-full px-3 text-[13px] font-semibold"
-          style={{ color: "var(--app-brand-press)" }}
+          className="tap-44 inline-flex min-h-11 items-center rounded-[var(--app-radius-sm)] px-3 text-[13px] font-semibold"
+          style={{ color: "var(--app-link)" }}
         >
           Edit
         </button>
@@ -1026,23 +1029,27 @@ function ContextualToolSuggestion({
   intentProps: (item: DirectoryItem) => LinkIntentProps;
 }) {
   return (
-    <section aria-labelledby="compass-suggestion-heading">
+    <section
+      aria-labelledby="compass-suggestion-heading"
+      data-compass-suggestion
+      className="border-b"
+      style={{ borderColor: "var(--app-border)" }}
+    >
+      {/* A ruled status row on the page ground: no fill and no box. The small
+          uppercase label carries the coral text color, which stays readable
+          in dark appearance. */}
       <Link
         href={item.href}
         prefetch={false}
         {...externalLinkProps(item)}
         {...intentProps(item)}
-        className="tactile-interactive group flex min-h-[64px] items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-        style={{
-          borderColor: "color-mix(in srgb, var(--app-brand) 24%, var(--app-border))",
-          background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated-solid))",
-        }}
+        className="group flex min-h-[64px] items-center gap-3 py-3 outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] motion-reduce:transition-none"
+        style={{ color: "var(--app-ink)" }}
       >
         {/* The destination's own glyph, bare: a road incident is a County
-            Pulse reading, not a generated suggestion. It shares the eyebrow's
-            link color, which stays readable in dark appearance. */}
+            Pulse reading, not a generated suggestion. */}
         <span
-          className="grid h-9 w-9 shrink-0 place-items-center"
+          className="grid w-6 shrink-0 place-items-center"
           style={{ color: "var(--app-link)" }}
           aria-hidden
         >
@@ -1051,23 +1058,24 @@ function ContextualToolSuggestion({
         <span className="min-w-0 flex-1">
           <span
             id="compass-suggestion-heading"
-            className="block text-[11px] font-semibold uppercase tracking-[0.08em]"
+            className="block text-[12px] font-semibold uppercase tracking-[0.08em]"
             style={{ color: "var(--app-link)" }}
           >
             {eyebrow}
           </span>
-          <span className="mt-0.5 block text-[14px] font-semibold leading-tight">
+          <span className="mt-1 block text-[17px] font-semibold leading-tight">
             {item.label}
           </span>
           <span
-            className="mt-0.5 block text-[12px] leading-snug"
-            style={{ color: "var(--app-ink-3)" }}
+            className="mt-0.5 block text-[14px] leading-snug"
+            style={{ color: "var(--app-ink-2)" }}
           >
             {reason}
           </span>
         </span>
         <ArrowRight
-          className="h-4 w-4 shrink-0 opacity-45 transition-transform group-hover:translate-x-0.5"
+          className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+          style={{ color: "var(--app-ink-2)" }}
           strokeWidth={2.2}
           aria-hidden
         />
@@ -1101,9 +1109,9 @@ function RecentTools({
                 prefetch={false}
                 {...externalLinkProps(item)}
                 {...intentProps(item)}
-                className="tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated-solid)] px-3 text-[12px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 text-[13px] font-semibold outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                 style={{
-                  borderColor: "var(--app-border)",
+                  borderColor: "var(--app-control-border)",
                   color: "var(--app-ink)",
                 }}
               >
@@ -1335,10 +1343,10 @@ function CompassIntentBoard({
   };
   const itemById = new Map(groups.flatMap((group) => group.items.map((item) => [item.id, item] as const)));
   const intentColor: Record<CompassIntentId, string> = {
-    "go-out": "var(--app-accent-press)",
-    "get-around": "var(--app-cool)",
-    "local-help": "var(--app-civic)",
-    "explore-yours": "var(--app-positive)",
+    "go-out": "var(--app-accent-text)",
+    "get-around": "var(--app-cool-text)",
+    "local-help": "var(--app-cool-text)",
+    "explore-yours": "var(--app-forest-text)",
   };
 
   return (
@@ -1346,7 +1354,9 @@ function CompassIntentBoard({
       <h2 id="compass-browse-heading" className="text-[16px] font-semibold tracking-tight">
         Choose a direction
       </h2>
-      <ul className="grid gap-2.5 sm:grid-cols-2">
+      {/* Ruled rows on the page ground: a hairline between directions, no
+          boxes. Each row is a 44px-plus disclosure with one muted line. */}
+      <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
         {intents.map((intent) => {
           const actions = intent.featuredIds.flatMap((id) => {
             const item = itemById.get(id);
@@ -1357,12 +1367,8 @@ function CompassIntentBoard({
           const contentId = `compass-intent-${intent.id}`;
           const line = liveLineForIntent(intent.id, liveKeys);
           return (
-            <li key={intent.id}>
-              <section
-                data-compass-intent={intent.id}
-                className="overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)]"
-                style={{ borderColor: open ? "var(--app-brand)" : "var(--app-border)" }}
-              >
+            <li key={intent.id} className="border-b" style={{ borderColor: "var(--app-border)" }}>
+              <section data-compass-intent={intent.id}>
                 <button
                   type="button"
                   disabled={!ready}
@@ -1373,17 +1379,17 @@ function CompassIntentBoard({
                     chooseChapter(open ? null : intent.id);
                     track("compass_intent_toggle", { intent: intent.id, open: !open });
                   }}
-                  className="tactile-interactive flex min-h-[76px] w-full items-center gap-3 p-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                  className="flex min-h-16 w-full items-center gap-3 py-3 text-left outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] motion-reduce:transition-none"
                 >
                   <intent.icon className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: intentColor[intent.id] }} aria-hidden />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-semibold leading-tight">{intent.label}</span>
-                    {line ? <span className="mt-1 block text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{line}</span> : null}
+                    <span className="block text-[17px] font-semibold leading-tight">{intent.label}</span>
+                    {line ? <span className="mt-1 block text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{line}</span> : null}
                   </span>
                   <ChevronDown className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} strokeWidth={2} style={{ color: "var(--app-ink-2)" }} aria-hidden />
                 </button>
                 <div id={contentId} hidden={!open}>
-                  <ul className="border-t px-3 py-1" style={{ borderColor: "var(--app-border)" }}>
+                  <ul className="pb-1 pl-8">
                     {actions.map((item) => (
                       <li key={item.id}>
                         <Link
@@ -1391,7 +1397,7 @@ function CompassIntentBoard({
                           prefetch={false}
                           {...externalLinkProps(item)}
                           {...intentProps(item)}
-                          className="tactile-interactive flex min-h-12 items-center justify-between gap-3 rounded-[var(--app-radius-sm)] px-1 text-[14px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                          className="flex min-h-12 items-center justify-between gap-3 px-1 text-[15px] font-semibold outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] motion-reduce:transition-none"
                           style={{ color: "var(--app-link)" }}
                         >
                           <span>{item.label}</span>
@@ -1409,7 +1415,7 @@ function CompassIntentBoard({
                       onOpen(intent.id);
                     }}
                     disabled={!ready}
-                    className="min-h-11 w-full px-4 py-2 text-left text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                    className="mb-2 ml-8 min-h-11 px-1 py-2 text-left text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
                     style={{ color: "var(--app-ink-2)" }}
                   >
                     {intent.moreLabel}
@@ -1427,7 +1433,9 @@ function CompassIntentBoard({
           onOpen("all");
         }}
         disabled={!ready}
-        className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[14px] font-semibold"
+        // The negative margin puts the label on the rows' left edge while
+        // the padding keeps room around the focus ring.
+        className="tap-44 -ml-2.5 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-2.5 text-[14px] font-semibold"
         style={{ color: "var(--app-link)" }}
       >
         Browse the full tool index
@@ -1525,12 +1533,7 @@ function DeckToolBrowser({
                   // density for a nine-chip rail) but must HIT 44, per the
                   // repo's own tap-target rule. The invisible extender adds
                   // the missing 4px of touch without changing the paint.
-                  className="tactile-interactive tap-44 inline-flex min-h-10 shrink-0 snap-start items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-                  style={{
-                    borderColor: "var(--app-border)",
-                    color: "var(--app-ink-2)",
-                    background: "var(--app-bg)",
-                  }}
+                  className="tap-44 inline-flex min-h-10 shrink-0 snap-start items-center gap-1.5 rounded-[var(--app-radius-md)] border border-[var(--app-control-border)] bg-[var(--app-bg)] px-2.5 text-[12px] font-semibold text-[var(--app-ink)] outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                 >
                   <Icon
                     className="h-3.5 w-3.5"
@@ -1588,7 +1591,7 @@ function DeckToolBrowser({
                   rememberNativeRequest({ draft: { kind: "tools", query: "" } });
                 }}
                 aria-label="Clear section search"
-                className="absolute right-0 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full"
+                className="absolute right-0 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-[var(--app-radius-sm)]"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 <X className="h-4 w-4" strokeWidth={2} aria-hidden />
@@ -1717,7 +1720,7 @@ function ToolLedger({
                 aria-pressed={pinned}
                 data-tool-pin
                 onClick={() => onTogglePin(item)}
-                className="grid min-h-11 w-12 shrink-0 place-items-center self-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                className="grid min-h-11 w-12 shrink-0 place-items-center self-center rounded-[var(--app-radius-sm)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                 style={{
                   color: pinned
                     ? "var(--app-brand-press)"

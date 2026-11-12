@@ -1,14 +1,15 @@
-import { Heart } from "lucide-react";
+import PlaceSectionLabel, { PlaceDotList } from "./PlaceSectionLabel";
 
 /**
- * KnownForCard — "what is this place actually known for, and what
+ * KnownForCard: "what is this place actually known for, and what
  * specific things do customers rave about?" rendered as a compact
  * two-row strip.
  *
  * Why two rows instead of one paragraph:
  *   - "Known for" is the WHAT (food category, ambiance, experience).
- *     Chips read at a glance. A first-time visitor scanning a place
- *     page gets the answer in one second, not one paragraph.
+ *     One dotted line of items reads at a glance. A first-time visitor
+ *     scanning a place page gets the answer in one second, not one
+ *     paragraph. The items are information, so they are never capsules.
  *   - "Customers loved" names SPECIFIC items / experiences from real
  *     reviews ("the crab croquetas", "live jazz on Fridays"). It's the
  *     part of TripAdvisor that's actually useful, distilled.
@@ -22,12 +23,15 @@ import { Heart } from "lucide-react";
  *
  * Render rules:
  *   - Hide the card entirely if BOTH arrays are empty/missing
- *   - Hide a single row if its array is empty (so the card never has
- *     a phantom label with no chips beneath it)
- *   - Cap at 4 chips per row (extraction also caps at 4)
+ *   - Hide a single row if its array is empty (so the section never
+ *     has a phantom label with nothing beneath it)
+ *   - Cap at 4 items per row (extraction also caps at 4)
  *   - No "AI" disclaimer in the UI: it's labelled "what people say"
- *     because that's what it is — a summary of the public reviews
+ *     because that's what it is: a summary of the public reviews
  *     Google already shows. We just made it scannable.
+ *   - One section label ("What people say") heads the card. The two rows
+ *     carry plain 14px semibold sentence-case sub-labels, so the card never
+ *     stacks two identical uppercase labels.
  */
 export default function KnownForCard({
   knownFor,
@@ -41,83 +45,33 @@ export default function KnownForCard({
   if (k.length === 0 && c.length === 0) return null;
 
   return (
-    <section
-      aria-labelledby="known-for-heading"
-      className="border-y py-4"
-      style={{ borderColor: "var(--app-border)" }}
-    >
-      <h3
-        id="known-for-heading"
-        className="text-[11px] font-bold uppercase tracking-[0.12em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
+    <section aria-labelledby="known-for-heading" className="space-y-4">
+      <PlaceSectionLabel as="h3" id="known-for-heading">
         What people say
-      </h3>
+      </PlaceSectionLabel>
 
       {k.length > 0 && (
-        <div className="mt-3">
-          <p
-            className="text-[11px] font-semibold uppercase tracking-[0.08em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Known for
-          </p>
-          <ul className="mt-1.5 flex flex-wrap gap-1.5">
-            {k.map((tag) => (
-              <li
-                key={tag}
-                className="inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium"
-                style={{
-                  background:
-                    "color-mix(in srgb, var(--app-cool) 10%, var(--app-bg-elevated))",
-                  color: "var(--app-ink)",
-                  boxShadow:
-                    "inset 0 0 0 1px color-mix(in srgb, var(--app-cool) 28%, transparent)",
-                }}
-              >
-                {tag}
-              </li>
-            ))}
-          </ul>
+        <div className="space-y-1">
+          <SubLabel>Known for</SubLabel>
+          <PlaceDotList items={k} />
         </div>
       )}
 
       {c.length > 0 && (
-        <div className="mt-3.5">
-          <p
-            className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            <Heart
-              aria-hidden
-              className="h-3 w-3"
-              strokeWidth={2.5}
-              style={{ color: "var(--app-accent-press)" }}
-            />
-            Customers loved
-          </p>
-          <ul className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-1">
-            {c.map((item, i) => (
-              <li
-                key={item}
-                className="text-[13px] leading-snug"
-                style={{ color: "var(--app-ink-2)" }}
-              >
-                <span style={{ color: "var(--app-ink)" }}>{item}</span>
-                {i < c.length - 1 && (
-                  <span
-                    aria-hidden
-                    className="ml-2.5"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    ·
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+        <div className="space-y-1">
+          <SubLabel>Customers loved</SubLabel>
+          <PlaceDotList items={c} />
         </div>
       )}
     </section>
+  );
+}
+
+/** Plain sub-label under the card's one section label. */
+function SubLabel({ children }: { children: string }) {
+  return (
+    <p className="text-[0.875rem] font-semibold leading-snug" style={{ color: "var(--app-ink-2)" }}>
+      {children}
+    </p>
   );
 }

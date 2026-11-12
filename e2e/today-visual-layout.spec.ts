@@ -318,6 +318,13 @@ for (const width of [320, 375, 390, 430, 1366]) {
         doorwayBox: bounds("[data-today-geographic-place]"),
         mosaicBox: bounds("[data-today-discovery-grid]"),
         captionBox: bounds("[data-today-geographic-caption]"),
+        brandPress: (() => {
+          const probe = document.body.appendChild(document.createElement("span"));
+          probe.style.backgroundColor = "var(--app-brand-press)";
+          const value = getComputedStyle(probe).backgroundColor;
+          probe.remove();
+          return value;
+        })(),
         subjects: Array.from(document.querySelectorAll("[data-today-geographic-place]")).map(link => {
           const box = link.getBoundingClientRect(), caption = link.querySelector("[data-today-geographic-caption]")!.getBoundingClientRect();
           const range = document.createRange(); range.selectNodeContents(link.querySelector("h2, h3")!);
@@ -347,16 +354,29 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await expect(page.locator('[data-find-density="arrival"]')).toHaveCount(1);
     expect(doorwayBox.y).toBeGreaterThanOrEqual(findBox.y + findBox.height);
     expect(doorwayBox.y).toBeGreaterThanOrEqual(entryControlsBox.y + entryControlsBox.height);
-    // The dominant exact photograph carries a caption on an explicit dark
-    // surface. It remains inside the link; Save has its own sibling control.
-    expect(captionBox.x).toBeGreaterThanOrEqual(doorwayBox.x - 1);
-    expect(captionBox.x + captionBox.width).toBeLessThanOrEqual(doorwayBox.x + doorwayBox.width + 1);
+    // The dominant exact photograph carries the coral name plate. The plate
+    // starts about 14px inside the photo, crosses its bottom edge and hangs
+    // 36px below it, stays inside the link, and never meets the sibling Save.
+    const photoBottom = photoBox.y + photoBox.height;
+    expect(captionBox.x - photoBox.x).toBeGreaterThanOrEqual(12);
+    expect(captionBox.x - photoBox.x).toBeLessThanOrEqual(16);
+    expect(captionBox.x + captionBox.width).toBeLessThanOrEqual(photoBox.x + photoBox.width - 32 + 1);
+    expect(captionBox.y).toBeLessThan(photoBottom);
     expect(captionBox.y).toBeGreaterThanOrEqual(photoBox.y - 1);
-    expect(captionBox.y + captionBox.height).toBeLessThanOrEqual(photoBox.y + photoBox.height + 1);
+    expect(captionBox.y + captionBox.height).toBeGreaterThan(photoBottom);
+    expect(Math.abs(captionBox.y + captionBox.height - (photoBottom + 36))).toBeLessThanOrEqual(1);
+    expect(doorwayBox.y + doorwayBox.height - photoBottom).toBeGreaterThanOrEqual(44);
+    expect(doorwayBox.y + doorwayBox.height - photoBottom).toBeLessThanOrEqual(48);
     expect(geometry.subjects).toHaveLength(2);
     expect(geometry.subjects.map(subject => subject.role)).toEqual(["lead", "secondary"]);
     expect(geometry.subjects[0].captionInk).toBe("rgb(255, 255, 255)");
-    expect(geometry.subjects[0].captionBackground).not.toBe("rgba(0, 0, 0, 0)");
+    expect(geometry.subjects[0].captionBackground).toBe(geometry.brandPress);
+    const leadSave = geometry.subjects[0].save;
+    const saveMeetsPlate = leadSave.x < captionBox.x + captionBox.width && leadSave.x + leadSave.width > captionBox.x
+      && leadSave.y < captionBox.y + captionBox.height && leadSave.y + leadSave.height > captionBox.y;
+    expect(saveMeetsPlate, "the lead Save never touches the coral plate").toBe(false);
+    expect(leadSave.y).toBeGreaterThanOrEqual(photoBottom - 1);
+    expect(leadSave.y + leadSave.height).toBeLessThanOrEqual(photoBottom + 48 + 1);
     const asymmetricDesktop = mosaicBox.width >= 36 * 16;
     if (asymmetricDesktop) {
       expect(geometry.subjects[0].box.y).toBeCloseTo(geometry.subjects[1].box.y, 0);
@@ -367,7 +387,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
       expect(geometry.subjects[0].box.width).toBeGreaterThanOrEqual(mosaicBox.width * 0.99);
       expect(geometry.subjects[0].box.height).toBeGreaterThan(geometry.subjects[1].box.height * 1.1);
     }
-    expect(photoBox.height).toBeGreaterThanOrEqual(249);
+    expect(Math.abs(photoBox.width / photoBox.height - 1.6)).toBeLessThanOrEqual(0.02);
     for (const subject of geometry.subjects) {
       expect(subject.box.width).toBeGreaterThanOrEqual(44);
       expect(subject.box.height).toBeGreaterThanOrEqual(44);
@@ -387,6 +407,11 @@ for (const width of [320, 375, 390, 430, 1366]) {
     }
     expect(photoBox.width).toBeGreaterThanOrEqual(doorwayBox.width * 0.95);
     expect(photoBox.height).toBeGreaterThan(90);
+    // The lead photograph's prominence. At 16:10 it is 62.5% of its column's
+    // width tall; it never drops below 55% of that column (the full content
+    // width on a phone), and never below 170px, even on a 320px phone.
+    expect(photoBox.height).toBeGreaterThanOrEqual(geometry.subjects[0].box.width * 0.55);
+    expect(photoBox.height).toBeGreaterThanOrEqual(170);
     await expect(doorway.locator("img")).toHaveAttribute("alt", diningSubjects[0].alt);
     await expect(doorway.getByRole("heading", { name: diningSubjects[0].title, exact: true })).toBeVisible();
     await expect(diningGrid).toContainText(diningSubjects[1].title);

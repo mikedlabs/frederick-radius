@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import PageBloom from "@/components/ui/PageBloom";
 import TrafficCameraWall from "@/components/cameras/TrafficCameraWall";
 import { getChartCameras } from "@/lib/integrations/chartCameras";
 
@@ -26,7 +25,6 @@ export default async function CamerasPage({
 
   return (
     <div className="relative mx-auto max-w-3xl space-y-6 py-6">
-      <PageBloom variant="cool" />
 
       <header>
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>

@@ -157,7 +157,7 @@ describe("Ask Radius nearby context", () => {
   });
 
   it("treats inherently-local discovery as needing an area, even without 'near me'", () => {
-    // Owner: a bare "pizza" wants pizza NEAR you — ask for an area first.
+    // Owner: a bare "pizza" wants pizza NEAR you, so ask for an area first.
     expect(queryIsLocalDiscovery("pizza")).toBe(true);
     expect(queryIsLocalDiscovery("where can I get good coffee")).toBe(true);
     expect(queryIsLocalDiscovery("Where should I eat tonight?")).toBe(true);

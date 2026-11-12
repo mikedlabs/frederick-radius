@@ -51,7 +51,7 @@ describe("Today confirmed saved choices", () => {
     expect(detail.searchParams.get("returnTo")).toBe("/today?in=frederick&view=afternoon#today-saved");
     const map = new URL(host.querySelector('a[aria-label="Map saved place: Saved cafe"]')!.getAttribute("href")!, "https://radius.test");
     expect(map.searchParams.get("in")).toBe("brunswick"); expect(map.searchParams.get("returnTo")).toBe(detail.searchParams.get("returnTo"));
-    expect(host.querySelector("img")).toBeNull(); expect(host.querySelector("[data-place-category-art]")).not.toBeNull();
+    expect(host.querySelector("img")).toBeNull(); expect(host.querySelector("[data-today-saved-glyph]")).not.toBeNull(); expect(host.querySelector("[data-place-category-art]")).toBeNull();
   });
 
   it("retains closed saves and never calls saved membership a current opening", async () => {
@@ -165,7 +165,7 @@ describe("Today confirmed saved choices", () => {
     membership.slugs = new Set([slug]); await render(); await respond(0, [place(slug, "Baker Park Carillon")]);
     expect(host.querySelector('img[src="/images/places/carillon-sunset.jpg"]')).not.toBeNull();
     await act(async () => host.querySelector("img")!.dispatchEvent(new Event("error")));
-    expect(host.querySelector("[data-place-category-art]")).not.toBeNull();
+    expect(host.querySelector("[data-today-saved-glyph]")).not.toBeNull(); expect(host.querySelector("[data-place-category-art]")).toBeNull();
     expect(host.querySelector('a[aria-label="View saved place: Baker Park Carillon"]')).not.toBeNull();
     expect(requests).toHaveLength(1);
   });

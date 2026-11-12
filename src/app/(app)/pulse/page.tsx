@@ -54,7 +54,6 @@ import {
 import MetricCard from "@/components/live-data/MetricCard";
 import FloodGauge from "@/components/live-data/FloodGauge";
 import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
-import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
@@ -2248,7 +2247,6 @@ export default async function PulsePage() {
 
   return (
     <div className="relative min-w-0 space-y-6 pb-4">
-      <PageBloom variant="cool" />
       <Suspense fallback={null}><MapReturnLink /></Suspense>
 
       {/* The briefing owns hierarchy and interaction; detail remains in sourced

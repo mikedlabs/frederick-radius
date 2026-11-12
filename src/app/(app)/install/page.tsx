@@ -17,7 +17,7 @@ export default function InstallPage() {
     <div data-install-page className="mx-auto w-full max-w-xl py-4 sm:py-8">
       <header>
         <RippleMark size={64} tile />
-        <p className="mt-5 text-[13px] font-semibold text-[var(--app-brand)]">
+        <p className="mt-5 text-[13px] font-semibold text-[var(--app-brand-text)]">
           Frederick Radius
         </p>
         <h1 className="mt-2 text-[32px] font-semibold leading-[1.1] tracking-tight text-[var(--app-ink)] sm:text-[40px]">

@@ -30,6 +30,22 @@ export const EditingAt390: Story = {
     await expect(window.history.state[NATIVE_REQUEST_ENTRY_KEY].draft.query).toBe("");
   },
 };
+/**
+ * An empty field at 320px stays inside the viewport and declares an ellipsis
+ * for a placeholder longer than the field. A browser exposes no measurement
+ * of how a placeholder is painted, so the painted result is checked by eye
+ * at this viewport; this play guards the two things that can regress.
+ */
+export const EmptyPlaceholderAt320: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const input = within(canvasElement).getByRole("searchbox", { name: "Search Frederick County" });
+    await expect(getComputedStyle(input).textOverflow).toBe("ellipsis");
+    await expect(input.getBoundingClientRect().right).toBeLessThanOrEqual(
+      canvasElement.ownerDocument.documentElement.clientWidth,
+    );
+  },
+};
 export const UrlRequestAt320: Story = {
   args: { defaultValue: "coffee & tea" },
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },

@@ -18,7 +18,6 @@ import EventCard from "@/components/event/EventCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
-import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
 import SlowSuspenseFallback from "@/components/ui/SlowSuspenseFallback";
@@ -86,7 +85,6 @@ export default async function EventsIndexPage() {
 
   return (
     <div className="relative space-y-4">
-      <PageBloom variant="warm-cool" />
 
       {/* Freshness guard (build review): /events is ISR + carries day-relative
           labels ("today", weekday dateline), so a cached shell served on a
@@ -117,7 +115,7 @@ export default async function EventsIndexPage() {
 
       {/* ── Honesty footer — static, so it never waits on the feeds. ──── */}
       <footer
-        className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
+        className="max-w-[720px] space-y-1 border-t pt-3 text-[11px]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
       >
         {/* Honesty footer = TRUE sources only (June-9 automation audit):
@@ -282,7 +280,7 @@ async function EventsBoard({
           defaultOpen={false}
           className="[&>button]:min-h-11"
         >
-          <ol className="space-y-2">
+          <ol className="max-w-[720px]">
             {civicEvents.slice(0, 24).map((e) => (
               <li key={`${e.slug}-${e.starts_at}`}>
                 <EventCard
@@ -309,7 +307,7 @@ async function EventsBoard({
           defaultOpen={false}
           className="[&>button]:min-h-11"
         >
-          <ol className="space-y-2">
+          <ol className="max-w-[720px]">
             {reminderEvents.slice(0, 24).map((e) => (
               <li key={`${e.slug}-${e.starts_at}`}>
                 <EventCard

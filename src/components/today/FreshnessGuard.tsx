@@ -52,11 +52,8 @@ export default function FreshnessGuard({ renderedAtIso }: { renderedAtIso: strin
   return (
     <div
       role="status"
-      className="flex items-start gap-3 rounded-[var(--app-radius-md)] border p-3"
-      style={{
-        background: "color-mix(in srgb, var(--app-brand) 8%, var(--app-paper))",
-        borderColor: "color-mix(in srgb, var(--app-brand) 35%, transparent)",
-      }}
+      className="flex items-start gap-3 border-y py-3"
+      style={{ borderColor: "var(--app-border)" }}
     >
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
@@ -69,8 +66,8 @@ export default function FreshnessGuard({ renderedAtIso }: { renderedAtIso: strin
       <button
         type="button"
         onClick={() => window.location.reload()}
-        className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition active:scale-95"
-        style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand, #fff)" }}
+        className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-[var(--app-radius-md)] px-3 py-1.5 text-[13px] font-semibold"
+        style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
       >
         <RefreshCw className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
         Refresh

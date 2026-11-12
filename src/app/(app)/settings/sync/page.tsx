@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, LockKeyhole, Mail, Smartphone } from "lucide-react";
-import PageBloom from "@/components/ui/PageBloom";
 import SignOutButton from "@/components/settings/SignOutButton";
 import SyncStatus from "@/components/settings/SyncStatus";
 import { requireServerUser } from "@/lib/auth";
+import {
+  ROW_HELP,
+  SECTION_LABEL,
+  SettingsRow,
+  SettingsSection,
+} from "@/components/settings/SettingsSection";
 
 export const metadata: Metadata = {
   title: "Sync & privacy",
@@ -12,6 +17,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/**
+ * /settings/sync: what follows a signed-in visitor between devices. Same
+ * plain tool language as /settings: labelled runs of ruled rows on the page
+ * ground, plain ink glyphs and no boxes.
+ */
 export default async function SyncSettingsPage({
   searchParams,
 }: {
@@ -21,24 +31,23 @@ export default async function SyncSettingsPage({
   const user = await requireServerUser("/settings/sync");
 
   return (
-    <div className="relative space-y-5">
-      <PageBloom variant="warm-cool" />
+    <div className="relative flex flex-col gap-8">
       <header className="space-y-2">
         <Link
           href="/settings"
-          className="inline-flex min-h-11 items-center gap-1 text-[12px] font-semibold"
-          style={{ color: "var(--app-ink-3)" }}
+          className="inline-flex min-h-11 items-center gap-1 text-[0.875rem] font-semibold"
+          style={{ color: "var(--app-ink-2)" }}
         >
-          <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          <ArrowLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
           Back to Settings
         </Link>
-        <p className="eyebrow" style={{ color: "var(--app-brand)" }}>
+        <p className={SECTION_LABEL} style={{ color: "var(--app-ink-2)" }}>
           Sync & privacy
         </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
           Your Radius comes with you.
         </h1>
-        <p className="max-w-2xl text-[14px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
+        <p className="max-w-2xl text-[1rem] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
           Places in My Radius travel between your signed-in devices. The rest of
           your Frederick context stays quietly on this one.
         </p>
@@ -47,11 +56,10 @@ export default async function SyncSettingsPage({
       {params.signout === "failed" && (
         <div
           role="alert"
-          className="rounded-[var(--app-radius-md)] border px-3.5 py-3 text-[12.5px] leading-relaxed"
+          className="border-y py-3 text-[0.875rem] leading-relaxed"
           style={{
-            borderColor: "color-mix(in srgb, var(--app-danger) 28%, var(--app-border))",
-            background: "color-mix(in srgb, var(--app-danger) 6%, var(--app-bg-elevated))",
-            color: "var(--app-ink-2)",
+            borderColor: "var(--app-border)",
+            color: "var(--app-danger-text)",
           }}
         >
           We couldn&apos;t stop sync, so you&apos;re still signed in on this
@@ -61,55 +69,50 @@ export default async function SyncSettingsPage({
 
       <SyncStatus />
 
-      <section
-        className="grid gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 shadow-[var(--app-shadow-1)] sm:grid-cols-2 sm:p-5"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <div className="flex gap-3">
-          <Mail className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-brand)" }} aria-hidden />
-          <div>
-            <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              Signed in as
-            </p>
-            <p className="mt-0.5 break-all text-[12px]" style={{ color: "var(--app-ink-2)" }}>
-              {user.email ?? "Your Radius account"}
-            </p>
+      <SettingsSection title="Account">
+        <SettingsRow>
+          <div className="flex gap-3">
+            <Mail className="mt-1 h-4 w-4 shrink-0" style={{ color: "var(--app-ink-3)" }} aria-hidden />
+            <div className="min-w-0">
+              <p className="text-[1rem] font-semibold" style={{ color: "var(--app-ink)" }}>
+                Signed in as
+              </p>
+              <p className={`mt-0.5 break-all ${ROW_HELP}`} style={{ color: "var(--app-ink-2)" }}>
+                {user.email ?? "Your Radius account"}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-3">
-          <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
-          <div>
-            <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              No password or public profile
-            </p>
-            <p className="mt-0.5 text-[11.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              Sign-in uses a one-time email. It never enrolls you in marketing.
-            </p>
+        </SettingsRow>
+        <SettingsRow>
+          <div className="flex gap-3">
+            <LockKeyhole className="mt-1 h-4 w-4 shrink-0" style={{ color: "var(--app-ink-3)" }} aria-hidden />
+            <div className="min-w-0">
+              <p className="text-[1rem] font-semibold" style={{ color: "var(--app-ink)" }}>
+                No password or public profile
+              </p>
+              <p className={`mt-0.5 ${ROW_HELP}`} style={{ color: "var(--app-ink-3)" }}>
+                Sign-in uses a one-time email. It never enrolls you in marketing.
+              </p>
+            </div>
           </div>
-        </div>
-      </section>
+        </SettingsRow>
+      </SettingsSection>
 
-      <section
-        className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 sm:p-5"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <div className="flex gap-3">
-          <Smartphone className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
-          <div className="min-w-0 flex-1">
-            <h2 className="font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              What Frederick Radius keeps
-            </h2>
-            <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+      <SettingsSection title="What Frederick Radius keeps">
+        <SettingsRow>
+          <div className="flex gap-3">
+            <Smartphone className="mt-1 h-4 w-4 shrink-0" style={{ color: "var(--app-ink-3)" }} aria-hidden />
+            <p className="min-w-0 text-[1rem] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               Sync stores your email and the places in My Radius. Saved events,
               routes, home spot, interests, searches, and recent views are not
               added to your account. Stopping sync does not clear this device.
             </p>
           </div>
-        </div>
-        <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
+        </SettingsRow>
+        <SettingsRow>
           <SignOutButton email={user.email} />
-        </div>
-      </section>
+        </SettingsRow>
+      </SettingsSection>
     </div>
   );
 }

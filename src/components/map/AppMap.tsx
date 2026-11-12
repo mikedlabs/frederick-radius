@@ -4779,7 +4779,7 @@ export default function AppMap({
                   <button
                     type="button"
                     onClick={() => window.location.reload()}
-                    className="tap-44 inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                    className="tap-44 inline-flex items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
                     style={{
                       borderColor: "var(--app-border)",
                       color: "var(--app-ink-2)",
@@ -4790,8 +4790,8 @@ export default function AppMap({
                 )}
                 <Link
                   href="/places"
-                  className="tap-44 inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-semibold text-white"
-                  style={{ background: "var(--app-brand-press)" }}
+                  className="tap-44 inline-flex min-h-9 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                  style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
                 >
                   All places
                 </Link>
@@ -4837,15 +4837,15 @@ export default function AppMap({
             was silent (it lived inside the collapsed Where pane). */}
         {geoMsg && (
           <div
-            className={`z-[var(--z-map-control)] flex items-center gap-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-1 pl-3 pr-1 text-[13px] font-medium leading-snug shadow-[var(--app-shadow-1)] ${
+            className={`z-[var(--z-map-control)] flex items-center gap-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-1 pl-3 pr-1 text-[13px] font-medium leading-snug ${
               dock ? "map-geo-toast" : "absolute bottom-3 left-1/2 -translate-x-1/2"
             }`}
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+            style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
           >
             <span role="status" aria-live="polite">{geoMsg}</span>
             <button
               type="button"
-              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
+              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] transition-colors hover:bg-[var(--app-bg-sunken)]"
               onClick={() => {
                 setGeoMsg(null);
                 setLocateMsg(null);
@@ -4859,9 +4859,6 @@ export default function AppMap({
             </button>
           </div>
         )}
-        {/* Cream fade under the top chrome so pills and rails always sit on
-            quiet ground instead of raw basemap. Paint only. */}
-        {dock && !mapError && <div className="map-top-scrim" aria-hidden />}
         {/* The smart default explains itself in one sentence (map program
             phase 1). A suggestion may include a shareable one-tap lens rather
             than pretending the lens is a layer that was already switched on. */}
@@ -4877,16 +4874,16 @@ export default function AppMap({
               "href" in smartDefault.action ? (
                 <Link
                   href={smartDefault.action.href}
-                  className="tap-44-y shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-semibold"
-                  style={{ color: "var(--app-cool)" }}
+                  className="tap-44-y shrink-0 whitespace-nowrap rounded-[var(--app-radius-sm)] px-2 py-1 font-semibold"
+                  style={{ color: "var(--app-cool-text)" }}
                 >
                   {smartDefault.action.label}
                 </Link>
               ) : (
                 <button
                   type="button"
-                  className="tap-44-y shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-semibold"
-                  style={{ color: "var(--app-cool)" }}
+                  className="tap-44-y shrink-0 whitespace-nowrap rounded-[var(--app-radius-sm)] px-2 py-1 font-semibold"
+                  style={{ color: "var(--app-cool-text)" }}
                   onClick={() => {
                     haptic("light");
                     setShowRadar(true);
@@ -4900,7 +4897,7 @@ export default function AppMap({
             )}
             <button
               type="button"
-              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
+              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] transition-colors hover:bg-[var(--app-bg-sunken)]"
               onClick={() => {
                 setSmartNoteDismissed(true);
                 // Saying no is a real choice: the seeded layers turn off and
@@ -4924,10 +4921,10 @@ export default function AppMap({
             on a healthy map nothing shows here now. */}
         {(osmLoading || osmError) && (
           <div
-            className={`absolute left-3 z-[var(--z-map-control)] inline-flex items-center gap-2 rounded-full bg-[var(--app-bg-elevated-solid)] px-2.5 py-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur ${
+            className={`absolute left-3 z-[var(--z-map-control)] inline-flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated-solid)] px-2.5 py-1 text-[11px] font-medium ${
               dock ? "top-[168px]" : "top-3"
             }`}
-            style={{ color: "var(--app-ink-2)" }}
+            style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink-2)" }}
             aria-live="polite"
           >
             {osmLoading ? (
@@ -4974,8 +4971,8 @@ export default function AppMap({
             the What pane; the floating strip serves dock-less maps only. */}
         {visibleAerial && !dock && (
           <div
-            className="absolute bottom-[116px] left-1/2 z-[var(--z-map-control)] flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-full border px-1.5 py-1.5 shadow-[var(--app-shadow-2)] backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)" }}
+            className="absolute bottom-[116px] left-1/2 z-[var(--z-map-control)] flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-[var(--app-radius-md)] border px-1.5 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{ borderColor: "var(--app-control-border)", background: "var(--app-bg-elevated-solid)" }}
             role="group"
             aria-label="Aerial photos by season"
           >

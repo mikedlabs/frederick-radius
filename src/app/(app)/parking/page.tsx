@@ -18,7 +18,6 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import PageBloom from "@/components/ui/PageBloom";
 import {
   PARKING_ACCESSIBILITY,
   PARKING_GARAGES,
@@ -105,7 +104,6 @@ function FactBadge({ children }: { children: ReactNode }) {
 export default function ParkingPage() {
   return (
     <div className="relative mx-auto w-full max-w-screen-md space-y-8 py-6">
-      <PageBloom variant="warm-cool" />
 
       <header className="space-y-3">
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>

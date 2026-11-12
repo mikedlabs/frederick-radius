@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BRAND } from "./brand";
-import { APPEARANCE_BOOTSTRAP, APPEARANCE_KEY, applyAppearance, getAppearance, subscribeAppearance } from "./appearance";
+import {
+  APPEARANCE_BOOTSTRAP, APPEARANCE_KEY, applyAppearance, getAppearance, readSavedAppearance, restoreSavedAppearance,
+  subscribeAppearance,
+} from "./appearance";
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -50,5 +53,27 @@ describe("explicit product appearance", () => {
     vi.spyOn(window.Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
     expect(() => window.eval(APPEARANCE_BOOTSTRAP)).not.toThrow();
     expect(getAppearance()).toBe("light");
+  });
+  it("restores a saved dark choice on a client-built shell where the bootstrap never ran", () => {
+    window.localStorage.setItem(APPEARANCE_KEY, "dark");
+    // A client-built not-found shell starts from the layout's light attribute.
+    document.documentElement.dataset.appearance = "light";
+    const notify = vi.fn();
+    const unsubscribe = subscribeAppearance(notify);
+    restoreSavedAppearance();
+    expect(getAppearance()).toBe("dark");
+    expect(document.documentElement.style.colorScheme).toBe("dark");
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(BRAND.colors.darkCanvas);
+    expect(notify).toHaveBeenCalledOnce();
+    // On a normal page the bootstrap already applied it, so nothing changes.
+    restoreSavedAppearance();
+    expect(notify).toHaveBeenCalledOnce();
+    unsubscribe();
+  });
+  it("reads light when nothing is saved or storage is blocked", () => {
+    expect(readSavedAppearance()).toBe("light");
+    vi.spyOn(window.Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
+    expect(readSavedAppearance()).toBe("light");
+    expect(() => restoreSavedAppearance()).not.toThrow();
   });
 });

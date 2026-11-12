@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
+import { Fragment, useLayoutEffect, useRef, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "./PlaceCardPhoto";
 import { usePlacePhotoData } from "@/components/place/usePlacePhoto";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -63,41 +63,87 @@ function Rave({
 }
 
 /**
- * The category mark — the leading visual token that replaces the imported
- * photo when no eligible source is available. The category icon signals
- * type without pretending to be a photograph of the place.
+ * The category mark: the leading glyph when no eligible photo is available.
+ * PLAIN TOOL: the bare category glyph in muted ink, with no tile, tint,
+ * border or ring. It signals type without pretending to be a photograph of
+ * the place. `size` sets the slot the glyph sits in, so text beside it keeps
+ * its alignment; the glyph itself stays 24px.
  */
 function CategoryMark({
   category,
-  color,
-  size = 44,
+  size = 24,
 }: {
   category: string;
-  color: string;
+  color?: string;
   size?: number;
 }) {
   return (
-    <div
+    <span
       aria-hidden
-      className="flex shrink-0 items-center justify-center rounded-[var(--app-radius-md)]"
-      style={{
-        height: size,
-        width: size,
-        // Quiet, low-tint chip — it signals type without competing with the
-        // title. Down a long list the eye reads the names, not a column of
-        // saturated blocks (the "supports, not dominates" rule).
-        background: `color-mix(in srgb, ${color} 11%, var(--app-bg-elevated-solid))`,
-        color,
-        boxShadow: "inset 0 0 0 1px color-mix(in srgb, " + color + " 16%, transparent)",
-      }}
+      data-place-category-mark
+      className="flex shrink-0 justify-center"
+      style={{ width: Math.max(24, size), color: "var(--app-ink-3)" }}
     >
-      <CategoryIcon
-        slug={category}
-        strokeWidth={1.75}
-        className="opacity-80"
-        style={{ color, height: Math.round(size * 0.44), width: Math.round(size * 0.44) }}
-      />
-    </div>
+      <CategoryIcon slug={category} strokeWidth={1.75} className="h-6 w-6" />
+    </span>
+  );
+}
+
+/** Each reason tone's readable text color in both appearances. */
+const REASON_TEXT: Record<PlaceReasonChip["tone"], string> = {
+  open: "var(--app-forest-text)",
+  verified: "var(--app-forest-text)",
+  near: "var(--app-cool-text)",
+  free: "var(--app-cool-text)",
+  rated: "var(--app-accent-text)",
+  neutral: "var(--app-ink-2)",
+};
+
+/**
+ * The row's reasons as one muted line of plain text. Only the first label
+ * carries its semantic color; the rest read in muted ink, so a row never
+ * stacks several colored tags. Each separator is bound to the label before it
+ * with a no-break space, so a wrapped line never starts with a dot. The
+ * place's field-notes or deal label, when it has one, joins the same line.
+ */
+function ReasonLabels({
+  reasons,
+  tag,
+}: {
+  reasons: PlaceReasonChip[];
+  tag?: { label: string; title: string; color: string; kind: "field-note" | "deal-hook" } | null;
+}) {
+  const items: { key: string; label: string; color: string; title?: string; tagKind?: string }[] = [
+    ...reasons.map((r, i) => ({ key: `${r.label}-${i}`, label: r.label, color: REASON_TEXT[r.tone] })),
+    ...(tag ? [{ key: `tag-${tag.kind}`, label: tag.label, color: tag.color, title: tag.title, tagKind: tag.kind }] : []),
+  ];
+  if (items.length === 0) return null;
+  return (
+    <p
+      className="text-[0.8125rem] leading-snug [text-wrap:pretty]"
+      style={{ color: "var(--app-ink-2)" }}
+      aria-label="Reasons this is shown"
+    >
+      {items.map((item, i) => (
+        <Fragment key={item.key}>
+          <span
+            data-place-reason-label
+            data-field-note-tag={item.tagKind === "field-note" || undefined}
+            data-deal-hook-tag={item.tagKind === "deal-hook" || undefined}
+            title={item.title}
+            className={i === 0 ? "font-semibold" : undefined}
+            style={i === 0 ? { color: item.color } : undefined}
+          >
+            {item.label}
+          </span>
+          {i < items.length - 1 ? (
+            <>
+              <span aria-hidden data-place-reason-separator style={{ color: "var(--app-ink-3)" }}>{"\u00a0\u00b7"}</span>{" "}
+            </>
+          ) : null}
+        </Fragment>
+      ))}
+    </p>
   );
 }
 
@@ -269,7 +315,7 @@ export default function PlaceCard({
             sizes={parksDiscovery ? "auto, (max-width: 640px) calc(100vw - 32px), 600px" : "(max-width: 640px) calc(100vw - 32px), 600px"}
             deferGoogleBytes={!parksDiscovery && lazyPhoto} />}
           {nearby ? <div className={`${discoveryStyles.body} ${photo ? "" : discoveryStyles.withoutPhoto} ${!photo && !parksDiscovery ? discoveryStyles.illustrated : ""}`}>
-            {!photo && (parksDiscovery ? <CategoryMark category={place.category} color="var(--app-ink-2)" size={36} />
+            {!photo && (parksDiscovery ? <CategoryMark category={place.category} size={36} />
               : <PlaceCategoryArtwork category={place.category} />)}
             <div className={discoveryStyles.copy}>
               <h3 className={discoveryStyles.title}>{place.name}</h3>
@@ -286,7 +332,7 @@ export default function PlaceCard({
               {!parksDiscovery && photo && fact && <p className={discoveryStyles.note}>{fact}</p>}
             </div>
           </div> : <div className={photo ? "p-4" : "flex items-start gap-3 p-3"}>
-            {!photo && <CategoryMark category={place.category} color="var(--app-ink-2)" size={44} />}
+            {!photo && <CategoryMark category={place.category} size={44} />}
             <div className="min-w-0 flex-1">
               <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] leading-normal" style={{ color: "var(--app-ink-2)" }}>
                 <span>{cat?.name ?? place.category}</span>
@@ -347,7 +393,7 @@ export default function PlaceCard({
           <span data-press-face className="block">
           <PlaceCardPhoto source={photo} onResult={onPhotoResult} />
           <div className="flex items-start gap-3 p-4 pl-5">
-            {!photo && <CategoryMark category={place.category} color={color} size={46} />}
+            {!photo && <CategoryMark category={place.category} size={46} />}
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
                 <h3 className="min-w-0 flex-1 truncate font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -367,7 +413,7 @@ export default function PlaceCard({
               </p>
               {place.field_note_tip && (
                 <p className="mt-1.5 flex gap-1.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                  <NotebookPen className="mt-[2px] h-3 w-3 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+                  <NotebookPen className="mt-[2px] h-3 w-3 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-link)" }} aria-hidden />
                   <span className="line-clamp-2">{place.field_note_tip}</span>
                 </p>
               )}
@@ -398,14 +444,9 @@ export default function PlaceCard({
   if (variant === "answer") {
     const loved = (place.customers_loved ?? []).slice(0, 3);
     return (
-      <article
-        className="tactile tactile-e3 relative overflow-hidden rounded-[var(--app-radius-lg)]"
-        style={{
-          backgroundColor: "var(--app-bg-elevated-solid)",
-          backgroundImage: "var(--app-paper-light)",
-        }}
-      >
-        <div aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: color }} />
+      // PLAIN TOOL: the lead pick sits on the page ground. The photo keeps
+      // its 6px corners; no fill, paper texture, stripe or lift.
+      <article data-place-card-variant="answer" className="relative min-w-0">
         <button
           type="button"
           data-press-target="card"
@@ -414,15 +455,17 @@ export default function PlaceCard({
           className="group block min-h-11 w-full text-left"
         >
           <span data-press-face className="block">
-          <PlaceCardPhoto source={photo} onResult={onPhotoResult} />
-          <div className="space-y-2.5 p-4">
+          {photo && <span className="block overflow-hidden rounded-[var(--app-radius-md)]">
+            <PlaceCardPhoto source={photo} onResult={onPhotoResult} />
+          </span>}
+          <div className="space-y-2.5 pt-3">
             <div className="flex items-start gap-3">
-              {!photo && <CategoryMark category={place.category} color={color} size={46} />}
+              {!photo && <CategoryMark category={place.category} />}
               <div className="min-w-0 flex-1">
                 {/* pr-9 clears the absolutely-positioned SaveButton (36px at
                     right-2.5) so the ml-auto distance never renders under it. */}
-                <div className="flex items-center gap-2 pr-9">
-                  <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
+                <div className={`flex items-center gap-2 ${photo ? "" : "pr-11"}`}>
+                  <span className="truncate text-[0.8125rem] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
                     {cat?.name ?? place.category}
                   </span>
                   {place.distance_m !== undefined && (
@@ -431,7 +474,7 @@ export default function PlaceCard({
                     </span>
                   )}
                 </div>
-                <h3 className="display-3 mt-0.5 text-balance leading-[1.12]" style={{ color: "var(--app-ink)" }}>
+                <h3 className="mt-0.5 text-balance text-[1.375rem] font-bold leading-[1.15] tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
                   {place.name}
                 </h3>
               </div>
@@ -458,7 +501,7 @@ export default function PlaceCard({
                 "Loved for" tag list. One voice, never stacked. */}
             {place.field_note_tip ? (
               <p className="flex gap-1.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                <NotebookPen className="mt-[2px] h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+                <NotebookPen className="mt-[2px] h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-link)" }} aria-hidden />
                 <span className="line-clamp-2">{place.field_note_tip}</span>
               </p>
             ) : loved.length > 0 ? (
@@ -501,7 +544,7 @@ export default function PlaceCard({
           <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={244} />
           <div className="space-y-2 p-3.5 pb-4">
             <div className={`flex items-center gap-2.5${!photo ? " pr-9" : ""}`}>
-              {!photo && <CategoryMark category={place.category} color={color} size={40} />}
+              {!photo && <CategoryMark category={place.category} size={40} />}
               <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink)" }}>
                 {cat?.name ?? place.category}
               </span>
@@ -551,7 +594,8 @@ export default function PlaceCard({
   if (variant === "grid") {
     const gridReasons = withoutDistanceEcho(reasons.slice(0, 2));
     return (
-      <article className="tactile relative overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)]">
+      // PLAIN TOOL: a compact cell on the page ground, with no fill or lift.
+      <article data-place-card-variant="grid" className="relative min-w-0">
         <button
           type="button"
           data-press-target="card"
@@ -560,9 +604,11 @@ export default function PlaceCard({
           className="group block min-h-11 w-full text-left"
         >
           <span data-press-face className="block">
-          <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={180} />
-          <div className="flex items-start gap-2.5 p-2.5">
-            {!photo && <CategoryMark category={place.category} color={color} size={40} />}
+          {photo && <span className="block overflow-hidden rounded-[var(--app-radius-md)]">
+            <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={180} />
+          </span>}
+          <div className="flex items-start gap-2.5 py-2.5">
+            {!photo && <CategoryMark category={place.category} />}
             <div className="min-w-0 flex-1 space-y-0.5">
               <h3 className="line-clamp-2 text-[15px] font-semibold leading-[1.2] tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {place.name}
@@ -593,55 +639,80 @@ export default function PlaceCard({
   // (compact rows hide the chips, so they keep the paw).
   const showPaw = (place.tags ?? []).includes("dog-friendly")
     && (compact || !rowReasons.some((r) => r.kind === "dog_friendly"));
+  // The same label as text, for the reasons line: it joins that one muted
+  // line instead of adding a second colored tag beside it.
+  const rowTag = place.deal_hook
+    ? { label: place.deal_hook, title: `Verified deal on file: ${place.deal_hook}`, color: "var(--app-accent-text)", kind: "deal-hook" as const }
+    : place.field_notes
+      ? { label: "Field notes", title: "Source-linked local notes on file: happy hour, a deal, parking, or an insider tip", color: "var(--app-brand-text)", kind: "field-note" as const }
+      : null;
   const inlineTag = place.deal_hook ? (
     <DealHookTag label={place.deal_hook} compact />
   ) : place.field_notes ? (
     <FieldNoteTag compact />
   ) : null;
   return (
+    // PLAIN TOOL: a ruled row on the page ground. No card, no lift, no
+    // category stripe; the row ends in one hairline and the list's last row
+    // may drop it where the section already draws a rule.
     <article
-      className="tactile tactile-e2 relative overflow-hidden rounded-[var(--app-radius-lg)]"
-      style={{
-        backgroundColor: "var(--app-bg-elevated-solid)",
-        backgroundImage: "var(--app-paper-light)",
-      }}
+      data-place-row
+      className="relative border-b"
+      style={{ borderColor: "var(--app-border)" }}
     >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[3px]"
-        style={{ background: color }}
-      />
       <button
         type="button"
         data-press-target="card"
         onClick={openDetail}
         aria-label={`View ${actionName} details`}
-        className="absolute inset-0 z-0 rounded-[var(--app-radius-lg)] text-left"
+        className="absolute inset-0 z-0 rounded-[var(--app-radius-sm)] text-left"
       >
         <span data-press-face="outline" aria-hidden />
       </button>
-      <div className="flex items-stretch gap-3 p-3 pl-3.5">
-        <div ref={photoAnchorRef} className="pointer-events-none relative z-10 shrink-0 self-center">
+      {/* pr-1 leaves room for the Save control's 44px hit extender, so the
+          row never scrolls sideways now that it no longer clips. */}
+      <div className="flex items-stretch gap-3 py-3 pr-1">
+        {/* MEDIA IN ROWS: a thumbnail only when a real photo exists. Without
+            one the slot keeps the photo's width, so titles stay aligned down
+            a mixed list, and holds the bare category glyph level with the
+            title's first line: no tile, tint, border or corner. The glyph is
+            centered in the slot. Left-aligned it sat far from the title and
+            read as a missing image. */}
+        <div
+          ref={photoAnchorRef}
+          data-place-row-media={photo ? "photo" : "glyph"}
+          className={`pointer-events-none relative z-10 shrink-0 ${photo ? "self-center" : "flex justify-center self-start"}`}
+          style={photo ? undefined : { width: photoWidth }}
+        >
           {photo ? (
             <PlaceCardPhoto source={photo} onResult={onPhotoResult} width={photoWidth} frame={compact ? "compact-row" : "row"} deferGoogleBytes={lazyPhoto} />
-          ) : <CategoryMark category={place.category} color={color} size={compact ? 40 : 46} />}
+          ) : (
+            <span data-place-row-glyph className="block h-6 w-6" aria-hidden>
+              <CategoryIcon
+                slug={place.category}
+                strokeWidth={1.75}
+                className={`h-6 w-6 ${compact ? "" : "-mt-px"}`}
+                style={{ color: "var(--app-ink-3)" }}
+              />
+            </span>
+          )}
         </div>
         <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col justify-center">
           <div className="flex items-start gap-2">
             <h3
-              className="line-clamp-2 min-w-0 flex-1 text-[15px] font-semibold leading-[1.3] tracking-tight"
+              className={`line-clamp-2 min-w-0 flex-1 font-semibold leading-[1.3] tracking-tight ${compact ? "text-[15px]" : "text-[17px]"}`}
               style={{ color: "var(--app-ink)" }}
             >
               {place.name}
             </h3>
             {showSource && <SourceBadge place={place} size="sm" />}
             {place.distance_m !== undefined && (
-              <span className="ml-auto mt-[1px] shrink-0 whitespace-nowrap text-[12px] font-medium tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              <span className="ml-auto mt-[2px] shrink-0 whitespace-nowrap text-[14px] font-medium tabular-nums" style={{ color: "var(--app-ink-2)" }}>
                 {formatDistance(place.distance_m)}
               </span>
             )}
           </div>
-          <p className="mt-0.5 flex items-center gap-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          <p className="mt-0.5 flex items-center gap-1 text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
             {showPaw && (
               <PawPrint
                 className="h-3 w-3 shrink-0"
@@ -656,15 +727,14 @@ export default function PlaceCard({
             </span>
           </p>
           {place.market_day && (
-            <p className="mt-0.5 truncate text-[12px] font-medium" style={{ color: "var(--app-brand-press)" }}>
+            <p className="mt-0.5 truncate text-[12px] font-medium" style={{ color: "var(--app-brand-text)" }}>
               {place.market_day}{place.market_hours ? ` · ${place.market_hours}` : ""}
             </p>
           )}
           {!compact && (
             rowReasons.length > 0 ? (
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                <ReasonChipRow reasons={rowReasons} />
-                {inlineTag}
+              <div className="mt-1">
+                <ReasonLabels reasons={rowReasons} tag={rowTag} />
               </div>
             ) : (
               <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -684,7 +754,9 @@ export default function PlaceCard({
           <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
         </div>
       </div>
-      <div className="relative z-10">
+      {/* The credit sits under the row's facts without a second hairline;
+          the row's own bottom rule closes it. */}
+      <div className="relative z-10 [&_.place-card-photo-credit]:border-t-0 [&_.place-card-photo-credit]:px-0">
         <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} compact />
       </div>
     </article>

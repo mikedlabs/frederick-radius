@@ -25,6 +25,26 @@ export function applyAppearance(value: Appearance, persist = true): void {
   window.dispatchEvent(new Event(APPEARANCE_EVENT));
 }
 
+/** The saved explicit choice, or light when nothing is saved or storage is blocked. */
+export function readSavedAppearance(): Appearance {
+  try { return parseAppearance(window.localStorage.getItem(APPEARANCE_KEY)); } catch { return "light"; }
+}
+
+/**
+ * Re-applies the saved choice from the client. The head bootstrap normally
+ * does this before first paint, but Next serves a not-found shell
+ * that is rendered on the client from the RSC payload, and React never runs
+ * a script it inserts. Without this, those pages ignore a saved dark choice.
+ * On every other page the bootstrap already applied the same value, so this
+ * changes nothing and cannot flash.
+ */
+export function restoreSavedAppearance(): void {
+  const saved = readSavedAppearance();
+  if (document.documentElement.dataset.appearance !== saved || document.documentElement.style.colorScheme !== saved) {
+    applyAppearance(saved, false);
+  }
+}
+
 export function subscribeAppearance(notify: () => void): () => void {
   const onStorage = (event: StorageEvent) => {
     if (event.key === APPEARANCE_KEY || event.key === null) applyAppearance(parseAppearance(event.newValue), false);
