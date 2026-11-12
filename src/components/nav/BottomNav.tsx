@@ -4,9 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { haptic } from "@/lib/haptics";
-import { shouldPrefetchGlobalNavigation } from "@/lib/fair/route-policy";
 import { cancelPrimaryTabResume, preparePrimaryTabResume, rememberPrimaryTab } from "@/lib/primary-tab-session";
-import { TABS, tabIndexForPath } from "./tabs";
+import { TABS, shouldPrefetchGlobalNavigation, tabIndexForPath } from "./tabs";
 import styles from "./NavChrome.module.css";
 
 type NavigationGesture = Pick<
@@ -32,9 +31,10 @@ export function shouldShowBottomNav(
 /**
  * Mobile primary navigation as a compact field-guide index strip.
  *
- * Four stable destinations sit on a raised Cream strip. The selected
- * destination has a filled Brick control, while search keeps its single
- * doorway in the page or top bar.
+ * Four stable destinations sit on a flat bar on the page ground with one
+ * top hairline. The selected destination is marked by a 2px coral rule
+ * across the top of its column, a 700 label and a heavier icon stroke,
+ * while search keeps its single doorway in the page or top bar.
  */
 export default function BottomNav() {
   const pathname = usePathname();
@@ -66,20 +66,20 @@ export default function BottomNav() {
       <div
         data-bottom-nav-shell
         data-map-bottom-nav={pathname === "/map" ? "true" : undefined}
-        className="pointer-events-none fixed inset-x-0 bottom-0 lg:hidden"
+        className={`${styles.dockShell} fixed inset-x-0 bottom-0 lg:hidden`}
         style={{
           zIndex: "var(--z-nav)",
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
-          paddingLeft: "max(0.5rem, env(safe-area-inset-left, 0px))",
-          paddingRight: "max(0.5rem, env(safe-area-inset-right, 0px))",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          paddingLeft: "env(safe-area-inset-left, 0px)",
+          paddingRight: "env(safe-area-inset-right, 0px)",
         }}
       >
         <nav
           aria-label="Primary"
           aria-busy={pendingIdx !== null}
-          className={`${styles.dock} pointer-events-auto relative mx-auto max-w-screen-md overflow-hidden`}
+          className={`${styles.dock} relative mx-auto max-w-screen-md`}
         >
-          <ul className="mx-auto grid max-w-screen-md grid-cols-4 px-1 py-1">
+          <ul className="mx-auto grid max-w-screen-md grid-cols-4">
             {TABS.map(({ href, label, icon: Icon, prefetch, fillOnActive }, idx) => {
               const isAtDestination = pathname === href || pathname.startsWith(`${href}/`);
               const isRealActive = realIdx === idx;
@@ -141,23 +141,22 @@ export default function BottomNav() {
                     aria-current={isAtDestination ? "page" : undefined}
                     data-press-target="tab"
                     data-pending={pendingIdx === idx ? "true" : "false"}
-                    className={`${styles.destination} relative flex h-12 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition-colors duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)]`}
+                    className={`${styles.destination} relative flex h-14 w-full flex-col items-center justify-center gap-1 text-center transition-colors duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)]`}
                     data-selected={active ? "true" : "false"}
                   >
-                    <span
-                      aria-hidden
-                      className="absolute left-1/2 top-0 h-[2px] w-7 -translate-x-1/2"
-                      style={{ background: active ? "var(--app-on-brand)" : "transparent", opacity: 0.5 }}
-                    />
+                    {/* Plain tool: the selected destination is marked by a
+                        2px coral rule across the top of its column, a 700
+                        label and a heavier icon stroke. */}
+                    <span aria-hidden data-destination-rule className={styles.destinationRule} />
                     <span data-press-face className="flex flex-col items-center justify-center gap-1">
                       <Icon
                         width={20}
                         height={20}
-                        strokeWidth={active ? 2.25 : 2}
+                        strokeWidth={active ? 2.5 : 1.75}
                         fill={active && fillOnActive ? "currentColor" : "none"}
                         aria-hidden
                       />
-                      <span className="text-[11px] font-medium leading-tight tracking-tight">
+                      <span className={`${styles.destinationLabel} text-[0.6875rem] leading-tight`}>
                         {label}
                       </span>
                     </span>

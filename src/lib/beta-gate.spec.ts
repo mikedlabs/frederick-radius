@@ -1,9 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   BETA_CODE_SESSION_SECONDS,
-  isRedeemableBetaCode,
   isValidMemberId,
-  normalizeCode,
   signCode,
   signMemberId,
   verifyCodeCookie,
@@ -26,11 +24,6 @@ describe("beta access codes", () => {
     else process.env.BETA_CODE_SECRET = prev;
     if (previousPrev === undefined) delete process.env.BETA_CODE_SECRET_PREVIOUS;
     else process.env.BETA_CODE_SECRET_PREVIOUS = previousPrev;
-  });
-
-  it("normalizes submitted codes to a stable slug", () => {
-    expect(normalizeCode("  Frederick-ADA7 ")).toBe("frederick-ada7");
-    expect(normalizeCode("jane at the coop")).toBe("jane-at-the-coop");
   });
 
   it("round-trips a signed cookie back to its code", async () => {
@@ -81,12 +74,6 @@ describe("beta access codes", () => {
 
   it("rejects legacy non-expiring cookie formats", async () => {
     expect(await verifyCodeCookie("frederick-ada7~deadbeef")).toBeNull();
-  });
-
-  it("does not mint or renew a session for a revoked code", () => {
-    expect(isRedeemableBetaCode({ revoked: false })).toBe(true);
-    expect(isRedeemableBetaCode({ revoked: true })).toBe(false);
-    expect(isRedeemableBetaCode(null)).toBe(false);
   });
 });
 

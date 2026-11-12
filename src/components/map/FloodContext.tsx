@@ -180,8 +180,8 @@ export default function FloodContext({
               <span
                 className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
                 style={{
-                  background: "color-mix(in srgb, var(--app-cool) 16%, white)",
-                  color: "var(--app-cool)",
+                  background: "color-mix(in srgb, var(--app-cool) 16%, var(--app-bg-elevated-solid))",
+                  color: "var(--app-cool-text)",
                 }}
               >
                 <Waves className="h-4 w-4" strokeWidth={2.2} aria-hidden />
@@ -229,7 +229,7 @@ export default function FloodContext({
               target="_blank"
               rel="noopener noreferrer"
               className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-[12px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
+              style={{ color: "var(--app-link)" }}
             >
               Open the official source
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />

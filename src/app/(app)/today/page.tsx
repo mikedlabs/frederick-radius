@@ -9,7 +9,6 @@ import KeysScore from "@/components/today/KeysScore";
 import LocalSportsScoreboard from "@/components/today/LocalSportsScoreboard";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
-import TodayFairFeature from "@/components/today/TodayFairFeatureIsland";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -50,10 +49,6 @@ import { eventCardVisual, parseRecoveryEventVisual } from "@/components/event/ev
 import TodayMasthead from "@/components/today/TodayMasthead";
 import TodayGeographicDoorway, { TodayGeographicDoorwayPending } from "@/components/today/TodayGeographicDoorway";
 import styles from "@/components/today/TodayLayout.module.css";
-import {
-  TODAY_FAIR_PROMOTION_SLUG,
-  todayFairPromotionPhase,
-} from "@/lib/today/fair-promotion";
 
 /**
  * Now — the daily briefing.
@@ -142,7 +137,6 @@ export const revalidate = 300;
 export default async function HomePage() {
   const now = new Date();
   const frame = todayFrame(easternStartHour(now.toISOString()));
-  const fairPromotionPhase = todayFairPromotionPhase(now);
   const civicMoment = activeMoment(now);
   const civicMomentLeadsToday =
     civicMoment?.slug === "in-the-street-2026" &&
@@ -240,8 +234,8 @@ export default async function HomePage() {
       </Suspense>
 
       {/* In The Streets is the county's shared plan today, so it takes the
-          lead over the normal daily briefing and the upcoming Fair campaign.
-          Active alerts remain above it because they can change the plan. */}
+          lead over the normal daily briefing. Active alerts remain above it
+          because they can change the plan. */}
       {civicMoment && civicMomentLeadsToday && (
         <div className="mb-5">
           <MomentSpotlight moment={civicMoment} isDayOf />
@@ -299,17 +293,6 @@ export default async function HomePage() {
           <Suspense fallback={null}><FromYourSaved /></Suspense>
         </div>
       <div data-today-events className={styles.events}>
-        {/* A second civic moment still matters during the Fair campaign. Keep
-            it with the day's program so it survives without competing with
-            the place choices below. */}
-        {fairPromotionPhase &&
-        civicMoment &&
-        civicMoment.slug !== TODAY_FAIR_PROMOTION_SLUG &&
-        !civicMomentLeadsToday ? (
-          <div className="mb-4">
-            <MomentSpotlight moment={civicMoment} />
-          </div>
-        ) : null}
         {whatsOn}
       </div>
       </div>
@@ -331,22 +314,12 @@ export default async function HomePage() {
       </section>
 
       {/* Secondary context follows the useful place and event answers.
-          Find and nearby choices remain ahead of the seasonal campaign.
-          Fair Day owns this doorway
-          from Sep 2–26, then retires itself on Sep 27. When another civic
-          moment overlaps the Fair campaign, it appears with today's events
-          above instead of disappearing. */}
-      {(fairPromotionPhase || civicMoment) && (
+          Find and nearby choices remain ahead of a live civic moment. */}
+      {civicMoment && (
       <div className={styles.context}>
-      {fairPromotionPhase ? (
-        <TodayFairFeature phase={fairPromotionPhase} briefing />
-      ) : civicMoment ? (
         <div>
           <MomentSpotlight moment={civicMoment} />
         </div>
-      ) : null}
-
-
       </div>
       )}
 

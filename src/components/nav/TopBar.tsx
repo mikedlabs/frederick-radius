@@ -8,6 +8,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type RefObject,
 } from "react";
 import { Search, Compass, ChevronLeft, X } from "lucide-react";
@@ -29,6 +30,7 @@ import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { installNativeReturnOwner, rememberNativeRequest } from "@/components/search/native-request-return";
 import { useNativeRequestReturn } from "@/components/search/useNativeRequestReturn";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 const SearchOverlay = lazy(() => import("@/components/search/SearchOverlay"));
 let searchLayerSequence = 0;
@@ -58,6 +60,26 @@ export function topBarFindTarget(pathname: string): FindTarget {
   return pathname === "/map" ? "map" : "global";
 }
 
+// The Find chord is Command on Apple keyboards and Control elsewhere. The
+// server cannot know which, so it renders no hint and the client fills it in
+// after hydration instead of printing a key the visitor may not have.
+const subscribeToNothing = () => () => undefined;
+const readAppleKeyboard = () => /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+const readUnknownKeyboard = () => null;
+
+/** Is this key event aimed at something the visitor is typing into? */
+function typingInto(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const role = target.getAttribute("role");
+  return target.tagName === "INPUT"
+    || target.tagName === "TEXTAREA"
+    || target.tagName === "SELECT"
+    || target.isContentEditable
+    || role === "textbox"
+    || role === "searchbox"
+    || role === "combobox";
+}
+
 /** Another active modal owns input until its existing dismissal completes. */
 function anotherModalOwnsInput(): boolean {
   return Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'))
@@ -81,6 +103,11 @@ export default function TopBar() {
   const router = useRouter();
   const toolsOpenerRef = useRef<HTMLAnchorElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
+  const appleKeyboard = useSyncExternalStore<boolean | null>(
+    subscribeToNothing,
+    readAppleKeyboard,
+    readUnknownKeyboard,
+  );
 
   useLayoutEffect(() => {
     const row = rowRef.current;
@@ -284,40 +311,48 @@ export default function TopBar() {
     setSearchOpen(false);
   }, [pathname, searchOpen]);
 
-  // Forward slash opens search globally
+  // Cmd/Ctrl+K and forward slash open search globally
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // Forward slash as a quick-open (don't trigger when typing into another input)
-      if (e.key === "/" && !searchOpen) {
-        const target = e.target as HTMLElement | null;
-        const tag = target?.tagName;
-        const role = target?.getAttribute("role");
-        const editable = tag === "INPUT"
-          || tag === "TEXTAREA"
-          || tag === "SELECT"
-          || target?.isContentEditable
-          || role === "textbox"
-          || role === "searchbox"
-          || role === "combobox";
-        if (!editable) {
-          e.preventDefault();
+      // The chord printed in the desktop search field. It cannot be typed as
+      // text, so unlike slash it also works from inside another field. The
+      // app takes it from the browser (Chrome and Firefox bind Ctrl+K to
+      // their own search field), and an open Find keeps its first opener.
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && (e.key === "k" || e.key === "K")) {
+        // The one exception: on an Apple keyboard the chord is Command, and
+        // Control+K inside a field is the system's delete-to-end-of-line.
+        if (appleKeyboard && !e.metaKey && typingInto(e.target)) return;
+        // Another open modal owns the keyboard, and Find will not open over
+        // it, so leave the chord to that modal and the browser.
+        if (anotherModalOwnsInput()) return;
+        e.preventDefault();
+        if (!searchOpen) {
           openPrimaryFind(
             document.activeElement instanceof HTMLElement ? document.activeElement : null,
             window.scrollY,
           );
         }
+        return;
+      }
+      // Forward slash as a quick-open (don't trigger when typing into another input)
+      if (e.key === "/" && !searchOpen && !typingInto(e.target)) {
+        e.preventDefault();
+        openPrimaryFind(
+          document.activeElement instanceof HTMLElement ? document.activeElement : null,
+          window.scrollY,
+        );
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openPrimaryFind, searchOpen]);
+  }, [appleKeyboard, openPrimaryFind, searchOpen]);
 
   return (
     <>
       <header
         data-map-header={pathname === "/map" ? "true" : undefined}
         data-dense-mobile-header={showMobileSearch || pathname === "/compass" ? "true" : undefined}
-        className={`${styles.bar} sticky top-0 border-b border-[var(--app-border)] backdrop-blur-xl pt-[env(safe-area-inset-top)]`}
+        className={`${styles.bar} sticky top-0 border-b border-[var(--app-border)] pt-[env(safe-area-inset-top)]`}
         style={{
           // Tokenized z-index — see globals.css :root --z-* scale.
           zIndex: "var(--z-sticky)",
@@ -326,7 +361,7 @@ export default function TopBar() {
         <div
           ref={rowRef}
           data-app-topbar-row
-          className={`${styles.row} mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-1.5 sm:gap-2 lg:max-w-screen-lg lg:pl-24`}
+          className={`${styles.row} mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-1.5 sm:gap-2 lg:max-w-screen-lg`}
         >
           {isDeepPage ? (
             // Deep page: a clear way back, so no screen is a dead-end.
@@ -335,7 +370,7 @@ export default function TopBar() {
               onClick={goBack}
               aria-label="Back"
               data-header-back
-              className="-ml-1.5 inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-1 font-semibold tracking-tight transition active:scale-[0.96] min-[390px]:justify-start min-[390px]:pl-1 min-[390px]:pr-2.5"
+              className="-ml-1.5 inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-[var(--app-radius-sm)] px-1 font-semibold tracking-tight transition-colors hover:bg-[var(--app-bg-sunken)] min-[390px]:justify-start min-[390px]:pl-1 min-[390px]:pr-2.5"
               style={{ color: "var(--app-ink)" }}
             >
               <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
@@ -349,7 +384,7 @@ export default function TopBar() {
               onFocus={() => router.prefetch("/")}
               aria-label={pathname === "/map" ? "Frederick Radius, home" : "Frederick Radius beta, home"}
               className={`${styles.home} tap-44 flex items-center gap-2 font-brand text-[18px] tracking-[-0.015em]`}
-              style={{ color: "var(--app-brand)" }}
+              style={{ color: "var(--app-brand-text)" }}
             >
               {/* Canonical horizontal lockup: the 24px+ two-arc Ripple beside
                   a one-line Libre Caslon wordmark. The app-icon tile belongs
@@ -372,12 +407,8 @@ export default function TopBar() {
                 <span
                   data-product-status="beta"
                   aria-hidden="true"
-                  className="inline-flex h-[18px] shrink-0 items-center rounded-[4px] border px-1.5 font-sans text-[8px] font-bold uppercase leading-none tracking-[0.16em]"
-                  style={{
-                    borderColor: "var(--app-brand-tint-22)",
-                    background: "var(--app-brand-tint-6)",
-                    color: "var(--app-ink-3)",
-                  }}
+                  className="inline-flex shrink-0 items-center font-sans text-[10px] font-semibold uppercase leading-none tracking-[0.14em]"
+                  style={{ color: "var(--app-ink-3)" }}
                 >
                   Beta
                 </span>
@@ -385,11 +416,11 @@ export default function TopBar() {
             </AppTransitionLink>
           )}
 
-          {/* Search trigger — full-width input-styled pill so the
-              header reads as "find anything" instead of three tiny
-              icons competing for attention. Fills the space between
-              the logo and the right-side chips, Apple-Maps style.
-              Tap anywhere on it opens the typeahead modal. */}
+          {/* Search trigger: a full-width, input-styled field with the same
+              8px corner as the controls beside it, so the header reads as
+              "find anything" instead of three tiny icons competing for
+              attention. It fills the space between the logo and the
+              right-side controls. Tap anywhere on it opens Find. */}
           {pageOwnsSearch ? (
             pathname === "/map" || pathname === "/compass" ? (
               // The map's search moved into the dock at the foot of the screen,
@@ -412,7 +443,7 @@ export default function TopBar() {
             )
           ) : (
             <>
-              {/* Mobile uses the circular header action rendered just after
+              {/* Mobile uses the 44px square header action rendered just after
                   this flexible spacer. Desktop gets the wider field because
                   the side rail leaves room for a descriptive search control. */}
               <div aria-hidden className="min-w-0 flex-1 lg:hidden" />
@@ -427,17 +458,20 @@ export default function TopBar() {
                   openPrimaryFind(event.currentTarget, returnScrollY);
                 }}
                 aria-label="Ask or find across Frederick County"
-                className={`${styles.search} tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] disabled:cursor-wait disabled:opacity-60 lg:flex`}
-                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+                aria-keyshortcuts={appleKeyboard === null ? undefined : appleKeyboard ? "Meta+K" : "Control+K"}
+                className={`${styles.search} tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] disabled:cursor-wait disabled:opacity-60 lg:flex`}
+                style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink-2)" }}
               >
                 <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
                 <span className="truncate text-left">What do you need?</span>
-                <kbd
-                  className="ml-auto shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight"
-                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-                >
-                  ⌘K
-                </kbd>
+                {appleKeyboard === null ? null : (
+                  <kbd
+                    className="ml-auto shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight"
+                    style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+                  >
+                    {appleKeyboard ? "⌘K" : "Ctrl K"}
+                  </kbd>
+                )}
               </button>
             </>
           )}
@@ -459,14 +493,13 @@ export default function TopBar() {
                 pointerScrollYRef.current = null;
                 openPrimaryFind(event.currentTarget, returnScrollY);
               }}
-              className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 disabled:cursor-wait disabled:opacity-60 lg:hidden"
-              style={{
-                borderColor: searchOpen ? "var(--app-brand)" : "var(--app-border)",
-                color: searchOpen ? "var(--app-link)" : "var(--app-ink-2)",
-                background: searchOpen ? "var(--app-brand-tint-6)" : undefined,
-              }}
+              className={`${styles.tool} relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] disabled:cursor-wait disabled:opacity-60 lg:hidden`}
+              style={{ color: searchOpen ? "var(--app-link)" : "var(--app-ink)" }}
             >
-              <Search className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+              <Search className="h-[20px] w-[20px]" strokeWidth={1.75} aria-hidden />
+              {/* Top bar icons stay unboxed. An open tool is marked by a 2px
+                  rule under the glyph, the way the bottom bar marks its tab. */}
+              {searchOpen ? <span aria-hidden data-top-tool-rule className="pointer-events-none absolute inset-x-2.5 bottom-1 h-0.5" style={{ background: "var(--app-link)" }} /> : null}
             </button>
           )}
 
@@ -509,14 +542,11 @@ export default function TopBar() {
               aria-label="Open tools"
               aria-current={pathname === "/compass" ? "page" : undefined}
               title="Tools"
-              className={`${styles.tool} relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 hover:bg-[var(--app-bg-sunken)] sm:px-3`}
-              style={{
-                borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
-                color: pathname === "/compass" ? "var(--app-link)" : "var(--app-ink-2)",
-                background: pathname === "/compass" ? "var(--app-brand-tint-6)" : undefined,
-              }}
+              className={`${styles.tool} relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] px-2 sm:px-3`}
+              style={{ color: pathname === "/compass" ? "var(--app-link)" : "var(--app-ink)" }}
             >
-              <Compass className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
+              <Compass className="h-[20px] w-[20px] shrink-0" strokeWidth={1.75} aria-hidden />
+              {pathname === "/compass" ? <span aria-hidden data-top-tool-rule className="pointer-events-none absolute inset-x-2.5 bottom-1 h-0.5" style={{ background: "var(--app-link)" }} /> : null}
               {/* Keep the name beyond narrow phone widths so location,
                   appearance and Tools retain separate 44px touch targets. */}
               <span className="hidden text-[12px] font-semibold leading-none min-[460px]:inline sm:hidden">Tools</span>
@@ -583,9 +613,8 @@ function SearchOverlayFallback({
   });
   const dismiss = historyLayer.dismiss;
 
+  useScrollLock(true);
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     closeRef.current?.focus({ preventScroll: true });
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -594,10 +623,7 @@ function SearchOverlayFallback({
       dismiss();
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [dismiss]);
 
   return (
@@ -621,7 +647,7 @@ function SearchOverlayFallback({
           aria-hidden
         />
         <span
-          className="min-w-0 flex-1 font-serif text-[20px] font-semibold"
+          className="min-w-0 flex-1 font-sans text-[20px] font-bold tracking-[-0.02em]"
           style={{ color: "var(--app-ink)" }}
         >
           Ask or find
@@ -630,10 +656,10 @@ function SearchOverlayFallback({
           ref={closeRef}
           type="button"
           onClick={dismiss}
-          className="grid h-11 w-11 place-items-center rounded-full border"
+          className="grid h-11 w-11 place-items-center rounded-[var(--app-radius-sm)] border"
           style={{
-            borderColor: "var(--app-border)",
-            color: "var(--app-ink-2)",
+            borderColor: "var(--app-control-border)",
+            color: "var(--app-ink)",
           }}
           aria-label="Close search"
         >
@@ -644,12 +670,12 @@ function SearchOverlayFallback({
         <span className="sr-only">Loading search.</span>
         <div
           aria-hidden
-          className="h-12 w-full animate-pulse rounded-full"
+          className="h-12 w-full animate-pulse rounded-[var(--app-radius-md)]"
           style={{ background: "var(--app-bg-sunken)" }}
         />
         <div
           aria-hidden
-          className="mt-5 h-3 w-28 animate-pulse rounded-full"
+          className="mt-5 h-3 w-28 animate-pulse rounded-[var(--app-radius-sm)]"
           style={{ background: "var(--app-bg-sunken)" }}
         />
         <div

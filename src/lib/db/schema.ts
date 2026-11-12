@@ -490,8 +490,9 @@ export const push_subscriptions = pgTable(
  * BYPASSRLS server role touches it.
  */
 /**
- * beta_emails — the beta-access email list. One field on /beta, used to mint,
- * send, and manage a personal access code. RLS deny-all like every table
+ * beta_emails — the beta-access email list. It was collected by one field on
+ * the retired /beta page; no app surface writes or reads it now, and the rows
+ * stay for the owner to export. RLS deny-all like every table
  * (server role only). Deleting the row and its labeled beta code fulfills a
  * removal request.
  */

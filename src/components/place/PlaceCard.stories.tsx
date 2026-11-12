@@ -68,6 +68,144 @@ export const TileCategoryReadability: Story = {
   },
 };
 
+/** An open, dog-friendly place 480 m away. placeReasons offers "Open now",
+ * "0.3 mi away" and "Dog-friendly"; the card already prints the distance. */
+const openNearby: PlaceCardData = {
+  ...place, slug: "place-without-photography", name: "Example Taproom", category: "brewery",
+  address: "100 Example St, Frederick, MD", tags: ["dog-friendly"], distance_m: 480,
+  open_status: { state: "open", closesAt: "21:00", closingSoon: false }, google_photo_url: undefined,
+};
+
+export const EachFactOnce: Story = {
+  args: { place: openNearby },
+  parameters: {
+    a11y: { test: "error" },
+    docs: { description: { story: "The distance is printed in the card’s text line and never repeated as an “away” chip. On the narrow grid cell and the tile, a long lead fact truncates and the distance stays readable, on its own line when both do not fit. A row says dog-friendly with the chip or the paw, not both. The grid cell has no colored bottom rule." } },
+  },
+  render: (args) => <div style={{ display: "grid", gap: 12 }}>
+    {(["answer", "grid", "row"] as const).map((variant) => <div key={variant} data-variant={variant}><PlaceCard {...args} variant={variant} /></div>)}
+    <div data-variant="row-dog-chip"><PlaceCard {...args} variant="row" place={{ ...openNearby, open_status: { state: "unknown" } }} /></div>
+    {/* 112px: a narrow two-up grid cell, tight enough that the category and
+        the distance cannot share a line now that the cell has no padding. */}
+    <div data-variant="grid-narrow" style={{ width: 112 }}><PlaceCard {...args} variant="grid" /></div>
+    <div data-variant="tile-long-fact"><PlaceCard {...args} variant="tile" place={{ ...openNearby, known_for: ["The taproom pours barrel-aged sours and a long guest list."] }} /></div>
+  </div>,
+  play: async ({ canvasElement }) => {
+    const card = (variant: string) => canvasElement.querySelector<HTMLElement>(`[data-variant="${variant}"] article`)!;
+    const chips = (variant: string) => [...card(variant).querySelectorAll('[aria-label="Reasons this is shown"] > span:not([data-place-reason-separator])')].map((chip) => chip.textContent);
+    for (const variant of ["answer", "grid", "row", "row-dog-chip", "grid-narrow", "tile-long-fact"]) {
+      await expect(card(variant).textContent?.match(/0\.3 mi/g)).toHaveLength(1);
+      await expect(card(variant).textContent).not.toContain("away");
+    }
+    // textContent ignores clipping, so measure the painted glyphs: the distance
+    // must sit inside the paragraph that clips its line, and inside the card.
+    const glyphs = (node: Element) => {
+      const range = node.ownerDocument.createRange();
+      range.selectNodeContents(node);
+      return range.getBoundingClientRect();
+    };
+    const line = (variant: string) => {
+      const distance = card(variant).querySelector<HTMLElement>("[data-place-distance]")!;
+      const fact = distance.parentElement!.previousElementSibling as HTMLElement;
+      return { paragraph: distance.closest("p")!.getBoundingClientRect(), distance: glyphs(distance), fact, lead: glyphs(fact),
+        separator: distance.previousElementSibling!.getBoundingClientRect() };
+    };
+    for (const variant of ["grid", "grid-narrow", "tile-long-fact"]) {
+      const { paragraph, distance, lead } = line(variant);
+      const bounds = card(variant).getBoundingClientRect();
+      await expect(distance.width).toBeGreaterThan(0);
+      await expect(distance.left).toBeGreaterThanOrEqual(Math.max(paragraph.left, bounds.left) - 0.5);
+      await expect(distance.right).toBeLessThanOrEqual(Math.min(paragraph.right, bounds.right) + 0.5);
+      // The row is pulled left to hide a leading separator; the lead text is not.
+      await expect(Math.abs(lead.left - paragraph.left)).toBeLessThanOrEqual(0.5);
+    }
+    // Room for both: one line, with the separator painted between the two facts.
+    const wide = line("grid");
+    await expect(wide.distance.top).toBeLessThan(wide.lead.bottom - 1);
+    await expect(wide.separator.left).toBeGreaterThanOrEqual(wide.lead.right - 0.5);
+    // No room: the category keeps its line and the distance takes the next
+    // one, with the separator clipped away instead of leading that line.
+    const narrow = line("grid-narrow");
+    await expect(narrow.fact.scrollWidth).toBeLessThanOrEqual(narrow.fact.clientWidth);
+    await expect(narrow.distance.top).toBeGreaterThanOrEqual(narrow.lead.bottom - 1);
+    await expect(narrow.separator.right).toBeLessThanOrEqual(narrow.paragraph.left + 0.5);
+    // A long known-for line is the part that truncates on a tile.
+    const tile = line("tile-long-fact");
+    await expect(tile.fact.scrollWidth).toBeGreaterThan(tile.fact.clientWidth);
+    // The answer card states open hours in its status line, so its only chip is new information.
+    await expect(chips("answer")).toEqual(["Dog-friendly"]);
+    await expect(within(card("answer")).getByText(/^Open/)).toBeVisible();
+    // Row and grid keep the open chip (their only open signal) and leave the distance seat empty.
+    await expect(chips("grid")).toEqual(["Open now"]);
+    await expect(chips("row")).toEqual(["Open now"]);
+    await expect(card("row").querySelector('svg[aria-label="Dog-friendly"]')).not.toBeNull();
+    await expect(chips("row-dog-chip")).toEqual(["Dog-friendly"]);
+    await expect(card("row-dog-chip").querySelector('svg[aria-label="Dog-friendly"]')).toBeNull();
+    // No colored rule closes the grid cell: its last element is the content block.
+    const face = card("grid").querySelector<HTMLElement>("[data-press-face]")!;
+    await expect(face.lastElementChild?.getAttribute("aria-hidden")).toBeNull();
+    for (const variant of ["answer", "grid", "row", "row-dog-chip", "grid-narrow", "tile-long-fact"]) {
+      await expect(card(variant).scrollWidth).toBeLessThanOrEqual(card(variant).clientWidth);
+    }
+  },
+};
+
+/** MEDIA IN ROWS: a row shows a thumbnail only for a real photo. A row with
+ * no photo keeps the same slot width, so titles align down a mixed list, and
+ * shows the bare category glyph in ink-3 with no tile, tint, border or
+ * corner. Its reasons are one line of plain sentence-case text, not boxed
+ * chips. */
+export const RowsWithAndWithoutPhoto: Story = {
+  args: { variant: "row", place: openNearby },
+  parameters: { a11y: { test: "error" } },
+  render: (args) => <div>
+    <div data-variant="row-photo"><PlaceCard {...args} place={place} neutral /></div>
+    <div data-variant="row-glyph"><PlaceCard {...args} /></div>
+  </div>,
+  play: async ({ canvasElement }) => {
+    const view = canvasElement.ownerDocument.defaultView!;
+    const row = (variant: string) => canvasElement.querySelector<HTMLElement>(`[data-variant="${variant}"] article`)!;
+    await expect(row("row-photo").querySelector("[data-place-row-media='photo']")).not.toBeNull();
+    const slot = row("row-glyph").querySelector<HTMLElement>("[data-place-row-media='glyph']")!;
+    const photoSlot = row("row-photo").querySelector<HTMLElement>("[data-place-row-media='photo']")!;
+    await expect(Math.abs(slot.getBoundingClientRect().width - photoSlot.getBoundingClientRect().width)).toBeLessThanOrEqual(0.5);
+    // Titles start at the same x down the list.
+    const titleLeft = (variant: string) => row(variant).querySelector("h3")!.getBoundingClientRect().left;
+    await expect(Math.abs(titleLeft("row-photo") - titleLeft("row-glyph"))).toBeLessThanOrEqual(0.5);
+    // The glyph has no tile: no fill, border, ring or corner on it or its slot.
+    const glyph = slot.querySelector<HTMLElement>("[data-place-row-glyph]")!;
+    for (const node of [slot, glyph]) {
+      const style = view.getComputedStyle(node);
+      await expect(style.backgroundColor).toBe("rgba(0, 0, 0, 0)");
+      await expect(style.backgroundImage).toBe("none");
+      await expect(style.borderTopWidth).toBe("0px");
+      await expect(style.boxShadow).toBe("none");
+      await expect(style.borderTopLeftRadius).toBe("0px");
+    }
+    // About 24px, aligned with the title's first line.
+    const glyphBox = glyph.getBoundingClientRect();
+    await expect(Math.round(glyphBox.height)).toBe(24);
+    const title = row("row-glyph").querySelector("h3")!.getBoundingClientRect();
+    await expect(Math.abs(glyphBox.top - title.top)).toBeLessThanOrEqual(4);
+    // Reasons are one line of plain sentence-case text. Only the first label
+    // carries a semantic color; any later label reads in the line's muted ink.
+    const labels = [...row("row-glyph").querySelectorAll<HTMLElement>("[data-place-reason-label]")];
+    await expect(labels.length).toBeGreaterThan(0);
+    const line = labels[0].closest("p")!;
+    for (const label of labels) {
+      await expect(label.closest("p")).toBe(line);
+      const style = view.getComputedStyle(label);
+      await expect(style.backgroundColor).toBe("rgba(0, 0, 0, 0)");
+      await expect(style.boxShadow).toBe("none");
+      await expect(style.borderTopLeftRadius).toBe("0px");
+      await expect(style.textTransform).toBe("none");
+    }
+    for (const label of labels.slice(1)) {
+      await expect(view.getComputedStyle(label).color).toBe(view.getComputedStyle(line).color);
+    }
+  },
+};
+
 export const PhotographLedGrid: Story = { args: { variant: "grid" } };
 export const MapRow: Story = { args: { variant: "row", neutral: true } };
 export const WithoutPhotography: Story = { args: { place: { ...place, slug: "place-without-photography", google_photo_url: undefined } } };

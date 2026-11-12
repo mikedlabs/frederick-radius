@@ -11,7 +11,6 @@ import {
 import { openTableSearchUrl } from "@/lib/ask/reservations";
 import { businessInfoCommerceLinks } from "@/lib/loaders/businessInfo";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import PageBloom from "@/components/ui/PageBloom";
 import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import PlaceStatus from "@/components/place/PlaceStatus";
 
@@ -52,7 +51,6 @@ export default async function ReservePage() {
 
   return (
     <div className="relative mx-auto max-w-md space-y-6 py-6">
-      <PageBloom variant="warm-cool" />
 
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link

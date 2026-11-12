@@ -1,7 +1,7 @@
 .surface {
   gap: 10px;
   border: 1px solid var(--app-border);
-  border-radius: 24px;
+  border-radius: var(--app-radius-lg);
   padding: 14px;
   background: var(--app-bg-elevated-solid);
   box-shadow: var(--app-shadow-3);
@@ -18,7 +18,7 @@
   height: 128px;
   flex-basis: 104px;
   border: 0;
-  border-radius: 16px;
+  border-radius: var(--app-radius-md);
   box-shadow: none;
 }
 
@@ -59,7 +59,7 @@
 
 .surface :global(.map-peek-around) {
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--app-radius-md);
 }
 
 .surface :global(.map-peek-acts) {
@@ -76,24 +76,26 @@
 .surface :global(.map-peek-act) {
   min-height: 48px;
   justify-content: center;
-  border-color: transparent;
-  border-radius: 14px;
+  border-color: var(--app-control-border);
+  border-radius: var(--app-radius-md);
   padding-inline: 12px;
-  background: var(--app-bg-sunken);
+  background: var(--app-bg-elevated-solid);
   color: var(--app-ink);
   font-size: 13px;
   font-weight: 650;
 }
 
+/* Saved reads like SaveButton: coral text on the control ground. */
 .surface :global(.map-peek-act[data-on]) {
   border-color: var(--app-control-border);
-  background: var(--app-bg-sunken);
-  color: var(--app-ink);
+  background: var(--app-bg-elevated-solid);
+  color: var(--app-link);
 }
 
 .surface :global(.map-peek-act-go) {
-  border-color: var(--app-brand);
-  background: var(--app-brand);
+  /* White text on coral sits on the AA-safe press shade. */
+  border-color: var(--app-brand-press);
+  background: var(--app-brand-press);
   background-image: none;
   color: var(--app-on-brand);
   box-shadow: none;

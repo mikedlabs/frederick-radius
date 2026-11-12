@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Plane } from "lucide-react";
-import PageBloom from "@/components/ui/PageBloom";
 import PlanesOverhead from "@/components/overhead/PlanesOverhead";
 
 export const metadata: Metadata = {
@@ -19,7 +18,6 @@ export const metadata: Metadata = {
 export default function OverheadPage() {
   return (
     <div className="relative space-y-5">
-      <PageBloom variant="cool" />
 
       <header className="pt-0.5">
         <div aria-hidden className="h-px" style={{ background: "linear-gradient(90deg, transparent, var(--app-border) 14%, var(--app-border) 86%, transparent)" }} />

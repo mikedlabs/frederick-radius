@@ -3,7 +3,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import PageBloom from "@/components/ui/PageBloom";
 import { LETTERS, PUBLISHED_LETTERS, letterBySlug } from "@/data/dear-frederick";
 
 // A closed, curated set: prebuild the published letters and 404 any other
@@ -50,7 +49,6 @@ export default async function LetterPage({ params }: { params: Promise<{ slug: s
 
   return (
     <article className="relative space-y-6">
-      <PageBloom variant="warm-cool" />
 
       <Link
         href="/dear-frederick"

@@ -7,6 +7,7 @@ import type {
   GooglePlaceSummary,
 } from "@/lib/integrations/google-places";
 import { GoogleReviewAttribution } from "@/components/place/GoogleAttribution";
+import { PLACE_SECTION_LABEL_CLASS, PlaceDotList } from "@/components/place/PlaceSectionLabel";
 
 export type LiveGooglePlaceData = {
   editorial_summary?: string;
@@ -104,15 +105,13 @@ export function GooglePlaceContextCard({
   const reportUrl = safeGoogleUrl(summary?.report_uri);
 
   return (
-    <section
-      aria-labelledby="google-place-context-heading"
-      className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
-      style={{ borderColor: "var(--app-border)" }}
-    >
+    // PLAIN TOOL: the Google attribution in the heading row, not a box, keeps
+    // these facts visibly apart from Radius copy.
+    <section aria-labelledby="google-place-context-heading">
       <div className="flex items-baseline justify-between gap-3">
         <h3
           id="google-place-context-heading"
-          className="text-[11px] font-bold uppercase tracking-[0.12em]"
+          className={PLACE_SECTION_LABEL_CLASS}
           style={{ color: "var(--app-ink-3)" }}
         >
           Current place details
@@ -137,7 +136,7 @@ export function GooglePlaceContextCard({
 
       {summary ? (
         <div className="mt-2.5">
-          <p className="text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             {summary.text}
           </p>
           <p className="mt-1 text-xs" style={{ color: "#5e5e5e" }}>
@@ -167,28 +166,22 @@ export function GooglePlaceContextCard({
           </div>
         </div>
       ) : editorial ? (
-        <p className="mt-2.5 text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+        <p className="mt-2.5 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           {editorial}
         </p>
       ) : null}
 
       {features.length > 0 && (
-        <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Place features from Google Maps">
-          {features.map((feature) => (
-            <li
-              key={feature}
-              className="rounded-full border px-2.5 py-1 text-xs"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-            >
-              {FEATURE_LABELS[feature]}
-            </li>
-          ))}
-        </ul>
+        <PlaceDotList
+          className="mt-3"
+          label="Place features from Google Maps"
+          items={features.map((feature) => FEATURE_LABELS[feature])}
+        />
       )}
 
       {review && (
         <details className="mt-3 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
-          <summary className="cursor-pointer text-xs font-semibold" style={{ color: "var(--app-ink-2)" }}>
+          <summary className="flex min-h-11 cursor-pointer items-center text-[14px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
             Read one Google Maps review
           </summary>
           <figure className="mt-2">
@@ -238,8 +231,8 @@ export default function LiveGooglePlaceContext({
             })
             .catch(() => setStatus("error"));
         }}
-        className="tap-44-y inline-flex items-center gap-1.5 text-sm font-semibold disabled:opacity-60"
-        style={{ color: "var(--app-brand-press)" }}
+        className="tap-44-y inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold disabled:opacity-60"
+        style={{ color: "var(--app-link)" }}
       >
         {status === "loading" ? "Checking current details…" : "Check current Google details"}
         <ExternalLink className="h-3.5 w-3.5" aria-hidden />

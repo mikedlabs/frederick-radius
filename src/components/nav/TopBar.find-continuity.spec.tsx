@@ -200,6 +200,8 @@ describe("Find continuity through the real lazy header and overlay", () => {
     expect(input().value).toBe("coffee");
     expect(container.textContent).not.toContain("Earlier fixture result");
     expect(container.textContent).toContain("Searching");
+    // Pending work holds the panel with placeholder rows, never a previous result.
+    expect(container.querySelector("[data-search-loading]")?.children).toHaveLength(4);
     await settle();
     expect(container.textContent).toContain("Updated fixture result");
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -260,6 +262,44 @@ describe("Find continuity through the real lazy header and overlay", () => {
     await open();
     expect(input().value).toBe("");
     expect(container.textContent).toContain("Useful now");
+  });
+
+  it("opens on the shortcuts, leads with submitted phrases only when they exist and holds the page still", async () => {
+    const position = (words: string) => {
+      const index = (container.textContent ?? "").indexOf(words);
+      if (index < 0) throw new Error(`Missing text: ${words}`);
+      return index;
+    };
+    await open();
+    // An empty history keeps its honest sentence but never takes the lead.
+    expect(position("Useful now")).toBeLessThan(position("Recent searches"));
+    expect(position("Recent searches")).toBeLessThan(position("No recent searches on this device."));
+    expect([...container.querySelectorAll('[role="dialog"] ul a')].map((link) => link.getAttribute("href")))
+      .toEqual(["/open-now", "/events?lens=today", "/amenities", "/pulse"]);
+    // The document scrolls on <html>, so that is the element Find locks.
+    expect(document.documentElement.style.overflowY).toBe("hidden");
+    expect(document.body.style.overflow).toBe("");
+    await close();
+    expect(document.documentElement.style.overflowY).toBe("");
+
+    window.localStorage.setItem("fr:recent-search:v2", JSON.stringify({ source: "submitted-on-device", queries: ["coffee"] }));
+    await open();
+    expect(button("coffee")).toBeDefined();
+    expect(position("Recent searches")).toBeLessThan(position("Useful now"));
+  });
+
+  it("wraps Tab between the real stops and never onto the backdrop", async () => {
+    await open();
+    const press = (shiftKey: boolean) => act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey, bubbles: true, cancelable: true }));
+    });
+    const lastShortcut = container.querySelector<HTMLAnchorElement>('[role="dialog"] ul a[href="/pulse"]')!;
+    lastShortcut.focus();
+    await press(false);
+    expect(document.activeElement).toBe(button("Close Find"));
+    expect(button("Close search").tabIndex).toBe(-1);
+    await press(true);
+    expect(document.activeElement).toBe(lastShortcut);
   });
 
   it("repeats a recent phrase and then resumes it without persisting result data", async () => {
@@ -339,6 +379,9 @@ describe("Find continuity through the real lazy header and overlay", () => {
     expect(container.textContent).toContain("Recent searches are unavailable on this device.");
     expect(container.textContent).not.toContain("No recent searches on this device.");
     expect(container.textContent).not.toContain("private previously submitted phrase");
+    // History that cannot be read has nothing to repeat, so the shortcuts lead.
+    expect(container.textContent!.indexOf("Useful now"))
+      .toBeLessThan(container.textContent!.indexOf("Recent searches are unavailable on this device."));
     expect([...container.querySelectorAll("button")].some((node) => node.getAttribute("aria-label") === "Clear recent searches")).toBe(false);
   });
 

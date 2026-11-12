@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import manifest from "@/app/manifest";
-import { TABS, tabIndexForPath } from "./tabs";
+import { TABS, shouldPrefetchGlobalNavigation, tabIndexForPath } from "./tabs";
 
 describe("Ask Radius navigation context", () => {
   it("treats Ask as a focused workspace without adding another primary tab", () => {
@@ -41,9 +41,8 @@ describe("Ask Radius navigation context", () => {
     expect(tabIndexForPath("/live-music")).toBe(2);
   });
 
-  it("keeps both Fair Day entrances owned by Today without adding a tab", () => {
-    expect(tabIndexForPath("/fair")).toBe(0);
-    expect(tabIndexForPath("/moments/great-frederick-fair-2026")).toBe(0);
+  it("leaves the retired Fair address outside every primary tab", () => {
+    expect(tabIndexForPath("/fair")).toBe(-1);
     expect(TABS).toHaveLength(4);
   });
 
@@ -56,5 +55,22 @@ describe("Ask Radius navigation context", () => {
     expect(tabIndexForPath("/sports")).toBe(2);
     expect(tabIndexForPath("/settings")).toBe(3);
     expect(tabIndexForPath("/search")).toBe(-1);
+  });
+});
+
+describe("primary tab prefetch policy", () => {
+  it.each([
+    "/events/evening-concert", "/events/evening-concert/",
+    "/places/brewers-alley-frederick", "/places/brewers-alley-frederick/",
+  ])("defers automatic tab loads on the canonical detail page %s", (pathname) => {
+    expect(shouldPrefetchGlobalNavigation(pathname)).toBe(false);
+  });
+
+  it.each([
+    "/events", "/events/", "/events/calendar", "/events/calendar/",
+    "/places", "/places/", "/today", "/my-radius", "/fair",
+    "/events/example/related", "/places/example/photos", "/moments/in-the-street-2026",
+  ])("preserves automatic tab loading on the non-detail route %s", (pathname) => {
+    expect(shouldPrefetchGlobalNavigation(pathname)).toBe(true);
   });
 });

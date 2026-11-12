@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { LayoutGrid, List } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import PlaceCard from "./PlaceCard";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import FilterChip from "@/components/ui/FilterChip";
@@ -254,55 +253,41 @@ export default function PlaceList({
         // Honest empty state: facets narrowed the set to nothing. Without this
         // the grid/list below render blank under a "0 of N" count.
         <p
-          className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+          className="border-y py-6 text-center text-[15px]"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
         >
           No places match those filters. Tap a filter again to widen the list.
         </p>
       ) : layout === "grid" ? (
-        <motion.div layout className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
-          <AnimatePresence>
-            {visiblePlaces.map((p) => (
-              <motion.div
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                key={p.slug}
-              >
-                <PlaceCard place={p} variant="grid" />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
+        // Plain elements on purpose. A sort, a facet or "Show more" is a tap
+        // people repeat, so the new set appears at once instead of fading
+        // and reflowing every card.
+        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
+          {visiblePlaces.map((p) => (
+            <div key={p.slug}>
+              <PlaceCard place={p} variant="grid" />
+            </div>
+          ))}
+        </div>
       ) : (
-        <motion.ul layout className="space-y-2" aria-busy={!mounted ? "true" : undefined}>
-          <AnimatePresence>
-            {visiblePlaces.map((p) => (
-              <motion.li
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                key={p.slug}
-              >
-                {/* compact=true drops the second metadata row (status +
-                    rating + price) so the row reads tighter — list mode
-                    is for scanning, not full-card detail. */}
-                <PlaceCard place={p} variant="row" compact />
-              </motion.li>
-            ))}
-          </AnimatePresence>
-        </motion.ul>
+        // Ruled rows: each row ends in a hairline and the list starts with one.
+        <ul className="border-t" style={{ borderColor: "var(--app-border)" }} aria-busy={!mounted ? "true" : undefined}>
+          {visiblePlaces.map((p) => (
+            <li key={p.slug}>
+              {/* compact=true drops the second metadata row (status +
+                  rating + price) so the row reads tighter — list mode
+                  is for scanning, not full-card detail. */}
+              <PlaceCard place={p} variant="row" compact />
+            </li>
+          ))}
+        </ul>
       )}
       {visibleCount < filteredPlaces.length && (
         <button
           type="button"
           onClick={() => setVisibleCount((count) => count + safePageSize)}
           className="tap-44 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-sm)] border px-4 text-[12px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+          style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
         >
           Show {Math.min(safePageSize, filteredPlaces.length - visibleCount)} more
         </button>

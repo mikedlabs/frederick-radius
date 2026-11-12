@@ -151,9 +151,13 @@ export const UnknownPhotoAt320: Story = {
     const surface = canvasElement.querySelector<HTMLElement>("[data-map-result-surface]")!;
     await canvasElement.ownerDocument.fonts.ready;
     await waitFor(() => expect(new DOMMatrix(getComputedStyle(surface).transform).isIdentity).toBe(true));
+    // No photograph: a 44px target holding only the plain category glyph,
+    // with no tile, so the name column takes the rest of the width.
     const frame = canvasElement.querySelector<HTMLElement>(".map-peek-visual")!;
-    await expect(frame.getBoundingClientRect().width).toBe(64);
-    await expect(frame.getBoundingClientRect().height).toBe(64);
+    await expect(frame.getBoundingClientRect().width).toBe(44);
+    await expect(frame.getBoundingClientRect().height).toBe(44);
+    await expect(getComputedStyle(frame).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    await expect(frame.querySelector(".map-peek-category-mark > svg")).not.toBeNull();
     await expect(canvas.getByText("Hours not confirmed")).toBeVisible();
     await expect(canvasElement.querySelector(".map-peek-source-credit")).toBeNull();
     for (const target of [canvas.getByRole("button", { name: /^Details$/ }), canvas.getByRole("link", { name: /^Directions$/ }), canvas.getByRole("button", { name: `Close ${args.place.name}` })]) await reachable(target);

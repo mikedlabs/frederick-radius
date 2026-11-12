@@ -10,7 +10,6 @@ import {
   validateDataRelease,
 } from "./lib/data-release.mjs";
 import { hostedBuildCredentialErrors } from "./lib/hosted-build-credentials.mjs";
-import { buildFairPhotoViewer } from "./build-fair-photo-viewer.mjs";
 import { validateBuiltCssContract } from "./lib/built-css-contract.mjs";
 
 const root = repositoryRootFromModule();
@@ -30,7 +29,6 @@ if (result.errors.length > 0 || !result.dataVersion) {
 }
 
 console.log(`build-application: using promoted data ${result.dataVersion}`);
-await buildFairPhotoViewer();
 
 const nextBin = resolve(root, "node_modules/next/dist/bin/next");
 const networkGuard = pathToFileURL(

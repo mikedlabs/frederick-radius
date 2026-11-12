@@ -4,29 +4,43 @@
   min-width: 0;
   container-type: inline-size;
   scroll-margin-top: calc(var(--app-topbar-h, 56px) + 12px);
+  /* Shared row geometry. The glyph centers on the name's first line and the
+     actions align past the media slot, so both read these values instead of
+     repeating them. */
+  --saved-media-size: 72px;
+  --saved-glyph-size: 24px;
+  --saved-name-size: 1.0625rem;
+  --saved-name-leading: 1.25;
 }
 
+/* PLAIN TOOL: saved places are ruled rows, the same shape as the place rows
+   above them. A 72px media slot holds a real photograph, or the category
+   glyph alone in quiet ink, so names align down the list. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--app-space-3);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
 }
 
 .card {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
-  background: var(--app-bg-elevated-solid);
+  overflow: visible;
+  padding-block: var(--app-space-3) 0;
+  border: 0;
+  border-top: 1px solid var(--app-border);
+  border-radius: 0;
+  background: transparent;
 }
 
 .destination {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: var(--saved-media-size) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--app-space-3);
   min-width: 0;
+  min-height: 44px;
   color: var(--app-ink);
 }
 
@@ -38,10 +52,14 @@
 
 .media {
   display: grid;
+  width: var(--saved-media-size);
   min-width: 0;
-  aspect-ratio: 4 / 3;
   overflow: hidden;
-  background: var(--app-bg-sunken);
+}
+
+.media[data-today-saved-media="photo"] {
+  height: var(--saved-media-size);
+  border-radius: var(--app-radius-sm);
 }
 
 .media > :global([data-place-card-photo]) {
@@ -50,43 +68,49 @@
   aspect-ratio: auto;
 }
 
-.media > :global([data-place-category-art]) {
-  min-height: 100%;
+/* No tile, border or tint: the glyph sits on the name's first line. */
+.glyph {
+  display: block;
+  width: var(--saved-glyph-size);
+  height: var(--saved-glyph-size);
+  margin-top: calc((var(--saved-name-size) * var(--saved-name-leading) - var(--saved-glyph-size)) / 2);
+  color: var(--app-ink-3);
 }
 
 .copy {
   display: grid;
   align-content: start;
-  gap: 5px;
+  gap: 2px;
   min-width: 0;
-  padding: 12px;
+  padding: 0;
   overflow-wrap: anywhere;
 }
 
 .copy h3 {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: -0.02em;
+  font-size: var(--saved-name-size);
+  font-weight: 600;
+  line-height: var(--saved-name-leading);
+  letter-spacing: -0.01em;
 }
 
 .town,
 .hours {
   color: var(--app-ink-2);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1.4;
 }
 
+/* The actions line up under the name, past the media slot. */
 .actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0 6px;
-  padding: 0 10px;
-  border-top: 1px solid var(--app-border);
-  font-size: 0.75rem;
+  justify-content: flex-start;
+  gap: 0 var(--app-space-5);
+  padding: 0 0 0 calc(var(--saved-media-size) + var(--app-space-3));
+  border-top: 0;
+  font-size: 0.875rem;
   line-height: 1.4;
 }
 
@@ -118,12 +142,18 @@
   text-decoration: underline;
 }
 
+@container (min-width: 36rem) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--app-space-6); }
+}
+
+/* Enlarged text: the media slot sits above the name, so the name and the
+   actions keep the full row. */
 @container (max-width: 17rem) {
-  .grid { grid-template-columns: minmax(0, 1fr); }
-  .media { aspect-ratio: 16 / 9; }
+  .destination { grid-template-columns: minmax(0, 1fr); }
+  .actions { padding-left: 0; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .destination { transition: background var(--app-dur-fast) var(--app-ease-out); }
-  .destination:active { background: var(--app-bg-sunken); }
+  .destination { transition: opacity var(--app-dur-fast) var(--app-ease-out); }
+  .destination:active { opacity: 0.72; }
 }

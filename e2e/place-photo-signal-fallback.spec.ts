@@ -77,8 +77,9 @@ test("a failed photo signal collapses its place face and keeps the real listing 
   await browse.getByRole("button", { name: /^Sort: / }).click();
   await browse.getByRole("group", { name: "Sort", exact: true }).getByRole("button", { name: /^A→Z/ }).click();
   await expect(browse.getByRole("button", { name: "Sort: A→Z", exact: true })).toBeVisible();
-  // Wait for the old ranked page's exit animation, then traverse only real
-  // bounded pagination controls; no fixture can inject this target into the list.
+  // The sorted page replaces the ranked one in a single render, with no exit
+  // animation holding old cards in the list. Traverse only real bounded
+  // pagination controls; no fixture can inject this target into the list.
   await expect(browse.locator("article")).toHaveCount(24);
   // Choose the large photo face before revealing later alphabetical pages.
   await browse.getByRole("radio", { name: "Grid", exact: true }).click();

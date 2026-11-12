@@ -24,7 +24,7 @@
  */
 import { eventDisplayTitle } from "@/lib/events/display-title";
 import { useRef, useState } from "react";
-import { toast } from "sonner";
+import { notifyError, notifyRemoved } from "@/lib/feedback/notify";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import CategoryIcon from "@/components/place/CategoryIcon";
@@ -35,6 +35,7 @@ import { googleMapsDirections } from "@/lib/integrations/deeplinks";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 import { savedDateLabel } from "@/components/saved/walletFacts";
+import { walletFocusAfterRemoval } from "@/components/saved/SavedWallet";
 import { useToggleSave, savedChangeDescription } from "@/hooks/useSaved";
 import { eventLipFact, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
 import { statusLabel } from "@/lib/event-status";
@@ -60,12 +61,17 @@ function eventMotifClass(category: string): string {
 
 function Card({
   event,
+  savedId,
   open,
   savedAt,
   now,
   onToggle,
 }: {
   event: Event;
+  /** The id of the saved row this card stands for. A row saved under an
+   *  older event slug resolves to the renamed event, so this can differ
+   *  from `event.slug`. Removal and Undo must target the row itself. */
+  savedId: string;
   open: boolean;
   savedAt?: string;
   now: Date;
@@ -76,9 +82,9 @@ function Card({
   const kind = cat?.name ?? "Event";
   const fact = eventLipFact(event, now);
   // Un-save from the card itself, the same device-local toggle the save
-  // side wrote with. One tap, no confirm: events are device-local by
-  // contract and re-saving costs one tap on the event page.
-  const toggleSave = useToggleSave("event", event.slug);
+  // side wrote with. One tap, no confirm: the toast that names the event
+  // carries Undo.
+  const toggleSave = useToggleSave("event", savedId);
   const removingRef = useRef(false);
   const [removing, setRemoving] = useState(false);
   // The app already pushes a cancellation notice to this reader's phone, and
@@ -109,6 +115,16 @@ function Card({
     track(open ? "saved_event_wallet_collapse" : "saved_event_wallet_raise", {
       category: event.category,
     });
+  }
+
+  // Undo usually runs after this card has left the deck. The saved store is
+  // module state, so the same toggle still restores the event from here.
+  async function restore() {
+    try {
+      if (!await toggleSave(true)) throw new Error("Restore not confirmed");
+    } catch (error) {
+      notifyError({ title: "Could not undo this change", description: savedChangeDescription(error), onRetry: () => void restore() });
+    }
   }
 
   return (
@@ -240,15 +256,18 @@ function Card({
           )}
           <button
             type="button"
-            onClick={async () => {
+            onClick={async (click) => {
               if (removingRef.current) return;
               removingRef.current = true;
+              const moveFocus = walletFocusAfterRemoval(click.currentTarget);
               setRemoving(true);
               try {
                 if (await toggleSave(false)) throw new Error("Removal not confirmed");
                 haptic("light");
+                notifyRemoved({ label: eventDisplayTitle(event), onUndo: () => void restore(), item: { type: "event", id: savedId } });
+                moveFocus();
               } catch (error) {
-                toast.error("Could not remove from Saved", { description: savedChangeDescription(error) });
+                notifyError({ title: "Could not remove from Saved", description: savedChangeDescription(error) });
               } finally {
                 setRemoving(false);
                 removingRef.current = false;
@@ -271,14 +290,18 @@ function Card({
 export default function SavedEventWallet({
   events,
   savedAt,
+  savedIds,
   now,
   startRaised = false, // decks always start fully closed unless a caller opts in
   openSlug: controlledSlug,
   onOpenSlug,
 }: {
   events: Event[];
-  /** saved_at ISO per event slug, for the stub ledger's Saved cell. */
+  /** saved_at ISO per saved row id, for the stub ledger's Saved cell. */
   savedAt?: Record<string, string>;
+  /** The saved row id per event slug, when a row saved under an older slug
+   *  resolved to this event. Missing entries mean the row id is the slug. */
+  savedIds?: Record<string, string>;
   /** One render-stable "now" from the page, for the live-now gate. */
   now: Date;
   /** Whether the top card starts raised (true for the active deck, false for
@@ -302,6 +325,7 @@ export default function SavedEventWallet({
     <div className="sw-stack" role="list" aria-label="Saved events, as a card wallet">
       {events.map((e, i) => {
         const open = openValid ? e.slug === openSlug : startRaised && i === 0;
+        const savedId = savedIds?.[e.slug] ?? e.slug;
         return (
           // The SLOT carries the stack geometry (the -124px tuck + raise); it
           // must live on this wrapper, not .sw-card (the shipped first-child
@@ -314,8 +338,9 @@ export default function SavedEventWallet({
           >
             <Card
               event={e}
+              savedId={savedId}
               open={open}
-              savedAt={savedAt?.[e.slug]}
+              savedAt={savedAt?.[savedId]}
               now={now}
               onToggle={() => setOpenSlug(open ? null : e.slug)}
             />

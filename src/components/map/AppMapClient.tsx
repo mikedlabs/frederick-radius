@@ -187,10 +187,10 @@ export function MapLoadFailure({
         </p>
         <button
           type="button"
-          className="tap-44 mt-4 min-h-11 rounded-full border px-4 text-sm font-semibold"
+          className="tap-44 mt-4 min-h-11 rounded-[var(--app-radius-md)] border px-4 text-sm font-semibold"
           style={{
-            borderColor: "var(--app-border-strong)",
-            background: "var(--app-bg-elevated)",
+            borderColor: "var(--app-control-border)",
+            background: "var(--app-bg-elevated-solid)",
             color: "var(--app-ink)",
           }}
           onClick={() => window.location.reload()}

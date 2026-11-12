@@ -52,7 +52,10 @@ const usablePreview: NonNullable<Story["play"]> = async ({ canvasElement, args }
   } else {
     await expect(card.querySelector("[data-place-card-photo]")).toBeNull();
     await expect(card.querySelector(".place-card-photo-credit")).toBeNull();
-    await expect(card.querySelector('[data-place-category-art][aria-hidden="true"]')).not.toBeNull();
+    // A row without a real photograph is type alone: no category tile, gray
+    // box or other stand-in for a picture.
+    await expect(card.querySelector("[data-place-category-art]")).toBeNull();
+    await expect(card.querySelector("img, picture, figure")).toBeNull();
   }
 };
 
@@ -64,20 +67,22 @@ export const ShortNameWithoutPhoto: Story = {
     await usablePreview(context);
     const card = context.canvasElement.querySelector<HTMLElement>("[data-today-place-preview]")!;
     await expect(card.getAttribute("data-has-photo")).toBe("false");
-    // A short factual recommendation keeps its decorative category identity
-    // beside the facts and all three actions within one compact card.
+    // A short factual recommendation without a photograph is a compact row
+    // of type: the facts span the full row and all three actions follow.
     const bounds = card.getBoundingClientRect();
     await expect(bounds.width).toBeGreaterThanOrEqual(350);
     await expect(bounds.width).toBeLessThanOrEqual(360);
     const height = bounds.height;
     await expect(height).toBeGreaterThanOrEqual(140);
     await expect(height).toBeLessThanOrEqual(240);
-    const art = card.querySelector<HTMLElement>("[data-place-category-art]")!;
-    await expect(art.getBoundingClientRect().width).toBeLessThan(bounds.width * 0.35);
+    await expect(card.querySelector("[data-place-category-art]")).toBeNull();
+    const facts = card.querySelector<HTMLElement>("[data-today-pick-name]")!.parentElement!.getBoundingClientRect();
+    await expect(Math.abs(facts.left - bounds.left)).toBeLessThanOrEqual(1);
+    await expect(Math.abs(facts.right - bounds.right)).toBeLessThanOrEqual(1);
     const name = card.querySelector<HTMLElement>("[data-today-pick-name]")!;
     const nameSize = parseFloat(getComputedStyle(name).fontSize);
-    await expect(nameSize).toBeGreaterThanOrEqual(22);
-    await expect(nameSize).toBeLessThanOrEqual(26);
+    await expect(nameSize).toBeGreaterThanOrEqual(20);
+    await expect(nameSize).toBeLessThanOrEqual(22);
     const fact = card.querySelector<HTMLElement>("[data-today-pick-fact]")!;
     const location = card.querySelector<HTMLElement>("[data-today-pick-location]")!;
     await expect(location.getBoundingClientRect().top).toBeGreaterThanOrEqual(fact.getBoundingClientRect().bottom - 1);
@@ -101,9 +106,10 @@ export const EnlargedText320: Story = {
     const name = context.canvasElement.querySelector<HTMLElement>("[data-today-pick-name]")!;
     const fact = context.canvasElement.querySelector<HTMLElement>("[data-today-pick-fact]")!;
     await expect(parseFloat(getComputedStyle(document.documentElement).fontSize)).toBe(32);
-    await expect(parseFloat(getComputedStyle(name).fontSize)).toBeGreaterThanOrEqual(44);
-    await expect(parseFloat(getComputedStyle(name).fontSize)).toBeLessThanOrEqual(52);
-    await expect(parseFloat(getComputedStyle(fact).fontSize)).toBeGreaterThanOrEqual(30);
+    await expect(parseFloat(getComputedStyle(name).fontSize)).toBeGreaterThanOrEqual(40);
+    await expect(parseFloat(getComputedStyle(name).fontSize)).toBeLessThanOrEqual(44);
+    // The 14px meta line doubles with the root as well.
+    await expect(parseFloat(getComputedStyle(fact).fontSize)).toBeGreaterThanOrEqual(28);
   },
 };
 export const OwnedReferenceNeedsAppearanceReview: Story = {

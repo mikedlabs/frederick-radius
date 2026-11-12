@@ -61,6 +61,73 @@ describe("bounded first-party source adapter", () => {
     const conflict = closures.html.replace('datetime="2026-10-12"', 'datetime="2026-10-13"');
     expect(() => parseFcplOfficialHours(weekly, { ...closures, html: conflict }, now)).toThrow(/not covered/);
   });
+  describe("system-wide holiday banner", () => {
+    // The live wording carried by both FCPL pages since 2026-11-09.
+    const live = readFileSync("tests/fixtures/fcpl-veterans-day-notice-nov2026.html", "utf8").trim();
+    const staffDay = "<p>Frederick County Public Libraries will be closed on Monday, October 12, 2026 for Staff Development Day.</p>";
+    const withBanner = (paragraph: string) => {
+      expect(weekly.html).toContain(staffDay); expect(closures.html).toContain(staffDay);
+      return [{ ...weekly, html: weekly.html.replace(staffDay, paragraph) }, { ...closures, html: closures.html.replace(staffDay, paragraph) }] as const;
+    };
+    it.each([
+      ["the live straight apostrophe", live],
+      ["a right single quotation mark", live.replace("Veteran's", "Veteran’s")],
+      ["a left single quotation mark", live.replace("Veteran's", "Veteran‘s")],
+      ["a modifier letter apostrophe", live.replace("Veteran's", "Veteranʼs")],
+      ["no apostrophe", live.replace("Veteran's", "Veterans")],
+    ])("accepts the live wording with %s when the calendar already closes that date", (_label, paragraph) => {
+      const [banneredWeekly, banneredClosures] = withBanner(paragraph);
+      const artifact = parseFcplOfficialHours(banneredWeekly, banneredClosures, now);
+      // The banner adds nothing: the exceptions are exactly the calendar's.
+      expect(artifact.closures.exceptions).toEqual(parseFcplOfficialHours(weekly, closures, now).closures.exceptions);
+      expect(artifact.closures.exceptions).toContainEqual({ date: "2026-11-11", closed: true, reason: "Veteran's Day" });
+    });
+    it("refuses the live wording when the dated calendar does not list that date as closed", () => {
+      const [banneredWeekly, banneredClosures] = withBanner(live);
+      const moved = banneredClosures.html.replace('datetime="2026-11-11"', 'datetime="2026-11-12"');
+      expect(moved).not.toBe(banneredClosures.html);
+      expect(() => parseFcplOfficialHours(banneredWeekly, { ...banneredClosures, html: moved }, now)).toThrow(/not covered by the dated calendar/);
+      for (const paragraph of [live.replace("November 11", "November 10"), live.replace("2026", "2028"), live.replace("November 11", "February 30")]) {
+        const [w, c] = withBanner(paragraph);
+        expect(() => parseFcplOfficialHours(w, c, now)).toThrow(/not covered by the dated calendar/);
+      }
+    });
+    it("refuses a holiday banner on a date the calendar lists only as an early close", () => {
+      const [w, c] = withBanner("<p>Frederick County Public Libraries will be closed December 31, 2026 in observance of New Year's Eve.</p>");
+      expect(() => parseFcplOfficialHours(w, c, now)).toThrow(/not covered by the dated calendar/);
+    });
+    it.each([
+      // Each of these passed the earlier free-text reason check.
+      live.replace("Veteran's Day.", "Veterans Day until further notice."),
+      "<p>Frederick County Public Libraries will be closed November 26, 2026 in observance of Thanksgiving and will remain closed through the weekend.</p>",
+      live.replace("Veteran's Day.", "Veterans Day and the Walkersville Branch is closed Friday."),
+      live.replace("Veteran's Day.", "Christmas."),
+      // The calendar labels December 25 "Christmas Holiday". A shorter banner
+      // reason is not guessed to mean the same closure.
+      "<p>Frederick County Public Libraries will be closed December 25, 2026 in observance of Christmas.</p>",
+    ])("refuses a holiday banner whose reason is not the calendar's reason for that date: %s", (paragraph) => {
+      const [w, c] = withBanner(paragraph);
+      expect(() => parseFcplOfficialHours(w, c, now)).toThrow(/reason does not match the dated calendar/);
+    });
+    it("accepts the calendar's own reason for that date in another letter case", () => {
+      const calendarOnly = parseFcplOfficialHours(weekly, closures, now).closures.exceptions;
+      const [w, c] = withBanner(live.replace("Veteran's Day", "VETERANS DAY"));
+      expect(parseFcplOfficialHours(w, c, now).closures.exceptions).toEqual(calendarOnly);
+      const [tw, tc] = withBanner("<p>Frederick County Public Libraries will be closed November 27, 2026 in observance of Thanksgiving.</p>");
+      expect(parseFcplOfficialHours(tw, tc, now).closures.exceptions).toEqual(calendarOnly);
+    });
+    it.each([
+      live.replace(" in observance of Veteran's Day.", " in observance of Veteran's Day. Branches open at 1 pm on November 12."),
+      live.replace("Veteran's Day", "Veteran's Day and 2 snow days"),
+      live.replace("Frederick County Public Libraries", "The Walkersville Branch Library"),
+      live.replace("will be closed", "will close early"),
+      live.replace("in observance of", "because of"),
+      live.replace(/\.<\/p>$/, "</p>"),
+    ])("keeps refusing any other banner wording for human review: %s", (paragraph) => {
+      const [w, c] = withBanner(paragraph);
+      expect(() => parseFcplOfficialHours(w, c, now)).toThrow(/Unreviewed active FCPL closure notice/);
+    });
+  });
   it("bounds both response and body reads when a transport ignores the abort signal", async () => {
     await expect(fetchOfficialHoursPage(FCPL_HOURS_URL, vi.fn(() => new Promise<Response>(() => {})), 10)).rejects.toThrow(/deadline/);
     const stalled = new Response(new ReadableStream({ start() {} }), { headers: { "content-type": "text/html" } });

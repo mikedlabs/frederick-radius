@@ -77,10 +77,7 @@ import {
   placementRejectionReason,
   type PlacementRejectionReason,
 } from "@/lib/placement-trust";
-import {
-  getHoursAvailability,
-  hasReliableHours,
-} from "@/lib/hours-availability";
+import { getHoursAvailability } from "@/lib/hours-availability";
 import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
 import { chooseCanonicalGooglePlaceId } from "@/lib/quality/enrichmentBinding";
 import { publishablePlaceWebsite } from "@/lib/place-website-policy";
@@ -1826,7 +1823,7 @@ const BUSINESS_NOUN = new Set([
 /**
  * A discovered row whose NAME reads as a bare person ("Noah Stevens",
  * "Nicole K Albertson") — a solo-practitioner listing, not a recognizable
- * business. Used ONLY to keep the /beta open-now highlight SAMPLE honest;
+ * business. Used ONLY to keep the open-now highlight SAMPLE honest;
  * such rows still count, map, and search normally. Requires BOTH a
  * person-shaped name (2-3 capitalized name words, optional initial,
  * optional Dr/MD-style credential) AND practice-flavored typing, so
@@ -2075,7 +2072,7 @@ export function buildOpenNowSnapshot(
 
 /**
  * The canonical county-wide open-now snapshot. Every public county count,
- * the /beta proof, and /open-now consume this exact untruncated population
+ * and /open-now consume this exact untruncated population
  * and its single as-of instant. The inventory includes every recommendable,
  * discoverable place whose recently checked schedule confirms it is open.
  * `worthConsidering` is a separate, stricter editorial sample; a gym,
@@ -2110,7 +2107,7 @@ export function countOpenNow(now: Date = new Date()): number {
 /**
  * Compatibility shape for older server consumers. The count is the complete
  * snapshot inventory; the names are the same module-diverse leisure proof
- * used by the beta cover. Professional and clinical rows remain in the count
+ * that /open-now uses. Professional and clinical rows remain in the count
  * and catalog but cannot become editorial examples.
  */
 export function openNowHighlights(
@@ -2123,34 +2120,6 @@ export function openNowHighlights(
     names: snapshot.worthConsidering.map((pick) => pick.name),
     asOf: snapshot.asOf,
   };
-}
-
-/**
- * Total + open-right-now counts of public recommendable places within
- * `radiusM` of each point. One decorate pass over the catalog, then a
- * cheap haversine per point — built for the /beta cover flight, where
- * every drone frame states what Radius knows about the ground below it.
- */
-export function nearbyOpenCounts(
-  points: ReadonlyArray<{ lat: number; lng: number }>,
-  radiusM: number,
-  now: Date = new Date(),
-): { total: number; reliable: number; open: number }[] {
-  const decorated = publicPlaces()
-    .filter(isRecommendable)
-    .map((p) => decoratePlace(p, undefined, now));
-  return points.map((pt) => {
-    let total = 0;
-    let reliable = 0;
-    let open = 0;
-    for (const p of decorated) {
-      if (haversineMeters({ lng: pt.lng, lat: pt.lat }, p.geom) > radiusM) continue;
-      total++;
-      if (hasReliableHours(p, now)) reliable++;
-      if (isOpenNow(p.open_status)) open++;
-    }
-    return { total, reliable, open };
-  });
 }
 
 export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {

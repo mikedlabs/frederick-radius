@@ -1,12 +1,14 @@
 import type { CSSProperties, ReactNode } from "react";
 
 /**
- * Chip — small tonal pill (Visual System v2).
+ * Chip: small tonal tag.
  *
- * One source of truth for the count / status / category pills that
- * were inlined everywhere. The fill is a tokenized color-mix wash of
- * the tone (never a flat block), so it sits in the warm palette
- * instead of fighting it. Server-component safe.
+ * One source of truth for the count, status and category tags that
+ * were inlined everywhere. It draws a 4px tag with a light tint of the
+ * tone. This tinted tag is the one informational tag still awaiting the
+ * plain-text conversion, so new informational tags should be plain text.
+ * The label always uses a theme-readable text token, so it keeps AA
+ * contrast in the dark appearance. Server-component safe.
  */
 
 type Tone =
@@ -22,12 +24,16 @@ const TONE: Record<Tone, { fill: string; text: string }> = {
   // The tint keeps the semantic hue. Text uses its darker companion where
   // the tint would otherwise pull contrast below 4.5:1 at this 10px size.
   neutral: { fill: "var(--app-ink-3)", text: "var(--app-ink-2)" },
-  brand: { fill: "var(--app-brand)", text: "var(--app-brand-press)" },
-  cool: { fill: "var(--app-cool)", text: "var(--app-cool)" },
-  positive: { fill: "var(--app-positive)", text: "var(--app-positive)" },
-  warning: { fill: "var(--app-warning)", text: "var(--app-warning-press)" },
-  danger: { fill: "var(--app-danger)", text: "var(--app-danger)" },
-  accent: { fill: "var(--app-accent)", text: "var(--app-accent-press)" },
+  // --app-link is the press shade in light (AA on the tint) and the light
+  // coral in dark.
+  brand: { fill: "var(--app-brand)", text: "var(--app-link)" },
+  cool: { fill: "var(--app-cool)", text: "var(--app-cool-text)" },
+  positive: { fill: "var(--app-positive)", text: "var(--app-forest-text)" },
+  // --app-warning-text is the pressed Ochre in light and a light Ochre in
+  // dark, where the pressed shade fell to about 2.1:1 on its own tint.
+  warning: { fill: "var(--app-warning)", text: "var(--app-warning-text)" },
+  danger: { fill: "var(--app-danger)", text: "var(--app-danger-text)" },
+  accent: { fill: "var(--app-accent)", text: "var(--app-accent-text)" },
 };
 
 export function Chip({
@@ -61,7 +67,9 @@ export function Chip({
   return (
     <span
       title={title}
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+      // Plain tool: informational tags take the 4px utility corner. Full
+      // capsules belong to compact filters, status badges and toggles.
+      className={`inline-flex items-center gap-1 rounded-[var(--app-radius-sm)] px-2 py-0.5 text-[10px] font-semibold ${
         tabular ? "tabular-nums" : ""
       } ${className}`.trim()}
       style={{

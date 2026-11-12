@@ -7,6 +7,7 @@ import {
   type RefObject,
 } from "react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 
 type Props = {
@@ -47,9 +48,10 @@ export default function LazySheetFallback({
   });
   const dismiss = historyLayer.dismiss;
 
+  // The same page lock the real sheet takes when its chunk arrives.
+  useScrollLock(true);
+
   useLayoutEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     closeRef.current?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -60,7 +62,6 @@ export default function LazySheetFallback({
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
     };
   }, [dismiss]);
 
@@ -95,8 +96,8 @@ export default function LazySheetFallback({
             ref={closeRef}
             type="button"
             onClick={dismiss}
-            className="inline-flex min-h-11 items-center rounded-full px-3 text-[12px] font-semibold"
-            style={{ color: "var(--app-ink-2)" }}
+            className="inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] px-3 text-[12px] font-semibold"
+            style={{ color: "var(--app-ink)" }}
           >
             Close
           </button>
@@ -111,32 +112,32 @@ export default function LazySheetFallback({
           <span className="sr-only">{label}</span>
           <div
             aria-hidden
-            className="h-3 w-24 animate-pulse rounded-full"
+            className="h-3 w-24 animate-pulse rounded-[var(--app-radius-sm)]"
             style={{ background: "var(--app-bg-sunken)" }}
           />
           <div
             aria-hidden
-            className="mt-3 h-7 w-4/5 animate-pulse rounded-full"
+            className="mt-3 h-7 w-4/5 animate-pulse rounded-[var(--app-radius-sm)]"
             style={{ background: "var(--app-bg-sunken)" }}
           />
           <div
             aria-hidden
-            className="mt-5 h-4 w-1/2 animate-pulse rounded-full"
+            className="mt-5 h-4 w-1/2 animate-pulse rounded-[var(--app-radius-sm)]"
             style={{ background: "var(--app-bg-sunken)" }}
           />
           <div
             aria-hidden
-            className="mt-3 h-3 w-full animate-pulse rounded-full"
+            className="mt-3 h-3 w-full animate-pulse rounded-[var(--app-radius-sm)]"
             style={{ background: "var(--app-bg-sunken)" }}
           />
           <div
             aria-hidden
-            className="mt-2 h-3 w-10/12 animate-pulse rounded-full"
+            className="mt-2 h-3 w-10/12 animate-pulse rounded-[var(--app-radius-sm)]"
             style={{ background: "var(--app-bg-sunken)" }}
           />
         </div>
         {onOpenFullPage ? (
-          <button type="button" onClick={onOpenFullPage} className="mt-5 inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold" style={{ color: "var(--app-ink)", background: "var(--app-bg-sunken)" }}>
+          <button type="button" onClick={onOpenFullPage} className="mt-5 inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] border px-4 text-sm font-semibold" style={{ color: "var(--app-ink)", background: "var(--app-bg)", borderColor: "var(--app-control-border)" }}>
             Open full page
           </button>
         ) : null}

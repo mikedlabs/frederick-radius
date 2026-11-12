@@ -27,7 +27,7 @@ export default async function TonightWeather({ startsAt, returnTo }: { startsAt:
   return (
     <a href={href}
       className="flex min-h-11 items-center gap-2.5 py-2 text-[15px]" style={{ color: "var(--app-ink-2)" }}>
-      <CloudSun className="h-5 w-5 shrink-0" aria-hidden style={{ color: "var(--app-cool)" }} />
+      <CloudSun className="h-5 w-5 shrink-0" aria-hidden style={{ color: "var(--app-cool-text)" }} />
       <span className="min-w-0 flex-1"><span className="font-semibold">{reading}</span><span className="ml-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>{period && forecast?.asOf ? "NWS forecast for Frederick" : "Check Frederick’s NWS forecast"}</span></span>
       <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
     </a>

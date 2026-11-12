@@ -14,7 +14,7 @@ const scenic = fixture("joseph-dill-baker-memorial-carillon-bell-tower", "Baker 
 const merchant = fixture("ibiza-cafe", "Ibiza Cafe", "coffee");
 const meta = {
   title: "Today/Saved choices", component: FromYourSavedView,
-  parameters: { layout: "centered", a11y: { test: "error" }, docs: { description: { component: "Isolated saved-membership and hours fixtures, not live availability. Exact accepted scenic photos or decorative category artwork; no merchant photo approval or provider hydration is implied." } } },
+  parameters: { layout: "centered", a11y: { test: "error" }, docs: { description: { component: "Isolated saved-membership and hours fixtures, not live availability. Exact accepted scenic photos or a plain category glyph; no merchant photo approval or provider hydration is implied." } } },
   decorators: [(Story) => <div style={{ width: "min(520px, calc(100vw - 32px))" }}><Story /></div>],
   args: { places: [scenic, merchant], returnTo: "/today?in=frederick#today-saved" },
 } satisfies Meta<typeof FromYourSavedView>;
@@ -35,7 +35,20 @@ const usable: NonNullable<Story["play"]> = async ({ canvasElement }) => {
     }
   }
   await expect(canvasElement.querySelector('[data-today-saved-place="ibiza-cafe"] img')).toBeNull();
-  await expect(canvasElement.querySelector('[data-today-saved-place="ibiza-cafe"] [data-place-category-art]')).not.toBeNull();
+  // Without a photograph the row keeps its 72px slot and shows the category
+  // glyph in quiet ink, with no tile, border or tint behind it.
+  const glyph = canvasElement.querySelector<HTMLElement>('[data-today-saved-place="ibiza-cafe"] [data-today-saved-glyph]')!;
+  await expect(glyph).not.toBeNull();
+  await expect(canvasElement.querySelector("[data-place-category-art]")).toBeNull();
+  const slot = glyph.parentElement!, glyphStyle = getComputedStyle(glyph), slotStyle = getComputedStyle(slot);
+  await expect(Math.abs(glyph.getBoundingClientRect().width - 24)).toBeLessThanOrEqual(1);
+  await expect(Math.abs(slot.getBoundingClientRect().width - 72)).toBeLessThanOrEqual(1);
+  for (const style of [glyphStyle, slotStyle]) {
+    await expect(style.backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    await expect(style.borderTopWidth).toBe("0px");
+  }
+  const names = Array.from(canvasElement.querySelectorAll<HTMLElement>("[data-today-saved-place] h3")).map(h3 => h3.getBoundingClientRect().left);
+  if (window.innerWidth >= 375 && parseFloat(getComputedStyle(document.documentElement).fontSize) === 16) await expect(Math.abs(names[0] - names[1])).toBeLessThanOrEqual(1);
 };
 export const MixedPhotoAndArtwork: Story = { globals: { viewport: { value: "radiusMobile", isRotated: false } }, play: usable };
 export const NarrowMobile: Story = { globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } }, play: usable };

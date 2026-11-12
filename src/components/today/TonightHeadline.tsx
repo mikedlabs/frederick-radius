@@ -102,7 +102,7 @@ export function TonightHeadlineContent({
       ) : null}
       <p
         className="mb-1.5 flex items-center gap-1.5 px-0.5 font-mono text-xs font-bold uppercase tracking-[0.14em]"
-        style={{ color: "var(--app-brand-press)" }}
+        style={{ color: "var(--app-link)" }}
       >
         {live && (
           <span aria-hidden className="live-dot h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: "var(--app-brand)" }} />
@@ -114,11 +114,11 @@ export function TonightHeadlineContent({
       ) : (
         <TodayHeadlineCard eventSlug={event.slug} titleId={titleId} detailId={detailId}
           visual={approvedVisual} accent={accent} priority={!embedded}>
-          {/* This is Today’s one opt-in editorial face. It stays fluid and
+          {/* Heavy system sans like every Today title. It stays fluid and
               untruncated so a real event name still reads cleanly at 320px. */}
           <Title
             id={titleId}
-            className="min-w-0 break-words px-0.5 font-editorial text-[clamp(1.875rem,9vw,2.75rem)] leading-[0.98] tracking-[-0.025em] [text-wrap:balance]"
+            className="min-w-0 break-words px-0.5 font-sans font-extrabold text-[clamp(1.875rem,9vw,2.75rem)] leading-[1.02] tracking-[-0.02em] [text-wrap:balance]"
             style={{ color: "var(--app-ink)" }}
           >
             {displayTitle}
@@ -130,12 +130,12 @@ export function TonightHeadlineContent({
           >
             <span
               className="font-mono font-semibold tabular-nums"
-              style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-2)" }}
+              style={{ color: live ? "var(--app-link)" : "var(--app-ink-2)" }}
             >
               {live ? "On now" : date.time || `${date.weekday} ${date.month} ${date.day}`}
             </span>
             {where && <span style={{ color: "var(--app-ink-3)" }}> · {where}</span>}
-            {event.is_free && <span style={{ color: "var(--app-cool)" }}> · Free</span>}
+            {event.is_free && <span style={{ color: "var(--app-cool-text)" }}> · Free</span>}
           </p>
           {physical && eventHasPreciseDisplayLocation(event) ? (
             <EventWalkTime dest={event.geom} />

@@ -1,20 +1,16 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { Clock3, MapPin } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { eventReasons } from "@/lib/event-reasons";
 import { eventDecisionLocation, eventDecisionTime } from "@/lib/events/decision-facts";
-import DatePlate from "@/components/event/DatePlate";
 import { communicationAccessLabels } from "@/lib/events/communication-access";
 import { eventDateBlock } from "@/lib/events/format";
 import { formatDistance } from "@/lib/geo";
 import { eventDisplayTitle } from "@/lib/events/display-title";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { statusLabel } from "@/lib/event-status";
-import { ReasonChipRow } from "@/components/ui/ReasonChip";
 import { eventCardVisual, sameEventPhotoLicense, type EventCardVisual } from "./eventVisuals";
 import { useEventVisualLifecycle } from "./useEventVisualLifecycle";
 import EventVisualCredit from "./EventVisualCredit";
@@ -22,6 +18,7 @@ import EventArtwork from "./EventArtwork";
 import { eventHasTrustworthyEnd, isEventLiveNow } from "@/lib/eventWhenLabel";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
 import styles from "./EventPosterCard.module.css";
+import EventRow from "./EventRow";
 
 export type EventPosterCardProps = {
   event: EventWithMeta;
@@ -32,7 +29,12 @@ export type EventPosterCardProps = {
   live?: boolean;
   /** Server-captured page time keeps started/unknown-end copy stable. */
   nowISO?: string;
+  /** "hero" is the page's one lead and carries the coral time block. A
+   * "shelf" poster keeps the plain ink time column. */
   layout?: "hero" | "shelf";
+  /** The lead uses h2 when it stands directly under the page title and h3
+   * when it sits inside a group section under that group's own h2. */
+  headingLevel?: 2 | 3;
 };
 
 /** Never permit an explicit visual to bypass its source or venue binding. */
@@ -58,12 +60,15 @@ export function eventPosterPhotoSrc(src: string): string {
 }
 
 /**
- * Give the photograph its own space, then let real event facts grow naturally.
- * Facts never depend on image pixels, an overlay height, or a replacement
- * provider request. Publisher art stays intact, including text at its edges.
+ * The page's lead event. It is one row on the white ground: the solid coral
+ * time block (the only coral field on Events), then the title and facts. An
+ * approved picture sits above the facts, never behind them, so facts never
+ * depend on image pixels. Publisher art stays intact, including text at its
+ * edges. The credit follows the facts inside the row, above its hairline and
+ * outside the event link.
  */
 export default function EventPosterCard({ event, visual, priorityImage = true, whyItMatters,
-  live = false, nowISO, layout = "hero" }: EventPosterCardProps) {
+  live = false, nowISO, layout = "hero", headingLevel = 2 }: EventPosterCardProps) {
   const cardNow = nowISO ? new Date(nowISO) : null;
   const approved = posterVisualForEvent(event, visual);
   const { identity, visibleVisual, failImage, inspectLoadedImage } = useEventVisualLifecycle(approved);
@@ -80,70 +85,61 @@ export default function EventPosterCard({ event, visual, priorityImage = true, w
   const confirmedLive = status === "scheduled" && live && (cardNow
     ? isEventLiveNow(event, cardNow) : !event.is_all_day && eventHasTrustworthyEnd(event));
   const timingText = eventDecisionTime(event, cardNow ?? undefined);
-  const reasons = eventReasons(event, cardNow ?? undefined).filter(reason => reason.kind !== "free");
+  // Reasons are informational, so they read as plain text in the facts line,
+  // not as capsules. Distance and live state are already stated elsewhere.
+  const reasonLabels = confirmedLive ? [] : eventReasons(event, cardNow ?? undefined)
+    .filter(reason => reason.kind !== "free" && reason.kind !== "near" && reason.kind !== "walkable" && reason.kind !== "live_now")
+    .map(reason => reason.label);
   const accessLabel = communicationAccessLabels(event)[0];
+  const facts = [
+    ...reasonLabels,
+    event.is_free ? "Free" : event.price_text || null,
+    accessLabel || null,
+    event.distance_m !== undefined ? `${formatDistance(event.distance_m)} away` : null,
+  ].filter(Boolean) as string[];
+  const poster = { kind: photo ? "photo" : artwork ? "artwork" : "category", layout } as const;
 
-  return <>
-    <article
-      data-decision-impression="true" data-decision-surface="events" data-decision-entity="event"
-      data-decision-id={event.slug} data-decision-position="lead"
-      data-event-poster={photo ? "photo" : artwork ? "artwork" : "category"}
-      data-event-fallback={visibleVisual ? undefined : "date-category"}
-      data-event-poster-layout={layout}
-      className={`${styles.poster} tactile tactile-feature tactile-ring group relative min-w-0`}
-    >
-      <div className={`${styles.layout} ${visibleVisual ? styles.hasMedia : ""}`}>
-        {photo && photoSrc && <figure className={styles.photo}>
-          <Image key={identity} src={photoSrc} alt="" fill priority={priorityImage}
-            unoptimized={photoSrc.startsWith("/api/place-photo")}
-            sizes="(max-width: 640px) 100vw, 720px"
-            placeholder="blur" blurDataURL={PAPER_CREAM_BLUR}
-            className="ken-burns object-cover"
-            style={{ objectPosition: photo.objectPosition }}
-            onLoad={loadEvent => inspectLoadedImage(loadEvent.currentTarget)} onError={failImage}
-          />
-        </figure>}
-        {artwork && <EventArtwork visual={artwork} priority={priorityImage} credit={false}
-          frame="poster" className={styles.artwork} onUnavailable={failImage} />}
-        <div className={styles.body} data-event-poster-facts>
-          <div className={styles.heading}>
-            <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent="var(--app-brand)" size="sm" />
-            <div className="min-w-0 flex-1">
-              <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold" style={{ color: "var(--app-ink-2)" }}>
-                <span>{categoryLabel}</span>
-                <span className="sr-only">{date.weekday} {date.month} {date.day}</span>
-                {confirmedLive && <span className="inline-flex items-center gap-1.5" style={{ color: "var(--app-live-text)" }}>
-                  <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-live-text)" }} />
-                  Happening now
-                </span>}
-                {statusText && <span style={{ color: isCancelled ? "var(--app-danger-text)" : "var(--state-closing)" }}>{statusText}</span>}
-              </div>
-              <Link href={`/events/${event.slug}`} data-decision-action="open" prefetch={false}
-                className={`block min-h-12 break-words text-[1.375rem] font-semibold leading-tight tracking-tight outline-none after:absolute after:inset-0 after:rounded-[var(--app-radius-lg)] focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
-                style={{ color: "var(--app-ink)" }}
-              >{eventDisplayTitle(event)}</Link>
-            </div>
-          </div>
-          <div className={styles.facts}>
-            <p data-event-card-time className="flex min-w-0 items-start gap-2.5 text-sm font-semibold leading-snug tabular-nums">
-              <Clock3 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span className="min-w-0 break-words">{timingText}</span>
-            </p>
-            {venueLabel && <p data-event-card-venue className="mt-2 flex min-w-0 items-start gap-2.5 text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span className="min-w-0 break-words">{venueLabel}</span>
-            </p>}
-          </div>
-          {whyItMatters && <p className="mt-3 break-words text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{whyItMatters}</p>}
-          {reasons.length > 0 && !confirmedLive && <div className="mt-3"><ReasonChipRow reasons={reasons} /></div>}
-          {(event.is_free || event.price_text || accessLabel || event.distance_m !== undefined) && <p
-            className="mt-3 flex flex-wrap gap-x-3 gap-y-1 break-words text-xs leading-snug" style={{ color: "var(--app-ink-2)" }}
-          >
-            {event.is_free ? <span className="font-semibold">Free</span> : event.price_text ? <span>{event.price_text}</span> : null}
-            {accessLabel && <span>{accessLabel}</span>}
-            {event.distance_m !== undefined && <span>{formatDistance(event.distance_m)} away</span>}
-          </p>}
-        </div>
-      </div>
-    </article>
-    {visibleVisual && <EventVisualCredit visual={visibleVisual} className="mt-1.5 px-1.5" />}
-  </>;
+  const banner = photo && photoSrc ? (
+    <figure className={styles.photo}>
+      <Image key={identity} src={photoSrc} alt="" fill priority={priorityImage}
+        unoptimized={photoSrc.startsWith("/api/place-photo")}
+        sizes="(max-width: 640px) 100vw, 720px"
+        placeholder="blur" blurDataURL={PAPER_CREAM_BLUR}
+        className="object-cover"
+        style={{ objectPosition: photo.objectPosition }}
+        onLoad={loadEvent => inspectLoadedImage(loadEvent.currentTarget)} onError={failImage}
+      />
+    </figure>
+  ) : artwork ? (
+    <EventArtwork visual={artwork} priority={priorityImage} credit={false}
+      frame="poster" className={styles.artwork} onUnavailable={failImage} />
+  ) : null;
+
+  return (
+    <EventRow
+      lead={layout === "hero"}
+      position="lead"
+      headingLevel={headingLevel}
+      poster={poster}
+      banner={banner}
+      slug={event.slug}
+      title={eventDisplayTitle(event)}
+      weekday={date.weekday}
+      month={date.month}
+      day={date.day}
+      startTime={date.time}
+      timing={timingText}
+      category={categoryLabel}
+      live={confirmedLive}
+      status={statusText}
+      statusColor={isCancelled ? "var(--app-danger-text)" : "var(--state-closing)"}
+      cancelled={isCancelled}
+      where={venueLabel}
+      extra={whyItMatters || facts.length > 0 ? <>
+        {whyItMatters ? <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{whyItMatters}</p> : null}
+        {facts.length > 0 ? <p className="mt-1 text-[13px] leading-snug tabular-nums" style={{ color: "var(--app-ink-2)" }}>{facts.join(" · ")}</p> : null}
+      </> : null}
+      mediaCredit={visibleVisual ? <EventVisualCredit visual={visibleVisual} className={styles.credit} /> : null}
+    />
+  );
 }

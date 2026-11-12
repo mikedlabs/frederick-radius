@@ -2,7 +2,7 @@
 
 **Status:** Current owner-approved photographic discovery direction.
 **Scope:** Photography in the UI, source identity and attribution.
-**Updated:** October 20, 2026. This document does not add another plan-approval step to already authorized product work.
+**Updated:** November 10, 2026. This document does not add another plan-approval step to already authorized product work.
 
 ## Current direction, approved October 9, 2026
 
@@ -16,6 +16,14 @@ The owner requested a visibly more photographic app and implementation of that d
 - On phones, complete weather and Find actions remain reachable above the bottom navigation, including when a real advisory appears. Density rules constrain controls and copy without reducing every photograph to a small stamp.
 
 The earlier photo-removal rules are not instructions to flatten these result cards again.
+
+The interface update approved on November 10, 2026 turns list results into
+ruled rows rather than bordered cards. That changes the frame, not the
+photography. A row shows a photo thumbnail whenever a real photograph exists.
+A row without one keeps the same media slot width, so titles stay aligned,
+and shows its category glyph in `--app-ink-3` at about 24 px with no
+background, border, tint, or rounded tile. Do not fill the slot with a gray or
+coral-tinted tile.
 
 
 ## Source and rendering requirements

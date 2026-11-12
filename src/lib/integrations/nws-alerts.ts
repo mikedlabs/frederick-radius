@@ -131,7 +131,7 @@ async function loadNwsAlertsResult(
   // Hard 8s ceiling: api.weather.gov intermittently hangs on connect
   // (prod runtime errors: connect ETIMEDOUT). The .catch below already
   // fail-softs to [], but without an abort the request can tie up the
-  // notify-civic-alerts cron for the platform's full connect timeout. Fail
+  // calling request for the platform's full connect timeout. Fail
   // fast instead so a slow NWS degrades to "no alerts this run", not a stall.
   const deadline = createAbortDeadline(8_000, parentSignal);
   try {

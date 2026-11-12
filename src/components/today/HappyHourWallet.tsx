@@ -218,7 +218,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
           <h3 id="hh-wallet-eyebrow" className="font-sans text-[17px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
             Happy hour
           </h3>
-          <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-press)" }}>
+          <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-link)" }}>
             <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
             {n} {n === 1 ? "deal" : "deals"} available now
           </p>
@@ -275,7 +275,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
                       className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.08em]"
                       style={{
                         background: `color-mix(in srgb, ${pour.lastCall ? "var(--app-brand-press)" : "var(--app-brand)"} 12%, transparent)`,
-                        color: pour.lastCall ? "var(--app-brand-press)" : "var(--app-brand-press)",
+                        color: "var(--app-link)",
                       }}
                     >
                       <span aria-hidden className="live-dot h-1 w-1 rounded-full" style={{ background: "currentColor" }} />

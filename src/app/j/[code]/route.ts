@@ -10,11 +10,12 @@
  * Security posture (mirrors the public write routes):
  *  - The path is public, so the handler can validate a card without a session.
  *  - The code is validated against the card regex; an unknown, inactive, or
- *    malformed code redirects to /beta with the SAME response as a valid-but-
- *    locked visit, so the endpoint never enumerates which codes exist.
+ *    malformed code redirects to /today with no cookies, the SAME response
+ *    every time, so the endpoint never enumerates which codes exist. The
+ *    visitor still lands on the public app either way.
  *  - Per-IP rate limit, reusing the shared limiter.
  *  - FAIL CLOSED: any missing config (no DB, no signing secret) or DB error
- *    redirects to /beta. It never 500s and never silently grants access.
+ *    redirects to /today without setting cookies. It never 500s.
  *  - The member cookie is signed (unforgeable) and httpOnly. The unlock cookie
  *    remains compatible with existing beta-era member attribution.
  */
@@ -39,9 +40,10 @@ import { isRateLimited } from "@/lib/origin-check";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Every failure path lands here: one generic redirect, no enumeration, no 500. */
-function toBeta(req: NextRequest): NextResponse {
-  const res = NextResponse.redirect(new URL("/beta", req.url));
+/** Every failure path lands here: one generic redirect to the public app with
+ *  no cookies, no enumeration, no 500. */
+function toToday(req: NextRequest): NextResponse {
+  const res = NextResponse.redirect(new URL("/today", req.url));
   res.headers.set("Cache-Control", "no-store");
   return res;
 }
@@ -56,12 +58,12 @@ export async function GET(
   // Rate-limit by IP FIRST — before the regex — so a flood of malformed-code
   // probes counts against the same budget as real taps instead of slipping past
   // the limiter on an early return.
-  if (await isRateLimited(req, "nfc-tap", 30, 60 * 60)) return toBeta(req);
+  if (await isRateLimited(req, "nfc-tap", 30, 60 * 60)) return toToday(req);
 
-  if (!CARD_CODE_RE.test(code)) return toBeta(req);
+  if (!CARD_CODE_RE.test(code)) return toToday(req);
 
   const db = getDb();
-  if (!db) return toBeta(req); // fail closed: no DB means no validation
+  if (!db) return toToday(req); // fail closed: no DB means no validation
 
   try {
     const card = (
@@ -72,12 +74,12 @@ export async function GET(
         .limit(1)
     )[0];
     // Same response for unknown and inactive: never reveal which codes exist.
-    if (!card || card.active !== true) return toBeta(req);
+    if (!card || card.active !== true) return toToday(req);
 
     // Sign the card code into the beta unlock cookie the SAME way redemption
     // does. Null only when no signing secret is configured — fail closed.
     const signedBeta = await signCode(card.code);
-    if (!signedBeta) return toBeta(req);
+    if (!signedBeta) return toToday(req);
 
     // Reuse the device's existing signed member id when present, else mint one
     // attributed to this card. The upsert guarantees the row exists so later
@@ -101,7 +103,7 @@ export async function GET(
     }
 
     const signedMember = await signMemberId(memberId);
-    if (!signedMember) return toBeta(req);
+    if (!signedMember) return toToday(req);
 
     const res = NextResponse.redirect(new URL("/today", req.url));
     res.headers.set("Cache-Control", "no-store");
@@ -133,6 +135,6 @@ export async function GET(
     });
     return res;
   } catch {
-    return toBeta(req); // fail closed on any DB error
+    return toToday(req); // fail closed on any DB error
   }
 }
