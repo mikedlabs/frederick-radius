@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   buildFeedbackRequestBody,
@@ -20,6 +21,14 @@ describe("FeedbackWidget public surfaces", () => {
     expect(feedbackSendErrorMessage("feedback-storage-unavailable")).toBe(
       "We couldn't save your report, so your message is still here for you to try again in a moment.",
     );
+  });
+
+  it("reserves room below reading pages so the last content scrolls clear of the trigger", () => {
+    const css = readFileSync("src/app/globals.css", "utf8");
+    const bar = Number(/--app-bottomnav-reserve:\s*(\d+)px/.exec(css)?.[1]);
+    const reserve = /\.app-main-reading\[data-bottom-nav-reserve="true"\]\s*\{\s*padding-bottom:\s*calc\((\d+(?:\.\d+)?)rem \+ env/.exec(css);
+    // FEEDBACK_TRIGGER_BOTTOM puts the 44px trigger 12px above the bar.
+    expect(Number(reserve?.[1]) * 16).toBeGreaterThanOrEqual(bar + 12 + 44);
   });
 
   it("names only the food-truck board as a surface with its own confirmation wording", () => {
