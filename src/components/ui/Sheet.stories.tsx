@@ -237,7 +237,17 @@ export const ShortPullReturnsToRest: Story = {
     const spacerX = rowBox.right - 40;
     const rowY = rowBox.top + rowBox.height / 2;
     expect(view.document.elementFromPoint(spacerX, rowY)?.closest("button")).toBeNull();
-    const pulledTo = await pull(row, spacerX, rowY);
+    // On a loaded CI runner a synthetic gesture sometimes never engages the
+    // drag at all: the sheet does not move by even a pixel (seen on #1966 even
+    // with a frame after every move). Retry only that case, after the sheet is
+    // back at rest, up to twice. A real regression where the row cannot drag
+    // still fails after every attempt, and every attempt must clear 30px.
+    let pulledTo = await pull(row, spacerX, rowY);
+    for (let attempt = 1; attempt < 3 && Math.abs(pulledTo - rest) < 0.5; attempt += 1) {
+      await waitFor(() => expect(Math.abs(top() - rest)).toBeLessThanOrEqual(1), { timeout: 1500 });
+      await pause(120);
+      pulledTo = await pull(row, spacerX, rowY);
+    }
     expect(pulledTo - rest).toBeGreaterThan(30);
     await waitFor(() => {
       expect(Math.abs(top() - rest)).toBeLessThanOrEqual(1);
