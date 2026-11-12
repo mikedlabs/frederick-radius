@@ -22,7 +22,7 @@ describe("FeedbackWidget public surfaces", () => {
     );
   });
 
-  it("opens feedback on the public food-truck board without exposing other pages", () => {
+  it("names only the food-truck board as a surface with its own confirmation wording", () => {
     expect(publicFeedbackSurface("/food-trucks")).toBe("food-trucks");
     expect(publicFeedbackSurface("/today")).toBeNull();
     expect(publicFeedbackSurface("/fair")).toBeNull();
