@@ -33,22 +33,22 @@ export default function PlaceMarginTools({ slug }: { slug: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="tap-44 inline-flex items-center gap-2 self-start text-[13px] font-semibold"
-        style={{ color: "var(--app-cool)" }}
+        className="tap-44 inline-flex min-h-11 items-center gap-2 self-start text-[15px] font-semibold"
+        style={{ color: "var(--app-link)" }}
       >
-        <NotebookPen className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+        <NotebookPen className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
         Add a note or list
       </button>
     );
   }
 
   return (
-    <>
+    <div className="space-y-6">
       {/* The user's own margin notes for this place (on-device). */}
       <PlaceNoteCard slug={slug} />
-      {/* Personal lists ("date night", "takeout") — organize Saved without
+      {/* Personal lists ("date night", "takeout") organize Saved without
           folders; filterable on My Radius (on-device). */}
       <PlaceListsCard slug={slug} />
-    </>
+    </div>
   );
 }

@@ -187,7 +187,7 @@ export default function TrafficCameras({
             <a
               href={`/cameras?camera=${encodeURIComponent(selected.id)}`}
               className="mt-1.5 flex min-h-11 items-center text-[11px] font-semibold"
-              style={{ color: "var(--app-cool)" }}
+              style={{ color: "var(--app-cool-text)" }}
             >
               Open in the Frederick camera wall
             </a>

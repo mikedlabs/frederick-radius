@@ -1,7 +1,9 @@
 # Voice & copy — Frederick Radius
 
 This is the source of truth for how Frederick Radius *sounds*. Design
-tokens live in `STYLE.md`; the writing rules live here. If a string ships
+tokens live in `src/lib/brand.ts` and the `--app-*` variables in
+`src/app/globals.css`, and the identity rules live in
+`docs/brand/BRAND_GUIDE.md`. The writing rules live here. If a string ships
 to a user, it answers to this document.
 
 The test for every line: **would a calm, knowledgeable local actually say
@@ -46,9 +48,10 @@ and explain the job in one sentence.
 
 ## Voice principles
 
-**1. Say the true thing.** State the fact. "Open till 9." "Closed Mondays."
-"Twelve blocks of antique shops." Don't dress it. The truth, plainly told,
-is more trustworthy than any adjective.
+**1. Say the true thing.** State the fact. "It is open till 9." "It is closed
+on Mondays." "Antique shops fill twelve blocks." Don't dress it. The truth,
+plainly told, is more trustworthy than any adjective. A status label such as
+"Open till 9" may stay a phrase because it is a label, not prose.
 
 **2. Specific over abstract, always.** Name the real thing. "Carroll Creek,"
 "the Great Frederick Fair," "the Saturday-only bakery," "Catoctin." Never
@@ -98,6 +101,12 @@ The voice lint mechanically rejects these in Radius-authored user copy:
 It also rejects the stock phrases "your gateway to," "powered by," "the
 future of," "we've got you covered," "everything you need," "at your
 fingertips," "dive in," and "level up."
+
+The lint also rejects "craft," "staff," "destination," and "hidden gem"
+outside the narrow uses described in the next paragraph. `BANNED` in
+`scripts/style-lint.ts` is the enforced word and phrase list, and
+`contextualMarketingHits` in the same file holds the context-dependent rules. When a word is added or removed
+there, update this section in the same change.
 
 Context matters for words with real local or technical meanings. "Craft beer,"
 "staff reporter," a transit "destination," and the beer style "robust porter"

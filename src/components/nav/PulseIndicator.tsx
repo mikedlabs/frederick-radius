@@ -197,17 +197,23 @@ export default function PulseIndicator() {
       aria-label={statusLabel}
       aria-current={current ? "page" : undefined}
       title={statusLabel}
-      className={`relative h-11 min-w-11 shrink-0 items-center justify-center flex-col gap-0.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] sm:inline-flex sm:flex-row sm:gap-1.5 sm:px-2.5 ${
+      // The ground and the dot's cutout ring are set together in classes,
+      // so the hover ground can win and the ring always matches what the
+      // link actually paints: the header ground at rest, the inset gray when
+      // current or hovered.
+      className={`${
+        current
+          ? "bg-[var(--app-bg-sunken)] [--pulse-ground:var(--app-bg-sunken)]"
+          : "bg-[var(--app-bg)] [--pulse-ground:var(--app-bg)]"
+      } relative h-11 min-w-11 shrink-0 items-center justify-center flex-col gap-0.5 rounded-[var(--app-radius-sm)] px-1.5 transition hover:bg-[var(--app-bg-sunken)] hover:[--pulse-ground:var(--app-bg-sunken)] sm:inline-flex sm:flex-row sm:gap-1.5 sm:px-2.5 ${
         mobileVisible ? "inline-flex" : "hidden"
       }`}
       style={{
-        borderColor: current ? "var(--app-brand)" : "var(--app-border)",
         color: current
           ? "var(--app-link)"
           : currentAlerts
             ? TONE_FOREGROUND[tone]
-            : "var(--app-ink-2)",
-        background: current ? "var(--app-brand-tint-6)" : undefined,
+            : "var(--app-ink)",
       }}
     >
       <span className="relative grid h-4 w-4 shrink-0 place-items-center" aria-hidden>
@@ -219,8 +225,8 @@ export default function PulseIndicator() {
               background: TONE_COLOR[tone],
               boxShadow:
                 tone === "alert"
-                  ? `0 0 0 2px var(--app-bg-elevated), 0 0 0 3px color-mix(in srgb, ${TONE_COLOR[tone]} 50%, transparent)`
-                  : `0 0 0 2px var(--app-bg-elevated)`,
+                  ? `0 0 0 2px var(--pulse-ground), 0 0 0 3px color-mix(in srgb, ${TONE_COLOR[tone]} 50%, transparent)`
+                  : `0 0 0 2px var(--pulse-ground)`,
             }}
           />
         )}
@@ -229,7 +235,7 @@ export default function PulseIndicator() {
         {(!currentAlerts && (unknown || earlier)) && (
           <span
             className="absolute -right-1 -top-1 inline-flex h-2 w-2 rounded-full"
-            style={{ boxShadow: "0 0 0 2px var(--app-bg-elevated), inset 0 0 0 1.5px var(--app-ink-3)" }}
+            style={{ boxShadow: "0 0 0 2px var(--pulse-ground), inset 0 0 0 1.5px var(--app-ink-3)" }}
           />
         )}
       </span>

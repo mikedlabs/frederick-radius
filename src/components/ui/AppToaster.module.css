@@ -1,0 +1,95 @@
+/* Sonner appends its own <style> after the app stylesheets, so a rule that
+   only ties its specificity loses on source order. Every rule here is
+   unlayered and starts from the same (0,4,0) prefix, which outranks Sonner's
+   widest toast selector. Button surfaces are inline in AppToaster.tsx for the
+   same reason. */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast {
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-elevated-solid);
+  color: var(--app-ink);
+  /* A toast floats over the page, so it keeps the sheet shadow. The low
+     tiers it used before resolve to nothing in the plain tool direction. */
+  box-shadow: var(--app-shadow-3);
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+/* A modal drawer sets pointer-events: none on <body>. A visible toast still
+   has to take its own taps, or they land on the control underneath it. */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast[data-visible="true"] {
+  pointer-events: auto;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast:focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: 2px;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast [data-title] {
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast [data-description] {
+  color: var(--app-ink-2);
+}
+
+/* The mark and a 3px rule tell a failure from a confirmation. Both read the
+   text-role tokens, which stay legible on the dark toast surface where the
+   raw positive and danger fills do not. */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast [data-icon] {
+  color: var(--app-ink-2);
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast[data-type="success"] [data-icon] {
+  color: var(--state-open);
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast[data-type="error"] [data-icon] {
+  color: var(--app-danger-text);
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast[data-type="error"] {
+  border-inline-start: 3px solid var(--app-danger-text);
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast .button:hover,
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast .button:active {
+  --toast-button-surface: var(--app-bg-sunken);
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast .button:focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+/* Two buttons beside the message leave it a column about 120px wide, even on
+   a 430px phone. Their row moves under the text instead, and on the narrowest
+   phones a single button does the same. */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast:has([data-cancel]) {
+  flex-wrap: wrap;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast:has([data-cancel]) [data-content] {
+  flex-basis: calc(100% - 32px);
+}
+
+/* Sonner gives every button an auto start margin. Only the first keeps it, so
+   the pair stays together at the trailing edge. */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast [data-button] ~ [data-button] {
+  margin-inline-start: 0;
+}
+
+@media (max-width: 359.98px) {
+  [data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast {
+    flex-wrap: wrap;
+  }
+
+  [data-sonner-toaster] [data-sonner-toast][data-styled="true"].toast [data-content] {
+    flex-basis: calc(100% - 32px);
+  }
+}

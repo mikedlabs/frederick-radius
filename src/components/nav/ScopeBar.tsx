@@ -47,14 +47,15 @@ export default function ScopeBar({
       className="-mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--app-radius-md)] border px-3 py-2"
       style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
     >
-      <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand)" }} />
+      <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand-text)" }} />
       <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
         {currentName ? `Ranked from ${currentName}` : "Showing all of Frederick County"}
       </span>
       {/* The change control — a native select so it works everywhere and needs
-          no popover. Pre-selected to the current choice; picking re-ranks. */}
+          no popover. Pre-selected to the current choice; picking re-ranks.
+          The select is transparent, so the label draws its keyboard focus. */}
       <label
-        className="relative inline-flex items-center gap-1 text-[12px] font-semibold"
+        className="relative inline-flex items-center gap-1 rounded-[4px] text-[12px] font-semibold has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--app-focus)]"
         style={{ color: "color-mix(in srgb, var(--app-brand-press) 82%, var(--app-ink))" }}
       >
         <span>{currentName ? "Change town" : "Set your town"}</span>

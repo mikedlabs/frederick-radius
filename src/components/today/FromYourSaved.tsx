@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, BookmarkCheck, MapPin } from "lucide-react";
 import SectionHeading from "@/components/ui/SectionHeading";
-import PlaceCategoryArtwork from "@/components/place/PlaceCategoryArtwork";
+import CategoryIcon from "@/components/place/CategoryIcon";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
 import PlaceStatus from "@/components/place/PlaceStatus";
 import { useFollowedSlugs } from "@/hooks/useFollows";
@@ -41,8 +41,8 @@ function SavedPlacePreview({ place, returnTo }: { place: PlaceCardData; returnTo
     <Link href={detailHref} prefetch={false} className={styles.destination} aria-label={`View saved place: ${place.name}`}>
       <div className={styles.media} data-today-saved-media={source ? "photo" : "artwork"}>
         {source ? <PlaceCardPhoto key={source.src} source={source} onResult={onResult}
-          sizes="(min-width: 640px) 280px, calc((100vw - 44px) / 2)" />
-          : <PlaceCategoryArtwork name={place.name} category={place.category} />}
+          sizes="72px" />
+          : <span aria-hidden data-today-saved-glyph className={styles.glyph}><CategoryIcon slug={place.category} className="h-6 w-6" strokeWidth={1.75} /></span>}
       </div>
       <div className={styles.copy}>
         <h3>{place.name}</h3>

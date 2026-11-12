@@ -16,7 +16,6 @@ import {
   Scroll,
   type LucideIcon,
 } from "lucide-react";
-import PageBloom from "@/components/ui/PageBloom";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
@@ -115,7 +114,6 @@ export default async function AboutPage() {
     // rendering as a postcard in the middle of a desktop viewport.
     // Centered, capped at the same 768 the rest of the app uses.
     <div className="relative mx-auto w-full max-w-screen-md space-y-5 py-3 sm:space-y-7 sm:py-6">
-      <PageBloom variant="warm-cool" />
 
       {/* Seasonal hero photograph — a real photo of Frederick from the
           owner's seasons collection, picked by current season with

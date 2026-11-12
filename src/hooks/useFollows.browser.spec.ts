@@ -16,9 +16,6 @@ vi.mock("@/hooks/useSaved", () => ({
   useIsSaved: () => false,
 }));
 vi.mock("@/lib/track", () => ({ track: vi.fn() }));
-vi.mock("@/lib/push-topics", () => ({
-  businessTopic: (slug: string) => `biz:${slug}`,
-}));
 vi.mock("@/lib/return-bridge", () => ({
   cancelPendingReturnBridgeValue: vi.fn(),
   signalReturnBridgeValue: vi.fn(),

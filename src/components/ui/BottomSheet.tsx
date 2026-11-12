@@ -17,6 +17,7 @@ import { createPortal } from "react-dom";
 import {
   motion,
   AnimatePresence,
+  animate,
   useDragControls,
   useMotionValue,
   useTransform,
@@ -27,6 +28,7 @@ import { X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import { markBrowseFocusDeparture } from "@/lib/browse-focus-return";
 
@@ -36,7 +38,7 @@ import { markBrowseFocusDeparture } from "@/lib/browse-focus-return";
  * every sheet in the app dismisses, drags, traps focus, and animates
  * the same way: spring up from the bottom, drag-down or backdrop-tap
  * or ESC to dismiss, focus moved in on open and restored to the
- * trigger on close, body scroll locked while open.
+ * trigger on close, page scroll locked while open.
  *
  * The shell owns presence and exit choreography; the CONTENT stays
  * with the caller via a render prop that receives `dismiss` (starts
@@ -69,6 +71,40 @@ type Props = {
   maxHeight?: string;
   children: (dismiss: () => void) => ReactNode;
 };
+
+/** The sheet's one spring: entrance, exit, and the return after a short pull. */
+const SHEET_SPRING = { type: "spring", stiffness: 320, damping: 32 } as const;
+const NO_MOTION = { duration: 0 } as const;
+
+/** The scrim is this dark at rest and clears over this much downward travel. */
+const SCRIM_OPACITY = 0.45;
+const SCRIM_FADE_PX = 300;
+
+/**
+ * Scrim opacity for a sheet sitting `y` below its rest position.
+ *
+ * A drag reports `y` in pixels, but the entrance and exit animate it as a
+ * percentage of the panel's own height ("100%" is fully off screen). Feeding
+ * those strings to a numeric range produced NaN, which the browser ignored:
+ * with motion on, every sheet opened with no scrim until its first drag.
+ * Reading both forms as pixels below rest makes the scrim follow the sheet.
+ */
+export function sheetScrimOpacity(y: number | string, panelHeight: number): number {
+  let below = 0;
+  if (typeof y === "number") below = y;
+  else {
+    const amount = Number.parseFloat(y);
+    if (Number.isFinite(amount)) {
+      // Before the panel is measured, any offset counts as fully away.
+      below = !y.trim().endsWith("%") ? amount
+        : panelHeight > 0 ? (amount / 100) * panelHeight
+        : amount > 0 ? Number.POSITIVE_INFINITY : 0;
+    }
+  }
+  // A panel shorter than the fade distance still reaches a clear scrim.
+  const fade = panelHeight > 0 ? Math.min(SCRIM_FADE_PX, panelHeight) : SCRIM_FADE_PX;
+  return SCRIM_OPACITY * (1 - Math.min(Math.max(below / fade, 0), 1));
+}
 
 const SheetDragContext = createContext<
   ((event: ReactPointerEvent<HTMLElement>) => void) | null
@@ -154,8 +190,11 @@ export default function BottomSheet({
   const reduce = useReducedMotion();
   const y = useMotionValue(0);
   const dragControls = useDragControls();
-  const backdropOpacity = useTransform(y, [0, 300], [0.45, 0]);
   const sheetRef = useRef<HTMLDivElement>(null);
+  // The scrim has one source of truth, the sheet's position: it darkens as
+  // the sheet arrives, lightens under a pull, and clears as the sheet leaves.
+  const backdropOpacity = useTransform(y, (latest: number | string) =>
+    sheetScrimOpacity(latest, sheetRef.current?.offsetHeight ?? 0));
   // Remember what was focused before opening so we can restore it on close —
   // a baseline dialog expectation.
   const lastFocused = useRef<FocusReturn | null>(null);
@@ -249,7 +288,7 @@ export default function BottomSheet({
       haptic("light");
     } else {
       // A parent can clear its selected item directly. Mirror that state so
-      // focus restoration and the body-scroll lock cannot remain active.
+      // focus restoration and the page scroll lock cannot remain active.
       setOpen(false);
     }
   }, [present, returnFocusRef]);
@@ -273,13 +312,9 @@ export default function BottomSheet({
     }
   }, [open]);
 
-  // Lock body scroll while open
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [open]);
+  // Hold the page still while open. The document scrolls on <html>, so a body
+  // lock let the page move under the scrim; the shared lock holds the root.
+  useScrollLock(open);
 
   // ESC dismisses — a baseline keyboard-accessibility expectation.
   useLayoutEffect(() => {
@@ -336,7 +371,11 @@ export default function BottomSheet({
 
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if ((info.offset.y > 120 || info.velocity.y > 500) && dismiss()) return;
-    y.set(0);
+    // Framer has already started its release momentum by the time this runs,
+    // and that animation overrides a plain `y.set(0)`: the sheet used to coast
+    // and park low with its scrim faded out. A new animation on the same value
+    // replaces the momentum and brings the sheet back to rest.
+    animate(y, 0, reduce ? NO_MOTION : SHEET_SPRING);
   };
 
   if (typeof document === "undefined") return null;
@@ -364,15 +403,14 @@ export default function BottomSheet({
             dismiss();
           }}
         >
-          {/* Backdrop */}
+          {/* Backdrop. A pointer convenience only: the labeled Close in the
+              handle row is the one Close control assistive tech hears. */}
           <motion.button
             type="button"
-            aria-label="Close"
+            tabIndex={-1}
+            aria-hidden="true"
+            data-bottom-sheet-backdrop
             onClick={dismiss}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={reduce ? { duration: 0 } : { duration: 0.18 }}
             className="absolute inset-0 bg-black"
             style={{ opacity: backdropOpacity }}
           />
@@ -386,7 +424,7 @@ export default function BottomSheet({
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 32 }}
+            transition={reduce ? NO_MOTION : SHEET_SPRING}
             drag="y"
             dragControls={dragControls}
             dragListener={false}
@@ -413,31 +451,39 @@ export default function BottomSheet({
  * SheetHandle — the shared top row: labeled Close button (audit: a
  * bare X read as "locked"), the drag pill, and a balancing spacer.
  * Every sheet uses the same row so dismissal reads identically.
+ *
+ * The whole row starts the drag, so a thumb that lands beside the pill still
+ * moves the sheet. Close stays a plain button. Nothing inside a sheet's scroll
+ * container starts a drag (2026-07-28: whole-panel drag fought scrolling).
  */
 export function SheetHandle({ onClose, closeLabel }: { onClose: () => void; closeLabel: string }) {
   const startDrag = useContext(SheetDragContext);
   return (
     <div
-      className="flex items-center justify-between gap-2 pb-1 pt-2"
+      data-sheet-handle
+      className="flex touch-none items-center justify-between gap-2 pb-1 pt-2"
       style={{
         paddingLeft: "max(0.75rem, env(safe-area-inset-left, 0px))",
         paddingRight: "max(0.75rem, env(safe-area-inset-right, 0px))",
+      }}
+      onPointerDown={(event) => {
+        if ((event.target as Element).closest("button")) return;
+        startDrag?.(event);
       }}
     >
       <button
         type="button"
         onClick={() => { haptic("light"); onClose(); }}
         aria-label={closeLabel}
-        className="relative z-10 inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold transition active:scale-[0.96]"
-        style={{ color: "var(--app-ink-2)" }}
+        className="relative z-10 inline-flex h-11 shrink-0 items-center gap-1.5 rounded-[var(--app-radius-md)] px-3 text-[12px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+        style={{ color: "var(--app-ink)" }}
       >
         <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
         Close
       </button>
       <span
         aria-hidden
-        className="grid h-11 w-16 touch-none cursor-grab place-items-center active:cursor-grabbing"
-        onPointerDown={(event) => startDrag?.(event)}
+        className="grid h-11 w-16 cursor-grab place-items-center active:cursor-grabbing"
       >
         <span
           className="block h-1 w-10 rounded-full"

@@ -2,10 +2,8 @@
  * Pure helpers for the business-update PUBLISH path (the second half of the
  * follow -> reach loop). No DB or server-only imports here, so the validation +
  * authorization logic is unit-testable; the route handler in
- * src/app/api/business/updates/route.ts composes these with the DB writes and
- * the push fan-out.
+ * src/app/api/business/updates/route.ts composes these with the DB writes.
  */
-import type { PushPayload } from "@/lib/push";
 
 /** Allowed update kinds — mirrors the business_updates.update_type comment.
  *  Kept as a list (not a DB enum) so a new kind needs no migration. */
@@ -44,9 +42,10 @@ export function isAdminEmail(
 }
 
 /**
- * Validate + normalize the publish request body. Pure — the route does the
- * auth + persistence. Bodies are clamped to notification-sane lengths (a push
- * title/body that overflows is just truncated by the OS, so we cap up front).
+ * Validate and normalize the publish request body. Pure: the route does the
+ * auth and persistence. A title over 120 characters or a body over 280 is
+ * rejected, never shortened, so an update is always short enough for the rail
+ * and the sender knows it was not accepted.
  */
 export function parsePublishBody(
   raw: unknown,
@@ -69,22 +68,4 @@ export function parsePublishBody(
     : "general";
 
   return { ok: true, value: { slug, title, body, update_type } };
-}
-
-/**
- * Build the push payload for a published update. Deep-links to the place page
- * (never an arbitrary caller-supplied URL — a push must not open somewhere the
- * owner doesn't control), and tags by business so a venue's rare updates
- * collapse to one notification rather than stacking.
- */
-export function composeUpdatePush(
-  slug: string,
-  update: { title: string; body: string },
-): PushPayload {
-  return {
-    title: update.title,
-    body: update.body,
-    url: `/places/${slug}`,
-    tag: `biz:${slug}`,
-  };
 }

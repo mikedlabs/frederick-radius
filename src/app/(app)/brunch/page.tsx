@@ -6,7 +6,6 @@ import {
   brunchVerificationDate,
   type BrunchSpot,
 } from "@/lib/loaders/brunch";
-import PageBloom from "@/components/ui/PageBloom";
 import FieldStamp from "@/components/ui/FieldStamp";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { PlaceMedallion } from "@/components/place/PlaceMedallion";
@@ -58,7 +57,6 @@ export default function BrunchPage() {
 
   return (
     <div className="relative space-y-5">
-      <PageBloom variant="warm-cool" />
 
       <header className="pt-0.5">
         <div aria-hidden className="h-px" style={{ background: "linear-gradient(90deg, transparent, var(--app-border) 14%, var(--app-border) 86%, transparent)" }} />

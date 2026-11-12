@@ -43,16 +43,18 @@
   list-style: none;
 }
 
-.stories > li + li {
-  border-top: 1px solid var(--app-border);
+/* Ruled rows that match the Today event rows exactly: each story owns a
+   hairline below it and 16px of padding above and below its text. */
+.stories > li {
+  border-bottom: 1px solid var(--app-border);
 }
 
 .story {
   display: flex;
   align-items: flex-start;
-  gap: var(--app-space-3);
+  gap: var(--app-space-4);
   min-height: 44px;
-  padding: var(--app-space-3) 0;
+  padding: var(--app-space-4) 0;
   color: var(--app-ink);
   text-decoration: none;
 }
@@ -103,6 +105,12 @@
 
 .official {
   border-top: 1px solid var(--app-border);
+}
+
+/* After the headline list, the last story's own hairline is the divider, so
+   the official updates do not add a second line under it. */
+.stories + .official {
+  border-top: 0;
 }
 
 .summary {

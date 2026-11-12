@@ -9,6 +9,7 @@ import {
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { Row, RowList, IconTile } from "@/components/ui/Row";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import { titleCaseName } from "@/lib/format/text";
 
 export const metadata: Metadata = {
   // Promoted back into nav (the Outdoors want's Parks chip lands here),
@@ -21,24 +22,17 @@ export const metadata: Metadata = {
 // Parks change rarely; the integration revalidates weekly.
 export const revalidate = 604800;
 
-// Source attributes are ALL-CAPS ("COMMUNITY PARK"). Title-case for
-// display without mangling the underlying data.
-function titleCase(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/\b([a-z])/g, (m) => m.toUpperCase())
-    .replace(/\bOf\b/g, "of");
-}
-
 /** One dense park row: name + type/address + acres, taps to the map. */
 function ParkRow({ p }: { p: Park }) {
-  const kind = p.type ? titleCase(p.type) : p.category ? titleCase(p.category) : null;
+  // Source attributes are ALL-CAPS ("COMMUNITY PARK", "WORMAN'S MILL PARK").
+  // Title-case them for display without changing the underlying data.
+  const kind = p.type ? titleCaseName(p.type) : p.category ? titleCaseName(p.category) : null;
   const subtitle = [kind, p.address].filter(Boolean).join(" · ") || undefined;
   return (
     <Row
       href={`/map?at=${p.lat},${p.lng}`}
       leading={<IconTile icon={Trees} tone="var(--app-brand-2)" />}
-      title={titleCase(p.name)}
+      title={titleCaseName(p.name)}
       subtitle={subtitle}
       meta={p.acres != null ? `${p.acres} ${p.acres === 1 ? "ac" : "ac"}` : undefined}
     />

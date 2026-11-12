@@ -16,8 +16,9 @@ import { BreweryPhoto, type BreweryPhotoMap } from "@/components/beer/BreweryPho
  * BreweryStrip — "where do I go to drink this," answered with PHOTOGRAPHS
  * instead of a logo-tab directory (owner: the beer page needs "much better
  * visuals for the photos," "less like a directory"). A horizontal snap-scroll
- * of concise photo cards with source-checked taproom context. The first action
- * always opens Radius's native place detail; external menus remain deeper.
+ * of concise photo cards with source-checked taproom context on phones, and a
+ * three-column grid of the same cards from lg up. The first action always
+ * opens Radius's native place detail; external menus remain deeper.
  */
 
 const FEATURE_CHIPS: { key: BreweryFeature; label: string }[] = [
@@ -113,12 +114,14 @@ export default function BreweryStrip({ photos }: { photos: BreweryPhotoMap }) {
         <ul
           id="brewery-strip-results"
           data-page-quality-horizontal-rail
-          className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none]"
+          // Phones keep the snap rail. From lg up the same list is a three-column
+          // grid, because a mouse wheel cannot reach cards in a hidden-scrollbar rail.
+          className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] lg:grid lg:grid-cols-3 lg:snap-none lg:overflow-visible lg:pb-0"
         >
           {cards.map((c) => (
-            <li key={c.slug} className="shrink-0 snap-start">
+            <li key={c.slug} className="shrink-0 snap-start lg:shrink">
               <article
-                className="group block w-[82vw] max-w-[340px] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] outline-none shadow-[var(--app-elev-1)] transition hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                className="group block w-[82vw] max-w-[340px] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] outline-none shadow-[var(--app-elev-1)] transition hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] lg:flex lg:h-full lg:w-auto lg:max-w-none lg:flex-col"
                 style={{ borderColor: "var(--app-border)" }}
               >
                 <BreweryPhoto
@@ -126,23 +129,27 @@ export default function BreweryStrip({ photos }: { photos: BreweryPhotoMap }) {
                   breweryName={c.name}
                   photo={c.photo}
                   decorative
-                  sizes="(max-width: 640px) 82vw, 340px"
+                  // The card title sits directly below, so the mark needs no caption.
+                  caption={false}
+                  sizes="(max-width: 640px) 82vw, (min-width: 1024px) 300px, 340px"
                   href={`/places/${c.slug}`}
                   linkLabel={`Open ${c.name}`}
                   className="h-[156px] w-full border-b border-[var(--app-border)] sm:h-[184px]"
                   imageClassName="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                 />
-                <Link href={`/places/${c.slug}`} className="block p-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]">
+                <Link href={`/places/${c.slug}`} className="block p-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] lg:flex lg:flex-1 lg:flex-col">
                   <span className="block font-sans text-[18px] font-semibold leading-tight tracking-[-0.02em] text-[var(--app-ink)]">
                     {c.name}
                   </span>
                   <span className="mt-1 block text-[10.5px] font-semibold uppercase tracking-[0.09em] text-[var(--app-ink-3)]">
                     {c.town}
                   </span>
-                  <span className="mt-2 block line-clamp-2 min-h-[2.5rem] text-[12px] leading-relaxed text-[var(--app-ink-2)]">
+                  <span className="mt-2 block line-clamp-2 min-h-[2.5rem] text-[12px] leading-relaxed text-[var(--app-ink-2)] lg:flex-1">
                     {c.story}
                   </span>
-                  <span className="mt-3 flex min-h-8 items-center justify-between gap-3 border-t pt-2 text-[11.5px] font-semibold text-[var(--app-brand-press)]" style={{ borderColor: "var(--app-border)" }}>
+                  {/* The link token: identical to the pressed coral in light, and
+                      the readable light coral on the dark surface. */}
+                  <span className="mt-3 flex min-h-8 items-center justify-between gap-3 border-t pt-2 text-[11.5px] font-semibold text-[var(--app-link)]" style={{ borderColor: "var(--app-border)" }}>
                     {c.needsConfirmation ? "Check current details" : "View taproom details"}
                     <ArrowRight className="h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} aria-hidden />
                   </span>

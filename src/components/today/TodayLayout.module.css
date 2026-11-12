@@ -45,28 +45,32 @@
   border-bottom: 0;
 }
 
+/* PLAIN TOOL: the Find field stands alone as a 48px ruled input; the scope
+   is a plain text row beneath it, not a second boxed tray. */
 .entryControls {
   display: grid;
+  gap: 2px;
   container-type: inline-size;
   min-width: 0;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
-  background: var(--app-bg-sunken);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .scope {
   min-width: 0;
-  padding: 0 4px 4px;
+  padding: 0;
 }
 
 .scope > div {
   margin-top: 0;
-  column-gap: var(--spacing);
+  column-gap: var(--app-space-4);
+  justify-content: space-between;
 }
 
 .scope label {
   /* Reflow before the native label and location action compete for space. */
-  flex: 1 1 12rem;
+  flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
 }
@@ -76,10 +80,13 @@
   /* WebKit's native menu ignores min-height; keep its visible target full size. */
   height: max(44px, 2.75rem);
   /* Keep the native arrow and enlarged system-font label inside the picker. */
-  padding-inline: 4px;
+  padding-inline: 0 4px;
   border: 0;
   border-radius: var(--app-radius-sm);
   background: transparent;
+  color: var(--app-ink);
+  /* 16px, never smaller: iOS zooms the page when a form control under 16px
+     takes focus. */
   font-size: 1rem;
   font-weight: 600;
   box-shadow: none;
@@ -90,7 +97,7 @@
   min-height: 44px;
   height: auto;
   max-width: 100%;
-  padding: 6px 10px;
+  padding: 6px 0;
   font-size: 0.8125rem;
   overflow-wrap: anywhere;
 }
@@ -98,6 +105,15 @@
 .scope select:focus-visible {
   outline: 3px solid var(--app-focus);
   outline-offset: 3px;
+}
+
+/* With enlarged text the area picker and the location action cannot share a
+   line, so the picker takes the full width and keeps its native arrow clear
+   of the selected area name. A rem threshold only trips when text grows. */
+@container (max-width: 17rem) {
+  .scope label {
+    flex: 1 1 100%;
+  }
 }
 
 .briefing {
@@ -173,7 +189,7 @@
 
 .geographicMosaic {
   min-width: 0;
-  container-type: inline-size;
+  container: today-discovery / inline-size;
 }
 
 .discoveryPlaceGrid {
@@ -189,19 +205,18 @@
   min-width: 0;
 }
 
+/* PLAIN TOOL discovery. The lead photograph is the one decorated object on
+   Today: a 16:10 image with 6px corners and the coral name plate described
+   below. Secondary places are rows on the white ground, divided by
+   hairlines. No card, no border box and no shadow. */
 .discoveryCard {
   position: relative;
   min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-xl);
-  background: var(--app-bg-elevated-solid);
-  box-shadow: var(--app-shadow-1);
-  transition: box-shadow var(--app-dur-fast) var(--app-ease-out);
-}
-
-.discoveryCard:hover {
-  box-shadow: var(--app-shadow-2);
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .discoveryPlaceLink {
@@ -209,29 +224,30 @@
   min-width: 0;
   min-height: 48px;
   color: var(--app-ink);
-  transition: transform var(--app-dur-fast) var(--app-ease-out);
 }
 
 .discoveryPlaceLink:hover {
   color: var(--app-ink);
 }
 
-.discoveryPlaceLink:active,
-.discoveryTask:active {
-  transform: scale(0.99);
+.discoveryPlaceLink:hover .discoveryName {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 
 .discoveryPlaceLink:focus-visible,
 .discoveryTask:focus-visible {
-  outline: 3px solid var(--app-focus);
-  outline-offset: -3px;
+  outline: 2px solid var(--app-focus);
+  outline-offset: 2px;
 }
 
 .discoveryPhoto {
   position: relative;
   display: block;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
+  border-radius: var(--app-radius-md);
   background: var(--app-bg-sunken);
 }
 
@@ -253,131 +269,331 @@
 }
 
 .discoveryCaption {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: var(--app-space-2);
+  display: block;
   min-width: 0;
-  min-height: 88px;
-  padding: var(--app-space-3);
+  /* Clear the Save action that sits at the caption's right edge. */
+  padding: var(--app-space-3) 88px var(--app-space-1, 4px) 0;
 }
 
 .discoveryName {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.22;
-  letter-spacing: -0.025em;
+  color: var(--app-ink);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 
 .discoveryTown {
-  margin: var(--spacing) 0 0;
+  margin: 2px 0 0;
   color: var(--app-ink-2);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
+/* Secondary rows are links already; only the lead's plate carries an arrow. */
 .discoveryAction {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  place-items: center;
-  color: var(--app-link);
+  display: none;
 }
 
-/* The exact photograph and its caption share one grid cell. Caption growth
-   contributes to the track, so enlarged text cannot be clipped by a fixed hero. */
-.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.discoveryPlace[data-today-discovery-role="lead"] .discoveryPhoto {
-  grid-area: 1 / 1;
-  /* Grid's normal alignment preserves an aspect-ratio item's intrinsic
-     height. Explicit stretch lets enlarged captions grow their shared row. */
-  align-self: stretch;
-  min-height: 250px;
-  aspect-ratio: 8 / 5;
-}
-
-.discoveryPlace[data-today-discovery-role="lead"] .discoveryCaption {
-  grid-area: 1 / 1;
-  align-self: end;
-  margin-top: 100px;
-  padding: var(--app-space-4);
-  color: var(--app-ink-inverse);
-  background: color-mix(in srgb, var(--app-media-ink) 94%, transparent);
-  z-index: 1;
-}
-
-.discoveryPlace[data-today-discovery-role="lead"] .discoveryName {
-  font-size: clamp(1.5rem, 6cqi, 2rem);
-  line-height: 1.1;
-  letter-spacing: -0.035em;
-}
-
-.discoveryPlace[data-today-discovery-role="lead"] .discoveryTown,
-.discoveryPlace[data-today-discovery-role="lead"] .discoveryAction {
-  color: var(--app-ink-inverse);
-}
-
+/* Save is an icon and a word, with no capsule, and keeps a full 44px target.
+   Its color comes from the shared Save control, so a saved place reads the
+   same here as on the place page. */
 .discoverySave {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  right: 0;
+  bottom: 0;
   z-index: 2;
   min-width: 44px;
-  border: 1px solid var(--app-border);
-  border-radius: 999px;
-  background: var(--app-bg-elevated-solid);
-  box-shadow: var(--app-shadow-1);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .discoverySave > button {
   flex-direction: row;
-  gap: 5px;
+  gap: 6px;
   min-width: 44px;
   min-height: 44px;
-  padding: 8px 10px;
-  border-radius: inherit;
-  font-size: 0.75rem;
+  padding: 8px 0 8px 8px;
+  border-radius: var(--app-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
   line-height: 1.35;
 }
 
-.discoveryPlace[data-today-discovery-role="secondary"] .discoverySave {
-  position: static;
-  width: max-content;
-  margin: 0 var(--app-space-2) var(--app-space-2) auto;
+.discoverySave > button:hover {
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-/* Exhausted images become complete factual links. The save control retains
-   its own space and no empty photographic panel remains. */
-.discoveryPlace[data-today-discovery-role] .discoveryPlaceLink[data-photo-state="failed"] {
+/* THE CORAL NAME PLATE: Today's one bold moment. The 16:10 photograph keeps
+   its 6px corners inside the gutter. A solid Deep Coral plate carries the
+   name, starts 14px inside the photo's left edge and is anchored by its
+   bottom edge, which hangs 36px below the photo. A longer name grows the
+   plate upward into the photograph, never down into the page.
+
+   Under the photo is one 44px band. The plate's lower part sits in it on the
+   left; Save sits in it on the right. The plate's maximum width reserves
+   Save's longest label plus a 12px gap, so the two never touch. Photo and
+   plate are one link; Save is a separate control. */
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryCard {
+  --lead-plate-inset: 14px;
+  --lead-plate-drop: 36px;
+  --lead-band: 44px;
+  --lead-gap: 12px;
+  /* The widest label Save can show here is the transient "Removing…". */
+  /* Sized with margin: the Linux and Android system fonts set this label
+     about 6px wider than the Mac one. */
+  --lead-save-width: 7.5rem;
+  container: today-lead / inline-size;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink {
+  position: relative;
   display: block;
+  padding-bottom: var(--lead-band);
 }
 
-.discoveryPlaceLink[data-photo-state="failed"] .discoveryCaption {
-  margin-top: 0;
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryCaption {
+  position: absolute;
+  left: var(--lead-plate-inset);
+  bottom: calc(var(--lead-band) - var(--lead-plate-drop));
+  z-index: 1;
+  display: block;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: calc(100% - var(--lead-plate-inset) - var(--lead-save-width) - var(--lead-gap));
+  margin: 0;
+  padding: 12px 12px 12px 14px;
+  border-radius: var(--app-radius-sm);
+  color: var(--app-on-brand);
+  background: var(--app-brand-press);
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryName {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  /* Clear the arrow that sits at the end of the name's first line. */
+  padding-right: 26px;
+  color: var(--app-on-brand);
+  /* Measured on the lead card: about 24px on a 390px phone, 20px at 320px. */
+  font-size: clamp(1.25rem, 6.7cqi, 1.75rem);
+  font-weight: 700;
+  /* Tall enough that the clamped last line keeps its descenders. */
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+}
+
+/* The town line stays on one line. The arrow sits on the name's line, so the
+   town has the plate's full width, and its tracking is tight enough that
+   "Frederick City" fits a 320px plate. A longer name ends in an ellipsis
+   rather than breaking under itself; the link's label still names the town. */
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryTown {
+  margin-top: 6px;
+  overflow: hidden;
+  color: var(--app-on-brand);
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryAction {
+  position: absolute;
+  /* Centered on the name's first line: the plate's 12px top padding plus
+     half the difference between that line's height and the arrow's. */
+  top: calc(12px + (clamp(1.25rem, 6.7cqi, 1.75rem) * 1.18 - 18px) / 2);
+  right: 12px;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  color: var(--app-on-brand);
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink:hover .discoveryName {
+  text-decoration-color: currentColor;
+}
+
+/* Save fills the band's right end, from the photo's bottom edge down. */
+.discoveryPlace[data-today-discovery-role="lead"] .discoverySave {
+  top: auto;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  width: var(--lead-save-width);
+  height: var(--lead-band);
+  transform: none;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoverySave > button {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  width: 100%;
+  padding: 8px 0;
+  white-space: nowrap;
+}
+
+/* Without an approved photograph the plate stands on the white ground at
+   the gutter, with no empty photo box above it, and Save stays beside it. */
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] {
+  padding-bottom: 0;
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] .discoveryCaption {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  width: fit-content;
+  max-width: calc(100% - var(--lead-save-width) - var(--lead-gap));
+}
+
+.discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] + .discoverySave {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+
+/* Enlarged text: a plate tall enough to reach the top of the photograph and
+   a Save label as wide as the plate cannot share the band. The plate then
+   overlaps the photo's bottom edge by 24px and grows downward, and Save takes
+   its own line under it. A rem threshold only trips when text grows. */
+@container today-lead (max-width: 17rem) {
+  .discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink {
+    padding-bottom: 0;
+  }
+
+  .discoveryPlace[data-today-discovery-role="lead"] .discoveryCaption {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    width: fit-content;
+    max-width: calc(100% - 2 * var(--lead-plate-inset));
+    margin: -24px 0 0 var(--lead-plate-inset);
+  }
+
+  .discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] .discoveryCaption {
+    max-width: 100%;
+    margin: 0;
+  }
+
+  /* The plate already grows downward here, so the whole name and town show. */
+  .discoveryPlace[data-today-discovery-role="lead"] .discoveryName {
+    display: block;
+    overflow: visible;
+    -webkit-line-clamp: unset;
+    line-clamp: none;
+  }
+
+  .discoveryPlace[data-today-discovery-role="lead"] .discoveryTown {
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .discoveryPlace[data-today-discovery-role="lead"] .discoverySave,
+  .discoveryPlace[data-today-discovery-role="lead"] .discoveryPlaceLink[data-photo-state="failed"] + .discoverySave {
+    position: static;
+    width: auto;
+    height: auto;
+    margin-top: var(--app-space-1, 4px);
+    transform: none;
+  }
+
+  .discoveryPlace[data-today-discovery-role="lead"] .discoverySave > button {
+    width: auto;
+  }
+}
+
+/* Secondary places: a row between hairlines. The media slot is always 72px
+   so names align down the list: a real photograph when one exists, otherwise
+   the place glyph alone, with no tile behind it. */
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryCard {
+  border-top: 1px solid var(--app-border);
+  padding-block: var(--app-space-3);
+}
+
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--app-space-3);
+}
+
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryPhoto {
+  width: 72px;
+  height: 72px;
+  aspect-ratio: 1;
+  border-radius: var(--app-radius-sm);
+}
+
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryCaption {
+  padding: 0 88px 0 0;
+}
+
+.discoveryPlace[data-today-discovery-role="secondary"] .discoverySave {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+
+.discoveryGlyph {
+  display: none;
+}
+
+/* An exhausted photograph keeps the slot. The glyph sits on the name's first
+   line in quiet ink; the caption keeps its ink type. */
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink[data-photo-state="failed"] {
+  align-items: start;
+}
+
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink[data-photo-state="failed"] .discoveryGlyph {
+  display: block;
+  width: 24px;
+  height: 24px;
+  /* Center the 24px glyph on the 17px title's first line box. */
+  margin-top: calc((1.0625rem * 1.25 - 24px) / 2);
+  color: var(--app-ink-3);
+}
+
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink[data-photo-state="failed"] .discoveryCaption {
+  padding-top: 0;
   color: var(--app-ink);
-  background: var(--app-bg-elevated-solid);
 }
 
-.discoveryCard:has(.discoveryPlaceLink[data-photo-state="failed"]) .discoverySave {
-  position: static;
-  width: max-content;
-  margin: 0 var(--app-space-2) var(--app-space-2) auto;
-}
-
-.discoveryPlaceLink[data-photo-state="failed"] .discoveryTown {
+.discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink[data-photo-state="failed"] .discoveryTown {
   color: var(--app-ink-2);
 }
 
-.discoveryPlaceLink[data-photo-state="failed"] .discoveryAction {
-  color: var(--app-link);
+/* Enlarged text: the thumbnail sits above the name and Save follows on its
+   own line, so the name keeps the full row. */
+@container today-discovery (max-width: 17rem) {
+  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink {
+    display: block;
+  }
+
+  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryCaption {
+    padding: var(--app-space-2) 0 0;
+  }
+
+  .discoveryPlace[data-today-discovery-role="secondary"] .discoverySave {
+    position: static;
+    display: flex;
+    justify-content: flex-start;
+    transform: none;
+  }
 }
 
 .discoveryCredit {
@@ -420,11 +636,13 @@
   padding-block: var(--spacing) var(--app-space-2);
 }
 
+/* Browse-by-need links are plain text rows with a hairline above, not
+   gray tiles. */
 .discoveryTasks {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--app-space-2);
-  margin-top: var(--app-space-3);
+  gap: 0 var(--app-space-4);
+  margin-top: var(--app-space-2);
 }
 
 .discoveryTask {
@@ -433,15 +651,16 @@
   gap: var(--app-space-2);
   min-width: 0;
   min-height: 52px;
-  padding: var(--app-space-2) var(--app-space-3);
-  border-radius: var(--app-radius-md);
+  padding: var(--app-space-2) 0;
+  border-top: 1px solid var(--app-border);
+  border-radius: 0;
   color: var(--app-ink);
-  background: var(--app-bg-sunken);
-  font-size: 0.875rem;
+  background: transparent;
+  font-size: 0.9375rem;
   font-weight: 600;
   line-height: 1.35;
   overflow-wrap: anywhere;
-  transition: transform var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out);
+  transition: color var(--app-dur-fast) var(--app-ease-out);
 }
 
 .discoveryTask > span:not(.discoveryTaskIcon) {
@@ -450,40 +669,22 @@
 }
 
 .discoveryTask:hover {
-  color: var(--app-ink);
-  background: var(--app-bg-elevated-solid);
+  color: var(--app-link);
+  background: transparent;
 }
 
 .discoveryTaskIcon {
   display: grid;
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   place-items: center;
-  color: var(--app-link);
+  color: var(--app-ink-2);
 }
 
-.discoveryTask[data-today-discovery-action="outside"] .discoveryTaskIcon {
-  color: var(--app-link);
-}
-
-/* Use available content width relative to actual text, not the device width.
-   At enlarged text sizes the same choices reflow into complete single cards. */
 @container (min-width: 18rem) {
   .discoveryTasks {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink {
-    display: grid;
-    grid-template-columns: 92px minmax(0, 1fr);
-    align-items: stretch;
-  }
-
-  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryPhoto {
-    height: 100%;
-    min-height: 116px;
-    aspect-ratio: auto;
   }
 }
 
@@ -491,26 +692,63 @@
   .discoveryPlaceGrid {
     grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
     align-items: start;
+    column-gap: var(--app-space-6);
   }
 
-  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryPlaceLink {
-    display: block;
+  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryCard {
+    border-top: 0;
+    padding-top: 0;
+  }
+}
+
+/* Wide screens: the place grid shares its rows with the outer layout, so the
+   lead photograph spans the left column while the secondary places and then
+   the browse links stack in the right column. The last row takes the slack,
+   so the links sit directly under the places rather than at the bottom. */
+@container today-discovery (min-width: 36rem) {
+  .discoveryLayout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+    grid-template-rows: repeat(3, auto) 1fr;
+    column-gap: var(--app-space-6);
   }
 
-  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryPhoto {
-    height: auto;
-    aspect-ratio: 4 / 3;
+  .discoveryLayout > .discoveryPlaceGrid {
+    grid-column: 1 / -1;
+    grid-row: 1 / -1;
+    grid-template-columns: subgrid;
+    grid-template-rows: subgrid;
+    row-gap: var(--app-space-3);
   }
 
-  .discoveryPlace[data-today-discovery-role="secondary"] .discoveryCaption {
-    padding-right: var(--app-space-3);
+  .discoveryLayout > .discoveryPlaceGrid > [data-today-discovery-role="lead"] {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+
+  .discoveryLayout > .discoveryPlaceGrid > [data-today-discovery-role="secondary"] {
+    grid-column: 2;
+  }
+
+  .discoveryLayout > .discoveryTasks {
+    grid-column: 2;
+    grid-row: -2;
+    align-self: start;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* With no place grid (a town without accepted imagery) the links keep the
+     full width. */
+  .discoveryLayout > .discoveryTasks:only-child {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 /* No foreign town or photo claims before the browser's area is resolved. */
 .geographicPending {
   min-height: 180px;
-  border-radius: var(--app-radius-lg);
+  border-radius: var(--app-radius-md);
   background: var(--app-bg-sunken);
 }
 
@@ -530,11 +768,6 @@
 
 .places > section {
   margin-top: 0;
-}
-
-.places [data-today-section-heading] p {
-  font-size: 12px;
-  line-height: 1.4;
 }
 
 .places [data-today-decision-density="brief"] :global(.today-section-heading) {
@@ -582,55 +815,6 @@
   line-height: 1.4;
 }
 
-.fairLink {
-  display: grid;
-  grid-template-columns: 76px minmax(0, 1fr) 20px;
-  align-items: center;
-  gap: 14px;
-  min-height: 104px;
-  padding-block: 12px;
-  color: var(--app-ink);
-  border-block: 1px solid var(--app-border);
-  outline-offset: 4px;
-}
-
-.fairLink:focus-visible {
-  outline: 2px solid var(--app-brand);
-}
-
-.fairPhoto {
-  width: 76px;
-  height: 76px;
-  border-radius: var(--app-radius-sm);
-  object-fit: cover;
-  object-position: 78% center;
-}
-
-.fairEyebrow {
-  display: block;
-  color: var(--app-ink-2);
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-.fairTitle {
-  display: block;
-  margin-top: 4px;
-  font-size: 18px;
-  font-weight: 650;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-}
-
-.fairAction {
-  display: block;
-  margin-top: 7px;
-  color: var(--app-link);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
 @media (min-width: 640px) {
   .context {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -641,12 +825,6 @@
   .context > :only-child {
     grid-column: 1 / -1;
   }
-
-  .fairLink {
-    height: 100%;
-  }
-
-
 }
 
 @media (min-width: 960px) {
@@ -654,11 +832,6 @@
     grid-template-columns: minmax(0, 1fr);
     gap: var(--app-space-5);
   }
-
-  .weather {
-    max-width: 46rem;
-  }
-
 }
 
 @media (max-width: 359px) {
@@ -669,16 +842,6 @@
 
   .title {
     font-size: 32px;
-  }
-
-  .fairLink {
-    grid-template-columns: 60px minmax(0, 1fr) 16px;
-    gap: 10px;
-  }
-
-  .fairPhoto {
-    width: 60px;
-    height: 76px;
   }
 }
 

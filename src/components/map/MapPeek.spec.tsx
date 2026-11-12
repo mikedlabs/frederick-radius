@@ -107,14 +107,19 @@ describe("MapPeek selected photo and source identity", () => {
     expect(host.querySelector("img")).toBeNull();
     expect(host.querySelector(".map-peek-body")?.hasAttribute("data-photo-kind")).toBe(false);
     expect(host.querySelector("[data-map-peek-photo-state=failed]")).toBeTruthy();
-    expect(host.textContent).toBe("F");
+    // The fallback is the plain category glyph, never a letter monogram or
+    // any attribution text.
+    expect(host.textContent).toBe("");
+    expect(host.querySelector(".map-peek-category-mark > svg")).toBeTruthy();
+    expect(host.querySelector(".map-peek-body")?.hasAttribute("data-glyph-only")).toBe(true);
     expect(host.querySelector("a")).toBeNull();
   });
   it("removes failed image bytes and their credit together even after a successful load", async () => {
     await render(); await load(800, 600);
     await act(async () => host.querySelector("img")!.dispatchEvent(new Event("error")));
     expect(host.querySelector("img")).toBeNull();
-    expect(host.textContent).toBe("F");
+    expect(host.textContent).toBe("");
+    expect(host.querySelector(".map-peek-category-mark > svg")).toBeTruthy();
     expect(host.querySelector("a")).toBeNull();
   });
   it("uses a new readiness boundary for a new source and never borrows the previous image's ready state", async () => {
@@ -213,7 +218,9 @@ describe("MapPeek selected photo and source identity", () => {
     await act(async () => fallback!.dispatchEvent(new Event("error")));
     expect(host.querySelector("img")).toBeNull();
     expect(host.querySelector("a")).toBeNull();
-    expect(host.textContent).toBe("RDetails");
+    // Only the plain category glyph remains beside Details: no monogram.
+    expect(host.textContent).toBe("Details");
+    expect(host.querySelector(".map-peek-category-mark > svg")).toBeTruthy();
     expect(document.activeElement).toBe(details);
     await act(async () => root.render(<MapPeekPhoto {...props}><button type="button">Details</button></MapPeekPhoto>));
     expect(host.querySelector("img")).toBeNull();

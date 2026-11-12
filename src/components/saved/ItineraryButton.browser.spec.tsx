@@ -191,13 +191,59 @@ describe("Event detail save uses the Saved tab's device store", () => {
     expect(mocks.toast.success).toHaveBeenCalledOnce();
   });
 
+  it("names the event on removal and restores it from Undo after the control has unmounted", async () => {
+    await render(); await click();
+    expect(mocks.toast.success).toHaveBeenCalledWith("Saved · Donut Thursday", { id: `save:event:${EVENT}`, duration: 3000, action: { label: "Undo", onClick: expect.any(Function) } });
+    await click();
+    expect(saved()).toEqual([]);
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Donut Thursday", { id: `save:event:${EVENT}`, duration: 6000, action: { label: "Undo", onClick: expect.any(Function) } });
+    const undo = mocks.toast.mock.calls[0][1].action.onClick;
+    await act(async () => root.render(<SavedSnapshot />));
+    await act(async () => undo());
+    expect(saved()).toEqual([{ type: "event", id: EVENT, saved_at: expect.any(String) }]);
+    expect(mocks.toast.error).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed Undo instead of leaving the removal silently in place", async () => {
+    await render(); await click(); await click();
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("Blocked", "SecurityError"); });
+    await act(async () => mocks.toast.mock.calls[0][1].action.onClick());
+    expect(saved()).toEqual([]);
+    expect(button().getAttribute("aria-pressed")).toBe("false");
+    expect(mocks.toast.error).toHaveBeenCalledWith("Could not undo this change", expect.objectContaining({
+      duration: 8000, action: { label: "Try again", onClick: expect.any(Function) },
+    }));
+    // The card may have unmounted by now, so the error toast is the only way
+    // back. Its retry restores the event.
+    vi.restoreAllMocks();
+    await act(async () => root.render(<SavedSnapshot />));
+    await act(async () => mocks.toast.error.mock.calls.at(-1)![1].action.onClick());
+    expect(saved()).toEqual([{ type: "event", id: EVENT, saved_at: expect.any(String) }]);
+  });
+
+  it("offers no retry when an ordinary save or removal fails", async () => {
+    await render();
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("Blocked", "SecurityError"); });
+    await click();
+    expect(mocks.toast.error).toHaveBeenCalledWith("Could not save this event", expect.not.objectContaining({ action: expect.anything() }));
+    // Save for real, then make the removal fail the same way.
+    vi.restoreAllMocks();
+    await click();
+    expect(saved()).toEqual([{ type: "event", id: EVENT, saved_at: expect.any(String) }]);
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("Blocked", "SecurityError"); });
+    await click();
+    expect(saved()).toEqual([{ type: "event", id: EVENT, saved_at: expect.any(String) }]);
+    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(mocks.toast.error).toHaveBeenLastCalledWith("Could not remove from Saved", expect.not.objectContaining({ action: expect.anything() }));
+  });
+
   it("reports unsupported coordination without changing readable event saves", async () => {
     await render();
     Object.defineProperty(navigator, "locks", { configurable: true, value: undefined });
     await click();
     expect(saved()).toEqual([]);
     expect(mocks.toast.success).not.toHaveBeenCalled();
-    expect(mocks.toast.error).toHaveBeenCalledWith("Could not save this event", { description: "This browser cannot safely coordinate Saved changes. Try a current browser." });
+    expect(mocks.toast.error).toHaveBeenCalledWith("Could not save this event", { description: "This browser cannot safely coordinate Saved changes. Try a current browser.", duration: 8000 });
     expect(button().getAttribute("aria-pressed")).toBe("false");
   });
 

@@ -301,6 +301,7 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
+          { key: "Content-Security-Policy", value: contentSecurityPolicy },
           // Force HTTPS for two years; reversible (no `preload`, so we
           // never get pinned on a browser preload list we can't undo).
           ...(isProduction
@@ -323,15 +324,6 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "geolocation=(self), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=(), browsing-topics=(), interest-cohort=()",
           },
-        ],
-      },
-      {
-        // The photographic renderer is a separate document with its own
-        // tightly scoped Wasm policy. Two CSP headers would intersect, not
-        // override each other, so the application policy excludes only it.
-        source: "/:path((?!fair-photo-viewer/?$).*)",
-        headers: [
-          { key: "Content-Security-Policy", value: contentSecurityPolicy },
         ],
       },
     ];
@@ -444,6 +436,28 @@ const nextConfig: NextConfig = {
         destination: "/events/first-friday-june-2026-frederick",
         permanent: true,
       },
+      // The 2026 Great Frederick Fair workspace was retired after the fair
+      // ended on September 26, 2026. /fair was printed and spoken, so it stays
+      // a real page that says the fair is over. Every other fair address a
+      // visitor could still hold folds into it. A trailing ":path*" also
+      // matches the bare address.
+      { source: "/moments/great-frederick-fair-2026/:path*", destination: "/fair", permanent: true },
+      { source: "/fair-photo-viewer", destination: "/fair", permanent: true },
+      { source: "/fair/:path+", destination: "/fair", permanent: true },
+      // Push notifications were retired in November 2026. The alert settings
+      // page is gone, and its one surviving control (phone feedback) now
+      // lives on /settings.
+      { source: "/settings/notifications", destination: "/settings", permanent: true },
+      // The legacy beta admin desks were retired once the access gate had been
+      // gone for months. They fold into the surviving admin desk; the feedback
+      // inbox moved to /admin/feedback. A trailing ":path*" also matches the
+      // bare address. The public /beta address is NOT redirected here: a
+      // config redirect forwards the query string, and old invite links carry
+      // a personal code in it. src/app/beta/[[...path]]/route.ts sends /beta
+      // to /today without the query.
+      { source: "/admin/beta", destination: "/admin/feedback", permanent: true },
+      { source: "/admin/beta-codes/:path*", destination: "/admin", permanent: true },
+      { source: "/admin/beta-emails/:path*", destination: "/admin", permanent: true },
     ];
   },
 };

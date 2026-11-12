@@ -273,7 +273,8 @@ for (const setting of [
       const acknowledgement = page.locator("[data-sonner-toast]").filter({ hasText: "Your saved list starts here" });
       await expect(acknowledgement).toBeVisible();
       const acknowledgementStarted = Date.now();
-      await expect(acknowledgement).toHaveCount(0, { timeout: 8000 });
+      // It carries Undo, so it stays 6 seconds before its exit.
+      await expect(acknowledgement).toHaveCount(0, { timeout: 10_000 });
       saveAcknowledgementWaitMs = Date.now() - acknowledgementStarted;
 
       // Open the accepted historical dinner-hours fixture through the real

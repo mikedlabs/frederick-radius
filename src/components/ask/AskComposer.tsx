@@ -6,10 +6,24 @@ export const ASK_COMPOSER_INPUT_CLASS =
   "min-w-0 flex-1 resize-none bg-transparent text-[16px] leading-[1.45] outline-none placeholder:text-[var(--app-ink-3)]";
 
 /**
+ * The text control never draws its own ring. The surrounding field takes the
+ * keyboard focus ring instead, so the visible outline follows the 6px field
+ * rather than a rectangle inside it. Inline style is required because the
+ * global `:focus-visible` rule outranks a layered utility class.
+ */
+export const ASK_COMPOSER_INPUT_STYLE = {
+  color: "var(--app-ink)",
+  outline: "none",
+} as const;
+
+/**
  * Shared visual contract for every Ask Radius entry point.
  *
  * The surrounding form still owns navigation or client-side submission, but
  * the mark, boundary, focus treatment, and primary action stay consistent.
+ * The frame is a plain 6px bordered field on the page ground: no shadow, no
+ * glow, and a focus ring that appears only for keyboard focus on its text
+ * control.
  */
 export function AskComposerFrame({
   children,
@@ -24,24 +38,30 @@ export function AskComposerFrame({
     <div
       data-ask-composer
       data-ask-composer-size={compact ? "compact" : "full"}
-      className={`ask-composer overflow-hidden rounded-[20px] bg-[var(--app-bg-elevated-solid)] ${
-        compact ? "p-1.5" : "p-2"
+      className={`overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-[var(--app-focus)] has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-[var(--app-focus)] ${
+        compact ? "p-1" : "p-1.5"
       } ${className}`}
+      style={{ borderColor: "var(--app-control-border)" }}
     >
       {children}
     </div>
   );
 }
 
+/**
+ * The plain compact mark marks the field as Ask without adding a second coral
+ * field beside the submit action, so it draws strokes only and no tile.
+ */
 export function AskComposerMark({ compact = false }: { compact?: boolean }) {
-  const size = compact ? 34 : 40;
+  const size = compact ? 24 : 32;
   return (
     <span
       data-ask-composer-mark
-      className="grid shrink-0 place-items-center"
+      className="grid h-11 w-9 shrink-0 place-items-center"
+      style={{ color: "var(--app-brand-text)" }}
       aria-hidden
     >
-      <RippleMark size={size} tile detail="compact" />
+      <RippleMark size={size} detail="compact" />
     </span>
   );
 }
@@ -74,7 +94,7 @@ export function AskComposerSubmit({
             }
           : onClick
       }
-      className={`ask-composer-submit tap-44 inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-bold transition active:scale-[0.97] disabled:opacity-35 ${className}`}
+      className={`tap-44 inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] px-3 text-[14px] font-semibold transition-opacity active:opacity-80 disabled:opacity-35 ${className}`}
       style={{
         background: "var(--app-brand-press)",
         color: "var(--app-on-brand)",

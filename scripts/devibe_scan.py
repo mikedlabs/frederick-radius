@@ -22,14 +22,12 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # The default report answers one question: what does the public Frederick Radius
 # product look like? These paths are explicitly separate worlds: the no-index
-# pitch deck, prod-disabled prototypes, private admin tools, and the small set of
-# helpers imported only by the pitch deck. `--surface all` includes all of them
-# so accepted debt never disappears from the repository-wide report.
+# pitch deck, private admin tools, and the small set of helpers imported only by
+# the pitch deck. `--surface all` includes all of them so accepted debt never
+# disappears from the repository-wide report.
 PUBLIC_APP_EXCLUDED_PREFIXES = (
     "src/app/pitch/",
     "src/components/marketing/",
-    "src/app/(app)/proto/",
-    "src/components/proto/",
     "src/app/admin/",
     "src/components/admin/",
 )
@@ -45,7 +43,7 @@ PUBLIC_APP_EXCLUDED_FILES = {
 # than hiding the most important public-product stylesheet wholesale.
 PUBLIC_APP_EXCLUDED_BLOCKS = {
     "src/app/globals.css": (
-        ("INTERNAL PITCH DECK", "APP (Warm Civic)"),
+        ("INTERNAL PITCH DECK", "Product identity"),
     ),
 }
 EXTS = {".html", ".htm", ".css", ".scss", ".sass", ".less", ".js", ".jsx",
@@ -152,8 +150,26 @@ def public_excluded_lines(path, lines):
                 inside = True
             if inside:
                 excluded.add(number)
-            if inside and end_marker in line:
+            if end_marker in line:
+                if not inside:
+                    # An end marker with no open block means the start marker
+                    # was removed or renamed, so the separate surface would be
+                    # scanned as public app code without any warning.
+                    raise SystemExit(
+                        f"devibe_scan: {repo_path(path)} line {number} has the "
+                        f"end marker {end_marker!r} without a preceding start "
+                        f"marker {start_marker!r}. Fix PUBLIC_APP_EXCLUDED_BLOCKS "
+                        "before trusting this scan."
+                    )
                 inside = False
+        if inside:
+            # A start marker with no end marker would silently exclude the rest
+            # of the file. That hid 9,272 lines of globals.css for a month.
+            raise SystemExit(
+                f"devibe_scan: {repo_path(path)} has the start marker "
+                f"{start_marker!r} but no end marker {end_marker!r}. "
+                "Fix PUBLIC_APP_EXCLUDED_BLOCKS before trusting this scan."
+            )
     return excluded
 
 

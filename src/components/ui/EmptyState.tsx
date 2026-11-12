@@ -3,26 +3,27 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 /**
- * EmptyState — the canonical "nothing here yet" surface.
+ * EmptyState: the canonical "nothing here yet" surface.
  *
  * Empty states used to vary across the app: some had copy + an
  * icon, some had a tinted block, others rendered as bare bordered
  * text. This component standardizes the pattern so a user lands on
  * a designed moment instead of a phantom layout.
  *
- * Composition rules:
- *   - Icon is REQUIRED — every empty state earns visual identity.
- *     Use a category-relevant Lucide icon, not a generic Inbox.
- *   - `title` is a serif sentence ending in a period; reads like a
+ * Composition rules (plain tool direction):
+ *   - Plain text on the page ground under one hairline. No box, no
+ *     halo, no gradient.
+ *   - Icon is required, small and inline with the title. Use a
+ *     category-relevant Lucide icon, not a generic Inbox.
+ *   - `title` is a sans sentence ending in a period; reads like a
  *     statement, not an error ("Nothing on the calendar for
  *     tonight.").
  *   - `body` is the explanation. Plain sans, short.
- *   - Optional primary CTA + secondary inline link. Use sparingly —
- *     an empty state with two CTAs and a back-link reads as a panic
- *     screen, not a calm absence.
- *   - The "tone" controls the accent color of the icon halo + CTA.
- *     `quiet` is the default (ink tones); `brand` for moments where
- *     we want the user to act; `positive` for "all caught up".
+ *   - One action: an outlined 6px button. The optional secondary is
+ *     an underlined text link, never a second button.
+ *   - The "tone" colors only the icon. `quiet` is the default;
+ *     `brand` for moments where we want the user to act; `positive`
+ *     for "all caught up".
  *
  * Examples:
  *   <EmptyState
@@ -34,19 +35,13 @@ import type { ReactNode } from "react";
  */
 export type EmptyStateTone = "quiet" | "brand" | "positive";
 
-const TONE: Record<EmptyStateTone, { color: string; bg: string }> = {
-  quiet: {
-    color: "var(--app-ink-3)",
-    bg: "color-mix(in srgb, var(--app-ink-3) 12%, var(--app-bg-elevated))",
-  },
-  brand: {
-    color: "var(--app-brand)",
-    bg: "color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated))",
-  },
-  positive: {
-    color: "var(--app-positive)",
-    bg: "color-mix(in srgb, var(--app-positive) 14%, var(--app-bg-elevated))",
-  },
+// Plain tool: an empty state is plain text on the page ground with one
+// action. The tone only colors the small leading icon; it never paints a
+// box, a halo or a gradient. Colored icons use the theme-readable text roles.
+const TONE: Record<EmptyStateTone, { color: string }> = {
+  quiet: { color: "var(--app-ink-2)" },
+  brand: { color: "var(--app-brand-text)" },
+  positive: { color: "var(--app-forest-text)" },
 };
 
 export default function EmptyState({
@@ -59,7 +54,7 @@ export default function EmptyState({
   className,
 }: {
   icon: LucideIcon;
-  /** Serif sentence ending in a period. */
+  /** A system-sans sentence ending in a period. */
   title: string;
   /** Optional explanation paragraph. */
   body?: ReactNode;
@@ -73,59 +68,41 @@ export default function EmptyState({
   const t = TONE[tone];
   return (
     <div
-      className={[
-        "tactile relative overflow-hidden rounded-[var(--app-radius-lg)] px-6 py-10 text-center",
-        className ?? "",
-      ].join(" ")}
-      style={{
-        background: `radial-gradient(80% 60% at 30% 20%, ${t.bg}, var(--app-bg-elevated))`,
-        border: "1px solid var(--app-border)",
-      }}
+      data-empty-state
+      className={["border-t py-8", className ?? ""].join(" ")}
+      style={{ borderColor: "var(--app-border)" }}
     >
-      <span
-        aria-hidden
-        className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full"
-        style={{
-          background: `color-mix(in srgb, ${t.color} 22%, var(--app-bg-elevated))`,
-          color: t.color,
-        }}
-      >
-        <Icon className="h-6 w-6" strokeWidth={1.75} />
-      </span>
       <h3
-        className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
+        className="flex items-start gap-2 font-sans text-[17px] font-semibold leading-snug tracking-[-0.01em] text-pretty"
         style={{ color: "var(--app-ink)" }}
       >
-        {title}
+        <Icon aria-hidden className="mt-[3px] h-[18px] w-[18px] shrink-0" strokeWidth={1.75} style={{ color: t.color }} />
+        <span className="min-w-0">{title}</span>
       </h3>
       {body && (
         <p
-          className="mx-auto mt-1.5 max-w-sm text-[13px] leading-relaxed text-pretty"
+          className="mt-1.5 max-w-prose pl-[26px] text-[14px] leading-relaxed text-pretty"
           style={{ color: "var(--app-ink-2)" }}
         >
           {body}
         </p>
       )}
       {cta && (
-        <Link
-          href={cta.href}
-          className="tap-44 mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold tactile tactile-interactive"
-          style={{
-            background:
-              tone === "brand" ? "var(--app-brand-press)" : "var(--app-bg-elevated)",
-            color: tone === "brand" ? "var(--app-on-brand)" : t.color,
-            boxShadow: tone === "brand" ? "var(--app-shadow-1)" : undefined,
-          }}
-        >
-          {cta.label}
-        </Link>
+        <div className="mt-4 pl-[26px]">
+          <Link
+            href={cta.href}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-md)] border border-[var(--app-control-border)] bg-[var(--app-bg)] px-4 text-[14px] font-semibold text-[var(--app-ink)] transition-colors hover:bg-[var(--app-bg-sunken)]"
+          >
+            {cta.label}
+          </Link>
+        </div>
       )}
       {secondary && (
-        <div className="mt-3">
+        <div className="mt-2 pl-[26px]">
           <Link
             href={secondary.href}
-            className="tap-44-y inline-flex text-[12px] underline-offset-2 hover:underline"
-            style={{ color: "var(--app-ink-3)" }}
+            className="tap-44-y inline-flex text-[13px] underline underline-offset-2"
+            style={{ color: "var(--app-ink-2)" }}
           >
             {secondary.label}
           </Link>

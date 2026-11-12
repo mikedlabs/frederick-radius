@@ -14,7 +14,7 @@ export default function EventSourceLink({ href }: { href: string }) {
       rel="noopener noreferrer"
       data-event-source-link
       className="tap-44-y inline-flex items-center gap-1 font-semibold underline decoration-current/40 underline-offset-2"
-      style={{ color: "var(--app-brand-press)" }}
+      style={{ color: "var(--app-link)" }}
     >
       Official event page
       <ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden />

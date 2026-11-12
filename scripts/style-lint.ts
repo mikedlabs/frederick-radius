@@ -51,7 +51,6 @@ const SCAN_FILES = [
   "src/lib/loaders/amenities.ts",
   "src/lib/locations.ts",
   "src/lib/place-reasons.ts",
-  "src/lib/push-topics.ts",
   "src/lib/trust.ts",
   "src/lib/weather-verdict.ts",
 ];

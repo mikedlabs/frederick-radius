@@ -11,7 +11,7 @@ import SaveOutingButton from "./SaveOutingButton";
 import SavedOutings from "./SavedOutings";
 import SavedList from "./SavedList";
 
-const mocks = vi.hoisted(() => ({ toast: vi.fn(), followed: new Set<string>(), fetch: vi.fn() }));
+const mocks = vi.hoisted(() => ({ toast: Object.assign(vi.fn(), { error: vi.fn() }), followed: new Set<string>(), fetch: vi.fn() }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
 vi.mock("next/link", () => ({ default: ({ href, children, prefetch: _prefetch, ...props }: { href: string; children: React.ReactNode; prefetch?: boolean }) => { void _prefetch; return <a href={href} {...props}>{children}</a>; } }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/my-radius", useSearchParams: () => new URLSearchParams() }));
@@ -35,6 +35,7 @@ describe("saved-outing real-store controls and return cards", () => {
     refreshSavedOutings();
     locks = installSavedLocks();
     mocks.toast.mockClear();
+    mocks.toast.error.mockClear();
     mocks.fetch.mockReset();
     mocks.fetch.mockImplementation(() => { throw new Error("Unexpected network dependency"); });
     vi.stubGlobal("fetch", mocks.fetch);
@@ -103,6 +104,43 @@ describe("saved-outing real-store controls and return cards", () => {
     await act(async () => window.dispatchEvent(new StorageEvent("storage", { key: SAVED_OUTINGS_KEY, storageArea: localStorage })));
     expect(button("Remove outing from Saved").getAttribute("aria-pressed")).toBe("true");
     expect(host.querySelector('[role="status"]')).toBeNull();
+  });
+
+  it("offers Undo when the planner control removes an outing, and reports a failed Undo", async () => {
+    await render();
+    await act(async () => button("Save outing").click());
+    mocks.toast.mockClear();
+    await act(async () => button("Remove outing from Saved").click());
+    expect(host.querySelector('[role="status"]')?.textContent).toContain("Removed from Saved");
+    expect(mocks.toast).toHaveBeenCalledTimes(1);
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Our Brunswick date", { id: `save:outing:${token}`, duration: 6000, action: { label: "Undo", onClick: expect.any(Function) } });
+    const undo = mocks.toast.mock.calls[0][1].action.onClick as () => void;
+    await act(async () => undo());
+    expect(button("Remove outing from Saved").getAttribute("aria-pressed")).toBe("true");
+    expect(JSON.parse(localStorage.getItem(SAVED_OUTINGS_KEY)!)).toEqual([{ token, title: "Our Brunswick date", saved_at: expect.any(String) }]);
+    // The reversed removal no longer describes this outing.
+    expect(host.querySelector('[role="status"]')).toBeNull();
+    expect(mocks.toast.error).not.toHaveBeenCalled();
+    await act(async () => button("Remove outing from Saved").click());
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {});
+    await act(async () => mocks.toast.mock.calls[1][1].action.onClick());
+    expect(mocks.toast.error).toHaveBeenCalledWith("Could not undo this change", {
+      description: expect.stringContaining("could not confirm"), duration: 8000, action: { label: "Try again", onClick: expect.any(Function) },
+    });
+    // Nothing was restored, and no control claims a saved outing.
+    expect(JSON.parse(localStorage.getItem(SAVED_OUTINGS_KEY)!)).toEqual([]);
+    expect(host.querySelector('button[aria-pressed="true"]')).toBeNull();
+  });
+
+  it("restores the saved title, not a planner title edited since the save", async () => {
+    await render();
+    await act(async () => button("Save outing").click());
+    await act(async () => root.render(<SaveOutingButton token={token} title="Renamed plan" />));
+    mocks.toast.mockClear();
+    await act(async () => button("Remove outing from Saved").click());
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Our Brunswick date", expect.objectContaining({ id: `save:outing:${token}` }));
+    await act(async () => mocks.toast.mock.calls[0][1].action.onClick());
+    expect(JSON.parse(localStorage.getItem(SAVED_OUTINGS_KEY)!)).toEqual([{ token, title: "Our Brunswick date", saved_at: expect.any(String) }]);
   });
 
   it("reopens the identical ordered dated choices after navigation and a fresh Saved mount", async () => {
@@ -195,10 +233,34 @@ describe("saved-outing real-store controls and return cards", () => {
     await act(async () => saveOuting(token, "Our Brunswick date"));
     await act(async () => root.render(<SavedList />));
     await act(async () => button("Remove outing: Our Brunswick date").click());
-    expect(mocks.toast).toHaveBeenCalledWith("The outing was removed from Saved on this device.");
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Our Brunswick date", { id: `save:outing:${token}`, duration: 6000, action: { label: "Undo", onClick: expect.any(Function) } });
     expect(host.querySelector("[data-saved-empty-state]")).not.toBeNull();
     expect(host.textContent).toContain("Save an outing");
     expect(JSON.parse(localStorage.getItem(SAVED_OUTINGS_KEY)!)).toEqual([]);
+  });
+
+  it("restores the exact outing from Undo after its card and section have unmounted", async () => {
+    await act(async () => saveOuting(token, "Our Brunswick date"));
+    await act(async () => root.render(<SavedList />));
+    await act(async () => button("Remove outing: Our Brunswick date").click());
+    expect(host.querySelector('section[aria-label="Saved outings"]')).toBeNull();
+    await act(async () => mocks.toast.mock.calls[0][1].action.onClick());
+    const restored = host.querySelector<HTMLAnchorElement>('a[aria-label="Open outing: Our Brunswick date"]')!;
+    expect(new URL(restored.href).searchParams.get("p")).toBe(token);
+    expect(JSON.parse(localStorage.getItem(SAVED_OUTINGS_KEY)!)).toEqual([{ token, title: "Our Brunswick date", saved_at: expect.any(String) }]);
+    expect(mocks.toast.error).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed Undo with its reason and a retry instead of failing silently", async () => {
+    await act(async () => saveOuting(token, "Our Brunswick date"));
+    await act(async () => root.render(<SavedList />));
+    await act(async () => button("Remove outing: Our Brunswick date").click());
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {});
+    await act(async () => mocks.toast.mock.calls[0][1].action.onClick());
+    expect(mocks.toast.error).toHaveBeenCalledWith("Could not undo this change", {
+      description: expect.stringContaining("could not confirm"), duration: 8000, action: { label: "Try again", onClick: expect.any(Function) },
+    });
+    expect(host.querySelector('a[aria-label^="Open outing:"]')).toBeNull();
   });
 
   it("retains the card and presents an error if removal is not confirmed", async () => {

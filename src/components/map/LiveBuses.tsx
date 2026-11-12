@@ -1106,7 +1106,7 @@ function VisibleLiveBuses({
                   style={{
                     borderColor: isWatching ? color : "var(--app-border, #D9D2C3)",
                     background: isWatching
-                      ? `color-mix(in srgb, ${color} 10%, white)`
+                      ? `color-mix(in srgb, ${color} 10%, var(--app-bg-elevated-solid))`
                       : "var(--app-bg-elevated, #FCFBF8)",
                     color: "var(--app-ink, #221C15)",
                     cursor: "pointer",
@@ -1176,7 +1176,7 @@ function VisibleLiveBuses({
                 style={{
                   borderColor: busSaved ? color : "var(--app-border, #D9D2C3)",
                   background: busSaved
-                    ? `color-mix(in srgb, ${color} 10%, white)`
+                    ? `color-mix(in srgb, ${color} 10%, var(--app-bg-elevated-solid))`
                     : "var(--app-bg-elevated, #FCFBF8)",
                   color: "var(--app-ink, #221C15)",
                   cursor: canToggleSaved ? "pointer" : "not-allowed",

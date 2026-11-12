@@ -2,14 +2,17 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 /**
- * SectionHeading — the one strong category header, reused by Shelf and
- * the Radius results grid (and available to any future surface). A
- * tick + system-sans title + a quiet count, optional trailing action.
+ * SectionHeading: the one strong category header, reused by Shelf and
+ * the Radius results grid (and available to any future surface). A bold
+ * system-sans title, a quiet count and one hairline, with an optional
+ * trailing action. Plain tool direction: no accent tick; type and the rule
+ * carry the break.
  *
- * The tick color reads from `--section-accent` if a parent has set it
- * (so a whole route can theme its headings with one declaration on the
- * outer `<main>` or page wrapper), and falls back to `--app-brand`. An
- * explicit `accent` prop overrides per-instance.
+ * The action color is `--app-heading-action` when a parent sets it (the
+ * four primary tabs set it to `--app-link`). Otherwise it blends the route
+ * accent (`--section-accent`, else `--app-brand`) 60% toward the theme's
+ * ink so small action text stays readable in both appearances. An explicit
+ * `accent` prop replaces the route accent for one heading.
  */
 export default function SectionHeading({
   title,
@@ -31,30 +34,27 @@ export default function SectionHeading({
   trailing?: React.ReactNode;
   /** Override the route accent for a single heading. */
   accent?: string;
-  /** Heading register. Both use the device's System Sans. `lg` is the bold
-   * 22px primary title with a full tick; `sm` is the semibold 16px subhead
-   * with a shorter tick. */
+  /** Heading register. Both use the device's System Sans and neither draws
+   * a tick. `lg` is the bold 20px section title; `sm` is the bold 16px
+   * subhead. */
   size?: "lg" | "sm";
 }) {
-  const tickColor = accent ?? "var(--section-accent, var(--app-brand))";
-  // The tick keeps the true accent. Small action text blends it toward the
-  // theme's ink unless its context supplies an explicit readable action color.
-  const ctaColor = `color-mix(in srgb, ${tickColor} 60%, var(--app-ink))`;
+  const accentColor = accent ?? "var(--section-accent, var(--app-brand))";
+  // Small action text blends the accent toward the theme's ink unless its
+  // context supplies an explicit readable action color.
+  const ctaColor = `color-mix(in srgb, ${accentColor} 60%, var(--app-ink))`;
   const small = size === "sm";
   const hasTrailingAction = Boolean(trailing || onCtaClick || href);
   return (
     <header className="section-heading flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1 min-[360px]:flex-nowrap">
       <h2
         className={`${small
-            ? "flex min-w-0 items-center gap-2 font-sans text-[16px] font-semibold leading-none tracking-tight"
-            : "flex min-w-0 items-center gap-2 font-sans text-[22px] font-bold leading-none tracking-tight"}${hasTrailingAction ? " max-[359px]:basis-full" : ""}`}
+            ? "flex min-w-0 items-baseline gap-2 font-sans text-[16px] font-bold leading-tight tracking-[-0.01em]"
+            : "flex min-w-0 items-baseline gap-2 font-sans text-[20px] font-bold leading-tight tracking-[-0.02em]"}${hasTrailingAction ? " max-[359px]:basis-full" : ""}`}
         style={{ color: "var(--app-ink)" }}
       >
-        <span
-          aria-hidden
-          className={small ? "inline-block h-3 w-1 rounded-full shrink-0" : "inline-block h-4 w-1 rounded-full shrink-0"}
-          style={{ background: `var(--app-heading-rule, ${tickColor})` }}
-        />
+        {/* PLAIN TOOL: no accent tick. A sentence-case heading one clear step
+            above the 17px row titles, then a hairline, carries the break. */}
         <span
           className="truncate"
           style={{
@@ -67,7 +67,7 @@ export default function SectionHeading({
         </span>
         {count !== undefined && (
           <span
-            className={small ? "font-data text-sm font-normal" : "font-data text-base font-normal"}
+            className={`font-sans ${small ? "text-[13px]" : "text-[15px]"} font-medium tabular-nums tracking-normal`}
             style={{ color: "var(--app-ink-3)" }}
           >
             {count}
@@ -76,9 +76,9 @@ export default function SectionHeading({
       </h2>
       <span
         aria-hidden
-        className="mb-[0.18rem] hidden h-px min-w-4 flex-1 min-[360px]:block"
+        className="mb-[0.45rem] hidden h-px min-w-4 flex-1 min-[360px]:block"
         style={{
-          background: `var(--app-heading-rule, linear-gradient(90deg, color-mix(in srgb, ${tickColor} 34%, var(--app-border)), var(--app-border)))`,
+          background: "var(--app-border)",
         }}
       />
       {trailing ? (

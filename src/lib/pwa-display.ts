@@ -1,12 +1,7 @@
 /**
- * PWA display-mode + platform helpers — shared by the install prompt and the
- * push/notifications surfaces. The load-bearing fact: iOS Web Push (16.4+)
- * only works when the site is installed to the Home Screen and runs in
- * standalone display mode. In a normal browser tab the Push/Notification APIs
- * may be present but cannot complete the Home Screen permission flow.
+ * PWA display-mode + platform helpers, shared by the install prompt, the
+ * update flow, and the Saved controls that adapt to an installed app.
  */
-
-import { isFairDayPath } from "@/lib/fair/route-policy";
 
 /** Gives mounted workspaces one synchronous handoff before an accepted reload. */
 export const APP_UPDATE_ACCEPTED_EVENT = "fr:app-update-accepted";
@@ -29,12 +24,6 @@ export function isIosDevice(userAgent: string, maxTouchPoints = 0): boolean {
     || (/Macintosh/.test(userAgent) && maxTouchPoints > 1);
 }
 
-/** Any iOS device, including iPadOS in desktop-identification mode. */
-export function isIos(): boolean {
-  if (typeof window === "undefined") return false;
-  return isIosDevice(window.navigator.userAgent, window.navigator.maxTouchPoints);
-}
-
 /**
  * Safari is the reliable iOS path to Add to Home Screen. Facebook, Instagram,
  * Chrome, and other embedded browsers may expose different controls.
@@ -55,8 +44,7 @@ export function isIosSafari(): boolean {
 export function isInstallPromptSuppressedPath(pathname: string): boolean {
   // Automatic offers stay out of focused journeys. Deliberate actions in
   // Saved, Compass and Settings bypass this policy and keep installation open.
-  return isFairDayPath(pathname)
-    || pathname === "/map"
+  return pathname === "/map"
     || pathname === "/today"
     // Discovery results are focused work too: a queued first-visit offer
     // must not appear as someone moves from Today into Nearby or Search.
