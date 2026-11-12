@@ -2,7 +2,6 @@ import { isResolvableEventSlug } from "@/lib/events/resolvable-event-slug";
 import type { Metadata } from "next";
 import PlanBuilder from "@/components/plan/PlanBuilder";
 import { decodeSpec, reconstructPlan } from "@/lib/integrations/planner";
-import PageBloom from "@/components/ui/PageBloom";
 import { PRODUCT_NAMES } from "@/lib/product-names";
 import { Suspense } from "react";
 import MapReturnLink from "@/components/place/MapReturnLink";
@@ -53,7 +52,6 @@ export default async function PlanPage({
 
   return (
     <div className="relative mx-auto max-w-[1080px]">
-      <PageBloom variant="warm-cool" />
 
       <Suspense fallback={null}><MapReturnLink /></Suspense>
 

@@ -4,13 +4,14 @@ import { libreCaslonDisplay } from "./fonts";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
-import { Toaster } from "sonner";
+import AppToaster from "@/components/ui/AppToaster";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { cn } from "@/lib/utils";
 import Plausible from "@/components/analytics/Plausible";
 import DecisionTelemetryObserver from "@/components/analytics/DecisionTelemetry";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
+import SavedAppearanceRestore from "@/components/util/SavedAppearanceRestore";
 import { PLATFORM_BRAND } from "@/lib/platform-brand";
 import { APPEARANCE_BOOTSTRAP } from "@/lib/appearance";
 
@@ -224,6 +225,11 @@ export default function RootLayout({
         >
           Skip to content
         </a>
+        {/* The head bootstrap does not run on a client-built not-found
+            shell; this restores the saved appearance there. The root
+            global-error fallback replaces this layout and keeps its own
+            small palette that follows the device setting. */}
+        <SavedAppearanceRestore />
         {/* NuqsAdapter — App Router edition. Wraps the tree so any
             client component can call useQueryState to read/write URL
             search params with a typed API. Master UI brief §16 + §20:
@@ -237,32 +243,10 @@ export default function RootLayout({
             - Vercel Analytics + Speed Insights (Pro-tier; real-user web
               vitals + traffic per route, which Plausible doesn't surface)
             Both run without advertising cookies in this configuration. */}
-        {/* Brand-aligned toaster — paper-cream surface, warm-dark
-            ink, sits just above the bottom nav so toasts don't
-            overlap the tab bar. Sonner handles enter/exit physics +
-            queueing; this is the single instance per app shell. */}
-        <Toaster
-          position="bottom-center"
-          offset="calc(env(safe-area-inset-bottom, 0px) + 80px)"
-          mobileOffset={{
-            bottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
-            left: "12px",
-            right: "12px",
-          }}
-          toastOptions={{
-            style: {
-              background: "var(--app-bg-elevated)",
-              border: "1px solid var(--app-border)",
-              color: "var(--app-ink)",
-              boxShadow: "var(--app-elev-2), var(--app-edge), var(--app-hi)",
-              fontFamily: "var(--font-sans)",
-              fontSize: "13px",
-              borderRadius: "var(--app-radius-md)",
-            },
-            className: "fr-toast",
-          }}
-          duration={3000}
-        />
+        {/* The single toaster for the app shell. Surface, buttons, icons and
+            timing live in AppToaster; call sites raise toasts through
+            src/lib/feedback/notify.ts. */}
+        <AppToaster />
         <Plausible />
         <DecisionTelemetryObserver />
         {/* Gate real-user telemetry to PRODUCTION so preview and local traffic

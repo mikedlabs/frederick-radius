@@ -54,13 +54,13 @@ describe("Radius tool registry", () => {
     expect(radiusJourneyForPath("/parks")).toBe("map");
     expect(radiusJourneyForPath("/amenities")).toBe("map");
     expect(radiusJourneyForPath("/sports")).toBe("events");
-    expect(radiusJourneyForPath("/moments/great-frederick-fair-2026")).toBe("events");
     expect(radiusJourneyForPath("/settings")).toBe("saved");
     expect(radiusJourneyForPath("/search")).toBeNull();
   });
 
   it("requires a registered moment for a dynamic guide destination", () => {
-    expect(routeFile("/moments/great-frederick-fair-2026")).toBe("src/app/(app)/moments/[slug]/page.tsx");
+    expect(routeFile("/moments/in-the-street-2026")).toBe("src/app/(app)/moments/[slug]/page.tsx");
+    expect(existsSync(join(process.cwd(), routeFile("/moments/great-frederick-fair-2026")))).toBe(false);
     expect(existsSync(join(process.cwd(), routeFile("/moments/not-a-real-moment")))).toBe(false);
   });
 
@@ -75,7 +75,7 @@ describe("Radius tool registry", () => {
       }
       expect(tool.href).toMatch(/^\//);
       expect(tool.href).not.toMatch(
-        /^\/(?:admin(?:\/|$)|collect(?:\/|$)|proto(?:\/|$)|business\/claim(?:\/|$)|from-above\/time-machine(?:\/|$))/,
+        /^\/(?:admin(?:\/|$)|collect(?:\/|$)|business\/claim(?:\/|$)|from-above\/time-machine(?:\/|$))/,
       );
       expect(existsSync(join(process.cwd(), routeFile(tool.href)))).toBe(true);
     }
@@ -126,7 +126,6 @@ describe("Radius tool registry", () => {
       "collections",
       "saved",
       "keep-radius",
-      "notifications",
       "rivers",
       "overhead",
       "beer-tools",

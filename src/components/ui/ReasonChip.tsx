@@ -1,22 +1,27 @@
-import type { CSSProperties } from "react";
+import { Fragment, type CSSProperties } from "react";
 
 /**
- * ReasonChip — the small "why this is shown" pill that lives on
+ * ReasonChip: the small "why this is shown" label that lives on
  * place and event cards. Per Brand Book No. 01 + the master UI
  * brief: each card should help the visitor make a decision, not
- * just describe the record. Reason chips do the deciding-context
- * work in a single horizontal row.
+ * just describe the record. Reasons do the deciding-context work in
+ * a single horizontal line.
  *
- * Tones map to the brand palette:
- *   open      — positive green   (open / live now)
- *   near      — Carroll Creek    (distance / walkable)
- *   verified  — Catoctin green   (recently verified)
- *   free      — positive green   (no admission)
- *   rated     — almanac gold     (top rated / local favorite)
- *   neutral   — paper-sunken     (catch-all)
+ * Plain tool: a reason only labels why a record is shown. It is not a
+ * status badge or a filter, so it renders as plain small text with no
+ * fill, ring, corner or capsule. The open cue keeps a small status dot
+ * in its own hue; every label uses a readable ink in either appearance.
+ *
+ * Tones keep their meaning through the dot and the data attribute:
+ *   open      positive green (open / live now), drawn as a status dot
+ *   near      Carroll Creek (distance / walkable)
+ *   verified  Catoctin green (recently verified)
+ *   free      positive green (no admission)
+ *   rated     almanac gold (top rated / local favorite)
+ *   neutral   catch-all
  *
  * Capped at 3 per card by the producers (placeReasons / eventReasons)
- * so a card never reads as a chip soup.
+ * so a card never reads as a list of labels.
  */
 export type ReasonTone =
   | "open"
@@ -26,32 +31,13 @@ export type ReasonTone =
   | "rated"
   | "neutral";
 
-const TONE_TOKENS: Record<ReasonTone, { color: string; bg: string; dot?: boolean }> = {
-  open: {
-    color: "var(--state-open)",
-    bg: "var(--state-open-bg)",
-    dot: true, // a live cue for "open now"
-  },
-  near: {
-    color: "var(--app-cool)",
-    bg: "color-mix(in srgb, var(--app-cool) 16%, transparent)",
-  },
-  verified: {
-    color: "var(--app-positive)",
-    bg: "color-mix(in srgb, var(--app-positive) 16%, transparent)",
-  },
-  free: {
-    color: "var(--app-cool)",
-    bg: "color-mix(in srgb, var(--app-cool) 16%, transparent)",
-  },
-  rated: {
-    color: "var(--app-accent-press)",
-    bg: "color-mix(in srgb, var(--app-accent) 20%, transparent)",
-  },
-  neutral: {
-    color: "var(--app-ink-2)",
-    bg: "var(--app-bg-sunken)",
-  },
+const TONE_TOKENS: Record<ReasonTone, { color: string; dot?: boolean }> = {
+  open: { color: "var(--state-open)", dot: true },
+  near: { color: "var(--app-cool-text)" },
+  verified: { color: "var(--app-forest-text)" },
+  free: { color: "var(--app-cool-text)" },
+  rated: { color: "var(--app-accent-text)" },
+  neutral: { color: "var(--app-ink-2)" },
 };
 
 export default function ReasonChip({
@@ -68,22 +54,15 @@ export default function ReasonChip({
   const t = TONE_TOKENS[tone];
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-tight ${className}`}
+      data-reason-tone={tone}
+      className={`inline-flex items-center gap-1 text-[12px] font-semibold leading-snug ${className}`}
       style={{
-        background: t.bg,
-        // Keep tone colors in the ring and dot while the label remains readable in either theme.
-        color: "var(--app-ink)",
-        // Hairline ring in the tone's own hue so the chip reads as a made
-        // token on the cream card, not washed-out tinted text.
-        boxShadow:
-          tone === "neutral"
-            ? "inset 0 0 0 1px var(--app-border)"
-            : `inset 0 0 0 1px color-mix(in srgb, ${t.color} 32%, transparent)`,
+        color: "var(--app-ink-2)",
         ...style,
       }}
     >
       {t.dot && (
-        <span aria-hidden className="inline-block h-[5px] w-[5px] rounded-full" style={{ background: t.color }} />
+        <span aria-hidden className="inline-block h-[6px] w-[6px] rounded-full" style={{ background: t.color }} />
       )}
       {label}
     </span>
@@ -91,8 +70,9 @@ export default function ReasonChip({
 }
 
 /**
- * Compact row of chips — handles spacing + ARIA so consumers don't
- * have to. Use with any helper that returns an array of {label, tone}.
+ * Compact line of reasons: handles spacing, the middle-dot separators and
+ * ARIA so consumers don't have to. Use with any helper that returns an
+ * array of {label, tone}.
  */
 export function ReasonChipRow({
   reasons,
@@ -106,11 +86,14 @@ export function ReasonChipRow({
   if (reasons.length === 0) return null;
   return (
     <span
-      className={`inline-flex flex-wrap items-center gap-1 ${className}`}
+      className={`inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 ${className}`}
       aria-label={ariaLabel ?? "Reasons this is shown"}
     >
       {reasons.map((r, i) => (
-        <ReasonChip key={`${r.label}-${i}`} label={r.label} tone={r.tone} />
+        <Fragment key={`${r.label}-${i}`}>
+          {i > 0 && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>}
+          <ReasonChip label={r.label} tone={r.tone} />
+        </Fragment>
       ))}
     </span>
   );

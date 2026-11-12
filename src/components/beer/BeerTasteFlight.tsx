@@ -11,7 +11,7 @@ import {
   type BeerWithBrewery,
 } from "@/data/beers";
 import { addSaved, useSavedList, savedChangeDescription } from "@/hooks/useSaved";
-import { toast } from "sonner";
+import { notifyError } from "@/lib/feedback/notify";
 import {
   buildTasteFlight,
   tastePathStats,
@@ -50,7 +50,7 @@ export default function BeerTasteFlight() {
     savingRef.current = true;
     setSaving(true);
     try { for (const beer of flight) await addSaved("beer", beerKey(beer)); }
-    catch (error) { toast.error("Could not save the full flight", { description: `${savedChangeDescription(error)} Pours already saved remain in My taps.` }); }
+    catch (error) { notifyError({ title: "Could not save the full flight", description: `${savedChangeDescription(error)} Pours already saved remain in My taps.` }); }
     finally { savingRef.current = false; setSaving(false); }
   }
 
@@ -141,7 +141,7 @@ function PourCard({ beer, index, saved, pathKey }: { beer: BeerWithBrewery; inde
         savingRef.current = true;
         setSaving(true);
         try { await addSaved("beer", key); }
-        catch (error) { toast.error("Could not save this pour", { description: savedChangeDescription(error) }); }
+        catch (error) { notifyError({ title: "Could not save this pour", description: savedChangeDescription(error) }); }
         finally { savingRef.current = false; setSaving(false); }
       }} disabled={saved || saving} aria-busy={saving || undefined} aria-label={saving ? `Saving ${beer.name} to My taps` : saved ? `${beer.name} is saved to My taps` : `Save ${beer.name} to My taps`} className="m-1.5 grid h-11 w-11 place-items-center self-start rounded-[var(--app-radius-sm)] border text-[var(--app-ink-3)] disabled:opacity-50" style={{ borderColor: "var(--app-border)" }}>
         {saved ? <Check className="h-4 w-4" aria-hidden /> : <Bookmark className="h-4 w-4" aria-hidden />}

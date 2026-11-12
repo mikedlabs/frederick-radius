@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, BadgeCheck, Tag } from "lucide-react";
 import { allDeals } from "@/lib/loaders/todaysDeals";
-import PageBloom from "@/components/ui/PageBloom";
 import DealsBrowser from "@/components/deals/DealsBrowser";
 import { PageWide } from "@/components/layout/Page";
 
@@ -38,7 +37,6 @@ export default function DealsPage() {
 
   return (
     <PageWide className="relative">
-      <PageBloom variant="warm-cool" />
 
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link

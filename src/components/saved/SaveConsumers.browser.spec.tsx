@@ -15,7 +15,7 @@ import SavedWallet from "./SavedWallet";
 import SavedEventWallet from "./SavedEventWallet";
 
 const mocks = vi.hoisted(() => ({
-  saved: false, toggle: vi.fn(), toggleLocal: vi.fn(), add: vi.fn(),
+  saved: false, toggle: vi.fn(), toggleLocal: vi.fn(), add: vi.fn(), toggleTargets: [] as string[],
   local: [] as Array<{ type: string; id: string; saved_at: string }>,
   failure: null as null | ((description: string) => void),
   query: new URLSearchParams(), replace: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock("@/hooks/useFollows", () => ({
   useFollowMutationState: () => "idle",
   useToggleFollow: (_slug: string, _source: string, failure?: (description: string) => void) => { mocks.failure = failure ?? null; return mocks.toggle; },
 }));
-vi.mock("@/hooks/useSaved", () => ({ savedChangeDescription: () => "We could not confirm this change. Please try again.", useMounted: () => true, useSavedList: () => mocks.local, useIsSaved: () => mocks.saved, useToggleSave: () => mocks.toggleLocal, addSaved: (...args: unknown[]) => mocks.add(...args) }));
+vi.mock("@/hooks/useSaved", () => ({ savedChangeDescription: () => "We could not confirm this change. Please try again.", useMounted: () => true, useSavedList: () => mocks.local, useIsSaved: () => mocks.saved, useToggleSave: (_type: string, id: string) => { mocks.toggleTargets.push(id); return mocks.toggleLocal; }, addSaved: (...args: unknown[]) => mocks.add(...args) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace }), useSearchParams: () => mocks.query }));
 vi.mock("@/components/place/PlaceMedallion", () => ({ PlaceMedallion: () => <span /> }));
 vi.mock("@/components/beer/BreweryLogo", () => ({ BreweryLogo: () => <span /> }));
@@ -46,7 +46,7 @@ describe("Existing save consumers report only confirmed changes", () => {
   let container: HTMLDivElement;
   let root: Root;
   beforeEach(() => {
-    vi.clearAllMocks(); mocks.saved = false; mocks.failure = null; mocks.local = []; mocks.query = new URLSearchParams();
+    vi.clearAllMocks(); mocks.saved = false; mocks.failure = null; mocks.local = []; mocks.toggleTargets = []; mocks.query = new URLSearchParams();
     mocks.toggle.mockReset(); mocks.toggleLocal.mockReset(); mocks.add.mockReset();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ place: null })));
     container = document.createElement("div"); document.body.append(container); root = createRoot(container);
@@ -91,7 +91,64 @@ describe("Existing save consumers report only confirmed changes", () => {
   it("reports an unchanged place removal refused by the account seam", async () => {
     mocks.toggle.mockImplementation(async () => { mocks.failure?.("Change still pending."); return true; });
     await render(<SavedWallet places={[place]} openSlug={place.slug} />); await click("Remove Test stop from saved");
-    expect(mocks.toast.error).toHaveBeenCalledWith("Could not remove from Saved", { description: "Change still pending." });
+    expect(mocks.toast.error).toHaveBeenCalledWith("Could not remove from Saved", { description: "Change still pending.", duration: 8000 });
+  });
+  it("names the removed place and restores it from Undo after the card has unmounted", async () => {
+    mocks.toggle.mockResolvedValueOnce(false);
+    await render(<SavedWallet places={[place]} openSlug={place.slug} />);
+    await click("Remove Test stop from saved");
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Test stop", { id: "save:place:test-stop", duration: 6000, action: { label: "Undo", onClick: expect.any(Function) } });
+    await render(<SavedWallet places={[]} />);
+    mocks.toggle.mockResolvedValueOnce(true);
+    await act(async () => mocks.toast.mock.calls[0][1].action.onClick());
+    expect(mocks.toggle).toHaveBeenLastCalledWith(true);
+    expect(mocks.toast.error).not.toHaveBeenCalled();
+  });
+  it("reports a place Undo the account refuses, with its reason and a retry", async () => {
+    mocks.toggle.mockResolvedValueOnce(false);
+    await render(<SavedWallet places={[place]} openSlug={place.slug} />);
+    await click("Remove Test stop from saved");
+    await render(<SavedWallet places={[]} />);
+    mocks.toggle.mockImplementationOnce(async () => { mocks.failure?.("Account full."); return false; });
+    await act(async () => mocks.toast.mock.calls[0][1].action.onClick());
+    expect(mocks.toast.error).toHaveBeenCalledWith("Could not undo this change", { description: "Account full.", duration: 8000, action: { label: "Try again", onClick: expect.any(Function) } });
+  });
+  it("moves keyboard focus from a removed place card to the neighboring card", async () => {
+    const second = { ...place, slug: "second-stop", name: "Second stop" };
+    mocks.toggle.mockResolvedValueOnce(false);
+    await render(<SavedWallet places={[place, second]} openSlug={place.slug} />);
+    const remove = button("Remove Test stop from saved");
+    remove.focus();
+    await act(async () => { remove.click(); });
+    await act(async () => { root.render(<SavedWallet places={[second]} />); await new Promise<void>((resolve) => requestAnimationFrame(() => resolve())); });
+    expect(document.activeElement).toBe(container.querySelector("#sw-slot-second-stop .sw-brand"));
+  });
+  it("names the removed event and restores it from Undo through the device store", async () => {
+    mocks.toggleLocal.mockResolvedValueOnce(false);
+    await render(<SavedEventWallet events={[event]} now={new Date("2026-10-08T13:00:00Z")} startRaised />);
+    await click("Remove Test event from saved");
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Test event", { id: "save:event:test-event", duration: 6000, action: { label: "Undo", onClick: expect.any(Function) } });
+    await render(<SavedEventWallet events={[]} now={new Date("2026-10-08T13:00:00Z")} />);
+    mocks.toggleLocal.mockResolvedValueOnce(true);
+    await act(async () => mocks.toast.mock.calls[0][1].action.onClick());
+    expect(mocks.toggleLocal).toHaveBeenLastCalledWith(true);
+    expect(mocks.toast.error).not.toHaveBeenCalled();
+    mocks.toggleLocal.mockImplementationOnce(refusal);
+    await act(async () => mocks.toast.mock.calls[0][1].action.onClick());
+    expect(mocks.toast.error).toHaveBeenCalledWith("Could not undo this change", expect.objectContaining({ duration: 8000, action: expect.objectContaining({ label: "Try again" }) }));
+  });
+  it("removes and restores the saved row of an event saved under an older slug", async () => {
+    mocks.toggleLocal.mockResolvedValueOnce(false);
+    await render(<SavedEventWallet events={[event]} savedIds={{ [event.slug]: "old-test-event" }} now={new Date("2026-10-08T13:00:00Z")} startRaised />);
+    // The card's device toggle is bound to the saved row, not the renamed slug.
+    expect(new Set(mocks.toggleTargets)).toEqual(new Set(["old-test-event"]));
+    await click("Remove Test event from saved");
+    expect(mocks.toggleLocal).toHaveBeenCalledWith(false);
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Test event", expect.objectContaining({ id: "save:event:old-test-event" }));
+    mocks.toggleLocal.mockResolvedValueOnce(true);
+    await act(async () => mocks.toast.mock.calls[0][1].action.onClick());
+    expect(mocks.toggleLocal).toHaveBeenLastCalledWith(true);
+    expect(new Set(mocks.toggleTargets)).toEqual(new Set(["old-test-event"]));
   });
   it("keeps an event wallet card and reports rejected device removal", async () => {
     mocks.toggleLocal.mockImplementation(refusal);
@@ -122,6 +179,16 @@ describe("Existing save consumers report only confirmed changes", () => {
     expect(mocks.toggleLocal).toHaveBeenCalledWith(false);
     expect(button(`Remove ${beer.name} from saved pours`)).toBeTruthy();
     expect(mocks.toast.error).toHaveBeenCalledWith("Could not remove this pour", expect.any(Object));
+  });
+  it("names the removed pour and restores it from Undo", async () => {
+    mocks.local = [{ type: "beer", id: beerKey(beer), saved_at: "2026-10-08T13:00:00Z" }];
+    mocks.toggleLocal.mockResolvedValueOnce(false);
+    await render(<MyTaps />); await click(`Remove ${beer.name} from saved pours`);
+    expect(mocks.toast).toHaveBeenCalledWith(`Removed from saved pours · ${beer.name}`, { id: `save:beer:${beerKey(beer)}`, duration: 6000, action: { label: "Undo", onClick: expect.any(Function) } });
+    mocks.toggleLocal.mockResolvedValueOnce(true);
+    await act(async () => mocks.toast.mock.calls[0][1].action.onClick());
+    expect(mocks.toggleLocal).toHaveBeenLastCalledWith(true);
+    expect(mocks.toast.error).not.toHaveBeenCalled();
   });
   it("reports an incomplete flight without a false whole-flight Saved state", async () => {
     mocks.add.mockImplementationOnce(() => {}).mockImplementationOnce(refusal);

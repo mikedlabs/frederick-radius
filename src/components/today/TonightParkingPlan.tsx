@@ -7,8 +7,8 @@ import { ArrowRight, CircleParking } from "lucide-react";
  * When a crowd-drawing event is coming up downtown, the closest garage tends to
  * fill, so this names it and offers the backups: "Heading to [event]? Carroll
  * Creek Deck fills fast. Court Street and Church Street are good backups." It's
- * the same predictive logic the parking-forecast push uses, surfaced on the
- * page for anyone who didn't opt into alerts. A PREDICTION ("fills fast"), never
+ * the predictive logic in lib/parking-forecast, surfaced on the page. A
+ * PREDICTION ("fills fast"), never
  * a live count. Renders nothing when no qualifying event is near (the slot in
  * /today passes null then).
  */
@@ -51,7 +51,7 @@ export default function TonightParkingPlan({
           className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
           style={{
             background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
-            color: "var(--app-brand)",
+            color: "var(--app-brand-text)",
           }}
         >
           <CircleParking className="h-5 w-5" strokeWidth={2} aria-hidden />
@@ -63,13 +63,13 @@ export default function TonightParkingPlan({
           <p className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
             <span className="font-semibold" style={{ color: "var(--app-ink)" }}>
               Heading to{" "}
-              <Link href={`/events/${eventSlug}`} style={{ color: "var(--app-brand-press)" }}>
+              <Link href={`/events/${eventSlug}`} style={{ color: "var(--app-link)" }}>
                 {eventTitle}
               </Link>
               ?
             </span>{" "}
             {primaryGarageName} fills fast. {backups}{" "}
-            <Link href="/parking" className="tap-44-y font-semibold whitespace-nowrap" style={{ color: "var(--app-brand-press)" }}>
+            <Link href="/parking" className="tap-44-y font-semibold whitespace-nowrap" style={{ color: "var(--app-link)" }}>
               Parking guide <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           </p>

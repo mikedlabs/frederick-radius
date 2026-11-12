@@ -10,7 +10,6 @@ import {
   School,
   Users,
 } from "lucide-react";
-import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
   title: "Communication access",
@@ -127,7 +126,6 @@ function LinkRow({
 export default function CommunicationAccessPage() {
   return (
     <div className="relative mx-auto max-w-2xl space-y-6 py-5 sm:py-7">
-      <PageBloom variant="warm-cool" />
 
       <header className="max-w-xl">
         <p className="eyebrow" style={{ color: "var(--app-civic)" }}>

@@ -1,4 +1,5 @@
 import courseInfo from "@/data/course-info.json";
+import PlaceSectionLabel, { PlaceDotList } from "./PlaceSectionLabel";
 
 /**
  * CourseInfoStrip — rolls curated golf-course facts (holes, par, access,
@@ -39,26 +40,11 @@ export default function CourseInfoStrip({ slug }: { slug: string }) {
   if (chips.length === 0) return null;
 
   return (
-    <section
-      className="rounded-[var(--app-radius-lg)] border p-4"
-      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
-    >
-      <h2 className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-        The course
-      </h2>
-      <ul className="mt-2.5 flex flex-wrap gap-2">
-        {chips.map((chip) => (
-          <li
-            key={chip}
-            className="inline-flex items-center rounded-full border px-3 py-1.5 text-[13px] font-medium tabular-nums"
-            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}
-          >
-            {chip}
-          </li>
-        ))}
-      </ul>
+    <section aria-labelledby="course-info-heading" className="space-y-1">
+      <PlaceSectionLabel id="course-info-heading">The course</PlaceSectionLabel>
+      <PlaceDotList items={chips} className="tabular-nums" />
       {c.designer && (
-        <p className="mt-2.5 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+        <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>
           Designed by {c.designer}
         </p>
       )}

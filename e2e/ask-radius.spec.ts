@@ -83,6 +83,44 @@ test.describe("Ask Radius deterministic workspace", () => {
     );
   });
 
+  test("sets the workspace in system sans with 6px controls on the page ground", async ({
+    page,
+  }) => {
+    await page.goto("/ask", { waitUntil: "domcontentloaded" });
+    await expect(page.locator('[data-ask-interaction-ready="true"]')).toBeVisible();
+
+    const heading = page.getByRole("heading", { level: 1, name: "Ask Radius." });
+    await expect(heading).toBeVisible();
+    const headingFont = await heading.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return { family: style.fontFamily, weight: Number(style.fontWeight) };
+    });
+    expect(headingFont.family).not.toMatch(/caslon/i);
+    expect(headingFont.weight).toBeGreaterThanOrEqual(600);
+
+    const field = page.locator("[data-ask-composer]");
+    await expect(field).toHaveCSS("border-top-left-radius", "6px");
+    await expect(field).toHaveCSS("box-shadow", "none");
+    await expect(page.getByRole("button", { name: "Ask Radius" })).toHaveCSS(
+      "border-top-left-radius",
+      "6px",
+    );
+
+    const prompts = page.getByRole("group", { name: "Questions to try" });
+    await expect(prompts).toHaveCSS("border-top-left-radius", "0px");
+    await expect(prompts).toHaveCSS("box-shadow", "none");
+
+    await page.getByRole("textbox", { name: "Ask Radius" }).focus();
+    await page.keyboard.type("a");
+    await expect(field).toHaveCSS("outline-style", "solid");
+
+    await page.setViewportSize({ width: 320, height: 568 });
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+
   test("renders zero, one, and expandable source states", async ({ page }) => {
     await page.route("**/api/ask", async (route) => {
       const { query } = route.request().postDataJSON() as { query: string };

@@ -5,10 +5,8 @@
  * vanish at the top of the hour and the meridiem is lowercase, the house
  * style for body copy (mono/data surfaces keep tabular time; this is prose).
  *
- * Lifted out of two identical inline copies (the /beta briefing line and
- * GuideContents' event times) so the server-seeded clock token and the
- * first client tick format byte-for-byte the same and never jump on
- * hydration.
+ * Kept in one place so a server-seeded clock token and the first client
+ * tick format byte-for-byte the same and never jump on hydration.
  */
 export function formatEasternClock(date: Date): string {
   const label = new Intl.DateTimeFormat("en-US", {

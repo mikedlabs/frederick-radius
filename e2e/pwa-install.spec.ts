@@ -73,19 +73,6 @@ test.describe("Home Screen installation", () => {
       await expect(page.locator("[data-return-bridge]")).toBeHidden();
       await expect(content.getByRole("link", { name: "Open Radius" })).toBeVisible();
     });
-
-    test("keeps the Fair's direct setup action and adds a shareable help route inside its disclosure", async ({ page }) => {
-      await page.goto("/moments/great-frederick-fair-2026", { waitUntil: "domcontentloaded" });
-      const guide = page.locator("[data-fair-keep-guide]");
-      const setupLink = guide.getByRole("link", { name: "Home Screen setup and help" });
-      await expect(setupLink).toBeHidden();
-      await guide.locator("summary").click();
-      await expect(guide.getByRole("button", { name: "Add Radius to Home Screen", exact: true })).toBeVisible();
-      await expect(setupLink).toHaveAttribute("href", "/install");
-      await setupLink.click();
-      await expect(page).toHaveURL(/\/install$/);
-      await expect(page.locator("[data-install-page]").getByRole("heading", { level: 1 })).toBeVisible();
-    });
   });
 
   test.describe("iPhone Safari", () => {

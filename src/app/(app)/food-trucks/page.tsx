@@ -26,7 +26,6 @@ import FoodTruckIdentity from "@/components/food-trucks/FoodTruckIdentity";
 import FoodTruckJourneys from "@/components/food-trucks/FoodTruckJourneys";
 import FoodTruckNearMe from "@/components/food-trucks/FoodTruckNearMe";
 import FeedbackLink from "@/components/feedback/FeedbackLink";
-import PageBloom from "@/components/ui/PageBloom";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
 const FOOD_ACCENT = CATEGORY_BY_SLUG["food-truck"]?.color ?? "var(--app-brand)";
@@ -339,9 +338,11 @@ export default async function FoodTrucksPage({
   return (
     <div className="relative space-y-5 sm:space-y-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(collectionJsonLd) }} />
-      <PageBloom variant="single" />
 
-      <header className="food-truck-masthead">
+      {/* The shared masthead rule still reserves a second grid track for the
+          lineup that used to sit beside the copy. `block!` drops the empty
+          track until that rule is simplified in globals.css. */}
+      <header className="food-truck-masthead block!">
         <div className="food-truck-masthead-copy">
           <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.15em]">
             Frederick County food trucks
@@ -350,22 +351,6 @@ export default async function FoodTrucksPage({
           <p>
             Published stops come first. Live locations appear when a truck checks in.
           </p>
-        </div>
-        {/* Below 640px this grid becomes a horizontal scroller, and a region
-            that scrolls must be reachable by keyboard or its content is
-            unreachable without a pointer (axe scrollable-region-focusable).
-            role + label give the stop a name once it takes focus. */}
-        <div
-          className="food-truck-hero-lineup"
-          role="region"
-          aria-label="Featured local food trucks"
-          tabIndex={0}
-        >
-          {HERO_TRUCKS.map((truck, index) => (
-            <div key={truck.slug} className="food-truck-hero-tile">
-              <FoodTruckIdentity truck={truck} size="hero" priority={index < 2} />
-            </div>
-          ))}
         </div>
       </header>
 
@@ -484,6 +469,29 @@ export default async function FoodTrucksPage({
       />
 
       {ownerView ? null : <OwnerDoor unlisted={unlistedStopVendors} lead={false} />}
+
+      {/* The featured marks close the page instead of opening it, so the
+          schedule starts on the first screen. They stay outside the Trucks
+          tab because that panel is not rendered until it is chosen.
+          Below 480px this grid becomes a horizontal scroller, and a region
+          that scrolls must be reachable by keyboard or its content is
+          unreachable without a pointer (axe scrollable-region-focusable).
+          role + label give the stop a name once it takes focus.
+          From 640px up the marks sit in one row. The two-row mosaic in
+          globals.css was sized to stand beside the headline and is too tall
+          for a closing strip, so the `sm:` utilities override it here. */}
+      <div
+        className="food-truck-hero-lineup sm:min-h-0! sm:grid-cols-5! sm:grid-rows-none!"
+        role="region"
+        aria-label="Featured local food trucks"
+        tabIndex={0}
+      >
+        {HERO_TRUCKS.map((truck) => (
+          <div key={truck.slug} className="food-truck-hero-tile sm:row-auto!">
+            <FoodTruckIdentity truck={truck} size="hero" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

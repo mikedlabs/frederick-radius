@@ -235,7 +235,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         <p className="eyebrow" style={{ color: `color-mix(in srgb, ${c.color} 72%, var(--app-ink))` }}>
           Frederick County guide
         </p>
-        <h1 className="mt-1.5 font-serif text-[32px] font-semibold leading-[1.05] tracking-tight sm:text-[38px]" style={{ color: "var(--app-ink)" }}>
+        <h1 className="mt-1.5 text-[32px] font-bold leading-[1.05] tracking-[-0.03em] sm:text-[38px]" style={{ color: "var(--app-ink)" }}>
           {c.name}
         </h1>
         <p className="mt-2 max-w-[58ch] text-[14px] leading-relaxed sm:text-[15px]" style={{ color: "var(--app-ink-2)" }}>
@@ -273,7 +273,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           {countyFallback.length > 0 && (
             <>
               <SectionHeading title="Nearest across the county" accent={c.color} />
-              <ul className="space-y-2">
+              {/* A ruled list: each PlaceCard row ends in its own hairline,
+                  so the list adds no gap and no second rule under the
+                  heading's own line. */}
+              <ul>
                 {countyFallback.slice(0, 3).map((p) => (
                   <li key={p.slug}>
                     <PlaceCard place={p} variant="row" />
@@ -296,8 +299,9 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
               list use — so the visual language stays consistent from Today
               through every listing surface, right up to the place page. (Was
               the fixed-width "tile" shelf-card, which read as oversized and
-              out of place in a vertical stack.) */}
-          <ul className="space-y-2">
+              out of place in a vertical stack.) Ruled rows: each row ends in
+              its own hairline, so the list carries no gap between them. */}
+          <ul>
             {topPicks.map((p) => (
               <li key={p.slug}>
                 <PlaceCard place={p} variant="row" />
@@ -310,7 +314,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       {subs.length > 0 && (
         <section className="space-y-2">
           <h2
-            className="text-xs font-medium uppercase tracking-[0.08em]"
+            className="text-[13px] font-semibold uppercase tracking-[0.08em]"
             style={{ color: "var(--app-ink-3)" }}
           >
             Browse by type

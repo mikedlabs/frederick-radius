@@ -50,10 +50,11 @@ function Row({
   return (
     <div
       aria-hidden
-      className={`flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid,var(--app-bg-elevated))] p-3.5 ${className}`}
+      // Plain tool: a loading row is a ruled row, matching the rows it stands in for.
+      className={`flex items-center gap-3 border-b py-4 ${className}`}
       style={{ borderColor: "var(--app-border)" }}
     >
-      <Block width={64} height={64} round="var(--app-radius-md)" />
+      <Block width={48} height={48} round="var(--app-radius-md)" />
       <div className="min-w-0 flex-1 space-y-2">
         <Block height={14} width="65%" />
         <Block height={12} width="40%" />
@@ -76,11 +77,12 @@ function Card({
   return (
     <div
       aria-hidden
-      className={`overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid,var(--app-bg-elevated))] ${className}`}
-      style={{ borderColor: "var(--app-border)" }}
+      // Plain tool: no card box. A rounded photo block and text lines on the
+      // page ground, matching the unboxed lead items they stand in for.
+      className={className}
     >
-      {withPhoto && <Block height={160} round={0} />}
-      <div className="space-y-2 p-4">
+      {withPhoto && <Block height={160} round="var(--app-radius-md)" />}
+      <div className="space-y-2 py-3">
         <Block height={11} width={70} />
         <Block height={18} width="75%" />
         <Block height={12} width="55%" />

@@ -8,9 +8,10 @@ WOFF2 files for websites and generated assets.
 - `LibreCaslonDisplay-Regular.ttf` — Libre Caslon Display Regular 400. Use for
   the Frederick Radius wordmark and rare editorial or hero moments. This family
   has no approved bold or italic; do not synthesize either style.
-- `PublicSans-Variable.ttf` — Public Sans upright variable, weights 100-900.
-  Use for product titles, section and card titles, body text, controls, and
-  data. Normal product work stays between 400 and 700.
+- `PublicSans-Variable.ttf`: Public Sans upright variable, weights 100-900.
+  Use for print and exported brand titles, text, and data. The product runtime
+  uses System sans, not Public Sans. Normal export work stays between 400 and
+  700.
 - `PublicSans-VariableItalic.ttf` — Public Sans italic variable, weights
   100-900. Use this real italic for emphasis and attribution.
 

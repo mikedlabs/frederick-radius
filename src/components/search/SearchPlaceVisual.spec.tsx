@@ -106,6 +106,7 @@ describe("Find source identity and failure recovery", () => {
     const image = host.querySelector("img")!;
     expect(image.getAttribute("src")).toBe("/history-photos/schifferstadt.jpg");
     expect(host.querySelector('[data-search-place-photo-frame="lead"]')).not.toBeNull();
+    expect(host.querySelector("[data-search-place-lead]")?.getAttribute("data-has-photo")).toBe("true");
     expect(host.querySelector(".place-card-photo-credit")).toBeNull();
     await load(image);
     expect(host.textContent).toContain("Pete Giove-Fourwinds");
@@ -115,6 +116,8 @@ describe("Find source identity and failure recovery", () => {
     await act(async () => image.dispatchEvent(new Event("error")));
     expect(host.querySelector("img")).toBeNull();
     expect(host.querySelector('[data-search-place-photo-frame="lead"]')).toBeNull();
+    // The stylesheet insets the actions under the title from this flag.
+    expect(host.querySelector("[data-search-place-lead]")?.getAttribute("data-has-photo")).toBe("false");
     expect(host.querySelector(".place-card-photo-credit")).toBeNull();
     expect(host.querySelector("h2")?.textContent).toBe("Schifferstadt Architectural Museum");
     expect(host.textContent).toContain("Unconfirmed");

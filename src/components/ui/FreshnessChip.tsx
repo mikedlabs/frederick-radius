@@ -98,11 +98,12 @@ export default function FreshnessChip({
   const { tier, label: finalLabel } = freshness;
 
   // Hue lives on the ICON (graphical, 3:1 is enough); the readable label
-  // uses an ink color that clears AA on cream. The stale state in
-  // particular must not render its amber on small text.
+  // uses a text token that clears AA on the page ground in both
+  // appearances. The stale state in particular must not render its amber
+  // on small text.
   const palette =
     tier === "fresh"
-      ? { color: "var(--app-positive)", textColor: "var(--app-positive)", Icon: CheckCircle2 }
+      ? { color: "var(--app-forest-text)", textColor: "var(--app-forest-text)", Icon: CheckCircle2 }
       : tier === "recent"
       ? { color: "var(--app-ink-3)", textColor: "var(--app-ink-3)", Icon: Clock }
       : { color: "var(--app-warning)", textColor: "var(--app-ink-2)", Icon: AlertCircle };

@@ -10,14 +10,6 @@
   },
   "exceptions": [
     {
-      "path": "public/data/fair/aerial/frederick-fairgrounds-2025.jpg",
-      "category": "deployment-required-snapshot",
-      "maxBytes": 1900000,
-      "deploymentRequired": true,
-      "provenance": "Redistributable Maryland MDiMAP 2025 Fairgrounds aerial. Original metadata, extent and SHA-256 are preserved in public/data/fair/aerial; the total allowance covers this asset and the corrected immutable Fair pack.",
-      "regenerationCommand": "node scripts/materialize-fair-aerial.mjs"
-    },
-    {
       "path": "public/basemap/frederick-county.pmtiles",
       "category": "deployment-required-snapshot",
       "maxBytes": 30000000,

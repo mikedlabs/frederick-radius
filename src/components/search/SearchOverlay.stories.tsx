@@ -163,6 +163,27 @@ function sampleHistoryFailure(state: "unavailable" | "clear-failed") {
   };
 }
 
+/** Whether `first` is laid out above `second` in the document. */
+const precedes = (first: Element, second: Element) =>
+  Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+/** The pending state is four still rows at result-row size plus the footer
+ * status. Find re-enters it on every keystroke, so nothing in it may sweep. */
+async function expectPendingRows(dialogElement: HTMLElement) {
+  const pending = dialogElement.querySelector<HTMLElement>("[data-search-loading]");
+  if (!pending) throw new Error("A pending search must hold the panel with placeholder rows.");
+  await expect(pending).toBeVisible();
+  await expect(pending.children).toHaveLength(4);
+  for (const row of pending.children) {
+    await expect(row.getBoundingClientRect().height).toBeGreaterThanOrEqual(62);
+    const thumbnail = row.firstElementChild!.getBoundingClientRect();
+    await expect([thumbnail.width, thumbnail.height]).toEqual([40, 40]);
+  }
+  for (const block of pending.querySelectorAll(".shimmer")) {
+    await expect(getComputedStyle(block, "::after").display).toBe("none");
+  }
+}
+
 const meta = {
   title: "Radius UI/Find continuity",
   component: FindWorkshop,
@@ -171,7 +192,7 @@ const meta = {
     layout: "fullscreen",
     docs: {
       description: {
-        component: "Find restores only the draft words. These clearly labeled sample responses show a fresh read, loading and failure. Provider data and stored result snapshots are not used.",
+        component: "Find restores only the draft words. These clearly labeled sample responses show a fresh read, loading and failure. Provider data and stored result snapshots are not used. An empty field opens on the flat Useful now list; recent searches lead only when this device has submitted phrases to repeat. A pending search holds the panel with four still placeholder rows, and the desktop panel keeps one height in every state.",
       },
     },
   },
@@ -205,6 +226,18 @@ export const NoSubmittedSearches: Story = {
     await expect(recents.getByText("No recent searches on this device.")).toBeVisible();
     await expect(recents.queryByRole("button")).not.toBeInTheDocument();
     await expect(dialog.queryByText("Sample legacy query")).not.toBeInTheDocument();
+    // An empty history never leads: the shortcuts come first as flat rows.
+    const usefulNow = dialog.getByText("Useful now", { exact: true });
+    await expect(precedes(usefulNow, dialog.getByRole("region", { name: "Recent searches on this device" }))).toBe(true);
+    const shortcuts = within(usefulNow.parentElement!).getAllByRole("link");
+    await expect(shortcuts.map((link) => link.getAttribute("href")))
+      .toEqual(["/open-now", "/events?lens=today", "/amenities", "/pulse"]);
+    for (const link of shortcuts) {
+      const row = link.getBoundingClientRect();
+      await expect(row.height).toBeGreaterThanOrEqual(56);
+      await expect(row.width).toBe(link.closest("ul")!.getBoundingClientRect().width);
+      await expect(getComputedStyle(link).boxShadow).toBe("none");
+    }
     await userEvent.type(dialog.getByRole("searchbox"), "Sample typed draft");
     await userEvent.click(dialog.getByRole("button", { name: "Clear search" }));
     await expect(within(dialog.getByRole("region", { name: "Recent searches on this device" }))
@@ -246,6 +279,9 @@ export const ClearRecentSearchesFailure: Story = {
     const dialog = within(await canvas.findByRole("dialog", { name: "What do you need?" }));
     const recents = within(dialog.getByRole("region", { name: "Recent searches on this device" }));
     const repeatSearch = recents.getByRole("button", { name: "Sample submitted phrase" });
+    // A phrase this device submitted is worth repeating, so it stays first.
+    await expect(precedes(repeatSearch, dialog.getByText("Useful now", { exact: true }))).toBe(true);
+    await expect(getComputedStyle(repeatSearch).boxShadow).toBe("none");
     repeatSearch.scrollIntoView({ block: "nearest" });
     const box = repeatSearch.getBoundingClientRect();
     await expect(box.width).toBeGreaterThanOrEqual(44);
@@ -295,9 +331,27 @@ export const LoadingRestoredQuery: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Open sample Find" }));
-    const dialog = within(await canvas.findByRole("dialog", { name: "What do you need?" }));
+    const dialogElement = await canvas.findByRole("dialog", { name: "What do you need?" });
+    const dialog = within(dialogElement);
     await expect(dialog.getByRole("searchbox")).toHaveValue("coffee");
-    await expect(dialog.getByText("Searching…", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Searching", { exact: true })).toBeVisible();
+    await expectPendingRows(dialogElement);
+  },
+};
+
+export const DesktopPanelHoldsItsHeight: Story = {
+  ...LoadingRestoredQuery,
+  globals: { viewport: { value: "radiusDesktop", isRotated: false } },
+  parameters: { docs: { description: { story: "On a wide screen Find is a centered panel. Its height is the same while a search is pending and after the field is cleared, so the surroundings of the field do not move while someone types." } } },
+  play: async (context) => {
+    await LoadingRestoredQuery.play!(context);
+    const dialogElement = within(context.canvasElement).getByRole("dialog", { name: "What do you need?" });
+    const panel = dialogElement.querySelector<HTMLElement>(":scope > div")!;
+    const pendingHeight = panel.getBoundingClientRect().height;
+    await expect(pendingHeight).toBeLessThan(window.innerHeight);
+    await userEvent.click(within(dialogElement).getByRole("button", { name: "Clear search" }));
+    await expect(within(dialogElement).getByText("Useful now", { exact: true })).toBeVisible();
+    await expect(panel.getBoundingClientRect().height).toBe(pendingHeight);
   },
 };
 
@@ -410,9 +464,11 @@ export const PendingExactPlaceKeepsTransitImmediate: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Open sample Find" }));
-    const dialog = within(await canvas.findByRole("dialog", { name: "What do you need?" }));
+    const dialogElement = await canvas.findByRole("dialog", { name: "What do you need?" });
+    const dialog = within(dialogElement);
     await expect(dialog.getByRole("searchbox")).toHaveValue(MUSEUM_NAME);
-    await expect(dialog.getByText("Searching…", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Searching", { exact: true })).toBeVisible();
+    await expectPendingRows(dialogElement);
     await expect(dialog.queryByText("Direct answer", { exact: true })).not.toBeInTheDocument();
     await expect(dialog.queryByText("Art", { exact: true })).not.toBeInTheDocument();
     await expect(dialog.queryByRole("link", { name: "View place" })).not.toBeInTheDocument();
@@ -420,7 +476,8 @@ export const PendingExactPlaceKeepsTransitImmediate: Story = {
     await userEvent.clear(input);
     await userEvent.type(input, "buses");
     await expect(await dialog.findByRole("link", { name: /MARC & transit times/ })).toHaveAttribute("href", "/transit");
-    await expect(dialog.getByText("Searching…", { exact: true })).toBeVisible();
+    // The transit answer is immediate; the place lookup under it is still pending.
+    await expectPendingRows(dialogElement);
     await expect(dialog.queryByRole("heading", { name: MUSEUM_NAME })).not.toBeInTheDocument();
     await expect(dialog.queryByText("Art", { exact: true })).not.toBeInTheDocument();
   },
