@@ -58,6 +58,7 @@ import { formatDistance, haversineMeters, isInFrederickCountyArea } from "@/lib/
 import { isOpenNow } from "@/lib/hours";
 import { mayAssertNoneOpen } from "@/lib/hours-availability";
 import {
+  keepListedRows,
   nearbyCountSentence,
   OPEN_NOW_NEARBY_RADIUS_M,
   OPEN_NOW_THIN_COUNT,
@@ -555,9 +556,14 @@ export default function RightNow({
       : openOnly && !openThin
         ? matched.filter((m) => m.open)
         : matched;
+    // In the thin state the note counts the confirmed-open places nearby and
+    // says they are marked in the list, so any the limit would cut are kept
+    // (at most OPEN_NOW_THIN_COUNT - 1 extra rows), in list order.
+    const shown = openThin
+      ? keepListedRows(list, RESULT_LIMIT, (m) => m.open && (!hasFix || m.dist <= OPEN_NOW_NEARBY_RADIUS_M))
+      : list.slice(0, RESULT_LIMIT);
     return (
-      list
-        .slice(0, RESULT_LIMIT)
+      shown
         // Attach distance for the card ONLY when we have a real fix — never
         // print a distance measured from a place the user isn't standing at.
         .map(({ p, dist }) => ({ ...p, distance_m: hasFix ? dist : undefined }))
@@ -651,7 +657,9 @@ export default function RightNow({
   // vintage") when one is set, otherwise the craving/meal ("Shops"). Without
   // this, arriving from a Today sub like Shop → Thrift still read "Shops".
   const headingNoun = facetDefs.find((f) => f.key === facetKey)?.label ?? active.label;
-  const openFirst = !openOnly && !craving?.alwaysOpen &&
+  // The thin Open now state lists the full matched set, so the open-first
+  // tier applies to it exactly as it does with Open now off.
+  const openFirst = (!openOnly || openThin) && !craving?.alwaysOpen &&
     rightNowHasOpenTier(rankingAvailability, hasRankingOrigin);
   const orderSentence = rightNowOrderSentence(sort, hasRankingOrigin, {
     openFirst,
@@ -895,7 +903,13 @@ export default function RightNow({
 
       {openThin && (
         <p className={styles.thinNote} data-nearby-open-thin role="status">
-          {openNowThinNote({ nearbyOpen: openNearbyCount, area: thinArea, phrase: meal?.phrase, closestOpen: closestOpenBeyond })}
+          {openNowThinNote({
+            nearbyOpen: openNearbyCount,
+            area: thinArea,
+            phrase: meal?.phrase,
+            closestOpen: closestOpenBeyond,
+            byDistance: hasRankingOrigin,
+          })}
         </p>
       )}
 
@@ -917,7 +931,9 @@ export default function RightNow({
                 <p className={styles.rowContext}>
                   {MUNICIPALITY_BY_SLUG[place.municipality ?? ""]?.name ?? place.city}, {formatDistance(distance)} from {townName}
                 </p>
-                <PlaceCard place={place} variant="row" hoursInMeta lazyPhoto />
+                {parksExplorer
+                  ? <PlaceCard place={place} variant="discovery" discoverySurface="nearby" discoveryIntent="parks" />
+                  : <PlaceCard place={place} variant="row" hoursInMeta lazyPhoto />}
               </li>
             ))}
           </ul>

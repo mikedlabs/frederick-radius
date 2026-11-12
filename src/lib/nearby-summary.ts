@@ -86,17 +86,31 @@ export function openNowThinNote({
   area,
   phrase,
   closestOpen,
+  byDistance = true,
 }: {
   nearbyOpen: number;
   area: string;
   phrase?: string | null;
   closestOpen?: { distance_m: number; town: string | null } | null;
+  /** Whether the list is ordered by distance from a trustworthy origin.
+   * Without one it is in best-match order and must not claim "nearest". */
+  byDistance?: boolean;
 }): string {
+  const listed = byDistance ? "the nearest places" : "the best matches";
   if (nearbyOpen > 0) {
-    return `Only ${places(nearbyOpen)} ${area} ${nearbyOpen === 1 ? "is" : "are"} confirmed open${withPhrase(phrase)} right now, so ${nearbyOpen === 1 ? "it is" : "they are"} marked among the nearest places.`;
+    return `Only ${places(nearbyOpen)} ${area} ${nearbyOpen === 1 ? "is" : "are"} confirmed open${withPhrase(phrase)} right now, so ${nearbyOpen === 1 ? "it is" : "they are"} marked among ${listed}.`;
   }
-  const lead = `Nothing ${area} is confirmed open${withPhrase(phrase)} right now, so the nearest places are shown instead.`;
+  const lead = `Nothing ${area} is confirmed open${withPhrase(phrase)} right now, so ${listed} are shown instead.`;
   if (!closestOpen) return lead;
   const where = closestOpen.town ? `, in ${closestOpen.town}` : "";
   return `${lead} The closest place confirmed open is ${formatDistance(closestOpen.distance_m)} away${where}.`;
+}
+
+/**
+ * The first `limit` rows, plus any later row `mustShow` accepts, in list
+ * order. The thin Open now note says the few confirmed-open places nearby are
+ * marked in the list, so the row limit may never cut one of them.
+ */
+export function keepListedRows<T>(list: readonly T[], limit: number, mustShow: (row: T) => boolean): T[] {
+  return [...list.slice(0, limit), ...list.slice(limit).filter(mustShow)];
 }

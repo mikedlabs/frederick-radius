@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nearbyCountSentence, openNowThinNote } from "./nearby-summary";
+import { keepListedRows, nearbyCountSentence, openNowThinNote } from "./nearby-summary";
 
 describe("Nearby summary copy", () => {
   it("states confirmed-open counts as a complete supporting sentence", () => {
@@ -35,6 +35,20 @@ describe("Nearby summary copy", () => {
       .toBe("Only 1 place in Thurmont is confirmed open for dinner right now, so it is marked among the nearest places.");
     expect(openNowThinNote({ nearbyOpen: 2, area: "nearby" }))
       .toBe("Only 2 places nearby are confirmed open right now, so they are marked among the nearest places.");
+  });
+
+  it("names best matches, not the nearest places, when the list has no distance origin", () => {
+    expect(openNowThinNote({ nearbyOpen: 0, area: "in the county", byDistance: false }))
+      .toBe("Nothing in the county is confirmed open right now, so the best matches are shown instead.");
+    expect(openNowThinNote({ nearbyOpen: 2, area: "in the county", byDistance: false }))
+      .toBe("Only 2 places in the county are confirmed open right now, so they are marked among the best matches.");
+  });
+
+  it("keeps every row the note promises even past the list limit", () => {
+    const rows = Array.from({ length: 20 }, (_, i) => ({ id: i, open: i === 18 }));
+    const shown = keepListedRows(rows, 16, (r) => r.open);
+    expect(shown.map((r) => r.id)).toEqual([...Array.from({ length: 16 }, (_, i) => i), 18]);
+    expect(keepListedRows(rows, 16, () => false)).toHaveLength(16);
   });
 
   it("writes no em dashes", () => {
