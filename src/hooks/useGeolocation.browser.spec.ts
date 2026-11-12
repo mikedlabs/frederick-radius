@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   announceLocationRefusal,
   cacheGeolocationPosition,
+  GEOLOCATION_CHANGE_EVENT,
   readCachedPosition,
   resetLocationRefusalForTests,
   useGeolocation,
@@ -87,6 +88,20 @@ describe("shared browser geolocation state", () => {
       cacheGeolocationPosition({ lng: -77.4105, lat: 39.4143, accuracy: 18, timestamp: Date.now() });
     });
     expect(container.querySelector("#two")?.getAttribute("data-status")).toBe("granted");
+  });
+
+  it("lets a refusal win over a cached fix without announcing a new fix", async () => {
+    await act(async () => {
+      cacheGeolocationPosition({ lng: -77.4105, lat: 39.4143, accuracy: 18, timestamp: Date.now() });
+      root.render(createElement(Probe, { id: "one" }));
+    });
+    expect(container.querySelector("#one")?.getAttribute("data-status")).toBe("granted");
+    const fixListener = vi.fn();
+    window.addEventListener(GEOLOCATION_CHANGE_EVENT, fixListener);
+    await act(async () => announceLocationRefusal("denied"));
+    window.removeEventListener(GEOLOCATION_CHANGE_EVENT, fixListener);
+    expect(container.querySelector("#one")?.getAttribute("data-status")).toBe("denied");
+    expect(fixListener).not.toHaveBeenCalled();
   });
 
   it("refreshes only an already-granted permission and reuses that device fix", async () => {

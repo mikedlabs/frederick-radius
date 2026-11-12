@@ -32,6 +32,10 @@ const TTL_MS = 1000 * 60 * 30; // 30 min cache
  * the change, so sessionStorage alone cannot keep independent components in
  * sync. */
 export const GEOLOCATION_CHANGE_EVENT = "fr:geolocation-change";
+/** A refusal has its own event: listeners of GEOLOCATION_CHANGE_EVENT treat
+ * it as a new device fix and refresh ranking (Today's daypart shelves reset
+ * the chosen category), which a refusal must not trigger. */
+export const GEOLOCATION_REFUSAL_EVENT = "fr:geolocation-refusal";
 
 /**
  * The last refusal in this document, shared like a granted fix so every
@@ -44,7 +48,9 @@ let lastRefusal: "denied" | "unavailable" | null = null;
 /** Record a refusal and tell every same-tab surface. */
 export function announceLocationRefusal(status: "denied" | "unavailable"): void {
   lastRefusal = status;
-  announceLocationChange();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(GEOLOCATION_REFUSAL_EVENT));
+  }
 }
 
 /** Test seam: forget the shared refusal between cases. */
@@ -133,17 +139,22 @@ export function useGeolocation() {
     const syncCachedPosition = () => {
       const cached = readCachedGeoPosition();
       setState(
-        cached
-          ? { status: "granted", position: cached }
-          : lastRefusal
-            ? { status: lastRefusal }
+        // A refusal always postdates any cached fix (a grant clears it), so
+        // it wins over a fix still fresh in session storage.
+        lastRefusal
+          ? { status: lastRefusal }
+          : cached
+            ? { status: "granted", position: cached }
             : { status: "idle" },
       );
     };
     syncCachedPosition();
     window.addEventListener(GEOLOCATION_CHANGE_EVENT, syncCachedPosition);
-    return () =>
+    window.addEventListener(GEOLOCATION_REFUSAL_EVENT, syncCachedPosition);
+    return () => {
       window.removeEventListener(GEOLOCATION_CHANGE_EVENT, syncCachedPosition);
+      window.removeEventListener(GEOLOCATION_REFUSAL_EVENT, syncCachedPosition);
+    };
   }, []);
 
   const requestPosition = useCallback((enableHighAccuracy: boolean) => {
