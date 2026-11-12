@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import CompassHub from "@/components/nav/CompassHub";
-import PageBloom from "@/components/ui/PageBloom";
 import { PRODUCT_NAMES } from "@/lib/product-names";
 
 export const metadata: Metadata = {
@@ -21,7 +20,6 @@ export const metadata: Metadata = {
 export default function CompassPage() {
   return (
     <div className="relative">
-      <PageBloom variant="warm" />
       <CompassHub />
     </div>
   );

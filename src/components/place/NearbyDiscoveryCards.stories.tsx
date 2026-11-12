@@ -112,9 +112,13 @@ export const NoReviewedPhoto: Story = {
   play: async ({ canvasElement }) => {
     await nearbyActions(canvasElement, "38 S Market St");
     expect(canvasElement.querySelector("[data-place-card-photo]")).toBeNull();
-    const art = canvasElement.querySelector<HTMLElement>("[data-nearby-category-art]")!;
+    const art = canvasElement.querySelector<HTMLElement>("[data-place-category-art]")!;
     expect(art.getAttribute("aria-hidden")).toBe("true");
     expect(art.querySelector("svg")).not.toBeNull();
+    // A flat plate with the category icon: no initial and no ring ornament.
+    expect(art.textContent).toBe("");
+    for (const pseudo of ["::before", "::after"]) expect(getComputedStyle(art, pseudo).content).toBe("none");
+    expect(getComputedStyle(art).backgroundImage).toBe("none");
     expect(art.getBoundingClientRect().width).toBeGreaterThanOrEqual(60);
     expect(canvasElement.querySelector("article")!.getBoundingClientRect().height).toBeLessThan(300);
     await expect(within(canvasElement).getByRole("heading", { name: "Carroll Creek Promenade" })).toBeVisible();
@@ -129,7 +133,7 @@ export const RestaurantWithoutPhoto320: Story = {
   play: async ({ canvasElement }) => {
     await nearbyActions(canvasElement, "206 S Main St, Mt Airy, MD 21771");
     expect(canvasElement.querySelector("[data-place-card-photo]")).toBeNull();
-    expect(canvasElement.querySelector('[data-nearby-category-art][aria-hidden="true"]')).not.toBeNull();
+    expect(canvasElement.querySelector('[data-place-category-art][aria-hidden="true"]')).not.toBeNull();
     const actions = canvasElement.querySelector<HTMLElement>("[data-save-ref]")!.parentElement!;
     expect(getComputedStyle(actions).gridTemplateColumns.trim().split(/\s+/)).toHaveLength(2);
   },
@@ -146,7 +150,7 @@ export const NoPhotoNarrowDoubledText: Story = {
   play: async ({ canvasElement }) => {
     await nearbyActions(canvasElement, "38 S Market St");
     const article = canvasElement.querySelector<HTMLElement>("article")!;
-    expect(article.querySelector("[data-nearby-category-art]")).not.toBeNull();
+    expect(article.querySelector("[data-place-category-art]")).not.toBeNull();
     const actions = article.querySelector<HTMLElement>("[data-save-ref]")!.parentElement!;
     expect(getComputedStyle(actions).gridTemplateColumns.trim().split(/\s+/)).toHaveLength(1);
     for (const label of article.querySelectorAll<HTMLElement>("h3, p, [data-save-ref], a[aria-label^='Directions']")) {
@@ -189,7 +193,7 @@ export const NoPhotoDark: Story = {
   decorators: [(Story) => <DarkAppearance><Story /></DarkAppearance>],
   play: async ({ canvasElement }) => {
     await nearbyActions(canvasElement, "38 S Market St");
-    const art = canvasElement.querySelector<HTMLElement>("[data-nearby-category-art]")!;
+    const art = canvasElement.querySelector<HTMLElement>("[data-place-category-art]")!;
     expect(getComputedStyle(art).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
   },
 };
@@ -247,7 +251,9 @@ export const MixedDiscoveryMobile: Story = {
     expect(photo.querySelector(".place-card-photo-credit")?.textContent).toContain(source.author);
     expect(photo.querySelector(`.place-card-photo-credit a[href="${source.licenseUrl}"]`)).not.toBeNull();
     expect(fallback.querySelector("[data-place-card-photo]")).toBeNull();
-    expect(fallback.querySelector('[data-nearby-category-art][aria-hidden="true"] [data-nearby-art-initial]')?.textContent).toBe("O");
+    const art = fallback.querySelector<HTMLElement>('[data-place-category-art][aria-hidden="true"]')!;
+    expect(art.querySelector("svg")).not.toBeNull();
+    expect(art.textContent).toBe("");
   },
 };
 

@@ -1,4 +1,3 @@
-import PageBloom from "@/components/ui/PageBloom";
 import Skeleton from "@/components/ui/Skeleton";
 
 /**
@@ -12,7 +11,6 @@ export default function TransitLoading() {
   return (
     <div className="relative space-y-5" aria-busy="true">
       <span className="sr-only" role="status">Loading transit.</span>
-      <PageBloom variant="warm-cool" />
 
       <header className="space-y-2" aria-hidden>
         <Skeleton.Block width={128} height={11} />

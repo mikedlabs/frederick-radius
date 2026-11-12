@@ -278,6 +278,7 @@ export default function FoodTruckBoard({
       <BottomDrawer
         open={Boolean(selected)}
         onOpenChange={(open) => { if (!open) setSelectedSlug(null); }}
+        historyLayerId="food-truck-detail"
         title={selected?.name ?? "Food-truck details"}
         subtitle={selected?.cuisine}
       >

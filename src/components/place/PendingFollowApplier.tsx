@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToggleFollow, useIsFollowed } from "@/hooks/useFollows";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/feedback/notify";
 
 /**
  * PendingFollowApplier — consumes the ?follow=<slug> param a sign-in
@@ -57,7 +58,7 @@ export default function PendingFollowApplier({
           toast.success(`Saved · ${name}`);
         }
       } catch {
-        toast.error("Could not save this place", { description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again." });
+        notifyError({ title: "Could not save this place", description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again." });
       }
       // Clean the URL so a back-button + refresh doesn't re-apply.
       const url = new URL(window.location.href);

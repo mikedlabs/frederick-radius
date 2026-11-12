@@ -1,12 +1,17 @@
 import NearbyThumbnail from "./NearbyThumbnail";
+import PlaceSectionLabel from "@/components/place/PlaceSectionLabel";
 import { getNearbyWikipedia } from "@/lib/integrations/wikiContext";
 
 /**
- * "Around here" — the nearest Wikipedia articles to a place, the
+ * "Around here": the nearest Wikipedia articles to a place, the
  * "what am I looking at" context layer (data-audit source: Wikipedia
  * GeoSearch). Streams in via Suspense so it never blocks the page, renders
  * nothing when there's no nearby history, and always credits Wikipedia
  * (CC BY-SA). Deliberately quiet: this is context, not another directory.
+ *
+ * PLAIN TOOL: an unboxed section under the place page's 13px uppercase
+ * label. Articles are ruled rows with a 17px sans title, a tabular sans
+ * distance and a 14px muted extract; the page draws the rule above it.
  */
 function distanceLabel(m: number): string {
   const ft = m * 3.28084;
@@ -21,7 +26,7 @@ export default async function NearbyContext({
 }: {
   lat: number;
   lng: number;
-  /** The place's own name — drop its own article from the "nearby" list. */
+  /** The place's own name: drop its own article from the "nearby" list. */
   excludeName?: string;
 }) {
   const raw = await getNearbyWikipedia(lat, lng, { radiusM: 800, limit: 4 });
@@ -34,36 +39,36 @@ export default async function NearbyContext({
   if (items.length === 0) return null;
 
   return (
-    <section className="space-y-3">
-      <h2 className="text-title" style={{ color: "var(--app-ink)" }}>
-        Around here
-      </h2>
-      <ul className="space-y-3">
+    <section className="space-y-1">
+      <PlaceSectionLabel>Around here</PlaceSectionLabel>
+      <ul className="divide-y divide-[var(--app-border)]">
         {items.map((p) => (
-          <li key={p.pageId} className="flex items-start gap-3">
+          <li key={p.pageId} className="flex items-start gap-3 py-3">
             {/* The article's own decorative photo disappears on failure;
                 its title, source link, distance and extract remain useful. */}
             {p.thumbnail ? <NearbyThumbnail src={p.thumbnail} /> : null}
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <div className="flex items-baseline justify-between gap-3">
+              {/* The title may shrink and wrap so the distance never leaves the
+                  row, including beside a thumbnail with enlarged text. */}
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                 <a
                   href={p.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="tap-44-y inline-flex items-center font-serif text-[15px] font-semibold leading-snug hover:underline"
+                  className="tap-44-y inline-flex min-w-0 items-center text-[17px] font-semibold leading-snug tracking-tight [overflow-wrap:anywhere] hover:underline"
                   style={{ color: "var(--app-ink)" }}
                 >
                   {p.title}
                 </a>
                 <span
-                  className="shrink-0 font-mono text-[11px] tabular-nums"
-                  style={{ color: "var(--app-ink-3)" }}
+                  className="shrink-0 text-[14px] tabular-nums"
+                  style={{ color: "var(--app-ink-2)" }}
                 >
                   {distanceLabel(p.distanceM)}
                 </span>
               </div>
               <p
-                className="text-[13px] leading-relaxed"
+                className="text-[14px] leading-relaxed"
                 style={{
                   color: "var(--app-ink-2)",
                   display: "-webkit-box",
@@ -78,7 +83,7 @@ export default async function NearbyContext({
           </li>
         ))}
       </ul>
-      <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+      <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
         Context source: Wikipedia (CC BY-SA)
       </p>
     </section>

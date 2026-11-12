@@ -171,7 +171,7 @@ export default function PullToRefresh() {
           <Loader2
             className={`h-4 w-4 ${refreshing && !reduceMotion ? "animate-spin" : ""}`}
             style={{
-              color: progress >= 1 || refreshing ? "var(--app-brand)" : "var(--app-ink-3)",
+              color: progress >= 1 || refreshing ? "var(--app-brand-text)" : "var(--app-ink-3)",
               transform:
                 refreshing || reduceMotion ? undefined : `rotate(${progress * 270}deg)`,
               transition: reduceMotion ? "none" : "color 200ms ease",

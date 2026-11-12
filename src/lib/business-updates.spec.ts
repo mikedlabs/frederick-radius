@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   isAdminEmail,
   parsePublishBody,
-  composeUpdatePush,
   UPDATE_TYPES,
 } from "@/lib/business-updates";
 
@@ -48,15 +47,5 @@ describe("parsePublishBody", () => {
       const r = parsePublishBody({ slug: "s", title: "t", body: "b", update_type: t });
       expect(r.ok && r.value.update_type).toBe(t);
     }
-  });
-});
-
-describe("composeUpdatePush", () => {
-  it("deep-links to the place and tags by business (never an arbitrary url)", () => {
-    const p = composeUpdatePush("brewers-alley", { title: "T", body: "B" });
-    expect(p.url).toBe("/places/brewers-alley");
-    expect(p.tag).toBe("biz:brewers-alley");
-    expect(p.title).toBe("T");
-    expect(p.body).toBe("B");
   });
 });

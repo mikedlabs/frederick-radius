@@ -45,10 +45,14 @@ export default function SearchPlaceVisual({ source: suppliedSource, children, le
   return <Context value={{ source, identity, loaded, failed, resolve }}>{children}</Context>;
 }
 
-export function SearchPlaceVisualImage({ fallback, size = 56, className = "", frame = "thumbnail" }: {
+export function SearchPlaceVisualImage({ fallback, size = 56, className = "", glyphClassName, frame = "thumbnail" }: {
   fallback: ReactNode;
   size?: number;
   className?: string;
+  /** Placement for the glyph state. A row whose photo fails must place its
+   * glyph exactly where a row that never had a photo places it, so the caller
+   * passes the same offset it gives its own no-photo glyph. */
+  glyphClassName?: string;
   frame?: "thumbnail" | "lead";
 }) {
   const visual = useContext(Context);
@@ -60,8 +64,21 @@ export function SearchPlaceVisualImage({ fallback, size = 56, className = "", fr
     if (deferred && bytes.status === "fallback") visual?.resolve("failed");
   }, [bytes.status, deferred, visual]);
   const reportLoad = (image: HTMLImageElement) => visual?.resolve(isPlacePhotoFailureSignal(image) ? "failed" : "loaded");
+  // A row shows a thumbnail only when a real photo exists. Without one, the
+  // slot keeps its width so titles stay aligned down the list, and the
+  // category glyph sits alone beside the title's first line with no tile.
+  if (frame === "thumbnail" && (!source || !src || visual?.failed)) {
+    return (
+      <span aria-hidden className={`grid shrink-0 place-items-center ${glyphClassName ?? className}`}
+        style={{ width: size, height: 24, color: "var(--app-ink-3)" }}
+        data-search-place-visual={source?.kind ?? "none"} data-search-place-photo-frame={frame}
+        data-search-place-photo-state="glyph">
+        {fallback}
+      </span>
+    );
+  }
   return (
-    <span ref={frameRef} aria-hidden className={`relative block shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] ${frame === "lead" ? styles.leadPhoto : ""} ${className}`}
+    <span ref={frameRef} aria-hidden className={`relative block shrink-0 overflow-hidden rounded-[var(--app-radius-md)] ${frame === "lead" ? styles.leadPhoto : ""} ${className}`}
       style={frame === "lead" ? undefined : { width: size, height: size }} data-search-place-visual={source?.kind ?? "none"}
       data-search-place-photo-frame={frame} data-search-place-photo-bytes={deferred ? bytes.status : undefined}>
       <span className="absolute inset-0 grid place-items-center">{fallback}</span>

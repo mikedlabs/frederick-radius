@@ -76,3 +76,39 @@ describe("native Compass location ownership", () => {
     await selectThurmont(); expect(navigation.replace).toHaveBeenCalledWith("/events?in=thurmont&when=today#events", { scroll: false });
   });
 });
+
+describe("location panel focus", () => {
+  const panel = () => host.querySelector("[data-location-scope-menu]");
+  async function openPanel() {
+    originalReplace.call(window.history, {}, "", "/events?in=county");
+    await act(async () => root.render(<LocationChip />));
+    const trigger = host.querySelector<HTMLButtonElement>('button[aria-controls="location-scope-choices"]')!;
+    await act(async () => { trigger.focus(); trigger.click(); });
+    expect(panel()).not.toBeNull();
+    return trigger;
+  }
+
+  it("closes when Tab carries focus past the panel and leaves focus where it landed", async () => {
+    const trigger = await openPanel();
+    const next = document.createElement("a"); next.href = "/pulse"; next.textContent = "County status"; document.body.append(next);
+    try {
+      await act(async () => button("Near me").focus());
+      expect(panel()).not.toBeNull(); // Tab from the trigger into the choices stays inside.
+      await act(async () => next.focus());
+      expect(panel()).toBeNull();
+      expect(trigger.getAttribute("aria-expanded")).toBe("false");
+      await act(async () => { vi.runAllTimers(); });
+      expect(document.activeElement).toBe(next);
+    } finally { next.remove(); }
+  });
+
+  it("stays open when focus leaves for nowhere, so a Safari tap still reaches its choice", async () => {
+    await openPanel();
+    const choice = button("Whole county");
+    await act(async () => { choice.focus(); choice.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null })); });
+    expect(panel()).not.toBeNull();
+    await click(choice);
+    expect(panel()).toBeNull();
+    expect(getScope()).toBe("county");
+  });
+});

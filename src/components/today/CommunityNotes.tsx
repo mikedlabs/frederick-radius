@@ -64,10 +64,10 @@ export default function CommunityNotes() {
       {note.icon === "pride-flag" ? (
         <PrideFlag />
       ) : (
-        <Church className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-cool)" }} />
+        <Church className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-cool-text)" }} />
       )}
       <span className="font-semibold" style={{ color: "var(--app-ink)" }}>{note.lead}</span>
-      <Link href={note.href} className="inline-flex min-h-11 items-center font-semibold" style={{ color: "var(--app-brand-press)" }}>
+      <Link href={note.href} className="inline-flex min-h-11 items-center font-semibold" style={{ color: "var(--app-link)" }}>
         {note.ctaLabel} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
       </Link>
       <button

@@ -5,7 +5,6 @@ const mocks = vi.hoisted(() => ({ around: vi.fn(), shared: vi.fn() }));
 vi.mock("@/lib/plan/resolve-shared-plan", () => ({ planAroundEvent: mocks.around, resolveSharedPlan: mocks.shared }));
 vi.mock("@/lib/loaders/places-client", () => ({ clientPlaceBySlug: () => null, clientPlaces: () => [] }));
 vi.mock("@/components/plan/PlanBuilder", () => ({ default: () => null }));
-vi.mock("@/components/ui/PageBloom", () => ({ default: () => null }));
 vi.mock("@/components/place/MapReturnLink", () => ({ default: () => null }));
 import PlanBuilder from "@/components/plan/PlanBuilder";
 import PlanPage from "./page";

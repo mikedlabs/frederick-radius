@@ -359,7 +359,6 @@ test.describe("outside app route-group hard navigation", () => {
   });
 
   for (const destination of [
-    { path: "/beta", heading: "Frederick, the way a local knows it." },
     { path: "/concept/wlr", heading: "Car care, without the hunt." },
   ]) {
     test(`${destination.path} keeps its own page outside app chrome`, async ({ page }) => {

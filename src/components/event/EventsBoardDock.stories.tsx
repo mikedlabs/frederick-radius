@@ -74,3 +74,63 @@ export const DesktopScopeAndOwnership: Story = {
   globals: { viewport: { value: "radiusDesktop", isRotated: false } },
   play: ownFilter,
 };
+
+/** The phone Display panel and the Order menu inside it stay on screen, and
+ *  the panel closes on Escape and on a press anywhere else. The browser gate
+ *  checks 320, 375 and 390; the Storybook canvas checks its own viewport. */
+async function displayPanel({ canvasElement }: { canvasElement: HTMLElement }) {
+  const canvas = within(canvasElement);
+  const display = canvasElement.querySelector<HTMLDetailsElement>("details.eb-display-options")!;
+  const summary = display.querySelector("summary")!;
+  const inBrowserGate = Boolean((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__);
+  // The native toggle event, and the dismissal listeners it starts, land a
+  // task after the press.
+  const openDisplay = async () => {
+    await userEvent.click(summary);
+    await waitFor(() => expect(display.open).toBe(true));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  };
+  for (const width of inBrowserGate ? [320, 375, 390] : [window.innerWidth]) {
+    if (inBrowserGate) {
+      const { page } = await import("vitest/browser");
+      await page.viewport(width, 844);
+      await waitFor(() => expect(window.innerWidth).toBe(width));
+    }
+    const onScreen = async (element: Element, name: string) => {
+      const box = element.getBoundingClientRect();
+      await expect(box.width, `${name} is rendered at ${width}px`).toBeGreaterThan(0);
+      await expect(box.left, `${name} left edge at ${width}px`).toBeGreaterThanOrEqual(0);
+      await expect(box.right, `${name} right edge at ${width}px`).toBeLessThanOrEqual(width);
+    };
+
+    await openDisplay();
+    await onScreen(display.querySelector(".eb-display-panel")!, "Display panel");
+    const order = within(display).getByRole("button", { name: "Order: Recommended" });
+    await onScreen(order, "Order button");
+    await expect(within(order).getByText("Recommended")).toBeVisible();
+    for (const view of within(display).getAllByRole("button", { name: / view$/ })) await onScreen(view, "View button");
+
+    await userEvent.click(order);
+    const menu = within(display).getByRole("group", { name: "Order" });
+    await onScreen(menu, "Order menu");
+    // The menu hangs from the Order button's left edge, inside the panel.
+    await expect(Math.abs(menu.getBoundingClientRect().left - order.getBoundingClientRect().left), `Order menu starts at its button at ${width}px`).toBeLessThanOrEqual(1);
+
+    // The first Escape belongs to the Order menu, the second to Display.
+    await userEvent.keyboard("{Escape}");
+    await expect(order).toHaveAttribute("aria-expanded", "false");
+    await expect(order).toHaveFocus();
+    expect(display.open).toBe(true);
+    await userEvent.keyboard("{Escape}");
+    expect(display.open).toBe(false);
+    await expect(summary).toHaveFocus();
+
+    await openDisplay();
+    await userEvent.click(canvas.getByRole("button", { name: "Open sample event" }));
+    expect(display.open).toBe(false);
+  }
+}
+export const MobileDisplayPanel: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  play: displayPanel,
+};

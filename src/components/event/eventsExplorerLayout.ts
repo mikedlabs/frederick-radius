@@ -1,4 +1,6 @@
 import { hasRecommendationAttendance, type EventAttendanceInput } from "@/lib/events/attendance";
+import type { Horizon } from "@/lib/eventHorizon";
+import { easternDayKey } from "@/lib/tz";
 import type {
   EventSortKey,
   ViewKey,
@@ -33,6 +35,24 @@ export function horizonLeadVariant(
   groupIndex: number,
 ): "feature" | "glance" {
   return groupIndex === 0 ? "feature" : "glance";
+}
+
+/**
+ * Whether a row in a horizon group prints its day line. "Happening now" and
+ * "Today" already state the day, so a row that starts today drops the
+ * repeated date and its time stands alone. Every other group spans several
+ * days ("Later this week", "This weekend", "Coming up") and keeps the date on
+ * every row, as does any row in a today group that started on another day.
+ */
+export function rowShowsDate(
+  horizon: Horizon,
+  event: { starts_at: string },
+  todayKey: string,
+): boolean {
+  if (horizon !== "live" && horizon !== "today") return true;
+  const start = new Date(event.starts_at);
+  if (Number.isNaN(+start)) return true;
+  return easternDayKey(start) !== todayKey;
 }
 
 /** Promotion never removes an ambiguous listing. Alternate sorts retain their

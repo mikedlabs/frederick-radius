@@ -102,19 +102,12 @@ export default function EventAgenda({
   if (days.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5" style={{ borderColor: "var(--app-border)" }}>
+        {/* The Saved empty grammar: a left-aligned title, one sentence, then
+            the actions. No card, icon halo or lift. */}
+        <div className="max-w-sm py-2">
           <div className="mb-4">
-            <span
-              aria-hidden
-              className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full"
-              style={{
-                background: "color-mix(in srgb, var(--app-ink-3) 15%, var(--app-bg-sunken))",
-                color: "var(--app-ink-2)",
-              }}
-            >
-              <CalendarDays className="h-5 w-5" strokeWidth={1.75} />
-            </span>
-            <h3 className="font-serif text-[18px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+            <CalendarDays aria-hidden className="mb-2 h-6 w-6" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} />
+            <h3 className="font-sans text-[18px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
               No events found.
             </h3>
             <p className="mt-1 text-[13px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
@@ -131,8 +124,8 @@ export default function EventAgenda({
               <Link
                 key={link.href}
                 href={link.href}
-                className="tactile-interactive flex min-h-[44px] items-center justify-center rounded-[var(--app-radius-md)] border bg-[var(--app-bg-surface)] px-3 text-center text-[12.5px] font-semibold shadow-sm transition hover:scale-[1.02] active:scale-95"
-                style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+                className="flex min-h-[44px] items-center justify-center rounded-[var(--app-radius-md)] border px-3 text-center text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
               >
                 {link.label}
               </Link>
@@ -178,7 +171,7 @@ export default function EventAgenda({
                   >
                     <span
                       className="w-14 shrink-0 text-[12px] font-semibold tabular-nums"
-                      style={{ color: "var(--app-brand-press)" }}
+                      style={{ color: "var(--app-link)" }}
                     >
                       {d.ongoing
                         ? "Date range"

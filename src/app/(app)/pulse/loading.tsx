@@ -1,9 +1,7 @@
-import PageBloom from "@/components/ui/PageBloom";
 
 export default function PulseLoading() {
   return (
     <div className="relative space-y-5 pb-4" aria-label="Loading live county conditions" aria-busy="true">
-      <PageBloom variant="warm-cool" />
       <div
         className="min-h-[280px] overflow-hidden border-y p-6 motion-safe:animate-pulse sm:rounded-[8px] sm:border"
         style={{

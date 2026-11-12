@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ListPlus, X, Plus } from "lucide-react";
 import { useSavedTagsFor, useToggleSavedTag, normalizeListLabel } from "@/hooks/useSavedTags";
+import { PLACE_SECTION_LABEL_CLASS } from "./PlaceSectionLabel";
 
 /**
  * PlaceListsCard — the user's OWN lists for a place ("date night", "takeout",
@@ -31,13 +32,11 @@ export default function PlaceListsCard({ slug }: { slug: string }) {
   const openSuggestions = SUGGESTIONS.filter((s) => !tags.includes(s));
 
   return (
-    <section
-      aria-label="Your lists"
-      className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
-      style={{ borderColor: "var(--app-border)", borderLeftWidth: 3, borderLeftColor: "var(--app-accent)" }}
-    >
-      <h3 className="inline-flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-        <ListPlus className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-accent-press)" }} />
+    // PLAIN TOOL: an unboxed section. The list chips stay capsules because
+    // each one is a toggle that removes the place from that list.
+    <section aria-label="Your lists">
+      <h3 className={`inline-flex items-center gap-2 ${PLACE_SECTION_LABEL_CLASS}`} style={{ color: "var(--app-ink-3)" }}>
+        <ListPlus className="h-4 w-4" strokeWidth={2} aria-hidden />
         Your lists
       </h3>
 
@@ -49,8 +48,8 @@ export default function PlaceListsCard({ slug }: { slug: string }) {
                 type="button"
                 onClick={() => toggle(slug, t)}
                 aria-label={`Remove from ${t}`}
-                className="tap-44 inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[12px] font-medium"
-                style={{ borderColor: "var(--app-accent)", background: "color-mix(in srgb, var(--app-accent) 12%, transparent)", color: "var(--app-accent-press)" }}
+                className="tap-44 inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[13px] font-medium"
+                style={{ borderColor: "var(--app-ink)", background: "var(--app-ink)", color: "var(--app-bg)" }}
               >
                 {t}
                 <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
@@ -68,16 +67,16 @@ export default function PlaceListsCard({ slug }: { slug: string }) {
           maxLength={24}
           placeholder="Add to a list…"
           aria-label="Add this place to one of your lists"
-          className="min-w-0 flex-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-2.5 py-1.5 text-[13px] outline-none"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+          className="min-h-11 min-w-0 flex-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-2.5 text-[15px]"
+          style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
         />
         <button
           type="button"
           onClick={add}
           disabled={!normalizeListLabel(draft)}
           aria-label="Add list"
-          className="tap-44 inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-semibold disabled:opacity-40"
-          style={{ background: "var(--app-accent-press)", color: "var(--app-bg)" }}
+          className="tap-44 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-[var(--app-radius-md)] px-4 text-[15px] font-semibold disabled:opacity-40"
+          style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden /> Add
         </button>
@@ -100,7 +99,7 @@ export default function PlaceListsCard({ slug }: { slug: string }) {
           ))}
         </ul>
       )}
-      <p className="mt-2 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+      <p className="mt-2 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
         Saved on this device · filter by list on the Saved page
       </p>
     </section>

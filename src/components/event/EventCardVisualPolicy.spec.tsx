@@ -72,6 +72,44 @@ describe("bounded event preview photo policy", () => {
   });
 });
 
+describe("glance card venue and recurrence lines", () => {
+  const longVenue = { ...candidate, hero_image: undefined, hero_image_attribution: undefined,
+    venue_name: "JoJo's Restaurant & Tap House", is_recurring: true, recurrence_text: "Runs most days" };
+
+  it("prints a long venue with its town and no fixed width cap", () => {
+    render(longVenue);
+    const label = host.querySelector<HTMLElement>("[data-event-card-venue]")!;
+    expect(label).not.toBeNull();
+    expect(label.textContent).toBe("JoJo's Restaurant & Tap House · Frederick");
+    // The venue wraps on its own muted line; it is never cut at a fixed width.
+    expect(label.className).not.toContain("max-w-[");
+    expect(label.className).not.toContain("truncate");
+    expect(host.querySelector('a[href="/events/offline-preview-policy"]')?.contains(label)).toBe(false);
+    factsSurvive();
+  });
+
+  it.each([
+    { label: "scheduled", patch: {} },
+    { label: "postponed", patch: { status: "postponed" as const } },
+  ])("gives recurrence its own line and starts no $label line with a separator", ({ patch }) => {
+    render({ ...longVenue, ...patch });
+    const recurrence = [...host.querySelectorAll("p")].find(node => node.textContent === "Runs most days")!;
+    expect(recurrence).toBeDefined();
+    // The row's time column carries the start and the day; the timing note
+    // above the recurrence line adds the end.
+    expect(host.querySelector("[data-event-row-when]")?.textContent).toBe("7:00PMWed OCT 10");
+    expect(recurrence.previousElementSibling?.textContent).toBe("Until 9:00 PM");
+    expect(recurrence.previousElementSibling?.textContent).not.toContain("Runs most days");
+    expect([...host.querySelectorAll("article p, article span")].filter(node => node.textContent?.trim().startsWith("·"))).toEqual([]);
+    if (patch.status) {
+      expect(host.textContent).toContain("Postponed");
+      // The text a screen reader reads keeps the space the flex gap shows.
+      const eyebrow = host.querySelector("h3")!.previousElementSibling!;
+      expect(eyebrow.textContent).toMatch(/\S Postponed$/);
+    }
+    factsSurvive();
+  });
+});
 
 describe("photo-forward discovery card contracts", () => {
   const owned = { ...candidate, venue_name: "Baker Park", venue_place_slug: "baker-park-frederick" };
@@ -93,34 +131,41 @@ describe("photo-forward discovery card contracts", () => {
     expect(host.querySelector("img")?.getAttribute("src")).toBe("/images/places/baker-park-detail.jpg");
     expect(figure.compareDocumentPosition(host.querySelector("h3")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(figure.textContent).not.toContain(candidate.title);
-    expect(link.textContent).toContain("Baker Park");
+    expect(host.querySelector("figure")?.getAttribute("data-event-row-thumb")).toBe("photo");
+    expect(host.querySelector("img")?.className).toContain("object-cover");
+    expect(link.textContent).toBe(candidate.title);
+    expect(host.querySelector("[data-event-card-venue]")?.textContent).toContain("Baker Park");
     expect(link.contains(host.querySelector("[data-event-photo-credit]"))).toBe(false);
+    expect(link.compareDocumentPosition(host.querySelector("[data-event-photo-credit]")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(host.textContent).toContain("Venue · Baker Park");
     expect(host.querySelector("a a, button a")).toBeNull();
     factsSurvive();
   });
 
-  it("gives a long discovery title its own heading row and prints the complete date only with timing", () => {
+  it("gives a long discovery title its own heading row and prints the complete date only in the time column", () => {
     const title = "Fictional community performance, artist conversation and neighborhood gathering at Baker Park";
     render({ ...owned, title }, "free-reviewed", "discovery");
     const heading = host.querySelector("[data-event-card-heading]")!;
     expect(heading.querySelector("h3")?.textContent).toBe(title);
     expect(heading.querySelector("h3")?.parentElement).toBe(heading);
     expect(heading.textContent).not.toContain("OCT");
-    expect(host.querySelector("[data-event-card-time]")?.textContent).toBe("Wed OCT 10 · 7:00 PM–9:00 PM");
+    expect(host.querySelectorAll("[data-event-row-when]")).toHaveLength(1);
+    expect(host.querySelector("[data-event-row-when]")?.textContent).toBe("7:00PMWed OCT 10");
+    expect(host.querySelector("[data-event-card-time]")?.textContent).toBe("Until 9:00 PM");
     expect(host.querySelectorAll("[data-event-card-time]")).toHaveLength(1);
     expect(host.querySelector("img")?.getAttribute("src")).toBe("/images/places/baker-park-detail.jpg");
     expect(request).not.toHaveBeenCalled();
   });
 
   it.each([
-    { label: "all-day", patch: { is_all_day: true }, expected: "Wed OCT 10 · All day" },
-    { label: "unknown end", patch: { ends_at: candidate.starts_at }, expected: "Wed OCT 10 · 7:00 PM · end time not listed" },
-    { label: "cancelled", patch: { status: "cancelled" as const }, expected: "Wed OCT 10 · 7:00 PM–9:00 PM" },
-    { label: "postponed", patch: { status: "postponed" as const }, expected: "Wed OCT 10 · 7:00 PM–9:00 PM" },
-  ])("retains exact discovery timing for $label events without a live claim", ({ patch, expected }) => {
+    { label: "all-day", patch: { is_all_day: true }, when: "All dayWed OCT 10", note: undefined },
+    { label: "unknown end", patch: { ends_at: candidate.starts_at }, when: "7:00PMWed OCT 10", note: "End time not listed" },
+    { label: "cancelled", patch: { status: "cancelled" as const }, when: "7:00PMWed OCT 10", note: "Until 9:00 PM" },
+    { label: "postponed", patch: { status: "postponed" as const }, when: "7:00PMWed OCT 10", note: "Until 9:00 PM" },
+  ])("retains exact discovery timing for $label events without a live claim", ({ patch, when, note }) => {
     render({ ...owned, ...patch }, "free-reviewed", "discovery");
-    expect(host.querySelector("[data-event-card-time]")?.textContent).toBe(expected);
+    expect(host.querySelector("[data-event-row-when]")?.textContent).toBe(when);
+    expect(host.querySelector("[data-event-card-time]")?.textContent).toBe(note);
     if (patch.status) expect(host.textContent).toContain(patch.status === "cancelled" ? "Cancelled" : "Postponed");
     expect(host.textContent).not.toContain("Happening now");
     expect(host.querySelector(".live-dot")).toBeNull();
@@ -168,7 +213,7 @@ describe("photo-forward discovery card contracts", () => {
     act(() => root.render(<EventCard event={{ ...owned, status: "cancelled", ends_at: owned.starts_at }}
       variant="discovery" live nowISO="2029-10-10T20:00:00-04:00" />));
     expect(host.textContent).toContain("Cancelled");
-    expect(host.textContent).toContain("end time not listed");
+    expect(host.textContent).toContain("End time not listed");
     expect(host.textContent).not.toContain("Happening now");
     expect(host.querySelector(".live-dot")).toBeNull();
     expect(host.textContent).toContain(candidate.title);

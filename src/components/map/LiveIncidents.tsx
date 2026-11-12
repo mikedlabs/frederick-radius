@@ -221,7 +221,7 @@ export default function LiveIncidents({
             {visibleSelection.updates > 1 && (
               <p
                 className="mt-1 text-[11px] font-semibold"
-                style={{ color: selectedIsPast ? "var(--app-ink-3)" : "var(--app-brand-press)" }}
+                style={{ color: selectedIsPast ? "var(--app-ink-3)" : "var(--app-link)" }}
               >
                 {selectedIsPast ? `${visibleSelection.updates} updates` : `Active · ${visibleSelection.updates} updates`}
               </p>

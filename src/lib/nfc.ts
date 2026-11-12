@@ -6,7 +6,7 @@ import "server-only";
  */
 
 // Readable, unambiguous alphabet (no 0/O/1/l/I) so a code hand-written onto a
-// card is never mis-transcribed. Same spirit as the beta-invite generator.
+// card is never mis-transcribed.
 const CARD_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 // Largest multiple of the alphabet length that fits in a byte. Bytes at or above
 // it are rejected and redrawn so every character is uniformly distributed — no

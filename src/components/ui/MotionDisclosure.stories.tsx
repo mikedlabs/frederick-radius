@@ -36,7 +36,7 @@ const meta = {
         </p>
         <Link
           href="/map?amenity=restroom" prefetch={false}
-          className="tap-44 inline-flex items-center gap-2 font-semibold text-[var(--app-brand)]"
+          className="tap-44 inline-flex items-center gap-2 font-semibold text-[var(--app-link)]"
         >
           <Navigation className="h-4 w-4" aria-hidden />
           See it on the map
@@ -69,7 +69,7 @@ function ProgressiveRevealFixture() {
       >
         <span
           aria-hidden
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)] text-[var(--app-brand)] shadow-[inset_2px_0_0_var(--app-brand)]"
+          className="grid h-9 w-9 shrink-0 place-items-center text-[var(--app-ink-3)]"
         >
           <MapPin className="h-4 w-4" />
         </span>
@@ -86,7 +86,7 @@ function ProgressiveRevealFixture() {
       <MotionDisclosure id="progressive-nearby-detail" open={open}>
         <div className="space-y-2 pt-3 text-sm leading-relaxed text-[var(--app-ink-2)]">
           <p>Walking time appears after Radius has a confirmed starting point.</p>
-          <Link className="tap-44 inline-flex items-center font-semibold text-[var(--app-brand)]" href="/map" prefetch={false}>
+          <Link className="tap-44 inline-flex items-center font-semibold text-[var(--app-link)]" href="/map" prefetch={false}>
             Open walking directions
           </Link>
         </div>

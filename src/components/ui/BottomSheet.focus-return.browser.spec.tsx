@@ -26,6 +26,8 @@ vi.mock("framer-motion", async () => {
         return <button ref={ref} onClick={onClick} className={className} style={style} tabIndex={tabIndex} aria-label={label}>{children}</button>;
       }),
     },
+    // BottomSheet settles a released drag with animate(); no case here drags.
+    animate: vi.fn(),
     useDragControls: () => ({ start: vi.fn() }), useMotionValue: () => 0,
     useTransform: () => 0, useReducedMotion: () => true,
   };

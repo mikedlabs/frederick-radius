@@ -1,6 +1,6 @@
 /**
  * Beta cookie NAMES only — safe for any bundle. Client components (the
- * feedback widget, beta telemetry) need these identifiers, but they must
+ * feedback widget) need these identifiers, but they must
  * not pull in the server-side gate logic: src/lib/beta-gate.ts reads the
  * gate's env secrets and is marked `server-only` so an accidental client
  * import fails the build instead of shipping the gate's internals to every
@@ -18,5 +18,4 @@ export const BETA_COOKIE = "fr_beta";
  * httpOnly `fr_beta` cookie is. Never trust it for access.
  */
 export const BETA_ID_COOKIE = "fr_who";
-export const BETA_OWNER_MARKER = "owner";
 export const BETA_TESTER_MARKER = "tester";
