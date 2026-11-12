@@ -18,6 +18,22 @@ const identities = [
 ] as const;
 
 describe("reviewed local licensed place identity", () => {
+  it("declares whether each stored file was edited, treating unclear records as edited", () => {
+    for (const [slug, record] of Object.entries(CREDITED_LOCAL_PLACE_PHOTOS)) {
+      const image: { modifications: string; edited: boolean } = record.image;
+      expect(typeof image.edited, slug).toBe("boolean");
+      // A stored 1,280 px Wikimedia rendition is a resized copy of the source file.
+      if (/Resized|recompressed|metadata removed|rendition stored unchanged/.test(image.modifications)) expect(image.edited, slug).toBe(true);
+      if (image.edited === false) expect(image.modifications, slug).toMatch(/Original file unchanged/);
+    }
+    // These bytes are shared with a History record that lists them as resized and converted.
+    expect(CREDITED_LOCAL_PLACE_PHOTOS["chappelle-co"].image.edited).toBe(true);
+    expect(HISTORY.find((entry) => entry.slug === "ransom-of-frederick")?.image?.edited).toBe(true);
+    expect(CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"].image.edited).toBe(false);
+    expect(CREDITED_LOCAL_PLACE_PHOTOS["delaplaine-arts-center-frederick"].image.edited).toBe(true);
+    expect(CREDITED_LOCAL_PLACE_PHOTOS["ballenger-creek-park-frederick"].image.edited).toBe(true);
+  });
+
   it("reuses the dated 223 North Market storefront with its actual source, credit and right-hand framing", async () => {
     const slug = "chappelle-co";
     const place = clientPlaceBySlug(slug)!;

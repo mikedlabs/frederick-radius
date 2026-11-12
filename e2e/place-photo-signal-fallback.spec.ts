@@ -249,7 +249,7 @@ test("a known landmark prefers its exact bundled file and credits only the loade
   const credit = card.locator(".place-card-photo-credit");
   await expect(credit).toContainText(curated.author);
   await expect(credit).toContainText(curated.license);
-  await expect(credit).toContainText(curated.modifications!);
+  await expect(credit).not.toContainText(curated.modifications!);
   await expect(credit.getByRole("link", { name: curated.license, exact: true })).toHaveAttribute("href", curated.licenseUrl!);
   const captionAfter = await credit.evaluate((node) => {
     const rect = node.getBoundingClientRect();

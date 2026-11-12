@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
-import { getLandmarkPhoto } from "./wikimedia";
+import { getLandmarkPhoto, LANDMARK_PHOTOS, TOWN_PHOTOS } from "./wikimedia";
 
 describe("credited local photograph metadata adapter", () => {
   it("retains exact capture metadata and existing licensed image identities", () => {
@@ -13,7 +13,21 @@ describe("credited local photograph metadata adapter", () => {
       expect(photo.source_url, slug).toBe(record.image.source_url);
       expect(photo.licenseUrl, slug).toBe(record.image.license.url);
       expect(photo.modifications, slug).toBe(record.image.modifications);
+      expect(photo.edited, slug).toBe(record.image.edited);
     }
+  });
+  it("declares whether every landmark and town photograph was edited, and links every town license", () => {
+    for (const [slug, photo] of [...Object.entries(LANDMARK_PHOTOS), ...Object.entries(TOWN_PHOTOS)]) {
+      expect(typeof photo.edited, slug).toBe("boolean");
+    }
+    for (const [slug, photo] of Object.entries(TOWN_PHOTOS)) {
+      expect(new URL(photo.licenseUrl!).hostname, slug).toBe("creativecommons.org");
+      expect(photo.edited, slug).toBe(false);
+    }
+    expect(getLandmarkPhoto("catoctin-furnace-thurmont")?.edited).toBe(true);
+    expect(getLandmarkPhoto("cunningham-falls-state-park-thurmont")?.edited).toBe(true);
+    expect(getLandmarkPhoto("brewers-alley-frederick")).toMatchObject({ edited: false,
+      originalSourceUrl: CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"].provenance.original_source_url });
   });
   it("retains Brewer's existing original-source capture date", () => {
     expect(CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"].provenance.captured_on).toBe("2004-10-26");

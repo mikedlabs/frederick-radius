@@ -146,8 +146,8 @@ export const LicensedVenue390: Story = {
     const p = await card(context, CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"].image.src);
     const image = CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"].image;
     expect(p.credit.textContent).toContain("photographed in 2004");
-    expect(p.credit.textContent).toContain(image.creator);
-    expect(p.credit.textContent).toContain(image.modifications);
+    expect(p.credit.querySelector("[data-photo-credit-text]")?.textContent).toBe("Stacy (Rambling Traveler) · 2004 · CC BY-SA 2.0 · Wikimedia Commons · Original photograph");
+    expect(p.credit.textContent).not.toContain(image.modifications);
     expect(within(p.credit).getByRole("link", { name: "Wikimedia Commons" })).toHaveAttribute("href", image.source_url);
     expect(within(p.credit).getByRole("link", { name: image.license.label })).toHaveAttribute("href", image.license.url);
   },

@@ -1,39 +1,26 @@
 import EventImageAttribution from "@/components/event/EventImageAttribution";
 import type { EventCardVisual } from "@/components/event/eventVisuals";
-import { curatedPhotoSourceLabel } from "@/lib/curated-photo-source";
+import PhotoCreditLine from "@/components/place/PhotoCreditLine";
+import { eventPhotoCredit } from "@/lib/curated-photo-source";
 
 export default function EventVisualCredit({
   visual,
   overlay = false,
   compact = false,
   className = "",
-  inlineLicensed = false,
 }: {
   visual: EventCardVisual;
   overlay?: boolean;
   compact?: boolean;
   className?: string;
-  /** Discovery cards keep complete license facts in naturally wrapping copy. */
-  inlineLicensed?: boolean;
 }) {
   if (visual.licensedCredit) {
-    const credit = visual.licensedCredit;
-    const sourceLabel = curatedPhotoSourceLabel(credit.source_url);
-    const creditPrefix = sourceLabel === "Frederick County" ? "Photo provided by" : "Photo by";
     return <div data-event-photo-credit data-event-licensed-credit
-      className={`break-words text-xs leading-snug [&_a]:inline-flex [&_a]:min-h-11 [&_a]:min-w-11 [&_a]:items-center ${className}`}
+      className={`break-words text-xs leading-snug ${className}`}
       style={{ color: overlay ? "rgba(255,255,255,0.94)" : "var(--app-ink-3)" }}
     >
       <span className="block font-semibold">{visual.caption}</span>
-      {inlineLicensed ? <span className="mt-1 block">{creditPrefix} {credit.creator}. {credit.modifications}</span> : <>
-        <span className="mt-1 block">{creditPrefix} {credit.creator}.</span>
-        <span className="block">{credit.modifications}</span>
-      </>}
-      <span className="flex flex-wrap gap-x-3">
-        <a href={credit.source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{sourceLabel}</a>
-        <a href={credit.license.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{credit.license.label}</a>
-        {credit.original_source_url && <a href={credit.original_source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Original photograph</a>}
-      </span>
+      <PhotoCreditLine credit={eventPhotoCredit(visual.licensedCredit)} />
     </div>;
   }
   if (visual.attribution) {

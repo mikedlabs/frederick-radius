@@ -164,8 +164,8 @@ async function licensedCredit(context: Context) {
   const metadata = CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"];
   const credit = context.canvasElement.querySelector<HTMLElement>("[data-event-licensed-credit]")!;
   expect(credit).not.toBeNull();
-  expect(credit.textContent).toContain(metadata.image.creator);
-  expect(credit.textContent).toContain(metadata.image.modifications);
+  expect(credit.querySelector("[data-photo-credit-text]")?.textContent).toBe("Stacy (Rambling Traveler) · 2004 · CC BY-SA 2.0 · Wikimedia Commons · Original photograph");
+  expect(credit.textContent).not.toContain(metadata.image.modifications);
   for (const [label, href] of [["Wikimedia Commons", metadata.image.source_url],
     [metadata.image.license.label, metadata.image.license.url], ["Original photograph", metadata.provenance.original_source_url]]) {
     const link = within(credit).getByRole("link", { name: label });

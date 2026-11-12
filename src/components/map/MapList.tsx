@@ -139,7 +139,7 @@ function MapListPlaceRow({ p, userLoc, onPick }: {
           {dist && <span className="map-list-dist">{dist}</span>}
         </button>
       </div>
-      {photo && photoLoaded && <PlaceCardPhotoCredit source={photo} loaded touchTarget compact />}
+      {photo && photoLoaded && <PlaceCardPhotoCredit source={photo} loaded touchTarget />}
     </li>
   );
 }

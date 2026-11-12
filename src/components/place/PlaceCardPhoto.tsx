@@ -3,9 +3,10 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
-import { curatedPhotoReferenceLabel, curatedPhotoSourceLabel } from "@/lib/curated-photo-source";
+import { curatedPhotoCredit } from "@/lib/curated-photo-source";
 import type { PlaceCardPhotoResult, PlaceCardPhotoSource } from "@/lib/place-card-photo";
 import { GooglePhotoAttributionLine } from "./GoogleAttribution";
+import PhotoCreditLine from "./PhotoCreditLine";
 import { useVisibleGooglePhoto } from "./useVisibleGooglePhoto";
 
 /** A photograph of the selected place, supplied by the canonical loader.
@@ -98,54 +99,22 @@ export default function PlaceCardPhoto({ source, onResult, width = 360, frame = 
 }
 
 /** Keep source links outside the card's open button, avoiding nested actions. */
-export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false, compact = false, discloseModifications = false }: {
+export function PlaceCardPhotoCredit({ source, loaded, touchTarget = false }: {
   source: PlaceCardPhotoSource | null;
   loaded: boolean;
   touchTarget?: boolean;
-  compact?: boolean;
-  /** Map preview only: keep linked creator/license visible and disclose full edits. */
-  discloseModifications?: boolean;
 }) {
   if (!source || (source.kind === "owned" && source.referenceContext !== "appearance-unverified")) return null;
-  const sourceLabel = source.kind === "curated" ? curatedPhotoSourceLabel(source.photo.source_url) : "";
-  const countyProvided = sourceLabel === "Frederick County";
-  const creditPrefix = countyProvided ? "Photo provided by" : "Photo by";
-  const referenceLabel = source.kind === "curated" ? curatedPhotoReferenceLabel(source.photo.capturedOn) : null;
-  const licenseLinks: Record<string, string> = { "CC BY-SA 4.0": "https://creativecommons.org/licenses/by-sa/4.0", "CC BY 2.0": "https://creativecommons.org/licenses/by/2.0" };
-  const licenseHref = source.kind === "curated"
-    ? (source.photo.licenseUrl ?? licenseLinks[source.photo.license]
-      ?? `${source.photo.source_url}#Licensing`)
-    : null;
   return (
     <div aria-hidden={!loaded || undefined} inert={!loaded || undefined}
       className="place-card-photo-credit border-t px-3 py-1 text-xs leading-snug [&_a]:inline-flex [&_a]:min-h-[44px] [&_a]:min-w-[44px] [&_a]:items-center"
-      data-photo-modifications-disclosure={discloseModifications && source.kind === "curated" || undefined}
       style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)", visibility: loaded ? undefined : "hidden" }}>
       {source.kind === "owned" ? (
         <span className="block" data-place-photo-reference-context>Reference photo · Appearance unverified</span>
       ) : source.kind === "google" ? (
         <GooglePhotoAttributionLine attribution={source.attribution} compact touchTarget={touchTarget} />
       ) : (
-        <>
-          {referenceLabel && <span className="block pt-1" data-photo-reference>{referenceLabel}</span>}
-          {!discloseModifications && <span className="block pt-1">{creditPrefix} {source.photo.author}.{compact && !source.photo.modifications ? " Cropped for display." : ""}</span>}
-          {!discloseModifications && (source.photo.modifications
-            ? <span className="block">{source.photo.modifications}</span>
-            : !compact && <span className="block">The image is resized for display; previews may be cropped.</span>)}
-          <div className="place-card-photo-credit-row flex flex-wrap gap-x-3">
-            <a href={source.photo.source_url} aria-label={discloseModifications ? `${creditPrefix} ${source.photo.author}. ${sourceLabel}` : undefined} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{discloseModifications ? source.photo.author : sourceLabel}</a>
-            <a href={licenseHref!} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{source.photo.license}</a>
-            {discloseModifications && (
-              <details className="place-card-photo-edits">
-                <summary>{countyProvided ? "Photo details" : "Edited photo"}</summary>
-                <div className="place-card-photo-credit-details">
-                  <p>{countyProvided ? `The photo was provided by ${source.photo.author}. Source: ${sourceLabel}.` : `The photo is by ${source.photo.author} on ${sourceLabel}.`}</p>
-                  <p>{source.photo.modifications ?? "The image is resized for display; previews may be cropped."}</p>
-                </div>
-              </details>
-            )}
-          </div>
-        </>
+        <PhotoCreditLine credit={curatedPhotoCredit(source.photo)} />
       )}
     </div>
   );

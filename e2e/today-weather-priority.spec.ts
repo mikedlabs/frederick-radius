@@ -190,6 +190,11 @@ for (const appearance of ["light", "dark"] as const) {
           expect(Math.round(entryBox.height * 100) / 100).toBeGreaterThanOrEqual(44);
           expect(entryBox.width).toBeGreaterThanOrEqual(44);
           await expect.poll(() => fivePointForecastProbe(entryControl)).toEqual([true, true, true, true, true]);
+          // A missing air-quality reading waits inside the closed details.
+          for (const note of await renderedWeather.locator("[data-weather-routine-note]").all()) {
+            await expect(note).not.toBeVisible();
+            expect(await note.evaluate((element) => element.closest("details") !== null)).toBe(true);
+          }
           const visibleSafety = renderedWeather.locator("[data-weather-headline], [data-weather-safety-note]");
           for (const note of await visibleSafety.all()) {
             await expect(note).toBeVisible();

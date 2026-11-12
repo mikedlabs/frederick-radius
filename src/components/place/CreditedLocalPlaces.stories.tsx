@@ -51,8 +51,11 @@ const checkedLocalPhoto: NonNullable<Story["play"]> = async ({ canvasElement, ar
   await expect(source).toHaveAttribute("href", metadata.source_url);
   const license = canvas.getByRole("link", { name: metadata.license.label });
   await expect(license).toHaveAttribute("href", metadata.license.url);
-  await expect(canvas.getByText(`${sourceLabel === "Frederick County" ? "Photo provided by" : "Photo by"} ${metadata.creator}.`)).toBeVisible();
-  await expect(canvas.getByText(metadata.modifications)).toBeVisible();
+  const line = canvasElement.querySelector<HTMLElement>("[data-photo-credit-text]")!;
+  await expect(line).toBeVisible();
+  await expect(line.querySelector("[data-photo-credit-author]")).toHaveTextContent(metadata.creator);
+  await expect(Boolean(line.querySelector("[data-photo-credit-edited]"))).toBe(metadata.edited);
+  await expect(canvasElement).not.toHaveTextContent(metadata.modifications);
   const article = canvasElement.querySelector("article")!;
   await expect(article.scrollWidth).toBeLessThanOrEqual(article.clientWidth);
   for (const control of [source, license, canvas.getByRole("button", { name: /^Save / }), canvas.getByRole("link", { name: /^Directions to / })]) {

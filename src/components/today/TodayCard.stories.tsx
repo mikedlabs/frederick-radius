@@ -43,12 +43,14 @@ export const HealthyForecast: Story = {
 };
 
 export const MastheadReading: Story = {
-  args: { density: "masthead", headline: "Mostly sunny", safetyNote: "The air-quality reading is unavailable." },
+  args: { density: "masthead", headline: "Mostly sunny", safetyNote: "The air-quality reading is unavailable.", safetyNoteRoutine: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    for (const fact of ["Mostly sunny", "Frederick · NWS", "The air-quality reading is unavailable."]) {
+    for (const fact of ["Mostly sunny", "Frederick · NWS"]) {
       await expect(canvas.getByText(fact)).toBeVisible();
     }
+    // The missing air-quality reading waits behind Details, off the first screen.
+    await expect(canvas.getByText("The air-quality reading is unavailable.")).not.toBeVisible();
     await expect(canvas.getByText("High 76°")).not.toBeVisible();
     const summary = canvasElement.querySelector<HTMLElement>("summary[data-today-weather-summary]")!;
     const forecast = canvasElement.querySelector<HTMLAnchorElement>('a[href="/pulse?open=weather"]')!;
@@ -60,10 +62,21 @@ export const MastheadReading: Story = {
     await expect(canvas.getByText("NWS forecast · Frederick")).toBeVisible();
     await expect(canvas.getByText(/^Oct 8, 2026(?:,| at) 7:35 AM EDT$/)).toHaveAttribute("datetime", "2026-10-08T11:35:00.000Z");
     await expect(canvas.getByText("5h 40m of daylight left", { exact: false })).toBeVisible();
+    await expect(canvas.getByText("The air-quality reading is unavailable.")).toBeVisible();
     await expect(canvasElement.querySelector("[data-weather-density]")).toHaveAttribute("data-weather-density", "masthead");
     await userEvent.click(summary);
     await expect(forecast).not.toBeVisible();
-    await expect(canvas.getByText("The air-quality reading is unavailable.")).toBeVisible();
+    await expect(canvas.getByText("The air-quality reading is unavailable.")).not.toBeVisible();
+  },
+};
+
+export const MastheadAlertFeedMiss: Story = {
+  args: { density: "masthead", headline: "Mostly sunny", safetyNote: "The weather-alert feed is unavailable.", safetyNoteRoutine: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // A missing alert feed is safety-relevant and stays in the first read.
+    await expect(canvas.getByText("The weather-alert feed is unavailable.")).toBeVisible();
+    await expect(canvas.getByText("High 76°")).not.toBeVisible();
   },
 };
 

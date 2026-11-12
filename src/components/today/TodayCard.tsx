@@ -54,7 +54,14 @@ export function compactWeatherRead({
   airQualityAvailable: boolean;
   activeAlertCount: number;
   airQualityIndex: number | null;
-}): { headline: string; safetyNote: string | null } {
+}): {
+  headline: string;
+  safetyNote: string | null;
+  /** True when only the air-quality reading is missing. That note is routine
+   *  evidence and may sit behind the forecast details; a missing alert feed
+   *  is safety-relevant and stays in the first read. */
+  safetyNoteRoutine: boolean;
+} {
   const safetyFeedsIncomplete = !alertsAvailable || !airQualityAvailable;
   const hasActionableSafetySignal =
     activeAlertCount > 0 ||
@@ -74,10 +81,11 @@ export function compactWeatherRead({
     return {
       headline: sentenceCaseForecast(condition),
       safetyNote,
+      safetyNoteRoutine: alertsAvailable,
     };
   }
 
-  return { headline: verdict, safetyNote: null };
+  return { headline: verdict, safetyNote: null, safetyNoteRoutine: false };
 }
 
 /** NWS short forecasts arrive in headline case. In a sentence-scale weather
@@ -194,6 +202,7 @@ export default async function TodayCard({ density = "standard" }: { density?: To
       forecastAvailable={Boolean(cur)}
       issuedAt={forecast?.asOf ?? null}
       safetyNote={weatherRead.safetyNote}
+      safetyNoteRoutine={weatherRead.safetyNoteRoutine}
       daylight={cur && (high != null || sun) ? <DaylightLeftInline /> : undefined}
     >
       <OfflineTodayCapture

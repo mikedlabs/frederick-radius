@@ -157,7 +157,7 @@ describe("photo eligibility and bounded source candidates", () => {
     expect(r.scope.served_deployment).toBe("not_checked");
   });
   it("keeps eligible photo categories exhaustive, including no-plan and missing local bytes", () => {
-    const curated = { file: "Declared.jpg", alt: "Declared", author: "Declared", license: "CC0", source_url: "https://commons.wikimedia.org/wiki/File:Declared.jpg", verified: true };
+    const curated = { file: "Declared.jpg", alt: "Declared", author: "Declared", license: "CC0", source_url: "https://commons.wikimedia.org/wiki/File:Declared.jpg", verified: true, edited: false };
     const plans: PlaceCardPhotoPlan[] = [
       { key: "owned", sources: [{ kind: "owned", src: "/images/declared.jpg", alt: "Declared" }] },
       { key: "local", sources: [{ kind: "curated", src: "/history-photos/declared.jpg", alt: "Declared", photo: curated }] },

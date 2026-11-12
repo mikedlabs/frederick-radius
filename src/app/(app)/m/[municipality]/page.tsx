@@ -11,6 +11,8 @@ import EventCard from "@/components/event/EventCard";
 import Image from "next/image";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import { getTownPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
+import PhotoCreditLine from "@/components/place/PhotoCreditLine";
+import { curatedPhotoCredit } from "@/lib/curated-photo-source";
 import TownStrip from "@/components/municipality/TownStrip";
 import TownAlmanac from "@/components/municipality/TownAlmanac";
 import AerialBeat from "@/components/place/AerialBeat";
@@ -208,8 +210,8 @@ export default async function MunicipalityPage(
             )}
           </div>
           {townPhoto && (
-            <figcaption className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              {townPhoto.author} · {townPhoto.license} · Wikimedia
+            <figcaption data-town-photo-credit style={{ color: "var(--app-ink-3)" }}>
+              <PhotoCreditLine credit={curatedPhotoCredit(townPhoto)} />
             </figcaption>
           )}
         </figure>

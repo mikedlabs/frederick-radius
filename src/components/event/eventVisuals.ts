@@ -3,13 +3,18 @@ import type { Event, EventHeroImageAttribution } from "@/data/events";
 import { approvedVenueFeedImage, STEINHARDT_EVENT_ART } from "@/lib/events/feed-image";
 import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 import type { WikimediaPhoto } from "@/lib/integrations/wikimedia";
-import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
+import { CREDITED_LOCAL_PLACE_PHOTOS, creditedPhotoCapturedOn, creditedPhotoOriginalSource } from "@/data/credited-local-place-photos";
 
 export type EventPhotoLicenseCredit = {
   creator: string;
   source_url: string;
   license: { label: string; url: string };
-  modifications: string;
+  /** The stored file differs from the source file; printed as "edited". The
+   * full change record stays in the photo data and never enters this public
+   * credit or the recovery payload. */
+  edited: boolean;
+  /** Reviewed capture date; the credit prints only its year. */
+  captured_on?: string;
   original_source_url?: string;
 };
 
@@ -18,7 +23,8 @@ export function sameEventPhotoLicense(a: EventPhotoLicenseCredit | undefined, b:
   if (!a || !b) return a === b;
   return a.creator === b.creator && a.source_url === b.source_url
     && a.license?.label === b.license?.label && a.license?.url === b.license?.url
-    && a.modifications === b.modifications && a.original_source_url === b.original_source_url;
+    && a.edited === b.edited
+    && a.captured_on === b.captured_on && a.original_source_url === b.original_source_url;
 }
 
 /**
@@ -140,6 +146,8 @@ function licensedEventVenueVisual(venueSlug: string | undefined): EventCardVisua
   const slug = venueSlug as keyof typeof CREDITED_LOCAL_PLACE_PHOTOS;
   const photo = CREDITED_LOCAL_PLACE_PHOTOS[slug];
   const image = photo.image;
+  const capturedOn = creditedPhotoCapturedOn(photo);
+  const originalSource = creditedPhotoOriginalSource(photo);
   return {
     src: image.src,
     caption: `Venue · ${LICENSED_EVENT_VENUE_LABELS[slug]}`,
@@ -147,8 +155,9 @@ function licensedEventVenueVisual(venueSlug: string | undefined): EventCardVisua
     presentation: "photo",
     objectPosition: "objectPosition" in photo ? photo.objectPosition : "center",
     licensedCredit: { creator: image.creator, source_url: image.source_url,
-      license: { ...image.license }, modifications: image.modifications,
-      ...("provenance" in photo ? { original_source_url: photo.provenance.original_source_url } : {}) },
+      license: { ...image.license }, edited: image.edited,
+      ...(capturedOn === undefined ? {} : { captured_on: capturedOn }),
+      ...(originalSource === undefined ? {} : { original_source_url: originalSource }) },
   };
 }
 

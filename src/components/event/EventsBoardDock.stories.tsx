@@ -17,14 +17,14 @@ const sample: EventsBoardDockProps = {
   recurringOnly: false, setRecurringOnly: noop, anyFilter: true, clear: noop,
   view: "list", setView: noop, sort: "recommended", setSort: noop,
 };
-function Workshop() {
+function Workshop({ countComplete = sample.countComplete }: { countComplete?: boolean }) {
   const [query, setQuery] = useState(sample.q);
   const [lens, setLens] = useState(sample.lens);
   const [town, setTown] = useState(sample.town);
   return <>
     <TopBar />
     <main data-app-primary-tab="/events" className="mx-auto max-w-screen-md px-4">
-      <EventsBoardDock {...sample} q={query} setQ={setQuery} lens={lens} setLens={setLens} town={town} setTown={setTown} />
+      <EventsBoardDock {...sample} countComplete={countComplete} q={query} setQ={setQuery} lens={lens} setLens={setLens} town={town} setTown={setTown} />
       <section className="py-6" data-sample-event-results>
         <h2 className="text-xl font-semibold">Sample event results</h2>
         <p className="mt-2 text-sm">You can review the filter controls here. The event counts are sample data.</p>
@@ -38,7 +38,7 @@ const meta = {
   component: EventsBoardDock,
   args: sample,
   parameters: { layout: "fullscreen", nextjs: { navigation: { pathname: "/events" } } },
-  render: () => <Workshop />,
+  render: (args) => <Workshop countComplete={args.countComplete} />,
 } satisfies Meta<typeof EventsBoardDock>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -133,4 +133,29 @@ async function displayPanel({ canvasElement }: { canvasElement: HTMLElement }) {
 export const MobileDisplayPanel: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   play: displayPanel,
+};
+
+/** The count is announced, not printed above the first event. Only a partial
+ *  collection keeps a short visible notice, beside a reachable Display. */
+async function countNotice({ canvasElement }: { canvasElement: HTMLElement }, partial: boolean) {
+  const count = canvasElement.querySelector<HTMLElement>(".eb-countline")!;
+  await expect(count).toHaveAttribute("aria-live", "polite");
+  await expect(count).toHaveTextContent(partial ? "2 event listings shown · Thurmont · partial results" : "2 event listings · Thurmont");
+  await expect(count.getBoundingClientRect().width).toBeLessThanOrEqual(1);
+  const notice = canvasElement.querySelector<HTMLElement>("[data-events-partial]");
+  if (partial) await expect(notice).toBeVisible(); else await expect(notice).toBeNull();
+  const summary = canvasElement.querySelector<HTMLElement>(".eb-display-options > summary")!;
+  await expect(summary).toBeVisible();
+  const box = summary.getBoundingClientRect();
+  await expect(box.height).toBeGreaterThanOrEqual(44);
+  await expect(box.right).toBeLessThanOrEqual(document.documentElement.clientWidth);
+}
+export const CountAnnouncedOnly: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  play: (context) => countNotice(context, false),
+};
+export const PartialResultsNotice: Story = {
+  args: { countComplete: false },
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  play: (context) => countNotice(context, true),
 };

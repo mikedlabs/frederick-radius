@@ -7188,28 +7188,24 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-1);
 }
 
-/* The sub bar — the mono count line (also the polite live region) on the
-   left, the "how you look" controls (sort + view lens) on the right. Kept
-   visually distinct from the caption so a viewing choice never reads as a
-   filter. */
+/* The sub bar holds the "how you look" controls (sort + view lens) on the
+   right, kept visually distinct from the caption so a viewing choice never
+   reads as a filter. The result count is a screen-reader live region here;
+   only a partial collection shows a short visible notice on the left. */
 .eb-subbar {
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   padding: 5px 12px 7px;
   border-top: 1px solid var(--app-border);
 }
-.eb-countline {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 11px;
-  color: var(--app-ink-3);
-  letter-spacing: 0.02em;
-  flex: 1 1 auto;
+.eb-partial {
+  margin-inline-end: auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 12px;
+  color: var(--app-ink-2);
 }
 
 .eb-display-options {
@@ -9347,13 +9343,6 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
 .eb-filter-count { border-radius: 4px; background: var(--app-ink); color: var(--app-bg); }
 [data-app-primary-tab] .eb-subbar,
 .eb-subbar { padding-inline: 0; }
-.eb-countline {
-  font-family: inherit;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
-  color: var(--app-ink-2);
-}
 @media (max-width: 480px) {
   .eb-display-options > summary {
     min-width: 0;

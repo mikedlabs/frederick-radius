@@ -3,6 +3,7 @@ import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import MapPeek from "./MapPeek";
 import type { MapPinPlace } from "./types";
 import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
+import { curatedPhotoYear } from "@/lib/curated-photo-source";
 
 const creek: MapPinPlace = {
   slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park",
@@ -60,18 +61,6 @@ async function reachable(target: HTMLElement) {
     await expect(box.height, geometry).toBeGreaterThanOrEqual(44);
     await expect(hits, geometry).toEqual([true, true, true, true, true]);
   });
-}
-
-/** Summary activation needs native input: Storybook's synthetic focus
- * selector treats this real control as its focusable parent instead. */
-async function clickPhotoEdits(summary: HTMLElement) {
-  if ((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) {
-    const browser = await import("vitest/browser");
-    let trusted = false;
-    summary.addEventListener("pointerdown", event => { trusted = event.isTrusted; }, { once: true });
-    await browser.userEvent.click(summary);
-    await expect(trusted).toBe(true);
-  } else summary.click();
 }
 
 const checkPreview: NonNullable<Story["play"]> = async ({ canvasElement, args }) => {
@@ -181,24 +170,17 @@ export const LicensedPlace: Story = {
     await checkPreview(context);
     const canvas = within(context.canvasElement);
     const photo = getLandmarkPhoto(context.args.place.slug)!;
-    const sourceLink = canvas.getByRole("link", { name: `Photo by ${photo.author}. Wikimedia Commons` });
-    await expect(sourceLink).toHaveTextContent(photo.author);
+    const sourceLink = canvas.getByRole("link", { name: "Wikimedia Commons" });
     await expect(sourceLink).toHaveAttribute("href", photo.source_url);
     const licenseLink = canvas.getByRole("link", { name: photo.license });
-    const editSummary = canvas.getByText("Edited photo", { exact: true });
-    const fullEdits = canvas.getByText(photo.modifications!, { exact: true });
-    await expect(fullEdits).not.toBeVisible();
-    for (const target of [sourceLink, licenseLink, editSummary]) await reachable(target);
-    editSummary.focus();
-    await clickPhotoEdits(editSummary);
-    await expect(editSummary.closest("details")).toHaveAttribute("open");
-    await expect(fullEdits).toBeVisible();
-    await expect(editSummary).toHaveFocus();
-    for (const target of [sourceLink, licenseLink, editSummary, canvas.getByRole("link", { name: /^Directions$/ }), canvas.getByRole("button", { name: `Close ${context.args.place.name}` })]) await reachable(target);
-    await clickPhotoEdits(editSummary);
-    await expect(editSummary.closest("details")).not.toHaveAttribute("open");
-    await expect(fullEdits).not.toBeVisible();
-    await expect(editSummary).toHaveFocus();
+    const expected = [photo.author, curatedPhotoYear(photo.capturedOn), photo.license, "Wikimedia Commons",
+      photo.originalSourceUrl ? "Original photograph" : null, photo.edited ? "edited" : null].filter(Boolean).join(" · ");
+    const creditLine = context.canvasElement.querySelector<HTMLElement>("[data-photo-credit-text]")!;
+    await expect(creditLine).toBeVisible();
+    await expect(creditLine.textContent).toBe(expected);
+    await expect(context.canvasElement.querySelector("details, summary")).toBeNull();
+    await expect(context.canvasElement).not.toHaveTextContent(photo.modifications!);
+    for (const target of [sourceLink, licenseLink, canvas.getByRole("link", { name: /^Directions$/ }), canvas.getByRole("button", { name: `Close ${context.args.place.name}` })]) await reachable(target);
     await expect(context.args.onDetails).toHaveBeenCalledOnce();
   },
 };

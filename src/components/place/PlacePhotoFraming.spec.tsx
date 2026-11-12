@@ -38,6 +38,7 @@ const curatedSource = {
     source_url: "https://commons.wikimedia.org/wiki/File:Framing_fixture.jpg",
     licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
     modifications: "The reviewed rendition is stored unchanged; display may crop the photograph.",
+    edited: false,
     localSrc: "/place-photos/framing-fixture.jpg",
     verified: true,
     objectPosition: "bottom",
@@ -107,9 +108,10 @@ describe("reviewed place photo framing at mounted consumers", () => {
     expect(credit).not.toBeNull();
     expect(credit?.getAttribute("aria-hidden")).not.toBe("true");
     expect(credit?.style.visibility).not.toBe("hidden");
-    expect(credit?.textContent).toContain(curatedSource.photo.author);
-    expect(credit?.textContent).toContain(curatedSource.photo.modifications);
-    expect(credit?.querySelector(`a[href="${curatedSource.photo.source_url}"]`)).not.toBeNull();
+    expect(credit?.querySelector("[data-photo-credit-text]")?.textContent)
+      .toBe("Fixture Photographer · CC BY-SA 4.0 · Wikimedia Commons");
+    expect(credit?.textContent).not.toContain(curatedSource.photo.modifications);
+    expect(credit?.querySelector(`a[href="${curatedSource.photo.source_url}"]`)?.textContent).toBe("Wikimedia Commons");
     expect(credit?.querySelector(`a[href="${curatedSource.photo.licenseUrl}"]`)?.textContent)
       .toBe(curatedSource.photo.license);
   }

@@ -133,7 +133,7 @@ export const LateThumbnailFailureKeepsViewerAndNativeBack: Story = {
       // never loaded. When present, it remains tied to this exact Commons row.
       const credit = viewer.querySelector<HTMLElement>("[data-lightbox-photo-credit]");
       if (credit) {
-        await expect(within(credit).getByText("Photo by " + commons.author + ".")).toBeVisible();
+        await expect(within(credit).getByText(commons.author, { exact: true })).toBeVisible();
         await expect(within(credit).getByRole("link", { name: "Wikimedia Commons" })).toHaveAttribute("href", commons.source_url);
       }
 
@@ -196,8 +196,8 @@ export const ResolvedCreditVisibilityOutsideCardButton: Story = {
     await waitFor(() => expect(credit).toBeVisible());
     await expect(credit).not.toHaveAttribute("aria-hidden");
     await expect(credit).not.toHaveAttribute("inert");
-    await expect(within(credit).getByText("Photo by " + commons.author + ".")).toBeVisible();
-    await expect(within(credit).getByText("The image is resized for display; previews may be cropped.")).toBeVisible();
+    await expect(within(credit).getByText(commons.author, { exact: true })).toBeVisible();
+    await expect(credit).not.toHaveTextContent(/resized|cropped/i);
     const source = within(credit).getByRole("link", { name: "Wikimedia Commons" });
     const license = within(credit).getByRole("link", { name: commons.license });
     await expect(source).toHaveAttribute("href", commons.source_url);

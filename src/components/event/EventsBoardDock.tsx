@@ -745,14 +745,19 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           )}
         </div>
 
-        {/* The sub bar keeps the result count visible. Mobile gets one native
-            disclosure for view and order; desktop retains the same controls
-            inline. Neither surface puts a control wall in front of the first
-            event. */}
+        {/* The sub bar holds view and order: one native disclosure on mobile,
+            the same controls inline on desktop. Neither surface puts a control
+            wall in front of the first event. The result count is not printed
+            above the first event (counts are support, not the headline); it
+            stays a polite live region so filter changes are still announced,
+            and a partial collection keeps a short visible notice. */}
         <div ref={toolbarRef} className={`eb-subbar ${styles.toolbar}`} data-filter-paused={paneOpen ? "true" : undefined} aria-hidden={paneOpen ? true : undefined}>
-          <span className="eb-countline" aria-live="polite">
+          <span className="eb-countline sr-only" aria-live="polite">
             {line}
           </span>
+          {countComplete === false && (
+            <span className="eb-partial" data-events-partial aria-hidden="true">Partial results</span>
+          )}
           <details
             ref={mobileDisplayRef}
             className="eb-display-options"
