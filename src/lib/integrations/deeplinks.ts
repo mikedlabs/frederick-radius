@@ -21,6 +21,16 @@ export function googleMapsDirections(lat: number, lng: number): string {
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
+/**
+ * Directions to a published street address, for an event whose coordinate is
+ * only an area centroid. The address text is the publisher's own claim, so
+ * Google geocodes it; we never substitute a centroid as the destination.
+ */
+export function googleMapsDirectionsToAddress(address: string): string {
+  const params = new URLSearchParams({ api: "1", destination: address.trim() });
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
 export function appleMapsDirections(lat: number, lng: number, name?: string): string {
   // Apple's Maps URL scheme: https://developer.apple.com/library/archive/featuredarticles/iPhoneURLScheme_Reference/MapLinks/MapLinks.html
   const params = new URLSearchParams({ daddr: `${lat},${lng}`, dirflg: "w" });

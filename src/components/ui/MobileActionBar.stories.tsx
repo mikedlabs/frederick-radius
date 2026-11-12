@@ -129,23 +129,64 @@ export const FourActions320: Story = {
 };
 
 /** The event detail bar: Add to calendar, Tickets (the filled action),
- * Directions and Save. This is the widest real bar. */
-function EventBar() {
+ * Directions and Save. This is the widest real bar. Without tickets, the
+ * filled action is Directions whenever the event has an address or a
+ * precise location; Add to calendar is filled only when there is neither. */
+function EventBar({ tickets = true }: { tickets?: boolean }) {
   return (
     <div style={{ minHeight: "100vh", background: "var(--app-bg)" }}>
       <main className="app-main-reading mx-auto max-w-screen-md pt-4" data-bottom-nav-reserve="true">
         <p className="text-[0.9375rem]" style={{ color: "var(--app-ink)" }}>
-          The concert starts at 7:30 PM at Baker Park.
+          {tickets
+            ? "The concert starts at 7:30 PM at Baker Park."
+            : "Family Fun Day starts at 2:00 PM at the Emmitsburg Branch Library."}
         </p>
       </main>
-      <MobileActionBar ariaLabel="Actions for the Baker Park concert">
-        <MobileBarLink href="/api/calendar/sample.ics" icon={CalendarPlus} label="Add to calendar" ariaLabel="Add the Baker Park concert to your calendar" download />
-        <MobileBarLink href="https://example.org/tickets" icon={Ticket} label="Tickets" ariaLabel="Tickets for the Baker Park concert" external primary decisionAction="ticket" />
-        <MobileBarLink href="https://www.google.com/maps/dir/?api=1&destination=39.4143,-77.4105" icon={Navigation} label="Directions" ariaLabel="Directions to Baker Park" external decisionAction="directions" />
-        <SaveButton refType="event" refId="story-baker-park-concert" label="Save the Baker Park concert" barLabel="Save" importLocalSavesOnMount={false} />
-      </MobileActionBar>
+      {tickets ? (
+        <MobileActionBar ariaLabel="Actions for the Baker Park concert">
+          <MobileBarLink href="/api/calendar/sample.ics" icon={CalendarPlus} label="Add to calendar" ariaLabel="Add the Baker Park concert to your calendar" download />
+          <MobileBarLink href="https://example.org/tickets" icon={Ticket} label="Tickets" ariaLabel="Tickets for the Baker Park concert" external primary decisionAction="ticket" />
+          <MobileBarLink href="https://www.google.com/maps/dir/?api=1&destination=39.4143,-77.4105" icon={Navigation} label="Directions" ariaLabel="Directions to Baker Park" external decisionAction="directions" />
+          <SaveButton refType="event" refId="story-baker-park-concert" label="Save the Baker Park concert" barLabel="Save" importLocalSavesOnMount={false} />
+        </MobileActionBar>
+      ) : (
+        <MobileActionBar ariaLabel="Actions for Family Fun Day">
+          <MobileBarLink href="/api/calendar/sample.ics" icon={CalendarPlus} label="Add to calendar" ariaLabel="Add Family Fun Day to your calendar" download />
+          <MobileBarLink href="https://www.google.com/maps/dir/?api=1&destination=300+S+Seton+Ave%2C+Emmitsburg%2C+MD+21727" icon={Navigation} label="Directions" ariaLabel="Directions to Emmitsburg Branch Library" external primary decisionAction="directions" />
+          <SaveButton refType="event" refId="story-family-fun-day" label="Save Family Fun Day" barLabel="Save" importLocalSavesOnMount={false} />
+        </MobileActionBar>
+      )}
     </div>
   );
+}
+
+/** Without tickets, Directions is the one filled cell, its label stays
+ * visible, and no cell leaves the screen, at normal and enlarged text. */
+async function expectDirectionsPrimary(canvasElement: HTMLElement, enlarged: boolean) {
+  const doc = canvasElement.ownerDocument;
+  const view = doc.defaultView!;
+  await doc.fonts.ready;
+  const toolbar = within(canvasElement).getByRole("toolbar", { name: "Actions for Family Fun Day" });
+  const cells = [...toolbar.children] as HTMLElement[];
+  await expect(cells).toHaveLength(3);
+  let filled = 0;
+  for (const cell of cells) {
+    const box = cell.getBoundingClientRect();
+    await expect(box.left).toBeGreaterThanOrEqual(-0.5);
+    await expect(box.right).toBeLessThanOrEqual(view.innerWidth + 0.5);
+    await expect(box.width).toBeGreaterThanOrEqual(44);
+    await expect(box.height).toBeGreaterThanOrEqual(44);
+    if (view.getComputedStyle(cell).backgroundColor !== "rgba(0, 0, 0, 0)") filled += 1;
+  }
+  await expect(filled).toBe(1);
+  const directions = within(toolbar).getByRole("link", { name: "Directions to Emmitsburg Branch Library" });
+  await expect(view.getComputedStyle(directions).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+  await expect(directions).toHaveTextContent("Directions");
+  await expect(parseFloat(view.getComputedStyle(directions).fontSize)).toBeGreaterThan(enlarged ? 14 : 0);
+  const calendar = within(toolbar).getByRole("link", { name: "Add Family Fun Day to your calendar" });
+  await expect(view.getComputedStyle(calendar).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+  if (!enlarged) await expect(calendar).toHaveTextContent("Add to calendar");
+  await expect(doc.documentElement.scrollWidth).toBeLessThanOrEqual(view.innerWidth + 1);
 }
 
 /** No cell may extend past the screen edge, and every cell keeps a 44px
@@ -205,6 +246,26 @@ export const EventFourActions320Text200: Story = {
     return () => { root.style.fontSize = previous; };
   },
   play: async ({ canvasElement }) => expectNoCellOverflow(canvasElement, true),
+};
+
+/** An event with an address and no tickets: Directions is the filled action. */
+export const EventDirectionsPrimary320: Story = {
+  render: () => <EventBar tickets={false} />,
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  play: async ({ canvasElement }) => expectDirectionsPrimary(canvasElement, false),
+};
+
+/** The same bar with the reader's text size at 200 percent. */
+export const EventDirectionsPrimary320Text200: Story = {
+  render: () => <EventBar tickets={false} />,
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  beforeEach: () => {
+    const root = document.documentElement;
+    const previous = root.style.fontSize;
+    root.style.fontSize = "200%";
+    return () => { root.style.fontSize = previous; };
+  },
+  play: async ({ canvasElement }) => expectDirectionsPrimary(canvasElement, true),
 };
 
 export const Dark: Story = {

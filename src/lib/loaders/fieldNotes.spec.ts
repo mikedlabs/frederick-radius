@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  fieldNoteSources,
   fieldNotesFor,
-  fieldNotesVerificationSummary,
   recordedFieldNoteVerificationDate,
+  verifiedLabel,
 } from "./fieldNotes";
 
 describe("Field Notes verification evidence", () => {
@@ -15,36 +14,23 @@ describe("Field Notes verification evidence", () => {
     );
   });
 
-  it("does not let one dated row verify an undated row", () => {
-    expect(
-      fieldNotesVerificationSummary([
-        {
-          text: "A dated fact.",
-          source_url: "https://example.com/dated",
-          last_verified: "2026-06-15",
-        },
-        {
-          text: "An older fact without a recorded check date.",
-          source_url: "https://example.com/undated",
-        },
-      ]),
-    ).toEqual({
-      total: 2,
-      dated: 1,
-      undated: 1,
-      allDated: false,
-      latest: "2026-06-15",
-    });
+  it("never gives an undated row a verification label", () => {
+    expect(verifiedLabel()).toBeNull();
+    expect(verifiedLabel("not-a-date")).toBeNull();
+    expect(verifiedLabel("2026-06-15")).toMatch(/^verified /);
   });
 
   it("keeps the existing sourced-but-undated rows explicit", () => {
     const notes = fieldNotesFor("averys-maryland-grille-frederick");
     expect(notes).not.toBeNull();
-    const rows = fieldNoteSources(notes!);
-    const summary = fieldNotesVerificationSummary(rows);
+    const rows = [
+      ...(notes!.happy_hour ? [notes!.happy_hour] : []),
+      ...(notes!.deals ?? []),
+      ...(notes!.parking ? [notes!.parking] : []),
+      ...(notes!.insider ?? []),
+    ];
 
     expect(rows.every((row) => Boolean(row.source_url))).toBe(true);
-    expect(summary.undated).toBeGreaterThan(0);
-    expect(summary.allDated).toBe(false);
+    expect(rows.some((row) => recordedFieldNoteVerificationDate(row.last_verified) === null)).toBe(true);
   });
 });

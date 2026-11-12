@@ -17,6 +17,9 @@ import EventVenuePhoto from "@/components/event/EventVenuePhoto";
 import Image from "next/image";
 import Link from "next/link";
 import { EventResolutionTimeoutError, EventResolutionUnavailableError } from "@/lib/loaders/eventResolver";
+import { MobileBarLink } from "@/components/ui/MobileActionBar";
+import EventCalendarButton from "@/components/event/EventCalendarButton";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 const now = new Date("2026-10-06T12:00:00-04:00");
 const event: EventWithMeta = { slug: "current-concert", title: "Evening concert", description: "A public concert.", starts_at: "2026-10-06T19:00:00-04:00", ends_at: "2026-10-06T22:00:00-04:00", timezone: "America/New_York", venue_name: "Weinberg Center", venue_place_slug: "venue", address: "20 W Patrick Street", geom: { lng: -77.4126, lat: 39.4142 }, municipality: "frederick", category: "music", audience: [], is_free: false, source: "manual", source_url: "https://example.org/concert", source_id: "42", license: "Publisher", confidence: "partner", first_seen_at: now.toISOString(), last_verified_at: now.toISOString(), is_verified: true, category_name: "Music", municipality_name: "Frederick", placement: "venue", geo_confidence: "venue_match" };
 function hasVisitEntry(node: ReactNode): boolean {
@@ -121,6 +124,132 @@ describe("event detail source row", () => {
     mocks.resolve.mockResolvedValue({ kind: "live", event: { ...event, status: "cancelled" } });
     const page = await EventPage({ params: Promise.resolve({ slug: event.slug }), searchParams: Promise.resolve({}) });
     expect(sourceLinkWrappers(page).map(node => node.props.className)).toEqual(["lg:hidden"]);
+  });
+});
+
+describe("event detail where and the phone bar", () => {
+  // The audited FCPL row: a branch room that has no venue match, on the town
+  // centroid, carrying the reviewed branch street address.
+  const library: EventWithMeta = {
+    ...event, slug: "family-fun-day", title: "Family Fun Day", source: "fcpl", source_url: "https://fcpl.example/family-fun-day",
+    venue_name: "Emmitsburg Branch Library, Outside Library (EMM)", venue_place_slug: undefined,
+    address: "300 S Seton Ave, Emmitsburg, MD 21727", geom: MUNICIPALITY_BY_SLUG.emmitsburg.centroid,
+    municipality: "emmitsburg", municipality_name: "Emmitsburg", placement: undefined, geo_confidence: "area",
+    category: "family", category_name: "Family", is_free: true,
+  };
+  const addressDirections = "https://www.google.com/maps/dir/?api=1&destination=300+S+Seton+Ave%2C+Emmitsburg%2C+MD+21727";
+  const render = async (current: EventWithMeta) => {
+    mocks.resolve.mockResolvedValue({ kind: "live", event: current });
+    return elements(await EventPage({ params: Promise.resolve({ slug: current.slug }), searchParams: Promise.resolve({}) }));
+  };
+  const whereLink = (nodes: ReturnType<typeof elements>) => nodes.find((node) => node.type === "a" && node.props["data-event-where-directions"] !== undefined);
+  const barCell = (nodes: ReturnType<typeof elements>, label: string) => nodes.find((node) => node.type === MobileBarLink && node.props.label === label);
+  const calendarCell = (nodes: ReturnType<typeof elements>) => nodes.find((node) => node.type === EventCalendarButton && node.props.barVariant !== undefined);
+
+  it("prints the street address under the venue and opens directions to that address, never the centroid", async () => {
+    mocks.venue.mockReturnValue(null);
+    const nodes = await render(library);
+    const address = nodes.find((node) => node.props["data-event-address"] !== undefined);
+    expect(address?.props.children).toBe("300 S Seton Ave, Emmitsburg, MD 21727");
+    const link = whereLink(nodes);
+    expect(link?.props.href).toBe(addressDirections);
+    expect(link?.props.target).toBe("_blank");
+    expect(link?.props.href).not.toContain(String(library.geom.lat));
+  });
+
+  it("makes Directions the phone bar's one filled action when there is no ticket", async () => {
+    mocks.venue.mockReturnValue(null);
+    const nodes = await render(library);
+    expect(barCell(nodes, "Directions")?.props).toMatchObject({ href: addressDirections, primary: true });
+    expect(calendarCell(nodes)?.props.barVariant).toBe("quiet");
+    const filled = nodes.filter((node) => node.type === MobileBarLink && node.props.primary === true);
+    expect(filled).toHaveLength(1);
+  });
+
+  it("keeps Tickets as the filled action and Directions quiet when tickets exist", async () => {
+    mocks.venue.mockReturnValue(null);
+    const nodes = await render({ ...library, ticket_url: "https://tickets.example/fun" });
+    expect(barCell(nodes, "Tickets")?.props.primary).toBe(true);
+    expect(barCell(nodes, "Directions")?.props.primary).toBe(false);
+    expect(calendarCell(nodes)?.props.barVariant).toBe("quiet");
+  });
+
+  it("fills Add to calendar when there is no address, precise location or ticket", async () => {
+    mocks.venue.mockReturnValue(null);
+    const nodes = await render({ ...library, address: "", venue_name: "Emmitsburg" });
+    expect(barCell(nodes, "Directions")).toBeUndefined();
+    expect(whereLink(nodes)).toBeUndefined();
+    const calendar = calendarCell(nodes)!;
+    expect(calendar.props.barVariant).toBe("primary");
+    const html = renderToStaticMarkup(calendar);
+    expect(html).toContain(">Add to calendar</button>");
+    expect(html).not.toMatch(/>Calendar</);
+  });
+
+  it.each([
+    ["cancelled", { status: "cancelled" as const }],
+    ["ended", { starts_at: "2026-10-06T09:00:00-04:00", ends_at: "2026-10-06T10:00:00-04:00" }],
+  ])("keeps the address on a %s event without a directions link", async (_state, change) => {
+    mocks.venue.mockReturnValue(null);
+    const nodes = await render({ ...library, ...change });
+    expect(nodes.find((node) => node.props["data-event-address"] !== undefined)?.props.children).toBe(library.address);
+    expect(whereLink(nodes)).toBeUndefined();
+    expect(barCell(nodes, "Directions")).toBeUndefined();
+    expect(nodes.some((node) => node.props.href === addressDirections)).toBe(false);
+  });
+
+  it("keeps the street when an iCal address starts with the venue name", async () => {
+    mocks.venue.mockReturnValue(null);
+    const nodes = await render({ ...library, venue_name: "Frederick Fairgrounds", address: "Frederick Fairgrounds, 797 E Patrick St, Frederick, MD 21701" });
+    expect(nodes.find((node) => node.props["data-event-address"] !== undefined)?.props.children).toBe("797 E Patrick St, Frederick, MD 21701");
+  });
+
+  it("keeps the street when the venue field is only the town", async () => {
+    mocks.venue.mockReturnValue(null);
+    const nodes = await render({ ...library, venue_name: "Thurmont", address: "Thurmont Community Park, 21 Frederick Rd, Thurmont, MD 21788" });
+    expect(nodes.find((node) => node.props["data-event-address"] !== undefined)?.props.children).toBe("Community Park, 21 Frederick Rd, Thurmont, MD 21788");
+  });
+
+  it("strips the venue only at a word boundary", async () => {
+    mocks.venue.mockReturnValue(null);
+    const nodes = await render({ ...library, venue_name: "Carroll", address: "Carrollton Blvd 5, Frederick, MD 21701" });
+    expect(nodes.find((node) => node.props["data-event-address"] !== undefined)?.props.children).toBe("Carrollton Blvd 5, Frederick, MD 21701");
+  });
+
+  it("treats an apostrophe or hyphen as part of the venue's word", async () => {
+    mocks.venue.mockReturnValue(null);
+    for (const address of ["Carroll's Creek Cafe, 50 Carroll Creek Way, Frederick", "Carroll-Creek Park, 50 Carroll Creek Way, Frederick"]) {
+      const nodes = await render({ ...library, venue_name: "Carroll", address });
+      expect(nodes.find((node) => node.props["data-event-address"] !== undefined)?.props.children).toBe(address);
+    }
+  });
+
+  it("prints no remainder that is only a town once the venue is stripped", async () => {
+    mocks.venue.mockReturnValue(null);
+    const nodes = await render({ ...library, venue_name: "Baker Park", address: "Baker Park, Frederick" });
+    expect(nodes.find((node) => node.props["data-event-address"] !== undefined)).toBeUndefined();
+  });
+
+  it("does not repeat the address when the venue line already is the street", async () => {
+    mocks.venue.mockReturnValue(null);
+    const nodes = await render({ ...library, venue_name: "121 N Bentz St", address: "121 N Bentz St, Frederick, MD 21701" });
+    expect(nodes.find((node) => node.props["data-event-address"] !== undefined)).toBeUndefined();
+    expect(whereLink(nodes)?.props.href).toContain("121+N+Bentz+St");
+  });
+
+  it("folds the source into one line after the description, keeping the publisher and official page", async () => {
+    mocks.venue.mockReturnValue(null);
+    const nodes = await render(library);
+    const header = nodes.find((node) => node.type === "header" && node.props["data-decision-position"] === "detail")!;
+    const headerNodes = elements(header);
+    const line = headerNodes.findIndex((node) => node.props["data-event-source-line"] !== undefined);
+    const description = headerNodes.findIndex((node) => node.type === "p" && node.props.children === library.description);
+    expect(description).toBeGreaterThan(-1);
+    expect(line).toBeGreaterThan(description);
+    const lineNodes = elements(headerNodes[line]);
+    expect(lineNodes.some((node) => node.props.children === "Published by Frederick County Public Libraries")).toBe(true);
+    expect(lineNodes.some((node) => typeof node.type === "function" && node.type.name === "EventSourceLink")).toBe(true);
+    expect(headerNodes.some((node) => node.type === "dt" && node.props.children === "Source")).toBe(false);
   });
 });
 

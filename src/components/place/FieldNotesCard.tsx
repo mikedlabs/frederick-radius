@@ -1,10 +1,7 @@
 import { ChevronDown, Clock3, Tag, Car, Lightbulb, ExternalLink, type LucideIcon } from "lucide-react";
-import FieldStamp from "@/components/ui/FieldStamp";
 import PlaceSectionLabel from "./PlaceSectionLabel";
 import {
   fieldNotesFor,
-  fieldNoteSources,
-  fieldNotesVerificationSummary,
   verifiedLabel,
   type FNSourced,
 } from "@/lib/loaders/fieldNotes";
@@ -17,9 +14,11 @@ import {
  * the card reads as a few scannable facts rather than a wall of text. Notes render in FULL —
  * a hand-curated tip cut mid-word ("the same block as Caf…") threw away
  * the exact payoff the card exists for; curation bounds the length, not CSS.
- * Every row carries its own compact evidence line. Undated facts stay visible, but are clearly labeled instead
- * of inheriting a blanket VERIFIED mark from a different row. Self-hides when
- * a place has no notes.
+ * Every row carries its own compact evidence line: its own verification date
+ * (or "Verification date not recorded") and its source link. There is no
+ * card-level seal or summary sentence; a row's date is the only claim made
+ * about that row, so an undated fact can never borrow another row's date.
+ * Self-hides when a place has no notes.
  */
 
 function hostOf(u?: string): string | null {
@@ -117,8 +116,6 @@ export default function FieldNotesCard({ slug }: { slug: string }) {
   const fn = fieldNotesFor(slug);
   if (!fn) return null;
 
-  const all = fieldNoteSources(fn);
-  const verification = fieldNotesVerificationSummary(all);
   // Lead with visit decisions. Event-like deals and extra local color remain
   // one tap away, so a rich record does not turn the place page into a wall.
   const rows: NoteRow[] = [
@@ -168,23 +165,6 @@ export default function FieldNotesCard({ slug }: { slug: string }) {
             {moreRows.map(renderRow)}
           </ul>
         </details>
-      )}
-
-      {verification.total > 0 && (
-        <div className="mt-3.5 flex items-center gap-2.5 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
-          <FieldStamp
-            id={`fn-${slug}`}
-            top={verification.allDated ? "VERIFIED" : "SOURCED"}
-            bottom="FIELD NOTES"
-            size={40}
-            className="-my-1 shrink-0"
-          />
-          <p className="min-w-0 text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            {verification.allDated
-              ? "Every note has a recorded verification date."
-              : `${verification.undated} of ${verification.total} ${verification.undated === 1 ? "note has" : "notes have"} no recorded verification date.`}
-          </p>
-        </div>
       )}
     </section>
   );
