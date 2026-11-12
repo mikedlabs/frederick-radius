@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyEvent, isPublicEvent } from "./classify";
+import { classifyEvent, isClosureNotice, isPublicEvent } from "./classify";
 
 describe("classifyEvent", () => {
   // Regression: the review found these leaking into public discovery (and
@@ -48,14 +48,130 @@ describe("classifyEvent", () => {
 
   it("keeps administrative notices out of public event discovery", () => {
     for (const title of [
-      "Office Closed",
-      "City Offices Closed for Labor Day",
-      "Government Office Closed in Observance of Election Day",
       "Quarterly Spires Articles Due",
       "Newsletter Article Is Due",
     ]) {
       expect(classifyEvent({ title }), title).toBe("town_reminder");
       expect(isPublicEvent({ title }), title).toBe(false);
+    }
+  });
+
+  // November 11, 2026 hierarchy audit: Thurmont's "Town Offices Closed" sat
+  // under Happening now on Veterans Day. Closures are not events in any lane.
+  it("lanes office, library and holiday closures as closure notices", () => {
+    for (const title of [
+      "Office Closed",
+      "Town Offices Closed",
+      "City Offices Closed for Labor Day",
+      "Government Office Closed in Observance of Election Day",
+      "Town Offices Closed - Veterans Day",
+      "Veterans Day - Town Offices Closed",
+      "Veterans Day \u2013 Town Offices Closed",
+      "Veterans Day (Town Offices Closed)",
+      "Veterans Day Holiday: Offices Closed",
+      "Thanksgiving - Offices Closed",
+      "Town Hall Closed",
+      "Library Closed",
+      "All Branches Closed for Veterans Day",
+      "FCPL Libraries Closed - Thanksgiving Day",
+      "Closed for Veterans Day",
+      "Veterans Day - Closed",
+      "Holiday Closure",
+      "Christmas Eve - Library Closes Early",
+      "Holiday - Office Closed",
+      "Office Closed - Nov 11",
+    ]) {
+      expect(isClosureNotice(title), title).toBe(true);
+      expect(classifyEvent({ title }), title).toBe("closure_notice");
+      expect(isPublicEvent({ title }), title).toBe(false);
+    }
+  });
+
+  // Review finding (events-and-map-context): every part of the title had to
+  // match a fixed subject list, so these real feed shapes fell through to
+  // "public". The first one was in the county RSS feed for November 26, 2026.
+  it("lanes closures with a town, branch or bare subject, joined reasons, weather and staff days", () => {
+    for (const title of [
+      "Centers are Closed for Thanksgiving Day",
+      "Senior Centers Closed for Thanksgiving Day",
+      "Veteran's Day - Town Offices Closed",
+      "Veteran\u2019s Day - Town Offices Closed",
+      "Thurmont Town Office Closed",
+      "Brunswick City Offices Closed",
+      "Emmitsburg Branch Closed",
+      "Thurmont Regional Library Closed",
+      "FCPL Closed - Thanksgiving",
+      "Library Closed - Staff Development Day",
+      "All Branches Closed - Staff Training",
+      "Town Offices Closed Thanksgiving",
+      "Town Offices Closed 11/11",
+      "Town Offices Closed November 27-28",
+      "Town Offices Close Early",
+      "Town Offices Closed - Christmas Eve & Christmas Day",
+      "Office Closed - Columbus Day / Indigenous Peoples' Day",
+      "Town Office Closed (Snow)",
+      "Offices Closed: Inclement Weather",
+      "Holiday Closure - Libraries",
+      "Closed Thanksgiving",
+      "Library Closed Sunday",
+      "Library Closes at 3 PM",
+      "Closed for the Holidays",
+    ]) {
+      expect(isClosureNotice(title), title).toBe(true);
+      expect(classifyEvent({ title }), title).toBe("closure_notice");
+      expect(isPublicEvent({ title }), title).toBe(false);
+    }
+  });
+
+  // Review finding (PR 1967): a reason the word list does not know made a
+  // clear office closure public again. After the subject, the verb and a
+  // reason joiner, the rest of the title is the reason.
+  it("lanes closures that state a reason the word list does not know", () => {
+    for (const title of [
+      "Office Closed for Primary Election",
+      "Office Closed due to a water main break",
+      "Town Offices Closed for Annual Inventory",
+      "Centers are Closed due to Winter Storm Warning",
+      "FCPL Libraries Closed because of a power failure",
+      "Thurmont Town Office Closed on Account of Staff Shortage",
+      "Government Office Closed in Observance of Maryland Day",
+      "Library Closes Early for Building Maintenance",
+      "Town Hall Closed for Repairs",
+    ]) {
+      expect(isClosureNotice(title), title).toBe(true);
+      expect(classifyEvent({ title }), title).toBe("closure_notice");
+      expect(isPublicEvent({ title }), title).toBe(false);
+    }
+  });
+
+  it("does not treat a title that merely mentions closing as a closure", () => {
+    for (const title of [
+      "Office Closed: The Musical",
+      "The Office: Closed-Door Mystery Dinner",
+      "Behind Closed Doors",
+      "Closed for Business",
+      "Closed",
+      "Veterans Day Ceremony",
+      "Thanksgiving Day Parade",
+      "Library Closing Party",
+      "Community Center Open House",
+      // The wider closure grammar must still leave these alone.
+      "Closed Loop Recycling Workshop",
+      "Closing Reception",
+      "Last Day Before We Close: Farewell Concert",
+      "Library Closed Stacks Tour",
+      "Holiday Market",
+      "Closure",
+      "Closed Sunday",
+      "Thurmont Closed",
+      "Closed Captioned Screening at the Library",
+      "Ice Cream Social - Closed Early",
+      // A reason joiner without a facility subject is still not a closure.
+      "Closed for Good: A Farewell Concert",
+      "Office Hours for New Businesses",
+    ]) {
+      expect(isClosureNotice(title), title).toBe(false);
+      expect(classifyEvent({ title }), title).not.toBe("closure_notice");
     }
   });
 
@@ -91,6 +207,9 @@ describe("classifyEvent", () => {
       "Office Closed: The Musical",
       "Instagram Photos and Videos Workshop",
       "Spires Brass Holiday Concert",
+      "Last Day Before We Close: Farewell Concert",
+      "Library Closed Stacks Tour",
+      "Holiday Market",
     ]) {
       expect(classifyEvent({ title }), title).toBe("public");
       expect(isPublicEvent({ title }), title).toBe(true);

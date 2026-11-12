@@ -308,6 +308,9 @@ const FEEDS: FeedSpec[] = [
     // happenings: the free "Fridays at the Fountain" summer live-music series,
     // food-truck nights, and beer releases. Fetch-verified (200, text/calendar,
     // real future SUMMARY/DTSTART). First-party brewery live-music wedge content.
+    // The feed's own identity is a brewery, so its default category is
+    // "brewery": a taproom happy hour whose description mentions beer stays a
+    // brewery event (see `titleOnly` on CATEGORY_KEYWORDS).
     source: "monocacy",
     source_label: "Monocacy Brewing",
     url: "https://monocacybrewing.com/events/?ical=1",
@@ -315,7 +318,7 @@ const FEEDS: FeedSpec[] = [
     default_venue: "Monocacy Brewing",
     default_geom: { lng: -77.4093, lat: 39.4447 },
     default_municipality: "frederick",
-    default_category: "community",
+    default_category: "brewery",
   },
   {
     // Maryland School for the Deaf (101 Clarke Pl) — Edlio iCal, fetch-verified
@@ -519,7 +522,17 @@ const FEEDS: FeedSpec[] = [
   // venues that scraper should target.
 ];
 
-const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
+// `titleOnly` marks the categories named after a kind of venue. A feed's
+// description mentions "photo trivia", "a cash bar" or "beer and wine" in
+// passing, and the November 11, 2026 hierarchy audit found Delaplaine Arts
+// Center's "Photo Party" filed under Bars for exactly that reason. A
+// description word alone therefore cannot make an event a bar, brewery or
+// winery event. Strong evidence still can: the event's own title, the
+// publisher's own iCal CATEGORIES tags, or a feed whose default category is
+// that venue type (Monocacy Brewing's feed is "brewery", so its happy hour
+// with "beer" in the description stays a brewery event). Otherwise the
+// feed's default category (gallery, for an arts center) stands.
+const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[]; titleOnly?: boolean }> = [
   // Fitness/recreation classes FIRST (first match wins): a rec-center
   // description like "a great workout with diverse music" or "utilizing
   // bands, light weights" otherwise substring-matches the music words, and
@@ -537,10 +550,10 @@ const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
   { slug: "market", words: ["market", "vendor", "farmers", "makers", "fair"] },
   { slug: "family", words: ["kids", "family", "children", "story time", "all ages", "scout", "youth"] },
   { slug: "outdoors", words: ["hike", "trail", "outdoor", "park", "ranger", "nature", "catoctin", "cunningham"] },
-  { slug: "brewery", words: ["brewery", "beer", "tasting", "tap"] },
-  { slug: "winery", words: ["wine", "winery", "vineyard", "linganore"] },
+  { slug: "brewery", words: ["brewery", "beer", "tasting", "tap"], titleOnly: true },
+  { slug: "winery", words: ["wine", "winery", "vineyard", "linganore"], titleOnly: true },
   { slug: "food", words: ["food truck", "dinner", "brunch", "tasting", "in the streets"] },
-  { slug: "bar", words: ["trivia", "pub", "bar"] },
+  { slug: "bar", words: ["trivia", "pub", "bar"], titleOnly: true },
   { slug: "civic", words: ["council", "meeting", "public hearing", "town hall", "voting", "planning commission"] },
 ];
 
@@ -559,15 +572,24 @@ function containsCategoryKeyword(text: string, keyword: string): boolean {
   return new RegExp(`(?:^|[^a-z0-9])${escaped}(?=$|[^a-z0-9])`, "i").test(text);
 }
 
-function inferCategory(title: string, description: string, fallback: string): string {
-  const text = `${title} ${description}`.toLowerCase();
+function inferCategory(
+  title: string,
+  description: string,
+  fallback: string,
+  publisherCategories = "",
+): string {
+  const text = `${title} ${description} ${publisherCategories}`.toLowerCase();
   // Stage credits are stronger evidence than the generic word "music".
   // Do not promote every concert hosted at a theater into this category.
   if (/\bmusic\s+and\s+lyrics\s+by\b/.test(text) && /\bbook\s+by\b/.test(text)) {
     return "theater";
   }
-  for (const { slug, words } of CATEGORY_KEYWORDS) {
-    if (words.some((word) => containsCategoryKeyword(text, word))) return slug;
+  const strongText = `${title} ${publisherCategories}`.toLowerCase();
+  for (const { slug, words, titleOnly } of CATEGORY_KEYWORDS) {
+    // The feed's own venue category accepts description evidence; any other
+    // venue category needs the title or a publisher tag.
+    const haystack = titleOnly && slug !== fallback ? strongText : text;
+    if (words.some((word) => containsCategoryKeyword(haystack, word))) return slug;
   }
   return fallback;
 }
@@ -667,11 +689,20 @@ function categoryExists(slug: string, fallback: string): string {
  * rather than a wrong one. Other feeds keep the keyword inference.
  * Option B (an LLM classifier at ingest) is a separate, paid change and
  * is intentionally not done here.
+ *
+ * `publisherCategories` is the feed's own CATEGORIES text for the event. It
+ * counts as strong evidence, the same as the title, for the venue categories
+ * that a description word alone cannot set.
  */
-export function feedCategory(feed: FeedSpec, title: string, description: string): string {
+export function feedCategory(
+  feed: FeedSpec,
+  title: string,
+  description: string,
+  publisherCategories = "",
+): string {
   if (feed.source === "county") return "";
   return categoryExists(
-    inferCategory(title, description, feed.default_category),
+    inferCategory(title, description, feed.default_category, publisherCategories),
     feed.default_category,
   );
 }
@@ -1215,13 +1246,15 @@ async function fetchIcalFeed(
       // … Time: … Location:" metadata at the live source (see normalize.ts).
       const cleanedDesc = clampDescription(cleanDescription(description), 300);
       // The publisher's own CATEGORIES words join the keyword inference input
-      // (same mechanism, one more honest signal) — a "Music" or "Kids" tag a
-      // feed took the trouble to publish should count.
+      // as strong evidence: a "Music", "Kids" or "Beer" tag a feed took the
+      // trouble to publish should count, including for the venue categories
+      // a description word alone cannot set.
       const categoriesText = (item.categories ?? []).join(" ");
       const inferredCategory = feedCategory(
         feed,
         title,
-        categoriesText ? `${description} ${categoriesText}` : description,
+        description,
+        categoriesText,
       );
 
       const candidate = {
@@ -2819,7 +2852,9 @@ function getCachedEventSourcePage(
     [
       // v3 adds the publisher-owned modification timestamp used to settle
       // first-party event changes. Keep old cache tuples out of this shape.
-      "live-event-source-page-v4",
+      // v5: bar, brewery and winery need the title, a publisher tag or the
+      // feed's own venue category, so cached LiveEvent.category values changed.
+      "live-event-source-page-v5",
       source,
       String(windowDays),
       afterCursor ?? "first",
@@ -2959,4 +2994,5 @@ export const LIVE_FEEDS = FEEDS.map((f) => ({
   source: f.source,
   label: f.source_label,
   url: f.url,
+  default_category: f.default_category,
 }));

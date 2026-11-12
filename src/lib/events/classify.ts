@@ -25,6 +25,7 @@ export type EventLane =
   | "town_reminder"
   | "private_rental"
   | "non_event"
+  | "closure_notice"
   | "cancelled";
 
 // Private/internal — a wedding, reunion, or corporate booking is not
@@ -38,10 +39,124 @@ const RE_REMINDER =
   /\bbulk\s*trash\b|\byard\s*waste\b|\bcurbside\b|\bleaf\s*(collection|pickup|removal)\b|\brecycling\b|\b(trash|refuse)\s*(pickup|collection|day)\b|street\s*sweep|\b(road|lane|street)\s*closure\b|snow\s*(emergency|operations|removal)|\bmowing\b/i;
 
 // Administrative notices are useful information, but not somewhere a person
-// can go. These anchored forms catch the live-feed failures without treating
-// a show such as "Office Closed: The Musical" as an office closure.
-const RE_ADMIN_NOTICE =
-  /^\s*(?:(?:town|city|county|municipal|administrative|government)\s+)?offices?\s+(?:are\s+)?closed(?:\s*(?:[-:]\s*)?(?:for|on|due\s+to|in\s+observance\s+of)\b.*)?\s*$|\b(?:newsletter\s+)?articles?\s+(?:(?:is|are)\s+)?due\s*$/i;
+// can go. Office and holiday closures have their own lane below.
+const RE_ADMIN_NOTICE = /\b(?:newsletter\s+)?articles?\s+(?:(?:is|are)\s+)?due\s*$/i;
+
+// Closure notices are not events (owner decision, November 11, 2026
+// hierarchy audit: "Town Offices Closed" sat under Happening now on Veterans
+// Day). Municipal, county and library calendars publish them as all-day
+// entries, and the titles arrive in many shapes: "Town Offices Closed",
+// "Veterans Day - Town Offices Closed", "Centers are Closed for Thanksgiving
+// Day", "Thurmont Regional Library Closed", "Offices Closed: Inclement
+// Weather", "Holiday Closure - Libraries".
+//
+// A title is a closure only when it is built entirely from these pieces:
+// a closure verb, an optional facility subject (optionally led by a town,
+// branch or "FCPL" name), optional reasons (holidays, weather, staff days),
+// optional dates or times, and joiners (-, :, (), /, &, "for", "and", "is").
+// Any other word makes the title public. That is what keeps "Office Closed:
+// The Musical", "Closed Loop Recycling Workshop", "Closing Reception" and
+// "Library Closed Stacks Tour" public. A title with no facility subject also
+// needs a reason, so "Closed" and "Closed for Business" stay public too. The
+// one exception to the closed word list is a reason stated after a joiner,
+// handled by RE_CLOSURE_TERMINAL_REASON below.
+const HOLIDAY =
+  "(?:new\\s+year(?:'s|s)?(?:\\s+(?:day|eve))?|(?:dr\\.?\\s+)?martin\\s+luther\\s+king(?:,?\\s+jr\\.?)?(?:'s)?(?:\\s+day)?|mlk(?:\\s+day)?|president(?:s|'s|s')?\\s+day|washington'?s\\s+birthday|good\\s+friday|easter(?:\\s+(?:sunday|monday))?|memorial\\s+day|juneteenth|independence\\s+day|(?:the\\s+)?fourth\\s+of\\s+july|july\\s+4(?:th)?|labor\\s+day|columbus\\s+day|indigenous\\s+people(?:s|'s|s')?\\s+day|veteran(?:s|'s|s')?\\s+day|election\\s+day|(?:the\\s+)?day\\s+after\\s+thanksgiving|thanksgiving(?:\\s+day)?|american\\s+indian\\s+heritage\\s+day|christmas(?:\\s+(?:day|eve))?|(?:winter|spring)\\s+break|holidays?|observed|observance)";
+// Places that lead a facility name: the county's towns and library branches.
+const CLOSURE_PLACE =
+  "(?:the|all|fcpl|frederick(?:\\s+county)?|brunswick|burkittsville|emmitsburg|middletown|mount\\s+airy|mt\\.?\\s+airy|myersville|new\\s+market|rosemont|thurmont|walkersville|woodsboro|urbana|point\\s+of\\s+rocks|c\\.?\\s*burr\\s+artz)";
+const CLOSURE_FACILITY_MODIFIER =
+  "(?:town|city|county|municipal|administrative|government|regional|public|senior|community|recreation)";
+const CLOSURE_FACILITY =
+  "(?:offices?|office\\s+buildings?|halls?|municipal\\s+buildings?|librar(?:y|ies)|branch(?:es)?|cent(?:er|re)s?|facilities|fcpl)";
+const CLOSURE_SUBJECT =
+  `(?:${CLOSURE_PLACE}\\s+)*(?:${CLOSURE_FACILITY_MODIFIER}\\s+)*${CLOSURE_FACILITY}`;
+// "Closing" alone is not a closure verb ("Closing Reception").
+const CLOSURE_VERB = "(?:closed(?:\\s+early)?|closures?|clos(?:e|es|ing)\\s+early|clos(?:es|ing)\\s+at)";
+const CLOSURE_WEATHER =
+  "(?:(?:inclement|severe|winter|bad)\\s+)?weather(?:\\s+conditions)?|snow(?:\\s+(?:and|&)\\s+ice)?(?:\\s+day)?|ice|winter\\s+storm|power\\s+outage";
+const CLOSURE_STAFF_DAY =
+  "staff\\s+(?:development|training|in-?service|meeting)(?:\\s+day)?|(?:professional\\s+development|in-?service|training)(?:\\s+day)?";
+const MONTH =
+  "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?";
+const DAY_NUMBER = "\\d{1,2}(?:st|nd|rd|th)?";
+const CLOSURE_DATE = [
+  `${MONTH}\\s+${DAY_NUMBER}(?:\\s*[-\u2013]\\s*${DAY_NUMBER})?(?:,?\\s+\\d{4})?`,
+  "\\d{1,2}\\/\\d{1,2}(?:\\/\\d{2,4})?(?:\\s*[-\u2013]\\s*\\d{1,2}\\/\\d{1,2}(?:\\/\\d{2,4})?)?",
+  "\\d{1,2}(?::\\d{2})?\\s*(?:a\\.?m\\.?|p\\.?m\\.?)|noon",
+  "(?:mon|tues?|wed(?:nes)?|thu(?:rs)?|fri|sat(?:ur)?|sun)(?:day)?s?",
+  "\\d{4}",
+  DAY_NUMBER,
+].join("|");
+const CLOSURE_JOINER_WORD = "and|for|on|in\\s+observance\\s+of|due\\s+to|is|are|will\\s+be|the";
+
+type ClosureTokenKind = "subject" | "verb" | "reason" | "date" | "joiner";
+// A word token must end at a word boundary, so "closed" never matches the
+// front of "closedown" and "ice" never matches the front of "ice cream".
+const closureWord = (source: string) => new RegExp(`(?:${source})(?![a-z0-9'])`, "iy");
+// Tried in order at each position; the subject comes before the joiners so
+// "The Library" reads as one subject rather than "the" plus a stray word.
+const CLOSURE_TOKENS: ReadonlyArray<readonly [ClosureTokenKind, RegExp]> = [
+  ["subject", closureWord(CLOSURE_SUBJECT)],
+  ["verb", closureWord(CLOSURE_VERB)],
+  ["reason", closureWord(HOLIDAY)],
+  ["reason", closureWord(CLOSURE_WEATHER)],
+  ["reason", closureWord(CLOSURE_STAFF_DAY)],
+  ["date", closureWord(CLOSURE_DATE)],
+  ["joiner", closureWord(CLOSURE_JOINER_WORD)],
+  ["joiner", /[-\u2013\u2014|:()[\]/&,+]/y],
+];
+const RE_CLOSURE_SPACE = /\s+/y;
+
+/** The token kinds a title is built from, or null when any word is not part of a closure notice. */
+function closureTokenKinds(title: string): ClosureTokenKind[] | null {
+  const text = (title ?? "").replace(/[\u2018\u2019]/g, "'").trim().replace(/[.!]+$/, "");
+  const kinds: ClosureTokenKind[] = [];
+  let at = 0;
+  while (at < text.length) {
+    RE_CLOSURE_SPACE.lastIndex = at;
+    const space = RE_CLOSURE_SPACE.exec(text);
+    if (space) {
+      at += space[0].length;
+      continue;
+    }
+    let matched = false;
+    for (const [kind, pattern] of CLOSURE_TOKENS) {
+      pattern.lastIndex = at;
+      const token = pattern.exec(text);
+      if (token && token[0].length > 0) {
+        kinds.push(kind);
+        at += token[0].length;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) return null;
+  }
+  return kinds;
+}
+
+// A facility subject, a closure verb and then "for", "on", "due to",
+// "because of" or "in observance of" start a stated reason, and whatever
+// follows is that reason: "Office Closed for Primary Election", "Office
+// Closed due to a water main break". The title must open with the subject
+// and the verb, so "Closed for Business" (no subject), "Office Closed: The
+// Musical" (a colon, not a reason joiner) and "Library Closed Stacks Tour"
+// (no joiner) stay public.
+const RE_CLOSURE_TERMINAL_REASON = new RegExp(
+  `^${CLOSURE_SUBJECT}\\s+(?:(?:is|are|will\\s+be)\\s+)?${CLOSURE_VERB}\\s+` +
+    "(?:for|on|due\\s+to|because\\s+of|in\\s+observance\\s+of)\\s+[a-z0-9]",
+  "i",
+);
+
+/** True when a feed title announces a closure rather than an event. Pure. */
+export function isClosureNotice(title: string): boolean {
+  const normalized = (title ?? "").replace(/[‘’]/g, "'").trim();
+  if (RE_CLOSURE_TERMINAL_REASON.test(normalized)) return true;
+  const kinds = closureTokenKinds(title);
+  if (!kinds || !kinds.includes("verb")) return false;
+  return kinds.includes("subject") || kinds.includes("reason");
+}
 
 // Search/social platforms sometimes expose a profile page as though it were
 // an event. Match only the syndicated SEO-title form: an @handle or an
@@ -79,6 +194,7 @@ export function classifyEvent(
     return "cancelled";
   }
   if (RE_NON_EVENT.test(t)) return "non_event";
+  if (isClosureNotice(t)) return "closure_notice";
   if (RE_RENTAL.test(t)) return "private_rental";
   if (RE_REMINDER.test(t) || RE_ADMIN_NOTICE.test(t)) return "town_reminder";
   if (RE_MEETING.test(t) || e.category === "civic") return "civic_meeting";

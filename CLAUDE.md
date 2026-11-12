@@ -203,6 +203,15 @@ update its implementation, relevant contract and tests together.
   states and promoted fallback records. Keep live publisher fanout out of the
   visitor path. Application builds use reviewed promoted artifacts, validate
   them and never refresh live sources.
+- **Event lanes live in `src/lib/events/classify.ts`.** Closure notices
+  ("Town Offices Closed", "Veterans Day - Library Closed") are the
+  `closure_notice` lane and appear in no event list, including Government &
+  notices (owner decision, November 11, 2026). Today's holiday note already
+  states county closures. A bar, brewery or winery category needs strong
+  evidence: the event's title, the publisher's own iCal CATEGORIES, or a
+  feed whose default category is that venue type (Monocacy Brewing's feed).
+  A word in the description alone never sets one
+  (`CATEGORY_KEYWORDS` in `src/lib/integrations/ical-live.ts`).
 - **After changing place data or its cleaning:** regenerate the client
   dataset — `npm run build:client-places` (search/map/funnel read
   `places-client.json`, not the loaders), run its gates, then update the

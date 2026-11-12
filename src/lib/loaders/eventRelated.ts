@@ -6,10 +6,14 @@ import {
   type EventWithMeta,
 } from "@/lib/loaders/events";
 import { archivedEventFromSnapshot } from "@/lib/events/event-identity";
+import { isPublicEvent } from "@/lib/events/classify";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 type SnapshotRow = {
+  id: string;
   canonical_slug: string;
   snapshot: unknown;
+  cursor_at: string;
 };
 
 type CancellablePromiseLike<T> = PromiseLike<T> & {
@@ -25,7 +29,17 @@ export type RelatedEventSections = {
 };
 
 export const RELATED_EVENT_TIMEOUT_MS = 550;
-const RELATED_QUERY_LIMIT = 30;
+/** Public events each archive read tries to collect. */
+export const RELATED_QUERY_LIMIT = 30;
+/**
+ * Rows per archive page, and the most pages one read takes. The public-event
+ * filter runs on the hydrated snapshot, so a page of closures, meetings or
+ * reminders must not end the read: it pages on until it has enough public
+ * events, the archive runs out, or the deadline passes.
+ */
+export const RELATED_PAGE_SIZE = 60;
+export const RELATED_MAX_PAGES = 3;
+const FIRST_CURSOR_ID = "00000000-0000-0000-0000-000000000000";
 
 async function beforeDeadline<T>(
   pending: CancellablePromiseLike<T>,
@@ -55,17 +69,46 @@ async function beforeDeadline<T>(
   }
 }
 
-async function archivedUpcoming(now: Date): Promise<EventWithMeta[]> {
+/**
+ * Which slice of the archive one read covers. The venue and the town are
+ * separate reads, so earlier town rows can never push the event's own venue
+ * out of the candidates before the same-venue shelf is built.
+ */
+export type RelatedArchiveScope =
+  | { kind: "county" }
+  | { kind: "town"; municipality: string }
+  | { kind: "venue"; venuePlaceSlug: string };
+
+export async function archivedUpcoming(
+  now: Date,
+  scope: RelatedArchiveScope = { kind: "county" },
+): Promise<EventWithMeta[]> {
   const sql = getSql();
   if (!sql) return [];
   const horizon = new Date(now.getTime() + 180 * 86_400_000);
-  // ISO text, not Date. Same driver serialisation failure as
-  // todayEventSnapshot.ts: under the pooler's `prepare: false` postgres-js
-  // cannot infer the parameter type and hands a Date to the string writer.
-  // This query had the identical bug and would have kept failing silently
-  // after the other was fixed.
-  const pending = sql<SnapshotRow[]>`
-    select canonical.canonical_slug, canonical.snapshot
+  const deadlineAt = Date.now() + RELATED_EVENT_TIMEOUT_MS;
+  // A null filter matches every row, so one statement serves all three
+  // scopes. The town and venue reads exist because the county-wide read
+  // returns the next events, nearly all of them in Frederick City, so an
+  // Emmitsburg page offered only Frederick events as "more upcoming"
+  // (November 11, 2026 hierarchy audit).
+  const municipality = scope.kind === "town" ? scope.municipality : null;
+  const venuePlaceSlug = scope.kind === "venue" ? scope.venuePlaceSlug : null;
+  const collected: EventWithMeta[] = [];
+  let cursorAt = now.toISOString();
+  let cursorId = FIRST_CURSOR_ID;
+  for (let page = 0; page < RELATED_MAX_PAGES; page += 1) {
+    const remainingMs = deadlineAt - Date.now();
+    if (remainingMs <= 0) break;
+    // ISO text, not Date. Same driver serialisation failure as
+    // todayEventSnapshot.ts: under the pooler's `prepare: false` postgres-js
+    // cannot infer the parameter type and hands a Date to the string writer.
+    // The keyset cursor (starts_at, id) follows the upcoming index.
+    const pending = sql<SnapshotRow[]>`
+    select canonical.id::text as id,
+           canonical.canonical_slug,
+           canonical.snapshot,
+           canonical.starts_at::text as cursor_at
     from public.event_canonical_records as canonical
     left join public.event_tombstones as tombstone
       on tombstone.canonical_event_id = canonical.id
@@ -73,18 +116,28 @@ async function archivedUpcoming(now: Date): Promise<EventWithMeta[]> {
       and canonical.starts_at <= ${horizon.toISOString()}::timestamptz
       and canonical.event_status = 'scheduled'
       and tombstone.canonical_event_id is null
+      and (${municipality}::text is null
+        or canonical.snapshot->>'municipality' = ${municipality}::text)
+      and (${venuePlaceSlug}::text is null
+        or canonical.snapshot->>'venue_place_slug' = ${venuePlaceSlug}::text)
+      and (canonical.starts_at, canonical.id)
+        > (${cursorAt}::timestamptz, ${cursorId}::uuid)
     order by canonical.starts_at asc, canonical.id
-    limit ${RELATED_QUERY_LIMIT}
+    limit ${RELATED_PAGE_SIZE}
   `;
-  const rows = await beforeDeadline(pending, RELATED_EVENT_TIMEOUT_MS);
-  if (!rows) return [];
-  return rows.flatMap((row) => {
-    const event = archivedEventFromSnapshot(
-      row.snapshot,
-      row.canonical_slug,
-    );
-    return event ? [event] : [];
-  });
+    const rows = await beforeDeadline(pending, remainingMs);
+    // A failed or late page keeps what the earlier pages found.
+    if (!rows) break;
+    for (const row of rows) {
+      const event = archivedEventFromSnapshot(row.snapshot, row.canonical_slug);
+      if (event && isPublicEvent(event)) collected.push(event);
+    }
+    const last = rows.at(-1);
+    if (!last || collected.length >= RELATED_QUERY_LIMIT || rows.length < RELATED_PAGE_SIZE) break;
+    cursorAt = last.cursor_at;
+    cursorId = last.id;
+  }
+  return collected.slice(0, RELATED_QUERY_LIMIT);
 }
 
 export function buildRelatedEventSections(
@@ -103,7 +156,8 @@ export function buildRelatedEventSections(
         .filter(
           (candidate) =>
             candidate.slug !== event.slug &&
-            seriesKey(candidate) === currentSeries,
+            seriesKey(candidate) === currentSeries &&
+            isPublicEvent(candidate),
         )
         .sort(
           (a, b) =>
@@ -112,12 +166,16 @@ export function buildRelatedEventSections(
         .slice(0, 30)
     : [];
 
+  // Only events that public discovery would list, here and in the lineup
+  // above. A closure notice or a board meeting is never offered as another
+  // date or as something else to do.
   const upcoming = pool
     .filter(
       (candidate) =>
         candidate.slug !== event.slug &&
         seriesKey(candidate) !== currentSeries &&
-        Date.parse(candidate.starts_at) > now.getTime(),
+        Date.parse(candidate.starts_at) > now.getTime() &&
+        isPublicEvent(candidate),
     )
     .sort(
       (a, b) =>
@@ -137,19 +195,50 @@ export function buildRelatedEventSections(
         })
         .slice(0, 4)
     : [];
-  return {
-    lineup,
-    moreUpcoming:
-      sameVenue.length >= 2 && venueName
-        ? { title: `More at ${venueName}`, items: sameVenue }
-        : { title: "More upcoming events", items: upcoming.slice(0, 6) },
-  };
+  // Same venue first, then the same town. Rows from another town follow the
+  // local ones, and each row already prints its town on the location line.
+  const town = event.municipality;
+  const townName =
+    (town && MUNICIPALITY_BY_SLUG[town]?.name) ||
+    event.municipality_name?.trim() ||
+    "";
+  const sameTown = town
+    ? upcoming.filter((candidate) => candidate.municipality === town)
+    : [];
+  const elsewhere = town
+    ? upcoming.filter((candidate) => candidate.municipality !== town)
+    : upcoming;
+  let moreUpcoming: RelatedEventSections["moreUpcoming"];
+  if (sameVenue.length >= 2 && venueName) {
+    moreUpcoming = { title: `More at ${venueName}`, items: sameVenue };
+  } else if (sameTown.length >= 2 && townName) {
+    moreUpcoming = { title: `More in ${townName}`, items: sameTown.slice(0, 6) };
+  } else if (sameTown.length === 0 && townName) {
+    moreUpcoming = { title: "Elsewhere in Frederick County", items: elsewhere.slice(0, 6) };
+  } else {
+    moreUpcoming = {
+      title: "More upcoming events",
+      items: [...sameTown, ...elsewhere].slice(0, 6),
+    };
+  }
+  return { lineup, moreUpcoming };
 }
 
 export async function loadRelatedEventSections(
   event: EventWithMeta,
   now = new Date(),
 ): Promise<RelatedEventSections> {
-  const archived = await archivedUpcoming(now);
-  return buildRelatedEventSections(event, now, archived);
+  // Bounded reads in parallel: the event's own venue, its own town, and the
+  // next events county-wide as the fallback.
+  const venuePlaceSlug = event.venue_place_slug?.trim();
+  const [atVenue, inTown, countywide] = await Promise.all([
+    venuePlaceSlug
+      ? archivedUpcoming(now, { kind: "venue", venuePlaceSlug })
+      : Promise.resolve([]),
+    event.municipality
+      ? archivedUpcoming(now, { kind: "town", municipality: event.municipality })
+      : Promise.resolve([]),
+    archivedUpcoming(now),
+  ]);
+  return buildRelatedEventSections(event, now, [...atVenue, ...inTown, ...countywide]);
 }

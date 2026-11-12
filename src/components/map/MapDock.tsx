@@ -66,6 +66,7 @@ export type TransitAlertSnapshot = {
   count: number;
 };
 import MapInViewPlacesDisclosure from "./MapInViewPlacesDisclosure";
+import type { MapDistanceOriginLabel } from "./distanceOrigin";
 import MapListPeek from "./MapListPeek";
 import { MAP_TASK_TILES, MAP_TASK_PARAM, MAP_TASK_AREA_PARAM, type MapTaskList, type MapTaskId } from "./mapListTask";
 
@@ -198,6 +199,8 @@ export type MapDockProps = {
   /** Keyboard/screen-reader alternative to hunting points in the WebGL canvas. */
   placesInView: readonly MapPinPlace[];
   placesInViewOrigin: LngLat | null;
+  /** Whether placesInViewOrigin is the device fix or the map center. */
+  placesInViewOriginLabel?: MapDistanceOriginLabel;
   selectedPlaceSlug?: string | null;
   onPickPlaceInView: (place: MapPinPlace) => void;
 
@@ -2522,6 +2525,7 @@ export default function MapDock(props: MapDockProps) {
                 <MapInViewPlacesDisclosure
                   places={props.placesInView}
                   sortOrigin={props.placesInViewOrigin}
+                  sortOriginLabel={props.placesInViewOriginLabel}
                   selectedSlug={props.selectedPlaceSlug}
                   onPick={(place) => {
                     props.onPickPlaceInView(place);
