@@ -87,6 +87,42 @@ describe("classifyEvent", () => {
     }
   });
 
+  // Review finding (events-and-map-context): every part of the title had to
+  // match a fixed subject list, so these real feed shapes fell through to
+  // "public". The first one was in the county RSS feed for November 26, 2026.
+  it("lanes closures with a town, branch or bare subject, joined reasons, weather and staff days", () => {
+    for (const title of [
+      "Centers are Closed for Thanksgiving Day",
+      "Senior Centers Closed for Thanksgiving Day",
+      "Veteran's Day - Town Offices Closed",
+      "Veteran\u2019s Day - Town Offices Closed",
+      "Thurmont Town Office Closed",
+      "Brunswick City Offices Closed",
+      "Emmitsburg Branch Closed",
+      "Thurmont Regional Library Closed",
+      "FCPL Closed - Thanksgiving",
+      "Library Closed - Staff Development Day",
+      "All Branches Closed - Staff Training",
+      "Town Offices Closed Thanksgiving",
+      "Town Offices Closed 11/11",
+      "Town Offices Closed November 27-28",
+      "Town Offices Close Early",
+      "Town Offices Closed - Christmas Eve & Christmas Day",
+      "Office Closed - Columbus Day / Indigenous Peoples' Day",
+      "Town Office Closed (Snow)",
+      "Offices Closed: Inclement Weather",
+      "Holiday Closure - Libraries",
+      "Closed Thanksgiving",
+      "Library Closed Sunday",
+      "Library Closes at 3 PM",
+      "Closed for the Holidays",
+    ]) {
+      expect(isClosureNotice(title), title).toBe(true);
+      expect(classifyEvent({ title }), title).toBe("closure_notice");
+      expect(isPublicEvent({ title }), title).toBe(false);
+    }
+  });
+
   it("does not treat a title that merely mentions closing as a closure", () => {
     for (const title of [
       "Office Closed: The Musical",
@@ -98,6 +134,17 @@ describe("classifyEvent", () => {
       "Thanksgiving Day Parade",
       "Library Closing Party",
       "Community Center Open House",
+      // The wider closure grammar must still leave these alone.
+      "Closed Loop Recycling Workshop",
+      "Closing Reception",
+      "Last Day Before We Close: Farewell Concert",
+      "Library Closed Stacks Tour",
+      "Holiday Market",
+      "Closure",
+      "Closed Sunday",
+      "Thurmont Closed",
+      "Closed Captioned Screening at the Library",
+      "Ice Cream Social - Closed Early",
     ]) {
       expect(isClosureNotice(title), title).toBe(false);
       expect(classifyEvent({ title }), title).not.toBe("closure_notice");
@@ -136,6 +183,9 @@ describe("classifyEvent", () => {
       "Office Closed: The Musical",
       "Instagram Photos and Videos Workshop",
       "Spires Brass Holiday Concert",
+      "Last Day Before We Close: Farewell Concert",
+      "Library Closed Stacks Tour",
+      "Holiday Market",
     ]) {
       expect(classifyEvent({ title }), title).toBe("public");
       expect(isPublicEvent({ title }), title).toBe(true);

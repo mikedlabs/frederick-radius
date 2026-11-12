@@ -16,7 +16,7 @@ import {
   readCachedPosition,
   useGeolocation,
 } from "@/hooks/useGeolocation";
-import { getScope, setScope, SCOPE_PARAM } from "@/lib/scope";
+import { getScope, setScope, subscribeScopeChange, SCOPE_PARAM, type Scope } from "@/lib/scope";
 import { replaceMapUrl } from "@/lib/map-url-state";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
@@ -27,10 +27,27 @@ import {
   shouldShowMapLocationIntro,
 } from "./mapLocationIntro";
 
+/** The latched Near me arrival fit owns the camera only while it is still
+ * pending: once its one-mile fit has landed, or the scope has left Near me (a
+ * missing, denied or out-of-county fix falls back to the county), it releases
+ * the camera so a later submitted search can frame its own results. */
+export function nearbyArrivalFitPending({
+  autoFitNearbyScope,
+  fitApplied,
+  scope,
+}: {
+  autoFitNearbyScope: boolean;
+  fitApplied: boolean;
+  scope: Scope | null;
+}): boolean {
+  return autoFitNearbyScope && !fitApplied && scope === "nearme";
+}
+
 export function useMapLocation({
   isBrowseMap,
   rankingSeed,
   autoFitNearbyScope,
+  arrivalEntityOwnsCamera,
   setGeoMsg,
   markCameraIntent,
   fitNearbyCamera,
@@ -43,6 +60,10 @@ export function useMapLocation({
   /** A direct `in=nearme` route should honor its one-mile promise when the
    * browser has already granted location, without opening a new prompt. */
   autoFitNearbyScope: boolean;
+  /** True while a place or event named in the arrival URL still holds the
+   * camera (it is still open and the visitor has not moved the camera). A
+   * late location fix then updates ranking without refitting Near me. */
+  arrivalEntityOwnsCamera: () => boolean;
   setGeoMsg: (message: string | null) => void;
   /** Flag the coming camera move as user-intended (the leash keeps it). */
   markCameraIntent: () => void;
@@ -90,6 +111,9 @@ export function useMapLocation({
     autoFitNearbyScope && rankingSeed === null,
   );
   const automaticLocationCheckRef = useRef(false);
+  // A Near me choice made after arrival (the shared header) is newer intent
+  // than the place or event the arrival URL named, so its fix may refit.
+  const nearMeChosenSinceMountRef = useRef(false);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -148,6 +172,14 @@ export function useMapLocation({
     }
   }, [sharedGeolocationState.status]);
 
+  useEffect(
+    () =>
+      subscribeScopeChange((nextScope) => {
+        if (nextScope === "nearme") nearMeChosenSinceMountRef.current = true;
+      }),
+    [],
+  );
+
   // Location can be granted from Ask, Today, or the map itself. The shared
   // same-tab event keeps map ranking current without moving the camera.
   useEffect(() => {
@@ -169,12 +201,15 @@ export function useMapLocation({
       );
       // A Near me choice made in the shared header requests location through
       // that header's hook. When its fix lands, honor the already-selected
-      // scope here without issuing a second browser request.
+      // scope here without issuing a second browser request. A place or
+      // event named in the arrival URL takes precedence over that fit: a late
+      // silent fix re-ranks results but leaves the camera on the entity.
       if (
         inCounty &&
         cached &&
         getScope() === "nearme" &&
-        !locateRequestedRef.current
+        !locateRequestedRef.current &&
+        (nearMeChosenSinceMountRef.current || !arrivalEntityOwnsCamera())
       ) {
         markCameraIntent();
         fitNearbyCamera(cached);

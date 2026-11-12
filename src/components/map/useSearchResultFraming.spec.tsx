@@ -11,6 +11,7 @@ import {
   useSearchResultFraming,
   type SearchFrameRequest,
 } from "./useSearchResultFraming";
+import { nearbyArrivalFitPending } from "./useMapLocation";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -99,6 +100,37 @@ describe("useSearchResultFraming", () => {
   it("yields to another camera owner", async () => {
     await render({ settledKey: intentFrameKey("eat", "coffee"), otherOwner: true });
     expect(fitBounds).not.toHaveBeenCalled();
+  });
+
+  it("frames a search submitted after a Near me arrival once that one-time fit has landed", async () => {
+    // AppMap's owner check: the Near me arrival latch counts only while its
+    // fit is still pending, never for the rest of the map session.
+    let nearbyFitApplied = false;
+    function NearMeArrival({ settledKey }: { settledKey: string | null }) {
+      useSearchResultFraming({
+        pendingRef,
+        settledKey,
+        points: coffee,
+        ready: true,
+        getMap: () => ({ getZoom: () => 10, easeTo, fitBounds }),
+        hasUserGestureSincePending: () => gestured,
+        hasOtherCameraOwner: () =>
+          nearbyArrivalFitPending({ autoFitNearbyScope: true, fitApplied: nearbyFitApplied, scope: "nearme" }),
+        markCameraIntent,
+      });
+      return null;
+    }
+    // An `?intent=` arrival while the Near me fix is still on its way yields.
+    await act(async () => root.render(<NearMeArrival settledKey={intentFrameKey("eat", "coffee")} />));
+    expect(fitBounds).not.toHaveBeenCalled();
+    expect(pendingRef.current).toBeNull();
+
+    nearbyFitApplied = true;
+    pendingRef.current = searchFrameRequest("q:pizza");
+    await act(async () => root.render(<NearMeArrival settledKey={null} />));
+    await act(async () => root.render(<NearMeArrival settledKey="q:pizza" />));
+    expect(fitBounds).toHaveBeenCalledOnce();
+    expect(pendingRef.current).toBeNull();
   });
 
   it("drops a request that never settles, so a later chip toggle cannot move the camera", async () => {

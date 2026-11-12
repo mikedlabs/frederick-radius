@@ -175,7 +175,7 @@ import {
 import { useLiveFoodTrucks } from "./useLiveFoodTrucks";
 import { useMapLayerToggles } from "./useMapLayerToggles";
 import AppMapSelectionSurfaces from "./AppMapSelectionSurfaces";
-import { useMapLocation } from "./useMapLocation";
+import { nearbyArrivalFitPending, useMapLocation } from "./useMapLocation";
 import { useOsmPlaces } from "./useOsmPlaces";
 import { useWalkRoute } from "./useWalkRoute";
 import {
@@ -849,6 +849,11 @@ export default function AppMap({
       recenterToKnownLocation &&
       !entryNamesMapEntity(typeof window === "undefined" ? "" : window.location.search),
   );
+  // The same arrival check, for a late location fix: while the named place or
+  // event is still open and untouched, that fix re-ranks without refitting.
+  const [entryNamedEntity] = useState(
+    () => isBrowseMap && entryNamesMapEntity(typeof window === "undefined" ? "" : window.location.search),
+  );
   // A pooled Mapbox instance can emit the camera it retained from an older
   // route before the requested `?c=` camera is restored. Do not let that
   // transient move overwrite the address bar and turn the wrong frame into
@@ -1364,6 +1369,10 @@ export default function AppMap({
       isBrowseMap,
       rankingSeed: locationSeed.ranking,
       autoFitNearbyScope,
+      arrivalEntityOwnsCamera: () =>
+        entryNamedEntity &&
+        !initialPlaceCameraGestureRef.current &&
+        entryNamesMapEntity(window.location.search),
       setGeoMsg: setLocateMsg,
       markCameraIntent: () => {
         cameraIntentRef.current = true;
@@ -4499,7 +4508,11 @@ export default function AppMap({
     getMap: () => mapRef.current?.getMap() ?? null,
     hasUserGestureSincePending: () => searchFrameGestureRef.current,
     hasOtherCameraOwner: () =>
-      autoFitNearbyScope ||
+      nearbyArrivalFitPending({
+        autoFitNearbyScope,
+        fitApplied: nearbyRouteCameraAppliedRef.current,
+        scope: getScope(),
+      }) ||
       activeSceneId !== null ||
       Boolean(sceneCameraPendingRef.current) ||
       Boolean(initialPlaceCameraPendingRef.current) ||
