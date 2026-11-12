@@ -854,11 +854,12 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
               </label>
 
               <Sect>Interest</Sect>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" aria-label="Event interests">
+              {/* Interests are compact filter chips like every other group in
+                  this pane, not tall boxed tiles. */}
+              <div className="eb-chips" role="group" aria-label="Event interests">
                 <EbChip
                   on={!intent && !cat && !sub}
                   onClick={pickEverything}
-                  className="col-span-full justify-center !rounded-[var(--app-radius-md)]"
                 >
                   Any interest
                 </EbChip>
@@ -871,7 +872,6 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                       color={item.tucked ? "var(--app-civic)" : "var(--app-brand)"}
                       onClick={() => pickIntent(item.id)}
                       icon={Icon}
-                      className="!flex-col !items-start !justify-between !h-20 !p-3 !rounded-[var(--app-radius-lg)] !w-full"
                     >
                       {item.label}
                     </EbChip>
@@ -933,7 +933,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
               </div>
 
               {categories.length > 0 && (
-                <details className="group mt-4 rounded-[var(--app-radius-md)] border px-3" style={{ borderColor: "var(--app-border)" }}>
+                <details className="group mt-4 border-y" style={{ borderColor: "var(--app-border)" }}>
                   <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-[12px] font-semibold text-[var(--app-ink-2)]">
                     <span>
                       {cat

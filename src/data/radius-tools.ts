@@ -756,15 +756,6 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         tone: "brand",
         keywords: ["install", "home screen", "bookmark", "return", "app"],
       },
-      {
-        id: "notifications",
-        label: "Notifications",
-        description: "Choose the local updates you want Radius to send.",
-        href: "/settings/notifications",
-        icon: "activity",
-        tone: "brand",
-        keywords: ["notifications", "alerts"],
-      },
     ],
   },
   {

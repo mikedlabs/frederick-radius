@@ -11,9 +11,6 @@
  * A receipt is only returned after the note is durably stored. If storage is
  * unavailable, the client gets a retryable response and keeps the visitor's
  * draft. Operational logs never include the note or optional email.
- *
- * Owner push is deliberately a second, best-effort step. A push failure is
- * recorded without visitor content and never rolls back a stored report.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
@@ -24,12 +21,9 @@ import {
   readJsonBodyWithLimit,
 } from "@/lib/origin-check";
 import {
-  buildFeedbackOwnerAlert,
   buildFeedbackRow,
   parseFeedback,
 } from "@/lib/feedback";
-import { fanoutToTopic } from "@/lib/push-fanout";
-import { OWNER_ALERTS_TOPIC } from "@/lib/push-topics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -88,55 +82,13 @@ export async function POST(req: NextRequest) {
     return storageUnavailableResponse();
   }
 
-  let id: string | undefined;
   try {
-    const inserted = await db
-      .insert(submissions)
-      .values(row)
-      .returning({ id: submissions.id });
-    id = inserted[0]?.id;
+    await db.insert(submissions).values(row).returning({ id: submissions.id });
   } catch {
     // Do not log the thrown DB error. Driver errors can include bound values,
     // which would expose the visitor's note or optional email.
     console.error("[feedback] durable storage failed", { stage: "insert" });
     return storageUnavailableResponse();
-  }
-
-  // Owner alert: the note is on the owner's phone when push is configured.
-  // The submission is already durable, so alert trouble is observable but
-  // cannot turn a saved report into a visitor-facing failure.
-  if (id) {
-    try {
-      const alert = buildFeedbackOwnerAlert(parsed.value);
-      const delivery = await fanoutToTopic(
-        OWNER_ALERTS_TOPIC,
-        `feedback:${id}`,
-        {
-          title: alert.title,
-          body: alert.body,
-          url: "/admin/beta",
-        },
-      );
-      if (!delivery.claimed || delivery.sent === 0) {
-        console.warn("[feedback] owner alert not delivered", {
-          submissionId: id,
-          claimed: delivery.claimed,
-          attempted: delivery.attempted,
-          sent: delivery.sent,
-          gone: delivery.gone,
-          held: delivery.held,
-        });
-      }
-    } catch {
-      console.error("[feedback] owner alert failed", {
-        submissionId: id,
-        stage: "fanout",
-      });
-    }
-  } else {
-    console.warn("[feedback] owner alert skipped", {
-      reason: "missing-submission-id",
-    });
   }
 
   return NextResponse.json({ ok: true }, { headers: noStore });

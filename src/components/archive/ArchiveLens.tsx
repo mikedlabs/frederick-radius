@@ -108,7 +108,7 @@ function SectionIntro({
     <div className="grid gap-3 sm:grid-cols-[52px_1fr] sm:gap-5">
       <span
         className="font-serif text-[28px] font-semibold tabular-nums"
-        style={{ color: "var(--app-brand)" }}
+        style={{ color: "var(--app-brand-text)" }}
         aria-hidden
       >
         {number}
@@ -200,7 +200,7 @@ function SourceDetails({ record }: { record: ArchiveViewRecord }) {
             target="_blank"
             rel="noreferrer"
             className="tap-44-y inline-flex items-center gap-1.5 font-semibold underline decoration-1 underline-offset-4"
-            style={{ color: "var(--app-cool)" }}
+            style={{ color: "var(--app-cool-text)" }}
           >
             LOC item record
             <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
@@ -211,7 +211,7 @@ function SourceDetails({ record }: { record: ArchiveViewRecord }) {
               target="_blank"
               rel="noreferrer"
               className="tap-44-y inline-flex items-center gap-1.5 font-semibold underline decoration-1 underline-offset-4"
-              style={{ color: "var(--app-cool)" }}
+              style={{ color: "var(--app-cool-text)" }}
             >
               Original media
               <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
@@ -262,7 +262,7 @@ function MapRoom({ maps }: { maps: ArchiveViewRecord[] }) {
               </p>
               <p
                 className="mt-1 font-serif text-[40px] font-semibold leading-none tabular-nums"
-                style={{ color: "var(--app-brand)" }}
+                style={{ color: "var(--app-brand-text)" }}
               >
                 {activeYear}
               </p>
@@ -327,7 +327,7 @@ function MapRoom({ maps }: { maps: ArchiveViewRecord[] }) {
               className="rounded-[var(--app-radius-sm)] border p-3 text-[11px] leading-relaxed"
               style={{ borderColor: "var(--app-border)", background: "var(--app-cool-tint-6)", color: "var(--app-ink-2)" }}
             >
-              <p className="inline-flex items-center gap-1.5 font-semibold" style={{ color: "var(--app-cool)" }}>
+              <p className="inline-flex items-center gap-1.5 font-semibold" style={{ color: "var(--app-cool-text)" }}>
                 <Layers3 className="h-3.5 w-3.5" aria-hidden />
                 Original sheet scan
               </p>
@@ -452,7 +452,7 @@ function BuildingRecords({ records }: { records: ArchiveViewRecord[] }) {
                       : { borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink-2)" }
                   }
                 >
-                  <span className="block text-[10px] font-bold tabular-nums" style={{ color: selected ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>
+                  <span className="block text-[10px] font-bold tabular-nums" style={{ color: selected ? "var(--app-link)" : "var(--app-ink-3)" }}>
                     STOP {String(index + 1).padStart(2, "0")}
                   </span>
                   <span className="mt-0.5 block text-[12px] font-semibold leading-snug">
@@ -475,7 +475,7 @@ function BuildingRecords({ records }: { records: ArchiveViewRecord[] }) {
 
           <div className="space-y-4 p-4 sm:p-5 lg:p-6">
             <div>
-              <p className="eyebrow" style={{ color: "var(--app-brand-press)" }}>
+              <p className="eyebrow" style={{ color: "var(--app-link)" }}>
                 {active.surveyNumber ? `Survey ${active.surveyNumber}` : "HABS record"}
               </p>
               <h3 className="mt-1.5 font-serif text-[25px] font-semibold leading-tight tracking-tight">
@@ -513,7 +513,7 @@ function BuildingRecords({ records }: { records: ArchiveViewRecord[] }) {
                 style={{ borderColor: "var(--app-border)", background: "var(--app-cool-tint-6)", color: "var(--app-ink)" }}
               >
                 <span className="flex items-center gap-2.5">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ background: "var(--app-cool-tint-14)", color: "var(--app-cool)" }}>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ background: "var(--app-cool-tint-14)", color: "var(--app-cool-text)" }}>
                     <Map className="h-4 w-4" aria-hidden />
                   </span>
                   <span>
@@ -620,7 +620,7 @@ function PapersPanel({ records }: { records: ArchiveViewRecord[] }) {
               </header>
 
               <div>
-                <p className="eyebrow" style={{ color: "var(--app-brand-press)" }}>From the archive</p>
+                <p className="eyebrow" style={{ color: "var(--app-link)" }}>From the archive</p>
                 <h3 className="mt-2 max-w-[36rem] font-serif text-[28px] font-semibold leading-[1.08] tracking-tight sm:text-[34px]">
                   {active.featureTitle ?? active.title}
                 </h3>
@@ -793,7 +793,7 @@ export default function ArchiveLens({ maps, buildings, papers, photos }: Archive
       >
         <div
           className="grid h-11 w-11 place-items-center rounded-full"
-          style={{ background: "var(--app-cool-tint-14)", color: "var(--app-cool)" }}
+          style={{ background: "var(--app-cool-tint-14)", color: "var(--app-cool-text)" }}
         >
           <ShieldCheck className="h-5 w-5" aria-hidden />
         </div>
@@ -811,7 +811,7 @@ export default function ArchiveLens({ maps, buildings, papers, photos }: Archive
               target="_blank"
               rel="noreferrer"
               className="tap-44-y inline-flex items-center gap-1.5 underline decoration-1 underline-offset-4"
-              style={{ color: "var(--app-cool)" }}
+              style={{ color: "var(--app-cool-text)" }}
             >
               LOC free-to-use guidance
               <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
@@ -821,7 +821,7 @@ export default function ArchiveLens({ maps, buildings, papers, photos }: Archive
               target="_blank"
               rel="noreferrer"
               className="tap-44-y inline-flex items-center gap-1.5 underline decoration-1 underline-offset-4"
-              style={{ color: "var(--app-cool)" }}
+              style={{ color: "var(--app-cool-text)" }}
             >
               Library of Congress APIs
               <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />

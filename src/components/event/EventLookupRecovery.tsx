@@ -30,12 +30,8 @@ export default function EventLookupRecovery({
       className="mx-auto flex min-h-[58vh] max-w-md flex-col items-center justify-center gap-5 px-6 py-14 text-center"
     >
       <span
-        className="inline-flex h-14 w-14 items-center justify-center rounded-full border"
-        style={{
-          borderColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          color: "var(--app-brand)",
-        }}
+        className="inline-flex items-center justify-center"
+        style={{ color: "var(--app-ink-3)" }}
       >
         <CalendarClock className="h-7 w-7" strokeWidth={1.6} aria-hidden />
       </span>

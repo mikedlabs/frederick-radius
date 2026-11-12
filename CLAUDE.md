@@ -43,8 +43,11 @@ truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
   `-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`. This includes
   page titles, text, controls, source notes, and tabular data. Public Sans
   remains the installed print/export text family, with its real variable
-  italic. Libre Caslon Display Regular remains the wordmark and rare
-  editorial signature. Do not synthesize bold or italic Caslon, rename
+  italic. Libre Caslon Display Regular sets the header wordmark in the top
+  bar and is a rare editorial signature on a few specialty guide pages. No
+  page title or content on Today, Map, Events, Saved, Find, Tools,
+  Settings, Ask, place pages or event pages uses it; every title there is
+  heavy system sans. Do not synthesize bold or italic Caslon, rename
   packaged Public Sans as a system font, or download a new family.
 - **Palette (Brand System 1.4, October 16, 2026, owner-approved):** Always use
   `var(--app-*)` in app UI. White `--app-bg #FFFFFF`, Charcoal `--app-ink #22221F`,
@@ -62,12 +65,26 @@ truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
   three-arc mark is for 48 px and larger, the compact two-arc mark is for
   24–47 px, and the one-arc favicon is for smaller sizes. Do not redraw it,
   wrap it in the retired circle, or invent a page-specific logo.
-- **Surface:** White and soft gray are the normal light surfaces. Dark appearance
-  uses the separate dark canvas and surface tokens throughout the same app.
-  Favor clean surfaces, clear type, and accurate local photography over paper
-  grain or palette washes. Specialty pages share this identity and preserve
+- **Surface:** Content is rows on the White ground, separated by a 1px
+  `--app-border` hairline or by space. Do not put a bordered, filled or
+  shadowed card around ordinary content, and do not add gradients or glows.
+  A bordered surface is still right for fields, menus, sheets and floating
+  layers over the map. Soft gray is for insets, tracks and pressed states.
+  Dark appearance uses the separate dark canvas and surface tokens throughout
+  the same app. Favor clear type and accurate local photography over paper
+  grain or palette washes. A row shows a thumbnail only when a real photo
+  exists; otherwise it keeps the slot and shows a plain `--app-ink-3` glyph
+  with no tile. Specialty pages share this identity and preserve
   their semantic signals. `/pitch` stays an isolated internal presentation;
   bring it into the current brand system before public use.
+- **Current look:** the owner approved the "Plain tool, with the coral plate"
+  interface on November 10, 2026 (see Interface shape in
+  `docs/brand/BRAND_GUIDE.md`). A rounded, bordered card around ordinary
+  content is now a regression. The November 10, 2026 interface update covers
+  Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages, event
+  pages and town pages. Specialty guide pages (for example food trucks,
+  deals, amenities, parks, happy hour and beer) still carry older treatments
+  and are the next pass.
 - **Voice:** calm local expert. No em dashes in user-facing copy
   (`cleanFeedText` converts them). Verb-first chip labels ("Eat & drink",
   "Open now"). Counts are supporting detail, never the headline. Full rules
@@ -82,10 +99,19 @@ truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
   benefits, adjectives, or matching short sentences because the rhythm sounds
   polished. This is a prose rule, not a product limit. Three results, choices,
   steps, cards, or facts are correct when the data or task calls for three.
-- **Aesthetic bar:** a distinctive local information tool — organized, calm,
-  and immediately useful.
-  Typography carries hierarchy before boxes/borders/badges. One primary
-  action per view. Honest empty states. If a change reads like a generic
+- **Aesthetic bar:** a plain, distinctive local information tool that is
+  organized, calm and immediately useful. Type carries the hierarchy: heavy
+  system sans page titles, 17px semibold row titles, 14px muted meta lines and
+  13px uppercase section labels, before any box, border or badge. Chrome is
+  flat. A page may hold one solid Deep Coral block. Only Today (the name
+  plate) and Events (the lead event's time block) have one, and no other
+  page should gain one. Apart from that block, the only coral field on a
+  page is its single filled coral action. A selected filter chip is filled ink (background
+  `--app-ink`, text `--app-bg`), never coral. Coral text uses `--app-link` or
+  `--app-brand-text`, Creek text `--app-cool-text` and forest text
+  `--app-forest-text`; `--app-brand`, `--app-brand-press` and `--app-cool`
+  are fill colors and never text colors. White text on coral sits on
+  `--app-brand-press` with `--app-on-brand`. Honest empty states. If a change reads like a generic
   SaaS template, it's wrong.
 
 ## Owner's public voice (Reddit, social, email — anything Mike posts)
@@ -239,9 +265,12 @@ dependency without the owner's yes.
 - **Motion:** plain CSS for hover, press and fade. framer-motion only for
   springs, layout, exit and gestures, always with a reduced-motion branch. No
   entrance animation on content that arrives with a navigation.
-- **Shape:** fields and utility controls use `--app-radius-sm`, cards use
-  `--app-radius-md`. A full capsule is only for status, toggles and compact
-  filters. One filled coral action per view.
+- **Shape:** the radius tokens are 4, 6, 8 and 10px (`--app-radius-sm`
+  through `--app-radius-xl`). Fields, buttons and menus use `--app-radius-md`,
+  and sheets and map panels use `--app-radius-lg`. Ordinary content is ruled
+  rows, not cards. A full capsule is only for compact filter chips, status
+  badges and toggle switches; informational tags are plain text. One filled
+  coral action per view.
 
 ### Component workshop
 

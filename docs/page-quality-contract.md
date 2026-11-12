@@ -21,7 +21,7 @@ The following are review signals rather than automatic failures:
 - More than five visible results in a section without a disclosure or filtering reason.
 - Paragraphs longer than 80 words, especially before the first useful action.
 - High interactive-element counts or extreme page height. These numbers need context, but large jumps often expose a page that is trying to do too many jobs at once.
-- Multiple consecutive decorative containers, badges, or pills. Cards are for actionable objects; pills are for filters, selection, and status.
+- Multiple consecutive decorative containers, badges, or pills. On Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages, event pages, and town pages, ordinary content is ruled rows rather than cards, and a full capsule is only for compact filter chips, status badges, and toggle switches. Specialty guide pages still carry older treatments, such as capsule controls and tinted surfaces, until their own redesign pass; review them against their current design, and do not copy those treatments into the pages listed here.
 
 ## Representative route manifest
 

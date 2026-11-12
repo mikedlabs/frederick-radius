@@ -9,7 +9,6 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import TodayHeadlineCard from "./TodayHeadlineCard";
 import choiceStyles from "./TodayEventChoices.module.css";
 import DismissibleSection from "@/components/today/DismissibleSection";
-import EventGlanceCard from "@/components/event/EventGlanceCard";
 import { parseRecoveryEventVisual, type EventCardVisual } from "@/components/event/eventVisuals";
 import { createAbortDeadline } from "@/lib/promise-deadline";
 import { eventDisplayTitle } from "@/lib/events/display-title";
@@ -101,11 +100,11 @@ export function TodayEventBriefCard({ event, visual, lead = false }: { event: To
       {event.venue}{event.free ? " · Free" : event.price ? ` · ${event.price}` : ""}
     </p>
   </div>;
-  return lead || !visual ? <TodayHeadlineCard eventSlug={event.slug} titleId={`today-choice-${event.slug}`} detailId={`today-choice-facts-${event.slug}`} visual={visual} accent="var(--app-brand)" priority={false} actionCue={lead}>
+  // Every choice is a ruled row. The lead may carry a wide picture; a later
+  // row keeps its approved picture as a small square at the right edge.
+  return <TodayHeadlineCard eventSlug={event.slug} titleId={`today-choice-${event.slug}`} detailId={`today-choice-facts-${event.slug}`} visual={visual} accent="var(--app-brand)" priority={false} actionCue={lead} layout={lead ? "headline" : "row"}>
     {facts}
-  </TodayHeadlineCard> : <EventGlanceCard eventSlug={event.slug} visual={visual} cancelled={false} accent="var(--app-brand)" surface="today" compactCredit={false}>
-    {facts}
-  </EventGlanceCard>;
+  </TodayHeadlineCard>;
 }
 
 async function recoverAttempt(parentSignal: AbortSignal, requestPath: string): Promise<RecoveryAttempt> {

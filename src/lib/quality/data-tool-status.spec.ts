@@ -60,12 +60,8 @@ describe("data-tool activation inventory", () => {
   it("keeps disabled operator routes out of the paid schedule", () => {
     const schedules = vercelSchedules();
     const dormant = [
-      ["parking-alerts", "/api/cron/parking-alerts"],
-      ["saved-reminders", "/api/cron/saved-reminders"],
       ["data-retention", "/api/cron/data-health-retention"],
       ["link-health", "/api/cron/link-health"],
-      ["rain-tomorrow", "/api/cron/rain-tomorrow"],
-      ["first-saturday", "/api/cron/first-saturday"],
       ["visit-frederick-refresh", "/api/cron/visit-frederick"],
     ] as const;
     for (const [, path] of dormant) expect(schedules.has(path)).toBe(false);

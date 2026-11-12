@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Inbox, Flag, PenLine, Copy as CopyIcon, GitCompare, Sparkles,
-  BarChart3, LayoutDashboard, KeyRound, Mail, Megaphone,
+  BarChart3, MessageSquare, Mail,
   Activity, MapPinned, Receipt, StickyNote, MapPin, Truck, SearchX, Nfc, Radar, Link2,
   MousePointerClick,
 } from "lucide-react";
@@ -67,11 +67,8 @@ const DOOR_GROUPS: { label: string; doors: { href: string; title: string; icon: 
     doors: [
       { href: "/admin/traffic", title: "Traffic", icon: BarChart3 },
       { href: "/admin/decisions", title: "Decisions", icon: MousePointerClick },
-      { href: "/admin/beta", title: "Beta", icon: LayoutDashboard },
-      { href: "/admin/beta-codes", title: "Codes", icon: KeyRound },
+      { href: "/admin/feedback", title: "Feedback", icon: MessageSquare },
       { href: "/admin/cards", title: "NFC cards", icon: Nfc },
-      { href: "/admin/beta-emails", title: "Emails", icon: Mail },
-      { href: "/admin/notify", title: "Broadcast", icon: Megaphone },
     ],
   },
   {

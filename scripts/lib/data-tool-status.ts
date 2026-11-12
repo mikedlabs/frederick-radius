@@ -34,12 +34,6 @@ const DATABASE_REQUIREMENT: EnvironmentRequirement = {
   anyOf: ["DATABASE_URL", "POSTGRES_URL", "SUPABASE_DB_URL"],
 };
 
-const PUSH_REQUIREMENTS: readonly EnvironmentRequirement[] = [
-  { env: "VAPID_PUBLIC_KEY" },
-  { env: "VAPID_PRIVATE_KEY" },
-  { env: "VAPID_SUBJECT" },
-];
-
 const CRON_REQUIREMENT: EnvironmentRequirement = { env: "CRON_SECRET" };
 const GOOGLE_POLICY_REQUIREMENTS: readonly EnvironmentRequirement[] = [
   {
@@ -136,27 +130,6 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
     requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT],
   },
   {
-    id: "notify-civic-alerts",
-    label: "Severe civic alert delivery",
-    scope: "vercel",
-    vercelPath: "/api/cron/notify-civic-alerts",
-    requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT, ...PUSH_REQUIREMENTS],
-  },
-  {
-    id: "notify-traffic-alerts",
-    label: "Major traffic alert delivery",
-    scope: "vercel",
-    vercelPath: "/api/cron/notify-traffic-alerts",
-    requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT, ...PUSH_REQUIREMENTS],
-  },
-  {
-    id: "daily-briefing",
-    label: "Daily local briefing delivery",
-    scope: "vercel",
-    vercelPath: "/api/cron/daily-briefing",
-    requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT, ...PUSH_REQUIREMENTS],
-  },
-  {
     id: "hours-refresh",
     label: "Google Places hours refresh",
     scope: "vercel",
@@ -225,32 +198,6 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
     gate: { env: "LINK_HEALTH_CRON" },
   },
   {
-    id: "parking-alerts",
-    label: "Live parking occupancy alerts",
-    note: "route is ready but deliberately unscheduled until a licensed live occupancy feed is configured",
-    scope: "operator",
-    gate: { env: "PARKING_OCCUPANCY_ENABLED" },
-    requirements: [
-      DATABASE_REQUIREMENT,
-      { env: "PARKING_OCCUPANCY_URL" },
-      ...PUSH_REQUIREMENTS,
-    ],
-  },
-  {
-    id: "parking-forecast",
-    label: "Event-aware parking forecast",
-    scope: "vercel",
-    vercelPath: "/api/cron/parking-forecast",
-    requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT, ...PUSH_REQUIREMENTS],
-  },
-  {
-    id: "golden-hour",
-    label: "Golden-hour notification",
-    scope: "vercel",
-    vercelPath: "/api/cron/golden-hour",
-    requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT, ...PUSH_REQUIREMENTS],
-  },
-  {
     id: "weekly-digest",
     label: "Weekly owner digest",
     scope: "vercel",
@@ -271,39 +218,6 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
     requirements: [
       DATABASE_REQUIREMENT,
       { env: "BLOB_READ_WRITE_TOKEN" },
-    ],
-  },
-  {
-    id: "saved-reminders",
-    label: "Saved-event reminders",
-    note: "route is ready but deliberately unscheduled until the owner enables and verifies device-scoped reminders",
-    scope: "operator",
-    gate: { env: "SAVED_REMINDERS_ENABLED" },
-    requirements: [
-      DATABASE_REQUIREMENT,
-      ...PUSH_REQUIREMENTS,
-    ],
-  },
-  {
-    id: "rain-tomorrow",
-    label: "Rain-tomorrow notifications",
-    note: "route is ready but deliberately unscheduled until this push product is enabled",
-    scope: "operator",
-    gate: { env: "RAIN_TOMORROW_ENABLED" },
-    requirements: [
-      DATABASE_REQUIREMENT,
-      ...PUSH_REQUIREMENTS,
-    ],
-  },
-  {
-    id: "first-saturday",
-    label: "First Saturday notifications",
-    note: "route is ready but deliberately unscheduled until this push product is enabled",
-    scope: "operator",
-    gate: { env: "FIRST_SATURDAY_ENABLED" },
-    requirements: [
-      DATABASE_REQUIREMENT,
-      ...PUSH_REQUIREMENTS,
     ],
   },
   {

@@ -23,7 +23,7 @@ const DEFAULT_TO = "hello@frederickradius.app";
 
 /**
  * `||` rather than `??`: RESEND_FROM has been set to an EMPTY string in prod
- * before (see beacon of the same bug in lib/beta-invite.ts), and an empty
+ * before, and an empty
  * from-address is rejected by the API, so an empty value must fall back too.
  */
 const DEFAULT_FROM = "Frederick Radius <submissions@frederickradius.app>";

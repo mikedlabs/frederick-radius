@@ -24,7 +24,10 @@ export default function EventArtwork({
   credit?: boolean;
   className?: string;
   onUnavailable?: () => void;
-  /** Leads give intact publisher artwork a wider, unpadded presentation. */
+  /** Leads (Today and Events) give intact publisher artwork a wider, unpadded
+   * presentation on the page ground, aligned to the row's left edge so it
+   * lines up with the facts below it. The standard frame keeps the padded
+   * soft gray inset for the event page and sheet. */
   frame?: "standard" | "poster";
 }) {
   const { visibleVisual, failImage, inspectLoadedImage } = useEventVisualLifecycle(visual);
@@ -35,7 +38,7 @@ export default function EventArtwork({
 
   return (
     <figure data-event-artwork className={className}>
-      <div data-event-artwork-frame={frame} className={`relative w-full overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] ${frame === "poster" ? "aspect-[16/10]" : "aspect-[4/3]"}`}>
+      <div data-event-artwork-frame={frame} className={`relative w-full overflow-hidden rounded-[var(--app-radius-md)] ${frame === "poster" ? "aspect-[16/10] bg-transparent" : "aspect-[4/3] bg-[var(--app-bg-sunken)]"}`}>
         <Image
           key={visual.src}
           src={visual.src}
@@ -43,7 +46,7 @@ export default function EventArtwork({
           fill
           priority={priority}
           sizes="(max-width: 720px) 100vw, 720px"
-          className={frame === "poster" ? "object-contain" : "object-contain p-3"}
+          className={frame === "poster" ? "object-contain object-left" : "object-contain p-3"}
           onLoad={(event) => inspectLoadedImage(event.currentTarget, onUnavailable)}
           onError={unavailable}
         />

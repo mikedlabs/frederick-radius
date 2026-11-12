@@ -26,7 +26,6 @@ import FoodTruckIdentity from "@/components/food-trucks/FoodTruckIdentity";
 import FoodTruckJourneys from "@/components/food-trucks/FoodTruckJourneys";
 import FoodTruckNearMe from "@/components/food-trucks/FoodTruckNearMe";
 import FeedbackLink from "@/components/feedback/FeedbackLink";
-import PageBloom from "@/components/ui/PageBloom";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
 const FOOD_ACCENT = CATEGORY_BY_SLUG["food-truck"]?.color ?? "var(--app-brand)";
@@ -339,7 +338,6 @@ export default async function FoodTrucksPage({
   return (
     <div className="relative space-y-5 sm:space-y-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(collectionJsonLd) }} />
-      <PageBloom variant="single" />
 
       {/* The shared masthead rule still reserves a second grid track for the
           lineup that used to sit beside the copy. `block!` drops the empty

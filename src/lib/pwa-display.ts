@@ -1,9 +1,6 @@
 /**
- * PWA display-mode + platform helpers — shared by the install prompt and the
- * push/notifications surfaces. The load-bearing fact: iOS Web Push (16.4+)
- * only works when the site is installed to the Home Screen and runs in
- * standalone display mode. In a normal browser tab the Push/Notification APIs
- * may be present but cannot complete the Home Screen permission flow.
+ * PWA display-mode + platform helpers, shared by the install prompt, the
+ * update flow, and the Saved controls that adapt to an installed app.
  */
 
 /** Gives mounted workspaces one synchronous handoff before an accepted reload. */
@@ -25,12 +22,6 @@ export function isStandalone(): boolean {
 export function isIosDevice(userAgent: string, maxTouchPoints = 0): boolean {
   return /iPad|iPhone|iPod/.test(userAgent)
     || (/Macintosh/.test(userAgent) && maxTouchPoints > 1);
-}
-
-/** Any iOS device, including iPadOS in desktop-identification mode. */
-export function isIos(): boolean {
-  if (typeof window === "undefined") return false;
-  return isIosDevice(window.navigator.userAgent, window.navigator.maxTouchPoints);
 }
 
 /**

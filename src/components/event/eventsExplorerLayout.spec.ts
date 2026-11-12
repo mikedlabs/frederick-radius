@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   horizonLeadVariant,
   primaryLeadPrecedesInterestRail,
+  rowShowsDate,
   splitHorizonLead,
 } from "./eventsExplorerLayout";
 
@@ -62,5 +63,30 @@ describe("recommended horizon promotion", () => {
 
   it.each(["time", "az", "venue"] as const)("preserves the existing first-row behavior for %s", (sort) => {
     expect(splitHorizonLead([weak, real], sort)).toEqual({ lead: weak, rest: [real] });
+  });
+});
+
+describe("rowShowsDate", () => {
+  // Tuesday Nov 10 2026 in Eastern time.
+  const todayKey = "2026-11-10";
+  const tonight = { starts_at: "2026-11-10T19:30:00-05:00" };
+  const lateLastNight = { starts_at: "2026-11-09T23:00:00-05:00" };
+  const wednesday = { starts_at: "2026-11-11T15:00:00-05:00" };
+
+  it.each(["live", "today"] as const)("drops the repeated date in the %s group for a row that starts today", (horizon) => {
+    expect(rowShowsDate(horizon, tonight, todayKey)).toBe(false);
+  });
+
+  it("keeps the date in a today group for a row that started on another day", () => {
+    expect(rowShowsDate("live", lateLastNight, todayKey)).toBe(true);
+  });
+
+  it.each(["week", "weekend", "later"] as const)("keeps the date on every row of the multi-day %s group", (horizon) => {
+    expect(rowShowsDate(horizon, wednesday, todayKey)).toBe(true);
+    expect(rowShowsDate(horizon, tonight, todayKey)).toBe(true);
+  });
+
+  it("keeps the date when the start is unreadable", () => {
+    expect(rowShowsDate("today", { starts_at: "not a date" }, todayKey)).toBe(true);
   });
 });

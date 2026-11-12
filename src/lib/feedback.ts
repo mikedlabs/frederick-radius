@@ -30,8 +30,8 @@ export type AskCorrectionReason = keyof typeof ASK_CORRECTION_REASONS;
 export type FeedbackSource = "feedback-widget" | "ask-correction";
 
 // Deliberately simple: catches typos ("a@b", no TLD) without rejecting valid
-// unusual addresses. Mirrors /api/beta/email. Email is optional; we only run
-// this when the tester actually typed one.
+// unusual addresses. Email is optional; we only run this when the visitor
+// actually typed one.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 type ParsedFeedbackBase = {
@@ -207,31 +207,5 @@ export function buildFeedbackRow(value: ParsedFeedback, commit: string | null): 
         : {}),
     },
     submitter_email: value.email,
-  };
-}
-
-export const FEEDBACK_OWNER_ALERT_MAX_BODY = 160;
-
-function boundedAlertBody(value: string): string {
-  if (value.length <= FEEDBACK_OWNER_ALERT_MAX_BODY) return value;
-  return `${value.slice(0, FEEDBACK_OWNER_ALERT_MAX_BODY - 1).trimEnd()}…`;
-}
-
-/** Keeps the phone alert useful while leaving the durable, full note in admin. */
-export function buildFeedbackOwnerAlert(value: ParsedFeedback): {
-  title: string;
-  body: string;
-} {
-  if (value.source === "ask-correction") {
-    return {
-      title: "Ask correction",
-      body: boundedAlertBody(value.message),
-    };
-  }
-
-  const where = value.pathname ? ` · ${value.pathname}` : "";
-  return {
-    title: "Site feedback",
-    body: boundedAlertBody(`${value.message}${where}`),
   };
 }

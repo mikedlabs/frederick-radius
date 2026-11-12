@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   parseFeedback,
-  buildFeedbackOwnerAlert,
   buildFeedbackRow,
-  FEEDBACK_OWNER_ALERT_MAX_BODY,
   FEEDBACK_MAX_MESSAGE,
 } from "@/lib/feedback";
 
@@ -82,7 +80,6 @@ describe("parseFeedback", () => {
       commit: "deploy456",
       source: "feedback-widget",
     });
-    expect(buildFeedbackOwnerAlert(r.value).title).toBe("Site feedback");
   });
 
   it("accepts a bounded Ask correction without storing the question or answer", () => {
@@ -120,7 +117,7 @@ describe("parseFeedback", () => {
 
     for (const resultRef of [
       "https://example.com/places/cafe",
-      "/admin/beta",
+      "/admin/feedback",
       "/places/../../private",
     ]) {
       const badRef = parseFeedback({
@@ -202,20 +199,4 @@ describe("buildFeedbackRow", () => {
     });
   });
 
-});
-
-describe("buildFeedbackOwnerAlert", () => {
-  it("keeps generic feedback generic and bounds phone-alert copy", () => {
-    const parsed = parseFeedback({
-      message: "x".repeat(300),
-      pathname: "/events",
-    });
-    expect(parsed.ok).toBe(true);
-    if (!parsed.ok) return;
-
-    const alert = buildFeedbackOwnerAlert(parsed.value);
-    expect(alert.title).toBe("Site feedback");
-    expect(alert.body.length).toBe(FEEDBACK_OWNER_ALERT_MAX_BODY);
-    expect(alert.body.endsWith("…")).toBe(true);
-  });
 });

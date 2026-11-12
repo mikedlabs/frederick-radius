@@ -120,7 +120,7 @@ export default async function CollectionPage({
       <header className="border-b pb-5" style={{ borderColor: "var(--app-border)" }}>
         <p className="eyebrow" style={{ color: collection.accent }}>Local list</p>
         <h1
-          className="mt-1.5 font-serif text-[32px] font-semibold leading-[1.05] tracking-tight sm:text-[38px]"
+          className="mt-1.5 text-[32px] font-bold leading-[1.05] tracking-[-0.03em] sm:text-[38px]"
           style={{ color: "var(--app-ink)" }}
         >
           {collection.title}
@@ -147,7 +147,7 @@ export default async function CollectionPage({
               Search beers, breweries, styles, and the map.
             </span>
           </span>
-          <span className="shrink-0 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+          <span className="shrink-0 text-[13px] font-semibold" style={{ color: "var(--app-link)" }}>
             Find a beer <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
           </span>
         </Link>
@@ -156,21 +156,21 @@ export default async function CollectionPage({
       {places.length === 0 ? (
         // Defensive — if every slug got renamed at once, render an
         // honest note rather than an empty page.
-        <p
-          className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[13px]"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-        >
+        <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           This collection is being updated. Check back soon.
         </p>
       ) : (
         <section className="space-y-3" aria-labelledby="collection-places-heading">
           <div className="flex items-baseline justify-between gap-3">
-            <h2 id="collection-places-heading" className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            <h2 id="collection-places-heading" className="text-[20px] font-bold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
               In this guide
             </h2>
             <span className="text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{places.length} places</span>
           </div>
-          <ul className="space-y-2" aria-label={`${collection.title}, first ${firstPlaces.length} places`}>
+          {/* Ruled rows: each PlaceCard row ends in its own hairline, so the
+              list carries no gap, and the last row drops its rule where the
+              "Show more" rule or the next section closes the list. */}
+          <ul className={RULED_LIST} aria-label={`${collection.title}, first ${firstPlaces.length} places`}>
             {firstPlaces.map((p) => (
               <li key={p.slug}>
                 <PlaceCard place={p} variant="row" />
@@ -179,11 +179,11 @@ export default async function CollectionPage({
           </ul>
           {morePlaces.length > 0 ? (
             <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
-              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+              <summary className="tap-44 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-[14px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-link)" }}>
                 Show {morePlaces.length} more
-                <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
+                <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" strokeWidth={2} aria-hidden />
               </summary>
-              <ul className="space-y-2 pt-2" aria-label={`${collection.title}, more places`}>
+              <ul className={`${RULED_LIST} border-t`} style={{ borderColor: "var(--app-border)" }} aria-label={`${collection.title}, more places`}>
                 {morePlaces.map((p) => (
                   <li key={p.slug}><PlaceCard place={p} variant="row" /></li>
                 ))}
@@ -197,22 +197,22 @@ export default async function CollectionPage({
         <section className="space-y-3" aria-label="LGBTQ+ community events">
           <div className="flex items-baseline justify-between">
             <h2
-              className="font-serif text-[20px] font-semibold tracking-tight"
+              className="text-[20px] font-bold leading-tight tracking-[-0.02em]"
               style={{ color: "var(--app-ink)" }}
             >
               On the calendar
             </h2>
             <Link
               href="/events?lgbtq=true"
-              className="text-[13px] font-semibold hover:underline"
-              style={{ color: "var(--app-brand-press)" }}
+              className="tap-44 text-[14px] font-semibold hover:underline"
+              style={{ color: "var(--app-link)" }}
             >
               See the board <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           </div>
           {firstCommunityEvents.length > 0 ? (
             <>
-              <ul className="space-y-2.5">
+              <ul className={RULED_LIST}>
               {firstCommunityEvents.map((e) => (
                 <li key={`${e.slug}-${e.starts_at}`}>
                   <EventCard event={e} variant="glance" />
@@ -221,11 +221,11 @@ export default async function CollectionPage({
               </ul>
               {moreCommunityEvents.length > 0 ? (
                 <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
-                  <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+                  <summary className="tap-44 flex min-h-11 cursor-pointer list-none items-center justify-between text-[14px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-link)" }}>
                     Show {moreCommunityEvents.length} more events
-                    <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" aria-hidden />
+                    <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" strokeWidth={2} aria-hidden />
                   </summary>
-                  <ul className="space-y-2 pt-2">
+                  <ul className={`${RULED_LIST} border-t`} style={{ borderColor: "var(--app-border)" }}>
                     {moreCommunityEvents.map((e) => (
                       <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} variant="glance" /></li>
                     ))}
@@ -234,10 +234,7 @@ export default async function CollectionPage({
               ) : null}
             </>
           ) : (
-            <p
-              className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-[13px]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-            >
+            <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               No upcoming community events are in the guide right now.
             </p>
           )}
@@ -249,7 +246,7 @@ export default async function CollectionPage({
         <Link
           href="/submit/place"
           className="tap-44 inline-flex min-h-11 items-center font-semibold underline"
-          style={{ color: "var(--app-cool)" }}
+          style={{ color: "var(--app-cool-text)" }}
         >
           tell us
         </Link>
@@ -258,3 +255,9 @@ export default async function CollectionPage({
     </div>
   );
 }
+
+/** Ruled rows (place and event rows). Each row ends in its own hairline; the
+ * last one drops it because a following "Show more" rule or the next section
+ * already closes the list. The trailing ! is needed because EventRow draws its
+ * hairline from an unlayered CSS module, which beats a normal utility. */
+const RULED_LIST = "[&>li:last-child>*]:border-b-0!";

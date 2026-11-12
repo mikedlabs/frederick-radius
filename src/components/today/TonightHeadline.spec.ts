@@ -65,7 +65,8 @@ describe("TonightHeadline", () => {
     );
 
     expect(html).toContain(longTitle);
-    expect(html).toContain("font-editorial");
+    expect(html).toContain("font-extrabold");
+    expect(html).not.toContain("font-editorial");
     expect(html).toContain("text-[clamp(1.875rem,9vw,2.75rem)]");
     expect(html).toContain("break-words");
     expect(html).toContain("min-w-0");

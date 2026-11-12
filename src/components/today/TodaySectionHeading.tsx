@@ -6,8 +6,10 @@ import { ArrowRight } from "lucide-react";
  * The shared heading anatomy for Today’s main briefing sections.
  *
  * It keeps the page feeling like one edited field guide: a quiet classification
- * line when needed, a display title, one compact status line, and a solid
- * registration rule. The component is intentionally a header, not another card.
+ * line when needed, a display title, one compact status line, and a plain
+ * hairline under the header. The short accent bar that used to start that
+ * line was decoration, so the rule is now one hairline. The component is
+ * intentionally a header, not another card.
  */
 export default function TodaySectionHeading({
   title,
@@ -34,8 +36,14 @@ export default function TodaySectionHeading({
       data-today-section-heading="true"
       className="today-section-heading mb-3 min-w-0 max-w-full"
     >
-      <div className="today-section-heading__copy flex min-w-0 max-w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 px-0.5">
-        <div className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+      {/* The heading sits on the content edge, and its action shares the
+          title's first baseline at the right. The title column has a zero
+          flex basis, so its length never pushes the action onto a line of
+          its own: "See all" stays level with the title on a 320px phone and a
+          long title wraps inside its column. Only an action wider than the
+          whole row (enlarged text) takes its own line. */}
+      <div className="today-section-heading__copy flex min-w-0 max-w-full flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0 flex-[1_1_0%] [overflow-wrap:anywhere]">
           {eyebrow && <p className="fg-eyebrow mb-1.5">{eyebrow}</p>}
           <h2
             className="flex min-w-0 max-w-full items-center gap-2 font-sans text-xl font-semibold leading-none tracking-tight sm:text-[1.3125rem]"
@@ -51,12 +59,12 @@ export default function TodaySectionHeading({
                 }}
               />
             )}
-            <span className="min-w-0 [overflow-wrap:anywhere]">{title}</span>
+            <span className="min-w-0 self-baseline [overflow-wrap:anywhere]">{title}</span>
           </h2>
           {meta && (
             <p
-              className="mt-1.5 font-mono text-xs leading-snug tabular-nums tracking-[0.03em]"
-              style={{ color: "var(--app-ink-3)" }}
+              className="mt-1.5 text-sm leading-snug tabular-nums"
+              style={{ color: "var(--app-ink-2)" }}
             >
               {meta}
             </p>
@@ -67,10 +75,13 @@ export default function TodaySectionHeading({
             href={href}
             prefetch={prefetch}
             aria-label={`${cta}: ${title}`}
-            className="today-section-heading__cta tap-44-y inline-flex min-h-11 min-w-0 max-w-full shrink-0 items-center gap-1 rounded-[var(--app-radius-sm)] px-1.5 text-sm font-semibold tracking-tight outline-none"
+            // The 44px box keeps its full target, with the label centered in
+            // it; baseline alignment puts the label on the title's baseline.
+            // The 2px end padding holds the arrow's hover and focus nudge.
+            className="today-section-heading__cta tap-44-y inline-flex min-h-11 min-w-0 max-w-full items-center gap-1 rounded-[var(--app-radius-sm)] pr-0.5 text-sm font-semibold leading-5 tracking-tight outline-none"
             style={{
               color:
-                "var(--app-heading-action, var(--today-section-ink, var(--app-brand-press)))",
+                "var(--app-heading-action, var(--today-section-ink, var(--app-link)))",
             }}
           >
             <span className="min-w-0 [overflow-wrap:anywhere]">{cta}</span>
@@ -86,13 +97,6 @@ export default function TodaySectionHeading({
         className="today-section-heading__registration mt-3 flex items-center gap-2"
         aria-hidden
       >
-        <span
-          className="today-section-heading__registration-accent h-[3px] w-8 shrink-0 rounded-full"
-          style={{
-            background:
-              "var(--app-heading-rule, var(--today-section-accent, var(--app-brand)))",
-          }}
-        />
         <span
           className="today-section-heading__registration-rule h-px flex-1"
           style={{ background: "var(--app-border)" }}

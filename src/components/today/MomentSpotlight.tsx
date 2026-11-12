@@ -82,22 +82,15 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
   }
 
   return (
+    // PLAIN TOOL: a ruled section on the page ground. No card, gradient or
+    // glow; the occasion is carried by its name and its one useful line.
     <section
       aria-label={moment.title}
-      className="relative overflow-hidden rounded-[var(--app-radius-xl)] border p-5 shadow-[var(--app-shadow-1)] sm:p-6"
-      style={{
-        borderColor: `color-mix(in srgb, ${moment.accent} 45%, var(--app-border))`,
-        background: `linear-gradient(135deg, color-mix(in srgb, ${moment.accent} 12%, var(--app-bg-elevated-solid)), color-mix(in srgb, var(--app-accent) 10%, var(--app-bg-elevated-solid)))`,
-      }}
+      className="relative border-y py-5"
+      style={{ borderColor: "var(--app-border)" }}
     >
-      {/* One restrained editorial bloom for a shared occasion. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -right-12 -top-16 h-56 w-56 rounded-full"
-        style={{ background: `radial-gradient(circle, color-mix(in srgb, ${moment.accent} 24%, transparent), transparent 70%)` }}
-      />
       {isDayOf && moment.spotlightImage && (
-        <figure className="relative -mx-5 -mt-5 mb-5 aspect-[16/9] overflow-hidden sm:-mx-6 sm:-mt-6 sm:mb-6 sm:aspect-[21/8]">
+        <figure className="relative mb-5 aspect-[16/9] overflow-hidden rounded-[var(--app-radius-md)] sm:aspect-[21/8]">
           <Image
             src={moment.spotlightImage.src}
             alt={moment.spotlightImage.alt}
@@ -127,19 +120,19 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
             track("moment_spotlight_dismiss", { slug: moment.slug });
           }}
           aria-label="Dismiss"
-          className="tap-44 absolute right-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full"
+          className="tap-44 absolute right-0 top-3 grid h-8 w-8 place-items-center rounded-[var(--app-radius-sm)]"
           style={{ color: "var(--app-ink-3)" }}
         >
           <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
         </button>
       )}
 
-      <div className="relative">
-        <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: `var(--app-list-fact-color, ${moment.accent})` }}>
+      <div className="relative pr-10">
+        <p className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>
           <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
           {isDayOf ? "Today in Frederick County" : "This weekend"}
         </p>
-        <h2 className="mt-1 text-[28px] font-semibold leading-[1.04] tracking-tight sm:text-[32px]" style={{ color: "var(--app-ink)" }}>
+        <h2 className="mt-1 text-[28px] font-bold leading-[1.04] tracking-[-0.025em] sm:text-[32px]" style={{ color: "var(--app-ink)" }}>
           {moment.title}
         </h2>
         <p className="mt-1 max-w-[46ch] text-[15px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
@@ -147,18 +140,18 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
         </p>
 
         {moment.spotlightFacts && moment.spotlightFacts.length > 0 && (
-          <dl className="mt-4 grid max-w-2xl gap-px overflow-hidden rounded-[var(--app-radius-md)] border sm:grid-cols-3" style={{ borderColor: "color-mix(in srgb, var(--app-ink) 14%, var(--app-border))", background: "color-mix(in srgb, var(--app-ink) 8%, transparent)" }}>
+          <dl className="mt-4 grid max-w-2xl gap-x-6 sm:grid-cols-3">
             {moment.spotlightFacts.map((fact) => (
-              <div key={fact.label} className="px-3.5 py-3" style={{ background: "color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent)" }}>
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>{fact.label}</dt>
-                <dd className="mt-0.5 text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>{fact.value}</dd>
+              <div key={fact.label} className="border-t py-2.5" style={{ borderColor: "var(--app-border)" }}>
+                <dt className="text-[13px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>{fact.label}</dt>
+                <dd className="mt-0.5 text-[14px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>{fact.value}</dd>
               </div>
             ))}
           </dl>
         )}
 
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Link href={`/moments/${moment.slug}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-3.5 text-[13px] font-semibold" style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }} onClick={() => {
+          <Link href={`/moments/${moment.slug}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-md)] px-3.5 text-[13px] font-semibold" style={{ background: "var(--app-ink)", color: "var(--app-bg)" }} onClick={() => {
             trackDecision(momentSpotlightDecision(moment.slug, "open", "open"));
             track("moment_spotlight_open", { slug: moment.slug, day_of: isDayOf ? "true" : "false" });
           }}>
@@ -181,7 +174,8 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
  * The day-of treatment is intentionally a visual event lead, not a compact
  * directory. It keeps the next decision (time, place, and where to go) in
  * reach without hiding the photograph's full 16:9 composition behind a
- * desktop banner crop.
+ * desktop banner crop. The photograph keeps 6px corners and its legibility
+ * scrim; everything else sits on the page ground with no card around it.
  */
 function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
   const image = moment.spotlightImage;
@@ -195,13 +189,10 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
     <section
       aria-label={`${moment.title} featured event`}
       data-moment-spotlight-day-of="true"
-      className="overflow-hidden rounded-[var(--app-radius-xl)] border shadow-[var(--app-shadow-1)]"
-      style={{
-        borderColor: `color-mix(in srgb, ${moment.accent} 45%, var(--app-border))`,
-        background: "var(--app-bg-elevated-solid)",
-      }}
+      className="border-b"
+      style={{ borderColor: "var(--app-border)" }}
     >
-      <figure className="relative aspect-[16/9] overflow-hidden" style={{ background: "var(--app-brand-press)" }}>
+      <figure className="relative aspect-[16/9] overflow-hidden rounded-[var(--app-radius-md)]" style={{ background: "var(--app-media-ink)" }}>
         <Image
           src={image.src}
           alt={image.alt}
@@ -220,7 +211,7 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
             <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             {when}
           </p>
-          <h2 className="mt-1 max-w-[12ch] font-editorial text-[42px] font-normal leading-[0.92] tracking-[-0.035em] text-[var(--app-on-brand)] sm:text-[58px]">
+          <h2 className="mt-1 max-w-[14ch] text-[38px] font-extrabold leading-[0.98] tracking-[-0.03em] text-[var(--app-on-brand)] sm:text-[52px]">
             {moment.title}
           </h2>
           {where && (
@@ -240,7 +231,7 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
         )}
       </figure>
 
-      <div className="p-4 sm:px-6 sm:py-5">
+      <div className="py-4 sm:py-5">
         {facts.length > 0 && (
           <dl className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
             {facts.map((fact, index) => (
@@ -256,8 +247,8 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
         <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
           <Link
             href={`/moments/${moment.slug}`}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] px-4 text-[13px] font-semibold sm:w-auto"
-            style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] px-4 text-[13px] font-semibold sm:w-auto"
+            style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
             onClick={() => {
               trackDecision(momentSpotlightDecision(moment.slug, "open", "open"));
               track("moment_spotlight_open", { slug: moment.slug, day_of: "true" });

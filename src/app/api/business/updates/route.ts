@@ -3,13 +3,7 @@ import { and, eq, gt, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { business_updates, place_claims } from "@/lib/db/schema";
 import { getServerUser } from "@/lib/auth";
-import { businessTopic } from "@/lib/push-topics";
-import { fanoutToTopic } from "@/lib/push-fanout";
-import {
-  parsePublishBody,
-  isAdminEmail,
-  composeUpdatePush,
-} from "@/lib/business-updates";
+import { parsePublishBody, isAdminEmail } from "@/lib/business-updates";
 import {
   hasJsonContentType,
   isSameOriginMutationRequest,
@@ -19,23 +13,17 @@ import {
 /**
  * POST /api/business/updates — PUBLISH half of the follow -> reach loop.
  *
- * A claimed business (or an admin) posts a verified deal/event/closure; we
- * persist it to business_updates and fan it out as a web-push to everyone
- * subscribed to biz:<slug> (the auto-subscribe wired on follow). This is the
- * "Phase 3 publish-time API" the schema was built for.
+ * A claimed business (or an admin) posts a verified deal/event/closure and we
+ * persist it to business_updates for the "recent updates" rail. Updates used
+ * to fan out as a web push to biz:<slug> subscribers; push notifications were
+ * retired, so publishing now only stores the update.
  *
  * Authorization (one MUST hold):
  *   - the caller's email is on the ADMIN_EMAILS allowlist, OR
  *   - the caller owns an ACTIVE place_claims row for this slug.
- * Anyone else gets 403 — you cannot publish to a business you don't own.
+ * Anyone else gets 403. You cannot publish to a business you don't own.
  *
- * Spam guard (CLAUDE.md: rare, genuinely-local push only, never marketing
- * blasts): at most one published update per place per 12 hours. The fan-out's
- * own (topic, dedupe_key=update:<id>) claim makes a retry idempotent.
- *
- * Persisting the update succeeds even when push isn't configured for the
- * deployment (fanoutToTopic no-ops) — the update still lands in the DB for the
- * "recent updates" rail.
+ * Spam guard: at most one published update per place per 12 hours.
  */
 export const runtime = "nodejs";
 
@@ -133,13 +121,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "persist-failed" }, { status: 500, headers: noStore() });
   }
 
-  // Fan out to biz:<slug> subscribers. dedupe_key = update:<id> -> a retry of
-  // this exact update never double-sends.
-  const result = await fanoutToTopic(
-    businessTopic(slug),
-    `update:${id}`,
-    composeUpdatePush(slug, { title, body }),
-  );
-
-  return NextResponse.json({ ok: true, id, ...result }, { headers: noStore() });
+  return NextResponse.json({ ok: true, id }, { headers: noStore() });
 }

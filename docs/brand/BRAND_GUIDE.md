@@ -65,9 +65,9 @@ surface recognizably Frederick Radius. Deep Coral and Charcoal pass WCAG AA for 
 text on White. Keep this recognition system stable across Today, Ask Radius,
 the map, All tools, Live conditions, Beer, campaigns, and platform surfaces.
 
-In the product's light appearance, link text, the focus ring, and filled
-primary buttons and pills use the darker pressed coral token
-`--app-brand-press` (links reach it through `--app-link`), not `--app-brand`.
+In the product's light appearance, link text, the focus ring, and the filled
+primary action use the darker pressed coral token `--app-brand-press` (links
+reach it through `--app-link`), not `--app-brand`.
 Reuse the shared `Button`, `Pill`, and `--app-link` token instead of filling a
 new action with `--app-brand`. The pressed coral is a product token and is not
 part of the canonical `BRAND.colors` contract, so this guide refers to it by
@@ -97,9 +97,9 @@ decorative yellow theme.
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| Surface | `#FFFFFF` | White cards and sheets |
+| Surface | `#FFFFFF` | Sheets, menus, and fields |
 | Inset | `#F4F4F3` | Quiet inset surfaces |
-| Border | `#E1E1DD` | Decorative rules and card edges |
+| Border | `#E1E1DD` | Hairline rules between rows and sections |
 | Control border | `#818178` | Form boundaries that must meet 3:1 contrast |
 | Muted Charcoal | `#62625C` | Secondary copy on White |
 | Amber text | `#925E16` | Text-safe Amber on White and in Beer controls |
@@ -109,7 +109,7 @@ decorative yellow theme.
 | Token | Hex | Use |
 | --- | --- | --- |
 | Dark canvas | `#1C1C19` | Product page ground |
-| Dark surface | `#292925` | Cards, sheets, and controls |
+| Dark surface | `#292925` | Sheets, menus, and controls |
 | Dark ink | `#F7F7F4` | Primary text |
 | Dark muted ink | `#C1C1B8` | Secondary text |
 | Dark border | `#464640` | Decorative separators |
@@ -137,10 +137,12 @@ its variable upright and real italic files, weights 100 through 900. Keep most
 text between 400 and 700. Its presence in a brand asset does not mean the
 product runtime is using Public Sans.
 
-Libre Caslon Display Regular remains the wordmark and rare editorial signature.
-It has one upright Regular cut; do not synthesize bold or italic. Keep it out
-of ordinary product headings, controls, and dense data. Use it at 18 px or
-larger outside the wordmark.
+Libre Caslon Display Regular sets the header wordmark in the top bar and is
+a rare editorial signature on a few specialty guide pages. No page title or
+content on Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages,
+or event pages uses it; every title on those surfaces is heavy System sans. It has one upright Regular cut; do not
+synthesize bold or italic. Keep it out of controls and dense data, and use it
+at 18 px or larger outside the wordmark.
 
 On phones, normal reading copy stays 15 to 16 px. Eleven to 13 px is reserved
 for brief captions, metadata, freshness, and attribution. Times and counts use
@@ -175,11 +177,19 @@ and must travel with any font handoff.
 | Prominent metadata | 13 px / 1.5 | System sans 400-600 |
 | Compact body | 15 px / 1.55 | System sans 400 |
 | Reading body | 16 px / 1.6 | System sans 400 |
-| Item or card title | 20 px / 1.15 | System sans 600 |
-| Product page title | 32 px / 1.05 | System sans 600-700 |
+| Section label | 13 px / 1.25, uppercase, open letter spacing | System sans 600 |
+| Row meta line | 14 px / 1.45 | System sans 400 |
+| Row title | 17 px / 1.35 | System sans 600 |
+| Section title | 20 px / 1.15 | System sans 600-700 |
+| Product page title | 28 to 40 px on phones, up to 48 px on wide screens / tight, about 1.05 | System sans 700-800 |
 
-Use weight 500 for compact controls and 600 for titles or primary labels.
-Reserve 700 for numerics or rare emphasis rather than normal prose. On touch
+Settings still uses the shared `.display-1` class, which is weight 600 and
+scales to about 58 px on a wide screen. It is outside this range and is due to
+be brought into it.
+
+Use weight 500 for compact controls and 600 for row titles or primary labels.
+Reserve 700 and heavier for page and section titles, numerics, or rare
+emphasis, never for normal prose. On touch
 devices, inputs, textareas, and selects stay at 16 px so iOS does not zoom the
 page when a field receives focus.
 
@@ -196,7 +206,7 @@ The product should make a useful local decision clear quickly, with recognizable
 - Lead with the current condition, the strongest answer, or the next useful action.
 - Keep one clear primary action in a section. Secondary actions should be quieter.
 - Reveal supporting detail after the first decision is understandable.
-- Remove cards, labels, and buttons that do not help someone decide or act.
+- Remove boxes, labels, and buttons that do not help someone decide or act.
 - Use headings to name content, not to add a slogan above it.
 
 ### The product proof sequence
@@ -220,9 +230,9 @@ facts, not a feed trying to fill space.
 
 ### Surfaces
 
-- White is the default page ground. Surface is for cards, sheets, and menus.
-- Use thin rules and restrained shadows. A card should not look inflated or glossy.
-- Use rounded corners because they improve grouping and touch comfort, not as decoration on every element.
+- White is the default page ground. Ordinary content sits on it as rows. Surface is for sheets, menus, and other layers that sit above the page.
+- Use thin rules and space to separate content. A shadow belongs only to a layer that is actually above the page, such as a sheet or menu.
+- Corners follow the radius scale in Interface shape below. A corner never makes ordinary content into a card.
 - The app opens in light appearance by default, independently of the OS. The shared header appearance control saves an explicit light or dark choice on the device. Dark appearance uses the separate Dark canvas and Dark surface tokens, not an inversion of the light palette. Every route honors the same chosen appearance.
 - Beer keeps the same White, Charcoal, Deep Coral, and clean surface foundation as the rest of the app. Real beer colors and taproom photography may carry the subject; Ochre Amber is limited to active taste choices, flagship markers, and beer-specific metadata.
 - Oversized Ripple arcs may run off an edge on a hero, onboarding screen, empty state, or social image. Do not place them behind every section.
@@ -230,11 +240,26 @@ facts, not a feed trying to fill space.
   material, and useful data. A Ripple bloom is an opt-in editorial moment,
   never a default page background. Use one visual idea at a time.
 
+### Interface shape (owner-approved November 10, 2026)
+
+The owner approved the "Plain tool, with the coral plate" direction on November 10, 2026. It changes the interface shape only. The palette, typefaces, and brand version stay as they are. These rules apply to Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages, event pages, and town pages. Specialty guide pages still carry older treatments until their own pass; do not copy those treatments into the pages listed here.
+
+- **Rows, not cards.** Ordinary content sits on the page ground as rows separated by a 1 px hairline (`--app-border`) or by space. Do not put a bordered, filled, or shadowed card around ordinary content, and do not add gradients or glows. A bordered surface is still right for form fields, menus, sheets, and floating layers over the map.
+- **Radius scale.** `--app-radius-sm` is 4 px, for small markers, focus outlines inside rows, and the coral time block. `--app-radius-md` is 6 px, for fields, buttons, menus, and row thumbnails. `--app-radius-lg` is 8 px, for sheets, drawers, and floating panels over the map. `--app-radius-xl` is 10 px, for a rare larger feature surface.
+- **Capsules.** A full capsule appears only on compact filter chips, status badges, and toggle switches. Buttons, navigation, rows, and informational tags are never capsules. An informational tag is plain text. A selected filter chip is filled ink (`--app-ink` with `--app-bg` text), never coral.
+- **Type carries the hierarchy.** Page titles are heavy System sans. Row titles are 17 px at weight 600. Meta lines are 14 px in muted ink. Section labels are 13 px uppercase with open letter spacing. Libre Caslon Display sets the header wordmark in the top bar and is a rare editorial signature on a few specialty guide pages; no page title or content on Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages, or event pages uses it.
+- **Flat chrome.** Top bar icons are unboxed ink glyphs. The bottom bar is flat and attached to the screen edge, and a 2 px Deep Coral rule marks the active tab.
+- **One bold moment per page.** A page may hold one solid Deep Coral block. Only Today and Events have one: on Today it is the coral name plate over the lead photograph, and on Events it is the lead event's time block. Do not add one to any other page. No other Deep Coral field appears on the page except the single filled coral action the view already has, such as Directions on a place page. The name plate is a solid block that overlaps the photograph's edge; it is not a color wash over the image.
+- **Media in rows.** A row shows a photo thumbnail only when a real photograph exists. A row without one keeps the same media slot width, so titles stay aligned down the list, and shows its category glyph in muted ink (`--app-ink-3`) at about 24 px, level with the first line of the title. That glyph has no background, border, tint, or rounded tile.
+- **Text link colors.** Coral text uses `--app-link` or `--app-brand-text`. Creek text uses `--app-cool-text`, and Catoctin Forest text uses `--app-forest-text`. Never use `--app-brand-press`, `--app-brand`, or `--app-cool` directly as a text color, because they fail contrast in dark appearance. These three are fill colors, and a fill token is never a text color. White text on a coral fill sits on `--app-brand-press` and uses `--app-on-brand`.
+
+A rounded, bordered card around ordinary content is a regression from this direction.
+
 ### Interaction
 
 - Touch targets are at least 44 by 44 px.
 - A control must look interactive before hover. Mobile has no hover state.
-- Use one disclosure system for rows and cards. A chevron means more detail; it should not appear on inert content.
+- Use one disclosure system for rows. A chevron means more detail; it should not appear on inert content.
 - Keep primary navigation stable across pages.
 - Preserve a user's position when opening and closing sheets or map details.
 
@@ -274,7 +299,7 @@ Real Frederick photography is one of the strongest advantages of the product. Us
 - Use aerial photography when it adds geographic understanding. Do not use it as filler.
 - Preserve rights, date, location, and attribution in the private Lightroom or asset manifest. Remove unnecessary public EXIF and precise GPS coordinates from web derivatives.
 
-Recommended master crops are 3:2 for photography, 4:3 for product cards, 1:1 for social posts, 1.91:1 for link previews, and 9:16 for stories. Choose the crop around the subject instead of forcing one master crop into every channel.
+Recommended master crops are 3:2 for photography, 4:3 for in-product lead images, 1:1 for social posts, 1.91:1 for link previews, and 9:16 for stories. Choose the crop around the subject instead of forcing one master crop into every channel.
 
 ## System in use
 
@@ -296,17 +321,20 @@ Every product task should make three behaviors clear:
 
 ### Shared interface hierarchy
 
-- White is the normal ground. Surface holds a card, sheet, form, or grouped
-  row only when the boundary helps someone understand the task.
-- System sans carries product page titles, section and card titles, labels,
+- White is the normal ground, and ordinary content sits on it as ruled rows.
+  Surface holds a sheet, menu, or form field only when the boundary helps
+  someone understand the task.
+- System sans carries product page titles, section and row titles, labels,
   body copy, source, freshness, time, place, distance, controls, and data.
-  Libre Caslon Display is reserved for the wordmark and a rare editorial or
-  hero moment.
-- Deep Coral identifies the Radius shell and primary action. A chevron only appears
-  when a row or card opens more information.
+  Libre Caslon Display is reserved for the header wordmark in the top bar and
+  a rare editorial signature on a few specialty guide pages. No page title or content on Today, Map, Events, Saved, Find, Tools,
+  Settings, Ask, place pages, or event pages uses it.
+- Deep Coral identifies the Radius shell, the one bold block on a page, and the
+  single filled primary action. A chevron only appears when a row opens more
+  information.
 - The top bar and primary navigation remain stable. Specialty pages change the
   subject and may use a functional data color, but they do not invent a new
-  shell, type hierarchy, or card language.
+  shell, type hierarchy, or row language.
 
 ### Historical reference surfaces (July 22, 2026)
 

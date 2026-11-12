@@ -10,7 +10,9 @@
   border-radius: var(--app-radius-md);
   background: var(--app-bg-elevated-solid);
   color: var(--app-ink);
-  box-shadow: var(--app-elev-2), var(--app-edge), var(--app-hi);
+  /* A toast floats over the page, so it keeps the sheet shadow. The low
+     tiers it used before resolve to nothing in the plain tool direction. */
+  box-shadow: var(--app-shadow-3);
   font-family: var(--font-sans);
   font-size: 13px;
 }

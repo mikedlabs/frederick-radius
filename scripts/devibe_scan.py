@@ -22,14 +22,12 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # The default report answers one question: what does the public Frederick Radius
 # product look like? These paths are explicitly separate worlds: the no-index
-# pitch deck, prod-disabled prototypes, private admin tools, and the small set of
-# helpers imported only by the pitch deck. `--surface all` includes all of them
-# so accepted debt never disappears from the repository-wide report.
+# pitch deck, private admin tools, and the small set of helpers imported only by
+# the pitch deck. `--surface all` includes all of them so accepted debt never
+# disappears from the repository-wide report.
 PUBLIC_APP_EXCLUDED_PREFIXES = (
     "src/app/pitch/",
     "src/components/marketing/",
-    "src/app/(app)/proto/",
-    "src/components/proto/",
     "src/app/admin/",
     "src/components/admin/",
 )

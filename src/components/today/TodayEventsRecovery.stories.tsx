@@ -111,7 +111,7 @@ async function assertReadable(canvasElement: HTMLElement, event = eventFixture) 
   await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
 }
 
-async function assertArtworkReadingLayout(canvasElement: HTMLElement, stacked: boolean) {
+async function assertArtworkReadingLayout(canvasElement: HTMLElement, enlarged: boolean) {
   const nodes = facts(canvasElement);
   const figure = canvasElement.querySelector<HTMLImageElement>("img")!.closest("figure")!;
   const layout = figure.parentElement!;
@@ -123,15 +123,18 @@ async function assertArtworkReadingLayout(canvasElement: HTMLElement, stacked: b
     const title = nodes.title.getBoundingClientRect(), venue = nodes.venue.getBoundingClientRect();
     const art = figure.getBoundingClientRect(), frame = figure.firstElementChild!.getBoundingClientRect();
     expect(row.width).toBeGreaterThan(0);
-    if (stacked) {
+    if (enlarged) {
+      // At 200% the picture stays a 64px square at the row's right edge, and
+      // the event facts keep most of the row rather than a narrow column.
+      expect(art.left).toBeGreaterThanOrEqual(panel.right + 1);
+      expect(Math.abs(art.right - row.right)).toBeLessThanOrEqual(1);
+      expect(Math.abs(art.width - 64)).toBeLessThanOrEqual(1);
+      expect(Math.abs(frame.width - frame.height)).toBeLessThanOrEqual(1);
+      expect(panel.width).toBeGreaterThanOrEqual(row.width * 0.65);
       expect(Math.abs(title.left - row.left)).toBeLessThanOrEqual(1);
-      expect(Math.abs(title.right - row.right)).toBeLessThanOrEqual(1);
       expect(Math.abs(venue.left - row.left)).toBeLessThanOrEqual(1);
-      expect(Math.abs(venue.right - row.right)).toBeLessThanOrEqual(1);
-      expect(art.top).toBeGreaterThanOrEqual(panel.bottom - 1);
-      expect(art.top).toBeGreaterThanOrEqual(venue.bottom - 1);
-      expect(Math.abs(art.width - row.width)).toBeLessThanOrEqual(1);
-      expect(Math.abs(frame.width / frame.height - 4 / 3)).toBeLessThanOrEqual(0.01);
+      expect(title.right).toBeLessThanOrEqual(art.left);
+      expect(venue.right).toBeLessThanOrEqual(art.left);
     } else {
       // Both ordinary portrait cases retain compact side-by-side discovery.
       expect(art.left).toBeGreaterThanOrEqual(panel.right + 1);
@@ -189,7 +192,7 @@ async function renderedImage(canvasElement: HTMLElement) {
   return canvasElement.querySelector<HTMLImageElement>("img")!;
 }
 
-async function assertIntactArtwork({ canvasElement }: Context, stacked = false) {
+async function assertIntactArtwork({ canvasElement }: Context, enlarged = false) {
   const canvas = within(canvasElement);
   const image = await renderedImage(canvasElement);
   image.scrollIntoView({ block: "center", behavior: "instant" });
@@ -221,7 +224,7 @@ async function assertIntactArtwork({ canvasElement }: Context, stacked = false) 
   await expect(canvasElement.querySelectorAll("[data-event-photo-credit]")).toHaveLength(1);
   await expect(image.closest("figure")!.contains(canvas.getByRole("heading", { name: fullTitle }))).toBe(false);
   await assertReadable(canvasElement);
-  await assertArtworkReadingLayout(canvasElement, stacked);
+  await assertArtworkReadingLayout(canvasElement, enlarged);
   await assertControls(canvasElement);
 }
 
@@ -281,8 +284,8 @@ export const OwnedPhotoFullView390: Story = {
   },
 };
 
-// A lead with imageless follow-ups. The lead alone carries the action cue and
-// the lift, and coral marks only the event that is on now.
+// A lead with imageless follow-ups. The lead alone carries the action cue,
+// and coral marks only the event that is on now.
 const imagelessRows: TodayEvent[] = [
   eventFixture,
   relativeRows[1],
@@ -303,11 +306,13 @@ export const ImagelessFollowUps390: Story = {
     const [lead, ...followUps] = cards;
     await expect(canvas.getAllByText("View event", { exact: true })).toHaveLength(1);
     await expect(within(lead).getByText("View event", { exact: true })).toBeVisible();
-    await expect(getComputedStyle(lead).boxShadow).not.toBe("none");
+    // Every choice is a flat ruled row: no lift shadow, a hairline below.
+    await expect(getComputedStyle(lead).boxShadow).toBe("none");
+    await expect(getComputedStyle(lead).borderBottomWidth).toBe("1px");
     for (const card of followUps) {
       // A flat hairline item keeps the whole-card link, its heading and its facts.
       await expect(getComputedStyle(card).boxShadow).toBe("none");
-      await expect(getComputedStyle(card).borderTopWidth).toBe("1px");
+      await expect(getComputedStyle(card).borderBottomWidth).toBe("1px");
       const link = card.querySelector<HTMLAnchorElement>('a[href^="/events/"]')!;
       await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
       await expect(link.querySelector("h3")).not.toBeNull();

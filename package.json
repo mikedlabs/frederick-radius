@@ -40,7 +40,7 @@
     "test:helpers": "node --test scripts/lib/*.test.mjs tests/*.test.mjs",
     "test:data-artifacts": "npm run data:release:check && npm run audit:county-data && npm run gates && node --test scripts/lib/data-release.test.mjs && npx vitest run tests/places-data-health.spec.ts tests/client-place-parity.spec.ts src/lib/quality/source-artifact-evidence.spec.ts src/lib/quality/venue-event-freshness.spec.ts src/lib/quality/hours-refresh-artifact.spec.ts tests/venue-events-copy.spec.ts tests/venue-event-time.spec.ts tests/business-info-copy.spec.ts tests/transit-static-snapshot.spec.ts tests/marc-countdown.spec.ts tests/thumbnail-photo-width.spec.ts && node --import tsx --test tests/copy-quality.test.ts",
     "test:e2e": "playwright test",
-    "test:release": "BETA_PASSWORD=release-gate-sentinel PW_PRODUCTION=1 playwright test e2e/release-smoke.spec.ts e2e/event-link-release-contract.spec.ts e2e/topbar-destinations.spec.ts e2e/tool-hierarchy.spec.ts e2e/transit-rider.spec.ts e2e/transit-design.spec.ts e2e/transit-network-continuity.spec.ts e2e/deals-browser.spec.ts e2e/page-quality-horizontal-rails.spec.ts e2e/product-quality-floor.spec.ts e2e/search-scope-quality.spec.ts e2e/saved-connected-journey.spec.ts e2e/tonight-preview.spec.ts e2e/today-visual-layout.spec.ts e2e/today-map-visual-depth.spec.ts e2e/today-discovery-card.spec.ts e2e/today-connected-places.spec.ts e2e/visual-discovery-journey.spec.ts e2e/native-interaction-contract.spec.ts e2e/primary-tab-resume.spec.ts e2e/events-filter-back.spec.ts e2e/place-sheet-quick-actions.spec.ts e2e/today-weather-priority.spec.ts e2e/saved-cross-tab-coordination.spec.ts e2e/map-recovery-layout.spec.ts e2e/map-selected-photo-continuity.spec.ts e2e/map-seeded-sheet-continuity.spec.ts e2e/place-photo-signal-fallback.spec.ts e2e/find-place-media.spec.ts e2e/nearby-place-media.spec.ts e2e/nearby-return-continuity.spec.ts e2e/events-nearby-visual-cards.spec.ts e2e/safari-back-readiness.spec.ts e2e/events-filter-layer.spec.ts e2e/visual-depth.spec.ts e2e/sports-team-identity.spec.ts e2e/intercepted-tools.spec.ts e2e/event-plan-recovery.spec.ts e2e/plan-connected-journey.spec.ts e2e/plan-visual-journey.spec.ts e2e/saved-outing-journey.spec.ts e2e/page-bloom-motion.spec.ts e2e/map-place-response-deadline.spec.ts --project=chromium --workers=1 --retries=1",
+    "test:release": "BETA_PASSWORD=release-gate-sentinel PW_PRODUCTION=1 playwright test e2e/release-smoke.spec.ts e2e/event-link-release-contract.spec.ts e2e/topbar-destinations.spec.ts e2e/tool-hierarchy.spec.ts e2e/transit-rider.spec.ts e2e/transit-design.spec.ts e2e/transit-network-continuity.spec.ts e2e/deals-browser.spec.ts e2e/page-quality-horizontal-rails.spec.ts e2e/product-quality-floor.spec.ts e2e/search-scope-quality.spec.ts e2e/saved-connected-journey.spec.ts e2e/tonight-preview.spec.ts e2e/today-visual-layout.spec.ts e2e/today-map-visual-depth.spec.ts e2e/today-discovery-card.spec.ts e2e/today-connected-places.spec.ts e2e/visual-discovery-journey.spec.ts e2e/native-interaction-contract.spec.ts e2e/primary-tab-resume.spec.ts e2e/events-filter-back.spec.ts e2e/place-sheet-quick-actions.spec.ts e2e/today-weather-priority.spec.ts e2e/saved-cross-tab-coordination.spec.ts e2e/map-recovery-layout.spec.ts e2e/map-selected-photo-continuity.spec.ts e2e/map-seeded-sheet-continuity.spec.ts e2e/place-photo-signal-fallback.spec.ts e2e/find-place-media.spec.ts e2e/nearby-place-media.spec.ts e2e/nearby-return-continuity.spec.ts e2e/events-nearby-visual-cards.spec.ts e2e/safari-back-readiness.spec.ts e2e/events-filter-layer.spec.ts e2e/visual-depth.spec.ts e2e/sports-team-identity.spec.ts e2e/intercepted-tools.spec.ts e2e/event-plan-recovery.spec.ts e2e/plan-connected-journey.spec.ts e2e/plan-visual-journey.spec.ts e2e/saved-outing-journey.spec.ts e2e/map-place-response-deadline.spec.ts --project=chromium --workers=1 --retries=1",
     "test:map:webkit": "PW_WEBKIT=1 playwright test e2e/discovery-shell.spec.ts --project=webkit-mobile --workers=1",
     "public:hub": "node scripts/public-project-hub.mjs",
     "test:public-hub": "node --test tests/public-project-hub.test.mjs",
@@ -83,7 +83,6 @@
     "enrich:discovered": "tsx --tsconfig tsconfig.json scripts/enrich-discovered.ts",
     "merge:discovered": "tsx --tsconfig tsconfig.json scripts/merge-discovered.ts",
     "vet": "tsx --tsconfig tsconfig.json scripts/vet-places.ts",
-    "push:keys": "tsx --tsconfig tsconfig.json scripts/push-keys.ts",
     "build:discovered": "tsx --tsconfig tsconfig.json scripts/build-discovered-places.ts",
     "ingest": "tsx --tsconfig tsconfig.json scripts/run-ingest.ts",
     "dedup": "tsx --tsconfig tsconfig.json scripts/dedup.ts",
@@ -180,8 +179,7 @@
     "server-only": "^0.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
-    "vaul": "^1.1.2",
-    "web-push": "^3.6.7"
+    "vaul": "^1.1.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
@@ -196,7 +194,6 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/web-push": "^3.6.4",
     "@vitest/browser": "^4.1.10",
     "@vitest/browser-playwright": "^4.1.10",
     "@vitest/runner": "^4.1.10",

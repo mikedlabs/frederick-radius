@@ -8,9 +8,9 @@ import { resolve } from "node:path";
 // adding deliveries requires an explicit review of this baseline rather than
 // silently increasing Vercel invocation volume.
 export const CRON_DELIVERY_BUDGET = Object.freeze({
-  definitions: 20,
-  weekly: 4_474,
-  peakDay: 640,
+  definitions: 15,
+  weekly: 2_612,
+  peakDay: 374,
 });
 
 function values(field, min, max, normalizeSunday = false) {

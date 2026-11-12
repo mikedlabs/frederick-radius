@@ -11,6 +11,7 @@ import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
 import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/event/EventsBoardDock";
 import SectionHeading from "@/components/ui/SectionHeading";
+import { easternDayKey } from "@/lib/tz";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon, isRangeListing, RANGE_LISTING_STALE_AFTER_MS } from "@/lib/eventHorizon";
@@ -51,6 +52,7 @@ import { eventCardVisual, type EventCardVisual } from "@/components/event/eventV
 import {
   horizonLeadVariant,
   primaryLeadPrecedesInterestRail,
+  rowShowsDate,
   splitHorizonLead,
 } from "@/components/event/eventsExplorerLayout";
 import { compareForRecommendation, rankRecommendations } from "@/lib/events/lead-rank";
@@ -683,6 +685,7 @@ export default function EventsExplorer({
 
   const live = useMemo(() => new Set(currentLiveSlugs), [currentLiveSlugs]);
   const now = +new Date(nowISO);
+  const todayKey = easternDayKey(new Date(now));
   const nearMeActive = eventScopeNeedsCompleteData(activeScope);
   const contentFilterActive =
     cat !== null || intent !== null || sub !== null || town !== null ||
@@ -1164,13 +1167,14 @@ export default function EventsExplorer({
       ) : null}
 
       {showPrimaryLeadBeforeRail && primaryLead && (
-        <div data-events-primary-lead="before-interest" data-events-visual-shortlist>
+        <div data-events-primary-lead="before-interest" data-events-visual-shortlist className="max-w-[720px]">
           <PromotedEvent
             event={primaryLead}
             visual={eventCardVisual(primaryLead)}
             live={live.has(primaryLead.slug)}
             priorityImage
             nowISO={nowISO}
+            headingLevel={2}
           />
         </div>
       )}
@@ -1249,11 +1253,8 @@ export default function EventsExplorer({
         // ~⅕ the height of a feature card. The user is here for
         // density, not browsing.
         <ol
-          className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
-          style={{
-            borderColor: "var(--app-border)",
-            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-          }}
+          className="max-w-[720px] border-t"
+          style={{ borderColor: "var(--app-border)" }}
         >
           {filtered.slice(0, 200).map((e) => (
             <li key={`${e.slug}-${e.starts_at}`}>
@@ -1362,7 +1363,10 @@ export default function EventsExplorer({
         // A chosen sort or filter is a full re-rank, so the list swaps
         // directly. Animating up to 100 rows kept it shuffling for most of
         // a second after every chip tap.
-        <ul data-events-sorted-list={sort} className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+        // One column up to the 720px measure: each row draws its own
+        // hairline, and a second column let rows of different heights
+        // stagger those rules.
+        <ul data-events-sorted-list={sort} className="grid max-w-[720px] grid-cols-1">
           {filtered.slice(0, 100).map((e) => (
             <li key={`${e.slug}-${e.starts_at}`}>
               <EventCard event={e} nowISO={nowISO} />
@@ -1413,8 +1417,9 @@ export default function EventsExplorer({
             const preview = rest.slice(0, PEEK);
             const expanded = isOpen ? rest.slice(PEEK, EXPANDED_CAP) : [];
             const overflow = isOpen ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
+            const showDate = (event: EventWithMeta) => rowShowsDate(g.key, event, todayKey);
             return (
-              <section key={g.key} className="space-y-3">
+              <section key={g.key} className="max-w-[720px] space-y-3">
                 <SectionHeading title={g.label} count={groupCount} />
                 {lead && !leadMovedBeforeRail && leadVariant === "feature" ? (
                   <PromotedEvent
@@ -1423,11 +1428,13 @@ export default function EventsExplorer({
                     live={live.has(lead.slug)}
                     priorityImage
                     nowISO={nowISO}
+                    headingLevel={3}
                   />
                 ) : lead && !leadMovedBeforeRail ? (
                   <EventCard
                     event={lead}
                     variant="glance"
+                    showDate={showDate(lead)}
                     live={live.has(lead.slug)}
                     nowISO={nowISO}
                   />
@@ -1435,13 +1442,26 @@ export default function EventsExplorer({
                 {totalRest > 0 && (
                   <>
                     {preview.length > 0 && (
-                      sort === "recommended" ? <ul data-events-discovery-grid className="grid min-w-0 grid-cols-1 items-start gap-4 sm:grid-cols-2">
-                        {preview.map((event) => <li key={eventIdentity(event)} className="min-w-0"><EventCard event={event} variant="discovery" venuePhotos="free-reviewed" live={live.has(event.slug)} nowISO={nowISO} /></li>)}
-                      </ul> : <CompactEventList events={preview} live={live} nowISO={nowISO} />
+                      // One column at every width, capped by the section's
+                      // 720px measure: each row draws its own hairline, so a
+                      // single column keeps every rule aligned.
+                      // Every sort uses the same row as the group's lead, so
+                      // one group never mixes two row styles.
+                      sort === "recommended" ? <ul data-events-discovery-grid className="grid min-w-0 grid-cols-1">
+                        {preview.map((event) => (
+                          <li key={eventIdentity(event)} className="min-w-0"><EventCard event={event} variant="discovery" venuePhotos="free-reviewed" showDate={showDate(event)} live={live.has(event.slug)} nowISO={nowISO} /></li>
+                        ))}
+                      </ul> : <GroupEventList events={preview} variant="glance" showDate={showDate} live={live} nowISO={nowISO} />
                     )}
                     {expanded.length > 0 && (
                       <div className="reveal-up">
-                        <CompactEventList events={expanded} live={live} nowISO={nowISO} />
+                        <GroupEventList
+                          events={expanded}
+                          variant={sort === "recommended" ? "discovery" : "glance"}
+                          showDate={showDate}
+                          live={live}
+                          nowISO={nowISO}
+                        />
                       </div>
                     )}
                     {/* Only when the window holds MORE than the default peek —
@@ -1477,8 +1497,8 @@ export default function EventsExplorer({
                           <div className="pt-1">
                             <Link
                               href="/events/calendar"
-                              className="tap-44 inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
-                              style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
+                              className="tap-44 inline-flex items-center gap-1.5 text-[13px] font-semibold underline-offset-4 hover:underline"
+                              style={{ color: "var(--app-link)" }}
                             >
                               {dataComplete ? `${overflow} more on the calendar` : "See more on the calendar"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
                             </Link>
@@ -1507,7 +1527,7 @@ export default function EventsExplorer({
               className="[&>button]:min-h-11"
             >
               <ol
-                className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
+                className="max-w-[720px] border-t"
                 style={{ borderColor: "var(--app-border)" }}
               >
                 {utilityFiltered.slice(0, 80).map((e) => (
@@ -1539,29 +1559,33 @@ export default function EventsExplorer({
   );
 }
 
-function CompactEventList({
+function GroupEventList({
   events,
+  variant,
+  showDate,
   live,
   nowISO,
 }: {
   events: EventWithMeta[];
+  /** Recommended discovery rows use free reviewed media; other sorts use the
+   * glance row. Both are the same EventRow, so a group reads as one list. */
+  variant: "discovery" | "glance";
+  showDate: (event: EventWithMeta) => boolean;
   live: ReadonlySet<string>;
   nowISO: string;
 }) {
   if (events.length === 0) return null;
+  // Rows on the white ground, each carrying its own bottom hairline. The
+  // section heading or the row above supplies the rule on top.
   return (
-    <ol
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
-      style={{
-        borderColor: "var(--app-border)",
-        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-      }}
-    >
+    <ol className="grid min-w-0 grid-cols-1">
       {events.map((event) => (
-        <li key={`${event.slug}-${event.starts_at}`}>
+        <li key={`${event.slug}-${event.starts_at}`} className="min-w-0">
           <EventCard
             event={event}
-            variant="compact"
+            variant={variant}
+            venuePhotos={variant === "discovery" ? "free-reviewed" : undefined}
+            showDate={showDate(event)}
             live={live.has(event.slug)}
             nowISO={nowISO}
           />
@@ -1577,12 +1601,15 @@ function PromotedEvent({
   priorityImage,
   live,
   nowISO,
+  headingLevel,
 }: {
   event: EventWithMeta;
   visual: EventCardVisual | null;
   priorityImage: boolean;
   live: boolean;
   nowISO: string;
+  /** 2 above the interest rail, 3 inside a group under the group's h2. */
+  headingLevel: 2 | 3;
 }) {
   // A plain wrapper, so the lead is server-rendered visible instead of
   // waiting for hydration to fade in. It keeps the poster and its photo
@@ -1596,6 +1623,7 @@ function PromotedEvent({
         nowISO={nowISO}
         priorityImage={priorityImage}
         visual={visual ?? undefined}
+        headingLevel={headingLevel}
       />
     </div>
   );

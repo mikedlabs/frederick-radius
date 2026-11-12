@@ -57,6 +57,65 @@ export const ActionHierarchy: Story = {
     </div>
   ),
 };
+/** Plain tool shape: every variant is a flat 6px rectangle with no lift.
+ *  Secondary carries a control border so it reads as a button on white. */
+export const PlainShape: Story = {
+  render: () => (
+    <div className="flex flex-wrap items-center justify-center gap-2.5 p-4">
+      <Button>Get directions</Button>
+      <Button variant="secondary">Open the map</Button>
+      <Button variant="quiet">Not now</Button>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    for (const name of ["Get directions", "Open the map", "Not now"]) {
+      const button = canvas.getByRole("button", { name });
+      const style = getComputedStyle(button);
+      await expect(style.borderTopLeftRadius).toBe("6px");
+      await expect(style.boxShadow).toBe("none");
+      await expect(style.backgroundImage).toBe("none");
+      await expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    }
+    await expect(getComputedStyle(canvas.getByRole("button", { name: "Open the map" })).borderTopWidth).toBe("1px");
+  },
+};
+
+/** Hover must reach the control. Resting colors live in classes, so the
+ *  secondary ground and the quiet text both change under the pointer, and
+ *  no variant carries its resting color as an inline style. */
+export const HoverState: Story = {
+  render: () => (
+    <div className="flex flex-wrap items-center justify-center gap-2.5 p-4">
+      <Button>Get directions</Button>
+      <Button variant="secondary">Open the map</Button>
+      <Button variant="quiet">Not now</Button>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    for (const name of ["Get directions", "Open the map", "Not now"]) {
+      const button = canvas.getByRole("button", { name });
+      await expect(button.style.backgroundColor).toBe("");
+      await expect(button.style.color).toBe("");
+    }
+    if (!(globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__) return;
+    const browser = await import("vitest/browser");
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 400));
+    const secondary = canvas.getByRole("button", { name: "Open the map" });
+    const quiet = canvas.getByRole("button", { name: "Not now" });
+    const secondaryRest = getComputedStyle(secondary).backgroundColor;
+    const quietRest = getComputedStyle(quiet).color;
+    await browser.userEvent.hover(secondary);
+    await settle();
+    await expect(getComputedStyle(secondary).backgroundColor).not.toBe(secondaryRest);
+    await browser.userEvent.hover(quiet);
+    await settle();
+    await expect(getComputedStyle(quiet).color).not.toBe(quietRest);
+    await browser.userEvent.unhover(quiet);
+  },
+};
+
 export const LoadingAndDisabled: Story = {
   render: () => (
     <div className="flex flex-col items-stretch gap-3 p-4 min-[360px]:flex-row min-[360px]:items-center">

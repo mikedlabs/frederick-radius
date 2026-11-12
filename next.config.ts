@@ -444,6 +444,20 @@ const nextConfig: NextConfig = {
       { source: "/moments/great-frederick-fair-2026/:path*", destination: "/fair", permanent: true },
       { source: "/fair-photo-viewer", destination: "/fair", permanent: true },
       { source: "/fair/:path+", destination: "/fair", permanent: true },
+      // Push notifications were retired in November 2026. The alert settings
+      // page is gone, and its one surviving control (phone feedback) now
+      // lives on /settings.
+      { source: "/settings/notifications", destination: "/settings", permanent: true },
+      // The legacy beta admin desks were retired once the access gate had been
+      // gone for months. They fold into the surviving admin desk; the feedback
+      // inbox moved to /admin/feedback. A trailing ":path*" also matches the
+      // bare address. The public /beta address is NOT redirected here: a
+      // config redirect forwards the query string, and old invite links carry
+      // a personal code in it. src/app/beta/[[...path]]/route.ts sends /beta
+      // to /today without the query.
+      { source: "/admin/beta", destination: "/admin/feedback", permanent: true },
+      { source: "/admin/beta-codes/:path*", destination: "/admin", permanent: true },
+      { source: "/admin/beta-emails/:path*", destination: "/admin", permanent: true },
     ];
   },
 };

@@ -49,15 +49,32 @@ async function workerHarness() {
   };
   const fetch = vi.fn();
   const openWindow = vi.fn(async () => undefined);
+  const showNotification = vi.fn(async () => undefined);
+  const pushSubscription = { unsubscribe: vi.fn(async () => true) };
   const self = {
     location: { origin: "https://frederick.example" },
-    addEventListener: (type: string, listener: Listener) => listeners.set(type, listener),
+    // A real worker keeps every listener for an event type, so chain them.
+    addEventListener: (type: string, listener: Listener) => {
+      const previous = listeners.get(type);
+      listeners.set(
+        type,
+        previous
+          ? (event) => {
+              previous(event);
+              listener(event);
+            }
+          : listener,
+      );
+    },
     clients: {
       claim: vi.fn(async () => undefined),
       matchAll: vi.fn(async () => []),
       openWindow,
     },
-    registration: { showNotification: vi.fn(async () => undefined) },
+    registration: {
+      showNotification,
+      pushManager: { getSubscription: vi.fn(async () => pushSubscription) },
+    },
     skipWaiting: vi.fn(),
   };
 
@@ -103,6 +120,9 @@ async function workerHarness() {
     offline,
     errorResponse,
     openWindow,
+    self,
+    showNotification,
+    pushSubscription,
     dispatchFetch,
   };
 }
@@ -220,7 +240,7 @@ describe("service worker cache boundaries", () => {
     "https://frederick.example/settings/avatar.png",
     "https://frederick.example/my-radius/card.png",
     "https://frederick.example/business/manage/secret/photo.png",
-    "https://frederick.example/api/push/topics?endpoint=secret",
+    "https://frederick.example/api/follows?endpoint=secret",
     "https://frederick.example/photo.jpg?token=secret",
   ])("does not intercept or cache sensitive request %s", async (url) => {
     const worker = await workerHarness();
@@ -261,51 +281,34 @@ describe("service worker cache boundaries", () => {
     expect(worker.puts).toHaveLength(0);
   });
 
-  it("normalizes an unsafe push click URL to /today", async () => {
+  it("drops a retired push subscription without showing a notification", async () => {
     const worker = await workerHarness();
-    let pending: Promise<unknown> | undefined;
-    worker.listeners.get("notificationclick")!({
-      notification: {
-        data: { url: "https://evil.example/phish" },
-        close: vi.fn(),
-      },
+    const pending: Array<Promise<unknown>> = [];
+    worker.listeners.get("push")!({
+      data: { json: () => ({ title: "Old alert", url: "/today" }) },
       waitUntil(value: Promise<unknown>) {
-        pending = value;
+        pending.push(value);
       },
     });
 
-    await pending;
-    expect(worker.openWindow).toHaveBeenCalledWith("/today");
+    await Promise.all(pending);
+    expect(worker.pushSubscription.unsubscribe).toHaveBeenCalledTimes(1);
+    expect(worker.showNotification).not.toHaveBeenCalled();
+    expect(worker.listeners.has("notificationclick")).toBe(false);
   });
 
-  it("keeps a same-origin POST open ping alive with the click navigation", async () => {
+  it("drops a retired push subscription on activate and still claims clients", async () => {
     const worker = await workerHarness();
-    worker.fetch.mockResolvedValueOnce(response("https://frederick.example/api/push/opened"));
-    let pending: Promise<unknown> | undefined;
-    worker.listeners.get("notificationclick")!({
-      notification: {
-        data: {
-          url: "/events/alive-at-five",
-          n: "11111111-1111-4111-8111-111111111111",
-        },
-        close: vi.fn(),
-      },
+    const pending: Array<Promise<unknown>> = [];
+    worker.listeners.get("activate")!({
       waitUntil(value: Promise<unknown>) {
-        pending = value;
+        pending.push(value);
       },
     });
 
-    await pending;
-    expect(worker.fetch).toHaveBeenCalledWith(
-      "/api/push/opened?n=11111111-1111-4111-8111-111111111111",
-      expect.objectContaining({
-        method: "POST",
-        mode: "same-origin",
-        credentials: "same-origin",
-        cache: "no-store",
-        keepalive: true,
-      }),
-    );
-    expect(worker.openWindow).toHaveBeenCalledWith("/events/alive-at-five");
+    await Promise.all(pending);
+    expect(pending).toHaveLength(2);
+    expect(worker.pushSubscription.unsubscribe).toHaveBeenCalledTimes(1);
+    expect(worker.self.clients.claim).toHaveBeenCalledTimes(1);
   });
 });

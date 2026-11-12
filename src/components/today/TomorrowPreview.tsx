@@ -48,7 +48,7 @@ export default async function TomorrowPreview({ now, eventsPromise }: { now: Dat
         style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-edge), var(--app-hi)" }}
       >
         <div className="flex items-center gap-2">
-          <Sunrise className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand)" }} />
+          <Sunrise className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand-text)" }} />
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
             Tomorrow
           </p>
@@ -79,7 +79,7 @@ export default async function TomorrowPreview({ now, eventsPromise }: { now: Dat
         ) : (
           <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
             No major event is listed for tomorrow yet.{" "}
-            <Link href="/events" className="font-semibold" style={{ color: "var(--app-brand-press)" }}>
+            <Link href="/events" className="font-semibold" style={{ color: "var(--app-link)" }}>
               See what&rsquo;s on
             </Link>
             .
