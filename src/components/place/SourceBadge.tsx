@@ -1,4 +1,4 @@
-import { CheckCircle2, Users, Database, Sparkles } from "lucide-react";
+import { CheckCircle2, Users, Database, NotebookPen } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
 
 /**
@@ -8,8 +8,9 @@ import type { PlaceCardData } from "@/lib/loaders/places";
  * by Frederick Radius, came from a community feed (Downtown Frederick
  * Partnership scrape), or is a Google-verified business record.
  *
- * Compact (`size="sm"`) for cards; full (`size="md"`) for the place
- * detail header. Self-hides if there's no honest claim to make.
+ * Compact (`size="sm"`) is a small tinted capsule for cards and the place
+ * sheet. Full (`size="md"`) is a glyph and plain text for the place detail
+ * header. Self-hides if there's no honest claim to make.
  */
 export type SourceBadgeTier = "reviewed" | "checked" | "community" | "official";
 
@@ -32,10 +33,19 @@ export function sourceBadgeTier(place: Pick<PlaceCardData, "source" | "is_verifi
 export const SOURCE_BADGE_META: Record<SourceBadgeTier, { label: string; color: string; icon: typeof CheckCircle2; explanation: string }> = {
   // The visible labels make the claim legible without hover. Each explanation
   // is also included as screen-reader text instead of relying on `title`.
-  reviewed:  { label: "Radius reviewed", color: "var(--app-brand-press)", icon: Sparkles, explanation: "Selected or edited by Frederick Radius; current details can still change." },
-  checked:   { label: "Checked at source", color: "var(--app-positive)", icon: CheckCircle2, explanation: "Basic details were checked against a source. This is not owner verification." },
-  community: { label: "Community source", color: "var(--app-cool)", icon: Users, explanation: "Submitted by a local or assembled from a community or mapping source; check important details." },
-  official:  { label: "Official source", color: "var(--app-civic)", icon: Database, explanation: "Imported from a government source. The source agency does not operate or endorse Frederick Radius." },
+  //
+  // Colors are the text-role tokens, because every use here is a label or a
+  // glyph: they equal the brand and semantic fills on the light shell and lift
+  // to a readable foreground in the dark appearance. Forest shares its value
+  // with --app-positive, and Creek with --app-civic.
+  //
+  // "Reviewed" means a person at Radius selected or edited the record, so it
+  // takes the field-note glyph. It must not take a check (the stronger
+  // "checked" tier owns that claim) or a sparkle (that reads as generated).
+  reviewed:  { label: "Radius reviewed", color: "var(--app-link)", icon: NotebookPen, explanation: "Selected or edited by Frederick Radius; current details can still change." },
+  checked:   { label: "Checked at source", color: "var(--app-forest-text)", icon: CheckCircle2, explanation: "Basic details were checked against a source. This is not owner verification." },
+  community: { label: "Community source", color: "var(--app-cool-text)", icon: Users, explanation: "Submitted by a local or assembled from a community or mapping source; check important details." },
+  official:  { label: "Official source", color: "var(--app-cool-text)", icon: Database, explanation: "Imported from a government source. The source agency does not operate or endorse Frederick Radius." },
 };
 
 export function sourceBadgeMeta(
@@ -55,24 +65,35 @@ export default function SourceBadge({
   const meta = sourceBadgeMeta(place);
   if (!meta) return null;
   const Icon = meta.icon;
-  const isSm = size === "sm";
+  // Detail header: a plain fact in the decision row beside the open state and
+  // price. The glyph carries the tier color and the words stay ink, so the
+  // row holds one colored action (Save) and not a second tinted capsule.
+  if (size === "md") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-xs font-medium"
+        style={{ color: "var(--app-ink-2)" }}
+      >
+        <Icon
+          className="h-3.5 w-3.5 shrink-0"
+          strokeWidth={2.25}
+          style={{ color: meta.color }}
+          aria-hidden
+        />
+        {meta.label}
+        <span className="sr-only">. {meta.explanation}</span>
+      </span>
+    );
+  }
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full font-semibold tracking-tight ${
-        isSm
-          ? "px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em]"
-          : "px-2.5 py-1 text-[11px]"
-      }`}
+      className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
       style={{
         background: `color-mix(in srgb, ${meta.color} 14%, transparent)`,
         color: meta.color,
       }}
     >
-      <Icon
-        className={isSm ? "h-2.5 w-2.5" : "h-3 w-3"}
-        strokeWidth={2.5}
-        aria-hidden
-      />
+      <Icon className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
       {meta.label}
       <span className="sr-only">. {meta.explanation}</span>
     </span>

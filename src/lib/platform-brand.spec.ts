@@ -3,7 +3,6 @@ import path from "node:path";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import manifest from "@/app/manifest";
-import { GET as getServiceWorker } from "@/app/sw.js/route";
 import { BRAND, RIPPLE_GEOMETRY } from "./brand";
 import { PLATFORM_BRAND } from "./platform-brand";
 
@@ -122,12 +121,6 @@ describe("platform brand surfaces", () => {
       const data = await readFile(path.join(ROOT, "src/app/api/og/fonts", file));
       expect(data.subarray(0, 4).toString("ascii"), file).toBe("wOFF");
     }
-  });
-
-  it("keeps notification artwork on the same versioned icon contract", async () => {
-    const worker = await getServiceWorker().text();
-    expect(worker).toContain(`icon: payload.icon || "${PLATFORM_BRAND.icons.push}"`);
-    expect(worker).toContain(`badge: payload.badge || "${PLATFORM_BRAND.icons.badge}"`);
   });
 
   it("keeps a 16, 32, and 48px multi-image favicon", async () => {

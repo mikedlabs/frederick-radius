@@ -12,6 +12,8 @@
  * media-query overrides in globals.css (the keyframes never fire when
  * the user has the OS toggle on).
  */
+import type { CSSProperties } from "react";
+
 export type SkyVariant =
   | "Sun"
   | "Moon"
@@ -24,19 +26,33 @@ export type SkyVariant =
   | "CloudFog"
   | "Wind";
 
+/** Moon and stars use a theme-readable color. `--sky-moon-color` (set beside
+ * `--sky-sun-color` on `.sky-glyph`) can keep the cream in dark appearance;
+ * without it the glyph falls back to the muted ink, which reads on the white
+ * ground in light appearance and as a pale warm gray on the dark canvas. */
+const MOON_COLOR = "var(--sky-moon-color, var(--app-ink-3))";
+const MOON_ON_DARK_SKY = "#E9E3D2";
+
 export default function AnimatedSkyGlyph({
   variant,
   size = 56,
   className = "",
   as: Root = "div",
+  onDarkSky = false,
 }: {
   variant: SkyVariant;
   size?: number;
   className?: string;
+  /** The glyph sits on a night-sky ground, whatever the app appearance is. */
+  onDarkSky?: boolean;
   /** Use phrasing content only when the glyph belongs inside a native summary. */
   as?: "div" | "span";
 }) {
-  const dim = { width: size, height: size };
+  // An inline value wins over the `.sky-glyph` rule, which follows the app
+  // appearance and would draw a gray moon on a navy sky in light appearance.
+  const dim: CSSProperties = onDarkSky
+    ? { width: size, height: size, ["--sky-moon-color" as string]: MOON_ON_DARK_SKY }
+    : { width: size, height: size };
   return (
     <Root
       className={`sky-glyph sky-glyph--${variant.toLowerCase()} ${className}`}
@@ -97,13 +113,13 @@ export default function AnimatedSkyGlyph({
               <circle cx={61} cy={43} r={17} fill="black" />
             </mask>
           </defs>
-          <circle cx={50} cy={50} r={20} fill="#E9E3D2" mask="url(#moon-mask)" />
+          <circle cx={50} cy={50} r={20} fill={MOON_COLOR} mask="url(#moon-mask)" />
           <circle cx={50} cy={50} r={20} fill="url(#moon-glow)" mask="url(#moon-mask)" />
           {variant === "Moon" && (
             <>
-              <circle cx={80} cy={28} r={1.7} fill="#E9E3D2" />
-              <circle cx={86} cy={41} r={1.1} fill="#E9E3D2" />
-              <circle cx={74} cy={20} r={1} fill="#E9E3D2" />
+              <circle cx={80} cy={28} r={1.7} fill={MOON_COLOR} />
+              <circle cx={86} cy={41} r={1.1} fill={MOON_COLOR} />
+              <circle cx={74} cy={20} r={1} fill={MOON_COLOR} />
             </>
           )}
         </svg>

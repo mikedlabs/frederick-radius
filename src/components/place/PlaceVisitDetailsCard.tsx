@@ -1,4 +1,5 @@
 import { ExternalLink } from "lucide-react";
+import PlaceSectionLabel from "./PlaceSectionLabel";
 import {
   VISIT_UNKNOWN_LABELS,
   type PlaceVisitDetails,
@@ -33,24 +34,12 @@ export default function PlaceVisitDetailsCard({
   });
 
   return (
-    <section
-      aria-labelledby="place-visit-details"
-      className="rounded-[var(--app-radius-md)] border p-4"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated)",
-      }}
-    >
-      <h2
-        id="place-visit-details"
-        className="text-base font-semibold"
-        style={{ color: "var(--app-ink)" }}
-      >
-        Before you go
-      </h2>
+    // PLAIN TOOL: a ruled section on the page ground, not a filled box.
+    <section aria-labelledby="place-visit-details">
+      <PlaceSectionLabel id="place-visit-details">Before you go</PlaceSectionLabel>
       <ul
-        className="mt-2 list-disc space-y-2 pl-4 text-sm leading-relaxed"
-        style={{ color: "var(--app-ink-2)" }}
+        className="mt-2 list-disc space-y-2 pl-4 text-[15px] leading-relaxed"
+        style={{ color: "var(--app-ink)" }}
       >
         {details.facts.map((fact) => (
           <li key={fact.text}>
@@ -65,15 +54,15 @@ export default function PlaceVisitDetailsCard({
         ))}
       </ul>
       {details.actions.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-2 flex flex-wrap gap-x-5">
           {details.actions.map((action) => (
             <a
               key={action.url}
               href={action.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="tap-44 inline-flex items-center gap-2 rounded-[var(--app-radius-sm)] border px-3 text-sm font-semibold"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+              className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold underline-offset-2 hover:underline"
+              style={{ color: "var(--app-link)" }}
             >
               {action.label}
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />
@@ -82,12 +71,12 @@ export default function PlaceVisitDetailsCard({
         </div>
       ) : null}
       {unknowns.length > 0 ? (
-        <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+        <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           We have not confirmed {joinLabels(unknowns)}. Check with the venue before your visit.
         </p>
       ) : null}
       <div className="mt-2 flex flex-wrap items-center gap-x-3">
-        <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
+        <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
           These sources were checked on {checkedDate(details.reviewed_at)}.
         </p>
         {sources.map((url, index) => (
@@ -96,7 +85,7 @@ export default function PlaceVisitDetailsCard({
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="tap-44 inline-flex items-center gap-1 text-xs underline"
+            className="tap-44 inline-flex items-center gap-1 text-[13px] underline underline-offset-2"
             style={{ color: "var(--app-ink-2)" }}
           >
             {sources.length === 1 ? "Official source" : `Official source ${index + 1}`}

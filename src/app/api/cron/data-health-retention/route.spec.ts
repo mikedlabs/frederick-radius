@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   verifyCronAuth: vi.fn(),
   pruneOldSnapshots: vi.fn(),
-  prunePushLog: vi.fn(),
   pruneNfcEvents: vi.fn(),
   pruneExpiredReports: vi.fn(),
   startIngestRunStrict: vi.fn(),
@@ -16,10 +15,6 @@ vi.mock("../../ingest/_auth", () => ({
 vi.mock("@/lib/integrations/feed-snapshot", () => ({
   pruneOldSnapshots: mocks.pruneOldSnapshots,
   SNAPSHOT_PRUNE_BATCH_SIZE: 5_000,
-}));
-vi.mock("@/lib/push-fanout", () => ({
-  prunePushLog: mocks.prunePushLog,
-  PUSH_LOG_PRUNE_BATCH_SIZE: 5_000,
 }));
 vi.mock("@/lib/nfc-retention", () => ({
   pruneNfcEvents: mocks.pruneNfcEvents,
@@ -51,7 +46,6 @@ describe("GET /api/cron/data-health-retention", () => {
     mocks.startIngestRunStrict.mockResolvedValue("retention-run");
     mocks.finishIngestRunStrict.mockResolvedValue(undefined);
     mocks.pruneOldSnapshots.mockResolvedValue(4);
-    mocks.prunePushLog.mockResolvedValue(3);
     mocks.pruneNfcEvents.mockResolvedValue(2);
     mocks.pruneExpiredReports.mockResolvedValue(1);
   });
@@ -69,7 +63,6 @@ describe("GET /api/cron/data-health-retention", () => {
     });
     expect(mocks.startIngestRunStrict).not.toHaveBeenCalled();
     expect(mocks.pruneOldSnapshots).not.toHaveBeenCalled();
-    expect(mocks.prunePushLog).not.toHaveBeenCalled();
     expect(mocks.pruneNfcEvents).not.toHaveBeenCalled();
     expect(mocks.pruneExpiredReports).not.toHaveBeenCalled();
   });
@@ -82,15 +75,14 @@ describe("GET /api/cron/data-health-retention", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.pruneOldSnapshots).toHaveBeenCalledWith(90, 5_000, 5_000);
-    expect(mocks.prunePushLog).toHaveBeenCalledWith(90, 5_000, 5_000);
     expect(mocks.pruneNfcEvents).toHaveBeenCalledWith(90, 5_000, 5_000);
     expect(mocks.pruneExpiredReports).toHaveBeenCalledWith(1, 100, 5_000);
     expect(mocks.finishIngestRunStrict).toHaveBeenCalledWith(
       "retention-run",
       expect.objectContaining({
         status: "ok",
-        records_in: 4,
-        records_upserted: 10,
+        records_in: 3,
+        records_upserted: 7,
         records_failed: 0,
       }),
     );
@@ -105,13 +97,11 @@ describe("GET /api/cron/data-health-retention", () => {
       statement_timeout_ms: 5_000,
       caps: {
         feed_snapshots: 5_000,
-        push_log: 5_000,
         nfc_events: 5_000,
         community_reports: 100,
       },
       results: {
         feed_snapshots: { status: "ok", deleted: 4 },
-        push_log: { status: "ok", deleted: 3 },
         nfc_events: { status: "ok", deleted: 2 },
         community_reports: { status: "ok", deleted: 1 },
       },
@@ -132,7 +122,6 @@ describe("GET /api/cron/data-health-retention", () => {
     await vi.waitFor(() => {
       expect(mocks.pruneOldSnapshots).toHaveBeenCalledTimes(1);
     });
-    expect(mocks.prunePushLog).not.toHaveBeenCalled();
     expect(mocks.pruneNfcEvents).not.toHaveBeenCalled();
     expect(mocks.pruneExpiredReports).not.toHaveBeenCalled();
 
@@ -140,7 +129,6 @@ describe("GET /api/cron/data-health-retention", () => {
     const response = await responsePromise;
 
     expect(response.status).toBe(200);
-    expect(mocks.prunePushLog).toHaveBeenCalledTimes(1);
     expect(mocks.pruneNfcEvents).toHaveBeenCalledTimes(1);
     expect(mocks.pruneExpiredReports).toHaveBeenCalledTimes(1);
   });
@@ -162,13 +150,11 @@ describe("GET /api/cron/data-health-retention", () => {
         tasks_attempted: 0,
         results: {
           feed_snapshots: { status: "not_started" },
-          push_log: { status: "not_started" },
           nfc_events: { status: "not_started" },
           community_reports: { status: "not_started" },
         },
       });
       expect(mocks.pruneOldSnapshots).not.toHaveBeenCalled();
-      expect(mocks.prunePushLog).not.toHaveBeenCalled();
       expect(mocks.pruneNfcEvents).not.toHaveBeenCalled();
       expect(mocks.pruneExpiredReports).not.toHaveBeenCalled();
     } finally {
@@ -191,14 +177,13 @@ describe("GET /api/cron/data-health-retention", () => {
       heartbeat_recorded: false,
     });
     expect(mocks.pruneOldSnapshots).not.toHaveBeenCalled();
-    expect(mocks.prunePushLog).not.toHaveBeenCalled();
     expect(mocks.pruneNfcEvents).not.toHaveBeenCalled();
     expect(mocks.pruneExpiredReports).not.toHaveBeenCalled();
   });
 
   it("fails closed without exposing a retention helper error", async () => {
     vi.stubEnv("DATA_RETENTION_PRUNE", "1");
-    mocks.prunePushLog.mockRejectedValue(
+    mocks.pruneNfcEvents.mockRejectedValue(
       new Error("postgres://user:secret@example.invalid/database"),
     );
 
@@ -207,13 +192,13 @@ describe("GET /api/cron/data-health-retention", () => {
 
     expect(response.status).toBe(503);
     expect(bodyText).not.toContain("user:secret");
-    expect(bodyText).toContain('"push_log":{"status":"rejected"}');
+    expect(bodyText).toContain('"nfc_events":{"status":"rejected"}');
     expect(mocks.finishIngestRunStrict).toHaveBeenCalledWith(
       "retention-run",
       expect.objectContaining({
         status: "error",
         records_failed: 1,
-        error: "Retention tasks failed: push_log.",
+        error: "Retention tasks failed: nfc_events.",
       }),
     );
   });

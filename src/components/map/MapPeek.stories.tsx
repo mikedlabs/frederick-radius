@@ -83,8 +83,8 @@ const meta = {
   } },
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   args: {
-    plan, placeName: "Sample selected place near Brunswick station", glyph: "S",
-    color: "var(--app-brand)", onOpenDetails: fn(),
+    plan, placeName: "Sample selected place near Brunswick station", glyph: "coffee",
+    onOpenDetails: fn(),
   },
   render: args => (
     <div data-app-primary-tab="/map" style={{ padding: "12px 10px", width: "100%", height: "calc(100dvh - 56px - 68px - env(safe-area-inset-top) - env(safe-area-inset-bottom))" }}>
@@ -235,4 +235,44 @@ export const OwnedPhotoAt390: Story = {
 export const OwnedPhotoAt430: Story = {
   ...OwnedPhotoAt390,
   globals: { viewport: { value: "radiusMobileLarge", isRotated: false } },
+};
+
+/** A place with no photograph: the slot shows the plain category glyph in
+ * muted ink, with no tile, tint, border, serif or letter monogram, and the
+ * name column takes the width a tile used to hold. Details stays a 44px
+ * target. */
+export const NoPhotoPlainGlyphAt320: Story = {
+  args: { plan: { key: "map-peek-no-photo-component-fixture", sources: [] } },
+  play: async ({ canvasElement }) => {
+    const root = canvasElement.querySelector<HTMLElement>(".map-peek")!;
+    const body = root.querySelector<HTMLElement>(".map-peek-body")!;
+    const visual = root.querySelector<HTMLElement>(".map-peek-visual")!;
+    const mark = root.querySelector<HTMLElement>(".map-peek-category-mark")!;
+    await expect(root.querySelector("img")).toBeNull();
+    await expect(body).toHaveAttribute("data-glyph-only");
+    await expect(mark.querySelector("svg")).not.toBeNull();
+    await expect(mark.textContent).toBe("");
+    const view = canvasElement.ownerDocument.defaultView!;
+    const visualStyle = view.getComputedStyle(visual);
+    const markStyle = view.getComputedStyle(mark);
+    for (const value of [visualStyle.backgroundColor, markStyle.backgroundColor]) {
+      await expect(value).toBe("rgba(0, 0, 0, 0)");
+    }
+    await expect(visualStyle.borderTopWidth).toBe("0px");
+    await expect(markStyle.backgroundImage).toBe("none");
+    await expect(markStyle.fontFamily.toLowerCase()).not.toContain("caslon");
+    const probe = canvasElement.ownerDocument.createElement("span");
+    probe.style.color = "var(--app-ink-3)";
+    root.append(probe);
+    try {
+      await expect(markStyle.color).toBe(view.getComputedStyle(probe).color);
+    } finally { probe.remove(); }
+    const box = visual.getBoundingClientRect();
+    await expect(box.width).toBeGreaterThanOrEqual(44);
+    await expect(box.width).toBeLessThanOrEqual(45);
+    await expect(box.height).toBeGreaterThanOrEqual(44);
+    const text = root.querySelector<HTMLElement>(".map-peek-text")!.getBoundingClientRect();
+    await expect(text.left - box.right).toBeLessThanOrEqual(16);
+    await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
+  },
 };

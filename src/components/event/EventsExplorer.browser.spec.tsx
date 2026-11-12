@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { act, StrictMode, type ComponentProps, type HTMLAttributes, type ReactNode } from "react";
+import { act, StrictMode, type ComponentProps, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import EventsExplorer from "./EventsExplorer";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -19,16 +20,7 @@ vi.mock("@/lib/events/featured", () => ({
 }));
 
 // Keep the real explorer, filtering, request deadline and reconciliation.
-// Presentation-only dependencies do not need animation or map providers here.
-vi.mock("framer-motion", async () => {
-  const { createElement } = await import("react");
-  const box = (tag: string) => function Box({ children, ...props }: HTMLAttributes<HTMLElement>) {
-    const attributes = Object.fromEntries(Object.entries(props).filter(([key]) =>
-      !["initial", "animate", "exit", "transition", "variants", "whileHover", "whileTap", "layout"].includes(key)));
-    return createElement(tag, attributes, children);
-  };
-  return { motion: { div: box("div"), ol: box("ol"), li: box("li") }, AnimatePresence: ({ children }: { children: ReactNode }) => children };
-});
+// Map providers and other presentation-only dependencies are not needed here.
 vi.mock("@/hooks/useGeolocation", () => ({
   GEOLOCATION_CHANGE_EVENT: "fr:geolocation-change",
   readCachedPosition: () => recommendationContext.origin,
@@ -453,5 +445,64 @@ describe("Recommended attendance promotion through the mounted explorer", () => 
     const supplied = JSON.parse(host.querySelector("[data-test-agenda-events]")!.getAttribute("data-test-agenda-events")!);
     expect(supplied).toEqual(rows.map((row) => [row.slug, row.starts_at, row.ends_at]));
     expect(request).not.toHaveBeenCalled();
+  });
+});
+
+describe("A chosen sort re-ranks the list directly", () => {
+  it("drops filtered rows in the same commit as a When chip tap, with no entrance or exit state", async () => {
+    // The real dock supplies the Order menu and the When chips. Motion is
+    // allowed, so a reintroduced exit animation would keep stale rows mounted.
+    recommendationContext.actualDisplay = true;
+    vi.stubGlobal("matchMedia", () => ({ matches: false }));
+    const later = (slug: string, title: string) => ({ ...listedEvent(slug, "frederick", title),
+      starts_at: "2026-10-14T18:00:00.000Z", ends_at: "2026-10-14T20:00:00.000Z" });
+    const rows = [listedEvent("zebra-walk", "frederick", "Zebra walk"), later("apple-fest", "Apple fest"),
+      listedEvent("mango-night", "frederick", "Mango night"), later("birch-talk", "Birch talk")];
+    await render(props(rows, healthy));
+    expect(host.querySelector("[data-events-sorted-list]")).toBeNull();
+
+    const display = host.querySelector<HTMLDetailsElement>("details.eb-display-options")!;
+    await act(async () => display.querySelector("summary")!.click());
+    await act(async () => display.querySelector<HTMLButtonElement>('button[aria-label="Order: Recommended"]')!.click());
+    const order = display.querySelector('[role="group"][aria-label="Order"]')!;
+    await act(async () => [...order.querySelectorAll("button")].find((choice) => choice.textContent?.startsWith("A→Z"))!.click());
+    expect(new URLSearchParams(window.location.search).get("sort")).toBe("az");
+
+    const sorted = () => host.querySelector<HTMLUListElement>('ul[data-events-sorted-list="az"]')!;
+    const hrefs = () => [...sorted().querySelectorAll<HTMLAnchorElement>('a[href^="/events/"]')].map((link) => link.getAttribute("href"));
+    expect(hrefs()).toEqual(["/events/apple-fest", "/events/birch-talk", "/events/mango-night", "/events/zebra-walk"]);
+    expect(sorted().children).toHaveLength(4);
+
+    const today = [...host.querySelectorAll<HTMLButtonElement>('[role="group"][aria-label="When"] button')]
+      .find((chip) => chip.textContent === "Today")!;
+    // The chip acknowledges the tap at once and re-slices on the next frame.
+    await act(async () => {
+      today.click();
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    });
+    expect(today.getAttribute("aria-pressed")).toBe("true");
+    expect(new URLSearchParams(window.location.search).get("lens")).toBe("today");
+    expect(hrefs()).toEqual(["/events/mango-night", "/events/zebra-walk"]);
+    expect(sorted().children).toHaveLength(2);
+    for (const node of [sorted(), ...sorted().children]) {
+      expect(node.getAttribute("style")).toBeNull();
+    }
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("server-renders the promoted lead visible, without a hidden entrance state", async () => {
+    const options = props([{ ...listedEvent("named-concert", "frederick", "Concert"), venue_name: "Community Hall" }], healthy);
+    // The server markup is what a visitor sees before hydration.
+    const markup = renderToString(<EventsExplorer {...options} />);
+    expect(markup).toContain('data-test-card-variant="feature"');
+    expect(markup).not.toMatch(/opacity:\s*0|translateY|scale\(/);
+
+    await render(options);
+    const lead = host.querySelector<HTMLAnchorElement>('[data-test-card-variant="feature"]')!;
+    expect(lead.getAttribute("href")).toBe("/events/named-concert");
+    for (let node: HTMLElement | null = lead; node && node !== host; node = node.parentElement) {
+      expect(node.style.opacity).toBe("");
+      expect(node.style.transform).toBe("");
+    }
   });
 });

@@ -39,7 +39,7 @@ export default async function MarketsTodayBeat({ now }: { now: Date }) {
           className="h-4 w-4 shrink-0"
           strokeWidth={2}
           aria-hidden
-          style={{ color: "var(--app-brand)" }}
+          style={{ color: "var(--app-brand-text)" }}
         />
         <span className="font-semibold" style={{ color: "var(--app-ink)" }}>
           {relevant.length === 1 ? "Farmers market today:" : "Farmers markets today:"}
@@ -70,7 +70,7 @@ export default async function MarketsTodayBeat({ now }: { now: Date }) {
         <Link
           href="/category/market"
           className="tap-44-y font-semibold whitespace-nowrap"
-          style={{ color: "var(--app-brand-press)" }}
+          style={{ color: "var(--app-link)" }}
         >
           All markets <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
         </Link>

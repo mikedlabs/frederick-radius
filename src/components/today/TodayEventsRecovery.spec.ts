@@ -67,6 +67,40 @@ describe("TodayEventsRecoveryView", () => {
     expect(html).not.toContain("Event picks are unavailable here");
   });
 
+  it("counts an open on every later event row", () => {
+    const later = { ...event, slug: "later-pick-2026-08-27", title: "Later pick", time: "8:00 PM" };
+    const html = renderToStaticMarkup(
+      createElement(TodayEventsRecoveryView, {
+        response: { partial: false, events: [event, later] },
+      }),
+    );
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const row = doc.querySelector('article[data-today-event-row="row"][data-decision-id="later-pick-2026-08-27"]');
+    expect(row).not.toBeNull();
+    expect(row!.getAttribute("data-decision-surface")).toBe("today");
+    const link = row!.querySelector('a[href="/events/later-pick-2026-08-27"]');
+    expect(link?.getAttribute("data-decision-action")).toBe("open");
+  });
+
+  it("gives every later event row the shared press target and one direct face", () => {
+    const later = { ...event, slug: "later-pick-2026-08-27", title: "Later pick", time: "8:00 PM" };
+    const html = renderToStaticMarkup(
+      createElement(TodayEventsRecoveryView, {
+        response: { partial: false, events: [event, later] },
+      }),
+    );
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const link = doc.querySelector(
+      'article[data-today-event-row="row"] a[href="/events/later-pick-2026-08-27"]',
+    );
+    expect(link).not.toBeNull();
+    expect(link!.getAttribute("data-press-target")).toBe("card");
+    // The link's hit rectangle stays still; exactly one direct child moves.
+    expect(link!.querySelectorAll(":scope > [data-press-face]")).toHaveLength(1);
+    expect(link!.children).toHaveLength(1);
+    expect(link!.querySelector("[data-press-face]")!.textContent).toContain("Later pick");
+  });
+
   it("keeps partial coverage explicit when usable rows survive", () => {
     const html = renderToStaticMarkup(
       createElement(TodayEventsRecoveryView, {

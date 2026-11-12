@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { BREWERIES } from "../src/data/beers";
 
 test.describe("beer workspace deep links", () => {
   test.use({ viewport: { width: 390, height: 844 } });
@@ -37,8 +38,13 @@ test.describe("beer workspace deep links", () => {
 
     // A real click proves hydration has attached the URL listeners before we
     // exercise a hash change that would otherwise be easy to race in a test.
-    await index.click();
-    await expect(index).toHaveAttribute("aria-selected", "true");
+    // The server renders Taprooms selected, so a click that lands before
+    // React attaches is lost. Repeating it is safe: choosing the mode that is
+    // already current pushes no history entry.
+    await expect(async () => {
+      await index.click();
+      await expect(index).toHaveAttribute("aria-selected", "true", { timeout: 1_000 });
+    }).toPass({ timeout: 30_000 });
     await page.goBack();
     await expect(taprooms).toHaveAttribute("aria-selected", "true");
 
@@ -67,6 +73,54 @@ test.describe("beer workspace deep links", () => {
     await expect(page).toHaveURL(/#beer-week$/);
     expect(pageErrors).toEqual([]);
     expect(hydrationErrors).toEqual([]);
+  });
+
+  test("Back closes a beer drawer in place and a brewery link leaves no dead entry", async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.goto("/today", { waitUntil: "domcontentloaded", timeout: 120_000 });
+    await page.goto("/beer#beer-index", { waitUntil: "domcontentloaded", timeout: 120_000 });
+    // The hash selects its tab from client code, which proves hydration.
+    await expect(page.getByRole("tab", { name: "Beer index" })).toHaveAttribute("aria-selected", "true");
+
+    const filters = page.getByRole("button", { name: "Filter and sort beers" });
+    const filterDrawer = page.getByRole("dialog", { name: "Filter and sort beers" });
+    await filters.click();
+    await expect(filterDrawer).toBeVisible();
+    await expect(filterDrawer).toHaveAttribute("data-drawer-surface", "solid");
+
+    await page.goBack();
+    await expect(filterDrawer).toHaveCount(0);
+    await expect(page).toHaveURL(/\/beer#beer-index$/);
+    await expect(filters).toBeFocused();
+
+    // The Close control removes the drawer's own entry, so the next Back
+    // leaves the page instead of stopping on an identical URL.
+    await filters.click();
+    await expect(filterDrawer).toBeVisible();
+    await filterDrawer.getByRole("button", { name: "Close Filter and sort beers" }).click();
+    await expect(filterDrawer).toHaveCount(0);
+    await expect(page).toHaveURL(/\/beer#beer-index$/);
+
+    // So does the drawer's own primary action, which closes it from the page.
+    await filters.click();
+    await expect(filterDrawer).toBeVisible();
+    await filterDrawer.getByRole("button", { name: /^Show \d+ beers?$/ }).click();
+    await expect(filterDrawer).toHaveCount(0);
+    await expect(page).toHaveURL(/\/beer#beer-index$/);
+
+    await page.locator("#beer-index-results button[aria-label]").first().click();
+    const pourDrawer = page.getByRole("dialog");
+    await expect(pourDrawer).toBeVisible();
+    await pourDrawer.locator('a[href^="/places/"]').last().click();
+    await expect(page).toHaveURL(/\/places\/[^/#?]+$/, { timeout: 120_000 });
+
+    await page.goBack({ waitUntil: "domcontentloaded", timeout: 120_000 });
+    await expect(page).toHaveURL(/\/beer#beer-index$/);
+    await expect(page.getByRole("tab", { name: "Beer index" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    await page.goBack({ waitUntil: "domcontentloaded", timeout: 120_000 });
+    await expect(page).toHaveURL(/\/today$/);
   });
 
   for (const viewport of [
@@ -110,6 +164,35 @@ test.describe("beer workspace deep links", () => {
       expect(overflow).toBeLessThanOrEqual(1);
     });
   }
+
+  test("the taproom rail is a grid with every brewery in reach on a desktop screen", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/beer", { waitUntil: "domcontentloaded" });
+
+    const rail = page.locator("#brewery-strip-results");
+    await expect(rail).toBeVisible();
+    await expect(rail.locator(":scope > li")).toHaveCount(BREWERIES.length);
+
+    // A hidden-scrollbar rail strands cards from a mouse wheel, so from lg up
+    // nothing may scroll sideways and every card sits inside the list's box.
+    const layout = await rail.evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      return {
+        display: getComputedStyle(node).display,
+        sidewaysScroll: node.scrollWidth - node.clientWidth,
+        cardsOutside: Array.from(node.children).filter((item) => {
+          const card = item.getBoundingClientRect();
+          return (
+            card.left < box.left - 1 || card.right > box.right + 1 ||
+            card.top < box.top - 1 || card.bottom > box.bottom + 1
+          );
+        }).length,
+      };
+    });
+    expect(layout.display).toBe("grid");
+    expect(layout.sidewaysScroll).toBeLessThanOrEqual(1);
+    expect(layout.cardsOutside).toBe(0);
+  });
 
   test("the random picker returns an actionable beer and brewery", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });

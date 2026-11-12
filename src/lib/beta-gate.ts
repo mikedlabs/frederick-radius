@@ -3,8 +3,10 @@ import "server-only";
 /**
  * Legacy beta identity and signing helpers. The public request proxy no longer
  * checks these credentials: Frederick Radius stays public even when
- * BETA_PASSWORD is configured. The password remains supported as the owner code
- * and as a fallback signing secret for personal-code and NFC member cookies.
+ * BETA_PASSWORD is configured. The /beta page and its code-redemption API are
+ * gone; what remains signs the cookies the NFC tap route (/j/[code]) still
+ * sets, and verifies the member cookie that attributes first-party analytics.
+ * BETA_PASSWORD remains a fallback signing secret for those cookies.
  *
  * Web Crypto keeps the helpers portable across server runtimes. This module is
  * `server-only` because it reads BETA_PASSWORD / BETA_CODE_SECRET: a client
@@ -15,32 +17,14 @@ import "server-only";
 export {
   BETA_COOKIE,
   BETA_ID_COOKIE,
-  BETA_OWNER_MARKER,
   BETA_TESTER_MARKER,
 } from "./beta-constants";
 
 /**
- * The unlock-cookie value: a SHA-256 token derived from the shared password
- * (first 32 hex chars). The raw password never lands in a cookie, and rotating
- * the password invalidates every existing session.
- */
-export async function betaToken(password: string): Promise<string> {
-  const data = new TextEncoder().encode(`fr-beta:v1:${password}`);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-    .slice(0, 32);
-}
-
-/**
- * Per-user access codes.
+ * Signed card-code cookie.
  *
- * A redeemed code gets a short-lived signed token containing an issued-at time
- * and code. First-party beta telemetry can verify it without a database request
- * on every ping. The database is checked at redemption/renewal time, so a
- * revoked code cannot mint another session; an existing session can remain
- * valid for at most 12 hours.
+ * A tapped NFC card gets a short-lived signed token containing an issued-at
+ * time and the card code. It lives for at most 12 hours.
  *
  * The signing key is BETA_CODE_SECRET when set, else BETA_PASSWORD (already a
  * build-time secret in the edge bundle) so this needs zero new env config.
@@ -58,11 +42,6 @@ function previousCodeSecret(): string | null {
 export const BETA_CODE_SESSION_SECONDS = 12 * 60 * 60;
 const MAX_FUTURE_SKEW_SECONDS = 5 * 60;
 const CODE_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
-
-/** Normalize a submitted code: trim, lowercase, collapse inner whitespace. */
-export function normalizeCode(raw: string): string {
-  return raw.trim().toLowerCase().replace(/\s+/g, "-").slice(0, 64);
-}
 
 async function hmacHex(key: string, msg: string): Promise<string> {
   const enc = new TextEncoder();
@@ -133,11 +112,6 @@ export async function verifyCodeCookie(
     if (safeEqual(sig, await hmacHex(secret, message))) return code;
   }
   return null;
-}
-
-/** The database decision used whenever a code mints or renews a session. */
-export function isRedeemableBetaCode(row: { revoked: boolean } | null | undefined): boolean {
-  return row !== null && row !== undefined && row.revoked === false;
 }
 
 /**

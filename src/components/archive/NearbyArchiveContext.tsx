@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, FileText, MapPin } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import {
   findNearbyLocArchiveRecords,
   formatLocAttribution,
   getLocArchiveImageUrl,
 } from "@/data/loc-archive";
 import { formatDistance } from "@/lib/geo";
+import PlaceSectionLabel from "@/components/place/PlaceSectionLabel";
 
 const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
 
@@ -17,6 +18,12 @@ const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "
  * coordinate is useful for discovery, but it is not evidence that a historic
  * building belongs beside a particular storefront. This surface self-hides
  * rather than overclaiming.
+ *
+ * PLAIN TOOL: an unboxed section on the page ground. The 13px uppercase
+ * label and the distance head it, and the record is one row: the survey
+ * photo at 6px corners beside a 17px sans title and 14px muted text. The
+ * place page draws the rule above the section, so it brings no frame,
+ * fill or shadow of its own.
  */
 export default function NearbyArchiveContext({
   lat,
@@ -45,71 +52,73 @@ export default function NearbyArchiveContext({
 
   return (
     <section aria-labelledby="nearby-archive-title" className="space-y-3">
-      <header className="flex items-end justify-between gap-3">
-        <div>
-          <p className="eyebrow" style={{ color: "var(--app-brand-press)" }}>
+      {/* The eyebrow keeps the section label style; the section's heading
+          is the title under it. */}
+      <header>
+        <div className="flex items-baseline justify-between gap-3">
+          <PlaceSectionLabel as="p">
             Primary source nearby
-          </p>
-          <h2 id="nearby-archive-title" className="mt-1 font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            This block, documented
-          </h2>
+          </PlaceSectionLabel>
+          <span className="shrink-0 text-[14px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+            {distance} away
+          </span>
         </div>
-        <span className="inline-flex shrink-0 items-center gap-1 font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-          <MapPin className="h-3 w-3" aria-hidden />
-          {distance} away
-        </span>
+        <h2
+          id="nearby-archive-title"
+          className="mt-1.5 text-[1.25rem] font-bold leading-tight tracking-[-0.01em]"
+          style={{ color: "var(--app-ink)" }}
+        >
+          This block, documented
+        </h2>
       </header>
 
-      <article
-        className="overflow-hidden rounded-[var(--app-radius-lg)] border"
-        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
-      >
-        <div className="grid grid-cols-[104px_1fr] sm:grid-cols-[152px_1fr]">
-          <div className="relative min-h-[142px] overflow-hidden" style={{ background: "var(--app-bg-sunken)" }}>
-            <Image
-              src={imageUrl}
-              alt={record.image.alt}
-              fill
-              sizes="(max-width: 640px) 104px, 152px"
-              className="object-cover"
-            />
-          </div>
-          <div className="flex min-w-0 flex-col p-3.5">
-            <p className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--app-accent-press)" }}>
-              <FileText className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-              Historic American Buildings Survey
-            </p>
-            <h3 className="mt-1.5 font-serif text-[16px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-              {record.title}
-            </h3>
-            <p className="mt-1 line-clamp-3 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-              {record.summary}
-            </p>
-            <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-2 text-[11px] font-semibold">
-              <Link
-                prefetch={false}
-                href="/archive#building-records"
-                className="inline-flex items-center gap-1"
-                style={{ color: "var(--app-cool)" }}
-              >
-                See it in Archive Lens <ArrowRight className="h-3 w-3" aria-hidden />
-              </Link>
-              <a
-                href={record.itemUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                LOC record <ArrowUpRight className="h-3 w-3" aria-hidden />
-              </a>
-            </div>
+      <article className="flex items-start gap-3">
+        <div
+          className="relative h-[104px] w-[88px] shrink-0 overflow-hidden rounded-[var(--app-radius-md)] sm:h-[132px] sm:w-[120px]"
+          style={{ background: "var(--app-bg-sunken)" }}
+        >
+          <Image
+            src={imageUrl}
+            alt={record.image.alt}
+            fill
+            sizes="(max-width: 640px) 88px, 120px"
+            className="object-cover"
+          />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <h3 className="text-[17px] font-semibold leading-[1.3] tracking-tight" style={{ color: "var(--app-ink)" }}>
+            {record.title}
+          </h3>
+          <p className="mt-0.5 text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            Historic American Buildings Survey
+          </p>
+          <p className="mt-1 line-clamp-3 text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            {record.summary}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-5 text-[14px] font-semibold">
+            <Link
+              prefetch={false}
+              href="/archive#building-records"
+              className="tap-44-y inline-flex min-h-11 items-center gap-1 underline-offset-2 hover:underline"
+              style={{ color: "var(--app-cool-text)" }}
+            >
+              See it in Archive Lens <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            </Link>
+            <a
+              href={record.itemUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="tap-44-y inline-flex min-h-11 items-center gap-1 underline-offset-2 hover:underline"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              LOC record <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            </a>
           </div>
         </div>
-        <p className="border-t px-3.5 py-2 text-[9.5px] leading-snug" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-          {formatLocAttribution(record)} · Nearby means within 400 ft; it does not imply this is the same building.
-        </p>
       </article>
+      <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+        {formatLocAttribution(record)} · Nearby means within 400 ft; it does not imply this is the same building.
+      </p>
     </section>
   );
 }

@@ -142,7 +142,7 @@ describe("readJsonBodyWithLimit", () => {
 
 describe("readTextBodyWithLimit", () => {
   it("reads a small URL-encoded form", async () => {
-    const request = new Request("https://frederickradius.app/api/beta", {
+    const request = new Request("https://frederickradius.app/api/example-form", {
       method: "POST",
       body: "password=frederick-abcd&next=%2Ftoday",
     });
@@ -154,7 +154,7 @@ describe("readTextBodyWithLimit", () => {
   });
 
   it("rejects a chunked form as soon as it crosses the cap", async () => {
-    const request = new Request("https://frederickradius.app/api/beta", {
+    const request = new Request("https://frederickradius.app/api/example-form", {
       method: "POST",
       body: `password=${"x".repeat(256)}`,
     });

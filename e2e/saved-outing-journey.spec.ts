@@ -189,7 +189,8 @@ for (const { width, colorScheme, audience, daypart } of savedJourneyCases) {
     }
     // The existing transient toast is a deliberate overlay, not a layout row.
     // After it exits, the unchanged heading must still be the actual hit target.
-    await expect(confirmation).toHaveCount(0, { timeout: 6_000 });
+    // A plain confirmation lives 4 seconds before its exit; leave real margin.
+    await expect(confirmation).toHaveCount(0, { timeout: 8_000 });
     if (width < 800) await geometry(page);
     const raw = await page.evaluate((key) => localStorage.getItem(key), SAVED_OUTINGS_KEY);
     expect(JSON.parse(raw!)).toEqual([{ token: outing.token, title: outing.title, saved_at: expect.any(String) }]);

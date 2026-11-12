@@ -2,6 +2,8 @@
 
 # Polishing Frederick Radius
 
+> Status: historical record. This roadmap was generated on June 30, 2026 (PR #939) against the earlier cream and vermilion palette. It is not a current instruction file. Many items have shipped, some files it names no longer exist, and its line numbers, token values, type sizes and contrast figures are out of date. Before acting on any item, confirm the problem still exists in the code and take values from `src/app/globals.css`, `src/lib/brand.ts` and `docs/brand/BRAND_GUIDE.md`. Where this file conflicts with `CLAUDE.md` or `docs/AFFORDANCES.md`, those files win.
+
 ## Executive summary
 
 The app is already made, not templated — the bones are right, so this roadmap is about closing the gap between the design system as written and the design system as shipped. The through-line across nearly every finding is the same three disciplines applied unevenly: **tokens over raw hex** (a dozen surfaces still carry pre-vermilion brick `#A03A22`, slate `#2F5470`, or the phantom `--app-brand-tint-2`), **the 8-step type scale over ad-hoc `text-[Npx]`** (the half-migrated state the scale comment itself anticipates), and **calm-state semantics over alert colors** (amber-as-warning bleeding onto normal "Live" and "closing soon" states). None of these are bugs; they are craft leaks, and because the leaking components (`PlaceCard`, `EventCard`, the status dots, the shell chrome) render on every screen, fixing them at the source lifts the whole guide at once. The highest-value work is systemic and small: retire the stale hexes, adopt the tokens that already exist, and let the two field-tool surfaces (`/collect`, `/report`) inherit the AA-safe primary the canonical `Button` already ships. Sequence the token/type foundation first, then per-surface polish rides on a clean base.
@@ -20,10 +22,12 @@ The single biggest craft leak. These are all "always `var(--app-*)`, never raw h
 | `events/[slug]/page.tsx:292,571` | `${cat?.color ?? "#A03A22"}40/14` | `color-mix(in srgb, … var(--app-brand) …, var(--app-bg-elevated))` |
 | `map/popups.tsx:112-117` | `#C2410C/#2F5470/#B07A1E/#7A7975` | `--app-warning / --app-cool / --app-accent-press / --app-ink-3` |
 | `MoreSheet.tsx:71` | `#7A5C2E` | `var(--app-accent-press)` |
-| `SavedList.tsx:1069-1070` | `#C99632`, `#7E2C6F` | `var(--app-accent)`, `var(--app-civic)` (exact-match token) |
+| `SavedList.tsx` | resolved | `src/components/saved/SavedList.tsx` no longer contains a raw hex. No change is needed. |
 | `KnownForCard.tsx:103` | `var(--app-warm)` (**undefined** — silently inherits ink-3) | `var(--app-accent-press)` |
 | `ReportClient.tsx:243,265` · `CollectClient.tsx:437` | `var(--app-brand-tint-2,…)` (**undefined token**; rgba fallback is load-bearing) | `var(--app-brand-tint-14)` |
 | `CollectClient.tsx:19-29,335,375` · white input surfaces | raw hex + `bg-white` | `--app-cool` / `--app-positive` / `--app-bg-elevated-solid` |
+
+Token meanings changed after this table was written. `--app-accent` and `--app-accent-press` are now Plum, and `--app-civic` is Creek. None of them stands in for a gold or warm hex any more. The Ochre tokens are `--app-amber` for fills and `--app-warning` for text. Wherever this file maps a gold or warm value to `--app-accent`, `--app-accent-press` or `--app-civic` (the rows above and the ClosureBanner item), do not apply the mapping as written. Check the intended hue in the browser first.
 
 Two of these are functional, not cosmetic: `--app-warm` and `--app-brand-tint-2` **do not exist**, so the code is already rendering an unintended fallback. Fix those first.
 
@@ -34,14 +38,12 @@ The design system says "open is a state, not an alert; closed is never red." Thr
 
 ### Typography scale adoption (retire ad-hoc `text-[Npx]`)
 The scale exists to end ~600 hand-set sizes and the "everything is semibold" monotony. Sweep opportunistically, **leading-preserving only** — a blind `→ .text-body` regresses clamped snippets and titles:
-- **`PlaceCard.tsx`** (highest leverage — renders everywhere): map the clean no-ops — eyebrow `text-[10px]`→`.eyebrow`, meta `text-[11px]`→`.text-meta`, `text-[12px]`→`.text-meta-lg`, tile title `text-[15px]`→`.text-title-sm`. **Do not** touch the row title (16px, no matching step) or add serif to list titles (serif is the deliberate lead-vs-list marker).
-- **`/today`** (`page.tsx`, `CravingStrip`, `PoolsToday`, `SeasonalBeat`): the `text-[12.5px]` stray → `.text-meta-lg`; section titles → `.text-title` **keeping** `leading-none tracking-tight`.
+- **`PlaceCard.tsx`** (highest leverage — renders everywhere): map the clean no-ops — eyebrow `text-[10px]`→`.eyebrow`, meta `text-[11px]`→`.text-caption`, `text-[12px]`→`.text-meta`, `text-[13px]`→`.text-meta-lg`. The 15px tile title has no matching title step, so leave it. **Do not** change a title's size to reach a step. Titles are System sans in Brand System 1.4, so ignore the serif references in this file.
+- **`/today`** (`page.tsx`, `CravingStrip`, `PoolsToday`, `SeasonalBeat`): the `text-[12.5px]` stray → `.text-meta` (12px) or `.text-meta-lg` (13px), checked in the browser; section titles → `.text-title` **keeping** `leading-none tracking-tight`.
 - **Field labels**: `events/[slug]` "Good to know" (478/487/499) and `report`/`collect` helper lines → `.eyebrow` / `.text-meta` / `.text-caption`.
 
-### Data face (JetBrains Mono for numbers)
-Mono is reserved for counts/coordinates/distances, applied inconsistently. Add `font-mono` (keep `tabular-nums`) where numbers currently render sans:
-- `PlaceCard.tsx:267,333,530` distances; `PlaceStatus.tsx:57` time string; `HoursBlock.tsx:65` weekly time column (`GoogleHours:48` already correct).
-- `MapIntentChips.tsx:184,231,256` counts; `popups.tsx` EventPopup date eyebrow; `AppMap.tsx:1167` directions figures.
+### Data face
+Superseded by Brand System 1.4. Product numbers use System sans with `tabular-nums`. `font-mono` now resolves to the same system sans stack, so do not add it for a visual change.
 
 ### Voice
 - **`EventsExplorer.tsx:750`** — drop the terminal period: `Nothing fits these filters` (display headlines are titles, not sentences; matches the Saved empty headline).
@@ -52,12 +54,12 @@ Mono is reserved for counts/coordinates/distances, applied inconsistently. Add `
 ## 2. Per-surface polish
 
 ### Shell (every route)
-- **`layout.tsx:124` + `manifest.ts:15`** — `themeColor`/`theme_color` still `#EEE6D4`; the readability pass deepened the ground to `#EBE2CD`. Both edits are required or the status-bar/page seam persists on installed PWAs. Add a comment: viewport metadata can't read CSS vars.
+- **Theme color** is resolved. `layout.tsx` and `manifest.ts` both read `PLATFORM_BRAND.themeColor` from `src/lib/platform-brand.ts`. Do not hard-code a hex in either file.
 - **`layout.tsx:239`** — skip link `focus:bg-black focus:text-white` → `focus:bg-[var(--app-ink)] focus:text-[var(--app-on-brand)]`, `focus:rounded-md`→`focus:rounded-[var(--app-radius-sm)]`.
 - **`BottomNav.tsx:183` + `SideRail.tsx:168`** — nav labels `font-semibold`→`font-medium` (500 is the label weight; color + pill carry active state). Leave SideRail's `opacity:0.78` dimming — it's intentional.
 - **`AppMain.tsx:33`** — `calc(6rem + …)` → `calc(var(--app-bottomnav-reserve) + …)`. Note: this is −12px (96→84px), not pixel-identical; verify content clears the pill.
 - **`TopBar.tsx:136-140`** — deep-page Back: `font-semibold`→`font-medium`, `--app-ink`→`--app-ink-2`, chevron `strokeWidth 2.25→2` (matches Explore/Compass).
-- **`AppFooter.tsx:55`** — tagline `text-[11px]`→`.text-meta` (provably zero-visual). Keep the tagline copy (it's the crawlable framing line).
+- **`AppFooter.tsx:55`** — tagline `text-[11px]`→`.text-caption` (same 11px size, so confirm the line height in the browser). Keep the tagline copy (it's the crawlable framing line).
 
 ### Today
 - **`OnNowBand.tsx:94-100`** — the one section header in mono eyebrow register while its peers are serif titles. Give it the eyebrow + serif-title pair (18px, matching CravingStrip/PoolsToday); demote mono to the tally on the right. Use the WhatsOn split (category eyebrow + state title) to avoid eyebrow and title being the same word.
@@ -68,7 +70,7 @@ Mono is reserved for counts/coordinates/distances, applied inconsistently. Add `
 ### Map
 - **`AppMap.tsx:1121,1135,1163,1182`** — floating chips use raw `bg-white`/`rgba(255,255,255,…)`. Swap to `var(--app-bg-elevated)` (already how MapTimeChips tints). Not the proposal's `color-mix` — that double-applies translucency. If legibility over aerial suffers, fall back to `--app-bg-elevated-solid` on the directions/aerial chips.
 - **`popups.tsx:196-202`** — OSM unverified warning is a `⚠ · … · …` middot pileup. Split into a quiet `From OpenStreetMap` eyebrow (`--app-warning`) + a sentence-case `May be closed or stale` body line (`--app-ink-3`). Drop the glyph and middots. Keep the caveat copy — it's genuinely useful for OSM places.
-- **`AppMap.tsx:1153-1172`** — directions chip crowds name/distance/CTA. Wrap the figures in `font-mono tabular-nums`; optionally drop the leading `→` (the `↗` on the CTA already signals handoff). Keep the `·` middot.
+- **`AppMap.tsx:1153-1172`** — directions chip crowds name/distance/CTA. Wrap the figures in `tabular-nums`; use lucide `ArrowUpRight` for the external handoff, per `docs/AFFORDANCES.md`. Keep the `·` middot.
 
 ### Events
 - **`EventCard.tsx:602-623`** (row variant, used by detail-page "More upcoming") — three pills competing in one meta band. Drop the standalone category `Chip` and the `TrustChip`; leave one calm line: `Free`/price + right-aligned mono distance (mirror the glance variant). *Note:* the /events list already uses glance, not this. Keep the `Chip`/`TrustChip` imports — other variants use them.
@@ -82,11 +84,11 @@ Mono is reserved for counts/coordinates/distances, applied inconsistently. Add `
 
 ### Collect (field tool)
 - **`CollectClient.tsx`** — `bg-white` → `bg-[var(--app-bg-elevated-solid)]` on inputs/buttons (404/456/465/499/510); live-location dot `#2F5470` → `var(--app-cool)` + `--app-cool-tint-22` ring; crosshair fill `rgba(225,67,40,0.10)` → `var(--app-brand-tint-14)`; TYPES map → tokens (preserving hues — most already match the deck; only the dot is truly stale).
-- **Radius fallbacks** (392,404,435,…): `,12px`→`,16px` and `,18px`→`,24px` (stale guesses; real tokens are 16/24). Keep the inline-fallback house style.
+- **Radius fallbacks.** Resolved. Every inline fallback in `CollectClient.tsx` and `ReportClient.tsx` already equals its token in `src/app/globals.css` (`--app-radius-md,12px` and `--app-radius-lg,18px`). Do not change them to 16px or 24px.
 - **Edit mode (536,544)** — two vermilion controls compete. Keep Save as the sole `--app-brand` primary; demote Delete to a quiet `tap-44 text-[var(--app-ink-3)]` text control. Don't introduce `--app-danger` (no confirm step).
 - **Muted copy** (397,417,484) — `text-[var(--app-ink)]/55|60` → `text-[var(--app-ink-3)]` (documented AA-held tone; opacity-on-ink is a sub-AA guess in sunlight). Input borders `/15`→`var(--app-border)`. Leave the map-overlay card's ink hairline and count chip (those let the map show through / already pass).
-- **Type picker** (442,417,484) — `text-[9.5px]` (below the 10px floor) → `.text-caption` with weight-based selection (`active ? font-semibold : font-medium`); helper lines `text-[11px]`→`.text-meta`.
-- **Photo thumbs** (473,476) — `rounded-md`→`rounded-[var(--app-radius-sm,9px)]`; drop `opacity-80` (the `alt="Current"` already states status).
+- **Type picker** (442,417,484) — `text-[9.5px]` (below the 10px floor) → `.text-caption` with weight-based selection (`active ? font-semibold : font-medium`); helper lines `text-[11px]`→`.text-caption`.
+- **Photo thumbs** (473,476) — `rounded-md`→`rounded-[var(--app-radius-sm)]`; drop `opacity-80` (the `alt="Current"` already states status).
 
 ### Report (field tool)
 - **`ReportClient.tsx:243,265`** — phantom `--app-brand-tint-2` → `--app-brand-tint-14`; drop raw hex fallbacks (see systemic table).
@@ -116,7 +118,7 @@ Mono is reserved for counts/coordinates/distances, applied inconsistently. Add `
 7. **Report type picker** (`ReportClient.tsx:426`) — bare div of `aria-pressed` toggles for a single-select. Wrap in `role="radiogroup" aria-label="Amenity type"`; tiles → `role="radio" aria-checked`.
 8. **Photo control** (`ReportClient.tsx:289`) — unlabeled file input for optional categories. `aria-label` reflecting state + `aria-required`/`aria-describedby` when hazard.
 9. **Route skeletons** (`today/map/events/places/my-radius loading.tsx`) — screen-reader silence on navigation. Add `aria-busy="true"` + one `sr-only role="status"` line ("Loading the map", etc.). Matches the `SavedList` house pattern.
-10. **Crosshair readout** (`ReportClient`/`CollectClient`) — no textual confirmation of the drop point. Add an `aria-live="polite"` `font-mono` coordinate line inside the existing chip, updated on `moveend`. Drop the reverse-geocode idea (scope creep / new dependency).
+10. **Crosshair readout** (`ReportClient`/`CollectClient`) — no textual confirmation of the drop point. Add an `aria-live="polite"` coordinate line inside the existing chip, updated on `moveend`. Drop the reverse-geocode idea (scope creep / new dependency).
 
 **Tap targets:**
 11. **`NotificationsNudge.tsx:104`** "Not now" — 11px text, no extender. Add `.tap-44-y` (not `.tap-44` — the symmetric extender would steal taps from the adjacent "Turn on" link).
@@ -129,14 +131,13 @@ Mono is reserved for counts/coordinates/distances, applied inconsistently. Add `
 
 ## 4. Quick visual wins (effort S, high polish/effort)
 
-1. **`themeColor` seam** — `layout.tsx:124` + `manifest.ts:15` `#EEE6D4`→`#EBE2CD`. One-line each, removes a seam on every installed PWA.
-2. **`KnownForCard.tsx:103`** `--app-warm` (undefined) → `--app-accent-press`. The heart finally shows its intended warmth.
-3. **Category swatch** `category/[slug]/page.tsx:268` — `●` glyph → geometric dot. Baseline-stable.
-4. **Events empty-state period** `EventsExplorer.tsx:750` — delete one character.
-5. **`AppFooter.tsx:55`** tagline → `.text-meta`. Provably zero-visual, retires a scale violation.
-6. **Nav label weight** `BottomNav`/`SideRail` `font-semibold`→`font-medium`. Instantly calmer chrome.
-7. **Map chips** `AppMap.tsx` → `var(--app-bg-elevated)`. Warm paper instead of clinical white.
-8. **Report success color** `ReportClient.tsx:322` → `--app-positive`. Green "sent," honest hue.
+1. **`KnownForCard.tsx:103`** is resolved. The undefined `--app-warm` reference is gone from that file.
+2. **Category swatch** `category/[slug]/page.tsx:268` — `●` glyph → geometric dot. Baseline-stable.
+3. **Events empty-state period** `EventsExplorer.tsx:750` — delete one character.
+4. **`AppFooter.tsx:55`** tagline → `.text-caption`. This is the same 11px size, so confirm the line height in the browser. It retires a scale violation.
+5. **Nav label weight** `BottomNav`/`SideRail` `font-semibold`→`font-medium`. Instantly calmer chrome.
+6. **Map chips** `AppMap.tsx` → `var(--app-bg-elevated)`. Warm paper instead of clinical white.
+7. **Report success color** `ReportClient.tsx:322` → `--app-positive`. Green "sent," honest hue.
 
 ---
 
@@ -147,7 +148,7 @@ Mono is reserved for counts/coordinates/distances, applied inconsistently. Add `
 - **Homogenize all /today section-header anatomies** — the four differ by *function* (input prompt vs. live layer vs. seasonal utility vs. dismissible content); flattening them erases legible hierarchy.
 - **Remove the dashed-border empty states in RadiusBuilder** — the tokenized dashed hairline is the deliberate house convention across ~25 surfaces, not a SaaS placeholder.
 - **Ink-scrim the MapIntentChips count badge** — the proposed `--app-brand-tint-2` note is real, but the fix darkens the dark-majority intent colors (removing the lighten cue) and still doesn't clear AA on gold.
-- **Convert literal `→` arrows to Lucide `ArrowRight`** — the inline `→` is the established convention across ~15 surfaces; converting three would make *them* the outliers.
+- **Literal arrow glyphs.** Superseded. `docs/AFFORDANCES.md` (July 2026) requires lucide `ArrowRight`, `ChevronRight` or `ArrowUpRight`, and `tests/design/affordance-glyphs.spec.ts` fails on a literal arrow used as a tap cue.
 - **PlaceCard status-chip `rgba(255,255,255,0.45)` → `--app-hi`** — `--app-hi` is `0.72`, not `0.45`, and `--app-edge` is a neutral dark line that would kill the per-tone colored edge. The current tuning is intentional.
 - **Marketing shell (`/pitch`) token/palette unification, mono scene counter** — the `.marketing-shell` is explicitly carved out of the `--app-*` bar. Do not pull its hex/gradients toward app tokens. (The intra-deck `font-serif` heading consistency and reduced-motion fixes *are* in scope; palette unification is not.)
 - **Wordmark "Radius" `0.14em`→eyebrow** — `0.14em` wasn't retired (only `.eyebrow`'s class changed); it's the standing 10px micro-label convention across 10+ components. The wordmark is a lockup sub-line, not an eyebrow.
@@ -162,12 +163,12 @@ Mono is reserved for counts/coordinates/distances, applied inconsistently. Add `
 
 **Phase 2 — Calm-state semantics.** `trust.ts` likely-remap, `OpenClosedDot`/`PlaceStatus` → `--state-*`. Verify AA on the softened closed dot and the shared `placeHoursTrust` chip. This is the highest-*perceived* systemic win — a whole event list stops flashing amber.
 
-**Phase 3 — Type scale + data face.** The `PlaceCard` and `/today` sweeps (leading-preserving), field-label → `.eyebrow`, `font-mono` on distances/times/counts. Eyeball row/tile/grid density on /map and a category page before merge — `PlaceCard` ships app-wide at once.
+**Phase 3: Type scale.** The `PlaceCard` and `/today` sweeps (leading-preserving), field-label → `.eyebrow`. Eyeball row/tile/grid density on /map and a category page before merge — `PlaceCard` ships app-wide at once.
 
 **Phase 4 — Accessibility must-fixes (§3).** AA primaries (brand→brand-press) across field tools + contribution forms, color-alone error cues, input `aria-label`s, route-skeleton `aria-busy`, tap targets, `/pitch` reduced-motion. Semantics-only changes — verify no snapshot tests assert old attributes.
 
-**Phase 5 — Per-surface polish (§2).** Now that tokens/type/a11y are clean: ClosureBanner demotion, event action-row primary, `OnNowBand` header, empty-state de-boxing, "At a glance" flattening, shell chrome (themeColor, skip link, nav weight, Back control, footer). Group by surface; one concern per PR.
+**Phase 5 — Per-surface polish (§2).** Now that tokens/type/a11y are clean: ClosureBanner demotion, event action-row primary, `OnNowBand` header, empty-state de-boxing, "At a glance" flattening, shell chrome (skip link, nav weight, Back control, footer). Group by surface; one concern per PR.
 
 **Phase 6 — Quick wins (§4) as fillers.** Any not already swept — the character-level and one-line edits — batched or slotted between larger PRs.
 
-Gate every PR on `tsc + eslint + vitest` (CI reds are pre-existing infra). No `build:client-places` or cache-key bump is needed for any item here — all are presentation-only, no place-data or cached-shape changes. Verify PWA-chrome and reduced-motion changes on a real installed/OS-level target, not just the preview.
+Follow the verification norms in the root `CLAUDE.md`. The CI `verify` and `style-lint` checks are required on main, so treat a red check as a real failure. No `build:client-places` or cache-key bump is needed for any item here — all are presentation-only, no place-data or cached-shape changes. Verify PWA-chrome and reduced-motion changes on a real installed/OS-level target, not just the preview.

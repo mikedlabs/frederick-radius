@@ -18,7 +18,7 @@
  * keeps the old internal accordion.
  */
 import { useRef, useState } from "react";
-import { toast } from "sonner";
+import { notifyError, notifyRemoved } from "@/lib/feedback/notify";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import CategoryIcon from "@/components/place/CategoryIcon";
@@ -57,6 +57,24 @@ function motifClass(category: string): string {
   return `sw-m-${MOTIF_BY_FAMILY[category] ?? "swirl"}`;
 }
 
+/**
+ * A removed card takes its Remove button with it. When that button held
+ * focus, call the returned function once the removal is confirmed: focus
+ * moves to the neighboring card, or to the Saved heading when the deck is
+ * empty, instead of falling to <body>. Shared by the place and event decks.
+ */
+export function walletFocusAfterRemoval(button: HTMLButtonElement): () => void {
+  if (document.activeElement !== button) return () => {};
+  const slot = button.closest(".sw-slot");
+  const neighborId = (slot?.nextElementSibling ?? slot?.previousElementSibling)?.id;
+  return () => window.requestAnimationFrame(() => {
+    // The confirmed store update has removed the old control by now.
+    if (document.activeElement !== button && document.activeElement !== document.body) return;
+    const neighbor = neighborId ? document.getElementById(neighborId)?.querySelector<HTMLElement>(".sw-brand") : null;
+    (neighbor ?? document.getElementById("saved-page-heading"))?.focus();
+  });
+}
+
 
 function Card({
   place,
@@ -75,8 +93,8 @@ function Card({
   // page to find its save control. The toggle is the same auth-aware seam
   // the save side uses (DB when signed in, localStorage otherwise), so the
   // stores update and the card leaves the deck without a reload. One tap, no
-  // confirm: re-saving is a single tap on the place page, so the mistake
-  // costs less than a dialog on every intended removal.
+  // confirm: the toast that names the place carries Undo, so a slip costs
+  // less than a dialog on every intended removal.
   const failureDescriptionRef = useRef<string | null>(null);
   const toggleFollow = useToggleFollow(place.slug, "saved_wallet", (description) => { failureDescriptionRef.current = description; });
   const mutation = useFollowMutationState(place.slug);
@@ -107,6 +125,22 @@ function Card({
     track(open ? "saved_wallet_collapse" : "saved_wallet_raise", {
       category: place.category,
     });
+  }
+
+  // Undo usually runs after this card has left the deck. The follow toggle
+  // works off module stores, so it still restores the place from here.
+  async function restore() {
+    failureDescriptionRef.current = null;
+    try {
+      const saved = await toggleFollow(true);
+      if (failureDescriptionRef.current !== null || !saved) throw new Error("Restore not confirmed");
+    } catch {
+      notifyError({
+        title: "Could not undo this change",
+        description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again.",
+        onRetry: () => void restore(),
+      });
+    }
   }
 
   return (
@@ -258,17 +292,20 @@ function Card({
           </a>
           <button
             type="button"
-            onClick={async () => {
+            onClick={async (event) => {
               if (removingRef.current) return;
               removingRef.current = true;
+              const moveFocus = walletFocusAfterRemoval(event.currentTarget);
               setRemoving(true);
               failureDescriptionRef.current = null;
               try {
                 const stillSaved = await toggleFollow(false);
                 if (failureDescriptionRef.current !== null || stillSaved) throw new Error("Removal not confirmed");
                 haptic("light");
+                notifyRemoved({ label: place.name, onUndo: () => void restore(), item: { type: "place", id: place.slug } });
+                moveFocus();
               } catch {
-                toast.error("Could not remove from Saved", { description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again." });
+                notifyError({ title: "Could not remove from Saved", description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again." });
               } finally {
                 setRemoving(false);
                 removingRef.current = false;

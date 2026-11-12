@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import PageBloom from "@/components/ui/PageBloom";
 import { PUBLISHED_LETTERS } from "@/data/dear-frederick";
 
 export const metadata: Metadata = {
@@ -24,7 +23,6 @@ export const metadata: Metadata = {
 export default function DearFrederickIndex() {
   return (
     <div className="relative space-y-7">
-      <PageBloom variant="warm-cool" />
 
       <header className="max-w-[42rem] space-y-2">
         <h1 className="display-1 font-editorial" style={{ color: "var(--app-ink)" }}>

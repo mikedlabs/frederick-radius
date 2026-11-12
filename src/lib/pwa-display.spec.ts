@@ -59,12 +59,6 @@ describe("install prompt policy", () => {
     expect(isInstallPromptSuppressedPath("/ask/breakfast")).toBe(true);
     expect(isInstallPromptSuppressedPath("/places/gravel-and-grind-frederick")).toBe(true);
     expect(isInstallPromptSuppressedPath("/events/alive-at-five")).toBe(true);
-    expect(isInstallPromptSuppressedPath("/fair")).toBe(true);
-    expect(
-      isInstallPromptSuppressedPath(
-        "/moments/great-frederick-fair-2026",
-      ),
-    ).toBe(true);
     expect(isInstallPromptSuppressedPath("/places")).toBe(false);
     expect(isInstallPromptSuppressedPath("/transit-news")).toBe(false);
     expect(isInstallPromptSuppressedPath("/events-editorial")).toBe(false);

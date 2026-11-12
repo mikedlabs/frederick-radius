@@ -19,15 +19,13 @@ npm run scan:devibe:all   # public product plus private and experimental surface
 The public scan excludes the following separate surfaces:
 
 - `/pitch` and its marketing-only components and helpers.
-- `/proto` and its prototype components. Production already blocks these
-  routes.
 - `/admin` and its operational components. These tools are private and do not
   define the customer-facing brand.
 - The legacy pitch token block inside `globals.css`. The rest of that shared
   stylesheet remains in the public scan.
 
 The all-surfaces command keeps those findings visible. It is the correct scan
-before making `/pitch`, a prototype, or an admin tool public.
+before making `/pitch` or an admin tool public.
 
 Useful direct commands are:
 
@@ -43,14 +41,28 @@ not fail the command.
 
 ## Current baseline
 
-The July 22 public-product pass scanned 1,193 files and excluded 81 files that
-belong to the separate surfaces above.
+The November 10, 2026 public-product scan, taken with the interface update
+the owner approved that day applied, covered 2,303 files and excluded 58 files
+that belong to the separate surfaces above. An earlier scan the same day
+reported 343 medium findings, before the fair, the beta layer, the push stack
+and the prototype pages were removed and before the interface update.
 
 | Signal | Public product | All surfaces | Reading |
 |---|---:|---:|---|
-| High | 0 | 31 | Violet gradients and gradient text remain isolated to the internal pitch world. |
-| Medium | 323 | Not the release gate | The main debt is 307 uses of oversized rounding or capsules. This is real repetition, not a reason to call the product finished. |
+| High | 0 | 30 | Violet gradients and gradient text remain isolated to the internal pitch world. |
+| Medium | 233 | Not the release gate | 224 uses of oversized rounding or capsules, 7 glow shadows and 2 routine motion patterns. Measured across all surfaces against the same day's `main`, the interface update took the rounding count from 356 to 280. Of the 224 that remain in the public product, 54 are in `globals.css` (51 `border-radius: 999px` rules and 3 `border-radius: 9999px` rules), many of them rules the update overrides without deleting. Most of the rest sit on specialty guide pages the update did not reach. This is real repetition, not a reason to call the product finished. |
 | Low | 1 | Not the release gate | One source-owned sentence matches a generic-copy expression. Review its provenance before changing it. |
+
+The interface update covers Today, Map, Events, Saved, Find, Tools, Settings,
+Ask, place pages, event pages and town pages. A capsule that survives on those
+surfaces should be a compact filter chip, a status badge or a toggle switch.
+Anything else there is a regression.
+
+Between October 12 and November 10 this scan skipped almost all of
+`globals.css`, because the end marker of the excluded pitch block had been
+deleted and the exclusion ran to the end of the file. Counts recorded in that
+window understate the stylesheet. The scanner now exits with an error when a
+start marker has no end marker.
 
 Zero high findings means the public product avoids the loudest stock defaults.
 It does not mean the visual system is done. Repeated pills, generic cards, and
@@ -60,14 +72,24 @@ routine entrance motion can still make a page feel assembled from a template.
 
 The product should read like a field guide, not a stack of floating SaaS cards.
 
-- Cream paper is the normal canvas. Use rules, spacing, type, and registration
-  marks to establish hierarchy before adding another container.
-- Utility controls use a 6 to 8 pixel corner. Cards use 10 to 12 pixels. Large
-  panels and sheets sit near 16 pixels. Use the closest named radius token.
-- Full capsules are reserved for status, toggles, and compact filters. A normal
-  action, navigation item, content card, or source row should not be a pill.
+- White is the normal canvas and soft gray is the inset surface (`--app-bg`
+  and `--app-bg-sunken`). Dark appearance uses its own canvas and surface
+  tokens. Content is rows on the canvas separated by a hairline or space.
+  Use rules, spacing, and type to establish hierarchy before adding a
+  container, and do not put a card around ordinary content.
+- Use the named radius tokens from `src/app/globals.css` (`--app-radius-sm`
+  4px, `--app-radius-md` 6px, `--app-radius-lg` 8px, `--app-radius-xl` 10px)
+  instead of a hand-set pixel value. Match the nearest shared primitive:
+  `Button`, fields, and the `SortDropdown` trigger and menu use
+  `--app-radius-md`; `BottomSheet` and `BottomDrawer` use `--app-radius-lg`
+  at their top corners; `Row` and `EmptyState` have no box and no radius.
+- Full capsules are reserved for compact filter chips, status badges, and
+  toggle switches. A normal action, navigation item, row, source line, or
+  informational tag should not be a pill. An informational tag is plain text.
 - Shadows indicate a real layer such as a menu or sheet. Routine content stays
   flat. Decorative glows are not part of the public product.
+- A row without a real photograph shows a plain category glyph in muted ink,
+  not a gray or coral-tinted icon tile.
 - Missing photography is labeled honestly. Do not simulate a photo with random
   gradients, generated textures, arbitrary initials, or seed-based artwork.
 - Motion should explain a state change or spatial relationship. A repeated
@@ -81,10 +103,17 @@ The product should read like a field guide, not a stack of floating SaaS cards.
 - The public palette does not use violet, indigo, or purple as its primary
   product color.
 - Headlines use solid ink instead of gradient-filled text.
-- Libre Caslon Display and Public Sans are the named Warm Civic type system,
-  not untouched library defaults.
-- Brick, Cream, Ink, Forest, Creek, Plum, and Ochre come from the Radius brand
-  tokens.
+- Product UI uses the System sans stack defined in `src/lib/brand.ts`. This is
+  the approved Brand System 1.4 choice, so do not replace it with a downloaded
+  typeface. Libre Caslon Display Regular is limited to the header wordmark
+  in the top bar and a rare editorial signature on a few specialty guide
+  pages. No page title or content on Today, Map, Events,
+  Saved, Find, Tools, Settings, Ask, place pages or event pages uses it.
+  Public Sans is the print and export family.
+- Deep Coral, White, Charcoal, Catoctin Forest, Creek, Plum, and Ochre Amber
+  come from the Radius brand tokens in `src/lib/brand.ts`. The `brick`,
+  `cream`, and `ink` keys are compatibility names for Deep Coral, White, and
+  Charcoal.
 - User-facing icons use the established SVG system instead of emoji.
 
 ## Shipping checklist

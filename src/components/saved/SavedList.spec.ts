@@ -8,6 +8,7 @@ import {
   fetchSavedEventsBySlugs,
   fetchSavedEventsHydration,
   mergeSavedEventHydration,
+  savedEventRowIds,
   mergeSavedPlaceHydration,
   SavedPlaceRefreshNotice,
   fetchSavedPlacesBySlugs,
@@ -125,19 +126,14 @@ describe("SavedList empty state", () => {
     expect(source).toContain("if (savedStatePending || placesPending)");
   });
 
-  it("does not advertise the dormant saved-event reminder worker", () => {
+  it("does not advertise saved-event reminders, which the app does not send", () => {
     const button = readFileSync("src/components/saved/SaveButton.tsx", "utf8");
     const list = readFileSync("src/components/saved/SavedList.tsx", "utf8");
-    const notifications = readFileSync(
-      "src/components/settings/NotificationsCard.tsx",
-      "utf8",
-    );
 
     expect(button).not.toContain("syncSavedEventReminder");
     expect(button).not.toContain("maybeOfferEventReminders");
     expect(button).not.toContain("nudge an hour");
     expect(list).not.toContain("A nudge before a saved place closes");
-    expect(notifications).not.toContain('topics: ["saved-events"');
   });
 
   it("hydrates a signed-in saved page from the server snapshot before client effects", () => {
@@ -281,6 +277,26 @@ describe("SavedList empty state", () => {
 
     expect(next.get("old-event-title")).toBe(canonical);
     expect(next.get("current-event-title")).toBe(canonical);
+  });
+
+  it("keeps the saved row id of an event saved under an older slug", () => {
+    const canonical = { slug: "current-event-title" } as EventWithMeta;
+    const other = { slug: "other-event" } as EventWithMeta;
+    const eventsBySlug = new Map([
+      ["old-event-title", canonical],
+      ["current-event-title", canonical],
+      ["other-event", other],
+    ]);
+
+    expect(savedEventRowIds([
+      { type: "event", id: "old-event-title" },
+      { type: "place", id: "other-event" },
+      { type: "event", id: "other-event" },
+      { type: "event", id: "unresolved-event" },
+    ], eventsBySlug)).toEqual({
+      "current-event-title": "old-event-title",
+      "other-event": "other-event",
+    });
   });
 
   it("tells the reader ambiguous event misses are still saved", () => {

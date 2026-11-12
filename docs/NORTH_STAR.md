@@ -150,9 +150,12 @@ and tells you plainly. Confident through restraint.
 - Not cute, not corporate, not bureaucratic. Human and exact.
 - "Good morning. Patio weather." "Recycling's Thursday." "Three places
   open near you." Short, true, useful.
-- Visual: the field-guide system (warm paper, daypart sky, tactile
-  cards, radius motif) — now with the **voice + interaction laws** above
-  written down, so the brand is a *behavior*, not just a palette.
+- Visual: the plain field-guide system approved on November 10, 2026
+  (White ground, ruled rows instead of cards, type-led hierarchy, the
+  Ripple, and at most one solid Deep Coral block on a page, which only
+  Today and Events carry). The **voice and
+  interaction laws** above are written down, so the brand is a *behavior*,
+  not just a palette.
 
 ---
 

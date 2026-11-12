@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
-import { Accessibility, AlertTriangle, ArrowRight, Ban, Calendar, ChevronDown, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
+import { AlertTriangle, ArrowRight, Ban, Calendar, Captions, ChevronDown, ExternalLink, MapPin, Navigation, Ticket, Utensils, Wine } from "lucide-react";
 import { EVENTS } from "@/data/events";
 import { formatEventWhen, seriesOccurrenceLabel, eventDateBlock } from "@/lib/loaders/events";
 import {
@@ -116,7 +116,7 @@ function SeriesDateRow({
     >
       <span className="w-11 shrink-0 text-center" aria-hidden>
         <span className="block text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--app-ink-2)" }}>{date.month}</span>
-        <span className="block font-serif text-lg font-semibold leading-none" style={{ color: "var(--app-ink)" }}>{date.day}</span>
+        <span className="block font-sans text-lg font-bold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>{date.day}</span>
         <span className="block text-[10px]" style={{ color: "var(--app-ink-3)" }}>{date.weekday}</span>
       </span>
       <span className="min-w-0 flex-1">
@@ -361,6 +361,23 @@ export default async function EventPage({
   // treatment; ended-ness only speaks for events that actually ran.
   const hasEnded =
     eventStatus === "scheduled" && isEventListingEnded(event, new Date());
+  // When the desktop action row already links the publisher's page, the
+  // Source row's inline link would be a second copy of the same link one
+  // screen apart. Keep the inline link on phone, where the bottom bar has no
+  // such action, and drop it at the row's breakpoint. This mirrors the row's
+  // own choice of link below and compares the address, because several
+  // labels can point at the source page: "Official page", "Online details"
+  // when an online event has no separate link, and a cancelled or postponed
+  // event's "Organizer's announcement" unless the notice names its own.
+  const desktopRowLinkHref =
+    eventStatus !== "scheduled" ? (notice?.source_url ?? event.source_url)
+    : hasEnded ? (event.venue_place_slug ? null : event.source_url)
+    : event.ticket_url ? event.ticket_url
+    : event.rsvp_url ? event.rsvp_url
+    : attendance !== "physical" && onlineActionUrl ? onlineActionUrl
+    : event.venue_place_slug ? null
+    : event.source_url;
+  const desktopRowHasSourceLink = Boolean(event.source_url) && desktopRowLinkHref === event.source_url;
   const eventVisual = eventCardVisual(event);
   const photoVisual = eventVisual?.presentation === "photo" ? eventVisual : null;
   // Server component: request-time clock is correct here, not impure render.
@@ -402,8 +419,9 @@ export default async function EventPage({
   return (
     // AppMain owns the one shared mobile-chrome reserve. Adding another page
     // pad here created a large empty tail beneath every event.
+    // One 720px reading column for the whole page, matching the header.
     <div
-      className="space-y-5 sm:space-y-6"
+      className="max-w-[720px] space-y-5 sm:space-y-6"
       data-decision-surface="events"
       data-decision-entity="event"
       data-decision-id={event.slug}
@@ -444,8 +462,8 @@ export default async function EventPage({
           mistaken for an invitation. */}
       {hasEnded && (
         <div
-          className="flex items-center gap-2 rounded-[var(--app-radius-md)] border px-4 py-2.5 text-[13px] font-medium"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)", background: "var(--app-bg-elevated)" }}
+          className="flex max-w-[720px] items-center gap-2 border-y py-2.5 text-[13px] font-medium"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
         >
           <Calendar className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} />
           This event has already happened.
@@ -492,138 +510,126 @@ export default async function EventPage({
         );
       })()}
 
-      {/* Cinematic hero. Two paths:
-       *   - With hero_image: full-bleed 16:11 photo, dark legibility
-       *     gradient, date pill + share/save floating on top, title +
-       *     category eyebrow overlaid at the bottom. Same visual
-       *     language as FeaturedTonight on /today.
-       *   - Without hero_image: a richer category-tinted graphic hero
-       *     with a watermark calendar glyph + a bigger title. Still
-       *     reads as editorial, not as "missing image."
-       * Shader-rim around the whole card for parity with the Today
-       * editorial moments. */}
+      {/* PLAIN TOOL header: no outer card. The category label, then the
+       * heavy title, the approved venue photo when there is one, and the
+       * decision facts as ruled rows (when, where, price, source) on the
+       * white ground. The page's one filled coral action is in the action
+       * row below. */}
       <header
         data-decision-impression="true"
         data-decision-surface="events"
         data-decision-entity="event"
         data-decision-id={event.slug}
         data-decision-position="detail"
-        className="shader-rim overflow-hidden rounded-[var(--app-radius-xl)] border"
+        className="min-w-0 max-w-[720px]"
         style={{
-          borderColor: "var(--app-border)",
           opacity: eventStatus === "cancelled" ? 0.85 : 1,
           viewTransitionName: `event-${event.slug}`,
         }}
       >
-        <div className="relative min-w-0 bg-[var(--app-bg-elevated)] px-5 pb-2 pt-5">
+        <div className="relative min-w-0">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs font-semibold" style={{ color: "var(--app-ink-3)" }}>{cat?.name ?? "Event"}</p>
+            <p className="text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>{cat?.name ?? "Event"}</p>
             <div className="flex shrink-0 items-center gap-1">
               <EventActions event={event} actions={["share"]} />
-              <div className="hidden lg:block"><SaveButton refType="event" refId={event.slug} label={eventDisplayTitle(event)} /></div>
+              <div className="hidden lg:block"><SaveButton refType="event" refId={event.slug} label={`Save ${eventDisplayTitle(event)}`} /></div>
             </div>
           </div>
-          <h1 className="break-words text-[1.625rem] font-semibold leading-tight tracking-tight sm:text-[2rem]" style={{ color: "var(--app-ink)" }}>{eventDisplayTitle(event)}</h1>
+          <h1 className="break-words text-[2rem] font-extrabold leading-[1.08] tracking-[-0.025em] sm:text-[2.5rem]" style={{ color: "var(--app-ink)" }}>{eventDisplayTitle(event)}</h1>
         </div>
-        {photoVisual && <EventVenuePhoto visual={photoVisual} priority className="bg-[var(--app-bg-elevated)] px-5 pt-3" />}
-        {/* Below-the-hero metadata strip: trust + description + venue/
-         *  free/recurrence/organizer/freshness. */}
-        <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
-          {/* WHEN — promoted to the page's clear second-strongest element,
-              directly under the title. The full date+time was previously
-              the SMALLEST type on the page (a 10px hero pill / an eyebrow
-              fragment). Date in the display face, time range in tabular Public Sans
-              (the data voice), one calm line, no box. */}
-          <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-            <span className="inline-flex items-baseline gap-1.5">
-              <Calendar className="h-4 w-4 translate-y-0.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand)" }} aria-hidden />
-              <span className="text-[1.0625rem] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-                {whenDate}
-              </span>
-            </span>
-            {whenTime && (
-              <span className="text-sm tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-                {whenTime}
-              </span>
-            )}
-            {saveCount !== null && (
-              <span className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                · saved {saveCount} times
-              </span>
-            )}
-          </div>
-          {timeCaution && <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{timeCaution}</p>}
-          <TrustChip signal={eventTrust(event)} detail />
-          <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--app-ink-3)" }}>
-            {attendanceLabel && (
-              <span className="inline-flex items-center gap-1">
-                {physicalAttendance ? (
-                  <MapPin className="h-3.5 w-3.5" aria-hidden />
-                ) : (
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+        {photoVisual && <EventVenuePhoto visual={photoVisual} priority className="pt-4" />}
+        <div className="space-y-4 pt-4">
+          {/* Ruled fact rows. Each row is a short uppercase label and its
+              value; hairlines separate them. WHEN leads, directly under the
+              title, as the page's second-strongest element. */}
+          <dl className="border-t" style={{ borderColor: "var(--app-border)" }}>
+            <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
+              <dt className="pt-0.5 text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>When</dt>
+              <dd className="min-w-0">
+                <span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                  <span className="text-[1.0625rem] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+                    {whenDate}
+                  </span>
+                  {whenTime && (
+                    <span className="text-[15px] tabular-nums" style={{ color: "var(--app-ink)" }}>
+                      {whenTime}
+                    </span>
+                  )}
+                </span>
+                {timeCaution && <span className="mt-1 block text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{timeCaution}</span>}
+                {event.is_recurring && event.recurrence_text && (
+                  <span className="mt-1 block text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{event.recurrence_text}</span>
                 )}
-                {attendanceLabel}
-              </span>
+                {saveCount !== null && (
+                  <span className="mt-1 block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                    Saved {saveCount} times
+                  </span>
+                )}
+              </dd>
+            </div>
+            {attendanceLabel && (
+              <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
+                <dt className="pt-0.5 text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>{physicalAttendance ? "Where" : "Online"}</dt>
+                <dd className="min-w-0 break-words text-[15px] leading-snug" style={{ color: "var(--app-ink)" }}>{attendanceLabel}</dd>
+              </div>
             )}
-            {event.is_free ? (
-              <span className="font-medium" style={{ color: "var(--app-cool)" }}>Free</span>
-            ) : event.price_text && (
-              <span className="font-mono tabular-nums">{event.price_text}</span>
-            )}
-            {event.is_recurring && event.recurrence_text && (
-              <span className="rounded-full bg-[var(--app-bg-sunken)] px-2 py-0.5 text-[11px]">
-                {event.recurrence_text}
-              </span>
+            {(event.is_free || event.price_text) && (
+              <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
+                <dt className="pt-0.5 text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>Price</dt>
+                <dd className="min-w-0 break-words text-[15px] leading-snug tabular-nums" style={{ color: "var(--app-ink)" }}>{event.is_free ? "Free" : event.price_text}</dd>
+              </div>
             )}
             {event.organizer && (
-              <span>by {event.organizer}</span>
+              <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
+                <dt className="pt-0.5 text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>Organizer</dt>
+                <dd className="min-w-0 break-words text-[15px] leading-snug" style={{ color: "var(--app-ink)" }}>{event.organizer}</dd>
+              </div>
             )}
-            <FreshnessChip
-              iso={event.last_verified_at ?? undefined}
-              subject="Event"
-            />
-            {event.source_url && <EventSourceLink href={event.source_url} />}
-          </div>
+            {communicationAccess.length > 0 && (
+              // "Communication access" is wider than the 6rem label column, so
+              // this one row puts its label above the value instead of
+              // breaking the word. The captions glyph names ASL and
+              // captioning, not wheelchair access.
+              <div className="grid grid-cols-1 gap-y-1 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
+                <dt className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
+                  <Captions className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                  Communication access
+                </dt>
+                <dd className="min-w-0">
+                  <span className="block text-[15px] leading-snug" style={{ color: "var(--app-ink)" }}>{communicationAccess.join(" · ")}</span>
+                  <span className="mt-0.5 block text-[12px]" style={{ color: "var(--app-ink-2)" }}>Shown only when stated by the event publisher.</span>
+                </dd>
+              </div>
+            )}
+            <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
+              <dt className="pt-0.5 text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>Source</dt>
+              {/* Trust, freshness and the source link stack at every width,
+                  as they do on phone, instead of running side by side. */}
+              <dd className="flex min-w-0 flex-col items-start gap-y-1 text-xs" style={{ color: "var(--app-ink-2)" }}>
+                <TrustChip signal={eventTrust(event)} detail />
+                <FreshnessChip
+                  iso={event.last_verified_at ?? undefined}
+                  subject="Event"
+                />
+                {event.source_url && (desktopRowHasSourceLink
+                  ? <span className="lg:hidden"><EventSourceLink href={event.source_url} /></span>
+                  : <EventSourceLink href={event.source_url} />)}
+              </dd>
+            </div>
+          </dl>
           {eventVisual?.presentation === "artwork" && <EventArtwork visual={eventVisual} />}
           {desc && (
             <div className="max-w-[68ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               <p>{description.preview}</p>
               {description.rest ? (
                 <details className="group mt-1">
-                  <summary className="tap-44 inline-flex cursor-pointer list-none items-center gap-1 text-[12.5px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+                  <summary className="tap-44 inline-flex cursor-pointer list-none items-center gap-1 text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-link)" }}>
                     Read full description
                     <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
                   </summary>
                   <p className="pb-1">{description.rest}</p>
                 </details>
               ) : null}
-            </div>
-          )}
-          {communicationAccess.length > 0 && (
-            <div
-              className="flex items-start gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2.5"
-              style={{
-                borderColor: "color-mix(in srgb, var(--app-cool) 30%, var(--app-border))",
-                background: "color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated))",
-              }}
-            >
-              <Accessibility
-                className="mt-0.5 h-4 w-4 shrink-0"
-                strokeWidth={2}
-                style={{ color: "var(--app-cool)" }}
-                aria-hidden
-              />
-              <div className="min-w-0">
-                <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                  Communication access
-                </p>
-                <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                  {communicationAccess.join(" · ")}
-                </p>
-                <p className="mt-0.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                  Shown only when stated by the event publisher.
-                </p>
-              </div>
             </div>
           )}
         </div>
@@ -636,22 +642,18 @@ export default async function EventPage({
           // all invite a trip that won't happen. The two honest actions
           // are the organizer's own word and a way back to tonight.
           const announceUrl = notice?.source_url ?? event.source_url ?? null;
-          const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
-          const quietStyle = { borderColor: "var(--app-border)", color: "var(--app-ink)" };
-          const primaryCls = "tactile-glow-brand flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-3 text-xs font-semibold transition";
-          const primaryStyle = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
           return (
-            <div className={`hidden ${announceUrl ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-2 lg:grid`}>
+            <div className={DESKTOP_ACTION_ROW}>
+              <Link prefetch={false} href="/events?lens=today" className={DESKTOP_PRIMARY_CLASS} style={DESKTOP_PRIMARY_STYLE}>
+                <Calendar className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_PRIMARY_ICON} aria-hidden />
+                Find something else
+              </Link>
               {announceUrl && (
-                <a href={announceUrl} target="_blank" rel="noopener noreferrer" className={quietCls} style={quietStyle}>
-                  <ExternalLink className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <a href={announceUrl} target="_blank" rel="noopener noreferrer" className={DESKTOP_QUIET_CLASS} style={DESKTOP_QUIET_STYLE}>
+                  <ExternalLink className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_QUIET_ICON} aria-hidden />
                   Organizer&rsquo;s announcement
                 </a>
               )}
-              <Link prefetch={false} href="/events?lens=today" className={primaryCls} style={primaryStyle}>
-                <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-on-brand)" }} aria-hidden />
-                Find something else
-              </Link>
             </div>
           );
         })()
@@ -661,10 +663,6 @@ export default async function EventPage({
         // gone. The record stays; the actions become the venue's page (the
         // durable thing a reader can still visit) and a way back to tonight.
         (() => {
-          const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
-          const quietStyle = { borderColor: "var(--app-border)", color: "var(--app-ink)" };
-          const primaryCls = "tactile-glow-brand flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-3 text-xs font-semibold transition";
-          const primaryStyle = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
           const recordAction =
             event.venue_place_slug
               ? { href: `/places/${event.venue_place_slug}`, external: false, label: "Venue page" }
@@ -672,22 +670,22 @@ export default async function EventPage({
                 ? { href: event.source_url, external: true, label: "Official page" }
                 : null;
           return (
-            <div className={`hidden ${recordAction ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-2 lg:grid`}>
+            <div className={DESKTOP_ACTION_ROW}>
+              <Link prefetch={false} href="/events?lens=today" className={DESKTOP_PRIMARY_CLASS} style={DESKTOP_PRIMARY_STYLE}>
+                <Calendar className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_PRIMARY_ICON} aria-hidden />
+                Find something else
+              </Link>
               {recordAction && (recordAction.external ? (
-                <a href={recordAction.href} target="_blank" rel="noopener noreferrer" className={quietCls} style={quietStyle}>
-                  <ExternalLink className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <a href={recordAction.href} target="_blank" rel="noopener noreferrer" className={DESKTOP_QUIET_CLASS} style={DESKTOP_QUIET_STYLE}>
+                  <ExternalLink className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_QUIET_ICON} aria-hidden />
                   {recordAction.label}
                 </a>
               ) : (
-                <Link prefetch={false} href={recordAction.href} className={quietCls} style={quietStyle}>
-                  <MapPin className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <Link prefetch={false} href={recordAction.href} className={DESKTOP_QUIET_CLASS} style={DESKTOP_QUIET_STYLE}>
+                  <MapPin className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_QUIET_ICON} aria-hidden />
                   {recordAction.label}
                 </Link>
               ))}
-              <Link prefetch={false} href="/events?lens=today" className={primaryCls} style={primaryStyle}>
-                <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-on-brand)" }} aria-hidden />
-                Find something else
-              </Link>
             </div>
           );
         })()
@@ -705,20 +703,49 @@ export default async function EventPage({
           null;
         const hasThird = thirdAction !== null;
         const dirPrimary = physicalAttendance && hasPreciseLocation && !hasThird;
-        const gridCols =
-          1 +
-          (physicalAttendance && hasPreciseLocation ? 1 : 0) +
-          (hasThird ? 1 : 0);
 
-        const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
-        const quietStyle = { borderColor: "var(--app-border)", color: "var(--app-ink)" };
-        const primaryCls = "tactile-glow-brand flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-3 text-xs font-semibold transition";
-        const primaryStyle = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
-        const iconBrand = { color: "var(--app-brand)" };
-        const iconOnBrand = { color: "var(--app-on-brand)" };
 
         return (
-          <div className={`hidden ${gridCols >= 3 ? "lg:grid-cols-3" : gridCols === 2 ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-2 lg:grid`}>
+          <div className={DESKTOP_ACTION_ROW}>
+            {/* The single filled action comes first, in reading order and on
+                screen; the others follow as unboxed icon-and-label links. */}
+            {thirdAction && (thirdAction.external ? (
+              <a
+                href={thirdAction.href}
+                data-decision-action={
+                  event.ticket_url
+                    ? "ticket"
+                    : event.rsvp_url
+                      ? "reservation"
+                      : "website"
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className={DESKTOP_PRIMARY_CLASS}
+                style={DESKTOP_PRIMARY_STYLE}
+              >
+                <thirdAction.Icon className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_PRIMARY_ICON} aria-hidden />
+                {thirdAction.label}
+              </a>
+            ) : (
+              <Link prefetch={false} href={thirdAction.href} data-decision-action="open" className={DESKTOP_PRIMARY_CLASS} style={DESKTOP_PRIMARY_STYLE}>
+                <thirdAction.Icon className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_PRIMARY_ICON} aria-hidden />
+                {thirdAction.label}
+              </Link>
+            ))}
+            {physicalAttendance && hasPreciseLocation && directionsUrl && (
+              <a
+                href={directionsUrl}
+                data-decision-action="directions"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={dirPrimary ? DESKTOP_PRIMARY_CLASS : DESKTOP_QUIET_CLASS}
+                style={dirPrimary ? DESKTOP_PRIMARY_STYLE : DESKTOP_QUIET_STYLE}
+              >
+                <Navigation className="h-[18px] w-[18px]" strokeWidth={1.75} style={dirPrimary ? DESKTOP_PRIMARY_ICON : DESKTOP_QUIET_ICON} aria-hidden />
+                Directions
+              </a>
+            )}
             {isLive ? (
               <EventCalendarButton
                 event={{
@@ -733,48 +760,11 @@ export default async function EventPage({
                 }}
               />
             ) : (
-              <a href={icsUrl} download className={quietCls} style={quietStyle}>
-                <Calendar className="h-5 w-5" strokeWidth={1.75} style={iconBrand} aria-hidden />
+              <a href={icsUrl} download className={DESKTOP_QUIET_CLASS} style={DESKTOP_QUIET_STYLE}>
+                <Calendar className="h-[18px] w-[18px]" strokeWidth={1.75} style={DESKTOP_QUIET_ICON} aria-hidden />
                 Add to calendar
               </a>
             )}
-            {physicalAttendance && hasPreciseLocation && directionsUrl && (
-              <a
-                href={directionsUrl}
-                data-decision-action="directions"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={dirPrimary ? primaryCls : quietCls}
-                style={dirPrimary ? primaryStyle : quietStyle}
-              >
-                <Navigation className="h-5 w-5" strokeWidth={1.75} style={dirPrimary ? iconOnBrand : iconBrand} aria-hidden />
-                Directions
-              </a>
-            )}
-            {thirdAction && (thirdAction.external ? (
-              <a
-                href={thirdAction.href}
-                data-decision-action={
-                  event.ticket_url
-                    ? "ticket"
-                    : event.rsvp_url
-                      ? "reservation"
-                      : "website"
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className={primaryCls}
-                style={primaryStyle}
-              >
-                <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={iconOnBrand} aria-hidden />
-                {thirdAction.label}
-              </a>
-            ) : (
-              <Link prefetch={false} href={thirdAction.href} data-decision-action="open" className={primaryCls} style={primaryStyle}>
-                <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={iconOnBrand} aria-hidden />
-                {thirdAction.label}
-              </Link>
-            ))}
           </div>
         );
       })()}
@@ -795,7 +785,7 @@ export default async function EventPage({
             )}
             prefetch={false}
             className="tap-44 mt-1 inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4"
-            style={{ color: "var(--app-brand-press)" }}
+            style={{ color: "var(--app-link)" }}
           >
             Plan around this event
             <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -833,7 +823,7 @@ export default async function EventPage({
 
       {event.info && (event.info.admission || event.info.drinks || event.info.food) && (
         <section className="space-y-2">
-          <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <h2 className="font-sans text-[20px] font-bold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
             Good to know
           </h2>
           <ul
@@ -842,7 +832,7 @@ export default async function EventPage({
           >
             {event.info.admission && (
               <li className="flex items-start gap-3 py-2.5" style={{ borderColor: "var(--app-border)" }}>
-                <Ticket className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <Ticket className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand-text)" }} aria-hidden />
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>Admission</p>
                   <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>{event.info.admission}</p>
@@ -851,7 +841,7 @@ export default async function EventPage({
             )}
             {event.info.drinks && (
               <li className="flex items-start gap-3 py-2.5" style={{ borderColor: "var(--app-border)" }}>
-                <Wine className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <Wine className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand-text)" }} aria-hidden />
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>Drinks</p>
                   <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>{event.info.drinks}</p>
@@ -863,7 +853,7 @@ export default async function EventPage({
                 "rotating vendors" right above the actual lineup. */}
             {event.info.food && !(event.food_trucks && event.food_trucks.length > 0) && (
               <li className="flex items-start gap-3 py-2.5" style={{ borderColor: "var(--app-border)" }}>
-                <Utensils className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <Utensils className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand-text)" }} aria-hidden />
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>Food vendors</p>
                   <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>{event.info.food}</p>
@@ -880,27 +870,18 @@ export default async function EventPage({
       {event.food_trucks && event.food_trucks.length > 0 && (
         <section className="space-y-2">
           <h2
-            className="inline-flex items-center gap-2 font-serif text-lg font-semibold tracking-tight"
+            className="font-sans text-[20px] font-bold leading-tight tracking-[-0.02em]"
             style={{ color: "var(--app-ink)" }}
           >
-            <Utensils
-              className="h-4 w-4"
-              strokeWidth={2}
-              style={{ color: "var(--app-brand)" }}
-              aria-hidden
-            />
             Food trucks this week
           </h2>
-          <ul className="flex flex-wrap gap-1.5">
+          {/* Names are information, not controls: ruled rows, no capsules. */}
+          <ul className="divide-y border-y" style={{ borderColor: "var(--app-border)" }}>
             {event.food_trucks.map((name) => (
               <li
                 key={name}
-                className="inline-flex items-center rounded-full border px-2.5 py-1 text-[12px] font-semibold"
-                style={{
-                  borderColor: "var(--app-border)",
-                  background: "var(--app-bg-elevated)",
-                  color: "var(--app-ink-2)",
-                }}
+                className="py-2.5 text-[15px] font-semibold"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
               >
                 {name}
               </li>
@@ -912,8 +893,7 @@ export default async function EventPage({
       {lineup.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-baseline justify-between">
-            <h2 className="inline-flex items-center gap-2 font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-              <Music className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
+            <h2 className="font-sans text-[20px] font-bold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
               More dates
             </h2>
             <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>{lineup.length} dates</span>
@@ -928,7 +908,7 @@ export default async function EventPage({
           </ul>
           {moreLineupDates.length > 0 ? (
             <details className="group">
-              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-link)" }}>
                 Show {moreLineupDates.length} more dates
                 <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
               </summary>
@@ -953,22 +933,21 @@ export default async function EventPage({
         <section className="space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <h2
-              className="inline-flex items-center gap-2 font-serif text-lg font-semibold tracking-tight"
+              className="font-sans text-[20px] font-bold leading-tight tracking-[-0.02em]"
               style={{ color: "var(--app-ink)" }}
             >
-              <Calendar className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
               {moreUpcoming.title}
             </h2>
             <Link
               prefetch={false}
               href="/events"
               className="tap-44 inline-flex items-center text-[12px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
+              style={{ color: "var(--app-link)" }}
             >
               See all <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           </div>
-          <ul className="space-y-2">
+          <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
             {firstUpcoming.map((e) => (
               <li key={`${e.slug}-${e.starts_at}`}>
                 {/* glance, not row: the unified pool arrives venue-thumb
@@ -979,12 +958,12 @@ export default async function EventPage({
             ))}
           </ul>
           {remainingUpcoming.length > 0 ? (
-            <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
-              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+            <details className="group">
+              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-link)" }}>
                 Show {remainingUpcoming.length} more
                 <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
               </summary>
-              <ul className="space-y-2 pt-2">
+              <ul>
                 {remainingUpcoming.map((e) => (
                   <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} variant="glance" /></li>
                 ))}
@@ -1003,16 +982,16 @@ export default async function EventPage({
           <div className="space-y-5 pb-4 pt-2">
             {nearbyFood.length > 0 ? (
               <section className="space-y-2.5">
-                <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Eat &amp; drink nearby</h2>
-                <ul className="space-y-2">
+                <h2 className="font-sans text-[20px] font-bold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>Eat &amp; drink nearby</h2>
+                <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
                   {nearbyFood.map((p) => <li key={p.slug}><PlaceCard place={p} variant="row" /></li>)}
                 </ul>
               </section>
             ) : null}
             {nearbyParking.length > 0 ? (
               <section className="space-y-2.5">
-                <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Parking nearby</h2>
-                <ul className="space-y-2">
+                <h2 className="font-sans text-[20px] font-bold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>Parking nearby</h2>
+                <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
                   {nearbyParking.map((p) => <li key={p.slug}><PlaceCard place={p} variant="row" /></li>)}
                 </ul>
               </section>
@@ -1089,7 +1068,9 @@ export default async function EventPage({
                 is_all_day: event.is_all_day,
               }}
               barVariant={event.ticket_url || onlineActionUrl ? "quiet" : "primary"}
-              label="Add to calendar"
+              // The short visible label keeps four cells inside a 320px bar;
+              // the button's accessible name stays "Add to calendar".
+              label="Calendar"
             />
             {event.ticket_url && (
               <MobileBarLink
@@ -1125,8 +1106,19 @@ export default async function EventPage({
             )}
           </>
         )}
-        <SaveButton refType="event" refId={event.slug} label={eventDisplayTitle(event)} barLabel="Save" />
+        <SaveButton refType="event" refId={event.slug} label={`Save ${eventDisplayTitle(event)}`} barLabel="Save" />
       </MobileActionBar>
     </div>
   );
 }
+
+/* The desktop action row matches the place page: one filled Deep Coral
+   action, then unboxed icon-and-label links on the page ground. Each keeps a
+   48px target. */
+const DESKTOP_ACTION_ROW = "hidden flex-wrap items-center gap-x-6 gap-y-1 lg:flex";
+const DESKTOP_PRIMARY_CLASS = "tap-44 flex min-h-12 items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[15px] font-semibold";
+const DESKTOP_PRIMARY_STYLE = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
+const DESKTOP_PRIMARY_ICON = { color: "var(--app-on-brand)" };
+const DESKTOP_QUIET_CLASS = "tap-44 flex min-h-12 items-center justify-start gap-2 px-1 text-[15px] font-semibold hover:underline";
+const DESKTOP_QUIET_STYLE = { color: "var(--app-ink)" };
+const DESKTOP_QUIET_ICON = { color: "var(--app-ink-2)" };

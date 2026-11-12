@@ -668,7 +668,7 @@ describe("search — app-page guides", () => {
   it("indexes the working tools that were previously missing from global search", () => {
     expect(pageHrefs("map layers")).toContain("/map");
     expect(pageHrefs("event calendar")).toContain("/events/calendar");
-    expect(pageHrefs("quiet hours")).toContain("/settings/notifications");
+    expect(pageHrefs("phone feedback")).toContain("/settings");
     expect(pageHrefs("missing place")).toContain("/submit/place");
     expect(pageHrefs("field note")).toContain("/report");
   });

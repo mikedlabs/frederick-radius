@@ -63,6 +63,20 @@ describe("place detail save failure recovery", () => {
     expect(mocks.toast.error).toHaveBeenCalledTimes(1);
   });
 
+  it("names the place on save and removal, on one toast id with Undo for six seconds", async () => {
+    mocks.toggle.mockImplementationOnce(async () => { mocks.saved = true; return true; });
+    render();
+    await act(async () => button().click());
+    expect(mocks.toast.success).toHaveBeenCalledWith("Saved · Test stop", expect.objectContaining({
+      id: "save:place:test-stop", duration: 6000, action: { label: "Undo", onClick: expect.any(Function) },
+    }));
+    mocks.toggle.mockImplementationOnce(async () => { mocks.saved = false; return false; });
+    await act(async () => button().click());
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Test stop", {
+      id: "save:place:test-stop", duration: 6000, action: { label: "Undo", onClick: expect.any(Function) },
+    });
+  });
+
   it("serializes rapid taps and catches rejected Undo writes", async () => {
     let complete!: (saved: boolean) => void;
     mocks.toggle.mockReturnValueOnce(new Promise<boolean>((resolve) => { complete = resolve; }));

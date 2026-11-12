@@ -8,7 +8,6 @@ import {
 import { getScannerPatterns } from "@/lib/scanner/scannerPatterns";
 import ScannerBoard from "@/components/scanner/ScannerBoard";
 import ScannerPatterns from "@/components/scanner/ScannerPatterns";
-import PageBloom from "@/components/ui/PageBloom";
 import { PRODUCT_NAMES } from "@/lib/product-names";
 
 /**
@@ -43,7 +42,6 @@ export default async function ScannerPage() {
 
   return (
     <div className="relative mx-auto max-w-md space-y-6 py-6">
-      <PageBloom variant="cool" />
 
       <header>
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>

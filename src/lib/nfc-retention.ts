@@ -9,7 +9,7 @@ import { withStatementTimeout } from "@/lib/db/statement-timeout";
  * (every page view and named action writes a row), so without a retention floor
  * it grows without bound — and a leaked member cookie could flood it up to the
  * ingest rate limit. The data-health cron calls this on the same 90-day window
- * as push_log and feed_snapshots. It no-ops without a DB, but propagates query
+ * as feed_snapshots. It no-ops without a DB, but propagates query
  * failures so the independently scheduled retention phase cannot turn a failed
  * delete into a green zero-row result. The member rows themselves are kept
  * (they are the roster); only their behavioral trail ages out.

@@ -4,7 +4,6 @@ import {
   feedbackSendErrorMessage,
   FEEDBACK_TRIGGER_BOTTOM,
   publicFeedbackSurface,
-  shouldShowFeedbackTrigger,
 } from "./FeedbackWidget";
 import { MOBILE_BOTTOM_CHROME_RESERVE } from "@/components/ui/MobileActionBar";
 
@@ -23,48 +22,28 @@ describe("FeedbackWidget public surfaces", () => {
     );
   });
 
-  it("opens feedback to Fair Day without exposing unrelated app pages", () => {
-    expect(publicFeedbackSurface("/moments/great-frederick-fair-2026")).toBe(
-      "fair",
-    );
+  it("opens feedback on the public food-truck board without exposing other pages", () => {
     expect(publicFeedbackSurface("/food-trucks")).toBe("food-trucks");
     expect(publicFeedbackSurface("/today")).toBeNull();
+    expect(publicFeedbackSurface("/fair")).toBeNull();
+    expect(publicFeedbackSurface("/moments/great-frederick-fair-2026")).toBeNull();
   });
 
-  it("keeps Fair feedback in the Fair Help flow instead of floating over its navigation", () => {
-    expect(shouldShowFeedbackTrigger("fair")).toBe(false);
-    expect(shouldShowFeedbackTrigger("food-trucks")).toBe(true);
-    expect(shouldShowFeedbackTrigger(null)).toBe(true);
-  });
-
-  it("adds structured metadata only to a Fair request", () => {
-    expect(
-      buildFeedbackRequestBody({
-        message: "The entrance moved.",
-        email: "",
-        pathname: "/moments/great-frederick-fair-2026",
-        fairIssue: "map_wrong",
-        fairContext: "Gate 3",
-      }),
-    ).toEqual({
-      message: "The entrance moved.",
-      pathname: "/moments/great-frederick-fair-2026",
-      fairIssue: "map_wrong",
-      fairContext: "Gate 3",
-    });
-
+  it("sends only the note, an optional email, and the page", () => {
     expect(
       buildFeedbackRequestBody({
         message: "The stop moved.",
         email: "visitor@example.com",
         pathname: "/food-trucks",
-        fairIssue: "map_wrong",
-        fairContext: "Vendor row",
       }),
     ).toEqual({
       message: "The stop moved.",
       email: "visitor@example.com",
       pathname: "/food-trucks",
     });
+
+    expect(
+      buildFeedbackRequestBody({ message: "A note.", email: "", pathname: null }),
+    ).toEqual({ message: "A note." });
   });
 });

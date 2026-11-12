@@ -21,14 +21,13 @@ export default function TrustChip({
     signal.checked ? `. ${signal.checked}` : ""
   }`;
 
+  // Plain tool: the chip labels a source, so it is plain small text with a
+  // level dot, not a bordered capsule. The dot is the only colored mark.
   const pill = (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-      style={{
-        background: "var(--app-bg-elevated)",
-        border: "1px solid var(--app-border)",
-        color: "var(--app-ink-2)",
-      }}
+      data-trust-label
+      className="inline-flex items-center gap-1.5 text-[11px] font-semibold leading-snug"
+      style={{ color: "var(--app-ink-2)" }}
     >
       <span
         aria-hidden

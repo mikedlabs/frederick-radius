@@ -46,7 +46,7 @@ export default function TodayEventRow({
       >
         <span
           className={`flex w-[58px] shrink-0 items-center gap-1 pt-px font-mono text-[11px] font-semibold tabular-nums leading-snug ${styles.eventTime}`}
-          style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-3)" }}
+          style={{ color: live ? "var(--app-link)" : "var(--app-ink-3)" }}
         >
           {live && (
             <span aria-hidden className="live-dot h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: "var(--app-brand)" }} />

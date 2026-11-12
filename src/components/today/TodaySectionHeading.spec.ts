@@ -23,8 +23,10 @@ describe("TodaySectionHeading", () => {
     expect(html).toContain("today-section-heading__copy");
     expect(html).toContain("today-section-heading__cta");
     expect(html).toContain("today-section-heading__registration");
-    expect(html).toContain("today-section-heading__registration-accent");
     expect(html).toContain("today-section-heading__registration-rule");
+    // The rule is one plain hairline; the short decorative bar is gone.
+    expect(html).not.toContain("today-section-heading__registration-accent");
+    expect(html).not.toContain("h-[3px]");
   });
 
   it("shows a nonverbal live signal without changing the accessible title", () => {

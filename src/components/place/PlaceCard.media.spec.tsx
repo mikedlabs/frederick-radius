@@ -158,7 +158,7 @@ describe("PlaceCard selected media and credit", () => {
     await fail(image);
     expect(photo()).toBeNull();
     expect(loadedCredit()).toBeNull();
-    expect(container.querySelector('[data-nearby-category-art][aria-hidden="true"] svg')).not.toBeNull();
+    expect(container.querySelector('[data-place-category-art][aria-hidden="true"] svg')).not.toBeNull();
     expect(container.querySelector("article")?.dataset.placeCardSurface).toBe("nearby");
     expect(container.textContent).toContain(nearbyPlace.address);
     expect(container.textContent?.match(/Hours not confirmed/g)).toHaveLength(1);
@@ -183,9 +183,11 @@ describe("PlaceCard selected media and credit", () => {
       google_photo_url: undefined, google_photo_attribution: undefined };
     await render(noPhoto, "discovery", true);
     expect(photo()).toBeNull();
-    const art = container.querySelector<HTMLElement>('[data-nearby-category-art][aria-hidden="true"]');
+    const art = container.querySelector<HTMLElement>('[data-place-category-art][aria-hidden="true"]');
     expect(art?.querySelector("svg")).not.toBeNull();
-    expect(art?.getAttribute("style")).toContain("--nearby-category-color");
+    expect(art?.getAttribute("style")).toContain("--place-category-color");
+    // The plate holds the category icon alone: no initial or other lettering.
+    expect(art?.textContent).toBe("");
     expect(container.querySelector("[data-place-card-photo]")).toBeNull();
     expect(container.textContent).toContain("Hours not confirmed");
     expect(container.textContent).toContain(noPhoto.address);
@@ -198,6 +200,67 @@ describe("PlaceCard selected media and credit", () => {
     expect(actions.save).toHaveBeenCalledWith("place", noPhoto.slug);
     await act(async () => open.click());
     expect(actions.openSheet).toHaveBeenCalledWith(noPhoto, { returnFocus: open });
+  });
+
+  describe("each fact once", () => {
+    // 480 m is inside the 1200 m range where placeReasons adds a "0.3 mi away" chip.
+    const close: PlaceCardData = { ...place, slug: "fact-once-fixture", category: "brewery", distance_m: 480,
+      tags: ["dog-friendly"], open_status: { state: "open", closesAt: "21:00", closingSoon: false },
+      google_photo_url: undefined, google_photo_attribution: undefined };
+    const chips = () => [...container.querySelectorAll('[aria-label="Reasons this is shown"] > span')].map((chip) => chip.textContent);
+
+    it.each(["row", "grid", "answer", "feature", "tile"] as const)("prints the distance once on the %s card", async (variant) => {
+      await render(close, variant);
+      expect(container.textContent?.match(/0\.3 mi/g)).toHaveLength(1);
+      expect(container.textContent).not.toContain("away");
+    });
+
+    it.each(["grid", "tile"] as const)("keeps the %s distance out of the truncating part of its line", async (variant) => {
+      // The lead fact may be cut short; the distance is the only one on the card
+      // and must not share its ellipsis. The story measures the painted result.
+      const longFact = "The taproom pours barrel-aged sours and a long guest list.";
+      await render({ ...close, known_for: [longFact] }, variant);
+      const distance = container.querySelectorAll("[data-place-distance]");
+      expect([...distance].map((node) => node.textContent)).toEqual(["0.3 mi"]);
+      expect(distance[0].closest(".truncate")).toBeNull();
+      expect(distance[0].closest("p")?.querySelector(".truncate")?.textContent).toBe(variant === "grid" ? "Breweries" : longFact);
+    });
+
+    it("renders no empty fact line on a tile with neither a known-for nor a distance", async () => {
+      await render({ ...close, distance_m: undefined }, "tile");
+      expect(container.querySelector("[data-place-distance]")).toBeNull();
+      expect([...container.querySelectorAll("p")].filter((p) => !p.textContent)).toEqual([]);
+    });
+
+    it("leaves the freed chip seat empty instead of promoting a third reason", async () => {
+      // placeReasons returns open, distance, dog-friendly. Row and grid cap at two.
+      await render(close, "row");
+      expect(chips()).toEqual(["Open now"]);
+      await render(close, "grid");
+      expect(chips()).toEqual(["Open now"]);
+    });
+
+    it("falls back to the plain status line when distance was the only reason", async () => {
+      await render({ ...close, tags: [], open_status: { state: "closed" } }, "row");
+      expect(container.querySelector('[aria-label="Reasons this is shown"]')).toBeNull();
+      expect(container.textContent).toContain("Closed");
+      expect(container.textContent?.match(/0\.3 mi/g)).toHaveLength(1);
+    });
+
+    it("says dog-friendly once on a row: the chip when it is shown, otherwise the paw", async () => {
+      const paw = () => container.querySelector('svg[aria-label="Dog-friendly"]');
+      await render({ ...close, open_status: { state: "unknown" } }, "row");
+      expect(chips()).toEqual(["Dog-friendly"]);
+      expect(paw()).toBeNull();
+      // Open and distance take both seats, so the chip is not shown and the paw carries it.
+      await render(close, "row");
+      expect(chips()).not.toContain("Dog-friendly");
+      expect(paw()).not.toBeNull();
+      // Compact rows hide chips altogether.
+      await act(async () => root.render(<PlaceCard place={{ ...close, open_status: { state: "unknown" } }} variant="row" compact showSource={false} />));
+      expect(container.querySelector('[aria-label="Reasons this is shown"]')).toBeNull();
+      expect(paw()).not.toBeNull();
+    });
   });
 
   it.each(Object.entries(CREDITED_LOCAL_PLACE_PHOTOS))("shows the exact licensed %s source before eligible Google on Nearby, with credit bound to decoded pixels", async (slug, { image: metadata }) => {
