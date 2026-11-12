@@ -1,4 +1,4 @@
-import { NEARBY_DISTANCE_WINDOW_M } from "@/lib/decision/nearby-place-ranking";
+import { NEARBY_DISTANCE_WINDOW_M, NEARBY_UNREVIEWED_PENALTY_M } from "@/lib/decision/nearby-place-ranking";
 import { describe, expect, it } from "vitest";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import {
@@ -251,10 +251,13 @@ describe("right-now no-origin ranking", () => {
 
   it("describes the order it shows in one complete sentence", () => {
     const none = { openFirst: false, closedLast: false };
-    // "The same block" describes the comparator's 150 m distance window.
-    expect(NEARBY_DISTANCE_WINDOW_M).toBe(150);
+    // The sentence describes the comparator's confirmation weighting: an
+    // unreviewed listing ranks as if it were farther, and a better-confirmed
+    // listing leads inside one distance window.
+    expect(NEARBY_UNREVIEWED_PENALTY_M).toBeGreaterThan(0);
+    expect(NEARBY_DISTANCE_WINDOW_M).toBeGreaterThan(0);
     expect(rightNowOrderSentence("smart", true, none)).toBe(
-      "The closest places come first, and places on the same block are ordered by best match.",
+      "The closest places come first, though a confirmed listing can come ahead of a less-confirmed one close by.",
     );
     expect(rightNowOrderSentence("nearest", true, none)).toBe(
       "Places are sorted by distance, nearest first.",
@@ -263,7 +266,7 @@ describe("right-now no-origin ranking", () => {
     expect(rightNowOrderSentence("smart", false, none)).toBe("The best matches come first.");
     expect(rightNowOrderSentence("nearest", false, none)).toBe("The best matches come first.");
     expect(rightNowOrderSentence("smart", true, { openFirst: false, closedLast: true })).toBe(
-      "The closest places come first, and places on the same block are ordered by best match. Places confirmed closed come last.",
+      "The closest places come first, though a confirmed listing can come ahead of a less-confirmed one close by. Places confirmed closed come last.",
     );
     expect(rightNowOrderSentence("smart", false, { openFirst: true, closedLast: true })).toBe(
       "Places confirmed open come first, then the best matches.",

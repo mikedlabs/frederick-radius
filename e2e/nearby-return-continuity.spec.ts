@@ -541,6 +541,12 @@ test("empty-town recovery and denied Near me never reuse a former town as precis
     });
     // Nearby has no area chooser of its own: in Whole county the page offers
     // no location row, and Near me is chosen in the shared header control.
+    // That is now the only path a visitor can take to Near me here, so this
+    // test exercises it on purpose. The header commits through
+    // commitLocationScope, which replaces the URL with router.replace rather
+    // than reloading, and the obsolete town origin this test guards against
+    // would still be in client state at that point. expectNoPreciseOrigin
+    // below then proves no former town is reused as a precise origin.
     await expect(page.getByRole("main").getByRole("button", { name: /^Use my location\b/ })).toHaveCount(0);
     await page.getByRole("button", { name: /^Change town or location scope/ }).click();
     await page.getByRole("button", { name: "Near me", exact: true }).click();

@@ -86,17 +86,17 @@ export function openNowThinNote({
   area,
   phrase,
   closestOpen,
-  byDistance = true,
+  order = "nearest",
 }: {
   nearbyOpen: number;
   area: string;
   phrase?: string | null;
   closestOpen?: { distance_m: number; town: string | null } | null;
-  /** Whether the list is ordered by distance from a trustworthy origin.
-   * Without one it is in best-match order and must not claim "nearest". */
-  byDistance?: boolean;
+  /** How the rows below are ordered, so the note names the same order:
+   * by distance from a trustworthy origin, by rating, or by best match. */
+  order?: "nearest" | "rated" | "best";
 }): string {
-  const listed = byDistance ? "the nearest places" : "the best matches";
+  const listed = order === "nearest" ? "the nearest places" : order === "rated" ? "the top rated places" : "the best matches";
   if (nearbyOpen > 0) {
     return `Only ${places(nearbyOpen)} ${area} ${nearbyOpen === 1 ? "is" : "are"} confirmed open${withPhrase(phrase)} right now, so ${nearbyOpen === 1 ? "it is" : "they are"} marked among ${listed}.`;
   }

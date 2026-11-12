@@ -908,7 +908,7 @@ export default function RightNow({
             area: thinArea,
             phrase: meal?.phrase,
             closestOpen: closestOpenBeyond,
-            byDistance: hasRankingOrigin,
+            order: sort === "rated" ? "rated" : hasRankingOrigin ? "nearest" : "best",
           })}
         </p>
       )}

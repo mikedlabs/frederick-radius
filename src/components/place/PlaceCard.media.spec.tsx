@@ -85,6 +85,12 @@ describe("PlaceCard selected media and credit", () => {
   }
   async function fail(image: HTMLImageElement) { await act(async () => image.dispatchEvent(new Event("error"))); }
 
+  it("says dog-friendly in a Nearby answer row's muted line, where no reason chip shows", async () => {
+    await act(async () => root.render(<PlaceCard place={{ ...place, category: "coffee", tags: ["dog-friendly"] }} variant="row" hoursInMeta />));
+    const meta = container.querySelector("[data-place-row-meta]");
+    expect(meta?.querySelector("[data-place-row-dog-friendly]")?.textContent).toBe("Dog-friendly");
+  });
+
   it("keeps Parks browse local-only even with supplied provider imagery or a remote landmark", async () => {
     const hydrate = vi.spyOn(mapListPhotoLoader, "loadData");
     await act(async () => root.render(<PlaceCard place={place} variant="discovery" discoverySurface="nearby" discoveryIntent="parks" lazyPhoto />));

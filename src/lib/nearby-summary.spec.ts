@@ -38,10 +38,12 @@ describe("Nearby summary copy", () => {
   });
 
   it("names best matches, not the nearest places, when the list has no distance origin", () => {
-    expect(openNowThinNote({ nearbyOpen: 0, area: "in the county", byDistance: false }))
+    expect(openNowThinNote({ nearbyOpen: 0, area: "in the county", order: "best" }))
       .toBe("Nothing in the county is confirmed open right now, so the best matches are shown instead.");
-    expect(openNowThinNote({ nearbyOpen: 2, area: "in the county", byDistance: false }))
+    expect(openNowThinNote({ nearbyOpen: 2, area: "in the county", order: "best" }))
       .toBe("Only 2 places in the county are confirmed open right now, so they are marked among the best matches.");
+    expect(openNowThinNote({ nearbyOpen: 0, area: "nearby", order: "rated" }))
+      .toBe("Nothing nearby is confirmed open right now, so the top rated places are shown instead.");
   });
 
   it("keeps every row the note promises even past the list limit", () => {

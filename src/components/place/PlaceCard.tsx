@@ -748,6 +748,9 @@ export default function PlaceCard({
               )}
               {cat?.name ?? place.category}
               {rowTown && <> · {rowTown}</>}
+              {/* These rows hide reason chips, so the dog-friendly signal the
+                  paw carries elsewhere joins the muted line as words. */}
+              {(place.tags ?? []).includes("dog-friendly") && <> · <span data-place-row-dog-friendly>Dog-friendly</span></>}
               {rowHoursUnknown && <> · <span data-place-row-hours-unknown>Hours not confirmed</span></>}
             </p>
           ) : <p className="mt-0.5 flex items-center gap-1 text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>

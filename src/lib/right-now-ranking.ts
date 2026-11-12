@@ -277,9 +277,10 @@ export function rightNowOrderSentence(
       ? "The best matches come first."
       : sort === "nearest"
         ? "Places are sorted by distance, nearest first."
-        // compareNearbyPlaceCandidates groups places into 150 m windows and
-        // lets match quality order the places inside one window (about a city
-        // block), so a strict "closest first" would misdescribe that reordering.
-        : "The closest places come first, and places on the same block are ordered by best match.";
+        // compareNearbyPlaceCandidates ranks an unreviewed listing as if it
+        // were 1 km farther, and inside one 150 m window a better-confirmed
+        // listing leads before match quality, so a strict "closest first"
+        // would misdescribe both.
+        : "The closest places come first, though a confirmed listing can come ahead of a less-confirmed one close by.";
   return closedLast ? `${order} Places confirmed closed come last.` : order;
 }

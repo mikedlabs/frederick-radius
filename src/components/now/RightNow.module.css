@@ -61,9 +61,14 @@
 }
 
 /* The precise-location row reads as the dock's second line: flush under
-   its hairline, closed by its own. */
+   its hairline, closed by its own. The dock gives up the list's gap rather
+   than the row pulling up into the sticky dock with a negative margin. */
+.filterDock:has(+ .underDock) {
+  margin-block-end: 0;
+}
+
 .underDock {
-  margin-top: -1rem;
+  margin-top: 0;
 }
 
 .quickFilters {
@@ -286,7 +291,7 @@
 }
 
 .rowContext {
-  margin: 0.75rem 0 -0.5rem;
+  margin: 0.75rem 0 0;
   color: var(--app-ink-3);
   font-family: var(--font-sans);
   font-size: 0.8125rem;
