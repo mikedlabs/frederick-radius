@@ -195,14 +195,27 @@ export const ShortPullReturnsToRest: Story = {
         bubbles: true, cancelable: true, composed: true, pointerId: 1, pointerType: "mouse",
         isPrimary: true, button: 0, buttons: type === "pointerup" ? 0 : 1, clientX: x, clientY: y,
       }));
+    /**
+     * Framer Motion reads pointer moves, and moves the sheet, only on an
+     * animation frame. Fixed timers did not guarantee one: on a busy CI runner
+     * every move and the release fired before any frame ran, so the drag never
+     * started. Waiting for the next frame after each move lets every step land.
+     */
+    const nextFrame = () => new Promise<void>((resolve, reject) => {
+      const stalled = view.setTimeout(() => reject(new Error("No animation frame ran for 5s")), 5000);
+      view.requestAnimationFrame(() => {
+        view.clearTimeout(stalled);
+        resolve();
+      });
+    });
     /** Pull down 60px at an unhurried pace and let go while still moving. */
     const pull = async (start: HTMLElement, x: number, y: number) => {
       point("pointerdown", start, x, y);
       for (let step = 1; step <= 10; step += 1) {
         await pause(24);
         point("pointermove", view, x, y + step * 6);
+        await nextFrame();
       }
-      await pause(48);
       const travelled = top();
       point("pointerup", view, x, y + 60);
       return travelled;
@@ -213,6 +226,7 @@ export const ShortPullReturnsToRest: Story = {
     await waitFor(async () => {
       const before = top();
       await pause(60);
+      await nextFrame();
       rest = top();
       expect(Math.abs(rest - before)).toBeLessThanOrEqual(0.25);
       expect(Number(view.getComputedStyle(backdrop).opacity)).toBeCloseTo(0.45, 2);
@@ -231,7 +245,8 @@ export const ShortPullReturnsToRest: Story = {
     }, { timeout: 1500 });
     await expect(dialog).toBeInTheDocument();
 
-    // A press that begins on Close is a button press, never a drag.
+    // A press that begins on Close is a button press, never a drag. The frames
+    // that pass during this pull are what make staying at rest meaningful.
     const closeBox = close.getBoundingClientRect();
     const heldAt = await pull(close, closeBox.left + closeBox.width / 2, closeBox.top + closeBox.height / 2);
     expect(Math.abs(heldAt - rest)).toBeLessThanOrEqual(1);
