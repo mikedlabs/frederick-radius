@@ -67,6 +67,23 @@ describe("the one area writer", () => {
     expect(window.location.search).toBe("?in=county&layers=parking");
     expect(history.state).toEqual({ focus: "baker-park", layer: "parking" });
   });
+  it("hands Next's history adapter a state without its own markers, so search params sync", () => {
+    history.replaceState({ __NA: true, _N: 1, focus: "baker-park" }, "", "/today?in=thurmont");
+    const original = history.replaceState;
+    const passed: unknown[] = [];
+    history.replaceState = function (this: History, data, unused, url) {
+      passed.push(data);
+      return original.call(this, data, unused, url);
+    };
+    try {
+      commitLocationScope("county", transport());
+    } finally {
+      history.replaceState = original;
+    }
+    // Next skips its sync when the caller's state carries __NA or _N.
+    expect(passed).toEqual([{ focus: "baker-park" }]);
+    expect(window.location.search).toBe("?in=county");
+  });
   it("replaces other scoped routes through the router without scrolling", () => {
     history.replaceState(null, "", "/events?in=thurmont&lens=week");
     const router = transport();

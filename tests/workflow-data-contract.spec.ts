@@ -1211,7 +1211,7 @@ describe("scheduled data workflow contracts", () => {
     );
   });
 
-  it("repairs only the runner's exact Azure HTTP mirror while keeping signed browser setup and its bounds", () => {
+  it("lists the faster Ubuntu mirror first while keeping signed browser setup, both mirrors and its bounds", () => {
     const ci = parse(workflowText("ci.yml")) as WorkflowDocument;
     const job = ci.jobs!.verify;
     const step = job.steps!.find((candidate) => candidate.name === "Install browsers") as {
@@ -1226,24 +1226,80 @@ describe("scheduled data workflow contracts", () => {
     expect(step.if).toBe("${{ env.AUTOMATED_DATA_PR != '1' }}");
     expect(step.run).toContain("if [ -f /etc/apt/apt-mirrors.txt ]; then");
     expect(step.run.trim().endsWith("npx playwright install --with-deps chromium webkit")).toBe(true);
-    expect(step.run).not.toMatch(/trusted=yes|allow-unauthenticated|AllowInsecure|sources\.list|keyrings|curl|wget|\bwhile\b|\buntil\b/);
-    const expression = step.run.match(/sudo sed -E -i '([^']+)' \/etc\/apt\/apt-mirrors\.txt/)?.[1];
-    expect(expression).toBeDefined();
-    const input = "# CI\nhttp://azure.archive.ubuntu.com/ubuntu priority:1\nhttp://archive.ubuntu.com/ubuntu priority:2\nhttp://security.ubuntu.com/ubuntu priority:3\n";
-    expect(Buffer.byteLength(input)).toBe(144);
-    const transform = (value: string) => execFileSync("sed", ["-E", expression!], { input: value, encoding: "utf8" });
-    const expected = input.replace("http://azure.archive.ubuntu.com/ubuntu", "https://archive.ubuntu.com/ubuntu");
-    expect(transform(input)).toBe(expected);
-    expect(transform(expected)).toBe(expected);
-    const edgeCases = [
-      "  http://azure.archive.ubuntu.com/ubuntu/\tpriority:5",
-      "https://azure.archive.ubuntu.com/ubuntu priority:1",
+    // The step never weakens package signing, never fetches anything itself
+    // and never loops. Its one privileged command rewrites the mirror list
+    // from text the decision script printed.
+    const commands = step.run.split("\n").filter((line) => !line.trim().startsWith("#")).join("\n");
+    expect(commands).not.toMatch(/trusted=yes|allow-unauthenticated|AllowInsecure|sources\.list|keyrings|curl|wget|\bwhile\b|\buntil\b|\bfor\b|\beval\b/);
+    expect(commands.match(/\bsudo\b/g)).toEqual(["sudo"]);
+    expect(step.run).toContain("| sudo tee /etc/apt/apt-mirrors.txt > /dev/null");
+    expect(step.run).toContain('if [ "$(bash scripts/ci-pick-apt-mirror.sh)" = "archive" ]; then');
+    expect(step.run).toContain("bash scripts/ci-pick-apt-mirror.sh --archive-first < /etc/apt/apt-mirrors.txt");
+  });
+
+  it("keeps the mirror decision script a read-only timing check of the two Ubuntu mirrors", () => {
+    const script = readFileSync(resolve(process.cwd(), "scripts/ci-pick-apt-mirror.sh"), "utf8");
+    const code = script.split("\n").filter((line) => !line.trim().startsWith("#")).join("\n");
+    // Signing stays on, nothing is installed or executed from the network, and
+    // the script holds no privileges and writes no file.
+    expect(code).not.toMatch(/trusted=yes|allow-unauthenticated|AllowInsecure|sources\.list|keyrings|wget|\bsudo\b|\beval\b|\bapt(-get)?\s+(install|update|upgrade)\b|\bdpkg\b|\bwhile\b|\buntil\b|\btee\b|\bchmod\b/);
+    expect(code).not.toMatch(/\|\s*(ba)?sh\b/);
+    expect(code.replace(/>&2/g, "").replace(/--output \/dev\/null/g, "")).not.toMatch(/(^|[^-=<])>{1,2}\s*[^\s&]/m);
+    // One bounded request per mirror, discarded, to the signed index only.
+    const requests = code.match(/\bcurl\b[^\n]*/g) ?? [];
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toContain("--fail");
+    expect(requests[0]).toContain("--output /dev/null");
+    expect(requests[0]).toContain("--max-time 8");
+    expect(requests[0]).toContain('"$1/dists/${release}/InRelease"');
+    expect(code.match(/https?:\/\/[^\s"']+/g)).toEqual([
+      "http://azure.archive.ubuntu.com/ubuntu",
+      "https://archive.ubuntu.com/ubuntu",
+    ]);
+    expect(code.match(/probe "\$[A-Z_]+"/g)).toEqual(['probe "$AZURE_MIRROR"', 'probe "$ARCHIVE_MIRROR"']);
+  });
+
+  it("chooses the mirror that answers faster and leaves the runner's order alone when unsure", () => {
+    const pick = (azure: string, archive: string) =>
+      execFileSync("bash", ["scripts/ci-pick-apt-mirror.sh", azure, archive], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    expect(pick("0.412", "0.201")).toBe("archive");
+    expect(pick("failed", "0.9")).toBe("archive");
+    // The 2026-11-11 outage: archive.ubuntu.com timed out while Azure answered.
+    expect(pick("0.650", "failed")).toBe("azure");
+    expect(pick("0.201", "0.412")).toBe("azure");
+    expect(pick("0.2", "0.2")).toBe("azure");
+    expect(pick("failed", "failed")).toBe("azure");
+    expect(pick("", "")).toBe("azure");
+    // Results are compared as numbers only; anything else counts as no answer.
+    expect(pick("abc", "0.1; touch /tmp/never")).toBe("azure");
+    expect(pick("1e3", "0.1")).toBe("archive");
+    expect(pick("10", "9.99")).toBe("archive");
+    expect(pick("9.99", "10")).toBe("azure");
+  });
+
+  it("puts archive.ubuntu.com first in the runner's mirror list without dropping a mirror", () => {
+    const reorder = (list: string) =>
+      execFileSync("bash", ["scripts/ci-pick-apt-mirror.sh", "--archive-first"], { input: list, encoding: "utf8" });
+    const runner = "http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://archive.ubuntu.com/ubuntu/\tpriority:2\nhttps://security.ubuntu.com/ubuntu/\tpriority:3\n";
+    expect(Buffer.byteLength(runner)).toBe(144);
+    const expected = "http://azure.archive.ubuntu.com/ubuntu/\tpriority:2\nhttps://archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://security.ubuntu.com/ubuntu/\tpriority:3\n";
+    expect(reorder(runner)).toBe(expected);
+    expect(reorder(expected)).toBe(expected);
+    // A list with no archive line gains one; comments, other hosts and
+    // look-alike names pass through untouched.
+    const sparse = [
+      "# CI",
+      "http://azure.archive.ubuntu.com/ubuntu priority:1",
       "http://azureXarchiveXubuntuXcom/ubuntu priority:1",
       "http://azure.archive.ubuntu.com/ubuntu-other priority:1",
       "# http://azure.archive.ubuntu.com/ubuntu priority:1",
       "http://security.ubuntu.com/ubuntu priority:3",
     ].join("\n") + "\n";
-    expect(transform(edgeCases)).toBe(edgeCases.replace("  http://azure.archive.ubuntu.com/ubuntu/", "  https://archive.ubuntu.com/ubuntu/"));
+    expect(reorder(sparse)).toBe(
+      sparse.replace("http://azure.archive.ubuntu.com/ubuntu priority:1\n", "http://azure.archive.ubuntu.com/ubuntu priority:2\n")
+        + "https://archive.ubuntu.com/ubuntu/\tpriority:1\n",
+    );
+    expect(reorder("  http://archive.ubuntu.com/ubuntu\n")).toBe("  http://archive.ubuntu.com/ubuntu\tpriority:1\n");
   });
 
   it("pins the six direct Playwright installer jobs to supported Ubuntu without changing other hosted jobs", () => {
