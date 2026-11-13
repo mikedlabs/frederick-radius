@@ -1,0 +1,141 @@
+{
+  "checkedAt": "2026-10-08T22:21:31.478607+00:00",
+  "applicationPullRequests": [
+    {
+      "pr": 1762,
+      "url": "https://github.com/mikedlabs/frederick-radius/pull/1762",
+      "head": "91df6f28a343ce2804edd4d6386aec03e4fe2ea6",
+      "base": "main",
+      "checks": [
+        {
+          "name": "verify",
+          "result": "FAILURE",
+          "url": "https://github.com/mikedlabs/frederick-radius/actions/runs/37828901194/job/113488805055"
+        },
+        {
+          "name": "style-lint",
+          "result": "SUCCESS",
+          "url": "https://github.com/mikedlabs/frederick-radius/actions/runs/37828901239/job/113488804235"
+        },
+        {
+          "name": "Vercel",
+          "result": "SUCCESS",
+          "url": "https://vercel.com/mikedlab/frederick-radius/J4NpuCWgExtmXpCDmw1x9YZMfaFv"
+        },
+        {
+          "name": "Vercel Agent Review",
+          "result": "SUCCESS",
+          "url": "https://vercel.com/github"
+        },
+        {
+          "name": "cubic \u00b7 AI code reviewer",
+          "result": "SUCCESS",
+          "url": "https://www.cubic.dev/pr/mikedlabs/frederick-radius/pull/1762"
+        }
+      ]
+    },
+    {
+      "pr": 1763,
+      "url": "https://github.com/mikedlabs/frederick-radius/pull/1763",
+      "head": "e989fe8c109424fe56c118ffa4bcc0742173c0cd",
+      "base": "main",
+      "checks": [
+        {
+          "name": "verify",
+          "result": "FAILURE",
+          "url": "https://github.com/mikedlabs/frederick-radius/actions/runs/37831122674/job/113496424871"
+        },
+        {
+          "name": "style-lint",
+          "result": "SUCCESS",
+          "url": "https://github.com/mikedlabs/frederick-radius/actions/runs/37831122693/job/113496421872"
+        },
+        {
+          "name": "Vercel",
+          "result": "SUCCESS",
+          "url": "https://vercel.com/mikedlab/frederick-radius/84NxY9TafjfpQzf69ou43zarcuZ7"
+        },
+        {
+          "name": "Vercel Agent Review",
+          "result": "SUCCESS",
+          "url": "https://vercel.com/github"
+        },
+        {
+          "name": "cubic \u00b7 AI code reviewer",
+          "result": "SUCCESS",
+          "url": "https://www.cubic.dev/pr/mikedlabs/frederick-radius/pull/1763"
+        }
+      ]
+    },
+    {
+      "pr": 1764,
+      "url": "https://github.com/mikedlabs/frederick-radius/pull/1764",
+      "head": "68937041bee32a7cffc67920a702506e0506769a",
+      "base": "main",
+      "checks": [
+        {
+          "name": "verify",
+          "result": "FAILURE",
+          "url": "https://github.com/mikedlabs/frederick-radius/actions/runs/37852435577/job/113568449272"
+        },
+        {
+          "name": "style-lint",
+          "result": "SUCCESS",
+          "url": "https://github.com/mikedlabs/frederick-radius/actions/runs/37852435565/job/113568449182"
+        },
+        {
+          "name": "Vercel",
+          "result": "SUCCESS",
+          "url": "https://vercel.com/mikedlab/frederick-radius/AqoYCNhKRNfUevGsbsQyDJvFRyhU"
+        },
+        {
+          "name": "Vercel Agent Review",
+          "result": "SUCCESS",
+          "url": "https://vercel.com/github"
+        },
+        {
+          "name": "cubic \u00b7 AI code reviewer",
+          "result": "SUCCESS",
+          "url": "https://www.cubic.dev/pr/mikedlabs/frederick-radius/pull/1764"
+        }
+      ]
+    },
+    {
+      "pr": 1765,
+      "url": "https://github.com/mikedlabs/frederick-radius/pull/1765",
+      "head": "a834ac81ec3fee3353d72a102a87c8c13a28b443",
+      "base": "codex/uiux-1-functional-20261008",
+      "checks": [
+        {
+          "name": "verify",
+          "result": "FAILURE",
+          "url": "https://github.com/mikedlabs/frederick-radius/actions/runs/37851053308/job/113563762319"
+        },
+        {
+          "name": "style-lint",
+          "result": "SUCCESS",
+          "url": "https://github.com/mikedlabs/frederick-radius/actions/runs/37851053332/job/113563762552"
+        },
+        {
+          "name": "Vercel",
+          "result": "SUCCESS",
+          "url": "https://vercel.com/mikedlab/frederick-radius/EpkqJXLTjvcXonjpqdTsuzaM3V82"
+        },
+        {
+          "name": "Vercel Agent Review",
+          "result": "SUCCESS",
+          "url": "https://vercel.com/github"
+        },
+        {
+          "name": "cubic \u00b7 AI code reviewer",
+          "result": "SUCCESS",
+          "url": "https://www.cubic.dev/pr/mikedlabs/frederick-radius/pull/1765"
+        }
+      ]
+    }
+  ],
+  "verifyFailure": "Production dependency security audit stops before tests; one high-severity vulnerability is reported.",
+  "approvalDependency": "Separate Next.js 16.3.6 to 16.3.8 patch awaits scope approval. No dependency change in this report.",
+  "reviewQualification": "Successful review status does not mean no findings. The retained source-derived cross-tab finding is filed separately as issue 1766.",
+  "privateStatusReceiptFileSha256": "5b9f5c6ca6160dd989d6bbd8373f0447ddabe44046662a2defdd2bda50b21017"
+}
