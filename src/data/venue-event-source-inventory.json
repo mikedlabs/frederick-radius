@@ -2060,5 +2060,34 @@
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "fetchedAt": "2026-10-26T11:28:29.298Z"
     }
+  },
+  {
+    "title": "Barre & Bubbly",
+    "starts_at": "2026-11-29T15:00:00.206Z",
+    "ends_at": "2026-11-29T17:00:00.206Z",
+    "ticket_url": "https://www.thebanyanmd.com/livemusic/barre-bubbly",
+    "venue_slug": "banyan",
+    "venue_name": "The Banyan",
+    "category": "community",
+    "source": {
+      "url": "https://www.thebanyanmd.com/livemusic",
+      "requestedUrl": "https://www.thebanyanmd.com/livemusic",
+      "finalUrl": "https://www.thebanyanmd.com/livemusic",
+      "fetchedAt": "2026-11-13T11:15:16.231Z"
+    }
+  },
+  {
+    "title": "Carol Leifer",
+    "starts_at": "2027-04-25T15:00-04:00",
+    "ticket_url": "https://weinbergcenter.org/shows/carol-leifer/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-13T11:15:18.791Z"
+    }
   }
 ]
