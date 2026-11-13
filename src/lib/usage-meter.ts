@@ -224,6 +224,36 @@ export async function reserveDailyUsage(
 }
 
 /**
+ * Give back a reservation that never became a successful paid fetch.
+ *
+ * Google photo media is billed on a successful response, not on a 400 for an
+ * expired resource name. Releasing those units keeps the spike-breaker cap
+ * aligned with real spend. Fail-soft: a missed decrement leaves the count
+ * high rather than breaking the request.
+ */
+export async function releaseDailyUsage(
+  upstream: UsageBudgetNamespace,
+  increment = 1,
+): Promise<boolean> {
+  if (!Number.isSafeInteger(increment) || increment <= 0) return false;
+  try {
+    const sql = getSql();
+    if (!sql) return false;
+    const rows = await sql<Array<{ count: number | string }>>`
+      update usage_counters
+      set count = usage_counters.count - ${increment}
+      where day = (now() at time zone 'America/New_York')::date
+        and upstream = ${upstream}
+        and usage_counters.count >= ${increment}
+      returning count
+    `;
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Atomically reserve one unique paid operation under a shared daily ceiling.
  *
  * The idempotency value is hashed before storage so addresses and source facts

@@ -154,6 +154,74 @@ export function googlePlacesConfigured(): boolean {
   return Boolean(maintenanceKey());
 }
 
+/** Photo media and request-time name refresh share this key. They stay
+ *  available when the broader Maps Platform maintenance hold is on, because
+ *  moving them behind that hold would blank live imagery. */
+function photoDeliveryKey(): string | null {
+  return process.env.GOOGLE_PLACES_API_KEY?.trim() || null;
+}
+
+export function googlePhotoDeliveryConfigured(): boolean {
+  return Boolean(photoDeliveryKey());
+}
+
+const PHOTO_RESOURCE_NAME = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/;
+const PLACE_RESOURCE_ID = /^places\/[A-Za-z0-9_-]+$/;
+
+/** Durable Place ID inside a `places/{id}/photos/{photo}` resource name. */
+export function placeIdFromPhotoName(name: string): string | null {
+  const match = name.trim().match(/^places\/([A-Za-z0-9_-]+)\/photos\/[A-Za-z0-9_-]+$/);
+  return match?.[1] ?? null;
+}
+
+export type CurrentPlacePhotoNameResult =
+  | { status: "found"; name: string }
+  | { status: "empty" }
+  | { status: "unavailable" };
+
+/**
+ * Current main/first photo resource name for a Place ID.
+ *
+ * Stored photo names expire. Place IDs do not. This is the request-time
+ * self-heal for `/api/place-photo`: Place Details with the photos-only field
+ * mask, ungated like photoUrl(), returning only the first photo name.
+ */
+export async function currentPlacePhotoName(
+  placeId: string,
+  options?: { signal?: AbortSignal },
+): Promise<CurrentPlacePhotoNameResult> {
+  const k = photoDeliveryKey();
+  if (!k) return { status: "unavailable" };
+  const trimmed = placeId.trim();
+  if (!trimmed) return { status: "unavailable" };
+  const id = trimmed.startsWith("places/") ? trimmed : `places/${trimmed}`;
+  if (!PLACE_RESOURCE_ID.test(id)) return { status: "unavailable" };
+  try {
+    const res = await fetch(`${BASE}/${id}`, {
+      headers: {
+        "X-Goog-Api-Key": k,
+        "X-Goog-FieldMask": fieldsFor("photos").join(","),
+      },
+      cache: "no-store",
+      signal: options?.signal ?? AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return { status: "unavailable" };
+    const data = (await res.json()) as GApiPlace;
+    const name = data.photos?.[0]?.name?.trim();
+    return name && PHOTO_RESOURCE_NAME.test(name)
+      ? { status: "found", name }
+      : { status: "empty" };
+  } catch (error) {
+    if (
+      options?.signal?.aborted
+      || (error instanceof Error && error.name === "AbortError")
+    ) {
+      throw error;
+    }
+    return { status: "unavailable" };
+  }
+}
+
 /**
  * Field sets, chosen to control the Places API (New) billing SKU:
  *   - "full"   → includes `reviews` ⇒ Enterprise + Atmosphere (priciest).
@@ -621,7 +689,7 @@ export function photoUrl(photoName: string, maxWidthPx = 800): string | null {
   // It already has a separate attribution, proxy, rate-limit, and daily-cap
   // system. Moving it behind the maintenance hold would remove imagery from
   // the live product, so that visual/product decision remains isolated.
-  const k = process.env.GOOGLE_PLACES_API_KEY?.trim() || null;
+  const k = photoDeliveryKey();
   if (!k) return null;
   return `${BASE}/${photoName}/media?maxWidthPx=${maxWidthPx}&key=${k}`;
 }
