@@ -309,7 +309,7 @@ jobs:
 
   steward-checks:
     needs: steward-publish
-    if: ${{ needs.steward-publish.outputs.pr_operation == 'created' || needs.steward-publish.outputs.pr_operation == 'updated' }}
+    if: ${{ !cancelled() && needs.steward-publish.result == 'success' && (needs.steward-publish.outputs.pr_operation == 'created' || needs.steward-publish.outputs.pr_operation == 'updated') }}
     permissions:
       actions: write
       contents: read
@@ -465,7 +465,7 @@ jobs:
 
   official-hours-checks:
     needs: official-hours-publish
-    if: ${{ needs.official-hours-publish.outputs.pr_operation == 'created' || needs.official-hours-publish.outputs.pr_operation == 'updated' }}
+    if: ${{ !cancelled() && needs.official-hours-publish.result == 'success' && (needs.official-hours-publish.outputs.pr_operation == 'created' || needs.official-hours-publish.outputs.pr_operation == 'updated') }}
     permissions:
       actions: write
       contents: read

@@ -144,7 +144,7 @@ jobs:
 
   transit-checks:
     needs: transit-publish
-    if: ${{ needs.transit-publish.outputs.pr_operation == 'created' || needs.transit-publish.outputs.pr_operation == 'updated' }}
+    if: ${{ !cancelled() && needs.transit-publish.result == 'success' && (needs.transit-publish.outputs.pr_operation == 'created' || needs.transit-publish.outputs.pr_operation == 'updated') }}
     permissions:
       actions: write
       contents: read
