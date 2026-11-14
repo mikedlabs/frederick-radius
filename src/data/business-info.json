@@ -1756,10 +1756,10 @@
     }
   },
   "pistarros": {
-    "name": "Pistarros",
+    "name": "Pistarro's",
     "commerce_source": {
       "url": "https://pistarro.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-11-14T12:41:41.856Z"
     },
     "commerce_links": [
       {
@@ -2137,13 +2137,13 @@
     "name": "Paris Baguette",
     "commerce_source": {
       "url": "https://parisbaguette.com/locations/md/frederick/520-snowshill-street",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-11-14T12:41:41.825Z"
     },
     "commerce_links": [
       {
         "type": "catering",
         "url": "https://parisbaguette.com/menu/",
-        "anchor_text": "Menu Locations Rewards Catering Order Now",
+        "anchor_text": "Menu Locations Rewards Catering Own A Café PB Shop Order Now Order Catering",
         "source_url": "https://parisbaguette.com/locations/md/frederick/520-snowshill-street"
       },
       {
@@ -3245,5 +3245,66 @@
         "source_url": "https://www.showroomfrederick.com/"
       }
     ]
+  },
+  "panera-bread-urbana": {
+    "name": "Panera Bread",
+    "commerce_source": {
+      "url": "https://www.panerabread.com/en-us/cafe/locations/md/urbana/3266-bennett-creek-ave?utm_medium=local&utm_source=google&utm_campaign=dpm-dist&utm_term=203844&utm_content=main",
+      "checkedAt": "2026-11-14T12:41:40.658Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.panerabread.com/en-us/menu.html",
+        "anchor_text": "Our Menu",
+        "source_url": "https://www.panerabread.com/en-us/cafe/locations/md/urbana/3266-bennett-creek-ave?utm_medium=local&utm_source=google&utm_campaign=dpm-dist&utm_term=203844&utm_content=main"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.panerabread.com/en-us/gift-cards.html",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://www.panerabread.com/en-us/cafe/locations/md/urbana/3266-bennett-creek-ave?utm_medium=local&utm_source=google&utm_campaign=dpm-dist&utm_term=203844&utm_content=main"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.panerabread.com/en-us/legal/terms-of-use.html",
+        "anchor_text": "Gift Card Terms & Conditions",
+        "source_url": "https://www.panerabread.com/en-us/cafe/locations/md/urbana/3266-bennett-creek-ave?utm_medium=local&utm_source=google&utm_campaign=dpm-dist&utm_term=203844&utm_content=main"
+      }
+    ]
+  },
+  "papa-johns-pizza-brunswick": {
+    "name": "Papa Johns Pizza",
+    "commerce_source": {
+      "url": "https://locations.papajohns.com/united-states/md/21716/brunswick/1201-dutchmans-creek-drive?utm_source=gmb&utm_medium=organic&y_source=1_MTA2OTA1NTMtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D",
+      "checkedAt": "2026-11-14T12:41:41.440Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://www.papajohns.com/order/stores-near-me?searchType=DELIVERY",
+        "anchor_text": "Order Delivery",
+        "source_url": "https://locations.papajohns.com/united-states/md/21716/brunswick/1201-dutchmans-creek-drive?utm_source=gmb&utm_medium=organic&y_source=1_MTA2OTA1NTMtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D"
+      },
+      {
+        "type": "order",
+        "url": "https://www.papajohns.com/order/stores-near-me?_ga=2.233249373.213603558.1708942205-281080471.1704530598",
+        "anchor_text": "Find A Store",
+        "source_url": "https://locations.papajohns.com/united-states/md/21716/brunswick/1201-dutchmans-creek-drive?utm_source=gmb&utm_medium=organic&y_source=1_MTA2OTA1NTMtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.papajohns.com/order/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://locations.papajohns.com/united-states/md/21716/brunswick/1201-dutchmans-creek-drive/food-near-me"
+      }
+    ]
+  },
+  "pennys-diner-brunswick": {
+    "name": "Penny’s Diner",
+    "commerce_source": {
+      "url": "https://pennysdiner.com/",
+      "checkedAt": "2026-11-14T12:41:41.657Z"
+    }
   }
 }
