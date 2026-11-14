@@ -60,11 +60,11 @@
       "slug": "gravel-and-grind-frederick",
       "source_url": "https://www.gravelandgrind.com/",
       "source_name": "Gravel & Grind",
-      "source_sha256": "402ffe996e44e08c45b6c01e1d82c381caeaebb3a9ba2639dad7493305408b7a",
-      "observed_at": "2026-11-05T09:23:32.395Z",
-      "expires_at": "2026-11-12T09:23:32.395Z",
-      "coverage_from": "2026-11-05",
-      "coverage_through": "2026-11-12",
+      "source_sha256": "445b0929d56180d7cfb2bcb05985578eadbc173e1ea3ed9a9b6a3bbbde5024a5",
+      "observed_at": "2026-11-14T09:21:35.162Z",
+      "expires_at": "2026-11-21T09:21:35.162Z",
+      "coverage_from": "2026-11-14",
+      "coverage_through": "2026-11-21",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -1081,11 +1081,11 @@
       "slug": "national-museum-civil-war-medicine-frederick",
       "source_url": "https://www.civilwarmed.org/",
       "source_name": "National Museum of Civil War Medicine",
-      "source_sha256": "5f82eb53f4607e5e53a5da0a7508b000197f0e025220a65d55a53da9e9da620c",
-      "observed_at": "2026-11-02T09:25:55.078Z",
-      "expires_at": "2026-11-09T09:25:55.078Z",
-      "coverage_from": "2026-11-02",
-      "coverage_through": "2026-11-09",
+      "source_sha256": "b406de84d68b5a501501bc7481f481e6b8a8f38e2a2b6107a9b45b8a9a89e744",
+      "observed_at": "2026-11-14T09:21:41.713Z",
+      "expires_at": "2026-11-21T09:21:41.713Z",
+      "coverage_from": "2026-11-14",
+      "coverage_through": "2026-11-21",
       "kind": "weekly",
       "hours": {
         "mon": [
