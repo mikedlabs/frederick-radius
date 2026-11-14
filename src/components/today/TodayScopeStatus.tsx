@@ -1,43 +1,36 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore } from "react";
-import { useSearchParams } from "next/navigation";
-import { locationScopeHref } from "@/components/nav/locationScopeNavigation";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { commitLocationScope } from "@/components/nav/locationScopeNavigation";
 import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
 import {
   getScope,
   parseScope,
+  scopeInSentence,
+  scopeLabel,
   scopeTownSlug,
   setScope,
   subscribeScopeChange,
   type Scope,
 } from "@/lib/scope";
-import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { MUNICIPALITIES } from "@/data/municipalities";
 
 /** Plain-language contract for Today's mixed scope. Place decisions honor the
- * shared lens; weather, alerts, and the event program remain countywide. */
+ * shared lens; weather, alerts, and the event program stay on the whole
+ * county, and the readout says so with the same area names as the header. */
 export function todayScopeStatusText(
   scope: Scope | null,
   hasDeviceLocation = true,
 ): string {
-  const townSlug = scopeTownSlug(scope);
-  const town = townSlug ? MUNICIPALITY_BY_SLUG[townSlug] : null;
-  if (town) return `${town.name} picks · Countywide weather`;
+  const wholeCounty = scopeInSentence(scopeLabel("county"));
+  if (scopeTownSlug(scope)) return `${scopeLabel(scope)} picks · Weather for ${wholeCounty}`;
   if (scope === "nearme") {
     return hasDeviceLocation
-      ? "Nearby place picks · Countywide weather and events"
-      : "Location needed for nearby picks · Countywide weather and events";
+      ? `${scopeLabel("nearme")} picks · Weather and events for ${wholeCounty}`
+      : `${scopeLabel("nearme")} needs your location · Weather and events for ${wholeCounty}`;
   }
-  return "Countywide briefing";
-}
-
-/** Today is a cached briefing; changing its client scope needs no server fetch.
- * Native history also synchronizes Next's search-parameter readers, including
- * the Tonight entry, while preserving unrelated query and hash state. */
-function applyTodayScope(scope: Scope) {
-  setScope(scope);
-  const href = locationScopeHref(window.location.href, scope);
-  if (href) window.history.replaceState(null, "", href);
+  return `${scopeLabel("county")} briefing`;
 }
 
 const subscribeReady = () => () => {};
@@ -58,12 +51,20 @@ export default function TodayScopeStatus({ dateline, density = "standard" }: {
   const ready = useSyncExternalStore(subscribeReady, () => true, () => false);
   const storedScope = useSyncExternalStore(subscribe, getScope, () => null);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const urlScope = parseScope(searchParams.get("in"));
   const scope = urlScope ?? storedScope;
+  // Today is a cached briefing; the shared writer changes its area through
+  // native history, which keeps Next's search-parameter readers in sync.
+  const applyTodayScope = useCallback(
+    (next: Scope) => commitLocationScope(next, router),
+    [router],
+  );
 
-  // An explicit shared URL wins over yesterday's saved area. Align the shared
+  // An explicit inbound URL wins over yesterday's saved area. Align the shared
   // store once per URL change so the place choices use the same lens as this
-  // readout. Area changes update both together through applyTodayScope.
+  // readout. Tab memory never replays an old area here (primary-tab-session).
+  // Visitor choices update both together through the shared writer.
   useEffect(() => {
     if (urlScope && getScope() !== urlScope) setScope(urlScope);
   }, [urlScope]);
@@ -103,7 +104,7 @@ export default function TodayScopeStatus({ dateline, density = "standard" }: {
     if (!requestedHere.current || location.status !== "granted") return;
     requestedHere.current = false;
     applyTodayScope("nearme");
-  }, [location.status]);
+  }, [applyTodayScope, location.status]);
 
   const useMyLocation = () => {
     if (hasDeviceLocation) {

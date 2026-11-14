@@ -123,7 +123,7 @@ test("Tools sends a typed need through shared Find without making people choose 
   await activate(page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }));
   const find = page.getByRole("dialog", { name: "What do you need?" });
   await expect(find).toBeVisible(); await expect(page.getByRole("dialog")).toHaveCount(1);
-  const query = find.getByRole("searchbox", { name: "Ask or find across Frederick County" });
+  const query = find.getByRole("searchbox", { name: "Ask or find across the whole county" });
   await query.fill("trash can");
   await activate(find.getByRole("button", { name: "Close Find", exact: true }));
   await expect(page.getByRole("dialog")).toHaveCount(0);

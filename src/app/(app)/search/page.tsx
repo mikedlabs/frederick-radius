@@ -6,7 +6,7 @@ import { formatHoursLine } from "@/lib/hours";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { loadEventArchiveSnapshot, EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS } from "@/lib/loaders/todayEventSnapshot";
 import { searchEventsFromSnapshot, searchEventCoverageMessage, searchEventRecoveryHref, searchEventRecoveryLabel, type SearchEventCoverage } from "@/lib/search/event-coverage";
-import { resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
+import { resolveDecisionContext, SCOPE_COOKIE, scopeLabel } from "@/lib/scope";
 import SearchRefinements from "@/components/search/SearchRefinements";
 import { withBrowseReturnTo } from "@/lib/browse-return";
 import SearchPlaceVisual, { SearchPlaceVisualImage, SearchPlaceVisualCredit, SearchPlaceLead } from "@/components/search/SearchPlaceVisual";
@@ -571,7 +571,7 @@ export default async function SearchPage({
           <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>
             {rankedHits.length} {rankedHits.length === 1 ? "match" : "matches"}
-            {town ? ` · ${context.filterMunicipality === town ? context.label : MUNICIPALITY_BY_SLUG[town]?.name ?? town.replace(/-/g, " ")}` : " · Frederick County"}
+            {town ? ` · ${context.filterMunicipality === town ? context.label : MUNICIPALITY_BY_SLUG[town]?.name ?? town.replace(/-/g, " ")}` : ` · ${scopeLabel("county")}`}
             {result.meta.eventWindow?.label ? ` · ${result.meta.eventWindow.label}` : ""}
           </p>
           {hasPlaceHits && <Link href={mapHref} className="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold" style={{ color: "var(--app-link)" }}><MapPin className="h-4 w-4" aria-hidden />View on map</Link>}

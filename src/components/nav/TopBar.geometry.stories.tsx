@@ -28,10 +28,11 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-function geometryStory(pathname: string, enlarged = false, dark = false, fontFamily?: string): Story {
+function geometryStory(pathname: string, enlarged = false, dark = false, fontFamily?: string, wholeCounty = false): Story {
+  const areaName = wholeCounty ? /Whole county/ : /Frederick/;
   return {
     parameters: { nextjs: { navigation: { pathname } } },
-    beforeEach: enlarged || fontFamily ? () => {
+    beforeEach: wholeCounty ? () => { setScope("county"); } : enlarged || fontFamily ? () => {
       const previousFontFamily = document.documentElement.style.getPropertyValue("--font-sans-base");
       const previousFontSize = document.documentElement.style.fontSize;
       const previousAppearance = getAppearance();
@@ -157,11 +158,14 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
         await expect(canvas.getByText(width < 640 ? "Unverified" : "Unable to verify", { exact: true }), context).toBeVisible();
         if (!["/today", "/search"].includes(pathname)) {
           const area = header.querySelector<HTMLElement>("[data-location-chip]")!;
-          await expect(area, context).toHaveAccessibleName(/Current scope: Frederick/);
+          await expect(area, context).toHaveAccessibleName(new RegExp(`Current scope: ${areaName.source}`));
           if (pathname === "/map") {
             const label = area.querySelector<HTMLElement>(width < 360 ? '[data-location-scope-label="compact"]' : '[data-location-scope-label="full"]')!;
             await expect(label, context).toBeVisible();
-            await expect(label.textContent, context).toMatch(/Frederick/);
+            // "Whole county" needs about 70px and the 320px map header leaves
+            // 50px, so the short form there is "County", printed unclipped.
+            await expect(label.textContent, context).toMatch(wholeCounty && width < 360 ? /^County$/ : areaName);
+            if (wholeCounty && width < 360) await expect(label.scrollWidth, `${context}: area name clipped`).toBeLessThanOrEqual(label.clientWidth);
           }
         }
         if (!["/today", "/map", "/compass", "/search"].includes(pathname)) {
@@ -175,6 +179,7 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
 
 export const Today: Story = geometryStory("/today");
 export const Map: Story = geometryStory("/map");
+export const MapWholeCounty: Story = geometryStory("/map", false, false, undefined, true);
 export const Events: Story = geometryStory("/events");
 export const Nearby: Story = geometryStory("/nearby");
 export const Contacts: Story = geometryStory("/contacts");

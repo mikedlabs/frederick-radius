@@ -35,7 +35,7 @@ const usableControls: NonNullable<Story["play"]> = async ({ canvasElement }) => 
   await expect(area).toBeEnabled();
   await expect(area).toHaveValue("county");
   await expect(within(find).getByText("Find what you need", { exact: true })).toBeVisible();
-  await expect(canvas.getByRole("status")).toHaveTextContent("Countywide briefing");
+  await expect(canvas.getByRole("status")).toHaveTextContent("Whole county briefing");
   await expect(canvas.queryByRole("link", { name: "Open now" })).not.toBeInTheDocument();
   const bounds = group.getBoundingClientRect();
   await expect(bounds.left).toBeGreaterThanOrEqual(0);

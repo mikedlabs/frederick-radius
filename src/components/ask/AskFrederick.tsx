@@ -310,17 +310,16 @@ function activeContextLabel(
   hasDevicePosition: boolean,
   homeScope: Scope | null = null,
 ): string {
-  if (scope === "nearme" && hasDevicePosition) return "Near your location";
-  if (scope === "nearme") return "Whole county";
+  if (scope === "nearme") return scopeLabel(hasDevicePosition ? "nearme" : "county");
   if (scope) return scopeLabel(scope);
-  if (hasDevicePosition) return "Near your location";
+  if (hasDevicePosition) return scopeLabel("nearme");
   if (homeScope) return `Ranked from ${scopeLabel(homeScope)}`;
-  return "Frederick County";
+  return scopeLabel("county");
 }
 
 function compactContextLabel(label: string): string {
-  if (label === "Frederick County" || label === "Whole county") return "County";
-  if (label === "Near your location") return "Near me";
+  // The composer chip holds about 60px; "Whole county" keeps its short form.
+  if (label === scopeLabel("county")) return "County";
   if (label.startsWith("Ranked from ")) {
     return `Home · ${label.slice("Ranked from ".length).replace(/ City$/, "")}`;
   }

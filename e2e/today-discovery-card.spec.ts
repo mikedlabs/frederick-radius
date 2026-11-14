@@ -351,7 +351,7 @@ test("Today keeps real county fallback honest through URL-only town navigation",
         && !control.closest('[hidden], [inert], [aria-hidden="true"]');
     }))).toBe(true);
     await expect.poll(() => requests.filter(request => request.entry === 0).length).toBe(1);
-    await expect(contextLine).toHaveText("Countywide picks · Checking Brunswick");
+    await expect(contextLine).toHaveText("Whole county picks · Checking Brunswick");
     await expect(brief).toBeVisible(); await brief.scrollIntoViewIfNeeded();
     const firstVisibleId = await brief.locator('[data-today-place-lead], [data-today-opening-soon]').getAttribute("data-decision-id");
     expect(ssrIds).toContain(firstVisibleId);
@@ -370,7 +370,7 @@ test("Today keeps real county fallback honest through URL-only town navigation",
       return stored;
     })).toBe("town:thurmont");
     await expect(page).toHaveURL(url => url.pathname === "/today" && url.searchParams.get("in") === "thurmont");
-    await expect(contextLine).toHaveText("Countywide picks · Thurmont results unavailable");
+    await expect(contextLine).toHaveText("Whole county picks · Thurmont results unavailable");
     assertOneRequestPerEnteredCategory(1);
     phases.push({ scope: "thurmont", status: "failed503", label: await contextLine.innerText(), browse: await countyBrowse() });
 
@@ -385,7 +385,7 @@ test("Today keeps real county fallback honest through URL-only town navigation",
     // this exact fixture's fulfilment are the relevant delivery boundary.
     await expect.poll(() => heldObservation.delivered).toBe(true);
     await afterNativePaints();
-    await expect(contextLine).toHaveText("Countywide picks · Thurmont results unavailable");
+    await expect(contextLine).toHaveText("Whole county picks · Thurmont results unavailable");
     expect(requests.filter(request => request.entry === 0)).toHaveLength(1);
     phases.push({ lateBrunswick503Ignored: true, currentLabel: await contextLine.innerText(), browse: await countyBrowse() });
 
@@ -396,7 +396,7 @@ test("Today keeps real county fallback honest through URL-only town navigation",
     })).toBe("town:brunswick");
     await page.goBack({ waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(url => url.pathname === "/today" && url.searchParams.get("in") === "brunswick");
-    await expect(contextLine).toHaveText("Countywide picks · Brunswick results unavailable");
+    await expect(contextLine).toHaveText("Whole county picks · Brunswick results unavailable");
     await afterNativePaints();
     assertOneRequestPerEnteredCategory(2);
     expect(await page.evaluate(() => performance.timeOrigin)).toBe(initialTimeOrigin);

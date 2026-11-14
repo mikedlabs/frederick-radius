@@ -429,7 +429,7 @@ test("Today keeps Brunswick facts and actions through a scope round trip without
     .filter({ has: targetPage.locator(`[data-today-place-lead][data-decision-id="${lockSlug}"]`) });
   const lockCard = cardForLock(page);
   await picker.selectOption("town:brunswick");
-  await expect(page.getByTestId("today-scope-status")).toContainText("Brunswick picks · Countywide weather");
+  await expect(page.getByTestId("today-scope-status")).toContainText("Brunswick picks · Weather for the whole county");
   await expect(page.locator("[data-today-geographic-place]")).toHaveCount(1);
   const scopedDiscovery = page.locator(`[data-today-geographic-place="${lockSlug}"]`);
   await expect(scopedDiscovery).toHaveAttribute("data-photo-state", "loaded");
@@ -467,7 +467,7 @@ test("Today keeps Brunswick facts and actions through a scope round trip without
     await todayReady(failurePage);
     await decoded(failurePage.locator(`[data-today-geographic-place="${primarySlug}"] img`), primaryPhoto.src);
     await failurePage.getByRole("combobox", { name: "Choose your area", exact: true }).selectOption("town:brunswick");
-    await expect(failurePage.getByTestId("today-scope-status")).toContainText("Brunswick picks · Countywide weather");
+    await expect(failurePage.getByTestId("today-scope-status")).toContainText("Brunswick picks · Weather for the whole county");
     const failedCard = cardForLock(failurePage);
     await expect(failedCard).toHaveCount(1);
     await expect.poll(() => failure.evidence.failedImages.includes(lockPhoto.src)).toBe(true);

@@ -8,9 +8,8 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { haptic } from "@/lib/haptics";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance } from "@/lib/geo";
-import { getScope, parseScope, setScope, scopeTownSlug, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
-import { locationScopeHref } from "./locationScopeNavigation";
-import { replaceNativeWorkspaceScope } from "@/components/search/native-request-return";
+import { getScope, parseScope, scopeTownSlug, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { commitLocationScope } from "./locationScopeNavigation";
 
 /**
  * TopBar location chip — the browsing-scope selector (UX-02).
@@ -18,7 +17,8 @@ import { replaceNativeWorkspaceScope } from "@/components/search/native-request-
  * This is the single entry point to the shared scope lens (lib/scope.ts):
  * "near me", the whole county, or one town. Before UX-02 the town rows just
  * NAVIGATED to /m/<slug> — a jump away, not a lens you apply in place. Now a
- * town row SETS the scope and router.refresh()es, so the surfaces that read
+ * town row SETS the scope through the shared writer (commitLocationScope),
+ * which also rewrites the page's own ?in or refreshes, so the surfaces that read
  * scope (the list answers and Today's open-place decision, plus the map and
  * events board) re-rank around it without leaving the page. Countywide Today
  * modules stay explicitly labeled as such. The town guide is still one tap
@@ -63,25 +63,9 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
 
   const applyScope = (next: Scope | null) => {
     haptic("light");
-    setScope(next);
     setScopeState(next);
     closePicker();
-    const href = locationScopeHref(window.location.href, next);
-    if (href) {
-      if (window.location.pathname === "/compass") {
-        // Refining the current Tools workspace must not intercept itself.
-        replaceNativeWorkspaceScope(href);
-      } else if (window.location.pathname === "/map") {
-        // Native history keeps the live map mounted while synchronizing its
-        // URL-owned query and scope. The scope event above moves the camera.
-        window.history.replaceState(null, "", href);
-      } else {
-        router.replace(href, { scroll: false });
-      }
-    } else {
-      // Other server surfaces consume the new shared scope cookie directly.
-      router.refresh();
-    }
+    commitLocationScope(next, router);
   };
 
   // Every town, sorted by how far it is from the reader. This loop already ran
@@ -126,24 +110,27 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
 
   const scopeTown = scopeTownSlug(scope);
 
-  // The chip label follows the scope first; "near me" borrows the live
-  // geolocation readout so it still reads "Near Brunswick" once granted.
-  let label = scope ? scopeLabel(scope) : compact ? "Frederick County" : "Frederick, MD";
+  // One printed name per area: the chip shows "Near me", "Whole county" or
+  // the town. For Near me the live state (locating, nearest town, location
+  // off) is carried by the icon and spoken in the accessible name.
+  const label = scopeLabel(scope);
+  let detail: string | null = null;
   let LabelIcon = MapPin;
   let labelColor: string = scope ? "var(--app-ink-2)" : "var(--app-ink-3)";
   if (scope === "nearme") {
     if (state.status === "granted" && nearestMuni) {
       // Miles and feet, through the same helper the other 119 call sites use.
       // This chip was the one place in a Maryland app that reported kilometers.
-      label = nearestMuni.distance_km < 1
-        ? `Near ${nearestMuni.name}`
+      detail = nearestMuni.distance_km < 1
+        ? `near ${nearestMuni.name}`
         : `${formatDistance(nearestMuni.distance_km * 1000)} from ${nearestMuni.name}`;
       LabelIcon = Navigation;
       labelColor = "var(--app-cool-text)";
     } else if (state.status === "loading") {
-      label = "Locating…";
+      detail = "finding your location";
       LabelIcon = Loader2;
     } else if (state.status === "denied") {
+      detail = "location is off";
       LabelIcon = AlertCircle;
       labelColor = "var(--app-warning)";
     } else {
@@ -152,12 +139,11 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
   } else if (scope === "county") {
     LabelIcon = Globe;
   }
-  const compactLabel =
-    scope === "nearme"
-      ? "Near me"
-      : scopeTown && MUNICIPALITY_BY_SLUG[scopeTown]
-        ? MUNICIPALITY_BY_SLUG[scopeTown].name
-        : "County";
+  // The short form is the area's own name, except the county: "Whole county"
+  // needs about 70px and the map header's 320px floor leaves 50px, so the
+  // short form stays "County" until the header frees room (TopBar geometry
+  // story MapWholeCounty measures this).
+  const compactLabel = scope && scope !== "county" ? scopeLabel(scope) : "County";
 
   return (
     <div
@@ -185,8 +171,8 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
         }}
         aria-expanded={open}
         aria-controls="location-scope-choices"
-        aria-label={`Change town or location scope. Current scope: ${label}`}
-        title={`Town and location: ${label}`}
+        aria-label={`Change town or location scope. Current scope: ${label}${detail ? `, ${detail}` : ""}`}
+        title={`Town and location: ${label}${detail ? `, ${detail}` : ""}`}
         className="inline-flex h-11 min-w-11 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] px-2 text-[13px] font-semibold leading-none transition hover:bg-[var(--app-bg-sunken)] sm:max-w-none sm:justify-start"
         style={{ color: labelColor }}
       >

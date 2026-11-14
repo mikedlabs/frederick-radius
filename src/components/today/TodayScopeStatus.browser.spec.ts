@@ -8,6 +8,7 @@ import { getScope, setScope } from "@/lib/scope";
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
+  useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
 }));
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
@@ -87,7 +88,7 @@ describe("TodayScopeStatus location memory", () => {
     await render();
     expect(getScope()).toBe("county");
     expect(container.querySelector("select")?.value).toBe("county");
-    expect(container.textContent).toContain("Countywide briefing");
+    expect(container.textContent).toContain("Whole county briefing");
     expect(container.querySelector('[data-testid="today-scope-status"]')?.className).toBe("sr-only");
 
     await act(async () => {
@@ -101,7 +102,7 @@ describe("TodayScopeStatus location memory", () => {
     expect(window.location.hash).toBe("#find-radius");
     const status = container.querySelector('[data-testid="today-scope-status"]')!;
     expect(status.classList.contains("sr-only")).toBe(false);
-    expect(status.textContent).toContain("Brunswick picks · Countywide weather");
+    expect(status.textContent).toContain("Brunswick picks · Weather for the whole county");
   });
 
   it("silently refreshes an already-granted fix when the lens is Near me", async () => {

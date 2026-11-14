@@ -29,7 +29,7 @@ describe("TodayEventsRecoveryView", () => {
 
     expect(html).toContain("Alive @ Five · Kate Cosentino");
     expect(html).toContain('href="/events/alive-at-five-2026-08-27"');
-    expect(html).toContain("1 event pick today · 1 event pick tonight · Countywide");
+    expect(html).toContain("1 event pick today · 1 event pick tonight · Whole county");
     expect(html).toContain('data-today-event-recovery="true"');
   });
 

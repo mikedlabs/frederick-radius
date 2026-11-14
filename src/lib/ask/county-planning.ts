@@ -3,6 +3,7 @@ import type {
   AskSource,
 } from "@/lib/ask/contracts";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
+import { scopeLabel } from "@/lib/scope";
 import {
   FC_PLANNING_PROJECTS_SOURCE,
   type CountyPlanningApplication,
@@ -173,6 +174,8 @@ export function countyPlanningAskResult(
   const queryTown = requestedMunicipality(context.query);
   const rankingOrigin = queryTown?.centroid ?? context.origin ?? null;
   const contextLabel = queryTown?.name ?? context.label ?? "Frederick County";
+  // A device fix is printed as "Near me"; a distance is measured from you.
+  const distanceOrigin = contextLabel === scopeLabel("nearme") ? "you" : contextLabel;
   const allRanked = snapshot.records
     .map((application) => {
       const anchor = polygonAnchor(application.geometry);
@@ -215,7 +218,7 @@ export function countyPlanningAskResult(
         queryTown
           ? `This application is mapped in the ${queryTown.name} area.`
           : context.canShowDistance !== false && distance != null
-          ? `${formatDistance(distance)} from ${contextLabel}`
+          ? `${formatDistance(distance)} from ${distanceOrigin}`
           : application.milestone ?? "Open application",
       detail: [
         application.applicationType,
@@ -229,7 +232,7 @@ export function countyPlanningAskResult(
   const lead = ranked[0];
   const answer =
     lead
-      ? `${ranked.length} open County planning application${ranked.length === 1 ? "" : "s"} ${queryTown ? `map to the ${queryTown.name} area` : "are in the current layer"}. ${lead.application.name} ranks first${!queryTown && context.canShowDistance !== false && lead.distance != null ? ` at ${formatDistance(lead.distance)} from ${contextLabel}` : ""}. An open application is not proof of approval or active construction.`
+      ? `${ranked.length} open County planning application${ranked.length === 1 ? "" : "s"} ${queryTown ? `map to the ${queryTown.name} area` : "are in the current layer"}. ${lead.application.name} ranks first${!queryTown && context.canShowDistance !== false && lead.distance != null ? ` at ${formatDistance(lead.distance)} from ${distanceOrigin}` : ""}. An open application is not proof of approval or active construction.`
       : queryTown
         ? `The current County layer returned no open planning applications in the ${queryTown.name} area. Open the official map before relying on that result.`
         : "The County layer returned no open planning applications. Open the official map before relying on that result.";

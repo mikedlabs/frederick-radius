@@ -197,7 +197,7 @@ describe("/api/ask location policy", () => {
       {
         origin: { lat: 39.414, lng: -77.411 },
         municipality: null,
-        contextLabel: "Near you",
+        contextLabel: "Near me",
         canShowDistance: true,
         fallbackReason: null,
       },

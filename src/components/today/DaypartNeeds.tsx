@@ -13,7 +13,7 @@ import type { DaypartPick, DaypartRow } from "@/lib/loaders/daypartPicks";
 import { getWantAnswer } from "@/lib/want-cache";
 import { GEOLOCATION_CHANGE_EVENT } from "@/hooks/useGeolocation";
 import { daypartBrowseHref } from "@/lib/today/daypart-needs";
-import { getScope, parseScope, scopeLabel, scopeTownSlug, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { getScope, parseScope, scopeInSentence, scopeLabel, scopeTownSlug, subscribeScopeChange, type Scope } from "@/lib/scope";
 import Skeleton from "@/components/ui/Skeleton";
 import { persistOfflineTodaySnapshot } from "@/lib/offline-snapshot";
 import { easternDayKey } from "@/lib/tz";
@@ -209,8 +209,8 @@ export function daypartEmptyCopy(
   const scope =
     countywide
       ? "across Frederick County"
-      : contextLabel === "Near you"
-        ? "near you"
+      : contextLabel === scopeLabel("nearme")
+        ? scopeInSentence(contextLabel)
         : contextLabel.startsWith("Near ")
           ? `${contextLabel.charAt(0).toLocaleLowerCase()}${contextLabel.slice(1)}`
           : `in ${contextLabel}`;
@@ -299,12 +299,15 @@ export function daypartPickScopeLabel(
   source: NonNullable<WantAnswer["contextSource"]>,
   contextLabel: string,
 ): string {
-  if (source === "device" || source === "home") return "Nearby picks";
+  // A device fix is the Near me area, so the shelf uses the same name as the
+  // page's readout. Ranking around a saved home town is not that area.
+  if (source === "device") return `${scopeLabel("nearme")} picks`;
+  if (source === "home") return "Nearby picks";
   if (source === "town") {
     const town = contextLabel.trim();
     return town ? `${town} picks` : "Town picks";
   }
-  return "Countywide picks";
+  return `${scopeLabel("county")} picks`;
 }
 
 function leadAvailabilityClause(place: DaypartPick): string | null {
@@ -601,7 +604,7 @@ function DaypartNeedsShelf({
   // Server rows are deliberately countywide. A confirmed card still needs
   // that geography while a town answer loads or its enhancement fails.
   const shelfContextLabel = !liveActive && requestedTown
-    ? `Countywide picks · ${activeRequest?.scope === requestedScope ? `${requestedTown} results unavailable` : `Checking ${requestedTown}`}`
+    ? `${scopeLabel("county")} picks · ${activeRequest?.scope === requestedScope ? `${requestedTown} results unavailable` : `Checking ${requestedTown}`}`
     : contextLabel;
   const browseHref = active && !liveActive
     ? daypartBrowseHref(active.category, active.label, "county") || active.href

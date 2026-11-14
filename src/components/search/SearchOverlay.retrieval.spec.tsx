@@ -10,12 +10,14 @@ vi.mock("@/hooks/useReversibleHistoryLayer", () => ({
   useReversibleHistoryLayer: () => navigation,
 }));
 vi.mock("@/lib/track", () => ({ track: vi.fn() }));
-vi.mock("@/hooks/useGeolocation", () => ({ readCachedPosition: () => null }));
+const geo = vi.hoisted(() => ({ cached: null as { lat: number; lng: number } | null }));
+vi.mock("@/hooks/useGeolocation", () => ({ readCachedPosition: () => geo.cached }));
 vi.mock("@/hooks/useRecentSearches", () => ({
   useRecentSearches: () => [], useRecentSearchStatus: () => ({ available: true, clearFailed: false }),
   usePushRecentSearch: () => navigation.recent, useClearRecentSearches: () => vi.fn(),
 }));
 import SearchOverlay from "./SearchOverlay";
+import { setScope } from "@/lib/scope";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root, host: HTMLDivElement;
@@ -151,5 +153,65 @@ describe("Find retrieval-first interactions", () => {
     expect(host.querySelector('[data-search-event-coverage]')).not.toBeNull();
     await act(async () => vi.advanceTimersByTimeAsync(1600));
     expect(vi.mocked(track).mock.calls.some(([event]) => event === "search_empty")).toBe(false);
+  });
+});
+
+describe("Find states the shared area", () => {
+  // Inner hooks run before the outer unmount, so reset inside act.
+  afterEach(async () => { geo.cached = null; await act(async () => setScope(null)); });
+  const field = () => host.querySelector<HTMLInputElement>('input[role="searchbox"]')!;
+  const areaLine = () => host.querySelector("[data-find-area]")?.textContent;
+
+  it("names the whole county for an unset area, in the field and on an unqualified answer", async () => {
+    await render("Gravel & Grind"); await tick();
+    expect(field().getAttribute("aria-label")).toBe("Ask or find across the whole county");
+    expect(areaLine()).toBeUndefined();
+    await respond(0, [gravel], { qualifiers: { constrained: false }, contextLabel: null });
+    expect(areaLine()).toBe("Whole county");
+  });
+
+  it("follows a header change to a town and prints the server's area label", async () => {
+    setScope("town:thurmont");
+    await render("coffee"); await tick();
+    expect(field().getAttribute("aria-label")).toBe("Ask or find in Thurmont");
+    await respond(0, [gravel], { qualifiers: { constrained: true, categoryLabel: "Coffee" }, contextLabel: "Thurmont" });
+    expect(areaLine()).toBe("Coffee · Thurmont");
+    await act(async () => setScope("nearme"));
+    expect(field().getAttribute("aria-label")).toBe("Ask or find near you");
+  });
+
+  it("refetches when the area changes while Find is open", async () => {
+    await render("coffee"); await tick();
+    expect(requests).toHaveLength(1);
+    await act(async () => setScope("town:thurmont"));
+    await tick();
+    // The endpoint reads the area cookie when a request starts, so the old
+    // area's request is abandoned and a new one goes out.
+    expect(requests[0].signal.aborted).toBe(true);
+    expect(requests).toHaveLength(2);
+  });
+
+  it("says near you when no area is chosen and the browser already shared a location", async () => {
+    geo.cached = { lat: 39.4143, lng: -77.4105 };
+    await render("Gravel & Grind"); await tick();
+    expect(field().getAttribute("aria-label")).toBe("Ask or find near you");
+    await respond(0, [gravel], { qualifiers: { constrained: false }, contextLabel: null });
+    expect(areaLine()).toBe("Near me");
+  });
+
+  it("names the area a near-me question fell back to when no location is usable", async () => {
+    await render("coffee near me"); await tick();
+    await respond(0, [gravel], {
+      qualifiers: { constrained: true, categoryLabel: "Coffee", nearMe: true },
+      nearMeApplied: false, fallbackReason: null, contextLabel: "Whole county",
+    });
+    expect(areaLine()).toBe("Coffee · Location unavailable · not distance-ranked · Whole county");
+  });
+
+  it("adds the area to a category answer that the server did not scope", async () => {
+    setScope("county");
+    await render("pizza"); await tick();
+    await respond(0, [gravel], { qualifiers: { constrained: true, categoryLabel: "Pizza" }, contextLabel: null });
+    expect(areaLine()).toBe("Pizza · Whole county");
   });
 });

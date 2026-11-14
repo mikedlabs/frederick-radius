@@ -525,7 +525,7 @@ test.describe("map search selection", () => {
       .getByRole("button", { name: "Ask or find across Frederick County" })
       .click();
     await page
-      .getByRole("searchbox", { name: "Ask or find across Frederick County" })
+      .getByRole("searchbox", { name: "Ask or find across the whole county" })
       .fill("ATM");
 
     const results = page.getByRole("list", { name: "Search results" });

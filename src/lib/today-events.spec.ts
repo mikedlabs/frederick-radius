@@ -44,13 +44,13 @@ describe("Today event shortlist", () => {
       tonightPicks: 1,
       degraded: true,
     })).toBe(
-      "1 event pick today · 1 event pick tonight · Countywide · Partial coverage",
+      "1 event pick today · 1 event pick tonight · Whole county · Partial coverage",
     );
     expect(todayEventPicksMeta({
       todayPicks: 3,
       tonightPicks: 2,
       degraded: false,
-    })).toBe("3 event picks today · 2 event picks tonight · Countywide");
+    })).toBe("3 event picks today · 2 event picks tonight · Whole county");
     expect(todayEventPicksMeta({
       todayPicks: 2,
       tonightPicks: 1,

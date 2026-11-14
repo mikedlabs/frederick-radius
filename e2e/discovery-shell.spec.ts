@@ -36,7 +36,7 @@ test.describe("mobile discovery shell", () => {
     await expect(openFind).toHaveAttribute("aria-expanded", "true");
     await expect(
       page.getByRole("searchbox", {
-        name: "Ask or find across Frederick County",
+        name: "Ask or find across the whole county",
       }),
     ).toBeFocused();
     await expect(page.getByRole("button", { name: "Close Find" })).toBeVisible();
@@ -70,7 +70,7 @@ test.describe("mobile discovery shell", () => {
     await expect(dialog).toHaveAttribute("id", "radius-find-dialog");
     await expect(dialog).toHaveAttribute("aria-modal", "true");
     await expect(page.getByRole("searchbox", {
-      name: "Ask or find across Frederick County",
+      name: "Ask or find across the whole county",
     })).toBeFocused();
     await expect(page.getByRole("button", { name: "Close Find" })).toBeVisible();
     await expect(page).toHaveURL(/\/today(?:[?#]|$)/);
@@ -760,7 +760,7 @@ test.describe("mobile discovery shell", () => {
     const findLauncher = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
     await findLauncher.click();
     const find = page.getByRole("dialog", { name: "What do you need?" });
-    const request = find.getByRole("searchbox", { name: "Ask or find across Frederick County" });
+    const request = find.getByRole("searchbox", { name: "Ask or find across the whole county" });
     await expect(request).toBeFocused();
     await request.fill("trash can");
     await find.getByRole("button", { name: "Close Find", exact: true }).click();

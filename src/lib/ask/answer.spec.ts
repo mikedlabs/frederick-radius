@@ -148,7 +148,7 @@ describe("askFrederick structured answers", () => {
       "Where can I get a breakfast sandwich near me?",
       {
         origin: downtown.origin,
-        contextLabel: "Near you",
+        contextLabel: "Near me",
         canShowDistance: true,
       },
     );
@@ -599,7 +599,7 @@ describe("askFrederick structured answers", () => {
     try {
       const result = await askFrederick("restaurants open now near me", {
         origin: downtown.origin,
-        contextLabel: "Near you",
+        contextLabel: "Near me",
         canShowDistance: true,
       });
 
