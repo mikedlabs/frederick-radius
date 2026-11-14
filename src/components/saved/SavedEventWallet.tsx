@@ -16,7 +16,8 @@
  * action open /events/[slug].
  * The raised card tears out the same cream SPECIMEN-LABEL STUB places use,
  * where the mono ledger prints the full when, venue, town, kind, admission,
- * and saved date, plus the actions (Open event · Directions · Tickets).
+ * and saved date, plus who published the listing and when it was last
+ * checked at its source (the shared FreshnessChip), then the actions (Open event · Directions · Tickets).
  *
  * Pure presentation over already-assembled, already-sorted Events. Reuses
  * the shared event helpers (eventLipFact / eventWhenParts / eventPriceLabel,
@@ -37,7 +38,9 @@ import { track } from "@/lib/track";
 import { savedDateLabel } from "@/components/saved/walletFacts";
 import { walletFocusAfterRemoval } from "@/components/saved/SavedWallet";
 import { useToggleSave, savedChangeDescription } from "@/hooks/useSaved";
-import { eventLipFact, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
+import { eventLipFact, eventListingNote, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
+import EventSourceLink from "@/components/event/EventSourceLink";
+import FreshnessChip from "@/components/ui/FreshnessChip";
 import { statusLabel } from "@/lib/event-status";
 import { withBrowseReturnTo } from "@/lib/browse-return";
 
@@ -104,6 +107,7 @@ function Card({
     status === "cancelled" ? "var(--app-danger)" : "var(--app-warning-press)";
   const when = eventWhenParts(event);
   const price = eventPriceLabel(event);
+  const listingNote = eventListingNote(event);
   const saved = savedDateLabel(savedAt);
   const hasGeom =
     Boolean(event.geom) && Number.isFinite(event.geom.lat) && Number.isFinite(event.geom.lng);
@@ -227,6 +231,24 @@ function Card({
             )}
           </dl>
         </div>
+        {listingNote ? (
+          <div data-event-listing-note className="mt-3">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p
+                className="text-[13px] leading-[1.5]"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                {listingNote.sentence}
+              </p>
+              <FreshnessChip iso={event.last_verified_at ?? undefined} subject="Event" />
+            </div>
+            {listingNote.sourceUrl ? (
+              <div className="mt-1 text-[13px]">
+                <EventSourceLink href={listingNote.sourceUrl} />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <div className="sw-actions">
           <Link href={withBrowseReturnTo(`/events/${event.slug}`, "/my-radius")} className="sw-act-primary">
             Open event

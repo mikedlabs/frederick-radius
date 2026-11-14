@@ -336,3 +336,35 @@ export const MultipleCollapsedEventsAt320WithEnlargedRoot: Story = {
     await multipleCollapsedWalletTargets({ canvasElement });
   },
 };
+
+const sourcedEvent = {
+  ...eventSample,
+  slug: "weinberg-sourced-event",
+  title: "Evening concert",
+  source: "weinberg",
+  source_url: "https://weinbergcenter.org/events/evening-concert",
+  // FreshnessChip reads the real clock, not the wallet's `now`, so the check
+  // time is two hours before the moment the story renders.
+  last_verified_at: new Date(Date.now() - 2 * 3_600_000).toISOString(),
+  is_verified: false,
+} satisfies Event;
+
+export const RaisedEventSourceNote: Story = {
+  render: () => (
+    <div data-app-primary-tab="/my-radius" className="w-[min(24rem,100vw)] max-w-full p-4">
+      <SavedEventWallet events={[sourcedEvent]} now={eventNow} startRaised />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // The raised stub fades in. Wait for that reveal before asserting.
+    await waitFor(() => expect(canvas.getByText(
+      "This listing comes from Weinberg Center for the Arts.",
+    )).toBeVisible());
+    // The shared chip, the same wording the event page and place sheet use.
+    await expect(canvas.getByText("Event checked at source · 2h ago")).toBeVisible();
+    const source = canvas.getByRole("link", { name: /Official event page/ });
+    await expect(source).toHaveAttribute("href", "https://weinbergcenter.org/events/evening-concert");
+    await expect(source).toHaveAttribute("target", "_blank");
+  },
+};

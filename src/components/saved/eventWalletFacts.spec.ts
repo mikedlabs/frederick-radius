@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { eventLipFact, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
+import {
+  eventLipFact,
+  eventListingNote,
+  eventPriceLabel,
+  eventWhenParts,
+} from "@/components/saved/eventWalletFacts";
 import type { Event } from "@/data/events";
 
 /** A minimal, valid Event for the pure fact helpers. Times are UTC ISO; the
@@ -55,6 +60,59 @@ describe("eventWhenParts: title-cased date + honest clock", () => {
   it("carries All day for all-day rows, never a bogus midnight clock", () => {
     const allDay = mk({ is_all_day: true, starts_at: "2026-07-08T04:00:00Z", ends_at: "2026-07-09T03:59:00Z" });
     expect(eventWhenParts(allDay)).toEqual({ date: "Wed, Jul 8", time: "All day" });
+  });
+});
+
+describe("eventListingNote: who published the listing, never a check time", () => {
+  it("names the publisher and keeps its http(s) page", () => {
+    expect(eventListingNote({
+      source: "weinberg",
+      source_url: "https://weinbergcenter.org/events/show",
+    })).toEqual({
+      sentence: "This listing comes from Weinberg Center for the Arts.",
+      sourceUrl: "https://weinbergcenter.org/events/show",
+    });
+  });
+
+  it("uses the venue name for a venue-page extract", () => {
+    expect(eventListingNote({
+      source: "venue-extract",
+      organizer: "  Monocacy   Brewing ",
+    })?.sentence).toBe("This listing comes from Monocacy Brewing.");
+  });
+
+  it("falls back to the venue page when an extract has no organizer", () => {
+    expect(eventListingNote({ source: "venue-extract" })?.sentence).toBe(
+      "This listing comes from the venue's own page.",
+    );
+  });
+
+  it("drops a javascript: or malformed publisher URL", () => {
+    expect(eventListingNote({
+      source: "ticketmaster",
+      source_url: "javascript:alert(1)",
+    })).toEqual({
+      sentence: "This listing comes from Ticketmaster.",
+      sourceUrl: null,
+    });
+    expect(eventListingNote({ source: "county", source_url: "not a url" })?.sourceUrl).toBeNull();
+  });
+
+  it("distinguishes a Radius-selected listing from a checked or unchecked manual row", () => {
+    expect(eventListingNote({ source: "seed" })?.sentence).toBe(
+      "Frederick Radius selected this listing.",
+    );
+    expect(eventListingNote({ source: "manual", is_verified: true })?.sentence).toBe(
+      "Frederick Radius checked this listing against its source.",
+    );
+    expect(eventListingNote({ source: "manual", is_verified: false })?.sentence).toBe(
+      "Frederick Radius has this listing on file.",
+    );
+  });
+
+  it("says nothing when the source is missing or unknown", () => {
+    expect(eventListingNote({})).toBeNull();
+    expect(eventListingNote({ source: "not-a-feed" })).toBeNull();
   });
 });
 
