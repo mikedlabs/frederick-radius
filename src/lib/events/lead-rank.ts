@@ -8,7 +8,9 @@
  *
  * Tiers (lower = leads):
  *   0  draw            — a carnival, concert, market, festival, one-off
- *   1  routine program — storytime, weekly class, club, guild, support group
+ *   1  routine program — storytime, weekly class, club, guild, support group,
+ *                        and a program publisher's row that does not read as
+ *                        a public outing (see isPublisherProgram)
  *   2  utility         — civic/meeting business (already tucked elsewhere)
  * Within a tier: an event with imagery first, then soonest. (hero_image can't
  * be the top tier — withVenueThumbs decorates nearly every event with a venue
@@ -38,6 +40,10 @@ export type LeadRankable = {
   is_free?: boolean;
   price_text?: string | null;
   venue_name?: string | null;
+  /** Feed id ("fcpl", "county", "fcc"). Lighter shapes may omit it. */
+  source?: string | null;
+  /** The publisher's own page for the row, when the shape carries it. */
+  source_url?: string | null;
 };
 
 // Standing programs that recur on a calendar and aren't a "come out tonight"
@@ -50,10 +56,119 @@ export function isRoutineProgram(e: { title?: string }): boolean {
   return ROUTINE_PROGRAM.test(e.title ?? "");
 }
 
+// Publishers whose calendars are mostly standing programs for their own
+// patrons, members or students: library branches, county senior centers,
+// city recreation classes, campus admissions and student life, a school
+// calendar and two congregations. On Nov 9, 2026 they supplied 744 of the 975
+// listed events, and 556 of those ranked as draws, so "Events today" led with
+// a transfer recruitment table, a student club's tennis practice and a campus
+// fitness class.
+const PROGRAM_PUBLISHERS: ReadonlySet<string> = new Set([
+  "fcpl",
+  "county",
+  "city-frederick",
+  "fcc",
+  "hood",
+  "mount-st-marys",
+  "msd",
+  "elc",
+  "isf",
+]);
+
+// What still reads as a public outing on one of those calendars. Title-only
+// and deliberately specific. A missed signal only costs a row its place at the
+// front; it stays listed, searchable and on its day.
+const PUBLISHER_OUTING_TITLE = new RegExp(
+  "\\b(?:" +
+    [
+      "festivals?",
+      "carnivals?",
+      "concerts?",
+      "recitals?",
+      "orchestra",
+      "symphony",
+      "ensemble",
+      "trio",
+      "quartet",
+      "quintet",
+      "choir",
+      "chorale",
+      "sing-?along",
+      "live\\s+music",
+      "open\\s+mic",
+      "(?:farmers|makers|holiday|christmas|craft|artisan|flea|night)['’]?s?\\s+markets?",
+      "(?:craft|street|art|holiday)\\s+fairs?",
+      "bazaars?",
+      "pop-?up\\s+sale",
+      "(?:book|plant|bake|rummage|yard)\\s+sales?",
+      "parades?",
+      "screenings?",
+      "movie\\s+nights?",
+      "film\\s+series",
+      "guided\\s+(?:walk|hike|tour)s?",
+      "tours?",
+      "comedy",
+      "improv",
+      "theat(?:er|re)",
+      "musicals?",
+      "performances?",
+      "(?:opening|artists?['’]?)\\s+receptions?",
+      "exhibit(?:ion)?\\s+(?:opening|reception)",
+      "author\\s+(?:talk|visit)s?",
+      "book\\s+(?:signing|launch|talk)s?",
+      "lectures?",
+      "showcase",
+      "shows?",
+      "galas?",
+      "dinner\\s+dance",
+      "(?:gun|crab|oyster|ham|turkey|spaghetti|chicken|fish|pancake)\\s+(?:dinner|feed|fry|feast|breakfast|supper)",
+      "(?:money|cash)\\s+(?:drawing|bash)",
+      "ceremon(?:y|ies)",
+      "tree\\s+lighting",
+      "fireworks",
+      "candlelight",
+      "5k",
+      "fun\\s+run",
+    ].join("|") +
+    ")\\b|\\bvs\\.?(?=\\s|$)",
+  "i",
+);
+
+// Words that mark a class, a rehearsal or an admissions errand even when an
+// outing word sits beside them ("Theatre Class", "Concert Band Rehearsal",
+// "Campus Tour").
+const PROGRAM_OVERRIDE =
+  /\b(?:class(?:es)?|lessons?|rehearsals?|practice|training|information\s+(?:session|night)|info\s+session|recruit(?:ment|ing)|instant\s+decision|campus\s+tours?|open\s+studio|open\s+lab|study|club)\b/i;
+
+// The Delaplaine Arts Center lists classes and exhibitions on one calendar,
+// and their titles cannot be told apart: "Pen and Ink" is a class and
+// "Johan Lowie - Silent Witness" is an exhibition. Its registrar gives
+// every course a term code in the link (/event/27-2-dr06/). Nothing else on
+// the calendar carries one, so the link separates the 27 courses from the 9
+// exhibitions, talks and pop-ups listed on Nov 9, 2026.
+const DELAPLAINE_COURSE_LINK = /\/event\/\d{2}-\d-[a-z]{2,4}\d{2,3}(?:[/?#]|$)/i;
+
+/**
+ * A row from a program publisher that does not read as a public outing. It
+ * keeps its place in every list. It simply does not lead ahead of an actual
+ * outing, the same treatment a storytime already gets.
+ */
+export function isPublisherProgram(
+  e: Pick<LeadRankable, "title" | "source" | "source_url">,
+): boolean {
+  if (!e.source) return false;
+  if (e.source === "delaplaine") return DELAPLAINE_COURSE_LINK.test(e.source_url ?? "");
+  if (!PROGRAM_PUBLISHERS.has(e.source)) return false;
+  const title = e.title ?? "";
+  if (PROGRAM_OVERRIDE.test(title)) return true;
+  return !PUBLISHER_OUTING_TITLE.test(title);
+}
+
 /** Lead tier — see module doc. Lower leads. */
 export function eventLeadTier(e: LeadRankable): number {
   if (isUtilityEvent(e)) return 2;
   if (isRoutineProgram(e)) return 1;
+  if (isPublisherProgram(e)) return 1;
   return 0;
 }
 
