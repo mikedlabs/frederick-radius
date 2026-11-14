@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { qualifiedSearch, type QualifiedSearchContext, type SearchHit } from "@/lib/search";
 import { isEventSearchIntent } from "@/lib/search";
 import { loadAskEventSnapshot, withAskEventCoverage, type AskEventSnapshot } from "@/lib/ask/event-snapshot";
-import { matchCivicAction } from "@/data/civic-actions";
+import { CIVIC_ACTIONS, matchCivicAction, type CivicAction } from "@/data/civic-actions";
 import { departmentJurisdictionLabel, isDepartmentRequest, matchDepartment } from "@/data/department-contacts";
 import { findTownCivicResource } from "@/data/town-websites";
 import { findMunicipalCivic } from "@/lib/loaders/municipalCivic";
@@ -1591,6 +1591,46 @@ async function answerParkingRequest(
   });
 }
 
+/** Source card for an official task link, named for whoever publishes it. */
+export function civicActionSource(action: CivicAction): AskSource {
+  const publisher = action.publisher ?? "Frederick County";
+  return {
+    slug: action.id,
+    name: `${publisher} · ${action.label}`,
+    category: "civic",
+    city: "",
+    href: action.url,
+    eyebrow: `${publisher} · Official`,
+    reason: "The authoritative Frederick link for this task",
+    confidence: "high",
+  };
+}
+
+type AmenityRankCandidate = {
+  amenity: Pick<Amenity, "municipality" | "name">;
+  distance: number | null;
+  anchorDistance: number;
+};
+
+/**
+ * Order mapped amenities for an answer. With a real user origin, nearest
+ * wins outright. Without one, a same-town match wins, then proximity to the
+ * downtown anchor, then name. Exported so the no-origin fallback is testable:
+ * a county-wide "public restroom" answer must not float a suburban park's
+ * portable toilet to the top just because its name sorts early alphabetically.
+ */
+export function compareAmenityRank(
+  a: AmenityRankCandidate,
+  b: AmenityRankCandidate,
+  municipality: string | null | undefined,
+): number {
+  if (a.distance != null && b.distance != null) return a.distance - b.distance;
+  const aLocal = municipality && a.amenity.municipality === municipality ? 1 : 0;
+  const bLocal = municipality && b.amenity.municipality === municipality ? 1 : 0;
+  if (aLocal !== bLocal) return bLocal - aLocal;
+  return a.anchorDistance - b.anchorDistance || a.amenity.name.localeCompare(b.amenity.name);
+}
+
 async function answerAmenityRequest(
   requested: ReturnType<typeof requestedAmenities>,
   intent: AskIntent,
@@ -1624,18 +1664,17 @@ async function answerAmenityRequest(
       distance: context.origin
         ? haversineMeters(context.origin, { lng: amenity.lng, lat: amenity.lat })
         : null,
+      // Always known: proximity to the downtown anchor. Used only as the
+      // no-origin fallback order so a county-wide answer stops ranking a
+      // suburban park's portable toilet first on an alphabetical name.
+      anchorDistance: haversineMeters(FREDERICK_CENTER, { lng: amenity.lng, lat: amenity.lat }),
     }));
 
-  const byKind = new Map<AmenityKind, Array<{ amenity: Amenity; distance: number | null }>>();
+  const byKind = new Map<AmenityKind, Array<{ amenity: Amenity; distance: number | null; anchorDistance: number }>>();
   for (const request of requested) {
     const list = candidates
       .filter((candidate) => candidate.amenity.kind === request.kind)
-      .sort((a, b) => {
-        if (a.distance != null && b.distance != null) return a.distance - b.distance;
-        const aLocal = context.municipality && a.amenity.municipality === context.municipality ? 1 : 0;
-        const bLocal = context.municipality && b.amenity.municipality === context.municipality ? 1 : 0;
-        return bLocal - aLocal || a.amenity.name.localeCompare(b.amenity.name);
-      });
+      .sort((a, b) => compareAmenityRank(a, b, context.municipality));
     byKind.set(request.kind, list);
   }
 
@@ -1838,6 +1877,13 @@ export function eventMatchesTopic(event: Event, query: string): boolean {
   if (/\bfestivals?\b/i.test(query)) return /\b(?:festival|fest|carnival)\b/i.test(text);
   if (/\bperformances?\b/i.test(query)) {
     return ["music", "theater", "dance", "comedy"].includes(event.category) || /\b(?:performance|theater|theatre|concert|dance|comedy)\b/i.test(text);
+  }
+  // A movie/showtime ask is answered by the cinemas (places). Appending
+  // tonight's unrelated calendar rows (a vinyl night, a volleyball game, a
+  // food truck) as "movies" is noise. Keep only genuinely film-related rows
+  // (a library screening, a film festival), which is usually none.
+  if (/\b(?:movies?|films?|cinema|showtimes?|matinee|screening)\b/i.test(query)) {
+    return /\b(?:movies?|cinemas?|films?|screenings?|showtimes?|matinees?)\b/i.test(text);
   }
   return true;
 }
@@ -3093,16 +3139,15 @@ export async function askFrederick(
   }
 
   if (civic) {
-    sources.push({
-      slug: civic.id,
-      name: `Frederick County · ${civic.label}`,
-      category: "civic",
-      city: "",
-      href: civic.url,
-      eyebrow: "Frederick County · Official",
-      reason: "The authoritative Frederick link for this task",
-      confidence: "high",
-    });
+    // Some answers belong to two publishers (trash is a town service,
+    // recycling a County one). The matched action leads; its related actions
+    // follow, each under its own publisher's name.
+    const related = (civic.related ?? [])
+      .map((id) => CIVIC_ACTIONS.find((action) => action.id === id))
+      .filter((action): action is CivicAction => Boolean(action));
+    for (const action of [civic, ...related]) {
+      sources.push(civicActionSource(action));
+    }
   }
   const civicLine = civic
     ? `OFFICIAL CIVIC ACTION (cite this link if relevant): ${civic.label} → ${civic.url}\n`
@@ -3379,6 +3424,7 @@ export async function askFrederick(
         : null;
     const primaryAnswer = explicitWeatherAnswer || appointmentAnswer || communicationAccessEmptyAnswer || deterministicAnswer({
         civic: civic?.label,
+        civicAnswer: civic?.answer,
         department: dept?.name,
         municipal: useMunicipal
           ? { town: useMunicipal.town, label: useMunicipal.contacts[0]?.label, exact: useMunicipal.matchedIntent, hoursAnswer: municipalHoursAnswer }
@@ -3414,6 +3460,10 @@ export async function askFrederick(
       placesForAskSources(responseSources),
       fit,
     );
+    // An official answer (a county or town link, a department contact) is
+    // not a discovery result. Offering "Make it a plan", "Open now" or
+    // "Independent spots" under "when is trash day" turns a correct answer
+    // into a confusing one, so those refinements are left off below.
     const directActions = intent.kind === "event" && responseSources.length === 0
       ? communicationAccessEventDiscovery
         ? [
@@ -3424,7 +3474,9 @@ export async function askFrederick(
           { label: "Open the full calendar", kind: "open" as const, href: "/events" },
           { label: "Try this weekend", kind: "refine" as const, query: "What events are happening this weekend?" },
         ]
-      : responseActions;
+      : officialAnswer
+        ? responseActions.filter((action) => action.kind !== "refine")
+        : responseActions;
     return calendarAnswer({
       status: responseSources.length > 0 ? "matches" : "empty",
       configured: hasKey(),
@@ -3516,6 +3568,7 @@ export async function askFrederick(
 
 function deterministicAnswer({
   civic,
+  civicAnswer,
   department,
   municipal,
   count,
@@ -3534,6 +3587,7 @@ function deterministicAnswer({
   sources,
 }: {
   civic?: string;
+  civicAnswer?: string;
   department?: string;
   municipal?: { town: string; label?: string; exact: boolean; hoursAnswer?: string };
   count: number;
@@ -3554,6 +3608,7 @@ function deterministicAnswer({
   if (municipal?.hoursAnswer) return municipal.hoursAnswer;
   if (municipal?.exact) return `Here is the official ${municipal.town} resource${municipal.label ? ` for ${municipal.label.toLowerCase()}` : ""}.`;
   if (municipal) return `Radius does not have a verified department-specific answer for ${municipal.town} yet, so here is the official municipal contact instead of guessing.`;
+  if (civicAnswer) return civicAnswer;
   if (civic) return `Use this official Frederick resource for ${civic.toLowerCase()}.`;
   if (department) return `Here is the official contact for ${department}.`;
   if (eventIntent && count === 0) return "I couldn’t find a current Radius event that fits that time window. Try the full calendar or widen the date.";
