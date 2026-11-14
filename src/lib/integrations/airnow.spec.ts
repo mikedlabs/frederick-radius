@@ -8,6 +8,9 @@ const originalAirNowKey = process.env.AIRNOW_API_KEY;
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  // Restored here, not at the end of each test, so a failed expectation
+  // cannot leak a console spy into the next test's call counts.
+  vi.restoreAllMocks();
   if (originalAirNowKey === undefined) delete process.env.AIRNOW_API_KEY;
   else process.env.AIRNOW_API_KEY = originalAirNowKey;
 });
@@ -66,5 +69,83 @@ describe("AirNow request deadline", () => {
 
     await expect(pending).resolves.toBeNull();
     expect(signal?.aborted).toBe(true);
+  });
+});
+
+describe("AirNow failure reporting", () => {
+  // Each case uses its own coordinates because readings are memoized per
+  // point, and its own cause because a cause is logged once per ten minutes.
+  it("says which HTTP status came back, without the request URL", async () => {
+    process.env.AIRNOW_API_KEY = "secret-key";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("rate limited", { status: 429 })));
+
+    await expect(getAirQuality({ lat: 39.1, lng: -77.1 })).resolves.toBeNull();
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    const message = String(warn.mock.calls[0]?.[0]);
+    expect(message).toBe("[airnow] HTTP 429 from the current-observation endpoint");
+    expect(message).not.toContain("secret-key");
+  });
+
+  it("says when a successful response holds no usable observation", async () => {
+    process.env.AIRNOW_API_KEY = "secret-key";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json([])));
+
+    await expect(getAirQuality({ lat: 39.2, lng: -77.2 })).resolves.toEqual([]);
+
+    expect(String(warn.mock.calls[0]?.[0])).toBe(
+      "[airnow] no usable observation within 25 miles (0 rows returned)",
+    );
+  });
+
+  it("passes along the provider's own message when the body is not a list", async () => {
+    process.env.AIRNOW_API_KEY = "secret-key";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      Response.json({ WebServiceError: [{ Message: "Invalid API key" }] })));
+
+    await expect(getAirQuality({ lat: 39.5, lng: -77.5 })).resolves.toBeNull();
+
+    const message = String(warn.mock.calls[0]?.[0]);
+    expect(message).toBe("[airnow] the response was not a list of observations: Invalid API key");
+    expect(message).not.toContain("secret-key");
+  });
+
+  it("reports a body that is not JSON as malformed, apart from network failures", async () => {
+    process.env.AIRNOW_API_KEY = "secret-key";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response("<html><h1>Service unavailable</h1></html>", { status: 200 })));
+
+    await expect(getAirQuality({ lat: 39.6, lng: -77.6 })).resolves.toBeNull();
+
+    expect(String(warn.mock.calls[0]?.[0])).toBe("[airnow] the response body was not valid JSON");
+  });
+
+  it("ignores an empty row instead of failing on it", async () => {
+    process.env.AIRNOW_API_KEY = "secret-key";
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json([
+      null,
+      { ParameterName: "PM2.5", AQI: 42, Category: { Number: 1, Name: "Good" }, ReportingArea: "Frederick", DateObserved: "2026-11-09", HourObserved: 15 },
+    ])));
+
+    const readings = await getAirQuality({ lat: 39.7, lng: -77.7 });
+
+    expect(readings).toHaveLength(1);
+    expect(readings?.[0]).toMatchObject({ aqi: 42, reportingArea: "Frederick" });
+  });
+
+  it("does not repeat the same cause on the next request", async () => {
+    process.env.AIRNOW_API_KEY = "secret-key";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 503 })));
+
+    await getAirQuality({ lat: 39.3, lng: -77.3 });
+    await getAirQuality({ lat: 39.4, lng: -77.4 });
+
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 });
