@@ -195,14 +195,27 @@ export const ShortPullReturnsToRest: Story = {
         bubbles: true, cancelable: true, composed: true, pointerId: 1, pointerType: "mouse",
         isPrimary: true, button: 0, buttons: type === "pointerup" ? 0 : 1, clientX: x, clientY: y,
       }));
+    /**
+     * Framer Motion reads pointer moves, and moves the sheet, only on an
+     * animation frame. Fixed timers did not guarantee one: on a busy CI runner
+     * every move and the release fired before any frame ran, so the drag never
+     * started. Waiting for the next frame after each move lets every step land.
+     */
+    const nextFrame = () => new Promise<void>((resolve, reject) => {
+      const stalled = view.setTimeout(() => reject(new Error("No animation frame ran for 5s")), 5000);
+      view.requestAnimationFrame(() => {
+        view.clearTimeout(stalled);
+        resolve();
+      });
+    });
     /** Pull down 60px at an unhurried pace and let go while still moving. */
     const pull = async (start: HTMLElement, x: number, y: number) => {
       point("pointerdown", start, x, y);
       for (let step = 1; step <= 10; step += 1) {
         await pause(24);
         point("pointermove", view, x, y + step * 6);
+        await nextFrame();
       }
-      await pause(48);
       const travelled = top();
       point("pointerup", view, x, y + 60);
       return travelled;
@@ -213,6 +226,7 @@ export const ShortPullReturnsToRest: Story = {
     await waitFor(async () => {
       const before = top();
       await pause(60);
+      await nextFrame();
       rest = top();
       expect(Math.abs(rest - before)).toBeLessThanOrEqual(0.25);
       expect(Number(view.getComputedStyle(backdrop).opacity)).toBeCloseTo(0.45, 2);
@@ -223,7 +237,17 @@ export const ShortPullReturnsToRest: Story = {
     const spacerX = rowBox.right - 40;
     const rowY = rowBox.top + rowBox.height / 2;
     expect(view.document.elementFromPoint(spacerX, rowY)?.closest("button")).toBeNull();
-    const pulledTo = await pull(row, spacerX, rowY);
+    // On a loaded CI runner a synthetic gesture sometimes never engages the
+    // drag at all: the sheet does not move by even a pixel (seen on #1966 even
+    // with a frame after every move). Retry only that case, after the sheet is
+    // back at rest, up to twice. A real regression where the row cannot drag
+    // still fails after every attempt, and every attempt must clear 30px.
+    let pulledTo = await pull(row, spacerX, rowY);
+    for (let attempt = 1; attempt < 3 && Math.abs(pulledTo - rest) < 0.5; attempt += 1) {
+      await waitFor(() => expect(Math.abs(top() - rest)).toBeLessThanOrEqual(1), { timeout: 1500 });
+      await pause(120);
+      pulledTo = await pull(row, spacerX, rowY);
+    }
     expect(pulledTo - rest).toBeGreaterThan(30);
     await waitFor(() => {
       expect(Math.abs(top() - rest)).toBeLessThanOrEqual(1);
@@ -231,7 +255,8 @@ export const ShortPullReturnsToRest: Story = {
     }, { timeout: 1500 });
     await expect(dialog).toBeInTheDocument();
 
-    // A press that begins on Close is a button press, never a drag.
+    // A press that begins on Close is a button press, never a drag. The frames
+    // that pass during this pull are what make staying at rest meaningful.
     const closeBox = close.getBoundingClientRect();
     const heldAt = await pull(close, closeBox.left + closeBox.width / 2, closeBox.top + closeBox.height / 2);
     expect(Math.abs(heldAt - rest)).toBeLessThanOrEqual(1);
