@@ -70,6 +70,11 @@ const MAX_ICAL_SOURCE_BYTES = 5_000_000;
 // independently so an upstream template regression cannot make an event
 // request read an arbitrarily large document into memory.
 const MAX_WIX_HTML_SOURCE_BYTES = 3_000_000;
+// CivicEngage all-calendar RSS is far smaller than the Fair iCal, but the
+// live path previously called `res.text()` with no ceiling. Two MB leaves
+// headroom for a busy municipal calendar without letting an HTML error
+// page or a runaway feed occupy the event request.
+const MAX_RSS_SOURCE_BYTES = 2_000_000;
 // Event providers are external, burst-sensitive services. Four concurrent
 // source pulls keeps a cold board quick without opening twenty-plus sockets at
 // once. The same load-shedding ceiling applies to data-health probes, while
@@ -452,7 +457,8 @@ const FEEDS: FeedSpec[] = [
     // Frederick Community College — Modern Campus (Localist) public calendar
     // (fetch-verified 2026-07-12). The classic calendar.frederick.edu host is
     // dead (302 -> not-found); this pubcalendar API is the live replacement.
-    // startDatetime is zone-less ET; the fetcher appends the ?start&end window.
+    // startDatetime is zone-less UTC, not Eastern (see
+    // jsonArrayFeedRowInstants); the fetcher appends the ?start&end window.
     source: "fcc",
     source_label: "Frederick Community College",
     url: "https://api.calendar.moderncampus.net/pubcalendar/edb420ae-0d61-4c0c-90af-26e2dfad9adf/events",
@@ -753,7 +759,7 @@ export function liveEventSlug(
 // ────────────────────────────────────────────────────────────────────────
 
 function unfoldIcalLines(text: string): string[] {
-  const raw = text.split(/\r?\n/);
+  const raw = text.replace(/^\uFEFF/, "").split(/\r?\n/);
   const out: string[] = [];
   for (const line of raw) {
     if (out.length && (line.startsWith(" ") || line.startsWith("\t"))) {
@@ -767,7 +773,7 @@ function unfoldIcalLines(text: string): string[] {
 
 function parseICalDate(value: string, params: Record<string, string>): Date | null {
   if (!value) return null;
-  if (params.VALUE === "DATE" || /^\d{8}$/.test(value)) {
+  if (params.VALUE?.toUpperCase() === "DATE" || /^\d{8}$/.test(value)) {
     const m = /^(\d{4})(\d{2})(\d{2})$/.exec(value);
     if (!m) return null;
     return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
@@ -802,7 +808,12 @@ const MONTHS: Record<string, number> = {
  * path does. A date with no time anchors at midday so it cannot slip
  * to the wrong calendar day.
  */
-export function parseCountyDateTime(dateStr: string, timeStr?: string): Date | null {
+export function parseCountyDateTime(
+  dateStr: string,
+  timeStr?: string,
+  /** Calendar days to add in Eastern time, for an end that falls after midnight. */
+  dayOffset = 0,
+): Date | null {
   const dm = /^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})$/.exec(dateStr.trim());
   if (!dm) return null;
   const month = MONTHS[dm[1].toLowerCase()];
@@ -819,7 +830,47 @@ export function parseCountyDateTime(dateStr: string, timeStr?: string): Date | n
       minute = Number(tm[2]);
     }
   }
-  return new Date(easternWallToUtcISO(year, month, day, hour, minute));
+  return new Date(easternWallToUtcISO(year, month, day + dayOffset, hour, minute));
+}
+
+const CIVICENGAGE_CLOCK = /(\d{1,2}:\d{2}\s*[APap][Mm])/;
+
+function civicEngageClocks(timeStr?: string): { start?: string; end?: string } {
+  if (!timeStr) return {};
+  const normalized = timeStr.replace(/[\u2013\u2014]/g, "-").replace(/\s+/g, " ").trim();
+  const range = new RegExp(
+    `^${CIVICENGAGE_CLOCK.source}\\s*-\\s*${CIVICENGAGE_CLOCK.source}`,
+  ).exec(normalized);
+  if (range) return { start: range[1], end: range[2] };
+  const single = new RegExp(`^${CIVICENGAGE_CLOCK.source}`).exec(normalized);
+  if (single) return { start: single[1] };
+  return {};
+}
+
+/**
+ * Parse CivicEngage EventDates + EventTimes into a start/end window.
+ *
+ * Overnight ranges ("10:00 PM - 1:00 AM") publish both clocks on the same
+ * calendar date. Rolling the end forward one day keeps ends_at after
+ * starts_at so the row stays in the read window for its full run.
+ * A single clock ("5:30 PM") is a start with no published end.
+ * A date with no clock still anchors at midday.
+ */
+export function parseCountyEventWindow(
+  dateStr: string,
+  timeStr?: string,
+): { start: Date; end: Date | null } | null {
+  const clocks = civicEngageClocks(timeStr);
+  const start = parseCountyDateTime(dateStr, clocks.start);
+  if (!start) return null;
+  if (!clocks.end) return { start, end: null };
+  let end = parseCountyDateTime(dateStr, clocks.end);
+  if (end && end.getTime() <= start.getTime()) {
+    // The same clock on the next Eastern calendar day. Adding 24 hours is an
+    // hour off on the two nights a year the clocks change.
+    end = parseCountyDateTime(dateStr, clocks.end, 1);
+  }
+  return { start, end };
 }
 
 function unescapeIcalText(s: string): string {
@@ -989,8 +1040,8 @@ function parseICalEvents(text: string): ParsedVEvent[] {
   const out: ParsedVEvent[] = [];
   let cur: ParsedVEvent | null = null;
   for (const line of lines) {
-    if (line === "BEGIN:VEVENT") cur = {};
-    else if (line === "END:VEVENT") {
+    if (line.trim().toUpperCase() === "BEGIN:VEVENT") cur = {};
+    else if (line.trim().toUpperCase() === "END:VEVENT") {
       if (cur) out.push(cur);
       cur = null;
     } else if (cur) {
@@ -998,11 +1049,12 @@ function parseICalEvents(text: string): ParsedVEvent[] {
       if (colonIdx === -1) continue;
       const head = line.slice(0, colonIdx);
       const value = line.slice(colonIdx + 1);
-      const [key, ...rest] = head.split(";");
+      const [rawKey, ...rest] = head.split(";");
+      const key = rawKey.toUpperCase();
       const params: Record<string, string> = {};
       for (const p of rest) {
         const eq = p.indexOf("=");
-        if (eq > -1) params[p.slice(0, eq)] = p.slice(eq + 1);
+        if (eq > -1) params[p.slice(0, eq).toUpperCase()] = p.slice(eq + 1);
       }
       switch (key) {
         case "UID": cur.uid = value; break;
@@ -1015,7 +1067,7 @@ function parseICalEvents(text: string): ParsedVEvent[] {
           // VALUE=DATE / YYYYMMDD = all-day. Remember it: the candidate will
           // anchor to ET noon (UTC midnight is the prior evening in ET, which
           // listed the row a day early with a fabricated ~8 PM time).
-          cur.allDay = params.VALUE === "DATE" || /^\d{8}$/.test(value);
+          cur.allDay = params.VALUE?.toUpperCase() === "DATE" || /^\d{8}$/.test(value);
           break;
         case "DTEND": cur.end = parseICalDate(value, params) ?? undefined; break;
         case "STATUS": cur.status = value.trim(); break;
@@ -1300,7 +1352,12 @@ async function fetchRssFeed(
       reportFeedUnavailable(feed, `HTTP ${res.status}`);
       return { events: [], ok: false };
     }
-    const xml = await res.text();
+    const xml = await readBoundedText(res, MAX_RSS_SOURCE_BYTES);
+    // An XML declaration is not enough: an XHTML error page has one too.
+    if (!/<(?:rss|rdf:RDF)(?:\s|>)/i.test(xml)) {
+      reportFeedUnavailable(feed, "not RSS");
+      return { events: [], ok: false };
+    }
     const now = new Date();
     const horizon = new Date(now);
     horizon.setDate(horizon.getDate() + windowDays);
@@ -1315,7 +1372,7 @@ async function fetchRssFeed(
         if (!r) return "";
         return r[1].replace(/<!\[CDATA\[/g, "").replace(/\]\]>/g, "").trim();
       };
-      const rawTitle = pick("title").replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+      const rawTitle = cleanFeedText(pick("title"));
       const link = pick("link");
       const description = cleanFeedText(pick("description"));
       if (!rawTitle) continue;
@@ -1329,17 +1386,13 @@ async function fetchRssFeed(
       //   <calendarEvent:Location>...</calendarEvent:Location>
       const eventDate = pick("calendarEvent:EventDates");
       const eventTimes = pick("calendarEvent:EventTimes");
-      let start: Date | null = null;
-      let end: Date | null = null;
-      if (eventDate && eventTimes) {
-        const timeMatch = eventTimes.match(/^(\d{1,2}:\d{2}\s*[APap][Mm])\s*-\s*(\d{1,2}:\d{2}\s*[APap][Mm])/);
-        if (timeMatch) {
-          start = parseCountyDateTime(eventDate, timeMatch[1]);
-          end = parseCountyDateTime(eventDate, timeMatch[2]);
-        } else {
-          start = parseCountyDateTime(eventDate);
-        }
-      }
+      // A row with no published time stays out, as it did before. Listing
+      // it at the parser's midday anchor would print a start nobody announced.
+      const eventWindow = eventDate && eventTimes
+        ? parseCountyEventWindow(eventDate, eventTimes)
+        : null;
+      const start = eventWindow?.start ?? null;
+      let end = eventWindow?.end ?? null;
       if (!start || isNaN(start.getTime())) continue;
       if (hasPublishedWeekdayConflict(title, description, start)) {
         console.warn(
@@ -1890,10 +1943,35 @@ async function fetchWixHtmlFeed(
 }
 
 /**
+ * Start and end instants for one row of a JSON-array campus feed.
+ *
+ * Both formats publish UTC. Presence names its fields that way. Modern Campus
+ * (Frederick Community College) does not: `startDatetime` is a UTC wall time
+ * with no zone marker, so "2026-11-09T23:30" for an information night is
+ * 6:30 PM Eastern, not 11:30 PM. Read as Eastern, every timed FCC listing
+ * showed four hours late in daylight time and five in standard time, and a
+ * 10 AM recruitment table read "Happening now" until 6 PM (production,
+ * Nov 9, 2026; the Oct 8 audit counted 60 listings).
+ */
+export function jsonArrayFeedRowInstants(
+  format: "moderncampus" | "presence",
+  raw: Record<string, unknown>,
+): { startsAtISO: string | null; rawEndsAtISO: string | null } {
+  const str = (k: string): string => (typeof raw[k] === "string" ? (raw[k] as string) : "");
+  const [startKey, endKey] = format === "presence"
+    ? ["startDateTimeUtc", "endDateTimeUtc"]
+    : ["startDatetime", "endDatetime"];
+  return {
+    startsAtISO: jsonEventDateToISO(str(startKey), undefined),
+    rawEndsAtISO: jsonEventDateToISO(str(endKey), undefined),
+  };
+}
+
+/**
  * Fetch a JSON events feed that returns a flat array (no VCALENDAR/XML) and
  * map it with a per-format field adapter. Covers the college calendars:
  *   - "moderncampus" — Frederick Community College's Modern Campus / Localist
- *     pubcalendar API (startDatetime is zone-less ET; needs ?start&end).
+ *     pubcalendar API (startDatetime is zone-less UTC; needs ?start&end).
  *   - "presence" — Mount St. Mary's Presence student-engagement API
  *     (startDateTimeUtc is absolute UTC).
  * Same window + fail-soft + validate contract as the iCal/tribe paths.
@@ -1945,14 +2023,12 @@ async function fetchJsonArrayFeed(
       const isPresence = feed.format === "presence";
       const rawTitle = (isPresence ? str("eventName") : str("title")).trim();
       if (!rawTitle) continue;
-      const startsAtISO = isPresence
-        ? jsonEventDateToISO(str("startDateTimeUtc"), undefined)
-        : jsonEventDateToISO(undefined, str("startDatetime"));
+      const { startsAtISO, rawEndsAtISO } = jsonArrayFeedRowInstants(
+        isPresence ? "presence" : "moderncampus",
+        raw,
+      );
       if (!startsAtISO) continue;
       const effectiveStart = new Date(startsAtISO);
-      const rawEndsAtISO = isPresence
-        ? jsonEventDateToISO(str("endDateTimeUtc"), undefined)
-        : jsonEventDateToISO(undefined, str("endDatetime"));
       const endsAtISO =
         rawEndsAtISO && Date.parse(rawEndsAtISO) > effectiveStart.getTime()
           ? rawEndsAtISO
@@ -2819,7 +2895,9 @@ function getCachedEventSourcePage(
     [
       // v3 adds the publisher-owned modification timestamp used to settle
       // first-party event changes. Keep old cache tuples out of this shape.
-      "live-event-source-page-v4",
+      // v5: Frederick Community College times are read as UTC, so cached
+      // FCC rows carry different starts_at and ends_at values.
+      "live-event-source-page-v5",
       source,
       String(windowDays),
       afterCursor ?? "first",
