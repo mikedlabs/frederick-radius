@@ -1331,36 +1331,6 @@
     }
   },
   {
-    "title": "Rooftop Barre",
-    "starts_at": "2026-11-01T15:00:00.907Z",
-    "ends_at": "2026-11-01T16:00:00.907Z",
-    "ticket_url": "https://www.thebanyanmd.com/livemusic/green-haven-on-main-barre-class",
-    "venue_slug": "banyan",
-    "venue_name": "The Banyan",
-    "category": "community",
-    "source": {
-      "url": "https://www.thebanyanmd.com/livemusic",
-      "requestedUrl": "https://www.thebanyanmd.com/livemusic",
-      "finalUrl": "https://www.thebanyanmd.com/livemusic",
-      "fetchedAt": "2026-10-26T11:28:26.218Z"
-    }
-  },
-  {
-    "title": "Fall Market",
-    "starts_at": "2026-11-12T23:00:00.148Z",
-    "ends_at": "2026-11-13T02:00:00.148Z",
-    "ticket_url": "https://www.thebanyanmd.com/livemusic/fall-market",
-    "venue_slug": "banyan",
-    "venue_name": "The Banyan",
-    "category": "market",
-    "source": {
-      "url": "https://www.thebanyanmd.com/livemusic",
-      "requestedUrl": "https://www.thebanyanmd.com/livemusic",
-      "finalUrl": "https://www.thebanyanmd.com/livemusic",
-      "fetchedAt": "2026-10-26T11:28:26.218Z"
-    }
-  },
-  {
     "title": "Friendsgiving Concert",
     "starts_at": "2026-11-26T02:00:00.104Z",
     "ends_at": "2026-11-26T04:59:00.104Z",
@@ -1372,693 +1342,7 @@
       "url": "https://www.thebanyanmd.com/livemusic",
       "requestedUrl": "https://www.thebanyanmd.com/livemusic",
       "finalUrl": "https://www.thebanyanmd.com/livemusic",
-      "fetchedAt": "2026-10-26T11:28:26.218Z"
-    }
-  },
-  {
-    "title": "AFA Fall Production",
-    "starts_at": "2026-10-29T19:00-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/afa-fall-production/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "AFA Fall Production",
-    "starts_at": "2026-10-30T19:00-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/afa-fall-production/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Re-Leaf Agency",
-    "starts_at": "2026-11-01T15:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/re-leaf-agency-2026/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "TolumiDE",
-    "starts_at": "2026-11-06T20:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/tolumide/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Death and the Girl",
-    "starts_at": "2026-11-12T19:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/death-and-the-girl/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Death and the Girl",
-    "starts_at": "2026-11-13T19:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/death-and-the-girl/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Death and the Girl",
-    "starts_at": "2026-11-15T15:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/death-and-the-girl/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Alex Hamburger",
-    "starts_at": "2026-11-19T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/alex-hamburger/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Sister’s Christmas Catechism",
-    "starts_at": "2026-11-20T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/sisters-christmas-catechism/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "GIRLS NIGHT: The Musical",
-    "starts_at": "2026-11-21T15:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/girls-night-the-musical-2026/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "GIRLS NIGHT: The Musical",
-    "starts_at": "2026-11-21T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/girls-night-the-musical-2026/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Annie",
-    "starts_at": "2026-12-04T20:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/annie/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Annie",
-    "starts_at": "2026-12-05T20:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/annie/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Annie",
-    "starts_at": "2026-12-06T14:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/annie/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Holiday Storytellers",
-    "starts_at": "2026-12-13T15:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/holiday-storytellers/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Holiday Storytellers",
-    "starts_at": "2026-12-13T18:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/holiday-storytellers/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Bah Humbug",
-    "starts_at": "2026-12-18T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/bah-humbug-2026/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Bah Humbug",
-    "starts_at": "2026-12-20T14:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/bah-humbug-2026/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Bah Humbug",
-    "starts_at": "2026-12-20T18:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/bah-humbug-2026/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Bah Humbug",
-    "starts_at": "2026-12-21T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/bah-humbug-2026/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Irish Christmas in America",
-    "starts_at": "2026-12-19T14:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/irish-christmas-in-america-2026/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Irish Christmas in America",
-    "starts_at": "2026-12-19T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/irish-christmas-in-america-2026/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "It’s 5 O’Clock Somewhere",
-    "starts_at": "2027-01-09T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/its-5-oclock-somewhere-2027/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "A Musical Tribute to James Taylor",
-    "starts_at": "2027-01-23T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/a-musical-tribute-to-james-taylor/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "A Musical Tribute to James Taylor",
-    "starts_at": "2027-01-24T14:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/a-musical-tribute-to-james-taylor/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Crys Matthews",
-    "starts_at": "2027-02-04T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/crys-matthews/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Classic Country Hits",
-    "starts_at": "2027-02-05T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/classic-country-hits/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Hot Club Jazz",
-    "starts_at": "2027-02-18T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/hot-club-jazz/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Cyrano de Bergerac",
-    "starts_at": "2027-02-26T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/cyrano-de-bergerac/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Cyrano de Bergerac",
-    "starts_at": "2027-02-27T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/cyrano-de-bergerac/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Cyrano de Bergerac",
-    "starts_at": "2027-02-28T15:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/cyrano-de-bergerac/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Cyrano de Bergerac",
-    "starts_at": "2027-03-05T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/cyrano-de-bergerac/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Cyrano de Bergerac",
-    "starts_at": "2027-03-06T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/cyrano-de-bergerac/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Cyrano de Bergerac",
-    "starts_at": "2027-03-07T15:00-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/cyrano-de-bergerac/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Lost Mary",
-    "starts_at": "2027-03-04T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/lost-mary/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "The Best of Yacht Rock",
-    "starts_at": "2027-03-13T19:30-05:00",
-    "ticket_url": "https://weinbergcenter.org/shows/the-best-of-yacht-rock-2027/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Tish Hinojosa",
-    "starts_at": "2027-03-21T15:00-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/tish-hinojosa/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Peabody Conservatory Student Jazz Combo",
-    "starts_at": "2027-03-25T19:30-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/peabody-conservatory-student-jazz-combo/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Rabbitology",
-    "starts_at": "2027-04-01T19:30-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/rabbitology/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Well Being Concert: Cathy Fink and Marcy Marxer with Chao Tian – From China to Appalachia",
-    "starts_at": "2027-04-11T15:00-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/well-being-concert-cathy-fink-and-marcy-marxer-with-chao-tian/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Naptown Brass Band",
-    "starts_at": "2027-04-15T19:30-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/naptown-brass-band/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Language of Strings",
-    "starts_at": "2027-05-01T16:00-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/language-of-strings/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Luca Stricagnoli",
-    "starts_at": "2027-05-07T19:30-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/luca-stricagnoli-2027/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Dracula",
-    "starts_at": "2027-06-11T19:30-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/dracula/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Dracula",
-    "starts_at": "2027-06-12T15:00-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/dracula/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Dracula",
-    "starts_at": "2027-06-12T19:30-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/dracula/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Dracula",
-    "starts_at": "2027-06-18T19:30-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/dracula/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Dracula",
-    "starts_at": "2027-06-19T19:30-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/dracula/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
-    }
-  },
-  {
-    "title": "Dracula",
-    "starts_at": "2027-06-20T15:00-04:00",
-    "ticket_url": "https://weinbergcenter.org/shows/dracula/",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-10-26T11:28:29.298Z"
+      "fetchedAt": "2026-11-14T11:13:28.431Z"
     }
   },
   {
@@ -2073,7 +1357,570 @@
       "url": "https://www.thebanyanmd.com/livemusic",
       "requestedUrl": "https://www.thebanyanmd.com/livemusic",
       "finalUrl": "https://www.thebanyanmd.com/livemusic",
-      "fetchedAt": "2026-11-13T11:15:16.231Z"
+      "fetchedAt": "2026-11-14T11:13:28.431Z"
+    }
+  },
+  {
+    "title": "Brunch with Santa",
+    "starts_at": "2026-12-13T14:30:00.990Z",
+    "ends_at": "2026-12-13T19:00:00.990Z",
+    "ticket_url": "https://www.thebanyanmd.com/livemusic/brunch-with-santa",
+    "venue_slug": "banyan",
+    "venue_name": "The Banyan",
+    "category": "music",
+    "source": {
+      "url": "https://www.thebanyanmd.com/livemusic",
+      "requestedUrl": "https://www.thebanyanmd.com/livemusic",
+      "finalUrl": "https://www.thebanyanmd.com/livemusic",
+      "fetchedAt": "2026-11-14T11:13:28.431Z"
+    }
+  },
+  {
+    "title": "Christmas Market",
+    "starts_at": "2026-12-17T23:00:00.458Z",
+    "ends_at": "2026-12-18T02:00:00.458Z",
+    "ticket_url": "https://www.thebanyanmd.com/livemusic/christmas-market",
+    "venue_slug": "banyan",
+    "venue_name": "The Banyan",
+    "category": "music",
+    "source": {
+      "url": "https://www.thebanyanmd.com/livemusic",
+      "requestedUrl": "https://www.thebanyanmd.com/livemusic",
+      "finalUrl": "https://www.thebanyanmd.com/livemusic",
+      "fetchedAt": "2026-11-14T11:13:28.431Z"
+    }
+  },
+  {
+    "title": "New Years Eve",
+    "starts_at": "2027-01-01T02:00:00.275Z",
+    "ends_at": "2027-01-01T03:00:00.275Z",
+    "ticket_url": "https://www.thebanyanmd.com/livemusic/new-years-eve",
+    "venue_slug": "banyan",
+    "venue_name": "The Banyan",
+    "category": "music",
+    "source": {
+      "url": "https://www.thebanyanmd.com/livemusic",
+      "requestedUrl": "https://www.thebanyanmd.com/livemusic",
+      "finalUrl": "https://www.thebanyanmd.com/livemusic",
+      "fetchedAt": "2026-11-14T11:13:28.431Z"
+    }
+  },
+  {
+    "title": "Death and the Girl",
+    "starts_at": "2026-11-13T19:00-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/death-and-the-girl/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Death and the Girl",
+    "starts_at": "2026-11-15T15:00-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/death-and-the-girl/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Alex Hamburger",
+    "starts_at": "2026-11-19T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/alex-hamburger/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Sister’s Christmas Catechism",
+    "starts_at": "2026-11-20T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/sisters-christmas-catechism/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "GIRLS NIGHT: The Musical",
+    "starts_at": "2026-11-21T15:00-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/girls-night-the-musical-2026/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "GIRLS NIGHT: The Musical",
+    "starts_at": "2026-11-21T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/girls-night-the-musical-2026/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Annie",
+    "starts_at": "2026-12-04T20:00-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/annie/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Annie",
+    "starts_at": "2026-12-05T20:00-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/annie/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Annie",
+    "starts_at": "2026-12-06T14:00-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/annie/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Holiday Storytellers",
+    "starts_at": "2026-12-13T15:00-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/holiday-storytellers/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Holiday Storytellers",
+    "starts_at": "2026-12-13T18:00-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/holiday-storytellers/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Bah Humbug",
+    "starts_at": "2026-12-18T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/bah-humbug-2026/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Bah Humbug",
+    "starts_at": "2026-12-20T14:00-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/bah-humbug-2026/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Bah Humbug",
+    "starts_at": "2026-12-20T18:00-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/bah-humbug-2026/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Bah Humbug",
+    "starts_at": "2026-12-21T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/bah-humbug-2026/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Irish Christmas in America",
+    "starts_at": "2026-12-19T14:00-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/irish-christmas-in-america-2026/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Irish Christmas in America",
+    "starts_at": "2026-12-19T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/irish-christmas-in-america-2026/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "IMPROV CLASS Winter",
+    "starts_at": "2027-01-04T18:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/12244/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "It’s 5 O’Clock Somewhere",
+    "starts_at": "2027-01-09T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/its-5-oclock-somewhere-2027/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "A Musical Tribute to James Taylor",
+    "starts_at": "2027-01-23T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/a-musical-tribute-to-james-taylor/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "A Musical Tribute to James Taylor",
+    "starts_at": "2027-01-24T14:00-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/a-musical-tribute-to-james-taylor/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Crys Matthews",
+    "starts_at": "2027-02-04T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/crys-matthews/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Classic Country Hits",
+    "starts_at": "2027-02-05T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/classic-country-hits/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Hot Club Jazz",
+    "starts_at": "2027-02-18T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/hot-club-jazz/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Cyrano de Bergerac",
+    "starts_at": "2027-02-26T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/cyrano-de-bergerac/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Cyrano de Bergerac",
+    "starts_at": "2027-02-27T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/cyrano-de-bergerac/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Cyrano de Bergerac",
+    "starts_at": "2027-02-28T15:00-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/cyrano-de-bergerac/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Cyrano de Bergerac",
+    "starts_at": "2027-03-05T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/cyrano-de-bergerac/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Cyrano de Bergerac",
+    "starts_at": "2027-03-06T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/cyrano-de-bergerac/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Cyrano de Bergerac",
+    "starts_at": "2027-03-07T15:00-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/cyrano-de-bergerac/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Lost Mary",
+    "starts_at": "2027-03-04T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/lost-mary/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "The Best of Yacht Rock",
+    "starts_at": "2027-03-13T19:30-05:00",
+    "ticket_url": "https://weinbergcenter.org/shows/the-best-of-yacht-rock-2027/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Tish Hinojosa",
+    "starts_at": "2027-03-21T15:00-04:00",
+    "ticket_url": "https://weinbergcenter.org/shows/tish-hinojosa/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Peabody Conservatory Student Jazz Combo",
+    "starts_at": "2027-03-25T19:30-04:00",
+    "ticket_url": "https://weinbergcenter.org/shows/peabody-conservatory-student-jazz-combo/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Rabbitology",
+    "starts_at": "2027-04-01T19:30-04:00",
+    "ticket_url": "https://weinbergcenter.org/shows/rabbitology/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Well Being Concert: Cathy Fink and Marcy Marxer with Chao Tian – From China to Appalachia",
+    "starts_at": "2027-04-11T15:00-04:00",
+    "ticket_url": "https://weinbergcenter.org/shows/well-being-concert-cathy-fink-and-marcy-marxer-with-chao-tian/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Naptown Brass Band",
+    "starts_at": "2027-04-15T19:30-04:00",
+    "ticket_url": "https://weinbergcenter.org/shows/naptown-brass-band/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
     }
   },
   {
@@ -2087,7 +1934,119 @@
       "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
       "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
-      "fetchedAt": "2026-11-13T11:15:18.791Z"
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Language of Strings",
+    "starts_at": "2027-05-01T16:00-04:00",
+    "ticket_url": "https://weinbergcenter.org/shows/language-of-strings/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Luca Stricagnoli",
+    "starts_at": "2027-05-07T19:30-04:00",
+    "ticket_url": "https://weinbergcenter.org/shows/luca-stricagnoli-2027/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Dracula",
+    "starts_at": "2027-06-11T19:30-04:00",
+    "ticket_url": "https://weinbergcenter.org/shows/dracula/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Dracula",
+    "starts_at": "2027-06-12T15:00-04:00",
+    "ticket_url": "https://weinbergcenter.org/shows/dracula/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Dracula",
+    "starts_at": "2027-06-12T19:30-04:00",
+    "ticket_url": "https://weinbergcenter.org/shows/dracula/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Dracula",
+    "starts_at": "2027-06-18T19:30-04:00",
+    "ticket_url": "https://weinbergcenter.org/shows/dracula/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Dracula",
+    "starts_at": "2027-06-19T19:30-04:00",
+    "ticket_url": "https://weinbergcenter.org/shows/dracula/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
+    }
+  },
+  {
+    "title": "Dracula",
+    "starts_at": "2027-06-20T15:00-04:00",
+    "ticket_url": "https://weinbergcenter.org/shows/dracula/",
+    "venue_slug": "new-spire",
+    "venue_name": "New Spire Arts",
+    "category": "theater",
+    "source": {
+      "url": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "requestedUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "finalUrl": "https://weinbergcenter.org/performances/?venue=new-spire-arts",
+      "fetchedAt": "2026-11-14T11:13:31.143Z"
     }
   }
 ]
