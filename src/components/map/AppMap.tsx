@@ -1391,6 +1391,9 @@ export default function AppMap({
           essential: true,
         });
       },
+      onBeforeRecenter: () => {
+        nearbyRouteCameraAppliedRef.current = true;
+      },
       onBeforeNearMe: () => {
         setShowResultsHere(false);
         manualViewportGestureRef.current = false;
@@ -6102,8 +6105,8 @@ export default function AppMap({
                 "text-halo-width": 1.6,
               }}
             />
-            <Layer id="amenity-cluster-hit" type="circle" filter={["has", "point_count"]} paint={{ "circle-opacity": 0, "circle-radius": 22 }} />
-            <Layer id="amenity-hit" type="circle" filter={["!", ["has", "point_count"]]} paint={{ "circle-opacity": 0, "circle-radius": 22 }} />
+            <Layer id="amenity-cluster-hit" type="circle" minzoom={7} filter={["has", "point_count"]} paint={{ "circle-opacity": 0, "circle-radius": 22 }} />
+            <Layer id="amenity-hit" type="circle" minzoom={7} filter={["!", ["has", "point_count"]]} paint={{ "circle-opacity": 0, "circle-radius": 22 }} />
           </Source>
 
           {/* Curated-place semantic zoom. The county dock and compact subject
@@ -7573,6 +7576,7 @@ export default function AppMap({
           selectedTransitStop={selectedTransitStop}
           eventGroup={eventGroup}
           clusterRows={cluster ? clusterRows : null}
+          amenityCluster={cluster?.source === "amenities"}
           openClusterRow={(row) => {
             openMapSelection(row);
             haptic("light");

@@ -16,7 +16,7 @@ import {
   readCachedPosition,
   useGeolocation,
 } from "@/hooks/useGeolocation";
-import { getScope, setScope, SCOPE_PARAM } from "@/lib/scope";
+import { getScope, setScope, SCOPE_PARAM, subscribeScopeChange } from "@/lib/scope";
 import { replaceMapUrl } from "@/lib/map-url-state";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
@@ -38,6 +38,7 @@ export function useMapLocation({
   fitNearbyWithIntent,
   fitCountyCamera,
   onBeforeNearMe,
+  onBeforeRecenter,
 }: {
   isBrowseMap: boolean;
   rankingSeed: LngLat | null;
@@ -56,6 +57,8 @@ export function useMapLocation({
   fitCountyCamera: () => void;
   /** Reset the results-here control and gesture refs before Near me runs. */
   onBeforeNearMe: () => void;
+  /** Retire any deferred entry camera fit before a recenter requests a fix. */
+  onBeforeRecenter: () => void;
 }): {
   userLoc: LngLat | null;
   userAccuracyM: number | null;
@@ -89,6 +92,9 @@ export function useMapLocation({
     requestIfGranted: refreshGrantedGeolocation,
   } = useGeolocation();
   const locateRequestedRef = useRef<"nearby" | "recenter" | null>(null);
+  // A passive location refresh may still complete after Find me. Let a new
+  // scope choice re-enable fitting, but keep late fixes from changing zoom.
+  const recenterOwnsCameraRef = useRef(false);
   const automaticNearbyRequestedRef = useRef(
     autoFitNearbyScope && rankingSeed === null,
   );
@@ -124,6 +130,7 @@ export function useMapLocation({
       if (
         started ||
         !mountedRef.current ||
+        locateRequestedRef.current !== null ||
         !automaticNearbyRequestedRef.current
       ) {
         return;
@@ -177,15 +184,21 @@ export function useMapLocation({
         inCounty &&
         cached &&
         getScope() === "nearme" &&
+        !recenterOwnsCameraRef.current &&
         !locateRequestedRef.current
       ) {
         markCameraIntent();
         fitNearbyCamera(cached);
       }
     };
+    const unsubscribe = subscribeScopeChange(() => {
+      recenterOwnsCameraRef.current = false;
+    });
     window.addEventListener(GEOLOCATION_CHANGE_EVENT, syncRankingLocation);
-    return () =>
+    return () => {
+      unsubscribe();
       window.removeEventListener(GEOLOCATION_CHANGE_EVENT, syncRankingLocation);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- camera callbacks are stable wrappers around AppMap refs
   }, []);
 
@@ -208,6 +221,10 @@ export function useMapLocation({
     locateRequestedRef.current = null;
     automaticNearbyRequestedRef.current = false;
     if (explicitLocateRequested) setLocating(false);
+    const nearbyLensActive =
+      isBrowseMap &&
+      (automaticNearbyRequested ||
+        (explicitLocateRequested !== "recenter" && getScope() === "nearme"));
 
     if (sharedGeolocationState.status === "granted") {
       const loc = {
@@ -226,10 +243,6 @@ export function useMapLocation({
         setUserLoc(null);
         setUserAccuracyM(null);
         setLocationFixTimestamp(null);
-        const nearbyLensActive =
-          isBrowseMap &&
-          explicitLocateRequested !== "recenter" &&
-          (getScope() === "nearme" || automaticNearbyRequested);
         setGeoMsg(
           nearbyLensActive
             ? "You are outside Frederick County. Showing the whole county."
@@ -252,10 +265,6 @@ export function useMapLocation({
       return;
     }
 
-    const nearbyLensActive =
-      isBrowseMap &&
-      explicitLocateRequested !== "recenter" &&
-      (getScope() === "nearme" || automaticNearbyRequested);
     if (nearbyLensActive) {
       // A failed permission request cannot leave a shareable `in=nearme`
       // promise in the URL or dock. Fall back to the actual county frame and
@@ -290,6 +299,7 @@ export function useMapLocation({
     if (locateRequestedRef.current === "nearby") return;
     const alreadyRequested = locateRequestedRef.current === "recenter";
     locateRequestedRef.current = "nearby";
+    recenterOwnsCameraRef.current = false;
     onBeforeNearMe();
     // A fresh cached/shared fix makes Near me instant. Still ask the shared
     // geolocation hook to refresh it in the background; a newer fix will
@@ -304,14 +314,16 @@ export function useMapLocation({
   const recenterOnLocation = () => {
     dismissLocationIntro();
     if (locateRequestedRef.current) return;
+    locateRequestedRef.current = "recenter";
+    recenterOwnsCameraRef.current = true;
+    onBeforeRecenter();
     if (userLoc) {
       markCameraIntent();
       recenterCamera(userLoc);
     }
-    locateRequestedRef.current = "recenter";
     setLocating(true);
     setGeoMsg(null);
-    requestSharedGeolocation();
+    if (sharedGeolocationState.status !== "loading") requestSharedGeolocation();
   };
 
   const locationAvailability = userLoc
