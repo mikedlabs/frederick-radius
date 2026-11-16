@@ -120,9 +120,9 @@ test.describe("mobile discovery shell", () => {
       { timeout: 20_000 },
     );
     await expect(page.locator("[data-map-context-rail]")).toHaveCount(0);
-    await expect(page.locator(".map-live-bus-aggregate")).toBeVisible({
-      timeout: 20_000,
-    });
+    const liveBuses = page.getByRole("button", { name: /^2 live buses\./ });
+    await expect(liveBuses).toBeVisible({ timeout: 20_000 });
+    await expect(liveBuses).toHaveText("2 live buses");
     await expect(page.locator("[data-live-bus-marker]")).toHaveCount(0);
     const coldDockBox = await page.locator("[data-map-dock] .dock-head").boundingBox();
     const coldMapBox = await page.locator(".dock-host").boundingBox();

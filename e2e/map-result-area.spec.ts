@@ -21,7 +21,7 @@ test.describe("deliberate map result areas", () => {
       { timeout: 20_000 },
     );
     await expect(
-      page.getByRole("button", { name: "Show results here" }),
+      page.getByRole("button", { name: "Search this map area", exact: true }),
     ).toHaveCount(0);
 
     const box = await canvas.boundingBox();
@@ -34,7 +34,7 @@ test.describe("deliberate map result areas", () => {
     await page.mouse.move(box.x + box.width * 0.28, y, { steps: 8 });
     await page.mouse.up();
 
-    const commit = page.getByRole("button", { name: "Show results here" });
+    const commit = page.getByRole("button", { name: "Search this map area", exact: true });
     await expect(commit).toBeVisible({ timeout: 10_000 });
     expect(new URL(page.url()).searchParams.get("c")).toBe(committedCamera);
 
@@ -88,7 +88,7 @@ test.describe("deliberate map result areas", () => {
     await page.mouse.move(box.x + box.width * 0.3, y, { steps: 6 });
     await page.mouse.up();
 
-    const commit = page.getByRole("button", { name: "Show results here" });
+    const commit = page.getByRole("button", { name: "Search this map area", exact: true });
     await expect(commit).toBeVisible({ timeout: 10_000 });
     await expect(commit).toHaveCSS("animation-name", "none");
   });

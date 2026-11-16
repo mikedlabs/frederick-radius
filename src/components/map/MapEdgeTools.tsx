@@ -177,7 +177,6 @@ export default function MapEdgeTools({
           className="map-edge-tool map-edge-tool-primary map-edge-tool-locate"
           data-on={located || undefined}
           onClick={onLocate}
-          aria-label={located ? "Center on my location" : "Use my location"}
           aria-busy={locating || undefined}
           title="Move the map to your location"
         >
@@ -190,14 +189,7 @@ export default function MapEdgeTools({
           ) : (
             <LocateFixed className="h-5 w-5" strokeWidth={2.15} aria-hidden />
           )}
-          <span className="map-edge-tool-label">
-            <span className="map-edge-tool-label-long">
-              {locating ? "Finding you…" : located ? "Your location" : "Find me"}
-            </span>
-            <span className="map-edge-tool-label-short">
-              {locating ? "Finding…" : located ? "You" : "Near me"}
-            </span>
-          </span>
+          <span>{locating ? "Finding you…" : "Find me"}</span>
         </button>
 
         <Link
@@ -205,14 +197,10 @@ export default function MapEdgeTools({
           prefetch={false}
           className="map-edge-tool map-edge-tool-primary map-edge-tool-essential"
           title="Find the closest mapped restroom, water, trash, dog needs, seating, or outlet"
-          aria-label="Find a nearby essential"
           onClick={onWake}
         >
           <MapPin className="h-5 w-5" strokeWidth={2.15} aria-hidden />
-          <span className="map-edge-tool-label">
-            <span className="map-edge-tool-label-long">Nearby essentials</span>
-            <span className="map-edge-tool-label-short">Essentials</span>
-          </span>
+          <span>Nearby essentials</span>
         </Link>
 
         {!overlays.incidents &&
