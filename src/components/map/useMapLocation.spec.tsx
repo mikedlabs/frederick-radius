@@ -120,4 +120,21 @@ describe("map location camera intent", () => {
     expect(callbacks.fitCountyCamera).toHaveBeenCalledOnce();
     expect(callbacks.recenterCamera).not.toHaveBeenCalled();
   });
+
+  it("keeps the scope and camera when Find me returns an out-of-county fix", async () => {
+    mockGeo.requestIfGranted.mockResolvedValue(true);
+    mockGeo.state = { status: "loading" };
+    await render();
+    await clickFindMe();
+    expect(callbacks.onBeforeRecenter).toHaveBeenCalledOnce();
+
+    mockGeo.state = { status: "granted", position: { ...position, lng: -76.6122, lat: 39.2904 } };
+    await render();
+    expect(getScope()).toBe("nearme");
+    expect(new URLSearchParams(window.location.search).get("in")).toBe("nearme");
+    expect(callbacks.setGeoMsg).toHaveBeenLastCalledWith("You are outside Frederick County. Keeping your current map view.");
+    expect(callbacks.fitCountyCamera).not.toHaveBeenCalled();
+    expect(callbacks.fitNearbyCamera).not.toHaveBeenCalled();
+    expect(callbacks.recenterCamera).not.toHaveBeenCalled();
+  });
 });

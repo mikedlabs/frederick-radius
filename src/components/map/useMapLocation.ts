@@ -240,15 +240,16 @@ export function useMapLocation({
       }
 
       if (!isInFrederickCounty(loc.lng, loc.lat)) {
+        const shouldReturnToCounty = nearbyLensActive && explicitLocateRequested !== "recenter";
         setUserLoc(null);
         setUserAccuracyM(null);
         setLocationFixTimestamp(null);
         setGeoMsg(
-          nearbyLensActive
+          shouldReturnToCounty
             ? "You are outside Frederick County. Showing the whole county."
             : "You are outside Frederick County. Keeping your current map view.",
         );
-        if (nearbyLensActive) {
+        if (shouldReturnToCounty) {
           setScope("county");
           replaceMapUrl((params) => params.delete(SCOPE_PARAM));
           fitCountyCamera();
