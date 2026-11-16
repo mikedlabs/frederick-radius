@@ -30,6 +30,7 @@ import {
 } from "./mapNearby";
 import type { AerialPhoto } from "./mapAerialArchive";
 import type { MapDiscovery } from "./mapDiscoveries";
+import type { MapClusterRow } from "./mapClusterSelection";
 import type { MapEventGroup } from "./mapContent";
 import type { ParkingPin } from "@/lib/map/parking";
 import MapPeek from "./MapPeek";
@@ -82,6 +83,8 @@ type Props = {
   foodTruckPeek: FoodTruckMapPin | null;
   selectedTransitStop: SelectedStop | null;
   eventGroup: MapEventGroup | null;
+  clusterRows: MapClusterRow[] | null;
+  openClusterRow: (row: MapClusterRow) => void;
   userLoc: LngLat | null;
   utilityPoints: NearbyUtilityPoint[];
   places: MapPinPlace[];
@@ -118,6 +121,8 @@ export default function AppMapSelectionSurfaces({
   foodTruckPeek,
   selectedTransitStop,
   eventGroup,
+  clusterRows,
+  openClusterRow,
   userLoc,
   utilityPoints,
   places,
@@ -340,6 +345,41 @@ export default function AppMapSelectionSurfaces({
           </Popup>
         );
       })()}
+
+      <BottomDrawer
+        title="Places in this cluster"
+        subtitle={clusterRows?.length
+          ? `${clusterRows.length} ${clusterRows.length === 1 ? "place" : "places"}`
+          : undefined}
+        open={clusterRows !== null}
+        onOpenChange={(open) => {
+          if (!open) clearMapSelection();
+        }}
+      >
+        {clusterRows?.length ? (
+          <ul className="space-y-1 pb-4">
+            {clusterRows.map((row) => (
+              <li key={row.kind === "place" ? row.value.slug : row.value.osm_id}>
+                <button
+                  type="button"
+                  className="flex min-h-11 w-full items-center justify-between gap-3 rounded-[var(--app-radius-sm)] px-2.5 py-2 text-left font-semibold hover:bg-[var(--app-bg-sunken)]"
+                  onClick={() => openClusterRow(row)}
+                >
+                  <span>
+                    <span className="block text-[14px]">{row.value.name}</span>
+                    {row.kind === "raw" && row.value.address && (
+                      <span className="block text-[12px] font-normal text-[var(--app-ink-3)]">{row.value.address}</span>
+                    )}
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-[var(--app-ink-3)]" aria-hidden />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : clusterRows && (
+          <p className="pb-4 text-sm text-[var(--app-ink-3)]">These places are unavailable. Close this list and select the cluster again.</p>
+        )}
+      </BottomDrawer>
 
       {/* Co-located events remain one honest point on the map. The count
           marker opens this chronological index so no occurrence is hidden

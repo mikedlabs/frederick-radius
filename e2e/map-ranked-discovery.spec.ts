@@ -232,16 +232,24 @@ test("Controlled local basemap offers an honest tonight window without weakening
 });
 
 test("Controlled local basemap leaves first-use consent with the one header location control", async ({ page, baseURL }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await controlledBasemap(page, baseURL);
   await noLocationPrompt(page, false);
   await page.goto("/map", { waitUntil: "domcontentloaded" });
   await expectHealthyMap(page);
   const choice = page.getByRole("group", { name: "Choose how to begin on the map" });
   await expect(choice).toBeVisible();
+  const quickActions = page.getByRole("complementary", { name: "Quick map actions" });
+  await expect(quickActions).toBeHidden();
   await expect(page.getByText("Use your location for honest distances, or keep browsing the county.", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => (window as typeof window & { __rankedGeoCalls: number }).__rankedGeoCalls)).toBe(0);
   await choice.getByRole("button", { name: "Browse county", exact: true }).click();
   await expect(choice).toHaveCount(0);
+  const findMe = quickActions.getByRole("button", { name: "Find me", exact: true });
+  const essentials = quickActions.getByRole("link", { name: "Nearby essentials", exact: true });
+  await clearTarget(findMe);
+  await clearTarget(essentials);
+  await expect(essentials).toHaveAttribute("href", "/amenities");
   expect(await page.locator("[data-location-chip]").count()).toBe(1);
   await page.getByRole("button", { name: "Filters: choose what to see on this map" }).click();
   const chooser = page.getByRole("region", { name: "Choose what to see" });

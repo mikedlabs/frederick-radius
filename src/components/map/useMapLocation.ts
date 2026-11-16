@@ -34,6 +34,7 @@ export function useMapLocation({
   setGeoMsg,
   markCameraIntent,
   fitNearbyCamera,
+  recenterCamera,
   fitNearbyWithIntent,
   fitCountyCamera,
   onBeforeNearMe,
@@ -48,6 +49,7 @@ export function useMapLocation({
   markCameraIntent: () => void;
   /** Fit the one-mile reach around a fix, when the map exists. */
   fitNearbyCamera: (loc: LngLat) => void;
+  recenterCamera: (loc: LngLat) => void;
   /** Near me's instant path: mark intent AND fit, only if the map exists. */
   fitNearbyWithIntent: (loc: LngLat) => void;
   /** Return to the county frame after a failed/out-of-county locate. */
@@ -63,6 +65,7 @@ export function useMapLocation({
   dismissLocationIntro: () => void;
   locating: boolean;
   goNearMe: () => void;
+  recenterOnLocation: () => void;
 } {
   const [userLoc, setUserLoc] = useState<LngLat | null>(rankingSeed);
   const [userAccuracyM, setUserAccuracyM] = useState<number | null>(() => {
@@ -85,7 +88,7 @@ export function useMapLocation({
     requestHighAccuracy: requestSharedGeolocation,
     requestIfGranted: refreshGrantedGeolocation,
   } = useGeolocation();
-  const locateRequestedRef = useRef(false);
+  const locateRequestedRef = useRef<"nearby" | "recenter" | null>(null);
   const automaticNearbyRequestedRef = useRef(
     autoFitNearbyScope && rankingSeed === null,
   );
@@ -202,7 +205,7 @@ export function useMapLocation({
       return;
     }
 
-    locateRequestedRef.current = false;
+    locateRequestedRef.current = null;
     automaticNearbyRequestedRef.current = false;
     if (explicitLocateRequested) setLocating(false);
 
@@ -225,6 +228,7 @@ export function useMapLocation({
         setLocationFixTimestamp(null);
         const nearbyLensActive =
           isBrowseMap &&
+          explicitLocateRequested !== "recenter" &&
           (getScope() === "nearme" || automaticNearbyRequested);
         setGeoMsg(
           nearbyLensActive
@@ -243,12 +247,14 @@ export function useMapLocation({
       setUserLoc(loc);
       setUserAccuracyM(sharedGeolocationState.position.accuracy);
       setLocationFixTimestamp(sharedGeolocationState.position.timestamp);
-      fitNearbyCamera(loc);
+      if (explicitLocateRequested === "recenter") recenterCamera(loc);
+      else fitNearbyCamera(loc);
       return;
     }
 
     const nearbyLensActive =
       isBrowseMap &&
+      explicitLocateRequested !== "recenter" &&
       (getScope() === "nearme" || automaticNearbyRequested);
     if (nearbyLensActive) {
       // A failed permission request cannot leave a shareable `in=nearme`
@@ -281,13 +287,28 @@ export function useMapLocation({
       setScope("nearme");
       replaceMapUrl((params) => params.set(SCOPE_PARAM, "nearme"));
     }
-    if (locateRequestedRef.current) return;
+    if (locateRequestedRef.current === "nearby") return;
+    const alreadyRequested = locateRequestedRef.current === "recenter";
+    locateRequestedRef.current = "nearby";
     onBeforeNearMe();
     // A fresh cached/shared fix makes Near me instant. Still ask the shared
     // geolocation hook to refresh it in the background; a newer fix will
     // simply refit the same honest one-mile area when it arrives.
     if (userLoc) fitNearbyWithIntent(userLoc);
-    locateRequestedRef.current = true;
+    if (alreadyRequested) return;
+    setLocating(true);
+    setGeoMsg(null);
+    requestSharedGeolocation();
+  };
+
+  const recenterOnLocation = () => {
+    dismissLocationIntro();
+    if (locateRequestedRef.current) return;
+    if (userLoc) {
+      markCameraIntent();
+      recenterCamera(userLoc);
+    }
+    locateRequestedRef.current = "recenter";
     setLocating(true);
     setGeoMsg(null);
     requestSharedGeolocation();
@@ -316,5 +337,6 @@ export function useMapLocation({
     dismissLocationIntro,
     locating,
     goNearMe,
+    recenterOnLocation,
   };
 }
