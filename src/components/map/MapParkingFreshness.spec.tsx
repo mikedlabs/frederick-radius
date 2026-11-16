@@ -16,7 +16,7 @@ function render(parking: ParkingPin[], health: ComponentProps<typeof AppMapSelec
     showDiscoveryAt: () => {}, selectedEvent: null, selected: null, rawSelectionContext: null, civicTown: null,
     selectedAerial: null, selectedCemetery: null, marcPeek: null, marcStations: [], spotSelection: null, spotContext: null,
     peekPlace: null, parkingPeek: garage, parkingSourceHealth: health, foodTruckPeek: null, selectedTransitStop: null,
-    eventGroup: null, clusterRows: null, openClusterRow: () => {}, userLoc: null, utilityPoints: [], places: [], events: [], parking,
+    eventGroup: null, clusterRows: null, amenityCluster: false, openClusterRow: () => {}, userLoc: null, utilityPoints: [], places: [], events: [], parking,
     clearMapSelection: () => {}, openPlaceSheet: () => {}, focusPlaceFromSpot: () => {}, focusEventFromGroup: () => {},
   };
   const container = document.createElement("div");

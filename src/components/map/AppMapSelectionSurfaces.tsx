@@ -84,6 +84,7 @@ type Props = {
   selectedTransitStop: SelectedStop | null;
   eventGroup: MapEventGroup | null;
   clusterRows: MapClusterRow[] | null;
+  amenityCluster: boolean;
   openClusterRow: (row: MapClusterRow) => void;
   userLoc: LngLat | null;
   utilityPoints: NearbyUtilityPoint[];
@@ -122,6 +123,7 @@ export default function AppMapSelectionSurfaces({
   selectedTransitStop,
   eventGroup,
   clusterRows,
+  amenityCluster,
   openClusterRow,
   userLoc,
   utilityPoints,
@@ -133,6 +135,8 @@ export default function AppMapSelectionSurfaces({
   focusPlaceFromSpot,
   focusEventFromGroup,
 }: Props) {
+  const clusterItem = amenityCluster ? "amenity" : "place";
+  const clusterItems = amenityCluster ? "amenities" : "places";
   return (
     <>
       {dock && selectedDiscovery && (
@@ -347,9 +351,9 @@ export default function AppMapSelectionSurfaces({
       })()}
 
       <BottomDrawer
-        title="Places in this cluster"
+        title={amenityCluster ? "Amenities in this cluster" : "Places in this cluster"}
         subtitle={clusterRows?.length
-          ? `${clusterRows.length} ${clusterRows.length === 1 ? "place" : "places"}`
+          ? `${clusterRows.length} ${clusterRows.length === 1 ? clusterItem : clusterItems}`
           : undefined}
         open={clusterRows !== null}
         onOpenChange={(open) => {
@@ -377,7 +381,7 @@ export default function AppMapSelectionSurfaces({
             ))}
           </ul>
         ) : clusterRows && (
-          <p className="pb-4 text-sm text-[var(--app-ink-3)]">These places are unavailable. Close this list and select the cluster again.</p>
+          <p className="pb-4 text-sm text-[var(--app-ink-3)]">These {clusterItems} are unavailable. Close this list and select the cluster again.</p>
         )}
       </BottomDrawer>
 
