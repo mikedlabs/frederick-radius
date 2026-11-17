@@ -264,7 +264,8 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await expect(doorway).toHaveAttribute("data-photo-state", "loaded");
     const mosaic = page.locator("[data-today-local-discovery]");
     const diningGrid = mosaic.locator("[data-today-discovery-grid]");
-    await expect(diningGrid.getByRole("link")).toHaveCount(2);
+    await expect(diningGrid.getByRole("link", { name: /^View .* in / })).toHaveCount(2);
+    await expect(diningGrid.getByRole("navigation", { name: "Local outings" }).getByRole("link")).toHaveCount(2);
     await expect(diningGrid.getByRole("img")).toHaveCount(2);
     for (const subject of diningSubjects) {
       const link = diningGrid.locator(`[data-today-geographic-place="${subject.slug}"]`);
@@ -317,6 +318,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
         photoBox: bounds("[data-today-photo-lead] [data-place-card-photo]"),
         doorwayBox: bounds("[data-today-geographic-place]"),
         mosaicBox: bounds("[data-today-discovery-grid]"),
+        outingsBox: bounds("#local-outings"),
         captionBox: bounds("[data-today-geographic-caption]"),
         brandPress: (() => {
           const probe = document.body.appendChild(document.createElement("span"));
@@ -345,7 +347,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await testInfo.attach("today-first-screen-geometry", {
       contentType: "application/json", body: JSON.stringify(geometry),
     });
-    const { mastheadBox, findBox, entryControlsBox, weatherBox, photoBox, doorwayBox, mosaicBox, captionBox, headingBox } = geometry;
+    const { mastheadBox, findBox, entryControlsBox, weatherBox, photoBox, doorwayBox, mosaicBox, outingsBox, captionBox, headingBox } = geometry;
     expect(findBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height);
     // The arrival action now has a deliberate phone density; neither weather
     // facts nor the photograph are subtracted from an artificial height budget.
@@ -378,14 +380,18 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(leadSave.y).toBeGreaterThanOrEqual(photoBottom - 1);
     expect(leadSave.y + leadSave.height).toBeLessThanOrEqual(photoBottom + 48 + 1);
     const asymmetricDesktop = mosaicBox.width >= 36 * 16;
+    const [lead, secondary] = geometry.subjects;
+    expect(secondary.box.y).toBeGreaterThanOrEqual(outingsBox.y + outingsBox.height);
     if (asymmetricDesktop) {
-      expect(geometry.subjects[0].box.y).toBeCloseTo(geometry.subjects[1].box.y, 0);
-      expect(geometry.subjects[0].box.width).toBeGreaterThan(geometry.subjects[1].box.width * 1.4);
-      expect(geometry.subjects[0].box.x + geometry.subjects[0].box.width).toBeLessThanOrEqual(geometry.subjects[1].box.x);
+      expect(outingsBox.y).toBeCloseTo(lead.box.y, 0);
+      expect(outingsBox.x).toBeCloseTo(secondary.box.x, 0);
+      expect(lead.box.width).toBeGreaterThan(secondary.box.width * 1.4);
+      expect(lead.box.x + lead.box.width).toBeLessThanOrEqual(outingsBox.x);
     } else {
-      expect(geometry.subjects[1].box.y).toBeGreaterThanOrEqual(geometry.subjects[0].box.y + geometry.subjects[0].box.height);
-      expect(geometry.subjects[0].box.width).toBeGreaterThanOrEqual(mosaicBox.width * 0.99);
-      expect(geometry.subjects[0].box.height).toBeGreaterThan(geometry.subjects[1].box.height * 1.1);
+      expect(outingsBox.y).toBeGreaterThanOrEqual(lead.box.y + lead.box.height);
+      expect(outingsBox.width).toBeGreaterThanOrEqual(mosaicBox.width * 0.99);
+      expect(lead.box.width).toBeGreaterThanOrEqual(mosaicBox.width * 0.99);
+      expect(lead.box.height).toBeGreaterThan(secondary.box.height * 1.1);
     }
     expect(Math.abs(photoBox.width / photoBox.height - 1.6)).toBeLessThanOrEqual(0.02);
     for (const subject of geometry.subjects) {

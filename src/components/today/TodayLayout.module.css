@@ -199,6 +199,70 @@
   min-width: 0;
 }
 
+.discoveryOutings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  border-top: 1px solid var(--app-border);
+  border-bottom: 1px solid var(--app-border);
+  scroll-margin-top: calc(var(--app-topbar-h, 56px) + 12px);
+}
+
+.discoveryOuting {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--app-space-2);
+  min-width: 0;
+  min-height: 44px;
+  padding-block: var(--app-space-2);
+  color: var(--app-ink);
+  text-decoration: none;
+}
+
+.discoveryOuting + .discoveryOuting {
+  border-top: 1px solid var(--app-border);
+}
+
+.discoveryOuting:hover strong {
+  color: var(--app-link);
+  text-decoration: underline;
+}
+
+.discoveryOuting:focus-visible {
+  outline: 2px solid var(--app-link);
+  outline-offset: -2px;
+}
+
+.discoveryOuting > svg {
+  width: 18px;
+  height: 18px;
+  color: var(--app-link);
+}
+
+.discoveryOuting > svg:last-child {
+  color: var(--app-ink-2);
+}
+
+.discoveryOuting strong,
+.discoveryOuting small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.discoveryOuting strong {
+  font-size: 1.0625rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.discoveryOuting small {
+  margin-top: 0.125rem;
+  color: var(--app-ink-2);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
 .discoveryPlace {
   display: flex;
   flex-direction: column;
@@ -728,6 +792,16 @@
 
   .discoveryLayout > .discoveryPlaceGrid > [data-today-discovery-role="secondary"] {
     grid-column: 2;
+    grid-row: 2;
+  }
+
+  .discoveryLayout > .discoveryPlaceGrid > .discoveryOutings {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .discoveryLayout > .discoveryOutings {
+    grid-column: 1 / -1;
   }
 
   .discoveryLayout > .discoveryTasks {
@@ -739,7 +813,7 @@
 
   /* With no place grid (a town without accepted imagery) the links keep the
      full width. */
-  .discoveryLayout > .discoveryTasks:only-child {
+  .discoveryLayout > .discoveryOutings + .discoveryTasks {
     grid-column: 1 / -1;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

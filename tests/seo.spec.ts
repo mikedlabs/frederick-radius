@@ -16,6 +16,8 @@ describe("sitemap (T2) — only canonical, indexable, non-redirecting URLs", () 
 
   it("includes canonical public tools and excludes the legacy /guide", () => {
     expect(urls.some((u) => u.endsWith("/today"))).toBe(true);
+    expect(urls.some((u) => u.endsWith("/today/weekend"))).toBe(true);
+    expect(urls.some((u) => u.endsWith("/today/two-hours-downtown"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/ask"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/collections"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/access"))).toBe(true);
