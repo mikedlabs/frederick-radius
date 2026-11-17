@@ -66,6 +66,7 @@ function OutingStop({ stop, primary }: { stop: GuideStop; primary: boolean }) {
           {stop.price && <p><Ticket size={16} aria-hidden="true" /><span>{stop.price}</span></p>}
         </div>
         <GuideLink action={stop.action} context={stop.title} primary={primary} />
+        {stop.visitTip && <p className={styles.visitTip}>{stop.visitTip}</p>}
         <details className={styles.details}>
           <summary aria-label={`Details and source for ${stop.title}`}>
             Details and source <ChevronDown aria-hidden="true" size={16} />
@@ -84,6 +85,9 @@ function OutingStop({ stop, primary }: { stop: GuideStop; primary: boolean }) {
               >
                 {stop.source.label}
               </a>
+            )}
+            {stop.tipSource && (
+              <a href={stop.tipSource.href} className={styles.sourceLink}>{stop.tipSource.label}</a>
             )}
           </div>
         </details>

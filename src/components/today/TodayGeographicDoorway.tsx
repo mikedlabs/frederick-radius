@@ -30,7 +30,7 @@ function OutingLink({ href, title, scope, image, Icon }: {
         <span className={styles.outingPhoto} aria-hidden="true">
           <Icon />
           {failedImage !== image && <Image src={image} alt="" fill
-            sizes="(max-width: 360px) 288px, (max-width: 620px) 48vw, 240px"
+            sizes="(max-width: 303px) calc(100vw - 32px), (max-width: 620px) 46vw, 240px"
             onError={() => setFailedImage(image)} />}
         </span>
       )}

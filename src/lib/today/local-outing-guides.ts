@@ -30,6 +30,8 @@ export type GuideStop = {
   action: GuideAction;
   source: GuideAction;
   detail?: string;
+  visitTip?: string;
+  tipSource?: GuideAction;
   price?: string;
   icon?: "parking" | "info" | "art" | "water";
   photo?: StopPhoto;
@@ -52,7 +54,7 @@ const bridgePhoto = HISTORY_BY_SLUG["carroll-creek-park"].image;
 
 export const downtownGuide: LocalOutingGuide = {
   title: "Two Hours Downtown",
-  summary: "Park once for galleries and a walk along Carroll Creek.",
+  summary: "Try Sunday, 11 AM–1 PM, for free galleries and a creek walk. City garages are free during that window.",
   scopeLabel: "Downtown Frederick",
   photo: OWNED_PLACE_PHOTOS["carroll-creek-linear-park-frederick"],
   photoCaption: "Carroll Creek in downtown Frederick.",
@@ -63,10 +65,12 @@ export const downtownGuide: LocalOutingGuide = {
       when: "Open 24 hours",
       where: "125 E All Saints St, Frederick",
       icon: "parking",
+      price: "Free Sundays, 8 AM–2 PM",
       description: "The garage is beside the Delaplaine. Start here and return after the creek walk.",
       detail: "The city lists accessible spaces on every level. If the garage is full, try Carroll Creek Garage at 44 E Patrick St.",
       action: { label: "Directions to parking", href: directionsHref(39.4118117, -77.4072907) },
       source: { label: "City parking information", href: "https://www.cityoffrederickmd.gov/1873/Parking-FAQs" },
+      tipSource: { label: "City garage rates", href: "https://cityoffrederickmd.gov/1342/Garage-Parking" },
     },
     {
       title: "Frederick Visitor Center",
@@ -116,6 +120,26 @@ type EditionPick = Omit<GuideStop, "when"> & {
 
 const firstFriday = Date.parse(easternWallToUtcISO(2026, 11, 20, 17, 0));
 const firstSaturday = new Date(easternWallToUtcISO(2026, 11, 21, 0, 0));
+const boatLaunchEnd = Date.parse(easternWallToUtcISO(2026, 11, 21, 11, 0));
+const boatSaturdayVisitEnd = Date.parse(easternWallToUtcISO(2026, 11, 21, 22, 0));
+const boatSundayVisitEnd = Date.parse(easternWallToUtcISO(2026, 11, 22, 22, 0));
+const boatLightsSource = { label: "Color on the Creek", href: "https://coloronthecreek.com/sttws/" };
+
+function eveningBoatVisit(now: number): GuideStop {
+  return {
+    title: "See the lighted boats after dark",
+    when: now < boatSaturdayVisitEnd ? "Sat or Sun · After 5:20 PM" : "Sun · After 5:20 PM",
+    where: "Carroll Creek between Market Street and Carroll Street",
+    icon: "water",
+    price: "Free to view",
+    visitTip: "Start at East All Saints Garage, 125 E All Saints St.",
+    description: "The organizer lights the boats from dusk. Around 5:20 PM is a suggested arrival after twilight.",
+    detail: "The city lists the park as open until 10 PM. Check the organizer for changes.",
+    action: { label: "See the boats on Map", href: "/map?in=frederick&place=carroll-creek-linear-park-frederick" },
+    source: boatLightsSource,
+    tipSource: { label: "City garage locations", href: "https://cityoffrederickmd.gov/1342/Garage-Parking" },
+  };
+}
 
 export function weekendGuideCover(now: Date): Pick<LocalOutingGuide, "photo" | "photoCaption"> {
   if (buildHorizonBounds(now).weekendStart === firstFriday) {
@@ -143,17 +167,20 @@ const firstEdition: EditionPick[] = [
     where: "Carroll Creek Park, Frederick",
     icon: "water",
     price: "Free admission",
+    visitTip: "Miss the launch? Aim for 5:20 PM to see the boats lit between Market and Carroll streets.",
+    tipSource: boatLightsSource,
     description: "Watch crews lower the lighted boats into Carroll Creek from the suspension bridge.",
     detail: "The launch uses heavy machinery, so watch from the designated viewing areas. Come back near dusk to see the boats light up.",
     action: { label: "See launch details", href: "https://www.visitfrederick.org/event/launch-day-%7C-sailing-through-the-winter-solstice/17638/" },
     source: { label: "Visit Frederick", href: "https://www.visitfrederick.org/event/launch-day-%7C-sailing-through-the-winter-solstice/17638/" },
-    sessions: [{ when: "Sat, Nov 21 · 8–11 AM", through: Date.parse(easternWallToUtcISO(2026, 11, 21, 11, 0)) }],
+    sessions: [{ when: "Sat, Nov 21 · 8–11 AM", through: boatLaunchEnd }],
   },
   {
     title: "Valley Craft Network Studio Tour",
     where: "Middletown and Pleasant Valley studios",
     price: "Free tour",
     icon: "art",
+    visitTip: "At Willow Oaks, see handmade jewelry and small-batch cider in one stop.",
     description: "Meet working artists on a self-guided driving tour. Pick a few studios from the organizer’s map before setting out.",
     detail: "One Frederick County stop is Willow Oaks Craft Cider and Wine at 6219 Harley Rd in Middletown. The tour also reaches studios outside the county.",
     action: { label: "Choose studios from the tour map", href: "https://www.valleycraftnetwork.org/download-brochuremap-pdf" },
@@ -244,6 +271,9 @@ export function weekendGuide(now: Date, verifiedEvents: readonly EventWithMeta[]
 
   if (isFirstEdition) {
     stops = firstEditionStops(bounds.now, verifiedEvents);
+    if (bounds.now >= boatLaunchEnd && bounds.now < boatSundayVisitEnd) {
+      stops.unshift(eveningBoatVisit(bounds.now));
+    }
   } else {
     const seen = new Set<string>();
     const choices = rankRecommendations(verifiedEvents.filter((event) => usableWeekendEvent(event, bounds, now)), { limit: 3 });

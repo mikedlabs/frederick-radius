@@ -196,6 +196,14 @@
   text-align: left;
 }
 
+.visitTip {
+  max-width: 46ch;
+  margin: 0.6rem 0 0;
+  color: var(--app-ink-2);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
 .details {
   min-width: 0;
 }

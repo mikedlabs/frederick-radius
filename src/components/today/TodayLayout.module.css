@@ -273,7 +273,7 @@
 .discoveryOutings[data-outing-photos="true"] .outingCaption {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  gap: var(--app-space-1);
+  gap: calc(var(--app-space-2) / 2);
 }
 
 .discoveryOutings[data-outing-photos="true"] strong {
