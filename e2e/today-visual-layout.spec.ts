@@ -264,7 +264,8 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await expect(doorway).toHaveAttribute("data-photo-state", "loaded");
     const mosaic = page.locator("[data-today-local-discovery]");
     const diningGrid = mosaic.locator("[data-today-discovery-grid]");
-    await expect(diningGrid.getByRole("link")).toHaveCount(2);
+    await expect(diningGrid.getByRole("link", { name: /^View .* in / })).toHaveCount(2);
+    await expect(diningGrid.getByRole("navigation", { name: "Local outings" }).getByRole("link")).toHaveCount(2);
     await expect(diningGrid.getByRole("img")).toHaveCount(2);
     for (const subject of diningSubjects) {
       const link = diningGrid.locator(`[data-today-geographic-place="${subject.slug}"]`);
