@@ -1,23 +1,94 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, ChevronDown, Clock, Info, MapPin, Palette, SquareParking, Ticket, Waves } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { normalizeBrowseReturnTo } from "@/lib/browse-return";
-import type { GuideAction, LocalOutingGuide as Guide } from "@/lib/today/local-outing-guides";
+import type { GuideAction, GuideStop, LocalOutingGuide as Guide } from "@/lib/today/local-outing-guides";
 import styles from "./LocalOutingGuide.module.css";
 
-function GuideLink({ action, context }: { action: GuideAction; context?: string }) {
-  const isLocal = action.href.startsWith("/");
-  const Arrow = isLocal ? ArrowRight : ArrowUpRight;
-  const content = <>{action.label}<Arrow aria-hidden="true" size={16} /></>;
-  const label = context ? `${action.label} for ${context}` : undefined;
-  return isLocal ? (
-    <Link href={action.href} aria-label={label} className={styles.action}>
-      {content}
-    </Link>
-  ) : (
-    <a href={action.href} aria-label={label} className={styles.action}>
-      {content}
-    </a>
+const STOP_ICONS = { parking: SquareParking, info: Info, art: Palette, water: Waves };
+
+function GuideLink({ action, context, primary }: { action: GuideAction; context?: string; primary?: boolean }) {
+  const Arrow = action.href.startsWith("/") ? ArrowRight : ArrowUpRight;
+  return (
+    <Button
+      href={action.href}
+      variant={primary ? "primary" : "secondary"}
+      aria-label={context ? `${action.label} for ${context}` : undefined}
+      iconRight={<Arrow aria-hidden="true" size={16} className="shrink-0" />}
+      className={`${styles.action} h-auto min-h-11 whitespace-normal`}
+    >
+      {action.label}
+    </Button>
+  );
+}
+
+function StopPicture({ photo }: { photo: NonNullable<GuideStop["photo"]> }) {
+  return (
+    <figure className={styles.stopPicture}>
+      <Image
+        src={photo.src}
+        alt={photo.alt}
+        width={photo.width}
+        height={photo.height}
+        sizes="(min-width: 800px) 360px, calc(100vw - 32px)"
+        className={styles.stopPhoto}
+        style={{ objectPosition: photo.objectPosition }}
+      />
+      <figcaption className={styles.credit}>
+        <span>{photo.caption}</span>
+        {photo.credit && (
+          <div className={styles.creditLinks}>
+            <a href={photo.credit.source_url} className={styles.sourceLink} aria-label={`Photo source, ${photo.credit.creator}`}>
+              {photo.credit.creator}
+            </a>
+            <a href={photo.credit.license.url} className={styles.sourceLink}>{photo.credit.license.label}</a>
+          </div>
+        )}
+      </figcaption>
+    </figure>
+  );
+}
+
+function OutingStop({ stop, primary }: { stop: GuideStop; primary: boolean }) {
+  const Marker = stop.icon ? STOP_ICONS[stop.icon] : CalendarDays;
+  return (
+    <li className={styles.stop} data-photo={stop.photo ? "" : undefined}>
+      {stop.photo && <StopPicture photo={stop.photo} />}
+      <div className={styles.stopBody}>
+        <div className={styles.stopHeading}>
+          {!stop.photo && <Marker size={24} aria-hidden="true" className={styles.stopMarker} />}
+          <h2 className={styles.stopTitle}>{stop.title}</h2>
+        </div>
+        <div className={styles.facts}>
+          <p><Clock size={16} aria-hidden="true" /><span>{stop.when}</span></p>
+          <p><MapPin size={16} aria-hidden="true" /><span>{stop.where}</span></p>
+          {stop.price && <p><Ticket size={16} aria-hidden="true" /><span>{stop.price}</span></p>}
+        </div>
+        <GuideLink action={stop.action} context={stop.title} primary={primary} />
+        <details className={styles.details}>
+          <summary aria-label={`Details and source for ${stop.title}`}>
+            Details and source <ChevronDown aria-hidden="true" size={16} />
+          </summary>
+          <div className={styles.detailBody}>
+            <p>{stop.description}</p>
+            {stop.detail && <p>{stop.detail}</p>}
+            {stop.photo?.credit && <p className={styles.credit}>{stop.photo.credit.modifications}</p>}
+            {stop.source.href === stop.action.href ? (
+              <p className={styles.credit}>Source {stop.source.label}</p>
+            ) : (
+              <a
+                href={stop.source.href}
+                aria-label={`${stop.source.label}, source for ${stop.title}`}
+                className={styles.sourceLink}
+              >
+                {stop.source.label}
+              </a>
+            )}
+          </div>
+        </details>
+      </div>
+    </li>
   );
 }
 
@@ -39,59 +110,42 @@ export default function LocalOutingGuide({
       </Link>
 
       <header className={styles.masthead}>
-        <p className={styles.scope}>{guide.scopeLabel}</p>
-        <h1 className={styles.title}>{guide.title}</h1>
-        <p className={styles.summary}>{guide.summary}</p>
+        <div className={styles.intro}>
+          <p className={styles.scope}>{guide.scopeLabel}</p>
+          <h1 className={styles.title}>{guide.title}</h1>
+          {guide.summary && <p className={styles.summary}>{guide.summary}</p>}
+        </div>
+        <figure className={styles.figure}>
+          <Image
+            src={photo.src}
+            alt={photo.alt}
+            width={photo.width}
+            height={photo.height}
+            sizes="(min-width: 800px) 60vw, calc(100vw - 32px)"
+            fetchPriority="high"
+            loading="eager"
+            className={styles.photo}
+            style={{ objectPosition: photo.objectPosition }}
+          />
+          <figcaption className={styles.caption}>{guide.photoCaption}</figcaption>
+        </figure>
       </header>
 
-      <figure className={styles.figure}>
-        <Image
-          src={photo.src}
-          alt={photo.alt}
-          width={photo.width}
-          height={photo.height}
-          sizes="(min-width: 840px) 800px, calc(100vw - 32px)"
-          fetchPriority="high"
-          loading="eager"
-          className={styles.photo}
-        />
-        <figcaption className={styles.caption}>{guide.photoCaption}</figcaption>
-      </figure>
-
       <ol role="list" className={styles.stops}>
-        {guide.stops.map((stop) => (
-          <li key={`${stop.title}:${stop.action.href}`} className={styles.stop}>
-            <div className={styles.stopHeader}>
-              <p className={styles.when}>{stop.when}</p>
-              <h2 className={styles.stopTitle}>{stop.title}</h2>
-              <p className={styles.where}>{stop.where}</p>
-            </div>
-            <div className={styles.stopBody}>
-              <p>{stop.description}</p>
-              {stop.detail && <p className={styles.detail}>{stop.detail}</p>}
-              <div className={styles.actions}>
-                <GuideLink action={stop.action} context={stop.title} />
-                {stop.source.href === stop.action.href ? (
-                  <span className={styles.source}>Source {stop.source.label}</span>
-                ) : (
-                  <a
-                    href={stop.source.href}
-                    aria-label={`${stop.source.label}, source for ${stop.title}`}
-                    className={styles.sourceLink}
-                  >
-                    {stop.source.label}
-                  </a>
-                )}
-              </div>
-            </div>
-          </li>
+        {guide.stops.map((stop, index) => (
+          <OutingStop key={`${stop.title}:${stop.action.href}`} stop={stop} primary={index === 0} />
         ))}
       </ol>
 
       {(guide.note || guide.secondaryAction) && (
         <footer className={styles.footer}>
-          {guide.note && <p>{guide.note}</p>}
-          {guide.secondaryAction && <GuideLink action={guide.secondaryAction} />}
+          {guide.note && (
+            <details className={styles.details}>
+              <summary>Before you go <ChevronDown aria-hidden="true" size={16} /></summary>
+              <div className={styles.detailBody}><p>{guide.note}</p></div>
+            </details>
+          )}
+          {guide.secondaryAction && <GuideLink action={guide.secondaryAction} primary={!guide.stops.length} />}
         </footer>
       )}
     </article>

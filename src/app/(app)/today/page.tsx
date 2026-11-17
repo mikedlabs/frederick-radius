@@ -47,6 +47,7 @@ import {
 import { eventCardVisual, parseRecoveryEventVisual } from "@/components/event/eventVisuals";
 import TodayMasthead from "@/components/today/TodayMasthead";
 import TodayGeographicDoorway, { TodayGeographicDoorwayPending } from "@/components/today/TodayGeographicDoorway";
+import { downtownGuide, weekendGuideCover } from "@/lib/today/local-outing-guides";
 import styles from "@/components/today/TodayLayout.module.css";
 
 /**
@@ -280,7 +281,7 @@ export default async function HomePage() {
           retain the selected area; imagery never promises current conditions.
           Until the URL lens is known, its fallback is deliberately neutral. */}
       <Suspense fallback={<TodayGeographicDoorwayPending />}>
-        <TodayGeographicDoorway />
+        <TodayGeographicDoorway guidePhotos={{ weekend: weekendGuideCover(now).photo.src, downtown: downtownGuide.photo.src }} />
       </Suspense>
 
       <div data-today-current-content className={styles.currentContent}>

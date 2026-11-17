@@ -265,7 +265,13 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const mosaic = page.locator("[data-today-local-discovery]");
     const diningGrid = mosaic.locator("[data-today-discovery-grid]");
     await expect(diningGrid.getByRole("link", { name: /^View .* in / })).toHaveCount(2);
-    await expect(diningGrid.getByRole("navigation", { name: "Local outings" }).getByRole("link")).toHaveCount(2);
+    const outings = diningGrid.getByRole("navigation", { name: "Local outings" });
+    await expect(outings.getByRole("link")).toHaveCount(2);
+    for (const link of await outings.getByRole("link").all()) {
+      await link.scrollIntoViewIfNeeded();
+      await expect.poll(() => link.locator("img").evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+    }
+    await page.evaluate(() => window.scrollTo(0, 0));
     await expect(diningGrid.getByRole("img")).toHaveCount(2);
     for (const subject of diningSubjects) {
       const link = diningGrid.locator(`[data-today-geographic-place="${subject.slug}"]`);

@@ -49,7 +49,7 @@ describe("Today decision hierarchy", () => {
 
   it("lets the owned scene and current local answers lead one utility deck after news", () => {
     const find = renderedPage.indexOf("<TodayAsk embedded showQuickNeeds={false}");
-    const doorway = renderedPage.indexOf("<TodayGeographicDoorway />");
+    const doorway = renderedPage.indexOf("<TodayGeographicDoorway guidePhotos=");
     const lead = renderedPage.indexOf("{decisionLead}");
     const events = renderedPage.indexOf("{whatsOn}");
     const news = renderedPage.indexOf("<LocalNewsBrief");
@@ -94,7 +94,7 @@ describe("Today decision hierarchy", () => {
     const weather = todayMasthead.indexOf("<section data-today-weather");
     const find = renderedPage.indexOf("<TodayAsk embedded");
     const scope = renderedPage.indexOf("<TodayScopeStatus");
-    const doorway = renderedPage.indexOf("<TodayGeographicDoorway />");
+    const doorway = renderedPage.indexOf("<TodayGeographicDoorway guidePhotos=");
 
     expect(title).toBeGreaterThan(-1);
     expect(weather).toBeGreaterThan(title);
@@ -125,7 +125,7 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage.match(/\{decisionLead\}/g)).toHaveLength(1);
     expect(renderedPage).toContain("fallback={<TodayGeographicDoorwayPending />}");
     expect(renderedPage).not.toContain("fallback={<TodayGeographicDoorwayView");
-    expect(renderedPage.indexOf("<TodayGeographicDoorway />")).toBeLessThan(renderedPage.indexOf("{decisionLead}"));
+    expect(renderedPage.indexOf("<TodayGeographicDoorway guidePhotos=")).toBeLessThan(renderedPage.indexOf("{decisionLead}"));
     const placeAnswer = renderedPage.slice(
       renderedPage.indexOf('<div aria-label="Places for your area"'),
       renderedPage.indexOf("<LocalNewsBrief"),

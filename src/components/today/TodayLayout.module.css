@@ -209,6 +209,13 @@
 }
 
 .discoveryOuting {
+  display: block;
+  min-width: 0;
+  color: var(--app-ink);
+  text-decoration: none;
+}
+
+.outingCaption {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -216,8 +223,6 @@
   min-width: 0;
   min-height: 44px;
   padding-block: var(--app-space-2);
-  color: var(--app-ink);
-  text-decoration: none;
 }
 
 .discoveryOuting + .discoveryOuting {
@@ -234,13 +239,13 @@
   outline-offset: -2px;
 }
 
-.discoveryOuting > svg {
+.outingCaption > svg {
   width: 18px;
   height: 18px;
   color: var(--app-link);
 }
 
-.discoveryOuting > svg:last-child {
+.outingCaption > .outingArrow {
   color: var(--app-ink-2);
 }
 
@@ -248,6 +253,66 @@
 .discoveryOuting small {
   display: block;
   overflow-wrap: anywhere;
+}
+
+.discoveryOutings[data-outing-photos="true"] {
+  gap: clamp(0.65rem, 2vw, 1rem);
+  border-block: 0;
+}
+
+.discoveryOutings[data-outing-photos="true"] .discoveryOuting {
+  position: relative;
+  border: 0;
+  border-radius: var(--app-radius-md);
+}
+
+.discoveryOutings[data-outing-photos="true"] .discoveryOuting:focus-visible {
+  outline-offset: 3px;
+}
+
+.discoveryOutings[data-outing-photos="true"] .outingCaption {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--app-space-1);
+}
+
+.discoveryOutings[data-outing-photos="true"] strong {
+  position: absolute;
+  inset-block-start: 0.5rem;
+  inset-inline-start: 0.5rem;
+  max-inline-size: calc(100% - 1rem);
+  padding: 0.3em 0.46em;
+  border-radius: var(--app-radius-sm);
+  background: var(--app-bg-elevated);
+  color: var(--app-ink);
+  font-size: 1rem;
+}
+
+.discoveryOutings[data-outing-photos="true"] small {
+  margin-top: 0;
+}
+
+.outingPhoto {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  aspect-ratio: 1.42;
+  overflow: hidden;
+  place-items: center;
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-sunken);
+  color: var(--app-ink-3);
+}
+
+.outingPhoto img {
+  object-fit: cover;
+  object-position: center 70%;
+}
+
+@container today-discovery (min-width: 17rem) {
+  .discoveryOutings[data-outing-photos="true"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .discoveryOuting strong {

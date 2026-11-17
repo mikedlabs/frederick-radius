@@ -62,7 +62,10 @@ describe("local outing guides", () => {
     expect(guide.stops[1].when).toContain("Sun, Nov 22 · 10 AM–5 PM");
     expect(guide.stops[2].source.href).toBe("https://weinbergcenter.org/shows/a-motown-christmas-2026/");
     expect(guide.note).toContain("Nov 16, 2026");
-    expect(guide.photo.src).not.toBe(downtownGuide.photo.src);
+    expect(guide.photo.src).toBe("/images/seasons/winter/WINTER BOATS.jpg");
+    expect(guide.photoCaption).toContain("January 2022");
+    expect(guide.stops[0].price).toBe("Free admission");
+    expect(guide.stops[2].photo?.credit?.license.label).toBe("CC BY-SA 4.0");
   });
 
   it("retires ended sessions while preserving the upcoming Sunday occurrence", () => {
@@ -94,6 +97,7 @@ describe("local outing guides", () => {
 
     expect(before.scopeLabel).toMatch(/Nov 21\s*–\s*22/);
     expect(after.scopeLabel).toMatch(/Nov 27\s*–\s*29/);
+    expect(after.photo.src).toBe("/images/places/church-street-sunset.jpg");
     expect(after.stops).toEqual([]);
     expect(after.summary).toContain("any confirmed guide picks");
     expect(after.secondaryAction?.href).toBe("/events?in=county&lens=weekend");

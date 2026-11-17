@@ -9,7 +9,14 @@ const meta = {
   title: "Today/Local photo discovery", component: TodayGeographicDoorwayView,
   parameters: { layout: "centered", a11y: { test: "error" } },
   decorators: [(Story) => <div style={{ width: "min(520px, calc(100vw - 32px))" }}><Story /></div>],
-  args: { scope: "county", returnTo: origin },
+  args: {
+    scope: "county",
+    returnTo: origin,
+    guidePhotos: {
+      weekend: "/images/seasons/winter/WINTER BOATS.jpg",
+      downtown: "/images/places/carroll-creek-aerial.jpg",
+    },
+  },
 } satisfies Meta<typeof TodayGeographicDoorwayView>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -183,6 +190,8 @@ async function checkDiscovery({ canvasElement }: Parameters<NonNullable<Story["p
   const outings = within(canvas.getByRole("navigation", { name: "Local outings" }));
   const weekend = outings.getByRole("link", { name: /This Weekend/ });
   const downtown = outings.getByRole("link", { name: /Two Hours Downtown/ });
+  await expect(weekend.querySelector("img")).toHaveAttribute("alt", "");
+  await expect(downtown.querySelector("img")).toHaveAttribute("alt", "");
   await physicalLink(weekend, true);
   await physicalLink(downtown, true);
   links[0].focus(); await expect(links[0]).toHaveFocus();
