@@ -222,6 +222,8 @@ export const DifferentTown: Story = {
     await expect(link.textContent).not.toMatch(/Frederick|Carillon|Sophie|pizza/);
     const credit = canvasElement.querySelector<HTMLElement>("[data-today-discovery-credit]")!;
     await expect(credit).not.toBeNull(); await expect(link.contains(credit)).toBe(false);
+    const tasks = canvas.getByRole("navigation", { name: "Browse by need" });
+    await expect([credit.textContent, tasks.textContent].join(" ")).not.toMatch(/Frederick|Carillon|Sophie|pizza/);
     for (const anchor of Array.from(credit.querySelectorAll("a"))) await physicalLink(anchor);
     await expect(new URL(link.getAttribute("href")!, "https://radius.test").searchParams.get("returnTo")).toBe("/today?in=brunswick#today-discovery");
     for (const name of ["Eat & drink", "Get outside"]) {
