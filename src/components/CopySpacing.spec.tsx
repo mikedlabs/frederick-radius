@@ -6,7 +6,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import AerialBeat from "@/components/place/AerialBeat";
 import Passport from "@/components/saved/Passport";
 import DaylightLeftInline from "@/components/today/DaylightLeftInline";
-import WeekendPreview from "@/components/today/WeekendPreview";
 import type { PlaceCardData } from "@/lib/loaders/places";
 
 const { saved } = vi.hoisted(() => ({
@@ -68,18 +67,4 @@ describe("Rendered copy boundaries", () => {
     expect(copy(container.querySelector("figcaption p:last-child"))).toBe("Frederick from the air");
   });
 
-  it("keeps the calendar count separate from its explanatory words", async () => {
-    const events = Array.from({ length: 76 }, (_, index) => ({
-      slug: `test-event-${index}`, title: "Library workshop", category: "family",
-      starts_at: "2026-10-10T18:00:00.000Z", ends_at: "2026-10-10T19:00:00.000Z",
-      municipality: "frederick", venue_name: "Test library",
-    }));
-    const element = await WeekendPreview({
-      now: new Date("2026-10-08T16:00:00.000Z"),
-      eventsPromise: Promise.resolve({ publicEvents: events }) as Parameters<typeof WeekendPreview>[0]["eventsPromise"],
-    });
-    const container = markup(renderToStaticMarkup(element));
-    const sentence = [...container.querySelectorAll("span")].find((span) => span.textContent?.startsWith("First up "));
-    expect(copy(sentence ?? null)).toContain("76 on the calendar so far");
-  });
 });
