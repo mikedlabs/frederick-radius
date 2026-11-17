@@ -180,9 +180,18 @@ async function checkDiscovery({ canvasElement }: Parameters<NonNullable<Story["p
   await expect(canvasElement.querySelector("[data-today-discovery-credit], .place-card-photo-credit")).toBeNull();
   await expect(grid.scrollWidth).toBeLessThanOrEqual(grid.clientWidth + 1);
   await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth + 1);
+  const outings = within(canvas.getByRole("navigation", { name: "Local outings" }));
+  const weekend = outings.getByRole("link", { name: /This Weekend/ });
+  const downtown = outings.getByRole("link", { name: /Two Hours Downtown/ });
+  await physicalLink(weekend, true);
+  await physicalLink(downtown, true);
   links[0].focus(); await expect(links[0]).toHaveFocus();
   await userEvent.tab(); await expect(saves[0]).toHaveFocus();
+  await userEvent.tab(); await expect(weekend).toHaveFocus();
+  await userEvent.tab(); await expect(downtown).toHaveFocus();
   await userEvent.tab(); await expect(links[1]).toHaveFocus();
+  await userEvent.tab({ shift: true }); await expect(downtown).toHaveFocus();
+  await userEvent.tab({ shift: true }); await expect(weekend).toHaveFocus();
   await userEvent.tab({ shift: true }); await expect(saves[0]).toHaveFocus();
   await userEvent.tab({ shift: true }); await expect(links[0]).toHaveFocus();
 }
@@ -210,7 +219,7 @@ export const DifferentTown: Story = {
     const link = canvas.getByRole("link", { name: `View ${place.name} in ${place.town}` });
     await expect(canvasElement.querySelectorAll("[data-today-geographic-place]")).toHaveLength(1);
     await decoded(link, place); await physicalLink(link, true);
-    await expect(canvasElement.textContent).not.toMatch(/Frederick|Carillon|Sophie|pizza/);
+    await expect(link.textContent).not.toMatch(/Frederick|Carillon|Sophie|pizza/);
     const credit = canvasElement.querySelector<HTMLElement>("[data-today-discovery-credit]")!;
     await expect(credit).not.toBeNull(); await expect(link.contains(credit)).toBe(false);
     for (const anchor of Array.from(credit.querySelectorAll("a"))) await physicalLink(anchor);
@@ -283,7 +292,10 @@ async function checkTasksOnly({ canvasElement }: Parameters<NonNullable<Story["p
     await expect(url.pathname).toBe("/nearby"); await expect(url.searchParams.get("c")).toBe(category);
     await expect(url.searchParams.get("in")).toBe(scope); await expect(url.searchParams.get("returnTo")).toBe(returnTo);
   }
-  await expect(canvasElement.textContent).not.toMatch(/Frederick|Carillon|Sophie|pizza/);
+  await expect(canvas.getByRole("navigation", { name: "Browse by need" }).textContent).not.toMatch(/Frederick|Carillon|Sophie|pizza/);
+  const outings = within(canvas.getByRole("navigation", { name: "Local outings" }));
+  await expect(outings.getByRole("link", { name: /This Weekend.*Frederick County/ })).toBeVisible();
+  await expect(outings.getByRole("link", { name: /Two Hours Downtown.*Frederick City/ })).toBeVisible();
   await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth + 1);
 }
 export const NoLocalPhoto: Story = {

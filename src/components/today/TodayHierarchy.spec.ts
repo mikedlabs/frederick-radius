@@ -278,12 +278,24 @@ describe("Today decision hierarchy", () => {
     expect(disclosure).toContain("foodTruckCount={FOOD_TRUCKS.length}");
     expect(disclosure).toContain("<TodayFoodTruckGuideWithSchedule");
     expect(disclosure).not.toContain("<FromYourSaved");
-    expect(disclosure).toContain("<WeekendPreview");
+    expect(disclosure).not.toContain("<WeekendPreview");
     expect(disclosure).toContain("<PoolsToday");
     expect(disclosure).toContain("<MastheadNotes");
     expect(disclosure).not.toMatch(
       /<(?:CuratedPicks|WorthALook|TasteNudge|EmergencyPrompt|VisitorStayPrompt|PartnerAppsRow|ToolboxTeaser)\b/,
     );
+  });
+
+  it("makes both guides visible in the local doorway and preserves the selected area on return", () => {
+    const html = renderToStaticMarkup(createElement(TodayGeographicDoorwayView, {
+      scope: "town:mount-airy",
+      returnTo: "/today?in=mount-airy#find-radius",
+    }));
+    expect(html).toContain('aria-label="Local outings"');
+    for (const path of ["weekend", "two-hours-downtown"]) {
+      expect(html).toContain(`href="/today/${path}?returnTo=%2Ftoday%3Fin%3Dmount-airy%23local-outings"`);
+    }
+    expect(html).not.toContain("<img");
   });
 
   it("uses the upper decision surface instead of repeating the Toolbox teaser", () => {

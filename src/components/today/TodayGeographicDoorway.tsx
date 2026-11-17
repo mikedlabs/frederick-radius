@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpRight, MapPin, Trees, Utensils } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CalendarDays, Footprints, MapPin, Trees, Utensils } from "lucide-react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
 import SaveButton from "@/components/saved/SaveButton";
 import { withBrowseReturnTo } from "@/lib/browse-return";
@@ -75,15 +75,33 @@ export function TodayGeographicDoorwayView({ scope = null, returnTo }: {
   const active = parseScope(scope) ?? "county";
   const origin = returnTo ?? `/today?in=${scopeToParam(active)}`;
   const places = localDiscoveryPlaces(active);
+  const [lead, ...secondary] = places;
+  const outingOrigin = `${origin.split("#", 1)[0]}#local-outings`;
+  const outings = (
+    <nav id="local-outings" aria-label="Local outings" className={styles.discoveryOutings}>
+      <Link href={withBrowseReturnTo("/today/weekend", outingOrigin)} prefetch={false} className={styles.discoveryOuting}>
+        <CalendarDays aria-hidden />
+        <span><strong>This Weekend</strong><small>What’s on in Frederick County</small></span>
+        <ArrowRight aria-hidden />
+      </Link>
+      <Link href={withBrowseReturnTo("/today/two-hours-downtown", outingOrigin)} prefetch={false} className={styles.discoveryOuting}>
+        <Footprints aria-hidden />
+        <span><strong>Two Hours Downtown</strong><small>Gallery and creek walk in Frederick City</small></span>
+        <ArrowRight aria-hidden />
+      </Link>
+    </nav>
+  );
   return (
     <section id="today-discovery" data-today-local-discovery data-today-geographic-mosaic aria-labelledby="today-discovery-heading" className={styles.geographicMosaic}>
       <h2 id="today-discovery-heading" className="sr-only">Explore local</h2>
       {/* On a wide screen the browse links fill the column beside the lead
           photograph instead of leaving a blank band there. */}
       <div className={styles.discoveryLayout}>
-      {places.length > 0 && <div data-today-discovery-grid className={styles.discoveryPlaceGrid}>
-        {places.map((place, index) => <DiscoveryPlace key={`${active}:${place.photoPlan.key}`} place={place} scope={active} returnTo={origin} lead={index === 0} />)}
-      </div>}
+      {lead ? <div data-today-discovery-grid className={styles.discoveryPlaceGrid}>
+        <DiscoveryPlace key={`${active}:${lead.photoPlan.key}`} place={lead} scope={active} returnTo={origin} lead />
+        {outings}
+        {secondary.map(place => <DiscoveryPlace key={`${active}:${place.photoPlan.key}`} place={place} scope={active} returnTo={origin} lead={false} />)}
+      </div> : outings}
       <nav data-today-discovery-tasks aria-label="Browse by need" className={styles.discoveryTasks}>
         <Link href={todayDiscoveryTaskHref("food", active, origin)} prefetch={false}
           data-today-discovery-action="food" className={styles.discoveryTask}>

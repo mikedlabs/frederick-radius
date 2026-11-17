@@ -12,7 +12,6 @@ import MomentSpotlight from "@/components/today/MomentSpotlight";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
-import WeekendPreview from "@/components/today/WeekendPreview";
 import FromYourSaved from "@/components/today/FromYourSaved";
 // CreekHairline removed in the pleasant-layout pass — it was a
 // decorative divider between weather/discovery and action; the
@@ -371,9 +370,6 @@ export default async function HomePage() {
               </Suspense>
             }
           />
-          <Suspense fallback={null}>
-            <WeekendPreview now={now} eventsPromise={eventsPromise} />
-          </Suspense>
           <Suspense fallback={null}>
             <PoolsToday now={now} />
           </Suspense>
