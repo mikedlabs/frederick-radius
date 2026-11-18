@@ -14,6 +14,11 @@
     "coverage_through": "2027-12-31",
     "exceptions": [
       {
+        "date": "2026-11-11",
+        "reason": "Veteran's Day",
+        "closed": true
+      },
+      {
         "date": "2026-11-25",
         "reason": "Thanksgiving Eve - Libraries Close at 5 pm",
         "closes_at": "17:00"

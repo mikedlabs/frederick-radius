@@ -60,11 +60,11 @@
       "slug": "gravel-and-grind-frederick",
       "source_url": "https://www.gravelandgrind.com/",
       "source_name": "Gravel & Grind",
-      "source_sha256": "ecbe84c9abeb0c72033ca2f1a54f6297ea323cecd3979ba0f75b096b3cfd4cd9",
-      "observed_at": "2026-11-18T09:22:40.209Z",
-      "expires_at": "2026-11-25T09:22:40.209Z",
-      "coverage_from": "2026-11-18",
-      "coverage_through": "2026-11-25",
+      "source_sha256": "445b0929d56180d7cfb2bcb05985578eadbc173e1ea3ed9a9b6a3bbbde5024a5",
+      "observed_at": "2026-11-14T09:21:35.162Z",
+      "expires_at": "2026-11-21T09:21:35.162Z",
+      "coverage_from": "2026-11-14",
+      "coverage_through": "2026-11-21",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -706,11 +706,11 @@
       "slug": "kulfi-ice-creams-frederick",
       "source_url": "https://kulfi-icecream.com/",
       "source_name": "Kulfi Ice Creams",
-      "source_sha256": "24160486d9770882affdf3b4ab865ac4bf59678a2d26e0e74ac34fa139b55c60",
-      "observed_at": "2026-11-18T09:22:45.338Z",
-      "expires_at": "2026-11-25T09:22:45.338Z",
-      "coverage_from": "2026-11-18",
-      "coverage_through": "2026-11-25",
+      "source_sha256": "49713a6df8538612c1ba99bb15f143164dc70512c2d00f93557221e048767dec",
+      "observed_at": "2026-11-02T09:25:51.179Z",
+      "expires_at": "2026-11-09T09:25:51.179Z",
+      "coverage_from": "2026-11-02",
+      "coverage_through": "2026-11-09",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -1081,11 +1081,11 @@
       "slug": "national-museum-civil-war-medicine-frederick",
       "source_url": "https://www.civilwarmed.org/",
       "source_name": "National Museum of Civil War Medicine",
-      "source_sha256": "8d540f6080e1c44171169c16f8ca7b8b0b406d1c917654f5d9b71ac1b317113a",
-      "observed_at": "2026-11-18T09:22:51.820Z",
-      "expires_at": "2026-11-25T09:22:51.820Z",
-      "coverage_from": "2026-11-18",
-      "coverage_through": "2026-11-25",
+      "source_sha256": "b406de84d68b5a501501bc7481f481e6b8a8f38e2a2b6107a9b45b8a9a89e744",
+      "observed_at": "2026-11-14T09:21:41.713Z",
+      "expires_at": "2026-11-21T09:21:41.713Z",
+      "coverage_from": "2026-11-14",
+      "coverage_through": "2026-11-21",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -1912,16 +1912,5 @@
       }
     }
   ],
-  "review": [
-    {
-      "slug": "brewers-alley-frederick",
-      "checked_at": "2026-11-18T09:22:39.878Z",
-      "reason": "source_unavailable"
-    },
-    {
-      "slug": "delaplaine-arts-center-frederick",
-      "checked_at": "2026-11-18T09:22:39.878Z",
-      "reason": "unparseable_or_conflicted"
-    }
-  ]
+  "review": []
 }

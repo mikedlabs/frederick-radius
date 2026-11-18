@@ -7,7 +7,7 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-11-18 — 1571 places._
+_Generated 2026-11-14 — 1571 places._
 
 Current checked schedules: 39. Current qualified schedules: 4.
 Qualified venue or service tables retain their conditions and expiry. They
@@ -51,7 +51,6 @@ successful image loading is a separate browser check.
 | Bakeries | 36 | 0 (0%) | 33 (91.7%) | 4 (11.1%) | 33 (91.7%) |
 | Lodging | 34 | 0 (0%) | 31 (91.2%) | 2 (5.9%) | 34 (100%) |
 | Salon & barber | 28 | 0 (0%) | 22 (78.6%) | 0 (0%) | 27 (96.4%) |
-| Galleries | 27 | 0 (0%) | 23 (85.2%) | 1 (3.7%) | 26 (96.3%) |
 | Bars | 23 | 0 (0%) | 22 (95.7%) | 2 (8.7%) | 22 (95.7%) |
 | Live music | 23 | 0 (0%) | 20 (87%) | 1 (4.3%) | 21 (91.3%) |
 | Farms & pick-your-own | 22 | 0 (0%) | 19 (86.4%) | 1 (4.5%) | 21 (95.5%) |
@@ -76,9 +75,10 @@ successful image loading is a separate browser check.
 | Community | 2 | 0 (0%) | 0 (0%) | 2 (100%) | 2 (100%) |
 | Tours & rides | 2 | 0 (0%) | 1 (50%) | 2 (100%) | 2 (100%) |
 | Transit | 1 | 0 (0%) | 1 (100%) | 0 (0%) | 0 (0%) |
+| Galleries | 27 | 1 (3.7%) | 23 (85.2%) | 1 (3.7%) | 26 (96.3%) |
+| Ice cream & treats | 28 | 2 (7.1%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
 | Restaurants | 178 | 13 (7.3%) | 162 (91%) | 42 (23.6%) | 171 (96.1%) |
 | Coffee | 37 | 3 (8.1%) | 33 (89.2%) | 6 (16.2%) | 31 (83.8%) |
-| Ice cream & treats | 28 | 3 (10.7%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
 | Markets | 57 | 7 (12.3%) | 53 (93%) | 21 (36.8%) | 56 (98.2%) |
 | Libraries | 15 | 9 (60%) | 12 (80%) | 2 (13.3%) | 14 (93.3%) |
 
