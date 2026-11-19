@@ -2,39 +2,13 @@ import type { Event } from "@/data/events";
 import type { AskIntent } from "@/lib/ask/intent";
 import { eventOccursOnDate } from "@/lib/ask/time";
 import { isRangeListing } from "@/lib/eventHorizon";
+import {
+  EVENT_EVENING_START_HOUR,
+  hasUsableTonightOccurrence,
+  MAX_ORDINARY_TONIGHT_EVENT_DURATION_MS,
+  type TonightEvent,
+} from "@/lib/events/tonight-occurrence";
 import { easternDayKey, easternParts, easternWallToUtcISO } from "@/lib/tz";
-
-const HOUR_MS = 60 * 60 * 1_000;
-const MAX_ORDINARY_TONIGHT_EVENT_DURATION_MS = 8 * HOUR_MS;
-const MAX_NAMED_DAY_EVENT_DURATION_MS = 18 * HOUR_MS;
-const LONG_DAY_EVENT_EVIDENCE_RE =
-  /\b(?:street festival|festival|county fair|state fair|carnival|parade|heritage days?|railroad days?|community day|arts? walk|book festival|film festival|food festival|music festival|conference|convention|expo)\b/i;
-
-type TonightEvent = Pick<Event, "starts_at" | "ends_at" | "is_all_day"> &
-  Partial<Pick<Event, "title" | "description" | "category">>;
-
-/**
- * A long clock range is not automatically bad data. Frederick's flagship
- * one-day festivals can honestly run for ten hours, while an ordinary feed
- * row spanning breakfast through bedtime is usually a schedule container,
- * not a specific occurrence. Keep ordinary events tightly bounded and allow
- * longer one-day rows only when their own title/category/description says
- * they are a named day event. All-day and multi-day range rows never pass.
- */
-function hasUsableTonightOccurrence(event: TonightEvent): boolean {
-  const start = new Date(event.starts_at);
-  const end = new Date(event.ends_at);
-  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return false;
-  if (event.is_all_day || isRangeListing(event)) return false;
-
-  const duration = end.getTime() - start.getTime();
-  if (duration <= 0 || duration > MAX_NAMED_DAY_EVENT_DURATION_MS) return false;
-  if (duration <= MAX_ORDINARY_TONIGHT_EVENT_DURATION_MS) return true;
-
-  return LONG_DAY_EVENT_EVIDENCE_RE.test(
-    [event.title, event.category, event.description].filter(Boolean).join(" "),
-  );
-}
 
 function isNamedLongDayEvent(event: TonightEvent): boolean {
   const duration = Date.parse(event.ends_at) - Date.parse(event.starts_at);
@@ -68,7 +42,7 @@ export function eventFitsTonightWindow(
     today.year,
     today.month,
     today.day,
-    16,
+    EVENT_EVENING_START_HOUR,
     0,
   ));
   const beginsThisEvening =
@@ -104,7 +78,7 @@ function isExplicitOvernightTonight(
       nowParts.year,
       nowParts.month,
       nowParts.day,
-      16,
+      EVENT_EVENING_START_HOUR,
       0,
     )).getTime()
   );
@@ -162,7 +136,7 @@ export function eventFitsAskIntent(
       return end > requested && start.getTime() <= requested.getTime() + 2 * 60 * 60 * 1_000;
     }
     if (/\b(?:night|evening)\b/i.test(query)) {
-      return event.is_all_day === true || easternParts(start).hour >= 16;
+      return event.is_all_day === true || easternParts(start).hour >= EVENT_EVENING_START_HOUR;
     }
     return true;
   }

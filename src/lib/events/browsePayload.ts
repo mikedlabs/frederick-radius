@@ -184,6 +184,7 @@ export function initialEventsForBrowse(
   /** Owner-featured slugs (lib/events/featured) — the caller passes the
    *  clock-resolved set so this module stays clock-free. */
   featured?: ReadonlySet<string>,
+  highlights: readonly EventWithMeta[] = [],
 ): EventWithMeta[] {
   // The first paint is the default editorial list, so repeated series can be
   // represented by their next occurrence here. The complete occurrence corpus
@@ -202,7 +203,16 @@ export function initialEventsForBrowse(
   }
   for (const event of utility) selected.add(eventIdentity(event));
 
-  return displayEvents.filter((event) => selected.has(eventIdentity(event)));
+  const preview = displayEvents.filter((event) => selected.has(eventIdentity(event)));
+  // A later dated occurrence can win an evening or weekend slot even when
+  // its series is folded, or when its original horizon has filled its quota.
+  for (const event of highlights) {
+    const identity = eventIdentity(event);
+    if (selected.has(identity)) continue;
+    selected.add(identity);
+    preview.push(event);
+  }
+  return preview;
 }
 
 export function summarizeEventsForBrowse(
@@ -236,6 +246,6 @@ export function summarizeEventsForBrowse(
   };
 }
 
-function eventIdentity(event: Pick<EventWithMeta, "slug" | "starts_at">): string {
+export function eventIdentity(event: Pick<EventWithMeta, "slug" | "starts_at">): string {
   return `${event.slug}@@${event.starts_at}`;
 }

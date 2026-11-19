@@ -154,6 +154,34 @@ describe("events browse payload", () => {
     });
   });
 
+  it("includes a highlighted occurrence after its series was folded and keeps the existing representative once", () => {
+    const recurring = { title: "Summer Concert", is_recurring: true, recurrence_text: "Weekly" };
+    const prepared = prepareEventsForBrowse([
+      event("first-concert", "2026-07-14T23:00:00Z", recurring),
+      event("weekend-concert", "2026-07-18T23:00:00Z", recurring),
+    ], BOUNDS);
+    expect(initialEventsForBrowse(prepared, BOUNDS).map(row => row.slug)).toEqual(["first-concert"]);
+    const highlights = [prepared[0], prepared[1], prepared[1]];
+    const preview = initialEventsForBrowse(prepared, BOUNDS, 1, undefined, highlights);
+    expect(preview.map(row => row.slug)).toEqual(["first-concert", "weekend-concert"]);
+    expect(preview[0].recurrence_text).toBe("Weekly · 2 upcoming dates");
+    expect(preview[1]).toBe(prepared[1]);
+    expect(prepared[0].recurrence_text).toBe("Weekly");
+  });
+
+  it("keeps a pick beyond its horizon quota without duplicating a pick already in the preview", () => {
+    const rows = prepareEventsForBrowse([
+      event("first", "2026-07-14T15:00:00Z"),
+      event("second", "2026-07-14T18:00:00Z"),
+      event("tonight", "2026-07-14T23:00:00Z"),
+    ], BOUNDS);
+    const featured = new Set(["first"]);
+    expect(initialEventsForBrowse(rows, BOUNDS, 1, featured).map(row => row.slug)).toEqual(["first"]);
+    const preview = initialEventsForBrowse(rows, BOUNDS, 1, featured, [rows[2], rows[0], rows[2]]);
+    expect(preview.map(row => row.slug)).toEqual(["first", "tonight"]);
+    expect(summarizeEventsForBrowse(rows, BOUNDS).totalCount).toBe(3);
+  });
+
   it("ships six cards per horizon while retaining complete summary counts", () => {
     const today = Array.from({ length: 9 }, (_, index) =>
       event(`today-${index}`, `2026-07-14T${String(13 + index).padStart(2, "0")}:00:00.000Z`, {
