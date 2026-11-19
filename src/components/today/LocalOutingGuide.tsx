@@ -75,20 +75,22 @@ function OutingStop({ stop, primary }: { stop: GuideStop; primary: boolean }) {
             <p>{stop.description}</p>
             {stop.detail && <p>{stop.detail}</p>}
             {stop.photo?.credit && <p className={styles.credit}>{stop.photo.credit.modifications}</p>}
-            {stop.source.href === stop.action.href ? (
-              <p className={styles.credit}>Source {stop.source.label}</p>
-            ) : (
-              <a
-                href={stop.source.href}
-                aria-label={`${stop.source.label}, source for ${stop.title}`}
-                className={styles.sourceLink}
-              >
-                {stop.source.label}
-              </a>
-            )}
-            {stop.tipSource && (
-              <a href={stop.tipSource.href} className={styles.sourceLink}>{stop.tipSource.label}</a>
-            )}
+            <div className={styles.creditLinks}>
+              {stop.source.href === stop.action.href ? (
+                <p className={styles.credit}>Source {stop.source.label}</p>
+              ) : (
+                <a
+                  href={stop.source.href}
+                  aria-label={`${stop.source.label}, source for ${stop.title}`}
+                  className={styles.sourceLink}
+                >
+                  {stop.source.label}
+                </a>
+              )}
+              {stop.tipSource && (
+                <a href={stop.tipSource.href} className={styles.sourceLink}>{stop.tipSource.label}</a>
+              )}
+            </div>
           </div>
         </details>
       </div>
