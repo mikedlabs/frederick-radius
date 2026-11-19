@@ -141,7 +141,7 @@ test.describe("critical surfaces under combined dependency failure", () => {
       timeout: 30_000,
     });
     await primaryFind.click();
-    // The main-content launcher keeps a real /search fallback but enhances
+    // The header launcher keeps a real /search fallback but enhances
     // normal taps into Find. Verify both the immediate response and the full
     // workspace while optional dependencies are failing.
     const immediateFindDialog = page.locator("#radius-find-dialog");
@@ -161,7 +161,7 @@ test.describe("critical surfaces under combined dependency failure", () => {
     await expect(page).toHaveURL(/\/today(?:[?#]|$)/);
     await page.getByRole("button", { name: "Close Find" }).click();
     const localGuides = page.getByRole("region", {
-      name: "Local guides",
+      name: "More local guides",
       exact: true,
     });
     await expect(localGuides).toHaveAttribute(
@@ -169,7 +169,7 @@ test.describe("critical surfaces under combined dependency failure", () => {
       "true",
     );
     const localGuidesButton = localGuides.getByRole("button", {
-      name: "Local guides",
+      name: "More local guides",
       exact: true,
     });
     await localGuidesButton.click();

@@ -11,10 +11,13 @@ import {
   useSyncExternalStore,
   type RefObject,
 } from "react";
-import { Search, Compass, ChevronLeft, X } from "lucide-react";
+import { Search, Compass, ChevronLeft, Ellipsis, X } from "lucide-react";
 import RippleMark from "@/components/brand/RippleMark";
 import styles from "./NavChrome.module.css";
 import LocationChip from "./LocationChip";
+import TodayHeaderDisclosure from "./TodayHeaderDisclosure";
+import TodayAsk from "@/components/today/TodayAsk";
+import TodayScopeStatus from "@/components/today/TodayScopeStatus";
 import AppearanceControl from "./AppearanceControl";
 import PulseIndicator from "./PulseIndicator";
 import AppTransitionLink from "./AppTransitionLink";
@@ -347,9 +350,48 @@ export default function TopBar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [appleKeyboard, openPrimaryFind, searchOpen]);
 
+  const utilities = (
+    <>
+          <AppearanceControl />
+
+          {/* Compass is the field-guide index. Keep the destination visible on
+              its own page so the top navigation does not change shape. */}
+          <div className="contents">
+            <AppTransitionLink
+              ref={toolsOpenerRef}
+              href="/compass"
+              onClick={(event) => {
+                if (event.button === 0 && !event.defaultPrevented && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+                  rememberNativeRequest({ target: "tools-opener" });
+                }
+              }}
+              prefetch={false}
+              onMouseEnter={() => router.prefetch("/compass")}
+              onFocus={() => router.prefetch("/compass")}
+              onPointerDown={() => router.prefetch("/compass")}
+              aria-label="Open tools"
+              aria-current={pathname === "/compass" ? "page" : undefined}
+              title="Tools"
+              className={`${styles.tool} relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] px-2 sm:px-3`}
+              style={{ color: pathname === "/compass" ? "var(--app-link)" : "var(--app-ink)" }}
+            >
+              <Compass className="h-[20px] w-[20px] shrink-0" strokeWidth={1.75} aria-hidden />
+              {pathname === "/compass" ? <span aria-hidden data-top-tool-rule className="pointer-events-none absolute inset-x-2.5 bottom-1 h-0.5" style={{ background: "var(--app-link)" }} /> : null}
+              {/* Keep the name beyond narrow phone widths so location,
+                  appearance and Tools retain separate 44px touch targets. */}
+              <span className="hidden text-[12px] font-semibold leading-none min-[460px]:inline sm:hidden">Tools</span>
+              <span className="hidden text-[14px] font-semibold leading-none sm:inline">
+                Tools
+              </span>
+            </AppTransitionLink>
+          </div>
+    </>
+  );
+
   return (
     <>
       <header
+        data-today-header={pathname === "/today" || undefined}
         data-map-header={pathname === "/map" ? "true" : undefined}
         data-dense-mobile-header={showMobileSearch || pathname === "/compass" ? "true" : undefined}
         className={`${styles.bar} sticky top-0 border-b border-[var(--app-border)] pt-[env(safe-area-inset-top)]`}
@@ -382,14 +424,14 @@ export default function TopBar() {
               prefetch={false}
               onMouseEnter={() => router.prefetch("/")}
               onFocus={() => router.prefetch("/")}
-              aria-label={pathname === "/map" ? "Frederick Radius, home" : "Frederick Radius beta, home"}
+              aria-label={pathname === "/map" || pathname === "/today" ? "Frederick Radius, home" : "Frederick Radius beta, home"}
               className={`${styles.home} tap-44 flex items-center gap-2 font-brand text-[18px] tracking-[-0.015em]`}
               style={{ color: "var(--app-brand-text)" }}
             >
               {/* Canonical horizontal lockup: the 24px+ two-arc Ripple beside
                   a one-line Libre Caslon wordmark. The app-icon tile belongs
                   on home screens and avatars, not inside the product header. */}
-              <RippleMark size={pathname === "/map" ? 30 : 34} className="shrink-0" />
+              <RippleMark size={pathname === "/today" ? 27 : pathname === "/map" ? 30 : 34} className="shrink-0" />
               {/* The wordmark yields on the narrowest phones so functional
                   controls retain a full touch target. The mark still carries
                   the brand there; the complete lockup returns at sm. */}
@@ -403,7 +445,7 @@ export default function TopBar() {
               {/* Product status belongs to the brand lockup, not the navigation:
                   it sets expectations without becoming another tool or tap
                   target. Keep it visible when the wordmark yields on phones. */}
-              {pathname !== "/map" ? (
+              {pathname !== "/map" && pathname !== "/today" ? (
                 <span
                   data-product-status="beta"
                   aria-hidden="true"
@@ -522,39 +564,15 @@ export default function TopBar() {
               when active, unavailable, or already open, so safety never gets
               hidden but a quiet feed does not crowd the app bar. */}
           <PulseIndicator />
-          <AppearanceControl />
-
-          {/* Compass is the field-guide index. Keep the destination visible on
-              its own page so the top navigation does not change shape. */}
-          <div className="contents">
-            <AppTransitionLink
-              ref={toolsOpenerRef}
-              href="/compass"
-              onClick={(event) => {
-                if (event.button === 0 && !event.defaultPrevented && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
-                  rememberNativeRequest({ target: "tools-opener" });
-                }
-              }}
-              prefetch={false}
-              onMouseEnter={() => router.prefetch("/compass")}
-              onFocus={() => router.prefetch("/compass")}
-              onPointerDown={() => router.prefetch("/compass")}
-              aria-label="Open tools"
-              aria-current={pathname === "/compass" ? "page" : undefined}
-              title="Tools"
-              className={`${styles.tool} relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] px-2 sm:px-3`}
-              style={{ color: pathname === "/compass" ? "var(--app-link)" : "var(--app-ink)" }}
-            >
-              <Compass className="h-[20px] w-[20px] shrink-0" strokeWidth={1.75} aria-hidden />
-              {pathname === "/compass" ? <span aria-hidden data-top-tool-rule className="pointer-events-none absolute inset-x-2.5 bottom-1 h-0.5" style={{ background: "var(--app-link)" }} /> : null}
-              {/* Keep the name beyond narrow phone widths so location,
-                  appearance and Tools retain separate 44px touch targets. */}
-              <span className="hidden text-[12px] font-semibold leading-none min-[460px]:inline sm:hidden">Tools</span>
-              <span className="hidden text-[14px] font-semibold leading-none sm:inline">
-                Tools
-              </span>
-            </AppTransitionLink>
-          </div>
+          {pathname === "/today" ? (
+            <>
+              <Suspense fallback={null}><TodayScopeStatus density="header" /></Suspense>
+              <TodayAsk embedded density="header" showQuickNeeds={false} />
+              <TodayHeaderDisclosure name="tools" label="More tools" trigger={<Ellipsis aria-hidden size={20} />}>
+                {utilities}
+              </TodayHeaderDisclosure>
+            </>
+          ) : utilities}
         </div>
       </header>
 

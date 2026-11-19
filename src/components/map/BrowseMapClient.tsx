@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import AppMapClient, {
   type EventPin,
@@ -33,6 +33,7 @@ import {
   getScope,
   parseScope,
   scopeCentroid,
+  subscribeScopeChange,
   SCOPE_PARAM,
   type Scope,
 } from "@/lib/scope";
@@ -158,6 +159,19 @@ export default function BrowseMapClient({
   marcStations: MarcStationPin[];
 }) {
   const sp = useSearchParams();
+  // A URL-carried scope wins. Otherwise honor the browsing lens the person
+  // already chose in Ask, Today, Events, or the location chip.
+  const explicitScope = parseScope(sp.get(SCOPE_PARAM));
+  const [scope] = useState<Scope>(() => explicitScope ?? getScope() ?? "county");
+  const tParam = sp.get("t") ?? undefined;
+  const musicTonight = sp.get("music") === "tonight";
+  const timeModeExplicit = isTimeMode(tParam);
+  // The county overview includes upcoming events. Explicit map tasks keep
+  // their own layers, and panning or opening a marker keeps the overview data.
+  const activeScope = useSyncExternalStore(subscribeScopeChange, getScope, () => null);
+  const defaultEventPins = (explicitScope ?? activeScope ?? "county") === "county" &&
+    !timeModeExplicit && !musicTonight &&
+    !["show", "scene", "aerial", "amenity", "q", "intent", "sub", "open", "deals"].some((key) => sp.has(key));
   const [placeAttempt, setPlaceAttempt] = useState(0);
   const [placeLoad, setPlaceLoad] = useState<
     | { status: "loading"; places: MapPinPlace[] }
@@ -184,11 +198,11 @@ export default function BrowseMapClient({
     if (placeLoad.status !== "ready") return;
     let alive = true;
 
-    // Committed place context and the small decision-signal snapshot load in
-    // parallel after the first usable map. The signal request carries only
-    // summarized weather, air, market, and road-trend facts; full road layers
-    // remain demand-loaded when someone asks for them.
-    for (const group of ["context", "signals"] as const) {
+    // Keep each layer independent after the first usable map so a slow event
+    // snapshot cannot hold place context or decision signals.
+    const groups: MapLayerGroup[] = ["context", "signals"];
+    if (defaultEventPins) groups.push("events");
+    for (const group of groups) {
       void loadMapLayers([group])
         .then((payload) => {
           if (alive) setDeferredLayers(payload);
@@ -202,12 +216,16 @@ export default function BrowseMapClient({
     return () => {
       alive = false;
     };
-  }, [placeLoad.status]);
+  }, [defaultEventPins, placeLoad.status]);
   const [activeLayerGroups, setActiveLayerGroups] = useState<readonly MapLayerGroup[]>([]);
   const updateActiveLayerGroups = useCallback((groups: readonly MapLayerGroup[]) => {
     setActiveLayerGroups((prior) => prior.join(",") === groups.join(",") ? prior : groups);
   }, []);
-  useMapLayerRefresh(["signals", ...activeLayerGroups], setDeferredLayers, placeLoad.status === "ready");
+  useMapLayerRefresh(
+    ["signals", ...(defaultEventPins ? ["events" as const] : []), ...activeLayerGroups],
+    setDeferredLayers,
+    placeLoad.status === "ready",
+  );
   const allPlaces = placeLoad.places;
   const {
     civic,
@@ -230,7 +248,6 @@ export default function BrowseMapClient({
   } = deferredLayers;
   const intentParam = sp.get("intent") ?? undefined;
   const subParam = sp.get("sub") ?? undefined;
-  const tParam = sp.get("t") ?? undefined;
   const openParam = sp.get("open") ?? undefined;
   const atParam = sp.get("at") ?? undefined;
   const amenityParam = sp.get("amenity") ?? undefined;
@@ -252,7 +269,7 @@ export default function BrowseMapClient({
         .map((value) => value.trim())
         .filter(Boolean),
     );
-    if (isTimeMode(sp.get("t") ?? undefined) || sp.get("music") === "tonight") {
+    if (timeModeExplicit || musicTonight) {
       requested.add("events");
     }
     if (amenityParam) requested.add("amenities");
@@ -273,7 +290,7 @@ export default function BrowseMapClient({
     }
     if (scene === "what-changed") requested.add("boundaries");
     if (requested.size > 0) requestLayerGroups([...requested]);
-  }, [amenityParam, placeLoad.status, requestLayerGroups, sp]);
+  }, [amenityParam, musicTonight, placeLoad.status, requestLayerGroups, sp, timeModeExplicit]);
 
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -307,13 +324,6 @@ export default function BrowseMapClient({
     };
   }, []);
 
-  // A URL-carried scope wins. Otherwise honor the browsing lens the person
-  // already chose in Ask, Today, Events, or the location chip. The earlier
-  // county-only reset made a successful Near me answer open a county camera,
-  // so the label, ranking, counts, and map frame contradicted one another.
-  // A first visit still opens on the whole county because getScope() is null.
-  const explicitScope = parseScope(sp.get(SCOPE_PARAM));
-  const [scope] = useState<Scope>(() => explicitScope ?? getScope() ?? "county");
   // A town scope resolves to a fixed centroid; nearme/county don't.
   const scopeCenter = scopeCentroid(scope);
 
@@ -423,8 +433,6 @@ export default function BrowseMapClient({
   // tonight's confirmed shows (isLiveMusicEvent over the pin's own
   // category/venue/title — the same filter /live-music uses, so the map
   // and the radar can never disagree). Forces the tonight window.
-  const musicTonight = sp.get("music") === "tonight";
-  const timeModeExplicit = isTimeMode(tParam);
   const timeMode: TimeMode = musicTonight
     ? "tonight"
     : timeModeExplicit
@@ -434,10 +442,7 @@ export default function BrowseMapClient({
   const matchTime = eventTimePredicate(timeMode, now);
   const eventCells = new Set<string>();
   const events: EventPin[] = [];
-  // Events are powerful map context after someone asks for a time. They are
-  // not neutral county furniture: inferred windows created a downtown pile of
-  // calendar pucks before the visitor made a choice.
-  if (timeModeExplicit || musicTonight) {
+  if (defaultEventPins || timeModeExplicit || musicTonight) {
     for (const e of weekEvents) {
       if (!matchTime(e.starts_at, e.ends_at, e.is_all_day)) continue;
       if (

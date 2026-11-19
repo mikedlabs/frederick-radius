@@ -72,10 +72,9 @@ test("Find is reversible through Close, Escape, and browser Back", async ({
     name: "Find a place, service, event, or answer", exact: true,
   });
   await expect(trigger).toHaveAttribute("data-find-interaction-ready", "true");
-  // The current request doorway is in the page. Put it visibly below the
-  // persistent header before recording the real, nonzero launch position.
-  const headerBottom = await page.locator("header").first().evaluate((node) => node.getBoundingClientRect().bottom);
-  await trigger.evaluate((node, inset) => window.scrollTo(0, Math.max(1, scrollY + node.getBoundingClientRect().top - inset - 24)), headerBottom);
+  // Find stays in the header while reading. Exercise dismissal and scroll
+  // restoration from a nonzero reading position.
+  await page.evaluate(() => window.scrollTo(0, 180));
   const scrollY = await page.evaluate(() => window.scrollY);
   expect(scrollY).toBeGreaterThan(0);
   const url = page.url();

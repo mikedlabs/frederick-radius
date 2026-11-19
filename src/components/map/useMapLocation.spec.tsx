@@ -1,126 +1,141 @@
 // @vitest-environment jsdom
-// Mounted camera-ownership proof for the map's location hook, not a WebGL test.
+
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cacheGeolocationPosition } from "@/hooks/useGeolocation";
-import { setScope } from "@/lib/scope";
-import { nearbyArrivalFitPending, useMapLocation } from "./useMapLocation";
+import type { GeoPosition, GeoState } from "@/hooks/useGeolocation";
+import { getScope, setScope } from "@/lib/scope";
+import { useMapLocation } from "./useMapLocation";
 
-vi.mock("@/hooks/useGeolocation", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/hooks/useGeolocation")>();
-  return {
-    ...actual,
-    // A returning grantee: the silent refresh starts, and its fix lands later
-    // through the shared cache event, exactly as requestIfGranted does.
-    useGeolocation: () => ({
-      state: { status: "idle" },
-      requestHighAccuracy: vi.fn(),
-      requestIfGranted: vi.fn(async () => true),
-    }),
-  };
+const mockGeo = vi.hoisted(() => ({
+  state: { status: "idle" } as GeoState,
+  cached: null as GeoPosition | null,
+  requestHighAccuracy: vi.fn(),
+  requestIfGranted: vi.fn(),
+}));
+vi.mock("@/hooks/useGeolocation", () => ({
+  GEOLOCATION_CHANGE_EVENT: "fr:geolocation-change",
+  readCachedGeoPosition: () => mockGeo.cached,
+  readCachedPosition: () => mockGeo.cached,
+  useGeolocation: () => mockGeo,
+}));
+vi.mock("@/lib/haptics", () => ({ haptic: vi.fn() }));
+vi.mock("@/lib/track", () => ({ track: vi.fn() }));
+
+const position = { lng: -77.4105, lat: 39.4143, accuracy: 15, timestamp: 100 };
+const callbacks = {
+  setGeoMsg: vi.fn(),
+  markCameraIntent: vi.fn(),
+  fitNearbyCamera: vi.fn(),
+  recenterCamera: vi.fn(),
+  fitNearbyWithIntent: vi.fn(),
+  fitCountyCamera: vi.fn(),
+  onBeforeNearMe: vi.fn(),
+  onBeforeRecenter: vi.fn(),
+};
+
+function DirectNearbyMap() {
+  const location = useMapLocation({
+    isBrowseMap: true,
+    rankingSeed: null,
+    autoFitNearbyScope: true,
+    arrivalEntityOwnsCamera: () => false,
+    ...callbacks,
+  });
+  return <button type="button" onClick={location.recenterOnLocation}>Find me</button>;
+}
+
+let host: HTMLDivElement;
+let root: Root;
+
+beforeEach(() => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.clearAllMocks();
+  mockGeo.state = { status: "idle" };
+  mockGeo.cached = null;
+  setScope("nearme");
+  window.history.replaceState(null, "", "/map?in=nearme");
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
 });
 
-(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-/** Downtown Frederick, inside the county. */
-const downtownFix = { lng: -77.4105, lat: 39.4143, accuracy: 25 };
-
-describe("nearbyArrivalFitPending", () => {
-  const pending = (fitApplied: boolean, storedScope: Parameters<typeof nearbyArrivalFitPending>[0]["storedScope"], search = "", autoFitNearbyScope = true) =>
-    nearbyArrivalFitPending({ autoFitNearbyScope, fitApplied, search, storedScope });
-  it("owns the camera only until the one-time Near me arrival fit lands", () => {
-    expect(pending(false, "nearme")).toBe(true);
-    // Once the fit has landed, a later submitted search frames its results.
-    expect(pending(true, "nearme")).toBe(false);
-  });
-  it("releases the camera when Near me falls back to the county or a town", () => {
-    expect(pending(false, "county")).toBe(false);
-    expect(pending(false, "town:brunswick")).toBe(false);
-  });
-  it("reads an explicit `in=nearme` arrival from the URL when that scope is not stored", () => {
-    // A shared Near me link does not persist its scope, so the stored county
-    // choice must not release the camera before the Near me fit lands.
-    expect(pending(false, "county", "?in=nearme&q=coffee")).toBe(true);
-    expect(pending(false, null, "?in=nearme")).toBe(true);
-    // The fallback deletes `in=` and stores the county, which releases it.
-    expect(pending(false, "county", "?q=coffee")).toBe(false);
-    expect(pending(false, "nearme", "?in=town:brunswick")).toBe(false);
-  });
-  it("never claims the camera for an entry that was not a Near me arrival", () => {
-    expect(pending(false, "nearme", "?in=nearme", false)).toBe(false);
-  });
+afterEach(async () => {
+  await act(async () => root.unmount());
+  host.remove();
+  setScope(null);
+  vi.unstubAllGlobals();
 });
 
-describe("useMapLocation late fix", () => {
-  let root: Root;
-  let container: HTMLDivElement;
-  let entityOwnsCamera: boolean;
-  const fitNearbyCamera = vi.fn();
-  const markCameraIntent = vi.fn();
+async function render() {
+  await act(async () => root.render(<DirectNearbyMap />));
+}
 
-  function Probe() {
-    const { userLoc } = useMapLocation({
-      isBrowseMap: true,
-      rankingSeed: null,
-      // A link naming a place or event never latches the Near me arrival fit.
-      autoFitNearbyScope: false,
-      arrivalEntityOwnsCamera: () => entityOwnsCamera,
-      setGeoMsg: () => {},
-      markCameraIntent,
-      fitNearbyCamera,
-      fitNearbyWithIntent: () => {},
-      fitCountyCamera: () => {},
-      onBeforeNearMe: () => {},
-    });
-    return <output data-user-loc={userLoc ? `${userLoc.lng},${userLoc.lat}` : ""} />;
-  }
+async function clickFindMe() {
+  await act(async () => host.querySelector("button")?.click());
+}
 
-  const landFix = async () => {
+describe("map location camera intent", () => {
+  it("centers an explicit fix without running the direct Near me fit", async () => {
+    const permission = Promise.withResolvers<boolean>();
+    mockGeo.requestIfGranted.mockReturnValue(permission.promise);
+    await render();
+    await clickFindMe();
+    expect(callbacks.onBeforeRecenter).toHaveBeenCalledOnce();
+    expect(mockGeo.requestHighAccuracy).toHaveBeenCalledOnce();
+
+    await act(async () => permission.resolve(false));
+    expect(getScope()).toBe("nearme");
+    expect(callbacks.fitCountyCamera).not.toHaveBeenCalled();
+
     await act(async () => {
-      cacheGeolocationPosition({ ...downtownFix, timestamp: Date.now() });
+      mockGeo.cached = position;
+      window.dispatchEvent(new Event("fr:geolocation-change"));
+      mockGeo.state = { status: "granted", position };
+      root.render(<DirectNearbyMap />);
     });
-  };
+    expect(callbacks.recenterCamera).toHaveBeenCalledExactlyOnceWith({ lng: position.lng, lat: position.lat });
+    expect(callbacks.fitNearbyCamera).not.toHaveBeenCalled();
 
-  beforeEach(async () => {
-    window.sessionStorage.clear();
-    window.localStorage.clear();
-    // A saved Near me scope from an earlier visit (localStorage persists).
-    setScope("nearme");
-    window.history.replaceState(null, "", "/map?place=brewers-alley-frederick");
-    entityOwnsCamera = true;
-    fitNearbyCamera.mockReset();
-    markCameraIntent.mockReset();
-    container = document.createElement("div");
-    document.body.append(container);
-    root = createRoot(container);
-    await act(async () => root.render(<Probe />));
-  });
-  afterEach(async () => {
-    await act(async () => root.unmount());
-    container.remove();
-    window.history.replaceState(null, "", "/");
+    await act(async () => window.dispatchEvent(new Event("fr:geolocation-change")));
+    expect(callbacks.fitNearbyCamera).not.toHaveBeenCalled();
+
+    await act(async () => {
+      setScope("nearme");
+      window.dispatchEvent(new Event("fr:geolocation-change"));
+    });
+    expect(callbacks.fitNearbyCamera).toHaveBeenCalledExactlyOnceWith(position);
   });
 
-  it("re-ranks from a late fix after a ?place= arrival without pulling the camera off the place", async () => {
-    await landFix();
-    expect(container.querySelector("output")?.dataset.userLoc).toBe(`${downtownFix.lng},${downtownFix.lat}`);
-    expect(fitNearbyCamera).not.toHaveBeenCalled();
-    expect(markCameraIntent).not.toHaveBeenCalled();
+  it("falls back to the county if the pending direct Near me fix is denied", async () => {
+    mockGeo.requestIfGranted.mockResolvedValue(true);
+    mockGeo.state = { status: "loading" };
+    await render();
+    await clickFindMe();
+    expect(mockGeo.requestHighAccuracy).not.toHaveBeenCalled();
+
+    mockGeo.state = { status: "denied" };
+    await render();
+    expect(getScope()).toBe("county");
+    expect(new URLSearchParams(window.location.search).has("in")).toBe(false);
+    expect(callbacks.fitCountyCamera).toHaveBeenCalledOnce();
+    expect(callbacks.recenterCamera).not.toHaveBeenCalled();
   });
 
-  it("fits Near me again once the arrival place no longer holds the camera", async () => {
-    // The visitor closed the place card or moved the camera.
-    entityOwnsCamera = false;
-    await landFix();
-    expect(fitNearbyCamera).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ lng: downtownFix.lng, lat: downtownFix.lat }),
-    );
-  });
+  it("keeps the scope and camera when Find me returns an out-of-county fix", async () => {
+    mockGeo.requestIfGranted.mockResolvedValue(true);
+    mockGeo.state = { status: "loading" };
+    await render();
+    await clickFindMe();
+    expect(callbacks.onBeforeRecenter).toHaveBeenCalledOnce();
 
-  it("honors a Near me choice made in the header after arrival", async () => {
-    await act(async () => setScope("nearme"));
-    await landFix();
-    expect(fitNearbyCamera).toHaveBeenCalledOnce();
+    mockGeo.state = { status: "granted", position: { ...position, lng: -76.6122, lat: 39.2904 } };
+    await render();
+    expect(getScope()).toBe("nearme");
+    expect(new URLSearchParams(window.location.search).get("in")).toBe("nearme");
+    expect(callbacks.setGeoMsg).toHaveBeenLastCalledWith("You are outside Frederick County. Keeping your current map view.");
+    expect(callbacks.fitCountyCamera).not.toHaveBeenCalled();
+    expect(callbacks.fitNearbyCamera).not.toHaveBeenCalled();
+    expect(callbacks.recenterCamera).not.toHaveBeenCalled();
   });
 });

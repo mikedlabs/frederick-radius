@@ -1,3 +1,4 @@
+import { chooseTodayArea, todayArea } from "./today-controls";
 import { expect, test } from "@playwright/test";
 
 test.use({ actionTimeout: 15_000 });
@@ -51,7 +52,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const height = width === 1366 ? 900 : 844;
     await page.setViewportSize({ width, height });
     await page.goto("/today", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("combobox", { name: "Choose your area" })).toBeEnabled();
+    await expect(todayArea(page)).toBeEnabled();
     const weatherRegion = page.locator('[data-today-weather] [data-weather-state]');
     await expect(weatherRegion).toHaveAttribute("data-weather-state", /^(available|safety-only|unavailable)$/);
     const weatherState = await weatherRegion.getAttribute("data-weather-state");
@@ -59,14 +60,9 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const find = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
     await expect(find).toBeVisible();
     const findBox = await find.boundingBox();
-    // Active safety alerts and an intentional day-of civic spotlight lead
-    // the masthead. Normalize that variable content rather than fail a
-    // release because a real warning needs space. The ordinary masthead +
-    // request doorway must fit above navigation without a campaign in between.
-    const mastheadBox = await page.locator("main .scroll-masthead").boundingBox();
-    expect(mastheadBox).not.toBeNull();
-    const leadingNoticeSpace = Math.max(0, mastheadBox!.y - 80);
-    expect(findBox!.y + findBox!.height - leadingNoticeSpace).toBeLessThan(height - 80);
+    expect(findBox).not.toBeNull();
+    expect(findBox!.y).toBeGreaterThanOrEqual(0);
+    expect(findBox!.y + findBox!.height).toBeLessThan(height - 80);
     const forecast = weatherRegion.locator('a[href="/pulse?open=weather"]');
     await expect(forecast).toHaveCount(1);
     const summary = weatherRegion.locator('summary[data-today-weather-summary]');
@@ -76,7 +72,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(weatherBox).not.toBeNull();
     expect(weatherBox!.height).toBeGreaterThanOrEqual(44);
     expect(weatherBox!.width).toBeGreaterThanOrEqual(44);
-    expect(weatherBox!.y + weatherBox!.height).toBeLessThanOrEqual(findBox!.y);
+    expect(findBox!.y + findBox!.height).toBeLessThanOrEqual(weatherBox!.y);
     if (weatherState === "available") {
       const details = weatherRegion.locator("details");
       await expect(details).not.toHaveAttribute("open");
@@ -95,7 +91,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     } else {
       await expect(summary).toHaveCount(0);
     }
-    await page.getByRole("combobox", { name: "Choose your area" }).selectOption("town:brunswick");
+    await chooseTodayArea(page, "town:brunswick");
     await expect(page.getByTestId("today-scope-status")).toHaveText("Brunswick picks · Weather for the whole county");
     await expect(page.getByRole("link", { name: "Plan a few hours", exact: true })).toHaveAttribute("href", /in=brunswick/);
   });

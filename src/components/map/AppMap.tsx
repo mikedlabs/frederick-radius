@@ -22,6 +22,10 @@ import Map, {
 // (GeolocateControl stays imported for DOCK-LESS embeds only — on /map
 // browse the dock's Where pane is locate's one home.)
 import type { GeoJSONSource } from "mapbox-gl";
+import {
+  CLUSTER_HIT_SOURCES, PLACE_HIT_LAYER_IDS, rawSelectionFromFeature,
+  type MapClusterSelection,
+} from "./mapClusterSelection";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { sunTimes } from "@/lib/sun";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
@@ -393,6 +397,7 @@ type MapSelectionRequest =
   | { kind: "raw"; value: NonNullable<Selected>; contextLabel?: string }
   | { kind: "event"; value: EventPin }
   | { kind: "event-group"; value: MapEventGroup }
+  | { kind: "cluster"; value: MapClusterSelection }
   | { kind: "town"; value: CivicTownSelection }
   | { kind: "transit"; value: SelectedStop }
   | { kind: "marc"; value: string }
@@ -1155,6 +1160,8 @@ export default function AppMap({
   }, [wakeMapEdgeTools]);
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
   const [eventGroup, setEventGroup] = useState<MapEventGroup | null>(null);
+  const [cluster, setCluster] = useState<MapClusterSelection | null>(null);
+  const clusterRequestRef = useRef(0);
   // Camera membership and committed result membership are separate. The first
   // keeps DOM pins outside the visible canvas out of the keyboard sequence;
   // the second keeps result counts and discovery ranking stable until the
@@ -1377,6 +1384,7 @@ export default function AppMap({
     dismissLocationIntro,
     locating,
     goNearMe,
+    recenterOnLocation,
   } =
     useMapLocation({
       isBrowseMap,
@@ -1400,6 +1408,13 @@ export default function AppMap({
           if (mapLoaded) nearbyRouteCameraAppliedRef.current = true;
         }
       },
+      recenterCamera: (loc) => {
+        mapRef.current?.getMap().easeTo({
+          center: [loc.lng, loc.lat],
+          duration: mapCameraDuration("nudge"),
+          essential: true,
+        });
+      },
       fitNearbyWithIntent: (loc) => {
         const map = mapRef.current?.getMap();
         if (map) {
@@ -1414,6 +1429,9 @@ export default function AppMap({
           easing: CAM_EASE,
           essential: true,
         });
+      },
+      onBeforeRecenter: () => {
+        nearbyRouteCameraAppliedRef.current = true;
       },
       onBeforeNearMe: () => {
         setShowResultsHere(false);
@@ -1554,16 +1572,6 @@ export default function AppMap({
     amenityLayerActive ||
     Boolean(activeSceneId) ||
     (operationalLayerRequested && !explicitPlaceTaskActive);
-  // At the untouched county overview, raw catalog totals do not help someone
-  // decide what to do. Let town labels and the highest-value live signal own
-  // that frame; clusters return as soon as the person zooms, searches, chooses
-  // a category, or opens any task-shaped view.
-  const quietCountyOverview =
-    isBrowseMap &&
-    resultScope === "county" &&
-    !offOverview &&
-    !explicitPlaceTaskActive &&
-    !operationalLayerRequested;
   const visibleParking = showParking || Boolean(selectedDiscovery?.layers.parking);
   const visibleAerial = showAerial || Boolean(selectedDiscovery?.layers.aerial);
   const visibleCemeteries = showCemeteries || Boolean(selectedDiscovery?.layers.cemeteries);
@@ -1821,6 +1829,8 @@ export default function AppMap({
     setSelectedSlug(null);
     setSelectedEvent(null);
     setEventGroup(null);
+    setCluster(null);
+    clusterRequestRef.current += 1;
     setCivicTown(null);
     setSelectedTransitStop(null);
     setMarcPeek(null);
@@ -1846,6 +1856,9 @@ export default function AppMap({
         break;
       case "event":
         setSelectedEvent(next.value);
+        break;
+      case "cluster":
+        setCluster(next.value);
         break;
       case "event-group":
         setEventGroup(next.value);
@@ -1926,6 +1939,7 @@ export default function AppMap({
 
   const dismissMapSelection = useCallback(() => {
     if (selectionHistoryDismissRequestedRef.current) return;
+    clusterRequestRef.current += 1;
     initialPlaceCameraPendingRef.current = null;
     // Consume initial intent before an asynchronous Back can update the URL.
     deepLinkPlaceAppliedRef.current = true;
@@ -2281,6 +2295,7 @@ export default function AppMap({
     selected ||
       selectedEvent ||
       eventGroup ||
+      cluster ||
       civicTown ||
       selectedTransitStop ||
       marcPeek ||
@@ -3120,11 +3135,43 @@ export default function AppMap({
   // The filtered set still drives which pins are visible — just not
   // the camera position.
 
+  const clusterRows = useMemo(() => {
+    if (!cluster) return [];
+    const ids = new Set(cluster.ids);
+    if (cluster.source === "curated-places") {
+      return places.filter(({ slug }) => ids.has(slug)).map((value) => ({
+        kind: "place" as const, value,
+      }));
+    }
+    const data = cluster.source === "amenities" ? amenityGeoJson : filteredOsmGeoJson;
+    return data.features.flatMap((feature) => {
+      const value = rawSelectionFromFeature(feature);
+      return value && ids.has(value.osm_id) ? [{ kind: "raw" as const, value }] : [];
+    });
+  }, [amenityGeoJson, cluster, filteredOsmGeoJson, places]);
+
   const onClick = (e: MapMouseEvent) => {
     // A map gesture dismisses transient panels through `fr:map-gesture`, but
     // it does not erase the person's search or shareable query. Clearing text
     // merely because someone adjusted the map made the search feel unreliable.
-    const feature = e.features?.[0];
+    const features = e.features ?? [];
+    const map = mapRef.current?.getMap();
+    // Nearby hit circles may overlap. Select the pin closest to the tap.
+    const points = features.filter((item) =>
+      item.geometry.type === "Point" && PLACE_HIT_LAYER_IDS.has(item.layer?.id ?? ""),
+    );
+    const pointDistance = (item: (typeof points)[number]) => {
+      if (!map || item.geometry.type !== "Point") return Infinity;
+      const [lng, lat] = item.geometry.coordinates;
+      const projected = map.project([lng, lat]);
+      return Math.hypot(projected.x - e.point.x, projected.y - e.point.y);
+    };
+    const feature = PLACE_HIT_LAYER_IDS.has(features[0]?.layer?.id ?? "")
+      ? points.reduce<(typeof points)[number] | undefined>(
+          (nearest, point) => !nearest || pointDistance(point) < pointDistance(nearest) ? point : nearest,
+          undefined,
+        )
+      : features[0];
     if (!feature) {
       // Empty map space is for panning, orientation, and dismissing a result.
       // Do not invent a new "At this spot" task from every stray tap. The spot
@@ -3176,98 +3223,33 @@ export default function AppMap({
       }
       return;
     }
-    const map = mapRef.current?.getMap();
-
-    // County and compact-subject maps represent broad views with counted
-    // clusters. Tapping one reveals the next level without making the user
-    // guess where overlapping downtown pins went.
-    if (layer === "curated-clusters" && map) {
-      dismissMapSelection();
-      const clusterId = feature.properties?.cluster_id as number | undefined;
-      const source = map.getSource("curated-places") as
-        | GeoJSONSource
-        | undefined;
-      if (
-        clusterId !== undefined &&
-        source &&
-        "getClusterExpansionZoom" in source
-      ) {
-        (
-          source as unknown as {
-            getClusterExpansionZoom: (
-              id: number,
-              callback: (error: Error | null, zoom: number) => void,
-            ) => void;
-          }
-        ).getClusterExpansionZoom(clusterId, (error, zoom) => {
-          if (error) return;
-          const coordinates = (
-            feature.geometry as GeoJSON.Point
-          ).coordinates as [number, number];
-          cameraIntentRef.current = true;
-          smoothFocus(map, coordinates, {
-            minZoom: zoom,
-            maxStep: 3,
-          });
-        });
-      }
+    const clusterSource = CLUSTER_HIT_SOURCES[layer];
+    if (clusterSource && map) {
+      const source = map.getSource<GeoJSONSource>(clusterSource);
+      const clusterId = Number(feature.properties?.cluster_id);
+      const count = Number(feature.properties?.point_count);
+      if (!source?.getClusterLeaves || !Number.isInteger(clusterId) || !Number.isInteger(count) || count < 1) return;
+      const request = ++clusterRequestRef.current;
+      source.getClusterLeaves(clusterId, count, 0, (error, leaves) => {
+        if (request !== clusterRequestRef.current) return;
+        const property = clusterSource === "curated-places" ? "slug" : "osm_id";
+        const ids = [...new Set(leaves?.flatMap(({ properties }) => {
+          const id = properties?.[property];
+          return typeof id === "string" && id ? [id] : [];
+        }))];
+        if (error || !ids.length) {
+          setGeoMsg("Could not open this cluster. Tap it again to retry.");
+          return;
+        }
+        setGeoMsg(null);
+        openMapSelection({ kind: "cluster", value: { source: clusterSource, ids } });
+        haptic("light");
+        track("map_cluster");
+      });
       return;
     }
 
-    if (layer === "amenity-clusters" && map) {
-      dismissMapSelection();
-      const clusterId = feature.properties?.cluster_id as number | undefined;
-      const source = map.getSource("amenities") as GeoJSONSource | undefined;
-      if (
-        clusterId !== undefined &&
-        source &&
-        "getClusterExpansionZoom" in source
-      ) {
-        (
-          source as unknown as {
-            getClusterExpansionZoom: (
-              id: number,
-              callback: (error: Error | null, zoom: number) => void,
-            ) => void;
-          }
-        ).getClusterExpansionZoom(clusterId, (error, zoom) => {
-            if (error) return;
-            const coordinates = (
-              feature.geometry as GeoJSON.Point
-            ).coordinates as [number, number];
-            cameraIntentRef.current = true;
-            smoothFocus(map, coordinates, {
-              minZoom: zoom,
-              maxStep: 3,
-            });
-          });
-      }
-      return;
-    }
-
-    // OSM cluster expansion.
-    if (layer === "clusters" && map) {
-      dismissMapSelection();
-      track("map_cluster");
-      const clusterId = feature.properties?.cluster_id as number | undefined;
-      const source = map.getSource("osm-businesses") as GeoJSONSource | undefined;
-      if (clusterId !== undefined && source && "getClusterExpansionZoom" in source) {
-        (source as unknown as { getClusterExpansionZoom: (id: number, cb: (err: Error | null, zoom: number) => void) => void })
-          .getClusterExpansionZoom(clusterId, (err, zoom) => {
-            if (err) return;
-            const coords = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
-            // Glide toward the expansion zoom, but clamped so a tap on a
-            // dense downtown cluster steps in calmly instead of snapping
-            // the whole county to street level. Very dense clusters take
-            // a second tap — that gentle tiering is the intended feel.
-            cameraIntentRef.current = true;
-            smoothFocus(map, coords, { minZoom: zoom, maxStep: 2.5 });
-          });
-      }
-      return;
-    }
-
-    if (layer === "curated-icons" || layer === "curated-active-icons" || layer === "curated-hit") {
+    if (layer === "curated-hit") {
       const props = feature.properties as Record<string, string>;
       const place = placesBySlug.get(props.slug);
       setSelectedSlug(props.slug);
@@ -3288,7 +3270,6 @@ export default function AppMap({
         cameraIntentRef.current = true;
         m?.easeTo({
           center: [place.geom.lng, place.geom.lat],
-          zoom: Math.max(m.getZoom(), 14),
           offset: [0, -120],
           duration: mapCameraDuration("nudge"),
           essential: true,
@@ -3318,37 +3299,12 @@ export default function AppMap({
       return;
     }
 
-    if (layer === "osm-icons" || layer === "amenity-icons") {
-      const props = feature.properties as Record<string, string>;
-      setSelectedSlug(null);
-      haptic("light");
-      openMapSelection({
-        kind: "raw",
-        value: {
-          _kind: "osm",
-          osm_id: props.osm_id,
-          name: props.name,
-          category_slug: props.category,
-          osm_tag: props.osm_tag,
-          address: props.address,
-          city: props.city,
-          phone: props.phone,
-          website: props.website,
-          opening_hours: props.opening_hours,
-          cuisine: props.cuisine,
-          wheelchair:
-            props.wheelchair === "yes" ||
-            props.wheelchair === "no" ||
-            props.wheelchair === "limited"
-              ? props.wheelchair
-              : undefined,
-          outdoor_seating: props.outdoor_seating === "yes" || undefined,
-          photo: props.photo || undefined,
-          observed_at: props.observed_at || undefined,
-          lng: (feature.geometry as GeoJSON.Point).coordinates[0] as number,
-          lat: (feature.geometry as GeoJSON.Point).coordinates[1] as number,
-        },
-      });
+    if (layer === "osm-hit" || layer === "amenity-hit") {
+      const value = rawSelectionFromFeature(feature);
+      if (value) {
+        haptic("light");
+        openMapSelection({ kind: "raw", value });
+      }
     }
   };
 
@@ -3362,33 +3318,29 @@ export default function AppMap({
     }
     if (!canHoverRef.current) return; // touch device: no hover preview while panning
     const f = e.features?.[0];
-    if (!f || !f.layer?.id) { setHover((h) => (h ? null : h)); return; }
+    if (!f?.layer?.id || f.geometry.type !== "Point") {
+      setHover((current) => current ? null : current);
+      return;
+    }
     const props = (f.properties ?? {}) as Record<string, string | number>;
-    const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates as [number, number];
+    const [lng, lat] = f.geometry.coordinates;
     let next: { lng: number; lat: number; label: string; sub?: string } | null = null;
-    if (
-      f.layer.id === "clusters" ||
-      f.layer.id === "curated-clusters" ||
-      f.layer.id === "amenity-clusters"
-    ) {
+    const clusterSource = CLUSTER_HIT_SOURCES[f.layer.id];
+    if (clusterSource) {
       const count = Number(props.point_count);
-      const family =
-        f.layer.id === "curated-clusters"
-          ? dominantClusterFamilyLabel(props)
-          : null;
+      const noun = clusterSource === "amenities" ? "amenities" : "places";
+      const family = clusterSource === "curated-places"
+        ? dominantClusterFamilyLabel(props)
+        : null;
       next = {
         lng,
         lat,
         label: Number.isFinite(count)
-          ? `${count.toLocaleString("en-US")} mapped ${
-              f.layer.id === "amenity-clusters" ? "amenities" : "places"
-            }`
-          : f.layer.id === "amenity-clusters"
-            ? "A cluster of amenities"
-            : "A cluster of places",
+          ? `${count.toLocaleString("en-US")} mapped ${noun}`
+          : `A cluster of ${noun}`,
         sub: family ? `Mostly ${family.toLocaleLowerCase()}` : undefined,
       };
-    } else if (f.layer.id === "curated-icons" || f.layer.id === "curated-active-icons" || f.layer.id === "curated-hit") {
+    } else if (f.layer.id === "curated-hit") {
       const p = placesBySlug.get(String(props.slug));
       if (p) next = { lng, lat, label: p.name, sub: CATEGORY_BY_SLUG[p.category]?.name };
     } else {
@@ -5153,16 +5105,14 @@ export default function AppMap({
           interactiveLayerIds={[
             ...(!operationalLayerActive
               ? [
-                  ...(!quietCountyOverview ? ["clusters"] : []),
-                  ...(curatedClusters && !quietCountyOverview ? ["curated-clusters"] : []),
-                  "osm-icons",
-                  "curated-icons",
-                  "curated-active-icons",
+                  "osm-cluster-hit",
+                  ...(curatedClusters ? ["curated-cluster-hit"] : []),
+                  "osm-hit",
                   "curated-hit",
                 ]
               : []),
-            "amenity-clusters",
-            "amenity-icons",
+            "amenity-cluster-hit",
+            "amenity-hit",
             "aerial-icons",
             "cemetery-icons",
             "transit-stop-hit",
@@ -6015,9 +5965,7 @@ export default function AppMap({
             );
           })()}
 
-          {/* OSM businesses — clustered. Calm tier: a soft cool dot that
-              says "more here, zoom in", NOT a loud numbered disk. OSM is
-              the secondary layer so it stays quiet and cool-toned. */}
+          {/* OSM businesses use quieter clusters than curated places. */}
           <Source
             id="osm-businesses"
             type="geojson"
@@ -6033,7 +5981,7 @@ export default function AppMap({
               filter={["has", "point_count"]}
               paint={{
                 "circle-color": "#285D73",
-                "circle-opacity": operationalLayerActive || quietCountyOverview
+                "circle-opacity": operationalLayerActive
                   ? 0
                   : foregroundReferenceActive && dock
                     ? 0.025
@@ -6045,18 +5993,14 @@ export default function AppMap({
                 ],
               }}
             />
-            {/* Calm core dot — soft cool tint with a count label on
-                top for clusters of 4+. OSM is the secondary tier, so
-                its disc stays smaller and quieter than the curated
-                one above; the count just tells the user this isn't a
-                3-pin pocket but a real density. */}
+            {/* OSM stays visually secondary to the curated place layer. */}
             <Layer
               id="clusters"
               type="circle"
               filter={["has", "point_count"]}
               paint={{
                 "circle-color": "#285D73",
-                "circle-opacity": operationalLayerActive || quietCountyOverview
+                "circle-opacity": operationalLayerActive
                   ? 0
                   : foregroundReferenceActive && dock
                     ? 0.08
@@ -6068,7 +6012,7 @@ export default function AppMap({
                 ],
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1,
-                "circle-stroke-opacity": operationalLayerActive || quietCountyOverview
+                "circle-stroke-opacity": operationalLayerActive
                   ? 0
                   : foregroundReferenceActive && dock
                     ? 0.08
@@ -6078,7 +6022,7 @@ export default function AppMap({
             <Layer
               id="cluster-counts"
               type="symbol"
-              filter={["all", ["has", "point_count"], [">=", ["get", "point_count"], 4]]}
+              filter={["has", "point_count"]}
               layout={{
                 "text-field": ["get", "point_count_abbreviated"],
                 "text-size": [
@@ -6094,7 +6038,7 @@ export default function AppMap({
                 "text-halo-color": "rgba(0,0,0,0.3)",
                 "text-halo-width": 1.1,
                 "text-halo-blur": 0.4,
-                "text-opacity": operationalLayerActive || quietCountyOverview
+                "text-opacity": operationalLayerActive
                   ? 0
                   : foregroundReferenceActive && dock
                     ? 0.05
@@ -6134,6 +6078,8 @@ export default function AppMap({
                     : 0.8,
               }}
             />
+            <Layer id="osm-cluster-hit" type="circle" filter={["has", "point_count"]} paint={{ "circle-opacity": 0, "circle-radius": 22 }} />
+            <Layer id="osm-hit" type="circle" filter={["!", ["has", "point_count"]]} paint={{ "circle-opacity": 0, "circle-radius": 22 }} />
           </Source>
 
           {/*
@@ -6177,7 +6123,7 @@ export default function AppMap({
               id="amenity-cluster-counts"
               type="symbol"
               minzoom={7}
-              filter={["all", ["has", "point_count"], [">=", ["get", "point_count"], 3]]}
+              filter={["has", "point_count"]}
               layout={{
                 "text-field": ["get", "point_count_abbreviated"],
                 "text-size": 10,
@@ -6243,6 +6189,8 @@ export default function AppMap({
                 "text-halo-width": 1.6,
               }}
             />
+            <Layer id="amenity-cluster-hit" type="circle" minzoom={7} filter={["has", "point_count"]} paint={{ "circle-opacity": 0, "circle-radius": 22 }} />
+            <Layer id="amenity-hit" type="circle" minzoom={7} filter={["!", ["has", "point_count"]]} paint={{ "circle-opacity": 0, "circle-radius": 22 }} />
           </Source>
 
           {/* Curated-place semantic zoom. The county dock and compact subject
@@ -6282,7 +6230,7 @@ export default function AppMap({
                         14.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 10, 4, 13, 25, 21, 100, 27],
                         15, ["interpolate", ["linear"], ["get", "point_count"], 2, 7, 4, 9.1, 25, 14.7, 100, 18.9],
                       ],
-                  "circle-opacity": operationalLayerActive || quietCountyOverview
+                  "circle-opacity": operationalLayerActive
                     ? 0
                     : foregroundReferenceActive && dock
                       ? 0.04
@@ -6317,7 +6265,7 @@ export default function AppMap({
                     ? BRAND.colors.functionalAmber
                     : CURATED_CLUSTER_COLOR,
                   "circle-stroke-width": 1.1,
-                  "circle-stroke-opacity": operationalLayerActive || quietCountyOverview
+                  "circle-stroke-opacity": operationalLayerActive
                     ? 0
                     : foregroundReferenceActive && dock
                       ? 0.04
@@ -6345,11 +6293,11 @@ export default function AppMap({
                       ]
                     : [
                         "interpolate", ["linear"], ["zoom"],
-                        7, ["interpolate", ["linear"], ["get", "point_count"], 2, 7, 4, 9, 25, 15, 100, 20],
-                        14.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 7, 4, 9, 25, 15, 100, 20],
+                        7, ["interpolate", ["linear"], ["get", "point_count"], 2, 11, 4, 13, 25, 16, 100, 22],
+                        14.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 11, 4, 13, 25, 16, 100, 22],
                         15, ["interpolate", ["linear"], ["get", "point_count"], 2, 4.8, 4, 6.1, 25, 10.2, 100, 13.6],
                       ],
-                  "circle-opacity": operationalLayerActive || quietCountyOverview
+                  "circle-opacity": operationalLayerActive
                     ? 0
                     : foregroundReferenceActive && dock
                       ? 0.12
@@ -6358,7 +6306,7 @@ export default function AppMap({
                     ? "#FAF3E2"
                     : "#F7F2E8",
                   "circle-stroke-width": compactSubjectMap ? 2 : 1.6,
-                  "circle-stroke-opacity": operationalLayerActive || quietCountyOverview
+                  "circle-stroke-opacity": operationalLayerActive
                     ? 0
                     : foregroundReferenceActive && dock
                       ? 0.12
@@ -6373,7 +6321,7 @@ export default function AppMap({
               <Layer
                 id="curated-cluster-counts"
                 type="symbol"
-                filter={["all", ["has", "point_count"], [">=", ["get", "point_count"], 4]]}
+                filter={["has", "point_count"]}
                 layout={{
                   "text-field": compactSubjectMap
                     ? ["get", "point_count_abbreviated"]
@@ -6384,7 +6332,7 @@ export default function AppMap({
                         10.5,
                         [
                           "case",
-                          ["<=", ["get", "point_count"], 40],
+                          ["all", [">=", ["get", "point_count"], 8], ["<=", ["get", "point_count"], 40]],
                           [
                             "concat",
                             ["get", "point_count_abbreviated"],
@@ -6423,15 +6371,15 @@ export default function AppMap({
                   "text-opacity": compactSubjectMap
                     ? [
                         "interpolate", ["linear"], ["zoom"],
-                        7, operationalLayerActive || quietCountyOverview ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
-                        11.25, operationalLayerActive || quietCountyOverview ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
-                        12, operationalLayerActive || quietCountyOverview ? 0 : foregroundReferenceActive && dock ? 0.02 : 0.18,
+                        7, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
+                        11.25, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
+                        12, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.02 : 0.18,
                       ]
                     : [
                         "interpolate", ["linear"], ["zoom"],
-                        7, operationalLayerActive || quietCountyOverview ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
-                        14.25, operationalLayerActive || quietCountyOverview ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
-                        15, operationalLayerActive || quietCountyOverview ? 0 : foregroundReferenceActive && dock ? 0.02 : 0.18,
+                        7, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
+                        14.25, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
+                        15, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.02 : 0.18,
                       ],
                   "text-opacity-transition": { duration: mapPaintDuration },
                 }}
@@ -6501,8 +6449,8 @@ export default function AppMap({
                   ? ["interpolate", ["linear"], ["zoom"], 7.5, 4, 12, 5.5, 16, 7]
                   : [
                       "interpolate", ["linear"], ["zoom"],
-                      8.5, ["*", 1.4, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
-                      11, ["*", 1.9, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
+                      8.5, ["*", 4.5, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
+                      11, ["*", 3.5, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
                       13.5, ["*", 2.8, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
                       15.2, ["*", 3.5, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
                       17, ["*", 4.1, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
@@ -6642,10 +6590,12 @@ export default function AppMap({
                 iOS minimum) without making the visual pins themselves
                 bigger. Same source as curated-icons so the click handler
                 can resolve back to the same slug via props.slug. */}
+            {curatedClusters && (
+              <Layer id="curated-cluster-hit" type="circle" filter={["has", "point_count"]} paint={{ "circle-opacity": 0, "circle-radius": 22 }} />
+            )}
             <Layer
               id="curated-hit"
               type="circle"
-              minzoom={compactSubjectMap ? 7 : 12.5}
               filter={["!", ["has", "point_count"]]}
               paint={{
                 "circle-color": "#000000",
@@ -7179,11 +7129,6 @@ export default function AppMap({
                     } else {
                       openMapSelection({ kind: "event-group", value: group });
                     }
-                    const map = mapRef.current?.getMap();
-                    if (map && map.getZoom() < 14) {
-                      cameraIntentRef.current = true;
-                      smoothFocus(map, [group.lng, group.lat], { minZoom: 14, maxStep: 4 });
-                    }
                   }}
                   aria-label={
                     group.events.length === 1
@@ -7407,7 +7352,7 @@ export default function AppMap({
               data-map-top-surface="results"
             >
               <span className="map-results-here-dot" aria-hidden />
-              Show results here
+              Search this map area
             </button>
           )}
 
@@ -7417,7 +7362,7 @@ export default function AppMap({
             onWake={wakeMapEdgeTools}
             locating={locating}
             located={Boolean(userLoc)}
-            onLocate={goNearMe}
+            onLocate={recenterOnLocation}
             overlays={edgeOverlayState}
             onToggle={toggleEdgeOverlay}
             incidentHealth={incidentHealth}
@@ -7715,6 +7660,12 @@ export default function AppMap({
           foodTruckPeek={foodTruckPeek}
           selectedTransitStop={selectedTransitStop}
           eventGroup={eventGroup}
+          clusterRows={cluster ? clusterRows : null}
+          amenityCluster={cluster?.source === "amenities"}
+          openClusterRow={(row) => {
+            openMapSelection(row);
+            haptic("light");
+          }}
           userLoc={userLoc}
           utilityPoints={utilityPoints}
           places={places}
@@ -7739,14 +7690,6 @@ export default function AppMap({
           focusEventFromGroup={(event) => {
             openMapSelection({ kind: "event", value: event });
             haptic("light");
-            const map = mapRef.current?.getMap();
-            if (map) {
-              cameraIntentRef.current = true;
-              smoothFocus(map, [event.lng, event.lat], {
-                minZoom: 14,
-                maxStep: 4,
-              });
-            }
           }}
         />
 
