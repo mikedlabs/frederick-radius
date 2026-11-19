@@ -19,14 +19,41 @@ function time(raw: string): string {
 function set(hours: Hours, days: DayOfWeek[], open: string, close: string) {
   for (const day of days) { if (hours[day]) throw new Error("Duplicate merchant weekday."); hours[day] = [{ open: time(open), close: time(close) }]; }
 }
-function textPage(html: string): { text: string; document: Document } {
+function textPage(html: string): { text: string; document: Document; body: HTMLElement } {
   const document = new JSDOM(html).window.document;
   document.querySelectorAll("script:not([type='application/ld+json']):not([type='text/data'].js-hours-config):not([type='application/json'].js-hours-config),style,noscript,template").forEach((node) => node.remove());
   // Block boundaries preserve visible source order without executing scripts/resources.
   document.querySelectorAll("p,div,li,br,h1,h2,h3,h4,section,footer").forEach((node) => node.appendChild(document.createTextNode(" ")));
   const clone = document.body.cloneNode(true) as HTMLElement;
   clone.querySelectorAll("script").forEach((node) => node.remove());
-  return { text: (clone.textContent ?? "").replace(/\s+/g, " ").trim(), document };
+  return { text: (clone.textContent ?? "").replace(/\s+/g, " ").trim(), document, body: clone };
+}
+
+function hiddenDelaplaineElement(node: Element) {
+  for (let current: Element | null = node; current; current = current.parentElement) {
+    if (current.hasAttribute("hidden") || current.hasAttribute("inert") || current.getAttribute("aria-hidden") === "true"
+      || /display\s*:\s*none|visibility\s*:\s*(?:hidden|collapse)/i.test(current.getAttribute("style") ?? "")) return true;
+  }
+  return false;
+}
+
+/** Remove only the reviewed event paragraph from the script-free notice scan.
+ * Gallery schedules and source hashes still use the original document and bytes. */
+function delaplaineNoticeText(body: HTMLElement) {
+  const programTime = "2nd & 4th Saturday of each month, unless the Delaplaine is closed • 10 am–3 pm";
+  const programUrl = "https://delaplaine.org/events/category/programs/open-studios/third-space-open-studio/";
+  for (const note of body.querySelectorAll(".swiper-slide[role='group'] .elementor-widget-text-editor > .elementor-widget-container > p")) {
+    if (note.children.length || note.textContent?.replace(/\s+/g, " ").trim() !== programTime || hiddenDelaplaineElement(note)) continue;
+    const card = note.closest(".elementor-widget-text-editor")!.parentElement;
+    const heading = card?.querySelector(":scope > .elementor-widget-heading > .elementor-widget-container > h2");
+    const link = card?.querySelector(`:scope > .elementor-widget-button a[href="${programUrl}"]`);
+    if (heading?.textContent?.trim() === "Third Space Open Studio" && !heading.childElementCount
+      && !hiddenDelaplaineElement(heading) && link && !hiddenDelaplaineElement(link)) {
+      note.replaceWith(body.ownerDocument.createTextNode(" "));
+      break;
+    }
+  }
+  return (body.textContent ?? "").replace(/\s+/g, " ");
 }
 function oneVisibleSchedule(text: string, pattern: RegExp): RegExpMatchArray {
   const matches = [...text.matchAll(new RegExp(pattern.source, "gi"))];
@@ -148,7 +175,7 @@ function structuredOpeningHours(document: Document, source: MerchantHoursSource)
 /** Explicit source adapters only. Unknown notices, missing days, duplicate dates or conflicting facts require review. */
 export function parseMerchantOfficialHours(source: MerchantHoursSource, page: OfficialPageReceipt, now = new Date()): MerchantHoursRecord {
   if (!MERCHANT_HOURS_SOURCES.some((item) => item.slug === source.slug && item.url === source.url) || page.url !== source.url || !isHoursFresh(page.observedAt, now)) throw new Error("Unapproved merchant source or observation.");
-  const { text, document } = textPage(page.html);
+  const { text, document, body } = textPage(page.html);
   const defaultWindow = source.kind === "weekly" ? merchantWeeklyHoursWindow(source.slug, page.observedAt) : undefined;
   const cohort = merchantHoursCohort(source);
   const cohortQualification = cohort && "qualification" in source ? source.qualification : undefined;
@@ -196,22 +223,16 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
     if (!footer || !/\b(?:The )?Delaplaine Arts Center\b/i.test(footerText)
       || !/\b40 S Carroll St,? Frederick,? MD 21701\b/i.test(footerText)
       || !/(?<!\d)301[ .-]698[ .-]0656(?!\d)/.test(footerText)) throw new Error("Missing exact Delaplaine gallery identity.");
-    if (/\b(?:closed|closing|closures?|holiday hours|special hours|last admission|last admittance|by appointment|hours\s+(?:vary|may|subject to))\b/i.test(text)
+    const notices = delaplaineNoticeText(body);
+    if (/\b(?:closed|closing|closures?|holiday hours|special hours|last admission|last admittance|by appointment|hours\s+(?:vary|may|subject to))\b/i.test(notices)
       || /\b(?:class(?:es)?|workshop|studio|office|rental)\s+(?:hours|open daily)\b/i.test(text)) throw new Error("Unresolved Delaplaine notice or service qualifier.");
     const blocks = [...document.querySelectorAll(".elementor-widget-text-editor .elementor-widget-container")]
       .filter((node) => /\bOPEN DAILY\b/i.test(node.textContent ?? ""));
-    const hidden = (node: Element) => {
-      for (let current: Element | null = node; current; current = current.parentElement) {
-        if (current.hasAttribute("hidden") || current.hasAttribute("inert") || current.getAttribute("aria-hidden") === "true"
-          || /display\s*:\s*none|visibility\s*:\s*(?:hidden|collapse)/i.test(current.getAttribute("style") ?? "")) return true;
-      }
-      return false;
-    };
     const range = `${CLOCK}\\s*[-–—]\\s*${CLOCK}`;
     const pattern = new RegExp(`\\bOPEN DAILY Monday\\s*[-–—]\\s*Saturday,?\\s*${range} Sunday,?\\s*${range}\\.?`, "i");
     const matches = [...text.matchAll(new RegExp(pattern.source, "gi"))];
     const markers = [...text.matchAll(/\bOPEN DAILY\b/gi)];
-    if (blocks.length < 2 || !blocks.some((node) => footer.contains(node)) || blocks.some(hidden)
+    if (blocks.length < 2 || !blocks.some((node) => footer.contains(node)) || blocks.some(hiddenDelaplaineElement)
       || !/\bPlan Your VISIT OPEN DAILY\b/i.test(text) || matches.length !== blocks.length || markers.length !== matches.length
       || blocks.some((node) => [...(node.textContent ?? "").replace(/\s+/g, " ").matchAll(new RegExp(pattern.source, "gi"))].length !== 1)) throw new Error("Missing or conflicting visible Delaplaine gallery schedules.");
     const outsideSchedule = text.replace(new RegExp(pattern.source, "gi"), " ");
