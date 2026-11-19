@@ -139,6 +139,22 @@ describe("publisher event artwork lifecycle", () => {
     expect(host.querySelector('a[href="/events/component-event"]')).toBe(title);
   });
 
+  it("replaces duplicate publisher artwork with a distinct reviewed venue photo before reserving error fallbacks", () => {
+    const first = { ...event, venue_name: "Brewer's Alley", venue_place_slug: "brewers-alley-frederick" };
+    const second = { ...first, slug: "second-event" };
+    const third = { ...first, slug: "third-event" };
+    act(() => root.render(<EventsOverview tonight={[first]} weekend={[second, third]} nowISO={event.first_seen_at} coverage="complete" />));
+    const [lead, replacement, facts] = host.querySelectorAll("article");
+    expect(lead.querySelector("img")?.getAttribute("src")).toBe(visual.src);
+    const photo = CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"].image;
+    expect(replacement.querySelector("img")?.getAttribute("src")).toBe(photo.src);
+    expect(replacement.querySelector("[data-event-licensed-credit]")?.textContent).toContain(photo.creator);
+    expect(facts.querySelector("img, [data-event-photo-credit]")).toBeNull();
+    act(() => lead.querySelector("img")!.dispatchEvent(new Event("error")));
+    expect(host.querySelectorAll("img")).toHaveLength(1);
+    expect(lead.querySelector("img, [data-event-photo-credit]")).toBeNull();
+  });
+
   it("preserves another overview pick's primary venue photo ahead of an artwork fallback", () => {
     const art = { ...event, venue_place_slug: "baker-park-bandshell" };
     const photo = { ...art, slug: "second-event", hero_image: undefined };

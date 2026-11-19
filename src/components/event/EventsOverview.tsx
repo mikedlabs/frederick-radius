@@ -59,7 +59,17 @@ export default function EventsOverview({ tonight, weekend, weekendIncludesTonigh
   const events = leadTonight ? [leadTonight, ...weekendPicks] : weekendPicks;
   // Reserve all primary artwork and photographs first. A fallback can never
   // displace another event's primary image or repeat another fallback.
-  const primary = new Map(events.map(event => [event, reserve(eventCardVisual(event, { venuePhotos: "free-reviewed" }))]));
+  const primary = new Map<EventWithMeta, EventCardVisual | null>();
+  const sharedArtwork: EventWithMeta[] = [];
+  for (const event of events) {
+    const preferred = eventCardVisual(event, { venuePhotos: "free-reviewed" });
+    const reserved = reserve(preferred);
+    primary.set(event, reserved);
+    if (!reserved && preferred?.presentation === "artwork") sharedArtwork.push(event);
+  }
+  for (const event of sharedArtwork) {
+    primary.set(event, reserve(reviewedEventVenuePhoto(event.venue_place_slug)));
+  }
   function pick(event: EventWithMeta, lead: boolean) {
     const visual = primary.get(event) ?? null;
     const allowVenueFallback = visual?.presentation === "artwork" && Boolean(reserve(reviewedEventVenuePhoto(event.venue_place_slug)));

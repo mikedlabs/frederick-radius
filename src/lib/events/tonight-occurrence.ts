@@ -5,7 +5,11 @@ export const EVENT_EVENING_START_HOUR = 16;
 export const MAX_ORDINARY_TONIGHT_EVENT_DURATION_MS = 8 * 3_600_000;
 const MAX_NAMED_DAY_EVENT_DURATION_MS = 18 * 3_600_000;
 const LONG_DAY_EVENT_EVIDENCE_RE =
-  /\b(?:street festival|festival|county fair|state fair|carnival|parade|heritage days?|railroad days?|community day|arts? walk|book festival|film festival|food festival|music festival|conference|convention|expo)\b/i;
+  /\b(?:festivals?|(?:county|state) fairs?|carnivals?|parades?|(?:heritage|railroad|community) days?|arts? walks?|conferences?(?! rooms?\b)|conventions?|expos?)\b/i;
+// A description can identify a festival whose proper name omits the type
+// (e.g. In the Streets). A room name or passing mention of an expo cannot.
+const DESCRIBED_DAY_EVENT_RE =
+  /\b(?:one[- ]day|day[- ]?long|all[- ]day)\s+(?:(?:street|county|state|heritage|railroad|community|arts?|book|film|food|music)\s+)?(?:festivals?|fairs?|carnivals?|parades?|walks?|conferences?(?! rooms?\b)|conventions?|expos?)\b/i;
 
 export type TonightEvent = Pick<Event, "starts_at" | "ends_at" | "is_all_day"> &
   Partial<Pick<Event, "title" | "description" | "category">>;
@@ -28,7 +32,7 @@ export function hasUsableTonightOccurrence(event: TonightEvent): boolean {
   if (duration <= 0 || duration > MAX_NAMED_DAY_EVENT_DURATION_MS) return false;
   if (duration <= MAX_ORDINARY_TONIGHT_EVENT_DURATION_MS) return true;
 
-  return LONG_DAY_EVENT_EVIDENCE_RE.test(
-    [event.title, event.category, event.description].filter(Boolean).join(" "),
-  );
+  return LONG_DAY_EVENT_EVIDENCE_RE.test(event.title ?? "") ||
+    LONG_DAY_EVENT_EVIDENCE_RE.test(event.category ?? "") ||
+    DESCRIBED_DAY_EVENT_RE.test(event.description ?? "");
 }

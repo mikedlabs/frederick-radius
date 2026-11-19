@@ -366,6 +366,34 @@ describe("Recommended attendance promotion through the mounted explorer", () => 
     expect(request).not.toHaveBeenCalled();
   });
 
+  it.each([["complete", healthy], ["partial", degraded]] as const)(
+    "recovers the county preview's next Tonight pick once from a %s calendar",
+    async (_label, recoveredHealth) => {
+      let instant = Date.parse(nowISO);
+      const preview = named();
+      const later = { ...preview, slug: "late-concert", starts_at: "2026-10-13T02:00:00.000Z", ends_at: "2026-10-13T03:00:00.000Z" };
+      request.mockImplementation(async () => payload([later], recoveredHealth));
+      await render({ ...props([preview], healthy, 2), initialHighlightWindows: { tonight: true, weekend: false }, clock: () => instant });
+      const pick = () => host.querySelector('[data-events-window="tonight"] [data-decision-action="open"]')?.getAttribute("href");
+      expect(pick()).toBe("/events/named-concert");
+      expect(request).not.toHaveBeenCalled();
+
+      // Monday at 9:05 pm Eastern: the preview is spent, but the unseen 10 pm show remains.
+      instant = Date.parse("2026-10-13T01:05:00.000Z");
+      await act(async () => document.dispatchEvent(new Event("visibilitychange")));
+      expect(pick()).toBe("/events/late-concert");
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(request.mock.calls[0][0]).toBe("/api/events/browse");
+      expect(request.mock.calls[0][1]?.cache).not.toBe("no-store");
+      expect(host.querySelector("[data-events-complete]")?.getAttribute("data-events-complete")).toBe(String(!recoveredHealth.degraded));
+
+      instant = Date.parse("2026-10-13T03:05:00.000Z");
+      await act(async () => document.dispatchEvent(new Event("visibilitychange")));
+      expect(pick()).toBeUndefined();
+      expect(request).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it("applies eligibility before featured and consented Near Me rank without discarding rows", async () => {
     window.history.replaceState(null, "", "/events?in=nearme");
     recommendationContext.origin = { lat: 39.414, lng: -77.41 };

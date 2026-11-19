@@ -182,6 +182,19 @@ describe("events browse payload", () => {
     expect(summarizeEventsForBrowse(rows, BOUNDS).totalCount).toBe(3);
   });
 
+  it("keeps interleaved picks in source order even when the highlighted rows arrive in reverse order", () => {
+    const rows = prepareEventsForBrowse([
+      event("tonight-late", "2026-07-14T23:00:00Z"),
+      event("weekend-late", "2026-07-18T22:00:00Z"),
+      event("tonight-lead", "2026-07-14T21:00:00Z"),
+      event("weekend-lead", "2026-07-18T18:00:00Z"),
+    ], BOUNDS);
+    const preview = initialEventsForBrowse(rows, BOUNDS, 1, undefined, [
+      rows[1], rows[0], rows[1], event("outside-snapshot", "2026-07-14T22:00:00Z"),
+    ]);
+    expect(preview).toEqual(rows);
+  });
+
   it("ships six cards per horizon while retaining complete summary counts", () => {
     const today = Array.from({ length: 9 }, (_, index) =>
       event(`today-${index}`, `2026-07-14T${String(13 + index).padStart(2, "0")}:00:00.000Z`, {

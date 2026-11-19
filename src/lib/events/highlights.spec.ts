@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { prepareEventsForBrowse } from "./browsePayload";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventMatchesHighlightWeekend, eventMatchesTonight, selectEventHighlights } from "./highlights";
@@ -70,6 +71,22 @@ describe("This weekend in Frederick", () => {
     expect(eventMatchesHighlightWeekend({ ...friday, ends_at: "2026-11-23T00:00:00-05:00" }, bounds)).toBe(true);
     expect(eventMatchesHighlightWeekend({ ...saturday, is_all_day: true, ends_at: "" }, bounds)).toBe(true);
     expect(eventMatchesHighlightWeekend({ ...saturday, is_all_day: true, ends_at: "2027-01-01T00:00:00-05:00" }, bounds)).toBe(false);
+  });
+
+  it("distinguishes a date placeholder from a published all-day event on the same Saturday", () => {
+    const dateOnly = show("time-not-listed", "2026-11-21T12:00:00-05:00", "2026-11-21T23:59:00-05:00");
+    const allDay = show("all-day", "2026-11-21T00:00:00-05:00", "2026-11-22T00:00:00-05:00", { is_all_day: true });
+    const rows = [dateOnly, allDay];
+    for (const [at, expected] of [
+      ["2026-11-21T14:00:00-05:00", ["time-not-listed", "all-day"]],
+      ["2026-11-21T21:00:00-05:00", ["all-day"]],
+      ["2026-11-22T00:01:00-05:00", []],
+    ] as const) {
+      const current = buildHorizonBounds(new Date(at));
+      expect(prepareEventsForBrowse(rows, current).map(row => row.slug)).toEqual(expected);
+      expect(rows.filter(row => eventMatchesHighlightWeekend(row, current)).map(row => row.slug)).toEqual(expected);
+      expect(rows.some(row => eventMatchesTonight(row, new Date(at)))).toBe(false);
+    }
   });
 
   it("keeps both fall-back hours in the same weekend and drops ended or unconfirmed ongoing rows", () => {

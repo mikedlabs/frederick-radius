@@ -879,22 +879,33 @@ export default function EventsExplorer({
     [contentFilterActive, filtered, view, sort, bounds],
   );
 
-  const showOverview = urlReady && view === "list" && sort === "recommended" &&
-    !hasDiscoveryFilters && !nearMeActive && filtered.length > 0;
+  const browsingOverview = urlReady && view === "list" && sort === "recommended" &&
+    !hasDiscoveryFilters && !nearMeActive;
+  const showOverview = browsingOverview && filtered.length > 0;
   const highlights = useMemo(
-    () => showOverview ? selectEventHighlights(filtered, bounds, featured) : null,
-    [showOverview, filtered, bounds, featured],
+    () => browsingOverview ? selectEventHighlights(filtered, bounds, featured) : null,
+    [browsingOverview, filtered, bounds, featured],
   );
   const highlighted = useMemo(() => new Set(
     highlights ? [...highlights.tonight, ...highlights.weekend].map(eventIdentity) : [],
   ), [highlights]);
   // Once the server's pick ends, another occurrence can still be beyond the
   // preview quota. Only the full calendar can establish a newly empty window.
-  const countyWindowsStillCovered = !town && eventPool === events &&
-    now < Date.parse(next24ISO) && initialHighlightWindows && highlights &&
-    (!initialHighlightWindows.tonight || highlights.tonight.length > 0) &&
-    (!initialHighlightWindows.weekend || highlights.weekend.length > 0 || highlights.weekendIncludesTonight);
-  const completeHighlights = !currentSourceHealth.degraded && (dataComplete || countyWindowsStillCovered);
+  const initialCountyPreview = !town && eventPool === events && initialHighlightWindows && highlights;
+  const previewWindowsExpired = Boolean(initialCountyPreview && (
+    now >= Date.parse(next24ISO) ||
+    (initialHighlightWindows.tonight && highlights.tonight.length === 0) ||
+    (initialHighlightWindows.weekend && highlights.weekend.length === 0 && !highlights.weekendIncludesTonight)
+  ));
+  const completeHighlights = !currentSourceHealth.degraded &&
+    (dataComplete || (initialCountyPreview && !previewWindowsExpired));
+  const checkedExpiredPreview = useRef<EventWithMeta[] | null>(null);
+  useEffect(() => {
+    if (!previewWindowsExpired || dataComplete || currentSourceHealth.degraded ||
+        checkedExpiredPreview.current === events) return;
+    checkedExpiredPreview.current = events;
+    queueMicrotask(() => void ensureAllEvents());
+  }, [previewWindowsExpired, dataComplete, currentSourceHealth.degraded, events, ensureAllEvents]);
 
   // Split the visible default-list set by TYPE so the grouped list leads with what
   // people actually come for; civic business sinks into a quiet tail
@@ -1195,7 +1206,7 @@ export default function EventsExplorer({
         </section>
       ) : null}
 
-      {highlights && (
+      {showOverview && highlights && (
         <EventsOverview
           {...highlights}
           nowISO={nowISO}

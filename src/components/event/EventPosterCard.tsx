@@ -49,7 +49,9 @@ export type EventPosterCardProps = {
 /** Never permit an explicit visual to bypass its source or venue binding. */
 export function posterVisualForEvent(event: EventWithMeta, explicit?: EventCardVisual | null, venuePhotos: EventPosterCardProps["venuePhotos"] = "all-approved"): EventCardVisual | null {
   if (explicit === null) return null;
-  const approved = eventCardVisual(event, { venuePhotos });
+  const approved = venuePhotos === "free-reviewed" && explicit?.presentation === "photo"
+    ? reviewedEventVenuePhoto(event.venue_place_slug)
+    : eventCardVisual(event, { venuePhotos });
   if (!approved?.caption.trim()) return null;
   if (explicit && (explicit.key !== approved.key || explicit.src !== approved.src
     || explicit.caption !== approved.caption || explicit.presentation !== approved.presentation
