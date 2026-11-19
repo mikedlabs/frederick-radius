@@ -1,3 +1,4 @@
+import { chooseTodayArea, todayArea } from "./today-controls";
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { getOwnedPlacePhoto } from "../src/lib/owned-place-photos";
@@ -124,11 +125,11 @@ test("Today carries explicit county into Tonight despite saved Brunswick", async
   await page.goto(origin + "/today?in=county");
   const entry = page.getByRole("link", { name: "Plan tonight", exact: true });
   await expect(entry).toHaveAttribute("href", "/today/tonight?intent=dinner&in=county");
-  const area = page.getByRole("combobox", { name: "Choose your area" });
-  await expect(area).toHaveValue("county");
-  await area.selectOption("town:brunswick");
+  const area = todayArea(page);
+  await expect(area).toHaveAccessibleName(/Whole county/i);
+  await chooseTodayArea(page, "town:brunswick");
   await expect(entry).toHaveAttribute("href", "/today/tonight?intent=dinner&in=brunswick");
-  await area.selectOption("county");
+  await chooseTodayArea(page, "county");
   await expect(entry).toHaveAttribute("href", "/today/tonight?intent=dinner&in=county");
   await entry.click();
   await expect(page).toHaveURL(origin + route, { timeout: 30_000 });

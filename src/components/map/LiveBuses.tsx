@@ -746,6 +746,12 @@ function VisibleLiveBuses({
     );
   }
 
+  const isDelayed = effectiveFeedStatus === "stale";
+  const busNoun = vehicles.length === 1 ? "bus" : "buses";
+  const aggregateLabel = isDelayed
+    ? `${vehicles.length} ${busNoun} last reported`
+    : `${vehicles.length} live ${busNoun}`;
+
   return (
     <>
       <span
@@ -780,12 +786,8 @@ function VisibleLiveBuses({
           <button
             type="button"
             className="map-live-bus-aggregate"
-            data-delayed={effectiveFeedStatus === "stale" || undefined}
-            aria-label={
-              effectiveFeedStatus === "stale"
-                ? `${vehicles.length} buses last reported. Feed delayed.${preview ? " Open the transit map for routes and stops." : " Zoom in to see routes."}`
-                : `${vehicles.length} live buses.${preview ? " Open the transit map for routes and stops." : " Zoom in to see routes."}`
-            }
+            data-delayed={isDelayed || undefined}
+            aria-label={`${aggregateLabel}.${isDelayed ? " Feed delayed." : ""}${preview ? " Open the transit map for routes and stops." : " Zoom in to see routes."}`}
             onClick={(event) => {
               event.stopPropagation();
               haptic("light");
@@ -806,8 +808,7 @@ function VisibleLiveBuses({
             }}
           >
             <BusFront size={15} strokeWidth={2.3} aria-hidden />
-            <strong>{vehicles.length}</strong>
-            <span>{effectiveFeedStatus === "stale" ? "reported" : "live"}</span>
+            <span>{aggregateLabel}</span>
           </button>
         </Marker>
       )}

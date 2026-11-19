@@ -5,6 +5,7 @@ import { decodeArchiveEnvelope, encodeArchiveEnvelope } from "./eventArchiveCach
 
 import { getSql } from "@/lib/db/client";
 import { isPromotedDataBuild } from "@/lib/data-release-mode";
+import { buildHorizonBounds } from "@/lib/eventHorizon";
 import { archivedEventFromSnapshot } from "@/lib/events/event-identity";
 import { isPublicEvent } from "@/lib/events/classify";
 import { applyEventNotices } from "@/lib/events/notices";
@@ -45,6 +46,7 @@ export const TODAY_EVENT_SNAPSHOT_TIMEOUT_MS = 1_000;
 export const TODAY_EVENT_SNAPSHOT_MAX_AGE_MS = 5 * 60 * 60 * 1_000;
 const TODAY_EVENT_HORIZON_DAYS = 9;
 const TODAY_EVENT_SNAPSHOT_LIMIT = 1_000;
+const WEEKEND_EVENT_SNAPSHOT_LIMIT = 250;
 // Discovery can tolerate a slightly longer first read than Today's briefing.
 // The archive query itself is fast, but a cold serverless connection can take
 // more than 700 ms to reach Supabase. Giving the connection the full bounded
@@ -61,6 +63,8 @@ const EVENT_ARCHIVE_MAX_TIMEOUT_MS = 5_000;
 type EventArchiveSnapshotOptions = {
   /** Select a calendar window without using that date to judge source freshness. */
   windowStart?: Date;
+  /** Require a scheduled start at or after windowStart rather than overlapping the window. */
+  startsInWindow?: boolean;
   horizonDays?: number;
   limit?: number;
   timeoutMs?: number;
@@ -403,6 +407,18 @@ export async function loadTodayEventSnapshot(
   });
 }
 
+/** The weekend guide features scheduled occurrences beginning Friday evening through Sunday. */
+export function loadWeekendEventSnapshot(now = new Date()): Promise<EventArchiveSnapshot> {
+  const { weekendStart } = buildHorizonBounds(now);
+  return loadEventArchiveSnapshot(now, {
+    windowStart: new Date(weekendStart),
+    horizonDays: 3,
+    startsInWindow: true,
+    limit: WEEKEND_EVENT_SNAPSHOT_LIMIT,
+    cache: true,
+  });
+}
+
 /**
  * Bounded durable read for discovery surfaces that need a wider horizon.
  *
@@ -445,6 +461,8 @@ type ArchiveReadFlight = {
 };
 const archiveReadFlights = new Map<string, ArchiveReadFlight>();
 
+type ArchiveWindow = { start: Date; end: Date; startsInWindow: boolean };
+
 /**
  * Next coalesces revalidation inside one request, not between requests. A
  * stale-entry burst otherwise queues identical reads on our max:1 pool and
@@ -453,15 +471,16 @@ const archiveReadFlights = new Map<string, ArchiveReadFlight>();
  * abort SQL only when its last waiter leaves or its database budget expires.
  */
 async function shareArchiveRead(
-  start: Date, end: Date, limit: number, timeoutMs: number,
+  window: ArchiveWindow, limit: number, timeoutMs: number,
   remainingMs: number, signal: AbortSignal,
 ): Promise<ArchiveEnvelope> {
-  const key = JSON.stringify([start.toISOString(), end.toISOString(), limit, timeoutMs]);
+  const { start, end, startsInWindow } = window;
+  const key = JSON.stringify([start.toISOString(), end.toISOString(), startsInWindow, limit, timeoutMs]);
   let flight = archiveReadFlights.get(key);
   if (!flight) {
     const controller = new AbortController();
     flight = {
-      pending: readArchiveEnvelope(start, end, limit, timeoutMs, controller.signal),
+      pending: readArchiveEnvelope(window, limit, timeoutMs, controller.signal),
       controller, readers: 0, settled: false,
     };
     archiveReadFlights.set(key, flight);
@@ -492,13 +511,14 @@ async function shareArchiveRead(
   }
 }
 
-async function readArchiveEnvelope(start: Date, end: Date, limit: number, timeoutMs: number, signal?: AbortSignal): Promise<ArchiveEnvelope> {
+async function readArchiveEnvelope(window: ArchiveWindow, limit: number, timeoutMs: number, signal?: AbortSignal): Promise<ArchiveEnvelope> {
   // A cache transport may resolve after its caller has already timed out.
   if (signal?.aborted) throw new ArchiveSnapshotReadError("event_archive_timeout");
   // Storage/build state can change between the caller guard and a cache miss.
   if (isPromotedDataBuild()) throw new ArchiveSnapshotReadError("event_archive_unavailable");
   const sql = getSql();
   if (!sql) throw new ArchiveSnapshotReadError("event_archive_unavailable");
+  const { start, end, startsInWindow } = window;
   // Bounds cross the wire as ISO text with an explicit cast, never as Date
   // objects.
   //
@@ -541,6 +561,7 @@ async function readArchiveEnvelope(start: Date, end: Date, limit: number, timeou
       where canonical.event_status = 'scheduled'
         and tombstone.canonical_event_id is null
         and canonical.starts_at < ${end.toISOString()}::timestamptz
+        and canonical.starts_at >= ${startsInWindow ? start.toISOString() : "-infinity"}::timestamptz
         and coalesce(canonical.ends_at, canonical.starts_at) >= ${start.toISOString()}::timestamptz
       order by canonical.starts_at asc, canonical.id
       limit ${limit}
@@ -587,10 +608,14 @@ export async function loadEventArchiveSnapshot(
   if (isPromotedDataBuild() || !getSql()) return curatedFallback(now, "event_archive_unavailable");
   const windowStart = options.windowStart && Number.isFinite(options.windowStart.getTime())
     ? options.windowStart : now;
-  const { start, end } = snapshotBounds(windowStart, horizonDays);
+  const calendar = snapshotBounds(windowStart, horizonDays);
+  const startsInWindow = options.startsInWindow === true;
+  const start = startsInWindow ? windowStart : calendar.start;
+  const end = calendar.end;
+  const window = { start, end, startsInWindow };
   if (!options.cache) {
     try {
-      return hydrateTodayEventSnapshot(await readArchiveEnvelope(start, end, limit, timeoutMs), now);
+      return hydrateTodayEventSnapshot(await readArchiveEnvelope(window, limit, timeoutMs), now);
     } catch (error) {
       return curatedFallback(now, error instanceof ArchiveSnapshotReadError ? error.code : "event_archive_unavailable");
     }
@@ -609,7 +634,7 @@ export async function loadEventArchiveSnapshot(
         if (controller.signal.aborted || remainingMs <= 0) {
           throw new ArchiveSnapshotReadError("event_archive_timeout");
         }
-        const envelope = await shareArchiveRead(start, end, limit, timeoutMs, remainingMs, controller.signal);
+        const envelope = await shareArchiveRead(window, limit, timeoutMs, remainingMs, controller.signal);
         try {
           return await encodeArchiveEnvelope(envelope);
         } catch (error) {
@@ -621,6 +646,7 @@ export async function loadEventArchiveSnapshot(
       }, [
         "durable-event-archive-envelope-gzip-v1",
         start.toISOString(), end.toISOString(), String(limit), String(timeoutMs),
+        ...(startsInWindow ? ["starts-in-window"] : []),
       ], { revalidate: 300, tags: ["events", "durable-event-archive"] });
       const encoded = await cachedRead();
       if (freshUncachedEnvelope) return hydrateTodayEventSnapshot(freshUncachedEnvelope, now);

@@ -1,3 +1,4 @@
+import { todayArea } from "./today-controls";
 import { expect, test, type Locator, type Request } from "@playwright/test";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "../src/data/credited-local-place-photos";
 import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
@@ -111,8 +112,8 @@ for (const width of [320, 375, 390, 430, 1366]) {
       expect(probe.hits).toEqual([true, true, true, true, true]);
       probes.push(probe);
     }
-    await expect(page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true })).toContainText("Find what you need");
-    const order = await page.locator("[data-today-weather]").evaluate((weather) => Boolean(weather.compareDocumentPosition(document.querySelector('[data-surface-row="find"]')!) & Node.DOCUMENT_POSITION_FOLLOWING));
+    await expect(page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true })).toHaveAttribute("href", "/search");
+    const order = await page.locator("[data-today-weather]").evaluate((weather) => Boolean(weather.compareDocumentPosition(document.querySelector('[data-surface-row="find"]')!) & Node.DOCUMENT_POSITION_PRECEDING));
     expect(order).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await testInfo.attach("local-fixture-proof", { contentType: "application/json", body: JSON.stringify({ width, metadataRequests, photoRequests, probes, fixture: "Declared venue facts and valid photo-credit metadata cannot authorize current appearance. No merchant photo or metadata read; the separate exact local landmark image decodes without authorizing an unreviewed merchant appearance." }) });
@@ -219,7 +220,7 @@ test("Today keeps exact scenic discovery separate from a real merchant answer wi
   await expect(category).not.toContainText("Ibiza");
   await expect(page.locator("[data-today-geographic-place]")).toHaveCount(2);
   await expect(page.locator('[data-today-discovery-action="food"]')).toHaveAttribute("href", `/nearby?${new URLSearchParams({ c: "food", in: "county", returnTo: "/today?in=county" })}`);
-  await expect(page.getByRole("combobox", { name: "Choose your area", exact: true })).toHaveValue("county");
+  await expect(todayArea(page)).toHaveAccessibleName(/Whole county/i);
   const quickNeeds = page.getByRole("group", { name: "Quick needs", exact: true });
   const hierarchy = await article.evaluate(() => {
     const quick = document.querySelector('[aria-label="Quick needs"]')!;

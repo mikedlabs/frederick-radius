@@ -57,7 +57,7 @@ beforeEach(() => {
   vi.spyOn(document, "visibilityState", "get").mockImplementation(() => visibility);
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   container = document.createElement("div"); document.body.append(container); root = createRoot(container);
-  edge.mapProps = {}; edge.radiusProps = {}; edge.places.mockReset().mockResolvedValue({ places: [] });
+  edge.mapProps = {}; edge.radiusProps = {}; edge.params = new URLSearchParams("q=test"); edge.places.mockReset().mockResolvedValue({ places: [] });
   counts.clear();
   fetchMock = vi.fn().mockImplementation(async (url: string) => {
     const group = new URL(url, "https://radius.test").searchParams.get("groups")!;
@@ -95,10 +95,35 @@ describe("Map refresh through its real callers", () => {
     },
   );
   it("waits for the usable place map before starting optional source work", async () => {
+    edge.params = new URLSearchParams();
     edge.places.mockReturnValue(new Promise(() => {}));
     await mountBrowse();
     await act(async () => { await vi.advanceTimersByTimeAsync(120_100); });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("fills default county event pins after the place map renders and keeps them fresh", async () => {
+    edge.params = new URLSearchParams();
+    const respond = fetchMock.getMockImplementation() as (url: string) => Promise<Response>;
+    const eventResponse = Promise.withResolvers<void>();
+    fetchMock.mockImplementation((url: string) => url.endsWith("groups=events") && !counts.has("events")
+      ? eventResponse.promise.then(() => respond(url))
+      : respond(url));
+
+    await mountBrowse();
+    expect(groups()).toEqual(["context", "signals", "events"]);
+    expect(edge.mapProps.places).toEqual([]);
+    expect(edge.mapProps.events).toEqual([]);
+    expect(edge.mapProps.sceneContext).toMatchObject({ conditions: "current" });
+
+    eventResponse.resolve();
+    await flush();
+    expect(edge.mapProps.events).toEqual([expect.objectContaining({ slug: "event-1" })]);
+    await act(async () => { await vi.advanceTimersByTimeAsync(240_100); });
+    expect(counts.get("events")).toBe(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+    expect(counts.get("events")).toBe(2);
+    expect(edge.mapProps.events).toEqual([expect.objectContaining({ slug: "event-2" })]);
   });
 
   it("refreshes only active operational groups and stops polling a disabled layer", async () => {

@@ -63,7 +63,9 @@ describe("Today local discovery", () => {
     expect(places().map(link => link.querySelector("h3")!.textContent)).toEqual(["Baker Park Carillon", "Sophie & Madigan's Playground"]);
     expect(places()[0].getAttribute("aria-label")).toBe("View Joseph Dill Baker Memorial Carillon Bell Tower in Frederick City");
     expect(places()[1].getAttribute("aria-label")).toBe("View Sophie & Madigan's Playground in Frederick City");
-    expect(places().every(link => link.textContent!.endsWith("Frederick City"))).toBe(true);
+    const captions = places().map(link => link.querySelector("[data-today-geographic-caption]")!);
+    expect(Array.from(captions[0].querySelectorAll("p, h3"), node => node.textContent)).toEqual(["Frederick City", "Baker Park Carillon"]);
+    expect(Array.from(captions[1].querySelectorAll("p, h3"), node => node.textContent)).toEqual(["Sophie & Madigan's Playground", "Frederick City"]);
     expect(container.querySelectorAll('[data-place-card-photo-source="owned"]')).toHaveLength(2);
     expect(container.querySelectorAll("[data-today-photo-lead]")).toHaveLength(1);
     expect(Array.from(container.querySelectorAll("[data-today-discovery-role]")).map(card => card.getAttribute("data-today-discovery-role"))).toEqual(["lead", "secondary"]);

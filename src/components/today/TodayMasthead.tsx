@@ -11,8 +11,8 @@ export default function TodayMasthead({ title, shortTitle, dateline, weather }: 
   return (
     <header data-today-masthead className={`scroll-masthead ${styles.masthead}`}>
       <div className={styles.heading}>
-        <h1 aria-label={shortTitle ? title : undefined} className={styles.title}>{shortTitle ?? title}</h1>
         {dateline && <p data-today-dateline className={styles.dateline}><span className="sr-only">Frederick County · </span>{dateline}</p>}
+        <h1 aria-label={shortTitle ? title : undefined} className={styles.title}>{shortTitle ?? title}</h1>
       </div>
       <section data-today-weather className={styles.weather}>
         <div className={styles.weatherReading}>{weather}</div>

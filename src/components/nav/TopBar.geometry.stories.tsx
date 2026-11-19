@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, waitFor, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import TopBar from "./TopBar";
 import { getScope, setScope } from "@/lib/scope";
 import { applyAppearance, getAppearance } from "@/lib/appearance";
@@ -98,7 +98,7 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
           await expect(header.getBoundingClientRect().height, context).toBe(57);
         }
         await expect(document.documentElement.scrollWidth, context).toBeLessThanOrEqual(width);
-        const targets = [...header.querySelectorAll<HTMLElement>("button, a[href]")].filter((element) => {
+        const targets = [...header.querySelectorAll<HTMLElement>("button, a[href], summary")].filter((element) => {
           const box = element.getBoundingClientRect();
           return box.width > 0 && box.height > 0 && getComputedStyle(element).visibility !== "hidden";
         });
@@ -152,8 +152,19 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
           const verticalOverlap = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
           await expect(Math.min(horizontalOverlap, verticalOverlap), `${context}: adjacent actions overlap`).toBeLessThanOrEqual(0.5);
         }
-        await expect(canvas.getByRole("button", { name: /Switch to (light|dark) appearance/ }), context).toBeVisible();
-        await expect(canvas.getByRole("link", { name: "Open tools" }), context).toBeVisible();
+        const more = header.querySelector<HTMLElement>("[data-today-tools-trigger]");
+        if (more) {
+          await expect(more, context).toHaveAccessibleName("More tools");
+          await userEvent.click(more);
+        }
+        for (const utility of [canvas.getByRole("button", { name: /Switch to (light|dark) appearance/ }), canvas.getByRole("link", { name: "Open tools" })]) {
+          await expect(utility, context).toBeVisible();
+          const rect = utility.getBoundingClientRect();
+          await expect(rect.width, context).toBeGreaterThanOrEqual(44);
+          await expect(rect.height, context).toBeGreaterThanOrEqual(44);
+          await expect(utility.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)), context).toBe(true);
+        }
+        if (more) await userEvent.click(more);
         await expect(pulse, context).toBeVisible();
         await expect(canvas.getByText(width < 640 ? "Unverified" : "Unable to verify", { exact: true }), context).toBeVisible();
         if (!["/today", "/search"].includes(pathname)) {
