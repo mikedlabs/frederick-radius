@@ -1,3 +1,5 @@
+import { isMapClusterSelection } from "./mapClusterSelection";
+
 const MAP_SELECTION_HISTORY_KEY = "__frederickRadiusMapSelectionV1";
 const MAP_SELECTION_SNAPSHOT_KEY =
   "__frederickRadiusMapSelectionSnapshotV1";
@@ -48,6 +50,8 @@ function validSelectionValue(kind: string, value: unknown): boolean {
             hasGeometry(record);
     case "event":
       return hasString(record, "slug") && hasCoordinates(record);
+    case "cluster":
+      return isMapClusterSelection(record);
     case "event-group":
       return (
         hasString(record, "id") &&

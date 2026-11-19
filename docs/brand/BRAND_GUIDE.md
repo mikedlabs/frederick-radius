@@ -244,6 +244,13 @@ facts, not a feed trying to fill space.
 
 The owner approved the "Plain tool, with the coral plate" direction on November 10, 2026. It changes the interface shape only. The palette, typefaces, and brand version stay as they are. These rules apply to Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages, event pages, and town pages. Specialty guide pages still carry older treatments until their own pass; do not copy those treatments into the pages listed here.
 
+The November 19 Today layout puts the local date and daypart above a full-width
+phone photograph. The coral caption carries the town above the place name and
+grows with the name. An independent bookmark sits beside it. Local guides follow
+with photographs above their titles. Keep the date and forecast readable before
+the photograph, with the high, low, sunrise and sunset directly visible.
+
+
 - **Rows, not cards.** Ordinary content sits on the page ground as rows separated by a 1 px hairline (`--app-border`) or by space. Do not put a bordered, filled, or shadowed card around ordinary content, and do not add gradients or glows. A bordered surface is still right for form fields, menus, sheets, and floating layers over the map.
 - **Radius scale.** `--app-radius-sm` is 4 px, for small markers, focus outlines inside rows, and the coral time block. `--app-radius-md` is 6 px, for fields, buttons, menus, and row thumbnails. `--app-radius-lg` is 8 px, for sheets, drawers, and floating panels over the map. `--app-radius-xl` is 10 px, for a rare larger feature surface.
 - **Capsules.** A full capsule appears only on compact filter chips, status badges, and toggle switches. Buttons, navigation, rows, and informational tags are never capsules. An informational tag is plain text. A selected filter chip is filled ink (`--app-ink` with `--app-bg` text), never coral.

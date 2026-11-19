@@ -2137,13 +2137,13 @@
     "name": "Paris Baguette",
     "commerce_source": {
       "url": "https://parisbaguette.com/locations/md/frederick/520-snowshill-street",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-11-14T12:41:41.756Z"
     },
     "commerce_links": [
       {
-        "type": "catering",
+        "type": "menu",
         "url": "https://parisbaguette.com/menu/",
-        "anchor_text": "Menu Locations Rewards Catering Order Now",
+        "anchor_text": "Menu",
         "source_url": "https://parisbaguette.com/locations/md/frederick/520-snowshill-street"
       },
       {
@@ -3243,6 +3243,36 @@
         "url": "https://order.toasttab.com/online/showroom-882-n-east-street",
         "anchor_text": "Order Online",
         "source_url": "https://www.showroomfrederick.com/"
+      }
+    ]
+  },
+  "papa-johns-pizza-brunswick": {
+    "name": "Papa Johns Pizza",
+    "commerce_source": {
+      "url": "https://locations.papajohns.com/united-states/md/21716/brunswick/1201-dutchmans-creek-drive?utm_source=gmb&utm_medium=organic&y_source=1_MTA2OTA1NTMtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D",
+      "checkedAt": "2026-11-14T12:41:41.251Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://www.papajohns.com/order/viewStoreMenu/CARRYOUT/BUSINESS/4853",
+        "anchor_text": "Order Carryout",
+        "source_url": "https://locations.papajohns.com/united-states/md/21716/brunswick/1201-dutchmans-creek-drive?utm_source=gmb&utm_medium=organic&y_source=1_MTA2OTA1NTMtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D"
+      }
+    ]
+  },
+  "sara-keps-kitchen-thurmont": {
+    "name": "Sara Kep's Kitchen",
+    "commerce_source": {
+      "url": "https://sarakepskitchen.com/",
+      "checkedAt": "2026-11-15T12:41:56.248Z"
+    },
+    "commerce_links": [
+      {
+        "type": "catering",
+        "url": "https://sarakepskitchen.com/catering-private-events/",
+        "anchor_text": "Catering & Private Events",
+        "source_url": "https://sarakepskitchen.com/"
       }
     ]
   }

@@ -16,6 +16,7 @@ describe("NWS hourly issuance", () => {
   it("retains the hourly clock separately when a daily update wins the legacy combined timestamp", async () => {
     const result = await getNwsForecast({ lat: 39.4142, lng: -77.4126 });
     expect(result?.asOf).toBe(dailyClock.updateTime); expect(result?.hourlyAsOf).toBe(hourlyClock.updated);
+    expect(result?.dailyAsOf).toBe(dailyClock.updateTime);
     expect(result?.hourly[0].temperature).toBe(68);
   });
   it("prefers the actual hourly updateTime and never stamps a render clock", async () => {
@@ -26,6 +27,12 @@ describe("NWS hourly issuance", () => {
   it("keeps missing hourly issuance unknown even when the daily forecast has a clock", async () => {
     hourlyClock = {}; const result = await getNwsForecast({ lat: 39.4144, lng: -77.4126 });
     expect(result?.hourlyAsOf).toBeNull(); expect(result?.asOf).toBe(dailyClock.updateTime);
+  });
+  it("never attributes the hourly issuance to an undated daily forecast", async () => {
+    dailyClock = {};
+    const result = await getNwsForecast({ lat: 39.4146, lng: -77.4126 });
+    expect(result?.hourlyAsOf).toBe(hourlyClock.updated);
+    expect(result?.dailyAsOf).toBeNull();
   });
   it("uses the same bounded abort signal for points and both forecast requests", async () => {
     await getNwsForecast({ lat: 39.4145, lng: -77.4126 });

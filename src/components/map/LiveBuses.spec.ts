@@ -283,11 +283,10 @@ describe("LiveBuses feed sessions", () => {
       "Buses live · arrival estimates unavailable",
     );
     expect(container.querySelectorAll("[data-live-bus-marker]")).toHaveLength(0);
-    expect(container.textContent).toContain("2");
-    expect(container.textContent).toContain("live");
     expect(
-      container.querySelector('[aria-label="2 live buses. Zoom in to see routes."]'),
-    ).not.toBeNull();
+      container.querySelector('[aria-label="2 live buses. Zoom in to see routes."]')
+        ?.textContent,
+    ).toBe("2 live buses");
   });
 
   it("opens the complete transit map from the ambient county preview", async () => {
@@ -363,8 +362,7 @@ describe("LiveBuses feed sessions", () => {
     );
     expect(aggregate).not.toBeNull();
     expect(aggregate?.dataset.delayed).toBe("true");
-    expect(aggregate?.textContent).toContain("reported");
-    expect(aggregate?.textContent).not.toContain("live");
+    expect(aggregate?.textContent).toBe("2 buses last reported");
   });
 
   it("does not poll in the background and refreshes when the page returns", async () => {

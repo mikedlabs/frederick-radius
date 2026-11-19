@@ -12,7 +12,6 @@ import MomentSpotlight from "@/components/today/MomentSpotlight";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
-import WeekendPreview from "@/components/today/WeekendPreview";
 import FromYourSaved from "@/components/today/FromYourSaved";
 // CreekHairline removed in the pleasant-layout pass — it was a
 // decorative divider between weather/discovery and action; the
@@ -31,7 +30,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { leanFromForecast, wetWindowEnd } from "@/lib/today/weatherLean";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import PlaceSheetBoundary from "@/components/place/PlaceSheetBoundary";
-import TodayAsk, { TodayQuickNeeds } from "@/components/today/TodayAsk";
+import { TodayQuickNeeds } from "@/components/today/TodayAsk";
 import LocalNewsBrief, { LocalNewsLoading } from "@/components/news/LocalNewsBrief";
 import { todayFrame } from "@/lib/today/masthead";
 import { formatEasternDateline } from "@/lib/format/easternClock";
@@ -40,7 +39,6 @@ import CravingStrip from "@/components/now/CravingStrip";
 import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
 import { getStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
-import TodayScopeStatus from "@/components/today/TodayScopeStatus";
 import TodayEventsRecovery from "@/components/today/TodayEventsRecovery";
 import {
   selectTodayEvents,
@@ -48,6 +46,7 @@ import {
 import { eventCardVisual, parseRecoveryEventVisual } from "@/components/event/eventVisuals";
 import TodayMasthead from "@/components/today/TodayMasthead";
 import TodayGeographicDoorway, { TodayGeographicDoorwayPending } from "@/components/today/TodayGeographicDoorway";
+import { downtownGuide, weekendGuideCover, weekendGuideDateLabel } from "@/lib/today/local-outing-guides";
 import styles from "@/components/today/TodayLayout.module.css";
 
 /**
@@ -266,22 +265,11 @@ export default async function HomePage() {
       />
 
       <div data-today-briefing className={styles.briefing}>
-        {/* Find follows the conditions glance as the sole primary action.
-            Seasonal campaigns and the event stream cannot bury either. */}
-        <div data-today-entry-controls className={styles.entryControls}>
-          <div>
-            <TodayAsk embedded showQuickNeeds={false} density="arrival" />
-          </div>
-          <div className={styles.scope}>
-            <Suspense fallback={null}><TodayScopeStatus density="compact" /></Suspense>
-          </div>
-        </div>
-
       {/* Reviewed local photographs lead to their actual places. Task links
           retain the selected area; imagery never promises current conditions.
           Until the URL lens is known, its fallback is deliberately neutral. */}
       <Suspense fallback={<TodayGeographicDoorwayPending />}>
-        <TodayGeographicDoorway />
+        <TodayGeographicDoorway guidePhotos={{ weekend: weekendGuideCover(now).photo.src, weekendLabel: weekendGuideDateLabel(now), downtown: downtownGuide.photo.src }} />
       </Suspense>
 
       <div data-today-current-content className={styles.currentContent}>
@@ -354,7 +342,7 @@ export default async function HomePage() {
           nudge; those made the briefing feel endless without improving the
           immediate decision. Their dedicated routes remain available. */}
       <CollapsibleSection
-        title="Local guides"
+        title="More local guides"
         storageKey="fr.today.more-ideas"
         defaultOpen={false}
         mountOnOpen
@@ -371,9 +359,6 @@ export default async function HomePage() {
               </Suspense>
             }
           />
-          <Suspense fallback={null}>
-            <WeekendPreview now={now} eventsPromise={eventsPromise} />
-          </Suspense>
           <Suspense fallback={null}>
             <PoolsToday now={now} />
           </Suspense>

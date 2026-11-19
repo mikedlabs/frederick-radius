@@ -192,6 +192,7 @@ export default function PulseIndicator() {
     <AppTransitionLink
       data-pulse-indicator
       data-pulse-state={phase}
+      data-pulse-mobile-visible={mobileVisible || undefined}
       href="/pulse"
       prefetch={false}
       aria-label={statusLabel}
