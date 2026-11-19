@@ -167,7 +167,7 @@ describe("TodayCard provider composition", () => {
     });
     const card = await TodayCard({ density: "masthead" });
     expect(card.props).toMatchObject({
-      highF: null, lowF: 46, sunriseTime: expect.stringMatching(/AM$/), sunsetTime: expect.stringMatching(/PM$/),
+      highF: null, lowF: 46, sunriseTime: "7:11 AM", sunsetTime: "6:42 PM",
     });
     providers.forecast.mockResolvedValue(null);
     const withoutForecast = await TodayCard({ density: "masthead" });

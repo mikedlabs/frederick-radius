@@ -125,8 +125,20 @@ describe("Today decision hierarchy", () => {
     );
     expect(placeAnswer).toContain("{decisionLead}");
     expect(placeAnswer).not.toContain("<TodayGeographicDoorway");
-    expect(renderedPage.indexOf("<TodayPlanTonightLink")).toBeGreaterThan(renderedPage.indexOf("<TodayMasthead"));
-    expect(renderedPage.match(/<TodayPlanTonightLink/g)).toHaveLength(1);
+  });
+
+  it("puts the single Plan tonight link with Quick needs after events and news", () => {
+    const events = renderedPage.indexOf("{whatsOn}");
+    const news = renderedPage.indexOf("<LocalNewsBrief");
+    const explore = renderedPage.indexOf('<section aria-labelledby="today-explore-heading"');
+    expect(events).toBeGreaterThan(-1);
+    expect(news).toBeGreaterThan(events);
+    expect(explore).toBeGreaterThan(news);
+    const exploreContent = renderedPage.slice(explore, renderedPage.indexOf("</section>", explore));
+    const quickNeeds = exploreContent.indexOf("</TodayQuickNeeds>");
+    expect(quickNeeds).toBeGreaterThan(-1);
+    expect(exploreContent.indexOf("<TodayPlanTonightLink />")).toBeGreaterThan(quickNeeds);
+    expect(renderedPage.match(/<TodayPlanTonightLink\b/g)).toHaveLength(1);
   });
 
   it("keeps confirmed saved choices visible with the recommendation before events", () => {
@@ -156,7 +168,6 @@ describe("Today decision hierarchy", () => {
     expect(masthead).toBeGreaterThan(alerts);
     expect(photo).toBeGreaterThan(masthead);
     expect(context).toBeGreaterThan(renderedPage.indexOf("{whatsOn}"));
-    expect(renderedPage).toContain("<TodayPlanTonightLink />");
     expect(weather).toBeLessThan(photo);
     expect(weather).toBeLessThan(context);
     expect(renderedPage).toContain("{civicMoment && (");

@@ -278,10 +278,10 @@ export function officialCivicAlerts(alerts: OfficialCivicAlert[], now = Date.now
 }
 
 const STYLES = {
-  emergency: { bg: "var(--app-danger)", icon: AlertCircle, fg: "var(--app-on-brand)" },
-  warning:   { bg: "var(--app-warning-press)", icon: AlertTriangle, fg: "var(--app-on-brand)" },
-  advisory:  { bg: "var(--app-warning-press)", icon: AlertTriangle, fg: "var(--app-on-brand)" },
-  info:      { bg: "var(--app-info)", icon: Info, fg: "var(--app-on-brand)" },
+  emergency: { label: "Emergency", ink: "var(--app-danger-text)", bg: "var(--app-danger)", icon: AlertCircle, fg: "var(--app-on-brand)" },
+  warning:   { label: "Warning", ink: "var(--app-warning-text)", bg: "var(--app-warning-press)", icon: AlertTriangle, fg: "var(--app-on-brand)" },
+  advisory:  { label: "Advisory", ink: "var(--app-warning-text)", bg: "var(--app-warning-press)", icon: AlertTriangle, fg: "var(--app-on-brand)" },
+  info:      { label: "Info", ink: "var(--app-info)", bg: "var(--app-info)", icon: Info, fg: "var(--app-on-brand)" },
 } as const;
 
 /**
@@ -352,8 +352,10 @@ export default async function CivicAlerts({ includeWeather = true, compact = fal
         {top && s && (
           <details className="group border-b border-[var(--app-border)]">
             <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 py-1.5 text-[13px] font-semibold leading-snug [&::-webkit-details-marker]:hidden">
-              <Icon className="h-4 w-4 shrink-0" aria-hidden />
-              <span className="min-w-0 flex-1">{top.title}</span>
+              <Icon className="h-4 w-4 shrink-0" style={{ color: s.ink }} aria-hidden />
+              <span className="min-w-0 flex-1">
+                <strong style={{ color: s.ink }}>{s.label}</strong><span aria-hidden> · </span><span>{top.title}</span>
+              </span>
               <ChevronDown className="h-4 w-4 shrink-0 group-open:rotate-180" aria-hidden />
             </summary>
             <div className="pb-2 pl-6 text-[13px] leading-normal">

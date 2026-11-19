@@ -193,10 +193,10 @@ for (const appearance of ["light", "dark"] as const) {
           const dailyFacts = renderedWeather.locator("[data-weather-stats] > span");
           await expect(dailyFacts).toHaveCount(4);
           const readings = [
-            /^High\s+(?:[−-]?\d+°|—\s*unavailable)$/i,
-            /^Low\s+(?:[−-]?\d+°|—\s*unavailable)$/i,
-            /^Sunrise\s+(?:\d{1,2}:\d{2}\s*[AP]M|—\s*unavailable)$/i,
-            /^Sunset\s+(?:\d{1,2}:\d{2}\s*[AP]M|—\s*unavailable)$/i,
+            /^(?:(?:Earlier high|High)\s+[−-]?\d+°|High\s+–\s*unavailable)$/i,
+            /^Low\s+(?:[−-]?\d+°|–\s*unavailable)$/i,
+            /^Sunrise\s+(?:\d{1,2}:\d{2}\s*[AP]M|–\s*unavailable)$/i,
+            /^Sunset\s+(?:\d{1,2}:\d{2}\s*[AP]M|–\s*unavailable)$/i,
           ];
           for (const [index, value] of readings.entries()) {
             await expect(dailyFacts.nth(index)).toBeVisible();
@@ -227,7 +227,7 @@ for (const appearance of ["light", "dark"] as const) {
               await page.keyboard.press("Enter");
               await expect(details).toHaveAttribute("open", "");
               await expect(details.getByText("NWS forecast · Frederick", { exact: true })).toBeVisible();
-              const issued = details.locator("time");
+              const issued = details.locator("[data-weather-issuance] time");
               if (await issued.count()) {
                 await expect(issued).toBeVisible();
                 const originalIssuance = await issued.getAttribute("datetime");

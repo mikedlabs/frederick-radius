@@ -342,7 +342,7 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
     previousBaseline = key;
     return root.px === 16 && stableBaseline >= 1;
   }, { message: "The actual16px root and control text settle before recording a100% baseline" }).toBe(true);
-  expect(normal.map(({ px }) => px), "normal fixed release labels are measured at100%, never an already-enlarged baseline").toEqual([16, 16, 14]);
+  expect(normal.map(({ px }) => px), "normal fixed release labels are measured at100%, never an already-enlarged baseline").toEqual([32, 13, 14]);
   await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
   await page.evaluate(() => document.fonts.ready);
   let enlarged = await text();

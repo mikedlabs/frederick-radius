@@ -65,8 +65,13 @@ describe("compact civic alert affected areas", () => {
       attention: [{ id: "work-zone-closure", kind: "work-zone-closure", severity: "warning", title: "US 15 work-zone closure", detail: "All lanes closed", scope: "US 15", sourceLabel: "Maryland WZDx", observedAt: checkedAt }],
     });
     const html = renderToStaticMarkup(await CivicAlerts({ compact: true }));
-    if (verified) expect(html).toContain("US 15 work-zone closure");
-    else expect(html).not.toContain("US 15 work-zone closure");
+    if (verified) {
+      const summary = html.match(/<summary\b[^>]*>([\s\S]*?)<\/summary>/)?.[1];
+      expect(summary).toContain(">Warning</strong>");
+      expect(summary).toContain("US 15 work-zone closure");
+    } else {
+      expect(html).not.toContain("US 15 work-zone closure");
+    }
     expect(fetch).not.toHaveBeenCalled();
   });
   it("keeps the NWS area beside its source and preserves the Tonight return", async () => {
