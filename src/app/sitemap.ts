@@ -20,6 +20,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // it stays out. /today is priority 1 and /ask is the canonical decision tool.
   const top: MetadataRoute.Sitemap = [
     { url: `${BASE}/today`, lastModified: now, changeFrequency: "hourly", priority: 1 },
+    { url: `${BASE}/today/weekend`, changeFrequency: "daily", priority: 0.8 },
+    { url: `${BASE}/today/two-hours-downtown`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/ask`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE}/map`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE}/compass`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },

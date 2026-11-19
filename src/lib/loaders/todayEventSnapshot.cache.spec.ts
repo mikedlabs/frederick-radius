@@ -13,7 +13,7 @@ vi.mock("@/lib/db/client", () => ({ getSql: mocks.getSql }));
 // cannot prove that rejected foreground revalidation retains the prior entry.
 import { workAsyncStorage } from "next/dist/server/app-render/work-async-storage.external.js";
 import { workUnitAsyncStorage } from "next/dist/server/app-render/work-unit-async-storage.external.js";
-import { loadEventArchiveSnapshot, TODAY_EVENT_SNAPSHOT_MAX_AGE_MS } from "./todayEventSnapshot";
+import { loadEventArchiveSnapshot, loadWeekendEventSnapshot, TODAY_EVENT_SNAPSHOT_MAX_AGE_MS } from "./todayEventSnapshot";
 import { decodeArchiveEnvelope, encodeArchiveEnvelope,
   EVENT_ARCHIVE_CACHE_DECODED_MAX_BYTES, EVENT_ARCHIVE_CACHE_ENTRY_MAX_BYTES } from "./eventArchiveCacheCodec";
 
@@ -250,6 +250,32 @@ describe("durable archive cache through installed Next App Router revalidation",
     expect(keys[0]).toContain("durable-event-archive-envelope-gzip-v1,2026-10-18T04:00:00.000Z");
     expect(keys[0]).toContain(",6,2500-");
     expect(keys.some(key => key.includes("2026-10-19T04:00:00.000Z"))).toBe(true);
+  });
+  it("reads only scheduled starts in the Eastern weekend before applying its cap", async () => {
+    const sql = vi.fn<(parts: TemplateStringsArray, ...parameters: unknown[]) => Promise<ReturnType<typeof envelope>[]>>()
+      .mockResolvedValue([envelope()]);
+    mocks.getSql.mockReturnValue(sql);
+    const weekend = (clock: string) => inApp(() => loadWeekendEventSnapshot(new Date(clock)));
+
+    await weekend("2026-11-16T19:00:00Z");
+    await weekend("2026-11-23T04:59:59Z");
+
+    expect(sql).toHaveBeenCalledOnce();
+    const [query, ...values] = sql.mock.calls[0];
+    const predicate = query.join("?");
+    expect(predicate.indexOf("canonical.starts_at >= ?::timestamptz")).toBeGreaterThan(-1);
+    expect(predicate.indexOf("canonical.starts_at >= ?::timestamptz")).toBeLessThan(predicate.indexOf("limit ?"));
+    expect(values).toEqual([
+      "2026-11-23T05:00:00.000Z", "2026-11-20T22:00:00.000Z", "2026-11-20T22:00:00.000Z", 250,
+    ]);
+    expect(cache.generateSimpleCacheKey.mock.calls[0][0]).toContain("starts-in-window");
+
+    await weekend("2026-11-23T05:00:00Z");
+
+    expect(sql).toHaveBeenCalledTimes(2);
+    expect(sql.mock.calls[1].slice(1)).toEqual([
+      "2026-11-30T05:00:00.000Z", "2026-11-27T22:00:00.000Z", "2026-11-27T22:00:00.000Z", 250,
+    ]);
   });
   it("bypasses cache for promoted/no-DB callers even when an entry already exists", async () => {
     const sql = vi.fn().mockResolvedValue([envelope()]); mocks.getSql.mockReturnValue(sql); await cached();

@@ -1,3 +1,4 @@
+import { chooseTodayArea, todayArea } from "./today-controls";
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { getOwnedPlacePhoto } from "../src/lib/owned-place-photos";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "../src/data/credited-local-place-photos";
@@ -245,7 +246,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
       if (url.pathname.startsWith("/api/places/map-card/") || url.pathname === "/api/place-photo") photoMetadataRequests.push(request.url());
     });
     await page.goto("/today", { waitUntil: "domcontentloaded" });
-    const area = page.getByRole("combobox", { name: "Choose your area" });
+    const area = todayArea(page);
     await expect(area).toBeEnabled();
     // Measure the final masthead facts, not the weather Suspense placeholder.
     const renderedWeather = page.locator("[data-today-weather] [data-weather-state]");
@@ -264,7 +265,14 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await expect(doorway).toHaveAttribute("data-photo-state", "loaded");
     const mosaic = page.locator("[data-today-local-discovery]");
     const diningGrid = mosaic.locator("[data-today-discovery-grid]");
-    await expect(diningGrid.getByRole("link")).toHaveCount(2);
+    await expect(diningGrid.getByRole("link", { name: /^View .* in / })).toHaveCount(2);
+    const outings = diningGrid.getByRole("navigation", { name: "Local outings" });
+    await expect(outings.getByRole("link")).toHaveCount(2);
+    for (const link of await outings.getByRole("link").all()) {
+      await link.scrollIntoViewIfNeeded();
+      await expect.poll(() => link.locator("img").evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+    }
+    await page.evaluate(() => window.scrollTo(0, 0));
     await expect(diningGrid.getByRole("img")).toHaveCount(2);
     for (const subject of diningSubjects) {
       const link = diningGrid.locator(`[data-today-geographic-place="${subject.slug}"]`);
@@ -311,12 +319,13 @@ for (const width of [320, 375, 390, 430, 1366]) {
       };
       return {
         mastheadBox: bounds("main .scroll-masthead"),
-        findBox: bounds('[data-find-density="arrival"] a[aria-label="Find a place, service, event, or answer"]'),
-        entryControlsBox: bounds("[data-today-entry-controls]"),
+        findBox: bounds('header a[aria-label="Find a place, service, event, or answer"]'),
+        headerBox: bounds("header:has([data-today-area-trigger])"),
         weatherBox: bounds("[data-today-weather]"),
         photoBox: bounds("[data-today-photo-lead] [data-place-card-photo]"),
         doorwayBox: bounds("[data-today-geographic-place]"),
         mosaicBox: bounds("[data-today-discovery-grid]"),
+        outingsBox: bounds("#local-outings"),
         captionBox: bounds("[data-today-geographic-caption]"),
         brandPress: (() => {
           const probe = document.body.appendChild(document.createElement("span"));
@@ -345,18 +354,14 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await testInfo.attach("today-first-screen-geometry", {
       contentType: "application/json", body: JSON.stringify(geometry),
     });
-    const { mastheadBox, findBox, entryControlsBox, weatherBox, photoBox, doorwayBox, mosaicBox, captionBox, headingBox } = geometry;
-    expect(findBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height);
-    // The arrival action now has a deliberate phone density; neither weather
-    // facts nor the photograph are subtracted from an artificial height budget.
-    expect(findBox.height).toBeGreaterThanOrEqual(52);
-    expect(findBox.height).toBeLessThanOrEqual(52);
-    await expect(page.locator('[data-find-density="arrival"]')).toHaveCount(1);
-    expect(doorwayBox.y).toBeGreaterThanOrEqual(findBox.y + findBox.height);
-    expect(doorwayBox.y).toBeGreaterThanOrEqual(entryControlsBox.y + entryControlsBox.height);
-    // The dominant exact photograph carries the coral name plate. The plate
-    // starts about 14px inside the photo, crosses its bottom edge and hangs
-    // 36px below it, stays inside the link, and never meets the sibling Save.
+    const { mastheadBox, findBox, headerBox, weatherBox, photoBox, doorwayBox, mosaicBox, outingsBox, captionBox, headingBox } = geometry;
+    expect(findBox.height).toBeGreaterThanOrEqual(44);
+    expect(findBox.width).toBeGreaterThanOrEqual(44);
+    expect(findBox.y).toBeGreaterThanOrEqual(headerBox.y);
+    expect(findBox.y + findBox.height).toBeLessThanOrEqual(headerBox.y + headerBox.height + 1);
+    expect(doorwayBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height - 1);
+    // The name plate must straddle its own photo, remain readable and leave
+    // a separate Save target. Text resizing can change its exact height.
     const photoBottom = photoBox.y + photoBox.height;
     expect(captionBox.x - photoBox.x).toBeGreaterThanOrEqual(12);
     expect(captionBox.x - photoBox.x).toBeLessThanOrEqual(16);
@@ -364,9 +369,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(captionBox.y).toBeLessThan(photoBottom);
     expect(captionBox.y).toBeGreaterThanOrEqual(photoBox.y - 1);
     expect(captionBox.y + captionBox.height).toBeGreaterThan(photoBottom);
-    expect(Math.abs(captionBox.y + captionBox.height - (photoBottom + 36))).toBeLessThanOrEqual(1);
     expect(doorwayBox.y + doorwayBox.height - photoBottom).toBeGreaterThanOrEqual(44);
-    expect(doorwayBox.y + doorwayBox.height - photoBottom).toBeLessThanOrEqual(48);
     expect(geometry.subjects).toHaveLength(2);
     expect(geometry.subjects.map(subject => subject.role)).toEqual(["lead", "secondary"]);
     expect(geometry.subjects[0].captionInk).toBe("rgb(255, 255, 255)");
@@ -376,18 +379,28 @@ for (const width of [320, 375, 390, 430, 1366]) {
       && leadSave.y < captionBox.y + captionBox.height && leadSave.y + leadSave.height > captionBox.y;
     expect(saveMeetsPlate, "the lead Save never touches the coral plate").toBe(false);
     expect(leadSave.y).toBeGreaterThanOrEqual(photoBottom - 1);
-    expect(leadSave.y + leadSave.height).toBeLessThanOrEqual(photoBottom + 48 + 1);
+    // A wider or wrapping title can increase the caption height. Its own
+    // card edge must contain the separate, full-size bookmark target.
+    expect(leadSave.y + leadSave.height).toBeLessThanOrEqual(doorwayBox.y + doorwayBox.height + 1);
+    expect(Math.abs(leadSave.y + leadSave.height - (captionBox.y + captionBox.height))).toBeLessThanOrEqual(1);
     const asymmetricDesktop = mosaicBox.width >= 36 * 16;
+    const [lead, secondary] = geometry.subjects;
+    expect(secondary.box.y).toBeGreaterThanOrEqual(outingsBox.y + outingsBox.height);
     if (asymmetricDesktop) {
-      expect(geometry.subjects[0].box.y).toBeCloseTo(geometry.subjects[1].box.y, 0);
-      expect(geometry.subjects[0].box.width).toBeGreaterThan(geometry.subjects[1].box.width * 1.4);
-      expect(geometry.subjects[0].box.x + geometry.subjects[0].box.width).toBeLessThanOrEqual(geometry.subjects[1].box.x);
+      expect(outingsBox.y).toBeCloseTo(lead.box.y, 0);
+      expect(outingsBox.x).toBeCloseTo(secondary.box.x, 0);
+      expect(lead.box.width).toBeGreaterThan(secondary.box.width * 1.4);
+      expect(lead.box.x + lead.box.width).toBeLessThanOrEqual(outingsBox.x);
     } else {
-      expect(geometry.subjects[1].box.y).toBeGreaterThanOrEqual(geometry.subjects[0].box.y + geometry.subjects[0].box.height);
-      expect(geometry.subjects[0].box.width).toBeGreaterThanOrEqual(mosaicBox.width * 0.99);
-      expect(geometry.subjects[0].box.height).toBeGreaterThan(geometry.subjects[1].box.height * 1.1);
+      expect(outingsBox.y).toBeGreaterThanOrEqual(lead.box.y + lead.box.height);
+      expect(outingsBox.width).toBeGreaterThanOrEqual(mosaicBox.width * 0.99);
+      expect(lead.box.width).toBeGreaterThanOrEqual(mosaicBox.width * 0.99);
+      expect(lead.box.height).toBeGreaterThan(secondary.box.height * 1.1);
     }
-    expect(Math.abs(photoBox.width / photoBox.height - 1.6)).toBeLessThanOrEqual(0.02);
+    if (width < 640) {
+      expect(photoBox.width).toBeGreaterThanOrEqual(width - 2);
+      expect(Math.abs(photoBox.width / photoBox.height - 1.43)).toBeLessThan(0.03);
+    }
     for (const subject of geometry.subjects) {
       expect(subject.box.width).toBeGreaterThanOrEqual(44);
       expect(subject.box.height).toBeGreaterThanOrEqual(44);
@@ -494,19 +507,14 @@ for (const width of [320, 375, 390, 430, 1366]) {
       expect(box.x + box.width).toBeLessThanOrEqual(width + 1);
     }
 
-    expect(weatherBox.y).toBeGreaterThanOrEqual(headingBox.y + headingBox.height);
-    // The date may share the title row or wrap below it. Both facts must stay
-    // visible inside the masthead without colliding or pushing weather upward.
     const dateline = masthead.locator("[data-today-dateline]");
     await expect(dateline).toBeVisible();
     const datelineBox = (await dateline.boundingBox())!;
-    expect(headingBox.x).toBeGreaterThanOrEqual(mastheadBox.x);
-    expect(headingBox.x + headingBox.width).toBeLessThanOrEqual(mastheadBox.x + mastheadBox.width + 1);
+    expect(datelineBox.y + datelineBox.height).toBeLessThanOrEqual(headingBox.y + 1);
     expect(datelineBox.x).toBeGreaterThanOrEqual(mastheadBox.x);
-    expect(datelineBox.x + datelineBox.width).toBeLessThanOrEqual(mastheadBox.x + mastheadBox.width + 1);
-    expect(datelineBox.y + datelineBox.height).toBeLessThanOrEqual(weatherBox.y);
-    expect(datelineBox.x >= headingBox.x + headingBox.width - 1 || datelineBox.y >= headingBox.y + headingBox.height - 1).toBe(true);
-    expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(findBox.y);
+    expect(headingBox.x + headingBox.width).toBeLessThanOrEqual(mastheadBox.x + mastheadBox.width + 1);
+    expect(findBox.y + findBox.height).toBeLessThanOrEqual(mastheadBox.y + 1);
+    expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(photoBox.y + 1);
 
     const places = page.locator('[aria-label="Places for your area"]');
     const events = page.locator("[data-today-events]");
@@ -517,7 +525,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     // arrival, but photographs, the area recommendation with saved previews,
     // events and later utilities retain the same document and visual order.
     await expect.poll(() => page.evaluate(() => {
-      const entry = document.querySelector("[data-today-entry-controls]")?.getBoundingClientRect();
+      const entry = document.querySelector("header:has([data-today-area-trigger])")?.getBoundingClientRect();
       const photo = document.querySelector("[data-today-local-discovery]")?.getBoundingClientRect();
       const quick = document.querySelector('[role="group"][aria-label="Quick needs"]')?.getBoundingClientRect();
       const events = document.querySelector("[data-today-events]")?.getBoundingClientRect();
@@ -539,7 +547,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
       const decision = places.querySelector(":scope > section:not([data-today-saved])")!;
       const saved = places.querySelector(":scope > section[data-today-saved]");
       const photo = document.querySelector("[data-today-local-discovery]")!;
-      const entry = document.querySelector("[data-today-entry-controls]")!;
+      const entry = document.querySelector("header:has([data-today-area-trigger])")!;
       const news = document.querySelector('section[aria-label="Local news"]')!;
       const explore = document.querySelector('section[aria-labelledby="today-explore-heading"]')!;
       const precedes = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
@@ -588,6 +596,9 @@ for (const width of [320, 375, 390, 430, 1366]) {
       if (await activeAlert.count() === 0 && await specialDay.count() === 0) {
         expect(photoBox.y, "the first local photograph begins in the ordinary arrival viewport").toBeGreaterThanOrEqual(0);
         expect(photoBox.y + photoBox.height, "the decoded local photograph is above the fixed tabs on ordinary arrival").toBeLessThanOrEqual(primaryNavBox!.y);
+        if (width === 390) {
+          expect(outingsBox.y + outingsBox.height, "both local guides fit above the fixed tabs on an ordinary phone").toBeLessThanOrEqual(primaryNavBox!.y + 1);
+        }
       }
       if (width >= 375 && await activeAlert.count() === 0 && await specialDay.count() === 0) {
         const firstChoice = events.locator('[data-today-event-shortlist] article[data-decision-entity="event"]').first();
@@ -619,12 +630,12 @@ for (const width of [320, 375, 390, 430, 1366]) {
     )).toBe(true);
     await testInfo.attach("today-arrival-geometry", {
       contentType: "application/json",
-      body: JSON.stringify({ width, mastheadBox, weatherBox, findBox, entryControlsBox, captionBox, photoBox, doorwayBox, mosaicBox, subjects: geometry.subjects, quickNeedsBox, decisionBox, primaryNavBox, currentLayout, heldPhotoRequests, photoMetadataRequests,
-        note: "Weather and Find with scope lead two exact local photographs, one scoped recommendation and any saved previews in the same place group, then the single Events today section and news. Historical and undated business images stay held. More ways to explore owns the single four-shortcut deck afterward. DOM and vertical visual order match at phone and desktop widths. Event facts retain the existing bounded native-scroll requirement; utility reachability is measured from its own heading." }),
+      body: JSON.stringify({ width, mastheadBox, weatherBox, findBox, headerBox, captionBox, photoBox, doorwayBox, mosaicBox, subjects: geometry.subjects, quickNeedsBox, decisionBox, primaryNavBox, currentLayout, heldPhotoRequests, photoMetadataRequests,
+        note: "Header Find and area, followed by the weather masthead, lead two exact local photographs, one scoped recommendation and any saved previews in the same place group, then the single Events today section and news. Historical and undated business images stay held. More ways to explore owns the single four-shortcut deck afterward. DOM and vertical visual order match at phone and desktop widths. Event facts retain the existing bounded native-scroll requirement; utility reachability is measured from its own heading." }),
     });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}.png`), fullPage: true });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}-viewport.png`), fullPage: false });
-    await area.selectOption("town:brunswick");
+    await chooseTodayArea(page, "town:brunswick");
     await expect(page.getByTestId("today-scope-status")).toContainText(
       "Brunswick picks · Weather for the whole county",
     );
@@ -716,9 +727,9 @@ for (const town of ["brunswick", "thurmont"]) {
         releaseBootstrap();
       }
       await page.waitForLoadState("domcontentloaded");
-      const area = page.getByRole("combobox", { name: "Choose your area" });
+      const area = todayArea(page);
       await expect(area).toBeEnabled();
-      await expect(area).toHaveValue(`town:${town}`);
+      await expect(area).toHaveAccessibleName(new RegExp(town, "i"));
       await expect(page.locator("[data-today-geographic-pending]")).toHaveCount(0);
       const scopedFood = page.locator('[data-today-discovery-action="food"]');
       const foodHref = new URL((await scopedFood.getAttribute("href"))!, page.url());
@@ -821,9 +832,9 @@ test.describe("Today compiled event heading and compact weather at enlarged root
 
     const response = await page.goto("/today?in=county", { waitUntil: "domcontentloaded" });
     expect(response?.status()).toBe(200);
-    const area = page.getByRole("combobox", { name: "Choose your area" });
+    const area = todayArea(page);
     await expect(area).toBeEnabled();
-    await expect(area).toHaveValue("county");
+    await expect(area).toHaveAccessibleName(/Whole county/i);
     const enlargedWeather = page.locator("[data-today-weather] [data-weather-state]");
     await expect(enlargedWeather).toHaveAttribute("data-weather-state", /^(available|safety-only|unavailable)$/);
     const enlargedState = await enlargedWeather.getAttribute("data-weather-state");
@@ -831,8 +842,8 @@ test.describe("Today compiled event heading and compact weather at enlarged root
     const enlargedForecast = enlargedWeather.locator('a[href="/pulse?open=weather"]');
     const enlargedControl = enlargedState === "available" ? enlargedSummary : enlargedForecast;
     await expect(enlargedForecast).toHaveCount(1);
-    const originalIssueTime = await enlargedWeather.locator("time").count()
-      ? await enlargedWeather.locator("time").getAttribute("datetime") : null;
+    const originalIssueTime = await enlargedWeather.locator("[data-weather-issuance] time").count()
+      ? await enlargedWeather.locator("[data-weather-issuance] time").getAttribute("datetime") : null;
     await page.evaluate(async () => {
       await document.fonts.ready;
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
@@ -840,7 +851,7 @@ test.describe("Today compiled event heading and compact weather at enlarged root
     const baselineWeatherText = await compactWeatherTextMetrics(enlargedWeather);
     expect(baselineWeatherText.rootPx).toBe(16);
     const requiredText = enlargedState === "available"
-      ? ["scope", "cue", "source", "issuance", "forecast"] : ["message", "forecast"];
+      ? ["source", "issuance", "forecast"] : ["message", "forecast"];
     for (const name of requiredText) {
       expect(baselineWeatherText.entries.some((entry) => entry.name === name), `real ${name} probe exists`).toBe(true);
     }
@@ -897,7 +908,7 @@ test.describe("Today compiled event heading and compact weather at enlarged root
       await expect(enlargedWeather.getByText("NWS forecast · Frederick", { exact: true })).toBeVisible();
       expandedWeatherText = await compactWeatherTextMetrics(enlargedWeather);
       expect(expandedWeatherText).toEqual(doubledWeatherText);
-      const evidence = enlargedWeather.locator("time");
+      const evidence = enlargedWeather.locator("[data-weather-issuance] time");
       if (originalIssueTime !== null) {
         await expect(evidence).toBeVisible();
         await expect(evidence).toHaveAttribute("datetime", originalIssueTime);
@@ -923,7 +934,7 @@ test.describe("Today compiled event heading and compact weather at enlarged root
       await expect(enlargedWeather.getByText("The NWS forecast is briefly unavailable.", { exact: true })).toBeVisible();
       testInfo.annotations.push({ type: "coverage", description: "Real forecast unavailable: enlarged direct-route coverage only. Available-summary acceptance is still required in a separate actual-source run." });
     }
-    const safetyFacts = enlargedWeather.locator("[data-weather-headline], [data-weather-safety-note]");
+    const safetyFacts = enlargedWeather.locator("[data-weather-headline], [data-weather-safety-note]:not(details [data-weather-safety-note])");
     for (const note of await safetyFacts.all()) {
       await expect(note).toBeVisible();
       expect(await note.evaluate((element) => element.closest("details") === null)).toBe(true);

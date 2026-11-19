@@ -2,6 +2,8 @@ import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
 import DaylightLeftInline from "@/components/today/DaylightLeftInline";
+import { forecastTemperatureF } from "@/lib/today/forecast-range";
+import { frederickForecastRange } from "@/lib/today/retained-forecast-high";
 import { weatherVerdict } from "@/lib/weather-verdict";
 import { getNwsAlertsResult, type NwsAlertsResult } from "@/lib/integrations/nws-alerts";
 import { getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integrations/airnow";
@@ -115,9 +117,11 @@ export default async function TodayCard({ density = "standard" }: { density?: To
     ),
   ]);
   const cur = forecast?.hourly?.[0] ?? null;
-  const tempNow = cur?.temperature ?? null;
+  const tempNow = forecastTemperatureF(cur);
   const condition = cur?.shortForecast ?? "";
-  const high = forecast?.daily?.find((p) => p.isDaytime)?.temperature ?? null;
+  const { highF, lowF, retainedHighIssuedAt } = await frederickForecastRange(forecast, now);
+  const st = sunTimes(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
+  const dayFacts = { highF, lowF, retainedHighIssuedAt, sunriseTime: fmtTime(st.sunrise), sunsetTime: fmtTime(st.sunset) };
   const freshAir = (airObservations ?? []).filter((obs) => isFreshAqiObservation(obs, now));
   const worstAir = pickWorstAqi(freshAir);
   const airQualityAvailable = airObservations !== null && freshAir.length > 0;
@@ -130,13 +134,10 @@ export default async function TodayCard({ density = "standard" }: { density?: To
   // unavailable, collapse to the small handoff above instead of manufacturing
   // a weather read from defaults.
   if (!cur && !hasSafetySignal) {
-    return <WeatherUnavailable density={density} />;
+    return <WeatherUnavailable density={density} {...dayFacts} />;
   }
 
-  // The NEXT sun event, not both — sunrise if it hasn't happened yet,
-  // otherwise tonight's sunset, otherwise tomorrow's sunrise. (Replaces
-  // the redundant sunrise+sunset footer that duplicated this.)
-  const st = sunTimes(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
+  // The standard weather card also carries a cue for the next sun event.
   let sun: { label: string; time: string } | null = null;
   if (st.sunrise && now < st.sunrise) {
     sun = { label: "Sunrise", time: fmtTime(st.sunrise)! };
@@ -154,10 +155,10 @@ export default async function TodayCard({ density = "standard" }: { density?: To
   // line — the greeting already spends words here, and the counsel lives
   // in NowIntel below (owner report, 2026-07-19: too much text up top).
   const verdict = weatherVerdict({
-    temp: cur?.temperature ?? 70,
+    temp: tempNow ?? 70,
     shortForecast: cur?.shortForecast ?? "",
     precipNow: cur?.probabilityOfPrecipitation ?? 0,
-    forecastHigh: high,
+    forecastHigh: retainedHighIssuedAt ? null : highF,
     activeAlerts: alertResult.alerts,
     airQuality: worstAir ? { aqi: worstAir.aqi, category: worstAir.category.name } : null,
     airQualityParameters: freshAir.map((observation) => observation.parameter),
@@ -188,13 +189,14 @@ export default async function TodayCard({ density = "standard" }: { density?: To
       headline={weatherRead.headline}
       condition={sentenceCaseForecast(condition)}
       temperatureF={tempNow}
-      highF={cur ? high : null}
+      {...dayFacts}
+      actionableHeadline={hasSafetySignal}
       sun={cur ? sun : null}
       variant={variant}
       forecastAvailable={Boolean(cur)}
       issuedAt={forecast?.asOf ?? null}
       safetyNote={weatherRead.safetyNote}
-      daylight={cur && (high != null || sun) ? <DaylightLeftInline /> : undefined}
+      daylight={cur && (highF != null || sun) ? <DaylightLeftInline /> : undefined}
     >
       <OfflineTodayCapture
         snapshot={{
@@ -203,7 +205,7 @@ export default async function TodayCard({ density = "standard" }: { density?: To
             headline: weatherRead.headline || condition,
             condition: condition || undefined,
             temperatureF: tempNow ?? undefined,
-            highF: high ?? undefined,
+            highF: highF ?? undefined,
             safetyNote: weatherRead.safetyNote ?? undefined,
           },
         }}
