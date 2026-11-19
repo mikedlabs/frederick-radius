@@ -1,3 +1,4 @@
+import { todayArea } from "./today-controls";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
 import {
@@ -164,9 +165,9 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await page.screenshot({ path: testInfo.outputPath(`pulse-sources-${width}.png`), fullPage: true });
 
     await page.goto("/today?in=county", { waitUntil: "domcontentloaded" });
-    const area = page.getByRole("combobox", { name: "Choose your area" });
+    const area = todayArea(page);
     await expect(area).toBeEnabled();
-    await expect(area).toHaveValue("county");
+    await expect(area).toHaveAccessibleName(/Whole county/i);
     await page.evaluate(() => document.fonts.ready);
     await expectTouchTarget(area);
     await expectTouchTarget(page.getByRole("link", {

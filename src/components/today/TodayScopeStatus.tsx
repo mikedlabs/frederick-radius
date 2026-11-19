@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import { ChevronDown } from "lucide-react";
+import TodayHeaderDisclosure from "@/components/nav/TodayHeaderDisclosure";
 import { useRouter, useSearchParams } from "next/navigation";
 import { commitLocationScope } from "@/components/nav/locationScopeNavigation";
 import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
@@ -46,14 +48,16 @@ const subscribe = (onStoreChange: () => void) =>
  */
 export default function TodayScopeStatus({ dateline, density = "standard" }: {
   dateline?: string;
-  density?: "standard" | "compact";
+  density?: "standard" | "compact" | "header";
 }) {
   const ready = useSyncExternalStore(subscribeReady, () => true, () => false);
   const storedScope = useSyncExternalStore(subscribe, getScope, () => null);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const urlScope = parseScope(searchParams.get("in"));
-  const scope = urlScope ?? storedScope;
+  // An explicit ?in= always wins, and one Radius cannot read means the whole
+  // county rather than yesterday's saved area.
+  const explicitScope = searchParams.get("in");
+  const scope = explicitScope === null ? storedScope : parseScope(explicitScope) ?? "county";
   // Today is a cached briefing; the shared writer changes its area through
   // native history, which keeps Next's search-parameter readers in sync.
   const applyTodayScope = useCallback(
@@ -66,8 +70,8 @@ export default function TodayScopeStatus({ dateline, density = "standard" }: {
   // readout. Tab memory never replays an old area here (primary-tab-session).
   // Visitor choices update both together through the shared writer.
   useEffect(() => {
-    if (urlScope && getScope() !== urlScope) setScope(urlScope);
-  }, [urlScope]);
+    if (explicitScope !== null && getScope() !== scope) setScope(scope);
+  }, [scope, explicitScope]);
   const townScoped = Boolean(scopeTownSlug(scope));
   // The native picker already names Whole county. Keep that redundant live
   // status accessible without adding a second visible row on ordinary arrival.
@@ -115,7 +119,7 @@ export default function TodayScopeStatus({ dateline, density = "standard" }: {
     requestLocation();
   };
 
-  return (
+  const controls = (
     <div data-today-scope-density={density} className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
       <p
         role="status"
@@ -187,4 +191,10 @@ export default function TodayScopeStatus({ dateline, density = "standard" }: {
       ) : null}
     </div>
   );
+  if (density !== "header") return controls;
+  const label = scopeLabel(scope ?? "county");
+  return <TodayHeaderDisclosure name="area" label={`Choose your area: ${label}`}
+    trigger={<><span>{label}</span><ChevronDown aria-hidden size={14} /></>}>
+    {controls}
+  </TodayHeaderDisclosure>;
 }

@@ -31,6 +31,8 @@ export type NwsForecast = {
   /** Issuance of the hourly payload only. A separate daily update never
    * makes old hourly values current for a time-specific outing. */
   hourlyAsOf?: string | null;
+  /** Issuance of the daily periods, kept separate from hourly updates. */
+  dailyAsOf?: string | null;
   hourly: NwsHourly[];
   daily: NwsHourly[];
 };
@@ -147,6 +149,7 @@ async function loadNwsForecast(latValue: number, lngValue: number): Promise<NwsF
       daily?.properties.updated ??
       null,
     hourlyAsOf: hourly?.properties.updateTime ?? hourly?.properties.updated ?? null,
+    dailyAsOf: daily?.properties.updateTime ?? daily?.properties.updated ?? null,
     hourly: hourlyCurrent.slice(0, 12).map(mapPeriod),
     // 14 periods = ~7 days of day/night pairs, grouped into days by the UI.
     daily: (daily?.properties.periods ?? []).slice(0, 14).map(mapPeriod),

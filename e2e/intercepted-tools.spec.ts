@@ -1,3 +1,4 @@
+import { showTodayTools } from "./today-controls";
 import { expect, test } from "@playwright/test";
 import {
   dismissReturnBridge,
@@ -25,7 +26,7 @@ for (const width of [390, 1366]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/today?in=county");
     const origin = page.url();
-    const trigger = page.locator("header").first().getByRole("link", { name: "Open tools", exact: true });
+    const trigger = await showTodayTools(page);
     await trigger.click();
     await expect(page).toHaveURL(/\/compass$/);
     const drawer = page.getByRole("dialog");
@@ -49,7 +50,7 @@ for (const width of [390, 1366]) {
 test("Tools clears its route drawer before County status opens a weather detail", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/today?in=county");
-  await page.locator("header").first().getByRole("link", { name: "Open tools", exact: true }).click();
+  await (await showTodayTools(page)).click();
   const drawer = page.getByRole("dialog");
   await expect(drawer).toHaveCount(1);
   await expect(drawer.locator("[data-compass-ready]")).toHaveAttribute("data-compass-ready", "true");
@@ -80,7 +81,7 @@ test("Tools drawer uses the native Find destination and retains its origin on Ba
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/today?in=county");
   const origin = page.url();
-  const trigger = page.locator("header").first().getByRole("link", { name: "Open tools", exact: true });
+  const trigger = await showTodayTools(page);
   await trigger.click();
   let drawer = page.getByRole("dialog");
   await expect(drawer).toHaveCount(1);
@@ -99,7 +100,7 @@ for (const width of [320, 390, 1366]) {
   test(`Tools drawer reuses one panel for More, full index and Edit at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/today?in=county"); const origin = page.url();
-    const trigger = page.locator("header").first().getByRole("link", { name: "Open tools", exact: true });
+    const trigger = await showTodayTools(page);
     await trigger.click();
     const drawer = page.getByRole("dialog"); await expect(drawer).toHaveCount(1);
     await expect(drawer.locator("[data-compass-ready]")).toHaveAttribute("data-compass-ready", "true");
