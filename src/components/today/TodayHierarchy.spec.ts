@@ -28,41 +28,36 @@ describe("Today decision hierarchy", () => {
     expect(eventClose).toBeGreaterThan(placeClose);
   });
 
-  it("puts the single weather glance before Find and the place and event answers", () => {
+  it("puts the single weather glance before the visual outing guides, place and event answers", () => {
     const weather = renderedPage.indexOf("<TodayMasthead");
     const lead = renderedPage.indexOf("{decisionLead}");
-    const find = renderedPage.indexOf("<TodayAsk embedded");
+    const photo = renderedPage.indexOf("<TodayGeographicDoorway guidePhotos=");
     const events = renderedPage.indexOf("{whatsOn}");
 
     expect(weather).toBeGreaterThan(-1);
     expect(renderedPage.match(/<TodayMasthead\b/g)).toHaveLength(1);
     expect(todayMasthead.match(/<section data-today-weather/g)).toHaveLength(1);
     expect(renderedPage.match(/<TodayCard density="masthead"\s*\//g)).toHaveLength(1);
-    expect(find).toBeGreaterThan(-1);
-    expect(find).toBeGreaterThan(weather);
-    expect(lead).toBeGreaterThan(find);
+    expect(photo).toBeGreaterThan(weather);
+    expect(lead).toBeGreaterThan(photo);
     expect(lead).toBeGreaterThan(weather);
-    expect(events).toBeGreaterThan(find);
+    expect(events).toBeGreaterThan(photo);
     expect(events).toBeGreaterThan(lead);
     expect(events).toBeGreaterThan(weather);
   });
 
   it("lets the owned scene and current local answers lead one utility deck after news", () => {
-    const find = renderedPage.indexOf("<TodayAsk embedded showQuickNeeds={false}");
-    const doorway = renderedPage.indexOf("<TodayGeographicDoorway />");
+    const doorway = renderedPage.indexOf("<TodayGeographicDoorway guidePhotos=");
     const lead = renderedPage.indexOf("{decisionLead}");
     const events = renderedPage.indexOf("{whatsOn}");
     const news = renderedPage.indexOf("<LocalNewsBrief");
     const explore = renderedPage.indexOf('aria-labelledby="today-explore-heading"');
     const shortcuts = renderedPage.indexOf("<TodayQuickNeeds><CravingStrip /></TodayQuickNeeds>");
 
-    expect(find).toBeGreaterThan(-1);
-    expect(doorway).toBeGreaterThan(find);
-    expect(lead).toBeGreaterThan(find);
+    expect(doorway).toBeGreaterThan(-1);
     expect(doorway).toBeLessThan(shortcuts);
     expect(doorway).toBeLessThan(events);
     expect(doorway).toBeLessThan(lead);
-    expect(events).toBeGreaterThan(find);
     expect(events).toBeGreaterThan(lead);
     expect(news).toBeGreaterThan(lead);
     expect(explore).toBeGreaterThan(news);
@@ -89,19 +84,17 @@ describe("Today decision hierarchy", () => {
     expect(utilityDoors).toContain("<BrowsePlacesDisclosure embedded>{children}</BrowsePlacesDisclosure>");
   });
 
-  it("keeps the heading independent of streamed weather and the scope readout before local choices", () => {
+  it("keeps the heading independent of streamed weather and removes duplicate entry controls above the local photograph", () => {
     const title = todayMasthead.indexOf("<h1");
     const weather = todayMasthead.indexOf("<section data-today-weather");
-    const find = renderedPage.indexOf("<TodayAsk embedded");
-    const scope = renderedPage.indexOf("<TodayScopeStatus");
-    const doorway = renderedPage.indexOf("<TodayGeographicDoorway />");
+    const doorway = renderedPage.indexOf("<TodayGeographicDoorway guidePhotos=");
 
     expect(title).toBeGreaterThan(-1);
     expect(weather).toBeGreaterThan(title);
     expect(todayMasthead).not.toContain("<Suspense");
     expect(renderedPage).toContain("weather={\n          <Suspense");
-    expect(scope).toBeGreaterThan(find);
-    expect(doorway).toBeGreaterThan(scope);
+    expect(renderedPage).not.toContain("data-today-entry-controls");
+    expect(doorway).toBeGreaterThan(renderedPage.indexOf("<TodayMasthead"));
   });
 
   it("uses exact local scenes and scoped task links without promoting unreviewed merchants", () => {
@@ -125,22 +118,34 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage.match(/\{decisionLead\}/g)).toHaveLength(1);
     expect(renderedPage).toContain("fallback={<TodayGeographicDoorwayPending />}");
     expect(renderedPage).not.toContain("fallback={<TodayGeographicDoorwayView");
-    expect(renderedPage.indexOf("<TodayGeographicDoorway />")).toBeLessThan(renderedPage.indexOf("{decisionLead}"));
+    expect(renderedPage.indexOf("<TodayGeographicDoorway guidePhotos=")).toBeLessThan(renderedPage.indexOf("{decisionLead}"));
     const placeAnswer = renderedPage.slice(
       renderedPage.indexOf('<div aria-label="Places for your area"'),
       renderedPage.indexOf("<LocalNewsBrief"),
     );
     expect(placeAnswer).toContain("{decisionLead}");
     expect(placeAnswer).not.toContain("<TodayGeographicDoorway");
-    expect(renderedPage.indexOf("<TodayPlanTonightLink")).toBeGreaterThan(renderedPage.indexOf("<TodayAsk embedded"));
-    expect(renderedPage.match(/<TodayPlanTonightLink/g)).toHaveLength(1);
+  });
+
+  it("puts the single Plan tonight link with Quick needs after events and news", () => {
+    const events = renderedPage.indexOf("{whatsOn}");
+    const news = renderedPage.indexOf("<LocalNewsBrief");
+    const explore = renderedPage.indexOf('<section aria-labelledby="today-explore-heading"');
+    expect(events).toBeGreaterThan(-1);
+    expect(news).toBeGreaterThan(events);
+    expect(explore).toBeGreaterThan(news);
+    const exploreContent = renderedPage.slice(explore, renderedPage.indexOf("</section>", explore));
+    const quickNeeds = exploreContent.indexOf("</TodayQuickNeeds>");
+    expect(quickNeeds).toBeGreaterThan(-1);
+    expect(exploreContent.indexOf("<TodayPlanTonightLink />")).toBeGreaterThan(quickNeeds);
+    expect(renderedPage.match(/<TodayPlanTonightLink\b/g)).toHaveLength(1);
   });
 
   it("keeps confirmed saved choices visible with the recommendation before events", () => {
     const lead = renderedPage.indexOf("{decisionLead}");
     const saved = renderedPage.indexOf("<FromYourSaved />");
     const events = renderedPage.indexOf("{whatsOn}");
-    const secondaryGuides = renderedPage.indexOf('title="Local guides"');
+    const secondaryGuides = renderedPage.indexOf('title="More local guides"');
     expect(saved).toBeGreaterThan(lead);
     expect(saved).toBeLessThan(events);
     expect(saved).toBeLessThan(secondaryGuides);
@@ -153,18 +158,17 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage).not.toContain("<WeatherNeeds");
   });
 
-  it("keeps alerts first and the request doorway ahead of the one civic moment slot", () => {
+  it("keeps alerts first and the photograph ahead of the one civic moment slot", () => {
     const alerts = renderedPage.indexOf("<CivicAlerts compact />");
     const context = renderedPage.indexOf("className={styles.context}");
     const masthead = renderedPage.indexOf("<TodayMasthead");
-    const find = renderedPage.indexOf("<TodayAsk embedded");
+    const photo = renderedPage.indexOf("<TodayGeographicDoorway guidePhotos=");
     const weather = renderedPage.indexOf('<TodayCard density="masthead"');
 
     expect(masthead).toBeGreaterThan(alerts);
-    expect(find).toBeGreaterThan(masthead);
+    expect(photo).toBeGreaterThan(masthead);
     expect(context).toBeGreaterThan(renderedPage.indexOf("{whatsOn}"));
-    expect(renderedPage).toContain("<TodayPlanTonightLink />");
-    expect(weather).toBeLessThan(find);
+    expect(weather).toBeLessThan(photo);
     expect(weather).toBeLessThan(context);
     expect(renderedPage).toContain("{civicMoment && (");
     // The retired Fair campaign no longer has a slot on Today.
@@ -186,7 +190,7 @@ describe("Today decision hierarchy", () => {
     const decide = renderedPage.indexOf("data-today-briefing");
     const follow = renderedPage.indexOf("data-today-events");
     const plan = renderedPage.indexOf('title="Plan the rest"');
-    const more = renderedPage.indexOf('title="Local guides"');
+    const more = renderedPage.indexOf('title="More local guides"');
 
     expect(decide).toBeGreaterThan(-1);
     expect(follow).toBeGreaterThan(decide);
@@ -262,7 +266,7 @@ describe("Today decision hierarchy", () => {
 
   it("keeps low-value repeated discovery rails off the briefing", () => {
     const disclosureStart = todayPage.indexOf(
-      'title="Local guides"',
+      'title="More local guides"',
     );
     const disclosureEnd = todayPage.indexOf(
       "</CollapsibleSection>",
@@ -299,8 +303,7 @@ describe("Today decision hierarchy", () => {
   });
 
   it("uses the upper decision surface instead of repeating the Toolbox teaser", () => {
-    expect(todayPage).toContain("<TodayAsk embedded");
-    expect(todayPage.match(/<TodayAsk embedded/g)).toHaveLength(1);
+    expect(renderedPage).not.toContain("<TodayAsk");
     expect(todayPage).not.toContain("<BrowsePlacesDisclosure");
     expect(todayPage).toContain("<CravingStrip");
     expect(todayPage).not.toContain("ToolboxTeaser");

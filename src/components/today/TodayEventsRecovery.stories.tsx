@@ -268,11 +268,11 @@ export const OwnedPhotoFullView390: Story = {
     await expect(window.innerWidth).toBe(390);
     const canvas = within(canvasElement), image = await renderedImage(canvasElement);
     image.scrollIntoView({ block: "center", behavior: "instant" });
-    await waitFor(async () => {
-      await image.decode();
-      await expect(image.naturalWidth).toBeGreaterThan(1);
-      await expect(image.naturalHeight).toBeGreaterThan(1);
-    });
+    // The actual bundled photograph may take longer to load than a DOM query.
+    // decode() rejects a broken resource and resolves only when its pixels are ready.
+    await image.decode();
+    await expect(image.naturalWidth).toBeGreaterThan(1);
+    await expect(image.naturalHeight).toBeGreaterThan(1);
     await expect(getComputedStyle(image).objectFit).toBe("cover");
     const source = new URL(image.currentSrc || image.src, document.baseURI);
     await expect(decodeURIComponent(source.searchParams.get("url") ?? source.pathname)).toBe(ownedPhoto.src);

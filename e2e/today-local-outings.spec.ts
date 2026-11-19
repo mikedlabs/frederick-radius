@@ -55,6 +55,16 @@ for (const { width, height, enlarged } of [
     const primary = main.getByRole("link", { name: /Directions|Get directions/i }).first();
     await expectTouchTarget(primary);
     await expectReflow(page);
+    if (enlarged) {
+      const source = main.getByRole("link", { name: /City parking information/ });
+      const disclosure = main.locator("summary").filter({ hasText: "Details and source" }).first();
+      await expect(source).toBeHidden();
+      await disclosure.focus();
+      await disclosure.press("Enter");
+      await expect(source).toBeVisible();
+      await expectTouchTarget(source);
+      await expectReflow(page);
+    }
     if (width === 375) {
       await testInfo.attach("downtown-mobile", { body: await page.screenshot(), contentType: "image/png" });
     }
