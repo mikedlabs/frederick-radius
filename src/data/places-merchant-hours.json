@@ -761,11 +761,11 @@
       "slug": "delaplaine-arts-center-frederick",
       "source_url": "https://delaplaine.org/",
       "source_name": "Delaplaine Arts Center",
-      "source_sha256": "7ffc660a0e4d093e7d13a24b29a473fc7b7584faf95aff82853e65d846aee471",
-      "observed_at": "2026-11-12T09:23:27.527Z",
-      "expires_at": "2026-11-19T09:23:27.527Z",
-      "coverage_from": "2026-11-12",
-      "coverage_through": "2026-11-19",
+      "source_sha256": "00842fa591bb12b583185eceeb7a714c9fe508c5149fc4ff626f66af6958e0b8",
+      "observed_at": "2026-11-19T09:23:47.193Z",
+      "expires_at": "2026-11-26T09:23:47.193Z",
+      "coverage_from": "2026-11-19",
+      "coverage_through": "2026-11-26",
       "kind": "weekly",
       "hours": {
         "mon": [
