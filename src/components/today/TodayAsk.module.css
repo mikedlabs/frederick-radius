@@ -226,3 +226,21 @@
     font-size: 0.875rem;
   }
 }
+
+.headerFind .launcher {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: var(--app-radius-sm);
+  background: transparent;
+  color: var(--app-ink);
+}
+
+.headerFind .launcher:hover {
+  background: var(--app-bg-sunken);
+}
+
+.headerFind .searchIcon { width: 22px; height: 22px; }
+.headerFind .searchIcon svg { width: 21px; height: 21px; }

@@ -9,7 +9,14 @@ const meta = {
   title: "Today/Local photo discovery", component: TodayGeographicDoorwayView,
   parameters: { layout: "centered", a11y: { test: "error" } },
   decorators: [(Story) => <div style={{ width: "min(520px, calc(100vw - 32px))" }}><Story /></div>],
-  args: { scope: "county", returnTo: origin },
+  args: {
+    scope: "county",
+    returnTo: origin,
+    guidePhotos: {
+      weekend: "/images/seasons/winter/WINTER BOATS.jpg",
+      downtown: "/images/places/carroll-creek-aerial.jpg",
+    },
+  },
 } satisfies Meta<typeof TodayGeographicDoorwayView>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -65,62 +72,36 @@ function tokenColor(element: HTMLElement, property: "color" | "backgroundColor",
   return value;
 }
 
-/** The coral plate is anchored by its bottom edge 36px below the photograph,
- * starts 12 to 16px inside it and grows upward. Save owns the right end of
- * the 44 to 48px band under the photo, reserves its widest label and never
- * touches the plate. Enlarged text moves Save to its own line instead. */
+/** The linked plate overlaps the photo while its bookmark remains an
+ * independent physical target. Wrapped names increase its height naturally. */
 async function checkLeadGeometry(link: HTMLElement, save: HTMLButtonElement, enlarged: boolean) {
   link.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
   const plateElement = link.querySelector<HTMLElement>("[data-today-name-plate]")!;
-  await expect(plateElement).not.toBeNull();
   const photo = link.querySelector<HTMLElement>("[data-place-card-photo]")!.getBoundingClientRect();
-  const plate = plateElement.getBoundingClientRect(), box = link.getBoundingClientRect(), target = save.getBoundingClientRect();
-  await expect(Math.abs(photo.width / photo.height - 1.6)).toBeLessThanOrEqual(0.02);
-  // The lead photograph keeps its prominence: at least 55% of its column's
-  // width tall (16:10 gives 62.5%), and at least 170px even at 320px.
-  await expect(photo.height).toBeGreaterThanOrEqual(box.width * 0.55);
+  const plate = plateElement.getBoundingClientRect();
+  const target = save.getBoundingClientRect();
+  const name = link.querySelector<HTMLElement>("h3")!;
+  const town = name.previousElementSibling!;
+  const ratio = window.matchMedia("(min-width: 640px)").matches ? 1.6 : 1.43;
+  await expect(Math.abs(photo.width / photo.height - ratio)).toBeLessThanOrEqual(0.02);
   await expect(photo.height).toBeGreaterThanOrEqual(170);
-  await expect(plate.top).toBeLessThan(photo.bottom);
-  await expect(plate.bottom).toBeGreaterThan(photo.bottom);
-  await expect(plate.top).toBeGreaterThanOrEqual(photo.top - 1);
-  await expect(plate.left - photo.left).toBeGreaterThanOrEqual(12);
-  await expect(plate.left - photo.left).toBeLessThanOrEqual(16);
-  await expect(plate.right).toBeLessThanOrEqual(photo.right + 1);
-  const touches = target.left < plate.right && target.right > plate.left && target.top < plate.bottom && target.bottom > plate.top;
-  await expect(touches).toBe(false);
+  await expect(Math.abs(plate.top - (photo.bottom - 22))).toBeLessThanOrEqual(1);
+  await expect(Math.abs(plate.left - (photo.left + 16))).toBeLessThanOrEqual(1);
+  await expect(plate.bottom - photo.bottom).toBeGreaterThanOrEqual(44);
+  await expect(plate.right).toBeLessThanOrEqual(photo.right);
+  await expect(town.getBoundingClientRect().bottom).toBeLessThanOrEqual(name.getBoundingClientRect().top + 1);
+  await expect(name.scrollHeight).toBeLessThanOrEqual(name.clientHeight + 1);
   await expect(target.height).toBeGreaterThanOrEqual(44);
-  await expect(target.right).toBeLessThanOrEqual(photo.right + 1);
-  await expect(getComputedStyle(plateElement).backgroundColor).toBe(tokenColor(plateElement, "backgroundColor", "--app-brand-press"));
-  await expect(getComputedStyle(link.querySelector("h3")!).color).toBe(tokenColor(plateElement, "color", "--app-on-brand"));
-  const name = link.querySelector<HTMLElement>("h3")!, town = name.nextElementSibling as HTMLElement;
+  await expect(target.width).toBeGreaterThanOrEqual(44);
+  await expect(save).toHaveAccessibleName(/save/i);
   if (enlarged) {
     await expect(target.top).toBeGreaterThanOrEqual(plate.bottom - 1);
-    // Enlarged text lifts the three-line clamp, so the whole name shows.
-    await expect(getComputedStyle(name).webkitLineClamp).not.toBe("3");
-    await expect(name.scrollHeight).toBeLessThanOrEqual(name.clientHeight + 1);
-    return;
+  } else {
+    await expect(target.left - plate.right).toBeGreaterThanOrEqual(11);
+    await expect(Math.abs(target.right - (photo.right - 16))).toBeLessThanOrEqual(1);
   }
-  // The town line stays on one line, even on a 320px phone.
-  const townLine = parseFloat(getComputedStyle(town).lineHeight);
-  await expect(town.getBoundingClientRect().height).toBeLessThanOrEqual(townLine * 1.5);
-  // The plate hangs exactly 36px below the photo, inside a band of 44 to 48px.
-  await expect(Math.abs(plate.bottom - (photo.bottom + 36))).toBeLessThanOrEqual(1);
-  await expect(box.bottom - photo.bottom).toBeGreaterThanOrEqual(44);
-  await expect(box.bottom - photo.bottom).toBeLessThanOrEqual(48);
-  await expect(target.top).toBeGreaterThanOrEqual(photo.bottom - 1);
-  await expect(target.bottom).toBeLessThanOrEqual(photo.bottom + 48 + 1);
-  await expect(Math.abs(target.right - photo.right)).toBeLessThanOrEqual(1);
-  await expect(target.left - plate.right).toBeGreaterThanOrEqual(11);
-  // The slot holds every label Save can show here, including the transient one.
-  const label = save.querySelector("span")!, icon = save.querySelector("svg")!.getBoundingClientRect();
-  const labelStyle = getComputedStyle(label), buttonStyle = getComputedStyle(save);
-  const context = document.createElement("canvas").getContext("2d")!;
-  context.font = `${labelStyle.fontWeight} ${labelStyle.fontSize} ${labelStyle.fontFamily}`;
-  for (const text of ["Save", "Saved", "Saving…", "Removing…"]) {
-    const needed = icon.width + parseFloat(buttonStyle.columnGap || "0") + context.measureText(text).width
-      + parseFloat(buttonStyle.paddingLeft) + parseFloat(buttonStyle.paddingRight);
-    await expect(needed, text).toBeLessThanOrEqual(target.width + 0.5);
-  }
+  await expect(getComputedStyle(plateElement).backgroundColor).toBe(tokenColor(plateElement, "backgroundColor", "--app-brand-press"));
+  await expect(getComputedStyle(name).color).toBe(tokenColor(plateElement, "color", "--app-on-brand"));
 }
 
 async function checkDiscovery({ canvasElement }: Parameters<NonNullable<Story["play"]>>[0], enlarged = false) {
@@ -140,7 +121,7 @@ async function checkDiscovery({ canvasElement }: Parameters<NonNullable<Story["p
     const caption = link.querySelector<HTMLElement>("[data-today-geographic-caption]")!.getBoundingClientRect();
     if (index === 0) {
       await expect(link.closest("article")).toHaveAttribute("data-today-discovery-role", "lead");
-      // A wide 16:10 photograph with the coral plate across its bottom edge.
+      // A wide photograph with the coral plate across its bottom edge.
       await expect(Math.abs(photo.width - link.getBoundingClientRect().width)).toBeLessThanOrEqual(1);
       await expect(caption.top).toBeLessThan(photo.bottom);
       await expect(caption.bottom).toBeGreaterThan(photo.bottom);
@@ -180,9 +161,20 @@ async function checkDiscovery({ canvasElement }: Parameters<NonNullable<Story["p
   await expect(canvasElement.querySelector("[data-today-discovery-credit], .place-card-photo-credit")).toBeNull();
   await expect(grid.scrollWidth).toBeLessThanOrEqual(grid.clientWidth + 1);
   await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth + 1);
+  const outings = within(canvas.getByRole("navigation", { name: "Local outings" }));
+  const weekend = outings.getByRole("link", { name: /This Weekend/ });
+  const downtown = outings.getByRole("link", { name: /Two Hours Downtown/ });
+  await expect(weekend.querySelector("img")).toHaveAttribute("alt", "");
+  await expect(downtown.querySelector("img")).toHaveAttribute("alt", "");
+  await physicalLink(weekend, true);
+  await physicalLink(downtown, true);
   links[0].focus(); await expect(links[0]).toHaveFocus();
   await userEvent.tab(); await expect(saves[0]).toHaveFocus();
+  await userEvent.tab(); await expect(weekend).toHaveFocus();
+  await userEvent.tab(); await expect(downtown).toHaveFocus();
   await userEvent.tab(); await expect(links[1]).toHaveFocus();
+  await userEvent.tab({ shift: true }); await expect(downtown).toHaveFocus();
+  await userEvent.tab({ shift: true }); await expect(weekend).toHaveFocus();
   await userEvent.tab({ shift: true }); await expect(saves[0]).toHaveFocus();
   await userEvent.tab({ shift: true }); await expect(links[0]).toHaveFocus();
 }
@@ -210,9 +202,11 @@ export const DifferentTown: Story = {
     const link = canvas.getByRole("link", { name: `View ${place.name} in ${place.town}` });
     await expect(canvasElement.querySelectorAll("[data-today-geographic-place]")).toHaveLength(1);
     await decoded(link, place); await physicalLink(link, true);
-    await expect(canvasElement.textContent).not.toMatch(/Frederick|Carillon|Sophie|pizza/);
+    await expect(link.textContent).not.toMatch(/Frederick|Carillon|Sophie|pizza/);
     const credit = canvasElement.querySelector<HTMLElement>("[data-today-discovery-credit]")!;
     await expect(credit).not.toBeNull(); await expect(link.contains(credit)).toBe(false);
+    const tasks = canvas.getByRole("navigation", { name: "Browse by need" });
+    await expect([credit.textContent, tasks.textContent].join(" ")).not.toMatch(/Frederick|Carillon|Sophie|pizza/);
     for (const anchor of Array.from(credit.querySelectorAll("a"))) await physicalLink(anchor);
     await expect(new URL(link.getAttribute("href")!, "https://radius.test").searchParams.get("returnTo")).toBe("/today?in=brunswick#today-discovery");
     for (const name of ["Eat & drink", "Get outside"]) {
@@ -277,7 +271,10 @@ async function checkTasksOnly({ canvasElement }: Parameters<NonNullable<Story["p
     await expect(url.pathname).toBe("/nearby"); await expect(url.searchParams.get("c")).toBe(category);
     await expect(url.searchParams.get("in")).toBe(scope); await expect(url.searchParams.get("returnTo")).toBe(returnTo);
   }
-  await expect(canvasElement.textContent).not.toMatch(/Frederick|Carillon|Sophie|pizza/);
+  await expect(canvas.getByRole("navigation", { name: "Browse by need" }).textContent).not.toMatch(/Frederick|Carillon|Sophie|pizza/);
+  const outings = within(canvas.getByRole("navigation", { name: "Local outings" }));
+  await expect(outings.getByRole("link", { name: /This Weekend.*Frederick County/ })).toBeVisible();
+  await expect(outings.getByRole("link", { name: /Two Hours Downtown.*Frederick City/ })).toBeVisible();
   await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth + 1);
 }
 export const NoLocalPhoto: Story = {
@@ -313,7 +310,7 @@ export const FailedPhotoKeepsExactDestination: Story = {
     const plate = failed.querySelector<HTMLElement>("[data-today-name-plate]")!.getBoundingClientRect();
     const save = canvasElement.querySelector<HTMLButtonElement>(`button[data-save-ref="place:${place.slug}"]`)!;
     const target = save.getBoundingClientRect(), box = failed.getBoundingClientRect();
-    await expect(Math.abs(plate.left - box.left)).toBeLessThanOrEqual(1);
+    await expect(Math.abs(plate.left - box.left - 16)).toBeLessThanOrEqual(1);
     await expect(target.left).toBeGreaterThanOrEqual(plate.right + 11);
     await expect(target.top).toBeLessThan(plate.bottom);
     await expect(target.bottom).toBeGreaterThan(plate.top);

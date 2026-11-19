@@ -197,7 +197,7 @@ for (const viewport of VIEWPORTS) {
       const trigger = page.getByRole("link", {
         name: "Find a place, service, event, or answer",
       });
-      await expect(page.getByRole("combobox", { name: "Choose your area" })).toBeEnabled();
+      await expect(trigger).toHaveAttribute("data-find-interaction-ready", "true", { timeout: 20_000 });
       await expect(trigger).toBeVisible({ timeout: 20_000 });
       await trigger.click();
 

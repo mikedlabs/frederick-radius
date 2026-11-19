@@ -11,6 +11,11 @@ export type TodayWeatherViewProps = {
   condition: string;
   temperatureF: number | null;
   highF: number | null;
+  lowF?: number | null;
+  retainedHighIssuedAt?: string | null;
+  sunriseTime?: string | null;
+  sunsetTime?: string | null;
+  actionableHeadline?: boolean;
   sun: { label: string; time: string } | null;
   variant: SkyVariant | null;
   forecastAvailable: boolean;
@@ -63,16 +68,33 @@ export function WeatherPending() {
   );
 }
 
-export function WeatherUnavailable({ density = "standard" }: { density?: TodayWeatherViewProps["density"] } = {}) {
+type DailyWeatherFacts = Pick<TodayWeatherViewProps, "lowF" | "sunriseTime" | "sunsetTime" | "retainedHighIssuedAt"> & { highF?: number | null };
+
+function DailyFacts({ highF, lowF, sunriseTime, sunsetTime, retainedHighIssuedAt }: DailyWeatherFacts) {
+  const facts = [
+    [retainedHighIssuedAt ? "Earlier high" : "High", highF == null ? null : `${highF}°`],
+    ["Low", lowF == null ? null : `${lowF}°`],
+    ["Sunrise", sunriseTime],
+    ["Sunset", sunsetTime],
+  ] as const;
+  return <p data-weather-stats className={styles.dailyFacts}>
+    {facts.map(([label, value]) => <span key={label}>
+      {value ? `${label} ${value}` : <>{label} <span aria-hidden>–</span><span className="sr-only">unavailable</span></>}
+    </span>)}
+  </p>;
+}
+
+function EarlierHighSource({ issuedAt }: { issuedAt?: string | null }) {
+  const issued = issuedAt && forecastIssuance(issuedAt);
+  return issued ? <p className={styles.issuance}>The daytime high is from the NWS forecast issued on <time dateTime={issued.dateTime}>{issued.label}</time>.</p> : null;
+}
+
+export function WeatherUnavailable({ density = "standard", ...facts }: DailyWeatherFacts & { density?: TodayWeatherViewProps["density"] } = {}) {
   return (
-    <section
-      aria-label="Weather unavailable"
-      data-weather-state="unavailable"
-      data-weather-density={density}
-      className={`${styles.unavailable} ${density === "masthead" ? styles.masthead : ""}`}
-    >
-      <span data-weather-message>The NWS forecast is briefly unavailable.</span>
-      {density === "masthead" ? <FullForecastLink /> : <span className={styles.handoff}>County status</span>}
+    <section aria-label="Weather unavailable" data-weather-state="unavailable" data-weather-density={density}
+      className={density === "masthead" ? styles.compactUnavailable : styles.unavailable}>
+      <span data-weather-message className={density === "masthead" ? styles.forecastMessage : undefined}>The NWS forecast is briefly unavailable.</span>
+      {density === "masthead" ? <><FullForecastLink /><DailyFacts {...facts} /></> : <span className={styles.handoff}>County status</span>}
     </section>
   );
 }
@@ -80,7 +102,7 @@ export function WeatherUnavailable({ density = "standard" }: { density?: TodayWe
 /** Shared factual presentation. Provider reads, verdicts, sun calculations,
  * live daylight, and offline capture remain owned by the server composition. */
 export default function TodayWeatherView({
-  headline, condition, temperatureF, highF, sun, variant,
+  headline, condition, temperatureF, highF, lowF, sunriseTime, sunsetTime, retainedHighIssuedAt, actionableHeadline, sun, variant,
   forecastAvailable, issuedAt, safetyNote, safetyNoteRoutine = false, daylight, children, density = "standard",
 }: TodayWeatherViewProps) {
   const issuance = forecastIssuance(issuedAt);
@@ -88,7 +110,7 @@ export default function TodayWeatherView({
   const Condition = hasDistinctRead ? "p" : "h2";
   const provenance = (
     <>
-      <p data-weather-source className={styles.source}>NWS forecast · Frederick</p>
+      <p data-weather-source data-weather-scope className={styles.source}>NWS forecast · Frederick</p>
       <p data-weather-issuance className={styles.issuance}>
         {issuance ? <>Issued <time dateTime={issuance.dateTime}>{issuance.label}</time></> : "Issue time unavailable"}
       </p>
@@ -115,47 +137,42 @@ export default function TodayWeatherView({
         className={`${styles.card} ${styles.masthead}`}
       >
         {children}
-        {/* The civic banner is an independent bounded read. Keep this warning
-            visible even when that banner is absent or shows another source. */}
-        {hasDistinctRead && <h2 data-weather-headline className={styles.headline}>{headline}</h2>}
         {forecastAvailable ? (
           <details className={styles.forecastDetails}>
             <summary data-today-weather-summary>
               <span className="sr-only">Forecast details for Frederick. </span>
               <span className={styles.reading}>
+                {variant && <AnimatedSkyGlyph as="span" variant={variant} size={20} className={styles.glyph} />}
                 {temperatureF !== null && (
                   <span data-weather-temperature className={styles.temperature}>
                     <span className="sr-only">{temperatureF} degrees Fahrenheit forecast</span>
                     <span aria-hidden="true">{temperatureF}°</span>
                   </span>
                 )}
-                {variant && <AnimatedSkyGlyph as="span" variant={variant} size={28} className={styles.glyph} />}
-                <span className={styles.details}>
-                  {condition && <span data-weather-condition className={styles.condition}>{condition}</span>}
-                  <span data-weather-scope className={styles.forecastType}>Frederick · NWS</span>
-                </span>
-                <span data-weather-disclosure-cue className={styles.summaryCue} aria-hidden="true">Details<ChevronRight className="h-4 w-4" /></span>
+                <span data-weather-disclosure-cue className={styles.summaryCue} aria-hidden="true"><ChevronRight className="h-3.5 w-3.5" /></span>
+                {condition && <span data-weather-condition className={styles.condition}>{condition}</span>}
               </span>
             </summary>
             <div className={styles.forecastEvidence}>
               {provenance}
+              <EarlierHighSource issuedAt={retainedHighIssuedAt} />
+              {hasDistinctRead && !actionableHeadline && <p className={styles.safetyNote}>{headline}</p>}
               {noteInDetails && safetyLine}
-              {(highF !== null || sun || daylight) && (
-                <p data-weather-stats className={styles.stats}>
-                  {highF !== null && <span>{`High ${highF}°`}</span>}
-                  {(sun || daylight) && <span>{sun ? `${sun.label} ${sun.time}` : null}{daylight}</span>}
-                </p>
-              )}
+              {daylight && <p className={styles.safetyNote}>{daylight}</p>}
               <FullForecastLink />
             </div>
           </details>
         ) : (
-          <>
-            <p data-weather-message className={styles.safetyNote}>The NWS forecast is briefly unavailable.</p>
+          <div className={styles.compactUnavailable}>
+            <span data-weather-message className={styles.forecastMessage}>The NWS forecast is briefly unavailable.</span>
             <FullForecastLink />
-          </>
+          </div>
         )}
+        {hasDistinctRead && (actionableHeadline || !forecastAvailable) &&
+          <h2 data-weather-headline className={styles.headline}>{headline}</h2>}
         {!noteInDetails && safetyLine}
+        <DailyFacts highF={highF} lowF={lowF} sunriseTime={sunriseTime} sunsetTime={sunsetTime} retainedHighIssuedAt={retainedHighIssuedAt} />
+        {!forecastAvailable && <EarlierHighSource issuedAt={retainedHighIssuedAt} />}
       </section>
     );
   }

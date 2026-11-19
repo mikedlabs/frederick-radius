@@ -195,17 +195,21 @@ export const ShortPullReturnsToRest: Story = {
         bubbles: true, cancelable: true, composed: true, pointerId: 1, pointerType: "mouse",
         isPrimary: true, button: 0, buttons: type === "pointerup" ? 0 : 1, clientX: x, clientY: y,
       }));
-    /** Pull down 60px at an unhurried pace and let go while still moving. */
-    const pull = async (start: HTMLElement, x: number, y: number) => {
+    const nextFrame = () => new Promise<void>((resolve) => view.requestAnimationFrame(() => resolve()));
+    // The drag and its DOM transform are frame-driven. Hold one gesture open
+    // until its visible position has been checked, then always release it.
+    const pull = async (start: Element, x: number, y: number, checkPosition: () => void) => {
       point("pointerdown", start, x, y);
-      for (let step = 1; step <= 10; step += 1) {
-        await pause(24);
-        point("pointermove", view, x, y + step * 6);
+      try {
+        for (let step = 1; step <= 10; step += 1) {
+          await pause(24);
+          point("pointermove", view, x, y + step * 6);
+          await nextFrame();
+        }
+        await waitFor(checkPosition, { timeout: 1500 });
+      } finally {
+        point("pointerup", view, x, y + 60);
       }
-      await pause(48);
-      const travelled = top();
-      point("pointerup", view, x, y + 60);
-      return travelled;
     };
 
     // The entrance spring must finish before a rest position means anything.
@@ -213,6 +217,7 @@ export const ShortPullReturnsToRest: Story = {
     await waitFor(async () => {
       const before = top();
       await pause(60);
+      await nextFrame();
       rest = top();
       expect(Math.abs(rest - before)).toBeLessThanOrEqual(0.25);
       expect(Number(view.getComputedStyle(backdrop).opacity)).toBeCloseTo(0.45, 2);
@@ -222,9 +227,12 @@ export const ShortPullReturnsToRest: Story = {
     const rowBox = row.getBoundingClientRect();
     const spacerX = rowBox.right - 40;
     const rowY = rowBox.top + rowBox.height / 2;
-    expect(view.document.elementFromPoint(spacerX, rowY)?.closest("button")).toBeNull();
-    const pulledTo = await pull(row, spacerX, rowY);
-    expect(pulledTo - rest).toBeGreaterThan(30);
+    const hit = view.document.elementFromPoint(spacerX, rowY);
+    expect(row.contains(hit)).toBe(true);
+    expect(hit?.closest("button")).toBeNull();
+    await pull(hit!, spacerX, rowY, () => {
+      expect(top() - rest).toBeGreaterThan(30);
+    });
     await waitFor(() => {
       expect(Math.abs(top() - rest)).toBeLessThanOrEqual(1);
       expect(Number(view.getComputedStyle(backdrop).opacity)).toBeCloseTo(0.45, 2);
@@ -233,8 +241,9 @@ export const ShortPullReturnsToRest: Story = {
 
     // A press that begins on Close is a button press, never a drag.
     const closeBox = close.getBoundingClientRect();
-    const heldAt = await pull(close, closeBox.left + closeBox.width / 2, closeBox.top + closeBox.height / 2);
-    expect(Math.abs(heldAt - rest)).toBeLessThanOrEqual(1);
+    await pull(close, closeBox.left + closeBox.width / 2, closeBox.top + closeBox.height / 2, () => {
+      expect(Math.abs(top() - rest)).toBeLessThanOrEqual(1);
+    });
     await expect(dialog).toBeInTheDocument();
   },
 };

@@ -70,11 +70,9 @@ const checkPreview: NonNullable<Story["play"]> = async ({ canvasElement, args })
   // A short landscape scrollport can initially clip a native lazy image.
   // Bring the actual photo into view before checking its normal load event.
   image.scrollIntoView({ block: "nearest", inline: "nearest" });
-  await waitFor(async () => {
-    await image.decode();
-    await expect(image.naturalWidth).toBeGreaterThan(1);
-    await expect(image.dataset.mapPeekPhotoState).toBe("ready");
-  });
+  await image.decode();
+  await expect(image.naturalWidth).toBeGreaterThan(1);
+  await waitFor(() => expect(image.dataset.mapPeekPhotoState).toBe("ready"));
   const host = canvasElement.querySelector<HTMLElement>("[data-map-preview-host]")!;
   const body = surface.querySelector<HTMLElement>(".map-peek-body")!;
   const frame = surface.querySelector<HTMLElement>(".map-peek-visual")!;

@@ -109,7 +109,7 @@ export function EventPopup({ e, mapReturnTo }: { e: EventPin; mapReturnTo?: stri
         )}
         <Link
           href={withMapReturnTo(`/events/${e.slug}`, mapReturnTo)}
-          style={{ display: "inline-block", fontSize: 12, fontWeight: 700, color }}
+          style={{ display: "inline-flex", alignItems: "center", minWidth: 44, minHeight: 44, fontSize: 12, fontWeight: 700, color }}
         >
           See event <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
         </Link>
