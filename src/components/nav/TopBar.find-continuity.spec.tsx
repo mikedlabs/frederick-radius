@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const navigation = vi.hoisted(() => ({ pathname: "/events", prefetch: vi.fn(), push: vi.fn(), back: vi.fn(), leaveTo: vi.fn() }));
 vi.mock("next/navigation", () => ({
   usePathname: () => navigation.pathname,
+  useSearchParams: () => new URLSearchParams(window.location.search),
   useRouter: () => ({ push: navigation.push, back: navigation.back, prefetch: navigation.prefetch }),
 }));
 vi.mock("next/link", () => ({
@@ -29,7 +30,10 @@ vi.mock("@/hooks/useReversibleHistoryLayer", async (importOriginal) => {
 vi.mock("./LocationChip", () => ({ default: () => null }));
 vi.mock("./PulseIndicator", () => ({ default: () => null }));
 vi.mock("@/components/brand/RippleMark", () => ({ default: () => null }));
-vi.mock("@/hooks/useGeolocation", () => ({ readCachedPosition: () => null }));
+vi.mock("@/hooks/useGeolocation", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/hooks/useGeolocation")>(),
+  readCachedPosition: () => null,
+}));
 vi.mock("@/lib/track", () => ({ track: vi.fn() }));
 
 import TopBar from "./TopBar";
@@ -129,7 +133,10 @@ describe("Find continuity through the real lazy header and overlay", () => {
   it("returns focus to the actual Tools origin only on its owned popped entry", async () => {
     vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
     navigation.pathname = "/today"; window.history.replaceState({ __NA: true, marker: "kept" }, "", "/today?in=brunswick"); await mount();
-    const tools = container.querySelector<HTMLAnchorElement>('a[aria-label="Open tools"]')!;
+    const panel = container.querySelector<HTMLDetailsElement>('[data-today-header-disclosure="tools"]')!;
+    expect(panel.open).toBe(false);
+    await act(async () => panel.querySelector("summary")!.click());
+    const tools = panel.querySelector<HTMLAnchorElement>('a[aria-label="Open tools"]')!;
     const preventNavigation = (event: Event) => event.preventDefault();
     document.addEventListener("click", preventNavigation);
     try { await act(async () => tools.click()); } finally { document.removeEventListener("click", preventNavigation); }
@@ -143,7 +150,9 @@ describe("Find continuity through the real lazy header and overlay", () => {
     });
     await settle(50); expect(document.activeElement).not.toBe(tools); // old router render is not ready
     navigation.pathname = "/today"; await mount(); await settle(50);
-    expect(document.activeElement).toBe(tools);
+    const returnedPanel = container.querySelector<HTMLDetailsElement>('[data-today-header-disclosure="tools"]')!;
+    expect(returnedPanel.open).toBe(true);
+    expect(document.activeElement).toBe(returnedPanel.querySelector('a[aria-label="Open tools"]'));
     expect(window.history.state).toMatchObject({ marker: "kept", __NA: true });
     expect(window.history.state[NATIVE_REQUEST_ENTRY_KEY].target).toBeUndefined();
   });

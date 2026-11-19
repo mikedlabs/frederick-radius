@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
+import { ChevronDown } from "lucide-react";
+import TodayHeaderDisclosure from "@/components/nav/TodayHeaderDisclosure";
 import { useSearchParams } from "next/navigation";
 import { locationScopeHref } from "@/components/nav/locationScopeNavigation";
 import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
@@ -53,20 +55,20 @@ const subscribe = (onStoreChange: () => void) =>
  */
 export default function TodayScopeStatus({ dateline, density = "standard" }: {
   dateline?: string;
-  density?: "standard" | "compact";
+  density?: "standard" | "compact" | "header";
 }) {
   const ready = useSyncExternalStore(subscribeReady, () => true, () => false);
   const storedScope = useSyncExternalStore(subscribe, getScope, () => null);
   const searchParams = useSearchParams();
-  const urlScope = parseScope(searchParams.get("in"));
-  const scope = urlScope ?? storedScope;
+  const explicitScope = searchParams.get("in");
+  const scope = explicitScope === null ? storedScope : parseScope(explicitScope) ?? "county";
 
   // An explicit shared URL wins over yesterday's saved area. Align the shared
   // store once per URL change so the place choices use the same lens as this
   // readout. Area changes update both together through applyTodayScope.
   useEffect(() => {
-    if (urlScope && getScope() !== urlScope) setScope(urlScope);
-  }, [urlScope]);
+    if (explicitScope !== null && getScope() !== scope) setScope(scope);
+  }, [scope, explicitScope]);
   const townScoped = Boolean(scopeTownSlug(scope));
   // The native picker already names Whole county. Keep that redundant live
   // status accessible without adding a second visible row on ordinary arrival.
@@ -114,7 +116,7 @@ export default function TodayScopeStatus({ dateline, density = "standard" }: {
     requestLocation();
   };
 
-  return (
+  const controls = (
     <div data-today-scope-density={density} className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
       <p
         role="status"
@@ -186,4 +188,11 @@ export default function TodayScopeStatus({ dateline, density = "standard" }: {
       ) : null}
     </div>
   );
+  if (density !== "header") return controls;
+  const town = scopeTownSlug(scope);
+  const label = town ? MUNICIPALITY_BY_SLUG[town]?.name ?? "Whole county" : scope === "nearme" ? "Near me" : "Whole county";
+  return <TodayHeaderDisclosure name="area" label={`Choose your area: ${label}`}
+    trigger={<><span>{label}</span><ChevronDown aria-hidden size={14} /></>}>
+    {controls}
+  </TodayHeaderDisclosure>;
 }

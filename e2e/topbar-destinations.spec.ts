@@ -1,3 +1,4 @@
+import { chooseTodayArea, todayArea } from "./today-controls";
 import { expect, test } from "@playwright/test";
 
 for (const viewport of [
@@ -162,9 +163,9 @@ for (const width of [375, 1366]) {
       });
     });
     await page.goto("/today", { waitUntil: "domcontentloaded" });
-    const area = page.getByRole("combobox", { name: "Choose your area", exact: true });
+    const area = todayArea(page);
     await expect(area).toBeEnabled();
-    await area.selectOption("county");
+    await chooseTodayArea(page, "county");
     const opener = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
     const dialog = page.getByRole("dialog", { name: "What do you need?", exact: true });
     const field = dialog.getByRole("searchbox", { name: "Ask or find across Frederick County", exact: true });
@@ -183,7 +184,7 @@ for (const width of [375, 1366]) {
     await expect(dialog).toHaveCount(0);
     await expect(opener).toBeFocused();
 
-    await area.selectOption("town:brunswick");
+    await chooseTodayArea(page, "town:brunswick");
     await opener.click();
     await expect(field).toHaveValue("coffee");
     await expect(dialog.getByText("Fresh search fixture 3", { exact: true })).toBeVisible();

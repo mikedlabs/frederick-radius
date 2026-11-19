@@ -28,7 +28,7 @@ export default function TodayAsk({
   children?: ReactNode;
   embedded?: boolean;
   showQuickNeeds?: boolean;
-  density?: "standard" | "arrival";
+  density?: "standard" | "arrival" | "header";
 }) {
   const findInteractionReady = useSyncExternalStore(subscribeReady, () => true, () => false);
   return (
@@ -37,7 +37,7 @@ export default function TodayAsk({
       aria-labelledby="today-find-heading"
       data-surface-row={embedded ? "find" : undefined}
       data-find-density={density}
-      className={`${styles.find} ${embedded ? "" : styles.standalone} ${density === "arrival" ? styles.arrival : ""}`}
+      className={`${styles.find} ${embedded ? "" : styles.standalone} ${density === "header" ? styles.headerFind : density === "arrival" ? styles.arrival : ""}`}
     >
       <h2 id="today-find-heading" className="sr-only">
         Find what you need
@@ -71,19 +71,19 @@ export default function TodayAsk({
         >
           <Search className="h-6 w-6" strokeWidth={1.8} />
         </span>
-        <span className="min-w-0 flex-1">
+        {density !== "header" && <span className="min-w-0 flex-1">
           <span className={styles.prompt}>
             Find what you need
           </span>
           {density === "standard" && <span className={styles.hint}>
             Search a name, a need, or a question.
           </span>}
-        </span>
-        <ArrowRight
+        </span>}
+        {density !== "header" && <ArrowRight
           className={`h-4 w-4 shrink-0 ${styles.launcherArrow}`}
           strokeWidth={2.25}
           aria-hidden
-        />
+        />}
       </Link>
 
       {showQuickNeeds ? <TodayQuickNeeds>{children}</TodayQuickNeeds> : null}

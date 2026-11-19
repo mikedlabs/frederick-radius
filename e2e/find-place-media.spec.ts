@@ -1,3 +1,4 @@
+import { todayArea } from "./today-controls";
 import { readFileSync } from "node:fs";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
@@ -195,7 +196,7 @@ for (const { entry, query, slug, photoSource } of [
       return dialog;
     }
     await page.goto(entry, { waitUntil: "domcontentloaded" });
-    if (entry.startsWith("/today")) await expect(page.getByRole("combobox", { name: "Choose your area", exact: true })).toHaveValue("county");
+    if (entry.startsWith("/today")) await expect(todayArea(page)).toHaveAccessibleName(/Whole county/i);
     let dialog = await openEntryFind();
     const paidFindRequests: string[] = [];
     let observeFind = true;
@@ -259,7 +260,7 @@ for (const { entry, query, slug, photoSource } of [
     await expect(dialog).toHaveCount(0);
     await page.goBack();
     await expect(page).toHaveURL(new URL(entry, test.info().project.use.baseURL as string).href);
-    if (entry.startsWith("/today")) await expect(page.getByRole("combobox", { name: "Choose your area", exact: true })).toHaveValue("county");
+    if (entry.startsWith("/today")) await expect(todayArea(page)).toHaveAccessibleName(/Whole county/i);
     dialog = await openEntryFind();
     await expect(dialog.getByRole("searchbox")).toHaveValue(query);
     await expect(dialog.locator("#search-opt-0").getByRole("heading", { name: query, exact: true })).toBeVisible();

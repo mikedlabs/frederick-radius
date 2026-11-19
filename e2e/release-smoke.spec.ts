@@ -1,3 +1,4 @@
+import { showTodayTools } from "./today-controls";
 import { expect, test, type Page } from "@playwright/test";
 import { findErrorBoundaryMarker } from "./error-boundary-markers";
 
@@ -292,30 +293,13 @@ for (const viewport of VIEWPORTS) {
             ).toBeVisible();
           }
           const header = page.locator("header").first();
+          await expect(header.getByRole("link", { name: "Find a place, service, event, or answer" }))
+            .toHaveAttribute("href", "/search");
+          await showTodayTools(page);
           const countyStatus = header.locator("[data-pulse-indicator]");
+          await expect(countyStatus).toHaveCount(1);
           await expect(countyStatus).toHaveAttribute("href", "/pulse");
-          if (viewport.width >= 640) {
-            await expect(countyStatus).toBeVisible();
-          } else {
-            // Only a valid quiet report can suppress the phone status control.
-            // Checking, unknown and reported alerts remain reachable.
-            await expect.poll(async () => {
-              const label = await countyStatus.getAttribute("aria-label");
-              const visible = await countyStatus.isVisible();
-              if (label === "County status: Clear in checked feeds; no active alerts") return !visible;
-              return (/^County status: (?:checking|Unable to verify; current alerts are unverified)$/.test(label ?? "")
-                || /^County status: (?:Checking|Unable to verify)\. (?:Checking again|Current check unavailable)\. Earlier report had \d+ alerts?; current alerts are unverified\.$/.test(label ?? "")
-                || /^County status: (?:Urgent|Advisory); \d+ alerts? reported(?:; some sources unavailable)?$/.test(label ?? "")) && visible;
-            }).toBe(true);
-          }
-          await expect(
-            header.getByRole("link", { name: "Open tools" }),
-          ).toBeVisible();
-          // The connected-discovery pass moved the single request doorway
-          // into Today's main launcher; do not assert the retired header UI.
-          await expect(
-            main.getByRole("link", { name: "Find a place, service, event, or answer" }),
-          ).toHaveAttribute("href", "/search");
+          await expect(countyStatus).toHaveAttribute("aria-label", /^County status:/);
         }
 
         if (route === "/events") {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, AlertTriangle, ArrowRight, CalendarX, Clock, Info } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowRight, CalendarX, ChevronDown, Clock, Info } from "lucide-react";
 import type { NwsAlert } from "@/lib/integrations/nws-alerts";
 import { getNpsAlerts, type NpsAlert } from "@/lib/integrations/nps";
 import {
@@ -350,14 +350,21 @@ export default async function CivicAlerts({ includeWeather = true, compact = fal
     return (
       <section aria-label="Heads up" className="space-y-1 border-b pb-2" style={{ borderColor: "var(--app-border)" }}>
         {top && s && (
-          <a href={withBrowseReturnTo(top.url ?? "/pulse", returnTo)}
-            target={top.external ? "_blank" : undefined} rel={top.external ? "noopener noreferrer" : undefined}
-            className="flex min-h-11 items-center gap-2.5 rounded-[var(--app-radius-sm)] px-3 py-2"
-            style={{ background: "var(--app-bg-sunken)", borderLeft: `3px solid ${s.bg}`, color: "var(--app-ink)" }}>
-            <Icon className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold">Heads up: {top.title}</span><span className="block text-[11px]" style={{ color: "var(--app-ink-2)" }}>{top.tail} · {top.source}{top.scope ? ` · ${top.scope}` : ""}</span></span>
-            <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
-          </a>
+          <details className="group border-b border-[var(--app-border)]">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 py-1.5 text-[13px] font-semibold leading-snug [&::-webkit-details-marker]:hidden">
+              <Icon className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1">{top.title}</span>
+              <ChevronDown className="h-4 w-4 shrink-0 group-open:rotate-180" aria-hidden />
+            </summary>
+            <div className="pb-2 pl-6 text-[13px] leading-normal">
+              <p>{top.tail} · {top.source}{top.scope ? ` · ${top.scope}` : ""}</p>
+              <a href={withBrowseReturnTo(top.url ?? "/pulse", returnTo)}
+                target={top.external ? "_blank" : undefined} rel={top.external ? "noopener noreferrer" : undefined}
+                className="inline-flex min-h-11 items-center gap-1 font-semibold text-[var(--app-link)]">
+                Alert details<ArrowRight className="h-4 w-4" aria-hidden />
+              </a>
+            </div>
+          </details>
         )}
         {notices.map((notice) => (
           <a key={notice.slug} href={withBrowseReturnTo(`/events/${notice.slug}`, returnTo)} className="flex min-h-11 items-center gap-2 px-3 text-[13px] font-semibold" style={{ color: "var(--app-link)" }}>

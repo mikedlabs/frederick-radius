@@ -260,13 +260,17 @@ function firstEditionStops(now: number, events: readonly EventWithMeta[]): Guide
   });
 }
 
+export function weekendGuideDateLabel(now: Date): string {
+  const bounds = buildHorizonBounds(now);
+  return weekendDate.formatRange(
+    bounds.weekendStart === firstFriday ? firstSaturday : new Date(bounds.weekendStart),
+    new Date(bounds.weekendEnd - 1),
+  );
+}
+
 export function weekendGuide(now: Date, verifiedEvents: readonly EventWithMeta[] = []): LocalOutingGuide {
   const bounds = buildHorizonBounds(now);
   const isFirstEdition = bounds.weekendStart === firstFriday;
-  const weekendLabel = weekendDate.formatRange(
-    isFirstEdition ? firstSaturday : new Date(bounds.weekendStart),
-    new Date(bounds.weekendEnd - 1),
-  );
   let stops: GuideStop[];
 
   if (isFirstEdition) {
@@ -290,7 +294,7 @@ export function weekendGuide(now: Date, verifiedEvents: readonly EventWithMeta[]
   return {
     title: "This Weekend",
     summary: stops.length ? undefined : "We don’t have any confirmed guide picks for these dates. Browse Events for more listings.",
-    scopeLabel: `Whole county · ${weekendLabel}`,
+    scopeLabel: `Whole county · ${weekendGuideDateLabel(now)}`,
     ...weekendGuideCover(now),
     stops,
     note: stops.length

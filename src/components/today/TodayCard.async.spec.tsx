@@ -114,7 +114,7 @@ describe("TodayCard provider composition", () => {
     expect(html).toContain('data-weather-density="masthead"');
     expect(html.match(/<summary\b/g)).toHaveLength(1);
     expect(html.indexOf('href="/pulse?open=weather"')).toBeGreaterThan(html.indexOf("</summary>"));
-    expect(html.indexOf("The air-quality reading is unavailable.")).toBeGreaterThan(html.indexOf("</details>"));
+    expect(html.slice(html.indexOf("</summary>"), html.indexOf("</details>"))).toContain("The air-quality reading is unavailable.");
     for (const fact of ["72°", "Mostly sunny", "NWS forecast · Frederick", "Oct 8, 2026, 7:35 AM EDT", "High 76°", "Sunset", "data-live-daylight", "The air-quality reading is unavailable."]) {
       expect(html).toContain(fact);
     }
@@ -152,6 +152,28 @@ describe("TodayCard provider composition", () => {
     const html = await renderCard();
     expect(html).toContain("Oct 7, 2026, 7:35 AM EDT");
     expect(html).not.toContain("Oct 8, 2026, 10:00 AM");
+  });
+
+  it("keeps both solar times on the Frederick date after sunset and UTC midnight", async () => {
+    vi.setSystemTime(new Date("2026-10-09T01:30:00Z")); // 9:30 p.m. October 8 in Frederick
+    const base = FORECAST.daily[0];
+    providers.forecast.mockResolvedValue({
+      ...FORECAST,
+      hourly: [],
+      daily: [
+        { ...base, startTime: "2026-10-08T22:00:00Z", endTime: "2026-10-09T10:00:00Z", temperature: 46, isDaytime: false },
+        { ...base, startTime: "2026-10-09T10:00:00Z", endTime: "2026-10-09T22:00:00Z", temperature: 75 },
+      ],
+    });
+    const card = await TodayCard({ density: "masthead" });
+    expect(card.props).toMatchObject({
+      highF: null, lowF: 46, sunriseTime: expect.stringMatching(/AM$/), sunsetTime: expect.stringMatching(/PM$/),
+    });
+    providers.forecast.mockResolvedValue(null);
+    const withoutForecast = await TodayCard({ density: "masthead" });
+    expect(withoutForecast.props).toMatchObject({
+      lowF: null, highF: null, sunriseTime: card.props.sunriseTime, sunsetTime: card.props.sunsetTime,
+    });
   });
 
   it("collapses a null forecast without inventing temperature or an offline read", async () => {

@@ -14,7 +14,7 @@ import { localDiscoveryPlaces, type LocalDiscoveryPlace } from "@/lib/today/disc
 import styles from "./TodayLayout.module.css";
 
 export type TodayDiscoveryTask = "food" | "outside";
-export type TodayGuidePhotos = { weekend: string; downtown: string };
+export type TodayGuidePhotos = { weekend: string; weekendLabel?: string; downtown: string };
 
 function OutingLink({ href, title, scope, image, Icon }: {
   href: string;
@@ -37,7 +37,7 @@ function OutingLink({ href, title, scope, image, Icon }: {
       <span className={styles.outingCaption}>
         {!image && <Icon aria-hidden />}
         <span><strong>{title}</strong><small>{scope}</small></span>
-        <ArrowRight aria-hidden className={styles.outingArrow} />
+        {!image && <ArrowRight aria-hidden className={styles.outingArrow} />}
       </span>
     </Link>
   );
@@ -74,18 +74,18 @@ function DiscoveryPlace({ place, scope, returnTo, lead }: { place: LocalDiscover
         className={styles.discoveryPlaceLink}>
         {source ? <span className={styles.discoveryPhoto} data-today-photo-lead={lead || undefined}>
           <PlaceCardPhoto key={source.src} source={source} onResult={onResult}
-            sizes="(min-width: 640px) 520px, calc(100vw - 32px)" />
+            sizes={lead ? "(min-width: 640px) 520px, 100vw" : "72px"} />
         </span> : !lead && <MapPin aria-hidden data-today-discovery-glyph className={styles.discoveryGlyph} strokeWidth={1.75} />}
         <div data-today-geographic-caption data-today-name-plate={lead || undefined} className={styles.discoveryCaption}>
           <div className="min-w-0">
+            {lead && <p className={styles.discoveryTown}>{place.town}</p>}
             <h3 className={styles.discoveryName}>{place.shortName ?? place.name}</h3>
-            <p className={styles.discoveryTown}>{place.town}</p>
+            {!lead && <p className={styles.discoveryTown}>{place.town}</p>}
           </div>
-          <span aria-hidden className={styles.discoveryAction}><ArrowUpRight className="h-4 w-4" strokeWidth={2.25} /></span>
         </div>
       </Link>
       <div className={styles.discoverySave}>
-        <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} barLabel="Save" importLocalSavesOnMount={false} />
+        <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} barLabel={lead ? undefined : "Save"} importLocalSavesOnMount={false} />
       </div>
       </div>
       {source?.kind === "curated" && <div className={styles.discoveryCredit} data-today-discovery-credit={place.slug}>
@@ -109,8 +109,9 @@ export function TodayGeographicDoorwayView({ scope = null, returnTo, guidePhotos
   const outingOrigin = `${origin.split("#", 1)[0]}#local-outings`;
   const outings = (
     <nav id="local-outings" aria-label="Local outings" data-outing-photos={Boolean(photos)} className={styles.discoveryOutings}>
+      <h3 className={styles.guidesHeading}>Local guides</h3>
       <OutingLink href={withBrowseReturnTo("/today/weekend", outingOrigin)}
-        title="This Weekend" scope="Frederick County" image={photos?.weekend} Icon={CalendarDays} />
+        title="This Weekend" scope={photos?.weekendLabel ?? "Frederick County"} image={photos?.weekend} Icon={CalendarDays} />
       <OutingLink href={withBrowseReturnTo("/today/two-hours-downtown", outingOrigin)}
         title="Two Hours Downtown" scope="Frederick City" image={photos?.downtown} Icon={Footprints} />
     </nav>

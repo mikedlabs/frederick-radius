@@ -42,6 +42,10 @@ export function useNativeRequestReturn({ target, inputKind, inputRef, ready = tr
       const modal = [...document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]')]
         .find((dialog) => !dialog.closest('[hidden], [inert], [aria-hidden="true"]'));
       if (modal && !modal.contains(node)) return;
+      if (target === "tools-opener") {
+        const tools = node.closest<HTMLDetailsElement>('details[data-today-header-disclosure="tools"]');
+        if (tools) tools.open = true;
+      }
       node.focus({ preventScroll: true });
       if (document.activeElement === node) { focusRestored.current = value.sequence; cleanup(); consumeNativeReturnFocus(value); }
     };

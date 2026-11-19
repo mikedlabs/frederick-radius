@@ -556,11 +556,21 @@
   }
 }
 
+/* The lead photo alone reaches the phone edges. Its caption and the guide
+   tiles use the normal reading gutter. */
+@media (max-width: 639.98px) {
+  .app-main-reading[data-app-primary-tab="/today"] {
+    --today-photo-bleed: 1rem;
+    padding-top: 0.5rem;
+  }
+}
+
 /* On a narrow Today screen, text enlargement needs the space that a rem
    gutter would consume. Keep a physical reading inset and respect the device
    safe area; every label and control still uses the visitor's full text size. */
 @media (max-width: 359px) {
   .app-main-reading[data-app-primary-tab="/today"] {
+    --today-photo-bleed: 16px;
     padding-left: max(16px, env(safe-area-inset-left, 0px));
     padding-right: max(16px, env(safe-area-inset-right, 0px));
   }
@@ -9200,16 +9210,14 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
    headings, 17px row titles and 14px supporting lines. */
 [data-app-primary-tab="/today"] h1[data-today-title],
 [data-app-primary-tab="/today"] [data-today-masthead] h1 {
-  font-size: 40px;
-  font-weight: 800;
-  line-height: 1.02;
-  letter-spacing: -0.04em;
+  font-size: clamp(2rem, 8.6vw, 2.5rem);
+  font-weight: 750;
+  line-height: 1.05;
+  letter-spacing: -0.055em;
 }
+
 @media (min-width: 640px) {
-  [data-app-primary-tab="/today"] [data-today-masthead] h1 { font-size: 48px; }
-}
-@media (max-width: 359.98px) {
-  [data-app-primary-tab="/today"] [data-today-masthead] h1 { font-size: 34px; }
+  [data-app-primary-tab="/today"] [data-today-masthead] h1 { font-size: 3rem; }
 }
 
 /* Events dock: a flat header on the page ground with one hairline under it.
