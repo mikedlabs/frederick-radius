@@ -1,3 +1,4 @@
+import { chooseTodayArea, todayArea } from "./today-controls";
 import { test, expect } from "@playwright/test";
 import fs from "node:fs/promises";
 
@@ -45,7 +46,7 @@ for (const width of [390, 1440]) {
     await page.goto("/today");
     const find = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
     await expect(find).toBeVisible();
-    await expect(page.getByRole("combobox", { name: "Choose your area" })).toBeVisible();
+    await expect(todayArea(page)).toBeVisible();
     await expect(page.getByRole("link", { name: "Local services", exact: true })).toBeVisible();
     const box = await find.boundingBox();
     expect(box!.y + box!.height).toBeLessThan(width === 390 ? 500 : 550);
@@ -53,8 +54,8 @@ for (const width of [390, 1440]) {
     await page.evaluate(() => document.fonts.ready);
     await expect.poll(() => page.locator("main img").evaluateAll((images) => images.every((image) => (image as HTMLImageElement).complete))).toBe(true);
     await page.screenshot({ path: `${evidence}/today-${width === 390 ? "mobile" : "desktop"}.png` });
-    await page.getByRole("combobox", { name: "Choose your area" }).selectOption("town:brunswick");
-    await expect(page.getByTestId("today-scope-status")).toContainText("Brunswick place picks");
+    await chooseTodayArea(page, "town:brunswick");
+    await expect(page.getByTestId("today-scope-status")).toContainText("Brunswick");
     await expect(page.getByRole("link", { name: "Plan a few hours", exact: true })).toHaveAttribute("href", /in=brunswick/);
     await expect(page.getByRole("button", { name: "Ask or find across Frederick County" })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -69,9 +70,10 @@ test("a denied location still offers every town without another permission reque
     }, configurable: true });
   });
   await page.goto("/today");
+  await todayArea(page).click();
   await page.getByRole("button", { name: "Use my location", exact: true }).click();
   await expect(page.getByTestId("today-location-blocked")).toContainText("Choose a town");
-  await page.getByRole("combobox", { name: "Choose your area" }).selectOption("town:brunswick");
+  await chooseTodayArea(page, "town:brunswick");
   await expect(page.getByTestId("today-scope-status")).toContainText("Brunswick");
 });
 

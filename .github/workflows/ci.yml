@@ -177,17 +177,17 @@ jobs:
         timeout-minutes: 10
         run: |
           set -euo pipefail
-          # Either Ubuntu mirror can stall from a hosted runner. The runner's
-          # Azure HTTP mirror has, and archive.ubuntu.com did for hours on
-          # 2026-11-11. A timing check decides which to try first. Both stay
-          # listed, both serve the same signed archive, and apt still verifies
-          # it. Any unclear result leaves the runner's own order untouched.
+          # Hosted runners list different Ubuntu mirrors first, and a slow one
+          # is not an error, so apt never moves past it. Runners that listed
+          # the us-east-2 EC2 mirror first downloaded at about 300 kB/s and
+          # timed out here; archive.ubuntu.com stalled for hours on 2026-11-11.
+          # A short download test lists the clearly fastest mirror first. All
+          # stay listed, all serve the same signed archive, and apt still
+          # verifies it. Any unclear result leaves the runner's order alone.
           if [ -f /etc/apt/apt-mirrors.txt ]; then
-            if [ "$(bash scripts/ci-pick-apt-mirror.sh)" = "archive" ]; then
-              mirrors="$(bash scripts/ci-pick-apt-mirror.sh --archive-first < /etc/apt/apt-mirrors.txt)"
-              if [ -n "$mirrors" ]; then
-                printf '%s\n' "$mirrors" | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
-              fi
+            mirrors="$(bash scripts/ci-pick-apt-mirror.sh < /etc/apt/apt-mirrors.txt)" || mirrors=""
+            if [ -n "$mirrors" ]; then
+              printf '%s\n' "$mirrors" | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
             fi
             cat /etc/apt/apt-mirrors.txt
           fi

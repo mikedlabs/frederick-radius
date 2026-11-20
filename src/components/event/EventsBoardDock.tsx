@@ -102,6 +102,7 @@ export const EVENTS_PRIMARY_WHEN_PRESETS = WHEN_PRESETS.filter(
 type Pane = "what" | "when" | "where";
 
 export type EventsBoardDockProps = {
+  photoOverview?: boolean;
   /** Server `now` (ISO) — the dateline + the ribbon's "today". */
   nowISO: string;
   /** Complete server-computed counts for the When pane's 7-day ribbon. */
@@ -169,6 +170,7 @@ function EbChip({
   color,
   count,
   quiet,
+  preset,
   children,
   onClick,
   ariaLabel,
@@ -179,6 +181,7 @@ function EbChip({
   color?: string | null;
   count?: number;
   quiet?: boolean;
+  preset?: string;
   children: ReactNode;
   onClick: () => void;
   ariaLabel?: string;
@@ -189,6 +192,7 @@ function EbChip({
   return (
     <button
       type="button"
+      data-events-preset={preset}
       aria-pressed={on}
       aria-label={ariaLabel}
       onClick={onClick}
@@ -657,7 +661,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   const sortLabel = SORT_OPTIONS.find((item) => item.key === sort)?.label ?? "Recommended";
 
   return (
-    <div className={`eb-dock${collapsed ? " eb-collapsed" : ""}${pane ? " eb-open" : ""}`}>
+    <div data-events-scoped={Boolean(town || whereLabel) || undefined} className={`eb-dock ${props.photoOverview ? styles.overview : ""}${collapsed ? " eb-collapsed" : ""}${pane ? " eb-open" : ""}`}>
       <h1 className="sr-only">Events in Frederick County</h1>
       <div className="eb-head backdrop-blur-xl supports-[backdrop-filter]:bg-[var(--app-bg-elevated)]/85" style={{ background: "var(--app-bg-elevated-solid)" }}>
         {/* The almanac nameplate — collapses to zero on scroll. */}
@@ -684,6 +688,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           {EVENTS_PRIMARY_WHEN_PRESETS.map((p) => (
             <EbChip
               key={p.key}
+              preset={p.key}
               on={visibleWhenPreset === p.key}
               color="var(--app-brand)"
               onClick={() => pickPreset(p)}
@@ -708,7 +713,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
             <SlidersHorizontal className="h-[16px] w-[16px] shrink-0" strokeWidth={2.2} aria-hidden />
             <span className={`eb-filter-copy ${styles.copy}`} aria-hidden>
               <span className="eb-filter-label">Filters</span>
-              <span className={styles.context}>
+              <span className={styles.context} data-scope-selected={Boolean(town || whereLabel) || undefined}>
                 <span data-event-filter-time>{when.text}</span>
                 <span aria-hidden>·</span>
                 <span data-event-filter-scope>{whereText}</span>
@@ -750,7 +755,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
             inline. Neither surface puts a control wall in front of the first
             event. */}
         <div ref={toolbarRef} className={`eb-subbar ${styles.toolbar}`} data-filter-paused={paneOpen ? "true" : undefined} aria-hidden={paneOpen ? true : undefined}>
-          <span className="eb-countline" aria-live="polite">
+          <span className="eb-countline" data-count-complete={props.countComplete} aria-live="polite">
             {line}
           </span>
           <details

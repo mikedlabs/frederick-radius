@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:f7783bf3d832d7c73af32c2e07ed26cec97b760c9c1b433d8683bbf8bb3bbf9a",
+  "data_version": "sha256:1ba9ce3adc3724276c87be95e78a0d14985657b6995073c945ecf37c40aebbb2",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-11-12T15:47:17.179Z",
+      "promoted_at": "2026-11-20T15:45:37.204Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -66,15 +66,15 @@
         },
         {
           "path": "src/data/places-official-hours.json",
-          "sha256": "35ff329590c882399cb212f0bb64d6399d63cc4c63405c20720e504413ff2ce7",
+          "sha256": "09dc3dd90039fd525ef181eced5132c6dc1c3329fa8295865a702f15a96485d5",
           "records": 9,
           "bytes": 12142
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "5ffe12e8c5f0a0f1e9dfe62d4814d5d8a657ac8dfc989e7d338fed2d750b767a",
-          "records": 34,
-          "bytes": 43975
+          "sha256": "41490a1ffb23ddcffb501b3c379f0eb540aace068c737e3a32502c3a7493dc2a",
+          "records": 35,
+          "bytes": 45195
         },
         {
           "path": "src/data/business-status.json",
@@ -534,9 +534,9 @@
         },
         {
           "path": "src/data/business-info.json",
-          "sha256": "56a0a59554ed37c9f17947675f13c979f66226ce8abaade4551ed1ccdd637b76",
-          "records": 159,
-          "bytes": 127040
+          "sha256": "374e3ef976fc72f29d39e9c70fa9293cf5b5c883714637f3a3a454a75566c457",
+          "records": 161,
+          "bytes": 128193
         },
         {
           "path": "src/data/field-notes.json",
@@ -576,9 +576,9 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "1adc1c198b62e926aa2de3bd12e7cdea57051dc8ebf2ae5a0b2c50bbbc0dfde5",
+          "sha256": "70193e160522883b956a2319963d0595fe75785010f5c99c060e2c0192dfe4a5",
           "records": 1571,
-          "bytes": 2315217
+          "bytes": 2318056
         },
         {
           "path": "src/data/copy-scores.json",
@@ -588,9 +588,9 @@
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "a17869e2f3bbfdeb98cacb4881ecb72842263c4c61f9c16b8f8ec0d1ff8aa46f",
-          "records": 37,
-          "bytes": 46294
+          "sha256": "dc97400d242088ae792f01cfc85be6c2c77026d7150177a603a1012a86d5b961",
+          "records": 40,
+          "bytes": 48839
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
@@ -601,13 +601,13 @@
       ]
     },
     "sources": {
-      "promoted_at": "2026-11-02T08:40:12.466Z",
+      "promoted_at": "2026-11-20T15:45:37.204Z",
       "artifacts": [
         {
           "path": "src/data/source-registry.generated.json",
-          "sha256": "2c5f3b1a202b733347e4de971fb46f2fc0092a2e94349d6edf08cf05460c8528",
-          "records": 161,
-          "bytes": 108289
+          "sha256": "9a975f4a162f7e0b133aecb3d555b854dc8d57e28cfd6b100dec5c11d43e026a",
+          "records": 162,
+          "bytes": 109022
         }
       ]
     },
@@ -635,13 +635,13 @@
       ]
     },
     "venue-events": {
-      "promoted_at": "2026-10-26T15:21:12.053Z",
+      "promoted_at": "2026-11-19T15:43:46.502Z",
       "artifacts": [
         {
           "path": "src/data/venue-event-source-inventory.json",
-          "sha256": "33fc7477f9745f77c44a14db286180c81bd8cab272ca3085d2bb80827992ebe6",
-          "records": 147,
-          "bytes": 87097
+          "sha256": "946323735c3847ecb8fab60b12372c556b4a57adb53a74dafeaa0f8b5f30c0a0",
+          "records": 150,
+          "bytes": 88728
         },
         {
           "path": "src/data/venue-event-source-state.json",
@@ -651,9 +651,9 @@
         },
         {
           "path": "src/data/venue-events.json",
-          "sha256": "33fc7477f9745f77c44a14db286180c81bd8cab272ca3085d2bb80827992ebe6",
-          "records": 147,
-          "bytes": 87097
+          "sha256": "946323735c3847ecb8fab60b12372c556b4a57adb53a74dafeaa0f8b5f30c0a0",
+          "records": 150,
+          "bytes": 88728
         }
       ]
     },

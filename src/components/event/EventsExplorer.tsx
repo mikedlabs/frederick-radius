@@ -5,6 +5,8 @@ import { featuredEventSlugs } from "@/lib/events/featured";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, LocateFixed, X } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
+import EventsOverview from "@/components/event/EventsOverview";
+import { selectEventHighlights, eventMatchesTonight, eventMatchesHighlightWeekend } from "@/lib/events/highlights";
 import EventsRestorePreview from "@/components/event/EventsRestorePreview";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import EventAgenda from "@/components/event/EventAgenda";
@@ -14,9 +16,10 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import { easternDayKey } from "@/lib/tz";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
-import { groupByHorizon, isRangeListing, RANGE_LISTING_STALE_AFTER_MS } from "@/lib/eventHorizon";
+import { buildHorizonBounds, groupByHorizon, isRangeListing, RANGE_LISTING_STALE_AFTER_MS } from "@/lib/eventHorizon";
 import {
   collapseLaterSeries,
+  eventIdentity,
   type EventBrowseSummary,
 } from "@/lib/events/browsePayload";
 import {
@@ -172,6 +175,8 @@ const DAYPART_KEYS: Daypart[] = DAYPARTS.map((d) => d.key);
 // are imported from there so both surfaces speak one vocabulary.
 
 type Props = {
+  initialHighlightWindows?: { tonight: boolean; weekend: boolean };
+  clock?: () => number;
   /** Bounded server preview. Empty degraded snapshots may recover once. */
   events: EventWithMeta[];
   liveSlugs: string[];
@@ -199,10 +204,6 @@ type ReconciledBrowseResponse = {
   sourceHealth: EventSourceHealth;
   dataComplete: boolean;
 };
-
-function eventIdentity(event: Pick<EventWithMeta, "slug" | "starts_at">): string {
-  return `${event.slug}@@${event.starts_at}`;
-}
 
 /**
  * A deferred browse response is authoritative only when its source health is
@@ -443,18 +444,39 @@ function chronoKey(e: EventWithMeta, nowISO: string): number {
 
 export default function EventsExplorer({
   events,
+  initialHighlightWindows,
+  clock = Date.now,
   liveSlugs,
   categories,
   towns,
   summary,
   sourceHealth,
-  nowISO,
+  nowISO: renderedAt,
   next24ISO,
   weekendStartISO,
   weekendEndISO,
 }: Props) {
   // Keep the full compact corpus out of React Flight. A useful preview waits
   // for browsing intent; an empty degraded preview gets one bounded recovery.
+  const [observedAt, setObservedAt] = useState(() => Date.parse(renderedAt));
+  useEffect(() => {
+    function advance() {
+      if (document.visibilityState === "hidden") return;
+      const value = clock();
+      setObservedAt((previous) => Math.max(previous, value));
+    }
+    advance();
+    const timer = window.setInterval(advance, 60_000);
+    document.addEventListener("visibilitychange", advance);
+    window.addEventListener("pageshow", advance);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", advance);
+      window.removeEventListener("pageshow", advance);
+    };
+  }, [clock]);
+  const now = Math.max(observedAt, Date.parse(renderedAt));
+  const nowISO = new Date(now).toISOString();
   const [eventPool, setEventPool] = useState(events);
   const [currentLiveSlugs, setCurrentLiveSlugs] = useState(liveSlugs);
   const [dataComplete, setDataComplete] = useState(
@@ -632,6 +654,8 @@ export default function EventsExplorer({
     const request = fetchEventsBrowse(browseRequest)
       .then((response) => {
         const payload = response as BrowseResponse;
+        const generatedAt = Date.parse(payload.generatedAt);
+        if (Number.isFinite(generatedAt)) setObservedAt((previous) => Math.max(previous, generatedAt));
         const reconciled = reconcileBrowseResponse(
           eventPoolRef.current,
           liveSlugsRef.current,
@@ -684,15 +708,23 @@ export default function EventsExplorer({
   };
 
   const live = useMemo(() => new Set(currentLiveSlugs), [currentLiveSlugs]);
-  const now = +new Date(nowISO);
   const todayKey = easternDayKey(new Date(now));
   const nearMeActive = eventScopeNeedsCompleteData(activeScope);
-  const contentFilterActive =
-    cat !== null || intent !== null || sub !== null || town !== null ||
+  const hasDiscoveryFilters =
+    cat !== null || intent !== null || sub !== null ||
     time !== "all" || q.trim() !== "" || freeOnly || happyOnly ||
     tod !== null || kidsOnly || lgbtqOnly || communicationAccessOnly ||
     recurringOnly || day !== null;
+  const contentFilterActive = hasDiscoveryFilters || town !== null;
   const anyActiveControl = contentFilterActive || nearMeActive;
+
+  const bounds = useMemo(() => now >= Date.parse(next24ISO) ? buildHorizonBounds(new Date(now), live) : ({
+    now,
+    next24: Date.parse(next24ISO),
+    weekendStart: Date.parse(weekendStartISO),
+    weekendEnd: Date.parse(weekendEndISO),
+    live,
+  }), [now, next24ISO, weekendStartISO, weekendEndISO, live]);
 
   const decisionEventPool = useMemo(
     () =>
@@ -707,6 +739,8 @@ export default function EventsExplorer({
   // so they compose cleanly with time, town, access, and search.
   const baseFiltered = useMemo(() => {
     const term = q.trim().toLowerCase();
+    const clock = new Date(bounds.now);
+    const tonight = !day && time === "today" && tod === "evening";
     return decisionEventPool.filter((e) => {
       // FINISHED events never render, on ANY path. The horizon grouping
       // already dropped them, but the flat paths — the week ribbon's ?d= day
@@ -714,17 +748,13 @@ export default function EventsExplorer({
       // only, so tapping "today" at 11 PM listed the whole day's ended
       // events as if they were still worth your time. One gate here covers
       // every mode. (All-day events run to the end of their Eastern day.)
-      if (!eventMatchesTimeWindow(e, day ? "all" : time, {
-        now,
-        next24: +new Date(next24ISO),
-        weekendStart: +new Date(weekendStartISO),
-        weekendEnd: +new Date(weekendEndISO),
-      })) return false;
+      if (!eventMatchesTimeWindow(e, day ? "all" : time, bounds) &&
+          !(time === "weekend" && !day && eventMatchesHighlightWeekend(e, bounds))) return false;
       // Day filter wins over time-window filters when both are set.
       if (day && dayKeyEastern(e.starts_at) !== day) return false;
       if (town && e.municipality !== town) return false;
       if (freeOnly && !e.is_free) return false;
-      if (tod && eventDaypart(e) !== tod) return false;
+      if (tonight ? !eventMatchesTonight(e, clock) : tod && eventDaypart(e) !== tod) return false;
       if (kidsOnly && !isForKids(e)) return false;
       if (lgbtqOnly && !isLgbtqEvent(e)) return false;
       if (
@@ -748,7 +778,7 @@ export default function EventsExplorer({
         return false;
       return true;
     });
-  }, [decisionEventPool, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
+  }, [decisionEventPool, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly, bounds]);
 
   // Stage 2 — the category dimension (intent roll-up + sub + the legacy
   // exact-cat from the Type drawer / deep-links), then the chosen sort.
@@ -756,7 +786,7 @@ export default function EventsExplorer({
   // Venue are deliberate directory modes and render as flat lists below.
   // Owner-featured slugs float to the top of Recommended. Resolved once per
   // mount; the JSON is tiny and day-keyed, so a session never needs to poll.
-  const [featured] = useState(() => featuredEventSlugs(new Date()));
+  const featured = useMemo(() => featuredEventSlugs(new Date(nowISO)), [nowISO]);
 
   const filtered = useMemo(() => {
     const sortFn = (a: EventWithMeta, b: EventWithMeta): number => {
@@ -844,26 +874,38 @@ export default function EventsExplorer({
         view,
         sort,
         anyFilter: contentFilterActive,
-        bounds: {
-          now,
-          next24: +new Date(next24ISO),
-          weekendStart: +new Date(weekendStartISO),
-          weekendEnd: +new Date(weekendEndISO),
-          live,
-        },
+        bounds,
       }),
-    [
-      contentFilterActive,
-      filtered,
-      live,
-      next24ISO,
-      now,
-      sort,
-      view,
-      weekendEndISO,
-      weekendStartISO,
-    ],
+    [contentFilterActive, filtered, view, sort, bounds],
   );
+
+  const browsingOverview = urlReady && view === "list" && sort === "recommended" &&
+    !hasDiscoveryFilters && !nearMeActive;
+  const showOverview = browsingOverview && filtered.length > 0;
+  const highlights = useMemo(
+    () => browsingOverview ? selectEventHighlights(filtered, bounds, featured) : null,
+    [browsingOverview, filtered, bounds, featured],
+  );
+  const highlighted = useMemo(() => new Set(
+    highlights ? [...highlights.tonight, ...highlights.weekend].map(eventIdentity) : [],
+  ), [highlights]);
+  // Once the server's pick ends, another occurrence can still be beyond the
+  // preview quota. Only the full calendar can establish a newly empty window.
+  const initialCountyPreview = !town && eventPool === events && initialHighlightWindows && highlights;
+  const previewWindowsExpired = Boolean(initialCountyPreview && (
+    now >= Date.parse(next24ISO) ||
+    (initialHighlightWindows.tonight && highlights.tonight.length === 0) ||
+    (initialHighlightWindows.weekend && highlights.weekend.length === 0 && !highlights.weekendIncludesTonight)
+  ));
+  const completeHighlights = !currentSourceHealth.degraded &&
+    (dataComplete || (initialCountyPreview && !previewWindowsExpired));
+  const checkedExpiredPreview = useRef<EventWithMeta[] | null>(null);
+  useEffect(() => {
+    if (!previewWindowsExpired || dataComplete || currentSourceHealth.degraded ||
+        checkedExpiredPreview.current === events) return;
+    checkedExpiredPreview.current = events;
+    queueMicrotask(() => void ensureAllEvents());
+  }, [previewWindowsExpired, dataComplete, currentSourceHealth.degraded, events, ensureAllEvents]);
 
   // Split the visible default-list set by TYPE so the grouped list leads with what
   // people actually come for; civic business sinks into a quiet tail
@@ -883,14 +925,11 @@ export default function EventsExplorer({
   // navigable at a glance instead of a 400-row chronological scroll.
   const horizonGroups = useMemo(
     () =>
-      groupByHorizon(crowdFiltered, {
-        now,
-        next24: +new Date(next24ISO),
-        weekendStart: +new Date(weekendStartISO),
-        weekendEnd: +new Date(weekendEndISO),
-        live,
-      }).map((group) => ({ ...group, events: sort === "recommended" ? rankRecommendations(group.events, { featured, limit: 6 }) : group.events })),
-    [crowdFiltered, now, next24ISO, weekendStartISO, weekendEndISO, live, sort, featured],
+      groupByHorizon(crowdFiltered, bounds).map((group) => ({
+        ...group,
+        events: sort === "recommended" ? rankRecommendations(group.events, { featured, limit: 6 }) : group.events,
+      })),
+    [crowdFiltered, bounds, sort, featured],
   );
 
   const mapPins = useMemo(
@@ -1023,7 +1062,7 @@ export default function EventsExplorer({
 
   const primaryHorizon = horizonGroups[0];
   const primaryLead = primaryHorizon ? splitHorizonLead(primaryHorizon.events, sort).lead : null;
-  const showPrimaryLeadBeforeRail = Boolean(primaryLead) && primaryLeadPrecedesInterestRail({
+  const showPrimaryLeadBeforeRail = highlighted.size === 0 && Boolean(primaryLead) && primaryLeadPrecedesInterestRail({
     view,
     sort,
     resultCount: filtered.length,
@@ -1058,6 +1097,7 @@ export default function EventsExplorer({
           component's state. Saved events live on /my-radius now, so there's
           no saved rail above the first event — the board leads with events. */}
       <EventsBoardDock
+        photoOverview={showOverview}
         nowISO={nowISO}
         dayCounts={summary.dayCounts}
         filteredCount={mastheadCount.eventCount}
@@ -1166,6 +1206,19 @@ export default function EventsExplorer({
         </section>
       ) : null}
 
+      {showOverview && highlights && (
+        <EventsOverview
+          {...highlights}
+          nowISO={nowISO}
+          coverage={completeHighlights ? "complete" : loadingAll ? "loading" : "partial"}
+          onSelectWindow={(window) => {
+            setTime(window === "tonight" ? "today" : "weekend");
+            setTod(window === "tonight" ? "evening" : null);
+            setDay(null);
+            document.querySelector<HTMLButtonElement>(`button[data-events-preset="${window}"]`)?.focus({ preventScroll: true });
+          }}
+        />
+      )}
       {showPrimaryLeadBeforeRail && primaryLead && (
         <div data-events-primary-lead="before-interest" data-events-visual-shortlist className="max-w-[720px]">
           <PromotedEvent
@@ -1393,16 +1446,18 @@ export default function EventsExplorer({
             // Recommended promotes only usable attendance. An all-ambiguous
             // horizon remains ordinary listings with unchanged counts/access.
             // Alternate sorts retain their original first-row treatment.
-            const { lead, rest } = splitHorizonLead(g.events, sort);
-            const leadVariant = horizonLeadVariant(groupIdx);
+            const remaining = g.events.filter((event) => !highlighted.has(eventIdentity(event)));
+            const moved = g.events.length - remaining.length;
+            const { lead, rest } = splitHorizonLead(remaining, sort);
+            const leadVariant = highlighted.size ? "glance" : horizonLeadVariant(groupIdx);
             const leadMovedBeforeRail =
               Boolean(lead) && groupIdx === 0 && showPrimaryLeadBeforeRail;
             const leadVisual =
               lead && leadVariant === "feature" ? eventCardVisual(lead) : null;
             const PEEK = leadVariant === "feature" ? 2 : 3;
             const { groupCount, totalRest, canExpand } = eventGroupRenderState({
-              summaryCount: summary.horizonCounts[g.key],
-              loadedCount: g.events.length,
+              summaryCount: Math.max(0, summary.horizonCounts[g.key] - moved),
+              loadedCount: remaining.length,
               dataComplete,
               anyFilter: contentFilterActive,
               sourceDegraded: currentSourceHealth.degraded,
@@ -1413,7 +1468,7 @@ export default function EventsExplorer({
             // above the interest rail, do not leave an empty "Today 1"
             // heading directly above the next horizon. That visual orphan
             // made Wednesday's first card look mislabeled as today.
-            if (leadMovedBeforeRail && totalRest === 0) return null;
+            if (groupCount === 0 || (leadMovedBeforeRail && totalRest === 0)) return null;
             const preview = rest.slice(0, PEEK);
             const expanded = isOpen ? rest.slice(PEEK, EXPANDED_CAP) : [];
             const overflow = isOpen ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
@@ -1421,6 +1476,11 @@ export default function EventsExplorer({
             return (
               <section key={g.key} className="max-w-[720px] space-y-3">
                 <SectionHeading title={g.label} count={groupCount} />
+                {remaining.length === 0 && !dataComplete && !canExpand && (
+                  <button type="button" className="tap-44 text-sm font-semibold" onClick={() => void ensureAllEvents()}>
+                    Show remaining events
+                  </button>
+                )}
                 {lead && !leadMovedBeforeRail && leadVariant === "feature" ? (
                   <PromotedEvent
                     event={lead}

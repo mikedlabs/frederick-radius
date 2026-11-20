@@ -1,0 +1,57 @@
+/* One nearby card sits above the phone search bar. On a wide map the
+   search stays at the top and the nearby card has its own bottom edge. */
+.nearby {
+  overflow: hidden;
+  margin-bottom: 4px;
+  border: 1px solid var(--app-control-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-elevated-solid);
+}
+.nearby [data-map-nearby-panel] {
+  max-height: min(17rem, calc(var(--map-canvas-height) * 0.32));
+  border-bottom: 0;
+}
+@media (min-width: 1024px) {
+  .nearby {
+    position: absolute;
+    inset-inline: 0;
+    top: calc(var(--map-canvas-height) - 24px);
+    width: min(100%, 450px);
+    margin-inline: auto;
+    transform: translateY(-100%);
+  }
+}
+@media (max-width: 1023.98px) {
+  :global(.dock-host):has(.nearby:not([hidden])) :is(:global(.map-edge-tools), :global(.map-reset-fab)) {
+    bottom: calc(var(--map-dock-height) + max(8px, env(safe-area-inset-bottom)) + 7px);
+  }
+  :global(.dock-host):has(.nearby:not([hidden])) :global(.map-geo-toast) {
+    bottom: calc(var(--map-dock-height) + max(8px, env(safe-area-inset-bottom)) + 58px);
+  }
+}
+
+:global(.dock-host):has(.nearby:not([hidden])) {
+  container: nearby-map / inline-size;
+}
+
+/* At large reading sizes these two labels otherwise fill most of a narrow
+   map. The buttons keep their accessible names and full touch targets. */
+@container nearby-map (max-width: 14em) {
+  :global(.dock-host):has(.nearby:not([hidden])) :global(.map-edge-tool-primary) {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+  :global(.dock-host):has(.nearby:not([hidden])) :global(.map-edge-tool-primary) > span {
+    position: absolute;
+    height: 1px;
+    width: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  :global(.dock-host):has(.nearby:not([hidden])) :global(.map-edge-tool-primary) > svg {
+    width: 20px;
+    height: 20px;
+  }
+}

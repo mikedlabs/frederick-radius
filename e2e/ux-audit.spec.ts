@@ -34,6 +34,8 @@ const AXE_PATH = path.join(process.cwd(), "node_modules/axe-core/axe.min.js");
 // hand sweep used, plus /numbers (added after).
 const ROUTES = [
   "/today",
+  "/today/weekend",
+  "/today/two-hours-downtown",
   "/map",
   "/ask",
   "/events",

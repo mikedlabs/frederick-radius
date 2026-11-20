@@ -75,6 +75,9 @@ type Props = {
 /** The sheet's one spring: entrance, exit, and the return after a short pull. */
 const SHEET_SPRING = { type: "spring", stiffness: 320, damping: 32 } as const;
 const NO_MOTION = { duration: 0 } as const;
+// Motion starts its release on pointerup. Zero power and duration settle the
+// panel and scrim immediately for visitors who request reduced motion.
+const REDUCED_DRAG_RELEASE = { power: 0, duration: 0 } as const;
 
 /** The scrim is this dark at rest and clears over this much downward travel. */
 const SCRIM_OPACITY = 0.45;
@@ -371,11 +374,9 @@ export default function BottomSheet({
 
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if ((info.offset.y > 120 || info.velocity.y > 500) && dismiss()) return;
-    // Framer has already started its release momentum by the time this runs,
-    // and that animation overrides a plain `y.set(0)`: the sheet used to coast
-    // and park low with its scrim faded out. A new animation on the same value
-    // replaces the momentum and brings the sheet back to rest.
-    animate(y, 0, reduce ? NO_MOTION : SHEET_SPRING);
+    // With ordinary motion, replace release momentum with the return spring.
+    // The reduced-motion release already targets rest from pointerup.
+    if (!reduce) animate(y, 0, SHEET_SPRING);
   };
 
   if (typeof document === "undefined") return null;
@@ -430,6 +431,7 @@ export default function BottomSheet({
             dragListener={false}
             dragConstraints={{ top: 0, bottom: 600 }}
             dragElastic={{ top: 0, bottom: 0.55 }}
+            dragTransition={reduce ? REDUCED_DRAG_RELEASE : undefined}
             onDragEnd={handleDragEnd}
             style={{ y, maxHeight }}
             className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated-solid)] pb-[env(safe-area-inset-bottom,0px)] shadow-[var(--app-shadow-3)] sm:bottom-4 sm:left-1/2 sm:right-auto sm:w-[min(760px,calc(100vw-2rem))] sm:rounded-[var(--app-radius-lg)] sm:border sm:[translate:-50%_0]"

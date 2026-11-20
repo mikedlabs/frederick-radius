@@ -17,7 +17,7 @@ const meta = {
     headline: "It is clear and comfortable.",
     condition: "Mostly sunny",
     temperatureF: 72,
-    highF: 76,
+    highF: 76, lowF: 51, sunriseTime: "7:12 AM", sunsetTime: "6:42 PM",
     sun: { label: "Sunset", time: "6:42 PM" },
     variant: "Sun",
     forecastAvailable: true,
@@ -46,10 +46,10 @@ export const MastheadReading: Story = {
   args: { density: "masthead", headline: "Mostly sunny", safetyNote: "The air-quality reading is unavailable." },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    for (const fact of ["Mostly sunny", "Frederick · NWS", "The air-quality reading is unavailable."]) {
+    for (const fact of ["Mostly sunny", "High 76°", "Low 51°", "Sunrise 7:12 AM", "Sunset 6:42 PM"]) {
       await expect(canvas.getByText(fact)).toBeVisible();
     }
-    await expect(canvas.getByText("High 76°")).not.toBeVisible();
+    await expect(canvas.getByText("NWS forecast · Frederick")).not.toBeVisible();
     const summary = canvasElement.querySelector<HTMLElement>("summary[data-today-weather-summary]")!;
     const forecast = canvasElement.querySelector<HTMLAnchorElement>('a[href="/pulse?open=weather"]')!;
     await expect(summary).toHaveAccessibleName(/Forecast details for Frederick.*72 degrees Fahrenheit forecast/);
@@ -63,7 +63,7 @@ export const MastheadReading: Story = {
     await expect(canvasElement.querySelector("[data-weather-density]")).toHaveAttribute("data-weather-density", "masthead");
     await userEvent.click(summary);
     await expect(forecast).not.toBeVisible();
-    await expect(canvas.getByText("The air-quality reading is unavailable.")).toBeVisible();
+    await expect(canvas.getByText("The air-quality reading is unavailable.")).not.toBeVisible();
   },
 };
 
@@ -195,7 +195,6 @@ async function exerciseNarrowMasthead({ canvasElement }: Parameters<NonNullable<
     const probes = [
       summary.querySelector<HTMLElement>("[data-weather-temperature]")!,
       summary.querySelector<HTMLElement>("[data-weather-condition]")!,
-      summary.querySelector<HTMLElement>("[data-weather-scope]")!,
       summary.querySelector<HTMLElement>("[data-weather-disclosure-cue]")!,
       canvasElement.querySelector<HTMLElement>("[data-weather-source]")!,
       canvasElement.querySelector<HTMLElement>("[data-weather-issuance]")!,
@@ -295,7 +294,7 @@ async function exerciseNarrowMasthead({ canvasElement }: Parameters<NonNullable<
 /** The real compact summary must reflow without hiding warning/feed context. */
 export const NarrowMastheadWarning: Story = {
   args: {
-    density: "masthead", headline: "Flash Flood Warning is active.",
+    density: "masthead", headline: "Flash Flood Warning is active.", actionableHeadline: true,
     condition: "Chance showers and thunderstorms", temperatureF: 68,
     variant: "CloudLightning", safetyNote: "Weather-alert and air-quality checks are unavailable.",
   },

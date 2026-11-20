@@ -2,6 +2,8 @@ import { resolve } from "node:path";
 import { writeFile } from "node:fs/promises";
 import { expect, test, type BrowserContext, type Locator, type Page, type TestInfo } from "@playwright/test";
 import type { EventWithMeta } from "../src/lib/loaders/events";
+import { buildHorizonBounds } from "../src/lib/eventHorizon";
+import { isEventLiveNow } from "../src/lib/eventWhenLabel";
 import { eventCardVisual } from "../src/components/event/eventVisuals";
 import { dismissReturnBridge, emptyReturnBridgeState, RETURN_BRIDGE_STORAGE_KEY } from "../src/lib/return-bridge";
 
@@ -115,7 +117,11 @@ async function prepare(context: BrowserContext, page: Page, baseURL: string | un
       return route.continue();
     }
     if (request.method() === "GET" && url.pathname === "/api/events/browse") {
-      if (fixtures) return route.fulfill({ status: 200, json: { events: fixtures, liveSlugs: fixtures.map((event) => event.slug), generatedAt: new Date().toISOString(), sourceHealth: { degraded: false, issues: [] } } });
+      if (fixtures) {
+        const now = new Date();
+        const liveSlugs = fixtures.filter((event) => isEventLiveNow(event, now)).map((event) => event.slug);
+        return route.fulfill({ status: 200, json: { events: fixtures, liveSlugs, generatedAt: now.toISOString(), sourceHealth: { degraded: false, issues: [] } } });
+      }
       return route.continue();
     }
     if (request.method() === "GET" && url.pathname === "/api/today/events") {
@@ -248,6 +254,93 @@ async function eventDisplay(page: Page, name: "Agenda" | "List") {
 }
 
 if (!LIVE) {
+  for (const width of [390, 1024]) {
+    test(`photo-first Events opens a dated pick and restores both windows at ${width}px`, async ({ page, context, baseURL }, info) => {
+      test.setTimeout(90_000);
+      await page.setViewportSize({ width, height: 844 });
+      const [fair, field] = offlineEvents();
+      const { next24, weekendEnd } = buildHorizonBounds(new Date());
+      const hour = 3_600_000;
+      const dated = (row: EventWithMeta, start: number, end: number) => ({
+        ...row, starts_at: new Date(start).toISOString(), ends_at: new Date(end).toISOString(),
+      });
+      const tonight = dated(fair, next24 - 6 * hour, next24);
+      const weekend = [
+        dated(field, weekendEnd - 4 * hour, weekendEnd),
+        dated({ ...fair, slug: "offline-discovery-delaplaine", title: "Offline printmaking fixture",
+          venue_name: "Delaplaine Arts Center", venue_place_slug: "delaplaine-arts-center-frederick" },
+        weekendEnd - 3 * hour, weekendEnd),
+      ];
+      const expired = dated({ ...fair, slug: "offline-discovery-ended", title: "Concluded fixture" }, next24 - 36 * hour, next24 - 34 * hour);
+      const { evidence, goto } = await prepare(context, page, baseURL, [tonight, ...weekend, expired]);
+      await goto("/events?in=frederick");
+      const overview = page.locator("[data-events-overview]");
+      const evening = overview.getByRole("region", { name: "Tonight", exact: true });
+      const upcoming = overview.getByRole("region", { name: "This weekend", exact: true });
+      const pick = evening.getByRole("link", { name: tonight.title, exact: true });
+      await expect(pick).toBeVisible();
+      for (const row of weekend) await expect(upcoming.getByRole("link", { name: row.title, exact: true })).toBeVisible();
+      await expect(overview.getByText(expired.title)).toHaveCount(0);
+      await expect(overview.locator("article")).toHaveCount(3);
+      await expect(evening).toContainText(tonight.venue_name!);
+      await expect(evening).toContainText(/6:00\s*pm/i);
+      await assertPageWidth(page);
+      await expect(evening.locator("[data-event-poster-photo]")).toBeInViewport();
+      await expect(upcoming.getByRole("heading", { name: "This weekend" })).toBeInViewport();
+      await decodedOwnedPhoto(evening, FAIR_IMAGE);
+      await decodedOwnedPhoto(upcoming, MCCURDY_IMAGE);
+      const licensed = upcoming.locator('[data-decision-id="offline-discovery-delaplaine"]');
+      await decodedOwnedPhoto(licensed, "/place-photos/delaplaine-exterior.jpg");
+      await expect(licensed.locator("[data-event-photo-credit]")).toContainText("Acroterion");
+      await expect(licensed.locator('a[data-decision-action="open"] [data-event-photo-credit]')).toHaveCount(0);
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+      const title = page.getByRole("heading", { name: "What’s on", exact: true });
+      await expect.poll(() => title.evaluate((node) => {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        return [...range.getClientRects()].filter(rect => rect.width && rect.height).every(rect =>
+          [0.1, 0.5, 0.9].every(fraction => node.contains(document.elementFromPoint(
+            rect.left + fraction * rect.width, rect.top + rect.height / 2,
+          ))));
+      }), { message: "The complete Events title must be readable beside the browse controls" }).toBe(true);
+      await screen(page, info, "events-tonight-weekend");
+      if (width === 390) {
+        const tabs = page.getByRole("navigation", { name: "Primary", exact: true }).filter({ visible: true });
+        const tabTop = await tabs.evaluate(node => node.getBoundingClientRect().top);
+        const firstLines = await upcoming.getByRole("heading", { level: 3 }).evaluateAll(nodes =>
+          nodes.map(node => node.getBoundingClientRect().top + parseFloat(getComputedStyle(node).lineHeight)));
+        expect(firstLines).toHaveLength(weekend.length);
+        expect(Math.max(...firstLines), "Each weekend pick needs a readable title above the tab bar").toBeLessThanOrEqual(tabTop);
+      }
+
+      await nativeTarget(pick);
+      const browseUrl = page.url();
+      await expect(pick).toHaveAttribute("href", "/events/" + tonight.slug);
+      await pick.tap();
+      const dialog = page.getByRole("dialog", { name: tonight.title, exact: true });
+      await expect(dialog).toBeVisible();
+      expect(evidence.eventReads).toContain(tonight.slug);
+      await expect.poll(() => page.evaluate(() => window.history.state?.__frederickRadiusLayer)).toMatch(/^event-sheet:/);
+      await expect(dialog.getByRole("link", { name: "See full page", exact: true })).toBeVisible();
+      await page.goBack();
+      await expect(dialog).toHaveCount(0);
+      await expect(page).toHaveURL(browseUrl);
+      await expect(pick).toBeFocused();
+      await expect(upcoming.getByRole("link", { name: weekend[1].title })).toBeVisible();
+      const openTonight = width === 390;
+      const section = openTonight ? evening : upcoming;
+      await section.getByRole("button", { name: openTonight ? "See all events tonight" : "See all events this weekend" }).tap();
+      await expect(overview).toHaveCount(0);
+      await expect.poll(() => {
+        const filtered = new URL(page.url()).searchParams;
+        return [filtered.get("in"), filtered.get("tod"), filtered.get("when") ?? filtered.get("lens")];
+      }).toEqual(["frederick", openTonight ? "evening" : null, openTonight ? "today" : "weekend"]);
+      const selected = openTonight ? tonight : weekend[0];
+      await expect(page.locator('a[href="/events/' + selected.slug + '"]')).toBeVisible();
+      expect(evidence.errors).toEqual([]);
+    });
+  }
+
   for (const width of [390, 320]) {
     test(`declared fixture: Today photo choices save and return without losing scope at ${width}px${width === 320 ? " and 200% text" : ""}`, async ({ page, context, baseURL }, info) => {
       test.setTimeout(90_000);

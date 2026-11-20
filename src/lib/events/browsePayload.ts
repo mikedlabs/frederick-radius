@@ -184,6 +184,7 @@ export function initialEventsForBrowse(
   /** Owner-featured slugs (lib/events/featured) — the caller passes the
    *  clock-resolved set so this module stays clock-free. */
   featured?: ReadonlySet<string>,
+  highlights: readonly EventWithMeta[] = [],
 ): EventWithMeta[] {
   // The first paint is the default editorial list, so repeated series can be
   // represented by their next occurrence here. The complete occurrence corpus
@@ -192,17 +193,30 @@ export function initialEventsForBrowse(
   const displayEvents = collapseLaterSeries(events, bounds);
   const crowd = displayEvents.filter((event) => !isUtilityEvent(event));
   const utility = displayEvents.filter(isUtilityEvent).slice(0, INITIAL_UTILITY_EVENTS);
-  const selected = new Set<string>();
+  const selected = new Map<string, EventWithMeta>();
 
   for (const group of groupByHorizon(crowd, bounds)) {
     const ranked = rankRecommendations(group.events, { featured, limit: perHorizon });
     for (const event of ranked.slice(0, perHorizon)) {
-      selected.add(eventIdentity(event));
+      selected.set(eventIdentity(event), event);
     }
   }
-  for (const event of utility) selected.add(eventIdentity(event));
+  for (const event of utility) selected.set(eventIdentity(event), event);
 
-  return displayEvents.filter((event) => selected.has(eventIdentity(event)));
+  // A later dated occurrence can win a highlight when its series is folded
+  // or its horizon has filled its quota. Emit selections in input order,
+  // retaining folded representatives and only taking highlights in this set.
+  const highlightIds = new Set(highlights.map(eventIdentity));
+  const preview: EventWithMeta[] = [];
+  for (const event of events) {
+    const identity = eventIdentity(event);
+    const representative = selected.get(identity);
+    if (!representative && !highlightIds.has(identity)) continue;
+    preview.push(representative ?? event);
+    selected.delete(identity);
+    highlightIds.delete(identity);
+  }
+  return preview;
 }
 
 export function summarizeEventsForBrowse(
@@ -236,6 +250,6 @@ export function summarizeEventsForBrowse(
   };
 }
 
-function eventIdentity(event: Pick<EventWithMeta, "slug" | "starts_at">): string {
+export function eventIdentity(event: Pick<EventWithMeta, "slug" | "starts_at">): string {
   return `${event.slug}@@${event.starts_at}`;
 }

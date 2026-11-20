@@ -47,6 +47,8 @@ export type EventRowProps = {
   action?: ReactNode;
   /** A full-width picture above the facts (the pictured lead). */
   banner?: ReactNode;
+  /** On the compact weekend shelf the decision facts precede the image. */
+  bannerAfterFacts?: boolean;
   position?: "result" | "lead";
   /** Rows sit under a group heading (h2) and use h3. The page lead can sit
    * directly under the page title, so it uses h2. */
@@ -80,6 +82,7 @@ export default function EventRow({
   glyph,
   action,
   banner,
+  bannerAfterFacts = false,
   position = "result",
   headingLevel = 3,
   surface = "events",
@@ -109,6 +112,7 @@ export default function EventRow({
     banner ? styles.withBanner : "",
     cancelled ? styles.cancelled : "",
   ].filter(Boolean).join(" ");
+  const bannerElement = banner ? <div className={styles.banner}>{banner}</div> : null;
   return (
     <article
       data-decision-impression="true"
@@ -124,7 +128,7 @@ export default function EventRow({
       data-event-poster-layout={poster?.layout}
       className={className}
     >
-      {banner ? <div className={styles.banner}>{banner}</div> : null}
+      {!bannerAfterFacts && bannerElement}
       {/* The thumbnail leads the DOM so the picture is announced and loaded
           before the facts; the grid places it at the right of the row. */}
       {media}
@@ -169,6 +173,7 @@ export default function EventRow({
         {extra}
         {action ? <div className={styles.action}>{action}</div> : null}
       </div>
+      {bannerAfterFacts && bannerElement}
       {mediaCredit}
     </article>
   );

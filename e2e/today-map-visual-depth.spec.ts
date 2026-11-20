@@ -1,3 +1,4 @@
+import { chooseTodayArea, todayArea } from "./today-controls";
 import { expect, test, type BrowserContext, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { readFile, writeFile } from "node:fs/promises";
 import catalog from "../src/data/places-client.json";
@@ -245,12 +246,12 @@ async function attach(info: TestInfo, name: string, receipt: unknown) {
 
 async function todayReady(page: Page, path = "/today?in=county") {
   await page.goto(path, { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("combobox", { name: "Choose your area", exact: true })).toBeEnabled();
+  await expect(todayArea(page)).toBeEnabled();
   await expect(page.locator("[data-today-weather] [data-weather-state]")).toHaveAttribute("data-weather-state", /^(available|safety-only|unavailable)$/);
   await page.evaluate(() => document.fonts.ready);
 }
 
-test("Today shows a real photograph on arrival while weather and Find lead at 390px", async ({ context, page, baseURL }, info) => {
+test("Today shows a real photograph on arrival while the local guides fit above navigation at 390px", async ({ context, page, baseURL }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   const { evidence } = await prepare(context, page, baseURL);
@@ -267,21 +268,21 @@ test("Today shows a real photograph on arrival while weather and Find lead at 39
   expect(evidence.metadataReads).toEqual([]);
   const geometry = await page.evaluate(() => {
     const box = (selector: string) => { const r = document.querySelector(selector)!.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
-    const weather = box("[data-today-weather]"), find = box('[data-surface-row="find"]'), entry = box("[data-today-entry-controls]");
+    const weather = box("[data-today-weather]"), find = box('[data-surface-row="find"]'), entry = box("header:has([data-today-area-trigger])");
     const photo = box("[data-today-photo-lead]"), discovery = box("[data-today-local-discovery]"), quick = box('[role="group"][aria-label="Quick needs"]');
     const events = box("[data-today-events]"), places = box('[aria-label="Places for your area"]');
     const news = box('section[aria-label="Local news"]'), explore = box('section[aria-labelledby="today-explore-heading"]');
     const nav = box('[data-bottom-nav-shell] nav[aria-label="Primary"]');
-    return { scrollY, weather, find, entry, photo, discovery, events, places, news, explore, quick, nav, visiblePhoto: Math.max(0, Math.min(photo.bottom, nav.top) - Math.max(photo.top, weather.top)) };
+    return { scrollY, weather, find, entry, photo, discovery, outings: box("#local-outings"), events, places, news, explore, quick, nav, visiblePhoto: Math.max(0, Math.min(photo.bottom, nav.top) - Math.max(photo.top, weather.top)) };
   });
   evidence.measurements.arrival = geometry;
   expect(geometry.scrollY).toBe(0);
-  expect(geometry.weather.bottom).toBeLessThanOrEqual(geometry.find.top);
-  expect(geometry.find.bottom).toBeLessThanOrEqual(geometry.photo.top);
+  expect(geometry.entry.bottom).toBeLessThanOrEqual(geometry.weather.top + 1);
+  expect(geometry.weather.bottom).toBeLessThanOrEqual(geometry.photo.top + 1);
   expect(geometry.weather.top).toBeGreaterThanOrEqual(0);
   expect(geometry.find.bottom).toBeLessThanOrEqual(geometry.nav.top);
   expect(geometry.visiblePhoto, "a substantial decoded image is visible before the fixed tabs without scrolling").toBeGreaterThanOrEqual(120);
-  expect(geometry.entry.height, "Find+scope do not grow into another full card before photography").toBeLessThanOrEqual(160);
+  expect(geometry.outings.bottom, "both local guides are above the fixed phone tabs").toBeLessThanOrEqual(geometry.nav.top + 1);
   expect(geometry.discovery.bottom).toBeLessThanOrEqual(geometry.places.top);
   expect(geometry.places.bottom).toBeLessThanOrEqual(geometry.events.top);
   expect(geometry.events.bottom).toBeLessThanOrEqual(geometry.news.top);
@@ -293,7 +294,7 @@ test("Today shows a real photograph on arrival while weather and Find lead at 39
   await expect(page.getByRole("region", { name: "More ways to explore", exact: true }).getByRole("group", { name: "Quick needs", exact: true })).toHaveCount(1);
   await expect(quick.getByRole("link")).toHaveCount(4);
   const targets = [];
-  for (const control of [page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }), page.getByRole("combobox", { name: "Choose your area", exact: true }), ...await quick.getByRole("link").all()]) targets.push(await target44(control));
+  for (const control of [page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }), todayArea(page), ...await quick.getByRole("link").all()]) targets.push(await target44(control));
   await attach(info, "arrival-photo-and-controls", { geometry, targets, widths: await assertWidth(page), proofBoundary: evidence.proofBoundary });
   expect(evidence.errors).toEqual([]);
   // Capture the arrival only after measured proof; resetting here cannot make
@@ -311,8 +312,8 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
   const image = page.locator("[data-today-photo-lead] img");
   await decoded(image, primaryPhoto.src);
   const textProbes = [
-    { name: "Find words", control: page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }).getByText("Find what you need", { exact: true }) },
-    { name: "Area picker", control: page.getByRole("combobox", { name: "Choose your area", exact: true }) },
+    { name: "Daypart heading", control: page.getByRole("heading", { level: 1 }) },
+    { name: "Area picker", control: todayArea(page) },
     { name: "Quick action words", control: page.getByRole("group", { name: "Quick needs", exact: true }).getByRole("link").first().locator("span") },
   ];
   const text = async () => Promise.all(textProbes.map(async ({ name, control }) => ({
@@ -341,7 +342,7 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
     previousBaseline = key;
     return root.px === 16 && stableBaseline >= 1;
   }, { message: "The actual16px root and control text settle before recording a100% baseline" }).toBe(true);
-  expect(normal.map(({ px }) => px), "normal fixed release labels are measured at100%, never an already-enlarged baseline").toEqual([16, 16, 14]);
+  expect(normal.map(({ px }) => px), "normal fixed release labels are measured at100%, never an already-enlarged baseline").toEqual([32, 13, 14]);
   await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
   await page.evaluate(() => document.fonts.ready);
   let enlarged = await text();
@@ -375,7 +376,7 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
   let keyPresses = 0;
   const settleSamples: Array<{ key: number; scrollY: number }> = [];
   const receipt = { normal, enlarged,
-    mechanism: "Declared200% root text; actual computed Find/picker/quick text doubles. Each native ArrowDown settles before the next; no geometry override or browser zoom.",
+    mechanism: "Declared200% root text; actual computed daypart/picker/quick text doubles. Each native ArrowDown settles before the next; no geometry override or browser zoom.",
     nativeInput: "ArrowDown", targetFocusOrScrollUsedForPhotoBudget: false,
     maxKeyPresses: 32, scrollBudget: 844, samples, settleSamples,
     keyPresses: 0, targets: [] as unknown[],
@@ -409,7 +410,7 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
   const targets = receipt.targets;
   const quick = page.getByRole("group", { name: "Quick needs", exact: true });
   await expect(quick.getByRole("link")).toHaveCount(4);
-  for (const control of [page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }), page.getByRole("combobox", { name: "Choose your area", exact: true }), ...await quick.getByRole("link").all()]) targets.push(await target44(control));
+  for (const control of [page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }), todayArea(page), ...await quick.getByRole("link").all()]) targets.push(await target44(control));
   await assertWidth(page);
   expect(evidence.errors).toEqual([]);
   } finally {
@@ -424,11 +425,10 @@ test("Today keeps Brunswick facts and actions through a scope round trip without
   const healthy = await prepare(context, page, baseURL);
   await todayReady(page);
   await decoded(page.locator(`[data-today-geographic-place="${primarySlug}"] img`), primaryPhoto.src);
-  const picker = page.getByRole("combobox", { name: "Choose your area", exact: true });
   const cardForLock = (targetPage: Page) => targetPage.locator("article[data-today-place-preview]")
     .filter({ has: targetPage.locator(`[data-today-place-lead][data-decision-id="${lockSlug}"]`) });
   const lockCard = cardForLock(page);
-  await picker.selectOption("town:brunswick");
+  await chooseTodayArea(page, "town:brunswick");
   await expect(page.getByTestId("today-scope-status")).toContainText("Brunswick picks · Countywide weather");
   await expect(page.locator("[data-today-geographic-place]")).toHaveCount(1);
   const scopedDiscovery = page.locator(`[data-today-geographic-place="${lockSlug}"]`);
@@ -445,7 +445,7 @@ test("Today keeps Brunswick facts and actions through a scope round trip without
   expect(healthy.evidence.images).toContain(lockPhoto.src);
   expect(healthy.evidence.metadataReads).toEqual([]);
   await expect(lockCard).not.toContainText("Carroll Creek");
-  await picker.selectOption("county");
+  await chooseTodayArea(page, "county");
   await expect(lockCard).toHaveCount(0);
   await expect(page.locator(`[data-today-geographic-place="${primarySlug}"]`)).toHaveAttribute("data-photo-state", "loaded");
   await attach(info, "unreviewed-town-photo-held-roundtrip", { heldSource: lockPhoto.src, slug: lockSlug,
@@ -466,7 +466,7 @@ test("Today keeps Brunswick facts and actions through a scope round trip without
   try {
     await todayReady(failurePage);
     await decoded(failurePage.locator(`[data-today-geographic-place="${primarySlug}"] img`), primaryPhoto.src);
-    await failurePage.getByRole("combobox", { name: "Choose your area", exact: true }).selectOption("town:brunswick");
+    await chooseTodayArea(failurePage, "town:brunswick");
     await expect(failurePage.getByTestId("today-scope-status")).toContainText("Brunswick picks · Countywide weather");
     const failedCard = cardForLock(failurePage);
     await expect(failedCard).toHaveCount(1);

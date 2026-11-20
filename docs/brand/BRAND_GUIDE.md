@@ -41,7 +41,7 @@ Clear space around the mark should be at least the radius of its inner arc. Neve
 
 ### Primary lockups
 
-- The product header uses the two-arc mark followed by a one-line `Frederick Radius` wordmark.
+- The product header pairs the two-arc mark with a one-line `Frederick Radius` wordmark. On narrow phones with a county alert or status message, the mark can sit above the name to keep the navigation on one row. More tools groups the tools index and appearance switch. Search, area and active county alerts stay directly accessible on the screens that use them.
 - The tagline lockup adds `FREDERICK COUNTY STARTS WHERE YOU ARE` below the wordmark.
 - Use the Deep Coral mark with the Charcoal wordmark on light surfaces. Use the White reverse lockup on Deep Coral, Catoctin Forest, Charcoal, or photography with enough contrast.
 - The app-icon tile is for launchers, avatars, and app-store use. Do not put the tile inside the normal product header.
@@ -244,12 +244,20 @@ facts, not a feed trying to fill space.
 
 The owner approved the "Plain tool, with the coral plate" direction on November 10, 2026. It changes the interface shape only. The palette, typefaces, and brand version stay as they are. These rules apply to Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages, event pages, and town pages. Specialty guide pages still carry older treatments until their own pass; do not copy those treatments into the pages listed here.
 
+The November 19 Today layout puts the local date and daypart above a full-width
+phone photograph. The coral caption carries the town above the place name and
+grows with the name. An independent bookmark sits beside it. Local guides follow
+with photographs above their titles. Keep the date and forecast readable before
+the photograph, with the high, low, sunrise and sunset directly visible.
+
+
 - **Rows, not cards.** Ordinary content sits on the page ground as rows separated by a 1 px hairline (`--app-border`) or by space. Do not put a bordered, filled, or shadowed card around ordinary content, and do not add gradients or glows. A bordered surface is still right for form fields, menus, sheets, and floating layers over the map.
 - **Radius scale.** `--app-radius-sm` is 4 px, for small markers, focus outlines inside rows, and the coral time block. `--app-radius-md` is 6 px, for fields, buttons, menus, and row thumbnails. `--app-radius-lg` is 8 px, for sheets, drawers, and floating panels over the map. `--app-radius-xl` is 10 px, for a rare larger feature surface.
 - **Capsules.** A full capsule appears only on compact filter chips, status badges, and toggle switches. Buttons, navigation, rows, and informational tags are never capsules. An informational tag is plain text. A selected filter chip is filled ink (`--app-ink` with `--app-bg` text), never coral.
 - **Type carries the hierarchy.** Page titles are heavy System sans. Row titles are 17 px at weight 600. Meta lines are 14 px in muted ink. Section labels are 13 px uppercase with open letter spacing. Libre Caslon Display sets the header wordmark in the top bar and is a rare editorial signature on a few specialty guide pages; no page title or content on Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages, or event pages uses it.
 - **Flat chrome.** Top bar icons are unboxed ink glyphs. The bottom bar is flat and attached to the screen edge, and a 2 px Deep Coral rule marks the active tab.
 - **One bold moment per page.** A page may hold one solid Deep Coral block. Only Today and Events have one: on Today it is the coral name plate over the lead photograph, and on Events it is the lead event's time block. Do not add one to any other page. No other Deep Coral field appears on the page except the single filled coral action the view already has, such as Directions on a place page. The name plate is a solid block that overlaps the photograph's edge; it is not a color wash over the image.
+- **Events opens with Tonight and This weekend.** Give the evening one lead and the weekend up to two distinct picks. Keep the event name, Frederick-local time and attendance location beside the picture. Identify venue photos as venue photos and retain their required credits. A listing with no reviewed image can lead on its time and title.
 - **Media in rows.** A row shows a photo thumbnail only when a real photograph exists. A row without one keeps the same media slot width, so titles stay aligned down the list, and shows its category glyph in muted ink (`--app-ink-3`) at about 24 px, level with the first line of the title. That glyph has no background, border, tint, or rounded tile.
 - **Text link colors.** Coral text uses `--app-link` or `--app-brand-text`. Creek text uses `--app-cool-text`, and Catoctin Forest text uses `--app-forest-text`. Never use `--app-brand-press`, `--app-brand`, or `--app-cool` directly as a text color, because they fail contrast in dark appearance. These three are fill colors, and a fill token is never a text color. White text on a coral fill sits on `--app-brand-press` and uses `--app-on-brand`.
 
