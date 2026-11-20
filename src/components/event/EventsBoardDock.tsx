@@ -757,7 +757,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
             stays a polite live region so filter changes are still announced,
             and a partial collection keeps a short visible notice. */}
         <div ref={toolbarRef} className={`eb-subbar ${styles.toolbar}`} data-filter-paused={paneOpen ? "true" : undefined} aria-hidden={paneOpen ? true : undefined}>
-          <span className="eb-countline sr-only" data-count-complete={countComplete} aria-live="polite">
+          <span className="eb-countline sr-only" aria-live="polite">
             {line}
           </span>
           {countComplete === false && (

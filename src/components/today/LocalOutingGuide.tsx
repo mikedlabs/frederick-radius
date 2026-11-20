@@ -43,6 +43,8 @@ function StopPicture({ photo }: { photo: NonNullable<GuideStop["photo"]> }) {
               {photo.credit.creator}
             </a>
             <a href={photo.credit.license.url} className={styles.sourceLink}>{photo.credit.license.label}</a>
+            {/* The change record stays in the data; the credit only says the file was edited. */}
+            {photo.credit.edited && <span data-photo-credit-edited>edited</span>}
           </div>
         )}
       </figcaption>
@@ -74,7 +76,6 @@ function OutingStop({ stop, primary }: { stop: GuideStop; primary: boolean }) {
           <div className={styles.detailBody}>
             <p>{stop.description}</p>
             {stop.detail && <p>{stop.detail}</p>}
-            {stop.photo?.credit && <p className={styles.credit}>{stop.photo.credit.modifications}</p>}
             <div className={styles.creditLinks}>
               {stop.source.href === stop.action.href ? (
                 <p className={styles.credit}>Source {stop.source.label}</p>
