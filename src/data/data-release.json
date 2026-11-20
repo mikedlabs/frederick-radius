@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:5c862547334090e7d9115affdfc596938e100fa8b91009f9b46539eb96cd6fc3",
+  "data_version": "sha256:ece965deddb853df9e767ba3e7f6180444d90e11406d52227ce6072b15fd15b3",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-11-19T15:43:46.502Z",
+      "promoted_at": "2026-11-20T12:42:57.645Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -534,9 +534,9 @@
         },
         {
           "path": "src/data/business-info.json",
-          "sha256": "374e3ef976fc72f29d39e9c70fa9293cf5b5c883714637f3a3a454a75566c457",
-          "records": 161,
-          "bytes": 128193
+          "sha256": "6e96f891000f40a05c7d6babceb4eaa5da837d314e33e2dd3b03268b8d02a010",
+          "records": 162,
+          "bytes": 128418
         },
         {
           "path": "src/data/field-notes.json",
