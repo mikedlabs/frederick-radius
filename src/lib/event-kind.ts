@@ -36,8 +36,20 @@ const UTILITY_TITLE_PATTERNS = [
   "public meeting",
 ];
 
+// A closure or an internal meeting published on an events calendar is a
+// notice, not something to attend: "Veteran's Day - Libraries Closed",
+// "Centers are Closed for Veteran Day", "WFS- No School", "WFS- Winter Break",
+// "Circulation Department Meeting". On Nov 9, 2026 each of these ranked as a
+// draw. A break only counts when it ends the title, so a "Spring Break Camp"
+// stays an activity, and "closing" only counts as a closure ("Closing at
+// 5", "Closing for the holiday"), so a closing reception or ceremony at a
+// library or center stays an outing.
+const NOTICE_TITLE =
+  /\b(?:librar(?:y|ies)|centers?|offices?|branch(?:es)?|schools?|campus)\s+(?:(?:is|are|will\s+be)\s+)?(?:clos(?:ed?|es)\b|closing(?=\s+(?:for|on|at|early)\b|\s*$))|\bno\s+school\b|\b(?:winter|spring|summer|fall|thanksgiving|holiday|christmas)\s+break\s*$|\bdepartment\s+meeting\b/i;
+
 export function isUtilityEvent(e: { category?: string; title?: string }): boolean {
   if (categoryKind(e.category) === "utility") return true;
-  const t = (e.title ?? "").toLowerCase();
-  return UTILITY_TITLE_PATTERNS.some((p) => t.includes(p));
+  const title = e.title ?? "";
+  const t = title.toLowerCase();
+  return UTILITY_TITLE_PATTERNS.some((p) => t.includes(p)) || NOTICE_TITLE.test(title);
 }

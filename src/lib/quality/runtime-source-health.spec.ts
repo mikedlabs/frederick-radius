@@ -48,6 +48,10 @@ describe("runtime source health registry", () => {
     expect(sourceIds).toContain("cof_capital_improvement");
     expect(sourceIds).toContain("cof_development_review");
     expect(sourceIds).toContain("fc_planning_projects");
+    expect(sourceIds).toContain("frederick_county_calendar");
+    expect(sourceIds).toContain("city_frederick_calendar");
+    expect(sourceIds).toContain("mount_airy_calendar");
+    expect(sourceIds).toContain("thurmont_calendar");
     expect(sourceIds).not.toContain("fcpl_libraries");
     expect(sourceIds).not.toContain("visit_frederick");
     expect(endpoints.every((row) => Boolean(row.sourceId))).toBe(true);
