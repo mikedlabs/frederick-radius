@@ -68,6 +68,16 @@ describe("searchCivicActions", () => {
       expect.objectContaining({ id: "civic:parks-rec-centers" }),
     ]);
   });
+
+  it("leads a trash/recycling schedule question with the real schedule page", () => {
+    const r = searchCivicActions("trash pickup schedule");
+    expect(r[0]?.id).toBe("civic:collection-schedule");
+    expect(r[0]?.href).toContain("Curbside-Collection-Schedule");
+  });
+
+  it("resolves 'trash day' to the collection schedule", () => {
+    expect(searchCivicActions("trash day")[0]?.id).toBe("civic:collection-schedule");
+  });
 });
 
 describe("isHighConfidenceCivicIntent", () => {
