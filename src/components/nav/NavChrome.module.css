@@ -361,7 +361,6 @@
   .todayDisclosure[data-today-header-disclosure="area"] { max-width: 49px; }
   .todayHeaderTrigger[data-today-area-trigger] {
     padding-inline: 0;
-    font-size: 0.71875rem;
   }
   .todayHeaderTrigger[data-today-area-trigger] > svg { display: none; }
 }
