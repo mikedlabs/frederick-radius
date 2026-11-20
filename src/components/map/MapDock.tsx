@@ -67,6 +67,8 @@ export type TransitAlertSnapshot = {
 };
 import MapInViewPlacesDisclosure from "./MapInViewPlacesDisclosure";
 import MapListPeek from "./MapListPeek";
+import MapNearbyPanel from "./MapNearbyPanel";
+import nearbyStyles from "./MapNearbyDock.module.css";
 import { MAP_TASK_TILES, MAP_TASK_PARAM, MAP_TASK_AREA_PARAM, type MapTaskList, type MapTaskId } from "./mapListTask";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
@@ -198,6 +200,12 @@ export type MapDockProps = {
   /** Keyboard/screen-reader alternative to hunting points in the WebGL canvas. */
   placesInView: readonly MapPinPlace[];
   placesInViewOrigin: LngLat | null;
+  /** Available after the map has committed a viewport. */
+  nearbyView?: {
+    origin: LngLat;
+    userLoc: LngLat | null;
+    onPick: (place: MapPinPlace) => void;
+  };
   selectedPlaceSlug?: string | null;
   onPickPlaceInView: (place: MapPinPlace) => void;
 
@@ -485,6 +493,7 @@ export default function MapDock(props: MapDockProps) {
   const [essentialsQuick, setEssentialsQuick] = useState(false);
   const [searchPanelOpen, setSearchPanelOpen] = useState(false);
   const [searchKeyboardOpen, setSearchKeyboardOpen] = useState(false);
+  const [nearbyExpanded, setNearbyExpanded] = useState(false);
   const [compactRecoveryDock, setCompactRecoveryDock] = useState(false);
   const [searchSelection, setSearchSelection] = useState({
     query: props.q,
@@ -567,6 +576,7 @@ export default function MapDock(props: MapDockProps) {
     const sizePane = () => {
       const mapBounds = host.getBoundingClientRect();
       const mapHeight = mapBounds.height;
+      dockElement.style.setProperty("--map-canvas-height", `${mapHeight}px`);
       // A two-row return/search dock leaves too little clear list space on a
       // short phone canvas. Keep Back as a full touch target beside Search.
       setCompactRecoveryDock(!mapAvailable && mapBounds.width < 1024 && mapHeight < 360);
@@ -678,6 +688,7 @@ export default function MapDock(props: MapDockProps) {
       // hidden/inert. A map gesture owns focus now; unlike Done or Escape it
       // must not bounce focus back to the Browse trigger on the next frame.
       focusMapBeforeDockDismiss(dockRef.current);
+      setNearbyExpanded(false);
       if (showLocationIntro) dismissLocationIntro();
       clearPaneState();
     };
@@ -1117,6 +1128,15 @@ export default function MapDock(props: MapDockProps) {
     0,
     activeOptionCount - (props.smartSeededLayerCount ?? 0),
   );
+
+  const nearbyView = mapAvailable && !props.taskList && !props.activeTask &&
+    !props.q.trim() && !pane && !searchPanelOpen && !searchKeyboardOpen &&
+    !locationOfferVisible && !searchReturnTo && !activeRadiusScene &&
+    chosenOptionCount <= (activeWhereSel.kind === "county" ? 0 : 1) &&
+    props.placesInView.length > 0 ? props.nearbyView : undefined;
+  // A place selection hides the panel but keeps the exact opening row mounted.
+  // Returning from other tools starts with a single nearby place again.
+  if (!nearbyView && nearbyExpanded) setNearbyExpanded(false);
 
   const line = props.locating && nearMeRequested && !props.userLoc
     ? "Finding places near you…"
@@ -1606,6 +1626,25 @@ export default function MapDock(props: MapDockProps) {
         data-search-keyboard={searchKeyboardOpen ? "true" : undefined}
         ref={dockRef}
       >
+        {nearbyView && (
+          <div className={nearbyStyles.nearby} hidden={props.resultOpen} inert={props.resultOpen || undefined}
+            onKeyDown={(event) => {
+              if (event.key !== "Escape" || !nearbyExpanded) return;
+              event.stopPropagation();
+              setNearbyExpanded(false);
+              event.currentTarget.querySelector<HTMLButtonElement>("[data-map-nearby-toggle]")?.focus();
+            }}>
+            <MapNearbyPanel
+              places={props.placesInView}
+              sortOrigin={nearbyView.origin}
+              userLoc={nearbyView.userLoc}
+              selectedSlug={props.selectedPlaceSlug}
+              onPick={nearbyView.onPick}
+              expanded={nearbyExpanded}
+              onExpandedChange={setNearbyExpanded}
+            />
+          </div>
+        )}
         {mapAvailable && props.taskList && pane === null && !searchPanelOpen && !locationOfferVisible && (
           <div hidden={props.resultOpen} inert={props.resultOpen || undefined}>
           <MapListPeek

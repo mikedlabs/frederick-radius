@@ -19,6 +19,13 @@
   border-right: 1px solid var(--app-border);
   box-shadow: none;
 }
+/* Map height reserves the same h-14 tab row and shell border that are
+   actually drawn. Both grow with the reader's text-size setting. */
+@media (max-width: 63.999rem) {
+  :global(html):has(.dockShell[data-map-bottom-nav="true"]) {
+    --app-bottomnav-reserve: calc(14 * var(--spacing) + 1px);
+  }
+}
 .dockShell {
   background: var(--app-bg);
   border-top: 1px solid var(--app-border);

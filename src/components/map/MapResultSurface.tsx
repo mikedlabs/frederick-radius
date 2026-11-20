@@ -107,7 +107,6 @@ export default function MapResultSurface({
     if (closeRequestedRef.current) return;
     closeRequestedRef.current = true;
 
-    const returnTarget = returnFocusRef.current;
     try {
       onCloseRef.current();
     } catch (error) {
@@ -115,9 +114,14 @@ export default function MapResultSurface({
       throw error;
     }
 
-    // Closing changes parent selection state. Wait until React commits that
-    // state so the map control is interactive again, then return keyboard
-    // focus to the exact trigger that opened this result.
+  }, []);
+
+  // History-backed dismissal is asynchronous. Restoring from the click can
+  // focus desktop Search while the original place row is still hidden.
+  // Wait for this selection to actually leave the screen.
+  useEffect(() => () => {
+    if (!closeRequestedRef.current) return;
+    const returnTarget = returnFocusRef.current;
     const restoreFocus = (attempt = 0) => {
       if (canRestoreFocus(returnTarget)) {
         returnTarget.focus({ preventScroll: true });
