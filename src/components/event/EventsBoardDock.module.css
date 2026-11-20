@@ -33,3 +33,42 @@
   color: var(--app-ink-3);
   font-size: 11px;
 }
+
+/* Let the title use the full first row on a phone. A selected town needs
+   its own row so its label and Reset always fit at larger text sizes. */
+@media (max-width: 640px) {
+  .overview:global(.eb-dock) :global(.eb-head) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "title display" "dates filters" "count count";
+    align-items: center;
+    column-gap: var(--app-space-2);
+  }
+  .overview:global(.eb-dock)[data-events-scoped] :global(.eb-head) {
+    grid-template-areas: "title display" "dates dates" "filters filters" "count count";
+  }
+  .overview :global(.eb-masthead) { grid-area: title; }
+  .overview :global(.eb-whenribbon) { grid-area: dates; }
+  .overview:global(.eb-dock) :global(.eb-filterbar) { grid-area: filters; border: 0; }
+  .overview :global(.eb-subbar) { display: contents; }
+  .overview :global(.eb-display-options) { grid-area: display; justify-self: end; }
+  .overview :global(.eb-countline) { grid-area: count; }
+  .overview :global(.eb-subbar[data-filter-paused="true"]) { visibility: hidden; }
+  .overview :global(.eb-countline[data-count-complete="true"]),
+  .overview .context:not([data-scope-selected]) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .overview:global(.eb-dock) :global(.eb-title) { font-size: 2rem; }
+  .overview :global(.eb-display-options) > summary { min-width: 44px; }
+  .overview .pane:global(.eb-pane) { top: 100%; }
+}
+@media (max-width: 359px) {
+  .overview:global(.eb-dock) :global(.eb-head) {
+    grid-template-areas: "title display" "dates dates" "filters filters" "count count";
+  }
+}

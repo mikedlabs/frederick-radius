@@ -25,6 +25,8 @@ vi.mock("@/lib/decision/telemetry", () => ({ trackDecision: vi.fn() }));
 
 import EventArtwork from "./EventArtwork";
 import EventPosterCard from "./EventPosterCard";
+import EventsOverview from "./EventsOverview";
+import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 import EventVenuePhoto from "./EventVenuePhoto";
 import EventSheet from "./EventSheet";
 import EventCard from "./EventCard";
@@ -112,6 +114,57 @@ describe("publisher event artwork lifecycle", () => {
     expect(host.textContent).toContain("Cancelled");
     expect(host.textContent).toContain("OCT");
     expect(host.textContent).toContain("10");
+  });
+
+  it("uses the exact reserved venue photo and its full credit only after overview artwork fails", () => {
+    const brewery = { ...event, venue_name: "Brewer's Alley", venue_place_slug: "brewers-alley-frederick" };
+    const image = CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"].image;
+    act(() => root.render(<EventsOverview tonight={[brewery]} weekend={[]} nowISO={event.first_seen_at} coverage="complete" />));
+    const title = host.querySelector('a[href="/events/component-event"]');
+    expect(host.querySelector("img")?.getAttribute("src")).toBe(visual.src);
+    expect(host.querySelector("article")?.textContent).toContain(visual.caption);
+    act(() => host.querySelector("img")!.dispatchEvent(new Event("error")));
+    const replacement = host.querySelector("img")!;
+    expect(replacement.getAttribute("src")).toBe(image.src);
+    expect(replacement.getAttribute("alt")).toBe("");
+    const credit = host.querySelector("[data-event-licensed-credit]")!;
+    expect(credit.textContent).toContain("photographed in 2004");
+    expect(credit.textContent).toContain(image.creator);
+    expect(credit.textContent).toContain(image.modifications);
+    expect(credit.querySelector(`a[href="${image.source_url}"]`)).not.toBeNull();
+    expect(credit.querySelector(`a[href="${image.license.url}"]`)).not.toBeNull();
+    expect(host.textContent).not.toContain(visual.caption);
+    act(() => replacement.dispatchEvent(new Event("error")));
+    expect(host.querySelector("img, [data-event-photo-credit]")).toBeNull();
+    expect(host.querySelector('a[href="/events/component-event"]')).toBe(title);
+  });
+
+  it("replaces duplicate publisher artwork with a distinct reviewed venue photo before reserving error fallbacks", () => {
+    const first = { ...event, venue_name: "Brewer's Alley", venue_place_slug: "brewers-alley-frederick" };
+    const second = { ...first, slug: "second-event" };
+    const third = { ...first, slug: "third-event" };
+    act(() => root.render(<EventsOverview tonight={[first]} weekend={[second, third]} nowISO={event.first_seen_at} coverage="complete" />));
+    const [lead, replacement, facts] = host.querySelectorAll("article");
+    expect(lead.querySelector("img")?.getAttribute("src")).toBe(visual.src);
+    const photo = CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"].image;
+    expect(replacement.querySelector("img")?.getAttribute("src")).toBe(photo.src);
+    expect(replacement.querySelector("[data-event-licensed-credit]")?.textContent).toContain(photo.creator);
+    expect(facts.querySelector("img, [data-event-photo-credit]")).toBeNull();
+    act(() => lead.querySelector("img")!.dispatchEvent(new Event("error")));
+    expect(host.querySelectorAll("img")).toHaveLength(1);
+    expect(lead.querySelector("img, [data-event-photo-credit]")).toBeNull();
+  });
+
+  it("preserves another overview pick's primary venue photo ahead of an artwork fallback", () => {
+    const art = { ...event, venue_place_slug: "baker-park-bandshell" };
+    const photo = { ...art, slug: "second-event", hero_image: undefined };
+    act(() => root.render(<EventsOverview tonight={[art]} weekend={[photo]} nowISO={event.first_seen_at} coverage="complete" />));
+    const primary = host.querySelector('[data-events-window="weekend"] img');
+    const artwork = host.querySelector('[data-events-window="tonight"] img')!;
+    act(() => artwork.dispatchEvent(new Event("error")));
+    expect(host.querySelector('[data-events-window="tonight"] img')).toBeNull();
+    expect(host.querySelector('[data-events-window="weekend"] img')).toBe(primary);
+    expect(host.querySelectorAll("img")).toHaveLength(1);
   });
 
   it("keeps the sheet title, published time and attendance action ahead of supplementary artwork", () => {
