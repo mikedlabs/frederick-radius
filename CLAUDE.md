@@ -353,3 +353,18 @@ Work on `codex/<topic>` branches off CURRENT `origin/main` (fetch first
 — deploy-wait scripts often leave the checkout on a stale branch). One
 concern per PR. Commit messages explain the WHY and cite the audit/issue
 they close.
+
+### Working agreement for parallel sessions
+
+Owner decision, November 20, 2026, after 92 open pull requests and four
+colliding redesigns of the same screens:
+
+- Only one session at a time changes the product UI (Today, Map, Events,
+  Saved, Find, Ask, Tools, Settings, and place, event and town pages). Data,
+  CI and docs work may run beside it.
+- A UI branch merges or closes within two days and is not stacked on another
+  open pull request.
+- Before starting UI work, fetch and read what merged to main in the last two
+  days, and reconcile with it instead of building on an older design.
+- A pull request more than a week behind main is rebuilt on current main or
+  closed with its useful part recorded in an issue.
