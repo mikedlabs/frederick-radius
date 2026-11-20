@@ -589,7 +589,8 @@ const CATEGORY_FALSE_FRIENDS =
 
 /** Campus calendars whose descriptions name buildings ("Linganore Hall",
  *  "Athletics Center") that the keyword table reads as a winery or a game.
- *  These rows are classified from the title alone. */
+ *  These rows are classified from the title, plus the publisher's own iCal
+ *  CATEGORIES where the feed supplies them; the description is never read. */
 const TITLE_ONLY_CATEGORY_SOURCES: ReadonlySet<string> = new Set([
   "fcc",
   "hood",
