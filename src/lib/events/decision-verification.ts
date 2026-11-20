@@ -25,7 +25,8 @@ const MAP_EVENT_NEAR_TERM_FRESHNESS_MS = 24 * HOUR_MS;
 const MAP_EVENT_LATER_FRESHNESS_MS = 7 * 24 * HOUR_MS;
 const MAP_EVENT_CLOCK_SKEW_MS = 5 * 60 * 1_000;
 
-function publicSourceUrl(value: string | null | undefined): string | undefined {
+/** Only an http(s) page may be offered as an event's public source link. */
+export function publicSourceUrl(value: string | null | undefined): string | undefined {
   const url = value?.trim();
   return url && /^https?:\/\//i.test(url) ? url : undefined;
 }
