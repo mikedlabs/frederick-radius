@@ -13,7 +13,7 @@ import {
 import { MOBILE_BOTTOM_CHROME_RESERVE } from "@/components/ui/MobileActionBar";
 
 /**
- * FeedbackWidget — the always-available "Send feedback" affordance on every
+ * FeedbackWidget is the always-available "Send feedback" affordance on every
  * app page.
  *
  * A small floating trigger (bottom-left, lifted clear of the bottom-nav pill and
@@ -94,7 +94,6 @@ export default function FeedbackWidget() {
 
   const publicSurface = publicFeedbackSurface(pathname);
   const isPublicFoodTruckBoard = publicSurface === "food-trucks";
-
 
   useEffect(() => {
     const openFeedback = () => {
@@ -177,7 +176,6 @@ export default function FeedbackWidget() {
       setPhase("error");
     }
   }
-
 
   const sending = phase === "sending";
   const succeeded = phase === "ok";

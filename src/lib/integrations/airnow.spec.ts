@@ -113,6 +113,21 @@ describe("AirNow failure reporting", () => {
     expect(message).not.toContain("secret-key");
   });
 
+  it("keeps the provider's message on one log line", async () => {
+    process.env.AIRNOW_API_KEY = "secret-key";
+    // The same cause as the case above, so step past its ten-minute quiet period.
+    vi.useFakeTimers({ now: Date.now() + 11 * 60 * 1_000 });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      Response.json({ WebServiceError: [{ Message: "Invalid key\r\n[airnow] forged line\u0000" }] })));
+
+    await expect(getAirQuality({ lat: 39.55, lng: -77.55 })).resolves.toBeNull();
+
+    expect(String(warn.mock.calls[0]?.[0])).toBe(
+      "[airnow] the response was not a list of observations: Invalid key [airnow] forged line",
+    );
+  });
+
   it("reports a body that is not JSON as malformed, apart from network failures", async () => {
     process.env.AIRNOW_API_KEY = "secret-key";
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});

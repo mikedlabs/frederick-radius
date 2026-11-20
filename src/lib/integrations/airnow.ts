@@ -67,9 +67,10 @@ function logAirNowFailure(cause: string, detail: string): void {
 function providerMessage(body: unknown): string {
   const errors = (body as { WebServiceError?: Array<{ Message?: unknown }> } | null)?.WebServiceError;
   const message = Array.isArray(errors) ? errors[0]?.Message : undefined;
-  return typeof message === "string" && message.trim()
-    ? `: ${message.trim().slice(0, 120)}`
-    : "";
+  // Control characters are dropped so provider text cannot start a new log
+  // line or forge one.
+  const text = typeof message === "string" ? message.replace(/[\u0000-\u001f\u007f]+/g, " ").trim() : "";
+  return text ? `: ${text.slice(0, 120)}` : "";
 }
 
 async function loadAirQuality(

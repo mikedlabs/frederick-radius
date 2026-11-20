@@ -235,7 +235,7 @@ function Card({
           <div data-event-listing-note className="mt-3">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <p
-                className="text-[13px] leading-[1.5]"
+                className="text-[14px] leading-[1.5]"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 {listingNote.sentence}
