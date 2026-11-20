@@ -1,8 +1,7 @@
 import type { Event } from "@/data/events";
 import type { EventCardVisual } from "@/components/event/eventVisuals";
-import { isUtilityEvent } from "@/lib/event-kind";
 import { eventHasTrustworthyEnd, isEventEnded, isEventLiveNow, isEventToday } from "@/lib/eventWhenLabel";
-import { isRoutineProgram, rankRecommendations } from "@/lib/events/lead-rank";
+import { eventLeadTier, rankRecommendations } from "@/lib/events/lead-rank";
 import type { SourceConfidence } from "@/lib/provenance";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
 import { eventAttendanceLabel, hasRecommendationAttendance } from "@/lib/events/attendance";
@@ -114,7 +113,9 @@ export function isStrongTodayEvent(event: TodayEventCandidate, now: Date): boole
   ) return false;
   if (!hasRecommendationAttendance(event)) return false;
   if (!isEventToday(event.starts_at, now) || isEventEnded(event, now)) return false;
-  if (isUtilityEvent(event) || isRoutineProgram(event)) return false;
+  // Headline treatment is for outings. Notices, standing programs and a
+  // program publisher's ordinary rows stay in the quiet program below.
+  if (eventLeadTier(event) !== 0) return false;
   if (event.is_all_day && TIMED_TITLE_ON_ALL_DAY_RE.test(event.title)) return false;
   return true;
 }

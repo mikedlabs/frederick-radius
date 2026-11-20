@@ -109,6 +109,28 @@ describe("Today event shortlist", () => {
     expect(isStrongTodayEvent(aggregator, now)).toBe(false);
   });
 
+  it("keeps a program publisher's ordinary rows out of the headline picks", () => {
+    // Production led Today with this campus table on Nov 9, 2026.
+    const table = event({
+      slug: "fcc-recruitment-table",
+      title: "On Campus Recruitment UMD, College Park Biocomputational Engineering",
+      source: "fcc",
+      confidence: "verified",
+      category: "community",
+      venue_name: "Frederick Community College",
+    });
+    const recital = event({
+      slug: "fcc-recital",
+      title: "FCC Chamber Ensemble Recital",
+      source: "fcc",
+      confidence: "verified",
+      venue_name: "Frederick Community College",
+    });
+    expect(isStrongTodayEvent(table, now)).toBe(false);
+    expect(isStrongTodayEvent(recital, now)).toBe(true);
+    expect(selectTodayEvents([table, recital], now).map((item) => item.slug)).toEqual(["fcc-recital"]);
+  });
+
   it.each(["Frederick", "Frederick County", "Downtown Frederick", "Off Campus", "TBD"])(
     "keeps unresolved destination %s out of the prime brief",
     (venue_name) => {
