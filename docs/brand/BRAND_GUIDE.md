@@ -41,7 +41,7 @@ Clear space around the mark should be at least the radius of its inner arc. Neve
 
 ### Primary lockups
 
-- The product header uses the two-arc mark followed by a one-line `Frederick Radius` wordmark.
+- The product header pairs the two-arc mark with a one-line `Frederick Radius` wordmark. On narrow phones with a county alert or status message, the mark can sit above the name to keep the navigation on one row. More tools groups the tools index and appearance switch. Search, area and active county alerts stay directly accessible on the screens that use them.
 - The tagline lockup adds `FREDERICK COUNTY STARTS WHERE YOU ARE` below the wordmark.
 - Use the Deep Coral mark with the Charcoal wordmark on light surfaces. Use the White reverse lockup on Deep Coral, Catoctin Forest, Charcoal, or photography with enough contrast.
 - The app-icon tile is for launchers, avatars, and app-store use. Do not put the tile inside the normal product header.

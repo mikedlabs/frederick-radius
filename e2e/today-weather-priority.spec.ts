@@ -1,4 +1,4 @@
-import { showTodayTools, todayArea } from "./today-controls";
+import { showHeaderTools, todayArea } from "./today-controls";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { APPEARANCE_KEY } from "../src/lib/appearance";
 import {
@@ -292,14 +292,14 @@ test.describe("Today first-visit appearance", () => {
     test.setTimeout(60_000);
     await page.goto("/today?in=county", { waitUntil: "domcontentloaded" });
     await expect(page.locator("html")).toHaveAttribute("data-appearance", "light");
-    await showTodayTools(page);
+    await showHeaderTools(page);
     await expect(page.getByRole("button", { name: "Switch to dark appearance", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Switch to dark appearance", exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("data-appearance", "dark");
     await expect(page.getByRole("button", { name: "Switch to light appearance", exact: true })).toBeVisible();
     expect(await page.evaluate((key) => localStorage.getItem(key), APPEARANCE_KEY)).toBe("dark");
     await page.reload({ waitUntil: "domcontentloaded" });
-    await showTodayTools(page);
+    await showHeaderTools(page);
     await expect(page.locator("html")).toHaveAttribute("data-appearance", "dark");
     await expect(page.getByRole("button", { name: "Switch to light appearance", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Switch to light appearance", exact: true }).click();

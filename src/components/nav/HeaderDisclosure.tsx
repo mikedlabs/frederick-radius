@@ -4,7 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import styles from "./NavChrome.module.css";
 
 /** Native, mutually exclusive header panels. Escape returns to the opener. */
-export default function TodayHeaderDisclosure({ name, label, trigger, children }: {
+export default function HeaderDisclosure({ name, label, trigger, children }: {
   name: "area" | "tools";
   label: string;
   trigger: ReactNode;

@@ -6,6 +6,7 @@ for (const viewport of [
   { label: "standard phone", width: 390, height: 844 },
   { label: "wide phone", width: 430, height: 932 },
   { label: "tablet", width: 768, height: 900 },
+  { label: "desktop", width: 1280, height: 900 },
 ]) {
   test(`TopBar keeps secondary destinations calm without overflow on a ${viewport.label}`, async ({
     page,
@@ -30,16 +31,37 @@ for (const viewport of [
     await expect(pulse).toHaveAttribute("aria-label", "County status: Clear in checked feeds; no active alerts");
     await expect(pulse).toHaveAttribute("data-pulse-state", "ready");
 
-    await expect(header.getByRole("link", { name: /tools/i })).toHaveCount(1);
-    const toolLabels = compass.getByText("Tools", { exact: true });
-    await expect(toolLabels).toHaveCount(2);
-    const visibleToolLabels = compass.locator("span:visible").filter({ hasText: /^Tools$/ });
-    await expect(visibleToolLabels).toHaveCount(viewport.width >= 640 ? 1 : 0);
-    if (viewport.width >= 640) {
-      await expect(visibleToolLabels).toBeVisible();
-    } else {
-      for (const label of await toolLabels.all()) await expect(label).toBeHidden();
+    const disclosure = header.locator('details[data-today-header-disclosure="tools"]');
+    const more = disclosure.locator("summary");
+    await expect(more).toHaveAccessibleName("More tools");
+    await expect(disclosure).not.toHaveAttribute("open");
+    await expect(compass).toBeHidden();
+    await more.focus();
+    await page.keyboard.press("Enter");
+    await expect(disclosure).toHaveAttribute("open");
+    await expect(compass).toBeVisible();
+    await expect(compass).toHaveAttribute("aria-current", "page");
+    await expect(compass).toHaveAttribute("href", "/compass");
+    const appearance = disclosure.getByRole("button", { name: /Switch to (dark|light) appearance/ });
+    await expect(compass.getByText("Tools", { exact: true })).toBeVisible();
+    await expect(appearance.getByText(/Switch to (dark|light) appearance/)).toBeVisible();
+    for (const choice of [compass, appearance]) {
+      await expect(choice).toBeVisible();
+      const box = await choice.boundingBox();
+      expect(box?.width).toBeGreaterThanOrEqual(44);
+      expect(box?.height).toBeGreaterThanOrEqual(44);
     }
+    await compass.focus();
+    await page.keyboard.press("Escape");
+    await expect(disclosure).not.toHaveAttribute("open");
+    await expect(more).toBeFocused();
+    await more.click();
+    await expect(compass).toBeVisible();
+    const menuBox = await disclosure.locator("summary + div").boundingBox();
+    expect(menuBox).not.toBeNull();
+    await page.mouse.click(2, menuBox!.y + menuBox!.height + 8);
+    await expect(disclosure).not.toHaveAttribute("open");
+    await expect(compass).toBeHidden();
 
     const dimensions = await header.evaluate((element) => ({
       clientWidth: element.clientWidth,
@@ -49,13 +71,9 @@ for (const viewport of [
 
     if (viewport.width >= 640) {
       await expect(pulse).toBeVisible();
-      await expect(compass).toBeVisible();
-      await expect(compass).toHaveAttribute("aria-current", "page");
       await expect(pulse.getByText("County status", { exact: true })).toBeVisible();
     } else {
       await expect(pulse).toBeHidden();
-      await expect(compass).toBeVisible();
-      await expect(compass).toHaveAttribute("aria-current", "page");
 
       if (viewport.width === 390) {
         const location = header.locator("[data-location-chip]");
