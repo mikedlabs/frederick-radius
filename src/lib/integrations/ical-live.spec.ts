@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { splitLocation } from "./ical-live";
+import { jsonArrayFeedRowInstants, splitLocation } from "./ical-live";
 
 describe("splitLocation venue sanity", () => {
   it("rejects a location field that is actually a description dump", () => {
@@ -312,5 +312,74 @@ describe("parseVibemapEvents", () => {
     expect(e.placement).toBeUndefined();
     expect(e.geom).toEqual(DFP_FEED.default_geom);
     expect(e.url).toBe("https://downtownfrederick.org/vm-event/open-mic/");
+  });
+});
+
+// ── Modern Campus (FCC) timezone handling ───────────────────────────
+
+describe("jsonArrayFeedRowInstants", () => {
+  const eastern = (iso: string | null) =>
+    iso === null
+      ? null
+      : new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/New_York",
+          weekday: "short",
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(new Date(iso));
+
+  // Rows copied from the live FCC feed on Nov 9, 2026 (standard time).
+  it("reads Modern Campus wall times as UTC in standard time", () => {
+    const night = jsonArrayFeedRowInstants("moderncampus", {
+      title: "Dual Enrollment Information Night",
+      startDatetime: "2026-11-09T23:30",
+      endDatetime: "2026-11-10T01:00",
+    });
+    expect(night.startsAtISO).toBe("2026-11-09T23:30:00.000Z");
+    expect(night.rawEndsAtISO).toBe("2026-11-10T01:00:00.000Z");
+    // An information night runs 6:30 to 8:00 PM, not 11:30 PM to 1:00 AM.
+    expect(eastern(night.startsAtISO)).toBe("Mon 6:30 PM");
+    expect(eastern(night.rawEndsAtISO)).toBe("Mon 8:00 PM");
+
+    const recruitment = jsonArrayFeedRowInstants("moderncampus", {
+      title: "On Campus Recruitment UMD, College Park Biocomputational Engineering",
+      startDatetime: "2026-11-09T15:00",
+      endDatetime: "2026-11-09T18:00",
+    });
+    // Production showed this 10 AM to 1 PM table as 3:00 PM to 6:00 PM.
+    expect(eastern(recruitment.startsAtISO)).toBe("Mon 10:00 AM");
+    expect(eastern(recruitment.rawEndsAtISO)).toBe("Mon 1:00 PM");
+  });
+
+  it("reads Modern Campus wall times as UTC in daylight time", () => {
+    // FCC's own registration page lists College Night at 6:00 PM to 7:30 PM
+    // Eastern Daylight Time.
+    const collegeNight = jsonArrayFeedRowInstants("moderncampus", {
+      title: "College Night",
+      startDatetime: "2026-10-07T22:00",
+      endDatetime: "2026-10-07T23:30",
+    });
+    expect(eastern(collegeNight.startsAtISO)).toBe("Wed 6:00 PM");
+    expect(eastern(collegeNight.rawEndsAtISO)).toBe("Wed 7:30 PM");
+  });
+
+  it("keeps reading Presence rows from their explicit UTC fields", () => {
+    const row = jsonArrayFeedRowInstants("presence", {
+      eventName: "Senior Formal",
+      startDateTimeUtc: "2026-11-14T00:00:00Z",
+      endDateTimeUtc: "2026-11-14T03:00:00Z",
+      // A Modern Campus field on a Presence row must be ignored.
+      startDatetime: "2026-11-13T12:00",
+    });
+    expect(row.startsAtISO).toBe("2026-11-14T00:00:00.000Z");
+    expect(row.rawEndsAtISO).toBe("2026-11-14T03:00:00.000Z");
+  });
+
+  it("returns null for a date-only or missing start", () => {
+    // The art-gallery exhibition row carries only startDate, so it has no
+    // clock time to convert and the fetcher skips it.
+    const row = jsonArrayFeedRowInstants("moderncampus", { title: "Exhibition", startDate: "2026-11-07" });
+    expect(row.startsAtISO).toBeNull();
+    expect(row.rawEndsAtISO).toBeNull();
   });
 });
