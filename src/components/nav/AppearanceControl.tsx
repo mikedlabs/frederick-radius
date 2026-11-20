@@ -3,6 +3,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 import { applyAppearance, getAppearance, subscribeAppearance } from "@/lib/appearance";
+import styles from "./NavChrome.module.css";
 
 export default function AppearanceControl() {
   const appearance = useSyncExternalStore(subscribeAppearance, getAppearance, () => "light");
@@ -15,10 +16,10 @@ export default function AppearanceControl() {
       aria-label={label}
       title={label}
       onClick={() => applyAppearance(dark ? "light" : "dark")}
-      className="relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] transition hover:bg-[var(--app-bg-sunken)]"
-      style={{ color: "var(--app-ink)" }}
+      className={styles.utilityRow}
     >
       {dark ? <Sun size={20} strokeWidth={1.75} aria-hidden /> : <Moon size={20} strokeWidth={1.75} aria-hidden />}
+      <span>{label}</span>
     </button>
   );
 }

@@ -15,7 +15,7 @@ import { Search, Compass, ChevronLeft, Ellipsis, X } from "lucide-react";
 import RippleMark from "@/components/brand/RippleMark";
 import styles from "./NavChrome.module.css";
 import LocationChip from "./LocationChip";
-import TodayHeaderDisclosure from "./TodayHeaderDisclosure";
+import HeaderDisclosure from "./HeaderDisclosure";
 import TodayAsk from "@/components/today/TodayAsk";
 import TodayScopeStatus from "@/components/today/TodayScopeStatus";
 import AppearanceControl from "./AppearanceControl";
@@ -350,44 +350,6 @@ export default function TopBar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [appleKeyboard, openPrimaryFind, searchOpen]);
 
-  const utilities = (
-    <>
-          <AppearanceControl />
-
-          {/* Compass is the field-guide index. Keep the destination visible on
-              its own page so the top navigation does not change shape. */}
-          <div className="contents">
-            <AppTransitionLink
-              ref={toolsOpenerRef}
-              href="/compass"
-              onClick={(event) => {
-                if (event.button === 0 && !event.defaultPrevented && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
-                  rememberNativeRequest({ target: "tools-opener" });
-                }
-              }}
-              prefetch={false}
-              onMouseEnter={() => router.prefetch("/compass")}
-              onFocus={() => router.prefetch("/compass")}
-              onPointerDown={() => router.prefetch("/compass")}
-              aria-label="Open tools"
-              aria-current={pathname === "/compass" ? "page" : undefined}
-              title="Tools"
-              className={`${styles.tool} relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] px-2 sm:px-3`}
-              style={{ color: pathname === "/compass" ? "var(--app-link)" : "var(--app-ink)" }}
-            >
-              <Compass className="h-[20px] w-[20px] shrink-0" strokeWidth={1.75} aria-hidden />
-              {pathname === "/compass" ? <span aria-hidden data-top-tool-rule className="pointer-events-none absolute inset-x-2.5 bottom-1 h-0.5" style={{ background: "var(--app-link)" }} /> : null}
-              {/* Keep the name beyond narrow phone widths so location,
-                  appearance and Tools retain separate 44px touch targets. */}
-              <span className="hidden text-[12px] font-semibold leading-none min-[460px]:inline sm:hidden">Tools</span>
-              <span className="hidden text-[14px] font-semibold leading-none sm:inline">
-                Tools
-              </span>
-            </AppTransitionLink>
-          </div>
-    </>
-  );
-
   return (
     <>
       <header
@@ -428,23 +390,10 @@ export default function TopBar() {
               className={`${styles.home} tap-44 flex items-center gap-2 font-brand text-[18px] tracking-[-0.015em]`}
               style={{ color: "var(--app-brand-text)" }}
             >
-              {/* Canonical horizontal lockup: the 24px+ two-arc Ripple beside
-                  a one-line Libre Caslon wordmark. The app-icon tile belongs
-                  on home screens and avatars, not inside the product header. */}
-              <RippleMark size={pathname === "/today" ? 27 : pathname === "/map" ? 30 : 34} className="shrink-0" />
-              {/* The wordmark yields on the narrowest phones so functional
-                  controls retain a full touch target. The mark still carries
-                  the brand there; the complete lockup returns at sm. */}
-              <span
-                data-header-wordmark
-                className="hidden whitespace-nowrap leading-none sm:block"
-                style={{ color: "var(--app-ink)" }}
-              >
+              <RippleMark size={28} className="shrink-0" />
+              <span data-header-wordmark className="whitespace-nowrap leading-none" style={{ color: "var(--app-ink)" }}>
                 Frederick Radius
               </span>
-              {/* Product status belongs to the brand lockup, not the navigation:
-                  it sets expectations without becoming another tool or tap
-                  target. Keep it visible when the wordmark yields on phones. */}
               {pathname !== "/map" && pathname !== "/today" ? (
                 <span
                   data-product-status="beta"
@@ -458,37 +407,20 @@ export default function TopBar() {
             </AppTransitionLink>
           )}
 
-          {/* Search trigger: a full-width, input-styled field with the same
-              8px corner as the controls beside it, so the header reads as
-              "find anything" instead of three tiny icons competing for
-              attention. It fills the space between the logo and the
-              right-side controls. Tap anywhere on it opens Find. */}
           {pageOwnsSearch ? (
-            pathname === "/map" || pathname === "/compass" ? (
-              // The map's search moved into the dock at the foot of the screen,
-              // which left this bar a lone disc over dead space. Name the
-              // territory here in one quiet line of the display serif so the
-              // header reads like a field-guide map sheet — a title, not a
-              // control (the disc beside it is the home button). flex-1 still
-              // pins the pulse · Compass cluster to the right edge.
-              <div className="ml-1 min-w-0 flex-1">
-                {pathname === "/map" ? (
-                  <span className="hidden truncate font-sans text-[18px] font-semibold leading-none tracking-tight sm:block" style={{ color: "var(--app-ink)" }}>
-                    Frederick County
-                  </span>
-                ) : null}
-              </div>
-            ) : (
-              // Spacer keeps the right cluster (pulse · Browse) on the right
-              // edge while the dock below owns search on this surface.
-              <div aria-hidden className="min-w-0 flex-1" />
-            )
+            <div data-header-spacer className="min-w-0 flex-1">
+              {pathname === "/map" ? (
+                <span className="hidden truncate font-sans text-[18px] font-semibold leading-none tracking-tight sm:block" style={{ color: "var(--app-ink)" }}>
+                  Frederick County
+                </span>
+              ) : null}
+            </div>
           ) : (
             <>
               {/* Mobile uses the 44px square header action rendered just after
                   this flexible spacer. Desktop gets the wider field because
                   the side rail leaves room for a descriptive search control. */}
-              <div aria-hidden className="min-w-0 flex-1 lg:hidden" />
+              <div data-header-spacer aria-hidden className="min-w-0 flex-1 lg:hidden" />
               <button
                 type="button"
                 disabled={!findInteractionReady}
@@ -545,17 +477,6 @@ export default function TopBar() {
             </button>
           )}
 
-          {/* (Removed the header "My Radius" bookmark — it duplicated the
-              My Radius primary nav tab/SideRail item, putting two bookmark
-              icons on screen for one destination. My Radius stays one tap
-              away via the bottom nav (<lg) and the SideRail (≥lg).) */}
-
-          {/* Right cluster reads left→right: where you are, what's happening,
-              then the county-wide Compass. Pulse and Compass are stable
-              destinations rather than a conditional alert and a vague
-              overflow button. Labels appear when the header has room; both
-              destinations retain full touch targets and accessible names on
-              narrow phones. */}
           {shouldShowGlobalLocation(pathname) ? (
             <Suspense fallback={null}><LocationChip compact={pathname === "/map"} /></Suspense>
           ) : null}
@@ -568,11 +489,36 @@ export default function TopBar() {
             <>
               <Suspense fallback={null}><TodayScopeStatus density="header" /></Suspense>
               <TodayAsk embedded density="header" showQuickNeeds={false} />
-              <TodayHeaderDisclosure name="tools" label="More tools" trigger={<Ellipsis aria-hidden size={20} />}>
-                {utilities}
-              </TodayHeaderDisclosure>
             </>
-          ) : utilities}
+          ) : null}
+          <HeaderDisclosure
+            key={pathname}
+            name="tools"
+            label="More tools"
+            trigger={<><Ellipsis aria-hidden size={20} /><span className={styles.moreLabel}>More</span></>}
+          >
+            <AppTransitionLink
+              ref={toolsOpenerRef}
+              href="/compass"
+              onClick={(event) => {
+                if (event.button === 0 && !event.defaultPrevented && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+                  rememberNativeRequest({ target: "tools-opener" });
+                }
+              }}
+              prefetch={false}
+              onMouseEnter={() => router.prefetch("/compass")}
+              onFocus={() => router.prefetch("/compass")}
+              onPointerDown={() => router.prefetch("/compass")}
+              aria-label="Open tools"
+              aria-current={pathname === "/compass" ? "page" : undefined}
+              className={styles.utilityRow}
+            >
+              <Compass size={20} strokeWidth={1.75} aria-hidden />
+              <span>Tools</span>
+              {pathname === "/compass" ? <span aria-hidden data-top-tool-rule /> : null}
+            </AppTransitionLink>
+            <AppearanceControl />
+          </HeaderDisclosure>
         </div>
       </header>
 
