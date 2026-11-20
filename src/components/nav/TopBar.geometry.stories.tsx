@@ -69,8 +69,16 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
       for (const width of browser ? widths : [document.documentElement.clientWidth]) {
         if (browser) await browser.page.viewport(width, 844);
         await waitFor(() => expect(document.documentElement.clientWidth).toBe(width));
-        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
         const context = `${pathname} at ${width}px${enlarged ? " / 200% text" : ""}`;
+        // `fonts.ready` can resolve while the wordmark's face is still being
+        // fetched, and the wider fallback serif then wraps the row (the
+        // intermittent 109px header). Measure only in the loaded face. A deep
+        // page shows Back and no wordmark, so its face is never requested.
+        if (header.querySelector<HTMLElement>("[data-header-wordmark]")?.getClientRects().length) await waitFor(() => expect(
+          [...document.fonts].filter((face) => /caslon/i.test(face.family)).map((face) => face.status),
+          `${context}: wordmark face loaded`,
+        ).toEqual(["loaded"]), { timeout: 15_000 });
+        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
         if (enlarged) {
           await expect(getComputedStyle(document.documentElement).fontSize, context).toBe("32px");
           await expect(document.documentElement.dataset.appearance, context).toBe(dark ? "dark" : "light");
@@ -84,7 +92,10 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
         await expect(header.scrollWidth, context).toBeLessThanOrEqual(header.clientWidth);
         if (!enlarged && header.getBoundingClientRect().height !== 57) {
           const rowStyle = getComputedStyle(row);
+          const mark = header.querySelector<HTMLElement>("[data-header-wordmark]");
           console.info("Header font-fit diagnostic", JSON.stringify({ pathname, width, probeFont: fontFamily ?? "app system", rootFont: getComputedStyle(document.documentElement).fontSize,
+            wordmark: mark && { width: mark.getBoundingClientRect().width, font: getComputedStyle(mark).fontFamily, size: getComputedStyle(mark).fontSize, weight: getComputedStyle(mark).fontWeight,
+              spacing: getComputedStyle(mark).letterSpacing, faces: [...document.fonts].filter((face) => /caslon/i.test(face.family)).map((face) => `${face.family} ${face.weight} ${face.status}`) },
             row: { width: row.clientWidth, height: row.getBoundingClientRect().height, font: rowStyle.fontFamily, gap: rowStyle.gap, padding: [rowStyle.paddingLeft, rowStyle.paddingRight] },
             children: [...row.children].flatMap((child) => {
               const elements = getComputedStyle(child).display === "contents" ? [...child.children] : [child];
