@@ -44,12 +44,12 @@ export const OwnedPhotoAndMorePlaces: Story = {
     await waitFor(() => expect(media).toHaveAttribute("data-photo-state", "ready"));
     await expect(lead).toHaveAccessibleDescription(/from map center/);
     await expect(canvasElement.querySelectorAll("[data-map-nearby-place]")).toHaveLength(1);
-    await userEvent.click(canvas.getByRole("button", { name: "Show all 6 places in this view" }));
+    await userEvent.click(canvas.getByRole("button", { name: "All 6 places in this view" }));
     await expect(canvasElement.querySelectorAll("[data-map-nearby-place]")).toHaveLength(5);
     await userEvent.click(canvas.getByRole("button", { name: "Show 1 more" }));
     await expect(Array.from(canvasElement.querySelectorAll("[data-map-nearby-place]"), row => row.getAttribute("data-map-nearby-place")))
       .toEqual([playground.slug, ...localShops.map(p => p.slug)]);
-    await userEvent.click(canvas.getByRole("button", { name: "Collapse nearby places" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Less, collapse nearby places" }));
     await expect(canvasElement.querySelectorAll("[data-map-nearby-place]")).toHaveLength(1);
     const owner = canvasElement.ownerDocument;
     await owner.fonts.ready;
@@ -64,6 +64,7 @@ export const OwnedPhotoAndMorePlaces: Story = {
     const before = await measure();
     img.dispatchEvent(new Event("error"));
     await waitFor(() => expect(media).toHaveAttribute("data-photo-state", "fallback"));
+    await expect(lead).toHaveAttribute("data-has-photo-plan", "true");
     await expect(media.querySelector("img")).toBeNull();
     await expect(lead).toHaveAccessibleName(playground.name);
     const after = await measure();
@@ -84,15 +85,15 @@ export const FeaturedPhotoOutsideFirstPage: Story = {
     const canvas = within(canvasElement);
     const featured = canvas.getByRole("button", { name: district.name });
     await expect(featured).toHaveAccessibleDescription(/from you/);
-    await userEvent.click(canvas.getByRole("button", { name: "Show all 6 places in this view" }));
+    await userEvent.click(canvas.getByRole("button", { name: "All 6 places in this view" }));
     const slugs = () => Array.from(canvasElement.querySelectorAll("[data-map-nearby-place]"), row => row.getAttribute("data-map-nearby-place"));
     await expect(slugs()).toEqual(localShops.map(p => p.slug));
     const closest = canvas.getByRole("button", { name: localShops[0].name });
     await expect(closest.querySelector("[data-map-nearby-media]")).toHaveAttribute("data-photo-state", "fallback");
     await userEvent.click(canvas.getByRole("button", { name: "Show 1 more" }));
     await expect(slugs()).toEqual([...localShops.map(p => p.slug), district.slug]);
-    await userEvent.click(canvas.getByRole("button", { name: "Collapse nearby places" }));
-    await expect(canvas.getByRole("button", { name: "Show all 6 places in this view" })).toHaveFocus();
+    await userEvent.click(canvas.getByRole("button", { name: "Less, collapse nearby places" }));
+    await expect(canvas.getByRole("button", { name: "All 6 places in this view" })).toHaveFocus();
     await expect(slugs()).toEqual([district.slug]);
   },
 };
@@ -113,6 +114,26 @@ export const EmptyView: Story = {
   args: { places: [] },
   play: async ({ canvasElement }) => {
     await expect(canvasElement.querySelector("[data-map-nearby-panel]")).toBeNull();
+  },
+};
+
+const carillon: MapPinPlace = {
+  ...playground, slug: "joseph-dill-baker-memorial-carillon-bell-tower", name: "Joseph Dill Baker Memorial Carillon Bell Tower",
+  category: "civic", geom: { lng: -77.4161324, lat: 39.4156826 },
+};
+export const VisibleNamesForVoiceControl: Story = {
+  args: { places: [carillon, ...Array.from({ length: 1000 }, (_, index) => ({
+    ...localShops[0], slug: `voice-fixture-${index}`, name: `Sample shop ${index + 1}`,
+  }))], sortOrigin: carillon.geom },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const lead = canvas.getByRole("button", { name: `Baker Park Carillon, ${carillon.name}` });
+    await expect(lead.querySelector("[data-map-nearby-name]")).toHaveTextContent("Baker Park Carillon");
+    const toggle = canvas.getByRole("button", { name: "All 1,001 places in this view" });
+    await expect(toggle).toHaveTextContent("All 1,001");
+    await userEvent.click(toggle);
+    await expect(toggle).toHaveTextContent("Less");
+    await expect(toggle).toHaveAccessibleName("Less, collapse nearby places");
   },
 };
 

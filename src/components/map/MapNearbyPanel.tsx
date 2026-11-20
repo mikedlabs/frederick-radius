@@ -55,6 +55,7 @@ function NearbyPlace({
   const loaded = Boolean(photo && photoState?.planKey === plan.key && photoState.loadedSrc === photo.src);
   const needsCredit = photo?.kind === "curated" || (photo?.kind === "owned" && photo.referenceContext === "appearance-unverified");
   const category = CATEGORY_BY_SLUG[place.category]?.name ?? place.category;
+  const title = SHORT_TITLES.get(place.slug) ?? place.name;
   const distance = origin && isValidCoord(place.geom)
     ? formatDistance(haversineMeters(origin, place.geom))
     : null;
@@ -66,9 +67,9 @@ function NearbyPlace({
         className={styles.open}
         data-map-nearby-place={place.slug}
         data-lead={Boolean(heading)}
-        data-has-photo={plan.sources.length > 0}
+        data-has-photo-plan={plan.sources.length > 0}
         aria-current={selected ? "location" : undefined}
-        aria-label={place.name}
+        aria-label={title === place.name ? title : `${title}, ${place.name}`}
         aria-describedby={metaId}
         onClick={(event) => {
           event.currentTarget.focus({ preventScroll: true });
@@ -88,7 +89,7 @@ function NearbyPlace({
         </span>
         <span className={styles.copy}>
           {heading && <span className={styles.heading}>{heading}</span>}
-          <strong data-map-nearby-name className={styles.name}>{SHORT_TITLES.get(place.slug) ?? place.name}</strong>
+          <strong data-map-nearby-name className={styles.name}>{title}</strong>
           <span id={metaId} className={styles.meta}>
             {category}{distance && <> · {distance} {fromDevice ? "from you" : "from map center"}</>}
           </span>
@@ -125,6 +126,7 @@ export default function MapNearbyPanel({
   const heading = fromDevice ? "Near you" : "In this view";
   const remaining = Math.max(0, ranked.length - count);
   const hasMore = ranked.length > 1;
+  const toggleText = expanded ? "Less" : `All ${ranked.length.toLocaleString("en-US")}`;
 
   return (
     <section aria-label={heading} className={styles.panel} data-map-nearby-panel
@@ -136,13 +138,13 @@ export default function MapNearbyPanel({
         {hasMore && (
           <button className={styles.toggle} type="button" data-map-nearby-toggle
             aria-expanded={expanded} aria-controls={listId}
-            aria-label={expanded ? "Collapse nearby places" : `Show all ${ranked.length} places in this view`}
+            aria-label={expanded ? `${toggleText}, collapse nearby places` : `${toggleText} places in this view`}
             onClick={() => {
               haptic("light");
               onExpandedChange(!expanded);
             }}>
             {expanded ? <ChevronDown aria-hidden size={16} /> : <ChevronUp aria-hidden size={16} />}
-            <span>{expanded ? "Less" : `All ${ranked.length.toLocaleString("en-US")}`}</span>
+            <span>{toggleText}</span>
           </button>
         )}
       </div>

@@ -214,7 +214,7 @@ for (const [width, height] of [[320, 568], [390, 844]]) {
       await page.evaluate(() => document.documentElement.style.removeProperty("font-size"));
     }
     await toggle.click();
-    await expect(toggle).toHaveAccessibleName("Collapse nearby places");
+    await expect(toggle).toHaveAccessibleName("Less, collapse nearby places");
     await expect(panel.locator("[data-map-nearby-place]")).toHaveCount(3);
     await expect(panel.locator('[data-map-nearby-place="nearby-map-fixture-1"] [data-map-nearby-media]')).toHaveAttribute("data-photo-state", "fallback");
     await toggle.click();
