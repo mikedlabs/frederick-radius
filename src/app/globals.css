@@ -541,8 +541,11 @@
 }
 
 @media (max-width: 63.999rem) {
+  /* The last content must scroll clear of both the bottom bar and the
+     feedback trigger that floats 12px above it: 57px bar + 12px gap + 44px
+     trigger + 13px of air = 126px (7.875rem). FeedbackWidget.spec pins it. */
   .app-main-reading[data-bottom-nav-reserve="true"] {
-    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(7.875rem + env(safe-area-inset-bottom, 0px));
   }
 
   /* A modal sheet owns the full mobile viewport, including the bottom band.

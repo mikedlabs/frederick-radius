@@ -43,6 +43,17 @@ describe("FeedbackWidget public reporting", () => {
     document.body.querySelectorAll('[role="dialog"]').forEach((node) => node.remove());
   });
 
+  it("shows the feedback trigger to every visitor, with no beta cookie", async () => {
+    expect(document.cookie).not.toContain("fr_who");
+    for (const page of ["/today", "/map", "/places/baker-park-frederick"]) {
+      pathname = page;
+      await act(async () => {
+        root.render(createElement(FeedbackWidget));
+      });
+      expect(container.querySelector('button[aria-label="Send feedback"]'), page).not.toBeNull();
+    }
+  });
+
   it("opens the one generic form from an inline page request", async () => {
     await act(async () => {
       window.dispatchEvent(new CustomEvent(OPEN_FEEDBACK_EVENT));
