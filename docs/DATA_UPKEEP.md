@@ -309,6 +309,11 @@ It does not merge a PR, run a provider or bypass a release gate. Batches reduce
 repeated code and review operations; they do not turn unverified candidates
 into verified schedules or expand any source/request/provider budget.
 
+Sweeties by the Creek uses the contact block for 50 Carroll Creek Way, Suite
+120. Its visible Hours block spells weekday spans with “through”. Only this
+binding treats that word between weekdays as a range. Separate date limits,
+holiday notices, changed contact fields and incomplete weeks require review.
+
 Delaplaine's exact homepage supplies public gallery hours only. Its Plan Your
 Visit and footer schedules must both be complete and agree with the exact
 Frederick address and contact. Class and event times cannot fill a missing

@@ -45,6 +45,8 @@ type VisibleWeekSection = {
   partial?: true;
   /** Exact reviewed wording, never enabled by a page or CLI option. */
   word_ranges?: true;
+  /** Only a reviewed weekday span, never a dated cutoff or clock range. */
+  through_weekdays?: true;
   /** A reviewed afternoon range such as 3–9PM. Both endpoints are PM;
    * missing meridiem in any other source or format remains ambiguous. */
   shared_pm_range?: true;
@@ -583,6 +585,10 @@ function visibleSectionWeek(node: Element, section: VisibleWeekSection): Hours {
   if (section.suffix) {
     if (!remaining.endsWith(" " + section.suffix)) throw new Error("Changed trailing contact or service text.");
     remaining = remaining.slice(0, -section.suffix.length).trim();
+  }
+  if (section.through_weekdays) {
+    const weekdaySpan = new RegExp(`\\b(${VISIBLE_DAY})\\s+through\\s+(?=${VISIBLE_DAY}\\b)`, "gi");
+    remaining = remaining.replace(weekdaySpan, "$1 to ");
   }
   const hours: Hours = {};
   const daysPattern = section.word_ranges ? VISIBLE_WORD_DAYS : VISIBLE_DAYS;
