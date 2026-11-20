@@ -30,6 +30,12 @@ type Story = StoryObj<typeof meta>;
 
 function geometryStory(pathname: string, enlarged = false, dark = false, fontFamily?: string, wholeCounty = false): Story {
   const areaName = wholeCounty ? /Whole county/ : /Frederick/;
+  // These are the expected controls for each surface, independent of TopBar's render logic.
+  const isToday = pathname === "/today";
+  const isAsk = pathname === "/ask" || pathname.startsWith("/ask/");
+  const globalArea = !isToday && !isAsk && pathname !== "/search";
+  const globalFind = globalArea && !["/map", "/compass"].includes(pathname);
+  const minimumVisibleTargets = 3 + Number(isToday || globalArea) + Number(isToday || globalFind);
   return {
     parameters: { nextjs: { navigation: { pathname } } },
     beforeEach: wholeCounty ? () => { setScope("county"); } : enlarged || fontFamily ? () => {
@@ -60,8 +66,7 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
       // not a narrow div drawn inside a desktop layout.
       const inBrowserGate = Boolean((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__);
       const browser = inBrowserGate ? await import("vitest/browser") : null;
-      const testedWidths = enlarged ? [320, 390, 768, 1024] : widths;
-      for (const width of browser ? testedWidths : [document.documentElement.clientWidth]) {
+      for (const width of browser ? widths : [document.documentElement.clientWidth]) {
         if (browser) await browser.page.viewport(width, 844);
         await waitFor(() => expect(document.documentElement.clientWidth).toBe(width));
         await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
@@ -77,9 +82,9 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
           `${context}: shared chrome offset matches actual row`,
         ).toBe(row.getBoundingClientRect().height));
         await expect(header.scrollWidth, context).toBeLessThanOrEqual(header.clientWidth);
-        if (!enlarged && width === 320 && header.getBoundingClientRect().height !== 57) {
+        if (!enlarged && header.getBoundingClientRect().height !== 57) {
           const rowStyle = getComputedStyle(row);
-          console.info("Header font-fit diagnostic", JSON.stringify({ pathname, probeFont: fontFamily ?? "app system", rootFont: getComputedStyle(document.documentElement).fontSize,
+          console.info("Header font-fit diagnostic", JSON.stringify({ pathname, width, probeFont: fontFamily ?? "app system", rootFont: getComputedStyle(document.documentElement).fontSize,
             row: { width: row.clientWidth, height: row.getBoundingClientRect().height, font: rowStyle.fontFamily, gap: rowStyle.gap, padding: [rowStyle.paddingLeft, rowStyle.paddingRight] },
             children: [...row.children].flatMap((child) => {
               const elements = getComputedStyle(child).display === "contents" ? [...child.children] : [child];
@@ -96,13 +101,61 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
           // Normal text retains the existing single-row app bar.
           await expect(getComputedStyle(document.documentElement).fontSize, context).toBe("16px");
           await expect(header.getBoundingClientRect().height, context).toBe(57);
+          if (width === 1024) {
+            const reading = document.createElement("div");
+            reading.className = "app-main-reading";
+            reading.style.visibility = "hidden";
+            canvasElement.append(reading);
+            try {
+              const leftInset = (element: Element) => element.getBoundingClientRect().left + parseFloat(getComputedStyle(element).paddingLeft);
+              await expect(leftInset(row), `${context}: align with the reading column`).toBeCloseTo(leftInset(reading), 0);
+            } finally { reading.remove(); }
+          }
         }
         await expect(document.documentElement.scrollWidth, context).toBeLessThanOrEqual(width);
+        const disclosure = header.querySelector<HTMLDetailsElement>('details[data-today-header-disclosure="tools"]')!;
+        const more = disclosure.querySelector<HTMLElement>("summary")!;
+        await expect(more, context).toHaveAccessibleName("More tools");
+        await expect(disclosure.open, context).toBe(false);
+        const wordmark = header.querySelector<HTMLElement>("[data-header-wordmark]");
+        if (wordmark) {
+          const home = wordmark.closest("a")!;
+          await expect(home, context).toHaveAttribute("href", "/");
+          const hasBeta = pathname !== "/today" && pathname !== "/map";
+          await expect(home, context).toHaveAccessibleName(hasBeta ? "Frederick Radius beta, home" : "Frederick Radius, home");
+          if (hasBeta && width >= 1024) await expect(within(home).getByText("Beta"), context).toBeVisible();
+          await expect(home.querySelector("svg"), context).toBeVisible();
+          if (!enlarged && !(pathname === "/map" && width === 320)) {
+            await expect(wordmark, context).toBeVisible();
+            await expect(wordmark, context).toHaveTextContent("Frederick Radius");
+            // A visible span can still clip the end of Radius or wrap to two lines.
+            const range = document.createRange();
+            range.selectNodeContents(wordmark);
+            const lines = [...range.getClientRects()].filter(rect => rect.width && rect.height);
+            await expect(lines, context).toHaveLength(1);
+            const word = lines[0];
+            const lockup = home.getBoundingClientRect();
+            await expect(word.left, context).toBeGreaterThanOrEqual(lockup.left - 1);
+            await expect(word.right, context).toBeLessThanOrEqual(lockup.right + 1);
+            await expect(word.width, context).toBeLessThanOrEqual(wordmark.getBoundingClientRect().width + 1);
+          }
+        } else {
+          await expect(canvas.getByRole("button", { name: "Back" }), context).toBeVisible();
+        }
+        if (["/today", "/map", "/events", "/nearby"].includes(pathname)) {
+          await expect(wordmark, context).toBeInTheDocument();
+        }
+        if (pathname === "/today") {
+          await expect(canvas.getByRole("link", { name: "Find a place, service, event, or answer" }), context).toBeVisible();
+          await expect(header.querySelector("[data-today-area-trigger]"), context).toBeVisible();
+        }
         const targets = [...header.querySelectorAll<HTMLElement>("button, a[href], summary")].filter((element) => {
+          const closed = element.closest("details:not([open])");
+          if (closed && element !== closed.querySelector(":scope > summary")) return false;
           const box = element.getBoundingClientRect();
           return box.width > 0 && box.height > 0 && getComputedStyle(element).visibility !== "hidden";
         });
-        await expect(targets.length, context).toBeGreaterThanOrEqual(["/today", "/search"].includes(pathname) ? 4 : ["/map", "/compass"].includes(pathname) ? 5 : 6);
+        await expect(targets.length, `${context}: direct header controls`).toBeGreaterThanOrEqual(minimumVisibleTargets);
         for (const target of targets) {
           const box = target.getBoundingClientRect();
           const label = target.getAttribute("aria-label") || target.textContent;
@@ -140,7 +193,9 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
             const y = box.top + box.height / 2;
             for (const [dx, dy] of [[0, 0], [-21.5, 0], [21.5, 0], [0, -21.5], [0, 21.5]]) {
               const hit = document.elementFromPoint(x + dx, y + dy);
-              await expect(hit !== null && target.contains(hit), `${context}: ${label} effective 44px target`).toBe(true);
+              const hitControl = hit?.closest("a, button, summary");
+              const hitLabel = hitControl?.getAttribute("aria-label") || hit?.tagName || "none";
+              await expect(hit !== null && target.contains(hit), `${context}: ${label} at (${x + dx}, ${y + dy}) hit ${hitLabel}, expected 44px target`).toBe(true);
             }
           }
           const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
@@ -152,22 +207,26 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
           const verticalOverlap = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
           await expect(Math.min(horizontalOverlap, verticalOverlap), `${context}: adjacent actions overlap`).toBeLessThanOrEqual(0.5);
         }
-        const more = header.querySelector<HTMLElement>("[data-today-tools-trigger]");
-        if (more) {
-          await expect(more, context).toHaveAccessibleName("More tools");
-          await userEvent.click(more);
-        }
-        for (const utility of [canvas.getByRole("button", { name: /Switch to (light|dark) appearance/ }), canvas.getByRole("link", { name: "Open tools" })]) {
+        await userEvent.click(more);
+        await expect(disclosure.open, context).toBe(true);
+        const panel = within(disclosure);
+        const appearance = panel.getByRole("button", { name: /Switch to (light|dark) appearance/ });
+        const tools = panel.getByRole("link", { name: "Open tools" });
+        await expect(tools, context).toHaveAttribute("href", "/compass");
+        await expect(within(tools).getByText("Tools", { exact: true }), context).toBeVisible();
+        await expect(within(appearance).getByText(/Switch to (light|dark) appearance/), context).toBeVisible();
+        for (const utility of [appearance, tools]) {
           await expect(utility, context).toBeVisible();
           const rect = utility.getBoundingClientRect();
           await expect(rect.width, context).toBeGreaterThanOrEqual(44);
           await expect(rect.height, context).toBeGreaterThanOrEqual(44);
           await expect(utility.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)), context).toBe(true);
         }
-        if (more) await userEvent.click(more);
+        await userEvent.click(more);
+        await expect(disclosure.open, context).toBe(false);
         await expect(pulse, context).toBeVisible();
         await expect(canvas.getByText(width < 640 ? "Unverified" : "Unable to verify", { exact: true }), context).toBeVisible();
-        if (!["/today", "/search"].includes(pathname)) {
+        if (globalArea) {
           const area = header.querySelector<HTMLElement>("[data-location-chip]")!;
           await expect(area, context).toHaveAccessibleName(new RegExp(`Current scope: ${areaName.source}`));
           if (pathname === "/map") {
@@ -179,7 +238,7 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
             if (wholeCounty && width < 360) await expect(label.scrollWidth, `${context}: area name clipped`).toBeLessThanOrEqual(label.clientWidth);
           }
         }
-        if (!["/today", "/map", "/compass", "/search"].includes(pathname)) {
+        if (globalFind) {
           await expect(canvas.getByRole("button", { name: "Ask or find across Frederick County" }), context).toBeVisible();
         }
         if (pathname === "/privacy") await expect(canvas.getByRole("button", { name: "Back" }), context).toBeVisible();
@@ -217,3 +276,28 @@ export const NativeNotoEvents: Story = geometryStory("/events", false, false, "'
 
 export const NativeWideSansMap: Story = geometryStory("/map", false, false, "Verdana, sans-serif");
 export const NativeWideSansEvents: Story = geometryStory("/events", false, false, "Verdana, sans-serif");
+
+// The Ubuntu browser measured a 125.52px home link at 320px, including the
+// 24px mark and 2px gap, and a 51.17px Unverified label. Reserve just the
+// measured text advances (at 16px and 9px respectively); geometry, text
+// scaling and the placement of the mark remain under the real stylesheet.
+function measuredTextStory(pathname: string, enlarged = false): Story {
+  return {
+    ...geometryStory(pathname, enlarged),
+    decorators: [(Story) => (
+      <div data-measured-header-text style={{ display: "contents" }}>
+        <style>{`
+          @media (max-width: 639.98px) {
+            [data-measured-header-text] [data-header-wordmark] { min-inline-size: 6.22em; }
+            [data-measured-header-text] [data-pulse-mobile-state] { min-inline-size: 5.69em; }
+          }
+        `}</style>
+        <Story />
+      </div>
+    )],
+  };
+}
+
+export const MeasuredUbuntuToday: Story = measuredTextStory("/today");
+export const MeasuredUbuntuEvents: Story = measuredTextStory("/events");
+export const MeasuredUbuntuLargeText: Story = measuredTextStory("/events", true);

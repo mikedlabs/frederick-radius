@@ -33,7 +33,7 @@ function argsFor(events: EventWithMeta[]) {
     events, summary: summarizeEventsForBrowse(events, bounds), liveSlugs: [],
     sourceHealth: { degraded: false, unavailable: [] },
     categories: [{ slug: "community", name: "Community" }, { slug: "music", name: "Music" }],
-    towns: [{ slug: "frederick", name: "Frederick" }], nowISO: now.toISOString(),
+    towns: [{ slug: "frederick", name: "Frederick" }], nowISO: now.toISOString(), clock: () => now.getTime(),
     next24ISO: new Date(bounds.next24).toISOString(), weekendStartISO: new Date(bounds.weekendStart).toISOString(),
     weekendEndISO: new Date(bounds.weekendEnd).toISOString(),
   };

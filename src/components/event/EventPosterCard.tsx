@@ -11,7 +11,7 @@ import { formatDistance } from "@/lib/geo";
 import { eventDisplayTitle } from "@/lib/events/display-title";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { statusLabel } from "@/lib/event-status";
-import { eventCardVisual, sameEventPhotoLicense, type EventCardVisual } from "./eventVisuals";
+import { eventCardVisual, reviewedEventVenuePhoto, sameEventPhotoLicense, type EventCardVisual } from "./eventVisuals";
 import { useEventVisualLifecycle } from "./useEventVisualLifecycle";
 import EventVisualCredit from "./EventVisualCredit";
 import EventArtwork from "./EventArtwork";
@@ -23,7 +23,16 @@ import EventRow from "./EventRow";
 export type EventPosterCardProps = {
   event: EventWithMeta;
   /** A visual approved by the surface's source-aware visual planner. */
-  visual?: EventCardVisual;
+  visual?: EventCardVisual | null;
+  /** Overview photography uses only reviewed free imagery. A null visual
+   * deliberately keeps the facts without repeating another pick's picture. */
+  venuePhotos?: "all-approved" | "free-reviewed";
+  /** The window overview already names Tonight or This weekend. Keep
+   * status, attendance details and pricing, without repeating those labels. */
+  concise?: boolean;
+  /** The overview has reserved this exact venue photo after its preferred
+   * publisher artwork. It loads only if that artwork fails. */
+  allowVenueFallback?: boolean;
   priorityImage?: boolean;
   whyItMatters?: string;
   live?: boolean;
@@ -38,8 +47,11 @@ export type EventPosterCardProps = {
 };
 
 /** Never permit an explicit visual to bypass its source or venue binding. */
-export function posterVisualForEvent(event: EventWithMeta, explicit?: EventCardVisual): EventCardVisual | null {
-  const approved = eventCardVisual(event);
+export function posterVisualForEvent(event: EventWithMeta, explicit?: EventCardVisual | null, venuePhotos: EventPosterCardProps["venuePhotos"] = "all-approved"): EventCardVisual | null {
+  if (explicit === null) return null;
+  const approved = venuePhotos === "free-reviewed" && explicit?.presentation === "photo"
+    ? reviewedEventVenuePhoto(event.venue_place_slug)
+    : eventCardVisual(event, { venuePhotos });
   if (!approved?.caption.trim()) return null;
   if (explicit && (explicit.key !== approved.key || explicit.src !== approved.src
     || explicit.caption !== approved.caption || explicit.presentation !== approved.presentation
@@ -67,11 +79,15 @@ export function eventPosterPhotoSrc(src: string): string {
  * edges. The credit follows the facts inside the row, above its hairline and
  * outside the event link.
  */
-export default function EventPosterCard({ event, visual, priorityImage = true, whyItMatters,
+export default function EventPosterCard({ event, visual, venuePhotos, allowVenueFallback = false, concise = false, priorityImage = true, whyItMatters,
   live = false, nowISO, layout = "hero", headingLevel = 2 }: EventPosterCardProps) {
   const cardNow = nowISO ? new Date(nowISO) : null;
-  const approved = posterVisualForEvent(event, visual);
-  const { identity, visibleVisual, failImage, inspectLoadedImage } = useEventVisualLifecycle(approved);
+  const approved = posterVisualForEvent(event, visual, venuePhotos);
+  const preferred = useEventVisualLifecycle(approved);
+  const useVenueFallback = !preferred.visibleVisual && approved?.presentation === "artwork" &&
+    venuePhotos === "free-reviewed" && allowVenueFallback;
+  const venueFallback = useEventVisualLifecycle(useVenueFallback ? reviewedEventVenuePhoto(event.venue_place_slug) : null);
+  const { identity, visibleVisual, failImage, inspectLoadedImage } = useVenueFallback ? venueFallback : preferred;
   const photo = visibleVisual?.presentation === "photo" ? visibleVisual : null;
   const artwork = visibleVisual?.presentation === "artwork" ? visibleVisual : null;
   const photoSrc = photo ? eventPosterPhotoSrc(photo.src) : null;
@@ -87,7 +103,7 @@ export default function EventPosterCard({ event, visual, priorityImage = true, w
   const timingText = eventDecisionTime(event, cardNow ?? undefined);
   // Reasons are informational, so they read as plain text in the facts line,
   // not as capsules. Distance and live state are already stated elsewhere.
-  const reasonLabels = confirmedLive ? [] : eventReasons(event, cardNow ?? undefined)
+  const reasonLabels = confirmedLive || concise ? [] : eventReasons(event, cardNow ?? undefined)
     .filter(reason => reason.kind !== "free" && reason.kind !== "near" && reason.kind !== "walkable" && reason.kind !== "live_now")
     .map(reason => reason.label);
   const accessLabel = communicationAccessLabels(event)[0];
@@ -100,7 +116,7 @@ export default function EventPosterCard({ event, visual, priorityImage = true, w
   const poster = { kind: photo ? "photo" : artwork ? "artwork" : "category", layout } as const;
 
   const banner = photo && photoSrc ? (
-    <figure className={styles.photo}>
+    <figure data-event-poster-photo className={styles.photo}>
       <Image key={identity} src={photoSrc} alt="" fill priority={priorityImage}
         unoptimized={photoSrc.startsWith("/api/place-photo")}
         sizes="(max-width: 640px) 100vw, 720px"
@@ -118,10 +134,11 @@ export default function EventPosterCard({ event, visual, priorityImage = true, w
   return (
     <EventRow
       lead={layout === "hero"}
-      position="lead"
+      position={layout === "hero" ? "lead" : "result"}
       headingLevel={headingLevel}
       poster={poster}
       banner={banner}
+      bannerAfterFacts={concise && layout === "shelf"}
       slug={event.slug}
       title={eventDisplayTitle(event)}
       weekday={date.weekday}
@@ -129,7 +146,7 @@ export default function EventPosterCard({ event, visual, priorityImage = true, w
       day={date.day}
       startTime={date.time}
       timing={timingText}
-      category={categoryLabel}
+      category={concise ? undefined : categoryLabel}
       live={confirmedLive}
       status={statusText}
       statusColor={isCancelled ? "var(--app-danger-text)" : "var(--state-closing)"}

@@ -178,10 +178,11 @@ function compareRecommendationPriority(
  * URL, an admission price, and an image do not prove that an event is popular.
  * Explicit chronology and legacy lead ranking remain separate contracts.
  */
-export function compareForRecommendation(
-  a: RecommendationRankable,
-  b: RecommendationRankable,
+export function compareForRecommendation<T extends RecommendationRankable>(
+  a: T,
+  b: T,
   featured?: ReadonlySet<string>,
+  visualRank?: (event: T) => number,
 ): number {
   const priority = compareRecommendationPriority(a, b, featured);
   if (priority) return priority;
@@ -189,7 +190,7 @@ export function compareForRecommendation(
   const bDistance = Number.isFinite(b.distance_m);
   if (aDistance && bDistance && a.distance_m !== b.distance_m) return a.distance_m! - b.distance_m!;
   if (aDistance !== bDistance) return aDistance ? -1 : 1;
-  const imagery = Number(!a.hero_image) - Number(!b.hero_image);
+  const imagery = visualRank ? visualRank(a) - visualRank(b) : Number(!a.hero_image) - Number(!b.hero_image);
   if (imagery) return imagery;
   return Date.parse(a.starts_at) - Date.parse(b.starts_at);
 }
@@ -202,13 +203,14 @@ export function compareForRecommendation(
  */
 export function rankRecommendations<T extends RecommendationRankable>(
   events: readonly T[],
-  { featured, limit = 6, previouslySelected = [] }: {
+  { featured, limit = 6, previouslySelected = [], visualRank }: {
     featured?: ReadonlySet<string>;
     limit?: number;
     previouslySelected?: readonly RecommendationRankable[];
+    visualRank?: (event: T) => number;
   } = {},
 ): T[] {
-  const remaining = [...events].sort((a, b) => compareForRecommendation(a, b, featured));
+  const remaining = [...events].sort((a, b) => compareForRecommendation(a, b, featured, visualRank));
   const selected: T[] = [];
   const venueCounts = new Map<string, number>();
   const intentCounts = new Map<string, number>();

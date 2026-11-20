@@ -52,6 +52,7 @@ vi.mock("./EventsBoardDock", async (importOriginal) => {
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const nowISO = "2026-10-12T14:00:00.000Z";
+const fixtureClock = () => Date.parse(nowISO);
 const bounds = { now: Date.parse(nowISO), next24: Date.parse("2026-10-13T04:00:00.000Z"), weekendStart: Date.parse("2026-10-16T21:00:00.000Z"), weekendEnd: Date.parse("2026-10-19T04:00:00.000Z"), live: new Set<string>() };
 type SourceHealth = ComponentProps<typeof EventsExplorer>["sourceHealth"];
 const healthy: SourceHealth = { degraded: false, unavailable: [] };
@@ -68,7 +69,7 @@ function listedEvent(slug = "recovered-concert", municipality = "thurmont", titl
 function props(events: EventWithMeta[] = [], health = degraded, total = events.length): ComponentProps<typeof EventsExplorer> {
   return {
     events, liveSlugs: [], categories: [{ slug: "music", name: "Music" }], towns: [{ slug: "thurmont", name: "Thurmont" }, { slug: "frederick", name: "Frederick" }],
-    summary: { ...summarizeEventsForBrowse(events, bounds), totalCount: total }, sourceHealth: health, nowISO,
+    summary: { ...summarizeEventsForBrowse(events, bounds), totalCount: total }, sourceHealth: health, nowISO, clock: fixtureClock,
     next24ISO: new Date(bounds.next24).toISOString(), weekendStartISO: new Date(bounds.weekendStart).toISOString(), weekendEndISO: new Date(bounds.weekendEnd).toISOString(),
   };
 }
@@ -310,7 +311,7 @@ describe("Recommended attendance promotion through the mounted explorer", () => 
     venue_name: "Off Campus", starts_at: "2026-10-12T17:00:00.000Z", ends_at: "2026-10-12T19:00:00.000Z" });
   const named = () => ({ ...listedEvent("named-concert", "frederick", "Concert"),
     venue_name: "Community Hall", starts_at: "2026-10-12T23:00:00.000Z", ends_at: "2026-10-13T01:00:00.000Z", geo_confidence: "area" as const });
-  const leadLinks = () => [...host.querySelectorAll<HTMLAnchorElement>('[data-test-card-variant="feature"]')].map((link) => link.getAttribute("href"));
+  const leadLinks = () => [...host.querySelectorAll<HTMLAnchorElement>('[data-events-overview-pick="lead"] [data-decision-action="open"], [data-test-card-variant="feature"]')].map((link) => link.getAttribute("href"));
 
   it("promotes a named later event while keeping the earlier ambiguous listing once", async () => {
     const rows = [weak(), named()], before = JSON.stringify(rows);
@@ -335,6 +336,64 @@ describe("Recommended attendance promotion through the mounted explorer", () => 
     expect(request).not.toHaveBeenCalled();
   });
 
+  it("replaces a preview's Tonight pick when the completed town schedule moves it to Saturday", async () => {
+    window.history.replaceState(null, "", "/events?in=frederick");
+    let finish!: (response: Response) => void;
+    request.mockImplementation(() => new Promise<Response>(resolve => { finish = resolve; }));
+    const preview = named();
+    const corrected = { ...preview, starts_at: "2026-10-17T23:00:00.000Z", ends_at: "2026-10-18T01:00:00.000Z" };
+    await render(props([preview], degraded, 2));
+    const link = () => host.querySelector('a[href="/events/named-concert"]');
+    expect(link()?.closest("[data-events-window]")?.getAttribute("data-events-window")).toBe("tonight");
+    await act(async () => finish(payload([corrected])));
+    expect(link()?.closest("[data-events-window]")?.getAttribute("data-events-window")).toBe("weekend");
+    expect(host.querySelector('[data-events-window="tonight"] [data-decision-id]')).toBeNull();
+    expect(eventLinks().filter(href => href === "/events/named-concert")).toHaveLength(1);
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it("removes an ended Tonight pick when a visitor returns after Eastern midnight", async () => {
+    let instant = Date.parse(nowISO);
+    const tomorrow = { ...named(), slug: "tuesday-night", title: "Tuesday concert",
+      starts_at: "2026-10-13T23:00:00.000Z", ends_at: "2026-10-14T01:00:00.000Z" };
+    await render({ ...props([named(), tomorrow], healthy), clock: () => instant });
+    const tonight = () => host.querySelector('[data-events-window="tonight"] [data-decision-action="open"]')?.getAttribute("href");
+    expect(tonight()).toBe("/events/named-concert");
+    instant = Date.parse("2026-10-13T04:10:00.000Z");
+    await act(async () => document.dispatchEvent(new Event("visibilitychange")));
+    expect(tonight()).toBe("/events/tuesday-night");
+    expect(host.querySelector('[data-events-overview] a[href="/events/named-concert"]')).toBeNull();
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it.each([["complete", healthy], ["partial", degraded]] as const)(
+    "recovers the county preview's next Tonight pick once from a %s calendar",
+    async (_label, recoveredHealth) => {
+      let instant = Date.parse(nowISO);
+      const preview = named();
+      const later = { ...preview, slug: "late-concert", starts_at: "2026-10-13T02:00:00.000Z", ends_at: "2026-10-13T03:00:00.000Z" };
+      request.mockImplementation(async () => payload([later], recoveredHealth));
+      await render({ ...props([preview], healthy, 2), initialHighlightWindows: { tonight: true, weekend: false }, clock: () => instant });
+      const pick = () => host.querySelector('[data-events-window="tonight"] [data-decision-action="open"]')?.getAttribute("href");
+      expect(pick()).toBe("/events/named-concert");
+      expect(request).not.toHaveBeenCalled();
+
+      // Monday at 9:05 pm Eastern: the preview is spent, but the unseen 10 pm show remains.
+      instant = Date.parse("2026-10-13T01:05:00.000Z");
+      await act(async () => document.dispatchEvent(new Event("visibilitychange")));
+      expect(pick()).toBe("/events/late-concert");
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(request.mock.calls[0][0]).toBe("/api/events/browse");
+      expect(request.mock.calls[0][1]?.cache).not.toBe("no-store");
+      expect(host.querySelector("[data-events-complete]")?.getAttribute("data-events-complete")).toBe(String(!recoveredHealth.degraded));
+
+      instant = Date.parse("2026-10-13T03:05:00.000Z");
+      await act(async () => document.dispatchEvent(new Event("visibilitychange")));
+      expect(pick()).toBeUndefined();
+      expect(request).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it("applies eligibility before featured and consented Near Me rank without discarding rows", async () => {
     window.history.replaceState(null, "", "/events?in=nearme");
     recommendationContext.origin = { lat: 39.414, lng: -77.41 };
@@ -347,21 +406,21 @@ describe("Recommended attendance promotion through the mounted explorer", () => 
     expect(request).not.toHaveBeenCalled();
   });
 
-  it("does not move a later horizon's eligible event over an ambiguous Today group", async () => {
+  it("labels the weekend pick separately while keeping an ambiguous Today listing in the ordinary board", async () => {
     const weekend = { ...named(), slug: "weekend-concert",
       starts_at: "2026-10-16T23:00:00.000Z", ends_at: "2026-10-17T01:00:00.000Z" };
     await render(props([weak(), weekend], healthy));
-    expect(leadLinks()).toEqual([]);
+    expect(leadLinks()).toEqual(["/events/weekend-concert"]);
     expect(host.querySelector("[data-events-primary-lead]")).toBeNull();
     expect(eventLinks().filter((href) => href === "/events/off-campus-offer")).toHaveLength(1);
     expect(eventLinks().filter((href) => href === "/events/weekend-concert")).toHaveLength(1);
-    // Recommended supplementary rows use discovery cards while ordinary
-    // group leads retain glance cards. Their exact horizon and document order
-    // remain the contract, regardless of this presentation difference.
-    const ordinary = [...host.querySelectorAll<HTMLAnchorElement>('[data-test-card-variant="glance"], [data-test-card-variant="discovery"]')];
-    expect(ordinary.map(link => link.getAttribute("href"))).toEqual(["/events/off-campus-offer", "/events/weekend-concert"]);
-    expect(ordinary[0].closest("section")?.querySelector(".section-heading h2")?.textContent).toBe("Today1");
-    expect(ordinary[1].closest("section")?.querySelector(".section-heading h2")?.textContent).toBe("This weekend1");
+    const tonight = host.querySelector('[data-events-window="tonight"]');
+    expect(tonight?.querySelector("h2")?.textContent).toBe("Tonight");
+    expect(tonight?.querySelector('a[href^="/events/"]')).toBeNull();
+    const weekendPick = host.querySelector('a[href="/events/weekend-concert"]');
+    expect(weekendPick?.closest("[data-events-window]")?.getAttribute("data-events-window")).toBe("weekend");
+    const ordinary = host.querySelector('a[href="/events/off-campus-offer"]');
+    expect(ordinary?.closest("section")?.querySelector(".section-heading h2")?.textContent).toBe("Today1");
     expect(host.querySelector("[data-test-dock]")?.getAttribute("data-count")).toBe("2");
     expect(request).not.toHaveBeenCalled();
   });
@@ -430,7 +489,13 @@ describe("Recommended attendance promotion through the mounted explorer", () => 
     for (const row of rows) {
       const links = host.querySelectorAll<HTMLAnchorElement>(`a[href="/events/${row.slug}"]`);
       expect(links).toHaveLength(1);
-      expect(links[0].getAttribute("data-test-card-start")).toBe(row.starts_at);
+      if (row.slug === "named-concert") {
+        const timing = links[0].closest("article")?.querySelector("[data-event-row-when]")?.textContent;
+        expect(timing).toMatch(/7:00\s*PM/i);
+        expect(timing).toMatch(/Oct\s*12/i);
+      } else {
+        expect(links[0].getAttribute("data-test-card-start")).toBe(row.starts_at);
+      }
     }
     expect(host.querySelector(".eb-countline")?.textContent).toBe("3 event listings · 1 town");
     expect(JSON.stringify(rows)).toBe(before);

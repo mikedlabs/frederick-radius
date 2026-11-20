@@ -13,10 +13,11 @@ export async function chooseTodayArea(page: Page, value: string) {
   if (await select.isVisible()) await area.click();
 }
 
-export async function showTodayTools(page: Page) {
+export async function showHeaderTools(page: Page) {
   const menu = page.locator("header [data-today-tools-trigger]");
   const tools = page.locator("header").first().getByRole("link", { name: "Open tools", exact: true });
-  if (await menu.isVisible() && !(await tools.isVisible())) await menu.click();
+  await expect(menu).toBeVisible();
+  if (!(await tools.isVisible())) await menu.click();
   await expect(tools).toBeVisible();
   return tools;
 }

@@ -199,6 +199,11 @@ const EVENT_IMAGE_POLICY: Readonly<
   },
 };
 
+/** An exact, bundled venue photograph with its archive caption and full credit. */
+export function reviewedEventVenuePhoto(venueSlug: string | undefined): EventCardVisual | null {
+  return ownedEventVenueVisual(venueSlug) ?? licensedEventVenueVisual(venueSlug) ?? legacyEventVenueVisual(venueSlug);
+}
+
 function approvedProviderVisual(event: EventVisualSource): EventCardVisual | null {
   if (!event.hero_image) return null;
   if (event.source === "venue-extract" && event.source_url && approvedVenueFeedImage(
@@ -281,6 +286,7 @@ export function eventCardVisual(
 ): EventCardVisual | null {
   const providerVisual = approvedProviderVisual(event);
   if (providerVisual) return providerVisual;
+  if (venuePhotos === "free-reviewed") return reviewedEventVenuePhoto(event.venue_place_slug);
 
   // Event-specific publisher art stays first. Exact owned venue photographs
   // avoid activating the existing Google path for these reviewed places.

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { ChevronDown } from "lucide-react";
-import TodayHeaderDisclosure from "@/components/nav/TodayHeaderDisclosure";
+import HeaderDisclosure from "@/components/nav/HeaderDisclosure";
 import { useRouter, useSearchParams } from "next/navigation";
 import { commitLocationScope } from "@/components/nav/locationScopeNavigation";
 import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
@@ -192,9 +192,25 @@ export default function TodayScopeStatus({ dateline, density = "standard" }: {
     </div>
   );
   if (density !== "header") return controls;
-  const label = scopeLabel(scope ?? "county");
-  return <TodayHeaderDisclosure name="area" label={`Choose your area: ${label}`}
-    trigger={<><span>{label}</span><ChevronDown aria-hidden size={14} /></>}>
-    {controls}
-  </TodayHeaderDisclosure>;
+  const headerScope = scope ?? "county";
+  const label = scopeLabel(headerScope);
+  return (
+    <HeaderDisclosure
+      name="area"
+      label={`Choose your area: ${label}`}
+      trigger={
+        <>
+          {headerScope === "county" ? (
+            <>
+              <span data-today-scope-full>{label}</span>
+              <span data-today-scope-compact>County</span>
+            </>
+          ) : <span>{label}</span>}
+          <ChevronDown aria-hidden size={14} />
+        </>
+      }
+    >
+      {controls}
+    </HeaderDisclosure>
+  );
 }
