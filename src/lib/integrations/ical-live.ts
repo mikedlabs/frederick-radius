@@ -17,6 +17,7 @@ import {
   resetFeedMetrics,
 } from "@/lib/integrations/event-schema";
 import { recordSnapshot } from "@/lib/integrations/feed-snapshot";
+import { countyCategory } from "@/lib/events/county-category";
 import { normalizeTitle, cleanDescription, clampDescription } from "@/lib/events/normalize";
 import { fetchTicketmasterMusicResult } from "@/lib/integrations/ticketmaster";
 import {
@@ -690,23 +691,26 @@ function categoryExists(slug: string, fallback: string): string {
 }
 
 /**
- * P0-5 Option A: the Frederick County feed's category bears no relation
- * to the event, so county events get no category (and render no badge)
- * rather than a wrong one. Other feeds keep the keyword inference.
- * Option B (an LLM classifier at ingest) is a separate, paid change and
- * is intentionally not done here.
+ * County rows use the shared title-only rule in county-category.ts
+ * (P0-5: no generic keyword matcher, never read the description).
+ * Other feeds keep keyword inference.
  *
  * `publisherCategories` is the feed's own CATEGORIES text for the event. It
  * counts as strong evidence, the same as the title, for the venue categories
- * that a description word alone cannot set.
+ * that a description word alone cannot set. `venue` is read only by the
+ * county rule, which needs it to see a Gaver Farm row whose title does not
+ * name the farm.
  */
 export function feedCategory(
   feed: FeedSpec,
   title: string,
   description: string,
   publisherCategories = "",
+  venue?: string,
 ): string {
-  if (feed.source === "county") return "";
+  if (feed.source === "county") {
+    return categoryExists(countyCategory(title, venue), "community");
+  }
   return categoryExists(
     inferCategory(title, description, feed.default_category, publisherCategories),
     feed.default_category,
@@ -2931,7 +2935,8 @@ function getCachedEventSourcePage(
       // v5: bar, brewery and winery need the title, a publisher tag or the
       // feed's own venue category, so cached LiveEvent.category values changed.
       // v6: Frederick Community College times are read as UTC, so cached
-      // FCC rows carry different starts_at and ends_at values.
+      // FCC rows carry different starts_at and ends_at values. County rows
+      // also gain a title-only category where they used to carry a blank.
       "live-event-source-page-v6",
       source,
       String(windowDays),
