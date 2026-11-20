@@ -68,6 +68,23 @@ describe("searchCivicActions", () => {
       expect.objectContaining({ id: "civic:parks-rec-centers" }),
     ]);
   });
+
+  it("leads a trash schedule question with the trash schedule page", () => {
+    const r = searchCivicActions("trash pickup schedule");
+    expect(r[0]?.id).toBe("civic:trash-schedule");
+    expect(r[0]?.href).toContain("cityoffrederickmd.gov/236/Collection-Schedule");
+    expect(r[0]?.subtitle).toBe("Official link · cityoffrederickmd.gov");
+  });
+
+  it("resolves 'trash day' to the trash schedule", () => {
+    expect(searchCivicActions("trash day")[0]?.id).toBe("civic:trash-schedule");
+  });
+
+  it("resolves 'recycling day' to the County recycling schedule", () => {
+    const r = searchCivicActions("recycling day");
+    expect(r[0]?.id).toBe("civic:recycling-schedule");
+    expect(r[0]?.href).toContain("Curbside-Collection-Schedule");
+  });
 });
 
 describe("isHighConfidenceCivicIntent", () => {

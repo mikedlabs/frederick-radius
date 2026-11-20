@@ -128,6 +128,36 @@ export function applyAskOutdoorSafety(
   if (!mustHold) return result;
 
   const officialSource = safetySource(hold);
+
+  // A monitoring gap is not a hazard. `loadOutdoorSafetyHold` returns an
+  // active NWS alert or an unhealthy-air reading BEFORE it ever returns
+  // "unavailable", so this branch means no known danger was found and a feed
+  // simply could not be reached. Do not bury the answer for that: answer the
+  // question, then say once that conditions could not be checked and keep the
+  // official conditions card and link with the results. That never reads as
+  // an all-clear, and it stops a feed outage from hiding every park and
+  // playground. A real NWS or air-quality hold falls through to the full
+  // suppression below.
+  if (hold.kind === "unavailable") {
+    // Nothing was recommended, so there is nothing to qualify. The honest
+    // empty state stays as it is instead of gaining a conditions card.
+    if (result.status === "empty") return result;
+    return {
+      ...result,
+      answer: [result.answer, hold.reason, "Check official conditions before you head out."]
+        .filter(Boolean)
+        .join(" "),
+      sources: [...result.sources.slice(0, 4), officialSource],
+      actions: [
+        ...(result.actions ?? []).slice(0, 2),
+        { label: "Check live conditions", kind: "open" as const, href: hold.url },
+      ],
+      intelligence: result.intelligence
+        ? { ...result.intelligence, tools: [...new Set([...result.intelligence.tools, "weather"])] }
+        : { tools: ["weather"], confidence: "medium", retrieval: "keyword" },
+    };
+  }
+
   const preserved = safeSources.slice(0, 4);
   const remaining = namesLine(preserved);
   const holdWindow = hold.kind === "nws"
@@ -171,7 +201,9 @@ export function applyAskOutdoorSafety(
       ? { ...result.intelligence, tools: [...new Set([...result.intelligence.tools, "weather"])] }
       : {
           tools: ["weather"],
-          confidence: hold.kind === "unavailable" ? "medium" : "high",
+          // The "unavailable" hold is handled and returned earlier, so a hold
+          // reaching this suppression block is always a verified hazard.
+          confidence: "high",
           retrieval: "keyword",
         },
   };
