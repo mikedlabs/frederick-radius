@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TodayScopeStatus from "./TodayScopeStatus";
 import { getScope, setScope } from "@/lib/scope";
+import { resetLocationRefusalForTests } from "@/hooks/useGeolocation";
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
@@ -58,6 +59,8 @@ describe("TodayScopeStatus location memory", () => {
       },
     });
     window.sessionStorage.clear();
+    // A refusal is shared in memory across hook instances; start each case clean.
+    resetLocationRefusalForTests();
     window.history.replaceState(null, "", "/today");
     container = document.createElement("div");
     document.body.append(container);

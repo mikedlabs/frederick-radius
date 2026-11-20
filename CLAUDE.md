@@ -160,8 +160,9 @@ update its implementation, relevant contract and tests together.
   and on every other page (owner decision 2026-11-11). That is in progress:
   the header control, Today's select and the list-page ScopeBar write through
   `commitLocationScope` in `src/components/nav/locationScopeNavigation.ts`,
-  while the in-page choosers on Search, Events, the map dock, Ask and /nearby
-  still write the area directly until they are retired. Do not add another
+  while the in-page choosers on Search, Events, the map dock and Ask still
+  write the area directly until they are retired. /nearby has no chooser of
+  its own; its two area escapes use the same writer. Do not add another
   chooser, and route any new area write through that writer. Tab memory
   never restores an old area (`src/lib/primary-tab-session.ts`), and the area
   prints as "Near me", "Whole county" or the town's name (`scopeLabel`). The
