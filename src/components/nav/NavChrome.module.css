@@ -122,30 +122,20 @@
   }
 }
 
-/* The widest header has six independent actions. Keep their 44px targets
-   instead of letting optional words push Find or Tools beyond the viewport. */
+/* The row publishes its measured height to the rest of the shell. Text
+   enlargement can add a line, while a normal masthead occupies 56px. */
 .bar .row {
-  /* The published height follows this row, so its floor must be independent. */
+  --header-gutter: 16px;
+  position: relative;
   min-height: 56px;
   height: auto;
   flex-wrap: wrap;
+  column-gap: 2px;
   padding-block: 6px;
-  padding-left: max(1rem, env(safe-area-inset-left, 0px));
-  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  padding-left: max(var(--header-gutter), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--header-gutter), env(safe-area-inset-right, 0px));
 }
-/* Beside the desktop side rail the reading column starts 6rem in
-   (.app-main-reading in globals.css). Start the lockup on that same edge
-   so the wordmark sits above the content it names. The 96px cap keeps the
-   six actions on one row when text is enlarged to 200 percent. */
-@media (min-width: 1024px) {
-  .bar .row {
-    padding-left: min(6rem, 96px);
-    padding-right: max(1.25rem, env(safe-area-inset-right, 0px));
-  }
-}
-/* Text-only enlargement must not turn 44px icon targets into 88px
-   controls inside the fixed-height app bar. Let labels reflow and the row
-   grow instead; every icon action keeps its physical touch target. */
+
 .row > button,
 .row .home,
 .row .tool,
@@ -155,13 +145,12 @@
   min-height: 44px;
   height: auto;
 }
+
 .row > button:not(.search):not([data-header-back]) {
   width: 44px;
   height: 44px;
 }
-.row > :global([data-header-back]) {
-  margin-left: 0;
-}
+.row > :global([data-header-back]) { margin-left: 0; }
 .row > button > svg,
 .row .tool > svg {
   max-width: 24px;
@@ -171,105 +160,79 @@
   max-width: 16px;
   max-height: 16px;
 }
+
 .home {
   display: inline-flex;
-  min-width: 44px;
-  min-height: 44px;
-  flex-shrink: 0;
-  justify-content: center;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
 }
-@media (max-width: 1023.98px) {
-  .home [data-header-wordmark] { display: none; }
-  .bar[data-dense-mobile-header="true"] .home [data-product-status="beta"] { display: none; }
-  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) { max-width: 168px; }
+.home > svg {
+  flex: none;
+  width: 26px;
+  height: 26px;
 }
-@media (max-width: 767.98px) {
-  .bar .row {
-    gap: 4px;
-    padding-left: max(12px, env(safe-area-inset-left, 0px));
-    padding-right: max(12px, env(safe-area-inset-right, 0px));
-  }
-  .bar[data-dense-mobile-header="true"] :global([data-header-back]) {
-    width: 44px;
-    min-width: 44px;
-    margin-left: 0;
-    justify-content: center;
-    padding-inline: 0;
-  }
-  .bar[data-dense-mobile-header="true"] :global([data-header-back]) > span { display: none; }
-  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) { max-width: 132px; }
-  .bar[data-dense-mobile-header="true"] :global([data-location-scope-label="compact"]) { display: block; }
-  .bar[data-dense-mobile-header="true"] :global([data-location-scope-label="full"]) { display: none; }
-}
-@media (max-width: 639.98px) {
-  .bar[data-dense-mobile-header="true"] .home { width: 44px; gap: 0; }
-  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) {
-    width: 44px;
-    min-width: 44px;
-    max-width: 44px;
-    padding-inline: 6px;
-  }
-  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) > span,
-  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) > svg:last-child,
-  .bar[data-dense-mobile-header="true"] .tool > span { display: none; }
-  .bar[data-dense-mobile-header="true"] :global([data-pulse-indicator]) { padding-inline: 2px; }
-  .bar[data-dense-mobile-header="true"] .tool { width: 44px; padding-inline: 0; }
-}
-
-/* Native sans metrics vary by platform. At the 320px support floor the
-   six-action row needs room beyond one font's fractional-pixel fit. */
-@media (max-width: 359.98px) {
-  .bar .row { column-gap: 2px; }
-}
-
-.bar[data-today-header] .row {
-  padding-block: 6px;
-  min-height: 56px;
-  gap: 2px;
-}
-
-.bar[data-today-header] .home { gap: 5px; }
-.bar[data-today-header] .home [data-header-wordmark] {
+.home [data-header-wordmark] {
   display: block;
-  font-size: clamp(17px, 5.2vw, 24px);
-  letter-spacing: -0.055em;
+  color: var(--app-ink);
+  white-space: nowrap;
+  font-size: 1.375rem;
+  line-height: 1;
+  letter-spacing: -0.045em;
 }
+.home [data-product-status] { display: none; }
 
+.todayDisclosure {
+  flex: none;
+  min-width: 44px;
+}
 .todayDisclosure > summary::-webkit-details-marker { display: none; }
 .todayHeaderTrigger {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   min-width: 44px;
   min-height: 44px;
-  padding-inline: 4px;
+  padding-inline: 5px;
   list-style: none;
   cursor: pointer;
+  border-radius: var(--app-radius-sm);
+  color: var(--app-ink);
   font-size: 0.8125rem;
-  font-weight: 650;
-  line-height: 1.2;
+  font-weight: 600;
+  line-height: 1.15;
+}
+.todayHeaderTrigger > span { min-width: 0; }
+.todayHeaderTrigger > svg,
+.utilityRow > svg { flex: none; }
+.moreLabel, .todayHeaderTrigger [data-today-scope-compact] { display: none; }
+
+.todayDisclosure[open] > summary {
+  color: var(--app-link);
+  background: var(--app-bg-sunken);
+}
+.row :global([data-find-density="header"]) a:focus-visible,
+.todayHeaderTrigger:focus-visible,
+.utilityRow:focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: -2px;
 }
 
-.todayHeaderTrigger span { min-width: 0; overflow-wrap: anywhere; }
-.todayHeaderTrigger svg { flex-shrink: 0; }
-.todayHeaderTrigger:focus-visible { outline: 2px solid var(--app-focus); outline-offset: -2px; }
-.todayHeaderTrigger:hover { color: var(--app-link); }
-.todayDisclosure[open] > summary { color: var(--app-link); }
 .todayHeaderPanel {
   position: absolute;
   z-index: 1;
   top: 100%;
-  inset-inline-end: max(12px, calc((100% - 60rem) / 2));
-  width: min(21rem, calc(100% - 24px));
+  right: max(var(--header-gutter), env(safe-area-inset-right, 0px));
+  width: min(21rem, calc(100% - var(--header-gutter) * 2));
   max-height: min(70dvh, 24rem);
   overflow: auto;
   padding: 12px;
   border: 1px solid var(--app-control-border);
   border-radius: var(--app-radius-md);
-  background: var(--app-bg-elevated);
+  background: var(--app-bg-elevated-solid);
 }
-
 .todayHeaderPanel :global([data-today-scope-density="header"]) { margin: 0; }
 .todayHeaderPanel :global([data-today-scope-density="header"] label) { width: 100%; }
 .todayHeaderPanel :global([data-today-scope-density="header"] select) {
@@ -280,31 +243,131 @@
   font-size: 1rem;
 }
 .todayHeaderPanel :global([data-today-scope-density="header"] button) { min-height: 44px; }
-
 .todayDisclosure:not([open]) > .todayHeaderPanel { display: none; }
-.todayDisclosure[open][data-today-header-disclosure="tools"] .todayHeaderPanel {
+
+.todayDisclosure[data-today-header-disclosure="tools"] > .todayHeaderPanel {
+  width: min(17rem, calc(100% - var(--header-gutter) * 2));
+  padding: 4px;
+}
+.utilityRow {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-around;
-  gap: var(--app-space-2);
+  gap: 12px;
+  width: 100%;
+  min-height: 46px;
+  padding: 8px 12px;
+  border-radius: var(--app-radius-sm);
+  color: var(--app-ink);
+  text-align: start;
+  font-size: 0.9375rem;
+  font-weight: 550;
+  line-height: 1.35;
 }
+.utilityRow + .utilityRow { border-top: 1px solid var(--app-border); }
+.utilityRow[aria-current="page"] { color: var(--app-link); }
+.utilityRow :global([data-top-tool-rule]) {
+  position: absolute;
+  inset-block: 12px;
+  inset-inline: 0 auto;
+  width: 2px;
+  height: auto;
+  background: var(--app-link);
+}
+@media (hover: hover) {
+  .todayHeaderTrigger:hover,
+  .utilityRow:hover { background: var(--app-bg-sunken); }
+}
+
 @media (max-width: 639.98px) {
-  .bar[data-today-header] .row {
-    display: grid;
-    grid-template-columns: minmax(44px, 1fr) auto 44px 44px;
-    padding-inline: max(8px, env(safe-area-inset-left, 0px)) max(8px, env(safe-area-inset-right, 0px));
+  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) {
+    width: 44px;
+    padding-inline: 0;
   }
-
-  .bar[data-today-header]:has([data-pulse-mobile-visible]) .row {
-    grid-template-columns: minmax(44px, 1fr) auto auto 44px 44px;
+  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) > span,
+  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) > svg:last-child { display: none; }
+  .row :global([data-pulse-indicator]) { padding-inline: 2px; }
+  .todayDisclosure[data-today-header-disclosure="area"] {
+    max-width: min(24vw, 8rem);
   }
-
-  .bar[data-today-header] .row > div[aria-hidden] { display: none; }
-  .bar[data-today-header] .home { justify-self: start; min-width: 44px; max-width: 100%; }
-  .bar[data-today-header] .home [data-header-wordmark] { min-width: 0; white-space: normal; font-size: clamp(17px, 5.2vw, 22px); }
-  .todayDisclosure[data-today-header-disclosure="area"] { max-width: min(29vw, 9rem); }
+  .todayHeaderTrigger[data-today-area-trigger] { overflow-wrap: anywhere; }
 }
 
-@media (max-width: 379.98px) {
-  .bar[data-today-header]:has([data-pulse-mobile-visible]) .home [data-header-wordmark] { display: none; }
+@media (min-width: 520px) and (max-width: 639.98px) {
+  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) {
+    width: auto;
+    max-width: 106px;
+    padding-inline: 5px;
+  }
+  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) > :global([data-location-scope-label="compact"]) {
+    display: block;
+  }
+}
+
+@media (max-width: 429.98px) {
+  .bar[data-today-header]:has([data-pulse-mobile-visible]) .todayDisclosure[data-today-header-disclosure="area"] {
+    max-width: clamp(49px, calc(50vw - 134px), 80px);
+  }
+  .bar[data-today-header]:has([data-pulse-mobile-visible]) .todayHeaderTrigger[data-today-area-trigger] {
+    padding-inline: 1px;
+    text-align: center;
+  }
+  .bar[data-today-header]:has([data-pulse-mobile-visible]) [data-today-area-trigger] :is(svg, [data-today-scope-full]) { display: none; }
+  .bar[data-today-header]:has([data-pulse-mobile-visible]) [data-today-area-trigger] [data-today-scope-compact] { display: inline; }
+}
+
+@media (max-width: 519.98px) {
+  .bar .row { --header-gutter: 12px; column-gap: 2px; }
+  .bar .row > [data-header-spacer] { display: none; }
+  .row > .home, .row > [data-header-back] { margin-inline-end: auto; }
+  .bar[data-map-header] .row :global([data-location-chip][data-compact="true"]) {
+    min-width: 44px;
+    max-width: 102px;
+    padding-inline: 4px;
+  }
+}
+@media (max-width: 429.98px) {
+  .home { gap: 4px; }
+  .home > svg { width: 24px; height: 24px; }
+  .home [data-header-wordmark] { font-size: 1.1875rem; }
+}
+@media (max-width: 359.98px) {
+  .bar .row { --header-gutter: 5px; }
+  .home { gap: 2px; }
+  .home [data-header-wordmark] { font-size: 1rem; letter-spacing: -0.04em; }
+  .row :global([data-pulse-indicator]) { padding-inline: 0; }
+  .bar[data-map-header] .row :global([data-location-chip][data-compact="true"]) {
+    min-width: 44px;
+    max-width: 82px;
+    padding-inline: 2px;
+    column-gap: 2px;
+  }
+  .bar[data-map-header] .row :global([data-location-chip]) > svg:first-child { display: none; }
+  .todayDisclosure[data-today-header-disclosure="area"] { max-width: 49px; }
+  .todayHeaderTrigger[data-today-area-trigger] {
+    padding-inline: 0;
+    font-size: 0.71875rem;
+  }
+  .todayHeaderTrigger[data-today-area-trigger] > svg { display: none; }
+}
+
+@media (min-width: 640px) {
+  .bar .row { --header-gutter: 20px; column-gap: 4px; }
+  .home { gap: 7px; }
+  .home > svg { width: 28px; height: 28px; }
+  .home [data-header-wordmark] { font-size: 1.5rem; }
+  .moreLabel { display: inline; }
+  .todayHeaderTrigger { padding-inline: 8px; }
+  .row :global([data-location-chip]) { max-width: 132px; }
+}
+@media (min-width: 1024px) {
+  .bar .row {
+    padding-left: max(min(6rem, 96px), env(safe-area-inset-left, 0px));
+    column-gap: 10px;
+  }
+  .home > svg { width: 32px; height: 32px; }
+  .home [data-header-wordmark] { font-size: 1.6875rem; }
+  .home [data-product-status] { display: inline-flex; }
+  .bar .search { background: var(--app-bg-sunken); }
+  .todayHeaderTrigger { gap: 6px; }
 }

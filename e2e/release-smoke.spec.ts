@@ -1,4 +1,4 @@
-import { showTodayTools } from "./today-controls";
+import { showHeaderTools } from "./today-controls";
 import { expect, test, type Page } from "@playwright/test";
 import { findErrorBoundaryMarker } from "./error-boundary-markers";
 
@@ -315,7 +315,7 @@ for (const viewport of VIEWPORTS) {
                 || /^County status: (?:Urgent|Advisory); \d+ alerts? reported(?:; some sources unavailable)?$/.test(label ?? "")) && visible;
             }).toBe(true);
           }
-          await showTodayTools(page);
+          await showHeaderTools(page);
         }
 
         if (route === "/events") {
@@ -368,6 +368,7 @@ test.describe("outside app route-group hard navigation", () => {
       await expect(page.locator("main")).toHaveCount(1);
       await expect(page.getByRole("heading", { level: 1, name: destination.heading, exact: true })).toBeVisible();
       await expect(page.getByRole("navigation", { name: "Primary", exact: true })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "More tools", exact: true })).toHaveCount(0);
       await expect(page.getByRole("link", { name: "Open tools", exact: true })).toHaveCount(0);
       await expect(page.locator(".app-paper-fx")).toHaveCount(0);
     });

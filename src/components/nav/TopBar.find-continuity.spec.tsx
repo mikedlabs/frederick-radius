@@ -130,9 +130,12 @@ afterEach(async () => {
 });
 
 describe("Find continuity through the real lazy header and overlay", () => {
-  it("returns focus to the actual Tools origin only on its owned popped entry", async () => {
+  it.each(["/today", "/events"])("restores the actual Tools origin on an owned Back to %s", async (path) => {
     vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
-    navigation.pathname = "/today"; window.history.replaceState({ __NA: true, marker: "kept" }, "", "/today?in=brunswick"); await mount();
+    const originUrl = path + "?in=brunswick";
+    navigation.pathname = path;
+    window.history.replaceState({ __NA: true, marker: "kept" }, "", originUrl);
+    await mount();
     const panel = container.querySelector<HTMLDetailsElement>('[data-today-header-disclosure="tools"]')!;
     expect(panel.open).toBe(false);
     await act(async () => panel.querySelector("summary")!.click());
@@ -145,11 +148,11 @@ describe("Find continuity through the real lazy header and overlay", () => {
     window.history.pushState({ ...origin }, "", "/search"); navigation.pathname = "/search"; await mount();
     expect(document.activeElement).not.toBe(tools);
     await act(async () => {
-      nativeReplace.call(window.history, origin, "", "/today?in=brunswick");
+      nativeReplace.call(window.history, origin, "", originUrl);
       window.dispatchEvent(new PopStateEvent("popstate", { state: origin }));
     });
     await settle(50); expect(document.activeElement).not.toBe(tools); // old router render is not ready
-    navigation.pathname = "/today"; await mount(); await settle(50);
+    navigation.pathname = path; await mount(); await settle(50);
     const returnedPanel = container.querySelector<HTMLDetailsElement>('[data-today-header-disclosure="tools"]')!;
     expect(returnedPanel.open).toBe(true);
     expect(document.activeElement).toBe(returnedPanel.querySelector('a[aria-label="Open tools"]'));
