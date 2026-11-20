@@ -33,6 +33,7 @@ describe("splitLocation venue sanity", () => {
 import {
   feedCategory,
   hasPublishedWeekdayConflict,
+  LIVE_FEEDS,
   parseVibemapEvents,
   resolveKnownEventVenue,
   type FeedSpec,
@@ -96,6 +97,84 @@ describe("official-feed classification and venue corrections", () => {
       venue: "Fleming Avenue Courts",
       address: "500 Fleming Avenue, Frederick, MD 21701",
     });
+  });
+
+  // November 11, 2026 hierarchy audit: Delaplaine Arts Center's Photo Party
+  // was filed under Bars because its description mentions photo trivia.
+  it("keeps an arts center party out of Bars when only the description says trivia", () => {
+    const delaplaine: FeedSpec = {
+      ...DFP_FEED,
+      source: "delaplaine",
+      source_label: "Delaplaine Arts Center",
+      url: "https://delaplaine.org/events/?ical=1",
+      format: "ical",
+      default_venue: "Delaplaine Arts Center",
+      default_category: "gallery",
+    };
+    expect(feedCategory(delaplaine, "Photo Party",
+      "Party like it's 1826 and celebrate the photographic arts! Join us for photo trivia, funky/cool/niche gear show-and-tell, print swapping, photo book oohing and a cash bar.",
+    )).toBe("gallery");
+    expect(feedCategory(delaplaine, "Opening Reception",
+      "Beer and wine will be served.",
+    )).toBe("gallery");
+  });
+
+  // Review of the Photo Party fix: making bar, brewery and winery title-only
+  // also stripped Monocacy Brewing's own taproom events of "brewery", because
+  // that feed's only brewery signal was the description. The feed's identity
+  // is now its default category, so description evidence counts for it.
+  it("keeps a brewery feed's own events under Breweries on description evidence", () => {
+    const monocacyDefault = LIVE_FEEDS.find((f) => f.source === "monocacy")?.default_category;
+    expect(monocacyDefault).toBe("brewery");
+    const monocacy: FeedSpec = {
+      ...DFP_FEED,
+      source: "monocacy",
+      source_label: "Monocacy Brewing",
+      url: "https://monocacybrewing.com/events/?ical=1",
+      format: "ical",
+      default_venue: "Monocacy Brewing",
+      default_category: monocacyDefault ?? "",
+    };
+    expect(feedCategory(monocacy, "All Hours Happy Hour",
+      "Happy hour all day at Monocacy Brewing Co. $5 for every beer. The Alley Wagon food truck is here from 5 to 8.",
+    )).toBe("brewery");
+    expect(feedCategory(monocacy, "Trivia Night",
+      "Bring a team for trivia and great beer in the taproom.",
+    )).toBe("brewery");
+    expect(feedCategory(monocacy, "BINGO Night!", "Prizes every round.")).toBe("brewery");
+    // Earlier buckets still win, so the summer series stays live music.
+    expect(feedCategory(monocacy, "Fridays at the Fountain", "Free live music on the patio.")).toBe("music");
+  });
+
+  it("counts a publisher's own CATEGORIES tag as strong evidence for a venue category", () => {
+    expect(feedCategory(DFP_FEED, "Oktoberfest on the Square",
+      "German food and polka downtown.", "Beer",
+    )).toBe("brewery");
+    expect(feedCategory(DFP_FEED, "Oktoberfest on the Square",
+      "German food and polka downtown.",
+    )).toBe("community");
+    expect(feedCategory(DFP_FEED, "Harvest Weekend", "Live acoustic sets.", "Wine")).toBe("music");
+  });
+
+  it("does not let the Photo Party description pull an arts-center event into Bars", () => {
+    expect(LIVE_FEEDS.find((f) => f.source === "delaplaine")?.default_category).toBe("gallery");
+    const delaplaine: FeedSpec = {
+      ...DFP_FEED,
+      source: "delaplaine",
+      default_venue: "Delaplaine Arts Center",
+      default_category: "gallery",
+    };
+    expect(feedCategory(delaplaine, "Photo Party",
+      "Party like it's 1826 and celebrate the photographic arts! Join us for photo trivia, funky/cool/niche gear show-and-tell, print swapping, photo book oohing and a cash bar.",
+      "Photography",
+    )).toBe("gallery");
+  });
+
+  it("still files a titled trivia night, pub night or tasting under its venue category", () => {
+    expect(feedCategory(DFP_FEED, "Trivia Night at Olde Towne", "Teams of up to six.")).toBe("bar");
+    expect(feedCategory(DFP_FEED, "Pub Crawl", "Starts downtown at 7.")).toBe("bar");
+    expect(feedCategory(DFP_FEED, "Fall Beer Release", "New seasonal pours.")).toBe("brewery");
+    expect(feedCategory(DFP_FEED, "Linganore Wine Weekend", "Tastings all afternoon.")).toBe("winery");
   });
 
   it("does not find the word art inside Partner Hours", () => {

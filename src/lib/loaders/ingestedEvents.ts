@@ -380,7 +380,7 @@ export async function getIngestedCardBySlug(
     });
     const publicSeries = lifted
       ? isPublicEvent({ title: s.title, category: s.category ?? undefined })
-      : lane !== "private_rental" && lane !== "non_event" && lane !== "cancelled";
+      : lane !== "private_rental" && lane !== "non_event" && lane !== "closure_notice" && lane !== "cancelled";
     for (const occ of s.occurrences) {
       // Existing detail identities need their cancellation even when the
       // cleaned series title now belongs outside public discovery.

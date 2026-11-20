@@ -285,12 +285,13 @@ async function runEventArchive(request: Request) {
   // Civic meetings and town reminders have first-party detail links on the
   // Events page even though they are intentionally excluded from public
   // discovery. Archive every route-bearing lane so a transient calendar
-  // outage cannot break a link Radius itself rendered.
+  // outage cannot break a link Radius itself rendered. Closure notices left
+  // every list in November 2026, but links shared before then still resolve.
   const utilityEvents =
     unified?.status === "fulfilled"
       ? unified.value.unified.filter((event) => {
           const lane = classifyEvent(event);
-          return lane === "civic_meeting" || lane === "town_reminder";
+          return lane === "civic_meeting" || lane === "town_reminder" || lane === "closure_notice";
         })
       : [];
   // Cancelled and postponed rows are intentionally absent from public

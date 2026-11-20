@@ -96,7 +96,7 @@ function NearbyPlace({
         </span>
       </button>
       {loaded && needsCredit && <div className={styles.credit}>
-        <PlaceCardPhotoCredit source={photo} loaded touchTarget compact discloseModifications />
+        <PlaceCardPhotoCredit source={photo} loaded touchTarget />
       </div>}
     </>
   );

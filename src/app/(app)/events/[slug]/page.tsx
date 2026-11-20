@@ -1024,8 +1024,9 @@ export default async function EventPage({
         </section>
       )}
 
-      {/* More upcoming events — same-venue future when there are 2+,
-          otherwise the next 6 county-wide. Sits below the Full lineup
+      {/* More upcoming events: same venue when there are 2+, then the
+          same town, then the county with local rows first (see
+          buildRelatedEventSections). Sits below the Full lineup
           and primary "Good to know" content so the user has digested
           this event before being offered the next one. */}
       {moreUpcoming.items.length > 0 && (

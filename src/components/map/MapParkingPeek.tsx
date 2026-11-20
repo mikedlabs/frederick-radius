@@ -4,7 +4,7 @@ import { CornerUpRight, SquareParking } from "lucide-react";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
-import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
+import { haversineMeters, type LngLat } from "@/lib/geo";
 import {
   parkingSpacesLabel,
   parkingTone,
@@ -12,6 +12,7 @@ import {
 } from "@/lib/map/parking";
 import { formatMapTimestamp } from "./mapContent";
 import MapResultSurface from "./MapResultSurface";
+import { distanceFrom } from "./distanceOrigin";
 import type { MapLayerSourceHealth } from "./deferredBrowseLayers";
 
 /**
@@ -53,8 +54,9 @@ export default function MapParkingPeek({
   const spacesColor = TONE_COLOR[tone];
 
   const directionsUrl = directionsHref(pin.lat, pin.lng);
+  // userLoc is the device fix, so the distance is measured from the reader.
   const distance = userLoc
-    ? formatDistance(haversineMeters(userLoc, { lng: pin.lng, lat: pin.lat }))
+    ? distanceFrom(haversineMeters(userLoc, { lng: pin.lng, lat: pin.lat }), "from you")
     : null;
   const updated = formatMapTimestamp(pin.updated);
 
@@ -84,7 +86,7 @@ export default function MapParkingPeek({
           </span>
           <span className="map-peek-detail">
             {pin.address}
-            {distance ? ` · ${distance} away` : ""}
+            {distance ? ` · ${distance}` : ""}
           </span>
           {pin.rate && <span className="map-parking-rate">{pin.rate}</span>}
           {older && (

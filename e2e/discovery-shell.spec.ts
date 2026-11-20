@@ -788,7 +788,7 @@ test.describe("mobile discovery shell", () => {
     await expect(page.getByRole("heading", { name: "Nearby" })).toBeVisible();
     await expect(page.getByRole("link", { name: "View area" })).toHaveAttribute(
       "href",
-      "/map?c=-77.41046,39.41609,15.5",
+      "/map?place=brewers-alley-frederick",
     );
     await expect(page.getByText("St Johns Catholic Prep School")).toHaveCount(0);
     await expect(page.getByText("Claiming is coming soon")).toHaveCount(0);

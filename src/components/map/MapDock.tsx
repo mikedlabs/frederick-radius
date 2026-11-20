@@ -66,6 +66,7 @@ export type TransitAlertSnapshot = {
   count: number;
 };
 import MapInViewPlacesDisclosure from "./MapInViewPlacesDisclosure";
+import type { MapDistanceOriginLabel } from "./distanceOrigin";
 import MapListPeek from "./MapListPeek";
 import MapNearbyPanel from "./MapNearbyPanel";
 import nearbyStyles from "./MapNearbyDock.module.css";
@@ -206,6 +207,8 @@ export type MapDockProps = {
     userLoc: LngLat | null;
     onPick: (place: MapPinPlace) => void;
   };
+  /** Whether placesInViewOrigin is the device fix or the map center. */
+  placesInViewOriginLabel?: MapDistanceOriginLabel;
   selectedPlaceSlug?: string | null;
   onPickPlaceInView: (place: MapPinPlace) => void;
 
@@ -2561,6 +2564,7 @@ export default function MapDock(props: MapDockProps) {
                 <MapInViewPlacesDisclosure
                   places={props.placesInView}
                   sortOrigin={props.placesInViewOrigin}
+                  sortOriginLabel={props.placesInViewOriginLabel}
                   selectedSlug={props.selectedPlaceSlug}
                   onPick={(place) => {
                     props.onPickPlaceInView(place);

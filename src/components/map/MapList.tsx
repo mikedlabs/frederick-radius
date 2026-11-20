@@ -11,7 +11,8 @@ import { CalendarDays } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { eventDisplayTitle } from "@/lib/events/display-title";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
+import { haversineMeters, type LngLat } from "@/lib/geo";
+import { distanceFrom, mapDistanceOriginLabel } from "./distanceOrigin";
 import { haptic } from "@/lib/haptics";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { usePlacePhotoData } from "@/components/place/usePlacePhoto";
@@ -75,7 +76,7 @@ function MapListPlaceRow({ p, userLoc, onPick }: {
   const color = cat?.color ?? "var(--app-brand)";
   const open = openLine(p);
   const town = MUNICIPALITY_BY_SLUG[p.municipality]?.name;
-  const dist = userLoc && p.geom ? formatDistance(haversineMeters(userLoc, p.geom)) : null;
+  const dist = userLoc && p.geom ? distanceFrom(haversineMeters(userLoc, p.geom), "from you") : null;
   return (
     <li>
       <div ref={photoAnchorRef}>
@@ -258,7 +259,10 @@ export default function MapList({
               <ul className="map-list-rows">
                 {eventRows.map((event) => {
                   const dist = effectiveOrigin
-                    ? formatDistance(haversineMeters(effectiveOrigin, { lng: event.lng, lat: event.lat }))
+                    ? distanceFrom(
+                        haversineMeters(effectiveOrigin, { lng: event.lng, lat: event.lat }),
+                        mapDistanceOriginLabel(Boolean(userLoc)),
+                      )
                     : null;
                   return (
                     <li key={event.slug}>
