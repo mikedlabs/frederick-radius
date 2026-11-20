@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
-import TopBar from "./TopBar";
+import TopBar, { shouldShowGlobalLocation, shouldShowGlobalMobileSearch } from "./TopBar";
 import { getScope, setScope } from "@/lib/scope";
 import { applyAppearance, getAppearance } from "@/lib/appearance";
 
@@ -29,6 +29,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function geometryStory(pathname: string, enlarged = false, dark = false, fontFamily?: string): Story {
+  const globalArea = shouldShowGlobalLocation(pathname);
+  const globalFind = shouldShowGlobalMobileSearch(pathname);
+  // Home or Back, status and More are common. Today embeds its own area and Find.
+  const isToday = pathname === "/today";
+  const minimumVisibleTargets = 3 + Number(isToday || globalArea) + Number(isToday || globalFind);
   return {
     parameters: { nextjs: { navigation: { pathname } } },
     beforeEach: enlarged || fontFamily ? () => {
@@ -149,6 +154,7 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
           const box = element.getBoundingClientRect();
           return box.width > 0 && box.height > 0 && getComputedStyle(element).visibility !== "hidden";
         });
+        await expect(targets.length, `${context}: direct header controls`).toBeGreaterThanOrEqual(minimumVisibleTargets);
         for (const target of targets) {
           const box = target.getBoundingClientRect();
           const label = target.getAttribute("aria-label") || target.textContent;
@@ -219,7 +225,7 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
         await expect(disclosure.open, context).toBe(false);
         await expect(pulse, context).toBeVisible();
         await expect(canvas.getByText(width < 640 ? "Unverified" : "Unable to verify", { exact: true }), context).toBeVisible();
-        if (!["/today", "/search"].includes(pathname)) {
+        if (globalArea) {
           const area = header.querySelector<HTMLElement>("[data-location-chip]")!;
           await expect(area, context).toHaveAccessibleName(/Current scope: Frederick/);
           if (pathname === "/map") {
@@ -228,7 +234,7 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
             await expect(label.textContent, context).toMatch(/Frederick/);
           }
         }
-        if (!["/today", "/map", "/compass", "/search"].includes(pathname)) {
+        if (globalFind) {
           await expect(canvas.getByRole("button", { name: "Ask or find across Frederick County" }), context).toBeVisible();
         }
         if (pathname === "/privacy") await expect(canvas.getByRole("button", { name: "Back" }), context).toBeVisible();

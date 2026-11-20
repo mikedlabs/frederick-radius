@@ -9,6 +9,7 @@ import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
 import {
   getScope,
   parseScope,
+  scopeLabel,
   scopeTownSlug,
   setScope,
   subscribeScopeChange,
@@ -189,15 +190,15 @@ export default function TodayScopeStatus({ dateline, density = "standard" }: {
     </div>
   );
   if (density !== "header") return controls;
-  const town = scopeTownSlug(scope);
-  const label = town ? MUNICIPALITY_BY_SLUG[town]?.name ?? "Whole county" : scope === "nearme" ? "Near me" : "Whole county";
+  const headerScope = scope ?? "county";
+  const label = scopeLabel(headerScope);
   return (
     <HeaderDisclosure
       name="area"
       label={`Choose your area: ${label}`}
       trigger={
         <>
-          {label === "Whole county" ? (
+          {headerScope === "county" ? (
             <>
               <span data-today-scope-full>{label}</span>
               <span data-today-scope-compact>County</span>
