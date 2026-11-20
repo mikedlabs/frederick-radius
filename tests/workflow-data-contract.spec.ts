@@ -210,6 +210,23 @@ describe("scheduled data workflow contracts", () => {
     ].sort());
   });
 
+  it("approves held bot-PR gates even when an alternate collection job was skipped", () => {
+    // A job's default success() check fails when ANY job earlier in its chain
+    // was skipped, not only its direct need. The venue workflow always skips
+    // one of its two collection paths, so without !cancelled() its approval
+    // job never ran and #1864's required checks stayed held from October 20.
+    for (const name of readdirSync(WORKFLOW_DIR).filter((name) => name.endsWith(".yml"))) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
+        if (job.uses !== "./.github/workflows/automated-pr-checks.yml") continue;
+        const need = String(job.needs);
+        expect(job.if, `${name}:${jobName} must survive a skipped upstream job`).toBe(
+          `\${{ !cancelled() && needs.${need}.result == 'success' && (needs.${need}.outputs.pr_operation == 'created' || needs.${need}.outputs.pr_operation == 'updated') }}`,
+        );
+      }
+    }
+  });
+
   it("keeps hosted public GTFS generation main-only, keyless, bounded and review-gated", () => {
     const source = workflowText("transit-steward.yml");
     const workflow = parse(source) as WorkflowDocument;
@@ -820,7 +837,7 @@ describe("scheduled data workflow contracts", () => {
         const checks = workflow.jobs?.["transit-checks"];
         expect(checks?.needs).toBe("transit-publish");
         expect(checks?.uses).toBe("./.github/workflows/automated-pr-checks.yml");
-        expect(checks?.if).toBe("${{ needs.transit-publish.outputs.pr_operation == 'created' || needs.transit-publish.outputs.pr_operation == 'updated' }}");
+        expect(checks?.if).toBe("${{ !cancelled() && needs.transit-publish.result == 'success' && (needs.transit-publish.outputs.pr_operation == 'created' || needs.transit-publish.outputs.pr_operation == 'updated') }}");
         expect(checks?.with).toEqual({
           branch: "${{ needs.transit-publish.outputs.pr_branch }}",
           head_sha: "${{ needs.transit-publish.outputs.pr_head_sha }}",
@@ -928,7 +945,7 @@ describe("scheduled data workflow contracts", () => {
         const checks = workflow.jobs?.checks;
         expect(checks?.needs).toBe("publish");
         expect(checks?.uses).toBe("./.github/workflows/automated-pr-checks.yml");
-        expect(checks?.if).toBe("${{ needs.publish.outputs.pr_operation == 'created' || needs.publish.outputs.pr_operation == 'updated' }}");
+        expect(checks?.if).toBe("${{ !cancelled() && needs.publish.result == 'success' && (needs.publish.outputs.pr_operation == 'created' || needs.publish.outputs.pr_operation == 'updated') }}");
         expect(checks?.with).toEqual({
           branch: "${{ needs.publish.outputs.pr_branch }}",
           head_sha: "${{ needs.publish.outputs.pr_head_sha }}",
