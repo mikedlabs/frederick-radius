@@ -48,7 +48,7 @@ export default function EventRowMedia({ visual, compactCredit = false, ...row }:
           />
         </figure>
       }
-      mediaCredit={<EventVisualCredit visual={visibleVisual} compact={compactCredit} inlineLicensed className={styles.credit} />}
+      mediaCredit={<EventVisualCredit visual={visibleVisual} compact={compactCredit} className={styles.credit} />}
     />
   );
 }

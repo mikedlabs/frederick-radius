@@ -148,7 +148,7 @@ export const MuseumEntranceFraming: Story = {
     const url = new URL(image.currentSrc, window.location.href);
     await expect(url.pathname === "/place-photos/civil-war-medicine-frontage.jpg" || url.searchParams.get("url") === "/place-photos/civil-war-medicine-frontage.jpg").toBe(true);
     await expect(getComputedStyle(image).objectPosition).toBe("50% 100%");
-    await waitFor(() => expect(within(canvasElement).getByText("Photo by NatMuseCivMed.")).toBeVisible());
+    await waitFor(() => expect(within(canvasElement).getByText("NatMuseCivMed", { exact: true })).toBeVisible());
     await expect(within(canvasElement).getByRole("link", { name: "CC BY-SA 4.0" })).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0/");
     await expect(within(canvasElement).getByRole("link", { name: "Wikimedia Commons" })).toHaveAttribute("href", "https://commons.wikimedia.org/wiki/File:National_Museum_of_Civil_War_Medicine_frontage.jpg");
     image.dispatchEvent(new Event("error"));

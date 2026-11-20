@@ -97,8 +97,8 @@ describe("compact place photo continuity", () => {
     expect(host.querySelector(".place-card-photo-credit")).toBeNull();
     await load();
     const credit = host.querySelector(".place-card-photo-credit")!;
-    expect(credit.textContent).toContain(source.creator);
-    expect(credit.textContent).toContain(source.modifications);
+    expect(credit.querySelector("[data-photo-credit-text]")?.textContent).toBe(`${source.creator} · ${source.license.label} · Wikimedia Commons · edited`);
+    expect(credit.textContent).not.toContain(source.modifications);
     expect(credit.querySelector(`a[href="${source.source_url}"]`)).not.toBeNull();
     expect(credit.querySelector(`a[href="${source.license.url}"]`)).not.toBeNull();
     expect(credit.closest("button")).toBeNull();
@@ -125,8 +125,8 @@ describe("compact place photo continuity", () => {
     expect(host.querySelector(".place-card-photo-credit")).toBeNull();
     await load();
     const localCredit = host.querySelector(".place-card-photo-credit")!;
-    expect(localCredit.textContent).toContain(source.creator);
-    expect(localCredit.textContent).toContain(source.modifications);
+    expect(localCredit.querySelector("[data-photo-credit-text]")?.textContent).toBe(`${source.creator} · ${source.license.label} · Wikimedia Commons · edited`);
+    expect(localCredit.textContent).not.toContain(source.modifications);
     expect(localCredit.textContent).not.toContain("Actual photographer");
     expect(localCredit.querySelector(`a[href="${source.source_url}"]`)).not.toBeNull();
     expect(localCredit.querySelector(`a[href="${source.license.url}"]`)?.textContent).toBe(source.license.label);

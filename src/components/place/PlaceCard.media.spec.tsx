@@ -108,7 +108,9 @@ describe("PlaceCard selected media and credit", () => {
     const lateLoad = imageLoads.get(image.getAttribute("src")!)!;
     await load(image);
     const credit = loadedCredit()!;
-    expect(credit.querySelector("summary")?.textContent).toBe("Photo details");
+    expect(credit.querySelector("summary, details")).toBeNull();
+    expect(credit.querySelector("[data-photo-credit-text]")?.textContent)
+      .toBe("Frederick County Parks & Recreation · Used with permission · Frederick County · edited");
     expect(credit.closest("button, a")).toBeNull();
     const directions = container.querySelector<HTMLAnchorElement>('a[aria-label^="Directions to "]')!;
     expect(directions.compareDocumentPosition(credit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -284,8 +286,9 @@ describe("PlaceCard selected media and credit", () => {
     expect(loadedCredit()).toBeNull();
     await load(local);
     const credit = loadedCredit()!;
-    expect(credit.textContent).toContain(metadata.creator);
-    expect(credit.textContent).toContain(metadata.modifications);
+    expect(credit.querySelector("[data-photo-credit-author]")?.textContent).toBe(metadata.creator);
+    expect(Boolean(credit.querySelector("[data-photo-credit-edited]"))).toBe(metadata.edited);
+    expect(credit.textContent).not.toContain(metadata.modifications);
     expect(credit.querySelector(`a[href="${metadata.source_url}"]`)).not.toBeNull();
     expect(credit.querySelector(`a[href="${metadata.license.url}"]`)?.textContent).toBe(metadata.license.label);
     expect(credit.closest("button")).toBeNull();
@@ -393,7 +396,8 @@ describe("PlaceCard selected media and credit", () => {
     if (metadata.license === "CC BY 2.0") {
       expect(credit.querySelector(`a[href="${metadata.licenseUrl ?? "https://creativecommons.org/licenses/by/2.0"}"]`)).not.toBeNull();
     }
-    if (localFirst) expect(credit.textContent).toContain(metadata.modifications);
+    if (metadata.modifications) expect(credit.textContent).not.toContain(metadata.modifications);
+    expect(Boolean(credit.querySelector("[data-photo-credit-edited]"))).toBe(metadata.edited);
     expect(credit.querySelector(`a[href="${metadata.source_url}"]`)).not.toBeNull();
     if (slug === "carroll-creek-linear-park-frederick") {
       await fail(photo()!);
@@ -418,9 +422,10 @@ describe("PlaceCard selected media and credit", () => {
     expect(loadedCredit()).toBeNull();
     await load(image);
     const credit = loadedCredit()!;
-    expect(credit.textContent).toContain(metadata.author);
-    expect(credit.textContent).toContain(metadata.modifications);
-    expect(credit.querySelector(`a[href="${metadata.source_url}"]`)).not.toBeNull();
+    expect(credit.querySelector("[data-photo-credit-author]")?.textContent).toBe(metadata.author);
+    expect(Boolean(credit.querySelector("[data-photo-credit-edited]"))).toBe(metadata.edited);
+    expect(credit.textContent).not.toContain(metadata.modifications);
+    expect(credit.querySelector(`a[href="${metadata.source_url}"]`)?.textContent).toBe("Wikimedia Commons");
     expect(credit.querySelector(`a[href="${metadata.licenseUrl}"]`)?.textContent).toBe(metadata.license);
     expect(credit.closest("button")).toBeNull();
     await fail(image);

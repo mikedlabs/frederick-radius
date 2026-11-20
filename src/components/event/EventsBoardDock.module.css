@@ -53,6 +53,7 @@
   .overview :global(.eb-subbar) { display: contents; }
   .overview :global(.eb-display-options) { grid-area: display; justify-self: end; }
   .overview :global(.eb-countline) { grid-area: count; }
+  .overview :global(.eb-partial) { grid-area: count; }
   .overview :global(.eb-subbar[data-filter-paused="true"]) { visibility: hidden; }
   .overview :global(.eb-countline[data-count-complete="true"]),
   .overview .context:not([data-scope-selected]) {

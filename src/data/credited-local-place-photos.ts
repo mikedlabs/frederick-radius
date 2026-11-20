@@ -1,5 +1,9 @@
 /** Licensed photographs reviewed for these exact catalog places.
  * Keep their public source, license and change records when reusing local bytes.
+ * `modifications` is the internal change record and is not printed publicly.
+ * `edited` is true when the stored bytes differ from the source file in any
+ * way (resized, converted, recompressed, cropped or metadata removed); CSS
+ * display cropping alone does not count, and an unclear record counts as edited.
  * This small module is client-safe; it does not import the History collection. */
 export const CREDITED_LOCAL_PLACE_PHOTOS = {
   // The exact 223 storefront is visible on the right of this dated row view.
@@ -21,6 +25,9 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:209-225_N._Market_St._Frederick_MD1.jpg",
       license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
       modifications: "November 18, 2022 storefront reference. Existing local rendition stored unchanged; display may resize or crop.",
+      // These are the same bytes the History record lists as resized and
+      // converted, so the unclear record is credited as edited.
+      edited: true,
     },
   },
   // One bounded Commons metadata batch and the original rendition bytes were
@@ -42,6 +49,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:Frederick_MARC_station,_July_2015.jpg",
       license: { label: "CC BY-SA 3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" },
       modifications: "July 2015 architectural reference. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+      edited: true,
     },
   },
   "heritage-frederick": {
@@ -60,6 +68,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:Loats_Orphanage.jpg",
       license: { label: "CC BY 3.0", url: "https://creativecommons.org/licenses/by/3.0/" },
       modifications: "Historical exterior, September 2009. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+      edited: true,
     },
   },
   "thurmont-square-park-thurmont": {
@@ -78,6 +87,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:Thurmont_Town_Square_Park.jpg",
       license: { label: "CC BY-SA 2.0", url: "https://creativecommons.org/licenses/by-sa/2.0/" },
       modifications: "May 2012 park photograph. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+      edited: true,
     },
   },
   "heritage-farm-park-walkersville": {
@@ -96,6 +106,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:Harris_Farmhouse_Walkersville,_MD1.jpg",
       license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
       modifications: "April 2010 exterior photograph. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+      edited: true,
     },
   },
   "sabor-de-cuba-restaurant-frederick": {
@@ -115,6 +126,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:Sabor_de_Cuba_02.jpg",
       license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
       modifications: "April 2018 storefront photograph. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+      edited: true,
     },
   },
   "francis-scott-key-grave-and-monument": {
@@ -133,6 +145,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:Francis_Scott_Key_Monument_(March_2024).jpg",
       license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
       modifications: "March 2024 monument photograph. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+      edited: true,
     },
   },
   "rose-hill-manor-park-museums-frederick": {
@@ -151,6 +164,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:Rose_Hill_Manor_-_Front_of_Mansion.jpg",
       license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
       modifications: "September 2019 exterior photograph. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+      edited: true,
     },
   },
   "historic-utica-covered-bridge-thurmont": {
@@ -169,6 +183,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:Utica_covered_bridge_MD1.jpg",
       license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
       modifications: "June 2022 bridge photograph. Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+      edited: true,
     },
   },
   "national-museum-civil-war-medicine-frederick": {
@@ -187,6 +202,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:National_Museum_of_Civil_War_Medicine_frontage.jpg",
       license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
       modifications: "Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+      edited: true,
     },
   },
   "schifferstadt-architectural-museum-frederick": {
@@ -199,6 +215,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:Schifferstadt_House_and_Architectural_Museum.JPG",
       license: { label: "CC BY-SA 3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" },
       modifications: "Resized and converted for display; cards may crop the image responsively.",
+      edited: true,
     },
   },
   "hessian-barracks-frederick-maryland": {
@@ -211,6 +228,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:Hessian_Barracks_MD1.jpg",
       license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
       modifications: "Resized and converted for display; cards may crop the image responsively.",
+      edited: true,
     },
   },
   "co-canal-lock-30-brunswick": {
@@ -223,6 +241,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:C%26O_Canal_Lock_30_West_Side_Brunswick_Maryland.jpg",
       license: { label: "CC BY-SA 3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" },
       modifications: "Resized and converted for display; cards may crop the image responsively.",
+      edited: true,
     },
   },
   "brewers-alley-frederick": {
@@ -242,6 +261,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:Downtown_frederick_maryland.jpg",
       license: { label: "CC BY-SA 2.0", url: "https://creativecommons.org/licenses/by-sa/2.0/" },
       modifications: '"Brewer\'s Alley, Frederick". Side alley exterior, October 26, 2004. Original file unchanged; display may resize or crop.',
+      edited: false,
     },
   },
   "delaplaine-arts-center-frederick": {
@@ -263,7 +283,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "CC BY-SA 4.0",
         "url": "https://creativecommons.org/licenses/by-sa/4.0/"
       },
-      "modifications": "Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop."
+      "modifications": "Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+      "edited": true
     }
   },
   "weinberg-center-for-the-arts-frederick": {
@@ -285,7 +306,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "CC BY-SA 4.0",
         "url": "https://creativecommons.org/licenses/by-sa/4.0/"
       },
-      "modifications": "Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop."
+      "modifications": "Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+      "edited": true
     }
   },
   "c-burr-artz-public-library-frederick": {
@@ -307,7 +329,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "CC0 1.0",
         "url": "https://creativecommons.org/publicdomain/zero/1.0/"
       },
-      "modifications": "Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop."
+      "modifications": "Wikimedia's 1,280 px rendition stored unchanged; display may resize or crop.",
+      "edited": true
     }
   },
   "new-market-historic-district-new-market": {
@@ -320,6 +343,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:New_Market_HD_MD1.jpg",
       license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
       modifications: "Resized and converted for display; cards may crop the image responsively.",
+      edited: true,
     },
   },
   "catoctin-mountain-park": {
@@ -332,6 +356,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:Chimney_rock_catoctin.JPG",
       license: { label: "CC0 1.0", url: "https://creativecommons.org/publicdomain/zero/1.0/" },
       modifications: "Resized and converted for display; cards may crop the image responsively.",
+      edited: true,
     },
   },
   // Existing licensed History bytes, visually reviewed for the exact public
@@ -350,6 +375,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:Frederick_City_Hall_MD4.jpg",
       license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
       modifications: "Resized and converted for display; cards may crop the image responsively.",
+      edited: true,
     },
   },
   "mount-st-marys-university-emmitsburg": {
@@ -366,6 +392,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:UNIV_CHAPEL.jpg",
       license: { label: "CC BY-SA 3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" },
       modifications: "Resized and converted for display; cards may crop the image responsively.",
+      edited: true,
     },
   },
   "barbara-fritchie-house-frederick": {
@@ -381,6 +408,7 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
       source_url: "https://commons.wikimedia.org/wiki/File:Barbara_Fritchie_House,_exterior_(30378964054).jpg",
       license: { label: "CC BY-SA 2.0", url: "https://creativecommons.org/licenses/by-sa/2.0/" },
       modifications: "Resized and converted for display; cards may crop the image responsively.",
+      edited: true,
     },
   },
   // Individually reviewed County-provided images. Written reuse permission was
@@ -402,7 +430,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "Used with permission",
         "url": "https://www.recreater.com/200/Ballenger-Creek-Park"
       },
-      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop.",
+      "edited": true
     }
   },
   "buckeystown-park-frederick": {
@@ -422,7 +451,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "Used with permission",
         "url": "https://www.recreater.com/204/Buckeystown-Park"
       },
-      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop.",
+      "edited": true
     }
   },
   "catoctin-creek-park-nature-center-burkittsville": {
@@ -442,7 +472,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "Used with permission",
         "url": "https://www.recreater.com/151/Catoctin-Creek-Nature-Center"
       },
-      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop.",
+      "edited": true
     }
   },
   "kemptown-park-new-market": {
@@ -462,7 +493,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "Used with permission",
         "url": "https://www.recreater.com/229/Kemptown-Park"
       },
-      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop.",
+      "edited": true
     }
   },
   "loys-station-park-thurmont": {
@@ -482,7 +514,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "Used with permission",
         "url": "https://www.recreater.com/234/Loys-Station-Park"
       },
-      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop.",
+      "edited": true
     }
   },
   "middletown-park-middletown": {
@@ -502,7 +535,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "Used with permission",
         "url": "https://www.recreater.com/240/Middletown-Park"
       },
-      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop.",
+      "edited": true
     }
   },
   "othello-regional-park-brunswick": {
@@ -522,7 +556,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "Used with permission",
         "url": "https://www.recreater.com/705/Othello-Regional-Park"
       },
-      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop.",
+      "edited": true
     }
   },
   "pinecliff-park-frederick": {
@@ -542,7 +577,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "Used with permission",
         "url": "https://www.recreater.com/255/Pinecliff-Park"
       },
-      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop.",
+      "edited": true
     }
   },
   "point-of-rocks-community-commons-park-brunswick": {
@@ -562,7 +598,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "Used with permission",
         "url": "https://www.recreater.com/704/Point-of-Rocks-Community-Commons-Park"
       },
-      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop.",
+      "edited": true
     }
   },
   "utica-park-walkersville": {
@@ -582,7 +619,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "Used with permission",
         "url": "https://www.recreater.com/276/Utica-District-Park"
       },
-      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop.",
+      "edited": true
     }
   },
   "fountain-rock-nature-center-walkersville": {
@@ -602,7 +640,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "Used with permission",
         "url": "https://www.recreater.com/294/Fountain-Rock-Park-Nature-Center"
       },
-      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop.",
+      "edited": true
     }
   },
   "thurmont-recreation-center-thurmont": {
@@ -622,7 +661,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "Used with permission",
         "url": "https://www.recreater.com/398/Thurmont-Recreation-Center"
       },
-      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop.",
+      "edited": true
     }
   },
   "walkersville-recreation-center-walkersville": {
@@ -642,7 +682,8 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "Used with permission",
         "url": "https://www.recreater.com/274/Walkersville-Recreation-Center"
       },
-      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop.",
+      "edited": true
     }
   },
   "brunswick-recreation-center-brunswick": {
@@ -662,7 +703,21 @@ export const CREDITED_LOCAL_PLACE_PHOTOS = {
         "label": "Used with permission",
         "url": "https://recreater.com/951/Brunswick-Recreation-Center"
       },
-      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop."
+      "modifications": "Photo capture date unknown; metadata removed losslessly. Display may crop.",
+      "edited": true
     }
   },
 } as const;
+
+type CreditedLocalPlacePhoto = (typeof CREDITED_LOCAL_PLACE_PHOTOS)[keyof typeof CREDITED_LOCAL_PLACE_PHOTOS];
+
+/** The photograph's reviewed capture date, never its review date. */
+export function creditedPhotoCapturedOn(record: CreditedLocalPlacePhoto): string | undefined {
+  return "review" in record && "captured_on" in record.review ? record.review.captured_on
+    : "provenance" in record && "captured_on" in record.provenance ? record.provenance.captured_on : undefined;
+}
+
+/** An earlier publication the reviewed source file was copied from. */
+export function creditedPhotoOriginalSource(record: CreditedLocalPlacePhoto): string | undefined {
+  return "provenance" in record ? record.provenance.original_source_url : undefined;
+}

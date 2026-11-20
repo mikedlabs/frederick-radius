@@ -12,7 +12,7 @@ vi.mock("@/lib/integrations/wikimedia", async (importOriginal) => {
   // Keep generic Google → remote Commons tests independent of real places
   // gaining preferred local bytes; exact production bindings have their own tests.
   const remoteFixture = { file: "Controlled remote map fixture.jpg", alt: "A controlled remote map venue.",
-    author: "Controlled map photographer", license: "CC BY-SA 4.0", verified: true,
+    author: "Controlled map photographer", license: "CC BY-SA 4.0", verified: true, edited: false,
     source_url: "https://commons.wikimedia.org/wiki/File:Controlled_remote_map_fixture.jpg" };
   return { ...actual, getLandmarkPhoto: (slug: string) => slug === "map-remote-venue-fixture" ? remoteFixture : actual.getLandmarkPhoto(slug) };
 });
@@ -204,8 +204,8 @@ describe("MapPeek selected photo and source identity", () => {
     expect(document.activeElement).toBe(details);
     await load(1280, 891);
     expect(host.querySelector("img")?.alt).toBe(landmark.alt);
-    expect(host.querySelector(`a[href="${landmark.source_url}"]`)?.textContent).toBe(landmark.author);
-    expect(host.textContent).toContain("The image is resized for display; previews may be cropped.");
+    expect(host.querySelector(`a[href="${landmark.source_url}"]`)?.textContent).toBe("Wikimedia Commons");
+    expect(host.querySelector("[data-photo-credit-text]")?.textContent).toBe("Controlled map photographer · CC BY-SA 4.0 · Wikimedia Commons");
     expect(host.querySelector(`a[href="${landmark.source_url}"]`)).not.toBeNull();
     expect(host.querySelector('a[href="https://creativecommons.org/licenses/by-sa/4.0"]')).not.toBeNull();
     expect(host.querySelector("button a")).toBeNull();
@@ -214,7 +214,7 @@ describe("MapPeek selected photo and source identity", () => {
       oldCallbacks.error({ currentTarget: googleImage } as React.SyntheticEvent<HTMLImageElement>);
     });
     expect(host.querySelector("img")).toBe(fallback);
-    expect(host.querySelector(`a[href="${landmark.source_url}"]`)?.textContent).toBe(landmark.author);
+    expect(host.querySelector(`a[href="${landmark.source_url}"]`)?.textContent).toBe("Wikimedia Commons");
     await act(async () => fallback!.dispatchEvent(new Event("error")));
     expect(host.querySelector("img")).toBeNull();
     expect(host.querySelector("a")).toBeNull();
@@ -226,7 +226,7 @@ describe("MapPeek selected photo and source identity", () => {
     expect(host.querySelector("img")).toBeNull();
   });
 
-  it("keeps the exact linked creator and license visible while native disclosure reveals every recorded edit", async () => {
+  it("keeps the short linked credit line visible in the preview without printing the change record", async () => {
     const slug = "catoctin-furnace-thurmont";
     const landmark = getLandmarkPhoto(slug)!;
     const plan = placeCardPhotoPlan({ slug }, 104);
@@ -235,38 +235,25 @@ describe("MapPeek selected photo and source identity", () => {
     expect(host.querySelector(".map-peek-source-credit")).toBeNull();
     await load(1200, 804);
     const credit = host.querySelector(".map-peek-source-credit")!;
-    const source = credit.querySelector<HTMLAnchorElement>(`a[href="${landmark.source_url}"]`)!;
-    expect(source.textContent).toBe(landmark.author);
-    expect(source.getAttribute("aria-label")).toBe(`Photo by ${landmark.author}. Wikimedia Commons`);
-    expect(credit.querySelector(`a[href="${landmark.licenseUrl ?? "https://creativecommons.org/licenses/by-sa/4.0"}"]`)?.textContent).toBe(landmark.license);
-    const disclosure = credit.querySelector("details")!;
-    const summary = disclosure.querySelector("summary")!;
-    expect(disclosure.open).toBe(false);
-    expect(summary.textContent).toBe("Edited photo");
-    expect(disclosure.querySelector("p:last-child")?.textContent).toBe(landmark.modifications);
-    summary.focus();
-    await act(async () => summary.click());
-    expect(disclosure.open).toBe(true);
-    expect(document.activeElement).toBe(summary);
-    expect(disclosure.textContent).toContain(`The photo is by ${landmark.author} on Wikimedia Commons.`);
-    expect(disclosure.querySelector("p:last-child")?.textContent).toBe(landmark.modifications);
-    await act(async () => summary.click());
-    expect(disclosure.open).toBe(false);
-    expect(host.querySelector("button a, button summary, a summary")).toBeNull();
+    expect(credit.querySelector("[data-photo-credit-text]")?.textContent).toBe("G Wayne Rhodes · CC BY-SA 4.0 · Wikimedia Commons · edited");
+    expect(credit.querySelector(`a[href="${landmark.source_url}"]`)?.textContent).toBe("Wikimedia Commons");
+    expect(credit.querySelector(`a[href="${landmark.licenseUrl}"]`)?.textContent).toBe(landmark.license);
+    expect(credit.querySelector("details, summary")).toBeNull();
+    expect(credit.textContent).not.toContain(landmark.modifications);
+    expect(host.querySelector("button a, a button")).toBeNull();
     await act(async () => host.querySelector("img")!.dispatchEvent(new Event("error")));
     expect(host.querySelector(".map-peek-source-credit")).toBeNull();
   });
 
-  it("leaves full visible modification prose as the default for other photo-credit callers", async () => {
+  it("prints the same short credit line for every other photo-credit caller", async () => {
     const plan = placeCardPhotoPlan({ slug: "catoctin-furnace-thurmont" }, 104);
     const source = plan.sources[0];
     expect(source.kind).toBe("curated");
     await act(async () => root.render(<PlaceCardPhotoCredit source={source} loaded />));
     const credit = host.querySelector(".place-card-photo-credit")!;
-    expect(credit.hasAttribute("data-photo-modifications-disclosure")).toBe(false);
     expect(credit.querySelector("details")).toBeNull();
-    expect(credit.querySelector("a")?.textContent).toBe("Wikimedia Commons");
-    expect(credit.textContent).toContain(getLandmarkPhoto("catoctin-furnace-thurmont")!.modifications);
+    expect(credit.querySelector("[data-photo-credit-text]")?.textContent).toBe("G Wayne Rhodes · CC BY-SA 4.0 · Wikimedia Commons · edited");
+    expect(credit.textContent).not.toContain(getLandmarkPhoto("catoctin-furnace-thurmont")!.modifications);
   });
 
   it("ignores callbacks from the first A after an A to B to A plan change", async () => {
@@ -311,7 +298,8 @@ describe("MapPeek selected photo and source identity", () => {
     await load(1, 1);
     expect(host.querySelector("img")?.getAttribute("src")).toBe(wikimediaUrl(getLandmarkPhoto(slug)!.file, 720));
     await load(1280, 891);
-    expect(host.querySelector(`a[href="${getLandmarkPhoto(slug)!.source_url}"]`)?.textContent).toBe("Controlled map photographer");
+    expect(host.querySelector(`a[href="${getLandmarkPhoto(slug)!.source_url}"]`)?.textContent).toBe("Wikimedia Commons");
+    expect(host.querySelector("[data-photo-credit-author]")?.textContent).toBe("Controlled map photographer");
     expect(fetchCard).toHaveBeenCalledOnce();
     expect(host.textContent).toContain("Hours not confirmed");
     expect(host.textContent).toContain("Directions");
@@ -478,8 +466,8 @@ describe("MapPeek selected photo and source identity", () => {
     expect(document.activeElement).toBe(details);
     if (timing === "before") await load(1280, 900);
     expect(image.alt).toBe(landmark.alt);
-    expect(host.querySelector(`a[href="${landmark.source_url}"]`)?.textContent).toBe(landmark.author);
-    expect(host.textContent).toContain("2004");
+    expect(host.querySelector(`a[href="${landmark.source_url}"]`)?.textContent).toBe("Wikimedia Commons");
+    expect(host.querySelector("[data-photo-credit-year]")?.textContent).toBe("2004");
     expect(host.textContent).not.toContain("Fixture Photographer");
     expect(fetchCard).toHaveBeenCalledOnce();
   });
@@ -517,8 +505,8 @@ describe("MapPeek selected photo and source identity", () => {
       expect(host.querySelector("img")).toBe(image);
       expect(image.dataset.mapPeekPhotoState).toBe("ready");
       expect(image.alt).toBe(landmark.alt);
-      expect(host.querySelector(`a[href="${landmark.source_url}"]`)?.textContent).toBe("Acroterion");
-      expect(host.textContent).toContain("November 18, 2022");
+      expect(host.querySelector(`a[href="${landmark.source_url}"]`)?.textContent).toBe("Wikimedia Commons");
+      expect(host.querySelector("[data-photo-credit-text]")?.textContent).toBe("Acroterion · 2022 · CC BY-SA 4.0 · Wikimedia Commons · edited");
     } else {
       expect(host.querySelector("img")?.dataset.mapPeekPhotoSource).toBe("google");
       expect(host.querySelector(".map-peek-source-credit")).toBeNull();

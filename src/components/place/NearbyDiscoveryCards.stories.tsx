@@ -1,6 +1,6 @@
 import { useLayoutEffect, type ReactNode } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 import PlaceCard from "./PlaceCard";
@@ -224,8 +224,8 @@ export const LicensedLocalPhoto: Story = {
     });
     expect(localImagePath(image)).toBe(source.localSrc);
     const credit = canvasElement.querySelector(".place-card-photo-credit")!;
-    expect(credit.textContent).toContain(source.author);
-    expect(credit.textContent).toContain(source.modifications);
+    expect(credit.querySelector("[data-photo-credit-author]")?.textContent).toBe(source.author);
+    expect(credit.textContent).not.toContain(source.modifications);
     expect(credit.querySelector(`a[href="${source.licenseUrl}"]`)).not.toBeNull();
     expect(credit.closest("button")).toBeNull();
   },
@@ -357,12 +357,10 @@ async function parksTargets(canvasElement: HTMLElement, columns: 1 | 2, expected
   }
   const credit = row.querySelector<HTMLElement>(".place-card-photo-credit")!;
   expect(credit).not.toBeNull(); expect(credit.closest("button, a")).toBeNull();
-  const disclosure = credit.querySelector<HTMLElement>("summary")!;
-  await userEvent.click(disclosure);
-  expect(disclosure.parentElement).toHaveAttribute("open");
-  expect(within(credit).getByText(getLandmarkPhoto(ballenger.slug)!.modifications!, { exact: true })).toBeVisible();
-  await userEvent.click(disclosure);
-  expect(disclosure.parentElement).not.toHaveAttribute("open");
+  expect(credit.querySelector("summary, details")).toBeNull();
+  expect(credit.querySelector("[data-photo-credit-text]")?.textContent)
+    .toBe("Frederick County Parks & Recreation · Used with permission · Frederick County · edited");
+  expect(credit).not.toHaveTextContent(getLandmarkPhoto(ballenger.slug)!.modifications!);
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(innerWidth);
 }
 export const ParksGrid390: Story = {

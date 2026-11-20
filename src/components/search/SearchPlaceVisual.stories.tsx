@@ -13,7 +13,7 @@ const owned = getOwnedPlacePhoto("carroll-creek-linear-park-frederick")!;
 const creditedFixture: PlaceCardPhotoSource = {
   kind: "curated", src: owned.src, alt: "Declared component fixture",
   photo: { file: "Component fixture", alt: "Declared component fixture", author: "Component test contributor",
-    license: "CC BY 2.0", source_url: "https://example.com/component-photo", verified: true },
+    license: "CC BY 2.0", source_url: "https://example.com/component-photo", verified: true, edited: false },
 };
 
 function MediaResult({ source = owned, canSwitch = false }: { source?: PlaceCardPhotoSource | null; canSwitch?: boolean }) {
@@ -62,7 +62,9 @@ export const SourceOutsideResultLink: Story = {
     const source = await canvas.findByRole("link", { name: "Photo source" });
     await expect(source).toHaveAttribute("href", "https://example.com/component-photo");
     await expect(canvas.queryByRole("link", { name: "Wikimedia Commons" })).not.toBeInTheDocument();
-    await expect(canvas.getByText("Photo by Component test contributor.")).toBeVisible();
+    const line = canvasElement.querySelector<HTMLElement>("[data-photo-credit-text]")!;
+    await expect(line).toBeVisible();
+    await expect(line).toHaveTextContent(/^Component test contributor · CC BY 2.0 · Photo source$/);
     await expect(canvasElement.querySelector("a a")).toBeNull();
     for (const link of [source, canvas.getByRole("link", { name: "CC BY 2.0" })]) {
       await expect(link.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);

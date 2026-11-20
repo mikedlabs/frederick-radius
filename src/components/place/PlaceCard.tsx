@@ -278,7 +278,7 @@ export default function PlaceCard({
   // the destination. A missing/exhausted plan keeps a compact, factual card.
   if (variant === "discovery") {
     const nearby = discoverySurface === "nearby";
-    const credit = <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} touchTarget compact discloseModifications={parksDiscovery} />;
+    const credit = <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} touchTarget />;
     const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? place.city;
     const repeatedFacts = new Set([place.name, cat?.name, place.category, town, "Hours not confirmed"]
       .filter((value): value is string => Boolean(value))
@@ -757,7 +757,7 @@ export default function PlaceCard({
       {/* The credit sits under the row's facts without a second hairline;
           the row's own bottom rule closes it. */}
       <div className="relative z-10 [&_.place-card-photo-credit]:border-t-0 [&_.place-card-photo-credit]:px-0">
-        <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} compact />
+        <PlaceCardPhotoCredit source={photo} loaded={photoLoaded} />
       </div>
     </article>
   );
