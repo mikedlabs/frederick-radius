@@ -107,6 +107,13 @@ The map is an answer surface, not a layer manager.
 - Camera, scope, filters, and query survive the close and return journey.
 - Empty coverage says what Radius knows and offers the nearest useful fallback.
 
+Once someone chooses an area, the resting Map panel shows one place in that
+area. It leads with the nearest place that has an approved local photograph.
+When none has a photograph it shows the nearest place with its category icon.
+Opening the list puts all places in distance order. Distances use the committed
+map center unless the person has chosen Near me and supplied a location.
+Opening a place keeps the map in position for the return to the list.
+
 ## Transit
 
 The rider's selected stop and next arrival lead the screen. Saved stops remain

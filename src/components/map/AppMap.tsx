@@ -7309,6 +7309,13 @@ export default function AppMap({
             closingSoonCount={closingSoonCount}
             placesInView={inViewPlaces}
             placesInViewOrigin={userLoc ?? viewCenter}
+            nearbyView={mapLoaded && viewBounds && viewCenter && !showResultsHere ? {
+              origin: resultScope === "nearme" && userLoc ? userLoc : viewCenter,
+              userLoc: resultScope === "nearme" ? userLoc : null,
+              // This place is already in view. Leave the viewport and its
+              // ranked rows in place for Close and browser Back.
+              onPick: (place) => openMapSelection({ kind: "place", value: place }),
+            } : undefined}
             selectedPlaceSlug={selectedSlug}
             onPickPlaceInView={(place) => {
               const map = mapRef.current?.getMap();
