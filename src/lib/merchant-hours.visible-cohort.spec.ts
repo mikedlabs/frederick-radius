@@ -2,6 +2,8 @@ import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { parseOfficialHoursCohort, type OfficialHoursCohort } from "../../scripts/lib/official-hours-cohort";
+import { parseMerchantOfficialHours } from "../../scripts/lib/merchant-official-hours";
+import { MERCHANT_HOURS_SOURCES } from "./merchant-hours";
 import { WEEKDAYS } from "./official-hours";
 
 const { JSDOM } = createRequire(import.meta.url)("jsdom") as { JSDOM: new (html: string) => { window: { document: Document } } };
@@ -141,4 +143,49 @@ describe("reviewed visible-week contact cohorts", () => {
     expect(() => parse(document => { document.querySelector(".hours")!.textContent = "Hours Monday–Friday: 9am–5pm Saturday: 10am–2pm Sunday: 10am–2pm"; document.body.insertAdjacentHTML("beforeend", "<p>Closed on Sundays.</p>"); })).toThrow();
   });
   it("keeps a complete seven-day result for each accepted visible fixture", () => expect(Object.keys(parse()[0]).sort()).toEqual([...WEEKDAYS].sort()));
+});
+
+describe("Sweeties by the Creek regular shop hours", () => {
+  const source = MERCHANT_HOURS_SOURCES.find(row => row.slug === "sweeties")!;
+  const observedAt = "2026-11-17T12:42:26.964Z";
+  const now = new Date("2026-11-20T15:31:32.000Z");
+  const week = "Monday through Thursday: 3pm-8:30pm Friday: 3pm-9:30pm Saturday: 12pm-10pm Sunday: 12pm-8:30pm";
+  const html = `<html><head><title>Sweeties by the Creek – Ice cream, dirty sodas, candy, etc</title>
+    <link rel="canonical" href="https://sweetiescompany.com/"></head><body>
+    <div id="brxe-gvtxin">50 Carroll Creek Way, Suite 120 Frederick, MD 21701</div>
+    <div class="contact-block"><a href="tel:240-439-4876">240-439-4876</a></div>
+    <div id="brxe-2tos0x"><h2>Hours</h2><p>${week}</p></div></body></html>`;
+  const read = (body: string) => parseMerchantOfficialHours(source, { url: source.url, observedAt, html: body }, now);
+
+  it("keeps the complete visible week and actual capture window", () => {
+    const row = read(html);
+    const early = [{ open: "15:00", close: "20:30" }];
+    expect(row.hours).toEqual({ mon: early, tue: early, wed: early, thu: early, fri: [{ open: "15:00", close: "21:30" }], sat: [{ open: "12:00", close: "22:00" }], sun: [{ open: "12:00", close: "20:30" }] });
+    expect(row).toMatchObject({ source_url: source.url, observed_at: observedAt, expires_at: "2026-11-24T12:42:26.964Z", source_sha256: createHash("sha256").update(html).digest("hex") });
+    expect(row.qualification).toBeUndefined();
+  });
+
+  it.each([
+    ["other title", "Sweeties by the Creek –", "Other Sweeties –"],
+    ["other suite", "Suite 120", "Suite 220"],
+    ["other city", "Frederick, MD", "Rockville, MD"],
+    ["other phone action", "tel:240-439-4876", "tel:240-439-4877"],
+    ["other visible phone", ">240-439-4876<", ">240-439-4877<"],
+    ["other canonical", 'href="https://sweetiescompany.com/"', 'href="https://sweetiescompany.com/other/"'],
+    ["incomplete week", "Sunday: 12pm-8:30pm", ""],
+    ["dated range", "Monday through Thursday", "Monday through November 26"],
+    ["clock range", "3pm-8:30pm", "3pm through 8:30pm"],
+    ["service qualifier", "3pm-8:30pm", "3pm-8:30pm until sold out"],
+    ["conflicting extra week", "</body>", "<p>Sunday: 9am-10am</p></body>"],
+    ["new notice", "</body>", "<p>Closed for Thanksgiving.</p></body>"],
+  ])("holds %s", (_label, from, to) => {
+    expect(html).toContain(from);
+    expect(() => read(html.replace(from, to))).toThrow();
+  });
+
+  it("preserves the existing weekday grammar for unrelated locations", () => {
+    expect(() => parse(document => {
+      document.querySelector(".hours")!.textContent = "Hours " + week;
+    })).toThrow();
+  });
 });

@@ -2770,6 +2770,27 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "sweeties_by_the_creek_hours",
+    "name": "Sweeties by the Creek - First-party Hours",
+    "owner": "Sweeties by the Creek",
+    "url": "https://sweetiescompany.com/",
+    "license": "public first-party business hours facts; no page or image reuse",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/merchant-hours.ts",
+    "transformFile": "scripts/lib/merchant-official-hours.ts",
+    "evidenceAliases": [
+      "https://sweetiescompany.com/",
+      "sweeties_by_the_creek_hours"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "thai_meric_hours",
     "name": "Thai Meric Eatery & Bar — First-party Hours",
     "owner": "Thai Meric Eatery & Bar",
