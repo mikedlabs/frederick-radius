@@ -32,7 +32,6 @@ import {
 } from "@/lib/loaders/businessInfo";
 import PlaceVisitTracker from "@/components/place/PlaceVisitTracker";
 import PlaceHero from "@/components/place/PlaceHero";
-import PlaceMiniMap from "@/components/place/PlaceMiniMap";
 import AerialBeat from "@/components/place/AerialBeat";
 import PlacePhotoGallery from "@/components/place/PlacePhotoGallery";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
@@ -44,7 +43,8 @@ import { getVisibleEvents } from "@/lib/events/visible";
 import { classifyDescription } from "@/lib/copy-quality";
 import { Button } from "@/components/ui/Button";
 import { MobileActionBar, MobileBarLink } from "@/components/ui/MobileActionBar";
-import SourceBadge from "@/components/place/SourceBadge";
+import PlaceSourceLine from "@/components/place/PlaceSourceLine";
+import { placeFreshnessEvidence } from "@/lib/trust";
 import {
   absoluteSiteUrl,
   breadcrumbJsonLd,
@@ -62,6 +62,7 @@ import { placeVisitDetails } from "@/lib/loaders/placeVisitDetails";
 import PlanFromPlaceLink from "@/components/plan/PlanFromPlaceLink";
 import { isDestinationCategory, isRecommendable } from "@/lib/relevance";
 import type { DecisionAction } from "@/lib/decision/telemetry";
+import { needsWebsiteLink, phoneBarHasWebsite } from "@/lib/place-phone-bar";
 
 /**
  * Phase 2: never render scraped second-person copy (quality bar 9,
@@ -205,6 +206,13 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         : mobileCommerceLink?.type === "reservation"
           ? { icon: CalendarCheck, label: "Reserve", decisionAction: "reservation" as const }
           : null;
+  // The phone bar's last cell is the commerce action when there is one, else
+  // Website when the place has no email. One flag drives both the bar and the
+  // page's plain website link, so the official website is never unreachable
+  // on a phone.
+  const mobileBarHasCommerce = Boolean(mobileCommerceLink && mobileCommerceAction);
+  const mobileBarHasWebsite = phoneBarHasWebsite(place, mobileBarHasCommerce);
+  const hasGoogleHours = Boolean(place.google_hours && place.google_hours.length > 0);
   // Drop anything that has already ended before mapping. place.upcoming_events
   // is baked at data-build time, so without this a venue can show a past
   // event as "upcoming" once the build is a day or two old (the audit caught
@@ -337,17 +345,19 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               {place.name}
             </h1>
             {/* Identity line: what it is + where, at a glance. The street
-                address lives in ONE place — the Location plate beside the
-                map + directions — instead of being printed here too
-                (July 2026 review: same fact twice above the fold). */}
+                address lives in ONE place, the Location section with
+                directions, instead of being printed here too (July 2026
+                review: same fact twice above the fold). */}
             <p className="mt-1.5 text-[15px]" style={{ color: "var(--app-ink-2)" }}>
               {cat?.name ?? place.category} · {place.municipality_name}
             </p>
-            {/* The visit-decision facts — open/closed, price, provenance —
-                sit directly under the address, first screenful. They lived
-                at the BOTTOM of this card, below the personal note/list
-                tooling, which made a first-time visitor scroll past margin
-                widgets to learn "is it open" (July 2026 audit). */}
+            {/* ONE status line carries the answer and its caveat together,
+                directly under the identity line: the hours when they are
+                current, otherwise "Hours not recently confirmed" and the date
+                the hours were last checked. Record provenance (source tier,
+                Google match, listing date) moved to the source line in the
+                footer, so the first screen answers "is it open" before any
+                badge (November 2026 detail audit). */}
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
               {/* Recomputed against the visitor's clock (LiveOpenStatus):
                   the ISR-baked value said "Closing soon" while HoursBlock said
@@ -356,16 +366,13 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
                 hours={place.hours}
                 verified={place.hours_verified ?? false}
                 initial={place.open_status}
+                hoursCheckedAt={placeFreshnessEvidence(place).hours}
               />
               {place.price_band && (
                 <span className="font-medium" style={{ color: "var(--app-ink-3)" }}>
                   {"$".repeat(place.price_band)}
                 </span>
               )}
-              <SourceBadge place={place} size="md" />
-              {/* Hours provenance lives in the HoursBlock details (passed as
-                  `provenance`) so the freshness label stays honest without
-                  crowding the open/closed decision zone. */}
             </div>
           </div>
           {/* Prominent text-style follow CTA — Phase 1's
@@ -532,11 +539,35 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         />
       )}
 
+      {/* With no schedule to show, the status line under the title already
+          says "Hours not recently confirmed" with its date, so there is no
+          second hours block repeating it. The phone bar and the desktop row
+          carry Call and Website. */}
       {place.hours ? (
         <HoursBlock hours={place.hours} verified={place.hours_verified ?? false} provenance={hoursConfirmed ?? undefined} />
-      ) : place.google_hours && place.google_hours.length > 0 ? (
-        <GoogleHours lines={place.google_hours} />
-      ) : <HoursBlock website={place.website} phone={place.phone} />}
+      ) : hasGoogleHours ? (
+        <GoogleHours lines={place.google_hours!} />
+      ) : null}
+
+      {/* On a phone whose bar has no Website cell (the place has an email or a
+          commerce link), this plain link is the only way to the official
+          site, with or without a posted schedule. The desktop row always
+          carries Website. */}
+      {needsWebsiteLink(place, mobileBarHasCommerce) && (
+        <p className="lg:hidden" data-place-website-link>
+          <a
+            href={place.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-decision-action="website"
+            className="inline-flex min-h-11 items-center gap-2 text-[15px] font-semibold underline underline-offset-2"
+            style={{ color: "var(--app-ink)" }}
+          >
+            <Globe className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-2)" }} />
+            {place.hours || hasGoogleHours ? "Official website" : "Check hours on the official website"}
+          </a>
+        </p>
+      )}
 
       <PlacePhotoGallery
         key={place.slug}
@@ -550,7 +581,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
       <section className="space-y-3">
         <PlaceSectionLabel>Location</PlaceSectionLabel>
-        {/* The address leads, then the locator in its thin frame. */}
+        {/* The address is the location fact. Directions live in the phone
+            bar and the desktop row, and "View area" under Nearby opens the
+            map here, so there is no separate locator box or raw coordinate
+            readout (November 2026 detail audit). */}
         <div className="flex items-start gap-2 text-[15px] leading-snug">
           <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-2)" }} aria-hidden />
           <div>
@@ -558,7 +592,6 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>{place.city}, {place.state} {place.postal_code}</p>
           </div>
         </div>
-        <PlaceMiniMap lng={place.geom.lng} lat={place.geom.lat} name={place.name} color={cat?.color} />
         {/* "From above": the nearest geotagged drone shot, when one
             genuinely covers this spot (downtown Frederick). Self-hides
             elsewhere so it never fakes an aerial of a place we don't have. */}
@@ -637,12 +670,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       </Suspense>
 
       <footer className="space-y-1">
-        <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          {/* Freshness only. The source already speaks once, as the
-              SourceBadge in the header decision zone — restating it here
-              was the "source twice" duplicate (July 2026 review). */}
-          Updated {place.updated_at}
-        </p>
+        {/* The page's one source line: the record's source tier, the Google
+            match and one listing date, after the content. The source speaks
+            once, here; it is no longer repeated in the header. */}
+        <PlaceSourceLine place={place} />
         <div className="flex flex-wrap items-center gap-x-5 text-[14px]">
           {cat && (
             <Link prefetch={false} href={`/category/${place.category}`} className="tap-44 inline-flex min-h-11 items-center font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-link)" }}>
@@ -720,7 +751,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             decisionAction="call"
           />
         )}
-        {mobileCommerceLink && mobileCommerceAction ? (
+        {mobileBarHasCommerce && mobileCommerceLink && mobileCommerceAction ? (
           <MobileBarLink
             href={mobileCommerceLink.url}
             icon={mobileCommerceAction.icon}
@@ -729,7 +760,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             decisionAction={mobileCommerceAction.decisionAction}
             external
           />
-        ) : place.website && !place.email ? (
+        ) : mobileBarHasWebsite && place.website ? (
           <MobileBarLink
             href={place.website}
             icon={Globe}

@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { recordedDayTimeZone } from "@/lib/trust";
 
 /**
  * FreshnessChip — visible age signal for any timestamped row.
@@ -41,12 +42,28 @@ function formatAbsolute(
   d: Date,
   stale: boolean,
   subject: FreshnessSubject,
+  iso: string,
 ): string {
+  const timeZone = recordedDayTimeZone(iso);
   const opts: Intl.DateTimeFormatOptions = stale
-    ? { month: "short", year: "numeric" }
-    : { month: "short", day: "numeric" };
+    ? { month: "short", year: "numeric", timeZone }
+    : { month: "short", day: "numeric", timeZone };
   const prefix = stale ? `${subject} last checked` : `${subject} checked`;
   return `${prefix} ${d.toLocaleDateString("en-US", opts)}`;
+}
+
+/**
+ * The chip's hover title, in the same zone as its visible label. A date-only
+ * or midnight-UTC check prints as that day with no time, since no time was
+ * recorded; a real timestamp prints its Eastern date and time.
+ */
+export function freshnessTitle(iso: string): string | null {
+  const timestamp = Date.parse(iso);
+  if (Number.isNaN(timestamp)) return null;
+  const timeZone = recordedDayTimeZone(iso);
+  return timeZone === "UTC"
+    ? new Date(timestamp).toLocaleDateString("en-US", { dateStyle: "long", timeZone })
+    : new Date(timestamp).toLocaleString("en-US", { dateStyle: "long", timeStyle: "short", timeZone });
 }
 
 export function freshnessLabel({
@@ -65,7 +82,7 @@ export function freshnessLabel({
     tier: age.tier,
     label:
       age.label ||
-      formatAbsolute(new Date(timestamp), age.tier === "stale", subject),
+      formatAbsolute(new Date(timestamp), age.tier === "stale", subject, iso),
   };
 }
 
@@ -94,7 +111,6 @@ export default function FreshnessChip({
   if (now === null) return null; // SSR + pre-hydration: render nothing
   const freshness = freshnessLabel({ iso, now, subject });
   if (!freshness) return null;
-  const t = Date.parse(iso);
   const { tier, label: finalLabel } = freshness;
 
   // Hue lives on the ICON (graphical, 3:1 is enough); the readable label
@@ -113,7 +129,7 @@ export default function FreshnessChip({
     <span
       className={`inline-flex items-center gap-1 text-[11px] font-medium ${className}`}
       style={{ color: palette.textColor }}
-      title={new Date(t).toLocaleString()}
+      title={freshnessTitle(iso) ?? undefined}
     >
       <Icon className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: palette.color }} />
       {finalLabel}

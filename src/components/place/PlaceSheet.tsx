@@ -15,20 +15,17 @@ import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import OpenClosedDot from "./OpenClosedDot";
+import LiveOpenStatus from "./LiveOpenStatus";
 import GoogleHours from "./GoogleHours";
 import HoursBlock from "./HoursBlock";
 import { getOpenStatus } from "@/lib/hours";
 import { placeHoursProvenance } from "@/lib/place-hours-provenance";
 import SaveButton from "@/components/saved/SaveButton";
 import ShareButton from "./ShareButton";
-import SourceBadge from "./SourceBadge";
+import PlaceSourceLine from "./PlaceSourceLine";
 import FieldNotesCard from "./FieldNotesCard";
 import type { PlaceCardData } from "@/lib/loaders/places";
-import TrustChip from "@/components/ui/TrustChip";
-import FreshnessChip from "@/components/ui/FreshnessChip";
-import { placeHoursTrust, formatChecked } from "@/lib/trust";
-import { knownFor } from "@/lib/cuisine";
+import { placeFreshnessEvidence } from "@/lib/trust";
 import { classifyDescription } from "@/lib/copy-quality";
 import { formatDistance } from "@/lib/geo";
 import type { LngLat } from "@/lib/geo";
@@ -117,14 +114,12 @@ function PlaceSheetContent({
   mapReturnTo?: string | null;
   onClose: () => void;
 }) {
-  const [hoursTime, setHoursTime] = useState(() => new Date());
-  useEffect(() => {
-    if (!place.hours?._official) return;
-    const timer = window.setInterval(() => setHoursTime(new Date()), 60_000);
-    return () => window.clearInterval(timer);
-  }, [place.hours]);
+  // First-paint status only: LiveOpenStatus recomputes from the same hours on
+  // mount and on its own minute tick. An official schedule is computed at
+  // open time so its dated closures apply before that first tick.
+  const [openedAt] = useState(() => new Date());
   const currentHoursStatus = place.hours?._official
-    ? getOpenStatus(place.hours, { verified: place.hours_verified }, hoursTime)
+    ? getOpenStatus(place.hours, { verified: place.hours_verified }, openedAt)
     : place.open_status;
   const cat = CATEGORY_BY_SLUG[place.category];
   const muni = MUNICIPALITY_BY_SLUG[place.municipality];
@@ -402,45 +397,29 @@ function PlaceSheetContent({
           {metadataPending && <p role="status" className="mb-3 text-[13px] text-[var(--app-ink-2)]">Loading place details…</p>}
           {metadataUnavailable && <p role="status" className="mb-3 text-[13px] text-[var(--app-ink-2)]">More details are unavailable. You can keep browsing or open the full page.</p>}
 
-          {/* Address + source provenance + "known for" — three quiet
-           *  lines that establish what this place is before the data
-           *  rows below. SourceBadge gives provenance at a glance;
-           *  knownFor surfaces the curated descriptor when we have one
-           *  (cuisine, specialty), instead of leaving the eye to skim
-           *  the short_blurb cold. */}
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            {/* The precise postal city ("Frederick"), not the municipality's
-                editorial name ("Downtown Frederick") which overclaims for the
-                many City-of-Frederick addresses that aren't downtown. Falls
-                back to the municipality only when a place has no clean city. */}
-            <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-              {place.address}{place.city ? ` · ${place.city}` : muni ? ` · ${muni.name}` : ""}
-            </p>
-            <SourceBadge place={place} size="sm" />
-          </div>
-          {(() => {
-            const kf = knownFor(place);
-            if (!kf) return null;
-            // Blurbs usually already end in a sentence stop, so only add
-            // our own period when one's missing — otherwise the wrapped
-            // "Known for …." sentence doubles up ("…direct-trade beans..").
-            const text = kf.replace(/\s+$/, "");
-            const withStop = /[.!?]$/.test(text) ? text : `${text}.`;
-            return (
-              <p
-                className="mt-1.5 text-[13px] italic leading-snug"
-                style={{ color: "var(--app-ink-2)" }}
-              >
-                Known for {withStop}
-              </p>
-            );
-          })()}
+          {/* The address, then ONE status line. Record provenance (source
+           *  tier, Google match, listing date) waits in the source line at
+           *  the foot of the sheet, so no badge stands between the place and
+           *  whether it is open (November 2026 detail audit). The old
+           *  "Known for {blurb}" line repeated the description below it. */}
+          {/* The precise postal city ("Frederick"), not the municipality's
+              editorial name ("Downtown Frederick") which overclaims for the
+              many City-of-Frederick addresses that aren't downtown. Falls
+              back to the municipality only when a place has no clean city. */}
+          <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+            {place.address}{place.city ? ` · ${place.city}` : muni ? ` · ${muni.name}` : ""}
+          </p>
 
-          {/* Status + rating + price + distance — the at-a-glance
-           *  data row. Kept compact so the next block (the trust pill
-           *  cluster) reads as a single thought. */}
+          {/* Status + rating + price + distance — the at-a-glance data row.
+           *  The status is the same LiveOpenStatus the full page uses, so the
+           *  sheet and the page say the same thing, caveat and date included. */}
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--app-ink-2)" }}>
-            <OpenClosedDot status={currentHoursStatus} />
+            <LiveOpenStatus
+              hours={place.hours}
+              verified={place.hours_verified ?? false}
+              initial={currentHoursStatus}
+              hoursCheckedAt={placeFreshnessEvidence(place).hours}
+            />
             {place.google_rating !== undefined && (
               <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--app-ink-2)" }}>
                 <span style={{ color: "var(--app-accent-press)" }}>★</span>
@@ -461,32 +440,6 @@ function PlaceSheetContent({
                 <span className="font-mono tabular-nums">{formatDistance(place.distance_m)}</span> away
               </span>
             )}
-          </div>
-
-          {/* Compact trust cluster — TrustChip + verified-by-Google
-           *  dot + FreshnessChip, on ONE row separated by middle dots.
-           *  The previous layout stacked three tiny rows on top of
-           *  each other; this reads as one trust statement. */}
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <TrustChip signal={placeHoursTrust(currentHoursStatus)} />
-            {place.google_verified && place.hours_source !== "first_party" && (
-              <>
-                <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium" style={{ color: "var(--app-positive)" }}>
-                  <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-positive)" }} aria-hidden />
-                  Confirmed by Google
-                </span>
-              </>
-            )}
-            <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
-            <FreshnessChip
-              iso={
-                place.hours_verified && place.hours_updated_at
-                  ? place.hours_updated_at
-                  : place.last_verified_at
-              }
-              subject={place.hours_verified && place.hours_updated_at ? "Hours" : "Listing"}
-            />
           </div>
 
         {/* The existing compact official schedule belongs with the decision
@@ -711,6 +664,13 @@ function PlaceSheetContent({
             <GoogleHours lines={hoursLines} />
           </div>
         )}
+        {/* Confirmed hours from Google or a reviewed override keep their own
+            source and observation time, as the official HoursBlock does. */}
+        {place.hours && !place.hours._official && place.hours_verified && placeHoursProvenance(place) && (
+          <p data-place-hours-provenance className="mt-1 text-xs leading-snug" style={{ color: "var(--app-ink-3)" }}>
+            {placeHoursProvenance(place)}
+          </p>
+        )}
 
         {isDestinationCategory(place.category) && isRecommendable(place) && place.is_operational !== "closed_permanently" && (
           <div className="mt-3">
@@ -738,27 +698,13 @@ function PlaceSheetContent({
           />
         </div>
 
-        {/* Trust footer: a tiny "Updated …" pulse + a "see something
-            wrong" escape valve, on the same line. The freshness line
-            is the audit-asked "tiny proof point inside the workflow"
-            — strangers don't read /trust before they read a place
-            card, so the card has to prove itself. formatChecked()
-            renders Updated today / yesterday / N days ago / on Mon 12
-            and returns null when there's no timestamp, so the line
-            silently goes away on places we can't honestly date. */}
-        <p
-          className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[11px]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {(() => {
-            const checked = formatChecked(place.updated_at);
-            return checked ? (
-              <>
-                <span>{checked}</span>
-                <span aria-hidden>·</span>
-              </>
-            ) : null;
-          })()}
+        {/* The sheet's one source line: where the record came from, the
+            Google match and one listing date, then the "see something
+            wrong" escape valve. It is the audit-asked "tiny proof point
+            inside the workflow": strangers don't read /trust before they
+            read a place card, so the card has to prove itself, after the
+            answer instead of ahead of it. */}
+        <PlaceSourceLine place={place} className="mt-3 justify-center text-center">
           <span>
             See something wrong?{" "}
             <a
@@ -767,13 +713,13 @@ function PlaceSheetContent({
               )}&body=${encodeURIComponent(
                 `What I noticed about ${place.name}:\n\n\n(Optional) where I saw it: `,
               )}`}
-              className="underline"
+              className="tap-44-y underline"
               style={{ color: "var(--app-cool-text)" }}
             >
               Tell us
             </a>
           </span>
-        </p>
+        </PlaceSourceLine>
         </div>
       </div>
 

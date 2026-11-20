@@ -29,9 +29,13 @@ import PlaceSectionLabel, { PlaceDotList } from "./PlaceSectionLabel";
  *   - No "AI" disclaimer in the UI: it's labelled "what people say"
  *     because that's what it is: a summary of the public reviews
  *     Google already shows. We just made it scannable.
- *   - One section label ("What people say") heads the card. The two rows
- *     carry plain 14px semibold sentence-case sub-labels, so the card never
- *     stacks two identical uppercase labels.
+ *   - With only one row, that row's own name is the single section label
+ *     ("Known for" or "Customers loved") over its dot list. A "What people
+ *     say" heading over one sub-label was a label stack with nothing of its
+ *     own beneath it (November 2026 detail audit, Baker Park).
+ *   - With both rows, one section label ("What people say") heads the card
+ *     and the two rows carry plain 14px semibold sentence-case sub-labels,
+ *     so the card never stacks two identical uppercase labels.
  */
 export default function KnownForCard({
   knownFor,
@@ -44,25 +48,32 @@ export default function KnownForCard({
   const c = (customersLoved ?? []).filter(Boolean).slice(0, 4);
   if (k.length === 0 && c.length === 0) return null;
 
+  if (k.length === 0 || c.length === 0) {
+    return (
+      <section aria-labelledby="known-for-heading" className="space-y-1">
+        <PlaceSectionLabel as="h3" id="known-for-heading">
+          {k.length > 0 ? "Known for" : "Customers loved"}
+        </PlaceSectionLabel>
+        <PlaceDotList items={k.length > 0 ? k : c} />
+      </section>
+    );
+  }
+
   return (
     <section aria-labelledby="known-for-heading" className="space-y-4">
       <PlaceSectionLabel as="h3" id="known-for-heading">
         What people say
       </PlaceSectionLabel>
 
-      {k.length > 0 && (
-        <div className="space-y-1">
-          <SubLabel>Known for</SubLabel>
-          <PlaceDotList items={k} />
-        </div>
-      )}
+      <div className="space-y-1">
+        <SubLabel>Known for</SubLabel>
+        <PlaceDotList items={k} />
+      </div>
 
-      {c.length > 0 && (
-        <div className="space-y-1">
-          <SubLabel>Customers loved</SubLabel>
-          <PlaceDotList items={c} />
-        </div>
-      )}
+      <div className="space-y-1">
+        <SubLabel>Customers loved</SubLabel>
+        <PlaceDotList items={c} />
+      </div>
     </section>
   );
 }
