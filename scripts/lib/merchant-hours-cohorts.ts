@@ -39,6 +39,19 @@ const FOOD_LION_COHORTS: readonly OfficialHoursCohort[] = FOOD_LION_LOCATIONS.ma
 
 const REVIEWED_VISIBLE_CONTACT_COHORTS: readonly OfficialHoursCohort[] = [
   {
+    shape: "visible_weekly_contact_card", ledger_id: "sweeties_by_the_creek_hours",
+    source_url: "https://sweetiescompany.com/", canonical_url: "https://sweetiescompany.com/",
+    bindings: [{ slug: "sweeties", source_name: "Sweeties by the Creek", identity: { name: "Sweeties by the Creek", street: "50 Carroll Creek Way, Suite 120", locality: "Frederick", region: "MD", postalCode: "21701", phone: "2404394876" } }],
+    locations: {
+      sweeties: {
+        name: { selector: "title", expected: "Sweeties by the Creek – Ice cream, dirty sodas, candy, etc" },
+        address: { selector: "#brxe-gvtxin", expected: "50 Carroll Creek Way, Suite 120 Frederick, MD 21701" },
+        phone: { selector: ".contact-block a[href='tel:240-439-4876']", expected: "240-439-4876" },
+        weeks: [{ selector: "#brxe-2tos0x", count: 1, label: "Hours", through_weekdays: true }],
+      },
+    },
+  },
+  {
     shape: "visible_weekly_contact_card", ledger_id: "mamma_angela_hours",
     source_url: "https://www.mammaangelamtairymd.com/", canonical_url: "https://www.mammaangelamtairymd.com",
     bindings: [{ slug: "mamma-angela-mount-airy", source_name: "Mamma Angela", identity: { name: "Mamma Angela", street: "5 Ridgeside Court", locality: "Mount Airy", region: "MD", postalCode: "21771", phone: "3018291575" } }],

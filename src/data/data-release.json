@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:5c862547334090e7d9115affdfc596938e100fa8b91009f9b46539eb96cd6fc3",
+  "data_version": "sha256:1ba9ce3adc3724276c87be95e78a0d14985657b6995073c945ecf37c40aebbb2",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-11-19T15:43:46.502Z",
+      "promoted_at": "2026-11-20T15:45:37.204Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -72,9 +72,9 @@
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "d6ecd9a8ba78d20a6dea8b872c2ef08cb2940adf5dd71ed50e99ecf5d93bb26d",
-          "records": 34,
-          "bytes": 43975
+          "sha256": "41490a1ffb23ddcffb501b3c379f0eb540aace068c737e3a32502c3a7493dc2a",
+          "records": 35,
+          "bytes": 45195
         },
         {
           "path": "src/data/business-status.json",
@@ -576,9 +576,9 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "c4f395bcc9ae293a165552fec2721fa8cf236d38e9c7f4487eceef587da339ae",
+          "sha256": "70193e160522883b956a2319963d0595fe75785010f5c99c060e2c0192dfe4a5",
           "records": 1571,
-          "bytes": 2317416
+          "bytes": 2318056
         },
         {
           "path": "src/data/copy-scores.json",
@@ -588,9 +588,9 @@
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "9517be072f93ec5dd7003c14804347790f57a51d5e186387f4433d294f18061d",
-          "records": 39,
-          "bytes": 48112
+          "sha256": "dc97400d242088ae792f01cfc85be6c2c77026d7150177a603a1012a86d5b961",
+          "records": 40,
+          "bytes": 48839
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
@@ -601,13 +601,13 @@
       ]
     },
     "sources": {
-      "promoted_at": "2026-11-02T08:40:12.466Z",
+      "promoted_at": "2026-11-20T15:45:37.204Z",
       "artifacts": [
         {
           "path": "src/data/source-registry.generated.json",
-          "sha256": "2c5f3b1a202b733347e4de971fb46f2fc0092a2e94349d6edf08cf05460c8528",
-          "records": 161,
-          "bytes": 108289
+          "sha256": "9a975f4a162f7e0b133aecb3d555b854dc8d57e28cfd6b100dec5c11d43e026a",
+          "records": 162,
+          "bytes": 109022
         }
       ]
     },
