@@ -92,13 +92,15 @@ async function rowIds(page: Page) {
 
 async function clearTarget(locator: Locator) {
   await expect(locator).toBeVisible();
-  const measured = await locator.evaluate((element) => {
+  await expect.poll(() => locator.evaluate(element => {
     const box = element.getBoundingClientRect();
-    return { height: box.height, width: box.width, centerHits: element.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)) };
-  });
-  expect(Math.round(measured.height)).toBeGreaterThanOrEqual(44);
-  expect(Math.round(measured.width)).toBeGreaterThanOrEqual(44);
-  expect(measured.centerHits).toBe(true);
+    const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+    if (Math.round(box.height) >= 44 && Math.round(box.width) >= 44 && element.contains(hit)) return "reachable";
+    const bounds = (node: Element | null) => node?.getBoundingClientRect().toJSON();
+    const describe = (node: Element | null) => node && [node.tagName, node.classList.value, node.getAttribute("aria-label")];
+    return JSON.stringify({ target: describe(element), hit: describe(hit),
+      box: bounds(element), panel: bounds(document.querySelector("[data-map-nearby-panel]")), dock: bounds(document.querySelector("[data-map-dock]")) });
+  }), { message: "The settled control needs a reachable center and a 44px target" }).toBe("reachable");
 }
 
 async function capture(page: Page, info: TestInfo, name: string) {
@@ -113,6 +115,149 @@ async function capture(page: Page, info: TestInfo, name: string) {
   await info.attach(name, { path, contentType: "image/png" });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 }
+
+// Put one real reviewed playground and two clearly synthetic alternatives into the
+// local map transport. The real renderer, selection history and bundled JPEG
+// remain in use. No provider, metadata service, or account receives a call.
+async function nearbyFixtures(page: Page, baseURL: string | undefined) {
+  if (!baseURL || !["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname)) {
+    throw new Error("Nearby panel fixtures require a loopback server.");
+  }
+  const origin = new URL(baseURL).origin;
+  const photo = "/images/seasons/spring/010.jpg";
+  const playground = { slug: "sophie-madigans-playground-frederick", name: "Sophie & Madigan's Playground",
+    category: "playground", subcategories: [], geom: { lng: -77.4505009, lat: 39.4066899 },
+    municipality: "frederick", source: "manual", is_verified: false, short_blurb: "", open_status: { state: "unknown" } };
+  const siblings = [1, 2].map(index => ({ ...playground, slug: `nearby-map-fixture-${index}`,
+    name: `Sample coffee shop ${index}`, category: "coffee", geom: { ...playground.geom, lng: playground.geom.lng + .001 * index } }));
+  const metadata: string[] = [];
+  await page.context().route("**/*", async route => {
+    const req = route.request();
+    const url = new URL(req.url());
+    if (url.origin !== origin || !["GET", "HEAD"].includes(req.method())) return route.abort();
+    if (url.pathname === "/api/map/places") return route.fulfill({ json: {
+      generatedAt: new Date().toISOString(), places: [...siblings, playground],
+    } });
+    if (url.pathname === "/api/auth/me") return route.fulfill({ json: { user: null } });
+    if (url.pathname.startsWith("/api/places/map-card/")) metadata.push(url.pathname);
+    if (url.pathname.startsWith("/api/")) return route.fulfill({ status: 503, json: { error: "Optional fixture data unavailable" } });
+    if (url.pathname === "/_next/image") {
+      const asset = new URL(url.searchParams.get("url") ?? "", origin);
+      if (asset.origin !== origin || asset.pathname !== photo) return route.abort();
+      return route.fulfill({ contentType: "image/jpeg", body: await readFile(`public${photo}`) });
+    }
+    return route.continue();
+  });
+  const styleRequests = await controlledBasemap(page, baseURL);
+  return { playground, metadata, styleRequests };
+}
+
+for (const [width, height] of [[320, 568], [390, 844]]) {
+  test(`Controlled local browse keeps the photo-first nearby panel below most of the map at ${width}px`, async ({ page, baseURL }, info) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await noLocationPrompt(page);
+    const { playground, metadata, styleRequests } = await nearbyFixtures(page, baseURL);
+    await page.goto(`/map?in=county&c=${playground.geom.lng},${playground.geom.lat},13`, { waitUntil: "domcontentloaded" });
+    await expectHealthyMap(page);
+    const panel = page.locator("[data-map-nearby-panel]:visible");
+    const lead = panel.getByRole("button", { name: playground.name, exact: true });
+    const toggle = panel.locator("[data-map-nearby-toggle]");
+    await expect(lead.locator("[data-map-nearby-media]")).toHaveAttribute("data-photo-state", "ready");
+    expect(await lead.locator("img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 1)).toBe(true);
+    await expect(panel.locator("[data-map-nearby-place]")).toHaveCount(1);
+    await expect(lead).toHaveAccessibleDescription(/from map center/);
+    await clearTarget(lead);
+    await clearTarget(toggle);
+    const geometry = () => panel.evaluate(element => {
+      const canvas = document.querySelector("canvas.mapboxgl-canvas")!.getBoundingClientRect();
+      const header = document.querySelector("header[data-map-header]")!.getBoundingClientRect();
+      const nav = document.querySelector('[data-bottom-nav-shell] nav')!.getBoundingClientRect();
+      const dock = element.closest("[data-map-dock]")!.getBoundingClientRect();
+      const top = Math.max(canvas.top, header.bottom);
+      const bottom = Math.min(canvas.bottom, nav.top);
+      const legal = document.querySelector<HTMLElement>(".mapboxgl-ctrl-attrib-button")!;
+      const credit = legal.getBoundingClientRect();
+      const name = element.querySelector<HTMLElement>("[data-map-nearby-name]")!;
+      return { exposed: (dock.top - top) / (bottom - top), dockTop: dock.top, dockBottom: dock.bottom, navTop: nav.top,
+        legalHit: legal.contains(document.elementFromPoint(credit.left + credit.width / 2, credit.top + credit.height / 2)),
+        nameSize: parseFloat(getComputedStyle(name).fontSize), overflow: document.documentElement.scrollWidth - innerWidth };
+    });
+    const normal = await geometry();
+    await info.attach("nearby-resting-geometry", { body: JSON.stringify({ width, height, ...normal }), contentType: "application/json" });
+    expect(normal.exposed).toBeGreaterThan(.5);
+    expect(normal.dockBottom).toBeLessThanOrEqual(normal.navTop + 1);
+    expect(normal.legalHit).toBe(true);
+    expect(normal.overflow).toBeLessThanOrEqual(1);
+    await capture(page, info, `controlled-local-nearby-${width}`);
+    if (width === 320) {
+      await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+      await expect.poll(async () => (await geometry()).nameSize / normal.nameSize).toBeCloseTo(2, 1);
+      await clearTarget(lead);
+      await clearTarget(toggle);
+      // WebKit reports the new text size before the resized shared header,
+      // bottom navigation and map ResizeObservers finish their next paints.
+      await expect.poll(async () => {
+        const { dockBottom, navTop } = await geometry();
+        return dockBottom - navTop;
+      }, { message: "The entire resting dock clears the enlarged navigation after reflow" }).toBeLessThanOrEqual(1);
+      const large = await geometry();
+      await info.attach("nearby-enlarged-geometry", { body: JSON.stringify({ width, height, ...large }), contentType: "application/json" });
+      expect(large.exposed).toBeGreaterThan(.5);
+      expect(large.overflow).toBeLessThanOrEqual(1);
+      expect(large.legalHit).toBe(true);
+      await capture(page, info, "controlled-local-nearby-320-large-text");
+      expect(large.dockBottom, JSON.stringify(large)).toBeLessThanOrEqual(large.navTop + 1);
+      await clearTarget(page.getByRole("combobox", { name: "Search this map", exact: true }));
+      await clearTarget(page.getByRole("button", { name: "Filters: choose what to see on this map" }));
+      await page.evaluate(() => document.documentElement.style.removeProperty("font-size"));
+    }
+    await toggle.click();
+    await expect(toggle).toHaveAccessibleName("Less, collapse nearby places");
+    await expect(panel.locator("[data-map-nearby-place]")).toHaveCount(3);
+    await expect(panel.locator('[data-map-nearby-place="nearby-map-fixture-1"] [data-map-nearby-media]')).toHaveAttribute("data-photo-state", "fallback");
+    await toggle.click();
+    expect(metadata).toEqual([]);
+    await lead.focus();
+    await lead.press("Enter");
+    await expect(page.locator(`.map-peek-body[data-map-place-slug="${playground.slug}"]`)).toBeVisible();
+    await expect(panel).toHaveCount(0);
+    await expect.poll(() => new URL(page.url()).searchParams.get("place")).toBe(playground.slug);
+    await page.goBack();
+    await expect(lead).toBeFocused();
+    await expect(panel).toHaveAttribute("data-expanded", "false");
+    expect(styleRequests()).toBeGreaterThan(0);
+  });
+}
+
+test("Controlled local desktop nearby selection restores its county-wide opener on Escape", async ({ page, baseURL }, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await noLocationPrompt(page);
+  const { playground } = await nearbyFixtures(page, baseURL);
+  await page.goto("/map?in=county", { waitUntil: "domcontentloaded" });
+  await expectHealthyMap(page);
+  const panel = page.locator("[data-map-nearby-panel]:visible");
+  const lead = panel.getByRole("button", { name: playground.name });
+  await expect(lead.locator("[data-map-nearby-media]")).toHaveAttribute("data-photo-state", "ready");
+  const bounds = await panel.evaluate(element => {
+    const card = element.getBoundingClientRect();
+    const map = document.querySelector("canvas.mapboxgl-canvas")!.getBoundingClientRect();
+    return { top: card.top - map.top, cardBottom: card.bottom, mapBottom: map.bottom, mapHeight: map.height };
+  });
+  expect(bounds.top).toBeGreaterThan(bounds.mapHeight / 2);
+  expect(bounds.cardBottom).toBeLessThanOrEqual(bounds.mapBottom + 1);
+  await clearTarget(lead);
+  await capture(page, info, "controlled-local-nearby-desktop");
+  await lead.click();
+  const selected = page.locator(`.map-peek-body[data-map-place-slug="${playground.slug}"]`);
+  await expect(selected).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(selected).toHaveCount(0);
+  await expect(lead).toBeFocused();
+  await expect(panel).toHaveAttribute("data-expanded", "false");
+});
 
 for (const width of [320, 390, 1440]) {
   test(`Controlled local basemap ranks real Coffee choices and restores selection at ${width}px`, async ({ page, baseURL }, info) => {
@@ -233,18 +378,20 @@ test("Controlled local basemap offers an honest tonight window without weakening
 
 test("Controlled local basemap leaves first-use consent with the one header location control", async ({ page, baseURL }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await controlledBasemap(page, baseURL);
+  await nearbyFixtures(page, baseURL);
   await noLocationPrompt(page, false);
   await page.goto("/map", { waitUntil: "domcontentloaded" });
   await expectHealthyMap(page);
   const choice = page.getByRole("group", { name: "Choose how to begin on the map" });
   await expect(choice).toBeVisible();
+  await expect(page.locator("[data-map-nearby-panel]:visible")).toHaveCount(0);
   const quickActions = page.getByRole("complementary", { name: "Quick map actions" });
   await expect(quickActions).toBeHidden();
   await expect(page.getByText("Use your location for honest distances, or keep browsing the county.", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => (window as typeof window & { __rankedGeoCalls: number }).__rankedGeoCalls)).toBe(0);
   await choice.getByRole("button", { name: "Browse county", exact: true }).click();
   await expect(choice).toHaveCount(0);
+  await expect(page.locator("[data-map-nearby-panel]:visible")).toHaveAttribute("data-expanded", "false");
   const findMe = quickActions.getByRole("button", { name: "Find me", exact: true });
   const essentials = quickActions.getByRole("link", { name: "Nearby essentials", exact: true });
   await clearTarget(findMe);

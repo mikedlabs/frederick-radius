@@ -18,7 +18,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const usableGuide: NonNullable<Story["play"]> = async ({ args, canvasElement }) => {
+const usableGuide: NonNullable<Story["play"]> = async ({ args, canvasElement, userEvent }) => {
   const canvas = within(canvasElement);
   await canvasElement.ownerDocument.fonts.ready;
   await expect(canvas.getByRole("heading", { level: 1, name: args.guide.title })).toBeVisible();
@@ -28,12 +28,29 @@ const usableGuide: NonNullable<Story["play"]> = async ({ args, canvasElement }) 
     args.returnTo === todayOrigin ? todayOrigin : "/today",
   );
   const stops = canvas.getByRole("list");
-  await expect(within(stops).getAllByRole("listitem")).toHaveLength(args.guide.stops.length);
-  for (const stop of args.guide.stops) {
-    const action = within(stops).getByRole("link", { name: `${stop.action.label} for ${stop.title}` });
+  const items = within(stops).getAllByRole("listitem");
+  await expect(items).toHaveLength(args.guide.stops.length);
+  for (const [index, stop] of args.guide.stops.entries()) {
+    const item = within(items[index]);
+    const action = item.getByRole("link", { name: `${stop.action.label} for ${stop.title}` });
     await expect(action).toHaveAttribute("href", stop.action.href);
+    if (stop.price) await expect(item.getByText(stop.price)).toBeVisible();
+    if (stop.photo) {
+      await expect(item.getByRole("img", { name: stop.photo.alt })).toBeVisible();
+      if (stop.photo.credit) {
+        await expect(item.getByRole("link", { name: `Photo source, ${stop.photo.credit.creator}` }))
+          .toHaveAttribute("href", stop.photo.credit.source_url);
+        await expect(item.getByRole("link", { name: stop.photo.credit.license.label }))
+          .toHaveAttribute("href", stop.photo.credit.license.url);
+      }
+    }
+    const disclosure = item.getByLabelText(`Details and source for ${stop.title}`);
+    await expect(disclosure.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    await expect(item.getByText(stop.description)).not.toBeVisible();
+    await userEvent.click(disclosure);
+    await expect(item.getByText(stop.description)).toBeVisible();
     if (stop.source.href !== stop.action.href) {
-      await expect(within(stops).getByRole("link", { name: `${stop.source.label}, source for ${stop.title}` }))
+      await expect(item.getByRole("link", { name: `${stop.source.label}, source for ${stop.title}` }))
         .toHaveAttribute("href", stop.source.href);
     }
   }

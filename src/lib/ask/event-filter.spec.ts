@@ -118,6 +118,19 @@ describe("eventFitsAskIntent", () => {
     expect(eventFitsTonightWindow(inTheStreets, afternoon)).toBe(true);
   });
 
+  it("requires occurrence evidence for long rows and accepts plural festival names", () => {
+    const afternoon = new Date("2026-09-12T18:00:00Z");
+    const hours = {
+      ...event("2026-09-12T15:00:00Z", "2026-09-13T01:00:00Z"),
+      title: "Visitor services",
+      description: "The conference room has brochures for the expo and all-day conference room bookings.",
+    };
+    expect(eventFitsTonightWindow(hours, afternoon)).toBe(false);
+    for (const title of ["Fall Festivals", "County Fairs", "Parades"]) {
+      expect(eventFitsTonightWindow({ ...hours, title }, afternoon)).toBe(true);
+    }
+  });
+
   it("keeps a legitimate timed event that is already live into the evening", () => {
     const sixPm = new Date("2026-08-13T22:00:00.000Z");
     const startedAtThree = event("2026-08-13T19:00:00Z", "2026-08-14T00:00:00Z");

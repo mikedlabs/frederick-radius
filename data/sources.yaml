@@ -2478,6 +2478,27 @@ sources:
       reads retain old evidence and stage a fail-closed review item. New facts
       require review before promotion; job success is not published freshness.
 
+  - id: sweeties_by_the_creek_hours
+    name: Sweeties by the Creek - First-party Hours
+    owner: Sweeties by the Creek
+    url: https://sweetiescompany.com/
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: public first-party business hours facts; no page or image reuse
+    contact: Sweeties by the Creek
+    status: active
+    collection: workflow
+    evidence_aliases: [sweeties_by_the_creek_hours, https://sweetiescompany.com/]
+    last_success: null
+    schema_file: src/lib/merchant-hours.ts
+    transform_file: scripts/lib/merchant-official-hours.ts
+    notes: >-
+      Exact Frederick store at 50 Carroll Creek Way, Suite 120, telephone 2404394876.
+      The native merchant collector checks the visible Hours section. The ordinary
+      512000-byte cap, seven-day freshness period and separate source acceptance apply.
+
   - id: mamma_angela_hours
     name: Mamma Angela - First-party Hours
     owner: Mamma Angela

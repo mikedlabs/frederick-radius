@@ -49,6 +49,12 @@ working county or town fallback.
 The map must not expose two controls that change the same location state.
 Recenter, scope, and the location readout must agree.
 
+Today opens with the local date and daypart beside Frederick's forecast. The
+daily high, low, sunrise and sunset are visible. Missing values have an explicit
+unavailable state. Forecast source and issuance expand in place. Active safety
+warnings stay visible. Find and area selection live in the header. Area selection
+keeps the native town picker, location opt-in and permission fallback.
+
 Today's arrival uses a small, explicit selection of reviewed local places,
 with a dominant photograph, readable place name and actual town. County and Frederick
 lenses can show the reviewed Frederick choices. Named town lenses show only
@@ -100,6 +106,13 @@ The map is an answer surface, not a layer manager.
 - Browser Back closes that result before it leaves the map.
 - Camera, scope, filters, and query survive the close and return journey.
 - Empty coverage says what Radius knows and offers the nearest useful fallback.
+
+Once someone chooses an area, the resting Map panel shows one place in that
+area. It leads with the nearest place that has an approved local photograph.
+When none has a photograph it shows the nearest place with its category icon.
+Opening the list puts all places in distance order. Distances use the committed
+map center unless the person has chosen Near me and supplied a location.
+Opening a place keeps the map in position for the return to the list.
 
 ## Transit
 

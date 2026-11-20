@@ -14,6 +14,13 @@ const place = { slug: source.slug, category: source.category, website: source.ur
 const parse = (body = html) => parseMerchantOfficialHours(source, { ...page, html: body }, now);
 const artifact = (): MerchantHoursArtifact => ({ schema_version: 1, places: [parse()], review: [] });
 const weekdays = Object.fromEntries(["mon", "tue", "wed", "thu", "fri", "sat"].map(day => [day, [{ open: "09:00", close: "17:00" }]]));
+const studioTime = "2nd &amp; 4th Saturday of each month, unless the Delaplaine is closed • 10 am–3 pm";
+const studioUrl = "https://delaplaine.org/events/category/programs/open-studios/third-space-open-studio/";
+const studio = `<div class="swiper-slide" role="group"><div>
+  <div class="elementor-widget-heading"><div class="elementor-widget-container"><h2>Third Space Open Studio</h2></div></div>
+  <div class="elementor-widget-text-editor"><div class="elementor-widget-container"><p>${studioTime}</p></div></div>
+  <div class="elementor-widget-button"><a href="${studioUrl}">Learn More</a></div>
+</div></div>`;
 
 describe("Delaplaine public gallery hours", () => {
   it("keeps both agreeing public copies, the Sunday distinction and actual evidence window", () => {
@@ -61,6 +68,32 @@ describe("Delaplaine public gallery hours", () => {
 
   it.each(["Closed today", "Gallery closures for maintenance", "Holiday hours apply", "Last admission 4 PM", "Last admittance 4 PM", "Hours subject to change", "By appointment", "Class hours 6 PM–9 PM"])("holds the unreviewed qualifier %s", notice => {
     expect(() => parse(html.replace("</main>", `<p>${notice}</p></main>`))).toThrow(/notice or service qualifier/);
+  });
+
+  it("keeps the two public gallery weeks independent of the exact Third Space program time", () => {
+    const body = html.replace("</main>", studio + "</main>");
+    expect(parse(body)).toMatchObject({
+      hours: { ...weekdays, sun: [{ open: "11:00", close: "17:00" }] },
+      source_sha256: createHash("sha256").update(body).digest("hex"),
+    });
+    expect(() => parse(body.replaceAll("Sunday, 11 AM–5 PM", ""))).toThrow();
+  });
+
+  it.each([
+    ["the same text outside the event", `<p>${studioTime}</p>`],
+    ["a second identical note elsewhere", studio + `<p>${studioTime}</p>`],
+    ["a different event", studio.replace("Third Space Open Studio", "Gallery visit")],
+    ["an unrelated event link", studio.replace(studioUrl, "https://delaplaine.org/visit/")],
+    ["a hidden event", studio.replace('role="group"', 'role="group" hidden')],
+    ["a hidden program title", studio.replace("Third Space Open Studio", "<span hidden>Third Space Open Studio</span>")],
+    ["an unrecognized event structure", studio.replace("swiper-slide", "gallery-hours")],
+    ["an amended notice", studio.replace(studioTime, studioTime + ". Closed on November 21.")],
+    ["a different Saturday schedule", studio.replace("4th", "3rd")],
+    ["a separate closure in the same slide", studio.replace("</p>", "</p><p>Gallery closed November 21.</p>")],
+    ["a qualifier next to the paragraph", studio.replace("<p>", "<span>Gallery</span><p>").replace("</p>", "</p><span>closed Sunday.</span>")],
+    ["a page-wide admission cutoff", studio + "<p>Last admittance 3 PM.</p>"],
+  ])("still holds %s", (_label, content) => {
+    expect(() => parse(html.replace("</main>", content + "</main>"))).toThrow(/notice or service qualifier/);
   });
 
   it.each(['hidden', 'inert', 'aria-hidden="true"', 'style="display:none"'])("rejects a hidden public schedule: %s", hidden => {

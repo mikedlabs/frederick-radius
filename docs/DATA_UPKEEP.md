@@ -309,10 +309,18 @@ It does not merge a PR, run a provider or bypass a release gate. Batches reduce
 repeated code and review operations; they do not turn unverified candidates
 into verified schedules or expand any source/request/provider budget.
 
+Sweeties by the Creek uses the contact block for 50 Carroll Creek Way, Suite
+120. Its visible Hours block spells weekday spans with “through”. Only this
+binding treats that word between weekdays as a range. Separate date limits,
+holiday notices, changed contact fields and incomplete weeks require review.
+
 Delaplaine's exact homepage supplies public gallery hours only. Its Plan Your
 Visit and footer schedules must both be complete and agree with the exact
 Frederick address and contact. Class and event times cannot fill a missing
-gallery day. Conflicting copies, hidden hours, closure notices or an unreviewed
+gallery day. The Third Space Open Studio event links to its own program page
+and gives a recurring Saturday session conditional on the center being open.
+Only that exact program paragraph is excluded from the gallery closure check.
+Conflicting copies, hidden hours, other closure notices or an unreviewed
 admission cutoff require review. This source uses the ordinary 512000-byte
 native limit and seven-day evidence window; no holiday hours are inferred.
 

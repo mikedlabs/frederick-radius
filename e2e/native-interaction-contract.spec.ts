@@ -72,10 +72,9 @@ test("Find is reversible through Close, Escape, and browser Back", async ({
     name: "Find a place, service, event, or answer", exact: true,
   });
   await expect(trigger).toHaveAttribute("data-find-interaction-ready", "true");
-  // The current request doorway is in the page. Put it visibly below the
-  // persistent header before recording the real, nonzero launch position.
-  const headerBottom = await page.locator("header").first().evaluate((node) => node.getBoundingClientRect().bottom);
-  await trigger.evaluate((node, inset) => window.scrollTo(0, Math.max(1, scrollY + node.getBoundingClientRect().top - inset - 24)), headerBottom);
+  // Find stays in the header while reading. Exercise dismissal and scroll
+  // restoration from a nonzero reading position.
+  await page.evaluate(() => window.scrollTo(0, 180));
   const scrollY = await page.evaluate(() => window.scrollY);
   expect(scrollY).toBeGreaterThan(0);
   const url = page.url();
@@ -454,20 +453,24 @@ test("declared fixture: the page holds still behind an open sheet", async ({
   await page.goto("/events", { waitUntil: "domcontentloaded" });
   const trigger = page.locator(SHEET_EVENT_TRIGGER).first();
   await expect(trigger).toBeVisible();
-  // Start from a scrolled position that has stopped moving, so the page has
-  // room to travel in both directions if the lock fails.
+  // A first-screen pick can already be centered. Set a real reading position
+  // with travel above and below it before exercising either wheel direction.
   await expect.poll(async () => {
-    await trigger.evaluate((node) => node.scrollIntoView({ block: "center", behavior: "instant" }));
-    const placed = await page.evaluate(() => window.scrollY);
+    const placed = await page.evaluate(() => {
+      const maxScroll = document.documentElement.scrollHeight - innerHeight;
+      window.scrollTo({ top: Math.min(96, maxScroll / 2), behavior: "instant" });
+      return window.scrollY;
+    });
     await page.waitForTimeout(200);
-    return placed === await page.evaluate(() => window.scrollY) ? placed : 0;
-  }, { message: "the page starts scrolled, so an unlocked page has room to move" }).toBeGreaterThan(40);
+    return page.evaluate(previous => window.scrollY === previous
+      ? Math.min(window.scrollY, document.documentElement.scrollHeight - innerHeight - window.scrollY)
+      : 0, placed);
+  }, { message: "the settled page has room to scroll in both directions" }).toBeGreaterThan(40);
   const scrollY = await page.evaluate(() => window.scrollY);
   const url = page.url();
 
-  // Activate the card's own link directly. Playwright's pointer click may
-  // scroll a centered target clear of the bottom navigation first, and that
-  // would move the page before the sheet under test has opened.
+  // Activate the card's own link without letting focus or pointer automation
+  // scroll the document before the sheet opens.
   await trigger.evaluate((node: HTMLElement) => { node.focus({ preventScroll: true }); node.click(); });
   await expect(page.getByRole("dialog", { name: SHEET_EVENT_TITLE })).toBeVisible();
   // The lock holds the document's real scroll root. A body lock holds nothing

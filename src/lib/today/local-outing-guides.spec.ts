@@ -43,6 +43,9 @@ describe("local outing guides", () => {
       "Carroll Creek and Community Bridge",
     ]);
     expect(downtownGuide.stops[1].detail).toContain("accessible restroom");
+    expect(downtownGuide.summary).toContain("Sunday, 11 AM–1 PM");
+    expect(downtownGuide.stops[0].price).toBe("Free Sundays, 8 AM–2 PM");
+    expect(downtownGuide.stops[0].tipSource?.href).toContain("/Garage-Parking");
     expect(downtownGuide.stops[2].when).toContain("Sun, 11 AM–5 PM");
     expect(downtownGuide.note).toContain("Nov 16, 2026");
     expect(downtownGuide.stops.every((stop) => new URL(stop.source.href).protocol === "https:")).toBe(true);
@@ -62,19 +65,27 @@ describe("local outing guides", () => {
     expect(guide.stops[1].when).toContain("Sun, Nov 22 · 10 AM–5 PM");
     expect(guide.stops[2].source.href).toBe("https://weinbergcenter.org/shows/a-motown-christmas-2026/");
     expect(guide.note).toContain("Nov 16, 2026");
-    expect(guide.photo.src).not.toBe(downtownGuide.photo.src);
+    expect(guide.photo.src).toBe("/images/seasons/winter/WINTER BOATS.jpg");
+    expect(guide.photoCaption).toContain("January 2022");
+    expect(guide.stops[0].price).toBe("Free admission");
+    expect(guide.stops[0].visitTip).toContain("5:20 PM");
+    expect(guide.stops[1].visitTip).toContain("Willow Oaks");
+    expect(guide.stops[2].photo?.credit?.license.label).toBe("CC BY-SA 4.0");
   });
 
   it("retires ended sessions while preserving the upcoming Sunday occurrence", () => {
     const saturdayEvening = weekendGuide(new Date("2026-11-21T22:00:00Z"));
     expect(saturdayEvening.stops.map((stop) => stop.when)).toEqual([
+      "Sat or Sun · After 5:20 PM",
       "Sun, Nov 22 · 10 AM–5 PM",
       "Sat, Nov 21 · 8 PM",
     ]);
     expect(weekendGuide(new Date("2026-11-22T01:00:00Z")).stops.map((stop) => stop.title)).toEqual([
+      "See the lighted boats after dark",
       "Valley Craft Network Studio Tour",
     ]);
-    expect(weekendGuide(new Date("2026-11-22T22:00:00Z")).stops).toEqual([]);
+    expect(weekendGuide(new Date("2026-11-22T22:00:00Z")).stops.map((stop) => stop.when)).toEqual(["Sun · After 5:20 PM"]);
+    expect(weekendGuide(new Date("2026-11-23T03:00:00Z")).stops).toEqual([]);
   });
 
   it("honors a canonical cancellation without removing a different day's session", () => {
@@ -94,6 +105,7 @@ describe("local outing guides", () => {
 
     expect(before.scopeLabel).toMatch(/Nov 21\s*–\s*22/);
     expect(after.scopeLabel).toMatch(/Nov 27\s*–\s*29/);
+    expect(after.photo.src).toBe("/images/places/church-street-sunset.jpg");
     expect(after.stops).toEqual([]);
     expect(after.summary).toContain("any confirmed guide picks");
     expect(after.secondaryAction?.href).toBe("/events?in=county&lens=weekend");

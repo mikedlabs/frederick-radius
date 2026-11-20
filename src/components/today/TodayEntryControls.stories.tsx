@@ -1,47 +1,62 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { consumeFindRequest, type FindTarget } from "@/lib/findBridge";
-import TodayAsk from "./TodayAsk";
-import TodayScopeStatus from "./TodayScopeStatus";
-import styles from "./TodayLayout.module.css";
-
-function EntryControls() {
-  return <div data-today-entry-controls className={styles.entryControls}>
-    <TodayAsk embedded showQuickNeeds={false} density="arrival" />
-    <div className={styles.scope}><TodayScopeStatus density="compact" /></div>
-  </div>;
-}
+import TopBar from "../nav/TopBar";
 
 const meta = {
   title: "Today/Unified discovery controls",
-  component: EntryControls,
+  component: TopBar,
   parameters: { layout: "fullscreen", a11y: { test: "error" }, nextjs: { navigation: { pathname: "/today", query: { in: "county" } } } },
-  // Exercise the production reading gutter, including enlarged root text.
-  decorators: [(Story) => <main className="app-main-reading" data-app-primary-tab="/today"
-    style={{ width: "min(552px, 100vw)", boxSizing: "border-box" }}><Story /></main>],
-} satisfies Meta<typeof EntryControls>;
+  beforeEach: () => {
+    const previousFetch = window.fetch;
+    window.fetch = (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : String(input), window.location.href);
+      if (url.pathname === "/api/pulse/status") {
+        const now = Date.now();
+        return Promise.resolve(Response.json({ active: false, count: 0, tone: "quiet", level: "Unknown", ok: false,
+          lastUpdated: new Date(now).toISOString(), validUntil: new Date(now + 360_000).toISOString() }));
+      }
+      return previousFetch(input, init);
+    };
+    return () => { window.fetch = previousFetch; };
+  },
+} satisfies Meta<typeof TopBar>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const usableControls: NonNullable<Story["play"]> = async ({ canvasElement }) => {
+const usableControls: NonNullable<Story["play"]> = async ({ canvasElement, globals, parameters, name }) => {
+  const inBrowserGate = Boolean((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__);
+  const browser = inBrowserGate ? await import("vitest/browser") : null;
+  if (browser) {
+    const viewport = parameters.viewport.options[globals.viewport.value].styles;
+    const width = Number.parseInt(viewport.width, 10);
+    await browser.page.viewport(width, Number.parseInt(viewport.height, 10));
+    await expect(window.innerWidth).toBe(width);
+    await expect(getComputedStyle(document.documentElement).fontSize).toBe(name.includes("Enlarged") ? "32px" : "16px");
+  }
   await canvasElement.ownerDocument.fonts.ready;
   const canvas = within(canvasElement);
-  const group = canvasElement.querySelector<HTMLElement>("[data-today-entry-controls]")!;
+  const group = canvasElement.querySelector<HTMLElement>("[data-app-topbar-row]")!;
+  await waitFor(() => expect(group.querySelector("[data-pulse-indicator]")).toHaveAttribute("data-pulse-state", "ready"));
   const find = canvas.getByRole("link", { name: "Find a place, service, event, or answer" });
+  const trigger = canvasElement.querySelector<HTMLElement>("[data-today-area-trigger]")!;
+  await expect(trigger).toHaveAccessibleName("Choose your area: Whole county");
+  await expect(trigger.closest("details")).not.toHaveAttribute("open");
+  await expect(canvasElement.querySelector("select")).not.toBeVisible();
+  await userEvent.click(trigger);
   const area = canvas.getByRole("combobox", { name: "Choose your area" });
   const location = canvas.getByRole("button", { name: "Use my location" });
   await expect(find).toHaveAttribute("href", "/search");
   await expect(find).toHaveAttribute("data-find-interaction-ready", "true");
   await expect(area).toBeEnabled();
   await expect(area).toHaveValue("county");
-  await expect(within(find).getByText("Find what you need", { exact: true })).toBeVisible();
-  await expect(canvas.getByRole("status")).toHaveTextContent("Countywide briefing");
+  await expect(canvas.getByTestId("today-scope-status")).toHaveTextContent("Countywide briefing");
   await expect(canvas.queryByRole("link", { name: "Open now" })).not.toBeInTheDocument();
   const bounds = group.getBoundingClientRect();
   await expect(bounds.left).toBeGreaterThanOrEqual(0);
   await expect(bounds.right).toBeLessThanOrEqual(window.innerWidth);
   await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth + 1);
-  for (const control of [find, area, location]) {
+  for (const control of [find, trigger, area, location]) {
     control.scrollIntoView({ block: "center" });
     const box = control.getBoundingClientRect();
     await expect(box.width).toBeGreaterThanOrEqual(44);
@@ -74,29 +89,40 @@ const usableControls: NonNullable<Story["play"]> = async ({ canvasElement }) => 
   // Native provider actions are essential here: synthetic click helpers can
   // focus the anchor first and conceal WebKit's pointer-activation behavior.
   // Keep ordinary interactive Storybook free of the Vitest-only module.
-  const inBrowserGate = Boolean((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__);
-  if (inBrowserGate) {
-    const { userEvent: nativeUserEvent } = await import("vitest/browser");
+  if (browser) {
+    const { userEvent: nativeUserEvent } = browser;
     const bridgeWindow = window as Window & { __frPendingFind?: FindTarget };
     // Do not consume or overwrite another surface's queued request.
     await expect(bridgeWindow.__frPendingFind, "Find bridge must be idle before this isolated interaction").toBeUndefined();
     const activeAtOpen: Array<Element | null> = [];
     const onOpenSearch = () => { activeAtOpen.push(canvasElement.ownerDocument.activeElement); };
     const origin = window.location.href;
-    window.addEventListener("fr:open-search", onOpenSearch);
+    window.addEventListener("fr:open-search", onOpenSearch, true);
     try {
-      await nativeUserEvent.click(area);
+      const panel = trigger.closest("details")!;
+      trigger.focus();
+      await expect(trigger).toHaveFocus();
       await nativeUserEvent.keyboard("{Escape}");
+      await expect(panel).not.toHaveAttribute("open");
+      await nativeUserEvent.keyboard("{Enter}");
+      await expect(panel).toHaveAttribute("open");
+      await nativeUserEvent.keyboard("{Tab}");
       await expect(area).toHaveFocus();
+      await nativeUserEvent.keyboard("{Escape}");
+      await expect(trigger).toHaveFocus();
       await expect(area).toHaveValue("county");
       // Click a real child of the launcher; never pre-focus the target.
-      await nativeUserEvent.click(within(find).getByText("Find what you need", { exact: true }));
+      await nativeUserEvent.click(find.querySelector<HTMLElement>("span")!);
       await expect(activeAtOpen).toHaveLength(1);
       await expect(activeAtOpen[0]).toBe(find);
-      await expect(bridgeWindow.__frPendingFind).toBe("global");
+      await expect(bridgeWindow.__frPendingFind).toBeUndefined();
+      const dialog = within(canvasElement.ownerDocument.body).getByRole("dialog");
+      await expect(dialog).toBeVisible();
+      await nativeUserEvent.keyboard("{Escape}");
+      await waitFor(() => expect(find).toHaveFocus());
       await expect(window.location.href).toBe(origin);
     } finally {
-      window.removeEventListener("fr:open-search", onOpenSearch);
+      window.removeEventListener("fr:open-search", onOpenSearch, true);
       consumeFindRequest("global");
       await nativeUserEvent.cleanup();
     }

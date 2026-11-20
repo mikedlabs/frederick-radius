@@ -1,3 +1,4 @@
+import { showHeaderTools, todayArea } from "./today-controls";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { APPEARANCE_KEY } from "../src/lib/appearance";
 import {
@@ -100,7 +101,7 @@ for (const appearance of ["light", "dark"] as const) {
           hasTouch: viewport.width < 640,
         });
 
-        test("resolved weather leads Find and browsing above the fold", async ({ page }, testInfo) => {
+        test("resolved weather follows header controls and leads local photography", async ({ page }, testInfo) => {
           test.setTimeout(60_000);
           const providerMode = testInfo.config.metadata.weatherProviderMode ?? "actual";
           expect(["actual", "guarded-unavailable"]).toContain(providerMode);
@@ -110,7 +111,7 @@ for (const appearance of ["light", "dark"] as const) {
           expect(response?.status()).toBe(200);
           await expect(page.locator("html")).toHaveAttribute("data-appearance", appearance);
           await expect(page.locator("main h1")).toHaveCount(1);
-          await expect(page.getByRole("combobox", { name: "Choose your area" })).toBeEnabled();
+          await expect(todayArea(page)).toBeEnabled();
           const weather = page.locator("[data-today-weather]");
           const renderedWeather = weather.locator("[data-weather-state]");
           const forecast = weather.locator('a[href*="open=weather"]');
@@ -152,23 +153,22 @@ for (const appearance of ["light", "dark"] as const) {
             return {
               afterHeading: heading !== null && Boolean(heading.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
               inMasthead: element.closest("[data-today-masthead]") !== null,
-              beforeFind: before('[data-surface-row="find"]'),
+              beforePhoto: before("[data-today-local-discovery]"),
               beforePlaces: before('[data-today-current-content] > [aria-label="Places for your area"]'),
               beforeEvents: before("#whats-on"),
             };
           });
-          expect(order).toEqual({ afterHeading: true, inMasthead: true, beforeFind: true, beforePlaces: true, beforeEvents: true });
+          expect(order).toEqual({ afterHeading: true, inMasthead: true, beforePhoto: true, beforePlaces: true, beforeEvents: true });
 
           const weatherBox = (await weather.boundingBox())!;
           const headingBox = (await page.locator("main .scroll-masthead h1").boundingBox())!;
           const findBox = (await find.boundingBox())!;
           expect(await page.evaluate(() => window.scrollY)).toBe(0);
           expect(weatherBox.height).toBeGreaterThan(0);
-          // The owner-approved full-width heading precedes one compact read.
-          expect(weatherBox.y).toBeGreaterThanOrEqual(headingBox.y + headingBox.height);
+          expect(headingBox.y).toBeGreaterThanOrEqual(findBox.y + findBox.height - 1);
           await expect(renderedWeather).toHaveAttribute("data-weather-density", "masthead");
           expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(viewport.height);
-          expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(findBox.y);
+          expect(findBox.y + findBox.height).toBeLessThanOrEqual(weatherBox.y + 1);
           expect(weatherBox.x).toBeGreaterThanOrEqual(0);
           expect(weatherBox.x + weatherBox.width).toBeLessThanOrEqual(viewport.width);
           await expect.poll(() => page.evaluate(() =>
@@ -190,7 +190,19 @@ for (const appearance of ["light", "dark"] as const) {
           expect(Math.round(entryBox.height * 100) / 100).toBeGreaterThanOrEqual(44);
           expect(entryBox.width).toBeGreaterThanOrEqual(44);
           await expect.poll(() => fivePointForecastProbe(entryControl)).toEqual([true, true, true, true, true]);
-          const visibleSafety = renderedWeather.locator("[data-weather-headline], [data-weather-safety-note]");
+          const dailyFacts = renderedWeather.locator("[data-weather-stats] > span");
+          await expect(dailyFacts).toHaveCount(4);
+          const readings = [
+            /^(?:(?:Earlier high|High)\s+[−-]?\d+°|High\s+–\s*unavailable)$/i,
+            /^Low\s+(?:[−-]?\d+°|–\s*unavailable)$/i,
+            /^Sunrise\s+(?:\d{1,2}:\d{2}\s*[AP]M|–\s*unavailable)$/i,
+            /^Sunset\s+(?:\d{1,2}:\d{2}\s*[AP]M|–\s*unavailable)$/i,
+          ];
+          for (const [index, value] of readings.entries()) {
+            await expect(dailyFacts.nth(index)).toBeVisible();
+            await expect(dailyFacts.nth(index)).toHaveText(value);
+          }
+          const visibleSafety = renderedWeather.locator("[data-weather-headline], [data-weather-safety-note]:not(details [data-weather-safety-note])");
           for (const note of await visibleSafety.all()) {
             await expect(note).toBeVisible();
             expect(await note.evaluate((element) => element.closest("details") === null)).toBe(true);
@@ -215,7 +227,7 @@ for (const appearance of ["light", "dark"] as const) {
               await page.keyboard.press("Enter");
               await expect(details).toHaveAttribute("open", "");
               await expect(details.getByText("NWS forecast · Frederick", { exact: true })).toBeVisible();
-              const issued = details.locator("time");
+              const issued = details.locator("[data-weather-issuance] time");
               if (await issued.count()) {
                 await expect(issued).toBeVisible();
                 const originalIssuance = await issued.getAttribute("datetime");
@@ -280,12 +292,14 @@ test.describe("Today first-visit appearance", () => {
     test.setTimeout(60_000);
     await page.goto("/today?in=county", { waitUntil: "domcontentloaded" });
     await expect(page.locator("html")).toHaveAttribute("data-appearance", "light");
+    await showHeaderTools(page);
     await expect(page.getByRole("button", { name: "Switch to dark appearance", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Switch to dark appearance", exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("data-appearance", "dark");
     await expect(page.getByRole("button", { name: "Switch to light appearance", exact: true })).toBeVisible();
     expect(await page.evaluate((key) => localStorage.getItem(key), APPEARANCE_KEY)).toBe("dark");
     await page.reload({ waitUntil: "domcontentloaded" });
+    await showHeaderTools(page);
     await expect(page.locator("html")).toHaveAttribute("data-appearance", "dark");
     await expect(page.getByRole("button", { name: "Switch to light appearance", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Switch to light appearance", exact: true }).click();

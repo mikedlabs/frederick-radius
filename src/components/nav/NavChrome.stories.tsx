@@ -41,6 +41,9 @@ export const TodayAt320: Story = {
     const router = getRouter();
     router.prefetch.mockClear();
     try {
+      const more = canvasElement.querySelector<HTMLElement>("[data-today-tools-trigger]")!;
+      await userEvent.click(more);
+      await expect(more.closest("details")).toHaveAttribute("open");
       const tools = within(canvasElement).getByRole("link", { name: "Open tools" });
       await expect(tools.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
       await expect(tools.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
