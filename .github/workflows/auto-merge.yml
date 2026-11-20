@@ -1,0 +1,52 @@
+name: auto-merge
+
+# Arms GitHub's native auto-merge on a PR that carries the `auto-merge`
+# label, so it merges itself once the required checks (verify, style-lint)
+# pass. Only accounts with write access can add labels, so the label is a
+# trusted, human-gated signal. This workflow never checks out or runs PR
+# code — it only calls the merge API — so `pull_request_target` is safe here.
+#
+# Prerequisites (one-time, owner):
+#   - Settings > General > Pull Requests > "Allow auto-merge" enabled.
+#   - Settings > Actions > General > Workflow permissions > "Read and write".
+# The repo ruleset requires 0 approving reviews, so an armed PR merges as
+# soon as its required checks are green.
+
+on:
+  pull_request_target:
+    types: [labeled, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: PR number to arm auto-merge on
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-${{ github.event.pull_request.number || inputs.pr }}
+  cancel-in-progress: false
+
+jobs:
+  arm:
+    # Act only on the explicit `auto-merge` label (or a manual dispatch), and
+    # never on a draft. A newly-added label fires `labeled`; a draft flipped
+    # ready re-checks an already-labeled PR via `ready_for_review`.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'auto-merge' && github.event.pull_request.draft == false) ||
+      (github.event.action == 'ready_for_review' && github.event.pull_request.draft == false && contains(github.event.pull_request.labels.*.name, 'auto-merge'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
+        run: |
+          set -euo pipefail
+          echo "Arming native auto-merge (squash) on PR #${PR}"
+          gh pr merge "${PR}" --repo "${GITHUB_REPOSITORY}" --auto --squash
