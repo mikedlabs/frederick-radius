@@ -216,6 +216,12 @@
   }
 }
 
+@container today-discovery (17rem <= width < 36rem) {
+  .outingPhoto {
+    aspect-ratio: 2 / 1;
+  }
+}
+
 .discoveryOuting strong {
   font-size: 1.0625rem;
   font-weight: 650;
