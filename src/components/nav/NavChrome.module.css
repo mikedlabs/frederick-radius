@@ -304,9 +304,9 @@
   }
 }
 
-@media (max-width: 429.98px) {
+@media (max-width: 519.98px) {
   .bar[data-today-header]:has([data-pulse-mobile-visible]) .todayDisclosure[data-today-header-disclosure="area"] {
-    max-width: clamp(49px, calc(50vw - 134px), 80px);
+    max-width: clamp(49px, calc(50vw - 134px), 76px);
   }
   .bar[data-today-header]:has([data-pulse-mobile-visible]) .todayHeaderTrigger[data-today-area-trigger] {
     padding-inline: 1px;
@@ -314,9 +314,6 @@
   }
   .bar[data-today-header]:has([data-pulse-mobile-visible]) [data-today-area-trigger] :is(svg, [data-today-scope-full]) { display: none; }
   .bar[data-today-header]:has([data-pulse-mobile-visible]) [data-today-area-trigger] [data-today-scope-compact] { display: inline; }
-}
-
-@media (max-width: 519.98px) {
   .bar .row { --header-gutter: 12px; column-gap: 2px; }
   .bar .row > [data-header-spacer] { display: none; }
   .row > .home, .row > [data-header-back] { margin-inline-end: auto; }
@@ -331,8 +328,26 @@
   .home > svg { width: 24px; height: 24px; }
   .home [data-header-wordmark] { font-size: 1.1875rem; }
 }
+@media (min-width: 360px) and (max-width: 389.98px) {
+  .bar .row { --header-gutter: 8px; }
+  .home [data-header-wordmark] { font-size: 1.125rem; }
+}
 @media (max-width: 359.98px) {
   .bar .row { --header-gutter: 5px; }
+  /* With four actions, put the mark above its name. This buys a complete
+     town and status label without depending on the native font's advance. */
+  .bar:has([data-find-interaction-ready]):has([data-pulse-mobile-visible]) .home {
+    flex-direction: column;
+    justify-content: center;
+    gap: 0;
+  }
+  .bar:has([data-find-interaction-ready]) [data-pulse-mobile-visible] {
+    width: max(44px, 3.5rem);
+  }
+  .bar[data-today-header]:has([data-pulse-mobile-visible]) .todayDisclosure[data-today-header-disclosure="area"] {
+    width: 3.5rem;
+    max-width: 3.5rem;
+  }
   .home { gap: 2px; }
   .home [data-header-wordmark] { font-size: 1rem; letter-spacing: -0.04em; }
   .row :global([data-pulse-indicator]) { padding-inline: 0; }

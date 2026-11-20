@@ -65,8 +65,7 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
       // not a narrow div drawn inside a desktop layout.
       const inBrowserGate = Boolean((globalThis as typeof globalThis & { __vitest_browser__?: boolean }).__vitest_browser__);
       const browser = inBrowserGate ? await import("vitest/browser") : null;
-      const testedWidths = enlarged ? [320, 390, 768, 1024] : widths;
-      for (const width of browser ? testedWidths : [document.documentElement.clientWidth]) {
+      for (const width of browser ? widths : [document.documentElement.clientWidth]) {
         if (browser) await browser.page.viewport(width, 844);
         await waitFor(() => expect(document.documentElement.clientWidth).toBe(width));
         await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
@@ -272,3 +271,28 @@ export const NativeNotoEvents: Story = geometryStory("/events", false, false, "'
 
 export const NativeWideSansMap: Story = geometryStory("/map", false, false, "Verdana, sans-serif");
 export const NativeWideSansEvents: Story = geometryStory("/events", false, false, "Verdana, sans-serif");
+
+// The Ubuntu browser measured a 125.52px home link at 320px, including the
+// 24px mark and 2px gap, and a 51.17px Unverified label. Reserve just the
+// measured text advances (at 16px and 9px respectively); geometry, text
+// scaling and the placement of the mark remain under the real stylesheet.
+function measuredTextStory(pathname: string, enlarged = false): Story {
+  return {
+    ...geometryStory(pathname, enlarged),
+    decorators: [(Story) => (
+      <div data-measured-header-text style={{ display: "contents" }}>
+        <style>{`
+          @media (max-width: 639.98px) {
+            [data-measured-header-text] [data-header-wordmark] { min-inline-size: 6.22em; }
+            [data-measured-header-text] [data-pulse-mobile-state] { min-inline-size: 5.69em; }
+          }
+        `}</style>
+        <Story />
+      </div>
+    )],
+  };
+}
+
+export const MeasuredUbuntuToday: Story = measuredTextStory("/today");
+export const MeasuredUbuntuEvents: Story = measuredTextStory("/events");
+export const MeasuredUbuntuLargeText: Story = measuredTextStory("/events", true);
