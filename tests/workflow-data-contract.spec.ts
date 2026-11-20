@@ -9,7 +9,7 @@ import { parse } from "yaml";
 const WORKFLOW_DIR = resolve(process.cwd(), ".github/workflows");
 const NAS_RUNNER_DIR = resolve(process.cwd(), "ops/nas-runner");
 const PINNED_CREATE_PR =
-  "peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1";
+  "peter-evans/create-pull-request@15733dbdfeedb4f7fdb73d13c6f5ac83b710fab8";
 
 function workflowText(name: string): string {
   return readFileSync(resolve(WORKFLOW_DIR, name), "utf8");
@@ -755,7 +755,7 @@ describe("scheduled data workflow contracts", () => {
         text.match(/\n\s+base_sha: \$\{\{ github\.sha \}\}/g) ?? [];
       const artifactUploads =
         text.match(
-          /actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/g,
+          /actions\/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9/g,
         ) ?? [];
       const mainGuards =
         text.match(
@@ -783,7 +783,7 @@ describe("scheduled data workflow contracts", () => {
       // their artifact name is not an input to either exact publisher.
       if (name === "transit-steward.yml") {
         const transit = workflow.jobs?.transit;
-        const uploads = transit?.steps?.filter((step) => step.uses === "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a") ?? [];
+        const uploads = transit?.steps?.filter((step) => step.uses === "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9") ?? [];
         expect(uploads).toHaveLength(2);
         expect(artifactUploads).toHaveLength(2);
         const rawReview = uploads.filter((step) => step.name === "Preserve original transit source evidence");
@@ -827,7 +827,7 @@ describe("scheduled data workflow contracts", () => {
         });
       } else if (name === "build-marc-schedule.yml") {
         const build = workflow.jobs?.build;
-        const uploads = build?.steps?.filter((step) => step.uses === "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a") ?? [];
+        const uploads = build?.steps?.filter((step) => step.uses === "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9") ?? [];
         expect(artifactUploads).toHaveLength(2);
         expect(uploads).toHaveLength(2);
         const originals = uploads.filter((step) => step.name === "Preserve original MARC source evidence");
@@ -852,7 +852,7 @@ describe("scheduled data workflow contracts", () => {
         expect(workflow.jobs?.publish?.with?.allowed_paths).toBe("src/data/marc-schedule.json");
         expect(text).not.toMatch(/artifact:\s+marc-source-evidence/);
       } else if (name === "ingest-business-info.yml" || name === "refresh-commerce-links.yml") {
-        const uploads = Object.values(workflow.jobs ?? {}).flatMap((job) => (job.steps ?? []).filter((step) => step.uses === "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"));
+        const uploads = Object.values(workflow.jobs ?? {}).flatMap((job) => (job.steps ?? []).filter((step) => step.uses === "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"));
         const held = uploads.filter((step) => step.name === "Preserve held business-info candidate after a write conflict");
         expect(held).toHaveLength(1);
         const producer = workflow.jobs?.[name === "ingest-business-info.yml" ? "ingest" : "refresh"];
@@ -877,7 +877,7 @@ describe("scheduled data workflow contracts", () => {
         // Native and paid venue generation are mutually exclusive producers.
         // Their two exact publication artifacts must not be confused with
         // the separately retained raw responses used only for source review.
-        const uploadAction = "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
+        const uploadAction = "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9";
         const uploads = Object.entries(workflow.jobs ?? {}).flatMap(([job, value]) =>
           (value.steps ?? []).filter((step) => step.uses === uploadAction).map((step) => ({ job, step })),
         );
@@ -974,7 +974,7 @@ describe("scheduled data workflow contracts", () => {
       publisherText.match(/peter-evans\/create-pull-request@/g),
     ).toHaveLength(1);
     expect(publisherText).toContain(
-      "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+      "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
     );
     expect(publisherText).toContain("persist-credentials: false");
     // The stale-main guard is SURFACE-AWARE, not SHA-exact. The old exact-SHA
@@ -1207,7 +1207,7 @@ describe("scheduled data workflow contracts", () => {
       "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
     );
     expect(style).toContain(
-      "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+      "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
     );
   });
 
