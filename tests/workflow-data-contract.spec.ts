@@ -106,6 +106,64 @@ describe("scheduled data workflow contracts", () => {
     expect(workflow).toContain("readiness.searchIndex");
   });
 
+  it("reports known surface and heartbeat evidence without treating unavailable counts as zero", () => {
+    const workflow = parse(workflowText("production-health-alert.yml")) as WorkflowDocument;
+    const run = workflow.jobs?.check?.steps?.find((step) => step.name === "Read production health")?.run;
+    const renderScript = run?.match(/node -e '\n([\s\S]+?)\n'\s*$/)?.[1];
+    expect(renderScript).toBeDefined();
+
+    const render = (payload: object) => {
+      let output = "";
+      runInNewContext(renderScript!, {
+        require: () => ({
+          readFileSync: () => JSON.stringify(payload),
+          appendFileSync: (_destination: string, body: string) => { output += body; },
+        }),
+        process: { env: { GITHUB_OUTPUT: "/mock/github-output" } },
+      }, { timeout: 1000 });
+      return output;
+    };
+
+    const alert = render({
+      status: "degraded",
+      data: { stale: null, attention: null, unknown: null },
+      database: { status: "reachable" },
+      readiness: {
+        heartbeats: { feeds: "stale", eventArchive: "failed" },
+        surfaces: {
+          today: { status: "hold", reasons: ["source_health_unavailable", "feed_heartbeat_stale"] },
+          ask: { status: "partial", reasons: ["search_index_unknown", "DO_NOT_PUBLISH", "search_index_unknown"] },
+          map: { status: "DO_NOT_PUBLISH", reasons: { message: "DO_NOT_PUBLISH" } },
+          events: { status: "hold", reasons: ["event_archive_heartbeat_failed"] },
+          DO_NOT_PUBLISH: { status: "ready", reasons: [] },
+        },
+      },
+    });
+
+    expect(alert).toContain("? stale, ? need attention, ? unknown");
+    expect(alert).toContain("| stale | ? |");
+    expect(alert).toContain("| Today | hold | source_health_unavailable, feed_heartbeat_stale |");
+    expect(alert).toContain("| Ask | partial | search_index_unknown |");
+    expect(alert).toContain("| Map | unknown | Unknown |");
+    expect(alert).toContain("| Events | hold | event_archive_heartbeat_failed |");
+    expect(alert).toContain("**Worker heartbeats:** Feeds stale · Event archive failed");
+    expect(alert).not.toContain("DO_NOT_PUBLISH");
+
+    const legacyAlert = render({
+      status: "operational",
+      data: { tracked: 1, current: 1, stale: 0, attention: 0, unknown: 0 },
+      readiness: {
+        surfaces: { today: { status: "ready", reasons: [] } },
+        heartbeats: { eventArchive: "DO_NOT_PUBLISH" },
+      },
+    });
+    expect(legacyAlert).toContain("0 stale, 0 need attention, 0 unknown");
+    expect(legacyAlert).toContain("| Today | ready | None |");
+    expect(legacyAlert).toContain("| Events | unknown | Unknown |");
+    expect(legacyAlert).toContain("**Worker heartbeats:** Feeds unknown · Event archive unknown");
+    expect(legacyAlert).not.toContain("DO_NOT_PUBLISH");
+  });
+
   it("pins every external workflow action to an immutable commit", () => {
     const workflowNames = readdirSync(WORKFLOW_DIR).filter((name) =>
       /\.ya?ml$/.test(name),
