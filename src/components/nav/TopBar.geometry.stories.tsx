@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
-import TopBar, { shouldShowGlobalLocation, shouldShowGlobalMobileSearch } from "./TopBar";
+import TopBar from "./TopBar";
 import { getScope, setScope } from "@/lib/scope";
 import { applyAppearance, getAppearance } from "@/lib/appearance";
 
@@ -29,10 +29,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function geometryStory(pathname: string, enlarged = false, dark = false, fontFamily?: string): Story {
-  const globalArea = shouldShowGlobalLocation(pathname);
-  const globalFind = shouldShowGlobalMobileSearch(pathname);
-  // Home or Back, status and More are common. Today embeds its own area and Find.
+  // These are the expected controls for each surface, independent of TopBar's render logic.
   const isToday = pathname === "/today";
+  const isAsk = pathname === "/ask" || pathname.startsWith("/ask/");
+  const globalArea = !isToday && !isAsk && pathname !== "/search";
+  const globalFind = globalArea && !["/map", "/compass"].includes(pathname);
   const minimumVisibleTargets = 3 + Number(isToday || globalArea) + Number(isToday || globalFind);
   return {
     parameters: { nextjs: { navigation: { pathname } } },
