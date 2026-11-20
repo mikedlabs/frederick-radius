@@ -200,7 +200,7 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   for (const [key, rs] of groups) {
     rs.sort((a, b) => +new Date(a.starts_at_utc) - +new Date(b.starts_at_utc));
     const head = rs[0];
-    // Sanitize at this read boundary, never in SeriesCard. Title gets
+    // Sanitize at this read boundary, never at render time. Title gets
     // entity-decoded + presenter-split + hyphen/year-cleaned; venue and
     // description get decoded; the address also gets its concatenated
     // suffix-into-city repaired.
