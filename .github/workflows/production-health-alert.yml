@@ -76,10 +76,11 @@ jobs:
             const out = [];
             const d = h.data ?? {};
             const status = h.status ?? "unknown";
+            const count = (value) => Number.isSafeInteger(value) && value >= 0 ? value : "?";
             out.push(`status=${status}`);
             out.push(
-              `summary=${status} · ${d.current ?? "?"}/${d.tracked ?? "?"} sources current, ` +
-              `${d.stale ?? 0} stale, ${d.attention ?? 0} need attention, ${d.unknown ?? 0} unknown`,
+              `summary=${status} · ${count(d.current)}/${count(d.tracked)} sources current, ` +
+              `${count(d.stale)} stale, ${count(d.attention)} need attention, ${count(d.unknown)} unknown`,
             );
             const lines = [];
             lines.push(`**Overall:** \`${status}\``);
@@ -89,7 +90,7 @@ jobs:
             lines.push("| Sources | Count |");
             lines.push("| --- | ---: |");
             for (const k of ["tracked", "current", "stale", "attention", "unknown"]) {
-              if (d[k] != null) lines.push(`| ${k} | ${d[k]} |`);
+              lines.push(`| ${k} | ${count(d[k])} |`);
             }
             const diag = Object.entries(d.diagnostics ?? {}).filter(([, v]) => v > 0);
             if (diag.length > 0) {
@@ -98,6 +99,42 @@ jobs:
               for (const [k, v] of diag) lines.push(`- ${k}: ${v}`);
             }
             const readiness = h.readiness ?? {};
+            // Allowlist the public contract before including its values in a GitHub issue.
+            // See src/lib/quality/surface-readiness.ts.
+            const surfaceStates = new Set(["ready", "partial", "hold"]);
+            const reasonCodes = new Set([
+              "database_unavailable",
+              "source_health_unavailable", "source_health_degraded", "current_hours_policy_hold",
+              "hours_schema_missing", "hours_schema_unknown",
+              "search_schema_missing", "search_schema_unknown",
+              "search_index_empty", "search_index_incomplete", "search_index_unknown",
+              "event_archive_schema_missing", "event_archive_schema_unknown",
+              "source_health_schema_missing", "source_health_schema_unknown",
+              "data_truth_schema_missing", "data_truth_schema_unknown",
+              "feed_heartbeat_missing", "feed_heartbeat_stale", "feed_heartbeat_failed", "feed_heartbeat_unknown",
+              "event_archive_heartbeat_missing", "event_archive_heartbeat_stale",
+              "event_archive_heartbeat_failed", "event_archive_heartbeat_unknown",
+            ]);
+            lines.push("", "| Public surface | Status | Reasons |", "| --- | --- | --- |");
+            for (const [key, label] of [["today", "Today"], ["ask", "Ask"], ["map", "Map"], ["events", "Events"]]) {
+              const surface = readiness.surfaces?.[key];
+              const state = surfaceStates.has(surface?.status) ? surface.status : "unknown";
+              const suppliedReasons = Array.isArray(surface?.reasons) ? surface.reasons : null;
+              const reasons = [...new Set(suppliedReasons?.filter((reason) => reasonCodes.has(reason)))];
+              let reasonSummary = "Unknown";
+              if (reasons.length > 0) reasonSummary = reasons.join(", ");
+              else if (state === "ready" && suppliedReasons?.length === 0) reasonSummary = "None";
+              lines.push(`| ${label} | ${state} | ${reasonSummary} |`);
+            }
+            const heartbeatStates = new Set(["current", "stale", "failed", "missing", "unknown"]);
+            const heartbeat = (key) => {
+              const state = readiness.heartbeats?.[key];
+              return heartbeatStates.has(state) ? state : "unknown";
+            };
+            lines.push(
+              "",
+              `**Worker heartbeats:** Feeds ${heartbeat("feeds")} · Event archive ${heartbeat("eventArchive")}`,
+            );
             const notReady = Object.entries(readiness.migrations ?? {}).filter(
               ([k, v]) => k !== "status" && v !== "ready",
             );
