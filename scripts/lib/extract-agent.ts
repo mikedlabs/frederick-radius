@@ -440,12 +440,32 @@ export type SquarespaceEventsFetchResult =
  * dropped rather than invented. `baseUrl` (the site origin) turns the
  * relative `fullUrl` into an absolute ticket/detail link when present.
  */
+function squarespaceCollectionItems(json: unknown): unknown[] {
+  if (!json || typeof json !== "object") return [];
+  const root = json as { upcoming?: unknown; items?: unknown };
+  // Prefer `upcoming` when it has rows. Some venues (Rockwell Brewery)
+  // only populate the generic `items` array — the same fallback the live
+  // Squarespace adapter already uses.
+  if (Array.isArray(root.upcoming) && root.upcoming.length > 0) {
+    return root.upcoming;
+  }
+  return Array.isArray(root.items) ? root.items : [];
+}
+
+function squarespaceHasCollection(json: unknown): json is {
+  upcoming?: unknown;
+  items?: unknown;
+} {
+  if (!json || typeof json !== "object") return false;
+  const root = json as { upcoming?: unknown; items?: unknown };
+  return Array.isArray(root.upcoming) || Array.isArray(root.items);
+}
+
 export function parseSquarespaceEvents(
   json: unknown,
   baseUrl?: string,
 ): FeedEvent[] {
-  const root = json as { upcoming?: unknown } | null;
-  const items = root && Array.isArray(root.upcoming) ? root.upcoming : [];
+  const items = squarespaceCollectionItems(json);
   const origin = (() => {
     if (!baseUrl) return "";
     try {
@@ -472,7 +492,11 @@ export function parseSquarespaceEvents(
       title,
       starts_at: new Date(startMs).toISOString(),
     };
-    if (typeof it.endDate === "number" && Number.isFinite(it.endDate)) {
+    if (
+      typeof it.endDate === "number" &&
+      Number.isFinite(it.endDate) &&
+      it.endDate > startMs
+    ) {
       ev.ends_at = new Date(it.endDate).toISOString();
     }
     // Excerpt is publisher-authored HTML. Clean markup and entities, then use
@@ -535,13 +559,13 @@ export async function fetchSquarespaceEventsResult(
     }
     observeNativeResponse(opts.onResponse, { requestedUrl: url, finalUrl: r.url || url, method: "GET", status: r.status,
       observedAt: new Date().toISOString(), body: bytes, context: { phase: "squarespace-feed" } });
-    const json = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as { upcoming?: unknown } | null;
-    if (!json || !Array.isArray(json.upcoming)) {
-      console.log(`  ✗ ${url} (feed) → missing upcoming[]`);
+    const json: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    if (!squarespaceHasCollection(json)) {
+      console.log(`  ✗ ${url} (feed) → missing upcoming[] or items[]`);
       return { status: "failure", events: [] };
     }
     const events = parseSquarespaceEvents(json, collectionUrl);
-    if (json.upcoming.length > 0 && events.length === 0) {
+    if (squarespaceCollectionItems(json).length > 0 && events.length === 0) {
       console.log(`  ✗ ${url} (feed) → no valid upcoming rows`);
       return { status: "failure", events: [] };
     }
