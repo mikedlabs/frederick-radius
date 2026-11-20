@@ -32,6 +32,31 @@ const TTL_MS = 1000 * 60 * 30; // 30 min cache
  * the change, so sessionStorage alone cannot keep independent components in
  * sync. */
 export const GEOLOCATION_CHANGE_EVENT = "fr:geolocation-change";
+/** A refusal has its own event: listeners of GEOLOCATION_CHANGE_EVENT treat
+ * it as a new device fix and refresh ranking (Today's daypart shelves reset
+ * the chosen category), which a refusal must not trigger. */
+export const GEOLOCATION_REFUSAL_EVENT = "fr:geolocation-refusal";
+
+/**
+ * The last refusal in this document, shared like a granted fix so every
+ * surface explains it. A denial asked for in the header must reach the page
+ * under it, which no longer has a location control of its own. Kept in
+ * memory only: a reload starts fresh, and a later grant clears it.
+ */
+let lastRefusal: "denied" | "unavailable" | null = null;
+
+/** Record a refusal and tell every same-tab surface. */
+export function announceLocationRefusal(status: "denied" | "unavailable"): void {
+  lastRefusal = status;
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(GEOLOCATION_REFUSAL_EVENT));
+  }
+}
+
+/** Test seam: forget the shared refusal between cases. */
+export function resetLocationRefusalForTests(): void {
+  lastRefusal = null;
+}
 
 function announceLocationChange(): void {
   if (typeof window !== "undefined") {
@@ -46,6 +71,7 @@ function announceLocationChange(): void {
  */
 export function cacheGeolocationPosition(position: GeoPosition): void {
   if (typeof window === "undefined") return;
+  lastRefusal = null;
   try {
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(position));
   } catch {
@@ -113,18 +139,28 @@ export function useGeolocation() {
     const syncCachedPosition = () => {
       const cached = readCachedGeoPosition();
       setState(
-        cached ? { status: "granted", position: cached } : { status: "idle" },
+        // A refusal always postdates any cached fix (a grant clears it), so
+        // it wins over a fix still fresh in session storage.
+        lastRefusal
+          ? { status: lastRefusal }
+          : cached
+            ? { status: "granted", position: cached }
+            : { status: "idle" },
       );
     };
     syncCachedPosition();
     window.addEventListener(GEOLOCATION_CHANGE_EVENT, syncCachedPosition);
-    return () =>
+    window.addEventListener(GEOLOCATION_REFUSAL_EVENT, syncCachedPosition);
+    return () => {
       window.removeEventListener(GEOLOCATION_CHANGE_EVENT, syncCachedPosition);
+      window.removeEventListener(GEOLOCATION_REFUSAL_EVENT, syncCachedPosition);
+    };
   }, []);
 
   const requestPosition = useCallback((enableHighAccuracy: boolean) => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
       setState({ status: "unavailable" });
+      announceLocationRefusal("unavailable");
       return;
     }
     setState({ status: "loading" });
@@ -154,6 +190,7 @@ export function useGeolocation() {
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {
           setState({ status: "denied" });
+          announceLocationRefusal("denied");
         } else {
           setState({ status: "error", message: err.message });
         }

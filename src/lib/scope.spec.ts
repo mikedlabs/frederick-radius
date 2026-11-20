@@ -68,7 +68,8 @@ describe("scope helpers", () => {
     expect(scopeLabel("nearme")).toBe("Near me");
     expect(scopeLabel("county")).toBe("Whole county");
     expect(scopeLabel("town:frederick")).toBe("Frederick City");
-    expect(scopeLabel(null)).toBe("Frederick County");
+    expect(scopeLabel(null)).toBe("Whole county");
+    expect(scopeLabel("town:atlantis" as never)).toBe("Whole county");
   });
 });
 
@@ -155,7 +156,7 @@ describe("resolveDecisionContext", () => {
 
   it("allows distance copy only for a real device fix", () => {
     const ctx = resolveDecisionContext({ deviceOrigin: { lng: -77.41, lat: 39.41 } });
-    expect(ctx).toMatchObject({ source: "device", canShowDistance: true, label: "Near you" });
+    expect(ctx).toMatchObject({ source: "device", canShowDistance: true, label: "Near me" });
   });
 
   it("labels a rejected out-of-county network fallback", () => {

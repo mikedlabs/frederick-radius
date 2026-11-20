@@ -39,6 +39,7 @@ function DirectNearbyMap() {
     isBrowseMap: true,
     rankingSeed: null,
     autoFitNearbyScope: true,
+    arrivalEntityOwnsCamera: () => false,
     ...callbacks,
   });
   return <button type="button" onClick={location.recenterOnLocation}>Find me</button>;

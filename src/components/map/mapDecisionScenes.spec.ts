@@ -356,7 +356,7 @@ describe("selected-place decision cue", () => {
         {
           candidateId: "peek:utility:restroom",
           kind: "utility",
-          detail: "The nearest mapped restroom is 295 ft away.",
+          detail: "The nearest mapped restroom is 295 ft from here.",
         },
         {
           candidateId: "peek:parking:carroll creek garage",
@@ -418,7 +418,7 @@ describe("selected-place decision cue", () => {
 
     expect(surface?.lead).toMatchObject({
       kind: "parking",
-      headline: "Parking · 0.1 mi",
+      headline: "Parking · 0.1 mi from here",
     });
     expect(surface?.lead.detail).toContain("42 spaces reported available");
   });

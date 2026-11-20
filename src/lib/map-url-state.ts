@@ -68,3 +68,13 @@ export function replaceMapUrlSilently(mutate: MapUrlMutation): URL | null {
   window.history.replaceState(window.history.state, "", next);
   return next;
 }
+
+/**
+ * The map link that opens with one place selected and framed above its card.
+ * A bare camera link (`/map?c=`) opened the map on the right spot with
+ * nothing selected (November 11, 2026 hierarchy audit), so links from a place
+ * carry the place itself and let the map own the camera.
+ */
+export function mapPlaceHref(slug: string): string {
+  return `/map?place=${encodeURIComponent(slug)}`;
+}

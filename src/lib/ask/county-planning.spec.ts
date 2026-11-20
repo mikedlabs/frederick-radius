@@ -86,6 +86,17 @@ describe("County planning Ask", () => {
     });
   });
 
+  it("measures from the visitor when the device area reads Near me", () => {
+    const result = countyPlanningAskResult(snapshot("available"), {
+      label: "Near me",
+      origin: { lng: -77.4105, lat: 39.4143 },
+      canShowDistance: true,
+    });
+    expect(result.context).toBe("Near me");
+    expect(result.sources[0]?.reason).toMatch(/ from you$/);
+    expect(result.answer).toMatch(/ranks first at .+ from you\./);
+  });
+
   it("honors a town named in the planning question", () => {
     const result = countyPlanningAskResult(snapshot("available"), {
       query: "What planning applications are in Urbana?",

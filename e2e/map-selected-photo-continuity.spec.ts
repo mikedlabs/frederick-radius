@@ -271,7 +271,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 375, height: 667 }
       const ownedBrowseSrc = await creekBrowseRow.locator("img").evaluate(node => (node as HTMLImageElement).currentSrc);
       boundary.declareOwnedBrowseRequest(ownedBrowseSrc);
       const browseCredit = fallbackBrowseRow.locator(".place-card-photo-credit");
-      await expect(browseCredit).toContainText(`Photo by ${boundary.curated.author}.`);
+      await expect(browseCredit.locator("[data-photo-credit-author]")).toHaveText(boundary.curated.author);
       const browseSource = browseCredit.getByRole("link", { name: "Wikimedia Commons", exact: true });
       const browseLicense = browseCredit.getByRole("link", { name: boundary.curated.license, exact: true });
       await expect(browseSource).toHaveAttribute("href", boundary.curated.source_url);
@@ -315,39 +315,18 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 375, height: 667 }
       await expect(details).toBeFocused();
       await expect(card.locator("img")).toHaveCount(1);
       const credits = card.locator(".map-peek-source-credit");
-      await expect(credits).toContainText(`The photo is by ${boundary.curated.author} on Wikimedia Commons.`);
-      await expect(credits).toContainText(boundary.curated.modifications!);
+      await expect(credits.locator("[data-photo-credit-author]")).toHaveText(boundary.curated.author);
+      await expect(credits).not.toContainText(boundary.curated.modifications!);
       await expect(credits).not.toContainText("LAYOUT FIXTURE author");
-      const sourceLink = credits.getByRole("link", { name: `Photo by ${boundary.curated.author}. Wikimedia Commons`, exact: true });
+      await expect(credits.locator("details, summary")).toHaveCount(0);
+      const sourceLink = credits.getByRole("link", { name: "Wikimedia Commons", exact: true });
       const licenseLink = credits.getByRole("link", { name: boundary.curated.license, exact: true });
       await expect(sourceLink).toHaveAttribute("href", boundary.curated.source_url);
-      await expect(sourceLink).toHaveText(boundary.curated.author);
       await expect(licenseLink).toHaveAttribute("href", boundary.curated.licenseUrl!);
-      const edits = credits.locator("details");
-      const editSummary = edits.locator("summary");
-      const fullEdits = edits.getByText(boundary.curated.modifications!, { exact: true });
-      await expect(edits).toHaveJSProperty("open", false);
-      await expect(editSummary).toHaveText("Edited photo");
-      await expect(fullEdits).not.toBeVisible();
 
-      const initialGeometry = await assertFullCard(card, fallbackPlace.name, [sourceLink, licenseLink, editSummary]);
+      const initialGeometry = await assertFullCard(card, fallbackPlace.name, [sourceLink, licenseLink]);
 
       await testInfo.attach("full-selected-card-geometry", { body: JSON.stringify(initialGeometry), contentType: "application/json" });
-      await editSummary.focus();
-
-      await page.keyboard.press("Enter");
-      await expect(edits).toHaveJSProperty("open", true);
-      await expect(fullEdits).toBeVisible();
-      await expect(editSummary).toBeFocused();
-      await expect(edits).toContainText(`The photo is by ${boundary.curated.author} on Wikimedia Commons.`);
-
-      const expandedGeometry = await assertFullCard(card, fallbackPlace.name, [sourceLink, licenseLink, editSummary]);
-
-      await testInfo.attach("expanded-photo-credit-geometry", { body: JSON.stringify(expandedGeometry), contentType: "application/json" });
-      await editSummary.focus();
-      await page.keyboard.press("Enter");
-      await expect(edits).toHaveJSProperty("open", false);
-      await expect(fullEdits).not.toBeVisible();
 
       // A short mobile viewport forces the actual card to scroll, including
       // its real Close/Share/header topology and loaded source-credit block.
@@ -367,7 +346,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 375, height: 667 }
       await expect.poll(() => page.evaluate(() => innerHeight)).toBe(480);
 
       await expect.poll(() => card.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
-      const compactGeometry = await assertFullCard(card, fallbackPlace.name, [sourceLink, licenseLink, editSummary]);
+      const compactGeometry = await assertFullCard(card, fallbackPlace.name, [sourceLink, licenseLink]);
 
       expect(compactGeometry.scrollTop).toBeGreaterThan(0);
       await testInfo.attach("compact-selected-card-geometry", { body: JSON.stringify(compactGeometry), contentType: "application/json" });

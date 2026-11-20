@@ -754,7 +754,7 @@ test.describe("Ask Radius deterministic workspace", () => {
     await page.goto("/ask");
     await expect(
       page.getByRole("button", {
-        name: "Search area: Near your location. Change area.",
+        name: "Search area: Near me. Change area.",
       }),
     ).toBeVisible();
     await submit(page, "Where should I eat tonight?");

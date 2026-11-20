@@ -146,8 +146,10 @@ export const LicensedImageAndCredit: Story = {
     const image = lead.querySelector("img")!;
     await image.decode();
     await expect(image.naturalWidth).toBeGreaterThan(1);
-    await waitFor(() => expect(canvas.getByRole("link", { name: /Acroterion.*Wikimedia Commons/i }))
+    // The short shared credit: the author as text, then license and source links.
+    await waitFor(() => expect(canvas.getByRole("link", { name: "Wikimedia Commons" }))
       .toHaveAttribute("href", "https://commons.wikimedia.org/wiki/File:New_Market_HD_MD1.jpg"));
+    await expect(canvasElement.querySelector("[data-photo-credit-author]")).toHaveTextContent("Acroterion");
     await expect(canvas.getByRole("link", { name: "CC BY-SA 4.0" })).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0/");
     await expect(canvasElement.querySelector("button a, a button")).toBeNull();
     image.dispatchEvent(new Event("error"));

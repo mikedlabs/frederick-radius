@@ -4,8 +4,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
-import { getScope, parseScope, scopeToParam, scopeTownSlug, subscribeScopeChange } from "@/lib/scope";
-import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { getScope, parseScope, scopeLabel as areaLabel, scopeToParam, scopeTownSlug, subscribeScopeChange } from "@/lib/scope";
 import TodayHeadlineCard from "./TodayHeadlineCard";
 import choiceStyles from "./TodayEventChoices.module.css";
 import DismissibleSection from "@/components/today/DismissibleSection";
@@ -160,7 +159,7 @@ function waitForRetry(signal: AbortSignal): Promise<void> {
 export function TodayEventsRecoveryView({
   response,
   failed = false,
-  scopeLabel = "Countywide",
+  scopeLabel = areaLabel("county"),
   eventsHref = "/events",
 }: {
   response: TodayEventResponse | null;
@@ -253,7 +252,7 @@ export function TodayEventsRecoveryView({
  * passive recovery is not an explicit visitor refresh and must not consume
  * the separate, rate-limited cache-bypass allowance.
  */
-function RecoverTodayEvents({ initialResponse, requestPath = "/api/today/events", scopeLabel = "Countywide", eventsHref = "/events" }: {
+function RecoverTodayEvents({ initialResponse, requestPath = "/api/today/events", scopeLabel = areaLabel("county"), eventsHref = "/events" }: {
   initialResponse?: TodayEventResponse;
   requestPath?: string;
   scopeLabel?: string;
@@ -312,7 +311,8 @@ function ScopedTodayEvents({ initialResponse }: { initialResponse?: TodayEventRe
   const scope = parseScope(params.get("in")) ?? stored;
   const town = scopeTownSlug(scope);
   const suffix = town && scope ? `?in=${encodeURIComponent(scopeToParam(scope))}` : "";
-  const scopeLabel = town ? MUNICIPALITY_BY_SLUG[town]?.name ?? town : "Countywide";
+  // Events follow a town; Near me still reads the whole county's program.
+  const scopeLabel = areaLabel(town ? scope : "county");
   return <RecoverTodayEvents key={suffix} requestPath={`/api/today/events?v=visual-choices-1${suffix ? `&${suffix.slice(1)}` : ""}`} initialResponse={town ? undefined : initialResponse} scopeLabel={scopeLabel} eventsHref={`/events${suffix}`} />;
 }
 

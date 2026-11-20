@@ -363,7 +363,7 @@ function eventCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
 
     if (nearbyPlace) {
       points.push(placePoint(nearbyPlace.item));
-      details.push(`${nearbyPlace.item.name} is ${formatDistance(nearbyPlace.distanceM)} away`);
+      details.push(`${nearbyPlace.item.name} is ${formatDistance(nearbyPlace.distanceM)} from the venue`);
       evidence.push({
         fact: `${nearbyPlace.item.name} is ${formatDistance(nearbyPlace.distanceM)} from the venue.`,
         ...sourceForPlace(nearbyPlace.item),
@@ -371,7 +371,7 @@ function eventCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
     }
     if (garage) {
       points.push({ id: `parking:${garage.item.slug}`, label: garage.item.name, kind: "parking", lng: garage.item.lng, lat: garage.item.lat });
-      details.push(`${garage.item.name} is ${formatDistance(garage.distanceM)} away`);
+      details.push(`${garage.item.name} is ${formatDistance(garage.distanceM)} from the venue`);
       evidence.push({
         fact: `${garage.item.name} is ${formatDistance(garage.distanceM)} from the venue.`,
         source: "City of Frederick parking data",
@@ -380,7 +380,7 @@ function eventCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
     } else if (transit) {
       const stopLabel = transitStopLabel(transit.item.name);
       points.push({ id: `transit:${transit.item.id}`, label: stopLabel, kind: "transit", lng: transit.item.lng, lat: transit.item.lat });
-      details.push(`${stopLabel} is ${formatDistance(transit.distanceM)} away`);
+      details.push(`${stopLabel} is ${formatDistance(transit.distanceM)} from the venue`);
       evidence.push({
         fact: `${stopLabel} is ${formatDistance(transit.distanceM)} from the venue.`,
         source: "Frederick County TransIT",
@@ -441,7 +441,7 @@ function fieldReadyCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
       kind: "field-ready",
       eyebrow: "Useful on the ground",
       title: `What is mapped near ${place.name}`,
-      summary: `The nearest mapped ${firstLabel} is ${formatDistance(first.distanceM)} from ${place.name}. The nearest mapped ${secondLabel} is ${formatDistance(second.distanceM)} away.`,
+      summary: `The nearest mapped ${firstLabel} is ${formatDistance(first.distanceM)} from ${place.name}. The nearest mapped ${secondLabel} is ${formatDistance(second.distanceM)} from it.`,
       center: discoveryCenter(points),
       zoom: 14.4,
       score: 82 + distinct.length * 2 + proximityScore(input.origin, place.geom),

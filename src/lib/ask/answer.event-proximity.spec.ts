@@ -78,7 +78,7 @@ describe("Ask event proximity", () => {
 
     const result = await askFrederick(query, {
       origin: { lng: -77.4105, lat: 39.4143 },
-      contextLabel: "Near you",
+      contextLabel: "Near me",
       canShowDistance: true,
     });
 
@@ -147,7 +147,7 @@ describe("Ask event proximity", () => {
       "What should I do tonight near downtown Frederick?",
       {
         origin: { lng: -77.4105, lat: 39.4143 },
-        contextLabel: "Near you",
+        contextLabel: "Near me",
         canShowDistance: true,
       },
     );
@@ -189,7 +189,7 @@ describe("Ask event proximity", () => {
 
     const result = await askFrederick("What should I do downtown tonight?", {
       origin: { lng: -77.4105, lat: 39.4143 },
-      contextLabel: "Near you",
+      contextLabel: "Near me",
       canShowDistance: true,
     });
 
@@ -306,7 +306,7 @@ describe("Ask event proximity", () => {
 
     const result = await askFrederick("What should I do tonight?", {
       origin: { lng: -77.4105, lat: 39.4143 },
-      contextLabel: "Near you",
+      contextLabel: "Near me",
       canShowDistance: true,
     });
 

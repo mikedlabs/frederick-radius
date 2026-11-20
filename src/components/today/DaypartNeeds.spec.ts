@@ -125,7 +125,7 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("Bakeries");
     expect(html).toContain("First Cup");
     expect(html).toContain("Across Frederick County");
-    expect(html).not.toContain("Countywide picks");
+    expect(html).not.toContain("Whole county picks");
     expect(html).toContain("Urbana");
     expect(html).not.toContain("Nearby picks");
     expect(html).not.toContain("Right now, around here");
@@ -408,15 +408,15 @@ describe("DaypartNeeds", () => {
 
   it("only calls picks nearby when a real user location is active", () => {
     expect(daypartPickScopeLabel("county", "Whole county")).toBe(
-      "Countywide picks",
+      "Whole county picks",
     );
     expect(daypartPickScopeLabel("none", "Frederick County")).toBe(
-      "Countywide picks",
+      "Whole county picks",
     );
     expect(daypartPickScopeLabel("ip", "Ranked from Frederick")).toBe(
-      "Countywide picks",
+      "Whole county picks",
     );
-    expect(daypartPickScopeLabel("device", "Near you")).toBe("Nearby picks");
+    expect(daypartPickScopeLabel("device", "Near me")).toBe("Near me picks");
     expect(daypartPickScopeLabel("home", "Near home")).toBe("Nearby picks");
     expect(daypartPickScopeLabel("town", "Urbana")).toBe("Urbana picks");
   });
@@ -474,7 +474,7 @@ describe("DaypartNeeds", () => {
           confidence: "likely",
         },
         browseHref: "/category/coffee",
-        contextLabel: "Near you",
+        contextLabel: "Near me",
         contextSource: "device",
         mayAssertNoneOpen: false,
       },
@@ -514,7 +514,7 @@ describe("DaypartNeeds", () => {
         },
         also: [],
         browseHref: "/category/coffee",
-        contextLabel: "Near you",
+        contextLabel: "Near me",
         contextSource: "device",
         mayAssertNoneOpen: false,
       },
@@ -749,7 +749,7 @@ describe("DaypartNeeds", () => {
     );
 
     expect(html).toContain(
-      "Countywide picks · Posted hours; check before going",
+      "Whole county picks · Posted hours; check before going",
     );
     expect(html).not.toContain('aria-label="Likely Cup');
     expect(html).toContain("Likely Cup");

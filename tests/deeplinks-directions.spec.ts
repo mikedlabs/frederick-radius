@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   googleMapsDirections,
+  googleMapsDirectionsToAddress,
   appleMapsDirections,
   wazeDirections,
 } from "@/lib/integrations/deeplinks";
@@ -19,6 +20,12 @@ describe("map directions deep links", () => {
     const url = googleMapsDirections(lat, lng);
     expect(url).toContain("https://www.google.com/maps/dir/?");
     expect(url).toContain("destination=39.4143%2C-77.4105");
+    expect(url).not.toContain("destination_place_id");
+  });
+
+  it("google by address: the published street text is the destination", () => {
+    const url = googleMapsDirectionsToAddress("  300 S Seton Ave, Emmitsburg, MD 21727 ");
+    expect(url).toBe("https://www.google.com/maps/dir/?api=1&destination=300+S+Seton+Ave%2C+Emmitsburg%2C+MD+21727");
     expect(url).not.toContain("destination_place_id");
   });
 

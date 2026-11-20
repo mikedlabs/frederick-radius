@@ -116,7 +116,7 @@ describe("publisher event artwork lifecycle", () => {
     expect(host.textContent).toContain("10");
   });
 
-  it("uses the exact reserved venue photo and its full credit only after overview artwork fails", () => {
+  it("uses the exact reserved venue photo and its credit only after overview artwork fails", () => {
     const brewery = { ...event, venue_name: "Brewer's Alley", venue_place_slug: "brewers-alley-frederick" };
     const image = CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"].image;
     act(() => root.render(<EventsOverview tonight={[brewery]} weekend={[]} nowISO={event.first_seen_at} coverage="complete" />));
@@ -130,7 +130,10 @@ describe("publisher event artwork lifecycle", () => {
     const credit = host.querySelector("[data-event-licensed-credit]")!;
     expect(credit.textContent).toContain("photographed in 2004");
     expect(credit.textContent).toContain(image.creator);
-    expect(credit.textContent).toContain(image.modifications);
+    // The short credit keeps author, license and source; the change record
+    // stays in the data and is never printed.
+    expect(credit.textContent).not.toContain(image.modifications);
+    expect(credit.textContent).toContain(image.license.label);
     expect(credit.querySelector(`a[href="${image.source_url}"]`)).not.toBeNull();
     expect(credit.querySelector(`a[href="${image.license.url}"]`)).not.toBeNull();
     expect(host.textContent).not.toContain(visual.caption);

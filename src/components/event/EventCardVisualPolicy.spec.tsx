@@ -189,8 +189,8 @@ describe("photo-forward discovery card contracts", () => {
     const credit = host.querySelector("[data-event-licensed-credit]")!;
     const image = CREDITED_LOCAL_PLACE_PHOTOS["brewers-alley-frederick"].image;
     expect(credit.textContent).toContain("photographed in 2004");
-    expect(credit.textContent).toContain(image.creator);
-    expect(credit.textContent).toContain(image.modifications);
+    expect(credit.querySelector("[data-photo-credit-text]")?.textContent).toBe("Stacy (Rambling Traveler) · 2004 · CC BY-SA 2.0 · Wikimedia Commons · Original photograph");
+    expect(credit.textContent).not.toContain(image.modifications);
     expect(credit.querySelector(`a[href="${image.source_url}"]`)).not.toBeNull();
     expect(credit.querySelector(`a[href="${image.license.url}"]`)).not.toBeNull();
     expect(host.querySelector('a[href="/events/offline-preview-policy"]')?.contains(credit)).toBe(false);

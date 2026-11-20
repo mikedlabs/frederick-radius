@@ -205,7 +205,7 @@ for (const viewport of VIEWPORTS) {
       await expect(dialog).toBeVisible();
       await expect(
         page.getByRole("searchbox", {
-          name: "Ask or find across Frederick County",
+          name: "Ask or find across the whole county",
         }),
       ).toBeFocused();
 

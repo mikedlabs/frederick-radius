@@ -189,7 +189,7 @@ describe("civic Ask grounded results", () => {
         lanes_affected: "Right lane blocked",
       }],
     }, {
-      label: "Near you",
+      label: "Near me",
       origin: { lat: 39.414, lng: -77.411 },
       canShowDistance: true,
     }, new Date("2026-07-27T14:00:00.000Z"));
@@ -296,7 +296,7 @@ describe("civic Ask grounded results", () => {
       ],
     }, {
       query: "Are roads closed near me?",
-      label: "Near you",
+      label: "Near me",
       origin: { lat: 39.414, lng: -77.411 },
       canShowDistance: true,
     }, new Date("2026-07-27T14:00:00.000Z"));
@@ -324,7 +324,7 @@ describe("civic Ask grounded results", () => {
       }],
     }, {
       query: "Are there road closures downtown tomorrow?",
-      label: "Near you",
+      label: "Near me",
       origin: { lat: 39.414, lng: -77.411 },
       canShowDistance: true,
     }, ROAD_NOW);
@@ -371,7 +371,7 @@ describe("civic Ask grounded results", () => {
       }],
     }, {
       query: "Are any roads closed downtown right now?",
-      label: "Near you",
+      label: "Near me",
     }, ROAD_NOW);
 
     expect(result.status).toBe("empty");
@@ -746,7 +746,7 @@ describe("civic Ask grounded results", () => {
   });
 
   it("cannot invent an explanation for nearby police activity", () => {
-    const result = publicSafetyActivityAskResult({ label: "Near you" });
+    const result = publicSafetyActivityAskResult({ label: "Near me" });
 
     expect(result.answer).toContain("cannot identify a nearby police scene");
     expect(result.answer).toContain("limited public, non-medical dispatch data");

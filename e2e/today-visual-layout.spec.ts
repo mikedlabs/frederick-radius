@@ -637,7 +637,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await page.screenshot({ path: testInfo.outputPath(`today-${width}-viewport.png`), fullPage: false });
     await chooseTodayArea(page, "town:brunswick");
     await expect(page.getByTestId("today-scope-status")).toContainText(
-      "Brunswick picks · Countywide weather",
+      "Brunswick picks · Weather for the whole county",
     );
     await expect(page.getByRole("link", { name: "Plan a few hours", exact: true }))
       .toHaveAttribute("href", /in=brunswick/);
@@ -753,7 +753,7 @@ for (const town of ["brunswick", "thurmont"]) {
         expect(href.pathname).toBe(`/places/${slug}`); expect(href.searchParams.get("in")).toBe(town);
       }
       await expect(page.locator('[data-today-local-discovery]')).not.toContainText(/Sophie|Carillon|Find pizza/);
-      await expect(page.getByTestId("today-scope-status")).toContainText(`${town === "brunswick" ? "Brunswick" : "Thurmont"} picks · Countywide weather`);
+      await expect(page.getByTestId("today-scope-status")).toContainText(`${town === "brunswick" ? "Brunswick" : "Thurmont"} picks · Weather for the whole county`);
       await expect(page.locator('[aria-label="Places for your area"] > section:not([data-today-saved])')).toHaveCount(1);
       expect(geographicPhotoRequests.length).toBeGreaterThan(0);
       expect(geographicPhotoRequests.some(request => {
@@ -934,7 +934,13 @@ test.describe("Today compiled event heading and compact weather at enlarged root
       await expect(enlargedWeather.getByText("The NWS forecast is briefly unavailable.", { exact: true })).toBeVisible();
       testInfo.annotations.push({ type: "coverage", description: "Real forecast unavailable: enlarged direct-route coverage only. Available-summary acceptance is still required in a separate actual-source run." });
     }
-    const safetyFacts = enlargedWeather.locator("[data-weather-headline], [data-weather-safety-note]:not(details [data-weather-safety-note])");
+    // A missing air-quality reading is routine evidence inside the closed
+    // details; every first-read safety fact, including a missing alert feed,
+    // stays outside them.
+    for (const note of await enlargedWeather.locator("[data-weather-routine-note]").all()) {
+      expect(await note.evaluate((element) => element.closest("details") !== null)).toBe(true);
+    }
+    const safetyFacts = enlargedWeather.locator("[data-weather-headline], [data-weather-safety-note]");
     for (const note of await safetyFacts.all()) {
       await expect(note).toBeVisible();
       expect(await note.evaluate((element) => element.closest("details") === null)).toBe(true);

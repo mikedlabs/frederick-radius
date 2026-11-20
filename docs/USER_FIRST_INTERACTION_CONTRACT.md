@@ -17,7 +17,8 @@ An ordinary primary-tab tap resumes that tab's last safe root URL and reading
 position in the current browser session. Reselecting an active root keeps the
 current task. Direct and shared links, modified clicks and new-tab navigation
 retain their explicit destination. Tab memory is bounded and does not store
-account details, notes or arbitrary return paths. Private Map search and Events
+account details, notes or arbitrary return paths. It does not own the area: a
+resumed tab opens in the current shared area (see Location). Private Map search and Events
 search/view state stay in document memory and are restored only for an explicit
 tab return; they do not become a new persisted search history.
 
@@ -42,9 +43,51 @@ pizza filter, including the selected town.
 ## Location
 
 Every location-aware answer states its scope as **Near me**, **Whole county**,
-or a named municipality. A location request must explain the benefit before
-the browser permission prompt appears. Declining location always leaves a
-working county or town fallback.
+or a named municipality. Those three are the names for the area, and an unset
+area reads as **Whole county**. Two older surfaces do not use them yet and
+are being retired with their choosers: the map dock's Where pane ("County"),
+and the short form "County" where the narrow header chip and Ask's composer
+chip cannot fit "Whole county". A
+location request must explain the benefit before the browser permission
+prompt appears. Declining location always leaves a working county or town
+fallback.
+
+The area is one shared value. The target, by owner decision on 2026-11-11, is
+that the header area control is the only place to change it. Today that is
+true of the header control, Today's area select and the list-page ScopeBar,
+which all write through `commitLocationScope`: it stores the value and then
+updates the current page's own `?in=`. The in-page choosers on Search,
+Events, the map dock and Ask still write the value directly. They are being
+retired onto the header control; until then, do not add another.
+
+/nearby reads the header's area and has no chooser. Its only area writes
+are two escapes, and both go through `commitLocationScope`: "Search the
+whole county" when a town has no match, and the precise-location row, which
+appears only in Near me (or an unset area) and asks for the device fix that
+Near me needs. In Whole county the page shows no location row, because the
+header is where a visitor switches to Near me.
+
+A nearby answer list says the order it shows, in a complete sentence, before
+any count. When a trustworthy origin exists (a device fix or a chosen town),
+close by wins over confirmed open: a confirmed-open place never sorts above
+nearer places, a confirmed closure sorts after usable choices, and each row
+marks hours Radius can state ("Open until 9pm", "Closing soon", "Closed").
+Unknown hours read "Hours not confirmed" inside the row's muted line. Open
+now is a top-level chip beside the list, not a sheet choice. When it finds
+fewer than three confirmed-open places nearby (about three miles of a device
+fix, or the chosen town), the nearest places stay listed under one plain line
+that says so and, with a device fix, how far the closest confirmed-open place
+is. It never leaves one far result with nothing after it.
+
+Find names the area it actually searches, in its field and on every answer.
+With no area chosen, the search endpoint ranks around a location the browser
+has already shared, so Find says "near you" in that case. When a near-me
+question has no usable location, the answer says so and names the area it
+fell back to.
+
+Tab memory never restores an old area. Returning to Today, Map or Events
+through the tab bar opens the remembered filters in the current shared area,
+and a map camera remembered under a different area is not restored.
 
 The map must not expose two controls that change the same location state.
 Recenter, scope, and the location readout must agree.
@@ -79,8 +122,9 @@ Closing it after that preserves the current selection.
 Named merchant photographs still require an exact-image current-appearance
 review; permission or a dated reference image alone is insufficient.
 Unreviewed business photographs do not lead Today recommendations or trigger
-a provider fallback. The URL scope wins over a saved scope, and Back preserves
-the original query and section. Image failures keep the named action usable.
+a provider fallback. An inbound link's URL scope wins over a saved scope, and
+Back preserves the original query and section. The app's own tab memory is
+not an inbound link and never replays an old `?in=`. Image failures keep the named action usable.
 Required photograph credits remain outside the destination link, with usable
 touch targets. Today's events have one heading rather than an extra chapter
 label before the same results.
@@ -100,7 +144,20 @@ The map is an answer surface, not a layer manager.
 - Common tasks apply immediately and close their chooser.
 - Advanced data layers stay behind one secondary control.
 - Search does not move the camera until the person selects a result or submits
-  the query.
+  the query. A submitted search (typed, or arriving as `?q=` or `?intent=`
+  without a `c` camera) frames its leading results once, through
+  `useSearchResultFraming`. A dock filter chip never moves the camera, and a
+  pan or zoom made after the submission cancels the framing.
+- A link from a place opens the map with that place selected and framed above
+  its card (`mapPlaceHref`, `/map?place=<slug>`). A place or event in the
+  arrival URL takes precedence over Near me fitting and the cold-open smart
+  default.
+- Every distance says what it is measured from: "from you" for the device fix,
+  "from map center" without one, or the selected place, venue or map spot it
+  describes. A group of distances from one selected spot may name that origin
+  once above the group, as the spot peek does. The resting Map panel is the
+  one list that measures from the map center even with a device fix, unless
+  the area is Near me; it labels its distances the same way.
 - A task returns a small ranked set of candidates, not pins alone.
 - A selected result opens one complete mobile surface.
 - Browser Back closes that result before it leaves the map.

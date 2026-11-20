@@ -32,6 +32,7 @@ import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { formatDistance } from "@/lib/geo";
+import { scopeInSentence, scopeLabel } from "@/lib/scope";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type {
   Plan,
@@ -132,8 +133,8 @@ export default function PlanBuilder({
   const [plan, setPlan] = useState<Plan | null>(initialPlan ?? null);
   const [planMunicipality, setPlanMunicipality] = useState(initialInputs?.municipality);
   const [planAreaLabel, setPlanAreaLabel] = useState(() => initialInputs?.municipality
-    ? MUNICIPALITIES.find((town) => town.slug === initialInputs.municipality)?.name ?? "Frederick County"
-    : "Frederick County");
+    ? MUNICIPALITIES.find((town) => town.slug === initialInputs.municipality)?.name ?? scopeLabel("county")
+    : scopeLabel("county"));
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -180,11 +181,13 @@ export default function PlanBuilder({
     ? MUNICIPALITIES.find((town) => town.slug === area)
     : undefined;
 
+  // The same area names as the header: Near me, Whole county, or the town.
   const areaLabel = area === "near"
-    ? "Near your location"
+    ? scopeLabel("nearme")
     : area === "county"
-      ? "Frederick County"
+      ? scopeLabel("county")
       : selectedTown?.name ?? "Frederick";
+  const areaPhrase = area === "near" ? scopeInSentence(areaLabel) : `for ${scopeInSentence(areaLabel)}`;
 
   const requestMyLocation = () => {
     setErrorMsg(null);
@@ -268,7 +271,7 @@ export default function PlanBuilder({
           setPlanAreaLabel(areaLabel);
           setDrawerOpen(false);
           setStatusMsg(result.stops.length > 0
-            ? `Built a ${result.stops.length}-stop plan for ${areaLabel}.`
+            ? `Built a ${result.stops.length}-stop plan ${areaPhrase}.`
             : inputs.require_verified_hours
               ? "Radius could not confirm venue hours for this outing."
               : "No stops fit those choices yet.");
@@ -903,8 +906,8 @@ function PlannerFields({
               style={{ color: "var(--app-ink)" }}
               aria-label="Planning area"
             >
-              <option value="county">Countywide</option>
-              {area === "near" && <option value="near">Near me</option>}
+              <option value="county">{scopeLabel("county")}</option>
+              {area === "near" && <option value="near">{scopeLabel("nearme")}</option>}
               {MUNICIPALITIES.map((town) => (
                 <option key={town.slug} value={town.slug}>
                   {town.slug === "frederick" ? "Frederick" : town.name}

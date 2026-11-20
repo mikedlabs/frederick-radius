@@ -28,7 +28,7 @@ describe("power-outage Ask grounder", () => {
         total_served: 100_000,
         munis: [],
       },
-    }, "Near you");
+    }, "Near me");
 
     expect(result.answer).toContain("42 customers without power");
     expect(result.answer).toContain("cannot tell whether a specific address is included");

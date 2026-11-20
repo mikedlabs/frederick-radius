@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { eventTrust, placeHoursTrust, formatChecked, TRUST_COLOR } from "@/lib/trust";
+import { eventTrust, placeHoursTrust, formatChecked, placeFreshnessEvidence, TRUST_COLOR } from "@/lib/trust";
 import type { OpenStatus } from "@/lib/hours";
 import type { Hours } from "@/data/places";
 
@@ -94,8 +94,39 @@ describe("formatChecked", () => {
     expect(formatChecked(iso(40 * 86_400_000), NOW)).toMatch(/Updated on \w+ \d+/);
   });
 
+  it("prints a date-only value as the recorded day, not the evening before", () => {
+    expect(formatChecked("2026-05-14", Date.parse("2026-11-11T12:00:00Z"))).toBe("Updated on May 14");
+  });
+
   it("a future timestamp degrades gracefully", () => {
     expect(formatChecked(new Date(NOW + 5_000).toISOString(), NOW)).toBe("Updated just now");
+  });
+});
+
+describe("placeFreshnessEvidence", () => {
+  it("keeps the hours observation and the listing check apart", () => {
+    // Wag's Restaurant, as decorated on 2026-11-11: Google hours observed in
+    // August, the listing itself last checked in May.
+    expect(placeFreshnessEvidence({
+      hours_updated_at: "2026-08-22T08:01:01.244Z",
+      last_verified_at: "2026-05-20T16:12:54.399Z",
+    })).toEqual({
+      hours: "2026-08-22T08:01:01.244Z",
+      listing: "2026-05-20T16:12:54.399Z",
+    });
+  });
+
+  it("never lends the listing date to the hours caveat", () => {
+    // An enrolled official source with no usable observation has a listing
+    // check but no hours date (Emmitsburg Branch Library, 2026-11-11).
+    expect(placeFreshnessEvidence({ last_verified_at: "2026-05-20T21:22:03.821Z" })).toEqual({
+      hours: undefined,
+      listing: "2026-05-20T21:22:03.821Z",
+    });
+  });
+
+  it("treats empty strings as missing", () => {
+    expect(placeFreshnessEvidence({ hours_updated_at: "", last_verified_at: "" })).toEqual({ hours: undefined, listing: undefined });
   });
 });
 

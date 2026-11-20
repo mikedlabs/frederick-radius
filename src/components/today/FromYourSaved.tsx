@@ -54,7 +54,7 @@ function SavedPlacePreview({ place, returnTo }: { place: PlaceCardData; returnTo
       <span><BookmarkCheck aria-hidden />Saved</span>
       <Link href={mapHref} prefetch={false} aria-label={`Map saved place: ${place.name}`}><MapPin aria-hidden />Map<ArrowRight aria-hidden /></Link>
     </div>
-    <PlaceCardPhotoCredit source={source} loaded={loaded} touchTarget compact />
+    <PlaceCardPhotoCredit source={source} loaded={loaded} touchTarget />
   </article>;
 }
 

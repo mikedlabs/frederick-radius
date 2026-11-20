@@ -43,7 +43,7 @@ function answer(
     total: 3,
     mayAssertNoneOpen: true,
     browseHref: "/nearby?c=coffee",
-    contextLabel: "Near you",
+    contextLabel: "Near me",
     contextSource: "device",
     fallbackReason: null,
   };

@@ -42,6 +42,7 @@ describe("TodayCard fallback", () => {
     ).toEqual({
       headline: "Mostly sunny",
       safetyNote: "The weather-alert feed is unavailable.",
+      safetyNoteRoutine: false,
     });
   });
 
@@ -58,6 +59,16 @@ describe("TodayCard fallback", () => {
     ).toEqual({
       headline: "Mostly sunny",
       safetyNote: "The air-quality reading is unavailable.",
+      safetyNoteRoutine: true,
+    });
+  });
+
+  it("keeps a combined alert and air-quality miss out of the routine details", () => {
+    expect(compactWeatherRead({ verdict: "x", condition: "Mostly sunny", alertsAvailable: false,
+      airQualityAvailable: false, activeAlertCount: 0, airQualityIndex: null })).toEqual({
+      headline: "Mostly sunny",
+      safetyNote: "Weather-alert and air-quality checks are unavailable.",
+      safetyNoteRoutine: false,
     });
   });
 
@@ -74,6 +85,7 @@ describe("TodayCard fallback", () => {
     ).toEqual({
       headline: "Air quality is unhealthy.",
       safetyNote: null,
+      safetyNoteRoutine: false,
     });
   });
 });

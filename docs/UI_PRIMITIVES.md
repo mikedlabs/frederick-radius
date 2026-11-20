@@ -159,6 +159,16 @@ generic directory data (parks, trails, amenities, contacts). Use
 `PlaceCard variant="row"` for place data with photos and hours, and
 `EventRow` for events.
 
+`PlaceCard variant="row" hoursInMeta` is the answer-list form Nearby uses
+(the food and other "open now, near me" lists). Its muted meta line leads
+with the distance when one is known, then the category and the town, and
+ends with "Hours not confirmed" when hours are unknown. The status line
+appears only for hours Radius can state, so a confirmed-open place stands out
+in its row, and reason labels and the field-notes tag stay on the place
+sheet. It uses the 56px media slot so a 320px phone keeps room for the name.
+The row carries no Directions button: that lives in the place sheet, which
+keeps the list free of a filled action per row.
+
 ```tsx
 <RowList>
   {parks.map((p) => (
@@ -312,7 +322,72 @@ under its icon. `MobileBarControl` wraps a reused client control such as
 
 - Give a bar at most one `primary` cell, and only when the page has no other
   filled coral action.
+- The event bar picks its one `primary` cell in this order: Tickets, then
+  Online details for an event with an online part, then Directions for a
+  scheduled event that has not ended, is attended in person
+  (`physicalAttendance`) and has a street address or a precise location,
+  then Add to calendar.
+  It holds at most four cells (Add to calendar, Tickets or Online details,
+  Directions, Save), and the calendar cell's visible label is always
+  "Add to calendar". A cancelled, postponed or ended event offers no
+  Directions or calendar cell. The desktop action row keeps its own order.
 - Do not stack it above `BottomNav` or add a second floating action bar.
+
+### `LiveOpenStatus` and `PlaceSourceLine`: answer first, provenance last
+`src/components/place/LiveOpenStatus.tsx` is the one status line under a
+place's title on the place page and in the place sheet. A confirmed open,
+closing-soon or closed state is the whole answer. Otherwise it keeps the plain
+caveat ("Hours not recently confirmed", or "Venue opening not confirmed" for
+a schedule that covers only part of the venue) and puts a plain "Hours last
+checked {date}" on its own line under it, the date the hours themselves were
+last checked (`hoursCheckedAt`, from `placeFreshnessEvidence(place).hours`).
+That date is plain muted text, not a `FreshnessChip`: the chip's green
+"checked at source" form would contradict the caveat.
+`src/components/place/PlaceSourceLine.tsx` is the one muted line of record
+provenance after the content: the `SourceBadge`, "Confirmed by Google" when
+the hours are not first-party, the listing check (a `FreshnessChip`), and
+the record's own update date ("Updated on ...", or "Updated yesterday" when
+recent) when it names a different day from the listing check. Items join with a middle dot through `SOURCE_LINE_ITEM`
+(`src/components/ui/sourceLineItem.ts`), which draws a dot only after a
+visible item, so an empty item never leaves one behind at the start of the
+line. A selector cannot see where a row wraps, so a wrapped item still
+carries its dot. The sheet passes its correction link as children. A place with no schedule renders no `HoursBlock`; the status
+line is its only hours voice.
+
+- Every date says what it dates. The status line takes the hours check
+  date. The hours provenance with the schedule may repeat that observation
+  with its source and time; both come from the same observation, so they
+  always agree. The source line takes the listing check and, only on a
+  different day, the record's own update. Never put two dates for one fact
+  side by side, and never print the same day twice in one line.
+- Keep attribution for a single fact beside that fact, not in the source
+  line: `PlaceDescriptionCredit`, `HoursBlock` provenance, each field note's
+  own date and link, and the `CommerceActions` source label.
+- The event page builds the same shape inline on one line after the
+  description: `TrustChip`, the publisher basis and `FreshnessChip`, each a
+  `SOURCE_LINE_ITEM`, then `EventSourceLink` after its own separator span.
+
+### `PhotoCreditLine`: the one reviewed photograph credit
+`src/components/place/PhotoCreditLine.tsx`. Every reviewed licensed
+photograph (curated place photos, licensed event venue photos and the town
+hero) prints a short muted credit under its photo: author and the capture
+year (when the record has a valid one) on one plain line, then the license,
+the source and `edited` (when the stored file differs from the source file)
+on a second line of links. Only that second line carries 44px link targets,
+so the credit stays compact, and no line starts or ends on a separator dot. Build its
+facts with `curatedPhotoCredit` or `eventPhotoCredit` from
+`src/lib/curated-photo-source.ts`; `PlaceCardPhotoCredit` and
+`EventVisualCredit` already do. A record with an earlier publication adds an
+"Original photograph" source link after the source.
+
+- License, source and original-photograph links stay underlined (color alone
+  never marks a link) with a real 44px target, and render outside the
+  destination link.
+- The `edited` word comes from the record's structured `edited` field, never
+  from parsing `modifications`. The full `modifications` change record stays
+  in the data and is not printed on any public surface.
+- Google photos keep `GooglePhotoAttributionLine`, and owned reference photos
+  keep their "Appearance unverified" context; neither uses this line.
 
 ### Other canonical pieces (already existed, keep using)
 `CollapsibleSection` (a group wrapper that hides what is not needed) and the

@@ -1170,7 +1170,7 @@ export default function EventsExplorer({
           <span className="min-w-0 flex-1">
             <span className="block text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
               {geolocation.state.status === "denied"
-                ? "Location is blocked for this site."
+                ? "Location is off."
                 : geolocation.state.status === "unavailable"
                   ? "This device cannot share a location."
                   : geolocation.state.status === "error"

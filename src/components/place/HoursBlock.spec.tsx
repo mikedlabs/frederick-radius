@@ -44,7 +44,7 @@ describe("official hours detail display", () => {
 });
 
 
-describe("missing and merchant hours", () => {
+describe("merchant hours", () => {
   it("renders merchant provenance from its own source and observation, distinct from library evidence", () => {
     const at = new Date("2026-10-20T16:00:00Z");
     vi.useFakeTimers(); vi.setSystemTime(at);
@@ -61,7 +61,7 @@ describe("missing and merchant hours", () => {
     expect(merchantHours).toBeDefined();
     expect(merchantHours?._official).toMatchObject({ source_name: merchantRow.source_name, source_url: merchantRow.source_url, observed_at: merchantRow.observed_at });
     const merchantProvenance = placeHoursProvenance({ hours: merchantHours, hours_source: "first_party", hours_updated_at: "2026-10-20T15:59:00Z" });
-    const merchantHtml = renderToStaticMarkup(<HoursBlock hours={merchantHours} verified provenance={merchantProvenance} />);
+    const merchantHtml = renderToStaticMarkup(<HoursBlock hours={merchantHours!} verified provenance={merchantProvenance} />);
     expect(merchantHtml).toContain("Hours from Thai Meric Eatery &amp; Bar, observed Oct 20, 2026 at 7:42 AM ET.");
     expect(merchantHtml).toContain(`href="${merchantRow.source_url}"`);
     expect(merchantHtml).not.toContain("Frederick County Public Libraries");
@@ -89,29 +89,52 @@ describe("missing and merchant hours", () => {
   it.each([
     ["brewers-alley-frederick", "brewers-alley", "2026-10-19T23:24:49.283Z"],
     ["gravel-and-grind-frederick", "gravel-and-grind", "2026-10-19T23:24:50.964Z"],
-  ])("withholds %s's retained approved schedule after a failed verification and keeps its contact action", (slug, file, observedAt) => {
+  ])("withholds %s's retained approved schedule after a failed verification, leaving the status line its only hours voice", (slug, file, observedAt) => {
     const at = new Date("2026-10-20T12:00:00Z");
     vi.useFakeTimers(); vi.setSystemTime(at);
     const data = merchantFixture(slug, file, observedAt, at);
     data.review.push({ slug, checked_at: "2026-10-20T09:32:45.347Z", reason: "source_unavailable" });
     const source = MERCHANT_HOURS_SOURCES.find((item) => item.slug === slug)!;
     const result = merchantHoursForPlace({ slug, category: source.category, website: source.url }, data, at);
+    // No hours means no HoursBlock: the page renders none, and the status
+    // line carries the caveat. A withheld schedule publishes no observation
+    // date, so the page passes none and the caveat stands alone.
     expect(result).toEqual({ enrolled: true });
     expect(data.places[0].observed_at).toBe(observedAt);
-    const html = renderToStaticMarkup(<HoursBlock hours={result.hours} verified={Boolean(result.hours)} website={source.url} />);
-    expect(html).toContain("Hours not recently confirmed");
-    expect(html).toContain(`href="${source.url}"`);
-    expect(html).not.toContain("Official business hours");
-    expect(html).not.toContain("The business published this schedule");
-    expect(html).not.toContain("FCPL");
+    const hero = renderToStaticMarkup(<LiveOpenStatus hours={result.hours} verified={false} initial={{ state: "unknown" }} hoursCheckedAt={undefined} />);
+    expect(hero).toContain("Hours not recently confirmed");
+    expect(hero).not.toContain("data-place-status-line");
+    expect(hero).not.toContain("Check with the business");
+    expect(hero).not.toContain("Official business hours");
   });
-  it("shows usable contact actions without inventing a historical schedule", () => {
-    const html = renderToStaticMarkup(<HoursBlock website="https://example.org/" phone="(301) 555-0100" />);
+});
+
+describe("status line answer and caveat", () => {
+  it("keeps a confirmed state as the whole answer, with no date beside it", () => {
+    vi.useFakeTimers(); vi.setSystemTime(now);
+    const html = renderToStaticMarkup(<LiveOpenStatus hours={hours} verified initial={{ state: "open", closesAt: "21:00", closingSoon: false }} hoursCheckedAt="2026-10-12T09:13:00.000Z" />);
+    expect(html).toContain("Open until 9pm");
+    expect(html).not.toContain("data-place-status-line");
+    expect(html).not.toContain("Hours not recently confirmed");
+  });
+  it("keeps the unconfirmed caveat with a plain date of the last hours check", () => {
+    const html = renderToStaticMarkup(<LiveOpenStatus verified={false} initial={{ state: "unknown" }} hoursCheckedAt="2026-08-22T08:01:01.244Z" />);
+    const doc = new JSDOM(html).window.document;
+    const line = doc.querySelector("[data-place-status-line]")!;
+    expect(line.firstElementChild?.textContent).toBe("Hours not recently confirmed");
+    expect(line.lastElementChild?.textContent).toBe("Hours last checked Aug 22, 2026");
+    // Never the green "checked at source" badge beside an unconfirmed caveat.
+    expect(html).not.toContain("checked at source");
+    expect(html).not.toContain("--app-forest-text");
+  });
+  it("prints a padded midnight-UTC check on the day it records", () => {
+    const html = renderToStaticMarkup(<LiveOpenStatus verified={false} initial={{ state: "unknown" }} hoursCheckedAt="2026-08-22T00:00:00.000Z" />);
+    expect(html).toContain("Hours last checked Aug 22, 2026");
+  });
+  it("prints the caveat alone when no hours check date exists", () => {
+    const html = renderToStaticMarkup(<LiveOpenStatus verified={false} initial={{ state: "unknown" }} />);
     expect(html).toContain("Hours not recently confirmed");
-    expect(html).toContain('href="https://example.org/"');
-    expect(html).toContain('href="tel:3015550100"');
-    expect(html).not.toContain("Hours not posted");
-    expect(html).not.toContain("FCPL");
+    expect(html).not.toContain("data-place-status-line");
   });
 });
 

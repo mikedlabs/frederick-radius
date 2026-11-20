@@ -159,6 +159,21 @@ export function rightNowDecisionReasons(
   ).reasons;
 }
 
+/**
+ * Whether confirmed-open places form a hard first tier. Close by wins whenever
+ * a trustworthy origin exists (owner decision on the November 11, 2026
+ * hierarchy audit): strict open-first put a confirmed-open restaurant 6.2
+ * miles away above everything around the corner. With an origin, a required
+ * intent therefore ranks like `bonus`: a known closure still sinks, and a
+ * confirmed-open place only wins a close call. Rows mark which are open.
+ */
+export function rightNowHasOpenTier(
+  availabilityMode: RightNowAvailabilityMode,
+  hasOrigin: boolean,
+): boolean {
+  return availabilityMode === "required" && !hasOrigin;
+}
+
 export function compareRightNowCandidates(
   a: RightNowCandidate,
   b: RightNowCandidate,
@@ -167,9 +182,10 @@ export function compareRightNowCandidates(
   personal: Omit<SmartNearbyContext, "hasOrigin"> = {},
   availabilityMode: RightNowAvailabilityMode = "required",
 ): number {
-  if (availabilityMode === "required") {
-    // Food and other truly time-sensitive intents keep the familiar open-first
-    // tier, but only after the caller has verified sufficient hours coverage.
+  if (rightNowHasOpenTier(availabilityMode, hasOrigin)) {
+    // Without a trustworthy origin, food and other truly time-sensitive
+    // intents keep the familiar open-first tier, but only after the caller has
+    // verified sufficient hours coverage.
     if (a.open !== b.open) return a.open ? -1 : 1;
   } else {
     // A known closure is actionable evidence and belongs after usable choices.
@@ -217,7 +233,7 @@ export function compareRightNowCandidates(
   // after the trust/distance contract. They cannot make a farther credible
   // place leapfrog a closer credible one; without a trustworthy origin they
   // remain the primary quality order.
-  const openBonus = availabilityMode === "bonus" ? 0.07 : 0;
+  const openBonus = availabilityMode === "not-applicable" ? 0 : 0.07;
   const quality = (candidate: RightNowCandidate) =>
     (sort === "smart"
       ? smartNearbyScore(candidate, context)
@@ -239,27 +255,32 @@ export function compareRightNowCandidates(
   );
 }
 
-/** Describe the actual ordering shown in Nearby. The caller says whether this
- * result set has an honest hard availability tier. */
-export function rightNowSortLabel(
+/**
+ * One complete sentence that describes the order Nearby actually shows. The
+ * caller passes whether this result set has the hard confirmed-open tier
+ * (`rightNowHasOpenTier`) and whether any confirmed-closed place is listed,
+ * because outside that tier a known closure sorts after every usable choice.
+ */
+export function rightNowOrderSentence(
   sort: RightNowSort,
   hasOrigin: boolean,
-  availabilityLead: "open" | "available" | null,
+  { openFirst, closedLast }: { openFirst: boolean; closedLast: boolean },
 ): string {
-  const label = (orderedBy: string) =>
-    availabilityLead
-      ? `${availabilityLead} first, then ${orderedBy}`
-      : `${orderedBy} first`;
-  if (sort === "smart") {
-    return label("best fit");
+  if (openFirst) {
+    return sort === "rated"
+      ? "Places confirmed open come first, then the top rated."
+      : "Places confirmed open come first, then the best matches.";
   }
-  if (sort === "rated") {
-    return label("top rated");
-  }
-  if (hasOrigin) {
-    return label("nearest");
-  }
-  return availabilityLead
-    ? `${availabilityLead} first, then best matches`
-    : "best matches";
+  const order = sort === "rated"
+    ? "The top rated places come first."
+    : !hasOrigin
+      ? "The best matches come first."
+      : sort === "nearest"
+        ? "Places are sorted by distance, nearest first."
+        // compareNearbyPlaceCandidates ranks an unreviewed listing as if it
+        // were 1 km farther, and inside one 150 m window a better-confirmed
+        // listing leads before match quality, so a strict "closest first"
+        // would misdescribe both.
+        : "The closest places come first, though a confirmed listing can come ahead of a less-confirmed one close by.";
+  return closedLast ? `${order} Places confirmed closed come last.` : order;
 }

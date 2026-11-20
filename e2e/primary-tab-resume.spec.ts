@@ -66,6 +66,28 @@ async function boundary(page: Page, baseURL: string | undefined) {
 }
 const search = (page: Page) => page.getByRole("combobox", { name: /Search this map|Search Frederick Radius/ });
 const tabs = (page: Page) => page.getByRole("navigation", { name: "Primary", exact: true });
+test("a tab resumed after a header area change opens in the new area instead of reviving the old town", async ({ page, baseURL }) => {
+  await page.setViewportSize({ width: 390, height: 844 }); await page.emulateMedia({ reducedMotion: "reduce" });
+  await boundary(page, baseURL);
+  // An explicit inbound link still sets the shared area.
+  await page.goto("/events?in=thurmont&lens=week", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-events-interaction-ready]")).toHaveAttribute("data-events-interaction-ready", "true", { timeout: 30_000 });
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("fr:scope:v1"))).toBe("town:thurmont");
+  await tabs(page).getByRole("link", { name: "Map", exact: true }).tap();
+  await expect(search(page)).toBeVisible({ timeout: 30_000 });
+  const area = page.locator("[data-location-chip]");
+  await area.click();
+  await page.getByRole("button", { name: "Whole county", exact: true }).click();
+  await expect(area).toHaveAttribute("aria-label", /Current scope: Whole county/);
+  await tabs(page).getByRole("link", { name: "Events", exact: true }).tap();
+  // The map's own address already says in=county, so wait for Events itself.
+  await expect(page).toHaveURL(/\/events\?/);
+  await expect.poll(() => new URL(page.url()).searchParams.get("in")).toBe("county");
+  expect(new URL(page.url()).searchParams.get("lens")).toBe("week");
+  await expect(page.locator("[data-events-interaction-ready]")).toHaveAttribute("data-events-interaction-ready", "true");
+  expect(await page.evaluate(() => localStorage.getItem("fr:scope:v1"))).toBe("county");
+  await expect(area).toHaveAttribute("aria-label", /Current scope: Whole county/);
+});
 for (const width of [320, 390]) {
   test(`Map tabs restore query camera layers and latest local typing at ${width}px`, async ({ page, baseURL }, info) => {
     await page.setViewportSize({ width, height: 844 }); await page.emulateMedia({ reducedMotion: "reduce" });

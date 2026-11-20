@@ -222,42 +222,6 @@
   padding-inline: var(--app-space-3);
 }
 
-.parksCard :global(.place-card-photo-credit-row) {
-  align-items: center;
-  gap: var(--spacing) var(--app-space-2);
-}
-
-.parksCard :global(.place-card-photo-edits) {
-  min-width: 44px;
-  margin-inline-start: auto;
-}
-
-.parksCard :global(.place-card-photo-edits > summary) {
-  min-width: 44px;
-  min-height: 48px;
-  align-content: center;
-  list-style-position: inside;
-  cursor: pointer;
-  border-radius: var(--app-radius-sm);
-}
-
-.parksCard :global(.place-card-photo-edits > summary:focus-visible) {
-  outline: 2px solid var(--app-ink);
-  outline-offset: -2px;
-}
-
-.parksCard :global(.place-card-photo-edits[open]) {
-  flex-basis: 100%;
-  margin-inline-start: 0;
-}
-
-.parksCard :global(.place-card-photo-credit-details) {
-  display: grid;
-  gap: var(--spacing);
-  padding-block: var(--spacing) var(--app-space-2);
-  overflow-wrap: anywhere;
-}
-
 /* At enlarged text the card has fewer effective rems to work with. Reflow the
    illustration and controls instead of wrapping individual letters. */
 @container nearby-card (max-width: 12rem) {

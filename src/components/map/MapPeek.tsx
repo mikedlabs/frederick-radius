@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
+import type { MapDistanceOriginLabel } from "./distanceOrigin";
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
@@ -165,7 +166,7 @@ export function MapPeekPhoto({
       </div>
       {ready && source && (source.kind !== "owned" || source.referenceContext === "appearance-unverified") && (
         <div className="map-peek-source-credit">
-          <PlaceCardPhotoCredit source={source} loaded touchTarget discloseModifications />
+          <PlaceCardPhotoCredit source={source} loaded touchTarget />
         </div>
       )}
     </>
@@ -261,7 +262,7 @@ export default function MapPeek({
   nearbyUtilities?: NearbyUtility[];
   /** Device location when available. Without one, omit distance. */
   distanceOrigin: LngLat | null;
-  distanceOriginLabel: "from you" | "from map center";
+  distanceOriginLabel: MapDistanceOriginLabel;
   onClose: () => void;
   onDetails: () => void;
 }) {

@@ -3,7 +3,7 @@ import { askFrederick } from "@/lib/ask/answer";
 import { recordSearchMiss } from "@/lib/telemetry/searchMiss";
 import { isRateLimited, isSameOriginMutationRequest, readJsonBodyWithLimit } from "@/lib/origin-check";
 import { roundCoord } from "@/lib/walkTime";
-import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
+import { parseScope, resolveDecisionContext, SCOPE_COOKIE, scopeInSentence, scopeLabel } from "@/lib/scope";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { applyAskOutdoorSafety } from "@/lib/ask/outdoor-safety";
 import { isOutdoorRecommendation } from "@/lib/weather-safety";
@@ -363,9 +363,9 @@ export async function POST(req: NextRequest) {
         ? "downtown Frederick"
         : deviceOutsideCounty
         ? "Frederick County"
-        : context.label === "Near you"
-          ? "near you"
-          : context.label === "Whole county"
+        : context.label === scopeLabel("nearme")
+          ? scopeInSentence(context.label)
+          : context.label === scopeLabel("county")
             ? "Frederick County"
             : context.label
                 .replace(/^Ranked from\s+/i, "")

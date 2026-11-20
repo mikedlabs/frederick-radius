@@ -691,8 +691,9 @@ function HistoryImageAttribution({ image }: { image: HistoryImage }) {
         className="underline underline-offset-2"
       >
         {image.license.label}
-      </a>{" "}
-      · {image.modifications}
+      </a>
+      {/* The change record stays internal; the credit only says it changed. */}
+      {image.edited && <>{" "}· edited</>}
     </p>
   );
 }

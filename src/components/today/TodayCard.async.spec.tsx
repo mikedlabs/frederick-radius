@@ -114,7 +114,9 @@ describe("TodayCard provider composition", () => {
     expect(html).toContain('data-weather-density="masthead"');
     expect(html.match(/<summary\b/g)).toHaveLength(1);
     expect(html.indexOf('href="/pulse?open=weather"')).toBeGreaterThan(html.indexOf("</summary>"));
+    // A missing air-quality reading is routine evidence behind the forecast details.
     expect(html.slice(html.indexOf("</summary>"), html.indexOf("</details>"))).toContain("The air-quality reading is unavailable.");
+    expect(html.slice(html.indexOf("</details>"))).not.toContain("The air-quality reading is unavailable.");
     for (const fact of ["72°", "Mostly sunny", "NWS forecast · Frederick", "Oct 8, 2026, 7:35 AM EDT", "High 76°", "Sunset", "data-live-daylight", "The air-quality reading is unavailable."]) {
       expect(html).toContain(fact);
     }

@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { consumeInitialPlaceCameraFocus } from "./mapInitialSelection";
+import { consumeInitialPlaceCameraFocus, entryNamesMapEntity } from "./mapInitialSelection";
+import { mapPlaceHref } from "@/lib/map-url-state";
+
+describe("entryNamesMapEntity", () => {
+  it("treats a place or event link as a destination", () => {
+    expect(entryNamesMapEntity(new URL(mapPlaceHref("baker-park-frederick"), "https://x.test").search)).toBe(true);
+    expect(entryNamesMapEntity("?event=photo-party-2026-11-13")).toBe(true);
+  });
+  it("leaves a plain or camera-only map arrival alone", () => {
+    expect(entryNamesMapEntity("")).toBe(false);
+    expect(entryNamesMapEntity("?c=-77.41627,39.41600,15.5")).toBe(false);
+    expect(entryNamesMapEntity("?place=")).toBe(false);
+  });
+  it("lets the place link reach the cold place camera focus", () => {
+    const search = new URL(mapPlaceHref(slug), "https://x.test").search;
+    expect(consumeInitialPlaceCameraFocus({ current: slug }, { ...barePlace, liveSearch: search })).toBe(true);
+  });
+});
 
 const slug = "schifferstadt-architectural-museum-frederick";
 const barePlace = {

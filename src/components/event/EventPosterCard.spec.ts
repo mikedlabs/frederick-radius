@@ -172,7 +172,10 @@ describe("EventPosterCard visual trust", () => {
     expect(credit).toContain(metadata.image.license.label);
     expect(credit).toContain(metadata.image.license.url);
     expect(credit).toContain(metadata.provenance.original_source_url);
-    expect(credit).toContain("Original file unchanged; display may resize or crop.");
+    expect(credit).toContain("<span data-photo-credit-year=\"true\">2004</span>");
+    expect(credit).not.toContain("data-photo-credit-edited");
+    expect(credit).not.toContain(metadata.image.modifications.replace(/'/g, "&#x27;").replace(/"/g, "&quot;"));
+    expect(credit).not.toContain("Original file unchanged");
     expect(posterVisualForEvent(row, { ...visual, licensedCredit: undefined })).toBeNull();
   });
 

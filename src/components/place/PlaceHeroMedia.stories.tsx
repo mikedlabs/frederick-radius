@@ -35,7 +35,7 @@ export const MuseumEntranceAt16By10: Story = {
   play: async ({ canvasElement }) => {
     const image = await loadedImage(canvasElement);
     await expect(getComputedStyle(image).objectPosition).toBe("50% 100%");
-    await expect(within(canvasElement).getByText("Photo by NatMuseCivMed.")).toBeVisible();
+    await expect(within(canvasElement).getByText("NatMuseCivMed", { exact: true })).toBeVisible();
     await expect(within(canvasElement).getByRole("link", { name: "CC BY-SA 4.0" })).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0/");
     await expect(canvasElement.querySelector("button a")).toBeNull();
   },

@@ -13,12 +13,11 @@ vi.mock("@/components/ui/BottomSheet", () => ({
 }));
 vi.mock("@/components/saved/SaveButton", () => ({ default: () => null }));
 vi.mock("./ShareButton", () => ({ default: () => null }));
-vi.mock("./SourceBadge", () => ({ default: () => null }));
+vi.mock("./SourceBadge", () => ({ default: () => null, sourceBadgeTier: () => null }));
 vi.mock("./FieldNotesCard", () => ({ default: () => null }));
 vi.mock("./GooglePlaceContext", () => ({ default: liveContext }));
 vi.mock("@/components/plan/PlanFromPlaceLink", () => ({ default: () => null }));
 vi.mock("@/lib/aerial", () => ({ nearestAerial: () => null, currentSeason: () => "autumn" }));
-vi.mock("@/lib/cuisine", () => ({ knownFor: () => null }));
 vi.mock("@/lib/decision/telemetry", () => ({ decisionContextFromPath: () => ({ surface: "map" }), trackDecision: () => {} }));
 
 import PlaceSheet from "./PlaceSheet";

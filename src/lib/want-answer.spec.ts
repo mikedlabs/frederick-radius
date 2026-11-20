@@ -399,7 +399,7 @@ describe("buildWantAnswer context", () => {
       { lng: -77.4105, lat: 39.4143 },
       new Date("2026-07-28T16:00:00.000Z"),
       {
-        contextLabel: "Near you",
+        contextLabel: "Near me",
         contextSource: "device",
       },
     );
@@ -432,7 +432,7 @@ describe("buildWantAnswer context", () => {
       { lng: -77.4105, lat: 39.4143 },
       pinned,
       {
-        contextLabel: "Near you",
+        contextLabel: "Near me",
         contextSource: "device",
       },
     );
@@ -442,7 +442,7 @@ describe("buildWantAnswer context", () => {
       { lng: -77.4105, lat: 39.4143 },
       pinned,
       {
-        contextLabel: "Near you",
+        contextLabel: "Near me",
         contextSource: "device",
       },
     );
@@ -469,7 +469,7 @@ describe("buildWantAnswer context", () => {
       { lng: -77.4096, lat: 39.42165 },
       new Date("2026-07-26T16:00:00.000Z"),
       {
-        contextLabel: "Near you",
+        contextLabel: "Near me",
         contextSource: "device",
       },
     );

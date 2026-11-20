@@ -155,7 +155,7 @@ test.describe("critical surfaces under combined dependency failure", () => {
     ).toBeVisible({ timeout: 15_000 });
     await expect(
       page.getByRole("searchbox", {
-        name: "Ask or find across Frederick County",
+        name: "Ask or find across the whole county",
       }),
     ).toBeVisible();
     await expect(page).toHaveURL(/\/today(?:[?#]|$)/);

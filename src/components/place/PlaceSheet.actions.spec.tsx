@@ -17,7 +17,7 @@ vi.mock("@/components/ui/BottomSheet", () => ({
 vi.mock("@/components/saved/SaveButton", () => ({ default: ({ label, refId, barLabel }: { label: string; refId: string; barLabel?: string }) =>
   <button type="button" aria-label={label} data-save-ref={`place:${refId}`} className="min-h-[52px]">{barLabel}</button> }));
 vi.mock("./ShareButton", () => ({ default: () => null }));
-vi.mock("./SourceBadge", () => ({ default: () => null }));
+vi.mock("./SourceBadge", () => ({ default: () => null, sourceBadgeTier: () => null }));
 vi.mock("./FieldNotesCard", () => ({ default: () => null }));
 vi.mock("./GooglePlaceContext", () => ({ default: () => null }));
 vi.mock("./HoursBlock", () => ({ default: (props: unknown) => {
@@ -25,7 +25,6 @@ vi.mock("./HoursBlock", () => ({ default: (props: unknown) => {
 } }));
 vi.mock("@/components/plan/PlanFromPlaceLink", () => ({ default: () => null }));
 vi.mock("@/lib/aerial", () => ({ nearestAerial: () => ({ src: "/fixtures/aerial.jpg", distance_m: 50, season: "autumn" }), currentSeason: () => "autumn" }));
-vi.mock("@/lib/cuisine", () => ({ knownFor: () => null }));
 vi.mock("@/lib/decision/telemetry", () => ({ decisionContextFromPath: () => ({ surface: "map" }), trackDecision: () => {} }));
 vi.mock("@/lib/place-card-photo", async importOriginal => {
   const actual = await importOriginal<typeof import("@/lib/place-card-photo")>();
@@ -77,6 +76,21 @@ describe("place sheet task-first actions", () => {
     await act(async () => root.render(<PlaceSheet place={place} metadataPending={metadataPending} historyLayerId="declared-place-layer" onClose={() => {}} />));
   }
   const precedes = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  it("keeps the source and observation time of confirmed hours that are not an official schedule", async () => {
+    await render(fixture({
+      hours_source: "google_places", hours_updated_at: "2026-10-28T12:00:00Z",
+      hours: { thu: [{ open: "09:00", close: "17:00" }] },
+      google_hours: ["Thursday: 9:00 AM to 5:00 PM"],
+    }));
+    const provenance = host.querySelector("[data-place-hours-provenance]");
+    expect(provenance?.textContent).toBe("Hours from Google, observed Oct 28, 2026 at 8:00 AM ET.");
+  });
+
+  it("prints no second provenance line for an official schedule, which HoursBlock already dates", async () => {
+    await render();
+    expect(host.querySelector("[data-place-hours-provenance]")).toBeNull();
+  });
 
   it("brings the existing Directions, full menu and single Save beside identity before optional content", async () => {
     const place = fixture();

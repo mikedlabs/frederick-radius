@@ -434,7 +434,7 @@ export default function BottomSheet({
             dragTransition={reduce ? REDUCED_DRAG_RELEASE : undefined}
             onDragEnd={handleDragEnd}
             style={{ y, maxHeight }}
-            className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated-solid)] pb-[env(safe-area-inset-bottom,0px)] shadow-[var(--app-shadow-3)] sm:bottom-4 sm:left-1/2 sm:right-auto sm:w-[min(760px,calc(100vw-2rem))] sm:rounded-[var(--app-radius-lg)] sm:border sm:[translate:-50%_0]"
+            className="absolute inset-x-0 bottom-0 flex flex-col overflow-clip rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated-solid)] pb-[env(safe-area-inset-bottom,0px)] shadow-[var(--app-shadow-3)] sm:bottom-4 sm:left-1/2 sm:right-auto sm:w-[min(760px,calc(100vw-2rem))] sm:rounded-[var(--app-radius-lg)] sm:border sm:[translate:-50%_0]"
           >
             <SheetDragContext.Provider
               value={(event) => dragControls.start(event)}

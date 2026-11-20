@@ -35,6 +35,7 @@ vi.mock("next/navigation", () => ({
     if (state.paramsPending) throw state.paramsSuspension;
     return new URLSearchParams(window.location.search);
   },
+  useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
 }));
 vi.mock("@/hooks/useGeolocation", () => ({
   GEOLOCATION_CHANGE_EVENT: "fr:geolocation-change",
@@ -92,7 +93,7 @@ describe("Today hydrated scope agrees with its area control", () => {
   it("uses explicit county for an unset visitor and retains it in the browse link", async () => {
     await render();
     expect(container.querySelector("select")?.value).toBe("county");
-    expect(container.textContent).toContain("Countywide briefing");
+    expect(container.textContent).toContain("Whole county briefing");
     expect(container.textContent).not.toContain("Frederick City picks");
     expect(state.answer).toHaveBeenCalledWith("cat:coffee", null, "county");
     expect(container.querySelector('a[href="/nearby?c=coffee&in=county"]')).not.toBeNull();
@@ -105,7 +106,7 @@ describe("Today hydrated scope agrees with its area control", () => {
     await render();
     expect(getScope()).toBe("town:frederick");
     expect(container.querySelector("select")?.value).toBe("town:frederick");
-    expect(container.textContent).toContain("Frederick City picks · Countywide weather");
+    expect(container.textContent).toContain("Frederick City picks · Weather for the whole county");
     expect(state.answer).toHaveBeenCalledWith("cat:coffee", null, "town:frederick");
     expect(container.querySelector('a[href="/nearby?c=coffee&in=frederick"]')).not.toBeNull();
   });
@@ -147,7 +148,7 @@ describe("Today names county fallbacks without presenting them as town results",
     expect(state.answer.mock.calls.every((call) => call[2] === "town:thurmont")).toBe(true);
     expect(state.answer).toHaveBeenCalledTimes(1);
     expect(container.querySelector("select")?.value).toBe("town:thurmont");
-    expect(container.textContent).toContain("Countywide picks · Checking Thurmont");
+    expect(container.textContent).toContain("Whole county picks · Checking Thurmont");
     expect(container.textContent).toContain("White Rabbit Gastropub");
     expect(container.querySelector('a[href="/nearby?c=lunch&in=county"]')).not.toBeNull();
     expect(container.querySelector('a[href="/nearby?c=lunch&in=thurmont"]')).toBeNull();
@@ -157,7 +158,7 @@ describe("Today names county fallbacks without presenting them as town results",
     window.history.replaceState(null, "", "/today?in=thurmont");
     state.answer.mockRejectedValue(new Error("Place answer deadline exceeded"));
     await renderCountyFallback();
-    expect(container.textContent).toContain("Countywide picks · Thurmont results unavailable");
+    expect(container.textContent).toContain("Whole county picks · Thurmont results unavailable");
     expect(container.textContent).toContain("White Rabbit Gastropub");
     expect(container.querySelector('a[href="/nearby?c=lunch&in=county"]')).not.toBeNull();
     expect(container.querySelector('[aria-busy="true"]')).toBeNull();
@@ -172,7 +173,7 @@ describe("Today names county fallbacks without presenting them as town results",
     await act(async () => release(townAnswer));
     expect(container.textContent).toContain("Thurmont place");
     expect(container.textContent).not.toContain("White Rabbit Gastropub");
-    expect(container.textContent).not.toContain("Countywide picks");
+    expect(container.textContent).not.toContain("Whole county picks");
     expect(container.querySelector('[data-today-section-heading]')?.textContent).toContain("Thurmont");
     expect(container.querySelector('a[href="/nearby?c=lunch&in=thurmont"]')).not.toBeNull();
   });
@@ -183,7 +184,7 @@ describe("Today names county fallbacks without presenting them as town results",
     await renderCountyFallback();
     expect(container.textContent).not.toContain("White Rabbit Gastropub");
     expect(container.textContent).not.toContain("County opening place");
-    expect(container.textContent).not.toContain("Countywide picks");
+    expect(container.textContent).not.toContain("Whole county picks");
     expect(container.textContent).toContain("Current hours do not confirm an open match for lunch in Thurmont.");
     expect(container.querySelector('[data-today-place-preview]')).toBeNull();
     expect(container.querySelector('a[href="/nearby?c=lunch&in=county"]')).not.toBeNull();
@@ -250,7 +251,7 @@ describe("Today names county fallbacks without presenting them as town results",
       });
       expect(scopeEvents).not.toHaveBeenCalled();
       expect(container.querySelector("select")?.value).toBe("town:thurmont");
-      expect(container.textContent).toContain("Countywide picks · Checking Thurmont");
+      expect(container.textContent).toContain("Whole county picks · Checking Thurmont");
       expect(state.answer.mock.calls.map((call) => call[2])).toEqual(["town:brunswick", "town:thurmont"]);
       await act(async () => releaseOld({ ...townAnswer, hero: { ...townAnswer.hero, name: "Old Brunswick response" }, contextLabel: "Brunswick" }));
       expect(container.textContent).not.toContain("Old Brunswick response");

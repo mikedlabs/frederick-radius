@@ -156,7 +156,7 @@ export default function EventPosterCard({ event, visual, venuePhotos, allowVenue
         {whyItMatters ? <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{whyItMatters}</p> : null}
         {facts.length > 0 ? <p className="mt-1 text-[13px] leading-snug tabular-nums" style={{ color: "var(--app-ink-2)" }}>{facts.join(" · ")}</p> : null}
       </> : null}
-      mediaCredit={visibleVisual ? <EventVisualCredit visual={visibleVisual} inlineLicensed={concise} className={styles.credit} /> : null}
+      mediaCredit={visibleVisual ? <EventVisualCredit visual={visibleVisual} className={styles.credit} /> : null}
     />
   );
 }

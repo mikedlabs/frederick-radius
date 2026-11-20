@@ -141,8 +141,7 @@
 
 .open:focus-visible,
 .toggle:focus-visible,
-.more:focus-visible,
-.credit :global(summary:focus-visible) {
+.more:focus-visible {
   outline: 2px solid var(--app-link);
   outline-offset: -2px;
 }
@@ -151,24 +150,6 @@
   min-width: 0;
   grid-column: 1 / -1;
   overflow-wrap: anywhere;
-}
-
-.credit :global(.place-card-photo-credit-row) {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(44px, 0.8fr);
-  align-items: center;
-  column-gap: 6px;
-}
-
-.credit :global(.place-card-photo-edits[open]) {
-  grid-column: 1 / -1;
-}
-
-.credit :global(.place-card-photo-edits > summary) {
-  display: list-item;
-  min-height: 44px;
-  align-content: center;
-  cursor: pointer;
 }
 
 @media (max-width: 359px) {

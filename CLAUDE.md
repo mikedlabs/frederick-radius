@@ -156,8 +156,19 @@ update its implementation, relevant contract and tests together.
   was removed as clutter). A first-time visitor may see one consent sheet
   offering **Use my location** or **Browse county**; it explains the benefit
   before any browser prompt. After that, the shared header location control is
-  the sole Near me / Whole county / town scope control. Do not add another
-  floating Locate or scope toggle to the map. Radius ("Nearby") mode still exists behind
+  meant to be the sole Near me / Whole county / town scope control, on the map
+  and on every other page (owner decision 2026-11-11). That is in progress:
+  the header control, Today's select and the list-page ScopeBar write through
+  `commitLocationScope` in `src/components/nav/locationScopeNavigation.ts`,
+  while the in-page choosers on Search, Events, the map dock and Ask still
+  write the area directly until they are retired. /nearby has no chooser of
+  its own; its two area escapes use the same writer. Do not add another
+  chooser, and route any new area write through that writer. Tab memory
+  never restores an old area (`src/lib/primary-tab-session.ts`), and the area
+  prints as "Near me", "Whole county" or the town's name (`scopeLabel`). The
+  remaining exceptions are listed in the Location section of
+  `docs/USER_FIRST_INTERACTION_CONTRACT.md` and go away with the choosers.
+  Do not add another floating Locate or scope toggle to the map. Radius ("Nearby") mode still exists behind
   `/map?mode=radius` (isochrone + control sheet). It has no floating toggle,
   but it does have deliberate secondary entries: the "Compare travel reach"
   row at the end of the map dock's "Find nearby" pane
@@ -193,6 +204,15 @@ update its implementation, relevant contract and tests together.
   states and promoted fallback records. Keep live publisher fanout out of the
   visitor path. Application builds use reviewed promoted artifacts, validate
   them and never refresh live sources.
+- **Event lanes live in `src/lib/events/classify.ts`.** Closure notices
+  ("Town Offices Closed", "Veterans Day - Library Closed") are the
+  `closure_notice` lane and appear in no event list, including Government &
+  notices (owner decision, November 11, 2026). Today's holiday note already
+  states county closures. A bar, brewery or winery category needs strong
+  evidence: the event's title, the publisher's own iCal CATEGORIES, or a
+  feed whose default category is that venue type (Monocacy Brewing's feed).
+  A word in the description alone never sets one
+  (`CATEGORY_KEYWORDS` in `src/lib/integrations/ical-live.ts`).
 - **After changing place data or its cleaning:** regenerate the client
   dataset — `npm run build:client-places` (search/map/funnel read
   `places-client.json`, not the loaders), run its gates, then update the

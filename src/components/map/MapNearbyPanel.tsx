@@ -5,7 +5,9 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { formatDistance, haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
+import { haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
+import { scopeLabel } from "@/lib/scope";
+import { distanceFrom, mapDistanceOriginLabel } from "./distanceOrigin";
 import { haptic } from "@/lib/haptics";
 import {
   recordPlaceCardPhotoResult, selectedPlaceCardPhoto,
@@ -57,7 +59,7 @@ function NearbyPlace({
   const category = CATEGORY_BY_SLUG[place.category]?.name ?? place.category;
   const title = SHORT_TITLES.get(place.slug) ?? place.name;
   const distance = origin && isValidCoord(place.geom)
-    ? formatDistance(haversineMeters(origin, place.geom))
+    ? distanceFrom(haversineMeters(origin, place.geom), mapDistanceOriginLabel(fromDevice))
     : null;
 
   return (
@@ -91,12 +93,12 @@ function NearbyPlace({
           {heading && <span className={styles.heading}>{heading}</span>}
           <strong data-map-nearby-name className={styles.name}>{title}</strong>
           <span id={metaId} className={styles.meta}>
-            {category}{distance && <> · {distance} {fromDevice ? "from you" : "from map center"}</>}
+            {category}{distance && <> · {distance}</>}
           </span>
         </span>
       </button>
       {loaded && needsCredit && <div className={styles.credit}>
-        <PlaceCardPhotoCredit source={photo} loaded touchTarget compact discloseModifications />
+        <PlaceCardPhotoCredit source={photo} loaded touchTarget />
       </div>}
     </>
   );
@@ -123,7 +125,7 @@ export default function MapNearbyPanel({
 
   const fromDevice = Boolean(origin && userLoc && isValidCoord(userLoc) &&
     origin.lng === userLoc.lng && origin.lat === userLoc.lat);
-  const heading = fromDevice ? "Near you" : "In this view";
+  const heading = fromDevice ? scopeLabel("nearme") : "In this view";
   const remaining = Math.max(0, ranked.length - count);
   const hasMore = ranked.length > 1;
   const toggleText = expanded ? "Less" : `All ${ranked.length.toLocaleString("en-US")}`;

@@ -202,7 +202,13 @@ for (const appearance of ["light", "dark"] as const) {
             await expect(dailyFacts.nth(index)).toBeVisible();
             await expect(dailyFacts.nth(index)).toHaveText(value);
           }
-          const visibleSafety = renderedWeather.locator("[data-weather-headline], [data-weather-safety-note]:not(details [data-weather-safety-note])");
+          // A missing air-quality reading waits inside the closed details.
+          for (const note of await renderedWeather.locator("[data-weather-routine-note]").all()) {
+            await expect(note).not.toBeVisible();
+            expect(await note.evaluate((element) => element.closest("details") !== null)).toBe(true);
+          }
+          // A missing alert feed and every warning stay in the first read.
+          const visibleSafety = renderedWeather.locator("[data-weather-headline], [data-weather-safety-note]");
           for (const note of await visibleSafety.all()) {
             await expect(note).toBeVisible();
             expect(await note.evaluate((element) => element.closest("details") === null)).toBe(true);

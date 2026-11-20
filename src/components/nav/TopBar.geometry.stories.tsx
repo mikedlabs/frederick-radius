@@ -28,7 +28,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-function geometryStory(pathname: string, enlarged = false, dark = false, fontFamily?: string): Story {
+function geometryStory(pathname: string, enlarged = false, dark = false, fontFamily?: string, wholeCounty = false): Story {
+  const areaName = wholeCounty ? /Whole county/ : /Frederick/;
   // These are the expected controls for each surface, independent of TopBar's render logic.
   const isToday = pathname === "/today";
   const isAsk = pathname === "/ask" || pathname.startsWith("/ask/");
@@ -37,7 +38,7 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
   const minimumVisibleTargets = 3 + Number(isToday || globalArea) + Number(isToday || globalFind);
   return {
     parameters: { nextjs: { navigation: { pathname } } },
-    beforeEach: enlarged || fontFamily ? () => {
+    beforeEach: wholeCounty ? () => { setScope("county"); } : enlarged || fontFamily ? () => {
       const previousFontFamily = document.documentElement.style.getPropertyValue("--font-sans-base");
       const previousFontSize = document.documentElement.style.fontSize;
       const previousAppearance = getAppearance();
@@ -68,8 +69,16 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
       for (const width of browser ? widths : [document.documentElement.clientWidth]) {
         if (browser) await browser.page.viewport(width, 844);
         await waitFor(() => expect(document.documentElement.clientWidth).toBe(width));
-        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
         const context = `${pathname} at ${width}px${enlarged ? " / 200% text" : ""}`;
+        // `fonts.ready` can resolve while the wordmark's face is still being
+        // fetched, and the wider fallback serif then wraps the row (the
+        // intermittent 109px header). Measure only in the loaded face. A deep
+        // page shows Back and no wordmark, so its face is never requested.
+        if (header.querySelector<HTMLElement>("[data-header-wordmark]")?.getClientRects().length) await waitFor(() => expect(
+          [...document.fonts].filter((face) => /caslon/i.test(face.family)).map((face) => face.status),
+          `${context}: wordmark face loaded`,
+        ).toEqual(["loaded"]), { timeout: 15_000 });
+        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
         if (enlarged) {
           await expect(getComputedStyle(document.documentElement).fontSize, context).toBe("32px");
           await expect(document.documentElement.dataset.appearance, context).toBe(dark ? "dark" : "light");
@@ -83,7 +92,10 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
         await expect(header.scrollWidth, context).toBeLessThanOrEqual(header.clientWidth);
         if (!enlarged && header.getBoundingClientRect().height !== 57) {
           const rowStyle = getComputedStyle(row);
+          const mark = header.querySelector<HTMLElement>("[data-header-wordmark]");
           console.info("Header font-fit diagnostic", JSON.stringify({ pathname, width, probeFont: fontFamily ?? "app system", rootFont: getComputedStyle(document.documentElement).fontSize,
+            wordmark: mark && { width: mark.getBoundingClientRect().width, font: getComputedStyle(mark).fontFamily, size: getComputedStyle(mark).fontSize, weight: getComputedStyle(mark).fontWeight,
+              spacing: getComputedStyle(mark).letterSpacing, faces: [...document.fonts].filter((face) => /caslon/i.test(face.family)).map((face) => `${face.family} ${face.weight} ${face.status}`) },
             row: { width: row.clientWidth, height: row.getBoundingClientRect().height, font: rowStyle.fontFamily, gap: rowStyle.gap, padding: [rowStyle.paddingLeft, rowStyle.paddingRight] },
             children: [...row.children].flatMap((child) => {
               const elements = getComputedStyle(child).display === "contents" ? [...child.children] : [child];
@@ -227,11 +239,14 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
         await expect(canvas.getByText(width < 640 ? "Unverified" : "Unable to verify", { exact: true }), context).toBeVisible();
         if (globalArea) {
           const area = header.querySelector<HTMLElement>("[data-location-chip]")!;
-          await expect(area, context).toHaveAccessibleName(/Current scope: Frederick/);
+          await expect(area, context).toHaveAccessibleName(new RegExp(`Current scope: ${areaName.source}`));
           if (pathname === "/map") {
             const label = area.querySelector<HTMLElement>(width < 360 ? '[data-location-scope-label="compact"]' : '[data-location-scope-label="full"]')!;
             await expect(label, context).toBeVisible();
-            await expect(label.textContent, context).toMatch(/Frederick/);
+            // "Whole county" needs about 70px and the 320px map header leaves
+            // 50px, so the short form there is "County", printed unclipped.
+            await expect(label.textContent, context).toMatch(wholeCounty && width < 360 ? /^County$/ : areaName);
+            if (wholeCounty && width < 360) await expect(label.scrollWidth, `${context}: area name clipped`).toBeLessThanOrEqual(label.clientWidth);
           }
         }
         if (globalFind) {
@@ -245,6 +260,7 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
 
 export const Today: Story = geometryStory("/today");
 export const Map: Story = geometryStory("/map");
+export const MapWholeCounty: Story = geometryStory("/map", false, false, undefined, true);
 export const Events: Story = geometryStory("/events");
 export const Nearby: Story = geometryStory("/nearby");
 export const Contacts: Story = geometryStory("/contacts");

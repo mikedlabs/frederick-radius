@@ -27,6 +27,8 @@ export type HistoryImage = {
   source_url: string;
   license: { label: string; url: string };
   modifications: string;
+  /** The stored bytes differ from the source file; printed as "edited". */
+  edited: boolean;
 };
 
 const CC_BY_SA_4 = { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" };
@@ -75,6 +77,7 @@ export const HISTORY: HistoryEntry[] = [
       source_url: "https://commons.wikimedia.org/wiki/File:Frederick_City_Hall_MD4.jpg",
       license: CC_BY_SA_4,
       modifications: DISPLAY_MODIFICATIONS,
+      edited: true,
     },
     title: "Frederick County is born",
     year: 1748,
@@ -103,6 +106,7 @@ export const HISTORY: HistoryEntry[] = [
       source_url: "https://commons.wikimedia.org/wiki/File:UNIV_CHAPEL.jpg",
       license: CC_BY_SA_3,
       modifications: DISPLAY_MODIFICATIONS,
+      edited: true,
     },
     title: "Mount St. Mary's opens",
     year: 1808,
@@ -123,6 +127,7 @@ export const HISTORY: HistoryEntry[] = [
       source_url: "https://commons.wikimedia.org/wiki/File:Barbara_Fritchie_House,_exterior_(30378964054).jpg",
       license: CC_BY_SA_2,
       modifications: DISPLAY_MODIFICATIONS,
+      edited: true,
     },
     title: "Barbara Fritchie's flag",
     year: 1862,
@@ -155,6 +160,7 @@ export const HISTORY: HistoryEntry[] = [
       source_url: "https://commons.wikimedia.org/wiki/File:209-225_N._Market_St._Frederick_MD1.jpg",
       license: CC_BY_SA_4,
       modifications: DISPLAY_MODIFICATIONS,
+      edited: true,
     },
     title: "The $200,000 Ransom",
     year: 1864,
@@ -173,6 +179,7 @@ export const HISTORY: HistoryEntry[] = [
       source_url: "https://commons.wikimedia.org/wiki/File:Fall_Color_in_Catoctin_(2951ec76-1dd8-b71c-0796-bd497c8c4b7e).jpg",
       license: PUBLIC_DOMAIN,
       modifications: DISPLAY_MODIFICATIONS,
+      edited: true,
     },
     title: "Camp David is created",
     year: 1942,
@@ -193,6 +200,7 @@ export const HISTORY: HistoryEntry[] = [
       source_url: "https://commons.wikimedia.org/wiki/File:Carroll_Creek_Community_Bridge_-_panoramio.jpg",
       license: CC_BY_SA_3,
       modifications: DISPLAY_MODIFICATIONS,
+      edited: true,
     },
     title: "Carroll Creek is reborn",
     year: 1976,
@@ -243,6 +251,7 @@ export const HISTORY: HistoryEntry[] = [
       source_url: "https://commons.wikimedia.org/wiki/File:Frederick_clustered_spires_MD1.jpg",
       license: CC_BY_SA_4,
       modifications: DISPLAY_MODIFICATIONS,
+      edited: true,
     },
     title: "The Clustered Spires",
     kind: "fact",
@@ -291,6 +300,7 @@ export const HISTORY: HistoryEntry[] = [
       source_url: "https://commons.wikimedia.org/wiki/File:20120730_70_CSX_Brunswick,_Maryland_(9106278817).jpg",
       license: CC_BY_2,
       modifications: DISPLAY_MODIFICATIONS,
+      edited: true,
     },
     title: "Brunswick: a railroad town",
     kind: "fact",
@@ -308,6 +318,7 @@ export const HISTORY: HistoryEntry[] = [
       source_url: "https://commons.wikimedia.org/wiki/File:Casselman_River_Bridge,_2014-03-18,_01.jpg",
       license: CC0,
       modifications: DISPLAY_MODIFICATIONS,
+      edited: true,
     },
     title: "The National Pike",
     kind: "fact",
@@ -335,6 +346,7 @@ export const HISTORY: HistoryEntry[] = [
       source_url: "https://commons.wikimedia.org/wiki/File:Fort_Detrick_Nallin_Farm_Gate.jpg",
       license: PUBLIC_DOMAIN,
       modifications: DISPLAY_MODIFICATIONS,
+      edited: true,
     },
     title: "NCI Frederick: cancer research",
     kind: "fact",

@@ -420,7 +420,7 @@ describe("qualifiedSearch — Ask uses place context by default", () => {
       undefined,
       {
         origin: { lng: -77.4109, lat: 39.4137 },
-        contextLabel: "Near you",
+        contextLabel: "Near me",
       },
     );
     const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
@@ -429,7 +429,7 @@ describe("qualifiedSearch — Ask uses place context by default", () => {
       compoundIntent: "breakfast-sandwich",
       categoryLabel: "a breakfast sandwich",
     });
-    expect(meta.contextLabel).toBe("Near you");
+    expect(meta.contextLabel).toBe("Near me");
     expect(places[0]?.slug).toBe("beans-bagels-frederick");
     expect(places[0]?.distance_m).toBeLessThan(250);
     expect(places.slice(0, 3).some((place) => place.municipality === "brunswick")).toBe(false);

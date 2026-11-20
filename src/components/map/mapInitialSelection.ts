@@ -1,3 +1,11 @@
+/** True when the arrival URL names a place or event. That entity is the
+ * reason for the visit, so Near me fitting and the cold-open smart default
+ * both stand aside and let it be selected and framed. */
+export function entryNamesMapEntity(search: string): boolean {
+  const params = new URLSearchParams(search);
+  return Boolean(params.get("place") || params.get("event"));
+}
+
 /** A late renderer load cannot replay a mount-time entity over newer intent.
  * Read the live address bar at the call site, not a lagging router snapshot. */
 export function shouldApplyInitialMapSelection(

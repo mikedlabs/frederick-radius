@@ -73,9 +73,10 @@ describe("Today compact weather disclosure", () => {
     variant: null, forecastAvailable: true, issuedAt: "2026-10-12T14:53:00.000Z", safetyNote: null,
   };
 
-  it("shows the day’s high, low, sunrise and sunset before opening the forecast", () => {
+  it("shows the day’s high, low, sunrise and sunset first and keeps a missing air-quality reading in the details", () => {
     const html = renderToStaticMarkup(createElement(TodayWeatherView, {
-      ...reading, actionableHeadline: true, headline: "Flash Flood Warning is active.", safetyNote: "The air-quality reading is unavailable.",
+      ...reading, actionableHeadline: true, headline: "Flash Flood Warning is active.",
+      safetyNote: "The air-quality reading is unavailable.", safetyNoteRoutine: true,
     }));
     const evidenceStart = html.indexOf("<details");
     const evidenceEnd = html.indexOf("</details>");
@@ -93,8 +94,30 @@ describe("Today compact weather disclosure", () => {
     expect(html.indexOf("70°")).toBeLessThan(summaryEnd);
     expect(details.indexOf('href="/pulse?open=weather"')).toBeGreaterThan(details.indexOf("</summary>"));
     expect(html.indexOf("Flash Flood Warning is active.")).toBeGreaterThan(evidenceEnd);
-    expect(html.slice(evidenceEnd)).toContain("The air-quality reading is unavailable.");
+    // A missing air-quality reading is routine evidence behind the forecast details.
+    expect(details.indexOf("The air-quality reading is unavailable.")).toBeGreaterThan(details.indexOf("</summary>"));
+    expect(details).toContain("data-weather-routine-note");
+    expect(html).not.toContain("data-weather-safety-note");
+    expect(html.slice(evidenceEnd)).not.toContain("The air-quality reading is unavailable.");
     expect(details).not.toContain("Flash Flood Warning is active.");
+  });
+
+  it.each(["The weather-alert feed is unavailable.", "Weather-alert and air-quality checks are unavailable."])(
+    "keeps a safety-relevant feed miss in the initial read: %s", (note) => {
+      const html = renderToStaticMarkup(createElement(TodayWeatherView, { ...reading, safetyNote: note, safetyNoteRoutine: false }));
+      const evidenceEnd = html.indexOf("</details>");
+      expect(html.indexOf(note)).toBeGreaterThan(evidenceEnd);
+      expect(html.slice(html.indexOf("<details"), evidenceEnd)).not.toContain(note);
+    },
+  );
+
+  it("keeps a routine note visible when there is no forecast to disclose", () => {
+    const html = renderToStaticMarkup(createElement(TodayWeatherView, {
+      ...reading, forecastAvailable: false, headline: "Flash Flood Warning is active.", condition: "", temperatureF: null,
+      highF: null, lowF: null, sun: null, issuedAt: null, safetyNote: "The air-quality reading is unavailable.", safetyNoteRoutine: true,
+    }));
+    expect(html).not.toContain("<details");
+    expect(html).toContain("The air-quality reading is unavailable.");
   });
 
   it("labels an earlier daytime high with its own issuance in the forecast details", () => {

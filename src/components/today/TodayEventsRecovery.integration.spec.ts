@@ -119,7 +119,7 @@ it("hydrates a degraded empty brief from the real archive reader and API without
     expect(container.textContent).toContain("Venue · Baker Park");
     expect(link?.querySelector("[data-event-photo-credit]")).toBeNull();
     expect(container.querySelector("a a")).toBeNull();
-    expect(container.textContent).toContain("1 event pick today · 1 event pick tonight · Countywide");
+    expect(container.textContent).toContain("1 event pick today · 1 event pick tonight · Whole county");
     expect(container.textContent).not.toMatch(/Updating today's event picks|Event picks are unavailable|No picks in this brief|Partial coverage/);
     expect(fetchBridge).toHaveBeenCalledTimes(1);
     expect(sql).toHaveBeenCalledTimes(2);

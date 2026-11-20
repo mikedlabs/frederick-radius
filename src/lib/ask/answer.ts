@@ -138,7 +138,7 @@ function categoryName(slug: string): string {
  * the visitor's precise location. Never flatten those into "from you." */
 function rankingAnchor(context: QualifiedSearchContext): string {
   const raw = context.contextLabel?.trim();
-  if (!raw || /^(?:near you|your location)$/i.test(raw)) return "your location";
+  if (!raw || /^(?:near me|your location)$/i.test(raw)) return "your location";
   if (/^ranked from\s+/i.test(raw)) return raw.replace(/^ranked from\s+/i, "");
   if (/^whole county$/i.test(raw)) return "the whole county";
   return raw;
@@ -3590,7 +3590,7 @@ function deterministicAnswer({
     return "I don’t have your location, so these are countywide catalog matches, not a nearest-place claim.";
   }
   if (strictNearest && nearMeApplied) {
-    const anchor = !contextLabel || /^(?:near you|your location)$/i.test(contextLabel)
+    const anchor = !contextLabel || /^(?:near me|your location)$/i.test(contextLabel)
       ? "your location"
       : contextLabel.replace(/^ranked from\s+/i, "");
     return `Here ${count === 1 ? "is" : "are"} the ${count} closest match${count === 1 ? "" : "es"} from ${anchor}, ranked by the location and hours available now.`;

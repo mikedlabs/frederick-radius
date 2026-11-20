@@ -11,7 +11,8 @@ vi.mock("next/navigation", () => ({
     () => "",
   )),
 }));
-vi.mock("@/hooks/useGeolocation", () => ({ useGeolocation: () => ({ state: { status: "idle" }, request: vi.fn() }) }));
+const geolocation = vi.hoisted(() => ({ state: { status: "idle" } as { status: string } }));
+vi.mock("@/hooks/useGeolocation", () => ({ useGeolocation: () => ({ state: geolocation.state, request: vi.fn() }) }));
 vi.mock("next/link", () => ({ default: "a" }));
 import LocationChip from "./LocationChip";
 import { getScope, SCOPE_CHANGE_EVENT } from "@/lib/scope";
@@ -24,7 +25,7 @@ let release: () => void;
 let synchronized: number;
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 beforeEach(() => {
-  vi.useFakeTimers(); vi.clearAllMocks(); synchronized = 0;
+  vi.useFakeTimers(); vi.clearAllMocks(); synchronized = 0; geolocation.state = { status: "idle" };
   window.localStorage.clear(); document.cookie = "fr_scope=county; path=/";
   originalReplace = window.history.replaceState;
   originalReplace.call(window.history, { __NA: true, __PRIVATE_NEXTJS_INTERNALS_TREE: { retain: "exact tree" }, marker: "retained" }, "", "/compass?in=county&chapter=go-out&q=coffee#tools");
@@ -53,6 +54,17 @@ async function selectThurmont() {
 }
 
 describe("native Compass location ownership", () => {
+  it("prints Near me while locating and says the live state in its accessible name", async () => {
+    // A page without an area in its address, so the stored Near me applies.
+    originalReplace.call(window.history, { __NA: true }, "", "/my-radius");
+    window.localStorage.setItem("fr:scope:v1", "nearme");
+    geolocation.state = { status: "loading" };
+    await act(async () => root.render(<LocationChip />));
+    const chip = host.querySelector<HTMLButtonElement>("[data-location-chip]")!;
+    expect(chip.textContent).toContain("Near me");
+    expect(chip.textContent).not.toMatch(/Locating/);
+    expect(chip.getAttribute("aria-label")).toBe("Change town or location scope. Current scope: Near me, finding your location");
+  });
   it("keeps the workspace and Next URL consumer mounted with one actual scope change", async () => {
     rememberNativeRequest({ draft: { kind: "tools", query: "coffee" }, target: "tool-filter" });
     const id = window.history.state[NATIVE_REQUEST_ENTRY_KEY].id;

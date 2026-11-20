@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:1ba9ce3adc3724276c87be95e78a0d14985657b6995073c945ecf37c40aebbb2",
+  "data_version": "sha256:001e95fb0d31dbb543384234930f1dcb00cac60bd648d62aeffe68cb7fba0a84",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-11-20T15:45:37.204Z",
+      "promoted_at": "2026-11-20T18:26:58.439Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -174,15 +174,15 @@
         },
         {
           "path": "src/lib/integrations/wikimedia.ts",
-          "sha256": "12631b45e07cbb2ec3fc711563325428b2fc1b3e1347524de34bba3ec4ca57c4",
+          "sha256": "743f62206e3526119bb21be66d334c059f90a9b3d58f81f5899aa48fa06fdfb8",
           "records": null,
-          "bytes": 11135
+          "bytes": 12610
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
-          "sha256": "82aebdd9655e5a30269884a3c504d8974b535d3c20e34f3440c6eb85b0bfb206",
+          "sha256": "484b8a90bd6527382b5026e5eb1d7c9cf2ab72e75aaba557e47ff15a71c1fd66",
           "records": null,
-          "bytes": 33521
+          "bytes": 35469
         },
         {
           "path": "public/place-photos/county-ballenger-creek-park-frederick.jpg",

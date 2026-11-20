@@ -261,4 +261,19 @@ describe("Event Display disclosure dismissal", () => {
     expect(display().open).toBe(false);
     expect(document.activeElement).toBe(summary());
   });
+
+  it("announces the result count without printing it above the first event, and shows only a partial notice", async () => {
+    const count = container.querySelector<HTMLElement>(".eb-countline")!;
+    expect(count.textContent).toBe("2 event listings · Thurmont");
+    expect(count.getAttribute("aria-live")).toBe("polite");
+    expect(count.classList.contains("sr-only")).toBe(true);
+    expect(container.querySelector("[data-events-partial]")).toBeNull();
+    expect(container.querySelector(".eb-display-options > summary")).not.toBeNull();
+    await act(async () => root.render(fixture({ countComplete: false })));
+    expect(count.textContent).toBe("2 event listings shown · Thurmont · partial results");
+    const partial = container.querySelector<HTMLElement>("[data-events-partial]")!;
+    expect(partial.textContent).toBe("Partial results");
+    expect(partial.classList.contains("sr-only")).toBe(false);
+    expect(partial.getAttribute("aria-hidden")).toBe("true");
+  });
 });

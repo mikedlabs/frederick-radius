@@ -170,6 +170,31 @@ export function placeHoursTrust(
   }
 }
 
+/**
+ * The two dates a place detail surface may show, kept apart on purpose.
+ *
+ * `hours` is when the hours themselves were last observed. It belongs in the
+ * status line beside the hours caveat ("Hours not recently confirmed · Hours
+ * checked Aug 22"), because that is the claim it qualifies. `listing` is the
+ * listing-level check and belongs in the muted source line after the content.
+ * Showing both side by side read as two contradictory "checked" claims
+ * (November 2026 detail audit), so each surface takes exactly one of them.
+ */
+export type PlaceFreshnessEvidence = {
+  hours?: string;
+  listing?: string;
+};
+
+export function placeFreshnessEvidence(place: {
+  hours_updated_at?: string;
+  last_verified_at?: string;
+}): PlaceFreshnessEvidence {
+  return {
+    hours: place.hours_updated_at || undefined,
+    listing: place.last_verified_at || undefined,
+  };
+}
+
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
@@ -179,6 +204,27 @@ const DAY = 24 * HOUR;
  * the output is deterministic in tests. Returns null for a missing or
  * unparseable input rather than guessing.
  */
+/**
+ * The time zone that prints a stored timestamp as the day it records. A
+ * date-only value ("2026-05-14") or a padded midnight-UTC stamp
+ * ("2026-08-22T00:00:00.000Z") names a calendar day, so it is read in UTC;
+ * anything else is a real moment and is read in Frederick's time zone.
+ * Pinning the zone also keeps server and client output identical.
+ */
+export function recordedDayTimeZone(iso: string): "UTC" | "America/New_York" {
+  return /^\d{4}-\d{2}-\d{2}(?:T00:00:00(?:\.000)?Z)?$/.test(iso.trim()) ? "UTC" : "America/New_York";
+}
+
+/** "Aug 22, 2026" for a stored check timestamp, or null when it is unusable. */
+export function formatCheckedDay(iso: string | undefined): string | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return null;
+  return new Date(t).toLocaleDateString("en-US", {
+    month: "short", day: "numeric", year: "numeric", timeZone: recordedDayTimeZone(iso),
+  });
+}
+
 export function formatChecked(iso: string | undefined, nowMs: number = Date.now()): string | null {
   if (!iso) return null;
   const t = new Date(iso).getTime();
@@ -193,9 +239,13 @@ export function formatChecked(iso: string | undefined, nowMs: number = Date.now(
   }
   if (diff < 2 * DAY) return "Updated yesterday";
   if (diff < 7 * DAY) return `Updated ${Math.floor(diff / DAY)} days ago`;
+  // A date-only value ("2026-05-14", the shape of place.updated_at) parses
+  // as UTC midnight, which is the previous evening in Frederick, so the day is
+  // read in the zone that keeps it the recorded day.
   return `Updated on ${new Date(t).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
+    timeZone: recordedDayTimeZone(iso),
   })}`;
 }
 

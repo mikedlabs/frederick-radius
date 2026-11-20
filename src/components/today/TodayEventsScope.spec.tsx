@@ -87,6 +87,6 @@ it("keeps a truthful county brief in initial HTML while the URL hook waits for h
   const html = renderToString(<TodayEventsRecovery scoped initialResponse={countyResponse} />);
   expect(html).toContain('href="/events/county-fixture"');
   expect(html).toContain("County fixture");
-  expect(html).toContain("Countywide");
+  expect(html).toContain("Whole county");
   expect(html).not.toContain("Brunswick");
 });
