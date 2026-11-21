@@ -861,11 +861,11 @@
       "slug": "safeway-middletown",
       "source_url": "https://local.safeway.com/safeway/md/middletown/815-e-main-st.html",
       "source_name": "Safeway Middletown",
-      "source_sha256": "10c7aff4549c216c18ad00ef6b1143049d9278facba004bd3cb07fd4311904a7",
-      "observed_at": "2026-11-18T09:22:46.013Z",
-      "expires_at": "2026-11-25T09:22:46.013Z",
-      "coverage_from": "2026-11-18",
-      "coverage_through": "2026-11-25",
+      "source_sha256": "077666070530da230d55747712e98cdd40def9b4256ea03a0859666e73e6378f",
+      "observed_at": "2026-11-21T09:22:09.857Z",
+      "expires_at": "2026-11-28T09:22:09.857Z",
+      "coverage_from": "2026-11-21",
+      "coverage_through": "2026-11-28",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -910,17 +910,24 @@
             "close": "23:00"
           }
         ]
-      }
+      },
+      "exceptions": [
+        {
+          "date": "2026-11-26",
+          "closes_at": "16:00",
+          "reason": "Store closes early."
+        }
+      ]
     },
     {
       "slug": "safeway-walkersville",
       "source_url": "https://local.safeway.com/safeway/md/walkersville/151-walkers-village-way.html",
       "source_name": "Safeway Walkersville",
-      "source_sha256": "2ef32596930c2d353ab18f85ee0b27241d0fb6743f605fbcab60315a8bcb5b72",
-      "observed_at": "2026-11-18T09:22:46.445Z",
-      "expires_at": "2026-11-25T09:22:46.445Z",
-      "coverage_from": "2026-11-18",
-      "coverage_through": "2026-11-25",
+      "source_sha256": "c5d7247aa64808d9d9edbd1d07c72fe43ed385d3cd84904389aa70b00f02471c",
+      "observed_at": "2026-11-21T09:22:10.208Z",
+      "expires_at": "2026-11-28T09:22:10.208Z",
+      "coverage_from": "2026-11-21",
+      "coverage_through": "2026-11-28",
       "kind": "weekly",
       "hours": {
         "mon": [
@@ -965,7 +972,14 @@
             "close": "23:00"
           }
         ]
-      }
+      },
+      "exceptions": [
+        {
+          "date": "2026-11-26",
+          "closes_at": "16:00",
+          "reason": "Store closes early."
+        }
+      ]
     },
     {
       "slug": "common-market-frederick",

@@ -16,6 +16,7 @@ const SAFEWAY_COHORTS: readonly OfficialHoursCohort[] = SAFEWAY_LOCATIONS.map((l
     postalCode: "[itemprop='postalCode']", phone: "[itemprop='telephone']", schedule: ".js-hours-table",
   },
   hours_section: ".js-intent-hours-section", toggle: ".RedesignCore-hoursButtons > button",
+  dated_early_close: true,
   panel: ".RedesignCore-hoursWrapper > .js-intent-core-hours", toggle_labels: ["Store Hours", "Pharmacy Hours"], store_label: "Store Hours", independent_offer_names: ["Delivery in a Flash"],
   hero_schedule: ".RedesignHero-hours > .js-hours-today[data-days]", panel_schedule: ":scope > .js-hours-today[data-days]",
   schedule_row: ".c-hours-details > tbody > tr", day: ".c-hours-details-row-day", periods: ".c-hours-details-row-intervals",
