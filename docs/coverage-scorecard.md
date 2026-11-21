@@ -7,9 +7,9 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-11-20 — 1571 places._
+_Generated 2026-11-21 — 1571 places._
 
-Current checked schedules: 40. Current qualified schedules: 4.
+Current checked schedules: 36. Current qualified schedules: 2.
 Qualified venue or service tables retain their conditions and expiry. They
 are counted separately and cannot support generic Open now claims.
 
@@ -18,8 +18,8 @@ are counted separately and cannot support generic Open now claims.
 | Frederick | 855 | 680 (80%) | 19 (2%) | 711 (83%) | 714 (84%) | 50 | 297 |
 | Thurmont | 110 | 75 (68%) | 2 (2%) | 100 (91%) | 99 (90%) | 3 | 30 |
 | Brunswick | 97 | 65 (67%) | 3 (3%) | 84 (87%) | 78 (80%) | 2 | 24 |
-| Walkersville | 86 | 66 (77%) | 3 (3%) | 81 (94%) | 78 (91%) | 2 | 29 |
-| Middletown | 85 | 52 (61%) | 4 (5%) | 72 (85%) | 74 (87%) | 4 | 27 |
+| Walkersville | 86 | 66 (77%) | 2 (2%) | 81 (94%) | 78 (91%) | 2 | 29 |
+| Middletown | 85 | 52 (61%) | 3 (4%) | 72 (85%) | 74 (87%) | 4 | 27 |
 | New Market | 75 | 51 (68%) | 0 (0%) | 62 (83%) | 60 (80%) | 4 | 13 |
 | Mount Airy | 62 | 47 (76%) | 1 (2%) | 57 (92%) | 57 (92%) | 5 | 26 |
 | Emmitsburg | 57 | 39 (68%) | 2 (4%) | 52 (91%) | 51 (89%) | 2 | 18 |
@@ -28,7 +28,7 @@ are counted separately and cannot support generic Open now claims.
 | Urbana | 30 | 21 (70%) | 1 (3%) | 24 (80%) | 25 (83%) | 2 | 10 |
 | Burkittsville | 30 | 15 (50%) | 0 (0%) | 28 (93%) | 30 (100%) | 2 | 8 |
 | Rosemont | 2 | 0 (0%) | 0 (0%) | 1 (50%) | 1 (50%) | 0 | 1 |
-| **Total** | **1571** | 1164 (74%) | 36 (2%) | 1342 (85%) | 1333 (85%) | **79** | **502** |
+| **Total** | **1571** | 1164 (74%) | 34 (2%) | 1342 (85%) | 1333 (85%) | **79** | **502** |
 
 ## Coverage by category
 
@@ -76,10 +76,10 @@ successful image loading is a separate browser check.
 | Tours & rides | 2 | 0 (0%) | 1 (50%) | 2 (100%) | 2 (100%) |
 | Transit | 1 | 0 (0%) | 1 (100%) | 0 (0%) | 0 (0%) |
 | Galleries | 27 | 1 (3.7%) | 23 (85.2%) | 1 (3.7%) | 26 (96.3%) |
-| Restaurants | 178 | 13 (7.3%) | 162 (91%) | 42 (23.6%) | 171 (96.1%) |
+| Restaurants | 178 | 12 (6.7%) | 162 (91%) | 42 (23.6%) | 171 (96.1%) |
 | Coffee | 37 | 3 (8.1%) | 33 (89.2%) | 6 (16.2%) | 31 (83.8%) |
-| Ice cream & treats | 28 | 3 (10.7%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
-| Markets | 57 | 7 (12.3%) | 53 (93%) | 21 (36.8%) | 56 (98.2%) |
+| Markets | 57 | 5 (8.8%) | 53 (93%) | 21 (36.8%) | 56 (98.2%) |
+| Ice cream & treats | 28 | 4 (14.3%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
 | Libraries | 15 | 9 (60%) | 12 (80%) | 2 (13.3%) | 14 (93.3%) |
 
 ## Hours refresh artifact
