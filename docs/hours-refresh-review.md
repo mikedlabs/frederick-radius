@@ -10,8 +10,8 @@ This report is a review aid. It does not approve, reject, or change a place stat
 | Metric | Before | After | Change |
 | --- | ---: | ---: | ---: |
 | Public places | 1571 | 1571 | 0 |
-| Public places with publishable verified hours | 35 | 36 | +1 |
-| Public places with qualified schedules | 4 | 4 | 0 |
+| Public places with publishable verified hours | 36 | 34 | -2 |
+| Public places with qualified schedules | 4 | 2 | -2 |
 | Hours snapshot rows | 1522 | 1522 | 0 |
 | Fresh schedule rows in snapshot | 1160 | 1160 | 0 |
 | Unmatched database rows ignored | — | 14 | — |
