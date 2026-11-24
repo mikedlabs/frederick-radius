@@ -1854,33 +1854,21 @@ export default async function PulsePage() {
           }
         : { peek: riverPeek }),
       sourceLabel: "USGS Water Data",
-      body: rivers.length > 0
-        ? (
-          <div className="space-y-4">
-            <p className="text-sm text-[var(--app-ink-2)]">{riverCoverageSummary(floodCoverage, rivers.length)}</p>
-            <RiverGaugeExplorer sites={rivers} initialGauge={riverPeekSite?.id} end={requestNow.toISOString()} />
-            <Link href="/rivers" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-[var(--app-link)] underline">
-              Open the river gauge page
-              <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+      body: (
+        <div className="space-y-4">
+          <p className="text-sm text-[var(--app-ink-2)]">{riverCoverageSummary(floodCoverage, rivers.length)}</p>
+          <RiverGaugeExplorer sites={rivers} initialGauge={riverPeekSite?.id} end={requestNow.toISOString()} />
+          <Link href="/rivers" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-[var(--app-link)] underline">
+            Open the river gauge page <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+          <div>
+            <Link href="/map?show=roads" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-[var(--app-link)] underline">
+              See county-mapped high-water areas <ChevronRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
-            <Link
-              href="/map?show=roads"
-              className="inline-flex items-center gap-1 px-1 text-[12px] font-semibold"
-              style={{ color: "var(--app-cool)" }}
-            >
-              See County-mapped high-water context
-              <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            </Link>
-            <p className="px-1 pt-0.5 text-[10px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              Gauge readings are observations. The high-water map is static risk
-              context and does not report current flooding.
-            </p>
+            <p className="text-xs leading-relaxed text-[var(--app-ink-2)]">The county map shows historical risk. Check the official gauge for recent water levels.</p>
           </div>
-        )
-        : <>
-            {emptyNote(riverCoverageSummary(floodCoverage, rivers.length))}
-            <PulseOfficialLinks topic="rivers" />
-          </>,
+        </div>
+      ),
     },
     {
       key: "airports",

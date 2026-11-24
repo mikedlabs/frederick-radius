@@ -14,12 +14,12 @@ const sites: WaterSite[] = [
   { id: "01643580", name: "MONOCACY RIVER NEAR DICKERSON, MD", river: "Monocacy River", municipality: "frederick",
     lat: 39.3, lng: -77.44, streamflowHistory: observations },
 ];
-async function mount() {
+async function mount(readingSites: WaterSite[] = sites) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
-  await act(async () => root.render(<RiverGaugeExplorer sites={sites} end={end} />));
+  await act(async () => root.render(<RiverGaugeExplorer sites={readingSites} end={end} />));
   const button = (text: string) => Array.from(container.querySelectorAll("button")).find((b) => b.textContent === text)!;
   return { container, root, button };
 }
@@ -44,6 +44,19 @@ describe("the USGS hydrograph", () => {
     expect(container.querySelector("input")?.getAttribute("aria-valuetext")).toContain("cubic feet per second");
     expect(container.querySelector('a[href*="water.noaa.gov"]')).toBeNull();
     expect(container.querySelector('a[href*="USGS-01643580"]')?.textContent).toContain("Dickerson");
+    await act(async () => root.unmount());
+  });
+  it("can request a named station independently after the county-wide reading fails", async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ end, height: observations, flow: [] }));
+    vi.stubGlobal("fetch", fetch);
+    const { container, root, button } = await mount([]);
+    expect(container.querySelector("svg[role=img]")).toBeNull();
+    expect(container.querySelector("time")).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    await act(async () => button("Check this gauge’s history").click());
+    expect(fetch.mock.calls[0][0]).toContain("gauge=01643000&period=PT6H");
+    expect(container.querySelector("svg[role=img]")).not.toBeNull();
+    expect(container.querySelector("time")?.dateTime).toBe(observations.at(-1)?.at);
     await act(async () => root.unmount());
   });
   it("discards a late range response, distinguishes unavailable history and retries a failed request", async () => {

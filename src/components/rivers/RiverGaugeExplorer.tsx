@@ -40,7 +40,7 @@ function HistoryChart({ history, period, measure, name }: { history: GaugeHistor
       </div>
       <div className={styles.extent}><span>Low <b>{format(plot.low, measure)} {shortUnit[measure]}</b></span><span>High <b>{format(plot.high, measure)} {shortUnit[measure]}</b></span></div>
     </div>
-    <p className={styles.net}>{plot.rows.length === 1 ? "USGS reported one observation in this window." : change === 0
+    <p className={styles.net}>{plot.rows.length === 1 ? "This gauge has one reading in the selected time range." : change === 0
       ? "The first and last readings were the same."
       : `${measureLabel[measure]} ${change > 0 ? "rose" : "fell"} ${format(Math.abs(change), measure)} ${shortUnit[measure]} between the first and last readings.`}</p>
     <figure className={styles.figure}>
@@ -66,12 +66,21 @@ function HistoryChart({ history, period, measure, name }: { history: GaugeHistor
   </div>;
 }
 
+type GaugeChoice = Pick<WaterSite, "id" | "name" | "gageHistory" | "streamflowHistory">;
+// Two named local forecast points remain valid lookups when the county-wide
+// observation request fails. A station name supplies no evidence of a reading.
+const namedGauges: GaugeChoice[] = [
+  { id: "01643000", name: "Monocacy River at Jug Bridge near Frederick" },
+  { id: "01638500", name: "Potomac River at Point of Rocks" },
+];
+
 export default function RiverGaugeExplorer({ sites, initialGauge, end }: { sites: WaterSite[]; initialGauge?: string; end: string }) {
-  const start = sites.find((s) => s.id === initialGauge) ?? sites.find((s) => s.id === "01643000") ?? sites[0];
+  const choices = sites.length ? sites : namedGauges;
+  const start = choices.find((s) => s.id === initialGauge) ?? choices.find((s) => s.id === "01643000") ?? choices[0];
   const [gauge, setGauge] = useState(start?.id ?? "");
-  const site = sites.find((s) => s.id === gauge) ?? start;
+  const site = choices.find((s) => s.id === gauge) ?? start;
   const [period, setPeriod] = useState<GaugePeriod>("PT6H");
-  const [measure, setMeasure] = useState<Measure>(start?.gageHistory?.length ? "height" : "flow");
+  const [measure, setMeasure] = useState<Measure>(start?.gageHistory?.length || !sites.length ? "height" : "flow");
   const [remote, setRemote] = useState<Remote | null>(null);
   const values = useRef(new Map<string, GaugeHistory>());
   const request = useRef<AbortController | null>(null);
@@ -82,17 +91,18 @@ export default function RiverGaugeExplorer({ sites, initialGauge, end }: { sites
   const latestHeight = site.gageHistory?.at(-1);
   const latestStage = classifyFlood(latestHeight?.value, stages);
   const key = site.id + period;
-  const history = period === "PT6H" ? { end, height: site.gageHistory ?? [], flow: site.streamflowHistory ?? [] }
-    : remote?.key === key ? remote.result : undefined;
+  const history = remote?.key === key ? remote.result
+    : period === "PT6H" && sites.length ? { end, height: site.gageHistory ?? [], flow: site.streamflowHistory ?? [] } : undefined;
+  const offerHistory = !sites.length && remote?.key !== key;
   const failed = remote?.key === key && remote.failed;
 
   async function choose(nextGauge: string, nextPeriod: GaugePeriod) {
     request.current?.abort();
     setGauge(nextGauge);
     setPeriod(nextPeriod);
-    if (nextGauge !== gauge) setMeasure(sites.find((s) => s.id === nextGauge)?.gageHistory?.length ? "height" : "flow");
+    if (nextGauge !== gauge) setMeasure(choices.find((s) => s.id === nextGauge)?.gageHistory?.length || !sites.length ? "height" : "flow");
     const nextKey = nextGauge + nextPeriod;
-    if (nextPeriod === "PT6H") return;
+    if (nextPeriod === "PT6H" && sites.length) return;
     const cached = values.current.get(nextKey);
     if (cached && Date.now() - Date.parse(cached.end) < 15 * 60_000) {
       setRemote({ key: nextKey, result: cached });
@@ -117,7 +127,7 @@ export default function RiverGaugeExplorer({ sites, initialGauge, end }: { sites
     <label className={styles.selector}><span className={styles.label}>Monitoring location</span>
       <span className={styles.selectWrap}><span aria-hidden="true">{name}</span><ChevronDown size={18} aria-hidden />
       <select value={site.id} onChange={(event) => void choose(event.target.value, period)}>
-        {sites.map((s) => <option key={s.id} value={s.id}>{gaugeLabel(s.name)}</option>)}
+        {choices.map((s) => <option key={s.id} value={s.id}>{gaugeLabel(s.name)}</option>)}
       </select></span>
     </label>
     <div className={styles.controls}>
@@ -129,6 +139,7 @@ export default function RiverGaugeExplorer({ sites, initialGauge, end }: { sites
       </div></fieldset>
     </div>
     {history ? <HistoryChart key={key + measure} history={history} period={period} measure={measure} name={name} />
+      : offerHistory ? <p className={styles.message}><button type="button" onClick={() => void choose(site.id, period)}>Check this gauge’s history</button></p>
       : <div className={styles.message} role="status">{failed ? <>USGS history could not be loaded. <button type="button" onClick={() => void choose(site.id, period)}>Try again</button></> : "Loading observations from USGS…"}</div>}
     <div className={styles.sources}>
       <a href={usgsGaugeReadingsUrl(site.id)} target="_blank" rel="noopener noreferrer">USGS readings for {name} <ExternalLink aria-hidden size={14} /></a>
