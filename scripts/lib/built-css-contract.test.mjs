@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -26,27 +26,39 @@ const errors = (css) => chapterCssContractErrors([{ href: "/_next/static/chunks/
 const LABEL = ".content-chapter--plain .content-chapter__label";
 const RULE = ".content-chapter--plain .content-chapter__rule";
 const OWNER = { kind: "APP_PAGE", sourceRoute: "/(app)/today/page" };
-// Exact key from the current full app's emitted today.meta and the independent
-// installed-Next adapter fixture; this is not a duplicated hash algorithm.
-const KEY = "/route-cache/APP_PAGE/00c17ba820f06f516bb2a4a6aa987ba7c9fa6ee5969bed7e86db819d47af9246/$/today";
+const STYLE_LINK = '<link rel="stylesheet" href="/_next/static/chunks/current.css"/>';
 
-function fixture(t, css = COMPILED, html = '<link rel="stylesheet" href="/_next/static/chunks/current.css"/>', { scoped = false, output, pressCss = PRESS_CSS } = {}) {
+const fixtureSubjects = {
+  walks: [{ downtown: "/images/seasons/summer/SUMMER CARROL CREEK.jpg", downtownHref: "/today/two-hours-downtown" }],
+  places: { brunswick: { slug: "co-canal-lock-30-brunswick", src: "/history-photos/co-canal.jpg" } },
+};
+function documents(styles) {
+  const photo = '<a href="/today/two-hours-downtown"><span data-today-feature-photo><img src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" alt="Carroll Creek"></span></a>';
+  const lock = '<a data-today-geographic-place="co-canal-lock-30-brunswick" href="/places/co-canal-lock-30-brunswick?in=brunswick"><img alt="Lock 30" src="/history-photos/co-canal.jpg"></a>';
+  const map = area => `<a data-today-map-link href="/map?in=${area}"><figure data-county-locator><figcaption>${area === "nearme" ? "Frederick County" : "Town center: Mount Airy"}</figcaption><svg role="img">${area === "nearme" ? "" : '<g data-locator-selection="Town center"></g>'}</svg></figure></a>`;
+  return [
+    ["county", "/today", photo], ["brunswick", "/today", lock],
+    ["mount-airy", "/today?in=mount-airy", map("mount-airy")], ["nearme", "/today?in=nearme", map("nearme")],
+  ].map(([area, path, content]) => ({ area, path, html: `<!doctype html><html><head>${styles}</head><body><main><section data-today-local-discovery>${content}</section></main></body></html>` }));
+}
+
+function validate(root) {
+  return validateBuiltCssContract(root, documents(readFileSync(join(root, "fixture-links.html"), "utf8")), fixtureSubjects);
+}
+
+function fixture(t, css = COMPILED, html = STYLE_LINK, { pressCss = PRESS_CSS } = {}) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "radius-built-css-")));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const write = (path, value) => { const file = join(root, path); mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, value); return file; };
   const json = (path, value) => write(path, JSON.stringify(value));
-  const config = { distDir: ".next", ...(scoped ? { adapterPath: "<omitted but set>" } : {}), ...(output ? { output } : {}) };
-  const prerender = { routeType: "page", response: "complete", compute: "static", dataRoute: "/today.rsc", srcRoute: "/today", initialRevalidateSeconds: 60 };
-  const htmlPath = scoped && output !== "export" ? `.next/server${KEY}.html` : ".next/server/app/today.html";
-  const metaPath = htmlPath.replace(/\.html$/, ".meta");
-  json(".next/required-server-files.json", { version: 1, config });
-  json(".next/prerender-manifest.json", { version: 4, routes: { "/today": prerender }, dynamicRoutes: {}, notFoundRoutes: [] });
+  json(".next/required-server-files.json", { version: 1, config: { distDir: ".next" } });
+  json(".next/prerender-manifest.json", { version: 4, routes: {}, dynamicRoutes: {}, notFoundRoutes: [] });
   json(".next/app-path-routes-manifest.json", { [OWNER.sourceRoute]: "/today" });
   json(".next/server/app-paths-manifest.json", { [OWNER.sourceRoute]: "app/(app)/today/page.js" });
-  json(metaPath, { routeCache: { key: KEY, owner: OWNER, isFallback: false } });
-  write(htmlPath, html);
+  write(".next/server/app/(app)/today/page.js", "// compiled APP_PAGE fixture");
+  write("fixture-links.html", html);
   write(".next/static/chunks/current.css", css + pressCss);
-  return { root, write, json, config, prerender, htmlPath, metaPath };
+  return { root, write, json };
 }
 
 test("accepts the actual minified good excerpt, including flex:0 auto implicit shrink", () => {
@@ -111,7 +123,7 @@ test("malformed CSS and unresolved values cannot create a passing contract", () 
 test("validates only CSS actually linked by Today, ignoring unreferenced good cache files", (t) => {
   const { root, write } = fixture(t, OLD_COMPILED);
   write(".next/static/chunks/stale-good.css", COMPILED);
-  const result = validateBuiltCssContract(root);
+  const result = validate(root);
   assert.equal(result.stylesheets.length, 1);
   assert.equal(result.stylesheets[0].href, "/_next/static/chunks/current.css");
   assert.equal(result.errors.length, 4);
@@ -120,24 +132,24 @@ test("validates only CSS actually linked by Today, ignoring unreferenced good ca
 test("reads current linked local CSS in HTML order, with repeated-selector overrides", (t) => {
   const { root, write } = fixture(t, COMPILED, '<link href="/_next/static/chunks/current.css" rel="stylesheet"/><link rel="stylesheet" href="/_next/static/chunks/last.css"/>');
   write(".next/static/chunks/last.css", `${LABEL}{flex-shrink:0}`);
-  const result = validateBuiltCssContract(root);
+  const result = validate(root);
   assert.equal(result.stylesheets.length, 2);
   assert.ok(result.errors.some((error) => error.includes("flex-shrink")));
 });
 
 test("real linked good bundle passes and preload/script/comment/print lookalikes do not", (t) => {
   const { root, write } = fixture(t);
-  const result = validateBuiltCssContract(root);
+  const result = validate(root);
   assert.deepEqual(result.errors, []);
   assert.match(result.stylesheets[0].sha256, /^[a-f0-9]{64}$/);
-  write(".next/server/app/today.html", '<!-- <link rel="stylesheet" href="/_next/static/chunks/current.css"/> --><script>"<link rel=\'stylesheet\' href=\'/_next/static/chunks/current.css\'>"</script><link rel="preload" as="style" href="/_next/static/chunks/current.css"/><link rel="stylesheet" media="print" href="/_next/static/chunks/current.css"/>');
-  assert.ok(validateBuiltCssContract(root).errors.some((error) => error.includes("no unconditional stylesheet")));
+  write("fixture-links.html", '<!-- <link rel="stylesheet" href="/_next/static/chunks/current.css"/> --><script>"<link rel=\'stylesheet\' href=\'/_next/static/chunks/current.css\'>"</script><link rel="preload" as="style" href="/_next/static/chunks/current.css"/><link rel="stylesheet" media="print" href="/_next/static/chunks/current.css"/>');
+  assert.ok(validate(root).errors.some((error) => error.includes("no unconditional stylesheet")));
 });
 
 for (const href of ["https://example.invalid/a.css", "//example.invalid/a.css", "/styles.css", "/_next/static/../outside.css", "/_next/static/%2e%2e/outside.css", "/_next/static/%2e%2e%2foutside.css", "/_next/static/%5coutside.css", "/_next/static/chunks/current.css?old=1", "/_next/static/chunks/current.css#old", "/_next/static/%ZZ.css"]) {
   test(`rejects unsafe/nonlocal stylesheet href ${href}`, (t) => {
     const { root } = fixture(t, COMPILED, `<link rel="stylesheet" href="${href}"/>`);
-    assert.ok(validateBuiltCssContract(root).errors.length > 0);
+    assert.ok(validate(root).errors.length > 0);
   });
 }
 
@@ -146,156 +158,102 @@ test("rejects linked CSS symlinks outside the current .next output", (t) => {
   const outside = write("outside.css", COMPILED);
   rmSync(join(root, ".next/static/chunks/current.css"));
   symlinkSync(outside, join(root, ".next/static/chunks/current.css"));
-  assert.ok(validateBuiltCssContract(root).errors.some((error) => error.includes("escapes current .next")));
+  assert.ok(validate(root).errors.some((error) => error.includes("escapes current .next")));
 });
 
-test("rejects an escaped Today HTML symlink and missing HTML without cache fallbacks", (t) => {
-  const { root, write } = fixture(t);
-  const outside = write("outside.html", '<link rel="stylesheet" href="/_next/static/chunks/current.css"/>');
-  rmSync(join(root, ".next/server/app/today.html"));
-  assert.ok(validateBuiltCssContract(root).errors.length > 0);
-  symlinkSync(outside, join(root, ".next/server/app/today.html"));
-  assert.ok(validateBuiltCssContract(root).errors.some((error) => error.includes("escapes current .next")));
-});
-
-
-test("legacy build records its manifest-derived Today owner and exact HTML", (t) => {
+test("records the manifest-derived APP_PAGE and four request-specific stylesheet lists", t => {
   const { root } = fixture(t);
-  const result = validateBuiltCssContract(root);
+  const result = validate(root);
   assert.deepEqual(result.errors, []);
-  assert.equal(result.layout, "legacy-app");
   assert.deepEqual(result.owner, OWNER);
-  assert.equal(result.routeCacheKey, KEY);
-  assert.equal(result.htmlPath, join(root, ".next/server/app/today.html"));
-});
-
-test("adapter build reads only Next's exact scoped HTML with a redacted adapter marker", (t) => {
-  const { root, htmlPath } = fixture(t, COMPILED, undefined, { scoped: true });
-  const result = validateBuiltCssContract(root);
-  assert.deepEqual(result.errors, []);
-  assert.equal(result.layout, "scoped-route-cache");
-  assert.deepEqual(result.owner, OWNER);
-  assert.equal(result.routeCacheKey, KEY);
-  assert.equal(result.htmlPath, join(root, htmlPath));
+  assert.equal(result.layout, "request-rendered");
+  assert.deepEqual(result.documents.map(doc => doc.area), ["county", "brunswick", "mount-airy", "nearme"]);
   assert.equal(result.stylesheets.length, 1);
+  assert.ok(result.stylesheets[0].bytes > 0);
 });
 
-test("unreferenced legacy good HTML and CSS cannot rescue bad selected scoped CSS", (t) => {
-  const { root, write } = fixture(t, OLD_COMPILED, undefined, { scoped: true });
+test("checks what the server served even when leftover static HTML links valid styles", t => {
+  const { root, write } = fixture(t, OLD_COMPILED);
   write(".next/server/app/today.html", '<link rel="stylesheet" href="/_next/static/chunks/stale-good.css"/>');
-  write(".next/static/chunks/stale-good.css", COMPILED);
-  const result = validateBuiltCssContract(root);
-  assert.equal(result.errors.length, 4);
-  assert.equal(result.stylesheets[0].href, "/_next/static/chunks/current.css");
+  write(".next/static/chunks/stale-good.css", COMPILED + PRESS_CSS);
+  assert.equal(validate(root).errors.length, 4);
 });
 
-test("missing selected scoped HTML fails even when a legacy good HTML exists", (t) => {
-  const { root, write, htmlPath } = fixture(t, COMPILED, undefined, { scoped: true });
-  write(".next/server/app/today.html", '<link rel="stylesheet" href="/_next/static/chunks/current.css"/>');
-  rmSync(join(root, htmlPath));
-  const result = validateBuiltCssContract(root);
-  assert.ok(result.errors.some((error) => error.includes("ENOENT")));
-  assert.equal(result.layout, "scoped-route-cache");
-  assert.equal(result.stylesheets.length, 0);
-});
-
-test("non-adapter config cannot fall back to available scoped HTML", (t) => {
-  const { root, json } = fixture(t, COMPILED, undefined, { scoped: true });
-  json(".next/required-server-files.json", { version: 1, config: { distDir: ".next" } });
-  const result = validateBuiltCssContract(root);
-  assert.equal(result.layout, "legacy-app");
-  assert.ok(result.errors.some((error) => error.includes("ENOENT")));
-  assert.equal(result.stylesheets.length, 0);
-});
-
-test("export output does not select scoped layout even with an adapter configured", (t) => {
-  const { root } = fixture(t, COMPILED, undefined, { scoped: true, output: "export" });
-  const result = validateBuiltCssContract(root);
-  assert.deepEqual(result.errors, []);
-  assert.equal(result.layout, "legacy-app");
-});
-
-for (const invalid of ["missing", "malformed", "config-missing", "adapter-not-string"]) {
-  test(`does not guess layout when emitted config is ${invalid}`, (t) => {
-    const { root, write, json } = fixture(t);
-    if (invalid === "missing") rmSync(join(root, ".next/required-server-files.json"));
-    else if (invalid === "malformed") write(".next/required-server-files.json", "{");
-    else json(".next/required-server-files.json", invalid === "config-missing" ? {} : { config: { adapterPath: {} } });
-    const result = validateBuiltCssContract(root);
-    assert.ok(result.errors.length > 0);
-    assert.equal(result.stylesheets.length, 0);
-  });
-}
-
-for (const [name, change] of [
-  ["dynamic computation", { compute: "dynamic" }],
-  ["partial response", { response: "partial" }],
-  ["route-handler identity", { routeType: "route", dataRoute: null }],
-  ["wrong RSC route", { dataRoute: "/other.rsc" }],
-  ["wrong source", { srcRoute: "/other" }],
-  ["zero revalidation", { initialRevalidateSeconds: 0 }],
+for (const [name, manifest] of [
+  ["static county page", { routes: { "/today": { dataRoute: "/today.rsc", initialRevalidateSeconds: 300 } }, dynamicRoutes: {}, notFoundRoutes: [] }],
+  ["not found", { routes: {}, dynamicRoutes: {}, notFoundRoutes: ["/today"] }],
+  ["catchall route", { routes: {}, dynamicRoutes: { "/today": {} }, notFoundRoutes: [] }],
+  ["missing routes", {}],
 ]) {
-  test(`rejects a Today prerender with ${name}`, (t) => {
-    const { root, json, prerender } = fixture(t);
-    json(".next/prerender-manifest.json", { routes: { "/today": { ...prerender, ...change } }, dynamicRoutes: {}, notFoundRoutes: [] });
-    assert.ok(validateBuiltCssContract(root).errors.length > 0);
+  test(`rejects ${name} despite a good stylesheet`, t => {
+    const { root, json } = fixture(t);
+    json(".next/prerender-manifest.json", manifest);
+    assert.match(validate(root).errors[0], /must render its exact request area/);
   });
 }
 
-test("notFound or dynamic Today records cannot pass via an existing good HTML", (t) => {
-  const { root, json, prerender } = fixture(t);
-  json(".next/prerender-manifest.json", { routes: { "/today": prerender }, notFoundRoutes: ["/today"] });
-  assert.ok(validateBuiltCssContract(root).errors.length > 0);
-  json(".next/prerender-manifest.json", { routes: { "/today": prerender }, dynamicRoutes: { "/today": {} } });
-  assert.ok(validateBuiltCssContract(root).errors.length > 0);
-});
-
-test("owner must be unique and shared by both emitted app manifests", (t) => {
+test("the route owner must be unique and shared by both emitted manifests", t => {
   const { root, json } = fixture(t);
   json(".next/app-path-routes-manifest.json", { [OWNER.sourceRoute]: "/today", "/today/page": "/today" });
-  assert.ok(validateBuiltCssContract(root).errors.some((error) => error.includes("one APP_PAGE owner")));
+  assert.match(validate(root).errors[0], /one APP_PAGE owner/);
   json(".next/app-path-routes-manifest.json", { [OWNER.sourceRoute]: "/today" });
-  json(".next/server/app-paths-manifest.json", { "/other/page": "app/other/page.js" });
-  assert.ok(validateBuiltCssContract(root).errors.some((error) => error.includes("one APP_PAGE owner")));
+  json(".next/server/app-paths-manifest.json", { [OWNER.sourceRoute]: "app/other/page.js" });
+  assert.match(validate(root).errors[0], /one APP_PAGE owner/);
 });
 
-for (const [name, routeCache] of [
-  ["wrong key", { key: KEY + "-stale", owner: OWNER, isFallback: false }],
-  ["wrong owner", { key: KEY, owner: { kind: "APP_PAGE", sourceRoute: "/other/page" }, isFallback: false }],
-  ["wrong kind", { key: KEY, owner: { ...OWNER, kind: "APP_ROUTE" }, isFallback: false }],
-  ["fallback HTML", { key: KEY, owner: OWNER, isFallback: true }],
-]) {
-  test(`rejects scoped metadata with ${name}`, (t) => {
-    const { root, json, metaPath } = fixture(t, COMPILED, undefined, { scoped: true });
-    json(metaPath, { routeCache });
-    assert.ok(validateBuiltCssContract(root).errors.some((error) => error.includes("metadata must match")));
-  });
-}
-
-for (const path of [".next/required-server-files.json", ".next/prerender-manifest.json", ".next/app-path-routes-manifest.json", ".next/server/app-paths-manifest.json"]) {
-  test(`rejects manifest symlink outside current output: ${path}`, (t) => {
+for (const path of [".next/required-server-files.json", ".next/prerender-manifest.json", ".next/app-path-routes-manifest.json", ".next/server/app-paths-manifest.json", ".next/server/app/(app)/today/page.js"]) {
+  test(`rejects a missing or escaped current build artifact: ${path}`, t => {
     const { root, write } = fixture(t);
-    const outside = write("outside.json", "{}");
+    const outside = write("outside", "{}");
     rmSync(join(root, path));
+    assert.match(validate(root).errors[0], /ENOENT/);
     symlinkSync(outside, join(root, path));
-    assert.ok(validateBuiltCssContract(root).errors.some((error) => error.includes("escapes current .next")));
+    assert.match(validate(root).errors[0], /escapes current .next/);
   });
 }
 
-test("scoped HTML and metadata remain contained in current output", (t) => {
-  const { root, write, htmlPath, metaPath } = fixture(t, COMPILED, undefined, { scoped: true });
-  const outsideHtml = write("outside.html", '<link rel="stylesheet" href="/_next/static/chunks/current.css"/>');
-  rmSync(join(root, htmlPath));
-  symlinkSync(outsideHtml, join(root, htmlPath));
-  assert.ok(validateBuiltCssContract(root).errors.some((error) => error.includes("escapes current .next")));
-  rmSync(join(root, htmlPath));
-  write(htmlPath, '<link rel="stylesheet" href="/_next/static/chunks/current.css"/>');
-  const outsideMeta = write("outside.meta", JSON.stringify({ routeCache: { key: KEY, owner: OWNER, isFallback: false } }));
-  rmSync(join(root, metaPath));
-  symlinkSync(outsideMeta, join(root, metaPath));
-  assert.ok(validateBuiltCssContract(root).errors.some((error) => error.includes("escapes current .next")));
+test("only the exact emitted deployment token is allowed on local assets", t => {
+  const { root, json } = fixture(t);
+  json(".next/required-server-files.json", { config: { deploymentId: "dpl_test123" } });
+  const response = suffix => validateBuiltCssContract(root, documents(STYLE_LINK.replace("current.css", `current.css${suffix}`)), fixtureSubjects);
+  assert.deepEqual(response("?dpl=dpl_test123").errors, []);
+  for (const suffix of ["?dpl=dpl_stale", "?x=1&dpl=dpl_test123", "?dpl=dpl_test123&v=1", "#dpl_test123"]) assert.ok(response(suffix).errors.length);
 });
 
+test("rejects stale, hidden, incomplete and cross-area page responses", t => {
+  const { root } = fixture(t);
+  const docs = documents(STYLE_LINK);
+  const check = responses => assert.ok(validateBuiltCssContract(root, responses, fixtureSubjects).errors.length > 0);
+  check(docs.slice(1));
+  check([docs[0], docs[0], docs[2], docs[3]]);
+  for (const [index, html] of [[1, docs[0].html], [2, docs[3].html], [3, docs[2].html],
+    [2, docs[2].html.replace("Town center: Mount Airy", "Town center: Thurmont")],
+    [0, docs[0].html.replace("<main>", "<main hidden>")],
+    [0, docs[0].html.replace("<section data-today-local-discovery>", "<template><section data-today-local-discovery>")],
+    [0, docs[0].html.replace("/images/seasons/summer/", "https://example.invalid/images/seasons/summer/")]]) {
+    check(docs.map((doc, i) => i === index ? { ...doc, html } : doc));
+  }
+});
+
+test("accepts a new published seasonal image and holiday destination as a pair", t => {
+  const { root } = fixture(t);
+  const docs = documents(STYLE_LINK);
+  const holiday = { downtown: "/images/new-local-creek.jpg", downtownHref: "/today/two-hours-downtown?day=2026-11-26" };
+  docs[0].html = docs[0].html.replace(fixtureSubjects.walks[0].downtown, holiday.downtown)
+    .replace('href="/today/two-hours-downtown"', `href="${holiday.downtownHref}&amp;returnTo=%2Ftoday"`);
+  assert.deepEqual(validateBuiltCssContract(root, docs, { ...fixtureSubjects, walks: [holiday] }).errors, []);
+  assert.ok(validateBuiltCssContract(root, docs, fixtureSubjects).errors.length > 0);
+});
+
+test("a variant with missing or reversed CSS cannot be rescued by the default response", t => {
+  const { root, write } = fixture(t);
+  write(".next/static/chunks/reversed.css", `${LABEL}{flex-shrink:0}`);
+  const docs = documents(STYLE_LINK);
+  docs[1].html = docs[1].html.replace(STYLE_LINK, `${STYLE_LINK}<link rel="stylesheet" href="/_next/static/chunks/reversed.css">`);
+  assert.match(validateBuiltCssContract(root, docs, fixtureSubjects).errors[0], /flex-shrink/);
+  docs[1].html = docs[1].html.replace(/<head>.*?<\/head>/, "<head></head>");
+  assert.match(validateBuiltCssContract(root, docs, fixtureSubjects).errors[0], /brunswick has no unconditional/);
+});
 
 test("accepts the complete minified shared-press delivery contract", () => {
   assert.deepEqual(pressErrors(PRESS_CSS), []);
@@ -321,7 +279,7 @@ test("linked weak focus cannot be rescued by a stronger unlinked stylesheet", t 
   const weak = PRESS_CSS.replaceAll("[data-press-target][data-press-target]:focus-visible", "[data-press-target]:focus-visible");
   const { root, write } = fixture(t, COMPILED, undefined, { pressCss: GLOBAL_FOCUS_COMPETITOR + weak });
   write(".next/static/chunks/unlinked-owned-focus.css", PRESS_CSS);
-  const failures = validateBuiltCssContract(root).errors;
+  const failures = validate(root).errors;
   assert.equal(failures.length, 2);
   assert.ok(failures.every(error => error.includes("[data-press-target][data-press-target]:focus-visible outline")));
 });
@@ -374,19 +332,19 @@ for (const condition of ["@media print", "@supports(display:flex)", "@container(
 test("build rejects source-only shared-press styles even with updated markup hooks", t => {
   const { root, write } = fixture(t, COMPILED, '<link rel="stylesheet" href="/_next/static/chunks/current.css"/><button data-press-target="control"><span data-press-face>Save</span></button>', { pressCss: "" });
   write("src/app/globals.css", PRESS_CSS);
-  assert.ok(validateBuiltCssContract(root).errors.some(error => error.includes("Shared press base")));
+  assert.ok(validate(root).errors.some(error => error.includes("Shared press base")));
 });
 
 test("unlinked good shared-press chunks cannot rescue the linked bundle", t => {
   const { root, write } = fixture(t, COMPILED, undefined, { pressCss: "" });
   write(".next/static/chunks/unlinked-good.css", PRESS_CSS);
-  assert.ok(validateBuiltCssContract(root).errors.some(error => error.includes("Shared press base")));
+  assert.ok(validate(root).errors.some(error => error.includes("Shared press base")));
 });
 
 test("conditional stylesheet links cannot rescue missing shared-press base CSS", t => {
   const { root, write } = fixture(t, COMPILED, '<link rel="stylesheet" href="/_next/static/chunks/current.css"/><link rel="stylesheet" media="print" href="/_next/static/chunks/conditional.css"/>', { pressCss: "" });
   write(".next/static/chunks/conditional.css", PRESS_CSS);
-  const result = validateBuiltCssContract(root);
+  const result = validate(root);
   assert.equal(result.stylesheets.length, 1);
   assert.ok(result.errors.some(error => error.includes("Shared press base")));
 });
@@ -394,7 +352,9 @@ test("conditional stylesheet links cannot rescue missing shared-press base CSS",
 test("shared-press rules may be split across unconditional linked stylesheets in delivery order", t => {
   const { root, write } = fixture(t, COMPILED, '<link rel="stylesheet" href="/_next/static/chunks/current.css"/><link rel="stylesheet" href="/_next/static/chunks/reduced.css"/>', { pressCss: PRESS_COMPILED });
   write(".next/static/chunks/reduced.css", PRESS_REDUCED);
-  assert.deepEqual(validateBuiltCssContract(root).errors, []);
+  assert.deepEqual(validate(root).errors, []);
   write(".next/static/chunks/reduced.css", "");
-  assert.ok(validateBuiltCssContract(root).errors.some(error => error.includes("Shared press reduced")));
+  assert.match(validate(root).errors[0], /stylesheet is empty/);
+  write(".next/static/chunks/reduced.css", "/* No reduced-motion rules */");
+  assert.ok(validate(root).errors.some(error => error.includes("Shared press reduced")));
 });
