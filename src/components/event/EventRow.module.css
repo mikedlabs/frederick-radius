@@ -309,6 +309,12 @@
    thumbnail stays at the right of the first line. At default text size this
    only triggers in rows narrower than 272px. */
 @container (max-width: 17rem) {
+  /* Long lead titles wrap at enlarged text sizes. Leave enough line height
+     for the full font box, including descenders on the last line. */
+  .lead .title {
+    line-height: 1.35;
+  }
+
   .body,
   .credit {
     grid-column: 1 / -1;
