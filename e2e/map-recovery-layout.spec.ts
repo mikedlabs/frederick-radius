@@ -333,10 +333,23 @@ test.describe(`Native shortlist directions (${typography} typography)`, () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
     await expect(page.locator("[data-map-place-slug]")).toHaveCount(0);
     expect(metadataRequests).toEqual([]);
+    if (typography === "Arial") {
+      // Enlarged text can make the status taller than the entire results lane.
+      await page.addStyleTag({ content: ":root { font-size: 200% !important; }" });
+      await directions.focus();
+      await directions.scrollIntoViewIfNeeded();
+      await assert44HitTarget(directions);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+    }
     const origin = page.url();
     const popupPromise = page.waitForEvent("popup");
     if (testInfo.project.use.hasTouch) await directions.tap();
-    else await directions.click();
+    else if (typography === "platform") {
+      await details.focus();
+      await page.keyboard.press("Tab");
+      await expect(directions).toBeFocused();
+      await directions.press("Enter");
+    } else await directions.click();
     const popup = await popupPromise;
     await expect(popup).toHaveURL(href);
     await expect(popup.getByRole("main")).toHaveText("External handoff observed. No external map is loaded.");
@@ -368,7 +381,7 @@ test.describe("focused amenity recovery across orientation changes", () => {
     const town = list.getByRole("combobox", { name: "Town" });
     await town.selectOption({ label: "Myersville" });
     const atlas = list.locator("[data-county-locator]");
-    await expect(atlas.getByText("Town center: Myersville")).toBeVisible();
+    await expect(atlas.locator("figcaption").getByText("Town center: Myersville", { exact: true })).toBeVisible();
     await expect(atlas.locator('[data-locator-selection="Town center"]')).toHaveCount(1);
     for (const viewport of [{ width: 820, height: 1180 }, { width: 1180, height: 820 }]) {
       await page.setViewportSize(viewport);

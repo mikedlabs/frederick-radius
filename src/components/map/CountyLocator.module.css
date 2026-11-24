@@ -68,7 +68,8 @@
 .atlas, .results { min-width: 0; }
 @media (min-width: 48rem) {
   .workspace { grid-template-columns: minmax(15rem, .9fr) minmax(0, 1.25fr); align-items: start; gap: clamp(1rem, 3vw, 2rem); }
-  .atlas { position: sticky; top: 0; }
+  .atlas { grid-area: 1 / 1; position: sticky; top: 0; }
+  .results { grid-area: 1 / 2; }
   .map { height: auto; max-height: 23rem; }
 }
 

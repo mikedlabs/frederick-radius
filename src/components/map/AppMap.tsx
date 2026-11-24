@@ -4726,6 +4726,53 @@ export default function AppMap({
         : null,
   };
 
+  const recoveryHeading = mapError && (
+    <div className={`map-error-fallback-head ${recoveryLayout.heading}`}>
+      <div>
+        <h2
+          id="map-error-title"
+          className="font-sans text-base font-semibold"
+          style={{ color: "var(--app-ink)" }}
+        >
+          Frederick County map
+        </h2>
+        <p
+          className="mt-1 max-w-xl text-xs leading-relaxed"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Street map unavailable. Browse the county locator and results.
+        </p>
+        {(osmLoading || osmError) && (
+          <p className="mt-1 text-xs" style={{ color: "var(--app-ink-2)" }} data-map-recovery-source-status>
+            {osmLoading ? "Checking for additional OpenStreetMap locations…" : "Additional OpenStreetMap locations are unavailable."}
+          </p>
+        )}
+      </div>
+      <div className="map-error-fallback-actions">
+        {MAP_RENDERER_CONFIGURED && !mapUnsupported && (
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="tap-44 inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+            style={{
+              borderColor: "var(--app-border)",
+              color: "var(--app-ink-2)",
+            }}
+          >
+            Reload map
+          </button>
+        )}
+        <Link
+          href="/places"
+          className="tap-44 inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+          style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
+        >
+          All places
+        </Link>
+      </div>
+    </div>
+  );
+
   return (
     <div
       className={
@@ -4829,52 +4876,10 @@ export default function AppMap({
             className="map-error-fallback"
             aria-labelledby="map-error-title"
           >
-            <div className={`map-error-fallback-head ${recoveryLayout.heading}`}>
-              <div>
-                <h2
-                  id="map-error-title"
-                  className="font-sans text-base font-semibold"
-                  style={{ color: "var(--app-ink)" }}
-                >
-                  Frederick County map
-                </h2>
-                <p
-                  className="mt-1 max-w-xl text-xs leading-relaxed"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  Street map unavailable. Browse the county locator and results.
-                </p>
-                {(osmLoading || osmError) && (
-                  <p className="mt-1 text-xs" style={{ color: "var(--app-ink-2)" }} data-map-recovery-source-status>
-                    {osmLoading ? "Checking for additional OpenStreetMap locations…" : "Additional OpenStreetMap locations are unavailable."}
-                  </p>
-                )}
-              </div>
-              <div className="map-error-fallback-actions">
-                {MAP_RENDERER_CONFIGURED && !mapUnsupported && (
-                  <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    className="tap-44 inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
-                    style={{
-                      borderColor: "var(--app-border)",
-                      color: "var(--app-ink-2)",
-                    }}
-                  >
-                    Reload map
-                  </button>
-                )}
-                <Link
-                  href="/places"
-                  className="tap-44 inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
-                  style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
-                >
-                  All places
-                </Link>
-              </div>
-            </div>
-            {taskList ? <div className="map-list" role="region" aria-label="Available results without the map">
-              <CountyLocatorWorkspace area={recoveryArea}>
+            {!taskList && recoveryHeading}
+            {taskList ? <div className={`map-list ${recoveryLayout.taskResults}`} role="region" aria-label="Available results without the map">
+              {recoveryHeading}
+              <CountyLocatorWorkspace area={recoveryArea} resultsFirst>
               <MapListPeek
                 list={taskList}
                 expanded

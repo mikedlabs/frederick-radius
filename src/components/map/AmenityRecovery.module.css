@@ -19,3 +19,16 @@
     max-width: 8rem;
   }
 }
+
+/* With large text the status can fill the entire short map viewport. Keep it
+   with the requested results in one scrollable lane above/below the dock. */
+:global(.map-error-fallback) .taskResults .heading {
+  margin-bottom: .75rem;
+  padding-inline: 0;
+  padding-top: 0;
+}
+@media (min-width: 1024px) {
+  :global(.dock-host[data-map-error] .map-error-fallback) .taskResults {
+    margin-top: calc(var(--map-dock-height, 0px) + var(--app-space-2));
+  }
+}

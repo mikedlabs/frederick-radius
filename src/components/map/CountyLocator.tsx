@@ -98,9 +98,15 @@ export default function CountyLocator({ town, point }: LocatorArea) {
   );
 }
 
-export function CountyLocatorWorkspace({ area, children }: { area: LocatorArea; children: ReactNode }) {
+export function CountyLocatorWorkspace({ area, children, resultsFirst = false }: {
+  area: LocatorArea;
+  children: ReactNode;
+  resultsFirst?: boolean;
+}) {
+  const results = <div className={styles.results}>{children}</div>;
   return <div className={styles.workspace}>
+    {resultsFirst && results}
     <div className={styles.atlas}><CountyLocator {...area} /></div>
-    <div className={styles.results}>{children}</div>
+    {!resultsFirst && results}
   </div>;
 }
