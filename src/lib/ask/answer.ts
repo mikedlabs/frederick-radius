@@ -58,7 +58,7 @@ import { getPublicCountyParkAssets } from "@/lib/integrations/fcParkAssetsPublic
 import { withDeadlineFallback } from "@/lib/promise-deadline";
 import { allShipping, type ShipCarrier, type ShipKind, type ShipPoint } from "@/lib/loaders/shipping";
 import { brunchSpots, type BrunchSpot } from "@/lib/loaders/brunch";
-import { PARKING_GARAGES, PARKING_RATE_SCHEDULE } from "@/data/parking-garages";
+import { garageRateSummary, PARKING_GARAGES } from "@/data/parking-garages";
 import { clientPlaceBySlug, clientPlaces } from "@/lib/loaders/places-client";
 import { FOOD_TRUCKS, truckFeedUrl } from "@/data/food-trucks";
 import { resolveHomeBase } from "@/lib/food-trucks/live";
@@ -67,6 +67,7 @@ import {
   type FoodTruckAvailability,
 } from "@/lib/food-trucks/availability";
 import { formatEasternClock } from "@/lib/format/easternClock";
+import { BRUNSWICK_CANCELLATION, COUNTY_TRANSIT_BULLETIN_URL, MARC_HOLIDAY_URL, brunswickCancelled, countyTransitException, requestedHolidayTransitDay } from "@/lib/transit-service-calendar";
 import { easternDayKey } from "@/lib/tz";
 import { clockLine, timeAnchorOf, eventContextLines, eventHasCredibleLocation, concisePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, scopeAskEvents, scopeAskEventsByProximity, wantsAirQuality, wantsParking, wantsWeather, wantsWeatherAnswer, wantIntentOf, type WantIntent } from "@/lib/ask/context";
 import {
@@ -90,6 +91,8 @@ import {
   placesWithFieldHappyHour,
 } from "@/lib/loaders/fieldNotes";
 import { parseSearchQualifiers } from "@/lib/search/qualifiers";
+import { FREDERICK_HEALTH_URGENT_CARE_URL, POISON_CONTROL } from "@/data/departments";
+import { formatPhone, telHref } from "@/lib/format/usPhone";
 import { PET_CARE_FACILITIES, PET_POISON_LINES } from "@/data/pet-emergency";
 import { emergencyRequestKind, type EmergencyRequestKind } from "@/lib/ask/emergency";
 import { askAirQualityLine, askWeatherContext, askWeatherSafetyLine, loadAskWeather } from "@/lib/ask/weather";
@@ -484,10 +487,6 @@ function answerHappyHourRequest(
   };
 }
 
-function telHref(phone: string): string {
-  return `tel:+1${phone.replace(/\D/g, "")}`;
-}
-
 const FREDERICK_TEXT_911_INFO =
   "https://frederickcountymd.gov/8480/Texting-9-1-1-What-to-Expect";
 
@@ -540,20 +539,21 @@ function answerEmergencyRequest(
   }
 
   if (kind === "human-poison") {
+    const phone = formatPhone(POISON_CONTROL.phone);
     return {
       status: "matches",
       configured: hasKey(),
       usedModel: false,
-      answer: "Call Poison Control now at 1-800-222-1222 or use its official online tool. Help is free, confidential, and available 24/7. If the person has collapsed, is having a seizure, has trouble breathing, or cannot be awakened, call 911 immediately. In Frederick County, text 911 if a voice call is not possible.",
+      answer: `Call Poison Control now at ${phone} or use its official online tool. Help is free, confidential, and available 24/7. If the person has collapsed, is having a seizure, has trouble breathing, or cannot be awakened, call 911 immediately. In Frederick County, text 911 if a voice call is not possible.`,
       sources: [
-        { slug: "poison-control", name: "Poison Control", category: "emergency", href: "https://www.poison.org/", eyebrow: "Official 24/7 help", reason: "1-800-222-1222", phone: "1-800-222-1222", confidence: "high" },
+        { slug: POISON_CONTROL.slug, name: POISON_CONTROL.name, category: "emergency", href: POISON_CONTROL.website, eyebrow: "Official 24/7 help", reason: phone, phone, confidence: "high" },
         { slug: "national-911", name: "Call 911", category: "emergency", href: "https://www.911.gov/calling-911/", eyebrow: "Immediate emergency help", reason: "For severe or life-threatening symptoms", phone: "911", confidence: "high" },
         { slug: "frederick-text-911", name: "Frederick County Text-to-911", category: "emergency", href: FREDERICK_TEXT_911_INFO, eyebrow: "Official County guidance", reason: "Use if a voice call is not possible", confidence: "high" },
       ],
       context: "Official emergency help",
       intent,
       actions: [
-        { label: "Call Poison Control", kind: "open", href: "tel:+18002221222" },
+        { label: "Call Poison Control", kind: "open", href: telHref(POISON_CONTROL.phone) },
         { label: "Call 911", kind: "open", href: "tel:911" },
         { label: "Text 911", kind: "open", href: "sms:911" },
       ],
@@ -574,7 +574,7 @@ function answerEmergencyRequest(
         { slug: "national-911", name: "Call 911", category: "emergency", href: "https://www.911.gov/calling-911/", eyebrow: "Immediate emergency help", reason: "Call for a life-threatening emergency", phone: "911", confidence: "high" as const },
         { slug: "frederick-text-911", name: "Frederick County Text-to-911", category: "emergency", href: FREDERICK_TEXT_911_INFO, eyebrow: "Official County guidance", reason: "Use if a voice call is not possible", confidence: "high" as const },
       ] : []),
-      { slug: emergency ? "frederick-health-er" : "frederick-health-urgent-care", name: emergency ? "Frederick Health Hospital Emergency Department" : "Frederick Health urgent care", category: "health", city: "Frederick County", href: emergency ? "https://www.frederickhealth.org/services/emergency-care/" : "https://www.frederickhealth.org/medical-group/get-care/", eyebrow: emergency ? "Hospital emergency department · Open 24/7" : "Official locations and hours", reason: emergency ? "400 West 7th Street · 240-566-3300" : "Use for non-life-threatening care", phone: emergency ? "240-566-3300" : undefined, confidence: "high" },
+      { slug: emergency ? "frederick-health-er" : "frederick-health-urgent-care", name: emergency ? "Frederick Health Hospital Emergency Department" : "Frederick Health urgent care", category: "health", city: "Frederick County", href: emergency ? "https://www.frederickhealth.org/services/emergency-care/" : FREDERICK_HEALTH_URGENT_CARE_URL, eyebrow: emergency ? "Hospital emergency department · Open 24/7" : "Official locations and hours", reason: emergency ? "400 West 7th Street · 240-566-3300" : "Use for non-life-threatening care", phone: emergency ? "240-566-3300" : undefined, confidence: "high" },
     ],
     context: "Official health care guidance",
     intent,
@@ -584,7 +584,7 @@ function answerEmergencyRequest(
           { label: "Text 911", kind: "open", href: "sms:911" },
           { label: "Open emergency department", kind: "open", href: "https://www.frederickhealth.org/services/emergency-care/" },
         ]
-      : [{ label: "Find urgent care", kind: "open", href: "https://www.frederickhealth.org/medical-group/get-care/" }],
+      : [{ label: "Find urgent care", kind: "open", href: FREDERICK_HEALTH_URGENT_CARE_URL }],
     intelligence: { tools: ["emergency"], confidence: "high", retrieval: "keyword" },
   };
 }
@@ -1448,6 +1448,7 @@ async function answerParkingRequest(
   intent: AskIntent,
   context: QualifiedSearchContext,
 ): Promise<AskResult> {
+  const rates = garageRateSummary(context.now ?? new Date());
   const nearbyWithoutOrigin = parseSearchQualifiers(query).nearMe && !context.origin && !target;
   if (nearbyWithoutOrigin) {
     const sources = PARKING_GARAGES
@@ -1461,8 +1462,8 @@ async function answerParkingRequest(
         href: `/places/${garage.slug}`,
         eyebrow: "City parking garage",
         reason: "Mapped downtown city garage",
-        detail: `${garage.address} · ${garage.notes ?? PARKING_RATE_SCHEDULE.summary}`,
-        status: `${garage.hours} · ${PARKING_RATE_SCHEDULE.summary}`,
+        detail: `${garage.address} · ${garage.notes ?? rates}`,
+        status: `${garage.hours} · ${rates}`,
         confidence: "high",
       }));
     return {
@@ -1562,14 +1563,14 @@ async function answerParkingRequest(
     href: `/places/${garage.slug}`,
     eyebrow: "City parking garage",
     reason: `${formatDistance(distance)} from ${anchorName}`,
-    detail: `${garage.address} · ${garage.notes ?? PARKING_RATE_SCHEDULE.summary}`,
+    detail: `${garage.address} · ${garage.notes ?? rates}`,
     distance: formatDistance(distance),
-    status: `${garage.hours} · ${PARKING_RATE_SCHEDULE.summary}`,
+    status: `${garage.hours} · ${rates}`,
     confidence: "high",
   }));
   const lead = ranked[0];
   const answer = lead
-    ? `${lead.garage.name} is the closest mapped city garage to ${anchorName}, about ${formatDistance(lead.distance)} away. It is open ${lead.garage.hours}, and the city schedule is ${PARKING_RATE_SCHEDULE.summary}; this ranking uses approximate straight-line distance and does not show live space availability.`
+    ? `${lead.garage.name} is the closest mapped city garage to ${anchorName}, about ${formatDistance(lead.distance)} away. It is open ${lead.garage.hours}, and the city schedule is ${rates}; this ranking uses approximate straight-line distance and does not show live space availability.`
     : "I couldn't find a mapped city garage for that location.";
 
   const parkingActions: AskAction[] = [
@@ -2028,9 +2029,10 @@ const cachedCallModel = unstable_cache(
 /** The verified downtown-parking block: the five city garages plus the one
  *  uniform rate schedule. Pure data, so parking questions stop getting the
  *  honest shrug ("the data covers parks, not parking" — ask audit). */
-function parkingContextBlock(): string {
+function parkingContextBlock(now: Date): string {
+  const rates = garageRateSummary(now);
   const garages = PARKING_GARAGES.map((g) => `- ${g.name}: ${g.address}; ${g.hours}`).join("\n");
-  return `DOWNTOWN PARKING (City of Frederick, rates verified):\nAll five city garages: ${PARKING_RATE_SCHEDULE.summary}.\n${garages}\n- Parking office: ${PARKING_OFFICE.phone}.\n\n`;
+  return `DOWNTOWN PARKING (City of Frederick, rates verified):\nAll five city garages: ${rates}.\n${garages}\n- Parking office: ${PARKING_OFFICE.phone}.\n\n`;
 }
 
 /** One LOCAL NOTE per place — the field-notes moat, compact. Insider detail
@@ -2358,6 +2360,33 @@ export async function askFrederick(
   }
   if (/\bfood trucks?\b/i.test(q) && intent.kind !== "plan") {
     return answerFoodTruckRequest(q, intent, context, now);
+  }
+  const busQuestion = requestedTransitService(q) || requestedTransitStop(q) ||
+    /\b(?:bus(?:es)?|shuttles?|transit|connectors?)\b/i.test(q) && /\bthanksgiving\b/i.test(q);
+  const railQuestion =
+    /\b(?:marc|brunswick line)\b/i.test(q) &&
+    !/\b(?:penn|camden) line\b/i.test(q) &&
+    /\b(?:trains?|service|run|running|departures?|schedule|thanksgiving|holiday)\b/i.test(q);
+  if (busQuestion || railQuestion) {
+    const tripDay = requestedHolidayTransitDay(q, intent.requestedDate, now);
+    const busNotice = countyTransitException(tripDay);
+    const railNotice = railQuestion && brunswickCancelled(tripDay);
+    if ((busQuestion && busNotice) || railNotice) {
+      const notices = [];
+      if (busQuestion && busNotice) notices.push({ name: "County transit bulletin (PDF)", text: busNotice.text, href: COUNTY_TRANSIT_BULLETIN_URL });
+      if (railNotice) notices.push({ name: "MARC holiday schedule", text: BRUNSWICK_CANCELLATION, href: MARC_HOLIDAY_URL });
+      return {
+        status: "matches", configured: hasKey(), usedModel: false, intent,
+        answer: notices.map((notice) => notice.text).join(" "),
+        context: context.contextLabel ?? "Frederick County",
+        sources: notices.map((notice) => ({
+          name: notice.name, slug: notice.href === MARC_HOLIDAY_URL ? "marc-holiday-service" : "county-transit-holiday-service",
+          href: notice.href, category: "transit", reason: notice.text, confidence: "high",
+        })),
+        actions: notices.map((notice) => ({ label: notice.name, kind: "open", href: notice.href })),
+        intelligence: { tools: ["transit"], confidence: "high", retrieval: "keyword" },
+      };
+    }
   }
   if (requestedTransitStop(q) && intent.kind !== "plan") {
     return answerTransitStopRequest(intent, context);
@@ -2816,7 +2845,7 @@ export async function askFrederick(
   // times a day, an acceptable cache-key cost for weather-aware plans.
   // The weather source CARD still appears only when weather was asked —
   // an unasked join informs the prose, it doesn't earn a citation slot.
-  const parkingBlock = wantsParking(q) ? parkingContextBlock() : "";
+  const parkingBlock = wantsParking(q) ? parkingContextBlock(now) : "";
   if (parkingBlock) {
     sources.push({ slug: "parking-guide", name: "Parking guide", category: "civic", city: "", href: "/parking" });
   }

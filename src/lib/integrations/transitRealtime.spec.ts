@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   gtfsRealtime,
   type GtfsFeedEntity,
@@ -38,6 +38,9 @@ afterEach(() => {
 });
 
 describe("TransIT GTFS-realtime feed metadata", () => {
+  beforeEach(() => {
+    vi.spyOn(Date, "now").mockReturnValue(1_785_000_000_000);
+  });
   it("preserves the provider timestamp on a successful vehicle feed", async () => {
     const feedTimestamp = 1_785_000_123;
     vi.stubGlobal(
@@ -448,5 +451,52 @@ describe("TransIT GTFS-realtime feed metadata", () => {
         },
       ],
     });
+  });
+});
+
+describe("published county service exceptions take priority over GTFS-realtime", () => {
+  function reportingTrip(routeId: string, arrival: string): GtfsFeedEntity {
+    const trip = { routeId, tripId: `trip-${routeId}` };
+    const timestamp = Date.parse(arrival) / 1000;
+    return {
+      id: routeId,
+      vehicle: { trip, position: { latitude: 39.414, longitude: -77.411 }, timestamp },
+      tripUpdate: { trip, stopTimeUpdate: [{ stopId: "162950", arrival: { time: timestamp } }] },
+    };
+  }
+
+  it.each(["2026-11-26", "2026-11-27"])("suppresses vehicles and arrivals with a healthy feed on %s", async (day) => {
+    const now = Date.parse(`${day}T08:00:00-05:00`);
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    const trips = ["6154", "6169"].map((id) => reportingTrip(id, `${day}T08:05:00-05:00`));
+    vi.stubGlobal("fetch", () => Promise.resolve(protobufResponse(encodedFeed(trips, now / 1000))));
+    const results = await Promise.all([getLiveVehiclesResult(), getTripUpdatesResult(), getStopPredictionsResult()]);
+    for (const result of results) {
+      expect(result).toMatchObject({ data: [], status: "ok", available: true, feedTimestamp: now / 1000 });
+    }
+  });
+
+  it("preserves the first valid Saturday Connector arrival and the shuttle schedule before 7:15", async () => {
+    const now = Date.parse("2026-11-28T07:00:00-05:00");
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    const entities = [
+      reportingTrip("6154", "2026-11-28T07:15:00-05:00"),
+      reportingTrip("6155", "2026-11-28T07:14:00-05:00"),
+      reportingTrip("6169", "2026-11-28T07:05:00-05:00"),
+    ];
+    vi.stubGlobal("fetch", () => Promise.resolve(protobufResponse(encodedFeed(entities, now / 1000))));
+    expect((await getStopPredictionsResult()).data.map((item) => item.routeId)).toEqual(["6154", "6169"]);
+    expect((await getTripUpdatesResult()).data.map((item) => item.routeId)).toEqual(["6154", "6169"]);
+    expect((await getLiveVehiclesResult()).data.map((item) => item.routeId)).toEqual(["6169"]);
+  });
+
+  it("filters a prediction that crosses the local midnight into a closure", async () => {
+    const now = Date.parse("2026-11-25T23:59:00-05:00");
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    vi.stubGlobal("fetch", () => Promise.resolve(protobufResponse(encodedFeed([
+      reportingTrip("6154", "2026-11-26T00:01:00-05:00"),
+    ], now / 1000))));
+    expect((await getStopPredictionsResult()).data).toEqual([]);
+    expect((await getTripUpdatesResult()).data).toEqual([]);
   });
 });

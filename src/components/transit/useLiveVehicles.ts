@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { countyServiceCancelled } from "@/lib/transit-service-calendar";
 
 /**
  * useLiveVehicles — ONE poller for /api/transit/vehicles, however many
@@ -90,6 +91,10 @@ function emit() {
  *  (a failing feed never produces a fresh snapshot on its own). */
 function refreshStaleness() {
   if (!snap.loaded) return;
+  if (snap.vehicles.length && countyServiceCancelled(Date.now())) {
+    snap = { ...snap, vehicles: [] };
+    emit();
+  }
   const nextStale =
     (!snap.available && snap.vehicles.length > 0) ||
     (snap.fetchedAt > 0 && Date.now() - snap.fetchedAt > STALE_MS);
@@ -145,7 +150,7 @@ async function load() {
           : Date.now();
       const stale = Date.now() - providerTime > STALE_MS;
       snap = {
-        vehicles: d.vehicles,
+        vehicles: countyServiceCancelled(Date.now()) ? [] : d.vehicles,
         loaded: true,
         available: true,
         status,

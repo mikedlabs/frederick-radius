@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { holidayOn } from "@/lib/holidays";
 import { pickSeasonalNote } from "@/lib/seasonal-notes";
+import TransitHolidayNotice from "@/components/transit/TransitHolidayNotice";
 import HolidayNote from "./HolidayNote";
 import SeasonalBeat from "./SeasonalBeat";
 import CommunityNotes from "./CommunityNotes";
@@ -12,7 +13,8 @@ import CreekWatch from "./CreekWatch";
  *
  * The masthead accreted several self-hiding one-liners. This is the single
  * source of truth for that region. It renders, in order:
- *   1. ONE server-decidable dated note, by priority: Holiday (a civic closure
+ *   1. A dated transit bulletin when the county publishes a service change.
+ *      The separate almanac note is chosen by priority: Holiday (a civic closure
  *      has real consequence) > the seasonal almanac note (First Saturday /
  *      market / leaf season). Exactly one of those.
  *   2. The governed community layer (CommunityNotes): at most one even-handed
@@ -35,6 +37,7 @@ export default function MastheadNotes({ now }: { now: Date }) {
 
   return (
     <div className="mt-2 space-y-1.5">
+      <TransitHolidayNotice now={now} />
       {dated === "holiday" && <HolidayNote now={now} />}
       {dated === "seasonal" && <SeasonalBeat now={now} />}
       {/* School + creek alerts: rare, important, self-hiding. Async, so each is

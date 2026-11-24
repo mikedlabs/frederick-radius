@@ -79,6 +79,7 @@ import { isEventListingEnded } from "@/lib/eventHorizon";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { nearestEventParking } from "@/lib/events/parking";
 import { eventDecisionLocation, eventTimeCaution } from "@/lib/events/decision-facts";
+import { easternDayKey } from "@/lib/tz";
 import { isDateOnlyEventAnchor } from "@/lib/eventWhenLabel";
 import { eventPlanEligibility } from "@/lib/plan/event-plan-eligibility";
 import { withBrowseReturnTo } from "@/lib/browse-return";
@@ -910,6 +911,7 @@ export default async function EventPage({
         <div className="space-y-4">
           {eventStatus === "scheduled" && !hasEnded && (
             <GettingThere
+              eventDay={easternDayKey(new Date(Math.max(Date.parse(event.starts_at), nowMs)))}
               geom={pinGeom}
               venuePlaceSlug={event.venue_place_slug ?? undefined}
               geoPrecise
