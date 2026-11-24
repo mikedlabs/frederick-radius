@@ -220,7 +220,11 @@
   line-height: 1.5;
 }
 
-.dailyFacts[data-has-scale] { align-items: center; justify-content: flex-start; }
+.dailyFacts[data-has-scale] {
+  container: daylight-band / inline-size;
+  align-items: center;
+  justify-content: flex-start;
+}
 
 .dailyFacts > span {
   overflow-wrap: anywhere;
