@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
-import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { BY_TOWN_ENABLED } from "@/lib/loaders/events";
+import { getTownEventPreview } from "@/lib/loaders/townEventPreview";
 import { decoratePlace, publicPlacesByMunicipality, slimForList } from "@/lib/loaders/places";
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import PlaceCard from "@/components/place/PlaceCard";
@@ -20,8 +22,6 @@ import StayDeepLinks from "@/components/municipality/StayDeepLinks";
 import LivingHere from "@/components/municipality/LivingHere";
 import { municipalCivicFor } from "@/lib/loaders/municipalCivic";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
-
-export const revalidate = 600;
 
 /**
  * Town page — answer-first, dense, field-guide (redesign).
@@ -43,10 +43,6 @@ export const revalidate = 600;
  * Sections still self-hide when empty (honest empty states). Layout/visual
  * only — the data loaders below are unchanged.
  */
-
-export async function generateStaticParams() {
-  return MUNICIPALITIES.map((m) => ({ municipality: m.slug }));
-}
 
 export async function generateMetadata(
   { params }: { params: Promise<{ municipality: string }> }
@@ -77,8 +73,12 @@ export default async function MunicipalityPage(
   // county photography; null until one is approved (then the town shows itself).
   const townPhoto = getTownPhoto(m.slug);
 
+  // Opening labels and rankings depend on the current Frederick time.
+  await connection();
+  const now = new Date();
+  const townEvents = getTownEventPreview(m, now);
   const places = publicPlacesByMunicipality(m.slug)
-    .map((p) => slimForList(decoratePlace(p, m.centroid)))
+    .map((p) => slimForList(decoratePlace(p, m.centroid, now)))
     .sort((a, b) => b.feature_score - a.feature_score);
 
   // "Worth your time" is a destination-led reel that ranks differently
@@ -136,8 +136,7 @@ export default async function MunicipalityPage(
   const lead = worthYourTime[0];
   const grid = worthYourTime.slice(1, 5);
 
-  const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 3);
-  const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
+  const { local: upcomingEvents, nearby, degraded } = await townEvents;
   // Buried-civic answers for this town (trash/recycling, hall, permits…),
   // null until the extraction agent populates it. The block self-hides.
   const civic = municipalCivicFor(m.slug);
@@ -307,13 +306,16 @@ export default async function MunicipalityPage(
               Upcoming in {m.name}
             </h2>
             <Link
-              href={BY_TOWN_ENABLED ? `/events?view=town&m=${m.slug}` : "/events"}
+              href={BY_TOWN_ENABLED ? `/events?in=${m.slug}` : "/events"}
               className="tap-44 inline-flex items-center text-[13px] font-semibold"
               style={{ color: "var(--app-link)" }}
             >
               All events <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           </div>
+          {degraded && upcomingEvents.length > 0 && (
+            <p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>Some event listings may be missing.</p>
+          )}
           {upcomingEvents.length > 0 ? (
             // One column of ruled rows, as wide as the hero above. Each row
             // draws its own hairline, so the list needs no gap between rows.
@@ -325,7 +327,7 @@ export default async function MunicipalityPage(
           ) : (
             <div className="space-y-2">
               <p className="text-[0.9375rem] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                Nothing is listed for {m.name} yet.{" "}
+                {degraded ? `We couldn’t confirm the current event listings for ${m.name}.` : `Our upcoming calendar has no listings in ${m.name}.`}{" "}
                 <Link
                   href={`/submit/event?m=${m.slug}`}
                   className="font-semibold underline underline-offset-2"
@@ -335,15 +337,15 @@ export default async function MunicipalityPage(
                 </Link>
                 .
               </p>
-              {nearbyEvents.length > 0 && (
+              {nearby && (
                 <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
                   Nearby:{" "}
                   <Link
-                    href="/events"
+                    href={`/events/${nearby.slug}`}
                     className="font-semibold underline-offset-2 hover:underline"
                     style={{ color: "var(--app-ink-2)" }}
                   >
-                    {nearbyEvents[0].title} and more nearby <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
+                    {nearby.title} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
                   </Link>
                 </p>
               )}
