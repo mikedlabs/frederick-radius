@@ -200,7 +200,8 @@ export default function TopBar() {
       searchLayerIdRef.current = result.id;
       searchReturnScrollYRef.current = result.scrollY;
       returnPlaceRef.current = result.href;
-      rememberSearchDraft(result.query);
+      // The history entry owns this query. A newer edit or clear on the
+      // detail page still belongs to the next manually opened Find.
       setSearchInitialQuery(result.query);
       setSearchOpen(true);
     };
@@ -211,7 +212,7 @@ export default function TopBar() {
       window.removeEventListener("pageshow", restore);
       window.removeEventListener("popstate", restore);
     };
-  }, [pathname, rememberSearchDraft]);
+  }, [pathname]);
 
   // The app bar is server-rendered before this client component hydrates. An
   // enabled button in that brief window looks actionable but has no click
