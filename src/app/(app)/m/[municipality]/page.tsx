@@ -11,7 +11,6 @@ import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import Image from "next/image";
-import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import { getTownPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import PhotoCreditLine from "@/components/place/PhotoCreditLine";
 import { curatedPhotoCredit } from "@/lib/curated-photo-source";
@@ -28,7 +27,7 @@ import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
  *
  * The page answers "what's this town like, and what's worth going for?" —
  * NOT "list every place." Spine, top → bottom:
- *   1. Curated SeasonalPhoto hero with 6px corners and no scrim, then a
+ *   1. A reviewed photograph when one is available for the town, plus a
  *      quiet {type} · Frederick County label, the town name in heavy sans
  *      and ONE short blurb. No pop./est. metadata lead.
  *   2. A town-scoped ask/search pill — the first action.
@@ -69,8 +68,6 @@ export default async function MunicipalityPage(
   const m = MUNICIPALITY_BY_SLUG[municipality];
   if (!m) notFound();
 
-  // A curated CC/PD photo OF this town wins the hero over the generic seasonal
-  // county photography; null until one is approved (then the town shows itself).
   const townPhoto = getTownPhoto(m.slug);
 
   // Opening labels and rankings depend on the current Frederick time.
@@ -182,7 +179,7 @@ export default async function MunicipalityPage(
       </nav>
 
       {/* Town identity leads the first viewport; keep the image with its attribution. */}
-      <header className="grid items-center gap-3 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-8">
+      <header className={townPhoto ? "grid items-center gap-3 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-8" : undefined}>
         <div className="min-w-0 space-y-1.5">
           <p className="text-[0.8125rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>
             {m.type === "city" ? "City" : m.type === "town" ? "Town" : m.type === "village" ? "Village" : "Community"} · Frederick County
@@ -194,9 +191,9 @@ export default async function MunicipalityPage(
             {m.hero_blurb}
           </p>
         </div>
-        <figure className="min-w-0 space-y-1.5">
-          <div className="relative h-40 w-full overflow-hidden rounded-[var(--app-radius-md)] sm:h-48 lg:h-56" style={{ background: "var(--app-bg-sunken)" }}>
-            {townPhoto ? (
+        {townPhoto && (
+          <figure className="min-w-0 space-y-1.5">
+            <div className="relative h-40 w-full overflow-hidden rounded-[var(--app-radius-md)] sm:h-48 lg:h-56" style={{ background: "var(--app-bg-sunken)" }}>
               <Image
                 src={wikimediaUrl(townPhoto.file, 1200)}
                 alt={townPhoto.alt}
@@ -205,22 +202,12 @@ export default async function MunicipalityPage(
                 sizes="(min-width: 1024px) 480px, (min-width: 768px) 48vw, 100vw"
                 className="absolute inset-0 object-cover"
               />
-            ) : (
-              <SeasonalPhoto
-                season="auto"
-                alt={`Frederick County (near ${m.name})`}
-                priority
-                sizes="(min-width: 1024px) 480px, (min-width: 768px) 48vw, 100vw"
-                className="absolute inset-0"
-              />
-            )}
-          </div>
-          {townPhoto && (
+            </div>
             <figcaption data-town-photo-credit style={{ color: "var(--app-ink-3)" }}>
               <PhotoCreditLine credit={curatedPhotoCredit(townPhoto)} />
             </figcaption>
-          )}
-        </figure>
+          </figure>
+        )}
       </header>
 
       {/* Town switching belongs near the town identity, not near the footer. */}

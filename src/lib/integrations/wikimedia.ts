@@ -173,8 +173,8 @@ export function getLandmarkPhoto(slug: string): WikimediaPhoto | null {
 // verified:true, so a town shows ITSELF instead of the generic seasonal county
 // hero. Empty until candidates are approved by eye (see
 // scripts/fetch-town-photo-candidates.ts → docs/town-photo-candidates.md); an
-// unknown/unverified slug returns null and the /m hero falls back to
-// SeasonalPhoto automatically. Photos must DEPICT the town (Main Street,
+// unknown/unverified slug returns null so the town header shows its own
+// title and introduction. Photos must DEPICT the town (Main Street,
 // downtown, the signature landmark/station) — never a generic small-town stock.
 export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
   // Each verified by eye (depicts the town) + Special:FilePath confirmed 200.
@@ -182,6 +182,7 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
     // Carroll Creek Promenade — the iconic downtown Frederick scene (the same
     // verified shot the landmark set uses). Reviewed by eye 2026-06-28.
     file: "Carroll Creek Park Frederick MD1.jpg",
+    capturedOn: "2017-04-02",
     alt: "Carroll Creek Promenade in downtown Frederick, with brick buildings, the water feature, and spring blossoms along the creek.",
     author: "Acroterion",
     license: "CC BY-SA 4.0",
@@ -192,6 +193,7 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
   },
   brunswick: {
     file: "Brunswick 001.jpg",
+    capturedOn: "2007-05-30",
     alt: "A downtown Brunswick, Maryland heritage mural depicting the town's railroad history, reading “Brunswick, MD · Founded 1787.”",
     author: "Bob Carney",
     license: "CC BY 2.0",
@@ -202,6 +204,7 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
   },
   thurmont: {
     file: "Thurmont Town Square Park.jpg",
+    capturedOn: "2012-05-31",
     alt: "Thurmont's town square park, with the town clock, a gazebo, and flower beds at the town center.",
     author: "CraigShipp.com Photos",
     license: "CC BY-SA 2.0",
@@ -212,6 +215,7 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
   },
   middletown: {
     file: "Middletown, Maryland historic district.jpg",
+    capturedOn: "2008-11-27",
     alt: "Main Street in Middletown's historic district, with porch-fronted homes and the Catoctin ridge beyond.",
     author: "Acroterion",
     license: "CC BY-SA 4.0",
@@ -222,6 +226,7 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
   },
   emmitsburg: {
     file: "Emmitsburg Pano.jpg",
+    capturedOn: "2008-11-27",
     alt: "A panorama of Emmitsburg, Maryland, its church spires set below Catoctin Mountain.",
     author: "Vasiliy Meshko",
     license: "CC BY-SA 3.0",
@@ -232,6 +237,7 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
   },
   "new-market": {
     file: "New Market, Maryland.jpg",
+    capturedOn: "2011-10-18",
     alt: "A Victorian antiques storefront on Main Street in New Market, Maryland, a town known for its antique shops.",
     author: "Dougtone",
     license: "CC BY-SA 2.0",
@@ -242,6 +248,7 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
   },
   walkersville: {
     file: "Harris Farmhouse Walkersville, MD1.jpg",
+    capturedOn: "2010-04-02",
     alt: "The historic brick Harris Farmhouse in Walkersville, Maryland, a bank barn beyond it.",
     author: "Acroterion",
     license: "CC BY-SA 4.0",

@@ -37,7 +37,6 @@ const CC_BY_SA_4 = { label: "CC BY-SA 4.0", url: "https://creativecommons.org/li
 const CC_BY_SA_3 = { label: "CC BY-SA 3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" };
 const CC_BY_SA_2 = { label: "CC BY-SA 2.0", url: "https://creativecommons.org/licenses/by-sa/2.0/" };
 const CC_BY_2 = { label: "CC BY 2.0", url: "https://creativecommons.org/licenses/by/2.0/" };
-const CC0 = { label: "CC0 1.0", url: "https://creativecommons.org/publicdomain/zero/1.0/" };
 const PUBLIC_DOMAIN = { label: "Public domain (U.S. government work)", url: "https://creativecommons.org/publicdomain/mark/1.0/" };
 const DISPLAY_MODIFICATIONS = "Resized and converted for display; cards may crop the image responsively.";
 
@@ -314,15 +313,6 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "national-pike",
-    image: {
-      src: "/history-photos/national-pike.jpg",
-      alt: "The historic single-arch stone Casselman River Bridge, built for the National Road, in Maryland",
-      creator: "Cbaile19",
-      source_url: "https://commons.wikimedia.org/wiki/File:Casselman_River_Bridge,_2014-03-18,_01.jpg",
-      license: CC0,
-      modifications: DISPLAY_MODIFICATIONS,
-      edited: true,
-    },
     title: "The National Pike",
     kind: "fact",
     body: "What is now US Route 40 was originally the National Road, the first federally funded highway in the country (1811-1837). It connected Cumberland, Maryland to Wheeling, West Virginia and ran straight through Frederick. The route follows roughly the same path today.",
