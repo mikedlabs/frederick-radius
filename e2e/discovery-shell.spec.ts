@@ -707,7 +707,7 @@ test.describe("mobile discovery shell", () => {
     for (const label of [
       "Ask Radius",
       "Near me",
-      "Live conditions",
+      "County status",
       "Nearby essentials",
     ]) {
       await expect(
@@ -733,7 +733,7 @@ test.describe("mobile discovery shell", () => {
     await expect(index.getByRole("link", { name: /^Ask Radius\b/ })).toHaveCount(1);
     await expect(index.getByRole("link", { name: /^Ask Radius\b/ })).toHaveAttribute("href", "/ask?q=ask");
     await toolSearch.fill("weather");
-    await expect(index.getByRole("link", { name: /Live conditions/ })).toHaveAttribute("href", "/pulse");
+    await expect(index.getByRole("link", { name: /County status/ })).toHaveAttribute("href", "/pulse");
     await toolSearch.fill("");
     await page.goBack();
     await expect(index).toBeHidden();

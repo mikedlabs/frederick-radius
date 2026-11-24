@@ -320,7 +320,7 @@ for (const viewport of VIEWPORTS) {
       const compass = page.locator('[data-compass-ready="true"]');
       await expect(compass).toBeVisible({ timeout: 20_000 });
       await expect(
-        compass.getByRole("heading", { name: "Choose a direction" }),
+        compass.getByRole("heading", { level: 1, name: "Local tools", exact: true }),
       ).toBeVisible();
       await expect(
         compass.getByRole("link", { name: "Find a place, service, event, or answer" }),
