@@ -264,3 +264,24 @@ for (const width of [375, 1366]) {
     await expect(dialog.getByText("Fresh search fixture 4", { exact: true })).toHaveCount(0);
   });
 }
+
+for (const route of ["/today", "/parking"]) {
+  test(`feedback in More tools keeps ${route} clear and restores keyboard focus`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto(route, { waitUntil: "domcontentloaded" });
+    const more = page.getByLabel("More tools", { exact: true });
+    const feedback = page.getByRole("button", { name: "Send feedback", exact: true });
+    await expect(feedback).toBeHidden();
+    await more.click();
+    await expect(feedback).toBeVisible();
+    await feedback.click();
+    const dialog = page.getByRole("dialog", { name: "Send feedback" });
+    await expect(dialog).toBeVisible();
+    await expect(more.locator("..")).not.toHaveAttribute("open", "");
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(more).toBeFocused();
+    await expect(feedback).toBeHidden();
+  });
+}

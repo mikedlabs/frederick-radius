@@ -11,10 +11,11 @@ import {
   useSyncExternalStore,
   type RefObject,
 } from "react";
-import { Search, Compass, ChevronLeft, Ellipsis, X } from "lucide-react";
+import { Search, Compass, ChevronLeft, Ellipsis, MessageSquare, X } from "lucide-react";
 import RippleMark from "@/components/brand/RippleMark";
 import styles from "./NavChrome.module.css";
 import LocationChip from "./LocationChip";
+import { feedbackInMoreMenu, requestFeedback } from "@/lib/feedback-ui";
 import HeaderDisclosure from "./HeaderDisclosure";
 import TodayAsk from "@/components/today/TodayAsk";
 import TodayScopeStatus from "@/components/today/TodayScopeStatus";
@@ -543,6 +544,19 @@ export default function TopBar() {
               <span>Tools</span>
               {pathname === "/compass" ? <span aria-hidden data-top-tool-rule /> : null}
             </AppTransitionLink>
+            {feedbackInMoreMenu(pathname) && (
+              <button type="button" className={styles.utilityRow} aria-haspopup="dialog"
+                disabled={!findInteractionReady}
+                onClick={event => {
+                  const menu = event.currentTarget.closest("details");
+                  const opener = menu?.querySelector("summary") ?? event.currentTarget;
+                  if (menu) menu.open = false;
+                  requestFeedback(opener);
+                }}>
+                <MessageSquare size={20} strokeWidth={1.75} aria-hidden />
+                <span>Send feedback</span>
+              </button>
+            )}
             <AppearanceControl />
           </HeaderDisclosure>
         </div>

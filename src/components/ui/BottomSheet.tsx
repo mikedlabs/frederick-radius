@@ -142,7 +142,7 @@ function isVisibleFocusSurface(element: HTMLElement): boolean {
 
 function isActionableFocusReturn(element: HTMLElement): boolean {
   return isVisibleFocusSurface(element) && element.tabIndex >= 0
-    && element.matches("a[href],button,input,select,textarea,[tabindex],[contenteditable='true']")
+    && element.matches("a[href],button,details > summary:first-of-type,input,select,textarea,[tabindex],[contenteditable='true']")
     && !element.matches(":disabled,[aria-disabled='true']");
 }
 

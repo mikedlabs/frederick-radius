@@ -43,14 +43,14 @@ describe("FeedbackWidget public reporting", () => {
     document.body.querySelectorAll('[role="dialog"]').forEach((node) => node.remove());
   });
 
-  it("shows the feedback trigger to every visitor, with no beta cookie", async () => {
+  it("keeps the floating control on active reporting surfaces and leaves Today and Parking clear", async () => {
     expect(document.cookie).not.toContain("fr_who");
-    for (const page of ["/today", "/map", "/places/baker-park-frederick"]) {
+    for (const page of ["/today", "/parking", "/map", "/food-trucks", "/places/baker-park-frederick"]) {
       pathname = page;
       await act(async () => {
         root.render(createElement(FeedbackWidget));
       });
-      expect(container.querySelector('button[aria-label="Send feedback"]'), page).not.toBeNull();
+      expect(!!container.querySelector('button[aria-label="Send feedback"]'), page).toBe(page !== "/today" && page !== "/parking");
     }
   });
 
