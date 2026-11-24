@@ -72,7 +72,7 @@ describe("device backup restore", () => {
     expect(localStorage.getItem("fr-third")).toBe("same");
     expect(localStorage.getItem("unrelated")).toBe("original");
     expect(localStorage.getItem("fr:invalid")).toBeNull();
-    expect(host.querySelector('[role="status"]')?.textContent).toContain("Backup restored");
+    expect(host.querySelector('[role="status"]')?.textContent).toContain("Your backup is restored");
   });
 
   it("asks for a new confirmation when another tab changes the reviewed entries", async () => {

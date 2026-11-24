@@ -804,7 +804,7 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
                 {...intentProps(item)}
                 className="flex min-h-12 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] px-1 text-[14px] font-semibold outline-none hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
               >
-                <item.icon className="h-4 w-4 shrink-0" style={{ color: item.id === "emergency" ? "var(--app-danger)" : item.color }} aria-hidden />
+                <item.icon className="h-4 w-4 shrink-0 max-[359px]:hidden" style={{ color: item.id === "emergency" ? "var(--app-danger)" : item.color }} aria-hidden />
                 {label}
               </Link>
             ))}

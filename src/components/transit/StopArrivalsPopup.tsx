@@ -249,7 +249,7 @@ export default function StopArrivalsPopup({
   return (
     <div className={styles.stopArrivals}>
       {showName && <strong className={styles.stopArrivalName}>{stop.name}</strong>}
-      {exception && <p className={styles.stopArrivalState}>{exception.text} <a className={styles.stopArrivalSchedule} href={COUNTY_TRANSIT_BULLETIN_URL}>County transit bulletin (PDF)</a>.</p>}
+      {exception && <p className={styles.stopArrivalState}>{exception.text} <a className={styles.stopArrivalSchedule} href={COUNTY_TRANSIT_BULLETIN_URL}>Read the county transit bulletin (PDF)</a>.</p>}
       {!cancelled && routes.length > 0 && <div className={styles.stopArrivalRoutes}>
         {routes.map((route) => <RouteChip key={route.id} route={route} />)}
       </div>}

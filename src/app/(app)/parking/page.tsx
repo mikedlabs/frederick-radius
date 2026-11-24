@@ -168,7 +168,7 @@ export default function ParkingPage() {
               className="mt-1 font-serif text-[23px] font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              Park near your destination
+              Find a garage nearby
             </h2>
           </div>
         </div>

@@ -260,6 +260,34 @@ describe("Find continuity through the real lazy header and overlay", () => {
     expect(window.sessionStorage.getItem(DRAFT_KEY)).toBe("coffee");
   });
 
+  it("restores the selected place on its own Back entry even after the tab draft changed", async () => {
+    fetchMock.mockResolvedValueOnce(response("First search result")).mockResolvedValueOnce(response("Fresh result on Back"));
+    await open();
+    await type("Beans");
+    await settle();
+    const oldLayer = window.history.state.__frederickRadiusLayer;
+    navigation.leaveTo.mockImplementationOnce((href: string) => window.history.pushState({}, "", href));
+    await act(async () => {
+      container.querySelector<HTMLAnchorElement>('#search-results a[href="/places/fixture"]')!.click();
+    });
+    navigation.pathname = "/places/fixture";
+    await mount();
+    window.sessionStorage.setItem(DRAFT_KEY, "unrelated words");
+    await act(async () => { window.history.back(); });
+    await settle(30);
+    navigation.pathname = "/events";
+    await mount();
+    await settle();
+    expect(input().value).toBe("Beans");
+    expect(container.textContent).toContain("Fresh result on Back");
+    expect(document.activeElement).toBe(container.querySelector('#search-results a[href="/places/fixture"]'));
+    expect(window.history.state.__frederickRadiusLayer).toBe(oldLayer);
+    expect(JSON.stringify(window.history.state)).not.toContain("Beans");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await close();
+    expect(window.history.state.__frederickRadiusLayer).toBeUndefined();
+  });
+
   it("keeps the tab's query through a fresh shell mount but clearing starts a new search", async () => {
     await open();
     await type("coffee");

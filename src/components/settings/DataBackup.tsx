@@ -42,7 +42,7 @@ export default function DataBackup() {
       a.click();
       a.remove();
       URL.revokeObjectURL(href);
-      setNotice({ message: "Backup downloaded." });
+      setNotice({ message: "Your backup has downloaded." });
     } catch {
       setNotice({ error: true, message: "The backup could not be downloaded. Allow site storage and downloads, then try again." });
     }
@@ -51,7 +51,7 @@ export default function DataBackup() {
   async function selectFile(file: File) {
     const request = ++selection.current;
     setPending(null);
-    setNotice({ message: "Reading backup…" });
+    setNotice({ message: "We’re reading your backup file." });
     let data: Record<string, string> | null;
     try {
       data = readBackup(await file.text());
@@ -90,7 +90,7 @@ export default function DataBackup() {
       } else if (result.status === "restored") {
         setPending(null);
         setRestored(true);
-        setNotice({ message: "Backup restored. Refreshing your data…" });
+        setNotice({ message: "Your backup is restored. Refreshing this page." });
         window.setTimeout(() => window.location.reload(), 600);
       } else if (result.status === "rollback-error") {
         setPending(null);

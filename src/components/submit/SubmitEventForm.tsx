@@ -87,7 +87,7 @@ export default function SubmitEventForm() {
         setSubmitted(true);
         setError(null);
       } catch {
-        setError("We couldn’t confirm delivery. Your details are still here. Try again in a minute.");
+        setError("We couldn’t confirm delivery. Your details are still here so you can try again.");
       }
     });
   };
