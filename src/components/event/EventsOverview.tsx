@@ -1,5 +1,7 @@
 "use client";
 
+import { buildDaySchedule, type EventScheduleMark } from "@/lib/events/day-schedule";
+import { easternDayKey } from "@/lib/tz";
 import { ArrowRight } from "lucide-react";
 import { isEventLiveNow } from "@/lib/eventWhenLabel";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -16,6 +18,7 @@ type Props = {
   weekendIncludesTonight?: boolean;
   nowISO: string;
   coverage: EventsOverviewCoverage;
+  schedule?: ReadonlyMap<EventWithMeta, EventScheduleMark>;
   onSelectWindow?: (window: OverviewWindow) => void;
 };
 
@@ -44,7 +47,7 @@ function emptyWindow(window: OverviewWindow, coverage: EventsOverviewCoverage, w
 
 /** The selectors supply the occurrences and their order. A repeated venue
  * picture is displayed once. Every card still has its own timing and link. */
-export default function EventsOverview({ tonight, weekend, weekendIncludesTonight = false, nowISO, coverage, onSelectWindow }: Props) {
+export default function EventsOverview({ tonight, weekend, weekendIncludesTonight = false, nowISO, coverage, onSelectWindow, schedule }: Props) {
   const now = new Date(nowISO);
   const seenKeys = new Set<string>();
   const seenSources = new Set<string>();
@@ -55,6 +58,7 @@ export default function EventsOverview({ tonight, weekend, weekendIncludesTonigh
     return visual;
   }
   const leadTonight = tonight[0];
+  const timed = schedule ?? buildDaySchedule(tonight.slice(0, 1), easternDayKey(now));
   const weekendPicks = weekend.slice(0, 2);
   const events = leadTonight ? [leadTonight, ...weekendPicks] : weekendPicks;
   // Reserve all primary artwork and photographs first. A fallback can never
@@ -86,7 +90,7 @@ export default function EventsOverview({ tonight, weekend, weekendIncludesTonigh
     const visual = primary.get(event) ?? null;
     const allowVenueFallback = visual?.presentation === "artwork" && Boolean(reserve(reviewedEventVenuePhoto(event.venue_place_slug)));
     return <div key={`${event.slug}:${event.starts_at}`} className={isLead ? styles.lead : styles.supporting} data-events-overview-pick={isLead ? "lead" : "supporting"}>
-      <EventPosterCard event={event} visual={visual} venuePhotos="free-reviewed" allowVenueFallback={allowVenueFallback}
+      <EventPosterCard event={event} visual={visual} schedule={event === leadTonight ? timed.get(event) : undefined} venuePhotos="free-reviewed" allowVenueFallback={allowVenueFallback}
         concise headingLevel={3} priorityImage={isLead} layout={isLead ? "hero" : "shelf"} nowISO={nowISO} live={isEventLiveNow(event, now)} />
     </div>;
   }

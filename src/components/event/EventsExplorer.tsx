@@ -5,6 +5,7 @@ import { featuredEventSlugs } from "@/lib/events/featured";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, LocateFixed, X } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
+import { buildDaySchedule, type EventScheduleMark } from "@/lib/events/day-schedule";
 import EventsOverview from "@/components/event/EventsOverview";
 import { boardEveningStart, selectEventHighlights, eventMatchesTonight, eventMatchesHighlightWeekend } from "@/lib/events/highlights";
 import EventsRestorePreview from "@/components/event/EventsRestorePreview";
@@ -1078,6 +1079,62 @@ export default function EventsExplorer({
     horizonCount: horizonGroups.length,
   });
 
+  const groupedList = view === "list" && (sort === "recommended" || sort === "time");
+  const visibleGroups = (groupedList ? horizonGroups : []).map((g, groupIdx) => {
+    const isOpen = openGroups.has(g.key);
+    const EXPANDED_CAP = 40;
+    // Recommended promotes only usable attendance. An all-ambiguous
+    // horizon remains ordinary listings with unchanged counts/access.
+    // Alternate sorts retain their original first-row treatment.
+    const remaining = g.events.filter((event) => !highlighted.has(eventIdentity(event)));
+    const moved = g.events.length - remaining.length;
+    const { lead, rest } = splitHorizonLead(remaining, sort);
+    const leadVariant = highlighted.size ? "glance" : horizonLeadVariant(groupIdx);
+    const leadMovedBeforeRail =
+      Boolean(lead) && groupIdx === 0 && showPrimaryLeadBeforeRail;
+    const leadVisual =
+      lead && leadVariant === "feature" ? eventCardVisual(lead) : null;
+    const PEEK = leadVariant === "feature" ? 2 : 3;
+    const { groupCount, totalRest, canExpand } = eventGroupRenderState({
+      summaryCount: Math.max(0, summary.horizonCounts[g.key] - moved),
+      loadedCount: remaining.length,
+      dataComplete,
+      anyFilter: contentFilterActive,
+      sourceDegraded: currentSourceHealth.degraded,
+      hasLead: Boolean(lead),
+      peek: PEEK,
+    });
+    // When the sole event in the first horizon has already moved
+    // above the interest rail, do not leave an empty "Today 1"
+    // heading directly above the next horizon. That visual orphan
+    // made Wednesday's first card look mislabeled as today.
+    const showGroup = groupCount > 0 && !(leadMovedBeforeRail && totalRest === 0);
+    const preview = rest.slice(0, PEEK);
+    const expanded = isOpen ? rest.slice(PEEK, EXPANDED_CAP) : [];
+    const overflow = isOpen ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
+    return { g, remaining, lead, leadVariant, leadMovedBeforeRail, leadVisual, groupCount, totalRest, canExpand,
+      isOpen, preview, expanded, overflow, showGroup };
+  });
+  // Build the scale from the rows rendered at this moment. Collapsed or
+  // filtered-out events cannot imply a conflict; expansion recalculates it.
+  const displayedToday = (highlights?.tonight ?? []).slice(0, 1);
+  const firstRows: EventWithMeta[][] = [];
+  for (const group of visibleGroups) {
+    if (group.g.key !== "today" && group.g.key !== "live") continue;
+    const rows = [
+      ...(group.lead ? [group.lead] : []),
+      ...(group.showGroup ? [...group.preview, ...group.expanded] : []),
+    ];
+    // The promoted lead may sit above the controls, outside its own section.
+    firstRows.push(group.leadMovedBeforeRail ? rows.slice(1) : rows);
+    displayedToday.push(...rows);
+  }
+  const schedule = buildDaySchedule(displayedToday, todayKey);
+  for (const rows of firstRows) {
+    const first = rows.find(event => schedule.has(event));
+    if (first) schedule.get(first)!.showAxis = true;
+  }
+
   // Sheet boundary: a plain tap on any event link below opens the
   // EventSheet in place (essentials without a page navigation; the
   // full page stays one tap away and every anchor stays real).
@@ -1194,6 +1251,7 @@ export default function EventsExplorer({
       {showOverview && highlights && (
         <EventsOverview
           {...highlights}
+          schedule={schedule}
           nowISO={nowISO}
           coverage={completeHighlights ? "complete" : loadingAll ? "loading" : "partial"}
           onSelectWindow={(window) => {
@@ -1208,6 +1266,7 @@ export default function EventsExplorer({
         <div data-events-primary-lead="before-interest" data-events-visual-shortlist className="max-w-[720px]">
           <PromotedEvent
             event={primaryLead}
+            schedule={schedule.get(primaryLead)}
             visual={eventCardVisual(primaryLead)}
             live={live.has(primaryLead.slug)}
             priorityImage
@@ -1425,38 +1484,9 @@ export default function EventsExplorer({
         // a 400-row chronological scroll. Each group shows a scannable
         // peek and expands in place; nothing is hidden.
         <div className="space-y-4">
-          {horizonGroups.map((g, groupIdx) => {
-            const isOpen = openGroups.has(g.key);
-            const EXPANDED_CAP = 40;
-            // Recommended promotes only usable attendance. An all-ambiguous
-            // horizon remains ordinary listings with unchanged counts/access.
-            // Alternate sorts retain their original first-row treatment.
-            const remaining = g.events.filter((event) => !highlighted.has(eventIdentity(event)));
-            const moved = g.events.length - remaining.length;
-            const { lead, rest } = splitHorizonLead(remaining, sort);
-            const leadVariant = highlighted.size ? "glance" : horizonLeadVariant(groupIdx);
-            const leadMovedBeforeRail =
-              Boolean(lead) && groupIdx === 0 && showPrimaryLeadBeforeRail;
-            const leadVisual =
-              lead && leadVariant === "feature" ? eventCardVisual(lead) : null;
-            const PEEK = leadVariant === "feature" ? 2 : 3;
-            const { groupCount, totalRest, canExpand } = eventGroupRenderState({
-              summaryCount: Math.max(0, summary.horizonCounts[g.key] - moved),
-              loadedCount: remaining.length,
-              dataComplete,
-              anyFilter: contentFilterActive,
-              sourceDegraded: currentSourceHealth.degraded,
-              hasLead: Boolean(lead),
-              peek: PEEK,
-            });
-            // When the sole event in the first horizon has already moved
-            // above the interest rail, do not leave an empty "Today 1"
-            // heading directly above the next horizon. That visual orphan
-            // made Wednesday's first card look mislabeled as today.
-            if (groupCount === 0 || (leadMovedBeforeRail && totalRest === 0)) return null;
-            const preview = rest.slice(0, PEEK);
-            const expanded = isOpen ? rest.slice(PEEK, EXPANDED_CAP) : [];
-            const overflow = isOpen ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
+          {visibleGroups.map(({ g, remaining, lead, leadVariant, leadMovedBeforeRail, leadVisual, groupCount, totalRest,
+            canExpand, isOpen, preview, expanded, overflow, showGroup }) => {
+            if (!showGroup) return null;
             const showDate = (event: EventWithMeta) => rowShowsDate(g.key, event, todayKey);
             return (
               <section key={g.key} className="max-w-[720px] space-y-3">
@@ -1469,6 +1499,7 @@ export default function EventsExplorer({
                 {lead && !leadMovedBeforeRail && leadVariant === "feature" ? (
                   <PromotedEvent
                     event={lead}
+                    schedule={schedule.get(lead)}
                     visual={leadVisual}
                     live={live.has(lead.slug)}
                     priorityImage
@@ -1478,6 +1509,7 @@ export default function EventsExplorer({
                 ) : lead && !leadMovedBeforeRail ? (
                   <EventCard
                     event={lead}
+                    schedule={schedule.get(lead)}
                     variant="glance"
                     showDate={showDate(lead)}
                     live={live.has(lead.slug)}
@@ -1494,14 +1526,15 @@ export default function EventsExplorer({
                       // one group never mixes two row styles.
                       sort === "recommended" ? <ul data-events-discovery-grid className="grid min-w-0 grid-cols-1">
                         {preview.map((event) => (
-                          <li key={eventIdentity(event)} className="min-w-0"><EventCard event={event} variant="discovery" venuePhotos="free-reviewed" showDate={showDate(event)} live={live.has(event.slug)} nowISO={nowISO} /></li>
+                          <li key={eventIdentity(event)} className="min-w-0"><EventCard event={event} schedule={schedule.get(event)} variant="discovery" venuePhotos="free-reviewed" showDate={showDate(event)} live={live.has(event.slug)} nowISO={nowISO} /></li>
                         ))}
-                      </ul> : <GroupEventList events={preview} variant="glance" showDate={showDate} live={live} nowISO={nowISO} />
+                      </ul> : <GroupEventList events={preview} schedule={schedule} variant="glance" showDate={showDate} live={live} nowISO={nowISO} />
                     )}
                     {expanded.length > 0 && (
                       <div className="reveal-up">
                         <GroupEventList
                           events={expanded}
+                          schedule={schedule}
                           variant={sort === "recommended" ? "discovery" : "glance"}
                           showDate={showDate}
                           live={live}
@@ -1606,12 +1639,14 @@ export default function EventsExplorer({
 
 function GroupEventList({
   events,
+  schedule,
   variant,
   showDate,
   live,
   nowISO,
 }: {
   events: EventWithMeta[];
+  schedule: ReadonlyMap<EventWithMeta, EventScheduleMark>;
   /** Recommended discovery rows use free reviewed media; other sorts use the
    * glance row. Both are the same EventRow, so a group reads as one list. */
   variant: "discovery" | "glance";
@@ -1629,6 +1664,7 @@ function GroupEventList({
           <EventCard
             event={event}
             variant={variant}
+            schedule={schedule.get(event)}
             venuePhotos={variant === "discovery" ? "free-reviewed" : undefined}
             showDate={showDate(event)}
             live={live.has(event.slug)}
@@ -1642,6 +1678,7 @@ function GroupEventList({
 
 function PromotedEvent({
   event,
+  schedule,
   visual,
   priorityImage,
   live,
@@ -1649,6 +1686,7 @@ function PromotedEvent({
   headingLevel,
 }: {
   event: EventWithMeta;
+  schedule?: EventScheduleMark;
   visual: EventCardVisual | null;
   priorityImage: boolean;
   live: boolean;
@@ -1663,6 +1701,7 @@ function PromotedEvent({
     <div>
       <EventCard
         event={event}
+        schedule={schedule}
         variant="feature"
         live={live}
         nowISO={nowISO}

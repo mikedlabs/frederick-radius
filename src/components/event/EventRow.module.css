@@ -118,6 +118,14 @@
   outline: none;
 }
 
+/* A scale or identity transform would make the title its own containing
+   block. Keep the event link's stretched hit area over the entire time rail.
+   The inner press face still supplies the normal interaction feedback. */
+.row:has([data-event-time-rail]) .link[data-press-target] {
+  scale: none;
+  transform: none;
+}
+
 /* The whole row opens the event; the link's overlay keeps one tab stop. */
 .link::after {
   content: "";

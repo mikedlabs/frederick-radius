@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import type { EventScheduleMark } from "@/lib/events/day-schedule";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { eventReasons } from "@/lib/event-reasons";
@@ -22,6 +23,7 @@ import EventRow from "./EventRow";
 
 export type EventPosterCardProps = {
   event: EventWithMeta;
+  schedule?: EventScheduleMark;
   /** A visual approved by the surface's source-aware visual planner. */
   visual?: EventCardVisual | null;
   /** Overview photography uses only reviewed free imagery. A null visual
@@ -80,7 +82,7 @@ export function eventPosterPhotoSrc(src: string): string {
  * outside the event link.
  */
 export default function EventPosterCard({ event, visual, venuePhotos, allowVenueFallback = false, concise = false, priorityImage = true, whyItMatters,
-  live = false, nowISO, layout = "hero", headingLevel = 2 }: EventPosterCardProps) {
+  live = false, nowISO, layout = "hero", headingLevel = 2, schedule }: EventPosterCardProps) {
   const cardNow = nowISO ? new Date(nowISO) : null;
   const approved = posterVisualForEvent(event, visual, venuePhotos);
   const preferred = useEventVisualLifecycle(approved);
@@ -137,6 +139,7 @@ export default function EventPosterCard({ event, visual, venuePhotos, allowVenue
       position={layout === "hero" ? "lead" : "result"}
       headingLevel={headingLevel}
       poster={poster}
+      schedule={schedule}
       banner={banner}
       bannerAfterFacts={concise && layout === "shelf"}
       slug={event.slug}

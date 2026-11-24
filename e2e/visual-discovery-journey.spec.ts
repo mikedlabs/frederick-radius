@@ -274,6 +274,7 @@ if (!LIVE) {
       const expired = dated({ ...fair, slug: "offline-discovery-ended", title: "Concluded fixture" }, next24 - 36 * hour, next24 - 34 * hour);
       const { evidence, goto } = await prepare(context, page, baseURL, [tonight, ...weekend, expired]);
       await goto("/events?in=frederick");
+      await expect(page.locator('[data-events-complete="true"][data-events-interaction-ready="true"]')).toBeVisible({ timeout: 45_000 });
       const overview = page.locator("[data-events-overview]");
       const evening = overview.getByRole("region", { name: "Tonight", exact: true });
       const upcoming = overview.getByRole("region", { name: "This weekend", exact: true });
@@ -328,7 +329,16 @@ if (!LIVE) {
       await nativeTarget(pick);
       const browseUrl = page.url();
       await expect(pick).toHaveAttribute("href", "/events/" + tonight.slug);
-      await pick.tap();
+      await expect(pick).toHaveAccessibleDescription(/Frederick time.*6:00 PM to .*12:00 AM/i);
+      if (width === 390) {
+        const rail = evening.locator("[data-event-time-rail]");
+        await rail.evaluate(node => node.scrollIntoView({ block: "center", behavior: "instant" }));
+        const box = (await rail.boundingBox())!;
+        await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      } else {
+        await pick.focus();
+        await pick.press("Enter");
+      }
       const dialog = page.getByRole("dialog", { name: tonight.title, exact: true });
       await expect(dialog).toBeVisible();
       expect(evidence.eventReads).toContain(tonight.slug);
@@ -342,10 +352,14 @@ if (!LIVE) {
       if (width === 390) {
         const tabs = page.getByRole("navigation", { name: "Primary", exact: true }).filter({ visible: true });
         const tabTop = await tabs.evaluate(node => node.getBoundingClientRect().top);
-        await licensed.evaluate(node => node.scrollIntoView({ block: "center", behavior: "instant" }));
-        const rowBox = (await licensed.boundingBox())!;
-        expect(rowBox.y).toBeGreaterThanOrEqual(0);
-        expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(tabTop);
+        // Native Back can finish restoring the previous scroll position after
+        // focus returns. Verify the actual row is fully reachable after that.
+        await expect(async () => {
+          await licensed.evaluate(node => node.scrollIntoView({ block: "center", behavior: "instant" }));
+          const rowBox = (await licensed.boundingBox())!;
+          expect(rowBox.y).toBeGreaterThanOrEqual(0);
+          expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(tabTop);
+        }).toPass({ timeout: 5000 });
         const rights = licensed.locator("details[data-overview-photo-rights]");
         await rights.locator("summary").tap();
         await expect(rights.getByRole("link", { name: /CC BY-SA/ })).toBeVisible();
