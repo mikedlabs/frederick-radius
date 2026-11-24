@@ -35,6 +35,7 @@
 }
 
 .briefing {
+  container: today-briefing / inline-size;
   display: grid;
   gap: var(--app-space-3);
 }
@@ -63,6 +64,19 @@
 
 .currentContent > * {
   min-width: 0;
+}
+
+/* Keep each group readable as the shell gains or loses a side rail. */
+@container today-briefing (min-width: 48rem) {
+  .currentContent {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .currentContent > :only-child,
+  .currentContent > .places:has(+ .events:empty) {
+    grid-column: 1 / -1;
+  }
 }
 
 .places {

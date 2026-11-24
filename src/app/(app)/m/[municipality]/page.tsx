@@ -181,40 +181,9 @@ export default async function MunicipalityPage(
         </Link>
       </nav>
 
-      {/* 1. Town hero, PLAIN TOOL. CURATED imagery only (Photo Policy,
-          Phase 3): our own seasonal county photography, never a random
-          place's Google photo. The photograph keeps 6px corners with no
-          scrim, and the town's identity reads below it in heavy sans on the
-          page ground. The coral name plate belongs to Today alone. */}
-      <header className="space-y-3">
-        <figure className="space-y-1.5">
-          <div className="relative h-52 w-full overflow-hidden rounded-[var(--app-radius-md)] sm:h-72" style={{ background: "var(--app-bg-sunken)" }}>
-            {townPhoto ? (
-              <Image
-                src={wikimediaUrl(townPhoto.file, 1200)}
-                alt={townPhoto.alt}
-                fill
-                priority
-                sizes="(max-width: 720px) 100vw, 720px"
-                className="absolute inset-0 object-cover"
-              />
-            ) : (
-              <SeasonalPhoto
-                season="auto"
-                alt={`Frederick County (near ${m.name})`}
-                priority
-                sizes="(max-width: 720px) 100vw, 720px"
-                className="absolute inset-0"
-              />
-            )}
-          </div>
-          {townPhoto && (
-            <figcaption data-town-photo-credit style={{ color: "var(--app-ink-3)" }}>
-              <PhotoCreditLine credit={curatedPhotoCredit(townPhoto)} />
-            </figcaption>
-          )}
-        </figure>
-        <div className="space-y-1.5">
+      {/* Town identity leads the first viewport; keep the image with its attribution. */}
+      <header className="grid items-center gap-3 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-8">
+        <div className="min-w-0 space-y-1.5">
           <p className="text-[0.8125rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>
             {m.type === "city" ? "City" : m.type === "town" ? "Town" : m.type === "village" ? "Village" : "Community"} · Frederick County
           </p>
@@ -225,6 +194,33 @@ export default async function MunicipalityPage(
             {m.hero_blurb}
           </p>
         </div>
+        <figure className="min-w-0 space-y-1.5">
+          <div className="relative h-40 w-full overflow-hidden rounded-[var(--app-radius-md)] sm:h-48 lg:h-56" style={{ background: "var(--app-bg-sunken)" }}>
+            {townPhoto ? (
+              <Image
+                src={wikimediaUrl(townPhoto.file, 1200)}
+                alt={townPhoto.alt}
+                fill
+                priority
+                sizes="(min-width: 1024px) 480px, (min-width: 768px) 48vw, 100vw"
+                className="absolute inset-0 object-cover"
+              />
+            ) : (
+              <SeasonalPhoto
+                season="auto"
+                alt={`Frederick County (near ${m.name})`}
+                priority
+                sizes="(min-width: 1024px) 480px, (min-width: 768px) 48vw, 100vw"
+                className="absolute inset-0"
+              />
+            )}
+          </div>
+          {townPhoto && (
+            <figcaption data-town-photo-credit style={{ color: "var(--app-ink-3)" }}>
+              <PhotoCreditLine credit={curatedPhotoCredit(townPhoto)} />
+            </figcaption>
+          )}
+        </figure>
       </header>
 
       {/* Town switching belongs near the town identity, not near the footer. */}
