@@ -120,7 +120,7 @@ for (const width of [320, 375, 390, 430]) {
       if (observeFind && new URL(request.url()).pathname === "/api/place-photo") paidFindRequests.push(request.url());
     });
     await page.goto("/contacts", { waitUntil: "domcontentloaded" });
-    let dialog = await openFind(page);
+    const dialog = await openFind(page);
     observeFind = true;
     await dialog.getByRole("searchbox").fill("Carroll Creek");
     const owned = dialog.locator('[data-search-place-visual="owned"] img');
@@ -153,8 +153,9 @@ for (const width of [320, 375, 390, 430]) {
     await expect(page).toHaveURL(new RegExp(`/places/${falls}`));
     await page.goBack();
     await expect(page).toHaveURL(/\/contacts/);
-    dialog = await openFind(page);
+    await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("searchbox")).toHaveValue("Cunningham Falls");
+    await expect(dialog.locator('a[href="/places/' + falls + '"]')).toBeFocused();
     await dialog.getByRole("button", { name: "Close Find", exact: true }).click();
     await page.goto("/search?q=Cunningham%20Falls&in=county&kind=place", { waitUntil: "domcontentloaded" });
     await expectDecodedBundledFalls(page.locator("main"));
@@ -197,7 +198,7 @@ for (const { entry, query, slug, photoSource } of [
     }
     await page.goto(entry, { waitUntil: "domcontentloaded" });
     if (entry.startsWith("/today")) await expect(todayArea(page)).toHaveAccessibleName(/Whole county/i);
-    let dialog = await openEntryFind();
+    const dialog = await openEntryFind();
     const paidFindRequests: string[] = [];
     let observeFind = true;
     page.on("request", request => {
@@ -260,9 +261,10 @@ for (const { entry, query, slug, photoSource } of [
     await expect(dialog).toHaveCount(0);
     await page.goBack();
     await expect(page).toHaveURL(new URL(entry, test.info().project.use.baseURL as string).href);
-    if (entry.startsWith("/today")) await expect(todayArea(page)).toHaveAccessibleName(/Whole county/i);
-    dialog = await openEntryFind();
+    await expect(dialog).toBeVisible();
+    if (entry.startsWith("/today")) await expect(dialog.getByRole("searchbox")).toHaveAccessibleName(/whole county/i);
     await expect(dialog.getByRole("searchbox")).toHaveValue(query);
+    await expect(dialog.locator('a[href="/places/' + slug + '"]')).toBeFocused();
     await expect(dialog.locator("#search-opt-0").getByRole("heading", { name: query, exact: true })).toBeVisible();
     const restoredPhoto = dialog.locator('#search-opt-0 [data-search-place-visual="owned"] img');
     await restoredPhoto.scrollIntoViewIfNeeded();

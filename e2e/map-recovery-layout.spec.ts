@@ -338,8 +338,7 @@ test.describe(`Native shortlist directions (${typography} typography)`, () => {
     if (testInfo.project.use.hasTouch) await directions.tap();
     else await directions.click();
     const popup = await popupPromise;
-    await popup.waitForLoadState("domcontentloaded");
-    expect(popup.url()).toBe(href);
+    await expect(popup).toHaveURL(href);
     await expect(popup.getByRole("main")).toHaveText("External handoff observed. No external map is loaded.");
     await popup.close();
     await expect(page).toHaveURL(origin);
