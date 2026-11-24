@@ -1119,7 +1119,7 @@ export default function SearchOverlay({
                             <h3 id={titleId} className={resultStyles.name}>{name}</h3>
                             {address && <p id={addressId} className={resultStyles.address}>{address}</p>}
                             {facts && <p id={factsId} className={resultStyles.facts}>{facts}</p>}
-                            {trust && (lead || trust.level !== "unconfirmed") && <SearchTrustLine signal={trust} place={r.type === "place"} />}
+                            {trust && (lead || r.type !== "place" || trust.label !== "Unconfirmed") && <SearchTrustLine signal={trust} place={r.type === "place"} />}
                           </div>
                           <ArrowRight className={resultStyles.arrow} strokeWidth={2} aria-hidden />
                         </Link>
