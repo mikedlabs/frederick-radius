@@ -455,8 +455,8 @@ describe("TransIT GTFS-realtime feed metadata", () => {
 });
 
 describe("published county service exceptions take priority over GTFS-realtime", () => {
-  function reportingTrip(routeId: string, arrival: string): GtfsFeedEntity {
-    const trip = { routeId, tripId: `trip-${routeId}` };
+  function reportingTrip(routeId: string, arrival: string, startDate?: string): GtfsFeedEntity {
+    const trip = { routeId, tripId: `trip-${routeId}`, startDate };
     const timestamp = Date.parse(arrival) / 1000;
     return {
       id: routeId,
@@ -488,6 +488,19 @@ describe("published county service exceptions take priority over GTFS-realtime",
     expect((await getStopPredictionsResult()).data.map((item) => item.routeId)).toEqual(["6154", "6169"]);
     expect((await getTripUpdatesResult()).data.map((item) => item.routeId)).toEqual(["6154", "6169"]);
     expect((await getLiveVehiclesResult()).data.map((item) => item.routeId)).toEqual(["6169"]);
+  });
+
+  it("keeps the encoded provider service date when a cancelled Friday trip is replayed on Saturday", async () => {
+    const now = Date.parse("2026-11-28T08:30:00-05:00");
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    const entities = [
+      reportingTrip("6154", "2026-11-28T08:35:00-05:00", "20261127"),
+      reportingTrip("6155", "2026-11-28T08:35:00-05:00", "20261128"),
+    ];
+    vi.stubGlobal("fetch", () => Promise.resolve(protobufResponse(encodedFeed(entities, now / 1000))));
+    for (const result of await Promise.all([getLiveVehiclesResult(), getStopPredictionsResult(), getTripUpdatesResult()])) {
+      expect(result.data.map((item) => item.routeId)).toEqual(["6155"]);
+    }
   });
 
   it("filters a prediction that crosses the local midnight into a closure", async () => {
