@@ -29,6 +29,7 @@ import {
 import "mapbox-gl/dist/mapbox-gl.css";
 import { sunTimes } from "@/lib/sun";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
+import { directionsHref } from "@/lib/map/directionsHref";
 import type { SmartMapDefault } from "@/lib/map/smartDefaults";
 import { useMode } from "@/hooks/useMode";
 import { defaultsFor } from "@/lib/mode-defaults";
@@ -7268,24 +7269,33 @@ export default function AppMap({
 
           {/* Historic Covered Bridges — HTML markers for custom styling */}
           {showCoveredBridges &&
-            coveredBridges.features.map((feature, i) => {
+            coveredBridges.features.map((feature) => {
               const geometry = feature.geometry as { type: string; coordinates: [number, number] };
               if (geometry.type !== "Point") return null;
               const [lng, lat] = geometry.coordinates;
+              const name = (feature.properties?.name as string) || "covered bridge";
               return (
                 <Marker
-                  key={`bridge:${i}`}
-                  longitude={lng as number}
-                  latitude={lat as number}
+                  key={`bridge:${lng},${lat}`}
+                  ref={exposeMarkerChild}
+                  longitude={lng}
+                  latitude={lat}
                   anchor="bottom"
                 >
-                  <button
-                    type="button"
-                    title={(feature.properties?.name as string) || "Covered Bridge"}
-                    className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--color-primary,#ef4444)] bg-white text-[var(--color-primary,#ef4444)] shadow-[0_2px_10px_rgba(34,28,21,0.28)] hover:bg-[var(--color-primary,#ef4444)] hover:text-white transition-colors"
+                  <a
+                    href={directionsHref(lat, lng)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={`Directions to ${name}`}
+                    aria-label={`Directions to ${name}`}
+                    tabIndex={isPointInView(lng, lat) ? 0 : -1}
+                    onClick={(event) => event.stopPropagation()}
+                    className="group grid h-11 w-11 place-items-center rounded-full"
                   >
-                    <Landmark size={14} />
-                  </button>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--color-primary,#ef4444)] bg-white text-[var(--color-primary,#ef4444)] shadow-[0_2px_10px_rgba(34,28,21,0.28)] transition-colors group-hover:bg-[var(--color-primary,#ef4444)] group-hover:text-white">
+                      <Landmark size={14} aria-hidden />
+                    </span>
+                  </a>
                 </Marker>
               );
             })}
